@@ -10,7 +10,15 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 # SHARED so that satellite.cxx modules can link against it -- a static host
 # would need -rdynamic and would still export symbols unpredictably.
-add_library(satellite_core SHARED src/container.cpp src/lexer.cpp src/machine.cpp src/cxx.cpp)
+add_library(satellite_core SHARED
+  src/charmap.cpp
+  src/string.cpp
+  src/bignum.cpp
+  src/container.cpp
+  src/ops.cpp
+  src/lexer.cpp
+  src/machine.cpp
+  src/cxx.cpp)
 target_compile_definitions(satellite_core PRIVATE
   SATELLITE_INCLUDE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/include"
   SATELLITE_CORE_LIB="${CMAKE_CURRENT_BINARY_DIR}/libsatellite_core.so")
