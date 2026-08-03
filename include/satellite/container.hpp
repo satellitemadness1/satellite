@@ -50,27 +50,64 @@ struct Obj {
     Obj& operator=(const Obj& o) { type = o.type; return *this; }
 };
 
-// satellite_string.  Short strings live in the inline buffer and never touch
-// the allocator; most strings in most programs are short, and allocation --
-// not copying -- is what actually costs.
+// ---------------------------------------------------------------------------
+// The satellite character map.
+//
+// A satellite character is NOT a Unicode codepoint -- it is an index into this
+// table.  Code 0 is void/error; everything else is assigned in order:
+//
+//   0        void / error
+//   1-26     a-z          27-52    A-Z          53-62    0-9
+//   63-72    !@#$%^&*()   73-76    -_=+         77-82    [{]}\|
+//   83-87    ;:'",        88-92    <.>/?        93-94    `~
+//   95-97    space, newline, tab   <-- added; nothing works without a space
+//
+// Stored in 32 bits so the map can grow without a migration.  Text outside the
+// map converts to 0 (void).
+// ---------------------------------------------------------------------------
+namespace charmap {
+constexpr char32_t VOID  = 0;
+constexpr char32_t SPACE = 95;
+constexpr char32_t COUNT = 98;
+
+char32_t    from_ascii(char c);        // ASCII -> satellite code, 0 if unmapped
+char        to_ascii(char32_t code);   // satellite code -> ASCII, 0 if invalid
+const char* table();                   // index by code; [0] is a placeholder
+}  // namespace charmap
+
+// satellite_string.  One character is one char32_t holding a satellite charmap
+// code, so indexing is exact and O(1): my_str.remove(0) removes the first
+// CHARACTER, never part of one.
+//
+// Short strings live in the inline buffer and never touch the allocator; most
+// strings in most programs are short, and allocation -- not copying -- is what
+// actually costs.
 struct SatString : Obj {
-    static constexpr uint32_t INLINE_CAP = 32;
+    static constexpr uint32_t INLINE_CAP = 16;   // characters, not bytes
 
-    uint32_t len  = 0;
-    uint32_t cap  = INLINE_CAP;
-    char*    heap = nullptr;         // null while the string is inline
-    char     buf[INLINE_CAP];
+    uint32_t  len  = 0;              // in characters
+    uint32_t  cap  = INLINE_CAP;
+    char32_t* heap = nullptr;        // null while the string is inline
+    char32_t  buf[INLINE_CAP];
 
-    SatString() : Obj(Type::Str) { buf[0] = '\0'; }
+    SatString() : Obj(Type::Str) { buf[0] = 0; }
     ~SatString() { delete[] heap; }
 
-    char*       data()       { return heap ? heap : buf; }
-    const char* data() const { return heap ? heap : buf; }
-    std::string std_str() const { return std::string(data(), len); }
+    char32_t*       data()       { return heap ? heap : buf; }
+    const char32_t* data() const { return heap ? heap : buf; }
     bool inline_stored() const { return heap == nullptr; }
 
+    // rendered back to ASCII for display; void characters show as '?'
+    std::string text() const;
+    char32_t at(uint32_t i) const { return i < len ? data()[i] : charmap::VOID; }
+
     void reserve(uint32_t want);
-    void append(const char* p, uint32_t n);
+    void append(const char32_t* p, uint32_t n);
+    void append_text(const std::string& ascii);   // maps through the charmap
+
+    // character index of `needle` at or after `from`, or -1
+    int64_t find(const SatString& needle, uint32_t from = 0) const;
+    void    erase(uint32_t at, uint32_t n);
 };
 
 // satellite_number's big form.  Little-endian limbs, no trailing zero limb.

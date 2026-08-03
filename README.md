@@ -14,12 +14,13 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 
 ## Status
 
-Just started. `satellite_container` — the universal value type — is built and
-tested. Nothing else exists yet.
+`satellite_container` (the universal value type) and the lexer are built and
+tested. No parser or VM yet.
 
 ```
 cmake -S . -B build && cmake --build build -j8
-./build/test_container      # 42 checks
+./build/test_container      # 73 checks
+./build/test_lexer          # 37 checks
 ./build/bench_dispatch
 ```
 
@@ -77,10 +78,37 @@ satellite programs show which pairs actually occur.
 Alternatives are all-occurrences or trailing-only. In `sub_str()` in
 `src/container.cpp`.
 
-**String indices are bytes, storage is UTF-8.** `remove(0)` removes the first
-*byte*. A separate codepoint API can sit alongside it. Deciding this later is
-the single most painful migration in language design, so it is decided now and
-written down.
+**A character is 32 bits, holding a satellite charmap code.** Not a Unicode
+codepoint — an index into satellite's own table:
+
+| code | characters |
+|---|---|
+| 0 | void / error |
+| 1–26 | `a`–`z` |
+| 27–52 | `A`–`Z` |
+| 53–62 | `0`–`9` |
+| 63–72 | `!@#$%^&*()` |
+| 73–76 | `-_=+` |
+| 77–82 | `[{]}\|` |
+| 83–87 | `;:'",` |
+| 88–92 | `<.>/?` |
+| 93–94 | `` ` `` `~` |
+| 95–97 | space, newline, tab |
+
+One character is one code, so `remove(0)` removes the first *character* and
+`at(i)` is O(1) with no scanning. Text outside the map converts to code 0 and
+renders as `?`.
+
+The cost is 4 bytes per character. The reason to pay it: an 8-bit char closes
+the door at 256 possibilities, and we don't yet know what a satellite character
+will eventually need to be. Leaving that open is worth more than the memory, and
+the speed difference is not observable — the operations are `memcpy` and
+`memcmp` either way, just over wider elements.
+
+**Codes 95–97 (space, newline, tab) are an addition, not in the original
+table** — `"hello world"` cannot be represented without a space. Move them if
+you want them elsewhere; they are defined in one place, `charmap::kTable` in
+`src/container.cpp`, and the reverse lookup is built from it automatically.
 
 **`+` with a string on either side produces a string**, so
 `satellite.console.display("n: " + 5)` works.
@@ -106,31 +134,81 @@ scheduler timeslice: with 200 threads on 24 hardware threads, any given worker
 is descheduled ~88% of the time, so a call waits for the scheduler rather than
 finding a ready worker.
 
-Two findings worth keeping either way:
+But those numbers are all **fine-grained dispatch**, and that turned out to be
+the wrong question to ask alone. Scaling the work per call changes the answer
+completely:
 
-- **Looking ahead works.** Speculative prefetch of the next capsule beat cold
-  dispatch 6.08μs vs 10.41μs on 12 threads. Readiness is real; it just comes
-  from prefetch and precomputed state rather than from thread count.
-- **Physical cores beat hardware threads.** 12 workers (22.83μs) beat 24
-  workers (28.08μs) — hyperthread pairs contend for L1 and execution ports. The
-  default should be physical core count, not `hardware_concurrency()`.
+```
+work per call   12thr    24thr    48thr   200thr
+1 us              9.8     10.7     13.2     14.7      <- interpreter territory
+100 us           42.4     23.3     23.6     22.6
+1 ms            101.7     56.2     56.1     55.1
+100 ms          522.2    313.9    309.9    293.8
+
+I/O-bound, 500us storage wait
+                 92.5 ms          ->        5.9 ms    <- 15.7x faster
+```
+
+So there is no single correct worker count. There are three regimes:
+
+- **Fine-grained CPU work** (interpreter instructions, ~ns each): few workers.
+  200 loses to 12 by 1.5x — per-dispatch overhead dominates.
+- **Coarse CPU work** (≥100us per call): the gain arrives at hardware-thread
+  count and then goes flat. 24 / 48 / 200 land within noise of each other.
+- **I/O-bound work** (streaming a model too big for RAM): massive
+  oversubscription wins by **15.7x**. Blocked threads do not consume cores, so
+  hundreds of them are correct here.
+
+That last regime is the one an AI workload actually lives in, and it is the
+strongest case for the original 200-worker design.
+
+Corrections to earlier claims in this file's history: "physical cores beat
+hardware threads" was drawn from a latency test and does not hold for
+throughput — 12 to 24 threads is a real 1.8x win. And speculative prefetch does
+work: 6.08us vs 10.41us cold, on 12 threads. Readiness is real; it comes from
+prefetch and precomputed state as well as from thread count.
 
 None of this is settled, because real satellite programs don't exist yet and
-synthetic capsules may not predict them. So the worker count will be a runtime
-parameter — `satellite.workers = N`, defaulting to physical cores — and nothing
-in the container, the call convention, or the bytecode may assume a thread
-count. Capsules do not own threads; tasks are assigned to workers. Set it to
-200 when there is real code to measure, and the question answers itself.
+synthetic capsules may not predict them. So the worker count is a runtime
+parameter — `satellite.workers = N` — and nothing in the container, the call
+convention, or the bytecode may assume a thread count. Capsules do not own
+threads; tasks are assigned to workers.
+
+Better still, the count should follow the workload class, which the language
+already has a syntax for. `slow/medium/fast` on `satellite.thread.new` and
+`satellite.thread.listen` can carry an I/O-vs-CPU hint, so a capsule streaming
+model weights gets hundreds of workers while one running tight interpreter
+loops gets a couple of dozen. That makes the priority classes load-bearing
+rather than decorative.
 
 Benchmarks live in `bench/`.
 
+## Lexer
+
+Two rules give the language its shape, and both are tested:
+
+**`satellite` is the only reserved word — and only when not preceded by a
+dot.** After a dot it is an ordinary identifier, which is what makes the escape
+hatch work:
+
+```
+satellite.library.my_capsule.satellite
+^keyword                     ^just a name
+```
+
+Every other word belongs to the user: `capsule`, `class`, `return`, `if`,
+`while` all lex as plain identifiers.
+
+**A newline ends a statement only when the previous token could finish one.**
+Go's rule. A line ending in `+` or `(` continues. Newlines inside `( )` and
+`[ ]` never terminate, so argument lists span lines freely; braces deliberately
+do not suppress termination, since statements inside a capsule body do end.
+
 ## Next
 
-1. `satellite_string` proper — rope representation above a size threshold, so
-   `a + b` on large strings is O(1)
-2. Lexer — Go-style newline-as-terminator; `satellite` is an identifier after
-   `.` and a keyword otherwise
-3. Single-pass compiler to bytecode, resolving `satellite.library.x.y` to slot
+1. Parser — capsules, spacesuits, `satellite.library` paths
+2. Single-pass compiler to bytecode, resolving `satellite.library.x.y` to slot
    indices at compile time
-4. Register-based VM with computed goto
+3. Register-based VM with computed goto
+4. Ropes for large-string concatenation, so `a + b` is O(1) above a threshold
 5. Scheduler, with the worker count as a knob

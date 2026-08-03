@@ -98,8 +98,61 @@ int main() {
     eq(sub(Container::str("abc"), Container::str("zz")), "abc",
        "missing substring leaves the string alone");
 
+    // ---- the satellite character map --------------------------------------
+    // a satellite character is a CODE, not a Unicode codepoint
+    check(charmap::from_ascii('a') == 1,  "'a' is code 1");
+    check(charmap::from_ascii('z') == 26, "'z' is code 26");
+    check(charmap::from_ascii('A') == 27, "'A' is code 27");
+    check(charmap::from_ascii('Z') == 52, "'Z' is code 52");
+    check(charmap::from_ascii('0') == 53, "'0' is code 53");
+    check(charmap::from_ascii('1') == 54, "'1' is code 54");
+    check(charmap::from_ascii('9') == 62, "'9' is code 62");
+    check(charmap::from_ascii('!') == 63, "'!' starts the symbols at 63");
+    check(charmap::from_ascii(')') == 72, "')' closes !@#$%^&*() at 72");
+    check(charmap::from_ascii('-') == 73, "'-' is code 73");
+    check(charmap::from_ascii('+') == 76, "'+' closes -_=+ at 76");
+    check(charmap::from_ascii('[') == 77, "'[' is code 77");
+    check(charmap::from_ascii('|') == 82, "'|' closes [{]}\\| at 82");
+    check(charmap::from_ascii(';') == 83, "';' is code 83");
+    check(charmap::from_ascii(',') == 87, "',' closes ;:'\", at 87");
+    check(charmap::from_ascii('<') == 88, "'<' is code 88");
+    check(charmap::from_ascii('?') == 92, "'?' closes <.>/? at 92");
+    check(charmap::from_ascii('~') == 94, "'~' is the last of your table at 94");
+    check(charmap::from_ascii(' ') == 95, "space is code 95 (added -- confirm)");
+
+    // every code round trips
+    {
+        bool all = true;
+        for (char32_t code = 1; code < charmap::COUNT; ++code)
+            if (charmap::from_ascii(charmap::to_ascii(code)) != code) all = false;
+        check(all, "every code round trips ascii -> code -> ascii");
+    }
+
+    // strings hold codes, and indexing is exact
+    Container word = Container::str("aA0");
+    check(word.as_str()->len == 3, "three characters");
+    check(word.as_str()->at(0) == 1,  "at(0) is code 1 for 'a'");
+    check(word.as_str()->at(1) == 27, "at(1) is code 27 for 'A'");
+    check(word.as_str()->at(2) == 53, "at(2) is code 53 for '0'");
+    eq(word, "aA0", "codes render back to text");
+
+    // space works, which is why 95 had to exist
+    eq(add(Container::str("hello"), Container::str(" world")), "hello world",
+       "a space survives the round trip");
+
+    // anything outside the map becomes void
+    Container off = Container::str("a\xc3\xa9" "b");  // 'é' in UTF-8; split so 'b'
+                                                   // is not eaten by the hex escape
+    check(off.as_str()->at(1) == charmap::VOID, "unmapped input becomes void (0)");
+    check(off.as_str()->at(2) == charmap::VOID, "both bytes of it become void");
+    eq(off, "a??b", "void characters render visibly as '?'");
+
     // small strings must not allocate
     check(hello.as_str()->inline_stored(), "short string stays inline (no malloc)");
+    check(Container::str("0123456789abcdef").as_str()->inline_stored(),
+          "16 characters still fits inline");
+    check(!Container::str("0123456789abcdefg").as_str()->inline_stored(),
+          "17 characters moves to the heap");
     Container big_s = Container::str(std::string(500, 'x'));
     check(!big_s.as_str()->inline_stored(), "long string moves to the heap");
     check(big_s.as_str()->len == 500, "long string keeps its length");

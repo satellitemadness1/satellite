@@ -19,23 +19,101 @@ const char* type_name(Type t) {
 }
 
 // ===========================================================================
-// satellite_string
+// The satellite character map
+// ===========================================================================
+namespace charmap {
+
+// index 0 is void; '?' is only a placeholder so the table indexes line up
+static const char kTable[] =
+    "?"                                 // 0     void / error
+    "abcdefghijklmnopqrstuvwxyz"        // 1-26
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"        // 27-52
+    "0123456789"                        // 53-62
+    "!@#$%^&*()"                        // 63-72
+    "-_=+"                              // 73-76
+    "[{]}\\|"                           // 77-82
+    ";:'\","                            // 83-87
+    "<.>/?"                             // 88-92
+    "`~"                                // 93-94
+    " \n\t";                            // 95-97  space, newline, tab
+
+const char* table() { return kTable; }
+
+// reverse lookup, built once
+static const unsigned char* reverse() {
+    static unsigned char rev[256] = {0};
+    static bool built = false;
+    if (!built) {
+        for (uint32_t code = 1; code < COUNT; ++code)
+            rev[(unsigned char)kTable[code]] = (unsigned char)code;
+        built = true;
+    }
+    return rev;
+}
+
+char32_t from_ascii(char c) { return reverse()[(unsigned char)c]; }
+
+char to_ascii(char32_t code) {
+    return code > 0 && code < COUNT ? kTable[code] : '\0';
+}
+
+}  // namespace charmap
+
+// ===========================================================================
+// satellite_string -- 32 bits per character, holding satellite charmap codes
 // ===========================================================================
 void SatString::reserve(uint32_t want) {
     if (want <= cap) return;
     uint32_t ncap = cap * 2;
     if (ncap < want) ncap = want;
-    char* nb = new char[ncap];
-    std::memcpy(nb, data(), len);
+    char32_t* nb = new char32_t[ncap];
+    std::memcpy(nb, data(), (size_t)len * sizeof(char32_t));
     delete[] heap;
     heap = nb;
     cap  = ncap;
 }
 
-void SatString::append(const char* p, uint32_t n) {
+void SatString::append(const char32_t* p, uint32_t n) {
     reserve(len + n);
-    std::memcpy(data() + len, p, n);
+    std::memcpy(data() + len, p, (size_t)n * sizeof(char32_t));
     len += n;
+}
+
+// Anything the charmap does not cover becomes code 0 (void).  That is the
+// design: the map defines what a satellite character IS, and the 32-bit slot
+// leaves room to extend it later without touching stored strings.
+void SatString::append_text(const std::string& ascii) {
+    reserve(len + (uint32_t)ascii.size());
+    char32_t* d = data();
+    for (char c : ascii) d[len++] = charmap::from_ascii(c);
+}
+
+std::string SatString::text() const {
+    std::string out;
+    out.reserve(len);
+    const char32_t* d = data();
+    for (uint32_t k = 0; k < len; ++k) {
+        char c = charmap::to_ascii(d[k]);
+        out += c ? c : '?';                 // void renders visibly
+    }
+    return out;
+}
+
+int64_t SatString::find(const SatString& needle, uint32_t from) const {
+    if (needle.len == 0 || needle.len > len) return -1;
+    const char32_t* h = data();
+    const char32_t* n = needle.data();
+    for (uint32_t k = from; k + needle.len <= len; ++k)
+        if (std::memcmp(h + k, n, (size_t)needle.len * sizeof(char32_t)) == 0)
+            return (int64_t)k;
+    return -1;
+}
+
+void SatString::erase(uint32_t at, uint32_t n) {
+    if (at >= len) return;
+    if (at + n > len) n = len - at;
+    std::memmove(data() + at, data() + at + n, (size_t)(len - at - n) * sizeof(char32_t));
+    len -= n;
 }
 
 // ===========================================================================
@@ -47,7 +125,7 @@ Container Container::str(const char* s) {
 
 Container Container::str(const std::string& s) {
     auto* p = new SatString();
-    p->append(s.data(), static_cast<uint32_t>(s.size()));
+    p->append_text(s);
     Container c;
     c.type = Type::Str;
     c.obj  = p;
@@ -117,7 +195,7 @@ std::string Container::to_string() const {
         case Type::Int:  return std::to_string(i);
         case Type::Real: return std::to_string(d);
         case Type::Big:  return big::to_string(*as_big());
-        case Type::Str:  return as_str()->std_str();
+        case Type::Str:  return as_str()->text();
         case Type::List: {
             std::string s = "[";
             const auto& v = as_list()->items;
@@ -367,11 +445,14 @@ static Container mul_real(const Container& a, const Container& b) {
 // "a" + "b"  ->  concatenation.  Any type concatenated with a string becomes
 // a string, so satellite.console.display("n: " + 5) works as expected.
 static Container add_str(const Container& a, const Container& b) {
-    std::string l = a.to_string(), r = b.to_string();
     auto* p = new SatString();
-    p->reserve((uint32_t)(l.size() + r.size()));
-    p->append(l.data(), (uint32_t)l.size());
-    p->append(r.data(), (uint32_t)r.size());
+    // string + string copies characters straight across -- no encode/decode
+    auto push = [&](const Container& c) {
+        if (c.type == Type::Str) { const SatString* s = c.as_str(); p->append(s->data(), s->len); }
+        else                     { p->append_text(c.to_string()); }
+    };
+    push(a);
+    push(b);
     Container c;
     c.type = Type::Str;
     c.obj  = p;
@@ -382,12 +463,22 @@ static Container add_str(const Container& a, const Container& b) {
 // DEFAULT DECISION (change if you want different semantics): removes the FIRST
 // occurrence only.  Alternatives are all-occurrences or trailing-only.
 static Container sub_str(const Container& a, const Container& b) {
-    std::string l = a.to_string(), r = b.to_string();
-    if (!r.empty()) {
-        size_t at = l.find(r);
-        if (at != std::string::npos) l.erase(at, r.size());
-    }
-    return Container::str(l);
+    auto load = [](SatString& dst, const Container& c) {
+        if (c.type == Type::Str) { const SatString* s = c.as_str(); dst.append(s->data(), s->len); }
+        else                     { dst.append_text(c.to_string()); }
+    };
+    auto* p = new SatString();
+    load(*p, a);
+    SatString needle;
+    load(needle, b);
+
+    int64_t at = p->find(needle);
+    if (at >= 0) p->erase((uint32_t)at, needle.len);
+
+    Container c;
+    c.type = Type::Str;
+    c.obj  = p;
+    return c;
 }
 
 // list + list -> concatenation
