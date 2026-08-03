@@ -261,8 +261,14 @@ plans the remaining stages one landing at a time. It carries a rule worth
 repeating here: until the `Execute` stage lands, nothing in the binary, the help
 text or the documentation may say that satellite code runs.
 
-Note that `satellite.include` is checked for and **not acted on** — version 001
-verifies that a main file has it, and includes nothing.
+Note that `satellite.include` is checked for and **not acted on** — the seam
+verifies that a main file has it, and includes nothing. Be precise about where
+that check lives: it is `interpret_source()` in `src/interpret.cpp`, exercised by
+`test_interpret` and by `satellite-gui`'s `interpret` command. The `satellite`
+CLI does **not** run it, because `check`, `lex` and `run` drive the lexer and the
+C++ bridge directly rather than going through the seam. A file with a
+`satellite.main` and no `satellite.include(satellite)` is reported `ok` by
+`satellite check`.
 
 ---
 
@@ -271,8 +277,10 @@ verifies that a main file has it, and includes nothing.
 Stated plainly, because the list above is easy to mistake for more than it is.
 
 - **No parser.** No compiler. No VM. `.satl` files do not execute.
-- `satellite.include(...)` lexes, and a main file is *checked* for it. Nothing
-  resolves the name or loads a file.
+- `satellite.include(...)` lexes. Nothing resolves the name or loads a file. A
+  main file is *checked* for it only through the interpreter seam — the
+  `satellite` CLI does not perform that check, so `satellite check` says `ok` on
+  a file that omits the include.
 - `satellite.capsule`, `satellite.spacesuit`, `satellite.variable.*`,
   `satellite.console.display`, `satellite.return` — outside a `satellite.cxx`
   block these produce tokens and nothing else.
@@ -299,7 +307,10 @@ Stated plainly, because the list above is easy to mistake for more than it is.
 ```
 .ship/001/
 ├── README.md                     this file
+├── common_headers.txt            the 92 standard-library headers a satellite.cxx
+│                                 block can #include on this machine, measured
 └── examples/
+    ├── hello_main.satl           the shape of a main file — the one to copy
     ├── cxx_hello.satl            the smallest satellite.cxx block that does something
     ├── cxx_math.satl             C++ control flow — a for loop summing 1..100
     ├── cxx_vector.satl           std::vector<int> crossing back as a satellite list
@@ -308,10 +319,18 @@ Stated plainly, because the list above is easy to mistake for more than it is.
     └── satellite_full_test.satl  every piece of syntax 001 can lex, in one file
 ```
 
-The five `cxx_*` files each carry a header comment explaining what they
-demonstrate and the output to expect, and each is a complete `.satl` file with a
-`satellite.main` capsule around the block — so they show the language's shape
-even though only the block executes.
+`common_headers.txt` is a measured list, not a guess: each of 102 candidate
+headers was compiled and `dlopen`ed through the exact pipeline `src/cxx.cpp`
+uses, and the 10 that failed that gate are named with the reason they failed. It
+is machine-specific by construction — it describes what *this* toolchain
+compiles.
+
+`hello_main.satl` and the five `cxx_*` files each carry a header comment
+explaining what they demonstrate and the output to expect, and each is a
+complete `.satl` file with a `satellite.main` capsule around the block — so they
+show the language's shape even though only the block executes. Every one of
+those "expected output" comments was checked against a real `satellite run` on
+this machine, not written from memory.
 
 `satellite_full_test.satl` is the lexer conformance input: 355 lines touching
 every construct version 001 can tokenise. It lexes to 1150 tokens with zero

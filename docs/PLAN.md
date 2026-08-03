@@ -162,10 +162,14 @@ gets harder by waiting, and the backend interface in step 1 is cheap to add now.
 # Current state, for whoever picks this up
 
 Built and tested: `satellite_container`, `satellite_string` with the charmap,
-`BigInt`, the lexer, `satellite.machine` (uinput), `satellite.cxx` (g++).
-251 checks passing across four test binaries.
+`BigInt`, the lexer, `satellite.machine` (uinput), `satellite.cxx` (g++), the
+interpreter seam, and an optional GTK4 console (`satellite-gui`, built only
+when `pkg-config` finds gtk4). 335 checks passing across five test binaries.
 
-Not built: parser, compiler, VM, scheduler, `Type::Handle`, GTK.
+Not built: parser, compiler, VM, scheduler, `Type::Handle`. The GTK console
+exists as a front end, but it can only drive what the seam can do -- it lexes,
+validates and runs `satellite.cxx` blocks, and executes no satellite code,
+because there is nothing behind the seam to execute it with.
 
 The next piece on the critical path is the **parser**, then a single-pass
 compiler to bytecode, then a register VM. Both projects above want the VM to

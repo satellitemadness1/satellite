@@ -1,0 +1,47 @@
+// hello_main.satl -- the shape of a satellite main file, start to finish.
+//
+// This is the file to copy when starting a new program.  It has the three
+// things every main file needs and nothing it does not:
+//
+//   1. satellite.include(satellite)   -- required; checked by the interpreter
+//                                        seam, but NOT by `satellite check`
+//   2. a satellite.main capsule       -- the entry point
+//   3. satellite.return(satellite)    -- how the capsule ends
+//
+// The one satellite.cxx block builds a greeting and hands it back.  In 001
+// that block is the only part that actually executes: there is no parser and
+// no virtual machine yet, so satellite.console.display below is checked by the
+// lexer but not run.  `satellite run` executes the cxx blocks and nothing else.
+//
+// Run it:
+//     satellite check .ship/001/examples/hello_main.satl
+//     satellite run   .ship/001/examples/hello_main.satl
+//
+// Expected output from `run`:
+//     --- satellite.cxx block 1 (line 34) ---
+//       => hello from satellite 001   [string]
+//
+//     1 block(s), 1 compiled, 0 from cache, 0 failed
+//
+// Run it a second time and the summary becomes "0 compiled, 1 from cache" --
+// the bridge caches the compiled module keyed on the text of the block.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.cxx
+    {
+        #include <string>
+
+        std::string greeting = "hello";
+        greeting += " from satellite";
+        greeting += " 001";
+
+        satellite.return(greeting)
+    }
+
+    satellite.console.display(arguments[0])
+
+    satellite.return(satellite)
+}

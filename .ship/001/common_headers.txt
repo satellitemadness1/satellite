@@ -90,11 +90,19 @@
 #
 #     flat_map flat_set mdspan inplace_vector print spanstream expected
 #     stacktrace generator
-#         These #include cleanly but are EMPTY under -std=c++20 -- they are
-#         C++23 headers guarded on __cplusplus. Including them costs you a file
-#         open and gives you nothing; using the type they are named for is a
-#         hard error ("only available from C++23 onwards"). Listing them would
-#         be a lie. They come back for free if the standard is ever raised.
+#         These #include cleanly but do not give you the type they are named
+#         for under -std=c++20 -- they are C++23 headers whose contents are
+#         guarded on __cplusplus. Seven of the nine (flat_map, flat_set,
+#         inplace_vector, print, spanstream, expected, stacktrace) preprocess
+#         to literally nothing. The other two are not empty but are equally
+#         useless: <mdspan> and <generator> still drag in real content (13,639
+#         and 31,926 non-blank preprocessed lines, because they pull <span>,
+#         <array>, <ranges> and friends unconditionally), yet std::mdspan and
+#         std::generator are still absent. Either way, using the named type is
+#         a hard error ("only available from C++23 onwards" -- verified for
+#         std::generator; std::mdspan and std::expected report "is not a
+#         member of 'std'"). Listing them would be a lie. They come back for
+#         free if the standard is ever raised.
 #
 #     execution
 #         The real trap, and the reason the dlopen gate exists. <execution>
@@ -114,22 +122,28 @@
 #   One translation unit including the preamble plus all 92 headers, expanded
 #   with `g++ -std=c++20 -M`, symlinks resolved through realpath, deduped:
 #
-#     files                       482
-#     raw                   8,488,007 bytes  (8.10 MiB)
-#     tar                   8,867,840 bytes
-#     zstd -19              1,001,015 bytes  (0.95 MiB)   8.47x
+#   The counts below are the HEADERS ONLY -- `g++ -M` names the .cpp itself as
+#   the first dependency, and that line is excluded, as it was in
+#   docs/EMBEDDING.md.
+#
+#     files                       479
+#     raw                   8,478,973 bytes  (8.09 MiB)
+#     tar                   8,857,600 bytes
+#     zstd -19                999,605 bytes  (0.95 MiB)   8.48x
 #
 #   Raw byte total was cross-checked two ways, `stat -c %s` summed against
-#   `du -cb`; both give 8,488,007 exactly. Compression is a real measurement:
-#   tar of the 482 files piped through `zstd -19`, not an assumed ratio.
+#   `du -cb`; both give 8,478,973 exactly. Compression is a real measurement:
+#   tar of the 479 files piped through `zstd -19`, not an assumed ratio, and
+#   reproducible -- two independent runs give the same tar and zstd size to the
+#   byte.
 #
 #   For scale: the preamble ALONE (satellite/cxx.hpp + <string> + <vector> +
-#   <exception>) is already 206 files / 2,541,847 bytes. So every satellite.cxx
+#   <exception>) is already 204 files / 2,534,691 bytes. So every satellite.cxx
 #   block on earth pays 2.5 MB of headers before the user types anything, and
-#   opening the door to all 92 costs 3.3x that, not 92x. This reproduces the
-#   204 files / 2,534,691 bytes in docs/EMBEDDING.md to within 2 files and
-#   7,156 bytes -- close enough to call the method cross-validated, the delta
-#   being which satellite/*.hpp the two measurements fed in.
+#   opening the door to all 92 costs 3.35x that, not 92x. That preamble figure
+#   is EXACTLY the 204 files / 2,534,691 bytes in docs/EMBEDDING.md -- not
+#   "close enough", the same number to the byte, which is what cross-validation
+#   is supposed to look like.
 #
 # TOOLCHAIN THESE NUMBERS BELONG TO
 #   g++ (GCC) 17.0.0 20260727 (experimental)

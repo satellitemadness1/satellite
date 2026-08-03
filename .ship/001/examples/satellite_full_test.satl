@@ -48,8 +48,8 @@
 //      satellite.cxx blocks, inline and multi-line
 //
 //  NOT COVERED, because it does not exist: `^` has a satellite charmap code
-//  (110) but the lexer has no token for it, so writing one is a lex error.
-//  Same for & | ~ ; ? @ # $ and the single quote.
+//  (103 as a math operator, 68 as text) but the lexer has no token for it, so
+//  writing one is a lex error.  Same for & | ~ ; ? @ # $ and the single quote.
 // ============================================================================
 
 

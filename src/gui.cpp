@@ -1,9 +1,11 @@
 // The satellite GUI console.
 //
 // A GTK4 window with a scrolling read-only transcript on top and a command
-// entry underneath.  It is a front end for exactly the same interpreter seam
-// the CLI uses (satellite/interpret.hpp), so it gains capability automatically
-// as each stage of that seam lands.
+// entry underneath.  It is a front end over the interpreter seam
+// (satellite/interpret.hpp), so it gains capability automatically as each stage
+// of that seam lands.  Note that the CLI does NOT go through the seam yet --
+// src/main.cpp still drives the lexer and cxx::Bridge directly -- so this is
+// currently the seam's only consumer.
 //
 // Version 001 is preliminary.  There is no parser and no virtual machine, so
 // ordinary satellite code is NOT executed here or anywhere else -- only the
