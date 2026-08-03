@@ -17,6 +17,7 @@ add_library(satellite_core SHARED
   src/container.cpp
   src/ops.cpp
   src/source.cpp
+  src/library.cpp
   src/lexer.cpp
   src/machine.cpp
   src/cxx.cpp
@@ -24,7 +25,8 @@ add_library(satellite_core SHARED
 target_compile_definitions(satellite_core PRIVATE
   SATELLITE_INCLUDE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/include"
   SATELLITE_CORE_LIB="${CMAKE_CURRENT_BINARY_DIR}/libsatellite_core.so")
-target_link_libraries(satellite_core PUBLIC dl)
+find_package(Threads REQUIRED)
+target_link_libraries(satellite_core PUBLIC dl Threads::Threads)
 target_include_directories(satellite_core PUBLIC include)
 
 add_executable(satellite src/main.cpp)
@@ -72,6 +74,10 @@ add_test(NAME interpret COMMAND test_interpret)
 add_executable(test_source tests/test_source.cpp)
 target_link_libraries(test_source satellite_core)
 add_test(NAME source COMMAND test_source)
+
+add_executable(test_library tests/test_library.cpp)
+target_link_libraries(test_library satellite_core)
+add_test(NAME library COMMAND test_library)
 
 add_executable(bench_source bench/bench_source.cpp)
 

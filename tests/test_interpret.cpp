@@ -367,6 +367,51 @@ int main() {
         eqs(r.file, missing, "the result remembers what was typed");
     }
 
+    // -----------------------------------------------------------------------
+    // The entry point belongs to the FIRST file.
+    // -----------------------------------------------------------------------
+    {
+        const std::string prog =
+            "satellite.include(satellite)\n"
+            "satellite.capsule satellite.main()\n{\n}\n";
+
+        InterpretOptions main_file;                 // the first file
+        main_file.require_main = true;
+        InterpretResult r = interpret_source(prog, "prog.satl", main_file);
+        check(!r.has_errors(), "the first file may declare satellite.main");
+
+        InterpretOptions included;                  // an include
+        included.require_main_include = false;
+        included.forbid_main          = true;
+        r = interpret_source(prog, "lib.satl", included);
+        check(!r.ok, "an INCLUDE that declares satellite.main is rejected");
+        check(has_error_containing(r, "belongs in the first file"),
+              "and the error says where main belongs");
+        check(r.diagnostics[0].line == 2, "pointing at the line that declared it");
+
+        // an include with no main is fine
+        r = interpret_source("satellite.capsule helper()\n{\n}\n", "lib.satl",
+                             included);
+        check(!r.has_errors(), "an include with no main is fine");
+
+        // require_main with nothing to find
+        InterpretOptions needs_main;
+        needs_main.require_main = true;
+        r = interpret_source("satellite.include(satellite)\n", "prog.satl",
+                             needs_main);
+        check(!r.ok, "require_main fails when there is no main");
+        check(has_error_containing(r, "satellite.capsule satellite.main"),
+              "and names what it wanted");
+    }
+    {
+        InterpretResult r = interpret_source(
+            "satellite.include(satellite)\nsatellite.capsule satellite.main\n",
+            "prog.satl", {});
+        check(!r.ok, "satellite.main without a parameter list is rejected");
+        check(has_error_containing(r, "needs a parameter list"),
+              "and the message says exactly what is missing");
+    }
+
     printf("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;
 }

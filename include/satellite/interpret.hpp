@@ -78,6 +78,12 @@ struct InterpretOptions {
     bool require_main_include = true;   // enforce satellite.include(satellite)
     bool require_main         = false;  // enforce a satellite.main capsule
     bool run_cxx_blocks       = true;   // execute satellite.cxx { } blocks
+
+    // The entry point belongs to the FIRST file given to the interpreter.
+    // An include that declares satellite.main is a library pretending to be a
+    // program: two entry points, and nothing decides which one runs.  Set this
+    // when interpreting an include so that it is reported rather than ignored.
+    bool forbid_main          = false;
 };
 
 InterpretResult interpret_source(const std::string& source,

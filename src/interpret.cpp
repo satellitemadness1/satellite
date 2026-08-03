@@ -13,6 +13,7 @@
 #include <sstream>
 
 #include "satellite/cxx.hpp"
+#include "satellite/library.hpp"
 
 namespace satellite {
 
@@ -96,18 +97,12 @@ bool declares_satellite_include(const std::vector<Token>& tokens) {
     return false;
 }
 
+// The real scan lives in library.cpp, next to satellite.library itself --
+// finding main is a question about the library, and once the parser registers
+// capsules there it stops being a token scan at all.  This stays as the
+// yes/no form the seam was written against.
 bool declares_main(const std::vector<Token>& tokens) {
-    if (tokens.size() < 6) return false;
-    for (size_t i = 0; i + 5 < tokens.size(); ++i) {
-        if (tokens[i].kind     == Tok::Satellite &&
-            tokens[i + 1].kind == Tok::Dot       &&
-            is_ident(tokens[i + 2], "capsule")   &&
-            tokens[i + 3].kind == Tok::Satellite &&
-            tokens[i + 4].kind == Tok::Dot       &&
-            is_ident(tokens[i + 5], "main"))
-            return true;
-    }
-    return false;
+    return find_main(tokens).found;
 }
 
 // ---------------------------------------------------------------------------
@@ -147,11 +142,32 @@ InterpretResult interpret_source(const std::string& source,
              1, 1, true});
         structural_failure = true;
     }
-    if (opts.require_main && !declares_main(tokens)) {
+    MainLocation main_at = find_main(tokens);
+
+    if (opts.require_main && !main_at.found) {
         r.diagnostics.push_back(
             {"every main file must declare a satellite.capsule satellite.main "
              "capsule",
              1, 1, true});
+        structural_failure = true;
+    }
+
+    // The entry point lives in the first file, and only there.
+    if (opts.forbid_main && main_at.found) {
+        r.diagnostics.push_back(
+            {"satellite.main belongs in the first file, not in an include -- "
+             "an included file with its own entry point gives the program two",
+             main_at.line, main_at.col, true});
+        structural_failure = true;
+    }
+
+    // A capsule header with no parameter list is a mistake worth naming here,
+    // because the parser would otherwise report it as something more obscure.
+    if (main_at.found && !main_at.has_parens) {
+        r.diagnostics.push_back(
+            {"satellite.main needs a parameter list: "
+             "satellite.capsule satellite.main()",
+             main_at.line, main_at.col, true});
         structural_failure = true;
     }
 
