@@ -14,6 +14,7 @@ const char* tok_name(Tok t) {
         case Tok::Int:       return "int";
         case Tok::Real:      return "real";
         case Tok::Str:       return "str";
+        case Tok::CxxBlock:  return "cxx";
         case Tok::Dot:       return ".";
         case Tok::Comma:     return ",";
         case Tok::Colon:     return ":";
@@ -51,6 +52,7 @@ bool ends_statement(Tok t) {
         case Tok::Int:
         case Tok::Real:
         case Tok::Str:
+        case Tok::CxxBlock:
         case Tok::RParen:
         case Tok::RBracket:
         case Tok::RBrace:
@@ -182,6 +184,78 @@ void Lexer::scan_string(std::vector<Token>& out) {
     out.push_back(std::move(t));
 }
 
+// Captures everything between the braces WITHOUT lexing it -- the contents are
+// C++, not satellite.  Brace counting has to skip strings, char literals, raw
+// strings and comments, or a '}' inside any of them would end the block early.
+void Lexer::scan_cxx_block(std::vector<Token>& out) {
+    int l = line_, c = col_;
+    advance();                                   // the opening {
+    size_t start = pos_;
+    int depth = 1;
+    bool closed = false;
+
+    while (!at_end()) {
+        char ch = peek();
+
+        if (ch == '/' && peek(1) == '/') {                       // line comment
+            while (!at_end() && peek() != '\n') advance();
+            continue;
+        }
+        if (ch == '/' && peek(1) == '*') {                       // block comment
+            advance(); advance();
+            while (!at_end() && !(peek() == '*' && peek(1) == '/')) advance();
+            if (!at_end()) { advance(); advance(); }
+            continue;
+        }
+        if (ch == 'R' && peek(1) == '"' &&                       // raw string
+            (pos_ == 0 || !(std::isalnum((unsigned char)src_[pos_ - 1]) ||
+                            src_[pos_ - 1] == '_'))) {
+            advance(); advance();
+            std::string delim;
+            while (!at_end() && peek() != '(') { delim += peek(); advance(); }
+            if (!at_end()) advance();
+            std::string term = ")" + delim + "\"";
+            while (!at_end()) {
+                if (src_.compare(pos_, term.size(), term) == 0) {
+                    for (size_t i = 0; i < term.size(); ++i) advance();
+                    break;
+                }
+                advance();
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {                           // string / char
+            char q = ch;
+            advance();
+            while (!at_end() && peek() != q) {
+                if (peek() == '\\') advance();
+                if (!at_end()) advance();
+            }
+            if (!at_end()) advance();
+            continue;
+        }
+
+        if (ch == '{') { ++depth; advance(); continue; }
+        if (ch == '}') {
+            if (--depth == 0) { closed = true; break; }
+            advance();
+            continue;
+        }
+        advance();
+    }
+
+    std::string body = src_.substr(start, pos_ - start);
+    if (closed) advance();                                       // the closing }
+    else error("unterminated satellite.cxx block", l, c);
+
+    Token t;
+    t.kind = Tok::CxxBlock;
+    t.text = std::move(body);
+    t.line = l;
+    t.col  = c;
+    out.push_back(std::move(t));
+}
+
 void Lexer::scan_word(std::vector<Token>& out, bool after_dot) {
     int l = line_, c = col_;
     size_t start = pos_;
@@ -271,6 +345,23 @@ std::vector<Token> Lexer::scan() {
         if (std::isalpha((unsigned char)c) || c == '_') {
             scan_word(out, prev == Tok::Dot);
             prev = out.back().kind;
+
+            // `satellite.cxx {` -- everything to the matching brace is C++
+            size_t n = out.size();
+            if (n >= 3 && out[n - 1].kind == Tok::Ident && out[n - 1].text == "cxx" &&
+                out[n - 2].kind == Tok::Dot && out[n - 3].kind == Tok::Satellite) {
+                size_t save = pos_;
+                int save_line = line_, save_col = col_;
+                while (!at_end() && (peek() == ' ' || peek() == '\t' ||
+                                     peek() == '\r' || peek() == '\n')) advance();
+                if (peek() == '{') {
+                    out.resize(n - 3);            // the block token replaces the three
+                    scan_cxx_block(out);
+                    prev = Tok::CxxBlock;
+                    continue;
+                }
+                pos_ = save; line_ = save_line; col_ = save_col;
+            }
             continue;
         }
 

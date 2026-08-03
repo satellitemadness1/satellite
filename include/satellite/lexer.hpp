@@ -32,6 +32,7 @@ enum class Tok : uint8_t {
     Int,
     Real,
     Str,
+    CxxBlock,     // raw body of a satellite.cxx { ... } block
 
     Dot, Comma, Colon,
     LParen, RParen,
@@ -92,6 +93,7 @@ private:
     void scan_number(std::vector<Token>& out);
     void scan_string(std::vector<Token>& out);
     void scan_word(std::vector<Token>& out, bool after_dot);
+    void scan_cxx_block(std::vector<Token>& out);
 };
 
 // True when a newline following this token should end the statement.

@@ -8,7 +8,13 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
-add_library(satellite_core src/container.cpp src/lexer.cpp src/machine.cpp)
+# SHARED so that satellite.cxx modules can link against it -- a static host
+# would need -rdynamic and would still export symbols unpredictably.
+add_library(satellite_core SHARED src/container.cpp src/lexer.cpp src/machine.cpp src/cxx.cpp)
+target_compile_definitions(satellite_core PRIVATE
+  SATELLITE_INCLUDE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/include"
+  SATELLITE_CORE_LIB="${CMAKE_CURRENT_BINARY_DIR}/libsatellite_core.so")
+target_link_libraries(satellite_core PUBLIC dl)
 target_include_directories(satellite_core PUBLIC include)
 
 enable_testing()
@@ -24,6 +30,10 @@ add_test(NAME lexer COMMAND test_lexer)
 add_executable(test_machine tests/test_machine.cpp)
 target_link_libraries(test_machine satellite_core)
 add_test(NAME machine COMMAND test_machine)
+
+add_executable(test_cxx tests/test_cxx.cpp)
+target_link_libraries(test_cxx satellite_core)
+add_test(NAME cxx COMMAND test_cxx)
 
 add_executable(bench_dispatch bench/bench_dispatch.cpp)
 target_link_libraries(bench_dispatch satellite_core)
