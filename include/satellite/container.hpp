@@ -96,6 +96,29 @@ const char* table();                   // index by code; [0] is a placeholder
 
 bool        is_operator(char32_t code);
 const char* op_text(char32_t code);    // "+", "-", "<=" ... for display
+
+// Classification is a contiguous range check for every category -- the table
+// was laid out in blocks, so none of these need a lookup.
+constexpr bool is_lower (char32_t c) { return c >= 1  && c <= 26; }
+constexpr bool is_upper (char32_t c) { return c >= 27 && c <= 52; }
+constexpr bool is_letter(char32_t c) { return c >= 1  && c <= 52; }
+constexpr bool is_digit (char32_t c) { return c >= 53 && c <= 62; }
+constexpr bool is_symbol(char32_t c) { return c >= 63 && c <= 94; }
+constexpr bool is_space (char32_t c) { return c >= 95 && c <= 97; }
+
+// 'a' is 1 and 'A' is 27, so case conversion is plain arithmetic -- no mask,
+// no lookup table.  ASCII needs one because its layout has gaps; this doesn't.
+constexpr char32_t to_upper(char32_t c) { return is_lower(c) ? c + 26 : c; }
+constexpr char32_t to_lower(char32_t c) { return is_upper(c) ? c - 26 : c; }
+
+// '0' is 53, so the numeric value of a digit is a subtraction, not a parse.
+constexpr int digit_value(char32_t c) { return is_digit(c) ? (int)(c - 53) : -1; }
+
+// Sort key.  Raw code order would put lowercase before uppercase before digits
+// ("zebra" < "Apple", "apple" < "9"), which is not what anyone expects from a
+// sorted list of names.  The key maps back to ASCII order so comparison behaves
+// conventionally while storage keeps the satellite layout.
+uint32_t collation_key(char32_t code);
 }  // namespace charmap
 
 // satellite_string.  One character is one char32_t holding a satellite charmap
@@ -128,9 +151,30 @@ struct SatString : Obj {
     void append(const char32_t* p, uint32_t n);
     void append_text(const std::string& ascii);   // maps through the charmap
 
-    // character index of `needle` at or after `from`, or -1
-    int64_t find(const SatString& needle, uint32_t from = 0) const;
-    void    erase(uint32_t at, uint32_t n);
+    // --- read ---------------------------------------------------------------
+    bool     empty() const { return len == 0; }
+    int64_t  find(const SatString& needle, uint32_t from = 0) const;  // -1 if absent
+    int64_t  find_last(const SatString& needle) const;
+    uint32_t count(const SatString& needle) const;                    // non-overlapping
+    bool     contains(const SatString& n) const { return find(n) >= 0; }
+    bool     starts_with(const SatString& n) const;
+    bool     ends_with(const SatString& n) const;
+    int      compare(const SatString& o) const;   // collation order, -1/0/1
+
+    // --- mutate in place ------------------------------------------------------
+    void erase(uint32_t at, uint32_t n);
+    void insert(uint32_t at, const char32_t* p, uint32_t n);
+    void set(uint32_t i, char32_t c) { if (i < len) data()[i] = c; }
+    void clear() { len = 0; }
+    void replace_all(const SatString& from, const SatString& to);
+    void remove_all(const SatString& needle);
+    void upper();
+    void lower();
+    void trim();
+    void reverse();
+    void repeat(uint32_t times);
+    void assign(const SatString& o) { len = 0; append(o.data(), o.len); }
+    void assign_slice(const SatString& o, uint32_t at, uint32_t n);
 };
 
 // satellite_number's big form.  Little-endian limbs, no trailing zero limb.
@@ -209,6 +253,9 @@ constexpr int TCOUNT = static_cast<int>(Type::COUNT);
 extern BinFn add_table[TCOUNT][TCOUNT];
 extern BinFn sub_table[TCOUNT][TCOUNT];
 extern BinFn mul_table[TCOUNT][TCOUNT];
+extern BinFn div_table[TCOUNT][TCOUNT];
+extern BinFn eq_table[TCOUNT][TCOUNT];
+extern BinFn lt_table[TCOUNT][TCOUNT];
 
 void init_tables();   // must run once before any operator is used
 
@@ -250,6 +297,30 @@ inline Container mul(const Container& a, const Container& b) {
     }
     return mul_table[static_cast<int>(a.type)][static_cast<int>(b.type)](a, b);
 }
+
+// `"a,b,c" / ","` splits into a list; `"ab" * 3` repeats.
+inline Container div(const Container& a, const Container& b) {
+    return div_table[static_cast<int>(a.type)][static_cast<int>(b.type)](a, b);
+}
+inline Container equals(const Container& a, const Container& b) {
+    return eq_table[static_cast<int>(a.type)][static_cast<int>(b.type)](a, b);
+}
+inline Container less(const Container& a, const Container& b) {
+    return lt_table[static_cast<int>(a.type)][static_cast<int>(b.type)](a, b);
+}
+
+// ---------------------------------------------------------------------------
+// String helpers that build new containers
+// ---------------------------------------------------------------------------
+Container str_slice(const Container& s, int64_t start, int64_t n);
+Container str_split(const Container& s, const Container& sep);
+Container str_join(const Container& list, const Container& sep);
+Container str_upper(const Container& s);
+Container str_lower(const Container& s);
+Container str_trim(const Container& s);
+Container str_reverse(const Container& s);
+Container str_replace_all(const Container& s, const Container& from, const Container& to);
+Container str_to_number(const Container& s);
 
 // ---------------------------------------------------------------------------
 // BigInt arithmetic (used by the promotion paths above)

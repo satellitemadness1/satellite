@@ -204,6 +204,93 @@ int main() {
     check(!big_s.as_str()->inline_stored(), "long string moves to the heap");
     check(big_s.as_str()->len == 500, "long string keeps its length");
 
+    // ---- string operators --------------------------------------------------
+    eq(mul(Container::str("ab"), Container::integer(3)), "ababab", "\"ab\" * 3 repeats");
+    eq(mul(Container::integer(2), Container::str("xy")), "xyxy", "2 * \"xy\" also repeats");
+    eq(mul(Container::str("ab"), Container::integer(0)), "", "* 0 gives the empty string");
+    eq(div(Container::str("a,b,c"), Container::str(",")), "[a, b, c]", "\"a,b,c\" / \",\" splits");
+    eq(div(Container::str("a"), Container::str(",")), "[a]", "no separator gives one piece");
+    eq(div(Container::str("abc"), Container::str("")), "[a, b, c]",
+       "empty separator splits into characters");
+
+    // ---- comparison and sort order -----------------------------------------
+    check(equals(Container::str("abc"), Container::str("abc")).b, "equal strings");
+    check(!equals(Container::str("abc"), Container::str("abd")).b, "unequal strings");
+    check(equals(Container::integer(5), Container::real(5.0)).b, "5 == 5.0 across types");
+    check(equals(Container::integer(2), Container::str("2")).b == false,
+          "an int is not equal to its text");
+
+    // raw code order would give "zebra" < "Apple" (z=26, A=27); the collation
+    // key restores what a user actually expects from a sorted list
+    check(less(Container::str("Apple"), Container::str("zebra")).b,
+          "\"Apple\" sorts before \"zebra\" (collation, not raw code)");
+    check(less(Container::str("9"), Container::str("a")).b,
+          "digits sort before letters");
+    check(less(Container::str("abc"), Container::str("abcd")).b,
+          "a prefix sorts before the longer string");
+    check(less(Container::integer(2), Container::integer(10)).b, "2 < 10 numerically");
+
+    // ---- search ------------------------------------------------------------
+    {
+        Container hay = Container::str("one,two,one");
+        SatString one; one.append_text("one");
+        SatString comma; comma.append_text(",");
+        check(hay.as_str()->find(one) == 0,       "find returns the first index");
+        check(hay.as_str()->find_last(one) == 8,  "find_last returns the last index");
+        check(hay.as_str()->count(one) == 2,      "count finds both occurrences");
+        check(hay.as_str()->count(comma) == 2,    "count works on separators");
+        check(hay.as_str()->contains(one),        "contains");
+        check(hay.as_str()->starts_with(one),     "starts_with");
+        check(hay.as_str()->ends_with(one),       "ends_with");
+    }
+
+    // ---- transforms --------------------------------------------------------
+    eq(str_upper(Container::str("Hello, World!")), "HELLO, WORLD!", "upper");
+    eq(str_lower(Container::str("Hello, World!")), "hello, world!", "lower");
+    eq(str_trim(Container::str("  padded  ")), "padded", "trim");
+    eq(str_trim(Container::str("   ")), "", "trim of all spaces is empty");
+    eq(str_reverse(Container::str("satellite")), "etilletas", "reverse");
+    eq(str_replace_all(Container::str("a-b-c"), Container::str("-"), Container::str("+")),
+       "a+b+c", "replace_all");
+    eq(str_replace_all(Container::str("aaa"), Container::str("a"), Container::str("aa")),
+       "aaaaaa", "replace_all does not rescan what it wrote");
+    eq(str_slice(Container::str("satellite"), 0, 3), "sat", "slice from the front");
+    eq(str_slice(Container::str("satellite"), -4, 4), "lite", "negative start counts from the end");
+    eq(str_slice(Container::str("abc"), 1, 99), "bc", "slice clamps to the end");
+    eq(str_join(div(Container::str("a,b,c"), Container::str(",")), Container::str("-")),
+       "a-b-c", "split then join round trips");
+
+    {
+        Container s = Container::str("x-y-z");
+        SatString dash; dash.append_text("-");
+        s.as_str()->remove_all(dash);
+        eq(s, "xyz", "remove_all strips every occurrence");
+    }
+
+    // ---- text to number ----------------------------------------------------
+    eq(str_to_number(Container::str("42")), "42", "\"42\" parses");
+    eq(str_to_number(Container::str("-42")), "-42", "negative parses");
+    eq(str_to_number(Container::str("  7")), "7", "leading space is skipped");
+    check(str_to_number(Container::str("3.5")).type == Type::Real, "\"3.5\" is a Real");
+    check(str_to_number(Container::str("abc")).type == Type::Nil, "non-numeric text is nil");
+    eq(str_to_number(Container::str("99999999999999999999")), "99999999999999999999",
+       "a number too big for int64 parses straight into Big");
+
+    // ---- charmap arithmetic is what makes those cheap ----------------------
+    check(charmap::to_upper(charmap::from_ascii('a')) == charmap::from_ascii('A'),
+          "to_upper is c + 26, no lookup table");
+    check(charmap::to_lower(charmap::from_ascii('Z')) == charmap::from_ascii('z'),
+          "to_lower is c - 26");
+    check(charmap::to_upper(charmap::from_ascii('5')) == charmap::from_ascii('5'),
+          "case conversion leaves non-letters alone");
+    check(charmap::digit_value(charmap::from_ascii('7')) == 7,
+          "digit value is code - 53, not a parse");
+    check(charmap::digit_value(charmap::from_ascii('a')) == -1, "letters have no digit value");
+    check(charmap::is_letter(charmap::from_ascii('q')), "is_letter");
+    check(charmap::is_digit(charmap::from_ascii('0')), "is_digit");
+    check(charmap::is_space(charmap::SPACE), "is_space");
+    check(!charmap::is_letter(charmap::OP_MINUS), "a math token is not a letter");
+
     // ---- lists ------------------------------------------------------------
     Container l1 = Container::list();
     l1.as_list()->items.push_back(Container::integer(1));
