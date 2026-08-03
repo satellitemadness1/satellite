@@ -19,8 +19,9 @@ tested. No parser or VM yet.
 
 ```
 cmake -S . -B build && cmake --build build -j8
-./build/test_container      # 90 checks
+./build/test_container      # 138 checks
 ./build/test_lexer          # 42 checks
+./build/test_machine        # 27 checks
 ./build/bench_dispatch
 ```
 
@@ -138,6 +139,40 @@ you want them elsewhere; they are defined in one place, `charmap::kTable` in
 
 **Unsupported operand pairs return `nil`** rather than crashing. Real error
 reporting comes with the interpreter.
+
+## satellite.machine — synthetic input
+
+`/dev/uinput` creates a virtual keyboard at the kernel evdev layer, *below* X11
+and Wayland, so the same code works on both and on a bare console. XTEST (what
+xdotool uses) is X11-only and would not work on a Wayland session, which this
+machine runs.
+
+```cpp
+kb.press(key::A);                                  // +A -A
+kb.press_combo(key::CTRL, key::C);                 // +CTRL +C -C -CTRL
+kb.press_combo(key::CTRL, key::SHIFT, key::C);     // +CTRL +SHIFT +C -C -SHIFT -CTRL
+kb.press_combo({CTRL, SHIFT, ALT, META, A});       // any number of keys
+kb.type_text("Hi");                                // +SHIFT +H -H -SHIFT +I -I
+```
+
+Held keys release in **reverse** order. That matters: releasing Ctrl before C
+in a Ctrl+C would look to the application like a bare C after the shortcut
+ended.
+
+`type_char` takes a **satellite charmap code**, not a keycode, and works out
+the keystroke including shift — `A` becomes Shift+A, `!` becomes Shift+1. Linux
+`KEY_*` scancodes are unrelated to both ASCII and the charmap, so that mapping
+lives in one table in `src/machine.cpp`.
+
+**Permission.** `/dev/uinput` is root-only by default:
+
+```sh
+echo 'KERNEL=="uinput", GROUP="input", MODE="0660"' | sudo tee /etc/udev/rules.d/99-uinput.rules
+sudo usermod -aG input $USER    # then log out and back in
+```
+
+Tests run in **recording mode** — the keyboard records what it would send and
+touches no hardware, so the key logic is testable without root.
 
 ## Threading: unresolved, deliberately
 
