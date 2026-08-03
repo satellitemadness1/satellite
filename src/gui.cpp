@@ -52,6 +52,10 @@ struct App {
 // the line first, so the last line is genuinely visible.
 gboolean scroll_to_end_idle(gpointer data) {
     App* app = static_cast<App*>(data);
+    // The window can die between the insert and this idle -- a close event is
+    // a higher-priority main-loop source than an idle, so it wins the race.
+    // on_window_destroy has cleared the pointers by then.
+    if (!app->buffer || !app->view) return G_SOURCE_REMOVE;
     GtkTextMark* mark = gtk_text_buffer_get_mark(app->buffer, "scroll-end");
     if (mark)
         gtk_text_view_scroll_to_mark(GTK_TEXT_VIEW(app->view), mark,
@@ -314,8 +318,11 @@ void run_command(App* app, const std::string& input) {
     }
     else if (verb == "help")   cmd_help(app);
     else if (verb == "quit" || verb == "exit") {
+        // This finalizes the window and every widget under it, including the
+        // entry we were called from.  on_window_destroy nulls the App pointers;
+        // nothing below may touch them, and the caller must re-check.
         gtk_window_destroy(GTK_WINDOW(app->window));
-        return;   // app is about to go away; do not touch its widgets
+        return;
     }
     else {
         line(app, "unknown command: " + verb);
@@ -331,6 +338,19 @@ void run_command(App* app, const std::string& input) {
 // Signals
 // ---------------------------------------------------------------------------
 
+// Whatever kills the window -- the `quit` command or the title bar close
+// button -- lands here, so this is the one place that has to invalidate the
+// App.  Testing a saved GtkWidget* afterwards would not work: GTK_IS_WIDGET
+// reads the object's type field, and by then the object has been freed.
+void on_window_destroy(GtkWidget*, gpointer data) {
+    App* app = static_cast<App*>(data);
+    app->window = nullptr;
+    app->view   = nullptr;
+    app->entry  = nullptr;
+    app->status = nullptr;
+    app->buffer = nullptr;
+}
+
 void on_entry_activate(GtkEntry* entry, gpointer data) {
     App* app = static_cast<App*>(data);
     const char* text = gtk_editable_get_text(GTK_EDITABLE(entry));
@@ -340,12 +360,12 @@ void on_entry_activate(GtkEntry* entry, gpointer data) {
 
     if (trim(input).empty()) return;
 
-    // The command may destroy the window (quit), so nothing below may assume
-    // the entry is still alive.
-    GtkWidget* w = app->window;
+    // The command may destroy the window (quit).  After that the entry is
+    // freed memory, so the null App pointers -- not the widget itself -- are
+    // what tells us whether there is anything left to focus.
     run_command(app, input);
-    if (GTK_IS_WIDGET(w) && gtk_widget_get_visible(w))
-        gtk_widget_grab_focus(app->entry);
+    if (app->window == nullptr) return;
+    gtk_widget_grab_focus(app->entry);
 }
 
 void on_activate(GtkApplication* gtk_app, gpointer data) {
@@ -354,6 +374,8 @@ void on_activate(GtkApplication* gtk_app, gpointer data) {
     app->window = gtk_application_window_new(gtk_app);
     gtk_window_set_title(GTK_WINDOW(app->window), "satellite console");
     gtk_window_set_default_size(GTK_WINDOW(app->window), 800, 600);
+    g_signal_connect(app->window, "destroy",
+                     G_CALLBACK(on_window_destroy), app);
 
     GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_widget_set_margin_top(box, 6);

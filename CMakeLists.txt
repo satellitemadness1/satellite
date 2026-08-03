@@ -16,6 +16,7 @@ add_library(satellite_core SHARED
   src/bignum.cpp
   src/container.cpp
   src/ops.cpp
+  src/source.cpp
   src/lexer.cpp
   src/machine.cpp
   src/cxx.cpp
@@ -67,6 +68,10 @@ add_test(NAME cxx COMMAND test_cxx)
 add_executable(test_interpret tests/test_interpret.cpp)
 target_link_libraries(test_interpret satellite_core)
 add_test(NAME interpret COMMAND test_interpret)
+
+add_executable(test_source tests/test_source.cpp)
+target_link_libraries(test_source satellite_core)
+add_test(NAME source COMMAND test_source)
 
 add_executable(bench_source bench/bench_source.cpp)
 

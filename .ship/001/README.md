@@ -283,8 +283,10 @@ Stated plainly, because the list above is easy to mistake for more than it is.
 - `satellite.machine` has no satellite-level syntax, only the C++ API.
 - The `satellite` binary has no REPL and no `-e`/`--eval`.
 - There **is** an optional GTK4 console (`satellite-gui`), but it is a front end
-  over the same seam as the CLI and is bound by exactly the same limit: it
-  cannot execute satellite code either.
+  over the interpreter seam and is bound by exactly the same limit as the CLI:
+  it cannot execute satellite code either. (The CLI does not yet go through the
+  seam — `src/main.cpp` drives the lexer and the C++ bridge directly — but both
+  stop at the same place, because there is nothing further to reach.)
 - `^` has a charmap code (103) reserved for it as arithmetic, but the lexer has
   no token for it, so `a = 2 ^ 3` is a **lex error**:
   `error: unexpected character '^'`, exit status 1. The disagreement is known
@@ -351,9 +353,9 @@ test binaries and a benchmark:
 `build/satellite-gui` — a GTK4 console with a transcript pane and a command
 entry — is built **only if `pkg-config` finds GTK 4**, and skipped with a
 message otherwise, so a machine without it still gets the library, the CLI and
-the tests. It is a second front end over the interpreter seam, not a second
-implementation, so it is subject to the same limits as the CLI: it cannot
-execute satellite code.
+the tests. It is a front end over the interpreter seam
+(`include/satellite/interpret.hpp`), not a second implementation, so it is
+subject to the same limits as the CLI: it cannot execute satellite code.
 
 **Caveat worth knowing before you move anything:** the build bakes two absolute
 paths into `libsatellite_core.so` — `SATELLITE_INCLUDE_DIR` (the source tree's

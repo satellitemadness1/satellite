@@ -9,7 +9,7 @@ The stage numbers are the `Stage` enum in `include/satellite/interpret.hpp`, so
 
 ```
 Stage 0  Lex        built
-Stage 1  Validate   landing now
+Stage 1  Validate   built
 Stage 2  Parse      ---- everything below here does not exist ----
 Stage 3  Compile
 Stage 4  Execute    <-- TBB, GTK and a Python bridge are all blocked here
@@ -51,15 +51,21 @@ two years from now.
 
 ---
 
-## Stage 1 — Validate (landing now)
+## Stage 1 — Validate (landed)
 
-`include/satellite/interpret.hpp` is written; `src/interpret.cpp` is not yet.
-Roughly 250 lines plus a `test_interpret` binary of ~40 checks.
+`include/satellite/interpret.hpp` (90 lines) and `src/interpret.cpp` (245 lines)
+are written, with a `test_interpret` binary of 84 checks.
 
-This is the seam. It gives the CLI and the GUI one entry point —
-`interpret_file(path, opts)` returning an `InterpretResult` — that they can be
-written against once and keep working as every later stage lands. Today it
-reaches `Stage::Validate` and stops.
+This is the seam: one entry point — `interpret_file(path, opts)` returning an
+`InterpretResult` — that a front end can be written against once and keep
+working as every later stage lands. Today it reaches `Stage::Validate` and
+stops.
+
+**Only `satellite-gui` is built on the seam so far.** `src/main.cpp` still lexes
+and drives `cxx::Bridge` directly and does not include `interpret.hpp` at all;
+porting the CLI onto `interpret_file()` is outstanding work, not something this
+stage already did. Until that port lands the two front ends can drift, which is
+exactly what the seam exists to prevent.
 
 What it does with no parser:
 
@@ -94,7 +100,8 @@ Checking it now still buys something real: it makes the requirement enforceable
 from day one, so no `.satl` file ever written for satellite is missing the line,
 and Stage 5 does not arrive to find a corpus of files it has to be lenient with.
 
-**Unblocks:** the CLI and GUI stop being rewritten every stage.
+**Unblocks:** a front end written against the seam stops being rewritten every
+stage. (True of `satellite-gui` today; true of the CLI once it is ported.)
 
 ---
 
@@ -599,7 +606,7 @@ source-built LLVM attached), and GTK.
 | stage | implementation | tests | days |
 |---|---:|---:|---:|
 | 0 Lex | 414 + 108 hdr | 217 / 42 checks | done |
-| 1 Validate | ~250 + 90 hdr | ~150 / ~40 | landing |
+| 1 Validate | 245 + 90 hdr | 372 / 84 checks | done |
 | 2 Parse | ~880 | ~300 / ~70 | 3–4 |
 | 3 Compile | ~1,040 | ~250 / ~60 | 4–5 |
 | 4 Execute | ~1,400 | ~400 + corpus | 10–14 |
