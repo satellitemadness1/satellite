@@ -110,11 +110,29 @@ order while storage keeps the satellite layout.
 (`__builtin_add_overflow` and friends), and demotes back to `Int` as soon as the
 value fits again. Ordinary arithmetic never touches the allocator.
 
-Real output, computing 25! through the container's own `mul`:
+You can watch it happen through a `satellite.cxx` block, since that is the only
+way to reach the value model from a `.satl` file today:
 
 ```
-15511210043330985984000000   [big]
+satellite.cxx
+{
+    Container n = Container::integer(1);
+    for (int k = 1; k <= 25; ++k) n = mul(n, Container::integer(k));
+    satellite.return(n.to_string() + std::string("   [") + type_name(n.type) + "]")
+}
 ```
+
+```console
+$ ./build/satellite run factorial.satl
+--- satellite.cxx block 1 (line 2) ---
+  => 15511210043330985984000000   [big]   [string]
+
+1 block(s), 1 compiled, 0 from cache, 0 failed
+```
+
+25! is 15511210043330985984000000, which is well past `int64_t`, so the value
+arrives as `[big]`. The trailing `[string]` is the CLI reporting the type of
+what the block returned — the block formatted its own result.
 
 ### The lexer
 
@@ -225,6 +243,27 @@ special. Modules are deliberately never `dlclose`d: static destructors could run
 while satellite values still point into them, so a loaded module lives for the
 process.
 
+### The interpreter seam — and what it deliberately does not do
+
+`include/satellite/interpret.hpp` is the seam the real interpreter will grow
+into. It declares five stages — `Lex`, `Validate`, `Parse`, `Compile`,
+`Execute` — and `InterpretResult::reached` reports how far a file actually got.
+
+**Today it reaches `Validate` and stops.** It lexes, checks the one structural
+requirement that can be checked from a token stream alone (that a main file
+declares `satellite.include(satellite)`), runs any `satellite.cxx` blocks, and
+then says plainly that it can go no further. `Parse`, `Compile` and `Execute`
+are declared and unimplemented.
+
+The point of declaring them now is that front ends can be written once. The
+seam is covered by 84 checks in `test_interpret`, and `docs/INTERPRETER.md`
+plans the remaining stages one landing at a time. It carries a rule worth
+repeating here: until the `Execute` stage lands, nothing in the binary, the help
+text or the documentation may say that satellite code runs.
+
+Note that `satellite.include` is checked for and **not acted on** — version 001
+verifies that a main file has it, and includes nothing.
+
 ---
 
 ## What does NOT work
@@ -232,16 +271,24 @@ process.
 Stated plainly, because the list above is easy to mistake for more than it is.
 
 - **No parser.** No compiler. No VM. `.satl` files do not execute.
-- `satellite.include(...)` lexes. Nothing resolves the name or loads a file.
+- `satellite.include(...)` lexes, and a main file is *checked* for it. Nothing
+  resolves the name or loads a file.
 - `satellite.capsule`, `satellite.spacesuit`, `satellite.variable.*`,
   `satellite.console.display`, `satellite.return` — outside a `satellite.cxx`
   block these produce tokens and nothing else.
 - `satellite.library.x.y` paths lex as identifiers. Nothing resolves them.
 - No threads and no scheduler. The threading benchmarks in the repository
   `README.md` are measurements, not an implementation.
-- No `Type::Handle`, no GUI, no `satellite.statement.parallel_for`.
+- No `Type::Handle` and no `satellite.statement.parallel_for`.
 - `satellite.machine` has no satellite-level syntax, only the C++ API.
 - The `satellite` binary has no REPL and no `-e`/`--eval`.
+- There **is** an optional GTK4 console (`satellite-gui`), but it is a front end
+  over the same seam as the CLI and is bound by exactly the same limit: it
+  cannot execute satellite code either.
+- `^` has a charmap code (103) reserved for it as arithmetic, but the lexer has
+  no token for it, so `a = 2 ^ 3` is a **lex error**:
+  `error: unexpected character '^'`, exit status 1. The disagreement is known
+  and recorded in `docs/INTERPRETER.md` as a gap to close.
 
 ---
 
@@ -249,19 +296,34 @@ Stated plainly, because the list above is easy to mistake for more than it is.
 
 ```
 .ship/001/
-├── README.md              this file
-└── examples/              five runnable .satl files
-    ├── cxx_hello.satl     the smallest satellite.cxx block that does something
-    ├── cxx_math.satl      C++ control flow — a for loop summing 1..100
-    ├── cxx_vector.satl    std::vector<int> crossing back as a satellite list
-    ├── cxx_template.satl  file-scope hoisting: templates defined and used
-    └── cxx_error.satl     a C++ exception caught at the boundary
+├── README.md                     this file
+└── examples/
+    ├── cxx_hello.satl            the smallest satellite.cxx block that does something
+    ├── cxx_math.satl             C++ control flow — a for loop summing 1..100
+    ├── cxx_vector.satl           std::vector<int> crossing back as a satellite list
+    ├── cxx_template.satl         file-scope hoisting: templates defined and used
+    ├── cxx_error.satl            a C++ exception caught at the boundary
+    └── satellite_full_test.satl  every piece of syntax 001 can lex, in one file
 ```
 
-Every example carries a header comment explaining what it demonstrates and the
-output to expect, and every one of them is a complete `.satl` file with a
-`satellite.main` capsule around the block — so it shows the language's shape
+The five `cxx_*` files each carry a header comment explaining what they
+demonstrate and the output to expect, and each is a complete `.satl` file with a
+`satellite.main` capsule around the block — so they show the language's shape
 even though only the block executes.
+
+`satellite_full_test.satl` is the lexer conformance input: 355 lines touching
+every construct version 001 can tokenise. It lexes to 1150 tokens with zero
+errors, and its three `satellite.cxx` blocks run. Everything else in it — the
+capsules, the spacesuit, the arithmetic, the library paths — is a valid token
+stream and nothing more.
+
+```console
+$ ./build/satellite check .ship/001/examples/satellite_full_test.satl
+.ship/001/examples/satellite_full_test.satl: ok
+  1150 tokens, 117 statements
+  122 satellite keywords, 365 identifiers
+  22 strings, 50 numbers, 3 cxx blocks
+```
 
 **The `satellite` binary is not in this folder.** Build it from the repository
 root; see below.
@@ -274,7 +336,7 @@ root; see below.
 cmake -S . -B build && cmake --build build -j8
 ```
 
-That produces `build/satellite` (the CLI), `build/libsatellite_core.so`, four
+That produces `build/satellite` (the CLI), `build/libsatellite_core.so`, five
 test binaries and a benchmark:
 
 ```sh
@@ -282,8 +344,16 @@ test binaries and a benchmark:
 ./build/test_lexer          #  42 checks
 ./build/test_machine        #  27 checks
 ./build/test_cxx            #  44 checks
+./build/test_interpret      #  84 checks
 ./build/bench_dispatch
 ```
+
+`build/satellite-gui` — a GTK4 console with a transcript pane and a command
+entry — is built **only if `pkg-config` finds GTK 4**, and skipped with a
+message otherwise, so a machine without it still gets the library, the CLI and
+the tests. It is a second front end over the interpreter seam, not a second
+implementation, so it is subject to the same limits as the CLI: it cannot
+execute satellite code.
 
 **Caveat worth knowing before you move anything:** the build bakes two absolute
 paths into `libsatellite_core.so` — `SATELLITE_INCLUDE_DIR` (the source tree's
@@ -482,8 +552,9 @@ its `.so` is never cached, and `run` exits **1**.
 ## Requirements
 
 **Platform.** Linux, x86-64. Developed and measured on AlmaLinux 10.2, kernel
-6.12. Nothing is deliberately Linux-only except `satellite.machine`, but nothing
-else has been tried.
+6.12. `satellite.machine` is Linux-specific by construction (`/dev/uinput`), and
+the C++ bridge needs POSIX (`popen`, `dlopen`). No other platform has been
+tried.
 
 **To build:** CMake ≥ 3.20 and a C++20 compiler. This build was made with GCC
 17.0.0 (experimental) and CMake 3.31.8.
@@ -586,6 +657,13 @@ compiler to bytecode that resolves `satellite.library.x.y` to slot indices at
 compile time, then a register-based VM with computed goto. After that: ropes for
 large-string concatenation, and a scheduler with the worker count as a runtime
 knob.
+
+- **`docs/INTERPRETER.md`** — that path broken into stages that match the
+  `Stage` enum, so `InterpretResult::reached` is a literal progress bar for the
+  document. Stage 0 (Lex) is built, Stage 1 (Validate) is landing, and
+  everything from Stage 2 (Parse) onward does not exist. It also fixes the rule
+  this whole folder is written under: until Stage 4 lands, nothing in the
+  binary, the help text or the docs may say satellite code runs.
 
 Two larger projects are mapped out in detail but not started, and both want the
 VM to exist first:

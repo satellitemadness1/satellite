@@ -1,0 +1,254 @@
+# satellite 001 (preliminary) -- C++ headers available inside satellite.cxx blocks
+#
+# WHAT THIS IS
+#   satellite.cxx { ... } is satellite's escape hatch: the block body is never
+#   lexed as satellite, it is raw C++ handed to a compiler, built into a .so,
+#   cached by content hash, and dlopen'd. This file lists the standard-library
+#   headers a satellite.cxx block may #include on this machine.
+#
+#   These are USER-FACING headers -- the ones you actually type. Each one drags
+#   in a much larger transitive closure; see FOOTPRINT below for that number.
+#
+# HOW TO USE
+#   Put the #include at the top of the block. satellite hoists any line starting
+#   with '#' (and any `using namespace` line) out of the generated function body
+#   to file scope, so #include inside a block is legal even though C++ would
+#   normally forbid it there. Same for templates, struct/class/enum/namespace
+#   definitions, and free functions: they are detected and hoisted too.
+#
+#   THE BODY IS C++, NOT SATELLITE. Statements need real semicolons. satellite's
+#   "newline ends a statement" rule stops at the brace of a cxx block. The only
+#   satellite-shaped thing inside is satellite.return(EXPR), which becomes
+#   `return to_container(EXPR);` -- C++ overload resolution picks the conversion,
+#   so satellite never needs to understand C++ types. A type with no to_container
+#   overload is an ordinary compile error naming that type.
+#
+#   satellite.return accepts: bool, int/long/long long, the unsigned variants,
+#   float, double, char, const char*, std::string, satellite::Container, and
+#   std::vector<T> of any convertible T (becomes a satellite list). A block with
+#   no satellite.return yields nil.
+#
+#   ALREADY INCLUDED, no need to ask for them: the generated translation unit
+#   always opens with satellite/cxx.hpp, <string>, <vector>, and <exception>.
+#   They are listed below anyway because naming them explicitly is harmless and
+#   keeps a block readable on its own.
+#
+# EXAMPLE -- a complete, working satellite.cxx block
+#
+#   satellite.include(satellite)
+#
+#   satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+#   {
+#       satellite.cxx
+#       {
+#           #include <map>
+#           #include <string>
+#           #include <sstream>
+#           #include <algorithm>
+#
+#           // Count word frequencies, return the words most-frequent first.
+#           std::string text = "the quick the lazy the quick dog";
+#           std::map<std::string, int> counts;
+#           std::istringstream in(text);
+#           for (std::string w; in >> w; ) counts[w]++;
+#
+#           std::vector<std::pair<std::string,int>> ranked(counts.begin(), counts.end());
+#           std::sort(ranked.begin(), ranked.end(),
+#                     [](auto& a, auto& b) { return a.second > b.second; });
+#
+#           std::vector<std::string> out;
+#           for (auto& [word, n] : ranked)
+#               out.push_back(word + "=" + std::to_string(n));
+#
+#           satellite.return(out)
+#       }
+#       satellite.return(satellite)
+#   }
+#
+#   $ satellite run example.satl
+#   --- satellite.cxx block 1 (line 6) ---
+#     => [the=3, quick=2, dog=1, lazy=1]   [list]
+#
+#   1 block(s), 1 compiled, 0 from cache, 0 failed
+#
+#   That output is real; the example was run through build/satellite, not
+#   transcribed. Note <vector> is used without being included -- it comes from
+#   the preamble.
+#
+# HOW THIS LIST WAS PRODUCED -- measured, not guessed
+#   Every header below was compiled on this machine, one per translation unit,
+#   through the exact pipeline src/cxx.cpp uses:
+#
+#     g++ -O2 -std=c++20 -shared -fPIC -I<satellite/include> tu.cpp \
+#         libsatellite_core.so -Wl,-rpath,<dir> -o block.so
+#
+#   ...wrapped in the same generated preamble Bridge::generate() emits, then
+#   loaded with dlopen(RTLD_NOW|RTLD_LOCAL) exactly as Bridge::run() does.
+#
+#   102 candidates were tested. 92 are listed. All 92 passed both the compile
+#   and the dlopen gate. 10 were dropped, every one for a measured reason:
+#
+#     flat_map flat_set mdspan inplace_vector print spanstream expected
+#     stacktrace generator
+#         These #include cleanly but are EMPTY under -std=c++20 -- they are
+#         C++23 headers guarded on __cplusplus. Including them costs you a file
+#         open and gives you nothing; using the type they are named for is a
+#         hard error ("only available from C++23 onwards"). Listing them would
+#         be a lie. They come back for free if the standard is ever raised.
+#
+#     execution
+#         The real trap, and the reason the dlopen gate exists. <execution>
+#         compiles, and a block using std::execution::par even LINKS, because a
+#         shared object is allowed to carry unresolved symbols. It then fails at
+#         load with:
+#           undefined symbol: _ZN3tbb6detail2r15spawnERNS0_2d14taskERNS2_18task_group_contextE
+#         GCC implements the parallel policies on TBB, and the bridge does not
+#         pass -ltbb. libtbb IS installed here, so this is a link-flag gap, not
+#         a missing package -- adding -ltbb to CxxConfig::flags would fix it.
+#         Until then std::execution::par and par_unseq are unusable from a
+#         block. std::execution::seq and unseq pull in no TBB symbols and load
+#         fine, but a header that only half works has no business on a list
+#         titled "headers you can use."
+#
+# FOOTPRINT -- the measured transitive closure
+#   One translation unit including the preamble plus all 92 headers, expanded
+#   with `g++ -std=c++20 -M`, symlinks resolved through realpath, deduped:
+#
+#     files                       482
+#     raw                   8,488,007 bytes  (8.10 MiB)
+#     tar                   8,867,840 bytes
+#     zstd -19              1,001,015 bytes  (0.95 MiB)   8.47x
+#
+#   Raw byte total was cross-checked two ways, `stat -c %s` summed against
+#   `du -cb`; both give 8,488,007 exactly. Compression is a real measurement:
+#   tar of the 482 files piped through `zstd -19`, not an assumed ratio.
+#
+#   For scale: the preamble ALONE (satellite/cxx.hpp + <string> + <vector> +
+#   <exception>) is already 206 files / 2,541,847 bytes. So every satellite.cxx
+#   block on earth pays 2.5 MB of headers before the user types anything, and
+#   opening the door to all 92 costs 3.3x that, not 92x. This reproduces the
+#   204 files / 2,534,691 bytes in docs/EMBEDDING.md to within 2 files and
+#   7,156 bytes -- close enough to call the method cross-validated, the delta
+#   being which satellite/*.hpp the two measurements fed in.
+#
+# TOOLCHAIN THESE NUMBERS BELONG TO
+#   g++ (GCC) 17.0.0 20260727 (experimental)
+#   AlmaLinux 10.2 (Lavender Lion), kernel 6.12.0-211.38.1.el10_2.x86_64_v2
+#   -std=c++20, measured 2026-08-03
+#
+#   This list is machine-specific by construction. It describes what THIS box
+#   compiles. satellite.cxx shells out to whatever g++ is on PATH, so a user on
+#   a different box gets a different answer -- which is the open question
+#   docs/EMBEDDING.md raises about whether satellite.cxx promises "the standard
+#   library, always" or "whatever the user has." Today it is the latter.
+#   Regenerate this file per target rather than trusting it as portable truth.
+
+# --- containers ---
+array
+bitset
+deque
+forward_list
+list
+map
+queue
+set
+span
+stack
+unordered_map
+unordered_set
+vector
+
+# --- strings and text ---
+string
+string_view
+charconv
+format
+regex
+cuchar
+cwchar
+cwctype
+
+# --- algorithms and iteration ---
+algorithm
+ranges
+iterator
+
+# --- numerics ---
+numeric
+cmath
+complex
+random
+ratio
+valarray
+bit
+numbers
+limits
+cfenv
+cstdint
+cfloat
+climits
+
+# --- input / output ---
+iostream
+iomanip
+ios
+iosfwd
+istream
+ostream
+streambuf
+sstream
+fstream
+filesystem
+syncstream
+cstdio
+
+# --- utility, types, time ---
+utility
+tuple
+optional
+variant
+any
+memory
+memory_resource
+scoped_allocator
+functional
+type_traits
+typeinfo
+typeindex
+chrono
+initializer_list
+compare
+concepts
+source_location
+version
+
+# --- errors and diagnostics ---
+exception
+stdexcept
+system_error
+cassert
+cerrno
+
+# --- concurrency ---
+thread
+mutex
+shared_mutex
+condition_variable
+future
+atomic
+barrier
+latch
+semaphore
+stop_token
+
+# --- C compatibility ---
+cstddef
+cstdlib
+cstring
+cctype
+ctime
+clocale
+cinttypes
+cstdarg
+csetjmp
+csignal
