@@ -25,6 +25,9 @@ target_compile_definitions(satellite_core PRIVATE
 target_link_libraries(satellite_core PUBLIC dl)
 target_include_directories(satellite_core PUBLIC include)
 
+add_executable(satellite src/main.cpp)
+target_link_libraries(satellite satellite_core)
+
 enable_testing()
 
 add_executable(test_container tests/test_container.cpp)
