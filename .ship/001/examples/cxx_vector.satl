@@ -1,0 +1,35 @@
+// cxx_vector.satl -- a C++ container crossing the boundary as a satellite list.
+//
+// Demonstrates: to_container has a template overload for std::vector<T>, so any
+// vector whose element type is convertible becomes a satellite list, element by
+// element.  Nothing here is special-cased for int -- the same block would work
+// with std::vector<double> or std::vector<std::string>.
+//
+// Run it:
+//     satellite run .ship/001/examples/cxx_vector.satl
+//
+// Expected output:
+//     --- satellite.cxx block 1 (line 22) ---
+//       => [1, 4, 9, 16, 25, 36, 49, 64]   [list]
+//
+//     1 block(s), 1 compiled, 0 from cache, 0 failed
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.cxx
+    {
+        #include <vector>
+
+        std::vector<int> squares;
+        squares.reserve(8);
+        for (int k = 1; k <= 8; ++k) {
+            squares.push_back(k * k);
+        }
+
+        satellite.return(squares)
+    }
+
+    satellite.return(satellite)
+}

@@ -18,7 +18,8 @@ add_library(satellite_core SHARED
   src/ops.cpp
   src/lexer.cpp
   src/machine.cpp
-  src/cxx.cpp)
+  src/cxx.cpp
+  src/interpret.cpp)
 target_compile_definitions(satellite_core PRIVATE
   SATELLITE_INCLUDE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/include"
   SATELLITE_CORE_LIB="${CMAKE_CURRENT_BINARY_DIR}/libsatellite_core.so")
@@ -27,6 +28,23 @@ target_include_directories(satellite_core PUBLIC include)
 
 add_executable(satellite src/main.cpp)
 target_link_libraries(satellite satellite_core)
+
+# The GUI console is optional: GTK4 is not required to build satellite itself,
+# so a machine without it still gets the library, the CLI and the tests.
+find_package(PkgConfig)
+if(PKG_CONFIG_FOUND)
+  pkg_check_modules(GTK4 gtk4)
+endif()
+if(GTK4_FOUND)
+  add_executable(satellite-gui src/gui.cpp)
+  target_link_libraries(satellite-gui satellite_core ${GTK4_LIBRARIES})
+  target_include_directories(satellite-gui PRIVATE ${GTK4_INCLUDE_DIRS})
+  target_link_directories(satellite-gui PRIVATE ${GTK4_LIBRARY_DIRS})
+  target_compile_options(satellite-gui PRIVATE ${GTK4_CFLAGS_OTHER})
+  message(STATUS "GTK4 ${GTK4_VERSION} found -- building satellite-gui")
+else()
+  message(STATUS "GTK4 not found -- skipping satellite-gui")
+endif()
 
 enable_testing()
 
@@ -45,6 +63,12 @@ add_test(NAME machine COMMAND test_machine)
 add_executable(test_cxx tests/test_cxx.cpp)
 target_link_libraries(test_cxx satellite_core)
 add_test(NAME cxx COMMAND test_cxx)
+
+add_executable(test_interpret tests/test_interpret.cpp)
+target_link_libraries(test_interpret satellite_core)
+add_test(NAME interpret COMMAND test_interpret)
+
+add_executable(bench_source bench/bench_source.cpp)
 
 add_executable(bench_dispatch bench/bench_dispatch.cpp)
 target_link_libraries(bench_dispatch satellite_core)

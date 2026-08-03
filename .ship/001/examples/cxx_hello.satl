@@ -1,0 +1,35 @@
+// cxx_hello.satl -- the smallest satellite.cxx block that does something.
+//
+// Demonstrates: inline C++ builds a std::string and hands it back with
+// satellite.return.  Nothing in the block is lexed as satellite; the text goes
+// straight to g++.  On the way back, C++ overload resolution picks
+// to_container(const std::string&), so the value arrives as a satellite string
+// without satellite ever having to understand a C++ type.
+//
+// Run it:
+//     satellite run .ship/001/examples/cxx_hello.satl
+//
+// Expected output:
+//     --- satellite.cxx block 1 (line 25) ---
+//       => hello from C++   [string]
+//
+//     1 block(s), 1 compiled, 0 from cache, 0 failed
+//
+// Run it a second time and the summary becomes "0 compiled, 1 from cache".
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.cxx
+    {
+        #include <string>
+
+        std::string greeting = "hello";
+        greeting += " from C++";
+
+        satellite.return(greeting)
+    }
+
+    satellite.return(satellite)
+}

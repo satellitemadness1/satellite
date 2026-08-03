@@ -1,0 +1,355 @@
+// ============================================================================
+//  satellite_full_test.satl -- the lexer conformance test for SATELLITE 001
+// ============================================================================
+//
+//  WHAT THIS FILE IS
+//
+//  One source file that touches every piece of satellite syntax that actually
+//  exists in version 001 (preliminary).  It is the reference input for the
+//  lexer: if the lexer tokenises this file without a single error, it has been
+//  walked across its whole surface.
+//
+//  WHAT VERSION 001 CAN DO WITH IT
+//
+//      satellite check .ship/001/examples/satellite_full_test.satl
+//      satellite lex   .ship/001/examples/satellite_full_test.satl
+//      satellite run   .ship/001/examples/satellite_full_test.satl
+//
+//  THIS FILE CANNOT BE EXECUTED, and neither can any other .satl file.
+//  Version 001 has no parser, no compiler and no virtual machine.  Everything
+//  below is LEXED and nothing more -- the capsules, the spacesuit, the
+//  arithmetic, the library paths: none of it runs.  `check` reports on the
+//  token stream, `lex` prints it.
+//
+//  The one exception is satellite.cxx { }, which is real C++, is compiled to a
+//  shared library and loaded, and DOES run.  `satellite run` on this file
+//  executes those blocks and nothing else.
+//
+//  So: read this as a valid token stream, not as a working program.
+//
+//  WHAT IS COVERED
+//
+//      satellite.include, with a bare satellite and with a file name
+//      satellite.capsule -- satellite.main and a plain capsule
+//      satellite.spacesuit, with satellite.protected / satellite.open /
+//          satellite.constructor
+//      satellite.variable of every type the container supports
+//      satellite.container.list, including a nested generic argument
+//      satellite.library paths
+//      THE ESCAPE HATCH: `satellite` after a dot is an ordinary identifier
+//      indexing with [ ], including a chained and a multi-line index
+//      every arithmetic and comparison operator the lexer has
+//      `and`, `or`, `!`
+//      string literals with every escape the lexer accepts
+//      integers, digit separators, reals, exponents, a Big-sized literal
+//      both comment forms
+//      line continuation -- a line ending in an operator does not terminate
+//      multi-line argument lists inside parens
+//      satellite.cxx blocks, inline and multi-line
+//
+//  NOT COVERED, because it does not exist: `^` has a satellite charmap code
+//  (110) but the lexer has no token for it, so writing one is a lex error.
+//  Same for & | ~ ; ? @ # $ and the single quote.
+// ============================================================================
+
+
+/*
+ *  Includes.  `satellite.include(satellite)` pulls in the standard library;
+ *  a quoted name means that file on disk, with .satl appended.
+ */
+satellite.include(satellite)
+satellite.include("orbital_mechanics")
+satellite.include(
+    "deep_space_network"
+)
+
+
+// ============================================================================
+//  A spacesuit -- satellite's class.  The parenthesised name is the superclass.
+// ============================================================================
+satellite.spacesuit orbital_body(satellite.library.celestial_body)
+{
+    satellite.protected
+    {
+        satellite.variable.string designation     = "unnamed"
+        satellite.variable.real   radius_km       = 6371.0
+        satellite.variable.int    satellite_count = 1
+        satellite.variable.bool   is_tidally_locked = 0
+    }
+
+    satellite.open
+    {
+        satellite.constructor(satellite.variable.string name,
+                              satellite.variable.real   radius)
+        {
+            designation = name
+            radius_km   = radius
+            satellite.return(satellite)
+        }
+
+        satellite.capsule surface_area()
+        {
+            satellite.return(4.0 * 3.141_592_653_589 * radius_km * radius_km)
+        }
+
+        satellite.capsule rename(satellite.variable.string suffix)
+        {
+            designation.append(suffix)
+            satellite.return(designation)
+        }
+    }
+}
+
+
+// ============================================================================
+//  A plain capsule.  Called as diagnostics(...) -- no satellite. prefix needed.
+// ============================================================================
+satellite.capsule diagnostics(satellite.variable.string label)
+{
+    // ------------------------------------------------------------------
+    //  Numbers.  Underscores are digit separators and are stripped; a dot is
+    //  only a decimal point when a digit follows it.
+    // ------------------------------------------------------------------
+    satellite.variable.int  zero        = 0
+    satellite.variable.int  answer      = 42
+    satellite.variable.int  million     = 1_000_000
+    satellite.variable.int  grouped     = 1_2_3_4
+    satellite.variable.real half        = 0.5
+    satellite.variable.real pi          = 3.141_592_653_589_793
+    satellite.variable.real avogadro    = 6.02214076e23
+    satellite.variable.real electron    = 1.602176634e-19
+    satellite.variable.real big_exp     = 2E+8
+
+    // Too large for a 64-bit int.  The digits survive lexing; the value
+    // promotes to a satellite Big later.
+    satellite.variable.big  mersenne    = 170141183460469231731687303715884105727
+
+    // ------------------------------------------------------------------
+    //  Strings, and every escape the lexer accepts: \n \t \r \0 \\ \"
+    // ------------------------------------------------------------------
+    satellite.variable.string plain     = "a plain string"
+    satellite.variable.string lines     = "first line\nsecond line"
+    satellite.variable.string columns   = "column one\tcolumn two"
+    satellite.variable.string carriage  = "overwrite this\r"
+    satellite.variable.string quoted    = "she said \"hello\" and left"
+    satellite.variable.string path      = "C:\\satellite\\bin"
+
+    // A \0 is a legal escape and lexes cleanly.  `satellite lex` prints the
+    // decoded body with printf, so this one string prints truncated at the
+    // NUL -- that is the dump, not the token.
+    satellite.variable.string embedded_nul = "before\0after"
+
+    // Operator characters inside a string are TEXT charmap codes, not the
+    // distinct math codes.  Nothing in here is lexed as an operator, and the
+    // word satellite in here is not the keyword.
+    satellite.variable.string not_operators = "+ - * / % = == != < > <= >= satellite"
+
+    // ------------------------------------------------------------------
+    //  Every arithmetic operator.
+    // ------------------------------------------------------------------
+    satellite.variable.int a = 17
+    satellite.variable.int b = 5
+
+    satellite.variable.int sum        = a + b
+    satellite.variable.int difference = a - b
+    satellite.variable.int product    = a * b
+    satellite.variable.int quotient   = a / b
+    satellite.variable.int remainder  = a % b
+    satellite.variable.int negated    = -a
+    satellite.variable.int grouping   = (a + b) * (a - b) / 2 % 7
+
+    // ------------------------------------------------------------------
+    //  Every comparison operator, then the logical ones.
+    // ------------------------------------------------------------------
+    satellite.variable.bool is_equal     = a == b
+    satellite.variable.bool is_different = a != b
+    satellite.variable.bool is_less      = a < b
+    satellite.variable.bool is_greater   = a > b
+    satellite.variable.bool is_at_most   = a <= b
+    satellite.variable.bool is_at_least  = a >= b
+
+    satellite.variable.bool both     = is_less and is_different
+    satellite.variable.bool either   = is_less or is_greater
+    satellite.variable.bool inverted = !is_equal
+
+    // ------------------------------------------------------------------
+    //  Line continuation.  A newline ends a statement only when the previous
+    //  token could finish one, so a line ending in an operator carries on.
+    // ------------------------------------------------------------------
+    satellite.variable.int continued = a +
+        b -
+        1
+
+    satellite.variable.int scaled = a *
+        b /
+        2
+
+    satellite.variable.bool long_condition = is_less and
+        is_different and
+        !is_equal
+
+    // an assignment may break after the `=` too
+    satellite.variable.string wrapped =
+        "the assignment continues onto the next line"
+
+    // ------------------------------------------------------------------
+    //  Lists, generics, indexing.  A newline inside ( ) or [ ] never ends a
+    //  statement, so both may span as many lines as they like.  Braces are
+    //  deliberately NOT counted that way: statements in a body do terminate.
+    // ------------------------------------------------------------------
+    satellite.container.list<satellite.variable.string> names = ["alpha", "beta", "gamma"]
+    satellite.container.list<satellite.container.list<satellite.variable.int>> matrix = [[1, 2], [3, 4]]
+
+    satellite.variable.string first  = names[0]
+    satellite.variable.int    corner = matrix[1][0]
+
+    satellite.variable.int spanning = matrix[
+        a - 17
+    ][
+        b - 5 +
+        1
+    ]
+
+    // a multi-line argument list
+    satellite.console.display(
+        label,
+        "a = " + a + "  b = " + b,
+        "sum = " + sum,
+        "remainder = " + remainder,
+        "pi = " + pi
+    )
+
+    // `5.to_string` -- the dot is member access, not a decimal point, because
+    // the character after it is not a digit
+    satellite.console.display(5.to_string())
+
+    satellite.return(sum)
+}
+
+
+// ============================================================================
+//  Naming.  `satellite` is the only reserved word in the language, and only
+//  when it is not preceded by a dot.  Every other word is yours -- including
+//  the ones that are keywords everywhere else.  (`and` and `or` are the two
+//  words the lexer also claims, because they are operator tokens.)
+// ============================================================================
+satellite.capsule free_names()
+{
+    satellite.variable.int class     = 1
+    satellite.variable.int return    = 2
+    satellite.variable.int if        = 3
+    satellite.variable.int else      = 4
+    satellite.variable.int while     = 5
+    satellite.variable.int for       = 6
+    satellite.variable.int capsule   = 7
+    satellite.variable.int spacesuit = 8
+    satellite.variable.int include   = 9
+    satellite.variable.int import    = 10
+    satellite.variable.int null      = 11
+    satellite.variable.int true      = 12
+
+    satellite.return(class + return + if + else + while + for)
+}
+
+
+// ============================================================================
+//  satellite.main -- the entry point.
+// ============================================================================
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(arguments[0])
+
+    // ------------------------------------------------------------------
+    //  satellite.library reaches any variable anywhere, by its full path.
+    // ------------------------------------------------------------------
+    satellite.library.diagnostics.answer = 42
+    satellite.library.orbital_body.designation.append("-A")
+    satellite.library.orbital_body.radius_km = 1737.4
+    satellite.console.display(satellite.library.diagnostics.wrapped)
+    satellite.console.display(satellite.library.free_names.class)
+
+    // ------------------------------------------------------------------
+    //  THE ESCAPE HATCH.
+    //
+    //  A user may name a variable `satellite`.  At the end of a dotted path
+    //  the word is an ordinary identifier, never the keyword, so the variable
+    //  stays reachable.  In the lex dump the leading `satellite` is a
+    //  `satellite` token and the trailing one is an `ident` named satellite.
+    // ------------------------------------------------------------------
+    satellite.console.display(satellite.library.diagnostics.satellite)
+    satellite.library.orbital_body.satellite = 1
+
+    // it works at any depth, and twice in a row
+    satellite.library.deep_space_network.relay.satellite.satellite
+
+    // contrast: not after a dot, so this one IS the keyword
+    satellite.return(satellite)
+}
+
+
+// ============================================================================
+//  satellite.machine -- the synthetic keyboard, driven through /dev/uinput.
+//  The C++ side is built and tested.  No satellite-level statement form is
+//  settled yet, so these lines are here to prove they tokenise, nothing more.
+// ============================================================================
+satellite.capsule keyboard_demo()
+{
+    satellite.machine.type_text("hello")
+    satellite.machine.press_combo(satellite.machine.key.control, satellite.machine.key.c)
+    satellite.return(satellite)
+}
+
+
+// ============================================================================
+//  The colon.  The lexer emits a `:` token.  Version 001 has no parser, so no
+//  construct uses it yet; this line only proves it tokenises.
+// ============================================================================
+satellite.capsule punctuation_demo(satellite.container.list<satellite.variable.int> values)
+{
+    values[0:2]
+    satellite.return(satellite)
+}
+
+
+// ============================================================================
+//  satellite.cxx -- inline C++.  The lexer counts braces and hands the body
+//  through raw, never lexing it as satellite.  The bridge wraps it, compiles
+//  it with g++ to a .so, caches it by content hash, and calls it.  In the lex
+//  dump the whole block is ONE `cxx` token.
+//
+//  This is the only part of this file that executes today.
+// ============================================================================
+satellite.capsule inline_cxx()
+{
+    // multi-line form
+    satellite.cxx
+    {
+        #include <string>
+        std::string greeting = "hello from inline C++";
+        greeting += " -- compiled by g++, loaded as a shared library";
+        satellite.return(greeting);
+    }
+
+    // Brace counting has to survive comments, string, char and raw string
+    // literals.  Every closing brace below is inside one of those, so none of
+    // them ends the block early.
+    satellite.cxx
+    {
+        // a brace in a line comment does not end the block: }
+        /* nor one in a block comment: } */
+        int total = 0;
+        for (int k = 1; k <= 10; ++k) { total += k * k; }
+        std::string in_string = "}";
+        char in_char = '}';
+        std::string in_raw = R"(a raw string containing } and )";
+        (void)in_string;
+        (void)in_char;
+        (void)in_raw;
+        satellite.return(total);
+    }
+
+    // inline form, opening brace on the same line
+    satellite.cxx { satellite.return(6 * 7) }
+
+    satellite.return(satellite)
+}

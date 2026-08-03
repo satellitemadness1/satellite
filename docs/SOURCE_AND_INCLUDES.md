@@ -26,6 +26,46 @@ identifier text — a reallocation turns every previously-scanned token into a
 dangling reference. It will not crash immediately; it will produce garbage
 identifiers under memory pressure, on large programs, intermittently.
 
+### Measured: contiguous text + line index vs vector<string> of lines
+
+The obvious alternative is one `std::string` per LINE. It was measured on a
+200-file / 116,866-line corpus (bench/source_bench.cpp equivalent):
+
+```
+                                 load ms    heap MB
+A) one string + line index           7.0       4.90
+B) vector<string> per line          12.6      11.56
+   B vs A                          1.79x      2.36x
+
+walk every line 20x                   ms
+A) one string + line index           5.7
+B) vector<string> per line           6.4        <- no difference
+
+allocations for the corpus
+  A:     400     (one string + one index per file)
+  B: 117,066     (one string per LINE)
+```
+
+The appeal of `vector<string>` is easy line access -- but `line_starts` already
+provides that. `line(n)` is a direct index returning a `string_view`, no search
+and no copy, and walking every line measures the same either way. So the line
+storage adds 2.4x memory and 293x the allocations to buy something the index
+already gives.
+
+**The deciding issue is correctness, not speed.** `satellite.cxx { }` blocks
+span lines. Contiguous storage hands the block over as a substring, byte for
+byte. Line storage has to stitch it back together -- and `getline` ate the
+newlines, so the rebuilt block came back 73 bytes where the original was 74,
+with trailing whitespace and any `\r` unrecoverable. That block goes straight to
+a C++ compiler; losing its exact bytes is a bug, not a slowdown. The same
+applies to multi-line block comments and to any multi-line string literal added
+later.
+
+A text *editor* genuinely does want line storage -- inserting a character should
+not rewrite a 4 MB buffer -- but that is the GUI's concern, and `GtkTextBuffer`
+keeps its own line-based representation regardless. `Source` is the compiler's
+view, and the compiler wants bytes.
+
 ### The shape that works
 
 One `Source` per file, owned by one `SourceMap`, with **stable addresses**:

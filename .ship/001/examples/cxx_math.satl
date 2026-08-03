@@ -1,0 +1,36 @@
+// cxx_math.satl -- a real loop running inside a satellite.cxx block.
+//
+// Demonstrates: ordinary C++ control flow (a for loop) at the top level of a
+// block.  The generated translation unit wraps these lines in a function body,
+// so statements, locals and loops all work exactly as they read.  The int64_t
+// result comes back through to_container(long) as a satellite Int.
+//
+// The sum of 1..100 is 5050.
+//
+// Run it:
+//     satellite run .ship/001/examples/cxx_math.satl
+//
+// Expected output:
+//     --- satellite.cxx block 1 (line 24) ---
+//       => 5050   [int]
+//
+//     1 block(s), 1 compiled, 0 from cache, 0 failed
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.cxx
+    {
+        #include <cstdint>
+
+        int64_t total = 0;
+        for (int64_t k = 1; k <= 100; ++k) {
+            total += k;
+        }
+
+        satellite.return(total)
+    }
+
+    satellite.return(satellite)
+}

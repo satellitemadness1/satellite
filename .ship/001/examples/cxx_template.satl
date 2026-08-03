@@ -1,0 +1,60 @@
+// cxx_template.satl -- templates defined inside a block, used inside the block.
+//
+// Demonstrates FILE-SCOPE HOISTING.  C++ has no nested functions and no nested
+// templates, so a template written at the top level of a satellite.cxx block
+// cannot simply be dropped into the generated function body.  The bridge spots
+// constructs that must live at file scope -- template, struct, class, enum,
+// union, namespace, typedef, #include, using namespace, and free function
+// definitions -- and hoists them above the entry point, leaving the ordinary
+// statements behind in the body.
+//
+// Both templates below are hoisted; the three statements after them are not.
+// describe() calls sum_of(), which proves the hoisted declarations land in
+// source order and can see each other.
+//
+// Note the brace style: a hoisted definition must open its brace on the same
+// line as its signature, because the bridge decides line by line.
+//
+// Run it:
+//     satellite run .ship/001/examples/cxx_template.satl
+//
+// Expected output:
+//     --- satellite.cxx block 1 (line 32) ---
+//       => ints -> 15, reals -> 4   [string]
+//
+//     1 block(s), 1 compiled, 0 from cache, 0 failed
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.cxx
+    {
+        #include <sstream>
+        #include <string>
+        #include <vector>
+
+        template <typename T> T sum_of(const std::vector<T>& values) {
+            T total = T();
+            for (const T& v : values) {
+                total = total + v;
+            }
+            return total;
+        }
+
+        template <typename T> std::string describe(const char* label, const std::vector<T>& values) {
+            std::ostringstream os;
+            os << label << " -> " << sum_of(values);
+            return os.str();
+        }
+
+        std::vector<int> ints = {1, 2, 3, 4, 5};
+        std::vector<double> reals = {0.5, 1.5, 2.0};
+
+        std::string report = describe("ints", ints) + ", " + describe("reals", reals);
+
+        satellite.return(report)
+    }
+
+    satellite.return(satellite)
+}

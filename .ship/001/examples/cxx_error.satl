@@ -1,0 +1,55 @@
+// cxx_error.satl -- an exception thrown in C++, caught at the boundary.
+//
+// Demonstrates: an exception unwinding out of a loaded module and into the
+// interpreter's own frames is undefined behaviour, so the generated entry point
+// wraps everything in try / catch.  Nothing escapes.  A std::exception is
+// converted to a satellite string prefixed with "cxx error: " and RETURNED as
+// an ordinary value -- the run does not abort, and the exit status is still 0.
+//
+// This is the runtime half of the story.  The other half is compile time: a
+// block that does not compile is reported with g++'s own diagnostic, its .so is
+// never cached, and that block alone counts as a failure.
+//
+// Note that checked_at() is a free function, so it is hoisted to file scope for
+// the same reason a template is -- C++ has no nested functions.
+//
+// Run it:
+//     satellite run .ship/001/examples/cxx_error.satl
+//
+// Expected output:
+//     --- satellite.cxx block 1 (line 30) ---
+//       => cxx error: index 7 is past the end (size 3)   [string]
+//
+//     1 block(s), 1 compiled, 0 from cache, 0 failed
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.cxx
+    {
+        #include <stdexcept>
+        #include <string>
+        #include <vector>
+
+        int checked_at(const std::vector<int>& values, size_t index) {
+            if (index >= values.size()) {
+                throw std::out_of_range(
+                    "index " + std::to_string(index) +
+                    " is past the end (size " + std::to_string(values.size()) + ")");
+            }
+            return values[index];
+        }
+
+        std::vector<int> data = {10, 20, 30};
+
+        // this one is in range and succeeds
+        int ok = checked_at(data, 1);
+        (void)ok;
+
+        // this one throws -- and comes back as a satellite string, not a crash
+        satellite.return(checked_at(data, 7))
+    }
+
+    satellite.return(satellite)
+}
