@@ -44,7 +44,7 @@ static const unsigned char* reverse() {
     static unsigned char rev[256] = {0};
     static bool built = false;
     if (!built) {
-        for (uint32_t code = 1; code < COUNT; ++code)
+        for (uint32_t code = 1; code < TEXT_COUNT; ++code)
             rev[(unsigned char)kTable[code]] = (unsigned char)code;
         built = true;
     }
@@ -54,7 +54,18 @@ static const unsigned char* reverse() {
 char32_t from_ascii(char c) { return reverse()[(unsigned char)c]; }
 
 char to_ascii(char32_t code) {
-    return code > 0 && code < COUNT ? kTable[code] : '\0';
+    return code > 0 && code < TEXT_COUNT ? kTable[code] : '\0';
+}
+
+// ---- satellite math tokens ------------------------------------------------
+static const char* kOps[] = {
+    "+", "-", "*", "/", "%", "^", "=", "==", "!=", "<", ">", "<=", ">=",
+};
+
+bool is_operator(char32_t code) { return code >= OP_PLUS && code < COUNT; }
+
+const char* op_text(char32_t code) {
+    return is_operator(code) ? kOps[code - OP_PLUS] : "";
 }
 
 }  // namespace charmap
@@ -93,6 +104,7 @@ std::string SatString::text() const {
     out.reserve(len);
     const char32_t* d = data();
     for (uint32_t k = 0; k < len; ++k) {
+        if (charmap::is_operator(d[k])) { out += charmap::op_text(d[k]); continue; }
         char c = charmap::to_ascii(d[k]);
         out += c ? c : '?';                 // void renders visibly
     }

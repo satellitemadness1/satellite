@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 
+#include "satellite/container.hpp"
+
 namespace satellite {
 
 enum class Tok : uint8_t {
@@ -94,5 +96,11 @@ private:
 
 // True when a newline following this token should end the statement.
 bool ends_statement(Tok t);
+
+// The satellite math token for an operator, or 0 if this token is not one.
+// This is where the ambiguity is resolved for good: a '-' the lexer saw INSIDE
+// a string literal never reaches here -- it was already stored as text code 73
+// by scan_string.  A '-' outside one arrives as Tok::Minus and becomes code 99.
+char32_t op_code_for(Tok t);
 
 }  // namespace satellite

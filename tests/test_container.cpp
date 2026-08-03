@@ -120,12 +120,59 @@ int main() {
     check(charmap::from_ascii('~') == 94, "'~' is the last of your table at 94");
     check(charmap::from_ascii(' ') == 95, "space is code 95 (added -- confirm)");
 
-    // every code round trips
+    // every TEXT code round trips
     {
         bool all = true;
-        for (char32_t code = 1; code < charmap::COUNT; ++code)
+        for (char32_t code = 1; code < charmap::TEXT_COUNT; ++code)
             if (charmap::from_ascii(charmap::to_ascii(code)) != code) all = false;
-        check(all, "every code round trips ascii -> code -> ascii");
+        check(all, "every text code round trips ascii -> code -> ascii");
+    }
+
+    // ---- satellite math tokens --------------------------------------------
+    // the whole point: an operator is NOT the ascii character that looks like it
+    check(charmap::from_ascii('-') == 73, "a hyphen in text is code 73");
+    check(charmap::OP_MINUS == 99, "satellite SUBTRACTION is code 99");
+    check(charmap::from_ascii('-') != charmap::OP_MINUS,
+          "hyphen and minus can never be confused");
+    check(charmap::from_ascii('*') != charmap::OP_TIMES, "asterisk is not multiply");
+    check(charmap::from_ascii('/') != charmap::OP_DIVIDE, "slash is not divide");
+    check(charmap::from_ascii('+') != charmap::OP_PLUS, "plus sign is not addition");
+
+    // from_ascii must never invent an operator code
+    {
+        bool clean = true;
+        for (int ch = 0; ch < 256; ++ch)
+            if (charmap::is_operator(charmap::from_ascii((char)ch))) clean = false;
+        check(clean, "no ascii character ever maps to an operator code");
+    }
+
+    check(charmap::is_operator(charmap::OP_PLUS),  "OP_PLUS is an operator");
+    check(charmap::is_operator(charmap::OP_GE),    "OP_GE is an operator");
+    check(!charmap::is_operator(73),               "code 73 is text, not an operator");
+    check(!charmap::is_operator(charmap::SPACE),   "space is text, not an operator");
+    check(std::string(charmap::op_text(charmap::OP_LE)) == "<=",
+          "multi-character operators render correctly");
+
+    // an expression stored AS A STRING, tokens and text side by side
+    {
+        auto* p = new SatString();
+        p->append_text("cost");
+        char32_t minus = charmap::OP_MINUS;
+        p->append(&minus, 1);
+        p->append_text("2");
+        Container expr;
+        expr.type = Type::Str;
+        expr.obj  = p;
+
+        check(p->len == 6, "6 characters: c o s t MINUS 2");
+        check(p->at(4) == charmap::OP_MINUS, "position 4 holds the math token");
+        eq(expr, "cost-2", "tokenized expression renders readably");
+
+        // and a literal hyphen at the same position is a different character
+        Container plain = Container::str("cost-2");
+        check(plain.as_str()->at(4) == 73, "the literal version holds the hyphen");
+        check(plain.as_str()->at(4) != p->at(4),
+              "same rendering, different characters -- unambiguous");
     }
 
     // strings hold codes, and indexing is exact

@@ -60,6 +60,24 @@ bool ends_statement(Tok t) {
     }
 }
 
+char32_t op_code_for(Tok t) {
+    switch (t) {
+        case Tok::Plus:    return charmap::OP_PLUS;
+        case Tok::Minus:   return charmap::OP_MINUS;
+        case Tok::Star:    return charmap::OP_TIMES;
+        case Tok::Slash:   return charmap::OP_DIVIDE;
+        case Tok::Percent: return charmap::OP_MODULO;
+        case Tok::Assign:  return charmap::OP_ASSIGN;
+        case Tok::Eq:      return charmap::OP_EQ;
+        case Tok::Ne:      return charmap::OP_NE;
+        case Tok::Lt:      return charmap::OP_LT;
+        case Tok::Gt:      return charmap::OP_GT;
+        case Tok::Le:      return charmap::OP_LE;
+        case Tok::Ge:      return charmap::OP_GE;
+        default:           return charmap::VOID;
+    }
+}
+
 char Lexer::advance() {
     char c = src_[pos_++];
     if (c == '\n') { ++line_; col_ = 1; } else { ++col_; }

@@ -1,4 +1,5 @@
 #include "satellite/lexer.hpp"
+#include "satellite/container.hpp"
 
 #include <cstdio>
 #include <string>
@@ -181,6 +182,34 @@ int main() {
         auto ts = lx.scan();
         check(ts[0].line == 1 && ts[2].line == 2 && ts[4].line == 3,
               "line numbers track across newlines");
+    }
+
+    // ---- the hyphen question ----------------------------------------------
+    // A '-' inside quotes and a '-' outside them are DIFFERENT characters, and
+    // the lexer is what tells them apart -- before either is ever stored.
+    {
+        Lexer lx("x = \"a-b\" - 2");
+        auto ts = lx.scan();
+
+        // pack the token stream into a satellite string, the way tokenized
+        // source would be stored
+        SatString packed;
+        for (const auto& t : ts) {
+            if (t.kind == Tok::End || t.kind == Tok::Term) continue;
+            char32_t op = op_code_for(t.kind);
+            if (op) { packed.append(&op, 1); continue; }
+            if (t.kind == Tok::Str) { packed.append_text(t.text); continue; }
+            packed.append_text(t.text);
+        }
+
+        // x ASSIGN a - b MINUS 2      <- the two dashes are different codes
+        check(packed.at(1) == charmap::OP_ASSIGN, "'=' outside a string is the assign token");
+        check(packed.at(3) == 73,                 "the '-' INSIDE quotes is text code 73");
+        check(packed.at(5) == charmap::OP_MINUS,  "the '-' OUTSIDE quotes is math token 99");
+        check(packed.at(3) != packed.at(5),
+              "same keystroke, different characters -- the lexer decided which");
+        check(packed.text() == "x=a-b-2",
+              "both render as '-' but only one is arithmetic");
     }
 
     printf("\n%d checks, %d failures\n", checks, failures);

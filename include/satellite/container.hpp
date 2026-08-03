@@ -68,11 +68,34 @@ struct Obj {
 namespace charmap {
 constexpr char32_t VOID  = 0;
 constexpr char32_t SPACE = 95;
-constexpr char32_t COUNT = 98;
+constexpr char32_t TEXT_COUNT = 98;    // codes 0-97 are ordinary text
 
-char32_t    from_ascii(char c);        // ASCII -> satellite code, 0 if unmapped
-char        to_ascii(char32_t code);   // satellite code -> ASCII, 0 if invalid
+// ---- satellite math tokens ------------------------------------------------
+// Deliberately NOT the same codes as the ASCII characters that look like them.
+// A hyphen inside a string is code 73; SUBTRACTION is code 99.  Nothing can
+// confuse the two, which is what lets tokenized code be stored as an ordinary
+// satellite string and read back exactly.
+constexpr char32_t OP_PLUS   = 98;
+constexpr char32_t OP_MINUS  = 99;
+constexpr char32_t OP_TIMES  = 100;
+constexpr char32_t OP_DIVIDE = 101;
+constexpr char32_t OP_MODULO = 102;
+constexpr char32_t OP_POWER  = 103;
+constexpr char32_t OP_ASSIGN = 104;
+constexpr char32_t OP_EQ     = 105;
+constexpr char32_t OP_NE     = 106;
+constexpr char32_t OP_LT     = 107;
+constexpr char32_t OP_GT     = 108;
+constexpr char32_t OP_LE     = 109;
+constexpr char32_t OP_GE     = 110;
+constexpr char32_t COUNT     = 111;
+
+char32_t    from_ascii(char c);        // ASCII -> TEXT code, never an operator
+char        to_ascii(char32_t code);   // text code -> ASCII, 0 if not text
 const char* table();                   // index by code; [0] is a placeholder
+
+bool        is_operator(char32_t code);
+const char* op_text(char32_t code);    // "+", "-", "<=" ... for display
 }  // namespace charmap
 
 // satellite_string.  One character is one char32_t holding a satellite charmap

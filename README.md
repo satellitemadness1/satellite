@@ -19,8 +19,8 @@ tested. No parser or VM yet.
 
 ```
 cmake -S . -B build && cmake --build build -j8
-./build/test_container      # 73 checks
-./build/test_lexer          # 37 checks
+./build/test_container      # 90 checks
+./build/test_lexer          # 42 checks
 ./build/bench_dispatch
 ```
 
@@ -94,6 +94,7 @@ codepoint — an index into satellite's own table:
 | 88–92 | `<.>/?` |
 | 93–94 | `` ` `` `~` |
 | 95–97 | space, newline, tab |
+| 98–110 | **satellite math tokens** |
 
 One character is one code, so `remove(0)` removes the first *character* and
 `at(i)` is O(1) with no scanning. Text outside the map converts to code 0 and
@@ -104,6 +105,28 @@ the door at 256 possibilities, and we don't yet know what a satellite character
 will eventually need to be. Leaving that open is worth more than the memory, and
 the speed difference is not observable — the operations are `memcpy` and
 `memcmp` either way, just over wider elements.
+
+### Math tokens are not the characters that look like them
+
+Codes 98–110 are `+ - * / % ^ = == != < > <= >=` as *arithmetic*, deliberately
+distinct from the ASCII characters at codes 63–92. A hyphen in text is code 73;
+subtraction is code 99. They render identically and can never be confused.
+
+```
+source:   x = "a-b" - 2
+
+packed:   x  ASSIGN  a  -  b  MINUS  2
+                        ^        ^
+                    code 73   code 99
+                    (text)   (arithmetic)
+```
+
+The lexer resolves this, once, at lex time — not by inspecting the character
+but by knowing where it is. Inside `"..."` the scanner is in `scan_string` and
+everything becomes text codes; outside, `-` arrives as `Tok::Minus` and
+`op_code_for()` maps it to 99. After lexing the ambiguity is gone permanently,
+which is what lets tokenized code be stored as an ordinary satellite string and
+read back exactly.
 
 **Codes 95–97 (space, newline, tab) are an addition, not in the original
 table** — `"hello world"` cannot be represented without a space. Move them if
