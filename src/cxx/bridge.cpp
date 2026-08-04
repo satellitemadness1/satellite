@@ -110,6 +110,14 @@ bool Bridge::build(const std::string& block_source,
 }
 
 // ---------------------------------------------------------------------------
+// The embedded compiler, installed by the executable at startup.  See the note
+// in cxx.hpp for why it arrives as a function pointer instead of a direct call.
+static JitUnitFn g_jit = nullptr;
+
+void set_jit_engine(JitUnitFn fn) { g_jit = fn; }
+bool jit_engine_installed()       { return g_jit != nullptr; }
+
+// ---------------------------------------------------------------------------
 Container Bridge::run(const std::string& block_source, std::string* err) {
     return run(block_source, {}, err);
 }
@@ -118,6 +126,48 @@ Container Bridge::run(const std::string& block_source,
                       const std::vector<CxxArg>& args, std::string* err,
                       std::string* out_printed, Timing* timing) {
     if (out_printed) out_printed->clear();
+
+    // The values are lifted out of the CxxArgs once, for whichever engine runs.
+    // The names went into the generated source at compile time and are not
+    // needed again -- what crosses the ABI boundary is 16 bytes per argument
+    // and nothing else.
+    std::vector<Container> values;
+    values.reserve(args.size());
+    for (const auto& a : args) values.push_back(a.value);
+    const Container* argv = values.empty() ? nullptr : values.data();
+
+    // ---- the embedded compiler, when there is one --------------------------
+    //
+    // Identical generated source and identical ABI, so a block cannot tell
+    // which engine ran it.  What changes is what the machine needs installed:
+    // this path forks nothing and opens no shared library, so `satellite run`
+    // works on a box with no g++ at all.
+    const bool want_jit = cfg_.engine == Engine::Jit ||
+                          (cfg_.engine == Engine::Auto && g_jit);
+    if (want_jit && g_jit) {
+        std::ostringstream stamped;
+        stamped << "// built with: embedded clang -O2\n"
+                << generate(block_source, args);
+
+        double c_ms = 0, r_ms = 0;
+        Container out = g_jit(stamped.str(), "satellite_cxx_block", argv,
+                              (int)values.size(), err, out_printed, &c_ms, &r_ms);
+        if (timing) {
+            timing->compile_ms = c_ms;
+            timing->run_ms     = r_ms;
+            // Every JIT run compiles: the code lives in this process's memory
+            // and dies with it, so there is nothing on disk to come back to.
+            timing->cached     = false;
+        }
+        if (err && !err->empty()) return Container::nil();
+        ++compiles_;
+        return out;
+    }
+    if (cfg_.engine == Engine::Jit) {
+        if (err) *err = "the jit engine was asked for, but this build has no "
+                        "embedded compiler";
+        return Container::nil();
+    }
 
     const size_t hits_before = hits_;
     const Clock::time_point t_compile = Clock::now();
@@ -155,14 +205,6 @@ Container Bridge::run(const std::string& block_source,
     handles_.push_back(h);
     if (timing) timing->load_ms = ms_since(t_load);
 
-    // The module takes a flat array, so the values are lifted out of the
-    // CxxArgs.  The names went into the generated source at compile time and
-    // are not needed again -- what crosses the ABI boundary is 16 bytes per
-    // argument and nothing else.
-    std::vector<Container> values;
-    values.reserve(args.size());
-    for (const auto& a : args) values.push_back(a.value);
-
     Container result;
     {
         // Constructed before the timer starts and destroyed after it stops:
@@ -171,7 +213,7 @@ Container Bridge::run(const std::string& block_source,
         if (out_printed) cap = std::make_unique<::satellite::detail::CaptureStdout>();
 
         const Clock::time_point t_run = Clock::now();
-        result = fn(values.empty() ? nullptr : values.data(), (int)values.size());
+        result = fn(argv, (int)values.size());
         if (timing) timing->run_ms = ms_since(t_run);
 
         if (cap) *out_printed = cap->stop();

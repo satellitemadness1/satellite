@@ -119,6 +119,36 @@ bool parse_args(const std::string& header, std::vector<CxxArg>* out,
 const char* cxx_type_for(Type t);
 
 // ---------------------------------------------------------------------------
+// Which compiler runs a block.
+//
+// Fork: write a .cpp, run g++, dlopen the .so.  Needs g++ on the machine and
+//       satellite's headers on disk, but the result is CACHED -- a second run
+//       costs 0.1 ms instead of a second and a half.
+// Jit:  clang, linked into this process, straight to executable memory.  Needs
+//       nothing installed, and there is no on-disk cache to reuse, so every
+//       run pays the compile.
+//
+// Auto picks the JIT when this build has one and falls back to g++ otherwise,
+// because needing nothing installed is worth more than a warm cache -- a
+// program that cannot run at all is slower than one that takes a second.
+// ---------------------------------------------------------------------------
+enum class Engine { Auto, Fork, Jit };
+
+// The embedded compiler lives in the EXECUTABLE: LLVM's static archives are
+// linked there, not into satellite_core, so the Bridge cannot call it directly
+// without dragging 100 MB of LLVM into every program that links the library.
+// main() installs it here at startup instead.
+//
+// The signature deliberately mirrors jit::run_unit without naming its types,
+// so this header stays free of LLVM and cheap for every block to preprocess.
+using JitUnitFn = Container (*)(const std::string& unit, const std::string& entry,
+                                const Container* args, int argc, std::string* err,
+                                std::string* out_printed, double* compile_ms,
+                                double* run_ms);
+void set_jit_engine(JitUnitFn fn);
+bool jit_engine_installed();
+
+// ---------------------------------------------------------------------------
 // The bridge
 // ---------------------------------------------------------------------------
 
@@ -162,6 +192,7 @@ struct CxxConfig {
     std::string link_flags;             // SATELLITE_CXX_LINK_FLAGS -lm, -fopenmp, ...
 
     // --- behaviour ----------------------------------------------------------
+    Engine engine = Engine::Auto;  // SATELLITE_CXX_ENGINE  auto|fork|jit
     bool cache_enabled = true;   // SATELLITE_CXX_CACHE=0 recompiles every time
     bool keep_sources  = true;   // SATELLITE_CXX_KEEP_SOURCES=0 deletes the .cpp
     bool verbose       = false;  // SATELLITE_CXX_VERBOSE=1 echoes the command

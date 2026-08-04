@@ -78,6 +78,14 @@ CxxConfig default_config() {
         c.opt_level = n < 0 ? 0 : (n > 3 ? 3 : n);
     }
 
+    if (const char* v = env("SATELLITE_CXX_ENGINE")) {
+        std::string s;
+        for (const char* p = v; *p; ++p) s += (char)std::tolower((unsigned char)*p);
+        if      (s == "jit")  c.engine = Engine::Jit;
+        else if (s == "fork") c.engine = Engine::Fork;
+        else if (s == "auto") c.engine = Engine::Auto;
+    }
+
     env_bool("SATELLITE_CXX_NATIVE",       &c.native_arch);
     env_bool("SATELLITE_CXX_FAST_MATH",    &c.fast_math);
     env_bool("SATELLITE_CXX_CACHE",        &c.cache_enabled);
@@ -120,6 +128,10 @@ std::string CxxConfig::describe() const {
     o << "satellite.cxx settings\n\n";
     o << "  setting       value                             environment variable\n";
     o << "  ------------  --------------------------------  --------------------\n";
+    const char* eng = engine == Engine::Jit  ? "jit"
+                    : engine == Engine::Fork ? "fork"
+                    : jit_engine_installed() ? "auto (jit)" : "auto (fork)";
+    row("engine",      eng,                         "SATELLITE_CXX_ENGINE");
     row("compiler",    compiler,                    "SATELLITE_CXX_COMPILER");
     row("std",         std_version,                 "SATELLITE_CXX_STD");
     row("opt",         "-O" + std::to_string(opt_level), "SATELLITE_CXX_OPT");

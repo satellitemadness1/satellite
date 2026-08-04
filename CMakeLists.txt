@@ -100,19 +100,27 @@ else()
                  "building without an embedded compiler")
 endif()
 
+# The embedded compiler is several files when it exists and one stub when it
+# does not -- the same shape as gui.cpp / gui_none.cpp.
+if(SATELLITE_HAVE_CLANG)
+  set(SATELLITE_JIT_SOURCES src/jit/compile.cpp src/jit/run.cpp)
+else()
+  set(SATELLITE_JIT_SOURCES src/jit/unavailable.cpp)
+endif()
+
 # ---------------------------------------------------------------------------
 # satellite -- one binary, both faces.  No arguments opens the GTK4 console;
 # `satellite check foo.satl` stays a command-line tool.  That is what keeps
 # .ship/001/verify.sh and every README example working.
 # ---------------------------------------------------------------------------
 if(GTK4_FOUND)
-  add_executable(satellite src/main.cpp src/gui.cpp src/jit.cpp)
+  add_executable(satellite src/main.cpp src/gui.cpp ${SATELLITE_JIT_SOURCES})
   target_link_libraries(satellite ${GTK4_LIBRARIES})
   target_include_directories(satellite PRIVATE ${GTK4_INCLUDE_DIRS})
   target_link_directories(satellite PRIVATE ${GTK4_LIBRARY_DIRS})
   target_compile_options(satellite PRIVATE ${GTK4_CFLAGS_OTHER})
 else()
-  add_executable(satellite src/main.cpp src/gui_none.cpp src/jit.cpp)
+  add_executable(satellite src/main.cpp src/gui_none.cpp ${SATELLITE_JIT_SOURCES})
 endif()
 target_link_libraries(satellite satellite_core)
 
@@ -126,10 +134,10 @@ if(SATELLITE_HAVE_CLANG)
   execute_process(COMMAND "${SATELLITE_LLVM_ROOT}/bin/clang" -print-resource-dir
                   OUTPUT_VARIABLE CLANG_RESOURCE_DIR
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
-  set_source_files_properties(src/jit.cpp PROPERTIES
+  set_source_files_properties(${SATELLITE_JIT_SOURCES} PROPERTIES
     COMPILE_OPTIONS "-fno-rtti"
     INCLUDE_DIRECTORIES "${LLVM_INCDIR}"
-    COMPILE_DEFINITIONS "SATELLITE_HAVE_CLANG;SATELLITE_CLANG_RESOURCE_DIR=\"${CLANG_RESOURCE_DIR}\"")
+    COMPILE_DEFINITIONS "SATELLITE_HAVE_CLANG;SATELLITE_CLANG_RESOURCE_DIR=\"${CLANG_RESOURCE_DIR}\";SATELLITE_INCLUDE_DIR=\"${SATELLITE_RUNTIME_INCLUDE_DIR}\"")
   # The -L must come first and must point at the from-source build.  Without
   # it the linker happily resolves half these symbols against the system
   # LLVM 21 .so and fails on the half that changed between versions -- which

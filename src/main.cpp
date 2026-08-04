@@ -28,6 +28,28 @@ using namespace satellite;
 
 static const char* kVersion = "001";
 
+// The adapter that lets satellite_core reach the embedded compiler.  It lives
+// here because this is the only binary that has LLVM linked in; see the note on
+// set_jit_engine in cxx.hpp.  Doubles are passed instead of jit::Timing so that
+// cxx.hpp never has to know jit.hpp exists.
+static Container jit_unit_adapter(const std::string& unit, const std::string& entry,
+                                  const Container* args, int argc, std::string* err,
+                                  std::string* printed, double* compile_ms,
+                                  double* run_ms) {
+    jit::Timing t;
+    Container r = jit::run_unit(unit, entry, args, argc, err, printed, &t);
+    if (compile_ms) *compile_ms = t.compile_ms;
+    if (run_ms)     *run_ms     = t.run_ms;
+    return r;
+}
+
+// Called before anything can run a block.  Without an embedded compiler this
+// installs nothing and the bridge keeps forking g++, which is what a build with
+// no static LLVM has to do.
+static void install_engines() {
+    if (jit::available()) cxx::set_jit_engine(&jit_unit_adapter);
+}
+
 static bool read_file(const std::string& path, std::string* out) {
     std::ifstream f(path, std::ios::binary);
     if (!f) return false;
@@ -220,11 +242,13 @@ int main(int argc, char** argv) {
     // command-line tool, so one binary serves both and every shipped example
     // keeps working.
     if (argc < 2) {
+        install_engines();
         if (gui_available()) return gui_main(argc, argv);
         usage();
         return 1;
     }
     std::string cmd = argv[1];
+    install_engines();
 
     // ...unless the console is asked for by name, which is how you get it on a
     // build where you also want to pass arguments.

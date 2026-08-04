@@ -57,5 +57,22 @@ struct Timing {
 Container run(const std::string& body, std::string* err,
               std::string* out_printed = nullptr, Timing* timing = nullptr);
 
+// Compile a COMPLETE translation unit -- what satellite::cxx::generate()
+// produces -- and call its entry point, which must have the signature
+//
+//     extern "C" Container <entry>(const Container* args, int argc)
+//
+// This is what frees satellite.cxx blocks from g++.  Identical generated
+// source and identical Container ABI; the only difference is that clang runs
+// in this process instead of being forked, and the code is linked by ORC
+// instead of being written to a .so and dlopen'd back.
+//
+// The JIT'd code calls straight into this process for Container::str,
+// to_container, the dispatch tables and everything else -- ORC resolves those
+// against the host, so nothing has to be exported to a shared library first.
+Container run_unit(const std::string& unit, const std::string& entry,
+                   const Container* args, int argc, std::string* err,
+                   std::string* out_printed = nullptr, Timing* timing = nullptr);
+
 }  // namespace jit
 }  // namespace satellite
