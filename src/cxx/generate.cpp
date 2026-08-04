@@ -77,6 +77,49 @@ bool opens_file_scope_construct(const std::string& line) {
     return head.find(' ') != std::string::npos || head.find('*') != std::string::npos;
 }
 
+// Lift the file-scope directives off the FRONT of a line and return whatever
+// code was left behind on it.
+//
+// This exists because a whole line was previously hoisted whenever it began
+// with '#', which quietly destroyed the most natural way to write a one-line
+// block:
+//
+//     satellite.cxx() { #include <iostream> std::cout << "hello"; }
+//
+// The preprocessor takes <iostream> and discards the rest of the line as
+// "extra tokens at end of #include directive" -- a WARNING, not an error.  So
+// the block compiled, ran, printed nothing, and reported success.  Splitting
+// the line here is what makes the code survive.
+//
+// Only #include is split.  #define, #pragma and the conditionals genuinely run
+// to end of line, and there is no honest way to tell where the directive stops
+// and code begins, so those still take the whole line.
+std::string lift_directives(std::string t, std::ostringstream& prologue) {
+    for (;;) {
+        t = trim(t);
+        if (t.empty() || t[0] != '#') return t;
+
+        if (!starts_with_word(t.substr(1), "include")) {
+            prologue << t << '\n';                    // #define, #pragma, #if...
+            return "";
+        }
+
+        // #include <header>  or  #include "header"
+        size_t open = t.find_first_of("<\"", 8);
+        if (open == std::string::npos) { prologue << t << '\n'; return ""; }
+        char   close_ch = t[open] == '<' ? '>' : '"';
+        size_t close    = t.find(close_ch, open + 1);
+        if (close == std::string::npos) { prologue << t << '\n'; return ""; }
+
+        prologue << t.substr(0, close + 1) << '\n';
+        t = trim(t.substr(close + 1));
+        // `#include <iostream>;` is a stray semicolon the preprocessor would
+        // have warned about.  As the first thing in a function body it is a
+        // null statement -- legal, and not worth refusing the block over.
+        while (!t.empty() && t[0] == ';') t = trim(t.substr(1));
+    }
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -145,13 +188,24 @@ std::string generate(const std::string& block_source,
         bool to_prologue = hoisting;
 
         if (!hoisting && depth == 0) {
+            // Directives move to file scope; anything sharing the line with
+            // them stays code and falls through to be emitted below.
             if (!t.empty() && t[0] == '#') {
-                prologue << line << '\n';
-                continue;
+                t = lift_directives(t, prologue);
+                if (t.empty()) continue;
+                line = t;
             }
+            // `using namespace std; code...` on one line has the same problem,
+            // and fails LOUDLY rather than silently -- the trailing code lands
+            // at file scope and does not compile.  Split at the semicolon for
+            // the same reason.
             if (t.rfind("using namespace", 0) == 0) {
-                prologue << line << '\n';
-                continue;
+                size_t semi = t.find(';');
+                if (semi == std::string::npos) { prologue << line << '\n'; continue; }
+                prologue << t.substr(0, semi + 1) << '\n';
+                t = trim(t.substr(semi + 1));
+                if (t.empty()) continue;
+                line = t;
             }
             if (opens_file_scope_construct(line)) { hoisting = true; to_prologue = true; }
         }
@@ -187,6 +241,19 @@ std::string generate(const std::string& block_source,
         << "#include <exception>\n"
         << prologue.str()
         << "\n"
+        // `cout << x` without the std:: -- because a block is a snippet, not a
+        // header, and nothing else will ever #include it.  The usual objection
+        // to a using-directive is that it leaks into every translation unit
+        // that pulls the header in; a block has no such translation unit.
+        //
+        // The JIT preamble in src/jit.cpp already did this, so without it here
+        // the same line behaved differently depending on which compiler ran it.
+        // One language, one rule.
+        //
+        // AFTER the prologue, so it covers the user's own #includes too.  A
+        // using-directive is a lookup rule rather than a snapshot, so headers
+        // included above it are still reached.
+        << "using namespace std;\n"
         << "using namespace satellite;\n"
         << "using namespace satellite::cxx;\n"
         << "\n"

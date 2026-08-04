@@ -202,6 +202,10 @@ add_executable(test_divmod tests/test_divmod.cpp)
 target_link_libraries(test_divmod satellite_core)
 add_test(NAME divmod COMMAND test_divmod)
 
+add_executable(test_cxx_generate tests/test_cxx_generate.cpp)
+target_link_libraries(test_cxx_generate satellite_core)
+add_test(NAME cxx_generate COMMAND test_cxx_generate)
+
 add_executable(test_cxx_config tests/test_cxx_config.cpp)
 target_link_libraries(test_cxx_config satellite_core)
 add_test(NAME cxx_config COMMAND test_cxx_config)
