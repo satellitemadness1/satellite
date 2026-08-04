@@ -12,7 +12,7 @@
 // construction -- there is no second dialect to keep in agreement with the
 // first, and no way for `"a\tb"` to mean one thing in a header and another
 // thing three lines later.
-#include "satellite/cxx.hpp"
+#include "cxx_internal.hpp"
 #include "satellite/lexer.hpp"
 
 #include <cstring>

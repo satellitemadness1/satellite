@@ -1,82 +1,22 @@
-#include "satellite/cxx.hpp"
+// Turning a satellite.cxx block into a compilable translation unit.
+//
+// The interesting part is that satellite never has to understand a C++ type.
+// `satellite.return(expr)` becomes a call to to_container(expr), and OVERLOAD
+// RESOLUTION picks the conversion for whatever type expr happens to have; a
+// type with no overload is an ordinary compile error naming that type.
+// Arguments work the same way in reverse, through from_container.
+#include "cxx_internal.hpp"
 
-#include "capture_out.hpp"
-
-#include <cstdio>
-#include <cstdlib>
-#include <dlfcn.h>
-#include <fstream>
-#include <sstream>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <cctype>
-#include <chrono>
 #include <cstring>
-#include <memory>
-#include <unistd.h>
-
-#ifndef SATELLITE_INCLUDE_DIR
-#define SATELLITE_INCLUDE_DIR ""
-#endif
-#ifndef SATELLITE_CORE_LIB
-#define SATELLITE_CORE_LIB ""
-#endif
+#include <sstream>
 
 namespace satellite {
 namespace cxx {
 
-using Clock = std::chrono::steady_clock;
-static double ms_since(Clock::time_point t) {
-    return std::chrono::duration<double, std::milli>(Clock::now() - t).count();
-}
-
-// ---------------------------------------------------------------------------
-CxxConfig default_config() {
-    CxxConfig c;
-    c.compiler    = "g++";
-    c.include_dir = SATELLITE_INCLUDE_DIR;
-    c.lib         = SATELLITE_CORE_LIB;
-    c.flags       = "-O2 -std=c++20";
-
-    const char* home = std::getenv("HOME");
-    const char* tmp  = std::getenv("TMPDIR");
-    c.cache_dir = home ? std::string(home) + "/.satellite/cache"
-                : tmp  ? std::string(tmp)  + "/satellite-cache"
-                       : "/tmp/satellite-cache";
-    return c;
-}
+using detail::trim;
 
 namespace {
-
-void make_dirs(const std::string& path) {
-    std::string acc;
-    for (size_t k = 0; k < path.size(); ++k) {
-        acc += path[k];
-        if (path[k] == '/' && acc.size() > 1) ::mkdir(acc.c_str(), 0700);
-    }
-    ::mkdir(path.c_str(), 0700);
-}
-
-std::string hash_hex(const std::string& s) {
-    uint64_t h = 1469598103934665603ull;           // FNV-1a
-    for (unsigned char c : s) { h ^= c; h *= 1099511628211ull; }
-    char buf[17];
-    std::snprintf(buf, sizeof buf, "%016llx", (unsigned long long)h);
-    return buf;
-}
-
-bool file_exists(const std::string& p) {
-    struct stat st;
-    return ::stat(p.c_str(), &st) == 0;
-}
-
-std::string trim(const std::string& s) {
-    size_t b = s.find_first_not_of(" \t\r\n");
-    if (b == std::string::npos) return "";
-    size_t e = s.find_last_not_of(" \t\r\n");
-    return s.substr(b, e - b + 1);
-}
-
 // Net change in brace depth across a line, ignoring braces inside string and
 // char literals and after a line comment.
 int brace_delta(const std::string& line) {
@@ -312,139 +252,6 @@ std::string generate(const std::string& block_source,
         << "    }\n"
         << "}\n";
     return out.str();
-}
-
-// ---------------------------------------------------------------------------
-Bridge::Bridge(CxxConfig cfg) : cfg_(std::move(cfg)) {
-    if (!cfg_.cache_dir.empty()) make_dirs(cfg_.cache_dir);
-}
-
-Bridge::~Bridge() {
-    // Deliberately NOT dlclose'd: static destructors in a module can run while
-    // satellite values still point into it.  Modules live for the process.
-    handles_.clear();
-}
-
-bool Bridge::build(const std::string& block_source, std::string* so_path,
-                   std::string* err) {
-    return build(block_source, {}, so_path, err);
-}
-
-bool Bridge::build(const std::string& block_source,
-                   const std::vector<CxxArg>& args, std::string* so_path,
-                   std::string* err) {
-    std::string unit = generate(block_source, args);
-    // Hashing the unit is enough to key the cache ONLY because generate()
-    // stamps the module contract into it -- see the stamp in generate() for
-    // what goes wrong when the key covers the block's text alone.
-    std::string key  = hash_hex(unit);
-    std::string so   = cfg_.cache_dir + "/cxx_" + key + ".so";
-
-    if (file_exists(so)) {                          // same source, same binary
-        ++hits_;
-        if (so_path) *so_path = so;
-        return true;
-    }
-
-    std::string cpp = cfg_.cache_dir + "/cxx_" + key + ".cpp";
-    { std::ofstream f(cpp); if (!f) { if (err) *err = "cannot write " + cpp; return false; } f << unit; }
-
-    std::ostringstream cmd;
-    cmd << cfg_.compiler << ' ' << cfg_.flags << " -shared -fPIC"
-        << " -I" << cfg_.include_dir
-        << ' '   << cpp;
-    if (!cfg_.lib.empty()) {
-        size_t slash = cfg_.lib.find_last_of('/');
-        std::string dir = slash == std::string::npos ? "." : cfg_.lib.substr(0, slash);
-        cmd << ' ' << cfg_.lib << " -Wl,-rpath," << dir;
-    }
-    cmd << " -o " << so << " 2>&1";
-
-    FILE* p = popen(cmd.str().c_str(), "r");
-    if (!p) { if (err) *err = "cannot start the compiler"; return false; }
-    std::string diag;
-    char buf[512];
-    while (std::fgets(buf, sizeof buf, p)) diag += buf;
-    int rc = pclose(p);
-
-    if (rc != 0) {
-        ::unlink(so.c_str());                       // never cache a failure
-        if (err) *err = diag.empty() ? "compilation failed" : diag;
-        return false;
-    }
-
-    ++compiles_;
-    if (so_path) *so_path = so;
-    return true;
-}
-
-Container Bridge::run(const std::string& block_source, std::string* err) {
-    return run(block_source, {}, err);
-}
-
-Container Bridge::run(const std::string& block_source,
-                      const std::vector<CxxArg>& args, std::string* err,
-                      std::string* out_printed, Timing* timing) {
-    if (out_printed) out_printed->clear();
-
-    const size_t hits_before = hits_;
-    const Clock::time_point t_compile = Clock::now();
-    std::string so;
-    if (!build(block_source, args, &so, err)) return Container::nil();
-    if (timing) {
-        timing->cached     = (hits_ > hits_before);
-        timing->compile_ms = ms_since(t_compile);
-    }
-
-    const Clock::time_point t_load = Clock::now();
-    void* h = ::dlopen(so.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (!h) {
-        if (err) *err = std::string("dlopen: ") + dlerror();
-        return Container::nil();
-    }
-
-    auto abi = (int (*)())::dlsym(h, "satellite_cxx_abi");
-    if (!abi) {
-        if (err) *err = "module has no satellite_cxx_abi symbol";
-        return Container::nil();
-    }
-    if (abi() != ABI) {
-        if (err) *err = "ABI mismatch: module " + std::to_string(abi()) +
-                        ", host " + std::to_string(ABI) + " -- refusing to load";
-        return Container::nil();
-    }
-
-    using BlockFn = Container (*)(const Container*, int);
-    auto fn = (BlockFn)::dlsym(h, "satellite_cxx_block");
-    if (!fn) {
-        if (err) *err = "module has no satellite_cxx_block symbol";
-        return Container::nil();
-    }
-    handles_.push_back(h);
-    if (timing) timing->load_ms = ms_since(t_load);
-
-    // The module takes a flat array, so the values are lifted out of the
-    // CxxArgs.  The names went into the generated source at compile time and
-    // are not needed again -- what crosses the ABI boundary is 16 bytes per
-    // argument and nothing else.
-    std::vector<Container> values;
-    values.reserve(args.size());
-    for (const auto& a : args) values.push_back(a.value);
-
-    Container result;
-    {
-        // Constructed before the timer starts and destroyed after it stops:
-        // the pipe setup is satellite's cost, not the block's.
-        std::unique_ptr<detail::CaptureStdout> cap;
-        if (out_printed) cap = std::make_unique<detail::CaptureStdout>();
-
-        const Clock::time_point t_run = Clock::now();
-        result = fn(values.empty() ? nullptr : values.data(), (int)values.size());
-        if (timing) timing->run_ms = ms_since(t_run);
-
-        if (cap) *out_printed = cap->stop();
-    }
-    return result;
 }
 
 }  // namespace cxx

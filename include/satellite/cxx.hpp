@@ -134,14 +134,49 @@ struct Timing {
     double total_ms() const { return compile_ms + load_ms + run_ms; }
 };
 
+// Everything tunable about compiling a satellite.cxx block.
+//
+// Running C++ is a large part of what satellite does, so the knobs are real
+// ones rather than a token gesture -- optimisation level, target architecture,
+// which compiler, whether the cache is used at all.  Every field can be set
+// from the environment (see the SATELLITE_CXX_* names below), because version
+// 001 has no parser and therefore no way to write settings in satellite itself.
+//
+// ANY field that changes the generated machine code is part of the cache key.
+// It has to be: the cache is content-addressed, so without that, raising
+// opt_level from 2 to 3 would serve back the -O2 module that is already on disk
+// and the setting would appear to do nothing.
 struct CxxConfig {
-    std::string compiler;      // default "g++"
+    // --- where things live --------------------------------------------------
+    std::string compiler;      // SATELLITE_CXX_COMPILER   default "g++"
     std::string include_dir;   // where satellite/*.hpp lives
     std::string lib;           // libsatellite_core.so to link against
-    std::string cache_dir;     // compiled blocks land here, keyed by hash
-    std::string flags;         // default "-O2 -std=c++20"
+    std::string cache_dir;     // SATELLITE_CXX_CACHE_DIR
+
+    // --- how a block is compiled --------------------------------------------
+    std::string std_version = "c++20";  // SATELLITE_CXX_STD
+    int         opt_level   = 2;        // SATELLITE_CXX_OPT        -O0 .. -O3
+    bool        native_arch = false;    // SATELLITE_CXX_NATIVE     -march=native
+    bool        fast_math   = false;    // SATELLITE_CXX_FAST_MATH  -ffast-math
+    std::string extra_flags;            // SATELLITE_CXX_FLAGS      appended verbatim
+    std::string link_flags;             // SATELLITE_CXX_LINK_FLAGS -lm, -fopenmp, ...
+
+    // --- behaviour ----------------------------------------------------------
+    bool cache_enabled = true;   // SATELLITE_CXX_CACHE=0 recompiles every time
+    bool keep_sources  = true;   // SATELLITE_CXX_KEEP_SOURCES=0 deletes the .cpp
+    bool verbose       = false;  // SATELLITE_CXX_VERBOSE=1 echoes the command
+
+    // The compile flags these settings add up to, in a stable order -- stable
+    // because this string goes into the cache key, and a set that reordered
+    // itself between runs would miss the cache every time.
+    std::string compile_flags() const;
+
+    // Human-readable dump: every setting, its value, and the variable that
+    // overrides it.  Backs `satellite cxx-config`.
+    std::string describe() const;
 };
 
+// Defaults, with every SATELLITE_CXX_* environment variable applied on top.
 CxxConfig default_config();
 
 // The generated translation unit for a block -- exposed so it can be tested

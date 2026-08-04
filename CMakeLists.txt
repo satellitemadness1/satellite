@@ -16,14 +16,19 @@ add_library(satellite_core SHARED
   src/bignum.cpp
   src/bigdiv.cpp
   src/container.cpp
-  src/ops.cpp
+  src/ops/arith.cpp
+  src/ops/strings.cpp
+  src/ops/compare.cpp
+  src/ops/tables.cpp
   src/source.cpp
   src/library.cpp
   src/capsule.cpp
   src/lexer.cpp
   src/machine.cpp
-  src/cxx.cpp
-  src/cxx_args.cpp
+  src/cxx/config.cpp
+  src/cxx/generate.cpp
+  src/cxx/bridge.cpp
+  src/cxx/args.cpp
   src/interpret.cpp)
 # satellite.cxx blocks are compiled at runtime, so the headers and the core .so
 # have to be findable *then*, not just at build time. These default to the source
@@ -192,3 +197,11 @@ target_link_libraries(bench_dispatch satellite_core)
 add_executable(test_bignum tests/test_bignum.cpp)
 target_link_libraries(test_bignum satellite_core)
 add_test(NAME bignum COMMAND test_bignum)
+
+add_executable(test_divmod tests/test_divmod.cpp)
+target_link_libraries(test_divmod satellite_core)
+add_test(NAME divmod COMMAND test_divmod)
+
+add_executable(test_cxx_config tests/test_cxx_config.cpp)
+target_link_libraries(test_cxx_config satellite_core)
+add_test(NAME cxx_config COMMAND test_cxx_config)

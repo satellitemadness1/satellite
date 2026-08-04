@@ -179,6 +179,8 @@ static void usage() {
         "  satellite check <file.satl>   lex the file and report on it\n"
         "  satellite lex   <file.satl>   dump the token stream\n"
         "  satellite run   <file.satl>   execute the satellite.cxx blocks\n"
+        "  satellite jit   \"<c++>\"       compile and run C++ in-process\n"
+        "  satellite cxx-config          show the satellite.cxx settings\n"
         "\n"
         "What works in %s: the value type (satellite_container), strings with\n"
         "the satellite charmap, big integers, the lexer, synthetic keyboard\n"
@@ -216,6 +218,14 @@ int main(int argc, char** argv) {
         return 0;
     }
     if (cmd == "help" || cmd == "--help" || cmd == "-h") { usage(); return 0; }
+
+    // Every tunable, its value, and the variable that overrides it.  Running C++
+    // is a large part of what satellite does, so the settings that govern it
+    // should be inspectable without reading the source.
+    if (cmd == "cxx-config") {
+        std::printf("%s", cxx::default_config().describe().c_str());
+        return 0;
+    }
 
     // `satellite jit "return 6*7;"` -- the embedded compiler from the command
     // line, so the timing is scriptable and does not need a window.

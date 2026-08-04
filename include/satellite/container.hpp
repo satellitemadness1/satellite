@@ -24,9 +24,18 @@ namespace satellite {
 
 struct Container;
 
+// The constructor is DECLARED here and defined below, after Container is
+// complete.  std::vector<T> tolerates an incomplete T only until something
+// instantiates one of its members -- and a constructor defined here would
+// instantiate ~vector immediately, on a Container that is still just the
+// forward declaration above.
+//
+// GCC accepts that; clang rejects it, correctly.  Found by pointing
+// SATELLITE_CXX_COMPILER at clang++, which is the whole reason that setting
+// earns its keep: the codebase was GCC-only by accident, not by decision.
 struct List : Obj {
     std::vector<Container> items;
-    List() : Obj(Type::List) {}
+    List();
 };
 
 // Declared, not defined: a capsule carries parameter names and a span of
@@ -89,6 +98,9 @@ struct Container {
 
 static_assert(sizeof(Container) == 16, "container must stay 16 bytes");
 
+// Now that Container is complete, std::vector<Container> may instantiate.
+inline List::List() : Obj(Type::List) {}
+
 // ---------------------------------------------------------------------------
 // Dispatch tables.  One indexed load + one indirect call, no branch chain.
 // ---------------------------------------------------------------------------
@@ -100,6 +112,7 @@ extern BinFn add_table[TCOUNT][TCOUNT];
 extern BinFn sub_table[TCOUNT][TCOUNT];
 extern BinFn mul_table[TCOUNT][TCOUNT];
 extern BinFn div_table[TCOUNT][TCOUNT];
+extern BinFn mod_table[TCOUNT][TCOUNT];
 extern BinFn eq_table[TCOUNT][TCOUNT];
 extern BinFn lt_table[TCOUNT][TCOUNT];
 
@@ -145,8 +158,20 @@ inline Container mul(const Container& a, const Container& b) {
 }
 
 // `"a,b,c" / ","` splits into a list; `"ab" * 3` repeats.
+//
+// No inline fast path for Int/Int, unlike add/sub/mul above.  Integer division
+// has to test for a zero divisor and for INT64_MIN / -1 before it can divide at
+// all -- on x86 both fault rather than returning a wrong answer -- so there is
+// no shorter route than the one div_int already takes.
 inline Container div(const Container& a, const Container& b) {
     return div_table[static_cast<int>(a.type)][static_cast<int>(b.type)](a, b);
+}
+
+// Truncated remainder: the sign follows the DIVIDEND, so -7 % 2 == -1.  This
+// matches C++, and matches big::divmod, so the answer does not change as a
+// value grows past int64.
+inline Container mod(const Container& a, const Container& b) {
+    return mod_table[static_cast<int>(a.type)][static_cast<int>(b.type)](a, b);
 }
 inline Container equals(const Container& a, const Container& b) {
     return eq_table[static_cast<int>(a.type)][static_cast<int>(b.type)](a, b);
