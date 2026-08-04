@@ -52,18 +52,6 @@ const char* tok_name(Tok t);
 struct Token {
     Tok         kind = Tok::End;
     std::string text;      // identifier name, or the decoded string body
-
-    // CxxBlock ONLY: the raw text between the parentheses of the block header,
-    // `satellite.cxx(greeting = "hi", n = 42) { ... }` -> `greeting = "hi", n = 42`
-    //
-    // Kept as text rather than as tokens because a CxxBlock is one token that
-    // carries a whole block, and every consumer scans linearly for it.  Emitting
-    // the header as separate tokens would make each of them look backwards to
-    // find out whether the arguments belonged to a block or to an ordinary call.
-    // satellite::cxx::parse_args re-lexes this on demand -- so the escapes and
-    // number formats are the language's, not a second dialect.
-    std::string args;
-
     int64_t     ival = 0;
     double      dval = 0;
     int         line = 0;
@@ -105,8 +93,6 @@ private:
     void scan_number(std::vector<Token>& out);
     void scan_string(std::vector<Token>& out);
     void scan_word(std::vector<Token>& out, bool after_dot);
-    void skip_block_gap();      // whitespace and comments before a block's '{'
-    bool scan_cxx_args(std::string* out);   // the ( ... ) of a block header
     void scan_cxx_block(std::vector<Token>& out);
 };
 

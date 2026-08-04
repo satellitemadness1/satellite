@@ -1,0 +1,41 @@
+// cxx_args.satl -- passing values from satellite into C++, and back out.
+//
+// The block header names its arguments, and each one arrives inside the C++ as
+// a NAMED, TYPED local:
+//
+//     greeting   is a std::string
+//     count      is an int64_t
+//     scale      is a double
+//     loud       is a bool
+//
+// Nothing has to be unpacked.  The type comes from the value, through the same
+// from_container overload set that reads it, so satellite never describes a C++
+// type and C++ never describes a satellite one.
+//
+// Run it:
+//     satellite run .ship/001/examples/cxx_args.satl
+//
+// Expected output:
+//     hello, world!
+//     hello, world!
+//     hello, world!
+//       => 7.5   [real]
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.cxx(greeting = "hello, world!", count = 3, scale = 2.5, loud = true)
+    {
+        #include <iostream>
+
+        for (int64_t k = 0; k < count; ++k)
+            std::cout << (loud ? greeting : "...") << std::endl;
+
+        // ...and back the other way: C++ overload resolution picks
+        // to_container(double), so this arrives in satellite as a real.
+        satellite.return(count * scale)
+    }
+
+    satellite.return(satellite)
+}

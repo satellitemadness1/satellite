@@ -297,6 +297,19 @@ static Container mul_str(const Container& a, const Container& b) {
 }
 
 static bool same(const Container& a, const Container& b) {
+    // A capsule is a DECLARATION, so identity is the only equality that means
+    // anything: two capsules are equal when they are the same declaration.
+    // This branch has to come first, because every test below reads the union
+    // as something a capsule is not -- to_double() would answer 0.0 and make
+    // every capsule equal to 0.0, and as_bigint() would read the heap POINTER
+    // as an integer magnitude, which publishes the address to the program.
+    //
+    // Deliberately not extended to List: a list wants structural equality, and
+    // it already answers those two the same wrong way.  That is a pre-existing
+    // hole in this function, older than capsules and out of scope here.
+    if (a.type == Type::Capsule || b.type == Type::Capsule)
+        return a.type == b.type && a.obj == b.obj;
+
     if (a.type == Type::Str && b.type == Type::Str)
         return a.as_str()->compare(*b.as_str()) == 0;
     if (a.type == Type::Str || b.type == Type::Str) return false;

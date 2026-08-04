@@ -9,6 +9,9 @@
 //   satellite check   file.satl     lex it, report errors, exit non-zero on any
 //   satellite lex     file.satl     dump the token stream
 //   satellite run     file.satl     execute every satellite.cxx block in it
+#include "satellite/gui.hpp"
+#include "satellite/jit.hpp"
+#include <chrono>
 #include "satellite/container.hpp"
 #include "satellite/cxx.hpp"
 #include "satellite/lexer.hpp"
@@ -134,14 +137,33 @@ static int cmd_run(const std::string& path) {
     for (size_t k = 0; k < blocks.size(); ++k) {
         std::printf("--- satellite.cxx block %zu (line %d) ---\n",
                     k + 1, blocks[k]->line);
+        // stderr is unbuffered and stdout is not when either is a pipe, so
+        // without this an error overtakes the header it belongs under and ends
+        // up filed against the previous block.
+        std::fflush(stdout);
         std::string err;
-        Container r = bridge.run(blocks[k]->text, &err);
+
+        std::vector<cxx::CxxArg> args;
+        if (!blocks[k]->args.empty() &&
+            !cxx::parse_args(blocks[k]->args, &args, &err)) {
+            std::fprintf(stderr, "  arguments: %s\n", err.c_str());
+            ++failures;
+            continue;
+        }
+
+        // No capture here on purpose: a command line HAS a terminal, so the
+        // block's own output belongs on it directly, interleaved as it happens
+        // rather than replayed afterwards.
+        cxx::Timing tm;
+        Container r = bridge.run(blocks[k]->text, args, &err, nullptr, &tm);
         if (!err.empty()) {
             std::fprintf(stderr, "%s\n", err.c_str());
             ++failures;
             continue;
         }
         std::printf("  => %s   [%s]\n", r.to_string().c_str(), type_name(r.type));
+        std::printf("     %s in %.1f ms, ran in %.3f ms\n",
+                    tm.cached ? "cached" : "compiled", tm.compile_ms, tm.run_ms);
     }
     std::printf("\n%zu block(s), %zu compiled, %zu from cache, %d failed\n",
                 blocks.size(), bridge.compiles(), bridge.cache_hits(), failures);
@@ -171,14 +193,61 @@ static void usage() {
 int main(int argc, char** argv) {
     init_tables();
 
-    if (argc < 2) { usage(); return 1; }
+    // No arguments means the console.  `satellite check foo.satl` stays a
+    // command-line tool, so one binary serves both and every shipped example
+    // keeps working.
+    if (argc < 2) {
+        if (gui_available()) return gui_main(argc, argv);
+        usage();
+        return 1;
+    }
     std::string cmd = argv[1];
+
+    // ...unless the console is asked for by name, which is how you get it on a
+    // build where you also want to pass arguments.
+    if (cmd == "console" || cmd == "gui") {
+        if (gui_available()) return gui_main(argc - 1, argv + 1);
+        std::fprintf(stderr, "this build has no GUI console (GTK4 was not found)\n");
+        return 1;
+    }
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
         std::printf("%s\n", kVersion);
         return 0;
     }
     if (cmd == "help" || cmd == "--help" || cmd == "-h") { usage(); return 0; }
+
+    // `satellite jit "return 6*7;"` -- the embedded compiler from the command
+    // line, so the timing is scriptable and does not need a window.
+    if (cmd == "jit") {
+        if (!jit::available()) {
+            std::fprintf(stderr, "this build has no embedded compiler\n");
+            return 1;
+        }
+        if (argc < 3) {
+            std::fprintf(stderr, "usage: satellite jit \"<c++ body>\"\n");
+            return 1;
+        }
+        std::string body;
+        for (int i = 2; i < argc; ++i) {
+            if (i > 2) body += " ";
+            body += argv[i];
+        }
+        std::string  err, printed;
+        jit::Timing  t;
+        Container    v = jit::run(body, &err, &printed, &t);
+        if (!err.empty()) {
+            std::fprintf(stderr, "%s\n", err.c_str());
+            v.release();
+            return 1;
+        }
+        std::fputs(printed.c_str(), stdout);
+        std::printf("=> %s [%s]\n", v.to_string().c_str(), type_name(v.type));
+        std::printf("compiled in %.2f ms, ran in %.3f ms (total %.2f ms)\n",
+                    t.compile_ms, t.run_ms, t.total_ms());
+        v.release();
+        return 0;
+    }
 
     if (argc < 3) {
         std::fprintf(stderr, "%s needs a file\n", cmd.c_str());

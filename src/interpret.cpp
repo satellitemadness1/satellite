@@ -9,6 +9,7 @@
 
 #include <sys/stat.h>
 
+#include <cstdio>
 #include <fstream>
 #include <sstream>
 
@@ -191,16 +192,46 @@ InterpretResult interpret_source(const std::string& source,
             if (t.kind != Tok::CxxBlock) continue;
             ++n;
             std::string err;
-            Container v = bridge.run(t.text, &err);
+
+            // The block header, if it has one.  A bad argument list is reported
+            // against the block and the block is skipped -- compiling it would
+            // only produce a second, worse diagnostic about generated code.
+            std::vector<cxx::CxxArg> args;
+            if (!t.args.empty() && !cxx::parse_args(t.args, &args, &err)) {
+                std::ostringstream ms;
+                ms << "cxx block " << n << " arguments: " << err;
+                r.diagnostics.push_back({ms.str(), t.line, t.col, true});
+                continue;
+            }
+
+            std::string  printed;
+            cxx::Timing  tm;
+            Container v = bridge.run(t.text, args, &err, &printed, &tm);
             if (!err.empty()) {
                 std::ostringstream ms;
                 ms << "cxx block " << n << " failed: " << err;
                 r.diagnostics.push_back({ms.str(), t.line, t.col, true});
                 continue;
             }
+
+            // What the block PRINTED comes first and unadorned -- that is the
+            // program's own output.  The => line is satellite talking about it,
+            // so it is marked as such and comes after.
+            std::istringstream ps(printed);
+            std::string        pl;
+            while (std::getline(ps, pl)) r.output.push_back(pl);
+
             std::ostringstream ls;
             ls << "cxx block " << n << " (line " << t.line << ") => "
                << v.to_string() << " [" << type_name(v.type) << "]";
+            // Compile and run reported apart because they move for different
+            // reasons: compile_ms is ~0 from the cache and ~1s on a miss, while
+            // run_ms is native C++ either way.
+            char tb[128];
+            std::snprintf(tb, sizeof tb, "  (%s in %.1f ms, ran in %.3f ms)",
+                          tm.cached ? "cached" : "compiled",
+                          tm.compile_ms, tm.run_ms);
+            ls << tb;
             r.output.push_back(ls.str());
             ++ran;
         }

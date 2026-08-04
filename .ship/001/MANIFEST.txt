@@ -1,0 +1,191 @@
+SATELLITE 001 (preliminary) -- .ship/001 MANIFEST
+Generated 2026-08-03. Sizes in bytes. 25 files.
+457,866 bytes excluding this file (whose own size changes when it is edited).
+
+Regenerate the file list with:
+    find . -type f -printf '%s\t%p\n' | sort -k2
+
+--------------------------------------------------------------------------------
+TOP LEVEL
+--------------------------------------------------------------------------------
+  31059  README.md
+         The version 001 document. Leads with the fact that 001 has no parser
+         and no VM, so a .satl file cannot be executed; then covers what the
+         container, string, bignum, lexer, machine and C++ bridge actually do,
+         the four CLI commands with real captured output, requirements, and the
+         full satellite charmap table.
+
+   9090  common_headers.txt
+         The 92 standard-library headers a satellite.cxx block can #include on
+         this machine. Measured, not guessed: 102 candidates were compiled and
+         dlopen'd through the same pipeline src/cxx.cpp uses, and the 10 that
+         failed are listed with their reason. Machine-specific by construction.
+
+   8461  verify.sh          [executable]
+         Runs everything in this folder and exits non-zero if any of it fails.
+         45 checks in six groups (47 with --cold): files present and non-empty; the binary is
+         self-contained ($ORIGIN rpath, core .so resolving inside bin/, all
+         libraries resolving, g++ on PATH); satellite version; satellite check
+         on all seven examples plus a pinned token count; two deliberately
+         malformed inputs that must be REJECTED (so a always-says-ok lexer
+         cannot pass); and satellite run on every cxx block asserted against
+         its documented output. Pass --cold to empty ~/.satellite/cache first;
+         that adds two checks proving the blocks really are compiled from
+         source and then really are served from cache on a second run.
+
+   ----  MANIFEST.txt
+         This file.
+
+--------------------------------------------------------------------------------
+bin/ -- the CLI and its library. Self-contained; see note [1].
+--------------------------------------------------------------------------------
+  33504  bin/satellite      [executable]
+         The command-line tool. Four commands: version, check <file.satl>,
+         lex <file.satl>, run <file.satl>. RPATH is $ORIGIN, so it loads the
+         library sitting beside it rather than one from a build tree. That
+         covers linking only -- for moving the folder, see note [1].
+         sha256: eca3439711c8f582...
+
+ 298552  bin/libsatellite_core.so
+         Everything the language is so far: charmap, satellite_string,
+         satellite_container, bignum, ops, source, library, capsule, lexer,
+         machine, the C++ bridge and the interpreter seam. Shared rather than
+         static so satellite.cxx modules can link against it. Also the library
+         those modules link against at run time.
+         sha256: 4357cb8504d31494...
+
+--------------------------------------------------------------------------------
+include/satellite/ -- headers a satellite.cxx block compiles against. See [1].
+--------------------------------------------------------------------------------
+   1461  include/satellite/types.hpp       Fundamental typedefs and the Tag enum.
+    610  include/satellite/bignum.hpp      Arbitrary-precision integer.
+   3613  include/satellite/charmap.hpp     The 110-code satellite charmap:
+                                           char <-> code, and the math tokens
+                                           kept distinct from the text chars.
+   2779  include/satellite/string.hpp      satellite_string -- 32 bits per
+                                           character, holding charmap codes and
+                                           NOT Unicode codepoints.
+   7737  include/satellite/container.hpp   satellite_container -- the 16-byte
+                                           tagged union (Nil/Bool/Int/Big/Real/
+                                           Str/List) every value is.
+   5429  include/satellite/cxx.hpp         The C++ bridge: CxxConfig, Bridge,
+                                           and the to_container overloads that
+                                           satellite.return(EXPR) resolves
+                                           through. The header a cxx block
+                                           needs most.
+   3175  include/satellite/lexer.hpp       Tokens, token kinds, and the
+                                           statement-termination rule.
+   4627  include/satellite/source.hpp      Source files as a vector of lines.
+  10140  include/satellite/library.hpp     The variable store and satellite.main.
+   5707  include/satellite/capsule.hpp     Capsule (function) representation.
+                                           NEW AND UNFINISHED -- see note [3].
+   3793  include/satellite/interpret.hpp   The interpreter seam the CLI and the
+                                           GUI both sit on. It does not execute
+                                           satellite code; there is nothing yet
+                                           to execute it with.
+   4177  include/satellite/machine.hpp     satellite.machine -- synthetic
+                                           keyboard via /dev/uinput. Needs
+                                           permission on that device; see [4].
+
+--------------------------------------------------------------------------------
+examples/ -- every one verified by verify.sh against its documented output
+--------------------------------------------------------------------------------
+   1687  examples/hello_main.satl
+         The shape of a main file, start to finish -- the one to copy when
+         starting a program. Prints "hello from satellite 001".
+
+   1080  examples/cxx_hello.satl
+         The smallest satellite.cxx block that does something: builds a
+         std::string, returns it, arrives as a satellite string.
+         Prints "hello from C++".
+
+    992  examples/cxx_math.satl
+         Ordinary C++ control flow at the top level of a block -- a for loop
+         summing 1..100. Prints "5050" as a satellite int.
+
+   1036  examples/cxx_vector.satl
+         std::vector<int> crossing the boundary as a satellite list via the
+         to_container template overload.
+         Prints "[1, 4, 9, 16, 25, 36, 49, 64]".
+
+   2128  examples/cxx_template.satl
+         File-scope hoisting: a template defined at the top of a block cannot
+         sit in the generated function body, so the bridge lifts it out.
+         Prints "ints -> 15, reals -> 4".
+
+   2004  examples/cxx_error.satl
+         A C++ exception unwinding out of a loaded module. The generated entry
+         point wraps everything in try/catch, so nothing escapes into the
+         interpreter's frames; the exception comes back as a satellite string.
+         Prints "cxx error: index 7 is past the end (size 3)".
+
+  15025  examples/satellite_full_test.satl
+         The lexer conformance input: 355 lines touching every construct 001
+         can tokenise. Lexes to exactly 1150 tokens / 117 statements with zero
+         errors, and its three satellite.cxx blocks run. Everything else in it
+         is a valid token stream and nothing more -- the capsules, the
+         spacesuit, the arithmetic and the library paths do not execute.
+
+--------------------------------------------------------------------------------
+NOTES
+--------------------------------------------------------------------------------
+[1] SELF-CONTAINED, AND WHY include/ IS HERE.
+    A satellite.cxx block is compiled at RUN time, so the headers and the core
+    .so have to exist then -- not just when satellite was built. Earlier builds
+    baked absolute paths to the repository's source and build trees into
+    libsatellite_core.so, which meant this folder only worked while the rest of
+    the repository sat where it was. These binaries were configured with
+    SATELLITE_RUNTIME_INCLUDE_DIR and SATELLITE_RUNTIME_CORE_LIB pointing inside
+    this folder, and linked with RPATH=$ORIGIN.
+
+    Verified by hiding the repository's build/ and include/ directories and
+    running the bundle: check and run both still work, compiling cold.
+
+    THE ONE CATCH: those two paths are absolute, so they point at
+    .ship/001 AT ITS CURRENT LOCATION. Moving bin/ alone is fine ($ORIGIN
+    handles the library), but moving the whole 001 folder elsewhere breaks
+    satellite.cxx until the binaries are rebuilt with the new paths. Version
+    001 has no way to relocate them without a rebuild.
+
+[2] REQUIREMENTS.
+    Linux x86-64. g++ must be on PATH at run time for satellite.cxx -- the
+    bridge shells out to literally `g++ -O2 -std=c++20 -shared -fPIC`, and 001
+    exposes no flag or environment variable to choose a different compiler.
+    A writable home directory for the block cache at ~/.satellite/cache
+    (falls back to $TMPDIR then /tmp; safe to delete, blocks recompile).
+
+    No LD_LIBRARY_PATH is needed. The binaries were built with GCC 17.0.0
+    (experimental) but require only GLIBCXX_3.4.31, which the system
+    libstdc++ (14.3.1) provides -- confirmed by running with LD_LIBRARY_PATH
+    unset and PATH reduced to /usr/bin:/bin.
+
+[3] THESE BINARIES ARE A SNAPSHOT OF UNCOMMITTED WORK.
+    They were built from the working tree as of 2026-08-03, which is AHEAD of
+    the last commit (d8e34fa) and contains uncommitted changes to
+    container.hpp, types.hpp and container.cpp, plus two untracked new files,
+    capsule.hpp and capsule.cpp, that are compiled into this .so.
+
+    capsule.cpp compiles and links, but its test (tests/test_capsule.cpp) has
+    not been written yet -- the repository's own CMakeLists.txt refers to that
+    file, so THE REPOSITORY DOES NOT CURRENTLY CONFIGURE. These binaries were
+    produced from a frozen copy of the tree with that one dangling test target
+    removed. Nothing in the CLI reaches the capsule code yet, so its being
+    untested does not affect anything verify.sh exercises -- but it is in the
+    .so, and it has not been tested.
+
+    The headers in include/ are byte-identical to the ones this .so was
+    compiled from, so there is no header/binary mismatch.
+
+[4] NOT EXERCISED BY verify.sh.
+    satellite.machine (synthetic keyboard via /dev/uinput) needs permission on
+    that device, which is root-only by default, so verify.sh does not touch it.
+    It is compiled into the .so and covered by the repository's test_machine,
+    which runs in recording mode.
+    satellite-gui (the GTK4 console) is NOT shipped in this folder.
+
+[5] WHAT 001 STILL CANNOT DO.
+    There is no parser and no virtual machine. A .satl file cannot be executed.
+    `satellite run` executes the satellite.cxx blocks in a file and nothing
+    else: satellite.console.display produces tokens and no output,
+    satellite.capsule defines nothing, satellite.include loads nothing. That is
+    the whole of it, and README.md says so first rather than last.

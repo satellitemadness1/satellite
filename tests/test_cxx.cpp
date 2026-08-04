@@ -238,6 +238,139 @@ int main() {
               "the exception is caught and returned as a value");
     }
 
+    // ---- block headers: satellite.cxx( ... ) { } ---------------------------
+    {
+        // The header is lexed off the block and kept beside it.
+        Lexer lx("satellite.cxx(greeting = \"hi\", n = 42)\n{\nint x = 1;\n}\n");
+        auto  ts = lx.scan();
+        const Token* blk = nullptr;
+        for (const auto& t : ts) if (t.kind == Tok::CxxBlock) blk = &t;
+        check(blk != nullptr, "a block with a header is still one CxxBlock token");
+        if (blk) eqs(blk->args, "greeting = \"hi\", n = 42",
+                     "the header text is captured verbatim");
+
+        // A ')' inside a string must not close the header early.  This is the
+        // case that silently truncates a block if the scanner is naive.
+        Lexer lx2("satellite.cxx(sad = \":-)\")\n{\nint x = 1;\n}\n");
+        auto  ts2 = lx2.scan();
+        const Token* b2 = nullptr;
+        for (const auto& t : ts2) if (t.kind == Tok::CxxBlock) b2 = &t;
+        check(b2 != nullptr, "a ')' inside a string does not end the header");
+        if (b2) eqs(b2->args, "sad = \":-)\"", "the whole header survives it");
+
+        // No '{' means this was never a block, and everything the lookahead
+        // consumed has to be given back as ordinary tokens.
+        Lexer lx3("satellite.cxx(1, 2)\n");
+        auto  ts3 = lx3.scan();
+        bool  any_block = false;
+        int   ints = 0;
+        for (const auto& t : ts3) {
+            if (t.kind == Tok::CxxBlock) any_block = true;
+            if (t.kind == Tok::Int)      ++ints;
+        }
+        check(!any_block, "satellite.cxx with no block is not a block");
+        check(ints == 2, "and its arguments lex as ordinary tokens");
+    }
+
+    // ---- parsing a header --------------------------------------------------
+    {
+        std::vector<cxx::CxxArg> a;
+        std::string err;
+        check(cxx::parse_args("greeting = \"hi\", n = 42, r = 2.5, b = true",
+                              &a, &err), "a named header parses");
+        check(a.size() == 4, "with one argument each");
+        if (a.size() == 4) {
+            eqs(a[0].name, "greeting", "names are kept");
+            check(a[0].value.type == Type::Str,  "a string stays a string");
+            check(a[1].value.type == Type::Int,  "an integer stays an integer");
+            check(a[2].value.type == Type::Real, "a real stays a real");
+            check(a[3].value.type == Type::Bool, "true is a bool");
+        }
+
+        a.clear();
+        check(cxx::parse_args("\"hi\", 42", &a, &err), "an unnamed header parses");
+        if (a.size() == 2) {
+            eqs(a[0].name, "arg0", "unnamed arguments are positional");
+            eqs(a[1].name, "arg1", "and numbered in order");
+        }
+
+        // The sign belongs to the literal: the lexer has no negative number
+        // token, so -7 arrives as Minus then Int.
+        a.clear();
+        check(cxx::parse_args("n = -7", &a, &err), "a negative number parses");
+        check(a.size() == 1 && a[0].value.type == Type::Int && a[0].value.i == -7,
+              "and keeps its sign");
+
+        a.clear();
+        check(cxx::parse_args("", &a, &err), "an empty header is legal");
+        check(a.empty(), "and yields no arguments");
+
+        // Refusals, each with a reason the author can act on.
+        check(!cxx::parse_args("x = someVar", &a, &err),
+              "a variable is refused (no VM yet to evaluate one)");
+        check(err.find("no virtual machine") != std::string::npos,
+              "and the message says why");
+        check(!cxx::parse_args("class = 1", &a, &err),
+              "a C++ keyword cannot name an argument");
+        check(!cxx::parse_args("args = 1", &a, &err),
+              "nor can the block's own argument array");
+        check(!cxx::parse_args("a = 1, a = 2", &a, &err),
+              "a duplicate name is refused");
+        check(!cxx::parse_args("a = 1,", &a, &err), "a trailing comma is refused");
+        check(!cxx::parse_args("a = 1 b = 2", &a, &err), "a missing comma is refused");
+        check(!cxx::parse_args("a =", &a, &err), "a missing value is refused");
+    }
+
+    // ---- generated code for a header --------------------------------------
+    {
+        std::vector<cxx::CxxArg> a;
+        std::string err;
+        cxx::parse_args("greeting = \"hi\", n = 42", &a, &err);
+        std::string unit = cxx::generate("std::cout << greeting;\n", a);
+
+        check(unit.find("std::string greeting") != std::string::npos,
+              "a string argument becomes a std::string local");
+        check(unit.find("int64_t n") != std::string::npos,
+              "an integer argument becomes an int64_t local");
+        check(unit.find("argc < 2") != std::string::npos,
+              "the module checks its own argument count");
+
+        // The cache is keyed by a hash of this text, so what does and does not
+        // appear in it decides what forces a recompile.  Values must not:
+        // changing 42 to 43 has to reuse the module.
+        std::vector<cxx::CxxArg> b;
+        cxx::parse_args("greeting = \"hi\", n = 43", &b, &err);
+        eqs(cxx::generate("std::cout << greeting;\n", b), unit,
+            "a different VALUE generates identical source (cache hit)");
+
+        // ...but a different TYPE must, because the declaration moves.
+        std::vector<cxx::CxxArg> c;
+        cxx::parse_args("greeting = \"hi\", n = \"forty-two\"", &c, &err);
+        check(cxx::generate("std::cout << greeting;\n", c) != unit,
+              "a different TYPE generates different source (recompile)");
+    }
+
+    // ---- arguments actually crossing into C++ and back ---------------------
+    {
+        std::vector<cxx::CxxArg> a;
+        std::string err, printed;
+        cxx::parse_args("greeting = \"hello, world!\", n = 3, scale = 2.5", &a, &err);
+
+        cxx::Timing tm;
+        Container r = bridge.run(
+            "#include <iostream>\n"
+            "for (int64_t k = 0; k < n; ++k) std::cout << greeting << \"\\n\";\n"
+            "satellite.return(n * scale)\n",
+            a, &err, &printed, &tm);
+
+        check(err.empty(), "a block with arguments compiles and runs");
+        check(printed.find("hello, world!") != std::string::npos,
+              "a satellite string reaches C++ and prints");
+        check(r.type == Type::Real, "and a C++ double comes back as a satellite real");
+        check(r.type == Type::Real && r.d == 7.5, "with the right value");
+        check(tm.run_ms >= 0.0, "the run is timed apart from the compile");
+    }
+
     printf("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;
 }

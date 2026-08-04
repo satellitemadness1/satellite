@@ -31,14 +31,7 @@ namespace cxx {
 // Bumped whenever the Container layout or the module contract changes.  A
 // module built against an older ABI is refused rather than loaded, because
 // loading it would corrupt memory silently.
-//
-// Type::COUNT is part of that contract even though no module ever names it:
-// the dispatch tables are declared [TCOUNT][TCOUNT] and add/sub/mul/div/equals/
-// less are inline in container.hpp, so a module compiles the ROW STRIDE into
-// itself.  Growing Type therefore invalidates every module already built --
-// which is why 2 replaces 1 here, for Type::Capsule.  Refusing is only half
-// the answer; see Bridge::build for why the stride is in the cache key too.
-constexpr int ABI = 2;
+constexpr int ABI = 1;
 
 // ---------------------------------------------------------------------------
 // C++ value -> satellite value.  Overload resolution does the type matching.
@@ -85,55 +78,8 @@ inline void from_container(const Container& c, bool* out)        { *out = c.trut
 inline void from_container(const Container& c, std::string* out) { *out = c.to_string(); }
 
 // ---------------------------------------------------------------------------
-// Arguments:  satellite.cxx(greeting = "hello", n = 42) { ... }
-//
-// Each argument becomes a NAMED, TYPED C++ local inside the block -- `greeting`
-// is a std::string and `n` is an int64_t, no unpacking to write.  The type comes
-// from the value, through the same from_container overload set that reads them,
-// so satellite never has to describe a C++ type and C++ never has to describe a
-// satellite one.
-//
-// Unnamed arguments are positional and get arg0, arg1, ...:
-//
-//     satellite.cxx("hello", 42) { std::cout << arg0 << arg1; }
-//
-// The raw `const Container* args` and `int argc` are in scope either way, which
-// is the escape hatch for a type with no from_container overload.
-// ---------------------------------------------------------------------------
-struct CxxArg {
-    std::string name;      // the C++ variable the block sees
-    Container   value;
-};
-
-// Parse a block header's text (what Token::args holds -- no outer parentheses)
-// into arguments.  Returns false with *err set on a malformed list.
-//
-// Version 001 accepts LITERALS only: strings, integers, reals, true/false, nil.
-// A bare identifier is refused with a message saying why rather than guessed at,
-// because there is no virtual machine yet to evaluate a variable and silently
-// passing the name as a string would be a wrong answer instead of an error.
-bool parse_args(const std::string& header, std::vector<CxxArg>* out,
-                std::string* err);
-
-// The C++ type a satellite value binds to inside a block.
-const char* cxx_type_for(Type t);
-
-// ---------------------------------------------------------------------------
 // The bridge
 // ---------------------------------------------------------------------------
-
-// Compiling and running are timed apart because they are different costs that
-// move for different reasons: compile_ms is ~0 on a cache hit and ~1s on a
-// miss, while run_ms is native C++ either way.  One combined number would hide
-// which of the two a program is actually paying.
-struct Timing {
-    double compile_ms = 0;   // g++ (0 when the block came from the cache)
-    double load_ms    = 0;   // dlopen and symbol lookup
-    double run_ms     = 0;   // the block's own code
-    bool   cached     = false;
-    double total_ms() const { return compile_ms + load_ms + run_ms; }
-};
-
 struct CxxConfig {
     std::string compiler;      // default "g++"
     std::string include_dir;   // where satellite/*.hpp lives
@@ -146,13 +92,6 @@ CxxConfig default_config();
 
 // The generated translation unit for a block -- exposed so it can be tested
 // without invoking a compiler.
-//
-// The argument NAMES and TYPES appear in this text; their VALUES do not, since
-// those arrive at call time.  That is what makes the content hash the right
-// cache key: changing `n = 42` to `n = 43` reuses the module, while changing it
-// to `n = "forty-two"` recompiles, because the declared type moved.
-std::string generate(const std::string& block_source,
-                     const std::vector<CxxArg>& args);
 std::string generate(const std::string& block_source);
 
 // Where a block's `satellite.return(...)` expression is, if it has one.
@@ -167,23 +106,9 @@ public:
     Bridge& operator=(const Bridge&) = delete;
 
     // Compile if needed, load, call.  Returns nil and fills `err` on failure.
-    //
-    // `out_printed` collects whatever the block wrote to stdout.  A GUI has no
-    // terminal, so a block whose only effect is std::cout would look broken
-    // rather than unsupported; passing null leaves stdout alone, which is what
-    // a command-line caller wants.
-    Container run(const std::string& block_source,
-                  const std::vector<CxxArg>& args,
-                  std::string* err = nullptr,
-                  std::string* out_printed = nullptr,
-                  Timing* timing = nullptr);
-
-    // No-argument blocks, which is every block written before headers existed.
     Container run(const std::string& block_source, std::string* err = nullptr);
 
     // Compile only.  `so_path` receives the cached library path.
-    bool build(const std::string& block_source, const std::vector<CxxArg>& args,
-               std::string* so_path, std::string* err = nullptr);
     bool build(const std::string& block_source, std::string* so_path,
                std::string* err = nullptr);
 

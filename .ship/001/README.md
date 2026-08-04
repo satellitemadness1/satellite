@@ -307,8 +307,16 @@ Stated plainly, because the list above is easy to mistake for more than it is.
 ```
 .ship/001/
 ├── README.md                     this file
+├── MANIFEST.txt                  every file here, with its size and what it is
+├── verify.sh                     runs everything below; non-zero if any of it fails
 ├── common_headers.txt            the 92 standard-library headers a satellite.cxx
 │                                 block can #include on this machine, measured
+├── bin/
+│   ├── satellite                 the CLI — RPATH is $ORIGIN, so it is relocatable
+│   └── libsatellite_core.so      the language: charmap, string, container, bignum,
+│                                 lexer, machine, the C++ bridge, the interpreter seam
+├── include/satellite/            the headers a satellite.cxx block compiles against,
+│                                 byte-identical to the ones the .so was built from
 └── examples/
     ├── hello_main.satl           the shape of a main file — the one to copy
     ├── cxx_hello.satl            the smallest satellite.cxx block that does something
@@ -346,8 +354,37 @@ $ ./build/satellite check .ship/001/examples/satellite_full_test.satl
   22 strings, 50 numbers, 3 cxx blocks
 ```
 
-**The `satellite` binary is not in this folder.** Build it from the repository
-root; see below.
+### Running it
+
+The binary is in this folder, and it is self-contained — no build step, no
+`LD_LIBRARY_PATH`, nothing to install:
+
+```console
+$ .ship/001/bin/satellite version
+001
+
+$ .ship/001/verify.sh
+...
+45 passed, 0 failed
+VERIFY OK
+```
+
+`verify.sh` is the honest version of "it works": 45 checks covering the files,
+the linkage, `check` on all seven examples, two malformed inputs that must be
+*rejected*, and `run` on every C++ block asserted against the exact output its
+header comment promises. `./verify.sh --cold` empties `~/.satellite/cache`
+first, so the blocks are really compiled rather than replayed from cache.
+
+**`g++` must be on `PATH`** for `satellite.cxx` — that is the one external
+requirement. `version`, `check` and `lex` work without it.
+
+**One relocation caveat.** A `satellite.cxx` block is compiled at *run* time, so
+the headers and the core `.so` have to be findable then. These binaries have the
+paths to `include/` and `bin/libsatellite_core.so` baked in as absolute paths to
+*this folder at its current location*. `bin/` itself is relocatable (`RPATH` is
+`$ORIGIN`), but moving the whole `001` folder elsewhere breaks `satellite.cxx`
+until the binaries are rebuilt with the new paths. Version 001 has no way to
+override them without a rebuild. See `MANIFEST.txt` note [1].
 
 ---
 
@@ -377,11 +414,23 @@ the tests. It is a front end over the interpreter seam
 subject to the same limits as the CLI: it cannot execute satellite code.
 
 **Caveat worth knowing before you move anything:** the build bakes two absolute
-paths into `libsatellite_core.so` — `SATELLITE_INCLUDE_DIR` (the source tree's
-`include/`) and `SATELLITE_CORE_LIB` (the build tree's
-`libsatellite_core.so`). They are what a `satellite.cxx` block compiles and
-links against. Relocating the source or build directory after building will
-break `satellite.cxx`; rebuild in place instead.
+paths into `libsatellite_core.so` — `SATELLITE_INCLUDE_DIR` (where `satellite/*.hpp`
+lives) and `SATELLITE_CORE_LIB` (the `libsatellite_core.so` to link against).
+They are what a `satellite.cxx` block compiles and links against *at run time*.
+By default they point at the source and build trees, which is what a developer
+wants; relocating either directory afterwards will break `satellite.cxx`, so
+rebuild in place instead.
+
+Both are cache variables, which is how the bundle in this folder was made
+self-contained:
+
+```sh
+cmake -S . -B build-ship -DCMAKE_BUILD_TYPE=Release \
+      -DSATELLITE_RUNTIME_INCLUDE_DIR="$PWD/.ship/001/include" \
+      -DSATELLITE_RUNTIME_CORE_LIB="$PWD/.ship/001/bin/libsatellite_core.so" \
+      -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_INSTALL_RPATH='$ORIGIN'
+cmake --build build-ship --target satellite -j8
+```
 
 ---
 

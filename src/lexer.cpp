@@ -184,6 +184,96 @@ void Lexer::scan_string(std::vector<Token>& out) {
     out.push_back(std::move(t));
 }
 
+// What may sit between `satellite.cxx` and the '{' that opens its block.
+//
+// Comments belong here as much as whitespace does: a reader naturally writes
+//
+//     satellite.cxx  // compile the fast path
+//     {
+//
+// and if the lookahead stopped at the '/' the '{' would go unseen, the block
+// would silently stop being a block, and its C++ would be lexed as satellite --
+// which either raises errors that name characters the author never wrote, or,
+// when the C++ happens to lex cleanly, drops the block with no diagnostic at
+// all.  An unterminated comment leaves pos_ at end of input, so peek() cannot
+// match '{' and the caller restores position; the main loop then re-reads the
+// comment and reports it.
+void Lexer::skip_block_gap() {
+    for (;;) {
+        while (!at_end() && (peek() == ' ' || peek() == '\t' ||
+                             peek() == '\r' || peek() == '\n')) advance();
+        if (peek() == '/' && peek(1) == '/') {
+            while (!at_end() && peek() != '\n') advance();
+            continue;
+        }
+        if (peek() == '/' && peek(1) == '*') {
+            advance(); advance();
+            while (!at_end() && !(peek() == '*' && peek(1) == '/')) advance();
+            if (!at_end()) { advance(); advance(); }
+            continue;
+        }
+        return;
+    }
+}
+
+// The argument list of a block header:  satellite.cxx(greeting = "hi") { ... }
+//
+// Captured as raw text and NOT lexed here, for the same reason the block body
+// is not: this runs in the middle of the main scan loop, and pushing the header
+// tokens into `out` would put them between the CxxBlock token and whatever came
+// before it, where every consumer that scans for CxxBlock would trip over them.
+// satellite::cxx::parse_args lexes this text separately, later, on its own.
+//
+// The parenthesis counting still has to understand string and char literals,
+// because `satellite.cxx(sad = ":-)")` closes on the wrong parenthesis
+// otherwise -- and would then look for a '{' that is really the rest of a
+// string.  Returns false when the parenthesis is never closed, which puts the
+// caller back where it started so the text is lexed as ordinary satellite and
+// the real diagnostic comes from there.
+bool Lexer::scan_cxx_args(std::string* out) {
+    advance();                                   // the opening (
+    size_t start = pos_;
+    int    depth = 1;
+
+    while (!at_end()) {
+        char ch = peek();
+
+        if (ch == '"' || ch == '\'') {
+            char q = ch;
+            advance();
+            while (!at_end() && peek() != q) {
+                if (peek() == '\\') advance();
+                if (!at_end()) advance();
+            }
+            if (!at_end()) advance();
+            continue;
+        }
+        if (ch == '/' && peek(1) == '/') {
+            while (!at_end() && peek() != '\n') advance();
+            continue;
+        }
+        if (ch == '/' && peek(1) == '*') {
+            advance(); advance();
+            while (!at_end() && !(peek() == '*' && peek(1) == '/')) advance();
+            if (!at_end()) { advance(); advance(); }
+            continue;
+        }
+
+        if (ch == '(') { ++depth; advance(); continue; }
+        if (ch == ')') {
+            if (--depth == 0) {
+                *out = src_.substr(start, pos_ - start);
+                advance();                       // the closing )
+                return true;
+            }
+            advance();
+            continue;
+        }
+        advance();
+    }
+    return false;
+}
+
 // Captures everything between the braces WITHOUT lexing it -- the contents are
 // C++, not satellite.  Brace counting has to skip strings, char literals, raw
 // strings and comments, or a '}' inside any of them would end the block early.
@@ -286,11 +376,18 @@ std::vector<Token> Lexer::scan() {
     // deliberately NOT counted: statements inside a capsule body do terminate.
     int group_depth = 0;
 
+    // Where the punctuation character STARTED.  advance() has already consumed
+    // it by the time push runs, so reading line_/col_ here would report the
+    // position one past the token -- a `{` in column 1 would say column 2.
+    // Word, number and string tokens already capture their start this way; this
+    // is what makes punctuation agree with them.
+    int tok_line = 1, tok_col = 1;
+
     auto push = [&](Tok k) {
         Token t;
         t.kind = k;
-        t.line = line_;
-        t.col  = col_;
+        t.line = tok_line;
+        t.col  = tok_col;
         t.text = tok_name(k);
         out.push_back(std::move(t));
         prev = k;
@@ -346,17 +443,28 @@ std::vector<Token> Lexer::scan() {
             scan_word(out, prev == Tok::Dot);
             prev = out.back().kind;
 
-            // `satellite.cxx {` -- everything to the matching brace is C++
+            // `satellite.cxx {` -- everything to the matching brace is C++.
+            // An argument list may sit in between:  satellite.cxx(n = 42) { }
             size_t n = out.size();
             if (n >= 3 && out[n - 1].kind == Tok::Ident && out[n - 1].text == "cxx" &&
                 out[n - 2].kind == Tok::Dot && out[n - 3].kind == Tok::Satellite) {
                 size_t save = pos_;
                 int save_line = line_, save_col = col_;
-                while (!at_end() && (peek() == ' ' || peek() == '\t' ||
-                                     peek() == '\r' || peek() == '\n')) advance();
-                if (peek() == '{') {
+                skip_block_gap();
+
+                std::string args;
+                bool        header_ok = true;
+                if (peek() == '(') header_ok = scan_cxx_args(&args);
+                if (header_ok) skip_block_gap();
+
+                // Only a '{' makes this a block.  Without one, `satellite.cxx`
+                // is an ordinary member expression and has to lex as one -- so
+                // everything the lookahead consumed is given back, arguments
+                // included.
+                if (header_ok && peek() == '{') {
                     out.resize(n - 3);            // the block token replaces the three
                     scan_cxx_block(out);
+                    out.back().args = std::move(args);
                     prev = Tok::CxxBlock;
                     continue;
                 }
@@ -365,6 +473,8 @@ std::vector<Token> Lexer::scan() {
             continue;
         }
 
+        tok_line = line_;
+        tok_col  = col_;
         advance();   // consume the punctuation character
         switch (c) {
             case '.': push(Tok::Dot);      break;
@@ -386,7 +496,8 @@ std::vector<Token> Lexer::scan() {
             case '<': push(match('=') ? Tok::Le : Tok::Lt);     break;
             case '>': push(match('=') ? Tok::Ge : Tok::Gt);     break;
             default:
-                error(std::string("unexpected character '") + c + "'", line_, col_ - 1);
+                error(std::string("unexpected character '") + c + "'",
+                      tok_line, tok_col);
                 push(Tok::Unknown);
                 break;
         }

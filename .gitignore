@@ -1,4 +1,10 @@
 build/
 *.o
 *.a
+
+# Built executables.  These are reproducible from source with cmake, and the
+# single-file build is ~107 MB -- past GitHub's 100 MB hard limit, and past the
+# point where anyone wants it in a clone.  The shipped `satellite` binary is
+# distributed separately.
 .ship/**/bin/
+dist/

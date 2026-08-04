@@ -2,18 +2,24 @@
 
 #include <string>
 
+// A Capsule is deleted, rendered and tested for truth here, and all three need
+// the complete type -- destruction goes through the type tag, so this file is
+// the one place that has to know every heap payload there is.
+#include "satellite/capsule.hpp"
+
 namespace satellite {
 
 const char* type_name(Type t) {
     switch (t) {
-        case Type::Nil:  return "nil";
-        case Type::Bool: return "bool";
-        case Type::Int:  return "int";
-        case Type::Big:  return "big";
-        case Type::Real: return "real";
-        case Type::Str:  return "string";
-        case Type::List: return "list";
-        default:         return "?";
+        case Type::Nil:     return "nil";
+        case Type::Bool:    return "bool";
+        case Type::Int:     return "int";
+        case Type::Big:     return "big";
+        case Type::Real:    return "real";
+        case Type::Str:     return "string";
+        case Type::List:    return "list";
+        case Type::Capsule: return "capsule";
+        default:            return "?";
     }
 }
 // ===========================================================================
@@ -39,16 +45,26 @@ Container Container::list() {
     return c;
 }
 
+// Takes the reference the caller already holds -- a fresh Capsule starts at
+// rc 1, so wrapping it must not add a second one.
+Container Container::capsule(Capsule* p) {
+    Container c;
+    c.type = Type::Capsule;
+    c.obj  = p;
+    return c;
+}
+
 Container Container::big_from_i64(int64_t v) { return big::from_i64(v); }
 
 void Container::release() {
     if (!is_heap() || !obj) return;
     if (obj->rc.fetch_sub(1, std::memory_order_acq_rel) == 1) {
         switch (obj->type) {
-            case Type::Str:  delete static_cast<SatString*>(obj); break;
-            case Type::Big:  delete static_cast<BigInt*>(obj);    break;
-            case Type::List: delete static_cast<List*>(obj);      break;
-            default:         delete obj;                          break;
+            case Type::Str:     delete static_cast<SatString*>(obj); break;
+            case Type::Big:     delete static_cast<BigInt*>(obj);    break;
+            case Type::List:    delete static_cast<List*>(obj);      break;
+            case Type::Capsule: delete static_cast<Capsule*>(obj);   break;
+            default:            delete obj;                          break;
         }
     }
     obj = nullptr;
@@ -84,6 +100,9 @@ bool Container::truthy() const {
         case Type::Big:  return !as_big()->is_zero();
         case Type::Str:  return as_str()->len != 0;
         case Type::List: return !as_list()->items.empty();
+        // A declared capsule is a thing that exists.  There is no such value as
+        // an empty capsule -- a body with no statements is still a capsule.
+        case Type::Capsule: return true;
         default:         return false;
     }
 }
@@ -105,6 +124,9 @@ std::string Container::to_string() const {
             }
             return s + "]";
         }
+        // The signature, not the body: printing a capsule should identify it,
+        // and the body is a span into a file the reader can already open.
+        case Type::Capsule: return as_capsule()->signature();
         default: return "?";
     }
 }

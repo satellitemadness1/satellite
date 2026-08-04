@@ -17,14 +17,19 @@
 //   check     <file>   lex only, report token counts
 //   lex       <file>   dump the token stream
 //   clear              clear the output
+//   jit <c++>          compile and run C++ in-process, no fork, no dlopen
 //   help               list the commands
 //   quit               close the window
 #include "satellite/container.hpp"
 #include "satellite/interpret.hpp"
+#include "satellite/gui.hpp"
+#include "satellite/jit.hpp"
 #include "satellite/lexer.hpp"
 
 #include <gtk/gtk.h>
 
+#include <chrono>
+#include <cstdio>
 #include <exception>
 #include <fstream>
 #include <sstream>
@@ -151,6 +156,7 @@ void cmd_interpret(App* app, const std::string& typed) {
     // thrown through C frames is undefined behaviour, and a dialogless abort
     // would look like the GUI itself crashed.
     InterpretResult r;
+    const auto t0 = std::chrono::steady_clock::now();
     try {
         r = interpret_file(path);
     } catch (const std::exception& e) {
@@ -166,8 +172,19 @@ void cmd_interpret(App* app, const std::string& typed) {
     for (const auto& d : r.diagnostics) line(app, d.format(r.file));
     for (const auto& o : r.output)      line(app, o);
 
+    const double elapsed_ms =
+        std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - t0).count();
+
     line(app, std::string("stage reached: ") + stage_name(r.reached));
     if (!r.summary.empty()) line(app, r.summary);
+
+    // Every program says how long it took.  Wall clock, not CPU time: it is
+    // the number a person can check against a stopwatch, and it is the one
+    // that includes the compiler the program invoked on its own behalf.
+    char tb[96];
+    std::snprintf(tb, sizeof tb, "elapsed: %.2f ms", elapsed_ms);
+    line(app, tb);
 
     set_status(app, r.summary.empty()
                         ? (r.ok ? "ok" : "failed")
@@ -283,6 +300,7 @@ void cmd_help(App* app) {
     line(app, "  interpret <file>   run the interpreter, show diagnostics and output");
     line(app, "  check     <file>   lex only, report token counts");
     line(app, "  lex       <file>   dump the token stream");
+    line(app, "  jit       <c++>    compile and run a C++ body in-process");
     line(app, "  clear              clear the output");
     line(app, "  help               list the commands");
     line(app, "  quit               close the window");
@@ -304,6 +322,59 @@ void banner(App* app) {
     finish_output(app);
 }
 
+// The embedded compiler.  Unlike `interpret`, which still forks g++ for
+// satellite.cxx blocks, this path never leaves the process: clang parses from
+// memory and ORC hands back a function pointer we call directly.
+void cmd_jit(App* app, const std::string& arg) {
+    if (!satellite::jit::available()) {
+        line(app, "this build has no embedded compiler");
+        line(app, "see docs/SINGLE_FILE.md for how to link one in");
+        set_status(app, "jit unavailable");
+        return;
+    }
+    if (arg.empty()) {
+        line(app, "usage: jit <c++ body>   e.g.  jit return 6*7;");
+        set_status(app, "jit: nothing to compile");
+        return;
+    }
+
+    std::string          err, printed;
+    satellite::jit::Timing t;
+    satellite::Container v = satellite::jit::run(arg, &err, &printed, &t);
+    if (!err.empty()) {
+        line(app, "compile failed:");
+        // clang's diagnostics arrive as one multi-line string; the text view
+        // wants them one line at a time or the caret markers do not line up.
+        std::istringstream ds(err);
+        std::string        dl;
+        while (std::getline(ds, dl)) line(app, "  " + dl);
+        set_status(app, "jit failed");
+        v.release();
+        return;
+    }
+    // What the code PRINTED comes first and unadorned -- that is the program's
+    // own output.  The return value is satellite talking about it, so it is
+    // marked as such and comes after.
+    if (!printed.empty()) {
+        std::istringstream ps(printed);
+        std::string        pl;
+        while (std::getline(ps, pl)) line(app, pl);
+    }
+    line(app, "=> " + v.to_string() + "  [" + satellite::type_name(v.type) + "]");
+
+    // Compile and run reported apart, because they answer different questions.
+    // An embedded JIT emits the machine code clang always would -- run_ms is
+    // native C++ speed, no better and no worse.  What it saves is compile_ms:
+    // no fork, no .o or .so on disk, no linker, no dlopen.
+    char tb[192];
+    std::snprintf(tb, sizeof tb,
+                  "   compiled in %.2f ms, ran in %.3f ms  (total %.2f ms)",
+                  t.compile_ms, t.run_ms, t.total_ms());
+    line(app, tb);
+    set_status(app, std::string("jit ok --") + tb);
+    v.release();
+}
+
 void run_command(App* app, const std::string& input) {
     std::string verb, arg;
     split_command(input, &verb, &arg);
@@ -314,6 +385,7 @@ void run_command(App* app, const std::string& input) {
     if (verb == "interpret")   cmd_interpret(app, arg);
     else if (verb == "check")  cmd_check(app, arg);
     else if (verb == "lex")    cmd_lex(app, arg);
+    else if (verb == "jit")    cmd_jit(app, arg);
     else if (verb == "clear") {
         gtk_text_buffer_set_text(app->buffer, "", 0);
         set_status(app, "cleared");
@@ -433,7 +505,11 @@ void on_activate(GtkApplication* gtk_app, gpointer data) {
 
 }  // namespace
 
-int main(int argc, char** argv) {
+namespace satellite {
+
+bool gui_available() { return true; }
+
+int gui_main(int argc, char** argv) {
     init_tables();
 
     App app;
@@ -445,3 +521,5 @@ int main(int argc, char** argv) {
     g_object_unref(gtk_app);
     return status;
 }
+
+}  // namespace satellite

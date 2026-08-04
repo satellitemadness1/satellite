@@ -179,31 +179,6 @@ Container mul(const BigInt& a, const BigInt& b);
 int       cmp_mag(const BigInt& a, const BigInt& b);
 std::string to_string(const BigInt& a);
 Container normalize(BigInt* b);   // demote back to Int when it fits
-
-// Truncated division, matching C++ and every language satellite will be
-// compared against: the quotient rounds TOWARD ZERO and the remainder takes the
-// sign of the DIVIDEND.  So -7/2 == -3 and -7%2 == -1.  Either out-pointer may
-// be null when only one half is wanted; the work is shared either way, so
-// asking for both costs nothing extra.
-//
-// Returns false, and writes nothing, when b is zero.  Division by zero is a
-// question the caller has to answer -- there is no value that means "undefined"
-// and quietly returning nil here would let it propagate silently.
-bool divmod(const BigInt& a, const BigInt& b, Container* q, Container* r);
-
-// base ** exp by squaring.  Returns nil rather than exhausting memory when the
-// result would be absurd -- `2 ** 10000000000` is a request to fill the machine.
-Container pow_u64(const BigInt& base, uint64_t exp);
-
-// Magnitude shifts: the sign rides along unchanged, so shr is truncation toward
-// zero rather than an arithmetic (floor) shift.
-Container shl(const BigInt& a, uint64_t bits);
-Container shr(const BigInt& a, uint64_t bits);
-
-// Decimal text -> a number, for literals too wide for int64.  Accepts a leading
-// '-' or '+' and ignores '_' separators, exactly as the lexer spells them.
-// Sets *ok to false on empty input or any character that is not a digit.
-Container from_string(const std::string& digits, bool* ok = nullptr);
 }  // namespace big
 
 }  // namespace satellite
