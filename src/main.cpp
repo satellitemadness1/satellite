@@ -9,11 +9,13 @@
 //   satellite check   file.satl     lex it, report errors, exit non-zero on any
 //   satellite lex     file.satl     dump the token stream
 //   satellite run     file.satl     execute every satellite.cxx block in it
+//   satellite interpret file.satl   lex, validate, and run it
 #include "satellite/gui.hpp"
 #include "satellite/jit.hpp"
 #include <chrono>
 #include "satellite/container.hpp"
 #include "satellite/cxx.hpp"
+#include "satellite/interpret.hpp"
 #include "satellite/lexer.hpp"
 
 #include <cstdio>
@@ -171,6 +173,24 @@ static int cmd_run(const std::string& path) {
 }
 
 // ---------------------------------------------------------------------------
+// `satellite interpret file.satl` -- the same thing the GUI console's
+// `interpret` command does, from a terminal.  The console had it and the CLI
+// did not, which made the documented way to run a file depend on which face of
+// the binary you happened to be looking at.
+static int cmd_interpret(const std::string& path) {
+    InterpretResult r = interpret_file(path);
+
+    for (const auto& d : r.diagnostics) std::fprintf(stderr, "%s\n",
+                                                     d.format(r.file).c_str());
+    // Anything the program printed goes to stdout, so it can be piped
+    // independently of the diagnostics above.
+    for (const auto& o : r.output) std::printf("%s\n", o.c_str());
+
+    std::printf("%s\n", r.summary.c_str());
+    return r.ok ? 0 : 1;
+}
+
+// ---------------------------------------------------------------------------
 static void usage() {
     std::printf(
         "satellite %s -- preliminary build\n"
@@ -179,6 +199,7 @@ static void usage() {
         "  satellite check <file.satl>   lex the file and report on it\n"
         "  satellite lex   <file.satl>   dump the token stream\n"
         "  satellite run   <file.satl>   execute the satellite.cxx blocks\n"
+        "  satellite interpret <file.satl>  lex, validate and run it\n"
         "  satellite jit   \"<c++>\"       compile and run C++ in-process\n"
         "  satellite cxx-config          show the satellite.cxx settings\n"
         "\n"
@@ -268,6 +289,7 @@ int main(int argc, char** argv) {
     if (cmd == "check") return cmd_check(path);
     if (cmd == "lex")   return cmd_lex(path);
     if (cmd == "run")   return cmd_run(path);
+    if (cmd == "interpret") return cmd_interpret(path);
 
     std::fprintf(stderr, "unknown command: %s\n", cmd.c_str());
     usage();
