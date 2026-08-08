@@ -322,6 +322,34 @@ int main()
     check_output("1 == 1\n", "true\n", "==");
     check_output("1 != 1\n", "false\n", "!=");
     check_output("1 == \"1\"\n", "false\n", "== across types is false");
+
+    // Strings compare by CONTENT, not by identity. Every case here is one the
+    // suite did not have when strings moved behind a shared_ptr handle, and the
+    // whole suite stayed green while `"x" == "x"` answered false — the variant's
+    // operator== was comparing pointers. `1 == 1` did not catch it because a
+    // Number is stored inline, and the two string literals below are separate
+    // allocations, which is the entire point of the test.
+    check_output("\"x\" == \"x\"\n", "true\n", "two identical string literals");
+    check_output("\"x\" == \"y\"\n", "false\n", "two different string literals");
+    check_output("\"\" == \"\"\n", "true\n", "two empty strings");
+    check_output("\"hello\"[0:1] == \"h\"\n", "true\n",
+                 "a slice equals the literal it matches");
+    check_output("\"ab\".concat(\"c\") == \"abc\"\n", "true\n",
+                 "a built string equals the literal it matches");
+    check_output("\"x\" != \"x\"\n", "false\n", "!= agrees with ==");
+    // ... and inside a list, which recurses through the same comparison.
+    check_output("satellite.container.list<satellite.variable.string> p\n"
+                 "satellite.container.list<satellite.variable.string> q\n"
+                 "p.append(\"a\")\n"
+                 "q.append(\"a\")\n"
+                 "p == q\n",
+                 "true\n", "lists of strings compare by content");
+    check_output("satellite.container.list<satellite.variable.string> r\n"
+                 "satellite.container.list<satellite.variable.string> s\n"
+                 "r.append(\"a\")\n"
+                 "s.append(\"b\")\n"
+                 "r == s\n",
+                 "false\n", "and report a difference");
     check_output("!(1 < 2)\n", "false\n", "!");
     check_output("(1 < 2).and(2 < 3)\n", "true\n", "and");
     check_output("(1 < 2).or(3 < 2)\n", "true\n", "or");

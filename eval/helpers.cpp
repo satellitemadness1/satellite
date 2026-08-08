@@ -109,6 +109,23 @@ bool value_equals(const Value &a, const Value &b)
         }
         return true;
     }
+    // Strings compare by CONTENT, and this arm is not optional.
+    //
+    // The variant's own operator== compares alternatives, and the string
+    // alternative is a shared_ptr since strings moved behind a handle. That
+    // compares POINTERS, so "x" == "x" was false whenever the two sides were
+    // built separately — which is every interesting case. It shipped, and all
+    // eleven test binaries passed, because nothing in the suite compared two
+    // independently constructed strings. The satellite lexer written in
+    // satellite is what caught it: its whitespace test stopped matching and
+    // spaces started coming out as punctuation tokens.
+    //
+    // Any future alternative that is a handle to something with value semantics
+    // needs an arm here too. The fallback below is correct only for
+    // alternatives whose own operator== already means what the language means.
+    if (const SatString *sa = as_string(a))
+        return *sa == *as_string(b);
+
     return static_cast<const ValueBase &>(a) == static_cast<const ValueBase &>(b);
 }
 
