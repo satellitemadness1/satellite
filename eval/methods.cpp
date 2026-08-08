@@ -334,6 +334,14 @@ ValuePtr Evaluator::call_method(const ValuePtr &recv, const Expr &recv_expr,
         }
     }
 
+    // --- map ---------------------------------------------------------------
+    // Delegated to eval/maps.cpp, which owns the key contract. The mutating
+    // half (.set / .remove) never arrives here: is_mutator routes it to
+    // call_mutator before the receiver is even evaluated, because it has to
+    // write back through the receiver's storage slot.
+    if (as_map(*recv))
+        return call_map_method(recv, name, argv, span);
+
     fail(span, std::string(module) + " has no method " + name);
     return nullptr;
 }

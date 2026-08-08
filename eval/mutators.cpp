@@ -7,6 +7,69 @@
 
 namespace satellite {
 
+// The read-modify-write, once. See eval.hpp for why this is not three copies.
+//
+// A cell that holds nothing is handed to the transform as nil rather than
+// rejected here, so the "cannot append to nil" wording stays with the mutator
+// that knows what it was trying to do.
+bool Evaluator::update_through_slot(
+    const Slot &slot, Span span,
+    const std::function<bool(const Value &, Value &, std::string &)> &transform)
+{
+    const Value nil{std::monostate{}};
+    Value next;
+    std::string error;
+
+    if (slot.in_field()) {
+        std::atomic<ValuePtr> *cell = field_cell(slot, slot.name, span);
+        if (!cell)
+            return false;
+
+        // The lock covers load, transform and store. Nothing inside it runs
+        // satellite code, so it cannot re-enter itself.
+        std::lock_guard<std::mutex> guard(current_self_->write_lock);
+        ValuePtr current = cell->load();
+        if (!transform(current ? *current : nil, next, error)) {
+            fail(span, error);
+            return false;
+        }
+        cell->store(make_value(std::move(next)));
+        return true;
+    }
+
+    if (slot.in_frame()) {
+        ValuePtr *cell = frame_cell(slot, slot.name, span);
+        if (!cell)
+            return false;
+        if (!transform(*cell ? **cell : nil, next, error)) {
+            fail(span, error);
+            return false;
+        }
+        *cell = make_value(std::move(next));
+        return true;
+    }
+
+    Library::instance().update(
+        slot.ns, slot.name, [&](const Value *current) -> Value {
+            if (!current) {
+                error = "no such variable: " + slot.name;
+                return std::monostate{};
+            }
+            Value produced;
+            // Re-checked under the lock rather than before it: another thread
+            // may have replaced the value since we looked.
+            if (!transform(*current, produced, error))
+                return *current;
+            return produced;
+        });
+
+    if (!error.empty()) {
+        fail(span, error);
+        return false;
+    }
+    return true;
+}
+
 ValuePtr Evaluator::call_mutator(const Expr &recv_expr, const std::string &name,
                                  const std::vector<ValuePtr> &argv, Span span)
 {
@@ -19,91 +82,105 @@ ValuePtr Evaluator::call_mutator(const Expr &recv_expr, const std::string &name,
                              "writes back through its receiver");
         return nullptr;
     }
-    if (argv.size() != 1) {
-        fail(span, arity_message("satellite.container.list", name, 1,
-                                 argv.size()));
-        return nullptr;
-    }
-
-    // The declared element type is checked at INSERTION, which is the only
-    // place a list's generic argument can be violated (§7).
+    // Each selector belongs to exactly one container — `append` to the list,
+    // `set` and `remove` to the map — but which container the RECEIVER is is a
+    // question only the receiver can answer. Deriving it from the method name
+    // instead was a heap-buffer-overflow read: `l.set(1, 2)` on a
+    // satellite.container.list<T> took the map path and indexed args[1] on a
+    // one-argument vector. Everything below keys off `declared`, and the name
+    // is used only to pick which selector is being asked for.
     const Type *declared = declared_type(slot);
-    if (declared && !declared->args.empty() &&
-        !matches(declared->args[0], *argv[0])) {
-        fail(span, "cannot append " + to_string(*argv[0]) + " to " +
-                   unparse(*declared) + " " + slot.name);
+    const bool declared_container = declared && declared->space == "container";
+    const bool declared_map = declared_container && declared->name == "map";
+    const bool map_selector = (name == "set" || name == "remove");
+
+    // A selector the receiver's container does not own is settled here, so it
+    // reads the same as any other missing method rather than failing somewhere
+    // deep in the transform.
+    if (declared_container && declared_map != map_selector) {
+        fail(span, "satellite.container." + declared->name + " has no method " +
+                   name);
         return nullptr;
     }
 
-    // A field is read-modify-written under the object's own write_lock, which
-    // is what makes the sequence indivisible against a plain assignment to the
-    // same field. No satellite code runs inside it — argv was fully reduced
-    // above — so §7's rule that nothing re-enters a held lock still holds.
-    if (slot.in_field()) {
-        std::atomic<ValuePtr> *cell = field_cell(slot, slot.name, span);
-        if (!cell)
-            return nullptr;
-
-        std::lock_guard<std::mutex> guard(current_self_->write_lock);
-        ValuePtr current = cell->load();
-        const List *list = current ? as_list(*current) : nullptr;
-        if (!list) {
-            fail(span, "cannot append to " +
-                       (current ? to_string(*current) : std::string("nil")));
-            return nullptr;
-        }
-        List next = *list;
-        next.push_back(argv[0]);
-        cell->store(make_value(std::move(next)));
-        return make_value(std::monostate{});
+    const char *module =
+        map_selector ? "satellite.container.map" : "satellite.container.list";
+    const size_t want = (name == "set") ? 2 : 1;
+    if (argv.size() != want) {
+        fail(span, arity_message(module, name, want, argv.size()));
+        return nullptr;
     }
 
-    // A frame slot is read-modify-written in the open, with no lock and no
-    // atomic. The Library's update() exists to make that sequence indivisible
-    // between threads; a frame is reachable from one thread, so there is
-    // nothing to make indivisible.
-    if (slot.in_frame()) {
-        ValuePtr *cell = frame_cell(slot, slot.name, span);
-        if (!cell)
-            return nullptr;
-        const List *list = *cell ? as_list(**cell) : nullptr;
-        if (!list) {
-            fail(span, "cannot append to " +
-                       (*cell ? to_string(**cell) : std::string("nil")));
-            return nullptr;
-        }
-        List next = *list;
-        next.push_back(argv[0]);
-        *cell = make_value(std::move(next));
-        return make_value(std::monostate{});
-    }
-
-    // Everything above ran before update(); the lambda below runs no satellite
-    // code, only C++, so re-entering the same variable's write lock is
-    // impossible by construction.
-    std::string type_error;
-    Library::instance().update(
-        slot.ns, slot.name, [&](const Value *current) -> Value {
-            if (!current) {
-                type_error = "no such variable: " + slot.name;
-                return std::monostate{};
+    // The declared element types are checked at INSERTION, which is the only
+    // place a generic argument can be violated (§7).
+    //
+    // args[1] is read ONLY under `declared_map`, and there Resolver::check_type
+    // guarantees the count is 0 or 2 — with args.empty() already excluded, that
+    // means exactly 2. The guarantee is about a MAP type and was never about a
+    // list, which is what the earlier form of this code got wrong.
+    if (declared_container && !declared->args.empty()) {
+        if (declared_map) {
+            if (!matches(declared->args[0], *argv[0])) {
+                fail(span, "cannot use " + to_string(*argv[0]) +
+                           " as a key in " + unparse(*declared) + " " +
+                           slot.name);
+                return nullptr;
             }
-            const List *list = as_list(*current);
+            if (name == "set" && !matches(declared->args[1], *argv[1])) {
+                fail(span, "cannot store " + to_string(*argv[1]) + " in " +
+                           unparse(*declared) + " " + slot.name);
+                return nullptr;
+            }
+        } else if (!matches(declared->args[0], *argv[0])) {
+            fail(span, "cannot append " + to_string(*argv[0]) + " to " +
+                       unparse(*declared) + " " + slot.name);
+            return nullptr;
+        }
+    }
+
+    // One transform per selector. Each is pure C++ over the current value, and
+    // update_through_slot decides which lock, if any, it runs under.
+    std::function<bool(const Value &, Value &, std::string &)> transform;
+
+    if (name == "append") {
+        transform = [&](const Value &current, Value &next,
+                        std::string &error) {
+            const List *list = as_list(current);
             if (!list) {
-                // Re-checked under the lock rather than before it: another
-                // thread may have replaced the value since we looked.
-                type_error = "cannot append to " + to_string(*current);
-                return *current;
+                error = "cannot append to " + to_string(current);
+                return false;
             }
-            List next = *list;
-            next.push_back(argv[0]);
-            return make_list(std::move(next));
-        });
-
-    if (!type_error.empty()) {
-        fail(span, type_error);
+            List copy = *list;
+            copy.push_back(argv[0]);
+            next = make_list(std::move(copy));
+            return true;
+        };
+    } else if (name == "set" || name == "remove") {
+        transform = [&](const Value &current, Value &next,
+                        std::string &error) {
+            const MapBody *map = as_map(current);
+            if (!map) {
+                error = "cannot ." + name + "() on " + to_string(current);
+                return false;
+            }
+            MapBody copy;
+            const bool ok =
+                (name == "set")
+                    ? map_with(*map, argv[0], argv[1], copy, error)
+                    : map_without(*map, argv[0], copy, error);
+            if (!ok)
+                return false;
+            next = make_map(std::move(copy));
+            return true;
+        };
+    } else {
+        fail(span, "no mutating method " + name);
         return nullptr;
     }
+
+    if (!update_through_slot(slot, span, transform))
+        return nullptr;
+
     // A mutator yields nothing: the new value is already in the variable, and
     // returning it would make every append echo the whole list in the REPL.
     return make_value(std::monostate{});

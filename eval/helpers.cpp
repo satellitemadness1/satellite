@@ -76,6 +76,12 @@ Value default_of(const Type &type)
     }
     if (type.space == "container" && type.name == "list")
         return make_list(List{});
+    // An empty map, not nil, for the same reason a list starts empty: a
+    // declaration you cannot immediately .set() into would be useless, and nil
+    // would make every map variable need an initialiser the language has no
+    // syntax for.
+    if (type.space == "container" && type.name == "map")
+        return make_map(MapBody{});
     return std::monostate{};
 }
 
@@ -126,6 +132,41 @@ bool value_equals(const Value &a, const Value &b)
     if (const SatString *sa = as_string(a))
         return *sa == *as_string(b);
 
+    // A map is exactly the shape the comment above warns about: a handle to
+    // something with value semantics, whose fallback would compare MapRefs and
+    // therefore pointers. Two independently built maps holding the same entries
+    // must be equal.
+    //
+    // Order-INSENSITIVE, which is deliberate and is the one place a map's
+    // insertion order does not count. Order is how a map is PRINTED and WALKED,
+    // because those need to be deterministic; it is not part of what a map IS.
+    // Two symbol tables that disagree only about which name was seen first hold
+    // the same symbols.
+    //
+    // Looked up through b's index, so this is O(n) rather than O(n^2).
+    if (const MapBody *ma = as_map(a)) {
+        const MapBody *mb = as_map(b);
+        if (ma->entries.size() != mb->entries.size())
+            return false;
+        for (const MapEntry &entry : ma->entries) {
+            std::string key;
+            if (!entry.key || !map_key_of(*entry.key, key))
+                return false;
+            auto found = mb->index.find(key);
+            if (found == mb->index.end())
+                return false;
+            const ValuePtr &other = mb->entries[found->second].value;
+            if (!entry.value || !other) {
+                if (static_cast<bool>(entry.value) != static_cast<bool>(other))
+                    return false;
+                continue;
+            }
+            if (!value_equals(*entry.value, *other))
+                return false;
+        }
+        return true;
+    }
+
     return static_cast<const ValueBase &>(a) == static_cast<const ValueBase &>(b);
 }
 
@@ -172,6 +213,11 @@ ValuePtr make_value(List items)
     return make_value(make_list(std::move(items)));
 }
 
+ValuePtr make_value(MapBody body)
+{
+    return make_value(make_map(std::move(body)));
+}
+
 
 // The whole language, on one screen.
 //
@@ -202,7 +248,7 @@ ValuePtr module_constant(const std::vector<std::string> &path)
 // receiver has to name a storage slot.
 bool is_mutator(const std::string &name)
 {
-    return name == "append";
+    return name == "append" || name == "set" || name == "remove";
 }
 
 // What the depth guard is protecting, measured rather than guessed.

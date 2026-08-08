@@ -39,11 +39,37 @@ int main()
         return 1;
     }
 
+    // A map, through the same publish protocol.
+    //
+    // This is the ONLY place the MapRef alternative comes under
+    // ThreadSanitizer. The evaluator's own write paths do not: this file drives
+    // the Library directly from C++ and never constructs an Evaluator, so
+    // call_mutator's field arm has no TSan coverage either. Anything that made
+    // a MapBody mutable after publication — a lazily built index, a memoised
+    // hash, a lookup cache — would be a data race, and this is what would see
+    // it.
+    {
+        satellite::MapBody body;
+        body.entries.push_back(
+            {std::make_shared<const Value>(
+                 satellite::make_string(satellite::encode("bolt"))),
+             std::make_shared<const Value>(satellite::Number(40))});
+        body.index.emplace("sbolt", 0);
+        lib.set("main", "parts", satellite::make_map(std::move(body)));
+        auto parts = lib.get("main", "parts");
+        if (!parts || satellite::to_string(*parts) != "{bolt: 40}") {
+            printf("FAIL: map through the library, got %s\n",
+                   parts ? satellite::to_string(*parts).c_str() : "null");
+            return 1;
+        }
+    }
+
     // Concurrent increments through update() must not lose a single write,
     // while lock-free readers hammer the same variable and new variables
     // are interned underneath them.
     const int WRITERS = 8, INCREMENTS = 20000, READERS = 4;
     lib.set("counters", "shared", satellite::Number(0));
+    lib.set("counters", "map", satellite::make_map(satellite::MapBody{}));
     std::atomic<bool> stop{false};
     std::atomic<long long> reads{0};
 
@@ -55,6 +81,16 @@ int main()
                 auto snapshot = lib.get("counters", "shared");
                 if (snapshot && !std::get<satellite::Number>(*snapshot).is_negative())
                     n++;
+                // Read the map the writers are republishing. A reader walks the
+                // entries and the index of a body another thread may be
+                // replacing wholesale, which is exactly the race the frozen-
+                // after-construction rule exists to make safe.
+                auto m = lib.get("counters", "map");
+                if (m) {
+                    const satellite::MapBody *body = satellite::as_map(*m);
+                    if (body && body->entries.size() != body->index.size())
+                        n--;   // torn: entries and index disagreed
+                }
             }
             reads += n;
         });
@@ -67,9 +103,35 @@ int main()
                     return Value(satellite::Number::add(std::get<satellite::Number>(*current),
                                                  satellite::Number(1)));
                 });
-                if (n % 1000 == 0)
+                if (n % 1000 == 0) {
                     lib.set("writer" + std::to_string(i),
                             "n" + std::to_string(n), satellite::Number(n));
+                    // Republish a whole map body, copy-on-write, exactly as
+                    // call_mutator's global arm does for .set().
+                    lib.update("counters", "map",
+                               [&](const Value *current) -> Value {
+                                   const satellite::MapBody *old =
+                                       current ? satellite::as_map(*current)
+                                               : nullptr;
+                                   satellite::MapBody next;
+                                   if (old)
+                                       next = *old;
+                                   std::string key =
+                                       "s" + std::to_string(i) + "_" +
+                                       std::to_string(n);
+                                   if (!next.index.count(key)) {
+                                       next.index.emplace(key,
+                                                          next.entries.size());
+                                       next.entries.push_back(
+                                           {std::make_shared<const Value>(
+                                                satellite::make_string(
+                                                    satellite::encode(key))),
+                                            std::make_shared<const Value>(
+                                                satellite::Number(n))});
+                                   }
+                                   return satellite::make_map(std::move(next));
+                               });
+                }
             }
         });
 

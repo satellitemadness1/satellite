@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -36,7 +37,7 @@ using List = std::vector<ValuePtr>;
 // heap allocation per intermediate value — 28 ns of the 112.5 ns an addition
 // costs — and removing it means passing a Value BY VALUE rather than behind a
 // shared_ptr. That is only an improvement if copying a Value is cheap, and with
-// a u32string and a vector stored inline it is not: copying would deep-copy the
+// a u16string and a vector stored inline it is not: copying would deep-copy the
 // character buffer, so arithmetic would get faster and strings would get much
 // slower.
 //
@@ -46,6 +47,40 @@ using List = std::vector<ValuePtr>;
 // switch on raw variant indices.
 using Str     = std::shared_ptr<const SatString>;
 using ListRef = std::shared_ptr<const List>;
+
+// satellite.container.map<K, V>. One entry, in insertion order.
+struct MapEntry {
+    ValuePtr key;
+    ValuePtr value;
+};
+
+// Insertion-ordered, with a side index for O(1) lookup by canonical key.
+//
+// ORDERED, and that is not a taste decision. §15's complaint is that a symbol
+// table built on `list` is a linear scan; the index answers that. The ORDER
+// answers a different requirement: `.keys()` is how a map is walked, since §5's
+// only loop is the C-shaped `for`, and an unordered map would make every
+// program that walks one non-deterministic. §15's stage 3 self-compiles to a
+// byte-identical fixpoint, and a fixpoint test over unstable iteration order is
+// unfalsifiable.
+//
+// BUILT, THEN FROZEN. A MapBody is fully populated before make_shared and is
+// never written afterwards, which is what keeps the immutability contract above
+// and the lock-free publish protocol intact — the same argument §8.3 makes for
+// `file`. A mutable member, a const_cast, a lazily-built index or a memoised
+// lookup cache would each be a data race, and NOTHING in the test suite would
+// catch it: library_test drives the Library from C++ and never runs satellite
+// code, so the evaluator's write paths have no ThreadSanitizer coverage.
+//
+// The key of `index` is the canonical byte string from map_key_of (eval/maps.cpp),
+// never the decoded text of a key — see §8.6, and the reason is that §8.5's
+// \home and \cwd expand at decode() time and would make a key's identity depend
+// on the current directory.
+struct MapBody {
+    std::vector<MapEntry> entries;
+    std::unordered_map<std::string, size_t> index;
+};
+using MapRef = std::shared_ptr<const MapBody>;
 
 // satellite.variable.time — an absolute instant, nanoseconds since the Unix
 // epoch, UTC.
@@ -160,8 +195,13 @@ const std::string &suit_name(const SpacesuitInfo *suit);
 // language's value space and no way for one to leak in. Number's deleted float
 // constructors are what enforce that at the C++ level — `Value v = 3.14` is a
 // compile error rather than the silent truncation to 3 that §8.1 measured.
+//
+// APPEND ONLY. MapRef is index 8 because it was added last, not because a map
+// belongs at the end: help_for() and module_of() switch on RAW variant indices,
+// so inserting an alternative renumbers every alternative after it and silently
+// changes what every one of those switches means.
 using ValueBase = std::variant<std::monostate, bool, Number, Str, ListRef,
-                               ObjectPtr, Time, FilePtr>;
+                               ObjectPtr, Time, FilePtr, MapRef>;
 
 // One node that can hold anything the language has so far:
 //   satellite.variable.bool / .number       -> the scalar alternatives
@@ -184,6 +224,13 @@ inline Value make_list(List items)
 {
     return Value(std::make_shared<const List>(std::move(items)));
 }
+// Takes the body BY VALUE and freezes it: after this returns, the MapBody is
+// const and shared, and the only way to "change" a map is to build a new body
+// and publish it through the storage slot. See MapBody above for why.
+inline Value make_map(MapBody body)
+{
+    return Value(std::make_shared<const MapBody>(std::move(body)));
+}
 
 // Read a string or list out of a Value, or null if it is not one.
 //
@@ -200,6 +247,11 @@ inline const SatString *as_string(const Value &v)
 inline const List *as_list(const Value &v)
 {
     const ListRef *p = std::get_if<ListRef>(&v);
+    return p ? p->get() : nullptr;
+}
+inline const MapBody *as_map(const Value &v)
+{
+    const MapRef *p = std::get_if<MapRef>(&v);
     return p ? p->get() : nullptr;
 }
 
@@ -240,6 +292,7 @@ struct ValuePrinter {
 
     std::string operator()(Time time) const;
     std::string operator()(const FilePtr &file) const;
+    std::string operator()(const MapRef &map) const;
 };
 
 inline std::string to_string(const Value &v)
@@ -261,6 +314,29 @@ inline std::string ValuePrinter::operator()(const ListRef &list) const
         out += item ? to_string(*item) : "nil";
     }
     return out + "]";
+}
+
+// `{key: value, key: value}`, in insertion order, and `{}` when empty. Braces
+// rather than brackets so a map and a list are distinguishable at a glance in
+// REPL output and in an error message.
+//
+// The order is what makes this testable: eval_test's check_output is exact
+// string equality, so a map that rendered in hash order would make every test
+// that prints one intermittently red.
+inline std::string ValuePrinter::operator()(const MapRef &map) const
+{
+    if (!map || map->entries.empty())
+        return "{}";
+    std::string out = "{";
+    for (size_t i = 0; i < map->entries.size(); i++) {
+        if (i)
+            out += ", ";
+        const MapEntry &e = map->entries[i];
+        out += e.key ? to_string(*e.key) : "nil";
+        out += ": ";
+        out += e.value ? to_string(*e.value) : "nil";
+    }
+    return out + "}";
 }
 
 } // namespace satellite

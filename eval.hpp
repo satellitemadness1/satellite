@@ -4,6 +4,7 @@
 #include "env.hpp"
 #include "value.hpp"
 
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -131,8 +132,34 @@ private:
     ValuePtr call_method(const ValuePtr &recv, const Expr &recv_expr,
                          const std::string &name,
                          const std::vector<ValuePtr> &argv, Span span);
+    // The map's read surface, in eval/maps.cpp rather than inline in
+    // methods.cpp: that file is 341 lines against the ~400 limit, and the key
+    // canonicaliser needs more explanation than code.
+    ValuePtr call_map_method(const ValuePtr &recv, const std::string &name,
+                             const std::vector<ValuePtr> &argv, Span span);
     ValuePtr call_mutator(const Expr &recv_expr, const std::string &name,
                           const std::vector<ValuePtr> &argv, Span span);
+
+    // One read-modify-write through a storage slot, for EVERY mutating method.
+    //
+    // Three storage kinds, and one place each rule is written down:
+    //   FIELD  — under current_self_->write_lock, so the sequence is
+    //            indivisible against a plain assignment to the same field (§14)
+    //   FRAME  — no lock and no atomic: reachable from exactly one thread (§6)
+    //   GLOBAL — Library::update(), which is where the lost-write guarantee is
+    //
+    // `transform` runs C++ only, never satellite code: argv is fully reduced in
+    // eval/expr.cpp before this is reached, so §7's "nothing re-enters a held
+    // lock" holds by construction and a new mutator cannot break it.
+    //
+    // It exists because three hand-copied lock protocols is three chances for
+    // the next mutator to differ subtly, and the field arm has no
+    // ThreadSanitizer coverage — library_test drives the Library from C++ and
+    // never runs satellite code.
+    bool update_through_slot(
+        const Slot &slot, Span span,
+        const std::function<bool(const Value &current, Value &next,
+                                 std::string &error)> &transform);
     ValuePtr call_module(const std::vector<std::string> &path,
                          const std::vector<ValuePtr> &argv, Span span);
 

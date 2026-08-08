@@ -203,16 +203,47 @@ ValuePtr Evaluator::eval_call(const Call &node, Span span)
             }
         }
 
-        // A spacesuit may name a method `append`, and its own method has to
-        // win. The receiver's DECLARED type settles that without evaluating
-        // it, which matters because the mutator path needs storage rather than
-        // a value — evaluating first to find out would run the receiver's side
-        // effects before rejecting `foo().append(x)`.
+        // A spacesuit may name a method `append`, `set` or `remove`, and its
+        // own method has to win. The receiver's DECLARED type settles that for
+        // free whenever it is known:
+        //
+        //   declared container -> a container mutation; call_mutator, which
+        //                         needs storage rather than a value
+        //   declared spacesuit -> the suit's own method; fall through
+        //
+        // When nothing static settles it — a temporary, or a slot with no
+        // recorded type — the VALUE has to decide, which means evaluating the
+        // receiver and paying its side effects before a possible error. That is
+        // why it is the last resort and not the rule: `foo().append(x)` still
+        // fails, now after foo() has run.
+        //
+        // The previous form of this test asked `!declared ||
+        // !declared->is_spacesuit()` and so sent EVERY receiver of unknown type
+        // to call_mutator. A spacesuit method named `set` — and two of this
+        // repo's own example programs have one — then failed with a message
+        // about writing back through a receiver whenever it was called on
+        // anything but a declared spacesuit-typed variable. Widening
+        // is_mutator to `set` and `remove` for the map is what made that latent
+        // bug reachable, so the two changes belong in one commit.
         if (is_mutator(m->name)) {
             const Slot slot = slot_of(*m->target);
             const Type *declared = slot.valid ? declared_type(slot) : nullptr;
-            if (!declared || !declared->is_spacesuit())
+
+            if (declared && declared->space == "container")
                 return call_mutator(*m->target, m->name, argv, span);
+
+            if (!declared || !declared->is_spacesuit()) {
+                ValuePtr recv = eval(*m->target);
+                if (failed() || !recv)
+                    return nullptr;
+                // An instance answers with its own method. Anything else is a
+                // container mutation, and call_mutator reports the storage
+                // error when the receiver names none — which is what keeps
+                // `"abc"[0:1].append(1)` saying exactly what it always has.
+                if (!std::holds_alternative<ObjectPtr>(*recv))
+                    return call_mutator(*m->target, m->name, argv, span);
+                return call_method(recv, *m->target, m->name, argv, span);
+            }
         }
 
         ValuePtr recv = eval(*m->target);

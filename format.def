@@ -64,6 +64,11 @@ SAT_WORD(24, TIME,       "time")
 SAT_WORD(25, FILE,       "file")
 SAT_WORD(26, CONTAINER,  "container")
 SAT_WORD(27, LIST,       "list")
+// `map` is a type name and belongs in this group, but it is id 73 and lives at
+// the bottom of the file. The append-only rule above forbids putting it here,
+// and this is the FIRST entry whose semantic group and numeric position
+// disagree. Grouping is a comment; numbering is the format. When the two
+// conflict the numbering wins, and a pointer like this one is the fix.
 
 // Modules and module functions.
 SAT_WORD(28, LIBRARY,    "library")
@@ -125,6 +130,26 @@ SAT_WORD(69, LESS_THAN,        "less_than")
 SAT_WORD(70, LESS_OR_EQUAL,    "less_or_equal")
 SAT_WORD(71, GREATER_THAN,     "greater_than")
 SAT_WORD(72, GREATER_OR_EQUAL, "greater_or_equal")
+
+// satellite.container.map<K, V>, and the six selectors it adds. `map` is a type
+// name whose group is up beside `list` (27); it is here because ids are never
+// renumbered and 73 was next.
+//
+// `length` (48) and `to_string` (47) are REUSED rather than duplicated — the
+// space is flat, so a word has one id wherever it appears, and a map answering
+// to `length` is the same word a list answers to.
+//
+// `has` is a new word rather than a reuse of `contains` (50) on purpose:
+// `contains` is substring containment on a string and element containment on a
+// list, and on a map it would be ambiguous between keys and values. A name that
+// has to be disambiguated by its receiver is a name that will be read wrong.
+SAT_WORD(73, MAP,     "map")
+SAT_WORD(74, GET,     "get")
+SAT_WORD(75, SET,     "set")
+SAT_WORD(76, REMOVE,  "remove")
+SAT_WORD(77, HAS,     "has")
+SAT_WORD(78, KEYS,    "keys")
+SAT_WORD(79, VALUES,  "values")
 
 // --- the arity table: complete paths, and how many operands each takes -------
 // §17: decoding is positional. Nothing in the stream announces "I am an

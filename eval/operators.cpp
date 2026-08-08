@@ -20,16 +20,49 @@ ValuePtr Evaluator::eval_index(const Index &node, Span span)
     if (failed() || !sub)
         return nullptr;
 
+    // A MAP is consulted before the subscript is coerced, and the order is the
+    // whole change: this function used to demand a whole number of every
+    // subscript up front, so `m["bolt"]` failed with "index must be a whole
+    // satellite.variable.number" whatever the receiver turned out to be.
+    //
+    // A map key is not an index, so it takes the map's own rule (§8.6) rather
+    // than as_index's.
+    if (const MapBody *map = as_map(*target)) {
+        std::string key;
+        if (!map_key_of(*sub, key)) {
+            fail(node.subscript->span,
+                 "a map key must be a satellite.variable.string or "
+                 "satellite.variable.number, got " + to_string(*sub));
+            return nullptr;
+        }
+        auto found = map->index.find(key);
+        // Symmetric with an out-of-range index, and with .get: absent is an
+        // error, and .has() is how to ask without one.
+        if (found == map->index.end()) {
+            fail(node.subscript->span,
+                 "no such key in the map: " + to_string(*sub));
+            return nullptr;
+        }
+        const ValuePtr &value = map->entries[found->second].value;
+        return value ? value : make_value(std::monostate{});
+    }
+
+    // Demanded per-receiver now rather than up front, so the message stays
+    // exactly what it was for the receivers it applies to.
     long long i = 0;
-    if (!as_index(*sub, i)) {
+    auto whole_number_index = [&]() {
+        if (as_index(*sub, i))
+            return true;
         fail(node.subscript->span,
              "index must be a whole satellite.variable.number, got " +
              to_string(*sub));
-        return nullptr;
-    }
+        return false;
+    };
 
     // An out-of-range INDEX is an error; only a slice clamps (§7).
     if (const List *list = as_list(*target)) {
+        if (!whole_number_index())
+            return nullptr;
         long long len = static_cast<long long>(list->size());
         if (i < 0)
             i += len;
@@ -45,6 +78,8 @@ ValuePtr Evaluator::eval_index(const Index &node, Span span)
     }
 
     if (const SatString *s = as_string(*target)) {
+        if (!whole_number_index())
+            return nullptr;
         // Selects satellite characters, not display characters: encode("hi
         // \home!") is 4 SatChars that decode to 16 display bytes, so s[2] is
         // one unit that displays as a whole home directory. It is the only

@@ -72,6 +72,26 @@ void clamp_range(long long &lo, long long &hi, long long len);
 ValuePtr make_value(Value v);
 ValuePtr make_value(SatString s);
 ValuePtr make_value(List items);
+ValuePtr make_value(MapBody body);
+
+// --- maps.cpp --------------------------------------------------------------
+
+// A map key's canonical bytes, or false when the value cannot be a key.
+//
+// Declared here rather than in maps.cpp because value_equals needs it: two maps
+// are equal when they hold the same canonical keys, and helpers.cpp would
+// otherwise have to reimplement the canonical form. One definition, or the two
+// drift and equality stops agreeing with lookup. §8.6 is the contract.
+bool map_key_of(const Value &v, std::string &out);
+
+// The two writes, as pure functions of the current body. They take no lock and
+// touch no slot: the read-modify-write protocol lives once, in
+// Evaluator::update_through_slot, and calls these while holding whatever that
+// storage kind requires.
+bool map_with(const MapBody &current, const ValuePtr &key, const ValuePtr &value,
+              MapBody &next, std::string &error);
+bool map_without(const MapBody &current, const ValuePtr &key, MapBody &next,
+                 std::string &error);
 
 // satellite.bool.true / .false, and anything else resolved on a
 // satellite-rooted path rather than called.

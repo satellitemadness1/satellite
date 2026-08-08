@@ -14,6 +14,7 @@ std::string help_overview()
 "\n"
 "  declare    satellite.variable.number x = 1        bool number string time file\n"
 "             satellite.container.list<satellite.variable.number> l\n"
+"             satellite.container.map<satellite.variable.string, ...> m\n"
 "             my_class thing            a spacesuit; thing(\"arg\") to construct\n"
 "  values     satellite.bool.true  satellite.bool.false  satellite (the runtime)\n"
 "  operators  + - * / %   == != < <= > >=   !   -x    l[i]  l[a:b]  l[:b]  l[a:]\n"
@@ -59,6 +60,10 @@ std::string help_for(const Value &value)
                     "  .minus(t) -> nanoseconds   .nanoseconds()  .to_string()\n";
     case 7:  return "satellite.variable.file\n"
                     "  .ok() .read() .write(s) .close() .error() .path()\n";
+    case 8:  return "satellite.container.map\n"
+                    "  .get(k) .set(k, v) .has(k) .remove(k) .length()\n"
+                    "  .keys() .values() .to_string()        m[k]\n"
+                    "  a key is a string or a number; a missing key is an error\n";
     default: break;
     }
     return "nil has no methods\n";

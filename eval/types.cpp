@@ -57,6 +57,22 @@ bool matches(const Type &type, const Value &value)
         return true;
     }
 
+    // Both positions are checked, and args[1] is safe to read only because
+    // Resolver::check_type guarantees a map's argument count is 0 or 2
+    // (env/scopes.cpp). A one-argument map never reaches here.
+    if (type.space == "container" && type.name == "map") {
+        const MapBody *map = as_map(value);
+        if (!map)
+            return false;
+        if (type.args.empty())
+            return true;    // bare `map` matches any map, as a bare list does
+        for (const MapEntry &entry : map->entries)
+            if (!entry.key || !matches(type.args[0], *entry.key) ||
+                !entry.value || !matches(type.args[1], *entry.value))
+                return false;
+        return true;
+    }
+
     return false;
 }
 
@@ -78,6 +94,7 @@ const char *module_of(const Value &value)
     }
     case 6: return "satellite.variable.time";
     case 7: return "satellite.variable.file";
+    case 8: return "satellite.container.map";
     default: return nullptr;
     }
 }

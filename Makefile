@@ -73,7 +73,7 @@ PARSER_OBJS = $(PARSER_SRCS:.cpp=.o)
 EVAL_SRCS = eval/helpers.cpp eval/help.cpp eval/types.cpp eval/session.cpp \
             eval/stmt.cpp eval/slots.cpp eval/expr.cpp eval/methods.cpp \
             eval/mutators.cpp eval/modules.cpp eval/calls.cpp \
-            eval/operators.cpp
+            eval/operators.cpp eval/maps.cpp
 EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
 OBJS      = main.o library.o satellite_string.o system.o lexer.o \
