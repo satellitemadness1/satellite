@@ -1968,34 +1968,97 @@ any constructor body, then constructors run superclass-first, and the constructi
 arguments go to the most derived one. §14 records why that is deliberately not C++'s
 interleaving, and the bytecode has no opinion — it emits the order resolve() already fixed.
 
-### 17.3 Strings and the constant pool
+### 17.3 Strings, lengths and the constant pool
 
 `SatChar` is `char32_t` (satellite_string.hpp:24): **32 bits per character**, over satellite's
-own code table rather than Unicode. A string's length is unbounded, so a string literal cannot
-be an inline operand at any fixed unit size. It lives in the **constant pool** and the
-instruction carries a kind-2 operand holding a pool index — one 256-bit unit, one integer.
+own code table rather than Unicode or ASCII. `"hello, world!"` is the codes
+`8 5 12 12 15 87 1073741856 23 15 18 12 4 63` — `a` is 1 so `h` is 8, `,` is punctuation base
+63 plus index 24, and the space is 2^30 + 32 because §3.2 puts whitespace in the raw area.
+The most common character in English prose takes the raw-area path; that is by design, and it
+is why a character is 32 bits and not 8.
 
-In the pool, at 8 characters per 256-bit unit:
+A string's length is unbounded, so a literal cannot be an inline operand at any fixed unit
+size. It lives in the **constant pool** and the instruction carries a kind-2 operand holding a
+pool index.
+
+**Lengths carry a continuation bit.** A length is one 256-bit unit whose top bit says whether
+another unit follows, leaving 255 bits of value; a set bit means the length continues.
+
+255 bits will never overflow for a string — 2^255 characters is past the number of atoms
+available to store them — so for a length the continuation bit is a formality that is always
+zero. It is specified anyway, and the reason is `Number`: an exact arbitrary-precision
+significand (§8.1) has no bound by definition, the continuation genuinely fires there, and no
+fixed width could replace it. The varint reader has to exist regardless, so using it for every
+length as well costs nothing and leaves the format with **one reader for every length and
+every number in it**.
+
+The cost is nothing for a reason specific to where it lives: the constant pool is decoded
+**once at load**, not per instruction, so a loop there never touches the dispatch path. That
+gives the rule the format is organised around:
+
+> **Fixed-width units in the code section, variable-width in the constant pool.**
+
+Instructions stay 4x64 so positional decoding (§17) stays a load rather than a loop.
+Unbounded things — lengths, bignum significands — live in the pool where the loop is amortised
+to zero.
+
+There is a consistency argument underneath the engineering one, and it is the stronger of the
+two. §8.1 banished fixed-width numbers from the *language*. A 64-bit cap in its *bytecode*
+would be smuggling one back in through the basement.
+
+**Type, continuation and length share one unit.** A whole 256-bit unit spent carrying the
+number 13 is not thrift, it is theatre, and there is no reason the type tag cannot sit beside
+it:
 
 ```
-header unit   [256]   entry type = string, length in characters
-data units    [256]   8 characters each; the last unit zero-padded
+unit 0    word0 bits[63:60]   entry type   (string, number, ...)
+          word0 bit  [59]     continuation — another length unit follows
+          word0 bits[58:0]
+          word1, word2, word3 length, 251 bits
+unit 1..  data                8 characters per unit, last unit zero-padded
 ```
 
-`"hello"` is two units. The padding is the same trade the rest of the format makes: §17
-measured density at 5%, so unit alignment is worth more than the bits it wastes.
+251 bits is the same unreachable number 255 was, and the entry is one unit shorter. The saving
+is 32 bytes per pool entry and therefore does not matter; the reason to do it is that a field
+sized 20 orders of magnitude past its largest possible value invites the reader to wonder what
+they have misunderstood.
 
-Two things that are correctness, not encoding:
+The continuation bit keeps its meaning: set, and another full 256-bit unit of length follows.
+For a string it will never be set. For a `Number` significand it will.
+
+`satellite.console.display("hello, world!")` in full — two units of code, three of pool:
+
+```
+CODE
+  unit 0   name code
+    word0  0x0000000000000001    kind 0 (name) | segment 1 = satellite
+    word1  0x0000000000000006    segment 2 = console
+    word2  0x0000000000000007    segment 3 = display
+    word3  0x0000000000000000    segment 4 absent
+  unit 1   operand
+    word0  0x2000000000000000    kind 2 (pool ref) | index 0
+    word1..3  zero
+
+POOL entry 0
+  unit 0   type = string, continuation clear, length = 13
+    word0  0x100000000000000D    type 1 | cont 0 | length 13
+    word1..3  zero
+  unit 1   0x00000008 00000005 0000000C 0000000C 0000000F 00000057 40000020 00000017
+               h         e         l         l         o         ,       (spc)      w
+  unit 2   0x0000000F 00000012 0000000C 00000004 0000003F 00000000 00000000 00000000
+               o         r         l         d         !         -         -         -
+```
+
+Two things that are correctness rather than encoding:
 
 - Store `StringLit::value`, not `StringLit::source` (ast.hpp:112). `value` has escapes already
-  expanded; `source` is what was typed. The pool holds the value the program means.
+  expanded; `source` is what was typed.
 - This is the one place `encode` applies. §3.3 fixes the rule: source text is lexed with
-  `encode_raw` (one byte, one SatChar) so that spans stay byte offsets, and only string
-  literal *bodies* are `encode`d. eval.cpp:1365 records that getting this backwards has been
-  found three times, most recently in `.read()`.
+  `encode_raw` (one byte, one SatChar) so spans stay byte offsets, and only string literal
+  *bodies* are `encode`d. eval.cpp:1365 records that getting this backwards has been found
+  three times, most recently in `.read()`.
 
-Exact-decimal numbers take the same route for the same reason. A `Number` is a significand
-that may be an arbitrary-precision bignum (§8.1), so it is not inline at any fixed width; the
-pool holds it and the instruction holds an index. Small integers that fit the inline value
-representation are the exception and are emitted as kind-1 immediates, which is where the
-value model of §17 pays off in the instruction stream as well as in the heap.
+Exact-decimal numbers take the same route for the same reason, and are where the continuation
+bit is load-bearing rather than ceremonial. Small integers that fit the inline value
+representation are the exception and are emitted as kind-1 immediates, which is where §17's
+value model pays off in the instruction stream as well as in the heap.
