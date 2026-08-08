@@ -1867,24 +1867,36 @@ is part of milestone 1, not a follow-up.
 
 ### What is not decided
 
-Honestly, and per §16's example of marking placeholders as placeholders:
+Honestly, and per §16's example of marking placeholders as placeholders. Two entries that
+stood here have been decided and moved to §17.4; two remain.
 
-- **Operand encoding for calls.** How argument registers are named in a call instruction —
-  a contiguous register range, or one operand unit per argument. The arity table makes either
-  workable and neither has been chosen.
-- **The register ceiling.** 1024 is the working figure, which fits in the id field with room
-  to spare. It is a ceiling on the *index*, never a per-frame allocation: §6 already computes
-  an exact slot count per capsule and a frame allocates that many. A frame that allocated
-  1024 slots would reintroduce the per-activation `vector` that is already part of the
-  measured 600 ns.
-- **Whether the span table is per-instruction or a compressed range map.** It must carry a
-  line number *and* the file id §16 adds to `Span`, because an error that names the wrong
-  file is the failure §16 calls fatal. Per-instruction is the obvious form and is 256 bits
-  per instruction of pure overhead; a range map is smaller and needs a search.
-- **SIMD.** Rejected for the dispatch loop: decode is serial and data-dependent, which is the
-  opposite shape to what SIMD accelerates, and `Architecture: any` means intrinsics can never
-  be load-bearing. The real opportunity is bignum's base-10⁹ limb arrays under add and
-  multiply, which is SIMD-shaped and entirely independent of this machine.
+- **The span table shape.** Per-instruction is the obvious form and costs one entry for every
+  instruction, most of them repeating the line before. A change-only table — one entry
+  wherever the line changes, found by binary search — is typically 5 to 10 times smaller, and
+  the search costs nothing because this table is read **only when reporting an error** and
+  never during execution. Change-only is the recommendation and is not yet written down as a
+  decision.
+
+  Whichever it is, it must carry a line number **and** the file id §16 adds to `Span`. An
+  error that names the wrong file is the failure §16 calls fatal.
+
+- **The method-id assignments.** `format.def` now carries ids 38..66, taken from eval.cpp's
+  method tables. They are frozen the moment a file is compiled with them and not before, so
+  this is the last cheap moment to renumber.
+
+Settled, and recorded here because it keeps being asked:
+
+- **SIMD.** Rejected for the dispatch loop. Decode is serial and data-dependent — each step
+  waits on the one before — which is the opposite shape to what SIMD accelerates, and
+  `Architecture: any` means i386 and armhf have no intrinsics, so it could never be
+  load-bearing. The real opportunity is bignum's base-10⁹ limb arrays under add and multiply,
+  which is genuinely SIMD-shaped and has nothing to do with this machine.
+
+- **The register ceiling.** A non-issue, and the 1024 that stood here was a leftover from a
+  packed encoding this format did not adopt. A register index has a whole 64-bit word, so the
+  ceiling is 2^64. The real bound is the exact slot count §6 already computes per capsule.
+  What survives from that entry is the warning in §17.4: a fixed per-frame allocation would
+  reintroduce the per-activation `vector` that is part of the measured 600 ns.
 
 ### Cost model
 
@@ -2062,3 +2074,80 @@ Exact-decimal numbers take the same route for the same reason, and are where the
 bit is load-bearing rather than ceremonial. Small integers that fit the inline value
 representation are the exception and are emitted as kind-1 immediates, which is where §17's
 value model pays off in the instruction stream as well as in the heap.
+
+### 17.4 Calling convention: registers are slots, frames are windows
+
+This section corrects an earlier recommendation in this document's own history. One operand
+unit per argument was recommended on the grounds that it matches the arity table with no
+special case. That reasoning weighed the *encoding* and never weighed the *frame setup*, which
+is the part that runs. The conclusion was wrong and is reversed here.
+
+**A register is not an object and is never created.** One array of `Value` is allocated once,
+at VM startup, and a register is a slot in it. Register 5 of the current frame is `base[5]`,
+where `base` is a pointer into that array. There is no allocation on the path, because there
+is nothing to allocate — the slot was already there.
+
+This is the whole of the mechanism, and stating it negatively is worth as much: a design where
+each register is a separately allocated C++ object would put a malloc back on every value and
+land exactly where the tree walker already is. The tree walker is slow *because* every value
+is an individually allocated `shared_ptr<const Value>`. Registers as objects is that same
+mistake under a new name.
+
+**A frame is a window, not an allocation.**
+
+```
+value stack   [ main's 8 slots ][ fact's 5 slots ][ fact's 5 slots ][ unused
+               base = 0          base = 8          base = 13
+```
+
+Calling advances `base`; returning restores it. Two pointer adjustments, no allocator. That
+deletes the second of the three costs §14 names — "a `Frame` vector per activation" — outright.
+
+**Arguments are contiguous, and that is what makes a call free.** The caller evaluates each
+argument into the next slot at the top of its own frame. `CALL` names the first argument
+register and the count. The callee's frame base is then set **to that first argument
+register**, so the arguments are already sitting where the callee expects slots 0..N-1 to be.
+
+Nothing is copied. Not one value.
+
+With scattered per-argument operands the VM must copy N values into a fresh frame on every
+call. With a contiguous range it copies zero. That is the entire argument, and it is why Lua
+— the fastest register VM in wide use — encodes calls this way.
+
+The price is paid in the compiler: it must evaluate call arguments into consecutive registers
+rather than wherever is convenient. That is real work, it is well understood, and it is the
+right direction — complexity in the thing that runs once, to make free the thing that runs
+constantly.
+
+**Arguments carry no names and no types.** This is worth saying because a calling convention
+looks like it should need both. §6's resolve() already turned every parameter name into a slot
+index, so the name exists only for error messages. Arity is already checked statically
+(env.cpp:251). And a `Value` carries its own tag, so an argument describes its own type rather
+than being described by the call. An argument at run time is a value in a slot, and nothing
+else.
+
+**What C++ owns, and what it does not.** `Value` is an ordinary C++ struct with a copy
+constructor, a move constructor and a destructor, and those do the fiddly work: releasing a
+string's buffer or decrementing an object's refcount when a register is overwritten.
+`base[5] = base[6]` is a 16-byte move for an integer and one refcount bump for a string, and
+the correctness is the compiler's problem rather than the VM author's.
+
+What C++ must **not** own is register lifetime. `Value` is the element type of an array, never
+a thing that is individually allocated.
+
+**The stack is fixed at startup, and the guard already exists.** A growing `std::vector` would
+reallocate and invalidate every frame base being held — a use-after-free that surfaces as
+inexplicable garbage. Fix the size up front and report exhaustion. That is not a new limit:
+eval.cpp:272-300 already carries a measured depth guard, `DEFAULT_MAX_DEPTH = 2000` with one
+activation costing exactly 3 units. The bounded register stack is the same guarantee the
+language already makes, expressed in the new machine.
+
+**Expected result — an estimate, not a measurement.** Both allocation sources in the measured
+600 ns per iteration are removed by this section and by §17's value model: no malloc per
+arithmetic result, no allocation per activation. What remains is dispatch, which the register
+encoding cuts from four instructions per operation to one. The projection is roughly 2.5x to
+3x overall, which would put satellite at or slightly past CPython on execution while keeping
+the 6.4x startup advantage that is already measured.
+
+That number is a projection and is labelled as one deliberately. Everything it rests on was
+measured; how much comes back was not.

@@ -1,0 +1,133 @@
+// The bytecode format, as data. DESIGN.md §17 is the prose; this file is the
+// machine-readable half, and the two must agree.
+//
+// There is no generator and no build step. This is an X-macro list: every
+// consumer defines SAT_WORD / SAT_PATH, includes this file, and undefines them
+// again. The registry, the arity table, the id->name strings and the
+// disassembler therefore all come from ONE list and cannot drift apart, which
+// is the whole reason the file exists. Adding a name is one line here.
+//
+// §17: ids are FROZEN. Assignment by order of appearance would renumber every
+// construct after an insertion and silently change the meaning of already
+// compiled files. Never renumber, never reuse, always append.
+//
+// The identifiers are deliberately not the bare words. `and`, `or`, `true` and
+// `false` are C++ keywords or alternative tokens, and pasting them into an enum
+// name is a trap; the quoted string is what the language actually calls the
+// thing, and the identifier only has to be unique.
+
+#ifndef SAT_WORD
+#define SAT_WORD(id, ident, text)
+#endif
+#ifndef SAT_PATH
+#define SAT_PATH(ident, s1, s2, s3, s4, arity)
+#endif
+
+// --- the registry: one id per distinct word, flat across all positions -------
+// Flat means a word has one id wherever it appears: `console` is 6 in every
+// position. §17 takes flat over per-position because at 64 bits a segment there
+// is nothing to gain by packing, and flat leaves one table and one hex dump to
+// read.
+
+SAT_WORD( 1, SATELLITE,  "satellite")
+
+// Segment-1 dispatch keys — parser.cpp's at_language_path() set.
+SAT_WORD( 2, INCLUDE,    "include")
+SAT_WORD( 3, CAPSULE,    "capsule")
+SAT_WORD( 4, MAIN,       "main")
+SAT_WORD( 5, RETURN,     "return")
+SAT_WORD( 6, CONSOLE,    "console")
+SAT_WORD( 7, DISPLAY,    "display")
+SAT_WORD( 8, RETURNS,    "returns")
+SAT_WORD( 9, SPACESUIT,  "spacesuit")
+SAT_WORD(10, PROTECTED,  "protected")
+SAT_WORD(11, PUBLIC,     "public")
+SAT_WORD(12, STATEMENT,  "statement")
+SAT_WORD(13, IF,         "if")
+SAT_WORD(14, ELSE,       "else")
+SAT_WORD(15, WHILE,      "while")
+SAT_WORD(16, FOR,        "for")
+SAT_WORD(17, VARIABLE,   "variable")
+
+// 18..20 reserved. §15 ranks break and continue as the two gaps that hurt most,
+// and holding low ids for them costs nothing today. Do not fill these with
+// anything else.
+
+// Type names — the second segment of satellite.variable.* / .container.*
+SAT_WORD(21, BOOL,       "bool")
+SAT_WORD(22, NUMBER,     "number")
+SAT_WORD(23, STRING,     "string")
+SAT_WORD(24, TIME,       "time")
+SAT_WORD(25, FILE,       "file")
+SAT_WORD(26, CONTAINER,  "container")
+SAT_WORD(27, LIST,       "list")
+
+// Modules and module functions.
+SAT_WORD(28, LIBRARY,    "library")
+SAT_WORD(29, HELP,       "help")
+SAT_WORD(30, NOW,        "now")
+SAT_WORD(31, OPEN,       "open")
+SAT_WORD(32, DIRECTORY,  "directory")
+SAT_WORD(33, CURRENT,    "current")
+SAT_WORD(34, CHANGE,     "change")
+SAT_WORD(35, EXISTS,     "exists")
+SAT_WORD(36, TRUE_,      "true")
+SAT_WORD(37, FALSE_,     "false")
+
+// Methods. Bare selectors read relative to what precedes them (§1), so they are
+// user-facing bare words but language-owned names, and they need ids like any
+// other. Taken from eval.cpp's call_method tables.
+SAT_WORD(38, PLUS,        "plus")
+SAT_WORD(39, MINUS,       "minus")
+SAT_WORD(40, TIMES,       "times")
+SAT_WORD(41, DIVIDED_BY,  "divided_by")
+SAT_WORD(42, MODULO,      "modulo")
+SAT_WORD(43, ABS,         "abs")
+SAT_WORD(44, FLOOR,       "floor")
+SAT_WORD(45, CEIL,        "ceil")
+SAT_WORD(46, ROUND,       "round")
+SAT_WORD(47, TO_STRING,   "to_string")
+SAT_WORD(48, LENGTH,      "length")
+SAT_WORD(49, CONCAT,      "concat")
+SAT_WORD(50, CONTAINS,    "contains")
+SAT_WORD(51, STARTS_WITH, "starts_with")
+SAT_WORD(52, ENDS_WITH,   "ends_with")
+SAT_WORD(53, FIRST,       "first")
+SAT_WORD(54, LAST,        "last")
+SAT_WORD(55, APPEND,      "append")
+SAT_WORD(56, EMPTY,       "empty")
+SAT_WORD(57, AND_,        "and")
+SAT_WORD(58, OR_,         "or")
+SAT_WORD(59, NEGATE,      "negate")
+SAT_WORD(60, OK,          "ok")
+SAT_WORD(61, READ,        "read")
+SAT_WORD(62, WRITE,       "write")
+SAT_WORD(63, CLOSE,       "close")
+SAT_WORD(64, ERROR,       "error")
+SAT_WORD(65, PATH,        "path")
+SAT_WORD(66, NANOSECONDS, "nanoseconds")
+
+// --- the arity table: complete paths, and how many operands each takes -------
+// §17: decoding is positional. Nothing in the stream announces "I am an
+// instruction" — the reader starts at an instruction boundary and each path's
+// arity says how many operand units follow, which returns it to a boundary.
+// This table IS the grammar of the format. A path whose arity is unrecorded is
+// a stream that cannot be decoded.
+//
+// Zero segments beyond the ones used. The four ids are exactly the four 64-bit
+// words of the name code.
+
+SAT_PATH(P_INCLUDE,        1,  2,  0, 0, 1)   // satellite.include(x)
+SAT_PATH(P_RETURN,         1,  5,  0, 0, 1)   // satellite.return(x)
+SAT_PATH(P_DISPLAY,        1,  6,  7, 0, 1)   // satellite.console.display(x)
+SAT_PATH(P_TIME_NOW,       1, 24, 30, 0, 0)   // satellite.time.now()
+SAT_PATH(P_FILE_OPEN,      1, 25, 31, 0, 2)   // satellite.file.open(path, mode)
+SAT_PATH(P_DIR_CURRENT,    1, 32, 33, 0, 0)   // satellite.directory.current()
+SAT_PATH(P_DIR_CHANGE,     1, 32, 34, 0, 1)   // satellite.directory.change(d)
+SAT_PATH(P_DIR_EXISTS,     1, 32, 35, 0, 1)   // satellite.directory.exists(d)
+SAT_PATH(P_BOOL_TRUE,      1, 21, 36, 0, 0)   // satellite.bool.true
+SAT_PATH(P_BOOL_FALSE,     1, 21, 37, 0, 0)   // satellite.bool.false
+SAT_PATH(P_HELP,           1, 29,  0, 0, 0)   // satellite.help
+
+#undef SAT_WORD
+#undef SAT_PATH
