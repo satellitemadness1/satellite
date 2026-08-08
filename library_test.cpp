@@ -26,10 +26,12 @@ int main()
 
     // A container holding pointers to other values, nested.
     List inner{std::make_shared<const Value>(satellite::Number(1)),
-               std::make_shared<const Value>(satellite::encode("two"))};
-    List outer{std::make_shared<const Value>(std::move(inner)),
+               std::make_shared<const Value>(
+                   satellite::make_string(satellite::encode("two")))};
+    List outer{std::make_shared<const Value>(
+                   satellite::make_list(std::move(inner))),
                std::make_shared<const Value>(true)};
-    lib.set("main", "things", std::move(outer));
+    lib.set("main", "things", satellite::make_list(std::move(outer)));
     auto things = lib.get("main", "things");
     if (!things || satellite::to_string(*things) != "[[1, two], true]") {
         printf("FAIL: nested container, got %s\n",

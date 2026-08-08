@@ -84,7 +84,7 @@ Value default_of(const Type &type)
         if (type.name == "number")
             return Number();
         if (type.name == "string")
-            return SatString{};
+            return make_string(SatString{});
         // The epoch. A time has no "empty" the way a string does, and the epoch
         // is the one instant that is a fact rather than a choice.
         if (type.name == "time")
@@ -95,7 +95,7 @@ Value default_of(const Type &type)
         // to open and nowhere to report that opening failed.
     }
     if (type.space == "container" && type.name == "list")
-        return List{};
+        return make_list(List{});
     return std::monostate{};
 }
 
@@ -112,8 +112,8 @@ bool value_equals(const Value &a, const Value &b)
 {
     if (a.index() != b.index())
         return false;
-    if (const List *la = std::get_if<List>(&a)) {
-        const List &lb = std::get<List>(b);
+    if (const List *la = as_list(a)) {
+        const List &lb = *as_list(b);
         if (la->size() != lb.size())
             return false;
         for (size_t i = 0; i < la->size(); i++) {
@@ -160,6 +160,19 @@ void clamp_range(long long &lo, long long &hi, long long len)
 ValuePtr make_value(Value v)
 {
     return std::make_shared<const Value>(std::move(v));
+}
+
+// A string and a list are stored behind a handle (value.hpp), so neither
+// converts to a Value implicitly any more. These two overloads keep that a
+// detail of the value model rather than something every call site restates.
+ValuePtr make_value(SatString s)
+{
+    return make_value(make_string(std::move(s)));
+}
+
+ValuePtr make_value(List items)
+{
+    return make_value(make_list(std::move(items)));
 }
 
 
@@ -354,7 +367,7 @@ bool matches(const Type &type, const Value &value)
         if (type.name == "number")
             return std::holds_alternative<Number>(value);
         if (type.name == "string")
-            return std::holds_alternative<SatString>(value);
+            return (as_string(value) != nullptr);
         if (type.name == "time")
             return std::holds_alternative<Time>(value);
         // nil satisfies a file for the same reason it satisfies a spacesuit:
@@ -366,7 +379,7 @@ bool matches(const Type &type, const Value &value)
     }
 
     if (type.space == "container" && type.name == "list") {
-        const List *list = std::get_if<List>(&value);
+        const List *list = as_list(value);
         if (!list)
             return false;
         if (type.args.empty())
@@ -527,7 +540,7 @@ void Evaluator::run_entry(const Program &program, const List &args)
             return;
         }
 
-        argv.push_back(make_value(Value(args)));
+        argv.push_back(make_value(make_list(args)));
     }
 
     // From here it is an ordinary call: argz lands in slot 0 of main's frame
@@ -1215,9 +1228,9 @@ ValuePtr Evaluator::call_method(const ValuePtr &recv, const Expr &recv_expr,
     }
 
     // --- string ------------------------------------------------------------
-    if (const SatString *self = std::get_if<SatString>(recv.get())) {
+    if (const SatString *self = as_string(*recv)) {
         auto string_arg = [&](size_t i, const SatString *&out) {
-            out = std::get_if<SatString>(argv[i].get());
+            out = as_string(*argv[i]);
             if (!out) {
                 fail(span, std::string(module) + "." + name +
                            " wants a satellite.variable.string, got " +
@@ -1374,7 +1387,7 @@ ValuePtr Evaluator::call_method(const ValuePtr &recv, const Expr &recv_expr,
         if (name == "write") {
             if (!arity(1))
                 return nullptr;
-            const SatString *text = std::get_if<SatString>(argv[0].get());
+            const SatString *text = as_string(*argv[0]);
             if (!text) {
                 fail(span, "satellite.variable.file.write wants a "
                            "satellite.variable.string, got " +
@@ -1426,7 +1439,7 @@ ValuePtr Evaluator::call_method(const ValuePtr &recv, const Expr &recv_expr,
     }
 
     // --- list --------------------------------------------------------------
-    if (const List *self = std::get_if<List>(recv.get())) {
+    if (const List *self = as_list(*recv)) {
         if (name == "length")
             return arity(0) ? make_value(Number(self->size())) : nullptr;
         if (name == "to_string")
@@ -1494,7 +1507,7 @@ ValuePtr Evaluator::call_mutator(const Expr &recv_expr, const std::string &name,
 
         std::lock_guard<std::mutex> guard(current_self_->write_lock);
         ValuePtr current = cell->load();
-        const List *list = current ? std::get_if<List>(current.get()) : nullptr;
+        const List *list = current ? as_list(*current) : nullptr;
         if (!list) {
             fail(span, "cannot append to " +
                        (current ? to_string(*current) : std::string("nil")));
@@ -1502,7 +1515,7 @@ ValuePtr Evaluator::call_mutator(const Expr &recv_expr, const std::string &name,
         }
         List next = *list;
         next.push_back(argv[0]);
-        cell->store(make_value(Value(std::move(next))));
+        cell->store(make_value(std::move(next)));
         return make_value(std::monostate{});
     }
 
@@ -1514,7 +1527,7 @@ ValuePtr Evaluator::call_mutator(const Expr &recv_expr, const std::string &name,
         ValuePtr *cell = frame_cell(slot, slot.name, span);
         if (!cell)
             return nullptr;
-        const List *list = *cell ? std::get_if<List>(cell->get()) : nullptr;
+        const List *list = *cell ? as_list(**cell) : nullptr;
         if (!list) {
             fail(span, "cannot append to " +
                        (*cell ? to_string(**cell) : std::string("nil")));
@@ -1522,7 +1535,7 @@ ValuePtr Evaluator::call_mutator(const Expr &recv_expr, const std::string &name,
         }
         List next = *list;
         next.push_back(argv[0]);
-        *cell = make_value(Value(std::move(next)));
+        *cell = make_value(std::move(next));
         return make_value(std::monostate{});
     }
 
@@ -1536,7 +1549,7 @@ ValuePtr Evaluator::call_mutator(const Expr &recv_expr, const std::string &name,
                 type_error = "no such variable: " + slot.name;
                 return std::monostate{};
             }
-            const List *list = std::get_if<List>(current);
+            const List *list = as_list(*current);
             if (!list) {
                 // Re-checked under the lock rather than before it: another
                 // thread may have replaced the value since we looked.
@@ -1545,7 +1558,7 @@ ValuePtr Evaluator::call_mutator(const Expr &recv_expr, const std::string &name,
             }
             List next = *list;
             next.push_back(argv[0]);
-            return Value(std::move(next));
+            return make_list(std::move(next));
         });
 
     if (!type_error.empty()) {
@@ -1592,8 +1605,8 @@ ValuePtr Evaluator::call_module(const std::vector<std::string> &path,
             fail(span, arity_message("satellite.file", "open", 2, argv.size()));
             return nullptr;
         }
-        const SatString *path = std::get_if<SatString>(argv[0].get());
-        const SatString *mode = std::get_if<SatString>(argv[1].get());
+        const SatString *path = as_string(*argv[0]);
+        const SatString *mode = as_string(*argv[1]);
         if (!path || !mode) {
             fail(span, "satellite.file.open wants two "
                        "satellite.variable.string arguments");
@@ -1670,7 +1683,7 @@ ValuePtr Evaluator::call_module(const std::vector<std::string> &path,
                                      argv.size()));
             return nullptr;
         }
-        const SatString *path = std::get_if<SatString>(argv[0].get());
+        const SatString *path = as_string(*argv[0]);
         if (!path) {
             fail(span, std::string("satellite.directory.") + what +
                        " wants a satellite.variable.string, got " +
@@ -1995,7 +2008,7 @@ ValuePtr Evaluator::eval_index(const Index &node, Span span)
     }
 
     // An out-of-range INDEX is an error; only a slice clamps (§7).
-    if (const List *list = std::get_if<List>(target.get())) {
+    if (const List *list = as_list(*target)) {
         long long len = static_cast<long long>(list->size());
         if (i < 0)
             i += len;
@@ -2010,7 +2023,7 @@ ValuePtr Evaluator::eval_index(const Index &node, Span span)
         return item ? item : make_value(std::monostate{});
     }
 
-    if (const SatString *s = std::get_if<SatString>(target.get())) {
+    if (const SatString *s = as_string(*target)) {
         // Selects satellite characters, not display characters: encode("hi
         // \home!") is 4 SatChars that decode to 16 display bytes, so s[2] is
         // one unit that displays as a whole home directory. It is the only
@@ -2042,9 +2055,9 @@ ValuePtr Evaluator::eval_slice(const Slice &node, Span span)
         return nullptr;
 
     long long len = 0;
-    if (const List *list = std::get_if<List>(target.get()))
+    if (const List *list = as_list(*target))
         len = static_cast<long long>(list->size());
-    else if (const SatString *s = std::get_if<SatString>(target.get()))
+    else if (const SatString *s = as_string(*target))
         len = static_cast<long long>(s->size());
     else {
         fail(span, to_string(*target) + " cannot be sliced");
@@ -2073,7 +2086,7 @@ ValuePtr Evaluator::eval_slice(const Slice &node, Span span)
         return nullptr;
     clamp_range(lo, hi, len);
 
-    if (const List *list = std::get_if<List>(target.get())) {
+    if (const List *list = as_list(*target)) {
         // A full slice is the same list: no copy, and pointer identity is
         // preserved so `l[:]` is genuinely free.
         if (lo == 0 && hi == len)
@@ -2082,7 +2095,7 @@ ValuePtr Evaluator::eval_slice(const Slice &node, Span span)
         return make_value(List(list->begin() + lo, list->begin() + hi));
     }
 
-    const SatString &s = std::get<SatString>(*target);
+    const SatString &s = *as_string(*target);
     if (lo == 0 && hi == len)
         return target;
     // Unlike a list slice, a string slice really does copy characters.
@@ -2149,8 +2162,8 @@ ValuePtr Evaluator::eval_binary(const Binary &node, Span span)
 
     const Number *ln = std::get_if<Number>(lhs.get());
     const Number *rn = std::get_if<Number>(rhs.get());
-    const SatString *ls = std::get_if<SatString>(lhs.get());
-    const SatString *rs = std::get_if<SatString>(rhs.get());
+    const SatString *ls = as_string(*lhs);
+    const SatString *rs = as_string(*rhs);
 
     if (node.op == "+" && ls && rs)
         return make_value(*ls + *rs);

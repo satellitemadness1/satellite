@@ -139,7 +139,7 @@ List args_to_list(const std::vector<std::string> &args)
     List out;
     out.reserve(args.size());
     for (const std::string &arg : args)
-        out.push_back(std::make_shared<const Value>(Value(encode_raw(arg))));
+        out.push_back(std::make_shared<const Value>(make_string(encode_raw(arg))));
     return out;
 }
 

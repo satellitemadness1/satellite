@@ -29,6 +29,24 @@ using ValuePtr = std::shared_ptr<const Value>;
 // so they can nest arbitrarily (lists of lists of ...).
 using List = std::vector<ValuePtr>;
 
+// What the variant actually stores for a string and a list: a refcounted
+// handle, not the container itself.
+//
+// §17's value model, one step down. The measured cost of the tree walk is a
+// heap allocation per intermediate value — 28 ns of the 112.5 ns an addition
+// costs — and removing it means passing a Value BY VALUE rather than behind a
+// shared_ptr. That is only an improvement if copying a Value is cheap, and with
+// a u32string and a vector stored inline it is not: copying would deep-copy the
+// character buffer, so arithmetic would get faster and strings would get much
+// slower.
+//
+// Behind a handle, copying a Value is a tag check and at most one refcount
+// bump, never an allocation. The alternatives keep their POSITIONS in the
+// variant — only their types change — because help_for() and module_of()
+// switch on raw variant indices.
+using Str     = std::shared_ptr<const SatString>;
+using ListRef = std::shared_ptr<const List>;
+
 // satellite.variable.time — an absolute instant, nanoseconds since the Unix
 // epoch, UTC.
 //
@@ -142,7 +160,7 @@ const std::string &suit_name(const SpacesuitInfo *suit);
 // language's value space and no way for one to leak in. Number's deleted float
 // constructors are what enforce that at the C++ level — `Value v = 3.14` is a
 // compile error rather than the silent truncation to 3 that §8.1 measured.
-using ValueBase = std::variant<std::monostate, bool, Number, SatString, List,
+using ValueBase = std::variant<std::monostate, bool, Number, Str, ListRef,
                                ObjectPtr, Time, FilePtr>;
 
 // One node that can hold anything the language has so far:
@@ -154,6 +172,36 @@ using ValueBase = std::variant<std::monostate, bool, Number, SatString, List,
 struct Value : ValueBase {
     using ValueBase::ValueBase;
 };
+
+// Build a string or list Value without every call site spelling out the
+// make_shared. These exist so that the handle is an implementation detail of
+// value.hpp rather than a thing 22 sites in eval.cpp have to know about.
+inline Value make_string(SatString s)
+{
+    return Value(std::make_shared<const SatString>(std::move(s)));
+}
+inline Value make_list(List items)
+{
+    return Value(std::make_shared<const List>(std::move(items)));
+}
+
+// Read a string or list out of a Value, or null if it is not one.
+//
+// These replace `std::get_if<SatString>(&v)` at the call sites, and the
+// indirection they hide is exactly the point: get_if on a handle alternative
+// returns a pointer TO THE HANDLE, so every site would otherwise have to
+// remember the second dereference. Forgetting it is a compile error today and
+// would be a silent wrong-type read the moment anything is cached.
+inline const SatString *as_string(const Value &v)
+{
+    const Str *p = std::get_if<Str>(&v);
+    return p ? p->get() : nullptr;
+}
+inline const List *as_list(const Value &v)
+{
+    const ListRef *p = std::get_if<ListRef>(&v);
+    return p ? p->get() : nullptr;
+}
 
 // 40 bytes is the figure §8.1 quotes when it records that removing `double`
 // for a 32-byte Number left sizeof(Value) unchanged, and the one §10 quotes
@@ -182,8 +230,8 @@ struct ValuePrinter {
     // §8.1.1's rule — print the value, never N significant digits — now lives
     // with the type it describes, in Number::to_string (bignum.cpp).
     std::string operator()(const Number &n) const { return n.to_string(); }
-    std::string operator()(const SatString &s) const { return decode(s); }
-    std::string operator()(const List &list) const;
+    std::string operator()(const Str &s) const { return s ? decode(*s) : ""; }
+    std::string operator()(const ListRef &list) const;
 
     // Out of line in value.cpp: it needs the spacesuit's name, and printing an
     // object's fields instead would be wrong anyway — a field is reachable only
@@ -201,13 +249,15 @@ inline std::string to_string(const Value &v)
     return std::visit(ValuePrinter{}, static_cast<const ValueBase &>(v));
 }
 
-inline std::string ValuePrinter::operator()(const List &list) const
+inline std::string ValuePrinter::operator()(const ListRef &list) const
 {
+    if (!list)
+        return "[]";
     std::string out = "[";
-    for (size_t i = 0; i < list.size(); i++) {
+    for (size_t i = 0; i < list->size(); i++) {
         if (i)
             out += ", ";
-        const ValuePtr &item = list[i];
+        const ValuePtr &item = (*list)[i];
         out += item ? to_string(*item) : "nil";
     }
     return out + "]";

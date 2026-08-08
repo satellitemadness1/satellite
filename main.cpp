@@ -55,7 +55,7 @@ static satellite::Value parse_value(const std::string &text)
     satellite::Number number;
     if (satellite::Number::parse(text, number))
         return number;
-    return satellite::encode(text);
+    return satellite::make_string(satellite::encode(text));
 }
 
 // Temporary ':' commands for poking satellite.library until the parser
