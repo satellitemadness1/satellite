@@ -58,6 +58,14 @@ docdir   = $(datadir)/doc/satellite
 # none of the twelve reaching 400. Listed explicitly rather than by wildcard so
 # that a file added to the directory and forgotten here fails to link instead of
 # being silently dropped from the binary.
+ENV_SRCS = env/scopes.cpp env/names.cpp env/walk.cpp env/spacesuits.cpp \
+           env/run.cpp
+ENV_OBJS = $(ENV_SRCS:.cpp=.o)
+
+BIGNUM_SRCS = bignum/limbs.cpp bignum/number_core.cpp bignum/number_query.cpp \
+              bignum/number_arith.cpp bignum/render.cpp
+BIGNUM_OBJS = $(BIGNUM_SRCS:.cpp=.o)
+
 PARSER_SRCS = parser/cursor.cpp parser/types.cpp parser/expr.cpp \
               parser/stmt.cpp parser/decl.cpp parser/run.cpp
 PARSER_OBJS = $(PARSER_SRCS:.cpp=.o)
@@ -68,14 +76,16 @@ EVAL_SRCS = eval/helpers.cpp eval/help.cpp eval/types.cpp eval/session.cpp \
             eval/operators.cpp
 EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
-OBJS      = main.o library.o satellite_string.o system.o bignum.o lexer.o \
-            ast.o value.o env.o interp.o $(EVAL_OBJS) $(PARSER_OBJS)
+OBJS      = main.o library.o satellite_string.o system.o lexer.o \
+            ast.o value.o interp.o $(EVAL_OBJS) $(PARSER_OBJS) \
+            $(BIGNUM_OBJS) $(ENV_OBJS)
 HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
             lexer.hpp ast.hpp parser.hpp env.hpp eval.hpp interp.hpp \
-            eval/eval_internal.hpp parser/parser_internal.hpp
-TESTSRCS  = library.cpp satellite_string.cpp system.cpp bignum.cpp lexer.cpp \
-            ast.cpp value.cpp env.cpp interp.cpp $(EVAL_SRCS) \
-            $(PARSER_SRCS)
+            eval/eval_internal.hpp parser/parser_internal.hpp \
+            bignum/bignum_internal.hpp env/env_internal.hpp
+TESTSRCS  = library.cpp satellite_string.cpp system.cpp lexer.cpp \
+            ast.cpp value.cpp interp.cpp $(EVAL_SRCS) \
+            $(PARSER_SRCS) $(BIGNUM_SRCS) $(ENV_SRCS)
 TESTFLAGS = -std=c++20 -Wall -Wextra -pthread
 
 # Every test binary used to recompile every source. That was tolerable while
@@ -292,7 +302,7 @@ clean:
 	$(MAKE) -C example/py_compare clean
 	rm -f satl satl-term library_test library_test_tsan satellite_string_test \
 	      lexer_test ast_test parser_test env_test eval_test interp_test \
-	      spacesuit_test bignum_test *.o eval/*.o parser/*.o *.o.tmp .libdir-stamp \
+	      spacesuit_test bignum_test *.o eval/*.o parser/*.o bignum/*.o env/*.o *.o.tmp .libdir-stamp \
 	      dist/satl.1.gz dist/satl-term.1.gz
 
 .PHONY: all test compare python install uninstall clean FORCE
