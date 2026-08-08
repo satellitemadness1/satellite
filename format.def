@@ -22,6 +22,9 @@
 #ifndef SAT_PATH
 #define SAT_PATH(ident, s1, s2, s3, s4, arity)
 #endif
+#ifndef SAT_OP
+#define SAT_OP(id, ident, text, arity)
+#endif
 
 // --- the registry: one id per distinct word, flat across all positions -------
 // Flat means a word has one id wherever it appears: `console` is 6 in every
@@ -107,6 +110,22 @@ SAT_WORD(64, ERROR,       "error")
 SAT_WORD(65, PATH,        "path")
 SAT_WORD(66, NANOSECONDS, "nanoseconds")
 
+// Comparison. These are what `==` `!=` `<` `<=` `>` `>=` COMPILE TO: an operator
+// is surface syntax for a selector, exactly as §7 makes a method surface syntax
+// for a module function, so the machine needs no arithmetic or comparison
+// opcodes of its own. `+` is already `plus` (38) and needed nothing new; these
+// six are the operators that had no name yet.
+//
+// They dispatch on the receiver like every other selector — `minus` is already
+// both a number and a time method, `contains` both a string and a list one — so
+// one id per comparison covers every type that can be compared.
+SAT_WORD(67, EQUALS,           "equals")
+SAT_WORD(68, NOT_EQUALS,       "not_equals")
+SAT_WORD(69, LESS_THAN,        "less_than")
+SAT_WORD(70, LESS_OR_EQUAL,    "less_or_equal")
+SAT_WORD(71, GREATER_THAN,     "greater_than")
+SAT_WORD(72, GREATER_OR_EQUAL, "greater_or_equal")
+
 // --- the arity table: complete paths, and how many operands each takes -------
 // §17: decoding is positional. Nothing in the stream announces "I am an
 // instruction" — the reader starts at an instruction boundary and each path's
@@ -129,5 +148,41 @@ SAT_PATH(P_BOOL_TRUE,      1, 21, 36, 0, 0)   // satellite.bool.true
 SAT_PATH(P_BOOL_FALSE,     1, 21, 37, 0, 0)   // satellite.bool.false
 SAT_PATH(P_HELP,           1, 29,  0, 0, 0)   // satellite.help
 
+// --- machine ops: kind 4, and a SEPARATE id space ----------------------------
+// These are not names. No satellite program can write MOVE, and §1's rule is
+// that the registry above enumerates what the LANGUAGE owns — putting machine
+// operations in it would undercut the closure property that let the registry be
+// a frozen table in the first place. The unit's kind field has 16 values and
+// used 4, so kind 4 costs nothing and keeps the two spaces apart. Ids here
+// restart at 1 and are read against this table, never against the one above.
+//
+// Methods deliberately have NO entry here and none above: CALL_METHOD carries
+// an explicit argument count, so a method's arity is read from the stream
+// rather than from a table, and the decoder stays positional without needing
+// one row per selector.
+//
+// Arity is operand UNITS following the op, exactly as SAT_PATH's is.
+
+SAT_OP(1, OP_MOVE,          "move",          2)  // dst, src
+SAT_OP(2, OP_LOADK,         "loadk",         2)  // dst, pool index
+SAT_OP(3, OP_LOADI,         "loadi",         2)  // dst, immediate
+SAT_OP(4, OP_JUMP,          "jump",          1)  // target unit
+SAT_OP(5, OP_JUMP_IF_FALSE, "jump_if_false", 2)  // test reg, target unit
+SAT_OP(6, OP_JUMP_IF_TRUE,  "jump_if_true",  2)  // test reg, target unit
+SAT_OP(7, OP_CALL,          "call",          4)  // capsule, first arg reg, count, dst
+SAT_OP(8, OP_CALL_METHOD,   "call_method",   5)  // recv, selector, first arg, count, dst
+SAT_OP(9, OP_RETURN,        "return",        1)  // src reg
+
+// Targets are ABSOLUTE unit indices, not byte offsets and not relative jumps.
+// Units are fixed width, so an index is a multiply-free array subscript, and an
+// absolute target survives having code moved around it during compilation.
+//
+// JUMP_IF_TRUE exists for one reason: `||`. §15 ranks `&&` and `||` third among
+// the gaps stage 0 found, and when they land they CANNOT compile to the `and`
+// (57) / `or` (58) selectors, because a call evaluates its argument before it
+// runs and those two must not. Short-circuit is a branch, not a call, and it
+// needs a branch in each polarity.
+
 #undef SAT_WORD
 #undef SAT_PATH
+#undef SAT_OP

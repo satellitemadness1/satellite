@@ -2184,3 +2184,63 @@ the 6.4x startup advantage that is already measured.
 
 That number is a projection and is labelled as one deliberately. Everything it rests on was
 measured; how much comes back was not.
+
+### 17.5 Operators are selectors, and the machine ops are not names
+
+Two questions that look like one. "How does `+` become bytecode?" and "where do `MOVE` and
+`JUMP` live?" have opposite answers, and the difference is §1.
+
+**An operator is surface syntax for a selector.** `a + b` and `a.plus(b)` are the same
+operation spelled two ways, so both compile to the same instruction and `+` needs no opcode:
+
+```
+x + 1      ->   CALL_METHOD  recv=r1, selector=38 (plus), args=r2, count=1, dst=r3
+x.plus(1)  ->   CALL_METHOD  recv=r1, selector=38 (plus), args=r2, count=1, dst=r3
+```
+
+This is §7's collapse one step further out. §7 verified that a method is sugar for a module
+function over one table; an operator is sugar for a method over that same table. The result is
+one dispatch mechanism where a machine of this shape usually has three, and it is why the
+arithmetic opcodes every other bytecode has are absent here: `plus` (38), `minus` (39),
+`times` (40), `divided_by` (41) and `modulo` (42) were already in the registry, and the six
+comparisons were added at 67..72 to finish the set. Dispatch is on the receiver, which the
+table already does — `minus` is both a number and a time method, `contains` both a string and
+a list one.
+
+It also deletes work rather than adding it. `+` currently takes a path entirely separate from
+`.plus()`: ast.hpp:164 stores the operator as a `std::string` and eval/operators.cpp compares
+it against `"+"`, `"-"`, `"*"` on every arithmetic operation. Those are part of the 88 runtime
+string comparisons §17 opened by promising to remove.
+
+When the selector is a builtin (38..72) `CALL_METHOD` builds **no frame**. It is a table jump
+to native code taking register indices, so `+` stays one dispatch and one write. §17.4's frame
+machinery is for user capsules, which are the only things that have frames.
+
+**A machine op is not a name**, and that is the whole reason it lives elsewhere. §1 says a
+dotted path rooted at `satellite` names something the language owns, and the registry is
+enumerable precisely because that set is closed. No satellite program can write `MOVE`. Adding
+machine operations to the registry would spend the closure property that made a frozen table
+possible, to save a tag value the format has fifteen spare copies of. So they take **kind 4**
+and a separate id space, restarting at 1, and format.def carries them as `SAT_OP` beside the
+other two lists.
+
+Three consequences worth stating, because each answers a question that has been asked twice:
+
+- **Methods need no arity entries, anywhere.** `CALL_METHOD` carries an explicit argument
+  count, so a method's arity is read from the stream rather than looked up. The 29 selectors
+  with ids and no `SAT_PATH` row are not an omission; a row would be unreachable.
+- **Jump targets are absolute unit indices.** Not byte offsets, because units are fixed width
+  and an index is then a subscript with no multiply; not relative, because an absolute target
+  survives code moving around it while the compiler is still emitting.
+- **`JUMP_IF_TRUE` exists for `||`.** §15 ranks `&&` and `||` third among the gaps stage 0
+  found. When they land they cannot compile to the `and` (57) / `or` (58) selectors, because a
+  call evaluates its arguments before it runs and short-circuiting must not. They compile to
+  branches, which is why the format carries a branch of each polarity from the start.
+
+**What has no operator, and will not get one.** `>>` and `<<` are settled by §3.5: satellite
+has no shift operator *ever*, because `<` and `>` are always single-character tokens and that
+is exactly what lets `list<list<string>>` parse with no maximal-munch special case. §3.5
+already names the alternative — `satellite.number.shift_left(n)`, a path like everything else.
+Bitwise `|` and `&` are a different refusal: §8.1 makes a number an exact arbitrary-precision
+decimal, and a bit pattern is not defined for one. Both would need an integer domain the
+language deliberately does not have.
