@@ -1906,3 +1906,96 @@ and `dlopen`ing the result. The binary was ~107 MB by design.
 It is kept because two of the decisions in this document are reactions to it: §15's rule that
 a compiler emits C source so that no compiler of ours survives in the shipped artifact, and
 the cost model above. Its value representation was right, and this section takes it back.
+
+### 17.2 User-defined names, and encoding a spacesuit
+
+The registry of §17 is language-owned and therefore closed, which is the property that let it
+be a frozen table. User-defined names are the other half of §1's rule: open, unbounded, and
+different in every program. They cannot share that space and do not need to.
+
+**User names live in per-file tables**, and the kind tag on word 0 says which space an id is
+read against:
+
+| kind | space |
+|---|---|
+| 0 | language name code — the frozen registry, same in every file |
+| 4 | spacesuit id — index into this file's type table |
+| 5 | capsule id — index into this file's capsule table |
+
+The type table is counted in the header the same way the constant pool is. The id field is 60
+bits, so the format's ceiling on distinct spacesuits is 2^60; the real limit is the per-file
+count, and neither is a constraint any program will meet.
+
+**A spacesuit compiles to one table entry plus integers at every use site.** §14 already
+flattens at resolve time, so the compiler is serialising an answer rather than computing one:
+
+```
+type table entry
+    name              metadata only — error messages, never dispatch
+    superclass id      or none
+    field_count        an instance allocates exactly this many slots
+    method_slots[]     flattened, one code offset per slot
+    ctor_offsets[]     superclass first, most derived last (§14)
+```
+
+Nothing at a use site names a class. A field read is an immediate index, because `SLOT_FIELD`
+(ast.hpp:121) already *is* that index and `find_field` already returns it — "the index is what
+an Object is addressed by" is env.hpp's own phrasing, and it is a description of the bytecode
+before there was any. A method call is a slot index. Construction is a type index. The class
+name survives only so an error can say which class.
+
+**The one thing resolve() does not do yet: assign method slots.** Fields already have the
+property that makes integer addressing work —
+
+> Superclass fields FIRST, then this suit's own ... prefixing means those indices still name
+> the same fields in a descendant's instance.
+
+— and methods do not, because `SpacesuitInfo::methods` is an `unordered_map` keyed by name. A
+hash has no ordering, so there is no index to emit. Methods need the same discipline the
+fields already have, which is the ordinary vtable rule:
+
+- a superclass's slots keep their indices in every descendant
+- an override writes into the slot it overrides
+- a method the subclass introduces appends
+
+That is a new pass in resolve(), and it is the only part of the object model this machine has
+to invent rather than serialise. It is also what turns dispatch from a hash lookup on the
+object's suit into one array index — the win §14 was already reaching for when it flattened
+the tables in the first place.
+
+Constructor ordering is unchanged and must stay unchanged: every field initialiser runs before
+any constructor body, then constructors run superclass-first, and the construction site's
+arguments go to the most derived one. §14 records why that is deliberately not C++'s
+interleaving, and the bytecode has no opinion — it emits the order resolve() already fixed.
+
+### 17.3 Strings and the constant pool
+
+`SatChar` is `char32_t` (satellite_string.hpp:24): **32 bits per character**, over satellite's
+own code table rather than Unicode. A string's length is unbounded, so a string literal cannot
+be an inline operand at any fixed unit size. It lives in the **constant pool** and the
+instruction carries a kind-2 operand holding a pool index — one 256-bit unit, one integer.
+
+In the pool, at 8 characters per 256-bit unit:
+
+```
+header unit   [256]   entry type = string, length in characters
+data units    [256]   8 characters each; the last unit zero-padded
+```
+
+`"hello"` is two units. The padding is the same trade the rest of the format makes: §17
+measured density at 5%, so unit alignment is worth more than the bits it wastes.
+
+Two things that are correctness, not encoding:
+
+- Store `StringLit::value`, not `StringLit::source` (ast.hpp:112). `value` has escapes already
+  expanded; `source` is what was typed. The pool holds the value the program means.
+- This is the one place `encode` applies. §3.3 fixes the rule: source text is lexed with
+  `encode_raw` (one byte, one SatChar) so that spans stay byte offsets, and only string
+  literal *bodies* are `encode`d. eval.cpp:1365 records that getting this backwards has been
+  found three times, most recently in `.read()`.
+
+Exact-decimal numbers take the same route for the same reason. A `Number` is a significand
+that may be an arbitrary-precision bignum (§8.1), so it is not inline at any fixed width; the
+pool holds it and the instruction holds an index. Small integers that fit the inline value
+representation are the exception and are emitted as kind-1 immediates, which is where the
+value model of §17 pays off in the instruction stream as well as in the heap.
