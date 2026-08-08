@@ -47,6 +47,24 @@ struct Span {
     size_t line = 1;
 };
 
+// The struct sizes below are budgets DESIGN.md quotes as settled facts, and
+// until now they were enforced by nothing: ast_test printed them in a banner
+// line, and its one actual check was relative — sizeof(Value) < sizeof(Expr) —
+// which passes just as happily at Value=400, Expr=4000. A printed number that
+// nobody compares is not a budget.
+//
+// Span is the one to watch. §16 gives it a file id so an error inside an
+// included file can name that file, and the plan is that two size_t plus two
+// uint32 is still 24 bytes. This assert is what makes that claim testable
+// instead of hopeful.
+//
+// Guarded on 64-bit because both Debian binary packages are Architecture: any,
+// and size_t is 4 bytes on i386 and armhf, where every figure here halves. The
+// budgets are about the 64-bit layout; a hard assert would just break those
+// builds without telling anyone anything true.
+static_assert(sizeof(void *) != 8 || sizeof(Span) == 24,
+              "Span must stay 24 bytes on 64-bit — Expr=96 and Stmt=200 rest on it");
+
 Span span_of(const Token &token);
 Span span_join(Span first, Span last);
 
@@ -156,6 +174,13 @@ struct Expr : ExprBase {
     Span span;
 };
 
+// See the note on Span. Expr is kept separate from Value on measured grounds
+// (§10): folding them grows every Value from 40 to 96, which takes a
+// million-element number list from 38 MB to 91 MB. This assert is half of what
+// makes that measurement stay true.
+static_assert(sizeof(void *) != 8 || sizeof(Expr) == 96,
+              "Expr must stay 96 bytes on 64-bit — see the note on Span");
+
 ExprPtr make_expr(ExprBase node, Span span);
 
 // --- statements ------------------------------------------------------------
@@ -200,6 +225,12 @@ struct Stmt : StmtBase {
     Stmt(StmtBase base) : StmtBase(std::move(base)) {}
     Span span;
 };
+
+// See the note on Span. Stmt is the largest node in the tree and the one most
+// likely to grow by accident, since every new statement kind widens the variant
+// to its biggest alternative.
+static_assert(sizeof(void *) != 8 || sizeof(Stmt) == 200,
+              "Stmt must stay 200 bytes on 64-bit — see the note on Span");
 
 StmtPtr make_stmt(StmtBase node, Span span);
 

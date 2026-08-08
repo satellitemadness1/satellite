@@ -155,6 +155,17 @@ struct Value : ValueBase {
     using ValueBase::ValueBase;
 };
 
+// 40 bytes is the figure §8.1 quotes when it records that removing `double`
+// for a 32-byte Number left sizeof(Value) unchanged, and the one §10 quotes
+// when it refuses to fold Expr into Value — that fold takes every Value to 96,
+// and a million-element number list from 38 MB to 91 MB. Both claims were
+// checked by reading a printed banner line, which is not a guard. This is.
+// Guarded on 64-bit for the reason given at Span in ast.hpp: the Debian
+// packages are Architecture: any and 32-bit layouts differ legitimately.
+static_assert(sizeof(void *) != 8 || sizeof(Value) == 40,
+              "Value must stay 40 bytes on 64-bit — §8.1's migration and §10's "
+              "Expr/Value split both rest on this number");
+
 // One operator() per alternative and DELIBERATELY no generic `auto` fallback.
 //
 // The previous version tested four alternatives with get_if and then fell
