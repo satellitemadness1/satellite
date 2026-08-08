@@ -1,0 +1,5 @@
+usr/bin/satl
+usr/share/satellite/examples
+usr/share/doc/satellite
+usr/share/man/man1/satl.1*
+usr/share/bash-completion/completions/satl

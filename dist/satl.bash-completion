@@ -1,0 +1,73 @@
+# bash completion for satl(1).
+#
+# Installed as $prefix/share/bash-completion/completions/satl, which is where
+# bash-completion's dynamic loader looks the first time the word "satl" is
+# completed. There is no shebang and no executable bit: this file is sourced,
+# never run.
+#
+# Three rules, and the last one is the one worth getting right:
+#
+#   - Flags are offered only in argument position 1, because that is the only
+#     position main() looks at. In `satl hello.satl --repl` the --repl is
+#     handed to the program as argz[1], so offering it there would advertise an
+#     option that does not exist at that point in the line.
+#   - Position 1 also completes *.satl, since a bare file is the same as --run.
+#   - After the file, completion widens to ordinary filenames. Those words are
+#     the PROGRAM's argv, not the interpreter's, and they can be anything the
+#     program chose to accept; narrowing them to *.satl would hide the data file
+#     the user was reaching for.
+
+_satl()
+{
+    local cur prev
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+
+    # --run takes a file and nothing else, whatever the word looks like.
+    if [[ $prev == --run ]]; then
+        _satl_filedir satl
+        return
+    fi
+
+    if [[ $COMP_CWORD -eq 1 ]]; then
+        if [[ $cur == -* ]]; then
+            COMPREPLY=($(compgen -W '--repl --run --where --help -h' -- "$cur"))
+        else
+            _satl_filedir satl
+        fi
+        return
+    fi
+
+    _satl_filedir
+}
+
+# Prefers bash-completion's _filedir, which handles quoting, tilde expansion and
+# spaces correctly; reimplementing that badly is worse than not having it. The
+# compgen fallback is for the case where this file has been sourced on its own,
+# with no bash-completion package installed to provide the helper.
+#
+# Both read $cur from the caller's scope rather than taking it as an argument.
+# That is _filedir's own interface, not a shortcut taken here, and bash's
+# dynamic scoping is what makes the local in _satl visible to it.
+#
+# Directories are always included, or the user cannot walk down to the file.
+_satl_filedir()
+{
+    if declare -F _filedir >/dev/null 2>&1; then
+        _filedir ${1:+"$1"}
+        return
+    fi
+
+    if [[ -n ${1-} ]]; then
+        # -X drops directories along with the wrong extensions, so they are
+        # added back; without them there is no way to reach a file one level
+        # down. Unfiltered, compgen -f already lists directories itself, and
+        # adding -d there would offer every one of them twice.
+        COMPREPLY=($(compgen -f -X "!*.$1" -- "$cur") $(compgen -d -- "$cur"))
+    else
+        COMPREPLY=($(compgen -f -- "$cur"))
+    fi
+}
+
+complete -F _satl satl

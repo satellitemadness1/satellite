@@ -1,0 +1,60 @@
+satellite.include(satellite)
+
+satellite.spacesuit holder()
+{
+    satellite.protected
+    {
+        satellite.variable.string the_name = "void"
+    }
+
+    satellite.public
+    {
+        holder(satellite.variable.string input_str)
+        {
+            the_name = input_str
+        }
+
+        satellite.capsule set(satellite.variable.string input_str)
+        {
+            the_name = input_str
+        }
+    }
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> argz)
+{
+    satellite.variable.number rounds = 300000
+
+    satellite.variable.number made = 0
+
+    satellite.statement.while(made < rounds)
+    {
+        holder scratch("some_data")
+
+        made = made + 1
+    }
+
+    satellite.variable.number shown = 0
+
+    satellite.statement.while(shown < rounds)
+    {
+        satellite.console.display(shown)
+
+        shown = shown + 1
+    }
+
+    holder target("some_data")
+
+    satellite.variable.number sent = 0
+
+    satellite.statement.while(sent < rounds)
+    {
+        target.set("another_str")
+
+        sent = sent + 1
+    }
+
+    satellite.console.display("done")
+
+    satellite.return(satellite)
+}

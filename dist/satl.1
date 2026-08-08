@@ -1,0 +1,283 @@
+.\" satl(1) - manual page for the interpreter.
+.\"
+.\" Kept to pure ASCII on purpose. An em dash typed as UTF-8 is three bytes that
+.\" `groff -Tascii` reports as invalid input characters, even inside a comment;
+.\" the escapes \(em and \(mu produce the same glyphs and render everywhere.
+.\"
+.\" Every flag here is one that main() actually routes; see main.cpp. A man page
+.\" that documents a flag the binary does not have is worse than no man page,
+.\" because a man page is believed and a --help is checked.
+.TH SATL 1 2026-08-07 "satellite 0.1" "Satellite Manual"
+.SH NAME
+satl \- interpreter for the satellite programming language
+.SH SYNOPSIS
+.B satl
+.RB [ \-\-run ]
+.IR file " [" args ...]
+.br
+.B satl
+.RB [ \-\-repl ]
+.br
+.B satl \-\-where
+.br
+.B satl
+.RB { \-h | \-\-help }
+.SH DESCRIPTION
+.B satl
+runs a satellite program, or opens a read\-eval\-print loop when it is given no
+file. Program files conventionally end in
+.IR .satl .
+.PP
+Satellite is a language whose generating rule is that every name the language
+itself defines begins with the word
+.B satellite
+and a dot:
+.BR satellite.capsule ,
+.BR satellite.variable.string ,
+.BR satellite.container.list ,
+.BR satellite.console.display .
+A program's own names are bare, so the two never collide and no keyword is ever
+reserved out from under the user. Numbers are a single arbitrary\-precision
+decimal type, which is why
+.B 0.1 + 0.2
+is
+.B 0.3
+here and not almost\-0.3.
+.PP
+This binary is the whole language \(em lexer, parser, resolver and
+tree\-walking evaluator \(em and it links no graphical toolkit. The window is a
+separate program,
+.BR satl\-term (1),
+which spawns this one into a pseudo\-terminal. The split is measured rather than
+tidy\-minded: linking GTK4 and VTE into the interpreter made the dynamic linker
+load 119 shared objects before
+.B main()
+on every invocation, which cost 23.4 ms of the 25.9 ms that
+.B satl \-\-run hello.satl
+took \(em against an interpreter whose own share of hello world is 0.3 ms, and a
+bare
+.B int main(){return 0;}
+floor of 2.2 ms. Unlinked, the same run takes 2.5 ms.
+.SH OPTIONS
+.TP
+.BR \-\-run " " \fIfile\fR " [" \fIargs\fR ...]
+Run
+.I file
+and write everything it displays to standard output. The remaining
+.I args
+are bound to the parameter of
+.B satellite.main
+as a
+.BR satellite.container.list < satellite.variable.string >,
+with
+.I file
+itself as element 0 \(em a program sees its own name first, as it would in C.
+.IP
+Arguments are taken literally. A backslash is an ordinary character, not an
+escape, so
+.B C:\ehome
+names the path that was typed; expanding it a second time after the shell has
+already had its turn is a corruption, not a convenience.
+.TP
+.IR file " [" args ...]
+The same as
+.BR \-\-run .
+Any first argument that does not begin with
+.B \-
+is taken as a file name.
+.TP
+.B \-\-repl
+Read lines from standard input and evaluate them, which is also what happens
+with no arguments at all. The spelled\-out form exists because
+.BR satl\-term (1)
+passes it explicitly when it spawns this binary into the terminal's
+pseudo\-terminal.
+.TP
+.B \-\-where
+Print the library directory this binary resolved, and exit. It answers the only
+question worth asking when a program cannot find its library: which of the three
+tiers under
+.B ENVIRONMENT
+won, and what did it point at.
+.TP
+.BR \-h ", " \-\-help
+Print a usage summary on standard error and exit 2.
+.SS At the prompt
+The REPL prompt is your user name and the working directory. Beyond expressions,
+it takes four things:
+.TP
+.BR run " " \fIfile\fR " [" \fIargs\fR ...]
+Run a file, through the same entry point as
+.BR "satl \-\-run" .
+Also spelled
+.B interpret
+and
+.BR \-\-run ,
+so whichever form is already in the user's fingers works. It exists because the
+graphical terminal has no shell behind it: without it, a file could only be run
+by closing the window and going back to a terminal. A nonzero status is printed
+out loud, since a REPL has no exit status to carry a failure out through.
+.TP
+.BI :set " path value"
+Set a
+.B satellite.library
+variable, as in
+.BR ":set system.min_free_mb 2048" .
+.TP
+.BI :get " path"
+Print one variable.
+.B :vars
+prints all of them.
+.TP
+.BR exit ", " quit ", " Ctrl\-D
+Leave.
+.PP
+These colon commands are debugging scaffolding for poking
+.BR satellite.library ,
+not language syntax, and they are not guaranteed to survive.
+.SH ENVIRONMENT
+.TP
+.B SATELLITE_PATH
+Directory to load the satellite\-language library from, overriding the two
+installed locations.
+.RS
+.PP
+The interpreter looks in three places and takes the first that exists:
+.IP 1. 4
+.BR $SATELLITE_PATH ,
+if it is set.
+.IP 2. 4
+.IR .../bin/../share/satellite/lib ,
+resolved from
+.IR /proc/self/exe .
+This is what makes an unpacked tarball work wherever it was unpacked, without
+being told where that was.
+.IP 3. 4
+The directory compiled in as
+.BR SATELLITE_LIB_DIR ,
+baked from
+.I prefix
+when the binary was built.
+.PP
+.B SATELLITE_PATH
+is a development override, and a correct installation does not need it \(em that
+is the whole point of the ordering. Tiers 2 and 3 cover every installed case
+between them; tier 1 exists so a developer can aim a built\-but\-not\-installed
+binary at a working tree. If satellite cannot find its library until
+.B SATELLITE_PATH
+is set, then tier 2 or tier 3 is wrong, and setting the variable hides that bug
+rather than fixing it. An install that requires an environment variable is a
+broken install, so neither the packages nor
+.B install.sh
+will ever ask you to set one.
+.RE
+.SH FILES
+Paths are shown for the default prefix,
+.IR /usr/local ;
+a distribution package is built with
+.I /usr
+instead, and
+.B install.sh \-\-prefix
+puts the same tree anywhere.
+.TP
+.I /usr/local/bin/satl
+This program.
+.TP
+.I /usr/local/bin/satl\-term
+The graphical terminal.
+.BR satl\-term (1)
+finds this binary as its own sibling, so the two belong in the same directory.
+.TP
+.I /usr/local/share/satellite/lib/
+The satellite\-language library \(em tier 2 above.
+.TP
+.I /usr/local/share/satellite/examples/
+Example programs.
+.TP
+.I /usr/local/share/doc/satellite/
+DESIGN.md and the copyright file, which is the licence the whole tree is under.
+.SH EXAMPLES
+Hello world, in a file called
+.IR hello.satl :
+.PP
+.RS 4
+.EX
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("hello, world!")
+
+    satellite.return(satellite)
+}
+.EE
+.RE
+.PP
+.RS 4
+.EX
+$ satl \-\-run hello.satl
+hello, world!
+.EE
+.RE
+.PP
+The bare form is the same thing, and arguments after the file belong to the
+program:
+.PP
+.RS 4
+.EX
+$ satl hello.satl \-\-verbose 'C:\ehome'
+.EE
+.RE
+.PP
+Fail a shell pipeline deliberately, with
+.B satellite.return(3)
+in the program:
+.PP
+.RS 4
+.EX
+$ satl \-\-run check.satl; echo $?
+3
+.EE
+.RE
+.PP
+Find out which library directory is in force, which is the first thing to check
+when an installation misbehaves:
+.PP
+.RS 4
+.EX
+$ satl \-\-where
+/usr/local/share/satellite/lib
+.EE
+.RE
+.SH "EXIT STATUS"
+.TP
+.B 0
+The program ran to completion, or ended in
+.BR satellite.return(satellite) .
+The runtime singleton means success, so it maps to 0.
+.TP
+.B 1
+A syntax, resolution or runtime error. The report is written to standard output
+along with whatever the program had already displayed, because that is where
+both a reader and a test are already looking.
+.TP
+.B 2
+A usage error, or the file could not be read. It is also what the memory
+watchdog exits with when available memory falls below
+.BR system.min_free_mb .
+.TP
+.I n
+.BI satellite.return( n )
+with a number exits with
+.IR n ,
+truncated toward zero and clamped to 255. Clamped and not masked: a process exit
+status carries eight bits, and masking would turn a failure of 256 into a
+success.
+.SH "SEE ALSO"
+.BR satl\-term (1)
+.PP
+.IR /usr/local/share/doc/satellite/DESIGN.md ,
+which is the document the implementation is written against rather than a
+description written after it.
+.SH AUTHOR
+The satellite project <terransatellite@gmail.com>.

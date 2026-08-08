@@ -1,0 +1,101 @@
+
+// satellite against compiled C++: one million objects, one million prints,
+// one million string transfers.
+//
+// The C++ side is example/class_bench.cpp and is written to do the same work
+// with the same shape — same class, same three loops, same counter type where
+// one exists. Both time themselves from inside, so neither measures process
+// startup, and both write their output to the same place so the print phase
+// measures the same thing.
+//
+// Timed with satellite.variable.time, an absolute instant in nanoseconds;
+// an elapsed time is a.minus(b), a plain number of nanoseconds, divided down
+// to seconds exactly.
+
+satellite.include(satellite)
+
+satellite.spacesuit holder()
+{
+    satellite.protected
+    {
+        satellite.variable.string the_name = "void"
+    }
+
+    satellite.public
+    {
+        holder(satellite.variable.string input_str)
+        {
+            the_name = input_str
+        }
+
+        satellite.capsule set(satellite.variable.string input_str)
+        {
+            the_name = input_str
+        }
+
+        satellite.capsule name() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(the_name)
+        }
+    }
+}
+
+satellite.capsule report(satellite.variable.string label, satellite.variable.time from, satellite.variable.time to)
+{
+    // Nanoseconds to seconds is a division by a power of ten, which an exact
+    // decimal gets exactly right (§8.1): 1209229592 ns is 1.209229592 s, with
+    // no rounding anywhere in the conversion. Seconds because nobody has an
+    // intuition for a millisecond.
+    satellite.console.display(label + to.minus(from).divided_by(1000000000).to_string() + " s")
+
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.number rounds = 1000000
+
+    // 1. Construct a million objects, each with a constructor argument, each
+    //    dropped at the end of its iteration.
+    satellite.variable.time t0 = satellite.time.now()
+
+    satellite.variable.number made = 0
+    satellite.statement.while(made < rounds)
+    {
+        holder scratch("some_data")
+
+        made = made + 1
+    }
+
+    // 2. A million print statements.
+    satellite.variable.time t1 = satellite.time.now()
+
+    satellite.variable.number shown = 0
+    satellite.statement.while(shown < rounds)
+    {
+        satellite.console.display(shown)
+
+        shown = shown + 1
+    }
+
+    // 3. A million string transfers into one object.
+    satellite.variable.time t2 = satellite.time.now()
+
+    holder target("some_data")
+    satellite.variable.number sent = 0
+    satellite.statement.while(sent < rounds)
+    {
+        target.set("another_str")
+
+        sent = sent + 1
+    }
+
+    satellite.variable.time t3 = satellite.time.now()
+
+    report("satellite construct : ", t0, t1)
+    report("satellite display   : ", t1, t2)
+    report("satellite transfer  : ", t2, t3)
+    report("satellite total     : ", t0, t3)
+
+    satellite.return(satellite)
+}

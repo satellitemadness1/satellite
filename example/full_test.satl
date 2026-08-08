@@ -1,0 +1,297 @@
+// full_test.satl — every feature the interpreter implements today, in one
+// program. Run it from the satellite prompt with
+//
+//     run example/full_test.satl
+//
+// or from a shell with `./satl --run example/full_test.satl`. Every line
+// it prints is a feature that works; it ends with satellite.return(satellite),
+// so an exit status of 0 means the whole language came through intact.
+
+satellite.include(satellite)
+
+// ---------------------------------------------------------------------------
+// Globals
+//
+// Top-level statements run before satellite.main, so these are already set by
+// the time main starts. A capsule cannot see them by bare name — it is
+// lexically closed (§6) — only through satellite.library.main.<name>.
+// ---------------------------------------------------------------------------
+
+satellite.variable.number calls = 0
+satellite.variable.string greeting = "hello"
+satellite.variable.bool ready = 1 == 1
+
+// ---------------------------------------------------------------------------
+// Capsules
+// ---------------------------------------------------------------------------
+
+// Two parameters and a declared return type.
+satellite.capsule show(satellite.variable.string label,
+                       satellite.variable.string value)
+    satellite.returns(satellite.variable.string)
+{
+    satellite.console.display(label + ": " + value)
+    satellite.return(value)
+}
+
+// Recursion. One frame per activation is what makes this 3628800 rather than 1.
+satellite.capsule fact(satellite.variable.number n)
+{
+    satellite.statement.if (n <= 1) {
+        satellite.return(1)
+    }
+    satellite.return(n * fact(n - 1))
+}
+
+// Mutual recursion: is_even calls is_odd, which is defined after it. Legal
+// because resolution is a whole pass over the program before anything runs.
+satellite.capsule is_even(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0) {
+        satellite.return(1 == 1)
+    }
+    satellite.return(is_odd(n - 1))
+}
+
+satellite.capsule is_odd(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0) {
+        satellite.return(1 != 1)
+    }
+    satellite.return(is_even(n - 1))
+}
+
+// A local belongs to the activation, not to the capsule: the inner call's
+// `doubled` must not overwrite the outer call's.
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.variable.number doubled = n + n
+    satellite.statement.if (n > 1) {
+        satellite.return(doubled + twice(n - 1))
+    }
+    satellite.return(doubled)
+}
+
+// A local list lives in the frame too, so the second call starts from an empty
+// list instead of the first call's.
+satellite.capsule build(satellite.variable.number n)
+{
+    satellite.container.list<satellite.variable.number> made
+    made.append(n)
+    made.append(n + 1)
+    satellite.return(made)
+}
+
+// The four-segment path is the only way into a global from inside a capsule,
+// and the write lands in the real satellite.library.
+satellite.capsule bump()
+{
+    satellite.library.main.calls = satellite.library.main.calls + 1
+    satellite.return(satellite)
+}
+
+// ---------------------------------------------------------------------------
+
+satellite.capsule satellite.main(
+    satellite.container.list<satellite.variable.string> argz)
+{
+    // --- arguments ---------------------------------------------------------
+    // argz[0] is the script itself, mirroring argv[0] in C.
+    satellite.console.display("== arguments ==")
+    show("script", argz[0])
+    show("count", argz.length().to_string())
+
+    // Anything after the file name on the command line lands here, one
+    // satellite.variable.string per argument, in order. Indexing with a
+    // variable rather than a literal is the point of this loop.
+    satellite.statement.for (satellite.variable.number a = 1;
+                             a < argz.length(); a = a + 1) {
+        show("argz[" + a.to_string() + "]", argz[a])
+    }
+
+    // --- variables ---------------------------------------------------------
+    // Declaration, assignment, and reassignment of every scalar type. These are
+    // locals: they live in main's frame, not in satellite.library.
+    satellite.console.display("== variables ==")
+
+    satellite.variable.number count = 41
+    count = count + 1
+    show("number", count.to_string())
+
+    satellite.variable.string name = "satellite"
+    name = name + " language"
+    show("string", name)
+
+    satellite.variable.bool done = 1 < 2
+    done = !done
+    show("bool", done.to_string())
+
+    // An uninitialised declaration is a value of its declared type, so a number
+    // starts at 0 and a list starts empty rather than nil.
+    satellite.variable.number blank
+    show("uninitialised number", blank.to_string())
+
+    // The globals declared above, reached the only way a capsule can.
+    show("global greeting", satellite.library.main.greeting)
+    show("global ready", satellite.library.main.ready.to_string())
+    satellite.library.main.greeting = "hello again"
+    show("global reassigned", satellite.library.main.greeting)
+
+    // --- arithmetic --------------------------------------------------------
+    satellite.console.display("== arithmetic ==")
+    show("1 + 2 * 3", (1 + 2 * 3).to_string())
+    show("(1 + 2) * 3", ((1 + 2) * 3).to_string())
+    show("7 / 2", (7 / 2).to_string())
+    show("7 % 2", (7 % 2).to_string())
+    show("2 - -3", (2 - -3).to_string())
+    show("-3 + 1", (-3 + 1).to_string())
+
+    // Numbers print as their value, not as six significant digits, and float
+    // reality is shown rather than hidden.
+    show("1000000 * 1000000", (1000000 * 1000000).to_string())
+    show("2000000 + 1", (2000000 + 1).to_string())
+    show("3.14", 3.14.to_string())
+    show("0.1 + 0.2", (0.1 + 0.2).to_string())
+    show("1 / 3", (1 / 3).to_string())
+
+    // --- number methods ----------------------------------------------------
+    satellite.console.display("== number methods ==")
+    show("3.5.floor()", 3.5.floor().to_string())
+    show("3.5.ceil()", 3.5.ceil().to_string())
+    show("3.5.round()", 3.5.round().to_string())
+    show("(0 - 4).abs()", (0 - 4).abs().to_string())
+    show("10.plus(5)", 10.plus(5).to_string())
+    show("10.minus(5)", 10.minus(5).to_string())
+    show("10.times(5)", 10.times(5).to_string())
+    show("10.divided_by(4)", 10.divided_by(4).to_string())
+    show("10.modulo(3)", 10.modulo(3).to_string())
+
+    // --- strings -----------------------------------------------------------
+    satellite.console.display("== strings ==")
+    satellite.variable.string word = "satellite"
+    show("length", word.length().to_string())
+    show("concat", "ab".concat("cd"))
+    show("+", "ab" + "cd")
+    show("contains", word.contains("tell").to_string())
+    show("starts_with", word.starts_with("sat").to_string())
+    show("ends_with", word.ends_with("ite").to_string())
+    show("index [0]", word[0])
+    show("index [-1]", word[-1])
+
+    // Slicing is half-open everywhere: the length of s[a:b] is b - a, with no
+    // +1 anywhere in the language.
+    show("slice [1:4]", word[1:4])
+    show("slice [:3]", word[:3])
+    show("slice [4:]", word[4:])
+    show("slice [:]", word[:])
+
+    // --- satellite characters ----------------------------------------------
+    // A backslash name is ONE satellite character that displays as a whole
+    // value (§7). That is why "hi\home!" has a length of 4 and not the length
+    // of the path it prints as.
+    satellite.console.display("== satellite characters ==")
+    show("\\user", "\user")
+    show("\\home", "\home")
+    show("\\cwd", "\cwd")
+    show("\\threads", "\threads")
+    show("length of \"hi\\home!\"", "hi\home!".length().to_string())
+    show("\"hi\\home!\"[2]", "hi\home!"[2])
+
+    // --- booleans ----------------------------------------------------------
+    satellite.console.display("== booleans ==")
+    show("1 < 2", (1 < 2).to_string())
+    show("2 <= 2", (2 <= 2).to_string())
+    show("1 == 1", (1 == 1).to_string())
+    show("1 != 1", (1 != 1).to_string())
+    show("1 == \"1\"", (1 == "1").to_string())
+    show("!(1 < 2)", (!(1 < 2)).to_string())
+    show("and", (1 < 2).and(2 < 3).to_string())
+    show("or", (1 < 2).or(3 < 2).to_string())
+    show("negate", (1 < 2).negate().to_string())
+
+    // --- lists -------------------------------------------------------------
+    satellite.console.display("== lists ==")
+    satellite.container.list<satellite.variable.number> numbers
+    show("empty length", numbers.length().to_string())
+    numbers.append(1)
+    numbers.append(2)
+    numbers.append(3)
+    show("appended", numbers.to_string())
+    show("length", numbers.length().to_string())
+    show("index [0]", numbers[0].to_string())
+    show("index [-1]", numbers[-1].to_string())
+    show("first", numbers.first().to_string())
+    show("last", numbers.last().to_string())
+    show("contains 2", numbers.contains(2).to_string())
+    show("slice [1:3]", numbers[1:3].to_string())
+    show("slice [:2]", numbers[:2].to_string())
+    show("slice [2:]", numbers[2:].to_string())
+    show("slice clamps [0:99]", numbers[0:99].to_string())
+
+    // A list of strings, so the generic argument is not always a number.
+    satellite.container.list<satellite.variable.string> words
+    words.append("one")
+    words.append("two")
+    show("list of strings", words.to_string())
+
+    // --- control flow ------------------------------------------------------
+    satellite.console.display("== control flow ==")
+
+    satellite.statement.if (count > 40) {
+        show("if", "taken")
+    } satellite.statement.else {
+        show("if", "not taken")
+    }
+
+    satellite.statement.if (count > 100) {
+        show("else", "not taken")
+    } satellite.statement.else {
+        show("else", "taken")
+    }
+
+    // 0 + 1 + 2 + 3
+    satellite.variable.number i = 0
+    satellite.variable.number total = 0
+    satellite.statement.while (i < 4) {
+        total = total + i
+        i = i + 1
+    }
+    show("while sum", total.to_string())
+
+    // 1 + 2 + 3 + 4, with the loop variable declared in the header.
+    total = 0
+    satellite.statement.for (satellite.variable.number k = 1; k <= 4; k = k + 1) {
+        total = total + k
+    }
+    show("for sum", total.to_string())
+
+    // Nested, so a block inside a block is a scope inside a scope.
+    satellite.variable.number evens = 0
+    satellite.statement.for (satellite.variable.number k = 0; k < 10; k = k + 1) {
+        satellite.statement.if (k % 2 == 0) {
+            evens = evens + 1
+        }
+    }
+    show("evens under 10", evens.to_string())
+
+    // --- capsules ----------------------------------------------------------
+    satellite.console.display("== capsules ==")
+    show("fact(10)", fact(10).to_string())
+    show("fact(5)", fact(5).to_string())
+    show("is_even(10)", is_even(10).to_string())
+    show("is_odd(7)", is_odd(7).to_string())
+    show("twice(3)", twice(3).to_string())
+
+    // Each call gets its own list, so the second is [5, 6] and not [1, 2, 5, 6].
+    show("build(1)", build(1).to_string())
+    show("build(5)", build(5).to_string())
+
+    // Three writes to a global, from inside a capsule, through its path.
+    bump()
+    bump()
+    bump()
+    show("global calls", satellite.library.main.calls.to_string())
+
+    satellite.console.display("== all features ran ==")
+    satellite.return(satellite)
+}

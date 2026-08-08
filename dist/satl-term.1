@@ -1,0 +1,170 @@
+.\" satl-term(1) - manual page for the GUI terminal.
+.\"
+.\" Pure ASCII, for the reason given at the top of satl.1.
+.\"
+.\" The point this page has to land is that satl-term is not "satl with a
+.\" window": it is a different binary with a different dependency set, and the
+.\" whole reason it exists is that the interpreter must not carry them.
+.TH SATL\-TERM 1 2026-08-07 "satellite 0.1" "Satellite Manual"
+.SH NAME
+satl\-term \- graphical terminal window for the satellite interpreter
+.SH SYNOPSIS
+.B satl\-term
+.RI [ file " [" args ...]]
+.br
+.B satl\-term
+.RB { \-h | \-\-help }
+.SH DESCRIPTION
+.B satl\-term
+opens a GTK4 window containing one VTE terminal and spawns the interpreter,
+.BR satl (1),
+into that terminal's pseudo\-terminal. With no arguments the child is started as
+.BR "satl \-\-repl" ;
+given a
+.IR file ,
+the child is
+.B satl \-\-run
+.I file
+.IR args ...,
+and the window shows the program's output.
+.PP
+It interprets nothing itself. It renders the bytes its child writes and passes
+keystrokes back, and that is the whole of it.
+.SS Why this is a separate program
+The obvious design is one binary that opens a window when it has no file to run.
+It was measured and rejected. Linking GTK4 and VTE into the interpreter made the
+dynamic linker load
+.B 119
+shared objects \(em pango, harfbuzz, cairo, gdk\-pixbuf and a hundred more \(em
+before
+.B main()
+ran, on every invocation, including the headless
+.B satl \-\-run
+that touches none of them:
+.PP
+.RS 4
+.EX
+satl \-\-run hello.satl, linked against gtk4          25.9 ms
+the same interpreter, not linked against gtk4        2.5 ms
+a bare int main(){return 0;}                         2.2 ms
+.EE
+.RE
+.PP
+So 23.4 ms of a 25.9 ms run was the loader, for libraries the run never called
+into, against an interpreter whose own share of hello world is 0.3 ms. Split in
+two, the window keeps its 119 shared objects and the interpreter keeps its 6,
+and neither pays for the other; the same benchmark went from 1.3\(mu slower than
+.BR python3 (1)
+to 7.6\(mu faster, with peak resident memory falling from 26.3 MB to 4.0 MB.
+.PP
+The split is nearly free because the two\-process architecture predates it. The
+window never interpreted anything anyway \(em it always spawned a child into the
+terminal's pseudo\-terminal \(em so the only thing that changed is which binary
+it spawns: the sibling
+.B satl
+rather than itself.
+.PP
+The pseudo\-terminal is also what makes the window a real terminal rather than a
+text widget. Echo, backspace, line editing, Ctrl\-C, Ctrl\-D and SIGWINCH are
+the kernel's tty line discipline, obtained free by having a child on the other
+end of a pty; a single\-process design would have to reimplement every one of
+them.
+.SH OPTIONS
+.TP
+.IR file " [" args ...]
+Run
+.I file
+in the window instead of opening the REPL.
+.I file
+and
+.I args
+are handed to the child unchanged, so they mean exactly what they mean in
+.BR "satl \-\-run" .
+.TP
+.BR \-h ", " \-\-help
+Print a usage summary on standard error and exit 2.
+.SH NOTES
+.B satl\-term
+locates the interpreter by reading
+.I /proc/self/exe
+and looking for a file named
+.B satl
+in the same directory. The two binaries are therefore installed side by side in
+.IR $prefix/bin ,
+and copying
+.B satl\-term
+somewhere on its own will not work. This is deliberate: resolving the sibling by
+path rather than by
+.B PATH
+means the window always runs the interpreter it was installed with, not whatever
+older
+.B satl
+happens to come first in the environment it was launched from.
+.PP
+This program owns the only window involved. The interpreter it spawns links no
+GUI libraries at all, and the language has no window functions yet, so a
+satellite program cannot open a window of its own \(em in this terminal or
+anywhere else. The design that would give it one loads GTK from a shared object
+at the moment a program asks for it, so that
+.B satl
+keeps, for every program that never asks, the startup it gained by not linking
+GTK.
+.SH ENVIRONMENT
+.TP
+.B DISPLAY
+.TQ
+.B WAYLAND_DISPLAY
+The usual GTK display variables. Without one of them there is no window to open
+and
+.B satl\-term
+has nothing to do; use
+.B satl \-\-run
+directly, which needs no display server at all.
+.PP
+.B SATELLITE_PATH
+is read by the interpreter, not by this program, and is inherited by the child
+along with the rest of the environment. See
+.BR satl (1).
+.SH FILES
+Paths are shown for the default prefix,
+.IR /usr/local .
+.TP
+.I /usr/local/bin/satl\-term
+This program.
+.TP
+.I /usr/local/bin/satl
+The interpreter it spawns, found as this binary's sibling.
+.TP
+.I /usr/local/share/applications/org.satellite.terminal.desktop
+The desktop entry, so the window can be started from a menu or launcher. It is
+named after the application id this program registers, because that is the name
+a desktop shell looks the entry up by when it wants to know which launcher an
+open window belongs to.
+.SH EXAMPLES
+.RS 4
+.EX
+$ satl\-term
+$ satl\-term hello.satl
+$ satl\-term bench.satl 100000
+.EE
+.RE
+.SH "EXIT STATUS"
+.TP
+.B 0
+The window was closed normally.
+.TP
+.B 2
+A usage error.
+.PP
+Otherwise the status is whatever the GTK application loop returned. The
+interpreter's exit status is
+.I not
+propagated \(em it is a child inside the terminal, and its status is reported in
+the terminal where the user can read it. To get a program's exit status, run it
+under
+.BR satl (1)
+instead.
+.SH "SEE ALSO"
+.BR satl (1)
+.SH AUTHOR
+The satellite project <terransatellite@gmail.com>.

@@ -1,0 +1,44 @@
+# Desktop entry for satl-term, the GTK4/VTE window.
+#
+# The file name is the GApplication id that window.cpp registers, and it has to
+# be: GTK puts that id on the toplevel -- as the Wayland app_id, and as the
+# X11 WM_CLASS instance because window.cpp sets prgname to it -- and a desktop
+# shell then looks for <that id>.desktop. Named satl-term.desktop the window
+# arrives associated with no launcher at all: no icon in the switcher, nothing
+# to pin. StartupWMClass says the same thing a second time for shells that
+# match on WM_CLASS rather than on the file name.
+#
+# Only satl-term gets an entry. The interpreter is a command-line program with
+# no window of its own, and a launcher entry for it would open something the
+# user cannot see.
+#
+# Exec is the bare command name rather than an absolute path, because the prefix
+# is not known when this file is written and a hard-coded /usr/local would be
+# wrong in every distribution package. TryExec makes the entry hide itself if
+# the binary is not on PATH, which is the correct behaviour for a menu.
+#
+# %f is honest only because window.cpp passes G_APPLICATION_NON_UNIQUE: under
+# the single-instance default a second launch handed its argument to the
+# already-running process, which read its own empty copy of the variable and
+# opened a plain REPL, so the file the user asked for was dropped.
+#
+# Icon is the application id rather than a file path, because that is how the
+# icon theme spec is looked up: the shell searches every theme directory for
+# <name>.svg, so the id names the artwork we install at
+# share/icons/hicolor/scalable/apps/org.satellite.terminal.svg. It matches the
+# file name and StartupWMClass for the same reason all three agree -- a shell
+# that finds the launcher by any one of them finds the icon too.
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Satellite
+GenericName=Satellite Terminal
+Comment=Interactive terminal for the satellite programming language
+Exec=satl-term %f
+TryExec=satl-term
+Icon=org.satellite.terminal
+Terminal=false
+Categories=Development;IDE;
+Keywords=satellite;interpreter;repl;language;programming;
+StartupNotify=true
+StartupWMClass=org.satellite.terminal

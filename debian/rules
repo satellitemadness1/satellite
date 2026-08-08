@@ -1,0 +1,87 @@
+#!/usr/bin/make -f
+
+# DEB_HOST_ARCH for the ThreadSanitizer question below; CXXFLAGS, CPPFLAGS and
+# LDFLAGS with the distribution's hardening and DEB_BUILD_OPTIONS already
+# folded in, which is what makes `noopt` and `nostrip` mean something here
+# (Policy 4.9.1).
+include /usr/share/dpkg/architecture.mk
+include /usr/share/dpkg/buildflags.mk
+
+# Everything upstream's Makefile needs told to it, in one place. It travels
+# after `--` so that dh passes it on the make *command line*, which is the only
+# level that outranks a plain `=` assignment inside a makefile; the environment
+# does not, and upstream assigns these with `=` rather than `?=`.
+#
+#   CXX      upstream points this at a clang 24 trunk build under $HOME
+#            (Makefile:4), which exists on the author's machine and on no build
+#            daemon anywhere. -g is appended because Debian expects debug
+#            symbols to survive as far as dh_strip, which splits them out into
+#            the automatic -dbgsym packages.
+#   prefix   must be set for the *build*, not only for the install: the library
+#            search path's third and last candidate is compiled in from it as
+#            -DSATELLITE_LIB_DIR, so a binary built with the default prefix
+#            would look in /usr/local/share/satellite/lib and find nothing.
+#   CXXFLAGS a command-line assignment replaces the variable whole, so the
+#            three flags upstream's build actually requires are restated ahead
+#            of dpkg's. Nothing load-bearing is lost by the replacement:
+#            -DSATELLITE_LIB_DIR is a literal on the system.o recipe line and
+#            not part of any variable, and the Makefile never reads CPPFLAGS,
+#            which is why dpkg's share of it is appended here instead.
+#
+# LDFLAGS is deliberately NOT here: upstream's link rules read $(LDFLAGS), the
+# Makefile assigns it nothing, and buildflags.mk exports it — so it arrives
+# through the environment and a command-line assignment would only be a second
+# way to say the same thing.
+MAKEVARS = CXX="g++ -g" prefix=/usr \
+           CXXFLAGS="-std=c++20 -Wall -Wextra $(CXXFLAGS) $(CPPFLAGS)"
+
+# ThreadSanitizer is a 64-bit-only runtime: Debian builds libtsan2 for amd64,
+# arm64, mips64el, ppc64el, riscv64 and s390x and for nothing else. Both binary
+# packages are Architecture: any, which is a promise the package builds
+# everywhere (Policy 5.6.8), and on i386 or armhf `-fsanitize=thread` fails to
+# compile and takes dh_auto_test and the whole build down with it. Upstream's
+# TSAN=0 drops that one binary and still runs the other ten, which is a much
+# better answer than skipping the suite or narrowing the architecture list.
+TSAN_ARCHS = amd64 arm64 mips64el ppc64el riscv64 s390x
+ifeq (,$(filter $(DEB_HOST_ARCH),$(TSAN_ARCHS)))
+TSANVARS = TSAN=0
+endif
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	dh_auto_build -- $(MAKEVARS)
+
+# Nothing in the suite needs a display. DESIGN.md section 9 added the headless
+# `--run` path for exactly this reason, and the eleven test binaries link the
+# runtime and compiler objects directly without going near gtk or vte. The
+# slowest by a wide margin is library_test_tsan, a ThreadSanitizer build of the
+# lock-free publish protocol; DEB_BUILD_OPTIONS=nocheck skips the lot.
+override_dh_auto_test:
+	dh_auto_test -- $(MAKEVARS) $(TSANVARS)
+
+# One staging tree for both packages, split afterwards by the .install files.
+# DESTDIR is supplied by dh and is a staging prefix only: it is prepended to
+# every path as the files are copied and appears in nothing that ships, whereas
+# prefix is compiled into the binaries and recorded in the file names.
+#
+# The deletions exist because example/ is installed verbatim and is a working
+# directory: the comparison drivers and the programs they time are built in
+# place, and example/website/gtk_window in particular is a stale artifact that
+# no clean target removes. An ELF binary under /usr/share violates Policy
+# 9.1.1's architecture-independence rule. Each removal uses -f, so this becomes
+# a no-op the day upstream's install rule filters them itself.
+override_dh_auto_install:
+	dh_auto_install --destdir=debian/tmp -- $(MAKEVARS)
+	rm -f debian/tmp/usr/share/satellite/examples/cxx_compare/compare
+	rm -f debian/tmp/usr/share/satellite/examples/cxx_compare/bench
+	rm -f debian/tmp/usr/share/satellite/examples/cxx_compare/hello
+	rm -f debian/tmp/usr/share/satellite/examples/py_compare/compare
+	rm -f debian/tmp/usr/share/satellite/examples/website/tour
+	rm -f debian/tmp/usr/share/satellite/examples/website/gtk_window
+	rm -f debian/tmp/usr/share/satellite/examples/*/*.o
+	rm -f debian/tmp/usr/share/satellite/examples/*/*.out
+
+override_dh_auto_clean:
+	dh_auto_clean -- $(MAKEVARS)

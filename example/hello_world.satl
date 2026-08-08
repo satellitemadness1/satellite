@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> argz)
+{
+    satellite.console.display("hello, world!")
+
+    satellite.return(satellite)
+}

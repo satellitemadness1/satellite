@@ -1,0 +1,240 @@
+# Packaging satellite for Debian and Ubuntu
+
+Written for a maintainer who has not done this before. Nothing here changes how
+satellite builds; the packaging drives the ordinary top-level Makefile.
+
+
+## Build it
+
+Install the build dependencies once:
+
+    sudo apt build-dep .
+
+(or, if that fails because the source package is not registered yet:
+`sudo apt install debhelper g++ libgtk-4-dev libvte-2.91-gtk4-dev pkg-config`)
+
+Then, from the top of the source tree — the directory that contains `Makefile`
+and `debian/`, not from inside `debian/`:
+
+    dpkg-buildpackage -us -uc -b
+
+  * `-b` means binary only: build the `.deb` files and skip the source package.
+    This is what you want while iterating, and the only mode that needs no
+    upstream tarball (see "Source format" below).
+  * `-us -uc` mean do not sign the source and do not sign the changes file. You
+    only sign when uploading to an archive.
+
+The results land in the *parent* directory, which surprises everyone once:
+
+    ../satellite_0.1.0-1_amd64.deb
+    ../satellite-term_0.1.0-1_amd64.deb
+    ../satellite-dbgsym_0.1.0-1_amd64.ddeb
+    ../satellite-term-dbgsym_0.1.0-1_amd64.ddeb
+    ../satellite_0.1.0-1_amd64.changes
+
+The two `.ddeb` files are the debug symbols, split out automatically because
+`debian/rules` builds with `-g`. They are optional to install and useful in a
+backtrace.
+
+
+## Look at it before installing it
+
+    dpkg -c ../satellite_0.1.0-1_amd64.deb    # every file, with its mode
+    dpkg -I ../satellite_0.1.0-1_amd64.deb    # the control data: Depends etc.
+
+The single most important check in this whole package is that the interpreter
+did not acquire a GUI dependency:
+
+    dpkg -I ../satellite_0.1.0-1_amd64.deb | grep Depends
+
+That line must name only `libc6`, `libgcc-s1` and `libstdc++6`. If `libgtk-4-1`
+or `libvte-2.91-gtk4-0` ever appears there, the binary split described in
+DESIGN.md section 9 has been undone somewhere in the Makefile and the headless
+install has silently regressed.
+
+If you have `lintian`, run it — it is the policy checker, and its complaints
+are usually right:
+
+    lintian ../satellite_0.1.0-1_amd64.changes
+
+
+## Install and remove
+
+    sudo apt install ../satellite_0.1.0-1_amd64.deb
+    sudo apt install ../satellite-term_0.1.0-1_amd64.deb   # only for the GUI
+
+Use `apt install ./path.deb` rather than `dpkg -i`, because apt will pull the
+dependencies and `dpkg` will merely complain that they are missing.
+
+    sudo apt remove satellite-term satellite
+
+After installing, the acceptance test for the whole install design is that this
+works with a clean environment and no variables set:
+
+    env -u SATELLITE_PATH \
+        satl --run /usr/share/satellite/examples/hello_world.satl
+
+
+## prefix and DESTDIR, which are not the same thing
+
+These two are the only part of packaging worth understanding properly, and the
+difference is what makes a package relocatable-by-construction rather than by
+luck.
+
+**`prefix` is where the software will live when it is installed.** It is a
+promise baked into the build. The package sets `prefix=/usr`, and that value
+reaches the compiler: the third and last entry in the library search order is
+compiled in as `-DSATELLITE_LIB_DIR`, so with `prefix=/usr` the interpreter
+carries the string `/usr/share/satellite/lib` inside it. Build with the default
+`prefix=/usr/local` and install to `/usr` anyway, and you get a binary that
+looks in a directory the package never created. That is why `debian/rules`
+passes `prefix=/usr` to the *build* step and not only to the install step.
+
+**`DESTDIR` is a staging directory, and it is a lie the build is told exactly
+once.** `make install DESTDIR=/some/scratch` writes to
+`/some/scratch/usr/bin/satl` instead of `/usr/bin/satl`, so files can
+be collected as an ordinary user without touching the real filesystem.
+`DESTDIR` is prepended when the files are *written* and appears nowhere in
+what is written: not in a compiled-in path, not in a script, not in the file
+names recorded in the `.deb`. `dpkg-deb` then packs the staging tree, and the
+paths in the archive are `usr/bin/satl` again.
+
+So: `prefix` is baked in, `DESTDIR` never is. That distinction is why one build
+of satellite can be packed into a `.deb`, a tarball and an `apt` archive
+without being rebuilt, and why `debian/rules` may pass `DESTDIR` freely but
+must pass `prefix` carefully.
+
+Here `DESTDIR` is `debian/tmp`. Both packages are installed into that one tree
+and then split by `debian/satellite.install` and
+`debian/satellite-term.install`, which list the paths each package claims.
+Anything landing in `debian/tmp` that neither file claims makes the build fail
+— `dh_missing` is strict by default in debhelper compat 13 — and that is
+deliberate: a new installed file must be assigned to a package on purpose,
+rather than forgotten into oblivion.
+
+
+## Source format
+
+`debian/source/format` says `3.0 (quilt)`, for two reasons.
+
+The deciding one is arithmetic: the version is `0.1.0-1`, and the `-1` is a
+Debian revision, meaning "the first packaging of upstream 0.1.0". A `3.0
+(native)` package is one where upstream and packaging are the same release with
+no separate revision, and its version may not contain a hyphen at all; with
+`3.0 (native)` the version would have to be plain `0.1.0`. The requested
+version therefore selects quilt.
+
+The better reason is that it keeps the two version streams apart. A packaging
+fix — a corrected dependency, a changed install path — becomes `0.1.0-2` and
+does not pretend the language changed. That separation is worth having from the
+first upload rather than retrofitted at the first bug.
+
+The cost is that a full source build wants an upstream tarball beside the tree:
+
+    cd ..
+    make -C satellite clean      # do not tar .o files and stale binaries
+    tar --exclude=debian -czf satellite_0.1.0.orig.tar.gz satellite
+    cd satellite
+    dpkg-buildpackage -us -uc        # no -b: builds source and binary
+
+Binary-only builds (`-b`, above) never look for that tarball, so day-to-day
+work needs none of this.
+
+
+## What each file in debian/ does
+
+    control              package metadata: names, dependencies, descriptions.
+                         One "Source:" stanza plus one "Package:" stanza per
+                         binary package produced.
+    rules                an executable makefile. `dh $@` runs the standard
+                         sequence; the override_* targets replace single steps.
+    changelog            the version number lives here and nowhere else. Its
+                         topmost entry is what the build names the .deb after.
+    copyright            machine-readable licensing, a paragraph per file set.
+                         Its licence text is a transcription of the top-level
+                         LICENSE, which is the same text `make install` puts at
+                         share/doc/satellite/copyright; the two say the same
+                         thing and have to keep saying it.
+    satellite.install    which staged paths go into the satellite package.
+    satellite-term.install    the same for satellite-term.
+    satellite.dirs       directories to create that contain no files.
+                         /usr/share/satellite/lib is empty today: it is the
+                         compiled-in SATELLITE_LIB_DIR, and it has to exist so
+                         that dropping a .satl file into it is all a user has
+                         to do. An .install file cannot carry an empty
+                         directory, which is why this file exists at all.
+    source/format        3.0 (quilt), discussed above.
+
+
+## Changing the version
+
+Do not edit the version anywhere but `debian/changelog`, and prefer the tool:
+
+    dch -v 0.1.1-1 "what changed"
+    dch -r                            # finalise the entry for release
+
+`dch` fills in the date and the trailer in the exact format the parser wants; a
+hand-edited trailer with a weekday that does not match its date is a build
+failure with an unhelpful message.
+
+
+## What debian/rules requires of the top-level Makefile
+
+The packaging drives the upstream Makefile rather than reimplementing it, so it
+depends on that Makefile keeping to the agreed install contract. If a build
+fails with `Cannot find (any matches for) "usr/share/..."`, one of these is not
+being honoured:
+
+  * `make install prefix=/usr DESTDIR=<dir>` exists and stages the whole tree.
+  * `prefix` reaches the compiler as `-DSATELLITE_LIB_DIR`, so the value has to
+    be given to the build as well as to the install. `debian/rules` passes it
+    to both.
+  * The staged tree is exactly the ten paths listed in `satellite.install`,
+    `satellite-term.install` and `satellite.dirs`. Anything else staged fails
+    the build under `dh_missing`, and anything listed but not staged fails
+    under `dh_install`; either failure is the packaging noticing that the contract
+    moved, and the fix is to update the `.install` file rather than to silence
+    the check.
+  * The man pages, the `.desktop` file, the icon and the bash completion have
+    sources in the tree for `make install` to install. They are upstream files,
+    not packaging files, because a `make install` into `/usr/local` on a machine
+    that has never heard of dpkg should produce a working man page too.
+  * `CXXFLAGS` may be replaced whole. `debian/rules` restates the flags the
+    build genuinely requires — `-std=c++20 -Wall -Wextra` — and appends
+    `dpkg-buildflags`', which is only safe because `-DSATELLITE_LIB_DIR` is a
+    literal on the `system.o` recipe line and not part of any variable. Move it
+    into `CXXFLAGS` upstream and the define vanishes on the next package build.
+  * Both link rules read `$(LDFLAGS)` and the Makefile assigns it nothing, so
+    dpkg's link-time hardening reaches the link through the environment
+    `buildflags.mk` exports. A link rule that stops mentioning `$(LDFLAGS)`
+    silently drops relro and bindnow.
+  * Changing `prefix` recompiles `system.o`. The Makefile records the value in
+    `.libdir-stamp` and depends on it, so `dh_auto_build` retargeting a tree
+    somebody already built by hand still produces a binary that names
+    `/usr/share/satellite/lib`.
+
+`satellite.install` matches the man pages with `satl.1*` rather than
+`satl.1.gz`, so it does not care whether upstream compresses them or
+leaves that to `dh_compress`. Both end up gzipped in the `.deb`.
+
+
+## Known rough edges
+
+  * **The test suite is slow.** `make test` builds eleven test binaries, each
+    recompiling the whole runtime and compiler, and one of them under
+    ThreadSanitizer. Nothing needs a display. `DEB_BUILD_OPTIONS=nocheck
+    dpkg-buildpackage -us -uc -b` skips it while iterating on packaging.
+
+    On an architecture with no ThreadSanitizer — anything that is not amd64,
+    arm64, mips64el, ppc64el, riscv64 or s390x — `debian/rules` passes upstream
+    `TSAN=0`, which drops `library_test_tsan` and runs the other ten. Without
+    it `-fsanitize=thread` would fail to compile and take the whole build with
+    it, on architectures the package promises to build on by declaring
+    `Architecture: any`.
+
+  * **example/ is a working directory.** It contains built comparison drivers,
+    and `example/website/gtk_window` is a stale binary no clean target removes.
+    `debian/rules` deletes them from the staging tree after install, because an
+    architecture-dependent file under `/usr/share` is a policy violation. The
+    deletions are `rm -f`, so they cost nothing once upstream's install rule
+    filters the directory itself.

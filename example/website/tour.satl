@@ -1,0 +1,250 @@
+
+satellite.include(satellite)
+
+satellite.variable.number total = 0
+
+satellite.spacesuit item()
+{
+    satellite.protected
+    {
+        satellite.variable.string label = "unnamed"
+        satellite.variable.number count = 0
+    }
+
+    satellite.public
+    {
+        item(satellite.variable.string name, satellite.variable.number amount)
+        {
+            label = name
+            count = amount
+        }
+
+        satellite.capsule name() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(label)
+        }
+
+        satellite.capsule quantity() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(count)
+        }
+
+        satellite.capsule restock(satellite.variable.number amount)
+        {
+            count = count + amount
+        }
+
+        satellite.capsule describe() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(label + " x" + count.to_string())
+        }
+    }
+}
+
+satellite.spacesuit crate(item)
+{
+    satellite.protected
+    {
+        satellite.variable.number per_box = 12
+    }
+
+    satellite.public
+    {
+        satellite.capsule boxes() satellite.returns(satellite.variable.number)
+        {
+            satellite.return((count / per_box).floor())
+        }
+
+        satellite.capsule describe() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(label + " x" + count.to_string() + " in " + boxes().to_string() + " boxes")
+        }
+    }
+}
+
+satellite.capsule fact(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.statement.if(n <= 1)
+    {
+        satellite.return(1)
+    }
+
+    satellite.return(n * fact(n - 1))
+}
+
+satellite.capsule is_even(satellite.variable.number n) satellite.returns(satellite.variable.bool)
+{
+    satellite.statement.if(n == 0)
+    {
+        satellite.return(satellite.bool.true)
+    }
+
+    satellite.return(is_odd(n - 1))
+}
+
+satellite.capsule is_odd(satellite.variable.number n) satellite.returns(satellite.variable.bool)
+{
+    satellite.statement.if(n == 0)
+    {
+        satellite.return(satellite.bool.false)
+    }
+
+    satellite.return(is_even(n - 1))
+}
+
+satellite.capsule tally(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.library.main.total = satellite.library.main.total + n
+
+    satellite.return(satellite.library.main.total)
+}
+
+satellite.capsule report(item thing) satellite.returns(satellite.variable.string)
+{
+    satellite.return(thing.describe())
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> argz)
+{
+    satellite.variable.number a = 17
+    satellite.variable.number b = 5
+
+    satellite.console.display(a + b)
+    satellite.console.display(a - b)
+    satellite.console.display(a * b)
+    satellite.console.display(a / b)
+    satellite.console.display(a % b)
+    satellite.console.display(-a)
+    satellite.console.display(a.plus(b))
+    satellite.console.display(a.minus(b))
+    satellite.console.display(a.times(b))
+    satellite.console.display(a.divided_by(b))
+    satellite.console.display(a.modulo(b))
+    satellite.console.display((a / b).floor())
+    satellite.console.display((a / b).ceil())
+    satellite.console.display((a / b).round())
+    satellite.console.display((-a).abs())
+    satellite.console.display(fact(18))
+
+    satellite.console.display(a > b)
+    satellite.console.display(a >= b)
+    satellite.console.display(a < b)
+    satellite.console.display(a <= b)
+    satellite.console.display(a == 17)
+    satellite.console.display(a != b)
+
+    satellite.variable.bool yes = satellite.bool.true
+    satellite.variable.bool no = satellite.bool.false
+
+    satellite.console.display(yes.negate())
+    satellite.console.display(yes.and(no))
+    satellite.console.display(yes.or(no))
+    satellite.console.display(!no)
+
+    satellite.variable.string greeting = "hello, satellite"
+
+    satellite.console.display(greeting)
+    satellite.console.display(greeting.length())
+    satellite.console.display(greeting.contains("sat"))
+    satellite.console.display(greeting.starts_with("hello"))
+    satellite.console.display(greeting.ends_with("lite"))
+    satellite.console.display(greeting.concat("!"))
+    satellite.console.display(greeting + "!")
+    satellite.console.display(greeting[0])
+    satellite.console.display(greeting[-1])
+    satellite.console.display(greeting[7:])
+    satellite.console.display(greeting[:5])
+    satellite.console.display(greeting[7:10])
+
+    satellite.container.list<satellite.variable.number> primes
+
+    primes.append(2)
+    primes.append(3)
+    primes.append(5)
+    primes.append(7)
+    primes.append(11)
+
+    satellite.console.display(primes)
+    satellite.console.display(primes.length())
+    satellite.console.display(primes.first())
+    satellite.console.display(primes.last())
+    satellite.console.display(primes.contains(7))
+    satellite.console.display(primes.contains(4))
+    satellite.console.display(primes[2])
+    satellite.console.display(primes[-1])
+    satellite.console.display(primes[1:4])
+    satellite.console.display(primes[:2])
+    satellite.console.display(primes[3:])
+    satellite.console.display(primes[2:100])
+
+    satellite.container.list<satellite.container.list<satellite.variable.number>> grid
+
+    grid.append(primes[:2])
+    grid.append(primes[3:])
+
+    satellite.console.display(grid)
+
+    satellite.variable.number i = 0
+
+    satellite.statement.while(i < 3)
+    {
+        satellite.console.display(i)
+
+        i = i + 1
+    }
+
+    satellite.statement.for(satellite.variable.number j = 0; j < 3; j = j + 1)
+    {
+        satellite.console.display(j * j)
+    }
+
+    satellite.statement.if(a > b)
+    {
+        satellite.console.display("a wins")
+    }
+    satellite.statement.else satellite.statement.if(a == b)
+    {
+        satellite.console.display("tie")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("b wins")
+    }
+
+    satellite.console.display(is_even(10))
+    satellite.console.display(is_odd(10))
+    satellite.console.display(tally(4))
+    satellite.console.display(tally(6))
+
+    item bolt("bolt", 40)
+
+    satellite.console.display(bolt.name())
+    satellite.console.display(bolt.quantity())
+    satellite.console.display(bolt.describe())
+
+    bolt.restock(8)
+
+    satellite.console.display(bolt.describe())
+
+    item alias = bolt
+
+    alias.restock(2)
+
+    satellite.console.display(bolt.describe())
+    satellite.console.display(bolt == alias)
+
+    crate washer("washer", 100)
+
+    satellite.console.display(washer.boxes())
+    satellite.console.display(washer.describe())
+    satellite.console.display(report(bolt))
+    satellite.console.display(report(washer))
+
+    satellite.variable.time started = satellite.time.now()
+    satellite.variable.time ended = satellite.time.now()
+
+    satellite.console.display(ended.minus(started) >= 0)
+    satellite.console.display(argz.length() >= 1)
+
+    satellite.return(satellite)
+}

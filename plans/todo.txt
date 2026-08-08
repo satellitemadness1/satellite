@@ -1,0 +1,487 @@
+satellite — where the project stands, and what to do next
+=========================================================
+Rewritten 2026-08-07. The 2026-08-06 toolchain material is kept below, in
+substance unchanged, because nothing decided that day has been revisited.
+
+This file is an index, not a second design document. DESIGN.md is
+authoritative, and every claim here names the section that carries the
+reasoning so the detail lives in exactly one place. Where this file and
+DESIGN.md disagree, DESIGN.md is right and this file is stale. References are
+by section number and never by line number, because DESIGN.md was itself being
+revised on the afternoon this was written and every line number in it moved.
+
+Everything below was checked against the tree on 2026-08-07 before it was
+written down. Where a claim could not be verified, it says so rather than
+asserting.
+
+Verified state: clang 24 trunk, -std=c++20, libstdc++, -Wall -Wextra -O2. The
+interpreter is twelve translation units and satl-term is one more, and a
+from-scratch rebuild of all thirteen emits no diagnostics. All eleven test
+binaries pass, the ThreadSanitizer build of library_test included. Sizes
+measured in that run, since three of them are budgets the design keeps quoting:
+Value=40, Expr=96, Stmt=200, Number=32, Span=24.
+
+
+WHERE THINGS STAND
+------------------
+Spacesuits — §14. Fields, methods, constructors, single inheritance with
+virtual dispatch, and satellite.protected / satellite.public blocks. Both
+tables are flattened at resolve time, so nothing walks a superclass chain at
+run time. This was M8 in §11's table, and spacesuit_test.cpp is its milestone
+binary.
+
+satellite.variable.time — §8.2, built with satellite.time.now(). It landed
+alongside spacesuits because a timer written in satellite is what measures
+§14's benchmark, which is why §11 lists M8 before M5.
+
+Exact numbers — §8.1 for the decision, §8.1.2 for what landed and the three
+traps it hit, §8.1.1 for how a number renders. `double` is gone from the value
+variant; satellite.variable.number is an arbitrary-precision decimal
+implemented in bignum.cpp / bignum.hpp with bignum_test.cpp behind it. This was
+M5.
+
+Two binaries — §9, "The interpreter must not link the GUI". satl is the
+interpreter and links six shared objects; satl-term is the window and links
+119. The measurement that forced the split is in that section: 25.9 ms with the
+GTK link against 2.5 ms without, over a 2.2 ms bare-process floor, of which the
+interpreter's own share of hello world is 0.3 ms.
+
+Benchmark harnesses — §14, "Measured against compiled C++" and "Against
+CPython". example/cxx_compare counts the C++ compiler's own time as part of
+what running a C++ program costs, which is the choice that changes the answer;
+example/py_compare times whole processes with fork + execvp. Only py_compare
+verifies that the two programs' output is byte-identical before it times
+anything; cxx_compare sends both stdouts to /dev/null, because the benchmark
+writes a million lines and a pipe would have measured the harness's own ability
+to drain them, so its two programs are held equivalent by reading them. Today's
+runs reproduced §14's figures: 5.97x faster startup than python3 against §14's
+recorded 5.8x, and 3.84x slower on the object benchmark against §14's 4.1x.
+
+satellite.bool.true and satellite.bool.false — §8.4. Module constants,
+resolved on the satellite-rooted path the way §1's rule already implies. They
+exist because the language had a bool type and no way to write either of its
+values.
+
+File I/O — §8.3 for the design, which is where "a file is a reference type"
+was settled, and §8.3.1 for what landed. That is satellite.file.open(path,
+mode) returning a satellite.variable.file, with .ok(), .path(), .error(),
+.read(), .write() and .close() on it. The mode is the word "read", "write" or
+"append", not a one-letter flag, because the language has no enum and wants
+none. eval_test.cpp covers it, and §11's M6 is now marked done.
+
+The binary is satl and the window is satl-term — §9, "The commands are satl
+and satl-term, and the reason is not ours". The short version is in DECIDED
+below; §9 has the table of what moved and what did not.
+
+Packaging — Makefile install / uninstall honouring prefix and DESTDIR, a
+debian/ directory that builds the satellite and satellite-term binary packages,
+install.sh for tarball installs, man pages generated from dist/satl.1 and
+dist/satl-term.1, a .desktop entry, bash completion, and a hand-drawn icon at
+dist/org.satellite.terminal.svg. The library search underneath it is §9,
+"Finding the installed library", and system.hpp carries the same three tiers at
+implementation length. The packaging machinery itself is documented outside
+DESIGN.md, which as of this writing does not mention it:
+debian/README.packaging is written for a maintainer who has not done this
+before, and the Makefile explains each decision where the variable is defined
+— in particular that prefix is baked into the binary and DESTDIR is baked into
+nothing, which is the whole contract with a packaging system.
+
+Bootstrapping (§15) and including a file (§16) are DESIGN decisions and nothing
+more. Neither is implemented. satellite.include is still parsed, validated and
+then skipped by the evaluator's top-level walk, which was re-verified today.
+
+
+DECIDED / DO NOT REDO
+---------------------
+[x] Build with clang 24 trunk instead of g++. (2026-08-06)
+
+[!] DO NOT switch to -stdlib=libc++. libc++ has no atomic<shared_ptr<T>>
+    specialization; it falls through to the primary std::atomic template and
+    fails its is_trivially_copyable static_assert. library.hpp depends on it
+    twice -- `std::atomic<ValuePtr> slot` and
+    `std::atomic<shared_ptr<const Directory>> directory_` -- and those ARE the
+    lock-free read path, not an incidental use. libstdc++ implements it
+    correctly. Verified by building the project both ways.
+
+    Consequence: our C++26 library surface is whatever GCC's libstdc++ ships.
+    Any __cpp_lib_* probe run under -stdlib=libc++ proves nothing for us.
+
+[x] Evaluated -std=c++2c. All seven TUs of 2026-08-06 compiled clean under it,
+    so the switch was free -- but it buys ~nothing (see C++26 below). Staying
+    on c++20 for now; c++23 is the more useful move when we want it. Not
+    re-checked since bignum, spacesuits and file took the count to twelve.
+
+[!] `double` is gone from the value variant and is not coming back. §8.1 and
+    §8.1.2. satellite.variable.number is an exact arbitrary-precision decimal,
+    so the language has no float, no rounding mode and no precision question to
+    answer, and value.hpp says so at the variant's definition. Do not add a
+    float type, and do not add a machine-double fast path for "hot" arithmetic:
+    the whole point is that one number type means one answer, and a fast path
+    reintroduces the second answer under a different name.
+
+[!] Objects are a REFERENCE type, and the consequence is that shared_ptr cycles
+    now leak. §14 settled the semantics -- value semantics does not survive the
+    first method, because a method mutating a field would have to write back
+    through the receiver's storage slot, and an object inside a list or passed
+    as an argument has no slot to write back to. §12's garbage-collection entry
+    records what that cost: the deferral of GC rested on cycles being
+    impossible, every Value having been immutable, and a mutable object breaks
+    exactly that. A cycle is a shape a correct program can want, so this is not
+    fixable by being careful. Revisit only when object graphs get large enough
+    to matter; the cheap partial answer is a weak-reference field and the
+    complete one is a tracing collector over the object table.
+
+[!] The interpreter must never link GTK. §9. Linking gtk4 and vte made the
+    dynamic linker load 119 shared objects before main() on every run, of which
+    a headless run calls into none: 23.4 ms of pure loader time on a program
+    whose own front end costs 0.3 ms. Only window.o gets the GUI flags, and the
+    Makefile says why at the definition of GTKFLAGS. debian/README.packaging
+    turns this into a check anyone can run -- the satellite package's Depends
+    must name only libc6, libgcc-s1 and libstdc++6, and a GUI library appearing
+    there means the split has been undone somewhere.
+
+[!] The interpreter binary is `satl` and the terminal is `satl-term`. Ubuntu's
+    archive already ships satellite-gtk, a GNSS data viewer, and it owns the
+    command name /usr/bin/satellite; shipping our own under that name would be
+    a file conflict, and therefore a Debian Policy violation without
+    Conflicts/Replaces against a package we have nothing to do with. The
+    PACKAGE names stay satellite and satellite-term, which are free. The
+    language is still called satellite and the keyword `satellite` is
+    completely unchanged -- this is a name in $PATH, not a name in the
+    language.
+
+[!] If a compiler is ever written, it emits C SOURCE. Not bytecode, and not
+    assembly. §15. The reason is not code quality: bytecode is the one target
+    that would KEEP the C++ alive, because bytecode needs a native VM to
+    execute it, and a native VM is exactly the thing the bootstrap exists to
+    delete. C source leaves nothing of ours behind, and hands the optimising
+    backend to a compiler nobody here has to write. §10's "no bytecode, the
+    tree stays the tree" is reinforced by this rather than challenged by it.
+
+[!] Keep a small C runtime rather than adding a machine-word primitive to the
+    language. §15. The alternative -- a word type visible only to runtime
+    authors, so the bignum could be written in satellite and the C line count
+    go to zero -- was rejected because it puts a type in the language that
+    exists purely for implementation reasons. A language with one number type
+    is worth more than a language with a smaller runtime. §15's table names
+    what stays C and why each piece cannot be anything else: bignum and
+    satellite_string are circular, value is the variant every value is, library
+    is atomics and a publish protocol satellite cannot spell, and system and
+    file are syscalls.
+
+
+THE OPEN NAMING QUESTION — READ THIS BEFORE RENAMING ANYTHING
+-------------------------------------------------------------
+What do we call a unit of includable satellite code? This is NOT decided. §16's
+opening subsection now says the same thing at length and marks every occurrence
+of "module" in that section as a placeholder; this entry exists so that nobody
+has to read §16 to find out that the question is live. §13 points here too: it
+is the one genuinely open question left in the design document.
+
+Rejected, each for a reason that still holds:
+
+  - "module"  — Python's word, and carrying Python's connotations into a
+                language whose naming rule is that it owns its own surface is
+                exactly the mistake §16 refuses to make with GTK.
+  - "include" — already the verb. satellite.include(x) is the act; the thing
+                acted on needs a different word or the sentence says nothing.
+  - "library" — taken twice over. satellite.library is the global variable
+                registry, and `library` is one of the four segment-1 parser
+                dispatch keys alongside variable, container and statement.
+
+DECIDED: "payload". A unit of includable satellite code is a payload -- what a
+satellite is launched to carry, as against the bus that flies it, which is what
+a library file is to a program. It collides with nothing (not a dispatch key,
+not a type namespace, not an existing method), it keeps the verb and the noun
+distinct the way C says #include/header and Python says import/module, and no
+other language has claimed it.
+
+The mechanism is still unimplemented, so nothing is named yet. When it is
+written, `payload` is the word for the error messages and the documentation.
+Whether the install directory becomes share/satellite/payloads/ or stays
+share/satellite/lib/ is still open: `lib` is what every packager recognises and
+no more contradicts "payload" than Ruby's lib/ contradicts "gem".
+
+
+WHAT IS NEXT, IN ORDER
+----------------------
+[ ] 1. Make satellite.include mean something. §16, "Including a file". Called
+    that rather than "the module system" on purpose, per the naming question
+    above.
+
+    It is first because it is the next thing that is buildable: its stated
+    prerequisite was file I/O, on the grounds that including a file means
+    reading one, and file I/O landed today. It is also what §15's stage 3 --
+    self-compilation to a fixpoint -- is blocked behind, so every later
+    bootstrap stage waits on this one.
+
+    §16 has the shape settled and most of it is cheap. The load phase sits
+    between parse and resolve, merging every included file's declarations into
+    one Program, and resolve() then runs over the merged whole. That is what
+    makes it cheap: §6's collect-then-walk already handles forward references
+    and mutual recursion across a program, so a capsule in one file calling a
+    capsule in another needs no new machinery, and the evaluator changes not at
+    all. Include-once keyed by canonicalised path, search order of
+    including-file-first, and a flat namespace are all in §16.
+
+    THE ONE HARD PART is spans. Today Span is three size_t and carries a line
+    number but no file identity -- measured at 24 bytes, and format_error takes
+    one source string in all three of parser.hpp, env.hpp and eval.hpp, because
+    a program was one file. The moment a program spans files, a runtime error
+    inside an included file prints its line number against the WRONG file's
+    text, and a language whose errors lie about where they are is unusable. The
+    fix is a SourceMap holding one text per loaded file, plus a file id in
+    Span, and it is free: two size_t and two uint32 is still 24 bytes, because
+    a line number does not need 64 bits and neither does a file id. Verified
+    today that the budget it has to fit into is Span=24, Expr=96, Stmt=200. The
+    SourceMap is internal C++ bookkeeping and emphatically not
+    satellite.container.map, which remains unbuilt and is needed for none of
+    this.
+
+[ ] 2. §10's two Library fixes, "filed before resources land" -- and the
+    resources have landed.
+
+    Verified still unfixed today, both of them, exactly as §10 describes.
+    Library::set_key stores the new pointer while holding write_lock, so the
+    previous Value's destructor runs under the lock; Library::update declares
+    `current` after its lock_guard, so reverse-order destruction kills it under
+    the lock too. What has changed is the consequence, not the code: verified
+    today that a top-level `satellite.variable.file` declaration does land in
+    satellite.library and that reassigning it takes exactly this path, so
+    close(fd) now runs under a write lock and can block for seconds on NFS or
+    FUSE. When the window lands it becomes GTK teardown from a non-GTK thread,
+    which is undefined behavior rather than a stall. §10 gives the fix for
+    each, and both are a few lines.
+
+    Library::normalize_path is the third item in that section and is also still
+    as §10 describes it: it accepts paths with more than two segments and
+    fabricates a garbage variable instead of erroring. Its only callers remain
+    the REPL's :get and :set.
+
+[ ] 3. The language gaps stage 0 found, in the order §15 ranks them by how much
+    they hurt: break and continue, then && and ||, then string-to-number, then
+    a map. These are last because they are additive -- none of them blocks
+    anything structural -- but the map is the one with a deadline attached,
+    since §15's stage 2 says an O(n) symbol table inside a tree walker is what
+    decides whether self-compilation takes seconds or minutes.
+
+[ ] 4. The window, §11's M7, and with it §16's native (dlopen-backed) form. It
+    comes after item 1 on purpose: §16's payoff is that GTK loads only when a
+    program includes satellite.window, which keeps satl's 2.5 ms startup intact
+    for everything that does not. The prize past the window itself is that
+    satl-term -- 188 lines of window.cpp -- can then be written in satellite,
+    because a terminal host is just a program that opens a window, and that is
+    another file off §15's runtime floor.
+
+[ ] 5. Housekeeping, if still there: a zero-byte system-*.o.tmp sits in the
+    tree root, left by an interrupted compile and missed by `make clean`, whose
+    `*.o` does not match it. The pre-rename dist/satellite*.1.gz pages and
+    lexer.satl's old `satellite --run` comment were the other two of this kind
+    and were both cleaned up on 2026-08-07.
+
+Not a task, but worth knowing before reading §13: all three decisions it once
+listed as open are answered, and §13 now records that. satellite.returns(TYPE)
+is parsed in parse_signature and example/bootstrap/lexer.satl uses it; user
+capsules are bare, which env_test exercises; statements are newline-terminated
+with no terminator token, which every example relies on. The naming question
+above is the only genuinely open one left.
+
+
+THE BOOTSTRAP PLAN, IN ONE PARAGRAPH
+------------------------------------
+§15 has it in full. The goal is not self-hosting for its own sake, it is to
+delete the C++, and the shape follows from one fact: an interpreter written in
+satellite needs a satellite interpreter to run it, so a native host survives
+forever, whereas a compiler written in satellite does not. So: write satc
+(satellite to C) in satellite, run it under the C++ implementation on its own
+source to get a native binary, have that binary compile its own source again,
+and byte-identical output is the fixpoint that lets the C++ go. Stage 0 -- a
+satellite lexer written in satellite -- ALREADY EXISTS at
+example/bootstrap/lexer.satl and runs today; it was written before the rest was
+planned, on purpose, because it is cheaper to find out what the language cannot
+say than to predict it. What it found, in §15's order of how much each hurt:
+file I/O (now landed), break and continue, && and ||, a map, and string to
+number -- and, separately, that satellite.include was blocked behind that same
+file I/O for that same reason, since including a file means reading one. What
+it did not need is the more useful half of the result: spacesuits carry AST
+nodes well, virtual dispatch substitutes cleanly for pattern matching, and
+exact decimals make the satellite lexer easier than the C++ one, because there
+is no strtod and n = n * 10 + digit is exact by construction.
+
+
+HOW TO BUILD, TEST, INSTALL AND BENCHMARK
+-----------------------------------------
+All of these run from the top of the tree, the directory holding Makefile and
+DESIGN.md.
+
+  make                      builds satl and satl-term
+  make -s                   the same, quiet; what to use when reading warnings
+  make test                 all eleven test binaries, each PASS/FAIL on exit
+  make TSAN=0 test          the other ten, without the ThreadSanitizer build.
+                            TSan is 64-bit-only and libtsan2 does not exist on
+                            i386 or armhf, and both binary packages are
+                            Architecture: any, so this path has to work.
+  make clean
+
+  make compare              satellite against compiled C++, counting the C++
+                            compiler's own time. example/cxx_compare.
+  make python               satellite against CPython, whole-process wall
+                            clock. example/py_compare.
+                            Both refuse to guess at an interpreter that is not
+                            built. Only make python verifies byte-identical
+                            output before timing; make compare redirects both
+                            stdouts to /dev/null and never compares them.
+
+  ./satl --run FILE [args]  run a program
+  ./satl                    repl on stdin/stdout
+  ./satl --where            which library directory resolved, and which of
+                            system.hpp's three tiers answered
+
+  ./install.sh --prefix DIR      install; the prefix must be absolute, because
+                                 it is compiled into the binary as the
+                                 last-resort library location
+  ./install.sh -n --prefix DIR   print every command and run none of them
+  ./install.sh --uninstall --prefix DIR
+  make install prefix=/usr DESTDIR=/some/staging/root
+  make uninstall prefix=DIR
+
+The prefix is baked into the binary and DESTDIR is baked into nothing; that
+distinction is the whole contract with a packaging system and the Makefile
+explains it where the variables are defined. For the .deb path, run
+dpkg-buildpackage -us -uc -b from the top of the tree; debian/README.packaging
+is written for a maintainer who has not done this before.
+
+  ./satl --run example/bootstrap/lexer.satl 'satellite.variable.number x = 3'
+
+is the bootstrap stage 0 smoke test, and prints the token stream.
+
+
+C++26: NOT WORTH IT YET  (probed 2026-08-06, unchanged since)
+-------------------------------------------------------------
+Probed clang 24 trunk directly. The features that would actually change how
+this interpreter is written are not implemented:
+
+  - Reflection (P2996): no __cpp_reflection; -freflection silently ignored.
+    This is the one that matters most -- ast.hpp has 10 Expr kinds and 8 Stmt
+    kinds, each needing an arm in unparse(), and the evaluator doubles that.
+    Reflection is what collapses the boilerplate. Recheck on future pulls.
+
+  - Hazard pointers / RCU: not in libstdc++. Highest-value future item for us
+    (see PERF below).
+
+  - inplace_vector, indirect/polymorphic, hive, simd: not in libstdc++.
+
+  - function_ref: exists in libc++ ONLY, so unreachable for us. Would have
+    been an exact fit for Library::update's
+    `const std::function<Value(const Value *)> &` parameter -- non-owning
+    callback taken by const-ref, no allocation.
+
+  - Pattern matching: NOT in C++26 at all; C++29 at the earliest. The single
+    thing that would most improve a variant-based tree-walker (the
+    holds_alternative/get_if chain in value.hpp, every visitor overload set)
+    is the furthest away. Do not plan around it.
+
+Usable today, but minor: pack indexing, structured binding packs
+(__cpp_structured_bindings 202411L), `_` placeholders, variadic friends,
+`= delete("reason")`.
+
+
+ACTIONABLE (toolchain)
+----------------------
+[ ] #embed (works; warns as a C23 extension, needs -Wno-c23-extensions).
+    Embed a satellite-language prelude into the binary as a constexpr char[]
+    -- no build step, no install path to get wrong. Pairs with
+    satellite.include(satellite), so it wants item 1 above first.
+
+[ ] Consider -std=c++23. Confirmed present in our libstdc++, and worth more
+    to us than c++26:
+      - std::expected      -> parser error handling; we already test error
+                              recovery, and expected<Program, ParseError>
+                              beats out-params
+      - std::print         -> the formatting call sites, now that §8.1.2 has
+                              removed the snprintf("%g") dance this entry was
+                              originally written about
+      - deducing this      -> collapses const/non-const visitor duplication;
+                              makes recursive lambdas over the AST easy
+      - std::generator     -> lazy coroutine token stream, if the lexer ever
+                              wants to be
+    `make CXXFLAGS='-std=c++23 ...'` built clean on 2026-08-06, before
+    spacesuits, bignum and file landed; not re-checked since.
+
+[ ] `= delete("reason")` on the copy/move suppression in ast.hpp, so the
+    deliberate omission documents itself at the call site.
+
+
+PERF (later, needs C++26 lib support)
+-------------------------------------
+[ ] Library::get() currently does an atomic refcount increment on a shared
+    cache line for every read. library_test reports its own count on every
+    run and it lands between 1.5M and 2.2M, so that is millions of contended
+    RMWs on a read-mostly structure. Hazard pointers would make reads pure
+    loads. Exactly the workload the feature exists for. Blocked on libstdc++
+    shipping <hazard_pointer>.
+
+[ ] inplace_vector for Call::args and Block::statements; trivial
+    relocatability for List and vector<Type> args growth. The test output
+    tracks the struct sizes on every run, which is what makes a regression
+    here visible: Value=40 Expr=96 Stmt=200 today.
+
+[ ] The tree walk itself, which §14 measures at 36x compiled C++ and 4x
+    CPython and then explains: a ValuePtr allocation per intermediate value
+    with an atomic refcount, a Frame vector per activation, and get_if chains
+    per node. NaN-boxing or an arena for Value attacks the first, and §14
+    notes that neither needs a bytecode VM to start paying off -- which
+    matters, because DECIDED above rules a bytecode VM out permanently.
+
+
+LANDED AFTER THE AUDIT PASS (2026-08-07, late)
+----------------------------------------------
+These are not in DESIGN.md yet; they are small and self-describing in the code.
+
+[x] satellite.directory.current() / .change(dir) / .exists(dir)
+    Deliberately NOT satellite.terminal: `satl --run` is headless and still has
+    a working directory, so naming it after a terminal would be false in the
+    common case -- and section 9 puts the window in a separate process that
+    spawns the interpreter, so the terminal could not do it anyway. exists()
+    tests S_ISDIR, so a file answers false. A refused change returns false
+    rather than raising, matching satellite.file.open.
+
+[x] satellite.help, reachable three ways:
+      satellite.help          no parentheses -- someone who needs help may not
+                              remember the calling syntax
+      satellite.help()        identical text
+      satellite.help(value)   the methods that value answers to
+    Plus a bare `help` at the REPL prompt, which routes to satellite.help unless
+    a variable of that name exists. That lives in main.cpp beside run/:set/:get
+    and NOT in the grammar: section 1 says a bare identifier names something the
+    user owns, so putting `help` in the language would make it the second
+    reserved word.
+    The help text is the whole language on one screen, which is only possible
+    because the language IS one screen. Keep it that way, and keep it truthful:
+    it is checked against the method tables in eval.cpp, not written once.
+
+[x] satl-term asks pango for "IBM Plex Mono,monospace 11". The comma is the
+    point -- a Pango family field is an ordered list, so an absent Plex falls
+    through to system monospace instead of to whatever fontconfig substitutes
+    for a missing family, which can be proportional. debian/control Recommends
+    fonts-ibm-plex. It is not read from satellite.library because satl-term
+    links window.o and nothing of the runtime, and dragging the Library in to
+    make one string configurable would undo section 9.
+
+[x] `sudo make` used to die: LLVM_BIN is under $(HOME) and sudo sets HOME=/root.
+    The Makefile now falls back to c++ when the trunk clang is absent, guarded
+    by $(origin CXX) so `make CXX=g++` still wins -- ?= cannot work here because
+    CXX is one of make's built-ins and is therefore already set.
+[x] install.sh builds as $SUDO_USER and keeps root for the copy. Without that,
+    `sudo ./install.sh` leaves root-owned .o files in the source tree and every
+    later plain `make` fails with EACCES.
+
+[x] dist/org.satellite.terminal.svg -- an original drawing, transparent so it
+    takes the panel's colour, in blue and silver so it reads on a dark dock and
+    a light one. Do not replace it with anything from a stock site without a
+    licence: two candidates were rejected, one watermarked and one a bitmap in
+    an SVG wrapper with no attribution, and debian/copyright has to be true.
+
+[x] example/cxx_compare now verifies byte-identical output before timing, which
+    py_compare always did. Section 14's tables previously rested on an
+    unchecked assumption that the two programs did the same work.
