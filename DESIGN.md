@@ -1657,3 +1657,252 @@ a `shared_ptr<WindowHandle>` reached through accessor methods, so satellite sees
 functions and the shim behind them is small. Exposing GTK wholesale through `dlsym` would be
 thousands of lines of binding for a language whose whole naming rule is that it owns its own
 surface.
+
+---
+
+## 17. The abstract machine
+
+Status: **specification, not implementation.** Nothing in the C++ implements any of this
+yet. The tree walker of §10 is what runs today.
+
+This section replaces §10's "no bytecode VM" for the *host*, and does not touch §15's
+decision about what a compiler emits. Those were one entry in the DECIDED list wearing one
+label, and they are two different questions:
+
+- **What executes satellite today** — a tree walker, and §10 rejected bytecode for it. That
+  rejection was made before anything was measured, which §14 says outright: *"a bytecode VM
+  is what closes the rest, and §10's decision to stay a tree walker was made when nothing had
+  been measured."* It is reversed here, on measurements recorded below.
+- **What `satc` emits at the bootstrap** — C source, per §15, because bytecode needs a native
+  VM and a native VM is the thing the bootstrap exists to delete. That reasoning is untouched
+  and still holds. The machine specified here is an *abstract* machine: the C++ VM is one
+  implementation of its transitions, and generated C is another. The specification outlives
+  both, which is what lets §15 delete the C++ without deleting the semantics.
+
+### What was measured, and what it rules out
+
+Measured 2026-08-07 on a Xeon E5-2670 v3, against the tree walker, by differencing programs
+that vary in exactly one dimension:
+
+| measurement | result |
+|---|---|
+| one `+` | 112.5 ns, 1 heap allocation |
+| of that, `make_shared` + atomic refcount | ~28 ns (25%) |
+| of that, walk + operand loads + bignum | ~85 ns (75%) |
+| one loop iteration | 600 ns, 5 allocations, 280 bytes |
+| AST 488 B → 1 MB, operation count held constant | **5%** |
+
+That last row is the one that decides the design. Growing the tree 2,000×, from trivially
+L1-resident to spilling out of L2, changed per-operation cost by five percent. **Instruction
+density is not the win**, because the same nodes are re-walked constantly and stay hot no
+matter how large the program is. Anything justified by "better cache behaviour" is justified
+by 5%.
+
+What is left is the 75%: a recursive `eval()` call per node and a variant dispatch per node.
+That is call overhead and branch misprediction, and it is what this machine exists to remove.
+
+Two consequences follow immediately, and both cut against the obvious choices:
+
+- **Not a stack machine.** A stack machine's cost is instruction *count* — `push`, `push`,
+  `add`, `store` where a register machine dispatches once. Since dispatch is the expensive
+  part and density is nearly free, more instructions is exactly the wrong direction.
+- **A register machine is cheap to build here**, because §6's resolver already assigns every
+  name a frame slot index at resolve time and already flattens spacesuit field layouts and
+  method tables. Register allocation is largely done. The compiler walks a *resolved* tree.
+
+And one that is not about speed at all: the 25% is a heap allocation per arithmetic result,
+and no dispatch strategy touches it. A VM that keeps `shared_ptr<const Value>` per
+intermediate mallocs to add two integers. The value representation is part of this work, not
+a follow-up — see "The value model" below.
+
+### The generating rule is what makes the encoding possible
+
+§1 says a dotted path rooted at `satellite` names something the language owns, and a bare
+identifier names something the user owns. That is a statement about *closure*: the set of
+language-owned names is finite and known at compile time, so it can be enumerated and given
+integer identities. Bare identifiers are never in that space at all — they are frame slots
+already.
+
+The invariant that made the parser backtrack-free (§4) is the same one that makes the opcode
+space enumerable. This is not a coincidence to enjoy; it is the reason the encoding below can
+be a fixed table rather than a hash lookup.
+
+### The unit: four 64-bit words
+
+Every language-owned name is **256 bits, as four 64-bit words** — one word per path segment,
+zero for absent segments.
+
+```
+word 0   bits [63:60]  kind
+         bits [59:0]   segment 1 id      (`satellite` is 1)
+word 1                 segment 2 id      (0 if absent)
+word 2                 segment 3 id      (0 if absent)
+word 3                 segment 4 id      (0 if absent)
+```
+
+`satellite.console.display` is `{1, 6, 7, 0}`. `satellite.capsule` is `{1, 3, 0, 0}`.
+
+256 bits is far more than the information requires, and that is a deliberate trade, taken on
+the measurement above: density is worth 5%, so paying four words for a decode with no
+shifting, no masking of packed sub-fields and no variable-length instructions is a good
+trade at this exact ratio. It also leaves room to add segments without a format break, which
+a packed encoding would not.
+
+**Kind** occupies the top four bits of word 0:
+
+| kind | meaning |
+|---|---|
+| 0 | name code — an instruction |
+| 1 | immediate operand |
+| 2 | constant-pool reference |
+| 3 | register reference |
+
+Kind is **not** what makes the stream decodable — see "Decoding" below. It is a check on the
+decoder's own state, and it is what lets a disassembler walk a stream cold and a malformed
+file fail at the first mismatch instead of executing garbage. At 253 spare bits it costs
+nothing.
+
+### Decoding is positional, and the arity table is the grammar
+
+Nothing in the stream announces "I am an instruction." The reader starts at a known state —
+an instruction boundary — and every name code's entry in the **arity table** says how many
+operand units follow it. Consuming them returns the reader to an instruction boundary. This
+is the same reason machine code needs no per-byte marker: position is the tag.
+
+The arity table is therefore not an implementation detail, it is the grammar of the format,
+and it must live in this document beside the registry. A name code whose arity is unrecorded
+is a stream that cannot be decoded.
+
+### The registry, and why order of appearance is forbidden
+
+Ids are **frozen in this table**, not assigned in order of first appearance. Assignment by
+appearance means adding one construct renumbers every construct after it, and every
+previously compiled file keeps its bits while changing its meaning — the worst failure a
+binary format has. New names take the next free id, forever; nothing is ever renumbered, and
+nothing is ever reused.
+
+The space is **flat**: a name has one id wherever it appears. `console` is 6 in every
+position. The alternative — numbering each segment position separately — packs tighter, and
+at 64 bits per segment there is nothing to gain by packing. Flat means one table, and an id
+that is unique in a hex dump.
+
+| id | name | | id | name |
+|---|---|---|---|---|
+| 1 | `satellite` | | 21 | `bool` |
+| 2 | `include` | | 22 | `number` |
+| 3 | `capsule` | | 23 | `string` |
+| 4 | `main` | | 24 | `time` |
+| 5 | `return` | | 25 | `file` |
+| 6 | `console` | | 26 | `container` |
+| 7 | `display` | | 27 | `list` |
+| 8 | `returns` | | 28 | `library` |
+| 9 | `spacesuit` | | 29 | `help` |
+| 10 | `protected` | | 30 | `now` |
+| 11 | `public` | | 31 | `open` |
+| 12 | `statement` | | 32 | `directory` |
+| 13 | `if` | | 33 | `current` |
+| 14 | `else` | | 34 | `change` |
+| 15 | `while` | | 35 | `exists` |
+| 16 | `for` | | 36 | `true` |
+| 17 | `variable` | | 37 | `false` |
+| 18–20 | *reserved* | | 38+ | methods, below |
+
+Ids 18–20 are held open deliberately: `break` and `continue` are the two gaps §15 ranks
+first, and reserving them now costs nothing and keeps them low.
+
+Methods (`plus`, `minus`, `times`, `divided_by`, `modulo`, `abs`, `floor`, `ceil`, `round`,
+`to_string`, `length`, `concat`, `contains`, `starts_with`, `ends_with`, `first`, `last`,
+`append`, `empty`, `and`, `or`, `negate`, `ok`, `read`, `write`, `close`, `error`, `path`,
+`nanoseconds`) take ids from 38 upward in the order listed, and the table above is completed
+in the commit that writes the compiler, not before — writing ids down is cheap, and writing
+them down *wrong* is permanent.
+
+This registry replaces 88 runtime string comparisons in `eval.cpp` — 11 in `call_module`, 25
+in `call_method`, and the rest scattered — of which the module ones compare *whole dotted
+paths* (`full == "satellite.directory.current"`, eval.cpp:1655). Removing them is not a
+density argument; it is work deleted per call.
+
+### The container
+
+```
+unit 0   [256 bits]   magic 0x547311173, zero-padded
+unit 1   [256 bits]   counts:
+           word 0     format version — bump when the registry changes
+           word 1     flags; carries a known byte pattern that reveals byte order
+           word 2     code_units   — 256-bit units in the code section
+           word 3     const_count  — entries in the constant pool
+unit 2..              code section
+                      constant pool
+                      span table
+```
+
+The endianness marker is not ceremony: both Debian binary packages are `Architecture: any`
+(§9, debian/README.packaging), and a 64-bit word written on x86-64 reads byte-reversed on a
+big-endian host. Catch it in the header or debug it in the interpreter.
+
+### The value model
+
+The 25% that dispatch cannot touch. Today `ValuePtr` is `shared_ptr<const Value>`
+(value.hpp:26) and every intermediate result is a `make_shared` — a malloc plus an *atomic*
+refcount, for adding two integers.
+
+A value must be **inline for the common case and heap only when it has to be**: small exact
+integers, `bool`, and nil never allocate; a `Number` promotes to the base-10⁹ bignum
+(bignum.hpp) only when an operation actually leaves the inline range, and demotes when it
+fits again. §8.1's guarantee is untouched by this — the type is still one exact
+arbitrary-precision decimal, and the promotion is a representation detail below the
+specification line, which is precisely the property "build abstractly" is for. There is still
+no float, and this is not the machine-double fast path §8.1 forbids: it is one number type
+with two representations of the same exact value, not two answers.
+
+This is worth stating plainly because the abandoned v001 had exactly this value model — a
+16-byte tagged union where nil, bool and integer never allocated, promoting on overflow — and
+it was the sound half of a design that failed for unrelated reasons (§17.1). Taking it back
+is not a reversal; the reason 001 died was linking a C++ compiler into the process, not its
+value representation.
+
+Order matters here. A VM built on the current `ValuePtr` would remove the 75% and keep the
+25%, land at roughly 1.6×, and read as evidence that bytecode was oversold. The value model
+is part of milestone 1, not a follow-up.
+
+### What is not decided
+
+Honestly, and per §16's example of marking placeholders as placeholders:
+
+- **Operand encoding for calls.** How argument registers are named in a call instruction —
+  a contiguous register range, or one operand unit per argument. The arity table makes either
+  workable and neither has been chosen.
+- **The register ceiling.** 1024 is the working figure, which fits in the id field with room
+  to spare. It is a ceiling on the *index*, never a per-frame allocation: §6 already computes
+  an exact slot count per capsule and a frame allocates that many. A frame that allocated
+  1024 slots would reintroduce the per-activation `vector` that is already part of the
+  measured 600 ns.
+- **Whether the span table is per-instruction or a compressed range map.** It must carry a
+  line number *and* the file id §16 adds to `Span`, because an error that names the wrong
+  file is the failure §16 calls fatal. Per-instruction is the obvious form and is 256 bits
+  per instruction of pure overhead; a range map is smaller and needs a search.
+- **SIMD.** Rejected for the dispatch loop: decode is serial and data-dependent, which is the
+  opposite shape to what SIMD accelerates, and `Architecture: any` means intrinsics can never
+  be load-bearing. The real opportunity is bignum's base-10⁹ limb arrays under add and
+  multiply, which is SIMD-shaped and entirely independent of this machine.
+
+### Cost model
+
+Every instruction must state roughly what it compiles to, and any instruction that cannot be
+implemented in bounded work is pitched at the wrong level.
+
+This rule is here because of §17.1. Abstraction without a cost model is what killed v001:
+`satellite.cxx { }` was a clean abstraction whose implementation was "link clang into the
+process," and the bill was a 107 MB binary and ~900 ms per run. An abstract machine is a
+specification of *transitions*, not a licence to specify transitions nobody can afford.
+
+### 17.1 What v001 was, and what it cost
+
+Preserved at the tag `v001-llvm-abandoned`. It had no parser and no virtual machine: a `.satl`
+file was lexed and validated, and only its `satellite.cxx { }` blocks executed. Both engines
+were clang — one linked into the process (~900 ms per run, no cache), one shelling out to g++
+and `dlopen`ing the result. The binary was ~107 MB by design.
+
+It is kept because two of the decisions in this document are reactions to it: §15's rule that
+a compiler emits C source so that no compiler of ours survives in the shipped artifact, and
+the cost model above. Its value representation was right, and this section takes it back.
