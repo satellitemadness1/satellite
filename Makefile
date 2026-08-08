@@ -58,6 +58,10 @@ docdir   = $(datadir)/doc/satellite
 # none of the twelve reaching 400. Listed explicitly rather than by wildcard so
 # that a file added to the directory and forgotten here fails to link instead of
 # being silently dropped from the binary.
+PARSER_SRCS = parser/cursor.cpp parser/types.cpp parser/expr.cpp \
+              parser/stmt.cpp parser/decl.cpp parser/run.cpp
+PARSER_OBJS = $(PARSER_SRCS:.cpp=.o)
+
 EVAL_SRCS = eval/helpers.cpp eval/help.cpp eval/types.cpp eval/session.cpp \
             eval/stmt.cpp eval/slots.cpp eval/expr.cpp eval/methods.cpp \
             eval/mutators.cpp eval/modules.cpp eval/calls.cpp \
@@ -65,12 +69,13 @@ EVAL_SRCS = eval/helpers.cpp eval/help.cpp eval/types.cpp eval/session.cpp \
 EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
 OBJS      = main.o library.o satellite_string.o system.o bignum.o lexer.o \
-            ast.o parser.o value.o env.o interp.o $(EVAL_OBJS)
+            ast.o value.o env.o interp.o $(EVAL_OBJS) $(PARSER_OBJS)
 HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
             lexer.hpp ast.hpp parser.hpp env.hpp eval.hpp interp.hpp \
-            eval/eval_internal.hpp
+            eval/eval_internal.hpp parser/parser_internal.hpp
 TESTSRCS  = library.cpp satellite_string.cpp system.cpp bignum.cpp lexer.cpp \
-            ast.cpp parser.cpp value.cpp env.cpp interp.cpp $(EVAL_SRCS)
+            ast.cpp value.cpp env.cpp interp.cpp $(EVAL_SRCS) \
+            $(PARSER_SRCS)
 TESTFLAGS = -std=c++20 -Wall -Wextra -pthread
 
 # Every test binary used to recompile every source. That was tolerable while
@@ -287,7 +292,7 @@ clean:
 	$(MAKE) -C example/py_compare clean
 	rm -f satl satl-term library_test library_test_tsan satellite_string_test \
 	      lexer_test ast_test parser_test env_test eval_test interp_test \
-	      spacesuit_test bignum_test *.o eval/*.o *.o.tmp .libdir-stamp \
+	      spacesuit_test bignum_test *.o eval/*.o parser/*.o *.o.tmp .libdir-stamp \
 	      dist/satl.1.gz dist/satl-term.1.gz
 
 .PHONY: all test compare python install uninstall clean FORCE
