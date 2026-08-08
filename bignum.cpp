@@ -374,6 +374,44 @@ Number Number::make(int sign, const BigInt &magnitude, long long exponent)
     return out;
 }
 
+bool Number::small_parts(long long &sig, int &exp) const
+{
+    // The one test that matters. Above, make() stores the SIGN in sig_ when it
+    // stores a BigInt, so a caller reading sig_ without checking big_ would get
+    // 1 or -1 as the value of every large number.
+    if (big_)
+        return false;
+    sig = sig_;
+    exp = exp_;
+    return true;
+}
+
+Number Number::from_small(long long sig, int exp)
+{
+    // LLONG_MIN has no positive counterpart, so negated() on it is undefined.
+    // The integral constructor sends it big for exactly this reason, and this
+    // function has to agree: it takes a caller-supplied long long, so it can be
+    // handed a value make() would never produce (fits_ll() caps the magnitude
+    // at LLONG_MAX, so make() cannot).
+    //
+    // Being the inverse of small_parts is not enough here. Round-tripping is
+    // preserved either way, and the invariant that every other operation relies
+    // on — that sig_ can be negated — is only preserved by promoting.
+    if (sig == LLONG_MIN)
+        return make(-1,
+                    BigInt::from_u64(static_cast<unsigned long long>(LLONG_MAX) + 1),
+                    exp);
+
+    Number out;
+    out.sig_ = sig;
+    // Zero carries no exponent. make() drops it ("zero has no sign, and no
+    // exponent worth keeping"), so a from_small that kept one would build a
+    // Number that no other path can produce, and compare() and to_string()
+    // would both then be reasoning about a shape they have never seen.
+    out.exp_ = sig == 0 ? 0 : exp;
+    return out;
+}
+
 Number Number::from_u64(unsigned long long value)
 {
     return make(1, BigInt::from_u64(value), 0);

@@ -214,9 +214,95 @@ int main()
               "85070591730234615847396907784232501249",
           "so does multiplication");
 
+    // --- the small form, §17's window onto the register representation -------
+    //
+    // These matter because the bytecode VM holds a number inline as significand
+    // and exponent, and a wrong answer here is a wrong answer in every
+    // arithmetic instruction rather than in one method.
+    {
+        // Round trip: anything that HAS a small form must come back identical.
+        auto round_trips = [](const std::string &text) {
+            Number in = num(text);
+            long long sig = 0;
+            int exp = 0;
+            if (!in.small_parts(sig, exp))
+                return true;   // no small form; boxing is correct, not a failure
+            return Number::from_small(sig, exp).to_string() == in.to_string();
+        };
+        check(round_trips("0"), "small form round-trips 0");
+        check(round_trips("1"), "small form round-trips 1");
+        check(round_trips("-1"), "small form round-trips -1");
+        check(round_trips("0.1"), "small form round-trips 0.1");
+        check(round_trips("3.14"), "small form round-trips 3.14");
+        check(round_trips("-0.0001"), "small form round-trips -0.0001");
+        check(round_trips("9223372036854775807"), "small form round-trips LLONG_MAX");
+        check(round_trips("100000000000000000000"), "10^20 round-trips or boxes");
+        check(round_trips("100000000000000000001"), "10^20+1 round-trips or boxes");
+
+        // A number too large for a long long significand has NO small form, and
+        // saying so is the whole contract: sig_ holds the SIGN in that case, so
+        // a caller that got `true` here would read 1 as the value of 10^20.
+        long long sig = 0;
+        int exp = 0;
+        check(!num("100000000000000000000000000000000000000").small_parts(sig, exp),
+              "a big significand reports no small form");
+        check(!Number::mul(Number(LLONG_MAX), Number(LLONG_MAX)).small_parts(sig, exp),
+              "an overflowed product reports no small form");
+
+        // ... and one that does, reporting its real parts rather than a sign.
+        check(num("250").small_parts(sig, exp) && Number::from_small(sig, exp).to_string() == "250",
+              "a small significand reports itself");
+
+        // Zero carries no exponent, matching make(). A from_small that kept one
+        // would build a shape no other path produces.
+        //
+        // Read the parts BACK rather than checking to_string: to_string
+        // normalises zero on its own, so it prints "0" whatever the exponent
+        // says, and a rendering check here passes against a broken from_small.
+        // Verified by deliberately removing the normalisation — the rendering
+        // form of this test did not notice.
+        long long zsig = -1;
+        int zexp = -1;
+        check(Number::from_small(0, 5).small_parts(zsig, zexp) && zsig == 0 &&
+                  zexp == 0,
+              "from_small(0, 5) drops the exponent in the representation");
+        zsig = -1;
+        zexp = -1;
+        check(Number::from_small(0, -3).small_parts(zsig, zexp) && zsig == 0 &&
+                  zexp == 0,
+              "from_small(0, -3) likewise");
+
+        // LLONG_MIN has no positive counterpart, so it must promote exactly as
+        // the integral constructor does. make() can never produce it —
+        // fits_ll() caps at LLONG_MAX — but from_small takes a caller's
+        // long long, so it can be handed one.
+        check(Number::from_small(LLONG_MIN, 0).to_string() == "-9223372036854775808",
+              "from_small(LLONG_MIN) promotes rather than overflowing");
+        check(Number::from_small(LLONG_MIN, 0).negated().to_string() ==
+                  "9223372036854775808",
+              "and the result is safe to negate");
+
+        // The exponent travels. 25 * 10^-1 is 2.5, not 25.
+        check(Number::from_small(25, -1).to_string() == "2.5",
+              "from_small carries the exponent");
+        check(Number::from_small(-25, -1).to_string() == "-2.5",
+              "including for negatives");
+
+        // Arithmetic through the small form agrees with arithmetic that never
+        // left it — this is the property the VM actually depends on.
+        long long asig = 0, bsig = 0;
+        int aexp = 0, bexp = 0;
+        Number a = num("0.1"), b = num("0.2");
+        check(a.small_parts(asig, aexp) && b.small_parts(bsig, bexp) &&
+                  Number::add(Number::from_small(asig, aexp),
+                              Number::from_small(bsig, bexp))
+                          .to_string() == "0.3",
+              "0.1 + 0.2 is still 0.3 through the small form");
+    }
+
     if (failures == 0)
         printf("PASS: bignum (exact decimal arithmetic, arbitrary precision, "
-               "§8.1.1 rendering; sizeof(Number)=%zu)\n",
+               "§8.1.1 rendering, small-form round trip; sizeof(Number)=%zu)\n",
                sizeof(Number));
     else
         printf("bignum_test: FAIL (%d)\n", failures);

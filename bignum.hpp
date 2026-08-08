@@ -162,6 +162,27 @@ public:
     // truncated or rounded.
     bool to_integer(long long &out) const;
 
+    // The small form, and the ONLY sanctioned window onto it. §17's register
+    // type holds a number inline as significand-and-exponent, and these two are
+    // how it gets in and out.
+    //
+    // They exist as members rather than as a caller reading sig_ and exp_
+    // because reading those directly is wrong in a way that type-checks: when
+    // big_ is set, sig_ holds the SIGN, not the significand (see make()). A
+    // caller who forgot that would read 1 or -1 as the value of every large
+    // number, silently, and only for numbers big enough that a test with small
+    // inputs would never show it.
+    //
+    // small_parts returns false — leaving sig and exp untouched — for exactly
+    // the numbers where the small form does not exist. The register type is
+    // then obliged to box, which is §17's promotion.
+    bool small_parts(long long &sig, int &exp) const;
+
+    // The inverse. Not a constructor, because it is not a conversion anyone
+    // should reach for by accident: it takes the internal representation, and
+    // the only caller that should have it is one that got it from small_parts.
+    static Number from_small(long long sig, int exp);
+
     Number abs() const;
     Number negated() const;
     Number floor() const;
