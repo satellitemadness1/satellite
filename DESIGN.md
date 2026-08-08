@@ -471,7 +471,7 @@ Each type is a C++ struct with named fields, exposed through accessor methods.
 |---|---|---|
 | `satellite.variable.bool` | `bool` | exists; written `satellite.bool.true` / `.false`, see §8.4 |
 | `satellite.variable.number` | `Number` (arbitrary precision) | **replaces `double`** — see §8.1 |
-| `satellite.variable.string` | `SatString` | exists; 32-bit code table |
+| `satellite.variable.string` | `SatString` | exists; 16-bit code table, see §8.5 |
 | `satellite.container.list<T>` | `std::vector<ValuePtr>` | exists; children shared by pointer |
 | `satellite.variable.time` | `struct Time { int64_t ns; }` | absolute instant, UTC |
 | `satellite.variable.file` | `shared_ptr<FileHandle>` | reference type |
@@ -686,6 +686,38 @@ path is ever a value expression, and that reservation is exactly what keeps `<` 
 `bool` as a module segment and `bool` as a type name are different things, and keeping them
 apart is the point. The obvious alternative — bare `true` and `false` — would be the
 language's second and third reserved words, and §1 has exactly one.
+
+### 8.5 A character is 16 bits
+
+`SatChar` is `char16_t` (satellite_string.hpp:31). It was `char32_t` until 2026-08-08, and the
+width is worth a subsection because it is the one decision in the type table that is paid for
+by every byte of data the language ever holds.
+
+**Why not 32.** Nothing needs it. The code table assigns 101 codes — void, `a`–`z`, `A`–`Z`,
+`0`–`9`, 32 punctuation, six live system characters — and everything unassigned round-trips
+through a raw area of 256 codes, one per possible byte. 357 codes, in a space of four billion.
+The other 99.99999% was paying rent as memory.
+
+**Why not 8**, which is the tempting answer because it would put the whole C string library
+within reach. 357 does not fit in 256. Shrinking the raw area is not available either: it
+exists so that a satellite string can hold an arbitrary byte, and there are 256 of those. The
+arithmetic decides this, not taste.
+
+Two properties would also have been lost, and they are the ones that make this our string
+rather than `char *`. A satellite string may contain a NUL, so `strlen` cannot measure it. And
+`\home`, `\cwd` and their four siblings are **live** — single codes that expand at `decode()`
+time, so a string reflects the current directory *now* rather than when it was built. Neither
+survives being a C string, and §3.3 has already found the escape-timing bug three times.
+
+**What 16 costs and buys.** It holds 357 codes with about 32,000 spare, which is where the
+table grows when space and the rest of ASCII get real codes. Measured on a 33.7M-character
+corpus: peak RSS 169 MB → 101 MB, the string itself 135 MB → 67 MB, an exact halving. On the
+text-ingestion workload this language is being built for, that is the whole point.
+
+Nothing above the representation moves. `length()` still counts characters, and `encode_raw`
+still maps one input byte to one `SatChar` — which is what §3.3 requires so that a span stays
+a byte offset and an error caret points at the right column. §17.3 carries the consequence for
+the bytecode: 16 characters to a 256-bit unit instead of 8.
 
 ---
 
@@ -1982,12 +2014,13 @@ interleaving, and the bytecode has no opinion — it emits the order resolve() a
 
 ### 17.3 Strings, lengths and the constant pool
 
-`SatChar` is `char32_t` (satellite_string.hpp:24): **32 bits per character**, over satellite's
+`SatChar` is `char16_t` (satellite_string.hpp:31): **16 bits per character**, over satellite's
 own code table rather than Unicode or ASCII. `"hello, world!"` is the codes
-`8 5 12 12 15 87 1073741856 23 15 18 12 4 63` — `a` is 1 so `h` is 8, `,` is punctuation base
-63 plus index 24, and the space is 2^30 + 32 because §3.2 puts whitespace in the raw area.
+`8 5 12 12 15 87 32800 23 15 18 12 4 63` — `a` is 1 so `h` is 8, `,` is punctuation base
+63 plus index 24, and the space is `0x8020` because §3.2 puts whitespace in the raw area.
 The most common character in English prose takes the raw-area path; that is by design, and it
-is why a character is 32 bits and not 8.
+is why a character cannot be 8 bits: the table's 101 codes plus a 256-code raw area is 357,
+and 357 does not fit in a byte. §8.5 carries that argument in full.
 
 A string's length is unbounded, so a literal cannot be an inline operand at any fixed unit
 size. It lives in the **constant pool** and the instruction carries a kind-2 operand holding a
@@ -2027,7 +2060,7 @@ unit 0    word0 bits[63:60]   entry type   (string, number, ...)
           word0 bit  [59]     continuation — another length unit follows
           word0 bits[58:0]
           word1, word2, word3 length, 251 bits
-unit 1..  data                8 characters per unit, last unit zero-padded
+unit 1..  data                16 characters per unit, last unit zero-padded
 ```
 
 251 bits is the same unreachable number 255 was, and the entry is one unit shorter. The saving
@@ -2038,7 +2071,9 @@ they have misunderstood.
 The continuation bit keeps its meaning: set, and another full 256-bit unit of length follows.
 For a string it will never be set. For a `Number` significand it will.
 
-`satellite.console.display("hello, world!")` in full — two units of code, three of pool:
+`satellite.console.display("hello, world!")` in full — two units of code, two of pool. At 16
+bits a 13-character literal fits in a single data unit where it needed two before, which is
+§8.5 showing up in the instruction stream and not only in the heap:
 
 ```
 CODE
@@ -2055,10 +2090,8 @@ POOL entry 0
   unit 0   type = string, continuation clear, length = 13
     word0  0x100000000000000D    type 1 | cont 0 | length 13
     word1..3  zero
-  unit 1   0x00000008 00000005 0000000C 0000000C 0000000F 00000057 40000020 00000017
-               h         e         l         l         o         ,       (spc)      w
-  unit 2   0x0000000F 00000012 0000000C 00000004 0000003F 00000000 00000000 00000000
-               o         r         l         d         !         -         -         -
+  unit 1   0x 0008 0005 000C 000C 000F 0057 8020 0017 000F 0012 000C 0004 003F 0000 0000 0000
+                h    e    l    l    o    ,   (sp)  w    o    r    l    d    !    -    -    -
 ```
 
 Two things that are correctness rather than encoding:

@@ -5,7 +5,7 @@
 
 namespace satellite {
 
-// satellite_string: a string of 32-bit chars with satellite's own code table.
+// satellite_string: a string of 16-bit chars with satellite's own code table.
 //
 //   0        void (decodes to nothing)
 //   1..26    a..z                     (a is 1)
@@ -21,7 +21,14 @@ namespace satellite {
 //
 // Codes not yet assigned by the language (space, ...) round-trip through
 // a raw area at RAW_BASE + byte until the table grows.
-using SatChar = char32_t;
+//
+// 16 bits, not 32. The width is a property of the DATA, not of the code table:
+// the table needs 101 codes and the raw area needs 256, so 8 bits (357 > 256)
+// cannot hold both and 16 bits holds them with 65,000 to spare. Halving the
+// element halves what a corpus costs in memory and what a scan costs in
+// bandwidth, and neither `length()` counting characters nor encode_raw's
+// one-byte-one-SatChar property depends on the width.
+using SatChar = char16_t;
 using SatString = std::basic_string<SatChar>;
 
 enum : SatChar {
@@ -36,7 +43,11 @@ enum : SatChar {
     SAT_MEM_TOTAL_MB = 98,
     SAT_MEM_USED_MB = 99,
     SAT_CWD = 100,
-    SAT_RAW_BASE = 0x40000000,
+    // Top bit set, so a raw code is recognisable on sight in a dump — the same
+    // property 0x40000000 had in the 32-bit space, moved to fit 16 bits. The
+    // area is [0x8000, 0x8100), and 0x101..0x7FFF stays free for the table to
+    // grow into, which is what the comment above anticipates.
+    SAT_RAW_BASE = 0x8000,
 };
 
 // Individual punctuation codes the lexer needs by name, as offsets into the
