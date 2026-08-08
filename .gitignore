@@ -32,6 +32,11 @@ spacesuit_test
 dist/satl.1.gz
 dist/satl-term.1.gz
 
+# The gzip rule writes `$@.tmp` and then moves it, so an interrupted `make
+# install` leaves this behind. `clean` does not remove it, which makes it the
+# one leftover that shows up as untracked.
+dist/*.1.gz.tmp
+
 # Benchmark and example harnesses. Their sources are tracked; these are what
 # their Makefiles build. example/website/gtk_window is absent from that
 # directory's clean target but is still a build product.
