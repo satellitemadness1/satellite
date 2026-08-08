@@ -73,6 +73,17 @@ TESTSRCS  = library.cpp satellite_string.cpp system.cpp bignum.cpp lexer.cpp \
             ast.cpp parser.cpp value.cpp env.cpp interp.cpp $(EVAL_SRCS)
 TESTFLAGS = -std=c++20 -Wall -Wextra -pthread
 
+# Every test binary used to recompile every source. That was tolerable while
+# there were eleven of them; splitting eval.cpp into twelve took a serial
+# `make test` past ten minutes, because the cost is (test binaries) x (sources)
+# and the split doubled the second term. Linking the objects the binary already
+# built makes it (sources) + (test binaries).
+#
+# main.o is excluded because it defines main() and so does every test.
+# library_test_tsan is NOT converted: -fsanitize=thread has to be on every
+# translation unit it links, and these objects are not built with it.
+LIBOBJS   = $(filter-out main.o,$(OBJS))
+
 all: satl satl-term
 
 satl: $(OBJS)
@@ -107,38 +118,38 @@ system.o: system.cpp .libdir-stamp
 
 $(OBJS): $(HDRS)
 
-library_test: library_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ library_test.cpp $(TESTSRCS)
+library_test: library_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ library_test.cpp $(LIBOBJS)
 
 library_test_tsan: library_test.cpp $(TESTSRCS) $(HDRS)
 	$(CXX) $(TESTFLAGS) -O1 -g -fsanitize=thread -o $@ library_test.cpp $(TESTSRCS)
 
-satellite_string_test: satellite_string_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ satellite_string_test.cpp $(TESTSRCS)
+satellite_string_test: satellite_string_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ satellite_string_test.cpp $(LIBOBJS)
 
-lexer_test: lexer_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ lexer_test.cpp $(TESTSRCS)
+lexer_test: lexer_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ lexer_test.cpp $(LIBOBJS)
 
-ast_test: ast_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ ast_test.cpp $(TESTSRCS)
+ast_test: ast_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ ast_test.cpp $(LIBOBJS)
 
-parser_test: parser_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ parser_test.cpp $(TESTSRCS)
+parser_test: parser_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ parser_test.cpp $(LIBOBJS)
 
-eval_test: eval_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ eval_test.cpp $(TESTSRCS)
+eval_test: eval_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ eval_test.cpp $(LIBOBJS)
 
-interp_test: interp_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ interp_test.cpp $(TESTSRCS)
+interp_test: interp_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ interp_test.cpp $(LIBOBJS)
 
-env_test: env_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ env_test.cpp $(TESTSRCS)
+env_test: env_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ env_test.cpp $(LIBOBJS)
 
-spacesuit_test: spacesuit_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ spacesuit_test.cpp $(TESTSRCS)
+spacesuit_test: spacesuit_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ spacesuit_test.cpp $(LIBOBJS)
 
-bignum_test: bignum_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ bignum_test.cpp $(TESTSRCS)
+bignum_test: bignum_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ bignum_test.cpp $(LIBOBJS)
 
 test: library_test $(TSAN_TEST) satellite_string_test bignum_test lexer_test ast_test parser_test env_test eval_test interp_test spacesuit_test
 	./library_test
