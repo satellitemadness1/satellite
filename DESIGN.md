@@ -2347,6 +2347,40 @@ eval.cpp:272-300 already carries a measured depth guard, `DEFAULT_MAX_DEPTH = 20
 activation costing exactly 3 units. The bounded register stack is the same guarantee the
 language already makes, expressed in the new machine.
 
+**Built: `reg.hpp` and `reg_test`.** The register type and the stack exist; the VM does not,
+and nothing in the interpreter includes the header. Four things it settled that were open here.
+
+*The register type is new, and `Value` is untouched.* A `Reg` is a five-state tagged slot —
+empty, nil, bool, small decimal, heap — at **32 bytes**, holding an ordinary `ValuePtr` for the
+heap case. That is the hybrid a design pass measured at 15.38 against 15.91 ns/iter for a full
+tagged union, a wash, which buys the speed without reopening the lock-free publish protocol
+ThreadSanitizer verifies. §17's value-model paragraph reads as though `Value` itself goes
+inline; it is the *register slot* that does.
+
+*Five states, not four.* A slot distinguishes "nothing written here yet" from "holds nil",
+because `read_slot` reports "is read before its declaration runs" by testing exactly that, and
+can only do so today because `ValuePtr` has a null state no `Value` occupies. `EMPTY` is tag 0
+so the rule is written once.
+
+*The inline path allocates nothing, counted rather than assumed.* 100,000 inline additions:
+**0 allocations**. The same additions through `Number` and a `ValuePtr`, which is what the tree
+walker does: **100,000**. `add_inline` declines rather than being wrong — including when
+*aligning* two exponents overflows before a digit is added, which `1 + 1e-30` does and a scheme
+checking only the addition gets wrong. Fuzzed at 200,000 random pairs: 132,727 stayed inline,
+every one exact against `Number::add`.
+
+*The stack is 3000 activations × 64 slots — and it is built lazily.* Sizing it from the depth
+guarantee rather than from a cache figure follows §17's own 5% measurement. But `new
+Reg[192000]` runs a constructor per slot, because a `Reg` holds a `ValuePtr` and is therefore
+not trivially constructible, and that writes all 5.86 MB: **measured at 3.2 ms, against a satl
+startup of about 2.5 ms.** It would more than double the cost of hello world to prepare 3000
+frames for a program that uses four. The allocation itself is nearly free — a request that size
+is an mmap and untouched pages never become resident — so the cost was entirely in constructing
+slots nobody asked for. Slots are now constructed as the stack grows into them: **0.011 ms to
+build, 32 slots constructed to run four frames deep**, a 290× improvement, with the array still
+never moving. Verified under both AddressSanitizer and UndefinedBehaviorSanitizer, since raw
+storage plus placement new is not something to take on trust.
+
 **Expected result — an estimate, not a measurement.** Both allocation sources in the measured
 600 ns per iteration are removed by this section and by §17's value model: no malloc per
 arithmetic result, no allocation per activation. What remains is dispatch, which the register

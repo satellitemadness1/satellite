@@ -166,11 +166,17 @@ spacesuit_test: spacesuit_test.cpp $(LIBOBJS)
 bignum_test: bignum_test.cpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ bignum_test.cpp $(LIBOBJS)
 
-test: library_test $(TSAN_TEST) satellite_string_test bignum_test lexer_test ast_test parser_test env_test eval_test interp_test spacesuit_test
+# reg.hpp is not linked into satl: there is no VM yet, and nothing in the
+# interpreter includes it. This binary is the only consumer.
+reg_test: reg_test.cpp reg.hpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ reg_test.cpp $(LIBOBJS)
+
+test: library_test $(TSAN_TEST) satellite_string_test bignum_test reg_test lexer_test ast_test parser_test env_test eval_test interp_test spacesuit_test
 	./library_test
 	$(if $(TSAN_TEST),./$(TSAN_TEST))
 	./satellite_string_test
 	./bignum_test
+	./reg_test
 	./lexer_test
 	./ast_test
 	./parser_test
