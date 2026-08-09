@@ -1929,14 +1929,31 @@ shifting, no masking of packed sub-fields and no variable-length instructions is
 trade at this exact ratio. It also leaves room to add segments without a format break, which
 a packed encoding would not.
 
-**Kind** occupies the top four bits of word 0:
+**Kind** occupies the top four bits of word 0. What a kind selects is **which id space the
+rest of the unit is read against**. The assignment lives in `format.def` as the `SAT_KIND`
+list and nowhere else; this table **reproduces** it, and if the two ever disagree the one that
+compiles is right:
 
-| kind | meaning |
+| kind | space the id is read against |
 |---|---|
-| 0 | name code — an instruction |
-| 1 | immediate operand |
-| 2 | constant-pool reference |
-| 3 | register reference |
+| 0 | the frozen name registry below — an instruction |
+| 1 | none; the unit is an immediate operand |
+| 2 | the constant pool — an index |
+| 3 | the register file — an index |
+| 4 | this file's type table — a spacesuit id (§17.2) |
+| 5 | this file's capsule table — a capsule id (§17.2) |
+| 6 | the machine-op table — `SAT_OP`, a separate frozen space (§17.5) |
+
+Kinds 7–15 are unassigned, and 15 is the ceiling a four-bit field allows —
+`format.hpp` asserts that no kind id exceeds it. **§17.2 and §17.5 must not restate this
+table**, and the reason is that they once did: each extended a four-row table on its own, and
+both landed on kind 4 — spacesuit id in one section, machine op in the other, colliding on the
+same four bits. Nothing had been encoded, so it cost a renumber instead of a format break.
+Machine ops moved to 6 because §17.2's assignment was written first, and the rule this
+document applies to ids applies to kinds for the same reason: the earlier assignment stands.
+
+A markdown table is why that was possible at all. Add a kind by adding a `SAT_KIND` row, and
+copy it here afterwards if it helps a reader — never the other way round.
 
 Kind is **not** what makes the stream decodable — see "Decoding" below. It is a check on the
 decoder's own state, and it is what lets a disassembler walk a stream cold and a malformed
@@ -2021,10 +2038,56 @@ because the language has no container literals — a map is only ever built by `
 there is no map literal to encode. That is recorded here so nobody later assumes it was
 overlooked.
 
-This registry replaces 88 runtime string comparisons in `eval.cpp` — 11 in `call_module`, 25
-in `call_method`, and the rest scattered — of which the module ones compare *whole dotted
-paths* (`full == "satellite.directory.current"`, eval.cpp:1655). Removing them is not a
+This registry replaces **106** runtime string comparisons across `eval/` — 34 in
+`methods.cpp`, 18 in `operators.cpp`, 13 in `helpers.cpp`, 11 in `modules.cpp` and the rest
+scattered over seven more files — of which the module ones compare *whole dotted paths*
+(`full == "satellite.directory.current"`, eval/modules.cpp:105). Removing them is not a
 density argument; it is work deleted per call.
+
+That figure was 88 when this paragraph was written, against an `eval.cpp` that no longer
+exists — 059a9d8 split it into twelve files. The number is quoted here because it is worth
+knowing; it is recounted by `grep -c '== "' eval/*.cpp`, which is the only reason it is right.
+
+### format.def is the registry, and this document is not
+
+Everything above is duplicated as data in `format.def`, and the duplication has a direction:
+**prose may explain a number, but it may never be the only place the number lives.** The test
+for which half a fact belongs in is whether anything breaks if it is wrong. If yes, it has to
+be compilable.
+
+This is not a preference. It is what four defects in this very section cost:
+
+- §17.2 and §17.5 each extended a four-row kind table without reading the other, and both
+  assigned **kind 4** — a spacesuit id in one section, a machine op in the other.
+- Id **56** (`empty`) was frozen for a selector that no receiver implements and none ever did.
+- §17.5 froze the builtin selectors as the literal range **38..72**, one commit before §8.6's
+  map added 73..79 — after which the range silently classified every map selector as a user
+  capsule with a frame.
+- The comparison count above, and four file:line citations, named two files that no longer
+  exist: `eval.cpp`, split away in 059a9d8, and `env.cpp`, in 4e8171e.
+
+None of those is hard. All four are one defect: a number that lived only here. `format.def`
+had no consumer at all — nothing included it, and it was not in the Makefile's `HDRS` — so its
+own promise that everything "comes from ONE list and cannot drift apart" described a property
+nothing checked.
+
+`format.hpp` is that consumer, and `format_test` the proof. The lists expand into enums, into
+switches where a duplicate id is `error: duplicate case value` naming both culprits, and into
+`static_assert`s over the ids: distinct, ascending, dense but for the reserved 18..20, every
+path segment a defined word, every path left-packed, every selector a real word. The asserts
+live in the header rather than the test, so every future consumer — the compiler, the loader,
+the disassembler, §15's generated C — inherits them. Eighteen deliberate mutations were tried
+against it, the kind-4 collision among them: fourteen fail the build and four fail the test.
+
+An adversarial review of that first attempt found four invariants it had claimed and not
+checked, of which one is the lesson. The four-bit kind ceiling was asserted as
+`sizeof(kKindIds) / sizeof(uint64_t) <= 16` — which counts *rows*, not values, so
+`SAT_KIND(99, ...)` compiled clean and passed. A guard written as arithmetic on a `sizeof`
+reads exactly like a guard on the thing it is named after, which is the failure mode a
+mutation test exists to catch and prose review does not.
+
+ast.hpp:50-54 got there first and said it in one line: *a printed number that nobody compares
+is not a budget.*
 
 ### The container
 
@@ -2047,7 +2110,7 @@ big-endian host. Catch it in the header or debug it in the interpreter.
 ### The value model
 
 The 25% that dispatch cannot touch. Today `ValuePtr` is `shared_ptr<const Value>`
-(value.hpp:26) and every intermediate result is a `make_shared` — a malloc plus an *atomic*
+(value.hpp:27) and every intermediate result is a `make_shared` — a malloc plus an *atomic*
 refcount, for adding two integers.
 
 A value must be **inline for the common case and heap only when it has to be**: small exact
@@ -2072,7 +2135,7 @@ is part of milestone 1, not a follow-up.
 ### What is not decided
 
 Honestly, and per §16's example of marking placeholders as placeholders. Two entries that
-stood here have been decided and moved to §17.4; two remain.
+stood here have been decided and moved to §17.4; three remain.
 
 - **The span table shape.** Per-instruction is the obvious form and costs one entry for every
   instruction, most of them repeating the line before. A change-only table — one entry
@@ -2084,9 +2147,30 @@ stood here have been decided and moved to §17.4; two remain.
   Whichever it is, it must carry a line number **and** the file id §16 adds to `Span`. An
   error that names the wrong file is the failure §16 calls fatal.
 
-- **The method-id assignments.** `format.def` now carries ids 38..66, taken from eval.cpp's
-  method tables. They are frozen the moment a file is compiled with them and not before, so
-  this is the last cheap moment to renumber.
+- **The method-id assignments.** `format.def` carries ids 38..79 from three sources: 38..66
+  from the method dispatch in eval/methods.cpp and eval/mutators.cpp, 67..72 minted by §17.5
+  as lowering targets for the comparison operators and implemented nowhere yet, and 73..79
+  added with §8.6's map — 73 being the type name rather than a selector. They are frozen the
+  moment a file is compiled with them and not before, so this is the last cheap moment to
+  renumber. One is already known to be wrong and
+  is being kept anyway: 56 (`empty`) names a selector no receiver implements, and the id stays
+  spent rather than reused, because reusing a number that has appeared in a published table is
+  how a format learns to lie. It is simply absent from the `SAT_SELECTOR` list, so nothing can
+  emit a call to it.
+
+- **How a language path with two arities is encoded.** `satellite.help` takes zero arguments
+  (the overview) or one (help for a thing) — eval/modules.cpp:96-102 — and decoding is
+  positional, so a name code takes a *fixed* number of operand units. `format.def` records
+  arity 0, which encodes the overview and silently loses the other form: `satellite.help(x)`
+  cannot be written into a stream at all today.
+
+  It is the first path with two arities and it will not be the last, so the decision has to be
+  general. Either a variable-arity marker whose next unit is a kind-1 immediate holding the
+  count — which keeps decoding positional, since the reader still always knows what comes next
+  — or §17.5's treatment, where `CALL_METHOD` already reads its count from the stream for
+  exactly this reason. The second needs no new machinery and is the recommendation. Neither is
+  decided, and `format.def` carries the same note beside the row so it cannot be found only
+  here.
 
 Settled, and recorded here because it keeps being asked:
 
@@ -2130,13 +2214,11 @@ be a frozen table. User-defined names are the other half of §1's rule: open, un
 different in every program. They cannot share that space and do not need to.
 
 **User names live in per-file tables**, and the kind tag on word 0 says which space an id is
-read against:
-
-| kind | space |
-|---|---|
-| 0 | language name code — the frozen registry, same in every file |
-| 4 | spacesuit id — index into this file's type table |
-| 5 | capsule id — index into this file's capsule table |
+read against: **kind 4** is a spacesuit id and **kind 5** a capsule id, both indices into this
+file's tables rather than into the registry, which stays kind 0 and stays the same in every
+file. §17's kind table is where those are assigned and is the only place they are; this
+section names them and does not restate the table, because restating it is exactly how kind 4
+came to mean two things at once.
 
 The type table is counted in the header the same way the constant pool is. The id field is 60
 bits, so the format's ceiling on distinct spacesuits is 2^60; the real limit is the per-file
@@ -2155,7 +2237,7 @@ type table entry
 ```
 
 Nothing at a use site names a class. A field read is an immediate index, because `SLOT_FIELD`
-(ast.hpp:121) already *is* that index and `find_field` already returns it — "the index is what
+(ast.hpp:135) already *is* that index and `find_field` already returns it — "the index is what
 an Object is addressed by" is env.hpp's own phrasing, and it is a description of the bytecode
 before there was any. A method call is a slot index. Construction is a type index. The class
 name survives only so an error can say which class.
@@ -2268,11 +2350,11 @@ POOL entry 0
 
 Two things that are correctness rather than encoding:
 
-- Store `StringLit::value`, not `StringLit::source` (ast.hpp:112). `value` has escapes already
+- Store `StringLit::value`, not `StringLit::source` (ast.hpp:113). `value` has escapes already
   expanded; `source` is what was typed.
 - This is the one place `encode` applies. §3.3 fixes the rule: source text is lexed with
   `encode_raw` (one byte, one SatChar) so spans stay byte offsets, and only string literal
-  *bodies* are `encode`d. eval.cpp:1365 records that getting this backwards has been found
+  *bodies* are `encode`d. eval/methods.cpp:248 records that getting this backwards has been found
   three times, most recently in `.read()`.
 
 Exact-decimal numbers take the same route for the same reason, and are where the continuation
@@ -2326,10 +2408,18 @@ constantly.
 
 **Arguments carry no names and no types.** This is worth saying because a calling convention
 looks like it should need both. §6's resolve() already turned every parameter name into a slot
-index, so the name exists only for error messages. Arity is already checked statically
-(env.cpp:251). And a `Value` carries its own tag, so an argument describes its own type rather
-than being described by the call. An argument at run time is a value in a slot, and nothing
-else.
+index, so the name exists only for error messages. And a `Value` carries its own tag, so an
+argument describes its own type rather than being described by the call. An argument at run
+time is a value in a slot, and nothing else.
+
+Arity is checked statically, but **only for a call whose target is a bare name** — a top-level
+capsule, an enclosing suit's method, or a spacesuit constructor (env/names.cpp:63-113). A call
+through a receiver, `obj.foo(1, 2)`, has a `Member` target, falls through env/names.cpp:118
+unexamined, and is caught at run time instead (eval/calls.cpp:77-83). This paragraph claimed
+the check was universal and cited `env.cpp:251`, a file deleted in 4e8171e. The correction
+matters to the machine and not only to the prose: `CALL` carries an argument count that the
+compiler cannot always have verified, so the VM keeps the run-time check rather than trusting
+the stream.
 
 **What C++ owns, and what it does not.** `Value` is an ordinary C++ struct with a copy
 constructor, a move constructor and a destructor, and those do the fiddly work: releasing a
@@ -2343,7 +2433,7 @@ a thing that is individually allocated.
 **The stack is fixed at startup, and the guard already exists.** A growing `std::vector` would
 reallocate and invalidate every frame base being held — a use-after-free that surfaces as
 inexplicable garbage. Fix the size up front and report exhaustion. That is not a new limit:
-eval.cpp:272-300 already carries a measured depth guard, `DEFAULT_MAX_DEPTH = 2000` with one
+eval/helpers.cpp:254-282 already carries a measured depth guard, `DEFAULT_MAX_DEPTH = 2000` with one
 activation costing exactly 3 units. The bounded register stack is the same guarantee the
 language already makes, expressed in the new machine.
 
@@ -2415,26 +2505,53 @@ a list one.
 
 It also deletes work rather than adding it. `+` currently takes a path entirely separate from
 `.plus()`: ast.hpp:164 stores the operator as a `std::string` and eval/operators.cpp compares
-it against `"+"`, `"-"`, `"*"` on every arithmetic operation. Those are part of the 88 runtime
+it against `"+"`, `"-"`, `"*"` on every arithmetic operation. Those are 18 of the 106 runtime
 string comparisons §17 opened by promising to remove.
 
-When the selector is a builtin (38..72) `CALL_METHOD` builds **no frame**. It is a table jump
+When the selector is a builtin `CALL_METHOD` builds **no frame**. It is a table jump
 to native code taking register indices, so `+` stays one dispatch and one write. §17.4's frame
 machinery is for user capsules, which are the only things that have frames.
+
+**Which selectors are builtin is a list, not a range.** This section said "38..72" until the
+map landed at 73..79 one commit later, at which point the range began classifying every map
+selector as a user capsule with a frame — a wrong answer at run time, produced by prose that
+had gone stale. The set was never contiguous in the first place: 56 (`empty`) answers to no
+receiver, and 73 (`map`) is a type name. So the set lives in `format.def` as `SAT_SELECTOR`
+rows and is read through `format::is_selector()`, which is derived from the list and therefore
+cannot go stale. There are **40** of them today.
+
+Each row names a word by its *identifier* rather than its number, and that is the technique
+rather than the detail: `SAT_SELECTOR(PLUS)` does not compile if `PLUS` is not a `SAT_WORD`.
+A cross-reference the compiler checks is the only kind that survives a year.
+
+Six of the forty are declared by the format and implemented by nothing: `equals` (67) through
+`greater_or_equal` (72) have no named method anywhere in `eval/` — only the `==` `!=` `<` `<=`
+`>` `>=` operators — because they were minted in 906a4a8 purely as lowering targets. That gap
+is real work and not a naming detail, for a reason recorded in `format.def`: `==` is **total**,
+defined over every pair of values including nil and mismatched types (eval/operators.cpp:213),
+while receiver dispatch refuses a nil receiver outright (eval/methods.cpp:34). Lowering `==` to
+a receiver-dispatched selector without giving that selector total semantics turns `x == nil`
+from an answer into an error.
 
 **A machine op is not a name**, and that is the whole reason it lives elsewhere. §1 says a
 dotted path rooted at `satellite` names something the language owns, and the registry is
 enumerable precisely because that set is closed. No satellite program can write `MOVE`. Adding
 machine operations to the registry would spend the closure property that made a frozen table
-possible, to save a tag value the format has fifteen spare copies of. So they take **kind 4**
-and a separate id space, restarting at 1, and format.def carries them as `SAT_OP` beside the
-other two lists.
+possible, to save a tag value the format has nine spare copies of. So they take **kind 6** and
+a separate id space, restarting at 1, and format.def carries them as `SAT_OP` beside
+`SAT_KIND`, `SAT_WORD`, `SAT_SELECTOR` and `SAT_PATH`.
+
+Kind 6 and not kind 4, which is what this section said until §17's kind table was made the
+single authority: 4 was already a spacesuit id in §17.2, and two sections had each extended a
+four-row table without looking at what the other had done. The id spaces stay separate, which
+was always the point; only the tag moved.
 
 Three consequences worth stating, because each answers a question that has been asked twice:
 
 - **Methods need no arity entries, anywhere.** `CALL_METHOD` carries an explicit argument
-  count, so a method's arity is read from the stream rather than looked up. The 29 selectors
-  with ids and no `SAT_PATH` row are not an omission; a row would be unreachable.
+  count, so a method's arity is read from the stream rather than looked up. The 40 selectors
+  with ids and no `SAT_PATH` row are not an omission; a row would be unreachable, and
+  `format_test` asserts that none of them has one.
 - **Jump targets are absolute unit indices.** Not byte offsets, because units are fixed width
   and an index is then a subscript with no multiply; not relative, because an absolute target
   survives code moving around it while the compiler is still emitting.

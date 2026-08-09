@@ -1,11 +1,29 @@
 // The bytecode format, as data. DESIGN.md §17 is the prose; this file is the
 // machine-readable half, and the two must agree.
 //
-// There is no generator and no build step. This is an X-macro list: every
-// consumer defines SAT_WORD / SAT_PATH, includes this file, and undefines them
-// again. The registry, the arity table, the id->name strings and the
-// disassembler therefore all come from ONE list and cannot drift apart, which
-// is the whole reason the file exists. Adding a name is one line here.
+// There is no generator and no build step. These are X-macro lists: every
+// consumer defines SAT_KIND / SAT_WORD / SAT_SELECTOR / SAT_PATH / SAT_OP,
+// includes this file, and undefines them again. The registry, the arity table,
+// the id->name strings and the disassembler therefore all come from ONE list and
+// cannot drift apart, which is the whole reason the file exists. Adding a name
+// is one line here.
+//
+// That guarantee was aspirational until format.hpp. For its first three commits
+// this file had ZERO consumers -- nothing included it, and it was not in the Makefile's
+// HDRS -- so "cannot drift apart" described a property nothing checked, and four
+// defects accumulated behind it: two sections of DESIGN.md assigned kind 4 to
+// different things, id 56 was spent on a selector no receiver implements, §17.5
+// froze the selector set as a literal range that the map made wrong one commit
+// later, and this header cited a source file that had been split in two.
+//
+// format.hpp is now the consumer, and format_test the proof. The rule the whole
+// arrangement exists to serve, stated once:
+//
+//     PROSE MAY EXPLAIN A NUMBER. IT MAY NEVER BE THE ONLY PLACE THE NUMBER
+//     LIVES.
+//
+// The test for whether a fact belongs in this file rather than in DESIGN.md is
+// whether anything breaks if it is wrong. If yes, it has to be compilable.
 //
 // §17: ids are FROZEN. Assignment by order of appearance would renumber every
 // construct after an insertion and silently change the meaning of already
@@ -16,8 +34,14 @@
 // name is a trap; the quoted string is what the language actually calls the
 // thing, and the identifier only has to be unique.
 
+#ifndef SAT_KIND
+#define SAT_KIND(id, ident, text)
+#endif
 #ifndef SAT_WORD
 #define SAT_WORD(id, ident, text)
+#endif
+#ifndef SAT_SELECTOR
+#define SAT_SELECTOR(ident)
 #endif
 #ifndef SAT_PATH
 #define SAT_PATH(ident, s1, s2, s3, s4, arity)
@@ -25,6 +49,30 @@
 #ifndef SAT_OP
 #define SAT_OP(id, ident, text, arity)
 #endif
+
+// --- the kind tags: which id space the rest of the unit is read against ------
+// §17 gives word 0 bits[63:60] to a kind. This list is the ONLY place a kind is
+// assigned, and it is here rather than in DESIGN.md because of what happened
+// when it was only there: §17.2 needed a tag for spacesuit ids and §17.5 needed
+// one for machine ops, each extended a four-row markdown table without reading
+// the other, and both landed on 4. A markdown table cannot be compiled, so
+// nothing objected.
+//
+// It is caught here now. format.hpp expands this list into an enum, a switch and
+// a constexpr uniqueness assert, and a repeat of that mistake is two compiler
+// errors rather than a format break -- see the static_asserts at the bottom of
+// format.hpp, which is the entire point of the file existing.
+//
+// 7..15 are unassigned. Add a row here; do NOT describe a new kind anywhere else
+// first.
+
+SAT_KIND(0, NAME_CODE,    "name code")     // read against the SAT_WORD registry
+SAT_KIND(1, IMMEDIATE,    "immediate")     // no space; the unit IS the value
+SAT_KIND(2, POOL_REF,     "pool ref")      // an index into the constant pool
+SAT_KIND(3, REGISTER,     "register")      // an index into the register file
+SAT_KIND(4, SPACESUIT_ID, "spacesuit id")  // an index into this file's type table
+SAT_KIND(5, CAPSULE_ID,   "capsule id")    // an index into this file's capsule table
+SAT_KIND(6, MACHINE_OP,   "machine op")    // read against the SAT_OP table below
 
 // --- the registry: one id per distinct word, flat across all positions -------
 // Flat means a word has one id wherever it appears: `console` is 6 in every
@@ -34,7 +82,9 @@
 
 SAT_WORD( 1, SATELLITE,  "satellite")
 
-// Segment-1 dispatch keys — parser.cpp's at_language_path() set.
+// Segment-1 dispatch keys — the at_language_path() set. That predicate lived in
+// parser.cpp when this block was written and is now parser/cursor.cpp:115; 85e6373
+// split the file.
 SAT_WORD( 2, INCLUDE,    "include")
 SAT_WORD( 3, CAPSULE,    "capsule")
 SAT_WORD( 4, MAIN,       "main")
@@ -84,7 +134,9 @@ SAT_WORD(37, FALSE_,     "false")
 
 // Methods. Bare selectors read relative to what precedes them (§1), so they are
 // user-facing bare words but language-owned names, and they need ids like any
-// other. Taken from eval.cpp's call_method tables.
+// other. Taken from the call_method tables, which lived in eval.cpp when this
+// block was written and are now eval/methods.cpp -- 059a9d8 split the file, and
+// a comment naming a source that no longer exists is the cheapest kind of rot.
 SAT_WORD(38, PLUS,        "plus")
 SAT_WORD(39, MINUS,       "minus")
 SAT_WORD(40, TIMES,       "times")
@@ -103,6 +155,11 @@ SAT_WORD(52, ENDS_WITH,   "ends_with")
 SAT_WORD(53, FIRST,       "first")
 SAT_WORD(54, LAST,        "last")
 SAT_WORD(55, APPEND,      "append")
+// 56 `empty` answers to NOTHING. It was transcribed into this block with the
+// rest, but no receiver implements it -- grep eval/ for "empty" and the only hit
+// is a comment. The id stays spent, because ids are never reused and reusing a
+// number that shipped in a comment is how a format learns to lie; it is simply
+// not in the selector list below, so nothing can emit a call to it.
 SAT_WORD(56, EMPTY,       "empty")
 SAT_WORD(57, AND_,        "and")
 SAT_WORD(58, OR_,         "or")
@@ -151,6 +208,80 @@ SAT_WORD(77, HAS,     "has")
 SAT_WORD(78, KEYS,    "keys")
 SAT_WORD(79, VALUES,  "values")
 
+// --- which words are SELECTORS ------------------------------------------------
+// §17.5: "when the selector is a builtin (38..72) CALL_METHOD builds no frame."
+// That sentence was true for exactly one commit. 906a4a8 ended the selectors at
+// 72; f33014c then added the map at 73..79, and the literal range silently began
+// classifying every map selector as a user capsule with a frame -- a wrong answer
+// at run time, from prose that had gone stale.
+//
+// A range is the wrong shape for the fact. The set is not contiguous (73 `map` is
+// a TYPE name, not a selector, and 56 `empty` answers to nothing) and it grows
+// every time a method lands. So the fact is a list, and the list is here.
+//
+// Note what makes this drift-proof, because it is the technique and not the data:
+// a row names a word by its IDENTIFIER, never by its number. SAT_SELECTOR(PLUS)
+// fails to compile if PLUS is not a SAT_WORD. The cross-reference is checked by
+// the compiler rather than by a reader, which is the only kind of cross-reference
+// that survives.
+
+SAT_SELECTOR(PLUS)          // 38
+SAT_SELECTOR(MINUS)
+SAT_SELECTOR(TIMES)
+SAT_SELECTOR(DIVIDED_BY)
+SAT_SELECTOR(MODULO)
+SAT_SELECTOR(ABS)
+SAT_SELECTOR(FLOOR)
+SAT_SELECTOR(CEIL)
+SAT_SELECTOR(ROUND)
+SAT_SELECTOR(TO_STRING)
+SAT_SELECTOR(LENGTH)
+SAT_SELECTOR(CONCAT)
+SAT_SELECTOR(CONTAINS)
+SAT_SELECTOR(STARTS_WITH)
+SAT_SELECTOR(ENDS_WITH)
+SAT_SELECTOR(FIRST)
+SAT_SELECTOR(LAST)
+SAT_SELECTOR(APPEND)
+// 56 `empty` is deliberately absent -- see its SAT_WORD row.
+SAT_SELECTOR(AND_)
+SAT_SELECTOR(OR_)
+SAT_SELECTOR(NEGATE)
+SAT_SELECTOR(OK)
+SAT_SELECTOR(READ)
+SAT_SELECTOR(WRITE)
+SAT_SELECTOR(CLOSE)
+SAT_SELECTOR(ERROR)
+SAT_SELECTOR(PATH)
+SAT_SELECTOR(NANOSECONDS)   // 66
+
+// 67..72. These six are selectors the FORMAT declares and the tree walker does
+// not implement: there is no `.equals()` method anywhere in eval/, only the `==`
+// operator, and the same for the other five. They were minted in 906a4a8 purely
+// so the operators have something to lower to (§17.5), so they are the one part
+// of this list that describes the machine rather than the walker.
+//
+// That gap is real work, not a naming detail. eval/operators.cpp:213-217 makes
+// `==` TOTAL -- defined for every pair of values, nil and mismatched types
+// included, before any type probe runs -- while receiver dispatch in
+// eval/methods.cpp:34-38 refuses a nil receiver outright. Lowering `==` to a
+// receiver-dispatched selector without giving that selector total semantics
+// turns `x == nil` from an answer into an error.
+SAT_SELECTOR(EQUALS)
+SAT_SELECTOR(NOT_EQUALS)
+SAT_SELECTOR(LESS_THAN)
+SAT_SELECTOR(LESS_OR_EQUAL)
+SAT_SELECTOR(GREATER_THAN)
+SAT_SELECTOR(GREATER_OR_EQUAL)
+
+// 73 `map` is deliberately absent: a type name, not a selector.
+SAT_SELECTOR(GET)           // 74
+SAT_SELECTOR(SET)
+SAT_SELECTOR(REMOVE)
+SAT_SELECTOR(HAS)
+SAT_SELECTOR(KEYS)
+SAT_SELECTOR(VALUES)        // 79
+
 // --- the arity table: complete paths, and how many operands each takes -------
 // §17: decoding is positional. Nothing in the stream announces "I am an
 // instruction" — the reader starts at an instruction boundary and each path's
@@ -171,15 +302,44 @@ SAT_PATH(P_DIR_CHANGE,     1, 32, 34, 0, 1)   // satellite.directory.change(d)
 SAT_PATH(P_DIR_EXISTS,     1, 32, 35, 0, 1)   // satellite.directory.exists(d)
 SAT_PATH(P_BOOL_TRUE,      1, 21, 36, 0, 0)   // satellite.bool.true
 SAT_PATH(P_BOOL_FALSE,     1, 21, 37, 0, 0)   // satellite.bool.false
-SAT_PATH(P_HELP,           1, 29,  0, 0, 0)   // satellite.help
+SAT_PATH(P_HELP,           1, 29,  0, 0, 0)   // satellite.help -- SEE BELOW
 
-// --- machine ops: kind 4, and a SEPARATE id space ----------------------------
+// P_HELP's arity is a KNOWN GAP, not a recorded fact, and it is written down
+// here rather than fixed because fixing it is a format decision and this file's
+// job today is to make such gaps visible.
+//
+// eval/modules.cpp:96-102 accepts satellite.help with ZERO arguments (the
+// overview) or ONE (help for a thing), and errors only at two. Decoding is
+// positional, so a name code takes a fixed number of operand units and there is
+// no way to write `satellite.help(x)` into a stream at all. The 0 above encodes
+// the overview and silently loses the other form.
+//
+// It is the first path with two arities and it will not be the last, so the
+// decision is general: either a variable-arity marker whose next unit is a
+// kind-1 immediate holding the count -- which keeps decoding positional, since
+// the reader still always knows what comes next -- or the §17.5 treatment, where
+// CALL_METHOD already reads its count from the stream for exactly this reason.
+// The second needs no new machinery and is the recommendation. Neither is
+// decided; see DESIGN.md §17 "What is not decided".
+
+// --- machine ops: kind 6, and a SEPARATE id space ----------------------------
 // These are not names. No satellite program can write MOVE, and §1's rule is
 // that the registry above enumerates what the LANGUAGE owns — putting machine
 // operations in it would undercut the closure property that let the registry be
 // a frozen table in the first place. The unit's kind field has 16 values and
-// used 4, so kind 4 costs nothing and keeps the two spaces apart. Ids here
-// restart at 1 and are read against this table, never against the one above.
+// uses 7, so a kind of their own costs nothing and keeps the two spaces apart.
+// Ids here restart at 1 and are read against this table, never against the one
+// above.
+//
+// SIX, not four, and the number is not written here — it is `SAT_KIND(6,
+// MACHINE_OP, ...)` at the top of this file, which is the one place a kind is
+// assigned. This comment carried the literal 4 until then, and so did §17.2
+// about spacesuit ids: two sections each extended a four-row markdown table
+// without reading the other. Nothing had been encoded, so it cost a renumber
+// rather than a format break.
+//
+// Do not re-extend the kind space from here, and do not restate it in DESIGN.md
+// either. Add the SAT_KIND row; everything else points at it.
 //
 // Methods deliberately have NO entry here and none above: CALL_METHOD carries
 // an explicit argument count, so a method's arity is read from the stream
@@ -208,6 +368,8 @@ SAT_OP(9, OP_RETURN,        "return",        1)  // src reg
 // runs and those two must not. Short-circuit is a branch, not a call, and it
 // needs a branch in each polarity.
 
+#undef SAT_KIND
 #undef SAT_WORD
+#undef SAT_SELECTOR
 #undef SAT_PATH
 #undef SAT_OP

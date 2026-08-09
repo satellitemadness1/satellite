@@ -6,17 +6,26 @@
 satl
 satl-term
 
-# The eleven test binaries (Makefile: test). library_test_tsan is the
+# The thirteen test binaries (Makefile: test). library_test_tsan is the
 # ThreadSanitizer build and is 10MB, which is the one that really hurts.
+#
+# reg_test is a late addition to this list and was tracked at b0185ba — 561KB of
+# binary committed, exactly what the note above warns about, because the list was
+# written when there were eleven and nothing checks it against the Makefile. Kept
+# alphabetical so a missing name is visible; that is the only defence this file
+# has, and it is a weak one. The lasting fix is the same one format.hpp applies
+# to the registry: a list nothing consumes is a list that drifts.
 ast_test
 bignum_test
 env_test
 eval_test
+format_test
 interp_test
 lexer_test
 library_test
 library_test_tsan
 parser_test
+reg_test
 satellite_string_test
 spacesuit_test
 

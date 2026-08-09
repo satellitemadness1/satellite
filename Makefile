@@ -83,6 +83,11 @@ HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
             lexer.hpp ast.hpp parser.hpp env.hpp eval.hpp interp.hpp \
             eval/eval_internal.hpp parser/parser_internal.hpp \
             bignum/bignum_internal.hpp env/env_internal.hpp
+# format.hpp and format.def are deliberately NOT in HDRS. Every object depends on
+# HDRS, and no object includes either file — there is no VM yet — so listing them
+# would make one edit to format.def rebuild the whole interpreter for nothing.
+# The format_test rule below names them itself, which is the dependency that is
+# actually real. Add them here when a translation unit in OBJS includes them.
 TESTSRCS  = library.cpp satellite_string.cpp system.cpp lexer.cpp \
             ast.cpp value.cpp interp.cpp $(EVAL_SRCS) \
             $(PARSER_SRCS) $(BIGNUM_SRCS) $(ENV_SRCS)
@@ -166,16 +171,29 @@ spacesuit_test: spacesuit_test.cpp $(LIBOBJS)
 bignum_test: bignum_test.cpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ bignum_test.cpp $(LIBOBJS)
 
+# format.hpp links against NOTHING — it includes only <cstdint> and <cstddef>,
+# so this is the one test binary that needs no objects at all. That is a
+# property of the format and worth keeping: the registry must be readable by a
+# disassembler, a loader, or the bootstrap's generated C, none of which should
+# have to drag the interpreter in to learn what id 7 is.
+#
+# Most of this test runs at COMPILE time. format.hpp ends in static_asserts over
+# the X-macro lists, so a duplicate id or a hole in the registry fails right
+# here rather than in the binary.
+format_test: format_test.cpp format.hpp format.def
+	$(CXX) $(TESTFLAGS) -O2 -o $@ format_test.cpp
+
 # reg.hpp is not linked into satl: there is no VM yet, and nothing in the
 # interpreter includes it. This binary is the only consumer.
 reg_test: reg_test.cpp reg.hpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ reg_test.cpp $(LIBOBJS)
 
-test: library_test $(TSAN_TEST) satellite_string_test bignum_test reg_test lexer_test ast_test parser_test env_test eval_test interp_test spacesuit_test
+test: library_test $(TSAN_TEST) satellite_string_test bignum_test format_test reg_test lexer_test ast_test parser_test env_test eval_test interp_test spacesuit_test
 	./library_test
 	$(if $(TSAN_TEST),./$(TSAN_TEST))
 	./satellite_string_test
 	./bignum_test
+	./format_test
 	./reg_test
 	./lexer_test
 	./ast_test
@@ -308,7 +326,8 @@ clean:
 	$(MAKE) -C example/py_compare clean
 	rm -f satl satl-term library_test library_test_tsan satellite_string_test \
 	      lexer_test ast_test parser_test env_test eval_test interp_test \
-	      spacesuit_test bignum_test *.o eval/*.o parser/*.o bignum/*.o env/*.o *.o.tmp .libdir-stamp \
+	      spacesuit_test bignum_test format_test reg_test \
+	      *.o eval/*.o parser/*.o bignum/*.o env/*.o *.o.tmp .libdir-stamp \
 	      dist/satl.1.gz dist/satl-term.1.gz
 
 .PHONY: all test compare python install uninstall clean FORCE
