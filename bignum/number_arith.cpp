@@ -71,6 +71,45 @@ Number Number::mul(const Number &a, const Number &b)
                 static_cast<long long>(a.exp_) + b.exp_);
 }
 
+namespace {
+
+// mb with every factor of two and five taken out, and how many there were.
+//
+// This is the whole of "does this division terminate". A decimal expansion
+// stops if and only if what remains of the divisor once the twos and fives are
+// removed divides the dividend — because 10^k supplies twos and fives and
+// nothing else. Scaling the dividend by 10^max(twos, fives) then makes the
+// division come out even, since that supplies enough of both at once.
+BigInt strip_twos_and_fives(const BigInt &mb, unsigned &twos, unsigned &fives)
+{
+    twos = 0;
+    fives = 0;
+
+    const BigInt two = BigInt::from_u64(2);
+    const BigInt five = BigInt::from_u64(5);
+    BigInt rest = mb;
+    BigInt quotient;
+    BigInt remainder;
+
+    for (;;) {
+        BigInt::divmod(rest, two, quotient, remainder);
+        if (!remainder.is_zero())
+            break;
+        rest = quotient;
+        twos++;
+    }
+    for (;;) {
+        BigInt::divmod(rest, five, quotient, remainder);
+        if (!remainder.is_zero())
+            break;
+        rest = quotient;
+        fives++;
+    }
+    return rest;
+}
+
+} // namespace
+
 Number Number::divide(const Number &a, const Number &b, int digits)
 {
     // A zero divisor is a satellite error with a span attached, so the caller
@@ -101,6 +140,44 @@ Number Number::divide(const Number &a, const Number &b, int digits)
     BigInt::divmod(scale ? BigInt::mul_pow10(ma, static_cast<unsigned>(scale))
                          : ma,
                    mb, quotient, remainder);
+
+    // A non-zero remainder here does NOT mean the division fails to terminate.
+    // It means it did not terminate WITHIN THE SCALE CHOSEN ABOVE, which is a
+    // different claim, and treating the two as the same was a bug: `scale` is
+    // sized to give `digits` + 1 significant digits, so any terminating division
+    // that needs more than that was being rounded away.
+    //
+    //     1 / 2^100              — terminates at 100 places, came back as
+    //                              7.888...e-31 rounded to 34
+    //     (1e40 + 1) / 100       — terminates at 2 places, came back as 1e+38,
+    //                              because `scale` clamps to zero once the
+    //                              dividend is longer than `digits`
+    //
+    // Both violate §8.1's "division whose result terminates is exact", and both
+    // are invisible until a dividend gets longer than `division_digits`.
+    //
+    // So: when the remainder is non-zero, ask whether the division terminates at
+    // all, and if it does, redo it at a scale that reaches the end. This runs
+    // only on divisions that were about to be rounded, so nothing that already
+    // came out exact pays for it.
+    if (!remainder.is_zero()) {
+        unsigned twos = 0;
+        unsigned fives = 0;
+        const BigInt rest = strip_twos_and_fives(mb, twos, fives);
+
+        BigInt reduced;
+        BigInt leftover;
+        BigInt::divmod(ma, rest, reduced, leftover);
+
+        if (leftover.is_zero()) {
+            const long long need = static_cast<long long>(twos > fives ? twos : fives);
+            if (need > scale) {
+                scale = need;
+                BigInt::divmod(BigInt::mul_pow10(ma, static_cast<unsigned>(scale)),
+                               mb, quotient, remainder);
+            }
+        }
+    }
 
     long long exponent = static_cast<long long>(a.exp_) - b.exp_ - scale;
     std::string qd = quotient.to_digits();
