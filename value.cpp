@@ -1,5 +1,13 @@
 #include "value.hpp"
 
+// For the complete SpacesuitInfo, which value.hpp only forward-declares. This
+// include is possible at all because env.hpp no longer includes value.hpp: the
+// two headers used to be mutually dependent, and now the dependency runs one
+// way — values know about resolver types, and the resolver knows nothing about
+// values. That is what lets the compiler share env/ without dragging the boxed
+// value model in with it.
+#include "env.hpp"
+
 #include <cstdio>
 #include <ctime>
 
@@ -14,6 +22,20 @@ namespace satellite {
 // as 1.23457e+08 and 2000000 + 1 as 2e+06 — wrong values, through the only
 // output path the language has, since satellite.console.display, the REPL echo,
 // .to_string() and every error message quoting a number all arrive here.
+
+// Declared in value.hpp, which knows SpacesuitInfo only as a forward
+// declaration. The fallback is not decoration: to_string() prints a Value from
+// anywhere, including from an error message about an object whose construction
+// did not finish.
+//
+// It lived in env/run.cpp until env.hpp stopped including value.hpp. It is a
+// function about how a Value RENDERS that happens to read a resolver type, so
+// this is where it belongs, and env/ is now free of the value model entirely.
+const std::string &suit_name(const SpacesuitInfo *suit)
+{
+    static const std::string unknown = "spacesuit";
+    return suit ? suit->name : unknown;
+}
 
 // How an instance renders: the spacesuit's name in angle brackets.
 //

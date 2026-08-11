@@ -112,16 +112,6 @@ int SpacesuitInfo::find_field(const std::string &name) const
     return -1;
 }
 
-// Declared in value.hpp, which sits below env.hpp and therefore knows
-// SpacesuitInfo only as a forward declaration. The fallback is not decoration:
-// to_string() prints a Value from anywhere, including from an error message
-// about an object whose construction did not finish.
-const std::string &suit_name(const SpacesuitInfo *suit)
-{
-    static const std::string unknown = "spacesuit";
-    return suit ? suit->name : unknown;
-}
-
 ResolveResult resolve(const Program &program)
 {
     ResolveResult result;

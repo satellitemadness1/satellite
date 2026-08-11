@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ast.hpp"
-#include "value.hpp"
 
 #include <memory>
 #include <string>
@@ -32,17 +31,22 @@
 // keeps two useful properties: the parser's purity survives intact, and a
 // resolver bug reports "unknown variable at line N" BEFORE anything runs
 // instead of producing a wrong answer somewhere inside the tree walk.
+//
+// WHAT THIS HEADER DELIBERATELY DOES NOT INCLUDE, and why
+// -------------------------------------------------------
+// value.hpp. Nothing resolve() produces mentions a Value: a CapsuleInfo is slot
+// counts and declared types, a SpacesuitInfo is a layout and a method table.
+// The one thing here that ever did was `struct Frame`, whose slots are
+// ValuePtrs — and a Frame is an ACTIVATION, which is the interpreter's idea and
+// not the resolver's. It lives in eval.hpp now.
+//
+// That is not tidying. The satellite COMPILER (../satellite2) resolves names
+// with this same pass, because having satc and satl disagree about which `x` a
+// name means would be exactly as bad as having them disagree about arithmetic —
+// and it exists to delete the boxed ValuePtr model that value.hpp is. Anything
+// added here that needs a Value belongs on the eval side of that line.
 
 namespace satellite {
-
-// One capsule activation.
-//
-// No mutex and no atomic, deliberately: a frame is reachable from exactly one
-// thread. That is the entire difference from satellite.library, and it is what
-// turns §6's 1585/1600 into 0/1600.
-struct Frame {
-    std::vector<ValuePtr> slots;
-};
 
 struct ResolveError {
     std::string message;
@@ -67,6 +71,13 @@ struct CapsuleInfo {
 };
 
 // --- spacesuits ------------------------------------------------------------
+
+// Both tables below point back at the suit that declared their entry, and a
+// suit's own layout is built out of them, so the declaration is needed before
+// either. It used to arrive from value.hpp, which forward-declared it for
+// Object::suit; env.hpp does not include value.hpp any more and so it says so
+// itself.
+struct SpacesuitInfo;
 
 // One field, in the layout of the spacesuit that owns the layout — not
 // necessarily the one that declared it. `owner` is the declaring suit, which is

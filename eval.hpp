@@ -38,6 +38,21 @@
 
 namespace satellite {
 
+// One capsule activation.
+//
+// No mutex and no atomic, deliberately: a frame is reachable from exactly one
+// thread. That is the entire difference from satellite.library, and it is what
+// turns §6's 1585/1600 into 0/1600.
+//
+// It sits here rather than beside CapsuleInfo in env.hpp, which is where it was
+// written, because it is the one thing in the resolver's output that mentions a
+// Value — and an activation is the tree walker's idea, not the resolver's. The
+// compiler shares resolve() and has no frames at all; a local there is an
+// `alloca`. See the note at the top of env.hpp.
+struct Frame {
+    std::vector<ValuePtr> slots;
+};
+
 struct EvalError {
     std::string message;
     Span span;
