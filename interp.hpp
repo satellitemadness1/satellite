@@ -42,8 +42,14 @@ InterpResult run_source(const std::string &source,
 
 // Runs a whole program: top-level statements first, then satellite.main if the
 // program defines one, with `args` bound to its parameter.
+//
+// `path` names the source in error messages, so a failure reads
+// "hello.satl:3" rather than "line 3". Empty means the source came from no
+// file — a REPL line, or a test — and the messages fall back to the bare line
+// number, which is the truth in that case rather than a degradation.
 InterpResult run_program(const std::string &source,
-                         const std::vector<std::string> &args = {});
+                         const std::vector<std::string> &args = {},
+                         const std::string &path = {});
 
 // Same, reading the source from a file. `path` becomes args[0], mirroring
 // argv[0] — so a script sees its own name first, as it would in C.

@@ -7,9 +7,13 @@ inheritance, access control and constructors, and `satellite.variable.time` with
 from the variant and `satellite.variable.number` is an exact arbitrary-precision
 decimal. §8.3's `file` is done, so a satellite program can now read and write
 one, which is what §16 was waiting on. The interpreter and the GUI terminal are
-two binaries, `satl` and `satl-term` (§9). Still outstanding: the window (M7),
-and §16's include mechanism, which is designed and unbuilt.
-Last updated: 2026-08-07
+two binaries, `satl` and `satl-term` (§9). **§16 is done**: a unit of includable
+code is a **spaceship** (named 2026-08-18), `Span` carries a file id so an error
+names the spaceship it is in, and `loader.cpp` merges every included spaceship
+into one Program before resolve() runs — so `satellite.include(my_parser)`
+works, include-once and cycles included. Still outstanding: the window (M7),
+which is also the native-`.so` half of a language-owned spaceship.
+Last updated: 2026-08-19
 
 This document fixes the syntax, names the decisions still open, and lays out the build
 order. Everything marked **verified** was checked by compiling and running code against
@@ -65,9 +69,12 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
   PTY and VTE renders them. Implementation is `decode()` + `fwrite` + `fflush` — the flush
   is required because glibc line-buffers stdout on a tty. Nothing else is involved: no GTK,
   no IPC. **Verified**: "hello, world!" round-trips through `encode`/`decode` byte-identically.
-- **`satellite.include`** is ceremony in v1: parsed, validated, ignored. Say so honestly in
-  the docs rather than implying that including a file does anything. §16 designs what it
-  will mean and is not implemented.
+- **`satellite.include`** works as of 2026-08-19 (§16). `satellite.include(satellite)` is
+  the one form that does nothing, and that is not a leftover — it means "include the
+  runtime", which a running program already has. Every other form names a **spaceship** and
+  loads it: `satellite.include(my_parser)` merges the declarations in `my_parser.satl` into
+  this program before it resolves. This line stays in hello world because the ceremony reads
+  well, not because it is all the feature can do.
 
 ---
 
@@ -1174,6 +1181,7 @@ yet, so `satellite.time.now()` has nothing to return.
 | M6 | `file` (+ `time` **done**, §8.2) | none — `FileHandle` in `value.*`, tests in `eval_test.cpp` | `satellite.file.open` round-trips a file through `.write`/`.read`/`.close`; a failed open answers `.ok()` instead of raising | **done** |
 | M7 | window — §16's first native module | a `dlopen`ed shim | `satellite.include(satellite.window)` opens a window **and** `ldd satl` still lists six objects | |
 | M9 | `satellite.container.map` (§8.6) | `eval/maps.cpp`; tests in `eval_test.cpp`, map stress in `library_test.cpp` | O(1) lookup; insertion order stable across runs; two independently built maps compare equal; `library_test` still TSan-clean | **done** |
+| M10 | including a spaceship (§16) | `loader.*`, `loader_test.cpp` | a capsule defined in one spaceship is callable from another; a diamond loads the shared spaceship once; `a -> b -> a` terminates; an error inside an included spaceship names *that* spaceship | **done** |
 
 M8 is numbered after M7 and listed before M5 because it landed out of order: it
 needs frames (M3) and nothing else, and `satellite.variable.time` came with it
@@ -1232,25 +1240,24 @@ Each milestone ends in a standalone PASS/FAIL binary in the style of
 `satellite_string_test.cpp`, with its own Makefile rule and an entry in `test:` and `clean:`
 — except where a milestone adds no new file to test, which is M4 and M6. Both extended the
 evaluator rather than adding a component, so both extended `eval_test.cpp` rather than
-standing up an eleventh binary that would have linked the same objects to say the same thing.
+standing up another binary that would have linked the same objects to say the same thing.
+M10 went the other way and earned `loader_test.cpp`, the fourteenth: every interesting
+property of the loader is about the filesystem — where it looks, what it canonicalises, what
+it declines to read twice — and none of that is reachable from `eval_test`.
 
 ---
 
 ## 12. Deliberately deferred
 
-Everything below is still deferred, and two things that were absent from the language this
-morning are deliberately not on it: **file I/O**, which is §8.3.1 and M6, and **a way to write
-a `bool`**, which is §8.4. Neither was ever listed here — file I/O was tracked as a milestone,
-and the bool literals were tracked nowhere at all, which is how `satellite.variable.bool` sat
-in §8's table from the first draft with no way to name either of its two values. A deferral
-list is only useful if the things missing from the language are on it.
+Everything below is still deferred, and three things are deliberately not on it: **file I/O**,
+which is §8.3.1 and M6, **a way to write a `bool`**, which is §8.4, and **including a
+spaceship**, which is §16 and shipped on 2026-08-19. None of the three was ever listed here —
+file I/O and includes were tracked as their own sections, and the bool literals were tracked
+nowhere at all, which is how `satellite.variable.bool` sat in §8's table from the first draft
+with no way to name either of its two values. A deferral list is only useful if the things
+missing from the language are on it, and equally only if the things on it are still missing.
 
 - **User-defined generics** — a bare name can be a value, which reopens §4's ambiguity.
-- **Including a file** — `satellite.include` is still parsed, validated and ignored, exactly
-  as §2 says. It is no longer deferred for want of a design: §16 is the design, and its
-  prerequisite (file I/O) has landed. What blocks it now is that nobody has written it, and
-  that the **word** for the thing being included is undecided — see §16's first paragraph
-  before using any name for it.
 - **Durations** — `time` is an absolute instant only; `a.minus(b)` returns a number of nanoseconds.
 - **Bare field access** (`my_window.height`, `my_object.my_str`) — accessor methods only.
   §14 keeps this: a spacesuit field is reachable from inside the spacesuit and nowhere else,
@@ -1301,8 +1308,10 @@ ones it still has.
 3. **Statements are newline-terminated**, so §7's same-line rule for postfix `[` is load
    bearing rather than a nicety, and §14 reuses it for the bare spacesuit type.
 
-The one genuinely open question in this document is not here, because it is not about syntax:
-**§16's name for a unit of includable code.**
+The one question this section used to leave open — **§16's name for a unit of includable
+code** — was answered on 2026-08-18: it is a **spaceship**. §16 carries the reasoning. With
+that, this document has no open naming question left; what remains is unwritten code, not
+undecided design.
 
 ### Resolved
 
@@ -1680,7 +1689,7 @@ program the compiler emits.
 | 0 — lexer in satellite | nothing | **done**, `example/bootstrap/lexer.satl` |
 | 1 — parser + unparse, holding `unparse(parse(src)) == src` | nothing | |
 | 2 — resolver + C code generation | a map, or accept O(n) symbol lookup | |
-| 3 — self-compile to a fixpoint | §16's include mechanism; file I/O, the other prerequisite, is **done** (§8.3.1) | |
+| 3 — self-compile to a fixpoint | nothing outstanding: file I/O is **done** (§8.3.1) and §16's include mechanism is **done** (2026-08-19) | unblocked |
 
 Stage 0 was written before planning the rest, on purpose: it is cheaper to find out what the
 language cannot say than to predict it. What it found, in order of how much it hurt:
@@ -1689,8 +1698,9 @@ language cannot say than to predict it. What it found, in order of how much it h
    **`satellite.include` needed it too**, since including a file means reading one, so both
    were blocked behind the same feature. §8.3 designed it and M6 built it (§8.3.1). A
    satellite program can now open the source it is asked to compile, which is what stage 1
-   needs and stage 0 had to work around. Of the two things stage 3 was waiting on, this was
-   the one that had a design; the other still does not have a name.
+   needs and stage 0 had to work around. Both of the things stage 3 was waiting on are now
+   done: this was the one that had a design, and the other — including a spaceship — got its
+   name on 2026-08-18 and its loader on 2026-08-19 (§16).
 2. **`break` and `continue`.** Five loops, five `going` flags, and every exit condition has to
    be reconstructed by the reader rather than read.
 3. **`&&` and `\|\|`.** §3.5's two-character operators are exactly `== <= >= !=`, so the
@@ -1716,23 +1726,43 @@ no `strtod`, no precision question, and `n = n * 10 + digit` is exact by constru
 
 ## 16. Including a file
 
-### The name of the thing is undecided, and this section does not settle it
+### The name of the thing is `spaceship`
 
-**Read this before quoting any word from this section as satellite terminology.** satellite
-has no word yet for *a unit of includable code*. This matters more here than it would
-elsewhere: §1 makes naming the generating rule of the whole language, so a word that ends up
-in `satellite.<word>` paths is a permanent surface, not a label.
+**Decided 2026-08-18.** A unit of includable satellite code is a **spaceship**. This was the
+one genuinely open question in this document (§13), and it is now closed: the word is settled
+and the rest of this section uses it.
 
-So this section does not name the thing: it says "an included file" wherever the missing word
-would go. **"Module" below is not the missing word**, and must not be renamed along with it —
-every occurrence of it is §5's and §7's settled sense of a namespace of language-owned
-functions, which is what `satellite.time`, `satellite.file` and `satellite.window` are. That
-collision is why `module` is a rejected candidate rather than the leading one, and it cuts
-both ways: an instruction to treat every "module" in this section as a placeholder would
-rename `satellite.window`'s namespace and the native-module mechanism along with the unit.
+It earns the name the way `capsule` and `spacesuit` earned theirs — by being the thing the
+metaphor already implies. A capsule holds one computation. A spacesuit is worn by one occupant
+and is the thing with an inside and an outside, which is the whole of `satellite.protected`
+and `satellite.public`. A **spaceship is the vessel that carries both**, which is exactly what
+a file of capsules and spacesuits is. The metaphor was already three-quarters built; this is
+the piece it was missing.
 
-Three candidates have been rejected, each for a reason that is about satellite rather than
-taste:
+It also fixes what was wrong with `payload`, the proposal it replaces: a payload is *cargo*,
+and an included file is not cargo. The file **contains** capsules and spacesuits — it is the
+vessel, not the thing carried — so `payload` had the relation backwards, and would have left
+the language with a word for the contents and still no word for the container.
+
+**`spaceship` does not rename `module`.** Every occurrence of "module" in this section is §5's
+and §7's settled sense of a namespace of language-owned functions, which is what
+`satellite.time`, `satellite.file` and `satellite.window` are. A spaceship is a *file*; a
+module is a *namespace*. `satellite.window` is both — a module implemented as a native
+spaceship — and that is a sentence the two words can now express, which is the test `module`
+alone failed.
+
+**The word does not enter the grammar.** `satellite.include(x)` is unchanged and gains no new
+spelling; `spaceship` is the word for error messages, documentation and internal type names,
+not a keyword. So it costs the parser nothing and §1's reservation rule is untouched — a user
+may still name a variable `spaceship`, exactly as they may name one `time`.
+
+One thing it collides with, named here so nobody rediscovers it: C++ calls `operator<=>` the
+spaceship operator. That is a collision in the *implementation's* vocabulary only. §3.5 fixes
+satellite's two-character operators at exactly `== <= >= !=`, satellite has no `<=>` and is
+not getting one, and the C++ in this repo does not define `operator<=>` anywhere — verified.
+
+Three candidates were rejected on the way here, each for a reason that is about satellite
+rather than taste:
 
 | candidate | rejected because |
 |---|---|
@@ -1740,28 +1770,46 @@ taste:
 | `include` | it is already the **verb**. `satellite.include(x)` says what is done; the noun cannot be the same word, or `include an include` is the best the documentation can do. |
 | `library` | `satellite.library` is the global variable registry (§6) **and** one of the keys in §5's segment-1 dispatch table. The word is spoken for twice over, and reusing it would make `satellite.library` mean two unrelated things at the same position in a path. |
 
-**The standing proposal is `payload`** — what a capsule carries, which is the same metaphor
-`capsule` and `spacesuit` already run on. It is a proposal and **has not been accepted**. Until
-the user decides, nothing should be written that hardcodes any of these words into a path, a
-message, a filename or a test.
+A fourth, `payload`, was the standing proposal until 2026-08-18 and lost to `spaceship` for
+the reason given above: it names the cargo, and what needed a name was the vessel.
 
-### Status: designed, not built
+### Status: **built**, 2026-08-19
 
-`satellite.include` has had its syntax since §2 and none of its meaning: the parser accepts
-any expression and the evaluator skips the node (`eval.cpp`, where `Include` items are
-walked past deliberately). **Everything below this line is design.** §15 put it behind file
-I/O, because including a file means reading one, and **file I/O has now landed** (§8.3.1), so
-the prerequisite is gone and what remains is the writing — and the name.
+`satellite.include` had its syntax from §2 and none of its meaning for the whole of the
+project until now: the parser accepted any expression and the evaluator skipped the node.
+Both prerequisites cleared first — file I/O in §8.3.1, because including a spaceship means
+reading a file, and the **name**, settled above on 2026-08-18. It then landed in two pieces:
+
+| piece | when | what it is |
+|---|---|---|
+| spans carry a file id, and a `SourceMap` | 2026-08-18 | so an error names the spaceship it is in |
+| the load phase | 2026-08-19 | `loader.cpp`, `loader.hpp`, `loader_test.cpp` |
+
+The spans went first because they are the only piece with no dependency on the rest — worth
+having with one file, and what every later error message rests on. See "Spans have to name a
+file" below.
+
+**`loader.cpp` is 314 lines, 184 of them code**, which is the measurement this section's
+design was making a claim about. Merging before resolve() rather than teaching resolve()
+about files is what bought that: the loader concatenates declarations and knows nothing about
+what a capsule means. `resolve()` and the evaluator needed **no changes at all** for the merge
+itself — their only edits were to name both files in an "already defined" error, which is a
+message improvement rather than a mechanism.
+
+Everything below this line is now description, not design, with one exception: the native
+`.so` half of a language-owned spaceship is still M7. `satellite.include(satellite.window)`
+today resolves to `window.satl` in the installed library directory and reports that it cannot
+find one.
 
 §1 decides all three spellings without any new rule:
 
 | form | means |
 |---|---|
 | `satellite.include(satellite)` | the runtime. Ceremony, and it stays ceremony (§2). |
-| `satellite.include(satellite.window)` | a **language-owned** module, possibly backed by a native `.so` |
-| `satellite.include(my_parser)` | a **user-owned** satellite source file |
+| `satellite.include(satellite.window)` | a **language-owned** spaceship, possibly backed by a native `.so` |
+| `satellite.include(my_parser)` | a **user-owned** spaceship |
 
-A bare name is user-owned, so it names the user's file; a satellite-rooted path is
+A bare name is user-owned, so it names the user's spaceship; a satellite-rooted path is
 language-owned, so it names ours. Nothing had to be invented.
 
 **Not `satellite.gtk`.** GTK is somebody else's library, and a name that leaks it into the
@@ -1772,8 +1820,8 @@ shim where it is an implementation detail.
 
 ### Where it happens: a load phase between parse and resolve
 
-The includer's tree is parsed, its `Include` items are walked, each named file is loaded and
-parsed recursively, and every declaration is **merged into one Program**. Only then does
+The includer's tree is parsed, its `Include` items are walked, each named spaceship is loaded
+and parsed recursively, and every declaration is **merged into one Program**. Only then does
 resolve() run, over the merged whole.
 
 This is the decision that makes everything else cheap. resolve() already handles forward
@@ -1781,44 +1829,88 @@ references and mutual recursion across a whole program (§6's collect-then-walk)
 in one file calling a capsule in another needs no new machinery at all — it is the same
 problem resolve() was already built for. The evaluator changes not at all.
 
-- **Search order**: the directory of the *including* file, then `$SATELLITE_PATH`, then the
-  installed library directory — which is `library_path()`'s three tiers (§9's "Finding the
-  installed library") with the including file's own directory in front. Including-file-first is what lets a
-  project's own files find each other with no configuration, which is the case that has to be
-  frictionless.
+- **Search order**: the directory of the *including* spaceship, then `$SATELLITE_PATH`, then
+  the installed library directory — which is `library_path()`'s three tiers (§9's "Finding the
+  installed library") with the including spaceship's own directory in front. Includer-first is
+  what lets a project's own spaceships find each other with no configuration, which is the
+  case that has to be frictionless.
 - **Included once**, keyed by canonicalised path. Without it, `a` including both `b` and `c`
   where both include `d` is a duplicate-capsule error rather than a working program.
 - **Cycles need no separate check.** Include-once makes `a -> b -> a` terminate on its own:
   by the time `b` asks for `a`, `a` is already loading and is skipped. This is what C's
-  include guards do, and it is a feature rather than an error — two files that genuinely need
-  each other's declarations are what resolve()'s forward references are for.
-- **Flat namespace**, and a name defined twice across files is an error naming *both* files.
-  §1 makes a user's capsule bare, and qualifying a name by the file it came from would need a
-  second naming rule for no benefit until the library is large. Revisit when it is.
-- **Top-level statements in an included file run**, in include order, before the includer's
-  own. That is the included file's body, and a file that sets up globals needs one.
+  include guards do, and it is a feature rather than an error — two spaceships that genuinely
+  need each other's declarations are what resolve()'s forward references are for.
+- **Flat namespace**, and a name defined twice across spaceships is an error naming *both*.
+  §1 makes a user's capsule bare, and qualifying a name by the spaceship it came from would
+  need a second naming rule for no benefit until the library is large. Revisit when it is.
+- **Top-level statements in an included spaceship run**, in include order, before the
+  includer's own. That is the spaceship's body, and one that sets up globals needs it.
 
-### Spans have to name a file, and it costs nothing
+Four things the build settled that the list above had not:
 
-Today `format_error` takes one source string, because a program was one file. The moment a
+- **A language-owned name skips the user's directory.** The search order above reads as one
+  list, and it cannot be: if `window.satl` sitting next to a program could satisfy
+  `satellite.include(satellite.window)`, a user file would be answering to a language-owned
+  path and §1's rule that a satellite-rooted name is *ours* would hold only until someone
+  picked an unlucky filename. So the includer's directory is searched for a bare name and
+  skipped for a satellite-rooted one.
+- **The entry point is marked seen before it is parsed**, not after. Otherwise a spaceship
+  that includes *itself* loads twice — once as the entry point, once through its own include
+  — and reports every capsule in it as already defined. The self-cycle is the smallest cycle
+  there is and it has to terminate like any other.
+- **Errors from an included spaceship come out before the includer's**, matching the order
+  the items merge in. A reader fixes the dependency before the thing that depends on it.
+- **The `Include` node stays in the merged Program** rather than being stripped once
+  followed. The evaluator skips it, as it always did, so the merged tree stays a faithful
+  record of what each spaceship actually said.
+
+**The REPL is line-at-a-time, so an include does not outlive its line.** Typing
+`satellite.include(helper)` at the prompt loads `helper.satl` and resolves it, and the next
+line is a fresh program that has never heard of it. This is not an include limitation: a
+capsule *defined* at the prompt does not survive to the next line either. Making the REPL
+accumulate a program across lines is its own design question and is not part of §16.
+
+### Spans have to name a file, and it costs nothing — **done**
+
+`format_error` used to take one source string, because a program was one file. The moment a
 program spans files, a runtime error inside an included capsule prints line N against the
 **wrong file's text** — a language whose errors lie about where they are is unusable, and for
 a self-hosting compiler it is fatal.
 
-So `Span` gains a file id and the interpreter gains a `SourceMap` holding one text per loaded
-file. The id is free:
+So `Span` gained a file id and the interpreter gained a `SourceMap` holding one text per
+loaded spaceship. The id was free, and the arithmetic held exactly:
 
 ```
-Span today:                3 x size_t                  = 24 bytes
+Span before:               3 x size_t                  = 24 bytes
 Span with a file id:  2 x size_t + 2 x uint32          = 24 bytes
 ```
 
-A line number does not need 64 bits and neither does a file id, so `Expr` stays 96 bytes and
-`Stmt` stays 200. The `SourceMap` is internal C++ bookkeeping — a vector of texts indexed by
-that id — and is not a language feature. It is emphatically **not**
-`satellite.container.map` (§8.6). The distinction is not about which one exists: a `SourceMap`
-is C++ bookkeeping internal to the loader, and would not become satellite's map even now that
-satellite has one.
+**Verified**: `ast_test` prints `Value=40 Expr=96 Stmt=200 Span=24` and a `static_assert` in
+`ast.hpp` fails the build if `Span` ever leaves 24 bytes on 64-bit. A line number does not
+need 64 bits and neither does a file id, so `Expr` stayed 96 and `Stmt` stayed 200.
+
+The `SourceMap` is internal C++ bookkeeping — a vector of texts indexed by that id — and is
+not a language feature. It is emphatically **not** `satellite.container.map` (§8.6). The
+distinction is not about which one exists: a `SourceMap` is C++ bookkeeping internal to the
+loader, and would not become satellite's map even now that satellite has one.
+
+Three things this landing settled that were not obvious from the plan:
+
+- **`format_error` takes the `SourceMap`, not a text.** All three of them — parser, resolver,
+  evaluator — used to be handed a source string by their caller, which is precisely the call
+  that would pick the wrong one. Passing the map and letting each look up `span.file` makes
+  the mistake unspellable rather than merely discouraged.
+- **An unnamed source is a real case, not a fallback.** The REPL evaluates a line that came
+  from no file, so `SourceMap` allows an empty path and errors then read `line 3` exactly as
+  before. `span_location()` is the one place that chooses, so all three renderers agree.
+- **The evaluator and resolver needed no changes at all**, which is the claim above about
+  resolve() doing the work already, arriving one stage early. Neither ever constructs a
+  `Span` — both only propagate the ones the parser built — so the file id flows through both
+  passes untouched. The only `Span` literals in the interpreter are the two inside `span_of`
+  and `span_join`.
+
+The payoff does not wait for the loader: `satl --run` knows the path it opened, so an error
+in a single-file program already reads `orbit.satl:3` instead of `line 3`.
 
 ### Native modules, and what they buy
 

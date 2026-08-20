@@ -51,6 +51,18 @@ namespace satellite {
 struct ResolveError {
     std::string message;
     Span span;
+
+    // A SECOND place worth naming, rendered under the first as a note.
+    //
+    // §16 is what makes this necessary rather than decorative. The include
+    // namespace is flat, so a name defined in two spaceships is an error — and
+    // an error that points only at the second definition sends the reader
+    // hunting for a first one that could be in any file the program loaded.
+    // Both halves of "already defined" have a location, so both get printed.
+    //
+    // Empty note means there is no second location and nothing extra renders.
+    std::string note;
+    Span note_span;
 };
 
 // Everything known about a capsule before it ever runs.
@@ -216,6 +228,10 @@ struct ResolveResult {
 // rather than a comment.
 ResolveResult resolve(const Program &program);
 
-std::string format_error(const ResolveError &error, const std::string &source);
+// Takes the SourceMap rather than one text so the error is rendered against
+// the spaceship its span actually came from (§16). resolve() runs over a merged
+// Program whose declarations may come from several, which is exactly when
+// picking the text by hand goes wrong.
+std::string format_error(const ResolveError &error, const SourceMap &sources);
 
 } // namespace satellite

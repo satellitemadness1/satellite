@@ -6,7 +6,7 @@
 satl
 satl-term
 
-# The thirteen test binaries (Makefile: test). library_test_tsan is the
+# The fourteen test binaries (Makefile: test). library_test_tsan is the
 # ThreadSanitizer build and is 10MB, which is the one that really hurts.
 #
 # reg_test is a late addition to this list and was tracked at b0185ba — 561KB of
@@ -24,6 +24,7 @@ interp_test
 lexer_test
 library_test
 library_test_tsan
+loader_test
 parser_test
 reg_test
 satellite_string_test

@@ -2,6 +2,7 @@
 
 #include "env.hpp"
 #include "eval.hpp"
+#include "loader.hpp"
 #include "parser.hpp"
 #include "satellite_string.hpp"
 
@@ -19,8 +20,15 @@ namespace {
 // The tree and its resolution have ONE lifetime: resolve() records a pointer
 // into the Program for every capsule and every method, and an Object records a
 // pointer into the ResolveResult for its spacesuit.
+//
+// The LoadResult is what the parse used to be, and it holds three things that
+// have to stay put: the merged Program those pointers point INTO, the
+// SourceMap every error is rendered against, and the errors themselves. It is
+// stored by value in an Image that is never moved after resolve() runs, which
+// is what makes the pointers safe — the same contract as before §16, with a
+// merged Program in place of a single file's.
 struct Image {
-    ParseResult parsed;
+    LoadResult loaded;
     ResolveResult resolved;
 };
 
@@ -49,25 +57,17 @@ void retain(std::shared_ptr<Image> image)
 
 // Collects a parse or eval failure into the same text channel, so a caller
 // never has to ask which stage broke.
-void report(std::string &out, const std::vector<ParseError> &errors,
-            const std::string &source)
+//
+// One template rather than three near-identical overloads, now that all three
+// error types render through the same two-argument call. The three format_error
+// implementations stay separate — they draw different things — but the loop
+// over them never had a reason to be written out three times.
+template <typename Error>
+void report(std::string &out, const std::vector<Error> &errors,
+            const SourceMap &sources)
 {
-    for (const ParseError &error : errors)
-        out += format_error(error, source);
-}
-
-void report(std::string &out, const std::vector<EvalError> &errors,
-            const std::string &source)
-{
-    for (const EvalError &error : errors)
-        out += format_error(error, source);
-}
-
-void report(std::string &out, const std::vector<ResolveError> &errors,
-            const std::string &source)
-{
-    for (const ResolveError &error : errors)
-        out += format_error(error, source);
+    for (const Error &error : errors)
+        out += format_error(error, sources);
 }
 
 // satellite.return(satellite) is success and yields 0. A number becomes the
@@ -149,11 +149,14 @@ InterpResult run_source(const std::string &source, const std::string &ns,
     InterpResult result;
 
     std::shared_ptr<Image> image = std::make_shared<Image>();
-    image->parsed = parse(source);
-    if (!image->parsed.ok()) {
+    // A REPL line has no path, so its errors say "line 3" and name no file,
+    // and an include in it is resolved from the working directory.
+    image->loaded = load(source);
+    if (!image->loaded.ok()) {
         // Every syntax error, not just the first: the parser already recovers
-        // and keeps going, so burying the rest here would waste that.
-        report(result.output, image->parsed.errors, source);
+        // and keeps going, so burying the rest here would waste that — and the
+        // loader keeps going across spaceships for the same reason.
+        report(result.output, image->loaded.errors, image->loaded.sources);
         result.status = 1;
         return result;
     }
@@ -164,18 +167,18 @@ InterpResult run_source(const std::string &source, const std::string &ns,
     // layout and its method table. It is also where an unknown variable inside
     // a capsule is caught — before any of the program runs, instead of partway
     // through its output.
-    image->resolved = resolve(image->parsed.program);
+    image->resolved = resolve(image->loaded.program);
     if (!image->resolved.ok()) {
-        report(result.output, image->resolved.errors, source);
+        report(result.output, image->resolved.errors, image->loaded.sources);
         result.status = 1;
         return result;
     }
 
     Evaluator evaluator(image->resolved, ns, echo);
-    evaluator.run(image->parsed.program);
+    evaluator.run(image->loaded.program);
 
     result.output = evaluator.output();
-    report(result.output, evaluator.errors(), source);
+    report(result.output, evaluator.errors(), image->loaded.sources);
     result.ok = evaluator.ok();
     result.status = status_of(evaluator.returned(), result.ok);
 
@@ -185,30 +188,31 @@ InterpResult run_source(const std::string &source, const std::string &ns,
 }
 
 InterpResult run_program(const std::string &source,
-                         const std::vector<std::string> &args)
+                         const std::vector<std::string> &args,
+                         const std::string &path)
 {
     InterpResult result;
 
     std::shared_ptr<Image> image = std::make_shared<Image>();
-    image->parsed = parse(source);
-    if (!image->parsed.ok()) {
-        report(result.output, image->parsed.errors, source);
+    image->loaded = load(source, path);
+    if (!image->loaded.ok()) {
+        report(result.output, image->loaded.errors, image->loaded.sources);
         result.status = 1;
         return result;
     }
 
-    image->resolved = resolve(image->parsed.program);
+    image->resolved = resolve(image->loaded.program);
     if (!image->resolved.ok()) {
-        report(result.output, image->resolved.errors, source);
+        report(result.output, image->resolved.errors, image->loaded.sources);
         result.status = 1;
         return result;
     }
 
     Evaluator evaluator(image->resolved, "main", false);
-    evaluator.run_entry(image->parsed.program, args_to_list(args));
+    evaluator.run_entry(image->loaded.program, args_to_list(args));
 
     result.output = evaluator.output();
-    report(result.output, evaluator.errors(), source);
+    report(result.output, evaluator.errors(), image->loaded.sources);
     result.ok = evaluator.ok();
     result.status = status_of(evaluator.returned(), result.ok);
 
@@ -237,7 +241,10 @@ InterpResult run_file(const std::string &path,
     full.push_back(path);
     full.insert(full.end(), args.begin(), args.end());
 
-    return run_program(buffer.str(), full);
+    // The path goes to run_program as well as into argz, so an error names the
+    // file it happened in instead of a bare line number. That is §16's payoff
+    // arriving early: it needs no loader, only a Span that can carry a file id.
+    return run_program(buffer.str(), full, path);
 }
 
 std::string eval_line(const std::string &line)

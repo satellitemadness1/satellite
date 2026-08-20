@@ -38,22 +38,28 @@ is not finished.
 **Works today:** lexer, parser, resolver and evaluator; capsules (functions)
 with forward references and mutual recursion; spacesuits (classes) with single
 inheritance, virtual dispatch, constructors and access control; exact
-arbitrary-precision decimal numbers; strings, lists, slicing; `if` / `else` /
-`while` / `for`; file I/O; a global variable registry with lock-free reads; a
-REPL; and a GTK terminal in a separate binary.
+arbitrary-precision decimal numbers; strings, lists, maps, slicing; `if` /
+`else` / `while` / `for`; file I/O; **multi-file programs** — a **spaceship** is
+satellite's word for a file of includable code, and `satellite.include(helper)`
+loads `helper.satl` and merges its declarations into the program that included
+it; a global variable registry with lock-free reads; a REPL; and a GTK terminal
+in a separate binary.
 
-**Not built:** `satellite.include` is parsed and then ignored. The parser
-accepts any expression and the evaluator skips the node, so
-`satellite.include(anything_at_all)` is accepted in silence — including a file
-does nothing yet, and saying so plainly beats implying otherwise. There is no
-`break` or `continue`. There is no `&&` or `||`: `.and()` and `.or()` exist as
-methods, but they are ordinary calls, so both sides evaluate and neither
-short-circuits. There is no string-to-number conversion and no map container.
-`satellite.returns(T)` is parsed but never enforced at run time. There is no
-garbage collector, so a cycle between objects leaks. The GUI window is designed
-and unbuilt.
+Includes are loaded once per file (so a diamond is not a duplicate-definition
+error), cycles terminate rather than being rejected, and an error inside an
+included spaceship is reported against *that* spaceship's filename and line.
 
-Eleven test binaries cover the above and all pass, including a ThreadSanitizer
+**Not built:** there is no `break` or `continue`. There is no `&&` or `||`:
+`.and()` and `.or()` exist as methods, but they are ordinary calls, so both
+sides evaluate and neither short-circuits. There is no string-to-number
+conversion. `satellite.returns(T)` is parsed but never enforced at run time.
+There is no garbage collector, so a cycle between objects leaks. The GUI window
+is designed and unbuilt, which is also why `satellite.include(satellite.window)`
+— the language-owned form of an include — has nothing to find yet. The REPL
+evaluates one line at a time, so an include typed at the prompt does not outlive
+its line; neither does a capsule defined there.
+
+Fourteen test binaries cover the above and all pass, including a ThreadSanitizer
 build of the registry test.
 
 ## What it is trying to be
@@ -135,8 +141,8 @@ depends on it twice.
 
 ```sh
 make                 # builds satl and satl-term
-make test            # eleven test binaries, each PASS/FAIL on exit
-make TSAN=0 test     # the other ten, for platforms without libtsan
+make test            # fourteen test binaries, each PASS/FAIL on exit
+make TSAN=0 test     # the other thirteen, for platforms without libtsan
 
 ./satl --run FILE [args]   # run a program
 ./satl                     # REPL on stdin/stdout
@@ -190,6 +196,42 @@ A spacesuit is a class. `satellite.protected` and `satellite.public` are blocks
 rather than per-member annotations, and both tables are flattened at resolve
 time, so nothing walks a superclass chain at run time. Objects are a reference
 type — value semantics does not survive the first method that mutates a field.
+
+A program can span files. Each one is a **spaceship**, and an include names it
+without its extension — a bare name is yours, by the same rule that makes a
+bare identifier yours:
+
+```satellite
+// greeting.satl
+satellite.capsule greet(satellite.variable.string who)
+{
+    satellite.console.display("hello, " + who + "!")
+    satellite.return(satellite)
+}
+```
+
+```satellite
+// main.satl
+satellite.include(greeting)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> argz)
+{
+    greet("world")
+    satellite.return(satellite)
+}
+```
+
+```sh
+./satl --run main.satl
+hello, world!
+```
+
+`greeting.satl` is found beside the spaceship that included it, then in the
+installed library directory. Every spaceship is loaded once no matter how many
+times it is reached, so two files that both include a third is not an error —
+and neither is a cycle: `a` including `b` including `a` terminates, and the two
+can call each other's capsules, because names resolve across the whole merged
+program rather than file by file.
 
 More in [`example/`](example/), including a satellite lexer written in
 satellite:

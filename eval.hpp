@@ -287,6 +287,11 @@ const char *module_of(const Value &value);
 // Renders an error with the offending source line and a caret under it. Spans
 // are byte offsets, never decoded positions — decode() is neither injective
 // nor stable, so a caret computed from decoded text drifts (§10).
-std::string format_error(const EvalError &error, const std::string &source);
+//
+// Takes the SourceMap rather than one text because this is the call §16 named
+// as the one that would otherwise lie: a runtime error inside an included
+// spaceship rendered against the includer's text prints line N of the wrong
+// file, confidently and with a caret.
+std::string format_error(const EvalError &error, const SourceMap &sources);
 
 } // namespace satellite

@@ -60,7 +60,7 @@ void Parser::error(const Token &at, const std::string &message)
     // unclosed construct is the '(' or '{' that was never closed.
     const Token &where =
         (at.kind == TokenKind::End && pos_ > 0) ? previous() : at;
-    errors_.push_back(ParseError{message, span_of(where)});
+    errors_.push_back(ParseError{message, span_of(where, file_)});
     panic_ = true;
 }
 
@@ -159,7 +159,7 @@ void Parser::take_statement_keyword()
 Span Parser::span_from(size_t first) const
 {
     const Token &a = first < toks_.size() ? toks_[first] : toks_.back();
-    return span_join(span_of(a), span_of(previous()));
+    return span_join(span_of(a, file_), span_of(previous(), file_));
 }
 
 } // namespace satellite

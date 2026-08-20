@@ -50,12 +50,20 @@ struct ParseResult {
 // Parse a whole program. Never throws. On a syntax error the parser records
 // it, skips to the next plausible starting point and keeps going, so one
 // missing brace does not bury every later mistake.
-ParseResult parse(const std::string &source);
-ParseResult parse(const std::vector<Token> &tokens);
+//
+// `file` is the SourceMap id stamped into every Span this parse produces, so
+// an error found here can still name its spaceship after the loader has merged
+// several of them into one Program (§16). A caller with one source leaves it 0.
+ParseResult parse(const std::string &source, uint32_t file = 0);
+ParseResult parse(const std::vector<Token> &tokens, uint32_t file = 0);
 
 // Renders an error with the offending line and a caret under it. Correct
 // because token offsets are byte offsets into the source — decode() could not
 // be used here, since it is neither injective nor stable.
-std::string format_error(const ParseError &error, const std::string &source);
+//
+// Takes the whole SourceMap rather than one text because the error names which
+// source it came from: handing this the wrong text is exactly the bug §16's
+// file id exists to prevent, and there is no way to make that mistake here.
+std::string format_error(const ParseError &error, const SourceMap &sources);
 
 } // namespace satellite

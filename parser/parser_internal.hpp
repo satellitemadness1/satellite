@@ -24,12 +24,18 @@ class Parser {
 public:
     // The token vector is copied rather than referenced so that a generic
     // close welded into a '>=' can be split in place; see parse_type.
-    explicit Parser(std::vector<Token> tokens) : toks_(std::move(tokens)) {}
+    //
+    // `file` is the SourceMap id every Span produced here carries. It is a
+    // parser-wide constant rather than a per-token one because a token vector
+    // comes from exactly one lex() of exactly one source.
+    explicit Parser(std::vector<Token> tokens, uint32_t file = 0)
+        : toks_(std::move(tokens)), file_(file) {}
 
     ParseResult run();
 
 private:
     std::vector<Token> toks_;
+    uint32_t file_ = 0;
     size_t pos_ = 0;
     std::vector<ParseError> errors_;
     bool panic_ = false;

@@ -99,8 +99,10 @@ const char *module_of(const Value &value)
     }
 }
 
-std::string format_error(const EvalError &error, const std::string &source)
+std::string format_error(const EvalError &error, const SourceMap &sources)
 {
+    const std::string &source = sources.text(error.span.file);
+
     size_t at = std::min(error.span.start, source.size());
     size_t begin = source.rfind('\n', at == 0 ? 0 : at - 1);
     begin = (begin == std::string::npos) ? 0 : begin + 1;
@@ -108,8 +110,8 @@ std::string format_error(const EvalError &error, const std::string &source)
     if (end == std::string::npos)
         end = source.size();
 
-    std::string out = "satellite: " + error.message + " (line " +
-                      std::to_string(error.span.line) + ")\n";
+    std::string out = "satellite: " + error.message + " (" +
+                      span_location(error.span, sources) + ")\n";
     out += "    " + source.substr(begin, end - begin) + "\n";
     out += "    " + std::string(at - begin, ' ') + "^\n";
     return out;

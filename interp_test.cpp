@@ -229,6 +229,47 @@ int main()
               "and says it cannot read the file");
     }
 
+    // --- an error names the file it happened in (§16) -----------------------
+    //
+    // The Span file id arriving before the loader does. run_file knows the
+    // path, so a failure can say WHERE rather than just which line — which is
+    // the whole reason the id exists, and it pays off with one file as readily
+    // as with several.
+    {
+        std::string path = "/tmp/satellite_interp_named_" +
+                           std::to_string(getpid()) + ".sat";
+        {
+            std::ofstream out(path);
+            out << "satellite.capsule satellite.main("
+                   "satellite.container.list<satellite.variable.string> argz)\n"
+                   "{\n"
+                   "    satellite.variable.number x = nope\n"
+                   "    satellite.return(satellite)\n"
+                   "}\n";
+        }
+
+        InterpResult r = run_file(path, {});
+        check(!r.ok, "the bad program fails");
+        check(r.output.find(path + ":3") != std::string::npos,
+              "the error names the file and the line, not just the line");
+
+        std::remove(path.c_str());
+
+        // The same source with no path is the REPL's case, and must NOT invent
+        // a file name. "line 3" is the truth there, not a degradation.
+        InterpResult anonymous =
+            run_program("satellite.capsule satellite.main("
+                        "satellite.container.list<satellite.variable.string> argz)\n"
+                        "{\n"
+                        "    satellite.variable.number x = nope\n"
+                        "    satellite.return(satellite)\n"
+                        "}\n",
+                        {"prog"});
+        check(!anonymous.ok, "the same program still fails without a path");
+        check(anonymous.output.find("line 3") != std::string::npos,
+              "a source with no file renders a bare line number");
+    }
+
     // --- the REPL's run command --------------------------------------------
     // The window has no shell behind it, so `run <file>` at the prompt is the
     // only way to interpret a file from inside it.

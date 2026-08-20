@@ -136,11 +136,11 @@ ExprPtr Parser::parse_primary()
 
     if (t.kind == TokenKind::Number) {
         advance();
-        return make_expr(NumberLit{t.number, t.text}, span_of(t));
+        return make_expr(NumberLit{t.number, t.text}, span_of(t, file_));
     }
     if (t.kind == TokenKind::String) {
         advance();
-        return make_expr(StringLit{t.str, t.text}, span_of(t));
+        return make_expr(StringLit{t.str, t.text}, span_of(t, file_));
     }
     if (t.kind == TokenKind::Word) {
         advance();
@@ -148,8 +148,8 @@ ExprPtr Parser::parse_primary()
         // makes satellite.time.now() ordinary member access rather than a
         // special path form.
         if (t.text == "satellite")
-            return make_expr(SatelliteLit{}, span_of(t));
-        return make_expr(Name{t.text}, span_of(t));
+            return make_expr(SatelliteLit{}, span_of(t, file_));
+        return make_expr(Name{t.text}, span_of(t, file_));
     }
     if (is_punct(0, "(")) {
         advance();

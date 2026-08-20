@@ -70,7 +70,16 @@ private:
 
     void fail(Span span, std::string message)
     {
-        out_.errors.push_back(ResolveError{std::move(message), span});
+        out_.errors.push_back(ResolveError{std::move(message), span, {}, {}});
+    }
+
+    // The same, plus a second location the reader has to see to act on the
+    // first — "already defined" being the case that needs it (§16).
+    void fail_with_note(Span span, std::string message, Span note_span,
+                        std::string note)
+    {
+        out_.errors.push_back(ResolveError{std::move(message), span,
+                                           std::move(note), note_span});
     }
 
     ResolveResult &out_;

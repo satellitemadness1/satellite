@@ -15,8 +15,8 @@ written down. Where a claim could not be verified, it says so rather than
 asserting.
 
 Verified state: clang 24 trunk, -std=c++20, libstdc++, -Wall -Wextra -O2. The
-interpreter is twelve translation units and satl-term is one more, and a
-from-scratch rebuild of all thirteen emits no diagnostics. All eleven test
+interpreter is thirteen translation units and satl-term is one more, and a
+from-scratch rebuild of all fourteen emits no diagnostics. All fourteen test
 binaries pass, the ThreadSanitizer build of library_test included. Sizes
 measured in that run, since three of them are budgets the design keeps quoting:
 Value=40, Expr=96, Stmt=200, Number=32, Span=24.
@@ -86,9 +86,18 @@ before, and the Makefile explains each decision where the variable is defined
 — in particular that prefix is baked into the binary and DESTDIR is baked into
 nothing, which is the whole contract with a packaging system.
 
-Bootstrapping (§15) and including a file (§16) are DESIGN decisions and nothing
-more. Neither is implemented. satellite.include is still parsed, validated and
-then skipped by the evaluator's top-level walk, which was re-verified today.
+Including a spaceship (§16) — BUILT 2026-08-19, loader.cpp / loader.hpp /
+loader_test.cpp, with the Span file id and SourceMap it rests on landed the day
+before. satellite.include(helper) loads helper.satl and merges its declarations
+into the includer's Program before resolve() runs. Include-once by canonical
+path, cycles terminating rather than rejected, included bodies running first,
+and errors named against the spaceship they are actually in. The evaluator
+still skips Include nodes in its top-level walk, but that skip now means the
+opposite of what it used to: the work is finished before run() is called.
+
+Bootstrapping (§15) is still a DESIGN decision and nothing more. Stage 3
+(self-compilation to a fixpoint) was blocked behind §16 and is now unblocked;
+stages 1 and 2 were never blocked on anything and are also unwritten.
 
 
 DECIDED / DO NOT REDO
@@ -170,13 +179,28 @@ DECIDED / DO NOT REDO
     file are syscalls.
 
 
-THE OPEN NAMING QUESTION — READ THIS BEFORE RENAMING ANYTHING
--------------------------------------------------------------
-What do we call a unit of includable satellite code? This is NOT decided. §16's
-opening subsection now says the same thing at length and marks every occurrence
-of "module" in that section as a placeholder; this entry exists so that nobody
-has to read §16 to find out that the question is live. §13 points here too: it
-is the one genuinely open question left in the design document.
+THE NAMING QUESTION — ANSWERED 2026-08-18
+-----------------------------------------
+What do we call a unit of includable satellite code? A SPACESHIP. Decided
+2026-08-18; §16's opening subsection carries the reasoning and is authoritative.
+This was the last genuinely open question in the design document, and §13 now
+records it as closed.
+
+Why it won: the metaphor was already three-quarters built. A capsule holds one
+computation, a spacesuit is worn by one occupant and has an inside and an
+outside, and a spaceship is the vessel that carries both — which is what a file
+of capsules and spacesuits is.
+
+It does NOT rename "module". A spaceship is a file; a module is a namespace of
+language-owned functions (satellite.time, satellite.file, satellite.window).
+satellite.window is a module implemented as a native spaceship, and being able
+to say that sentence is the test the word "module" alone failed.
+
+It does NOT enter the grammar. satellite.include(x) is unchanged; `spaceship`
+is vocabulary for error messages, docs and internal type names, not a keyword,
+so §1's one-reserved-word rule is untouched and a user may still name a variable
+`spaceship`. Note for C++ readers: `operator<=>` is nothing to do with this, and
+this repo defines no `operator<=>` anywhere (verified 2026-08-18).
 
 Rejected, each for a reason that still holds:
 
@@ -188,55 +212,96 @@ Rejected, each for a reason that still holds:
   - "library" — taken twice over. satellite.library is the global variable
                 registry, and `library` is one of the four segment-1 parser
                 dispatch keys alongside variable, container and statement.
+  - "payload" — the standing proposal until 2026-08-18, and it lost for a reason
+                worth keeping: a payload is CARGO, and an included file is not
+                cargo. The file CONTAINS capsules and spacesuits, so it is the
+                vessel, not the thing carried. "payload" named the contents and
+                left the container with no name at all.
 
-DECIDED: "payload". A unit of includable satellite code is a payload -- what a
-satellite is launched to carry, as against the bus that flies it, which is what
-a library file is to a program. It collides with nothing (not a dispatch key,
-not a type namespace, not an existing method), it keeps the verb and the noun
-distinct the way C says #include/header and Python says import/module, and no
-other language has claimed it.
-
-The mechanism is still unimplemented, so nothing is named yet. When it is
-written, `payload` is the word for the error messages and the documentation.
-Whether the install directory becomes share/satellite/payloads/ or stays
-share/satellite/lib/ is still open: `lib` is what every packager recognises and
-no more contradicts "payload" than Ruby's lib/ contradicts "gem".
+The mechanism is still unimplemented, so nothing is named in code yet. When it
+is written, `spaceship` is the word for the error messages and the
+documentation. Whether the install directory becomes share/satellite/spaceships/
+or stays share/satellite/lib/ is still open: `lib` is what every packager
+recognises and no more contradicts "spaceship" than Ruby's lib/ contradicts
+"gem".
 
 
 WHAT IS NEXT, IN ORDER
 ----------------------
-[ ] 1. Make satellite.include mean something. §16, "Including a file". Called
-    that rather than "the module system" on purpose, per the naming question
-    above.
+[x] 1. Make satellite.include mean something. §16 -- the spaceship system.
+    DONE 2026-08-19. loader.cpp / loader.hpp / loader_test.cpp.
 
-    It is first because it is the next thing that is buildable: its stated
-    prerequisite was file I/O, on the grounds that including a file means
-    reading one, and file I/O landed today. It is also what §15's stage 3 --
-    self-compilation to a fixpoint -- is blocked behind, so every later
-    bootstrap stage waits on this one.
+    It went in two pieces: the spans on 2026-08-18, the load phase on
+    2026-08-19. §15's stage 3 -- self-compilation to a fixpoint -- was blocked
+    behind this and is now unblocked.
 
-    §16 has the shape settled and most of it is cheap. The load phase sits
-    between parse and resolve, merging every included file's declarations into
-    one Program, and resolve() then runs over the merged whole. That is what
-    makes it cheap: §6's collect-then-walk already handles forward references
-    and mutual recursion across a program, so a capsule in one file calling a
-    capsule in another needs no new machinery, and the evaluator changes not at
-    all. Include-once keyed by canonicalised path, search order of
-    including-file-first, and a flat namespace are all in §16.
+    The shape held exactly as §16 predicted. The load phase sits between parse
+    and resolve, merging every included spaceship's declarations into one
+    Program, and resolve() runs over the merged whole. That is what made it
+    cheap: §6's collect-then-walk already handled forward references and mutual
+    recursion, so a capsule in one spaceship calling a capsule in another
+    needed NO new machinery, and the evaluator changed not at all. 184 lines of
+    code in loader.cpp, and the only edits outside it were error-message
+    improvements. Include-once keyed by canonicalised path (realpath), search
+    order of including-spaceship-first, and a flat namespace all work as
+    specified.
 
-    THE ONE HARD PART is spans. Today Span is three size_t and carries a line
-    number but no file identity -- measured at 24 bytes, and format_error takes
-    one source string in all three of parser.hpp, env.hpp and eval.hpp, because
-    a program was one file. The moment a program spans files, a runtime error
-    inside an included file prints its line number against the WRONG file's
-    text, and a language whose errors lie about where they are is unusable. The
-    fix is a SourceMap holding one text per loaded file, plus a file id in
-    Span, and it is free: two size_t and two uint32 is still 24 bytes, because
-    a line number does not need 64 bits and neither does a file id. Verified
-    today that the budget it has to fit into is Span=24, Expr=96, Stmt=200. The
-    SourceMap is internal C++ bookkeeping and emphatically not
-    satellite.container.map, which remains unbuilt and is needed for none of
-    this.
+    Four things the build settled that §16 had not:
+
+    - A LANGUAGE-OWNED NAME SKIPS THE USER'S DIRECTORY. §16's search order
+      reads as one list and cannot be: if window.satl next to a program could
+      satisfy satellite.include(satellite.window), a user file would be
+      answering to a language-owned path and §1's rule would hold only until
+      someone picked an unlucky filename.
+    - THE ENTRY POINT IS MARKED SEEN BEFORE IT IS PARSED, not after, or a
+      spaceship that includes ITSELF loads twice and reports every capsule in
+      it as already defined. The self-cycle is the smallest cycle there is.
+    - ERRORS FROM AN INCLUDED SPACESHIP COME OUT FIRST, matching the order the
+      items merge in, so the reader fixes the dependency first.
+    - "ALREADY DEFINED" NOW NAMES BOTH DEFINITIONS. §16 asked for this and it
+      needed a note span on ResolveError -- the first definition can be in a
+      spaceship the reader has never opened, reached two includes down.
+
+    Known and deliberate: the REPL is line-at-a-time, so an include typed at
+    the prompt does not outlive its line. Neither does a capsule defined there,
+    so this is the REPL's model rather than an include limitation. Making the
+    REPL accumulate a program across lines is its own design question.
+
+    Still open under §16: the native .so half of a language-owned spaceship,
+    which is M7. satellite.include(satellite.window) resolves to window.satl in
+    the installed library directory and correctly reports that there is none.
+
+    [x] THE ONE HARD PART, spans -- DONE 2026-08-18. Span now carries a file
+        id and the interpreter has a SourceMap, so an error renders against the
+        text it actually came from. It cost nothing, as predicted: two size_t
+        plus two uint32 is still 24 bytes, ast_test prints Span=24 alongside
+        Value=40 Expr=96 Stmt=200, and a static_assert in ast.hpp fails the
+        build if that ever stops being true.
+
+        Three things worth knowing before writing the loader on top of it:
+
+        - format_error in all three of parser.hpp, env.hpp and eval.hpp now
+          takes the SourceMap, NOT a source string. Handing it one text was the
+          exact call that would render an error against the wrong spaceship, so
+          the signature no longer allows it. span_location() is the single
+          place that turns a span into "line 3" or "orbit.satl:3".
+        - An empty path is a real case, not a fallback: the REPL's source came
+          from no file, and its errors correctly still say "line 3".
+        - resolve() and the evaluator needed ZERO changes -- neither ever
+          builds a Span, both only propagate the parser's -- so the id flows
+          through both passes on its own. That is the same "the evaluator
+          changes not at all" §16 promised, arriving one stage early.
+
+        Already paying off with one file: satl --run knows the path it opened,
+        so a failure reads "orbit.satl:3" instead of "line 3".
+
+        The SourceMap is internal C++ bookkeeping and emphatically not
+        satellite.container.map. That distinction is not about which one exists
+        -- the map landed with M9 (§8.6) -- it is that a SourceMap is
+        loader-internal C++ and would not become satellite's map even now that
+        satellite has one.
+
+    [x] THE LOAD PHASE -- DONE 2026-08-19, described above.
 
 [ ] 2. §10's two Library fixes, "filed before resources land" -- and the
     resources have landed.
@@ -316,8 +381,8 @@ DESIGN.md.
 
   make                      builds satl and satl-term
   make -s                   the same, quiet; what to use when reading warnings
-  make test                 all eleven test binaries, each PASS/FAIL on exit
-  make TSAN=0 test          the other ten, without the ThreadSanitizer build.
+  make test                 all fourteen test binaries, each PASS/FAIL on exit
+  make TSAN=0 test          the other thirteen, without the ThreadSanitizer build.
                             TSan is 64-bit-only and libtsan2 does not exist on
                             i386 or armhf, and both binary packages are
                             Architecture: any, so this path has to work.

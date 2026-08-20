@@ -77,11 +77,11 @@ EVAL_SRCS = eval/helpers.cpp eval/help.cpp eval/types.cpp eval/session.cpp \
 EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
 OBJS      = main.o library.o satellite_string.o system.o lexer.o \
-            ast.o value.o interp.o $(EVAL_OBJS) $(PARSER_OBJS) \
+            ast.o value.o loader.o interp.o $(EVAL_OBJS) $(PARSER_OBJS) \
             $(BIGNUM_OBJS) $(ENV_OBJS)
 HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
-            lexer.hpp ast.hpp parser.hpp env.hpp eval.hpp interp.hpp \
-            eval/eval_internal.hpp parser/parser_internal.hpp \
+            lexer.hpp ast.hpp parser.hpp env.hpp eval.hpp loader.hpp \
+            interp.hpp eval/eval_internal.hpp parser/parser_internal.hpp \
             bignum/bignum_internal.hpp env/env_internal.hpp
 # format.hpp and format.def are deliberately NOT in HDRS. Every object depends on
 # HDRS, and no object includes either file — there is no VM yet — so listing them
@@ -89,7 +89,7 @@ HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
 # The format_test rule below names them itself, which is the dependency that is
 # actually real. Add them here when a translation unit in OBJS includes them.
 TESTSRCS  = library.cpp satellite_string.cpp system.cpp lexer.cpp \
-            ast.cpp value.cpp interp.cpp $(EVAL_SRCS) \
+            ast.cpp value.cpp loader.cpp interp.cpp $(EVAL_SRCS) \
             $(PARSER_SRCS) $(BIGNUM_SRCS) $(ENV_SRCS)
 TESTFLAGS = -std=c++20 -Wall -Wextra -pthread
 
@@ -162,6 +162,9 @@ eval_test: eval_test.cpp $(LIBOBJS)
 interp_test: interp_test.cpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ interp_test.cpp $(LIBOBJS)
 
+loader_test: loader_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ loader_test.cpp $(LIBOBJS)
+
 env_test: env_test.cpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ env_test.cpp $(LIBOBJS)
 
@@ -188,7 +191,7 @@ format_test: format_test.cpp format.hpp format.def
 reg_test: reg_test.cpp reg.hpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ reg_test.cpp $(LIBOBJS)
 
-test: library_test $(TSAN_TEST) satellite_string_test bignum_test format_test reg_test lexer_test ast_test parser_test env_test eval_test interp_test spacesuit_test
+test: library_test $(TSAN_TEST) satellite_string_test bignum_test format_test reg_test lexer_test ast_test parser_test env_test eval_test interp_test loader_test spacesuit_test
 	./library_test
 	$(if $(TSAN_TEST),./$(TSAN_TEST))
 	./satellite_string_test
@@ -201,6 +204,7 @@ test: library_test $(TSAN_TEST) satellite_string_test bignum_test format_test re
 	./env_test
 	./eval_test
 	./interp_test
+	./loader_test
 	./spacesuit_test
 
 # satellite against compiled C++ with the compiler's own time counted, which is
@@ -326,7 +330,7 @@ clean:
 	$(MAKE) -C example/py_compare clean
 	rm -f satl satl-term library_test library_test_tsan satellite_string_test \
 	      lexer_test ast_test parser_test env_test eval_test interp_test \
-	      spacesuit_test bignum_test format_test reg_test \
+	      loader_test spacesuit_test bignum_test format_test reg_test \
 	      *.o eval/*.o parser/*.o bignum/*.o env/*.o *.o.tmp .libdir-stamp \
 	      dist/satl.1.gz dist/satl-term.1.gz
 

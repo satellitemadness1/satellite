@@ -21,7 +21,17 @@ void Resolver::collect(const Program &program)
         std::string key = capsule_key(*capsule);
         auto inserted = out_.capsules.emplace(key, CapsuleInfo{});
         if (!inserted.second) {
-            fail(capsule->span, "capsule " + key + " is already defined");
+            // Both definitions get named. While a program was one file the
+            // reader could find the other one by scrolling; after §16 the
+            // first definition may be in a spaceship they have never opened,
+            // reached through an include two levels down.
+            const Capsule *first = inserted.first->second.capsule;
+            if (first)
+                fail_with_note(capsule->span,
+                               "capsule " + key + " is already defined",
+                               first->span, "first defined here");
+            else
+                fail(capsule->span, "capsule " + key + " is already defined");
             continue;
         }
         inserted.first->second.capsule = capsule;
@@ -120,19 +130,41 @@ ResolveResult resolve(const Program &program)
     return result;
 }
 
-std::string format_error(const ResolveError &error, const std::string &source)
+namespace {
+
+// The source line under a span, with a caret. Factored out of format_error
+// when the note arrived, because a note needs exactly the same block drawn
+// against a DIFFERENT span — often in a different spaceship, which is the
+// whole reason it exists.
+std::string caret_block(const Span &span, const SourceMap &sources)
 {
-    size_t at = std::min(error.span.start, source.size());
+    const std::string &source = sources.text(span.file);
+
+    size_t at = std::min(span.start, source.size());
     size_t begin = source.rfind('\n', at == 0 ? 0 : at - 1);
     begin = (begin == std::string::npos) ? 0 : begin + 1;
     size_t end = source.find('\n', at);
     if (end == std::string::npos)
         end = source.size();
 
-    std::string out = "satellite: " + error.message + " (line " +
-                      std::to_string(error.span.line) + ")\n";
-    out += "    " + source.substr(begin, end - begin) + "\n";
+    std::string out = "    " + source.substr(begin, end - begin) + "\n";
     out += "    " + std::string(at - begin, ' ') + "^\n";
+    return out;
+}
+
+} // namespace
+
+std::string format_error(const ResolveError &error, const SourceMap &sources)
+{
+    std::string out = "satellite: " + error.message + " (" +
+                      span_location(error.span, sources) + ")\n";
+    out += caret_block(error.span, sources);
+
+    if (!error.note.empty()) {
+        out += "satellite: " + error.note + " (" +
+               span_location(error.note_span, sources) + ")\n";
+        out += caret_block(error.note_span, sources);
+    }
     return out;
 }
 

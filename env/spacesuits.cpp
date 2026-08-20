@@ -18,16 +18,34 @@ void Resolver::collect_suits(const Program &program)
 
         // One namespace for both, because both are named by a bare word and
         // `foo(1)` would otherwise have two readings.
-        if (out_.capsules.count(suit->name)) {
-            fail(suit->span, suit->name +
-                             " is already a capsule; a spacesuit and a capsule "
-                             "cannot share a name");
+        //
+        // Both collisions below name the other definition as well as this one.
+        // §16's namespace is flat across spaceships, so the thing being
+        // collided with is no longer necessarily on screen, or even in a file
+        // the reader has opened.
+        auto clash = out_.capsules.find(suit->name);
+        if (clash != out_.capsules.end()) {
+            const std::string message =
+                suit->name + " is already a capsule; a spacesuit and a capsule "
+                             "cannot share a name";
+            if (clash->second.capsule)
+                fail_with_note(suit->span, message, clash->second.capsule->span,
+                               "the capsule is here");
+            else
+                fail(suit->span, message);
             continue;
         }
 
         auto inserted = out_.suits.emplace(suit->name, SpacesuitInfo{});
         if (!inserted.second) {
-            fail(suit->span, "spacesuit " + suit->name + " is already defined");
+            const std::string message =
+                "spacesuit " + suit->name + " is already defined";
+            const Spacesuit *first = inserted.first->second.suit;
+            if (first)
+                fail_with_note(suit->span, message, first->span,
+                               "first defined here");
+            else
+                fail(suit->span, message);
             continue;
         }
         inserted.first->second.suit = suit;

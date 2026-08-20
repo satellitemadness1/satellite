@@ -29,8 +29,16 @@ void Evaluator::run(const Program &program)
         if (failed())
             return;
 
-        // satellite.include is parsed and validated, then ignored: there is no
-        // module system in v1 and saying so is better than implying one.
+        // An include has already happened by the time anything runs: §16's
+        // load phase followed it, parsed the spaceship it named and merged
+        // those declarations into the Program being walked right now. The node
+        // is left in the tree rather than stripped, so the merged Program is
+        // still a faithful record of what each spaceship said — but there is
+        // nothing left for the evaluator to do with it.
+        //
+        // This is no longer the "parsed, validated, ignored" of §2. The skip
+        // reads the same and means the opposite: then there was nothing behind
+        // it, now the work is finished before run() is called.
         if (std::holds_alternative<Include>(item))
             continue;
         if (std::holds_alternative<Capsule>(item))
