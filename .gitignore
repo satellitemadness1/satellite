@@ -30,6 +30,12 @@ reg_test
 satellite_string_test
 spacesuit_test
 
+# pcg_test is a PROTOTYPE and not a Makefile product, so it is deliberately
+# outside the list above rather than a fifteenth name in it. It is built by
+# hand while plans/random.md is being worked through; the source is tracked and
+# the binary is not.
+pcg_test/pcg_test
+
 # Objects. *.o.tmp is the interrupted-compile leftover that `clean`'s own
 # *.o does not match — see plans/todo.txt item 5.
 *.o
