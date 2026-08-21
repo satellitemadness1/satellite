@@ -50,6 +50,26 @@
 #define SAT_OP(id, ident, text, arity)
 #endif
 
+// The one value in the arity column that is not a count. A path marked
+// SAT_VARIADIC is followed by a kind-1 immediate holding the operand count, and
+// then by that many operand units.
+//
+// Decoding stays positional, which is the property the whole format rests on:
+// the reader still always knows what comes next. It knows the path, the path
+// says "a count is next", the count says how many follow. What it no longer
+// needs is for that number to have been the same in every program ever compiled.
+//
+// 255 rather than 0 or -1 because 0 is a real arity — it is the one
+// satellite.help was recorded as, which is exactly how the overview form came
+// to be the only form the format could write. A sentinel that collides with a
+// legitimate value is not a sentinel.
+//
+// NOT #undef'd at the bottom with the others. format.hpp reads it back as
+// format::kVariadic so that the number lives here and only here.
+#ifndef SAT_VARIADIC
+#define SAT_VARIADIC 255
+#endif
+
 // --- the kind tags: which id space the rest of the unit is read against ------
 // §17 gives word 0 bits[63:60] to a kind. This list is the ONLY place a kind is
 // assigned, and it is here rather than in DESIGN.md because of what happened
@@ -208,6 +228,29 @@ SAT_WORD(77, HAS,     "has")
 SAT_WORD(78, KEYS,    "keys")
 SAT_WORD(79, VALUES,  "values")
 
+// satellite.random.<tier> and satellite.random.<tier>.range — §18. Five words
+// buy six paths, because the tier is a SEGMENT rather than an argument.
+//
+// That shape was forced by the arity table below when these words were minted:
+// SAT_PATH recorded ONE arity per path, so a single `satellite.random.ultra`
+// taking either a digit count or a low-high pair was one path with two arities
+// and could not be encoded — the same gap P_HELP was stuck in. SAT_VARIADIC has
+// since closed that gap for both, so the words are no longer load-bearing for
+// the format's sake; they are kept because `.range` names the second question
+// instead of leaving a reader to infer it from an argument count. Four ids in a
+// space that has 2^60 of them.
+//
+// `range` is a new word and not a reuse of anything: nothing else in the
+// registry means an interval. It is deliberately NOT a selector — there is no
+// receiver it reads relative to, and `.range` here is the tail of a language
+// path, not a method on the value `satellite.random.ultra`, which is not a
+// value at all.
+SAT_WORD(80, RANDOM,  "random")
+SAT_WORD(81, FAST,    "fast")
+SAT_WORD(82, NORMAL,  "normal")
+SAT_WORD(83, ULTRA,   "ultra")
+SAT_WORD(84, RANGE,   "range")
+
 // --- which words are SELECTORS ------------------------------------------------
 // §17.5: "when the selector is a builtin (38..72) CALL_METHOD builds no frame."
 // That sentence was true for exactly one commit. 906a4a8 ended the selectors at
@@ -302,25 +345,42 @@ SAT_PATH(P_DIR_CHANGE,     1, 32, 34, 0, 1)   // satellite.directory.change(d)
 SAT_PATH(P_DIR_EXISTS,     1, 32, 35, 0, 1)   // satellite.directory.exists(d)
 SAT_PATH(P_BOOL_TRUE,      1, 21, 36, 0, 0)   // satellite.bool.true
 SAT_PATH(P_BOOL_FALSE,     1, 21, 37, 0, 0)   // satellite.bool.false
-SAT_PATH(P_HELP,           1, 29,  0, 0, 0)   // satellite.help -- SEE BELOW
+SAT_PATH(P_HELP,           1, 29,  0, 0, SAT_VARIADIC)   // satellite.help[(x)]
 
-// P_HELP's arity is a KNOWN GAP, not a recorded fact, and it is written down
-// here rather than fixed because fixing it is a format decision and this file's
-// job today is to make such gaps visible.
+// P_HELP is the first variadic row, and it is the reason SAT_VARIADIC exists.
 //
-// eval/modules.cpp:96-102 accepts satellite.help with ZERO arguments (the
-// overview) or ONE (help for a thing), and errors only at two. Decoding is
-// positional, so a name code takes a fixed number of operand units and there is
-// no way to write `satellite.help(x)` into a stream at all. The 0 above encodes
-// the overview and silently loses the other form.
+// eval/modules.cpp:98-105 accepts satellite.help with ZERO arguments (the
+// overview) or ONE (help for a thing), and errors only at two. This row read 0
+// for three commits, which encoded the overview and silently lost the other
+// form: `satellite.help(x)` could not be written into a stream at all. The 0 was
+// not a wrong number, which is what made it survive — it was a right number for
+// half the path.
 //
-// It is the first path with two arities and it will not be the last, so the
-// decision is general: either a variable-arity marker whose next unit is a
-// kind-1 immediate holding the count -- which keeps decoding positional, since
-// the reader still always knows what comes next -- or the §17.5 treatment, where
-// CALL_METHOD already reads its count from the stream for exactly this reason.
-// The second needs no new machinery and is the recommendation. Neither is
-// decided; see DESIGN.md §17 "What is not decided".
+// It was recorded here as a KNOWN GAP rather than fixed, on the grounds that
+// fixing it was a format decision. It is decided now. A path with more than one
+// arity writes its count into the stream, the same answer §17.5 gives for
+// methods and for the same reason, and the marker generalises to every path that
+// grows a second shape later.
+
+// §18's six. The FIRST four-segment paths the language has, and the reason the
+// name code was four words from the start rather than three.
+//
+// Two shapes per tier, and they are two PATHS rather than one path with two
+// arities. That was FORCED when these rows were written — the arity column held
+// one count per path and an overloaded `ultra` could not be encoded at all — and
+// it is not forced now, because SAT_VARIADIC above is exactly the marker that
+// was missing. The surface is kept as it is regardless: `.range(low, high)`
+// costs one word, says at the call site which of the two questions is being
+// asked, and does not need a reader to count arguments to find out.
+//
+// So these six rows stay fixed-arity on purpose. A path goes variadic when it
+// has two shapes AND one name, which is P_HELP's situation and not this one.
+SAT_PATH(P_RAND_FAST,      1, 80, 81,  0, 1)  // satellite.random.fast(digits)
+SAT_PATH(P_RAND_NORMAL,    1, 80, 82,  0, 1)  // satellite.random.normal(digits)
+SAT_PATH(P_RAND_ULTRA,     1, 80, 83,  0, 1)  // satellite.random.ultra(digits)
+SAT_PATH(P_RAND_FAST_R,    1, 80, 81, 84, 2)  // .fast.range(low, high)
+SAT_PATH(P_RAND_NORMAL_R,  1, 80, 82, 84, 2)  // .normal.range(low, high)
+SAT_PATH(P_RAND_ULTRA_R,   1, 80, 83, 84, 2)  // .ultra.range(low, high)
 
 // --- machine ops: kind 6, and a SEPARATE id space ----------------------------
 // These are not names. No satellite program can write MOVE, and §1's rule is

@@ -33,6 +33,8 @@ std::string help_overview()
 "  file       satellite.file.open(path, \"read\"|\"write\"|\"append\")\n"
 "                 .ok() .read() .write(s) .close() .error() .path()\n"
 "  directory  satellite.directory.current()  .change(dir)  .exists(dir)\n"
+"  random     satellite.random.ultra(40)      fast normal ultra; 40 digits\n"
+"                 .range(low, high)           inclusive at both ends\n"
 "  globals    satellite.library.<namespace>.<name>\n"
 "\n"
 "  help       satellite.help          this text (the () is optional)\n"

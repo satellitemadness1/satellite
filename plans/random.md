@@ -1,6 +1,30 @@
 satellite.random — the plan
 ===========================
 
+STATUS: **built**, 2026-08-19. `random.hpp`, `random.cpp`, `bignum/random.cpp`,
+five words and six paths in `format.def`, `random_test`, and DESIGN.md §18 —
+which is now where this lives, because a plan describes what was going to happen
+and §18 describes what does. Read that first; this file is kept for the
+measurement session it records.
+
+Two things landed differently from what is written below, both recorded in §18:
+
+* **The arbitrary-precision sampler is limb-aligned, not bit-aligned.** The
+  bit_length form under IMPLEMENTATION NOTES assumes a binary bignum, and §8.1
+  deliberately made satellite's base 10^9 — so a bit length is not something the
+  representation knows and computing one costs more than the sampling. Drawing
+  the top limb over `[0, top]` and the rest over the whole base gives the same
+  uniformity and the same "never rejects more than half the time", because
+  `trim()` guarantees `top >= 1`.
+* **A ceiling was needed and none was planned.** `Number::MAX_RANDOM_DIGITS` is
+  100000, and it is a refusal rather than a clamp. Without it
+  `.range(0, 1e2000000000)` is a two-billion-digit allocation attempt from
+  twelve characters of source.
+
+Everything else is as specified, including the two open recommendations that
+were deliberately NOT taken: the fold is still `(acc + x) / 2` and the reseed is
+still there.
+
 Written 2026-08-19, after a measurement session against pcg-cpp-0.98 in the
 tree. Every number below was measured on this machine (AlmaLinux 10.2, the
 Xeon DESIGN §17 quotes) rather than reasoned about, and the measurement is
@@ -8,6 +32,7 @@ named wherever a decision rests on it. Where something was not verified, it
 says so.
 
 DESIGN.md does not yet have a §18 for this. Writing one is part of the work.
+(It does now — see STATUS above. The rest of this file is left as written.)
 
 
 WHAT LANDS

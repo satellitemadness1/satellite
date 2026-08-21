@@ -130,6 +130,22 @@ inline constexpr Path kPaths[] = {
 };
 inline constexpr size_t kPathCount = sizeof(kPaths) / sizeof(kPaths[0]);
 
+// The arity column's one non-count value, read back from format.def so the
+// number lives there and only here reads it. A path carrying this is followed by
+// a kind-1 immediate holding the operand count, then by that many operand units.
+#ifndef SAT_VARIADIC
+#error "format.def did not define SAT_VARIADIC"
+#endif
+inline constexpr unsigned kVariadic = SAT_VARIADIC;
+
+// Whether the count comes from the stream rather than from the table. A decoder
+// must ask this BEFORE trusting `arity`, because on a variadic row `arity` is
+// not a count and consuming 255 operand units would run off the end.
+constexpr bool is_variadic(const Path &p)
+{
+    return p.arity == kVariadic;
+}
+
 // The words that name a METHOD, and therefore compile to CALL_METHOD rather than
 // to a framed call. §17.5 wrote this as the range 38..72; it is a list because
 // the set is not contiguous and never was — see format.def.
@@ -314,6 +330,18 @@ constexpr bool paths_distinct()
     return true;
 }
 
+// The arity column holds a count, or the one sentinel that means "the count is
+// in the stream". Anything above the sentinel is a row that read_path would hand
+// a decoder as a number of operand units to consume, so the boundary is stated
+// rather than trusted.
+constexpr bool arities_are_in_band()
+{
+    for (size_t i = 0; i < kPathCount; i++)
+        if (kPaths[i].arity > kVariadic)
+            return false;
+    return true;
+}
+
 constexpr bool selectors_are_words()
 {
     for (size_t i = 0; i < kSelectorCount; i++)
@@ -377,6 +405,21 @@ static_assert(detail::paths_are_rooted(),
               "format.def: a SAT_PATH is not rooted at `satellite` (§1)");
 static_assert(detail::paths_distinct(),
               "format.def: two SAT_PATH rows share a quadruple — the second is unreachable");
+
+// The variadic marker. `kVariadic != 0` is the whole point of choosing 255: 0 is
+// a REAL arity, and P_HELP carried it for three commits meaning "no operands"
+// when the truth was "the table cannot say." A sentinel that is also a valid
+// value cannot be distinguished from one, which is how that went unnoticed.
+static_assert(kVariadic != 0,
+              "format.def: SAT_VARIADIC collides with a real arity — 0 means "
+              "a path that genuinely takes no operands");
+static_assert(detail::arities_are_in_band(),
+              "format.def: a SAT_PATH arity exceeds SAT_VARIADIC");
+// The count unit's kind is part of the marker's contract, so it is pinned here
+// rather than described. A decoder that reads the count against any other space
+// reads a number that is not the count.
+static_assert(static_cast<uint64_t>(Kind::IMMEDIATE) == 1,
+              "format.def: a variadic path's count unit is a kind-1 immediate");
 
 // Selectors are cross-referenced by identifier, so the compiler already rejects
 // a name that is not a word; these catch a duplicated row and keep the

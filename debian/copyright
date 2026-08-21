@@ -1,20 +1,54 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: satellite
 Upstream-Contact: Terran Satellite <terransatellite@gmail.com>
-Comment: The licence text below is a transcription of the LICENSE file at the
+Comment: The Expat text below is a transcription of the LICENSE file at the
  top of the upstream source tree, reformatted for this file's syntax and not
  reworded. LICENSE is what `make install` puts in
  /usr/share/doc/satellite/copyright, and dh_installdocs puts this file at the
  same path in the package, so the two routes must state the same terms; check
  them against each other whenever either moves.
+ .
+ The two routes do NOT agree about pcg-cpp-0.98, and that is a known gap rather
+ than an oversight: this file carries its Apache-2.0 stanza and the top-level
+ LICENSE does not mention it, so a tarball install states only the Expat terms.
+ The .deb is correct; `make install` is the route that needs deciding.
 
 Files: *
 Copyright: 2026 Terran Satellite <terransatellite@gmail.com>
 License: Expat
 
+Files: pcg-cpp-0.98/*
+Copyright: 2014 Melissa O'Neill <oneill@pcg-random.org>
+License: Apache-2.0
+Comment: The PCG random number generators, vendored into the source tree and
+ header-only, used by random.cpp for satellite.random (DESIGN.md section 18).
+ The stanza is here because `Files: *` above would otherwise state the wrong
+ licence and the wrong copyright holder for this directory. This is the ONLY
+ part of the tree that is not the upstream author's own work.
+ .
+ Version 0.98 is licensed under Apache-2.0 alone. Later releases of pcg-cpp
+ offer a choice of Apache-2.0 or Expat; this one does not, so do not restate it
+ as dual-licensed on the strength of the project's later terms.
+
 Files: debian/*
 Copyright: 2026 Terran Satellite <terransatellite@gmail.com>
 License: Expat
+
+License: Apache-2.0
+ Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ use this file except in compliance with the License. You may obtain a copy of
+ the License at
+ .
+     http://www.apache.org/licenses/LICENSE-2.0
+ .
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations under
+ the License.
+ .
+ On Debian systems the complete text of the Apache License, Version 2.0 can be
+ found in /usr/share/common-licenses/Apache-2.0.
 
 License: Expat
  Permission is hereby granted, free of charge, to any person obtaining a copy

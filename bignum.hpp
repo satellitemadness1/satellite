@@ -38,6 +38,24 @@
 
 namespace satellite {
 
+// A source of 32-bit draws, and the ONLY thing this file knows about a random
+// number generator.
+//
+// It is here rather than in random.hpp because the sampler below is bignum work
+// — rejection sampling over limbs — and putting it the other way round would
+// make bignum.hpp include the PCG headers, which are a vendored third-party
+// tree that nothing else in the interpreter has any business seeing. One
+// virtual call per limb is not measurable against a call that has just spent
+// between 50 and 3000 ms throwing draws away on purpose (§18).
+class Bits32 {
+public:
+    virtual ~Bits32() = default;
+
+    // Uniform over the whole 32-bit range. A generator that cannot promise that
+    // is not one this sampler's uniformity argument holds for.
+    virtual unsigned next() = 0;
+};
+
 // Arbitrary-precision unsigned integer, base 10^9, little-endian limbs.
 //
 // Base 10^9 rather than 2^32, per §8.1, because this backs a DECIMAL type:
@@ -72,6 +90,19 @@ public:
     // layer has no way to raise one.
     static void divmod(const BigInt &a, const BigInt &b, BigInt &q, BigInt &r);
 
+    // Uniform over [0, bound), by rejection sampling. `bound` must not be zero;
+    // the caller checks, for the same reason divmod's does.
+    //
+    // §18 wanted this in BITS: draw bit_length(bound) of them, reject if the
+    // result is not below bound, which rejects at most half the time. That
+    // algorithm assumes a binary bignum, and §8.1 deliberately made this one
+    // base 10^9 — so a bit length is not a thing this representation knows, and
+    // computing one costs more than the sampling does. The limb-aligned form
+    // below has the SAME guarantee for the same reason: the top limb is drawn
+    // over [0, top+1) rather than the full base, so the sampling space is at
+    // most (top+1)/top times the bound, which is at most 2x when top is 1.
+    static BigInt random_below(const BigInt &bound, Bits32 &bits);
+
     // "0" when zero; never a leading zero otherwise.
     std::string to_digits() const;
 
@@ -93,6 +124,18 @@ public:
     // notices, narrow enough that 1/3 is readable.
     static constexpr int DEFAULT_DIVISION_DIGITS = 34;
     static constexpr int MAX_DIVISION_DIGITS = 10000;
+
+    // The widest draw satellite.random will make, in decimal digits, and the
+    // ceiling on how wide a `.range` may be. It is a REFUSAL and not a clamp:
+    // a program that asks for a million digits has made a mistake, and silently
+    // handing back a hundred thousand would hide it.
+    //
+    // 100000 rather than a round power of two because the unit it bounds is
+    // decimal digits. One draw at the ceiling is ~11k limbs and about 44 KB
+    // that a program then has to do something with; the arithmetic underneath
+    // is exact at any size, so the limit is about what a caller can use rather
+    // than about what this file can compute.
+    static constexpr int MAX_RANDOM_DIGITS = 100000;
 
     Number() = default;
 
@@ -200,6 +243,17 @@ public:
     static Number divide(const Number &a, const Number &b, int digits);
     static Number modulo(const Number &a, const Number &b);
 
+    // Uniform over [0, bound). False, leaving `out` untouched, when `bound` is
+    // not a positive integer or is wider than MAX_RANDOM_DIGITS — the caller
+    // turns that into a satellite error, because only the caller has a span to
+    // hang one on.
+    //
+    // This is the whole of satellite.random's arbitrary precision: the 32-bit
+    // bound a generator offers cannot express 10^40, let alone a range between
+    // two numbers a program wrote down, so the draw has to happen out here
+    // where the digits live.
+    static bool random_below(const Number &bound, Bits32 &bits, Number &out);
+
     // VALUE equality, not representation equality, and it has to be spelled out
     // because the two differ: 1 is `sig 1 exp 0` and 1.0 is `sig 10 exp -1`.
     // The defaulted member-wise operator== would call those unequal, and Value
@@ -220,6 +274,16 @@ private:
 
     // The magnitude scaled up to `target`, which must not exceed exp_.
     BigInt scaled_magnitude(int target) const;
+
+    // The exact integer magnitude, for the random sampler. False when there is
+    // a fractional part, or when the value needs more than `max_digits` decimal
+    // digits — which is checked BEFORE the expansion, so `1e2000000000` is
+    // refused rather than attempted.
+    //
+    // scaled_magnitude(0) is not this: it multiplies by 10^exp_ unsigned, so a
+    // value stored as 1000e-1 — which is the integer 100 — would send it a
+    // negative count cast to unsigned.
+    bool integer_magnitude(BigInt &out, int max_digits) const;
 
     // Shrinks back to the small representation when the magnitude fits.
     static Number make(int sign, const BigInt &magnitude, long long exponent);

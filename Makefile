@@ -25,6 +25,15 @@ CXXFLAGS = -std=c++20 -Wall -Wextra -O2
 GTKFLAGS = $(shell pkg-config --cflags $(PKGS))
 LDLIBS   = $(shell pkg-config --libs $(PKGS))
 
+# pcg-cpp is header-only and vendored in the tree, so it adds nothing to the
+# link -- `ldd satl` lists the same six shared objects it did before §18.
+#
+# -isystem, not -I, and that is not a style preference: pcg_extras.hpp:223
+# raises -Wunused-but-set-parameter under this file's own -Wall -Wextra, and §9
+# makes a silent from-scratch rebuild a property the build has to keep. A
+# warning from a vendored header is one nobody here can fix without forking it.
+PCGFLAGS = -isystem pcg-cpp-0.98/include
+
 # LDFLAGS is set nowhere in this file on purpose, so that a distribution's
 # link-time hardening -- -Wl,-z,relro,-z,now from dpkg-buildflags, and whatever
 # the next one adds -- arrives from the environment or the command line and
@@ -63,7 +72,7 @@ ENV_SRCS = env/scopes.cpp env/names.cpp env/walk.cpp env/spacesuits.cpp \
 ENV_OBJS = $(ENV_SRCS:.cpp=.o)
 
 BIGNUM_SRCS = bignum/limbs.cpp bignum/number_core.cpp bignum/number_query.cpp \
-              bignum/number_arith.cpp bignum/render.cpp
+              bignum/number_arith.cpp bignum/render.cpp bignum/random.cpp
 BIGNUM_OBJS = $(BIGNUM_SRCS:.cpp=.o)
 
 PARSER_SRCS = parser/cursor.cpp parser/types.cpp parser/expr.cpp \
@@ -77,19 +86,20 @@ EVAL_SRCS = eval/helpers.cpp eval/help.cpp eval/types.cpp eval/session.cpp \
 EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
 OBJS      = main.o library.o satellite_string.o system.o lexer.o \
-            ast.o value.o loader.o interp.o $(EVAL_OBJS) $(PARSER_OBJS) \
-            $(BIGNUM_OBJS) $(ENV_OBJS)
+            ast.o value.o loader.o interp.o random.o $(EVAL_OBJS) \
+            $(PARSER_OBJS) $(BIGNUM_OBJS) $(ENV_OBJS)
 HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
             lexer.hpp ast.hpp parser.hpp env.hpp eval.hpp loader.hpp \
-            interp.hpp eval/eval_internal.hpp parser/parser_internal.hpp \
-            bignum/bignum_internal.hpp env/env_internal.hpp
+            interp.hpp random.hpp eval/eval_internal.hpp \
+            parser/parser_internal.hpp bignum/bignum_internal.hpp \
+            env/env_internal.hpp
 # format.hpp and format.def are deliberately NOT in HDRS. Every object depends on
 # HDRS, and no object includes either file — there is no VM yet — so listing them
 # would make one edit to format.def rebuild the whole interpreter for nothing.
 # The format_test rule below names them itself, which is the dependency that is
 # actually real. Add them here when a translation unit in OBJS includes them.
 TESTSRCS  = library.cpp satellite_string.cpp system.cpp lexer.cpp \
-            ast.cpp value.cpp loader.cpp interp.cpp $(EVAL_SRCS) \
+            ast.cpp value.cpp loader.cpp interp.cpp random.cpp $(EVAL_SRCS) \
             $(PARSER_SRCS) $(BIGNUM_SRCS) $(ENV_SRCS)
 TESTFLAGS = -std=c++20 -Wall -Wextra -pthread
 
@@ -114,6 +124,13 @@ satl-term: window.o
 
 window.o: window.cpp
 	$(CXX) $(CXXFLAGS) $(GTKFLAGS) -c -o $@ window.cpp
+
+# The only object that sees the vendored PCG headers, for the same reason
+# window.o is the only one that sees gtk: a dependency that one translation unit
+# needs is not one the whole build should carry. bignum/random.cpp does the
+# arbitrary-precision half of §18 and includes nothing from pcg-cpp at all.
+random.o: random.cpp
+	$(CXX) $(CXXFLAGS) $(PCGFLAGS) -c -o $@ random.cpp
 
 # The prefix is written to a file so that make can see it. Make invalidates a
 # target when a PREREQUISITE changes, and the value below is not a prerequisite
@@ -142,7 +159,7 @@ library_test: library_test.cpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ library_test.cpp $(LIBOBJS)
 
 library_test_tsan: library_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) -O1 -g -fsanitize=thread -o $@ library_test.cpp $(TESTSRCS)
+	$(CXX) $(TESTFLAGS) $(PCGFLAGS) -O1 -g -fsanitize=thread -o $@ library_test.cpp $(TESTSRCS)
 
 satellite_string_test: satellite_string_test.cpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ satellite_string_test.cpp $(LIBOBJS)
@@ -174,6 +191,13 @@ spacesuit_test: spacesuit_test.cpp $(LIBOBJS)
 bignum_test: bignum_test.cpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ bignum_test.cpp $(LIBOBJS)
 
+# The one test binary whose runtime is a design parameter rather than an
+# accident: every end-to-end case spends its tier's throwaway window before it
+# answers, so the cases here are on `fast` (50-100 ms) and the sampler itself is
+# tested through a stub generator that does not spin at all.
+random_test: random_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ random_test.cpp $(LIBOBJS)
+
 # format.hpp links against NOTHING — it includes only <cstdint> and <cstddef>,
 # so this is the one test binary that needs no objects at all. That is a
 # property of the format and worth keeping: the registry must be readable by a
@@ -191,11 +215,12 @@ format_test: format_test.cpp format.hpp format.def
 reg_test: reg_test.cpp reg.hpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ reg_test.cpp $(LIBOBJS)
 
-test: library_test $(TSAN_TEST) satellite_string_test bignum_test format_test reg_test lexer_test ast_test parser_test env_test eval_test interp_test loader_test spacesuit_test
+test: library_test $(TSAN_TEST) satellite_string_test bignum_test random_test format_test reg_test lexer_test ast_test parser_test env_test eval_test interp_test loader_test spacesuit_test
 	./library_test
 	$(if $(TSAN_TEST),./$(TSAN_TEST))
 	./satellite_string_test
 	./bignum_test
+	./random_test
 	./format_test
 	./reg_test
 	./lexer_test
@@ -330,7 +355,7 @@ clean:
 	$(MAKE) -C example/py_compare clean
 	rm -f satl satl-term library_test library_test_tsan satellite_string_test \
 	      lexer_test ast_test parser_test env_test eval_test interp_test \
-	      loader_test spacesuit_test bignum_test format_test reg_test \
+	      loader_test spacesuit_test bignum_test random_test format_test reg_test \
 	      *.o eval/*.o parser/*.o bignum/*.o env/*.o *.o.tmp .libdir-stamp \
 	      dist/satl.1.gz dist/satl-term.1.gz
 

@@ -6,8 +6,12 @@
 satl
 satl-term
 
-# The fourteen test binaries (Makefile: test). library_test_tsan is the
+# The fifteen test binaries (Makefile: test). library_test_tsan is the
 # ThreadSanitizer build and is 10MB, which is the one that really hurts.
+#
+# random_test is the fifteenth, added with §18 and added HERE in the same commit
+# as its Makefile rule, which is the discipline the note above asks for and the
+# one reg_test did not get.
 #
 # reg_test is a late addition to this list and was tracked at b0185ba — 561KB of
 # binary committed, exactly what the note above warns about, because the list was
@@ -26,14 +30,17 @@ library_test
 library_test_tsan
 loader_test
 parser_test
+random_test
 reg_test
 satellite_string_test
 spacesuit_test
 
 # pcg_test is a PROTOTYPE and not a Makefile product, so it is deliberately
-# outside the list above rather than a fifteenth name in it. It is built by
-# hand while plans/random.md is being worked through; the source is tracked and
-# the binary is not.
+# outside the list above rather than another name in it. It is built by hand;
+# the source is tracked and the binary is not. What it prototyped has landed as
+# random.cpp and random_test, and it is kept as the standalone harness the §18
+# timing numbers came out of — one that needs no interpreter to run is worth
+# keeping around the next time they have to be taken again.
 pcg_test/pcg_test
 
 # Objects. *.o.tmp is the interrupted-compile leftover that `clean`'s own

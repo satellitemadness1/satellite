@@ -106,7 +106,8 @@ static void test_registry()
     // which is the intent: adding to a FROZEN registry should not be something a
     // green build lets you do without looking. Bump the number here, in the same
     // commit as the SAT_WORD row.
-    check(kWordIds[kWordCount - 1] == 79, "the registry ends at 79");
+    check(static_cast<uint64_t>(Word::RANDOM) == 80, "the random block starts at 80 (§18)");
+    check(kWordIds[kWordCount - 1] == 84, "the registry ends at 84");
 
     // 18..20 are held for break and continue. This is the one hole allowed, and
     // it is checked from both sides so that filling it needs a deliberate edit.
@@ -122,6 +123,7 @@ static void test_registry()
     check_str(name(Word::TO_STRING), "to_string", "47 -> to_string");
     check_str(name(Word::GREATER_OR_EQUAL), "greater_or_equal", "72 -> greater_or_equal");
     check_str(name(Word::VALUES), "values", "79 -> values");
+    check_str(name(Word::RANGE), "range", "84 -> range");
 
     // The identifiers are deliberately not the bare words where C++ forbids it,
     // and the quoted text is what the language actually calls the thing.
@@ -130,7 +132,7 @@ static void test_registry()
 
     // An id past the end is not a word. A decoder reading a stream from a newer
     // version must be able to say so rather than index off the end of a table.
-    check(!is_defined_word(80), "80 is not yet assigned");
+    check(!is_defined_word(85), "85 is not yet assigned");
     check(!is_defined_word(0), "0 is not a word — it means an absent segment");
 }
 
@@ -212,7 +214,78 @@ static void test_paths()
     const uint64_t prefix[4] = {1, 6, 0, 0};
     check(find_path(prefix) == nullptr, "satellite.console alone is not a path");
 
-    check(kPathCount == 11, "eleven paths carry an arity");
+    // Four segments, which no path used until §18. The name code has been four
+    // words since §17 and this is the first row that fills the fourth, so it is
+    // also the first proof that find_path keys on the whole quadruple rather
+    // than on the three that happened to be populated.
+    const uint64_t ranged[4] = {1, 80, 83, 84};
+    const Path *r = find_path(ranged);
+    check(r != nullptr && r->arity == 2,
+          "satellite.random.ultra.range takes two operands");
+
+    // The same tier without .range is a DIFFERENT path with a different arity.
+    // §18 spells the second form as a fourth segment rather than overloading the
+    // third; that was once forced by the table holding one arity per path, and
+    // since SAT_VARIADIC it is a choice about the surface. Either way the two
+    // rows are distinct and neither is variadic.
+    const uint64_t bare[4] = {1, 80, 83, 0};
+    const Path *b = find_path(bare);
+    check(b != nullptr && b->arity == 1,
+          "satellite.random.ultra takes one operand");
+
+    check(kPathCount == 17, "seventeen paths carry an arity");
+}
+
+// --- the variadic marker ----------------------------------------------------
+
+static void test_variadic()
+{
+    // 0 is a real arity and 255 is not one, which is the entire distinction the
+    // marker rests on.
+    check(kVariadic != 0, "the sentinel is not a legal count");
+
+    const uint64_t help[4] = {1, 29, 0, 0};
+    const Path *h = find_path(help);
+    check(h != nullptr, "satellite.help has an arity row");
+    if (h) {
+        check(is_variadic(*h), "satellite.help is variadic — 0 or 1 arguments");
+        check_str(h->ident, "P_HELP", "the help row is P_HELP");
+
+        // The regression this marker exists to prevent. `arity == 0` was the
+        // recorded value for three commits and it meant "the overview, and the
+        // other form is unwritable" rather than "no operands".
+        check(h->arity != 0,
+              "satellite.help no longer records 0 and loses satellite.help(x)");
+    }
+
+    // A zero-arity path is NOT variadic, which is the pair the old encoding
+    // could not tell apart.
+    const uint64_t now[4] = {1, 24, 30, 0};
+    const Path *n = find_path(now);
+    check(n != nullptr && !is_variadic(*n) && n->arity == 0,
+          "satellite.time.now takes no operands and says so from the table");
+
+    // Exactly one variadic row today. This is a count and not a whitelist: a
+    // second path growing a second shape should land here deliberately, and a
+    // row going variadic by a typo in the arity column should not be silent.
+    size_t variadic = 0;
+    for (size_t i = 0; i < kPathCount; i++)
+        if (is_variadic(kPaths[i]))
+            variadic++;
+    check(variadic == 1, "P_HELP is the only variadic path");
+
+    // Every other row is a count a decoder can consume directly, and small
+    // enough to be one.
+    unsigned widest = 0;
+    for (size_t i = 0; i < kPathCount; i++)
+        if (!is_variadic(kPaths[i]) && kPaths[i].arity > widest)
+            widest = kPaths[i].arity;
+    check(widest == 2, "the widest fixed path takes two operand units");
+
+    // The count unit is read against the immediate space. §17.5 answers method
+    // arity the same way, and this is the same answer for the same reason.
+    check(static_cast<uint64_t>(Kind::IMMEDIATE) == 1,
+          "a variadic path's count arrives as a kind-1 immediate");
 }
 
 // --- machine ops ------------------------------------------------------------
@@ -280,7 +353,12 @@ static void report()
             sep = " and ";
         }
     printf(" absent\n");
-    printf("  paths: %zu with a recorded arity\n", kPathCount);
+    size_t variadic = 0;
+    for (size_t i = 0; i < kPathCount; i++)
+        if (is_variadic(kPaths[i]))
+            variadic++;
+    printf("  paths: %zu with a recorded arity, %zu of them variadic\n",
+           kPathCount, variadic);
 }
 
 int main()
@@ -289,6 +367,7 @@ int main()
     test_registry();
     test_selectors();
     test_paths();
+    test_variadic();
     test_ops();
     report();
 
@@ -299,6 +378,7 @@ int main()
     printf("PASS: format (seven kinds with spacesuit ids and machine ops apart; "
            "the registry frozen, ascending and holed only at 18..20; selectors "
            "as a list rather than a stale range; the arity table keyed by whole "
-           "path; word and op spaces independent)\n");
+           "path, with satellite.help variadic rather than silently zero; word "
+           "and op spaces independent)\n");
     return 0;
 }

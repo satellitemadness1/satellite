@@ -40,7 +40,7 @@ MAKEVARS = CXX="g++ -g" prefix=/usr \
 # packages are Architecture: any, which is a promise the package builds
 # everywhere (Policy 5.6.8), and on i386 or armhf `-fsanitize=thread` fails to
 # compile and takes dh_auto_test and the whole build down with it. Upstream's
-# TSAN=0 drops that one binary and still runs the other ten, which is a much
+# TSAN=0 drops that one binary and still runs the rest, which is a much
 # better answer than skipping the suite or narrowing the architecture list.
 TSAN_ARCHS = amd64 arm64 mips64el ppc64el riscv64 s390x
 ifeq (,$(filter $(DEB_HOST_ARCH),$(TSAN_ARCHS)))
@@ -54,8 +54,10 @@ override_dh_auto_build:
 	dh_auto_build -- $(MAKEVARS)
 
 # Nothing in the suite needs a display. DESIGN.md section 9 added the headless
-# `--run` path for exactly this reason, and the eleven test binaries link the
-# runtime and compiler objects directly without going near gtk or vte. The
+# `--run` path for exactly this reason, and the test binaries link the runtime
+# and compiler objects directly without going near gtk or vte. There are fifteen
+# of them; the count is deliberately not repeated here, because it was written as
+# "eleven" and was four out of date before anyone noticed. The
 # slowest by a wide margin is library_test_tsan, a ThreadSanitizer build of the
 # lock-free publish protocol; DEB_BUILD_OPTIONS=nocheck skips the lot.
 override_dh_auto_test:

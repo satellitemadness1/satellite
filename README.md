@@ -42,8 +42,8 @@ arbitrary-precision decimal numbers; strings, lists, maps, slicing; `if` /
 `else` / `while` / `for`; file I/O; **multi-file programs** — a **spaceship** is
 satellite's word for a file of includable code, and `satellite.include(helper)`
 loads `helper.satl` and merges its declarations into the program that included
-it; a global variable registry with lock-free reads; a REPL; and a GTK terminal
-in a separate binary.
+it; a global variable registry with lock-free reads; random numbers at arbitrary
+precision; a REPL; and a GTK terminal in a separate binary.
 
 Includes are loaded once per file (so a diamond is not a duplicate-definition
 error), cycles terminate rather than being rejected, and an error inside an
@@ -59,7 +59,7 @@ is designed and unbuilt, which is also why `satellite.include(satellite.window)`
 evaluates one line at a time, so an include typed at the prompt does not outlive
 its line; neither does a capsule defined there.
 
-Fourteen test binaries cover the above and all pass, including a ThreadSanitizer
+Fifteen test binaries cover the above and all pass, including a ThreadSanitizer
 build of the registry test.
 
 ## What it is trying to be
@@ -232,6 +232,27 @@ times it is reached, so two files that both include a third is not an error —
 and neither is a cycle: `a` including `b` including `a` terminates, and the two
 can call each other's capsules, because names resolve across the whole merged
 program rather than file by file.
+
+Random numbers come in three tiers, and the tiers differ in one thing only:
+how long the call spends throwing draws away before it answers.
+
+```satellite
+satellite.variable.number n = satellite.random.ultra(40)
+satellite.variable.number m = satellite.random.ultra.range(1, 100)
+```
+
+`ultra(40)` is uniform over `[0, 10^40)` — so about one draw in ten prints 39
+digits or fewer, because a leading zero is not printed and that is what uniform
+means. `.range` is inclusive at both ends. `fast` spends 50–100 ms, `normal`
+250–300 ms and `ultra` 2000–3000 ms; the draw itself is exact at any width,
+because a `satellite.variable.number` is.
+
+The tiers are a **statistical** character and not a security property. The
+generator underneath is PCG, which makes no cryptographic claim and whose state
+is recoverable from its output, so nothing here is described as secure — see
+[`DESIGN.md`](DESIGN.md) §18, which records what each step of the mechanism was
+measured to be worth, including the two changes that would make it stronger and
+have not been made.
 
 More in [`example/`](example/), including a satellite lexer written in
 satellite:
