@@ -24,10 +24,22 @@
 #
 # Icon is the application id rather than a file path, because that is how the
 # icon theme spec is looked up: the shell searches every theme directory for
-# <name>.svg, so the id names the artwork we install at
-# share/icons/hicolor/scalable/apps/org.satellite.terminal.svg. It matches the
-# file name and StartupWMClass for the same reason all three agree -- a shell
-# that finds the launcher by any one of them finds the icon too.
+# <name> with any extension it understands, so the id names the artwork we
+# install under share/icons/hicolor/. It matches the file name and
+# StartupWMClass for the same reason all three agree -- a shell that finds the
+# launcher by any one of them finds the icon too.
+#
+# MimeType is what makes this entry the handler for a .satl file: the type is
+# declared in dist/application-x-satellite.xml, and a file manager offers the
+# programs whose entries name it here. Without this line the type is still
+# recognised and still gets its own icon, but opening a file has nothing to
+# open it with.
+#
+# %f in Exec above is what carries the file through, and is already correct for
+# this: it is a single-file placeholder, which matches a handler launched once
+# per file. It is NOT upgraded to %F -- window.cpp opens one window on one
+# path, so a multi-file selection has to arrive as several launches rather than
+# as one launch that would silently drop every path but the first.
 [Desktop Entry]
 Type=Application
 Version=1.0
@@ -40,5 +52,6 @@ Icon=org.satellite.terminal
 Terminal=false
 Categories=Development;IDE;
 Keywords=satellite;interpreter;repl;language;programming;
+MimeType=application/x-satellite;
 StartupNotify=true
 StartupWMClass=org.satellite.terminal

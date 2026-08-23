@@ -84,3 +84,9 @@ debian/files
 debian/debhelper-build-stamp
 debian/*.substvars
 debian/*.debhelper.log
+
+# GIMP working files. The exported PNGs under icon/ are what the build
+# installs and are tracked; the layered .xcf they came from is 23MB, which is
+# 23MB every clone pays forever. Kept on disk, out of history: `git add -f` can
+# always put one in later, and taking a blob back OUT needs a history rewrite.
+icon/**/*.xcf

@@ -86,11 +86,11 @@ EVAL_SRCS = eval/helpers.cpp eval/help.cpp eval/types.cpp eval/session.cpp \
 EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
 OBJS      = main.o library.o satellite_string.o system.o lexer.o \
-            ast.o value.o loader.o interp.o random.o $(EVAL_OBJS) \
+            ast.o value.o loader.o interp.o random.o console.o $(EVAL_OBJS) \
             $(PARSER_OBJS) $(BIGNUM_OBJS) $(ENV_OBJS)
 HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
             lexer.hpp ast.hpp parser.hpp env.hpp eval.hpp loader.hpp \
-            interp.hpp random.hpp eval/eval_internal.hpp \
+            interp.hpp random.hpp console.hpp eval/eval_internal.hpp \
             parser/parser_internal.hpp bignum/bignum_internal.hpp \
             env/env_internal.hpp
 # format.hpp and format.def are deliberately NOT in HDRS. Every object depends on
@@ -99,8 +99,8 @@ HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
 # The format_test rule below names them itself, which is the dependency that is
 # actually real. Add them here when a translation unit in OBJS includes them.
 TESTSRCS  = library.cpp satellite_string.cpp system.cpp lexer.cpp \
-            ast.cpp value.cpp loader.cpp interp.cpp random.cpp $(EVAL_SRCS) \
-            $(PARSER_SRCS) $(BIGNUM_SRCS) $(ENV_SRCS)
+            ast.cpp value.cpp loader.cpp interp.cpp random.cpp console.cpp \
+            $(EVAL_SRCS) $(PARSER_SRCS) $(BIGNUM_SRCS) $(ENV_SRCS)
 TESTFLAGS = -std=c++20 -Wall -Wextra -pthread
 
 # Every test binary used to recompile every source. That was tolerable while
@@ -212,10 +212,13 @@ format_test: format_test.cpp format.hpp format.def
 
 # reg.hpp is not linked into satl: there is no VM yet, and nothing in the
 # interpreter includes it. This binary is the only consumer.
+console_test: console_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -O2 -o $@ console_test.cpp $(LIBOBJS)
+
 reg_test: reg_test.cpp reg.hpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -O2 -o $@ reg_test.cpp $(LIBOBJS)
 
-test: library_test $(TSAN_TEST) satellite_string_test bignum_test random_test format_test reg_test lexer_test ast_test parser_test env_test eval_test interp_test loader_test spacesuit_test
+test: library_test $(TSAN_TEST) satellite_string_test bignum_test random_test format_test reg_test console_test lexer_test ast_test parser_test env_test eval_test interp_test loader_test spacesuit_test
 	./library_test
 	$(if $(TSAN_TEST),./$(TSAN_TEST))
 	./satellite_string_test
@@ -223,6 +226,7 @@ test: library_test $(TSAN_TEST) satellite_string_test bignum_test random_test fo
 	./random_test
 	./format_test
 	./reg_test
+	./console_test
 	./lexer_test
 	./ast_test
 	./parser_test
@@ -312,23 +316,52 @@ install: satl satl-term dist/satl.1.gz dist/satl-term.1.gz
 # shell associated with nothing: no icon, and nothing to pin.
 	install -Dm644 dist/org.satellite.terminal.desktop \
 	    "$(DESTDIR)$(datadir)/applications/org.satellite.terminal.desktop"
-# The icon is scalable/, not a pixel size: one SVG answers every size a shell
-# asks for, and hicolor is the theme every other theme falls back to, so the
-# icon is found whichever theme the user has chosen. The basename is the
-# application id, which is what Icon= in the .desktop entry names.
-	install -Dm644 dist/org.satellite.terminal.svg \
-	    "$(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/org.satellite.terminal.svg"
+# The icon tree under dist/icons mirrors its install destination exactly, so
+# this is a copy and not a translation: every path under dist/icons/hicolor is
+# already <size>/<context>/<name>, and getting the layout wrong is a mistake
+# that shows up as a missing icon rather than as a build failure. hicolor is
+# the theme every other theme falls back to, so the artwork is found whichever
+# theme the user has chosen, and the basenames are the two names that are
+# looked up: org.satellite.terminal for Icon= in the .desktop entry, and
+# application-x-satellite for the mime type declared in
+# dist/application-x-satellite.xml.
+#
+# These are pixel sizes rather than the single scalable/ SVG that used to live
+# here, because the artwork is now a photograph and a photograph has no
+# scalable form. dist/org.satellite.terminal.svg is still in the tree and is
+# still a complete icon: to go back to it, restore the one-line install of
+# scalable/apps/ and drop the apps/ half of this walk. Installing BOTH is the
+# one thing that does not work -- the theme spec lets either satisfy a lookup,
+# so which one a shell picks stops being predictable.
+	find dist/icons -type f -name '*.png' -printf '%P\n' | while read -r f; do \
+	    install -Dm644 "dist/icons/$$f" \
+	        "$(DESTDIR)$(datadir)/icons/$$f" || exit 1; \
+	done
+# The mime packet, which is what makes a .satl file a satellite file rather
+# than an unlabelled text file. It has to be installed before
+# update-mime-database runs below: that tool compiles every packet in
+# packages/ into the binary index a file manager actually reads, and a packet
+# added afterwards is inert until something triggers the compile again.
+	install -Dm644 dist/application-x-satellite.xml \
+	    "$(DESTDIR)$(datadir)/mime/packages/application-x-satellite.xml"
 # A shell finds a launcher through two indexes, and a newly installed .desktop
 # and icon are invisible until both are rebuilt -- which is why a fresh install
 # shows the generic icon until the next login. Skipped entirely when DESTDIR is
 # set: that tree is staging for a package, and dpkg fires its own triggers on
 # the installing machine. Failure is ignored because neither tool is required
 # for the install to be correct, only for it to be noticed promptly.
+#
+# update-mime-database joins them for the same reason and under the same guard:
+# the packet installed above is XML that nothing reads directly, and until it
+# is compiled into share/mime/mime.cache a .satl file keeps whatever type
+# content sniffing alone gives it.
 	@if [ -z "$(DESTDIR)" ]; then \
 	    command -v update-desktop-database >/dev/null 2>&1 && \
 	        update-desktop-database "$(datadir)/applications" 2>/dev/null || true; \
 	    command -v gtk-update-icon-cache >/dev/null 2>&1 && \
 	        gtk-update-icon-cache -qtf "$(datadir)/icons/hicolor" 2>/dev/null || true; \
+	    command -v update-mime-database >/dev/null 2>&1 && \
+	        update-mime-database "$(datadir)/mime" 2>/dev/null || true; \
 	fi
 # bash-completion loads the file named after the command, so the extension
 # that distinguishes it in dist/ is dropped on the way in.
@@ -342,13 +375,31 @@ install: satl satl-term dist/satl.1.gz dist/satl-term.1.gz
 # go and the directory itself must stay.
 uninstall:
 	rm -f "$(DESTDIR)$(bindir)/satl" "$(DESTDIR)$(bindir)/satl-term"
-	rm -f "$(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/org.satellite.terminal.svg"
+# The icons are removed by the same walk that installed them, so the two lists
+# cannot drift: hicolor is a directory shared with every other application on
+# the system, so only the files this install named may go, and the size
+# directories themselves must stay even when ours was the only icon in one.
+	find dist/icons -type f -name '*.png' -printf '%P\n' | while read -r f; do \
+	    rm -f "$(DESTDIR)$(datadir)/icons/$$f"; \
+	done
+	rm -f "$(DESTDIR)$(datadir)/mime/packages/application-x-satellite.xml"
 	rm -f "$(DESTDIR)$(mandir)/man1/satl.1.gz" \
 	      "$(DESTDIR)$(mandir)/man1/satl-term.1.gz"
 	rm -f "$(DESTDIR)$(datadir)/applications/org.satellite.terminal.desktop"
 	rm -f "$(DESTDIR)$(datadir)/bash-completion/completions/satl"
 	rm -rf "$(DESTDIR)$(datadir)/satellite"
 	rm -rf "$(DESTDIR)$(docdir)"
+# Both indexes are rebuilt on the way out as well as on the way in. Without
+# this the launcher stays in the shell's menu and .satl files keep an icon
+# whose file is gone, which reads to a user as an uninstall that did not work.
+	@if [ -z "$(DESTDIR)" ]; then \
+	    command -v update-desktop-database >/dev/null 2>&1 && \
+	        update-desktop-database "$(datadir)/applications" 2>/dev/null || true; \
+	    command -v gtk-update-icon-cache >/dev/null 2>&1 && \
+	        gtk-update-icon-cache -qtf "$(datadir)/icons/hicolor" 2>/dev/null || true; \
+	    command -v update-mime-database >/dev/null 2>&1 && \
+	        update-mime-database "$(datadir)/mime" 2>/dev/null || true; \
+	fi
 
 clean:
 	$(MAKE) -C example/cxx_compare clean
@@ -356,6 +407,7 @@ clean:
 	rm -f satl satl-term library_test library_test_tsan satellite_string_test \
 	      lexer_test ast_test parser_test env_test eval_test interp_test \
 	      loader_test spacesuit_test bignum_test random_test format_test reg_test \
+	      console_test \
 	      *.o eval/*.o parser/*.o bignum/*.o env/*.o *.o.tmp .libdir-stamp \
 	      dist/satl.1.gz dist/satl-term.1.gz
 
