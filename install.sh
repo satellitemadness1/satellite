@@ -35,7 +35,28 @@
 
 set -eu
 
-prefix=/usr/local
+# The default prefix follows who is running the script, because there is only
+# ever one right answer and it is decided by that.
+#
+# /usr/local is the correct place for an install from source, and it needs root.
+# Defaulting to it unconditionally meant that plain `./install.sh` -- the
+# command anyone tries first -- could not succeed for a normal user: it printed
+# a permission error and the two flags to choose between, and installed
+# nothing. Nobody who ran it wanted that outcome. Someone with root wants the
+# system install; someone without wants the one that needs no privileges, and
+# ~/.local is on PATH and in the XDG data search path on any current desktop, so
+# it works with no further setup.
+#
+# --prefix still wins over both, which is what keeps this a default rather than
+# a policy, and the chosen value is printed before anything is written so it is
+# never a surprise. This does NOT run sudo: escalating on the user's behalf is
+# the thing the note further down refuses to do, and choosing a writable
+# directory instead is the opposite of that, not a version of it.
+if [ "$(id -u)" = 0 ]; then
+    prefix=/usr/local
+else
+    prefix=${HOME:?HOME is not set, so there is no home prefix to default to}/.local
+fi
 # DESTDIR is read from the environment rather than given a flag because that is
 # the interface every packaging system already drives: `DESTDIR=$PWD/stage
 # ./install.sh`. It stages a tree and is never baked into a path or a binary,
@@ -59,10 +80,15 @@ usage: $self [--prefix DIR] [-n|--dry-run]
        $self --uninstall [--prefix DIR] [-n|--dry-run]
        $self --help
 
-  --prefix DIR   install under DIR (default: $prefix). Must be absolute: the
-                 prefix is compiled into the interpreter as its last-resort
-                 library location, and a relative path would resolve against
-                 whatever directory the program happened to be run from later.
+  --prefix DIR   install under DIR. Optional: with no --prefix this installs to
+                 \$HOME/.local as a normal user and to /usr/local as root, so
+                 running it plain and running it under sudo each do the right
+                 thing on their own. For you, right now, that is:
+                     $prefix
+                 Must be absolute: the prefix is compiled into the interpreter
+                 as its last-resort library location, and a relative path would
+                 resolve against whatever directory the program happened to be
+                 run from later.
   --uninstall    remove a previously installed tree from the same prefix.
   -n, --dry-run  print the commands that would run, and run none of them.
   --help         this text.
