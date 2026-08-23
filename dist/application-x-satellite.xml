@@ -20,9 +20,10 @@
   the x- prefix marks a type not registered with IANA, and application/ is the
   correct top level for a file that is executed rather than read. A subclass of
   text/plain is declared anyway, so that an editor advertising support for
-  text/plain still offers to open a .satl file, and so that a file manager
-  falls back to the generic script icon on a system where our own artwork is
-  not installed.
+  text/plain still offers to open a .satl file, and so that a text editor is
+  among the applications a file manager suggests. It buys compatibility, not an
+  icon: see the note on generic-icon below for why this type deliberately has
+  no icon fallback at all.
 -->
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
   <mime-type type="application/x-satellite">
@@ -36,12 +37,37 @@
       hicolor/*/mimetypes/application-x-satellite.png visible in this file
       rather than only in the Makefile that installs it.
 
-      generic-icon is the fallback for the same lookup one level up, and is
-      what a user with a theme that overrides mimetypes sees instead of a blank
-      page.
+      generic-icon names our OWN icon, which looks redundant and is the whole
+      point. It is a fallback that deliberately refuses to fall back.
+
+      GIO builds a GThemedIcon whose name list is [icon, generic, and the
+      -symbolic form of each], and where generic-icon is absent it synthesises
+      one from the media type: application/ yields application-x-generic. GTK
+      then resolves that list with THEMES as the outer loop and names as the
+      inner one, asking the active theme for every name before moving to the
+      next theme. Adwaita defines no application-x-satellite, but it ships both
+      text-x-script and application-x-generic, so whichever of those lands in
+      the list answers first and hicolor, where our icon actually lives, is
+      never reached.
+
+      That is a lookup this file cannot win by choosing a BETTER fallback,
+      because every plausible fallback is a name Adwaita already has. It can
+      only win by naming no such icon at all. Pointing generic-icon back at
+      application-x-satellite leaves a list of two names and their symbolic
+      forms, none of which any stock theme defines, so the search falls through
+      to hicolor and finds ours.
+
+      Measured, not reasoned: with text-x-script here the lookup returned
+      Adwaita/scalable/mimetypes/text-x-script.svg; with the element removed
+      entirely it returned Adwaita's application-x-generic.svg, because the
+      synthesised name is no better than the declared one.
+
+      The cost is that a system without our artwork gets no icon rather than a
+      generic page. That is the correct trade: a fallback is not worth having
+      if it wins when the real icon is present.
     -->
     <icon name="application-x-satellite"/>
-    <generic-icon name="text-x-script"/>
+    <generic-icon name="application-x-satellite"/>
 
     <glob pattern="*.satl"/>
 
