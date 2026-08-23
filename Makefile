@@ -355,7 +355,32 @@ install: satl satl-term dist/satl.1.gz dist/satl-term.1.gz
 # the packet installed above is XML that nothing reads directly, and until it
 # is compiled into share/mime/mime.cache a .satl file keeps whatever type
 # content sniffing alone gives it.
+#
+# The index.theme line is not decoration. An icon directory is only a THEME if
+# it contains one, and without it GTK does not look inside at all: has_icon()
+# answers false for every icon just installed, at every size, and the desktop
+# shows the generic fallback. The file belongs to hicolor-icon-theme, which
+# installs it under /usr and nowhere else -- so EVERY prefix except /usr starts
+# without one, and that includes this Makefile's own default of /usr/local. An
+# install that leaves it missing has copied eighteen PNGs nothing will ever read.
+#
+# gtk-update-icon-cache does not reveal the problem, because -t is
+# --ignore-theme-index: the cache builds happily over a directory that is not
+# yet a theme, so the only symptom is artwork that never appears.
+#
+# Copied rather than generated, because the file describes hicolor itself -- its
+# directory list and their sizes and contexts -- and not our subset of it. Only
+# when absent, so any prefix that already has one is left alone.
+#
+# It is deliberately NOT removed by uninstall below. Every other application
+# that installs an icon into this prefix depends on it, so deleting ours on the
+# way out would break theirs; an orphaned theme index is the correct outcome.
 	@if [ -z "$(DESTDIR)" ]; then \
+	    if [ ! -f "$(datadir)/icons/hicolor/index.theme" ] && \
+	       [ -f /usr/share/icons/hicolor/index.theme ]; then \
+	        cp /usr/share/icons/hicolor/index.theme \
+	           "$(datadir)/icons/hicolor/index.theme" 2>/dev/null || true; \
+	    fi; \
 	    command -v update-desktop-database >/dev/null 2>&1 && \
 	        update-desktop-database "$(datadir)/applications" 2>/dev/null || true; \
 	    command -v gtk-update-icon-cache >/dev/null 2>&1 && \

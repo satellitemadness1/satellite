@@ -344,27 +344,34 @@ esac
 # either orphan or delete out from under whatever else has since installed an
 # icon beside ours. Neither is a decision an installer gets to make quietly, and
 # the fix is one line the user can read before running it.
+# An icon directory is only a theme if it holds index.theme, and GTK ignores one
+# that does not: every icon just installed is invisible, at every size. The
+# install target copies the system's in when the prefix has none, which covers
+# every ordinary case -- including /usr/local, which has no index.theme of its
+# own and is this script's default, so the earlier version of this check
+# skipping anything under /usr was skipping the commonest install of all.
+#
+# Reaching this branch therefore means the copy could not happen: no
+# hicolor-icon-theme on the machine, or a prefix the install could not write
+# that far into. Reported rather than repaired, because at that point there is
+# no correct file to put there and inventing one would be declaring someone
+# else's theme.
 hicolor=$prefix/share/icons/hicolor
-case $prefix in
-    /usr | /usr/*) ;;
-    *)
-        if [ -d "$hicolor" ] && [ ! -f "$hicolor/index.theme" ]; then
-            cat <<EOF
+if [ -d "$hicolor" ] && [ ! -f "$hicolor/index.theme" ]; then
+    cat <<EOF
 
 install.sh: note — $hicolor has no index.theme,
             so the desktop will not find the icons that were just installed
-            there. The file belongs to the hicolor theme itself and only the
-            system copy has one. To use the icons, copy it in:
+            there. That file ships with hicolor-icon-theme; this machine
+            appears not to have it. Installing that package, or copying an
+            index.theme in by hand, is what makes the icons visible:
 
-                cp /usr/share/icons/hicolor/index.theme $(quoted "$hicolor/")
                 gtk-update-icon-cache -qtf $(quoted "$hicolor")
 
             The interpreter is unaffected either way; this is only about the
             launcher and the icon shown on .satl files.
 EOF
-        fi
-        ;;
-esac
+fi
 
 # GNOME reads the desktop, icon and mime indexes once at session start. The
 # Makefile has already rebuilt all three, so a new session picks everything up
