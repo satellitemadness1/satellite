@@ -88,7 +88,7 @@ The TSAN binary deliberately stays `-O1 -g`. Clean rebuild 10.7s, zero warnings.
 
 ## STAGED, NOT YET INTEGRATED
 
-`/tmp/claude-1000/.../scratchpad/TOPICS_CXX.txt` holds ready-to-paste C++ for five
+`plans/staged/TOPICS_CXX.txt` holds ready-to-paste C++ for five
 more help topics: `if` (68 lines), `while` (57), `for` (46), `else` (30),
 `network` (87). Generator: `scratchpad/mk_topics.py`.
 
@@ -108,7 +108,7 @@ TO INTEGRATE:
 
 Content came from a workflow: 4 drafts, each followed by an adversarial checker
 that re-ran every claim against `./satl`. The checkers found **53 problems**.
-Full uncondensed drafts (656 lines) are in `scratchpad/topics/*.txt` if more
+Full uncondensed drafts (656 lines) are in `plans/staged/topics/*.txt` if more
 detail is ever wanted.
 
 ## PLANNED, NOT BUILT
@@ -150,7 +150,7 @@ KEY BLOCKERS RECORDED THERE: `https` needs TLS, which breaks §9's six-shared-ob
 property; §16's native-module mechanism (M7) is the designed fix and IS NOT BUILT.
 Plain `http` and raw TCP need nothing new. The server half also wants threads.
 
-**Threading** - full implementation plan at `scratchpad/threading_plan.md` (67KB,
+**Threading** - full implementation plan at `plans/staged/threading_plan.md` (67KB,
 from a 6-agent workflow). Three findings that matter most:
 1. `satellite.thread.new(worker(1,2))` RUNS `worker` today at the call site -
    arguments are reduced before the module path is examined. Must intercept on the
@@ -210,3 +210,72 @@ means "no torn read, no user-visible mutex", not lock-freedom.
    fix, not made.
 3. Whether to update `view_forge/plans/missing.txt` - six of its `[OPEN]` items are
    now closed and two of its notes are stale.
+
+
+---
+
+## SESSION 3 — 2026-08-24, later still. ALL COMMITTED.
+
+Two commits on `icons-and-satl-mime-type`: `ac8af80` and `768078a`.
+`make test` is 16/16 with zero failures.
+
+**§21 BUILT — `satellite.variable.binary` and `satellite.variable.hex`**
+(`hexadecimal` is an alias), literals `x0009999CCCDDBBDFBDBDBD` and
+`b10101011110101011`. Full section at `design/21-binary-and-hexadecimal.md`,
+indexed in DESIGN.md. New file `src/satellite_value/bits.cpp`.
+- The reason they are types and not number literals in another base is WIDTH.
+  `Number::parse("0009")` is 9 — exact is not the same as wide — so a hex
+  constant would come off a socket a different width than it went on.
+- TWO TYPE NAMES, ONE VARIANT ALTERNATIVE, told apart by a radix. Exact-name
+  distinct at the surface; one alternative underneath.
+- Literal rule: lower-case `x`/`b` + at least one char, ALL digits of that base,
+  all-or-nothing over the whole word. `x2_y`, `be`, `box`, `X0F` stay names.
+  `x1`, `xff`, `b0`, `b1010` are literals and can no longer be names — a name
+  position REFUSES with a message naming the collision, because accepting it
+  would let `satellite.variable.number b1 = 5` declare a variable no expression
+  could read back.
+- **§20.6.2's laxness is CLOSED.** `satellite.variable.network n` is now
+  `no such type`. **`network` must be added to `kVariableTypes` in
+  `src/environment/scopes.cpp` when §20 is built.** This is the one thing §20
+  has to remember.
+- Registry took **102..108; next free is 109** (the old note saying 102 is now
+  stale). All three format_test tripwires fired and were bumped.
+- reg_test said "all nine Value alternatives" and enumerated by hand — the tenth
+  compiled and passed WITHOUT ever being converted. Only two sites stop the
+  build: ValuePrinter and SizeVisitor. Count in that PASS line is the tripwire
+  for the eleventh.
+
+**§20.6.3 / §20.6.4 WRITTEN — the receive surface, decided by the user.**
+A port receives nothing; a connection does. `open` yields a LISTENER, `accept`
+waits and yields a CONNECTION, `receive`/`send` move bytes. Plus a one-liner
+`satellite.network.receive(port)` that gives up the reply.
+- THE RECEIVER DOES NOT DECLARE WHAT IS COMING. The format is self-describing.
+  **Verified**: `thing = 5` binds with no type named, and a bare
+  `satellite.container.list` holds `[5, hi, x0F]` mixed. Naming a type is an
+  assertion, not a requirement.
+- Only a spacesuit must be known ahead — §20.3.5's descriptor is verified,
+  never constructed.
+
+**THE LANGUAGE'S PURPOSE, stated by the user and now in memory.** Do absolutely
+everything for the user; no cryptic C++ interfaces; speed is SECONDARY and never
+wins against clarity. The `satellite.x.y` path is the interface precisely to
+abolish `std::something<std::something> f("name", std::ios::in, std::ios::app)`.
+No flag soup, no bitmasks — an option is a WORD at the call site.
+But that is NOT "do things behind the user's back": §8.3's `file` rule is never
+silently reopen. All the plumbing, none of the policy.
+
+## NEXT: THE CODEC. Not started, deliberately — it is a large build.
+
+`src/wire_format/` — encoder/decoder for the ten types. No socket, no TLS, no
+threads; testable as encode -> decode -> compare, which is why §20.7 puts it
+first. One thing worked out this session that is NOT yet in the design docs and
+is easy to get wrong:
+
+> **Index the shared-value table AT THE TAG, identically on both sides.**
+> Construct an object and register it BEFORE decoding its fields — that is what
+> makes cycles terminate, and it falls out of §12's rule that only an object can
+> close one. Everything else registers AFTER construction, so a cycle through a
+> list is a forward reference and gets refused, exactly as §20.3.4 requires.
+
+Also still open from earlier sessions: `dist/satl.1:287` uses `\(sc`, which
+`groff -Tascii` does not define; and `view_forge/plans/missing.txt` is stale.

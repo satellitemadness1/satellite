@@ -1,0 +1,146 @@
+satellite.statement.for -- the three-part C-shaped loop
+
+  satellite.statement.for(satellite.variable.number i = 0; i < 10; i = i + 1)
+  {
+      satellite.console.display(i)
+  }
+
+  Three parts separated by ';': INIT, CONDITION, STEP. Init runs once,
+  then condition, body, step, condition, body, step, until the condition
+  is false. The condition is evaluated FRESH every trip, so a test of
+  i < l.length() sees a list the body appended to. The block is required
+  -- a braceless one-statement body is "expected '{' to open a block".
+
+  The condition must be a satellite.variable.bool. A number is refused:
+  "condition must be a satellite.variable.bool, got
+  satellite.variable.number". There is no truthiness here. That refusal
+  happens when the header is REACHED, not before the program starts, so
+  everything above the loop has already printed.
+
+  ALL THREE PARTS ARE OPTIONAL, and the ';' still marks an empty one.
+
+      satellite.statement.for(;;)                forever
+      satellite.statement.for(; n < 3;)          a while, spelled for
+      satellite.statement.for(;; m = m + 1)      step only, no test
+
+  The second of those is a real while written the long way. The language
+  has satellite.statement.while(n < 3) { }, which is the same loop
+  spelled as itself; prefer it when there is no counter.
+
+  A missing condition means "always true", so for(;;) is the infinite
+  loop. It parses and it runs: with an empty body it never comes back and
+  nothing in the interpreter stops it. BOTH semicolons stay required, and
+  dropping either one runs the init or the condition into the ')':
+  for() and for(;) are both "expected an expression, found Punct())". A
+  fourth part is "expected ')' to close the for-loop header".
+
+  NO NEW SYNTAX IS INTRODUCED. By the grammar the init clause is a
+  declaration or an assignment -- the same two a statement line is --
+  and the step clause is an assignment. A declaration with no '=' is
+  allowed, and a number with no initialiser starts at 0.
+
+  The parser reaches both slots through the routine that parses an
+  ordinary statement, so it is looser than the grammar: a bare call such as
+  tick(0) gets through in either slot, and a declaration gets through in
+  the step slot. That is slack, not language. Do not write either. A
+  declaration in the step slot is read before it has run, and the
+  resolver says so with an internal error:
+
+      satellite.statement.for(satellite.variable.number i = 0; i < 2;
+                              satellite.variable.number j = i + 1)
+      {
+          satellite.console.display(j)
+      }
+      internal: j is read before its declaration runs
+
+  NO ++ AND NO +=. The step is spelled out: i = i + 1. i++ is "expected
+  an expression, found Punct(+)" and i += 1 is "expected an expression,
+  found Punct(=)". An assignment is a statement and not an expression, so
+  it cannot be the condition either: for(i = 0; i = 1; ...) is "expected
+  ';' after the for-loop condition".
+
+  ONE CLAUSE PER SLOT, and the comma is refused in both. In the init,
+  for(T i = 0, T j = 0; ...) is "expected ';' after the for-loop
+  initialiser"; in the step, for(...; i = i + 1, j = j + 1) is
+  "expected ')' to close the for-loop header". Declare the second
+  variable on the line above the loop.
+
+  The loop variable is a name you own, so it cannot be spelled satellite:
+  "'satellite' is reserved as the language root and cannot name a
+  variable".
+
+  The header ends at its ')' and not at a newline, so it may wrap across
+  lines.
+
+  ';' IS ORDINARY PUNCTUATION AND IS USED NOWHERE ELSE IN THE LANGUAGE.
+  Statements are newline-terminated, so a ';' ending one is "unexpected
+  Punct(;) after the end of a statement", and it is refused just as
+  flatly inside an argument list, a parameter list and an index. The
+  parser names ';' in exactly one function: the one parsing this header.
+
+  THE LOOP VARIABLE DOES NOT OUTLIVE THE LOOP. The for opens its own
+  scope over init, condition and step, so a declaration in the init
+  clause belongs to the loop:
+
+      satellite.statement.for(satellite.variable.number i = 0; i < 3;)
+      {
+      }
+      satellite.console.display(i)   unknown variable in capsule: i
+
+  That one is caught before the program runs, so a file with it in
+  prints nothing at all -- not even the lines above the loop.
+
+  It shadows too: an outer i is untouched and reads back as itself after
+  the loop. A declaration of the same name inside the BODY is a third
+  variable, fresh on every trip, and stepping it does not step the loop.
+  An init clause that assigns rather than declares -- for(i = 0; i < 3;
+  i = i + 1) -- uses the outer variable, which does outlive the loop and
+  holds the value that failed the test, 3 rather than 2.
+
+  THERE IS NO FOR-EACH AND NO RANGE-FOR. for(T x : names) is not a form;
+  the ':' gets "expected ';' after the for-loop initialiser". Walk a list
+  by indexing it with a number:
+
+      satellite.statement.for(satellite.variable.number i = 0;
+                              i < names.length(); i = i + 1)
+      {
+          satellite.console.display(names[i])
+      }
+
+  Walk a map by indexing .keys(), which comes back in INSERTION ORDER --
+  re-setting an existing key keeps its first position. The map is
+  insertion-ordered precisely so that this walk is deterministic;
+  m[ks[i]] reads the value.
+
+      satellite.container.list<satellite.variable.string> ks = m.keys()
+      satellite.statement.for(satellite.variable.number i = 0;
+                              i < ks.length(); i = i + 1)
+      {
+          satellite.console.display(ks[i])
+          satellite.console.display(m[ks[i]])
+      }
+
+  A string walks the same way, s[i] over i < s.length(). To copy a run
+  rather than visit it, the slice l[a:b] is already there and needs no
+  loop.
+
+  Test i < length, never i <= length. An out-of-range index is an error
+  and never nil: "index 2 is outside a list of length 2".
+
+  THERE IS NO break AND NO continue, in any spelling.
+  satellite.statement.break is "a module path, not a value", a bare
+  break is "unknown variable in capsule: break", and continue answers
+  the same two ways. Both are refused only when REACHED, so a break in a
+  branch that never runs is never noticed -- it is not a parse error.
+
+  A loop ends when its condition goes false, or when satellite.return
+  leaves the whole capsule -- which is how for(;;) is left, and the step
+  does not run on the way out. Returning a number out of satellite.main
+  makes it the process exit status, so return satellite there and carry
+  the value in a variable. Anything finer than leaving is a flag you test
+  yourself at the top of the body:
+
+      satellite.variable.bool done = satellite.bool.false
+
+  and set it to satellite.bool.true. Those are the spellings; bare true
+  and satellite.true are not values.
