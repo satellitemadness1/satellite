@@ -125,6 +125,45 @@ LDFLAGS ?=
 TSAN      ?= 1
 TSAN_TEST  = $(if $(filter-out 0,$(TSAN)),$(LIBRARY)/library_test_tsan)
 
+# ThreadSanitizer needs a runtime the COMPILER supplies, and $(CXX) is not
+# guaranteed to have one. The clang at $(LLVM_BIN) on this machine is built
+# WITHOUT compiler-rt: `clang++ -print-runtime-dir` answers "(runtime dir is not
+# present)" and the link dies on a missing libclang_rt.tsan.a, which took the
+# whole of `make test` down with it. That is a property of that build of clang
+# and not of this machine -- /usr/bin/clang++ (21.1.8) ships the runtime, and so
+# does g++ as libtsan.
+#
+# So the sanitized binary gets its own compiler. The default asks $(CXX)
+# whether it can supply either runtime and uses it if it can; otherwise it
+# falls back, clang first because the instrumentation and the runtime then come
+# from the same project. Every source in this binary is compiled by the SAME
+# compiler as the runtime it links, which is the one thing that must not be
+# mixed.
+#
+# Recursively expanded and referenced only in the library_test_tsan recipe, so
+# the two `-print-file-name` subprocesses run when that binary is built and
+# never on a `make satl`. `origin` rather than ?= so a command-line or
+# environment TSAN_CXX still wins.
+#
+# The test is a LINK and not a file lookup, and the first attempt at this got it
+# wrong in a way worth recording: asking clang for -print-file-name=libtsan.so
+# answers /usr/lib/gcc/x86_64-redhat-linux/14/libtsan.so, because clang searches
+# GCC's install directories -- a 38-byte linker script for a runtime clang would
+# never link against, since clang's -fsanitize=thread wants libclang_rt.tsan.a.
+# The lookup therefore said yes for the one compiler that cannot do it. Linking
+# an empty main is the only probe that answers the question actually being asked.
+#
+# **Verified** on this machine: the probe says no for $(LLVM_BIN)/clang++ and yes
+# for /usr/bin/clang++ and g++, TSAN_CXX resolves to /usr/bin/clang++, and the
+# binary it builds PASSES -- 160,000 increments intact, 403,921 lock-free reads,
+# 165 variables in satellite.library.
+ifeq ($(origin TSAN_CXX),undefined)
+  TSAN_OK   = $(shell printf 'int main(){}' | $(1) -fsanitize=thread -x c++ - \
+                          -o /dev/null >/dev/null 2>&1 && echo ok)
+  TSAN_CXX  = $(strip $(if $(call TSAN_OK,$(CXX)),$(CXX),\
+                  $(if $(call TSAN_OK,/usr/bin/clang++),/usr/bin/clang++,c++)))
+endif
+
 # `prefix` is baked into the binary; DESTDIR is staging and is baked into
 # NOTHING. The distinction is the whole contract with a packaging system: a
 # .deb is built with prefix=/usr into a DESTDIR chroot, and a binary that had
@@ -519,7 +558,7 @@ $(LIBRARY)/library_test: $(LIBRARY)/library_test.cpp $(LIBOBJS)
 	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(LIBRARY)/library_test.cpp $(LIBOBJS)
 
 $(LIBRARY)/library_test_tsan: $(LIBRARY)/library_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) $(PCGFLAGS) -I$(SRC) -O1 -g -fsanitize=thread \
+	$(TSAN_CXX) $(TESTFLAGS) $(PCGFLAGS) -I$(SRC) -O1 -g -fsanitize=thread \
 	    -o $@ $(LIBRARY)/library_test.cpp $(TESTSRCS)
 
 $(STRING)/satellite_string_test: $(STRING)/satellite_string_test.cpp $(LIBOBJS)
