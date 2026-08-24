@@ -17,6 +17,7 @@ namespace satellite {
 enum class TokenKind {
     Word,     // satellite, my_time, _leading, x2_y
     Number,   // 3, 3.14
+    Bits,     // x00FF, b1010 — §21's hex and binary literals
     String,   // "hello, world!"
     Punct,    // . = ( ) [ ] { } < > , : == <= >= !=
     End,      // always the last token
@@ -47,6 +48,12 @@ struct Token {
     // with nothing rounded on the way in (§8.1). strtod here would have thrown
     // away precision before the parser ever saw the literal.
     Number number;
+
+    // Bits only: 2 for a `b` literal, 16 for an `x` literal. The digits are
+    // `text` with the one-character prefix removed; they are NOT normalised
+    // here, because the lexer's job is to say what was written and `x00ff` was
+    // written in lower case. Normalisation is the parser's, at the node.
+    unsigned radix = 0;
 
     // Half-open [start, end) offsets into the source. Because encode_raw()
     // emits exactly one SatChar per input byte, these are also byte offsets

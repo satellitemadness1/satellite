@@ -86,6 +86,27 @@ std::string Parser::expect_word(const std::string &what)
 {
     if (peek().kind == TokenKind::Word)
         return advance().text;
+
+    // §21's one cost, paid HERE and loudly rather than anywhere else quietly.
+    //
+    // `x1` and `b1010` are literals now, so they cannot also be names. The
+    // tempting fix is to accept a Bits token wherever a name is expected —
+    // after all, `my_object.x1` is unambiguous — but that fix builds a trap:
+    // it would let `satellite.variable.number b1 = 5` DECLARE a variable that
+    // no expression can ever read back, because `b1` in a value position is the
+    // literal 1. A program would then print 1 where it declared 5, silently.
+    //
+    // So every name position refuses, and the message names the collision
+    // instead of saying "expected a member name" about something that is
+    // plainly written down. §18's posture: refuse rather than half-accept.
+    if (peek().kind == TokenKind::Bits) {
+        const std::string kind =
+            peek().radix == 2 ? "a binary literal" : "a hexadecimal literal";
+        error(peek(), "expected " + what + ", but '" + peek().text + "' is " +
+                          kind + " (§21) and cannot be used as a name");
+        return {};
+    }
+
     error(peek(), "expected " + what);
     return {};
 }

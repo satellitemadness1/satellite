@@ -136,9 +136,19 @@ int main()
         auto v_time = std::make_shared<const Value>(Time{7});
         check(Reg::from_value(v_time).is_heap(), "a time is boxed");
 
+        // §21. Enumerated by hand like every alternative above it, which is
+        // exactly why this line has to exist: Reg boxes anything it does not
+        // recognise, so a tenth alternative COMPILES and passes without ever
+        // being converted in either direction. The count in the PASS line is
+        // the tripwire that catches the next one.
+        auto v_bits = std::make_shared<const Value>(make_bits(16, "00FF"));
+        Reg r_bits = Reg::from_value(v_bits);
+        check(r_bits.is_heap(), "a hex value is boxed");
+        check_str(r_bits.to_string(), "x00FF", "a boxed hex value renders");
+
         // Out again, by value.
         for (const auto &v : {v_nil, v_true, v_small, v_huge, v_str, v_list,
-                              v_map, v_time}) {
+                              v_map, v_time, v_bits}) {
             ValuePtr back = Reg::from_value(v).to_value();
             check(back != nullptr, "a set slot converts back to a Value");
             if (back)
@@ -343,7 +353,7 @@ int main()
     }
 
     printf("PASS: reg (three slot states with EMPTY distinct from nil; "
-           "round trips for all nine Value alternatives; the inline path "
+           "round trips for all ten Value alternatives; the inline path "
            "allocates nothing; add_inline exact or declining, alignment "
            "overflow included; frames as windows with zero-copy arguments; "
            "sizeof(Reg)=%zu)\n",

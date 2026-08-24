@@ -1,5 +1,7 @@
 #include "lexical_analyzer/lexer.hpp"
 
+#include "satellite_value/value.hpp"
+
 #include <cstdlib>
 
 namespace satellite {
@@ -90,8 +92,51 @@ std::vector<Token> lex(const SatString &src)
         if (word_start(c)) {
             while (i < src.size() && word_cont(src[i]))
                 i++;
-            add(TokenKind::Word, start, i).text =
-                decode(src.substr(start, i - start));
+            std::string spelling = decode(src.substr(start, i - start));
+
+            // §21's hex and binary literals, and the ONE place the language
+            // decides between a literal and a name.
+            //
+            // THE RULE: a lower-case `x` or `b`, followed by at least one
+            // character, ALL of which are digits in that radix. Everything else
+            // is the identifier it has always been.
+            //
+            // The rule is deliberately all-or-nothing over the WHOLE word run,
+            // not a prefix match, and that is what keeps it from eating names.
+            // `x2_y` — the example this header gives for a Word — stays a Word,
+            // because '_' is not a hex digit. So do `xyz`, `box`, `bob`, `be`
+            // (an 'e' is not a binary digit) and every name with an underscore
+            // in it. What it DOES take is `x1`, `xff`, `b0` and `b1010`: those
+            // are literals now and can no longer be variable names.
+            //
+            // VERIFIED against every .satl file in this repo when the rule was
+            // written: the only x/b-prefixed identifiers in the corpus are `x`,
+            // `b` and `be`, and the rule leaves all three alone. That is the
+            // measurement the choice rests on, not an assumption that nobody
+            // would name a variable `x1`.
+            //
+            // Upper case is NOT a prefix. `X0F` and `B1010` are names. Two
+            // reasons: hex digits are already spelled in either case, so an
+            // upper-case prefix would make `XAD` a literal and steal a plausible
+            // name for nothing; and one spelling for one thing is §1's rule.
+            unsigned radix = 0;
+            if (spelling.size() > 1 && (spelling[0] == 'x' || spelling[0] == 'b')) {
+                const unsigned candidate = (spelling[0] == 'b') ? 2u : 16u;
+                bool all_digits = true;
+                for (size_t d = 1; d < spelling.size(); d++)
+                    if (!bits_valid_digit(candidate, spelling[d]))
+                        all_digits = false;
+                if (all_digits)
+                    radix = candidate;
+            }
+
+            if (radix) {
+                Token &t = add(TokenKind::Bits, start, i);
+                t.radix = radix;
+                t.text = std::move(spelling);
+            } else {
+                add(TokenKind::Word, start, i).text = std::move(spelling);
+            }
             continue;
         }
 
@@ -176,6 +221,7 @@ const char *kind_name(TokenKind kind)
     switch (kind) {
     case TokenKind::Word:   return "Word";
     case TokenKind::Number: return "Number";
+    case TokenKind::Bits:   return "Bits";
     case TokenKind::String: return "String";
     case TokenKind::Punct:  return "Punct";
     case TokenKind::End:    return "End";

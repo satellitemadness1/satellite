@@ -293,6 +293,12 @@ std::string help_for(const Value &value)
     case 6:  return "satellite.variable.time\n"
                     "  .minus(t) -> nanoseconds   .nanoseconds()  .to_string()\n"
                     "  .size()\n";
+    case 9:  return "satellite.variable.binary / satellite.variable.hex\n"
+                    "  .digits() -> how many digits, leading zeros included\n"
+                    "  .bytes()  -> the packed size, rounded up to a byte\n"
+                    "  .to_number() .to_hex() .to_binary() .to_string()\n"
+                    "  .concat(v) -> same radix only          .size()\n"
+                    "  the width is part of the value: x0009 != x9\n";
     case 7:  return "satellite.variable.file\n"
                     "  .ok() .read() .write(s) .clear() .close() .error() .path()\n"
                     "  .read() is the whole file; .write(s) adds no newline\n"

@@ -46,6 +46,14 @@ ValuePtr Evaluator::eval(const Expr &expr)
     if (const StringLit *s = std::get_if<StringLit>(&expr))
         return make_value(s->value);
 
+    // §21. Normalisation happens HERE and not in the lexer, because the lexer
+    // reports what was written and `x00ff` was written in lower case — unparse
+    // needs that spelling back. The VALUE is the upper-cased form, so `x00ff`
+    // and `x00FF` are one value and `==` does not depend on how it was typed.
+    if (const BitsLit *b = std::get_if<BitsLit>(&expr))
+        return make_value(
+            make_bits(b->radix, bits_normalise(b->radix, b->text.substr(1))));
+
     // Reached only where a duration is NOT allowed, because the one place it is
     // — the argument of satellite.console.display — is taken by eval_call
     // below before it evaluates its arguments. So this is the error for

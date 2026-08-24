@@ -1,5 +1,5 @@
-*satellite design docs, §20 of 20. Index: [DESIGN.md](../DESIGN.md).*
-*Back: [§19](19-nine-additions.md).*
+*satellite design docs, §20 of 21. Index: [DESIGN.md](../DESIGN.md).*
+*Back: [§19](19-nine-additions.md).* Next: [§21](21-binary-and-hexadecimal.md).
 
 ---
 

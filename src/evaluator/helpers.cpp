@@ -147,6 +147,23 @@ bool value_equals(const Value &a, const Value &b)
     if (const SatString *sa = as_string(a))
         return *sa == *as_string(b);
 
+    // §21, and exactly the case the paragraph above warns about: a Bits is
+    // behind a shared_ptr, so the variant's own operator== would compare
+    // pointers and `x00FF == x00FF` would be false whenever the two sides were
+    // written separately.
+    //
+    // Equal means SAME RADIX AND SAME DIGITS, so `x0009` and `x9` are not
+    // equal. That follows from the width being part of the value rather than
+    // being a separate decision: if they compared equal, one of them would have
+    // to be a valid substitute for the other, and it is not — they pack to a
+    // different number of bytes and arrive off a socket as different values.
+    // A program that wants the numeric comparison asks for it: a.to_number()
+    // .equals(b.to_number()) says which question is being asked.
+    if (const Bits *ba = as_bits(a)) {
+        const Bits *bb = as_bits(b);
+        return bb && ba->radix == bb->radix && ba->digits == bb->digits;
+    }
+
     // A map is exactly the shape the comment above warns about: a handle to
     // something with value semantics, whose fallback would compare MapRefs and
     // therefore pointers. Two independently built maps holding the same entries

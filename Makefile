@@ -317,7 +317,7 @@ EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
 OBJS      = $(PROGRAMS)/main.o $(LIBRARY)/library.o \
             $(STRING)/satellite_string.o $(SYSTEM)/system.o \
-            $(LEXER)/lexer.o $(AST)/ast.o $(VALUE)/value.o \
+            $(LEXER)/lexer.o $(AST)/ast.o $(VALUE)/value.o $(VALUE)/bits.o \
             $(LOADER)/loader.o $(INTERP)/interp.o $(RANDOM)/random.o \
             $(CONSOLE)/console.o $(EVAL_OBJS) \
             $(PARSER_OBJS) $(BIGNUM_OBJS) $(ENV_OBJS)
@@ -346,7 +346,7 @@ HDRS      = $(LIBRARY)/library.hpp $(VALUE)/value.hpp \
 # actually real. Add them here when a translation unit in OBJS includes them.
 TESTSRCS  = $(LIBRARY)/library.cpp $(STRING)/satellite_string.cpp \
             $(SYSTEM)/system.cpp $(LEXER)/lexer.cpp $(AST)/ast.cpp \
-            $(VALUE)/value.cpp $(LOADER)/loader.cpp $(INTERP)/interp.cpp \
+            $(VALUE)/value.cpp $(VALUE)/bits.cpp $(LOADER)/loader.cpp $(INTERP)/interp.cpp \
             $(RANDOM)/random.cpp $(CONSOLE)/console.cpp \
             $(EVAL_SRCS) $(PARSER_SRCS) $(BIGNUM_SRCS) $(ENV_SRCS)
 TESTFLAGS = -std=c++20 -Wall -Wextra -pthread

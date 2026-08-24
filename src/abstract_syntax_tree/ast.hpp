@@ -293,12 +293,29 @@ struct NamedArg {
     ExprPtr value;
 };
 
+// `x00FF`, `b1010` — §21's hex and binary literals.
+//
+// ONE STRING, NOT TWO, and that is a size decision rather than a taste one.
+// NumberLit keeps both its Number and its spelling and is 64 bytes, which makes
+// it the widest alternative and therefore the one that sets sizeof(Expr) at 96.
+// A BitsLit holding both normalised digits and the original spelling would be
+// two std::strings — 72 bytes — and would push every Expr in the tree wider,
+// which the static_assert below exists to catch. So the spelling is what is
+// stored and the digits are derived at evaluation, where the work is one
+// substr on a literal that is evaluated once.
+//
+// Appended, not inserted, for the reason DurationLit and ListLit were.
+struct BitsLit {
+    unsigned radix = 0;         // 2 or 16
+    std::string text;           // as written, prefix and all: "x00ff"
+};
+
 // ListLit is appended for the same reason DurationLit was, and the note above
 // applies to it unchanged: a vector is 24 bytes, so the widest alternative is
 // still NumberLit at 64 and sizeof(Expr) does not move.
 using ExprBase = std::variant<NumberLit, StringLit, SatelliteLit, Name,
                               Member, Call, Index, Slice, Unary, Binary,
-                              DurationLit, ListLit, NamedArg>;
+                              DurationLit, ListLit, NamedArg, BitsLit>;
 
 struct Expr : ExprBase {
     using ExprBase::ExprBase;

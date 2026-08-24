@@ -354,6 +354,34 @@ SAT_WORD(99, DELETE_,   "delete")
 SAT_WORD(100, NEW_,   "new")
 SAT_WORD(101, CLEAR,  "clear")
 
+// §21's binary and hexadecimal.
+//
+// `binary` and `hex` are TYPE NAMES, so they sit beside `number` (22) and
+// `string` (23) in what they are, not beside the selectors below.
+//
+// `hexadecimal` gets its OWN ID even though it names the same type, and that is
+// the registry doing its job rather than a duplicate. §17's rule is "one id per
+// distinct WORD, flat across all positions" — the key is the word, not the
+// thing the word means. Two spellings are two words. The alternative, folding
+// them onto one id, would make the format unable to say which spelling a
+// program used, and §17 keeps a spelling wherever a round trip needs one.
+//
+// It is the language's ONE alias, minted knowingly: §1 wants one spelling for
+// one thing, and this bends that because both spellings were asked for.
+SAT_WORD(102, BINARY,      "binary")
+SAT_WORD(103, HEX,         "hex")
+SAT_WORD(104, HEXADECIMAL, "hexadecimal")
+
+// The three methods §21 adds that no receiver had before. `digits` (86),
+// `concat` (44), `to_string` (43) and `size` (85) are reused unchanged, which
+// is the flat registry paying for itself: a binary value answers `.digits()`
+// with the same id a number does, because it is the same word asking the same
+// question.
+SAT_WORD(105, BYTES,     "bytes")
+SAT_WORD(106, TO_NUMBER, "to_number")
+SAT_WORD(107, TO_HEX,    "to_hex")
+SAT_WORD(108, TO_BINARY, "to_binary")
+
 // --- which words are SELECTORS ------------------------------------------------
 // §17.5: "when the selector is a builtin (38..72) CALL_METHOD builds no frame."
 // That sentence was true for exactly one commit. 906a4a8 ended the selectors at
@@ -449,6 +477,13 @@ SAT_SELECTOR(KEYS)
 SAT_SELECTOR(VALUES)        // 79
 SAT_SELECTOR(SIZE)          // 85
 SAT_SELECTOR(DIGITS)        // 86
+
+// §21. 102..104 are type names and are deliberately absent, exactly as `map`
+// (73) and `list` are: a type name answers to no receiver.
+SAT_SELECTOR(BYTES)         // 105
+SAT_SELECTOR(TO_NUMBER)
+SAT_SELECTOR(TO_HEX)
+SAT_SELECTOR(TO_BINARY)     // 108
 
 // --- the arity table: complete paths, and how many operands each takes -------
 // §17: decoding is positional. Nothing in the stream announces "I am an

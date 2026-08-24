@@ -178,6 +178,13 @@ ExprPtr Parser::parse_primary()
 
         return make_expr(NumberLit{t.number, t.text}, span_of(t, file_));
     }
+    // §21. The lexer has already decided this is a literal and not a name, so
+    // there is nothing to disambiguate here: the node carries the spelling and
+    // the radix, and the digits are normalised when it is evaluated.
+    if (t.kind == TokenKind::Bits) {
+        advance();
+        return make_expr(BitsLit{t.radix, t.text}, span_of(t, file_));
+    }
     if (t.kind == TokenKind::String) {
         advance();
         return make_expr(StringLit{t.str, t.text}, span_of(t, file_));

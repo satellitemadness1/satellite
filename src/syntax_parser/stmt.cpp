@@ -63,6 +63,23 @@ StmtPtr Parser::parse_simple_statement()
         // down with it.
         if (peek().kind != TokenKind::Word ||
             peek().line != previous().line) {
+            // §21's collision, named where a program most often meets it.
+            // `satellite.variable.number x1 = 5` is the shape that used to work
+            // and now does not, so the message says WHY rather than reporting a
+            // missing name about something that is plainly written down. See
+            // Parser::expect_word for why accepting it here would be worse than
+            // refusing: it would declare a variable no expression could read.
+            if (peek().kind == TokenKind::Bits &&
+                peek().line == previous().line) {
+                error(peek(),
+                      "'" + peek().text + "' is " +
+                          (peek().radix == 2 ? "a binary literal"
+                                             : "a hexadecimal literal") +
+                          " (§21), so it cannot name a variable; a name may "
+                          "not be an 'x' or 'b' followed only by digits of "
+                          "that base");
+                return nullptr;
+            }
             error(peek(), "expected a variable name after the type");
             return nullptr;
         }

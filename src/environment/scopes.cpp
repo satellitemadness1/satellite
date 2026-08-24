@@ -126,6 +126,27 @@ void Resolver::check_type(const Type &type, Span span)
     // clean before this — pre-existing laxness rather than anything the map
     // introduced, and closed here because the container half is checked below
     // and a half-checked shape reads as an oversight.
+    // §20.6.2's laxness, closed. check_type validated a type's SPACE and not
+    // its NAME, so `satellite.variable.network n` — and every other phantom
+    // type — declared a nil and resolved clean. Every name the evaluator can
+    // actually match is listed here, and anything else is named as the mistake
+    // it is at the declaration rather than silently becoming nil.
+    //
+    // §21 adds three of these rows, two of which are one type: `hex` and
+    // `hexadecimal` are the language's one alias.
+    if (type.space == "variable") {
+        static const char *kVariableTypes[] = {
+            "bool", "number", "string", "time", "file",
+            "binary", "hex", "hexadecimal",
+        };
+        bool known = false;
+        for (const char *candidate : kVariableTypes)
+            if (type.name == candidate)
+                known = true;
+        if (!known)
+            fail(at, "no such type: satellite.variable." + type.name);
+    }
+
     if (type.space == "variable" && !type.args.empty())
         fail(at, "satellite.variable." + type.name +
                  " is not generic, so it takes no type arguments");

@@ -115,7 +115,7 @@ static void test_registry()
     // green build lets you do without looking. Bump the number here, in the same
     // commit as the SAT_WORD row.
     check(static_cast<uint64_t>(Word::RANDOM) == 80, "the random block starts at 80 (§18)");
-    check(kWordIds[kWordCount - 1] == 101, "the registry ends at 101");
+    check(kWordIds[kWordCount - 1] == 108, "the registry ends at 108");
 
     // 18..20 are held for break and continue. This is the one hole allowed, and
     // it is checked from both sides so that filling it needs a deliberate edit.
@@ -143,7 +143,7 @@ static void test_registry()
     // always lands in, and the only one no earlier probe covers. It has to move
     // every time the registry grows, which is the point: it is the same
     // deliberate tripwire the `registry ends at` check above is.
-    check_str(name(Word::CLEAR), "clear", "101 -> clear");
+    check_str(name(Word::TO_BINARY), "to_binary", "108 -> to_binary");
 
     // The identifiers are deliberately not the bare words where C++ forbids it,
     // and the quoted text is what the language actually calls the thing.
@@ -153,7 +153,7 @@ static void test_registry()
 
     // An id past the end is not a word. A decoder reading a stream from a newer
     // version must be able to say so rather than index off the end of a table.
-    check(!is_defined_word(102), "102 is not yet assigned");
+    check(!is_defined_word(109), "109 is not yet assigned");
     check(!is_defined_word(0), "0 is not a word — it means an absent segment");
 }
 
@@ -179,13 +179,21 @@ static void test_selectors()
 
     // §8.3.1's file surface, finished: `open` is a selector as well as the tail
     // of satellite.file.open, and `clear` is new.
-    check(is_selector(Word::CLEAR), "clear is a selector — 101, the newest");
+    check(is_selector(Word::CLEAR), "clear is a selector — 101");
+
+    // §21. The THIRD run, added rather than widening the second — the comment
+    // on the range check below forbids the one-character fix by name.
+    check(is_selector(Word::TO_BINARY), "to_binary is a selector — 108, the newest");
+    check(!is_selector(Word::BINARY), "binary is a type name, not a selector");
+    check(!is_selector(Word::HEX), "hex is a type name, not a selector");
+    check(!is_selector(Word::HEXADECIMAL),
+          "hexadecimal is a type name, not a selector — the one alias");
     check(is_selector(Word::OPEN),
           "open is a selector — 31, and also segment 3 of satellite.file.open");
 
     // The count §17.5 will quote. Computed, so the prose can be corrected from
     // the data rather than the other way round.
-    check(kSelectorCount == 44, "there are 44 selectors");
+    check(kSelectorCount == 48, "there are 48 selectors");
 
     // NO SELECTOR IS A PATH BY ITSELF: CALL_METHOD carries an explicit operand
     // count, so a `satellite.<sel>` arity row would be unreachable, and a bare

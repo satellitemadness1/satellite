@@ -1520,6 +1520,64 @@ int main()
                      "96\n0\n56\n", "a cyclic object terminates");
     }
 
+    // --- §21: binary and hexadecimal ----------------------------------------
+    //
+    // The two things this type exists for are the two things checked hardest:
+    // the WIDTH survives, and the value is exact at any length.
+    check_output("x0009999CCCDDBBDFBDBDBD\n", "x0009999CCCDDBBDFBDBDBD\n",
+                 "a hex literal keeps every digit it was written with");
+    check_output("x0009999CCCDDBBDFBDBDBD.digits()\n", "22\n",
+                 ".digits() is the width, leading zeros included");
+    check_output("x0009999CCCDDBBDFBDBDBD.bytes()\n", "11\n",
+                 ".bytes() packs two hex digits to a byte");
+    check_output("x0009999CCCDDBBDFBDBDBD.to_number()\n",
+                 "45334948838468516429245\n",
+                 ".to_number() is exact past 64 bits");
+    check_output("b10101011110101011\n", "b10101011110101011\n",
+                 "a binary literal round trips");
+    check_output("b10101011110101011.to_number()\n", "87979\n",
+                 "a binary literal converts exactly");
+    check_output("b10101011110101011.digits()\n", "17\n",
+                 "a binary width is its bit count");
+    check_output("b101.bytes()\n", "1\n",
+                 "three bits are one byte — there is no seven-bit byte");
+
+    // Value-preserving both ways, and exact in WIDTH only from hex to binary.
+    check_output("x0F.to_binary()\n", "b00001111\n",
+                 "one hex digit is exactly four binary digits");
+    check_output("x0F.to_binary().to_hex()\n", "x0F\n",
+                 "hex -> binary -> hex is a fixpoint");
+    check_output("b101.to_hex().to_binary()\n", "b0101\n",
+                 "binary -> hex rounds a width up to four, and says so");
+
+    // The width is PART OF THE VALUE. This pair is the whole argument for the
+    // type existing rather than x0009 being a number literal in another base.
+    check_output("x0009 == x9\n", "false\n",
+                 "a width is part of the value: x0009 is not x9");
+    check_output("x0009.to_number() == x9.to_number()\n", "true\n",
+                 "and .to_number() is how a program asks the other question");
+    check_output("x00FF == x00ff\n", "true\n",
+                 "case is normalised, so how it was typed does not matter");
+    check_output("x0F.concat(xAB)\n", "x0FAB\n", ".concat() joins widths");
+
+    check_output("satellite.variable.hexadecimal h = xFF\nh\n", "xFF\n",
+                 "hexadecimal is hex — the language's one alias");
+
+    // Exact-name matching is what the two types BUY and what they COST, and
+    // both halves are pinned so neither can drift.
+    check_error("satellite.variable.hex h = b1010\n", "cannot initialise",
+                "a binary value does not satisfy hex");
+    check_error("satellite.variable.number n = xFF\n", "cannot initialise",
+                "a hex value does not satisfy number");
+    check_error("x0F.concat(b1010)\n", "same radix",
+                ".concat() refuses a mixed radix rather than guessing");
+
+    // §21's cost, and §20.6.2's laxness, both named at the declaration.
+    check_error("satellite.variable.number x1 = 5\n", "cannot name a variable",
+                "a name may not be an x followed only by hex digits");
+    check_error("satellite.variable.network n\n", "no such type",
+                "a phantom variable type is refused rather than becoming nil");
+
     // --- the REPL entry point ----------------------------------------------
     check(eval_line("1 + 1\n") == "2\n", "eval_line echoes a value");
 
@@ -1527,6 +1585,7 @@ int main()
         return 1;
     printf("PASS: eval (M0 spine: x.plus(1) = 2 via satellite.library.main.x; "
            "arithmetic, strings, lists, half-open slicing, control flow; "
+           "§21 binary and hex with the width part of the value; "
            "M3 frames: fact(10) = 3628800, mutual recursion, per-activation "
            "locals, depth guard; 20 error cases)\n");
     return 0;

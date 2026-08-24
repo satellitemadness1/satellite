@@ -37,6 +37,30 @@ bool matches(const Type &type, const Value &value)
             return (as_string(value) != nullptr);
         if (type.name == "time")
             return std::holds_alternative<Time>(value);
+
+        // §21. TWO NAMES, ONE ALTERNATIVE, told apart by the radix — so
+        // `binary` and `hex` are exact-name-distinct exactly as every other
+        // variable type is, and a capsule taking one will not accept the other.
+        //
+        // That is the requested behaviour and it has a cost worth naming here,
+        // at the site that imposes it: matches() is exact-name equality and
+        // §12 defers user-defined generics, so a capsule that wants "either"
+        // cannot be written. The conversions are what a program uses instead —
+        // .to_hex() and .to_binary() are total and value-preserving, so the
+        // caller converts at the boundary rather than the callee accepting both.
+        //
+        // `hexadecimal` is the same type spelled out. It is the one alias in
+        // the language, and it is here because the user asked for both
+        // spellings; §1's one-spelling rule is bent knowingly rather than by
+        // accident, and unparse always emits `hex`.
+        if (type.name == "binary") {
+            const Bits *bits = as_bits(value);
+            return bits && bits->radix == 2;
+        }
+        if (type.name == "hex" || type.name == "hexadecimal") {
+            const Bits *bits = as_bits(value);
+            return bits && bits->radix == 16;
+        }
         // nil satisfies a file for the same reason it satisfies a spacesuit:
         // both are reference types, and a reference may name nothing.
         if (type.name == "file")
@@ -95,6 +119,13 @@ const char *module_of(const Value &value)
     case 6: return "satellite.variable.time";
     case 7: return "satellite.variable.file";
     case 8: return "satellite.container.map";
+    // §21. The radix picks the name, which is what makes an error message about
+    // a binary value say `binary` and not `hex`.
+    case 9: {
+        const Bits *bits = as_bits(value);
+        return (bits && bits->radix == 2) ? "satellite.variable.binary"
+                                          : "satellite.variable.hex";
+    }
     default: return nullptr;
     }
 }

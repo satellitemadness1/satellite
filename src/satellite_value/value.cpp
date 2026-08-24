@@ -114,6 +114,22 @@ std::string ValuePrinter::operator()(const FilePtr &file) const
 }
 
 
+// `x00FF`, `b1010` — the prefix and every digit, including the leading zeros.
+//
+// The prefix is printed because it is what makes the output re-readable: a
+// program that displays a hex value and a person who types the result back in
+// must get the same value, and `00FF` alone would lex as a Number and then a
+// Word. This is §8.1.1's rule ("print the value, never N significant digits")
+// applied to a value whose width is part of it — every digit it has, no more
+// and no fewer.
+std::string ValuePrinter::operator()(const BitsRef &bits) const
+{
+    if (!bits)
+        return "<bits>";
+    return std::string(bits->radix == 2 ? "b" : "x") + bits->digits;
+}
+
+
 // ---------------------------------------------------------------------------
 // .size() — §8.7's memory model, walked
 // ---------------------------------------------------------------------------
@@ -218,6 +234,17 @@ struct SizeVisitor {
     size_t operator()(const FilePtr &file) const
     {
         return walk.first_time(file.get()) ? file->path.size() : 0;
+    }
+
+    // One byte per digit, which is what the digits actually occupy — §8.7
+    // bills "1 per byte of a path or a map key" and this is the same kind of
+    // thing. It is deliberately NOT the number of bytes the value would occupy
+    // packed: a hex digit is four bits of information stored in a whole char,
+    // and .size() reports what a value COSTS, not what it could be compressed
+    // to. `.bytes()` is the method that answers the other question.
+    size_t operator()(const BitsRef &bits) const
+    {
+        return walk.first_time(bits.get()) ? bits->digits.size() : 0;
     }
 
     size_t operator()(const MapRef &map) const

@@ -153,6 +153,46 @@ struct Object {
 
 using ObjectPtr = std::shared_ptr<Object>;
 
+// satellite.variable.binary and satellite.variable.hex — §21.
+//
+// TWO TYPE NAMES, ONE ALTERNATIVE, and the radix is what tells them apart.
+// matches() (src/evaluator/types.cpp) reads `radix` and answers `binary` for 2
+// and `hex` for 16, so the two are exact-name-distinct at the surface exactly
+// as the user asked, while the variant grows by one and not by two. §8.7's
+// "a word means one thing" is not strained by this: `binary` and `hex` answer
+// the SAME questions (.digits(), .bytes(), .to_number()) and differ only in the
+// base their digits are written in, which is the same relation `fast`, `normal`
+// and `ultra` have in §18 — three names, one Number.
+//
+// THE DIGITS ARE STORED AS WRITTEN, one char per digit, and that is the whole
+// reason this is not a Number. §8.1 makes satellite.variable.number an exact
+// decimal, and exact does not mean wide: Number::parse("0009") is 9, and 9 is
+// what to_string gives back. The leading zeros are gone, because to a number
+// they were never there. `x0009999CCC` has a WIDTH, and a value whose width is
+// discarded on the way in cannot come back off a socket the way it went on —
+// which is precisely what a hex constant is usually for.
+//
+// So: 22 digits in, 22 digits out. `.to_number()` is the lossy direction and
+// the program has to ask for it by name.
+//
+// Hex digits are normalised to UPPER CASE at construction, so `x00ff` and
+// `x00FF` are one value and `==` does not depend on how it was typed. That is a
+// normalisation of SPELLING, not of width — the count of digits is untouched —
+// and it is the same call §8.6 makes for map keys, one level down.
+struct Bits {
+    // 2 or 16. Nothing else is constructible: the lexer only produces these two
+    // prefixes, so a third radix cannot arrive without a language change.
+    unsigned radix = 16;
+
+    // '0'..'9', 'A'..'F'. Never empty — a literal needs at least one digit, and
+    // the lexer will not produce a prefix with nothing after it.
+    std::string digits;
+
+    bool operator==(const Bits &) const = default;
+};
+
+using BitsRef = std::shared_ptr<const Bits>;
+
 // satellite.variable.file — an open file description, §8.3.
 //
 // A REFERENCE type, and §8.3 was explicit that this does not weaken the
@@ -221,6 +261,45 @@ struct FileHandle {
 
 using FilePtr = std::shared_ptr<FileHandle>;
 
+// --- §21's operations on a binary or hex value, defined in bits.cpp ---------
+//
+// Free functions rather than members of Bits, for the reason every other
+// operation in this header is a free function: a Bits inside a Value is behind
+// a shared_ptr<const>, so nothing may mutate one, and a method that cannot
+// mutate is a function that takes the value.
+
+// Is `c` a digit in this radix? Hex accepts either case; `bits_normalise` is
+// what makes the two one value.
+bool bits_valid_digit(unsigned radix, char c);
+
+// 0..15, or -1 for anything that is not a hex digit.
+int bits_digit_value(char c);
+
+// Upper-cases hex digits. The digit COUNT is never changed.
+std::string bits_normalise(unsigned radix, std::string digits);
+
+// 1 for binary, 4 for hex.
+unsigned bits_per_digit(unsigned radix);
+
+// What .bytes() answers: the packed size, rounding up to a whole byte.
+size_t bits_byte_count(const Bits &bits);
+
+// Exact base conversion, both directions, in decimal string arithmetic. See
+// bits.cpp for why this is not done with Number::divide.
+std::string bits_to_decimal(unsigned radix, const std::string &digits);
+std::string bits_from_decimal(unsigned radix, const std::string &decimal,
+                              size_t min_digits);
+
+// Value-preserving. Exact in width for hex -> binary; hex is the direction that
+// rounds a width up, and bits.cpp says so at the site.
+Bits bits_convert(const Bits &from, unsigned to_radix);
+
+// The packed bytes, big-endian and left-padded to a whole byte. Packing LOSES
+// the digit count — `x0F` and `x000F` pack alike — so bits_unpack takes the
+// count back, and §20.3 sends it beside the bytes.
+std::string bits_pack(const Bits &bits);
+Bits bits_unpack(unsigned radix, const std::string &bytes, size_t digit_count);
+
 // The name of a spacesuit, out of line because SpacesuitInfo is defined in
 // env.hpp and value.hpp sits below it in the include order. Defined in env.cpp.
 const std::string &suit_name(const SpacesuitInfo *suit);
@@ -231,12 +310,15 @@ const std::string &suit_name(const SpacesuitInfo *suit);
 // constructors are what enforce that at the C++ level — `Value v = 3.14` is a
 // compile error rather than the silent truncation to 3 that §8.1 measured.
 //
+// BitsRef is index 9 and was appended for exactly the reason below, not because
+// binary and hex belong after a map. §21.
+//
 // APPEND ONLY. MapRef is index 8 because it was added last, not because a map
 // belongs at the end: help_for() and module_of() switch on RAW variant indices,
 // so inserting an alternative renumbers every alternative after it and silently
 // changes what every one of those switches means.
 using ValueBase = std::variant<std::monostate, bool, Number, Str, ListRef,
-                               ObjectPtr, Time, FilePtr, MapRef>;
+                               ObjectPtr, Time, FilePtr, MapRef, BitsRef>;
 
 // One node that can hold anything the language has so far:
 //   satellite.variable.bool / .number       -> the scalar alternatives
@@ -267,6 +349,14 @@ inline Value make_map(MapBody body)
     return Value(std::make_shared<const MapBody>(std::move(body)));
 }
 
+// Build a binary or hex value. Takes the digits already validated and, for hex,
+// already upper-cased — normalisation belongs to whoever parsed the digits, so
+// that this stays the one cheap way to make one.
+inline Value make_bits(unsigned radix, std::string digits)
+{
+    return Value(std::make_shared<const Bits>(Bits{radix, std::move(digits)}));
+}
+
 // Read a string or list out of a Value, or null if it is not one.
 //
 // These replace `std::get_if<SatString>(&v)` at the call sites, and the
@@ -287,6 +377,11 @@ inline const List *as_list(const Value &v)
 inline const MapBody *as_map(const Value &v)
 {
     const MapRef *p = std::get_if<MapRef>(&v);
+    return p ? p->get() : nullptr;
+}
+inline const Bits *as_bits(const Value &v)
+{
+    const BitsRef *p = std::get_if<BitsRef>(&v);
     return p ? p->get() : nullptr;
 }
 
@@ -376,6 +471,12 @@ struct ValuePrinter {
     std::string operator()(Time time) const;
     std::string operator()(const FilePtr &file) const;
     std::string operator()(const MapRef &map) const;
+
+    // Prints WITH the prefix — `x00FF`, `b1010` — so that what a program
+    // displays is what a program may type back in. §8.1.1's rule for a number
+    // is "print the value, never N significant digits"; the equivalent for a
+    // value whose width is load-bearing is to print every digit it has.
+    std::string operator()(const BitsRef &bits) const;
 };
 
 inline std::string to_string(const Value &v)

@@ -269,6 +269,30 @@ int main()
         printf("%d lexer check(s) failed\n", failures);
         return 1;
     }
+    // §21: the one rule that decides a literal from a name, both directions.
+    {
+        auto kinds = [](const std::string &src) {
+            std::vector<Token> t = lex(src);
+            std::string out;
+            for (const Token &tok : t)
+                if (tok.kind != TokenKind::End)
+                    out += describe(tok) + " ";
+            return out;
+        };
+        check(kinds("x00FF") == "Bits(x00FF) ", "x00FF is a hex literal");
+        check(kinds("b1010") == "Bits(b1010) ", "b1010 is a binary literal");
+        check(kinds("x1") == "Bits(x1) ", "x1 is a literal, not a name");
+        // The names the rule must NOT eat. `x2_y` is this header's own example
+        // of a Word, and `be` is in this repo's satellite corpus.
+        check(kinds("x2_y") == "Word(x2_y) ", "an underscore keeps it a name");
+        check(kinds("be") == "Word(be) ", "e is not a binary digit, so be is a name");
+        check(kinds("box") == "Word(box) ", "box is a name");
+        check(kinds("x") == "Word(x) ", "a bare x is a name — a literal needs a digit");
+        check(kinds("b") == "Word(b) ", "a bare b is a name");
+        check(kinds("b2") == "Word(b2) ", "2 is not a binary digit, so b2 is a name");
+        check(kinds("X0F") == "Word(X0F) ", "upper case is not a prefix");
+    }
+
     printf("PASS: lexer (underscore in words, whitespace in the raw area, "
            "'>>' as two tokens, escapes only inside strings)\n");
     return 0;

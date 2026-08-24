@@ -140,6 +140,13 @@ std::string unparse(const Expr &expr)
     if (const DurationLit *d = std::get_if<DurationLit>(&expr))
         return d->text;
 
+    // The spelling, prefix and all, so `x00ff` does not unparse as `x00FF`.
+    // Same reason NumberLit keeps its text: unparse emits what was written.
+    // Re-lexing either spelling yields the same value, because the digits are
+    // normalised at evaluation and not here.
+    if (const BitsLit *b = std::get_if<BitsLit>(&expr))
+        return b->text;
+
     if (const StringLit *s = std::get_if<StringLit>(&expr))
         return "\"" + s->source + "\"";
 
