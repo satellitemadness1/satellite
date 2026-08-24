@@ -304,6 +304,55 @@ Bits bits_unpack(unsigned radix, const std::string &bytes, size_t digit_count);
 // env.hpp and value.hpp sits below it in the include order. Defined in env.cpp.
 const std::string &suit_name(const SpacesuitInfo *suit);
 
+// The value satellite.main is handed: the command line, and then everything
+// the runtime can truthfully say about the machine it is running on.
+//
+// A LIST OF STRINGS THAT KNOWS WHAT EACH STRING IS. matches() accepts one
+// wherever satellite.container.list<satellite.variable.string> is declared, so
+// §2's signature does not move and hello world keeps its five lines; what it
+// adds is that every element has a NAME, and that names past the command line
+// carry facts (argv, cwd, the user, the OS, the compiler that built satl)
+// which a program would otherwise have no way to ask for at all.
+//
+// .length() AND NUMERIC [i] COVER THE COMMAND LINE AND NOTHING ELSE. That is
+// the whole reason `command_line_count` is stored rather than derived. Every
+// program that takes arguments writes `for (i = 1; i < args.length(); i++)`,
+// and if .length() counted the environment entries that loop would walk off
+// the user's arguments and start reading the kernel release as though it had
+// been typed. The extra entries are reached by NAME -- args.cxx_compiler,
+// args["cxx_compiler"], args.get("cxx_compiler") -- and .count() is the total
+// for anyone who wants it.
+//
+// BUILT, THEN FROZEN, exactly as MapBody is and for the same reason: an
+// Arguments is fully populated before make_shared and never written afterwards,
+// which is what keeps the immutability contract and the lock-free publish
+// protocol intact. The index is built eagerly for the same reason MapBody's is
+// -- a lazily built one is a data race nothing in the test suite would catch.
+struct ArgumentEntry {
+    // ASCII, lower case, underscores. Chosen to be disjoint from every method
+    // name a list or an Arguments answers to, because a method wins over an
+    // entry and a colliding name would be unreachable rather than ambiguous.
+    std::string name;
+
+    // Always a string Value. An Arguments is a list<string> to the type system
+    // and this is what makes that true rather than nearly true.
+    ValuePtr value;
+};
+
+struct Arguments {
+    // In display order: the command line first, in argv order, then the
+    // environment entries in the order §8's table lists them.
+    std::vector<ArgumentEntry> entries;
+
+    // name -> position in `entries`. Eager, see above.
+    std::unordered_map<std::string, size_t> index;
+
+    // How many leading entries came from (argc, argv), argv[0] included. This
+    // is what .length() answers and what [i] is bounded by.
+    size_t command_line_count = 0;
+};
+using ArgsRef = std::shared_ptr<const Arguments>;
+
 // `double` is deliberately absent, per §8.1: satellite.variable.number is an
 // exact decimal (bignum.hpp), so there is no binary float anywhere in the
 // language's value space and no way for one to leak in. Number's deleted float
@@ -311,14 +360,22 @@ const std::string &suit_name(const SpacesuitInfo *suit);
 // compile error rather than the silent truncation to 3 that §8.1 measured.
 //
 // BitsRef is index 9 and was appended for exactly the reason below, not because
-// binary and hex belong after a map. §21.
+// binary and hex belong after a map. §21. ArgsRef is index 10 and was appended
+// for the same reason -- it is not that the arguments object belongs after a
+// hex literal, it is that there is nowhere else it may go.
 //
 // APPEND ONLY. MapRef is index 8 because it was added last, not because a map
 // belongs at the end: help_for() and module_of() switch on RAW variant indices,
 // so inserting an alternative renumbers every alternative after it and silently
 // changes what every one of those switches means.
+//
+// A shared_ptr is 16 bytes and the variant already holds five of them, so
+// appending ArgsRef leaves sizeof(Value) at 40 and the static_assert below
+// keeps holding. An alternative that grew it would be refused on that ground
+// alone: §8.1's Number migration and §10's Expr/Value split both rest on 40.
 using ValueBase = std::variant<std::monostate, bool, Number, Str, ListRef,
-                               ObjectPtr, Time, FilePtr, MapRef, BitsRef>;
+                               ObjectPtr, Time, FilePtr, MapRef, BitsRef,
+                               ArgsRef>;
 
 // One node that can hold anything the language has so far:
 //   satellite.variable.bool / .number       -> the scalar alternatives
@@ -357,6 +414,14 @@ inline Value make_bits(unsigned radix, std::string digits)
     return Value(std::make_shared<const Bits>(Bits{radix, std::move(digits)}));
 }
 
+// Takes the body BY VALUE and freezes it, the same contract make_map has. The
+// caller (arguments_for, in system.cpp) is the only place that builds one, and
+// it fills `entries`, `index` and `command_line_count` before calling this.
+inline Value make_arguments(Arguments body)
+{
+    return Value(std::make_shared<const Arguments>(std::move(body)));
+}
+
 // Read a string or list out of a Value, or null if it is not one.
 //
 // These replace `std::get_if<SatString>(&v)` at the call sites, and the
@@ -383,6 +448,27 @@ inline const Bits *as_bits(const Value &v)
 {
     const BitsRef *p = std::get_if<BitsRef>(&v);
     return p ? p->get() : nullptr;
+}
+inline const Arguments *as_arguments(const Value &v)
+{
+    const ArgsRef *p = std::get_if<ArgsRef>(&v);
+    return p ? p->get() : nullptr;
+}
+
+// The command-line half of an Arguments, as a plain List, so that every place
+// which already knows what to do with a list<string> can be handed one without
+// learning a second shape. Copies the handles, never the strings.
+//
+// This is what makes DECISION 4 cheap: .length(), [i], slicing, .first(),
+// .last() and .contains() all run over THIS, so they keep answering exactly
+// what they answered before the arguments object existed.
+inline List arguments_command_line(const Arguments &args)
+{
+    List out;
+    out.reserve(args.command_line_count);
+    for (size_t i = 0; i < args.command_line_count && i < args.entries.size(); i++)
+        out.push_back(args.entries[i].value);
+    return out;
 }
 
 // 40 bytes is the figure §8.1 quotes when it records that removing `double`
@@ -477,6 +563,13 @@ struct ValuePrinter {
     // is "print the value, never N significant digits"; the equivalent for a
     // value whose width is load-bearing is to print every digit it has.
     std::string operator()(const BitsRef &bits) const;
+
+    // One entry per line, `name` padded to the widest, then the value. NOT the
+    // one-line `{k: v}` a map uses: there are about thirty entries and one of
+    // them is a compiler version string, so a single line is unreadable in the
+    // only place it is ever printed. `.lines()` on a list already established
+    // that "one per line, aligned" is a form this language has.
+    std::string operator()(const ArgsRef &args) const;
 };
 
 inline std::string to_string(const Value &v)
@@ -521,6 +614,28 @@ inline std::string ValuePrinter::operator()(const MapRef &map) const
         out += e.value ? to_string(*e.value) : "nil";
     }
     return out + "}";
+}
+
+inline std::string ValuePrinter::operator()(const ArgsRef &args) const
+{
+    if (!args || args->entries.empty())
+        return "";
+
+    size_t width = 0;
+    for (const ArgumentEntry &e : args->entries)
+        if (e.name.size() > width)
+            width = e.name.size();
+
+    std::string out;
+    for (size_t i = 0; i < args->entries.size(); i++) {
+        const ArgumentEntry &e = args->entries[i];
+        if (i)
+            out += "\n";
+        out += e.name;
+        out.append(width - e.name.size() + 2, ' ');
+        out += e.value ? to_string(*e.value) : "";
+    }
+    return out;
 }
 
 } // namespace satellite

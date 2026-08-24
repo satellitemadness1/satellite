@@ -130,7 +130,20 @@ BUILD_STAMP := $(shell date -u $(if $(SOURCE_DATE_EPOCH),-d @$(SOURCE_DATE_EPOCH
 # project has already been bitten once by the two disagreeing: LLVM_BIN pointed
 # at a directory that did not exist, `c++` answered instead, and every figure
 # attributed to clang was GCC's with nothing anywhere saying so.
-VERSION_DEFS = -DSATELLITE_VERSION='"$(SATELLITE_VERSION)"' \
+# The make that drove this build, first line of its --version. It joins
+# VERSION_DEFS rather than CXXFLAGS for the reason version.hpp:12 gives about
+# the build stamp: a define in CXXFLAGS rewrites .cxxflags-stamp, and a value
+# that can change would rebuild all 43 objects on every make, forever. Here it
+# reaches exactly the three recipes that need it.
+#
+# := so the sub-shell runs once per make and not once per recipe, and the
+# stderr redirect so a make that has no --version leaves the fallback in
+# system.cpp to answer `unrecorded` rather than putting an error message in a
+# string a program can read.
+SATELLITE_MAKE_VERSION := $(shell $(MAKE) --version 2>/dev/null | head -1)
+
+VERSION_DEFS = -DSATELLITE_BUILD_MAKE='"$(SATELLITE_MAKE_VERSION)"' \
+               -DSATELLITE_VERSION='"$(SATELLITE_VERSION)"' \
                -DSATELLITE_REVISION='"$(SATELLITE_REVISION)"' \
                -DSATELLITE_BUILT='"$(BUILD_STAMP)"' \
                -DSATELLITE_BUILD_CXX='"$(CXX)"' \
@@ -168,7 +181,7 @@ LDFLAGS ?=
 # architecture needs: both binary packages are Architecture: any, and that is a
 # promise the package builds everywhere (Debian Policy 5.6.8).
 TSAN      ?= 1
-TSAN_TEST  = $(if $(filter-out 0,$(TSAN)),$(LIBRARY)/library_test_tsan)
+TSAN_TEST  = $(if $(filter-out 0,$(TSAN)),$(TESTS)/library_test/library_test_tsan)
 
 # ThreadSanitizer needs a runtime the COMPILER supplies, and $(CXX) is not
 # guaranteed to have one. The clang-24 build -- which $(LLVM_BIN) named until
@@ -290,6 +303,20 @@ FORMAT   = $(SRC)/bytecode_format
 REG      = $(SRC)/register_file
 PROGRAMS = $(SRC)/programs
 
+# The tests root, and the one directory variable that is NOT under $(SRC).
+# Every test lives in satellite_system/tests/<test_name>/, one folder per test
+# binary, because a test that has been split into six files needs somewhere to
+# put them that is not the module it tests. -I$(SRC) is what still makes their
+# includes root-relative, so nothing about how a test includes changed.
+TESTS    = satellite_system/tests
+
+# One name per test binary, and the single place a test is declared to exist.
+# TESTBINS, the aliases, `test`, `clean` and the per-test source wildcards are
+# all derived from this list, so adding a test means adding one word here.
+TESTNAMES = library_test satellite_string_test lexer_test ast_test parser_test \
+            eval_test interp_test loader_test env_test spacesuit_test \
+            bignum_test random_test format_test console_test reg_test
+
 # eval.cpp was 2208 lines. Split into evaluator/ at the seams the code already
 # had, none of the twelve reaching 400. Listed explicitly rather than by
 # wildcard so that a file added to the directory and forgotten here fails to
@@ -312,7 +339,12 @@ EVAL_SRCS = $(EVAL)/helpers.cpp $(EVAL)/help.cpp $(EVAL)/types.cpp \
             $(EVAL)/session.cpp $(EVAL)/stmt.cpp $(EVAL)/slots.cpp \
             $(EVAL)/expr.cpp $(EVAL)/methods.cpp $(EVAL)/mutators.cpp \
             $(EVAL)/modules.cpp $(EVAL)/calls.cpp $(EVAL)/operators.cpp \
-            $(EVAL)/maps.cpp
+            $(EVAL)/maps.cpp \
+            $(EVAL)/modules_file.cpp $(EVAL)/modules_help.cpp \
+            $(EVAL)/modules_system.cpp $(EVAL)/modules_directory.cpp \
+            $(EVAL)/modules_random.cpp $(EVAL)/modules_console.cpp \
+            $(EVAL)/methods_scalars.cpp $(EVAL)/methods_file.cpp \
+            $(EVAL)/methods_containers.cpp $(EVAL)/methods_bits.cpp
 EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
 OBJS      = $(PROGRAMS)/main.o $(LIBRARY)/library.o \
@@ -480,6 +512,12 @@ INSTALL_QUIET    := $(if $(findstring n,$(MAKE_SHORT_FLAGS)),,--silent)
 DOWNLOAD_DIR = enterprise_download
 DOWNLOAD_TAR = satellite_rhel.tar.xz
 
+# The data half of the bundle: the whole install tree, staged prefix-relative,
+# so install.sh can put it somewhere without a Makefile, a compiler or a copy of
+# the file list. Written by the `bundle` rule below, which explains all three.
+# Under DOWNLOAD_DIR so that it travels inside the tarball with the binaries.
+BUNDLE_TREE = $(DOWNLOAD_DIR)/install_tree
+
 # `all`, whatever order the rules below end up in.
 .DEFAULT_GOAL := all
 
@@ -506,12 +544,55 @@ endif
 # exit 0, no error anywhere. .DEFAULT_GOAL is set at the top as well, so the
 # next rule that lands in the wrong place cannot repeat it.
 bundle: satl $(GUI_TARGET)
+	@rm -rf '$(DOWNLOAD_DIR)'
 	@install -d -m755 '$(DOWNLOAD_DIR)'
 	@install -m755 satl '$(DOWNLOAD_DIR)/satl'
 	@if [ -f satl-term ]; then \
 	    install -m755 satl-term '$(DOWNLOAD_DIR)/satl-term'; \
 	fi
 	@install -m755 install.sh '$(DOWNLOAD_DIR)/install.sh'
+# THE DATA HALF OF THE BUNDLE, and the reason install.sh works from inside it.
+#
+# The three files above are a program; they are not an install. The icons, the
+# mime packet, the .desktop entry, the man pages, the examples, the design and
+# the licence are the rest of it, and until this rule existed the bundle had
+# none of them -- so install.sh, which drives `make install` and needs a
+# Makefile beside it, exited with "no Makefile beside ./install.sh" and a user
+# who downloaded, unpacked and ran it installed nothing at all.
+#
+# STAGED BY `make install` ITSELF rather than by a second list of files here.
+# That is the whole point: install.sh:4-8 says the install tree is declared
+# exactly once, in the `install` target, because two lists is how an install
+# tree rots. This bundle does not carry a copy of the list -- it carries the
+# RESULT of the one list, produced by running it. Add a data file to `install`
+# above and it is in the next bundle with no edit here.
+#
+# prefix= EMPTY, which is what makes the staged tree prefix-relative:
+# $(bindir) becomes /bin and $(datadir) becomes /share, so the tree is
+# install_tree/bin/satl and install_tree/share/..., and installing it anywhere
+# is a copy with no path translation on either side. install.sh does not have
+# to know what prefix this machine built at.
+#
+# -o satl -o satl-term GUI_TARGET=, for the reason `all` passes the same three
+# words one target up: prefix is compiled into system.o through .libdir-stamp,
+# so a sub-make at a DIFFERENT prefix -- and empty is a different prefix --
+# would rewrite the stamp, recompile system.o and relink satl, at a prefix that
+# is not a directory. --old-file on the two binaries says they are current, and
+# the sub-make then reaches `install` with nothing to compile. **Verified**
+# with `make -n`: zero compile lines, and .libdir-stamp is not touched.
+#
+# The binary in the tree is therefore the one built for THIS machine's prefix,
+# with that prefix baked in as SATELLITE_LIB_DIR -- and it does not matter,
+# because tier 2 of library_path() resolves ../share/satellite/lib from
+# /proc/self/exe (DESIGN §9), and `install` creates that directory empty for
+# exactly this reason. The bundle installs correctly at /usr/local, at
+# $HOME/.local, or anywhere else, with no rebuild and no environment variable.
+#
+# DESTDIR is set, so `install` skips its own index-rebuild block -- correct
+# here, this is staging. install.sh runs those three tools after it copies.
+	@$(MAKE) --no-print-directory --silent -o satl -o satl-term GUI_TARGET= \
+	    install prefix= DESTDIR='$(CURDIR)/$(BUNDLE_TREE)' \
+	    SATELLITE_AUTOINSTALL=0
 # The tarball sits OUTSIDE the folder it archives, in the project root, so that
 # unpacking it recreates the folder rather than scattering three files into
 # whatever directory the download landed in.
@@ -628,60 +709,82 @@ FORCE:
 # system.o is the only object that learns the install prefix, so retargeting a
 # build invalidates one object and not twelve. DESTDIR is deliberately absent
 # from this define -- see the prefix/DESTDIR note above.
+# VERSION_DEFS joins this recipe because arguments_for() reports what built the
+# interpreter — the compiler, its flags, the make, the build stamp — and those
+# are the defines that carry them. Same three-recipe argument as above: not in
+# CXXFLAGS, or the build stamp rebuilds everything every time.
 $(SYSTEM)/system.o: $(SYSTEM)/system.cpp .libdir-stamp
 	$(CXX) $(CXXFLAGS) -I$(SRC) \
-	    -DSATELLITE_LIB_DIR='"$(datadir)/satellite/lib"' \
+	    $(VERSION_DEFS) -DSATELLITE_LIB_DIR='"$(datadir)/satellite/lib"' \
 	    -c -o $@ $(SYSTEM)/system.cpp
 
 $(OBJS): $(HDRS) .cxxflags-stamp
 
-$(LIBRARY)/library_test: $(LIBRARY)/library_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(LIBRARY)/library_test.cpp $(LIBOBJS)
+# --- what a test is built from ----------------------------------------------
+# EVERY .cpp in a test's folder is part of that test. That is the rule, so it is
+# a wildcard rather than fifteen hand-written lists: a test that gets split into
+# six files needs no Makefile edit, and -- more to the point -- a new piece
+# CANNOT be forgotten. .gitignore's note records what the hand-copied list cost
+# twice; this is the same lesson applied one level up.
+#
+# $(wildcard) expands when the Makefile is read, so a file added during a build
+# is picked up by the next one. That is the only cost and it is the right trade.
+$(foreach t,$(TESTNAMES),$(eval $(t)_SRCS = $$(wildcard $$(TESTS)/$(t)/*.cpp)))
+
+# The HEADERS are a separate list because they are a DEPENDENCY and not an
+# input: a split test grew a <name>.hpp holding the harness declarations and the
+# section prototypes, and without this a change to that header would not relink
+# the binary. Found by the audit of the 2026-08-24 split, which is exactly the
+# kind of stale-build hazard that only shows up as a confusing test result later.
+$(foreach t,$(TESTNAMES),$(eval $(t)_HDRS = $$(wildcard $$(TESTS)/$(t)/*.hpp)))
+
+$(TESTS)/library_test/library_test: $(library_test_SRCS) $(library_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(library_test_SRCS) $(LIBOBJS)
 
 # The one test that does NOT follow $(OPT), and deliberately: a sanitizer build
 # wants -O1 and -g, because the instrumentation is what is being run and a
 # report without line numbers is not one. $(OPT) is the knob for the code that
 # ships, and this binary does not ship.
-$(LIBRARY)/library_test_tsan: $(LIBRARY)/library_test.cpp $(TESTSRCS) $(HDRS)
+$(TESTS)/library_test/library_test_tsan: $(library_test_SRCS) $(TESTSRCS) $(HDRS)
 	$(TSAN_CXX) $(TESTFLAGS) $(PCGFLAGS) -I$(SRC) -O1 -g -fsanitize=thread \
-	    -o $@ $(LIBRARY)/library_test.cpp $(TESTSRCS)
+	    -o $@ $(library_test_SRCS) $(TESTSRCS)
 
-$(STRING)/satellite_string_test: $(STRING)/satellite_string_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(STRING)/satellite_string_test.cpp $(LIBOBJS)
+$(TESTS)/satellite_string_test/satellite_string_test: $(satellite_string_test_SRCS) $(satellite_string_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(satellite_string_test_SRCS) $(LIBOBJS)
 
-$(LEXER)/lexer_test: $(LEXER)/lexer_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(LEXER)/lexer_test.cpp $(LIBOBJS)
+$(TESTS)/lexer_test/lexer_test: $(lexer_test_SRCS) $(lexer_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(lexer_test_SRCS) $(LIBOBJS)
 
-$(AST)/ast_test: $(AST)/ast_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(AST)/ast_test.cpp $(LIBOBJS)
+$(TESTS)/ast_test/ast_test: $(ast_test_SRCS) $(ast_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(ast_test_SRCS) $(LIBOBJS)
 
-$(PARSER)/parser_test: $(PARSER)/parser_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(PARSER)/parser_test.cpp $(LIBOBJS)
+$(TESTS)/parser_test/parser_test: $(parser_test_SRCS) $(parser_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(parser_test_SRCS) $(LIBOBJS)
 
-$(EVAL)/eval_test: $(EVAL)/eval_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(EVAL)/eval_test.cpp $(LIBOBJS)
+$(TESTS)/eval_test/eval_test: $(eval_test_SRCS) $(eval_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(eval_test_SRCS) $(LIBOBJS)
 
-$(INTERP)/interp_test: $(INTERP)/interp_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(INTERP)/interp_test.cpp $(LIBOBJS)
+$(TESTS)/interp_test/interp_test: $(interp_test_SRCS) $(interp_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(interp_test_SRCS) $(LIBOBJS)
 
-$(LOADER)/loader_test: $(LOADER)/loader_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(LOADER)/loader_test.cpp $(LIBOBJS)
+$(TESTS)/loader_test/loader_test: $(loader_test_SRCS) $(loader_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(loader_test_SRCS) $(LIBOBJS)
 
-$(ENV)/env_test: $(ENV)/env_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(ENV)/env_test.cpp $(LIBOBJS)
+$(TESTS)/env_test/env_test: $(env_test_SRCS) $(env_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(env_test_SRCS) $(LIBOBJS)
 
-$(ENV)/spacesuit_test: $(ENV)/spacesuit_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(ENV)/spacesuit_test.cpp $(LIBOBJS)
+$(TESTS)/spacesuit_test/spacesuit_test: $(spacesuit_test_SRCS) $(spacesuit_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(spacesuit_test_SRCS) $(LIBOBJS)
 
-$(NUMBER)/bignum_test: $(NUMBER)/bignum_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(NUMBER)/bignum_test.cpp $(LIBOBJS)
+$(TESTS)/bignum_test/bignum_test: $(bignum_test_SRCS) $(bignum_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(bignum_test_SRCS) $(LIBOBJS)
 
 # The one test binary whose runtime is a design parameter rather than an
 # accident: every end-to-end case spends its tier's throwaway window before it
 # answers, so the cases here are on `fast` (50-100 ms) and the sampler itself is
 # tested through a stub generator that does not spin at all.
-$(RANDOM)/random_test: $(RANDOM)/random_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(RANDOM)/random_test.cpp $(LIBOBJS)
+$(TESTS)/random_test/random_test: $(random_test_SRCS) $(random_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(random_test_SRCS) $(LIBOBJS)
 
 # format.hpp links against NOTHING — it includes only <cstdint> and <cstddef>,
 # so this is the one test binary that needs no objects at all. That is a
@@ -692,67 +795,73 @@ $(RANDOM)/random_test: $(RANDOM)/random_test.cpp $(LIBOBJS)
 # Most of this test runs at COMPILE time. format.hpp ends in static_asserts over
 # the X-macro lists, so a duplicate id or a hole in the registry fails right
 # here rather than in the binary.
-$(FORMAT)/format_test: $(FORMAT)/format_test.cpp $(FORMAT)/format.hpp \
+$(TESTS)/format_test/format_test: $(format_test_SRCS) $(format_test_HDRS) $(FORMAT)/format.hpp \
                     $(FORMAT)/format.def
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(FORMAT)/format_test.cpp
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(format_test_SRCS)
+
+$(TESTS)/console_test/console_test: $(console_test_SRCS) $(console_test_HDRS) $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(console_test_SRCS) $(LIBOBJS)
 
 # reg.hpp is not linked into satl: there is no VM yet, and nothing in the
-# interpreter includes it. This binary is the only consumer.
-$(CONSOLE)/console_test: $(CONSOLE)/console_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(CONSOLE)/console_test.cpp $(LIBOBJS)
+# interpreter includes it. This binary is the only consumer. (This comment sat
+# over console_test until the move; it was always describing this recipe.)
+$(TESTS)/reg_test/reg_test: $(reg_test_SRCS) $(reg_test_HDRS) $(REG)/reg.hpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(reg_test_SRCS) $(LIBOBJS)
 
-$(REG)/reg_test: $(REG)/reg_test.cpp $(REG)/reg.hpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(REG)/reg_test.cpp $(LIBOBJS)
-
-# The fifteen test binaries, each one built beside the code it tests. ONE list,
-# used as the dependency list here, by the aliases below and by `clean` --
-# because .gitignore's own note records what a second hand-copied list costs:
-# reg_test drifted out of one and 561KB of binary went into a commit.
-TESTBINS = $(LIBRARY)/library_test $(STRING)/satellite_string_test \
-           $(NUMBER)/bignum_test $(RANDOM)/random_test \
-           $(FORMAT)/format_test $(REG)/reg_test $(CONSOLE)/console_test \
-           $(LEXER)/lexer_test $(AST)/ast_test $(PARSER)/parser_test \
-           $(ENV)/env_test $(EVAL)/eval_test $(INTERP)/interp_test \
-           $(LOADER)/loader_test $(ENV)/spacesuit_test
+# The fifteen test binaries. They no longer sit beside the code they test --
+# each one is built in its own folder under $(TESTS), because a test split into
+# six files needs a folder and a test binary needs somewhere to land that is not
+# the module's source directory.
+#
+# Still ONE list, used as the dependency list here, by the aliases below and by
+# `clean` -- because .gitignore's own note records what a second hand-copied
+# list costs: reg_test drifted out of one and 561KB of binary went into a
+# commit.
+TESTBINS = $(TESTS)/library_test/library_test $(TESTS)/satellite_string_test/satellite_string_test \
+           $(TESTS)/bignum_test/bignum_test $(TESTS)/random_test/random_test \
+           $(TESTS)/format_test/format_test $(TESTS)/reg_test/reg_test $(TESTS)/console_test/console_test \
+           $(TESTS)/lexer_test/lexer_test $(TESTS)/ast_test/ast_test $(TESTS)/parser_test/parser_test \
+           $(TESTS)/env_test/env_test $(TESTS)/eval_test/eval_test $(TESTS)/interp_test/interp_test \
+           $(TESTS)/loader_test/loader_test $(TESTS)/spacesuit_test/spacesuit_test
 
 test: $(TESTBINS) $(TSAN_TEST)
-	./$(LIBRARY)/library_test
+	./$(TESTS)/library_test/library_test
 	$(if $(TSAN_TEST),./$(TSAN_TEST))
-	./$(STRING)/satellite_string_test
-	./$(NUMBER)/bignum_test
-	./$(RANDOM)/random_test
-	./$(FORMAT)/format_test
-	./$(REG)/reg_test
-	./$(CONSOLE)/console_test
-	./$(LEXER)/lexer_test
-	./$(AST)/ast_test
-	./$(PARSER)/parser_test
-	./$(ENV)/env_test
-	./$(EVAL)/eval_test
-	./$(INTERP)/interp_test
-	./$(LOADER)/loader_test
-	./$(ENV)/spacesuit_test
+	./$(TESTS)/satellite_string_test/satellite_string_test
+	./$(TESTS)/bignum_test/bignum_test
+	./$(TESTS)/random_test/random_test
+	./$(TESTS)/format_test/format_test
+	./$(TESTS)/reg_test/reg_test
+	./$(TESTS)/console_test/console_test
+	./$(TESTS)/lexer_test/lexer_test
+	./$(TESTS)/ast_test/ast_test
+	./$(TESTS)/parser_test/parser_test
+	./$(TESTS)/env_test/env_test
+	./$(TESTS)/eval_test/eval_test
+	./$(TESTS)/interp_test/interp_test
+	./$(TESTS)/loader_test/loader_test
+	./$(TESTS)/spacesuit_test/spacesuit_test
 
-# A test binary now sits beside its code, so its path is no longer its name.
+# A test binary lives under $(TESTS)/<name>/, so its path is no longer its name.
 # These keep `make ast_test` working, which is what fingers already type and
 # what every note in DESIGN.md that mentions running one still says. Each is
 # phony and does nothing but ask for the real path.
-ast_test:              $(AST)/ast_test
-bignum_test:           $(NUMBER)/bignum_test
-console_test:          $(CONSOLE)/console_test
-env_test:              $(ENV)/env_test
-eval_test:             $(EVAL)/eval_test
-format_test:           $(FORMAT)/format_test
-interp_test:           $(INTERP)/interp_test
-lexer_test:            $(LEXER)/lexer_test
-library_test:          $(LIBRARY)/library_test
-library_test_tsan:     $(LIBRARY)/library_test_tsan
-loader_test:           $(LOADER)/loader_test
-parser_test:           $(PARSER)/parser_test
-random_test:           $(RANDOM)/random_test
-reg_test:              $(REG)/reg_test
-satellite_string_test: $(STRING)/satellite_string_test
-spacesuit_test:        $(ENV)/spacesuit_test
+ast_test:              $(TESTS)/ast_test/ast_test
+bignum_test:           $(TESTS)/bignum_test/bignum_test
+console_test:          $(TESTS)/console_test/console_test
+env_test:              $(TESTS)/env_test/env_test
+eval_test:             $(TESTS)/eval_test/eval_test
+format_test:           $(TESTS)/format_test/format_test
+interp_test:           $(TESTS)/interp_test/interp_test
+lexer_test:            $(TESTS)/lexer_test/lexer_test
+library_test:          $(TESTS)/library_test/library_test
+library_test_tsan:     $(TESTS)/library_test/library_test_tsan
+loader_test:           $(TESTS)/loader_test/loader_test
+parser_test:           $(TESTS)/parser_test/parser_test
+random_test:           $(TESTS)/random_test/random_test
+reg_test:              $(TESTS)/reg_test/reg_test
+satellite_string_test: $(TESTS)/satellite_string_test/satellite_string_test
+spacesuit_test:        $(TESTS)/spacesuit_test/spacesuit_test
 
 TESTALIASES = ast_test bignum_test console_test env_test eval_test \
               format_test interp_test lexer_test library_test \
@@ -1066,7 +1175,7 @@ clean:
 	$(MAKE) -C example/website clean
 # library_test_tsan is named outright rather than through $(TSAN_TEST), so that
 # `make clean TSAN=0` still removes the 27MB binary an earlier build left.
-	rm -f satl satl-term $(TESTBINS) $(LIBRARY)/library_test_tsan \
+	rm -f satl satl-term $(TESTBINS) $(TESTS)/library_test/library_test_tsan \
 	      $(SRC)/*/*.o $(SRC)/*/*.o.tmp .libdir-stamp .cxxflags-stamp \
 	      dist/satl.1.gz dist/satl-term.1.gz
 # Three compiled things no rule in this file builds and no clean target had

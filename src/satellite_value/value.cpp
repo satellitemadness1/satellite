@@ -266,6 +266,23 @@ struct SizeVisitor {
             total += slot.first.size() + sizeof(size_t);
         return total;
     }
+
+    // The same shape as the map above, and for the same reasons: a handle per
+    // entry, the entry's own value walked as a child, and the side index
+    // MEASURED rather than inferred. The names are billed once each, from the
+    // index, because `entries[i].name` and the index's key are the same bytes
+    // stored twice and billing both would double-count every name.
+    size_t operator()(const ArgsRef &args) const
+    {
+        if (!walk.first_time(args.get()))
+            return 0;
+        size_t total = args->entries.size() * VALUE_HANDLE_BYTES;
+        for (const ArgumentEntry &entry : args->entries)
+            total += walk.of_child(entry.value);
+        for (const auto &slot : args->index)
+            total += slot.first.size() + sizeof(size_t);
+        return total;
+    }
 };
 
 size_t SizeWalk::of(const Value &v)

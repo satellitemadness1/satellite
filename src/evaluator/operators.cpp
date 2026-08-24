@@ -47,6 +47,48 @@ ValuePtr Evaluator::eval_index(const Index &node, Span span)
         return value ? value : make_value(std::monostate{});
     }
 
+    // THE ARGUMENTS OBJECT TAKES BOTH KINDS OF SUBSCRIPT, and which one it got
+    // decides which half it reads. `args[1]` is the second command-line
+    // argument, exactly as it was before this type existed; `args["username"]`
+    // is a named entry. A string subscript is never a valid index, and a whole
+    // number is never a valid entry name, so the two cannot be confused and
+    // neither needs a flag to tell them apart.
+    //
+    // Consulted before the whole-number demand below, for the same reason the
+    // map is: coercing the subscript first would make `args["username"]` fail
+    // with "index must be a whole satellite.variable.number", which is a true
+    // sentence about the wrong question.
+    if (const Arguments *args = as_arguments(*target)) {
+        if (const SatString *key = as_string(*sub))
+            return argument_named(*args, decode(*key), node.subscript->span);
+
+        // Falls through to the list rule below over the command-line half, so
+        // the bounds, the negative index and the error text are the list's and
+        // not a second copy of them.
+        const List command_line = arguments_command_line(*args);
+        long long index = 0;
+        if (!as_index(*sub, index)) {
+            fail(node.subscript->span,
+                 "an arguments subscript is a whole satellite.variable.number "
+                 "for a command-line argument, or a "
+                 "satellite.variable.string for a named entry, got " +
+                 to_string(*sub));
+            return nullptr;
+        }
+        long long len = static_cast<long long>(command_line.size());
+        if (index < 0)
+            index += len;
+        if (index < 0 || index >= len) {
+            fail(node.subscript->span,
+                 "index " + to_string(*sub) + " is outside the " +
+                 std::to_string(command_line.size()) +
+                 " command-line arguments");
+            return nullptr;
+        }
+        const ValuePtr &value = command_line[static_cast<size_t>(index)];
+        return value ? value : make_value(std::monostate{});
+    }
+
     // Demanded per-receiver now rather than up front, so the message stays
     // exactly what it was for the receivers it applies to.
     long long i = 0;

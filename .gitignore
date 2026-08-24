@@ -6,9 +6,11 @@
 satl
 satl-term
 
-# The sixteen test binaries (Makefile: TESTBINS), each now built beside the code
-# it tests. library_test_tsan is the ThreadSanitizer build and is 27MB, which is
-# the one that really hurts.
+# The sixteen test binaries (Makefile: TESTBINS), each built in its own folder
+# under satellite_system/tests/ as of the 2026-08-24 restructure -- they used to
+# sit beside the code they test, and before that in the repo root.
+# library_test_tsan is the ThreadSanitizer build and is 27MB, which is the one
+# that really hurts.
 #
 # console_test was the drift this note kept predicting: it was built, it was
 # 950KB, and it was NEVER in this list -- it sat untracked in `git status` until
@@ -19,22 +21,22 @@ satl-term
 # rather than restating it. This file is still a second hand-written copy and so
 # is still the half that can drift; kept alphabetical so a missing name is
 # visible, which remains the only defence it has.
-src/abstract_syntax_tree/ast_test
-src/bytecode_format/format_test
-src/console_output/console_test
-src/environment/env_test
-src/environment/spacesuit_test
-src/evaluator/eval_test
-src/interpreter/interp_test
-src/lexical_analyzer/lexer_test
-src/random_numbers/random_test
-src/register_file/reg_test
-src/satellite_library/library_test
-src/satellite_library/library_test_tsan
-src/satellite_number/bignum_test
-src/satellite_string/satellite_string_test
-src/spaceship_loader/loader_test
-src/syntax_parser/parser_test
+satellite_system/tests/ast_test/ast_test
+satellite_system/tests/bignum_test/bignum_test
+satellite_system/tests/console_test/console_test
+satellite_system/tests/env_test/env_test
+satellite_system/tests/eval_test/eval_test
+satellite_system/tests/format_test/format_test
+satellite_system/tests/interp_test/interp_test
+satellite_system/tests/lexer_test/lexer_test
+satellite_system/tests/library_test/library_test
+satellite_system/tests/library_test/library_test_tsan
+satellite_system/tests/loader_test/loader_test
+satellite_system/tests/parser_test/parser_test
+satellite_system/tests/random_test/random_test
+satellite_system/tests/reg_test/reg_test
+satellite_system/tests/satellite_string_test/satellite_string_test
+satellite_system/tests/spacesuit_test/spacesuit_test
 
 # pcg_test is a PROTOTYPE and not a Makefile product, so it is deliberately
 # outside the list above rather than another name in it. It is built by hand;

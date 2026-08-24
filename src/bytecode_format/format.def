@@ -382,6 +382,19 @@ SAT_WORD(106, TO_NUMBER, "to_number")
 SAT_WORD(107, TO_HEX,    "to_hex")
 SAT_WORD(108, TO_BINARY, "to_binary")
 
+// --- the arguments object -----------------------------------------------------
+// The value satellite.main is handed. Two words, and only two, because the
+// BARE SELECTOR LOWERS TO .get(name): `args.cxx_compiler` compiles to
+// `args.get("cxx_compiler")`, so an entry name is an operand and never an id.
+//
+// That is the whole reason this section is two lines rather than thirty-six.
+// An id here is frozen forever -- the rule at the top of this file -- and
+// spending one on `kernel_release` would be the registry recording a fact
+// about a machine, which is not what it is for. `get` (74) and `has` (77) are
+// reused unchanged, the same way a binary value reuses `digits`.
+SAT_WORD(109, COUNT, "count")
+SAT_WORD(110, NAMES, "names")
+
 // --- which words are SELECTORS ------------------------------------------------
 // §17.5: "when the selector is a builtin (38..72) CALL_METHOD builds no frame."
 // That sentence was true for exactly one commit. 906a4a8 ended the selectors at
@@ -484,6 +497,12 @@ SAT_SELECTOR(BYTES)         // 105
 SAT_SELECTOR(TO_NUMBER)
 SAT_SELECTOR(TO_HEX)
 SAT_SELECTOR(TO_BINARY)     // 108
+
+// The arguments object's two new verbs. `get` (74), `has` (77), `length` (39),
+// `first`, `last`, `contains` and `to_string` are already selectors and are
+// what it answers everything else with.
+SAT_SELECTOR(COUNT)         // 109
+SAT_SELECTOR(NAMES)         // 110
 
 // --- the arity table: complete paths, and how many operands each takes -------
 // §17: decoding is positional. Nothing in the stream announces "I am an

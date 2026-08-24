@@ -745,4 +745,35 @@ int read_division_digits()
     return Number::DEFAULT_DIVISION_DIGITS;
 }
 
+
+// One named entry of the arguments object, or a failure that lists what does
+// exist.
+//
+// ABSENT IS AN ERROR, never the empty string, and the reason is the same one
+// §8.6 gives for a missing map key: a typo that quietly returns "" is a bug
+// that surfaces three capsules away from the line that caused it. .has() is
+// how a program asks without failing.
+//
+// The message names every entry, because the whole point of the object is that
+// the program does not have to know the list in advance -- so the moment it
+// guesses wrong is exactly the moment to show it.
+ValuePtr Evaluator::argument_named(const Arguments &args,
+                                   const std::string &name, Span span)
+{
+    auto found = args.index.find(name);
+    if (found != args.index.end()) {
+        const ValuePtr &value = args.entries[found->second].value;
+        return value ? value : make_value(std::monostate{});
+    }
+
+    std::string known;
+    for (const ArgumentEntry &e : args.entries) {
+        if (!known.empty())
+            known += ", ";
+        known += e.name;
+    }
+    fail(span, "the arguments object has no " + name + ". It has: " + known);
+    return nullptr;
+}
+
 } // namespace satellite

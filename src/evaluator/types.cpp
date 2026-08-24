@@ -70,6 +70,36 @@ bool matches(const Type &type, const Value &value)
     }
 
     if (type.space == "container" && type.name == "list") {
+        // The arguments object satisfies list<string>, which is what keeps §2's
+        // signature — and therefore hello world, the man page, and every
+        // program anybody has written — exactly as it was.
+        //
+        // It is a list of strings BY CONSTRUCTION: arguments_for() in
+        // system.cpp is the only thing that builds one, and every entry it
+        // writes carries a string Value. This used to trust that and skip the
+        // element walk, saying so in a comment. It no longer does, for the
+        // reason §20.3.1 gives about the crossing table: "by construction" is a
+        // claim about today's only builder, and nothing in the compiler keeps
+        // it true when a second builder appears. The walk is the check that a
+        // comment was standing in for.
+        //
+        // The cost is nothing that matters. This runs when a declaration or an
+        // insertion is type-checked against list<string>, and the arguments
+        // object is bound to satellite.main's parameter ONCE per run — it is
+        // not on any hot path, and the entry count is the command line plus
+        // §8's table, not user data.
+        if (const Arguments *args = as_arguments(value)) {
+            if (type.args.empty())
+                return true;
+            if (type.args[0].space != "variable" ||
+                type.args[0].name != "string")
+                return false;
+            for (const ArgumentEntry &entry : args->entries)
+                if (!entry.value || !as_string(*entry.value))
+                    return false;
+            return true;
+        }
+
         const List *list = as_list(value);
         if (!list)
             return false;
@@ -126,6 +156,12 @@ const char *module_of(const Value &value)
         return (bits && bits->radix == 2) ? "satellite.variable.binary"
                                           : "satellite.variable.hex";
     }
+    // The arguments object. `satellite.container.arguments` rather than
+    // `.list`, because an arity or type message that named it a list would send
+    // the reader to the list's method table, which does not have .names() or
+    // .count() in it. It IS a list<string> to matches(); it is its own thing to
+    // anyone reading an error.
+    case 10: return "satellite.container.arguments";
     default: return nullptr;
     }
 }

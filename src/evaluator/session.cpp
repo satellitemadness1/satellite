@@ -5,6 +5,8 @@
 
 #include "evaluator/eval_internal.hpp"
 
+#include "system_facts/system.hpp"
+
 #include "console_output/console.hpp"
 
 namespace satellite {
@@ -151,7 +153,12 @@ void Evaluator::run_entry(const Program &program, const List &args)
             return;
         }
 
-        argv.push_back(make_value(make_list(args)));
+        // Not make_list(args): what main is handed is the ARGUMENTS OBJECT,
+        // which is a list<string> of the command line plus every named fact
+        // the runtime can supply about the machine. matches() accepts one
+        // wherever list<string> is declared (types.cpp), so the check above
+        // stays exactly as strict as it was.
+        argv.push_back(make_value(make_arguments(arguments_for(args))));
     }
 
     // From here it is an ordinary call: argz lands in slot 0 of main's frame

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "satellite_value/value.hpp"
+
 #include <string>
 
 namespace satellite {
@@ -115,6 +117,28 @@ enum class LibraryPathSource {
 // the caller, since --where, a --run and the REPL each owe the user something
 // different.
 std::string library_path(LibraryPathSource *source = nullptr);
+
+// Every named entry of the value satellite.main is handed, built once, at
+// startup, from the command line and from this machine.
+//
+// Takes the command line as satl already assembled it -- a List of string
+// Values, since run_entry() has already made them (interp.hpp: argv[0] is the
+// script, so a program sees its own name first, as it would in C). Those
+// handles are REUSED rather than re-encoded, so building the arguments object
+// costs no copy of the command line.
+//
+// It lives in system_facts because it is the ONE place that touches uname,
+// /etc/os-release, getpwuid and sysconf; the evaluator sees named strings and
+// nothing else. Every fact is either true or says in words that it is not:
+// `unrecorded` for a build fact the Makefile did not pass, `unavailable` for a
+// runtime fact the kernel would not answer. An entry is never silently absent,
+// because .has() has to be able to tell "there is no such name" from "there is
+// no such answer on this machine".
+//
+// $PATH is deliberately not among them: unbounded, and the most likely of all
+// of them to hold something private in an object people will paste into bug
+// reports.
+Arguments arguments_for(const List &command_line);
 
 // Background guard: once a second, if available memory drops below
 // satellite.library.system.min_free_mb (default 4096), the program

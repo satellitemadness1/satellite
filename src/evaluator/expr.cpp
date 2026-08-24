@@ -166,6 +166,29 @@ ValuePtr Evaluator::eval_member(const Member &node, Span span)
         return nullptr;
     }
 
+    // THE ONE VALUE THAT ANSWERS A BARE SELECTOR: the arguments object.
+    //
+    // `args.cxx_compiler` with no parentheses, which is the spelling that was
+    // asked for and the one that reads right for a bag of named strings. It is
+    // a NARROWING of the refusal below by exactly one case, not a lifting of
+    // it: this object has no fields a program could confuse a name with, no
+    // way for a program to construct one, and a method set that is checked
+    // disjoint from its entry names. Every other value still gets the message
+    // underneath, unchanged.
+    //
+    // Evaluated here rather than lowered in the resolver because the receiver
+    // is an expression and its type is not known until it is evaluated --
+    // `f().cxx_compiler` has to work if `args.cxx_compiler` does.
+    if (node.target) {
+        ValuePtr target = eval(*node.target);
+        if (failed())
+            return nullptr;
+        if (target) {
+            if (const Arguments *args = as_arguments(*target))
+                return argument_named(*args, node.name, span);
+        }
+    }
+
     // Bare field access is deliberately not in the language: accessor methods
     // only, so `my_window.height()` is the one spelling (§8.3, §12).
     fail(span, "no bare field access in satellite; call " + node.name +

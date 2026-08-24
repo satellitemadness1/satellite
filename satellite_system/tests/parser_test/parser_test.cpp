@@ -2,19 +2,36 @@
 // source, unparse(parse(src)) must give back exactly src. That single property
 // exercises the whole front end at once, because a parse that drops, reorders
 // or misgroups anything shows up as a text difference.
+//
+// This file holds what every section needs: the check family, the shared
+// program text, the failure count, and a main() that is nothing but the
+// section list in order. The sections themselves live in the
+// parser_test_*.cpp files next to it.
 
-#include "abstract_syntax_tree/ast.hpp"
-#include "syntax_parser/parser.hpp"
+#include "parser_test.hpp"
 
 #include <cstdio>
 #include <string>
-#include <vector>
 
 using namespace satellite;
 
-static int failures = 0;
+int failures = 0;
 
-static void check(bool ok, const std::string &what)
+// Hello world, canonical. Kept here rather than inside a section because two
+// sections use it; see the note in parser_test.hpp.
+const std::string hello_world_source =
+    "satellite.include(satellite)\n"
+    "\n"
+    "satellite.capsule satellite.main("
+    "satellite.container.list<satellite.variable.string> argz)\n"
+    "{\n"
+    "    satellite.console.display(\"hello, world!\")\n"
+    "    satellite.return(satellite)\n"
+    "}\n";
+
+// The check family. None of these is `static` any more, because the callers
+// moved out of this file; they are the one place a failure gets counted.
+void check(bool ok, const std::string &what)
 {
     if (!ok) {
         printf("FAIL: %s\n", what.c_str());
@@ -23,7 +40,7 @@ static void check(bool ok, const std::string &what)
 }
 
 // The core property. `src` must already be in canonical form.
-static void round_trip(const std::string &src)
+void round_trip(const std::string &src)
 {
     ParseResult r = parse(src);
     if (!r.ok()) {
@@ -54,7 +71,7 @@ static ExprPtr expr_of(const std::string &src)
     return e ? e->expr : nullptr;
 }
 
-static void check_expr(const std::string &src, const std::string &want)
+void check_expr(const std::string &src, const std::string &want)
 {
     ExprPtr e = expr_of(src);
     if (!e) {
@@ -69,7 +86,7 @@ static void check_expr(const std::string &src, const std::string &want)
     }
 }
 
-static void check_fails(const std::string &src, const std::string &what)
+void check_fails(const std::string &src, const std::string &what)
 {
     ParseResult r = parse(src);
     if (r.ok()) {
@@ -81,355 +98,25 @@ static void check_fails(const std::string &src, const std::string &what)
 
 int main()
 {
-    // ---- hello world ------------------------------------------------------
-    const std::string hello =
-        "satellite.include(satellite)\n"
-        "\n"
-        "satellite.capsule satellite.main("
-        "satellite.container.list<satellite.variable.string> argz)\n"
-        "{\n"
-        "    satellite.console.display(\"hello, world!\")\n"
-        "    satellite.return(satellite)\n"
-        "}\n";
-    round_trip(hello);
-
-    // Comments and blank lines are not in the tree, so they are the one thing
-    // the round trip cannot reproduce — but they must not change the parse.
-    {
-        const std::string commented =
-            "satellite.include(satellite) // all programs include satellite\n"
-            "\n"
-            "satellite.capsule satellite.main("
-            "satellite.container.list<satellite.variable.string> argz)\n"
-            "{\n"
-            "    // \"capsules\" are just functions in satellite\n"
-            "    satellite.console.display(\"hello, world!\")\n"
-            "    satellite.return(satellite) // return(0); in satellite\n"
-            "}\n";
-        ParseResult r = parse(commented);
-        check(r.ok(), "the commented hello world parses");
-        check(unparse(r.program) == hello,
-              "comments do not change the parse");
-    }
-
-    // ---- the duration literal ---------------------------------------------
-    //
-    // `100ms` and `100 ms` are ONE literal and one node, which is why they
-    // unparse identically: the lexer stops a number at the first non-digit and
-    // a word cannot start with a digit, so both spellings arrive as Number then
-    // Word("ms") with nothing to tell them apart.
-    check_expr("satellite.console.display(100ms)",
-               "satellite.console.display(100ms)");
-    check_expr("satellite.console.display(100 ms)",
-               "satellite.console.display(100ms)");
-    round_trip("satellite.console.display(100ms)\n");
-
-    // As written, so a trailing zero survives -- the same reason NumberLit
-    // keeps its text.
-    check_expr("satellite.console.display(1.50ms)",
-               "satellite.console.display(1.50ms)");
-
-    // A unit is a unit only on the SAME line as its number, and only when it is
-    // `ms`. Everything else is what it was before: a number, then a name the
-    // grammar has no room for.
-    check_fails("satellite.console.display(100\nms)",
-                "a unit does not reach across a newline");
-    check_fails("satellite.console.display(100 seconds)",
-                "only ms is a unit");
-
-    // ---- declarations -----------------------------------------------------
-    round_trip("satellite.variable.time my_time = satellite.time.now()\n");
-    round_trip("satellite.variable.file my_file = satellite.file.new()\n");
-    round_trip("satellite.variable.file my_file\n");
-    round_trip("satellite.variable.number x = 1\n");
-    round_trip("satellite.variable.string s = \"hi\"\n");
-    round_trip("satellite.container.list<satellite.variable.string> names\n");
-    round_trip("satellite.container.list<satellite.container.list"
-               "<satellite.variable.string>> grid\n");
-
-    // The declaration is found by segment 1, not by shape. Dispatching on
-    // shape would read this as declaring a variable named `if`.
-    {
-        ParseResult r = parse(
-            "satellite.statement.if(x)\n{\n    satellite.return(1)\n}\n");
-        check(r.ok(), "an if statement parses");
-        check(r.program.items.size() == 1, "an if is one item");
-        const StmtPtr *s = std::get_if<StmtPtr>(&r.program.items[0]);
-        check(s && std::holds_alternative<If>(**s),
-              "satellite.statement.if is an If, not a declaration named 'if'");
-    }
-
-    // ---- method calls and chaining ---------------------------------------
-    round_trip("my_time.some_function()\n");
-    round_trip("my_file.some_function()\n");
-    round_trip("satellite.time.now().some_function()\n");
-    round_trip("my_list.append(1)\n");
-    round_trip("my_list.append(other.value(), 2)\n");
-    round_trip("a.b().c().d\n");
-
-    // A language call and a user method call parse to the same shape; nothing
-    // in the tree records which is which.
-    check_expr("satellite.time.now()", "satellite.time.now()");
-    check_expr("my_time.some_function()", "my_time.some_function()");
-
-    // ---- indexing and slicing --------------------------------------------
-    round_trip("list_name[3]\n");
-    round_trip("list_name[some_number]\n");
-    round_trip("l[2:5]\n");
-    round_trip("l[:5]\n");
-    round_trip("l[2:]\n");
-    round_trip("l[:]\n");
-    round_trip("grid[0][1]\n");
-    round_trip("l[0].f()[1:2]\n");
-    round_trip("satellite.library.main.x = 5\n");
-
-    // ---- operators and precedence ----------------------------------------
-    check_expr("a + b * c", "a + b * c");
-    check_expr("a * b + c", "a * b + c");
-    check_expr("(a + b) * c", "(a + b) * c");
-    check_expr("a + b + c", "a + b + c");
-    check_expr("a + (b + c)", "a + (b + c)");
-    check_expr("a == b + c", "a == b + c");
-    check_expr("-x", "-x");
-    check_expr("-x + y", "-x + y");
-    check_expr("-(x + y)", "-(x + y)");
-    check_expr("a <= b", "a <= b");
-    check_expr("a >= b", "a >= b");
-    check_expr("a != b", "a != b");
-    // Redundant parentheses are not in the tree, so they are dropped.
-    check_expr("((a))", "a");
-
-    // '<' inside a type is a generic opener; '<' in an expression is
-    // less-than. The reservation rule is what keeps these apart.
-    check_expr("a < b", "a < b");
-    round_trip("satellite.container.list<satellite.variable.number> ns\n");
-
-    // ---- control flow -----------------------------------------------------
-    round_trip("satellite.statement.if(n <= 1)\n"
-               "{\n"
-               "    satellite.return(1)\n"
-               "}\n");
-    round_trip("satellite.statement.if(n <= 1)\n"
-               "{\n"
-               "    satellite.return(1)\n"
-               "}\n"
-               "satellite.statement.else\n"
-               "{\n"
-               "    satellite.return(2)\n"
-               "}\n");
-    round_trip("satellite.statement.while(n > 0)\n"
-               "{\n"
-               "    n = n - 1\n"
-               "}\n");
-    round_trip("satellite.statement.for(satellite.variable.number i = 0; "
-               "i < 10; i = i + 1)\n"
-               "{\n"
-               "    satellite.console.display(argz[i])\n"
-               "}\n");
-    round_trip("satellite.statement.for(; ; )\n"
-               "{\n"
-               "    satellite.return(satellite)\n"
-               "}\n");
-
-    // else-if chains nest rather than needing a separate form.
-    {
-        ParseResult r = parse("satellite.statement.if(a)\n{\n}\n"
-                              "satellite.statement.else\n"
-                              "satellite.statement.if(b)\n{\n}\n");
-        check(r.ok(), "an else-if chain parses");
-        const StmtPtr *s = std::get_if<StmtPtr>(&r.program.items[0]);
-        const If *outer = s ? std::get_if<If>(s->get()) : nullptr;
-        check(outer && outer->else_branch &&
-                  std::holds_alternative<If>(*outer->else_branch),
-              "the else branch of an else-if is another If");
-    }
-
-    // ---- capsules ---------------------------------------------------------
-    round_trip("satellite.capsule fact(satellite.variable.number n) "
-               "satellite.returns(satellite.variable.number)\n"
-               "{\n"
-               "    satellite.return(n)\n"
-               "}\n");
-    round_trip("satellite.capsule noop()\n{\n}\n");
-    round_trip("satellite.capsule add(satellite.variable.number a, "
-               "satellite.variable.number b)\n"
-               "{\n"
-               "    satellite.return(a + b)\n"
-               "}\n");
-
-    // A capsule the user writes is bare; only the entry point is prefixed.
-    {
-        ParseResult r = parse("satellite.capsule fact()\n{\n}\n");
-        const Capsule *c = std::get_if<Capsule>(&r.program.items[0]);
-        check(c && !c->reserved && c->name == "fact",
-              "a user capsule is bare");
-
-        ParseResult m = parse("satellite.capsule satellite.main()\n{\n}\n");
-        const Capsule *mc = std::get_if<Capsule>(&m.program.items[0]);
-        check(mc && mc->reserved && mc->name == "main",
-              "satellite.main is the reserved entry point");
-    }
-
-    // ---- the same-line rule ----------------------------------------------
-    // Without it, a line beginning '(' or '[' is silently absorbed by the line
-    // above — the defect that forced JavaScript's semicolon-insertion rules.
-    // The '(' case is the one observable today; '[' carries the same guard and
-    // becomes observable when list literals exist.
-    {
-        ParseResult r = parse("display(x)\n(y)\n");
-        check(r.ok(), "two statements on two lines parse");
-        check(r.program.items.size() == 2,
-              "a '(' on the next line does not call the line above");
-
-        ParseResult joined = parse("display(x)(y)\n");
-        check(joined.ok() && joined.program.items.size() == 1,
-              "a '(' on the same line still calls");
-    }
-
-    // Statements are newline-separated, so a second statement crammed onto one
-    // line is an error rather than a silent double parse.
-    check_fails("display(x) display(y)\n", "two statements on one line");
-
-    // ---- nesting ----------------------------------------------------------
-    round_trip("satellite.capsule satellite.main("
-               "satellite.container.list<satellite.variable.string> argz)\n"
-               "{\n"
-               "    satellite.statement.for(satellite.variable.number i = 0; "
-               "i < 10; i = i + 1)\n"
-               "    {\n"
-               "        satellite.statement.if(i == 5)\n"
-               "        {\n"
-               "            satellite.console.display(argz[i])\n"
-               "        }\n"
-               "    }\n"
-               "    satellite.return(satellite)\n"
-               "}\n");
-
-    // ---- multiple top-level items keep their order -----------------------
-    round_trip("satellite.include(satellite)\n"
-               "\n"
-               "satellite.capsule a()\n{\n}\n"
-               "\n"
-               "satellite.capsule b()\n{\n}\n");
-
-    // ---- errors do not throw and do point somewhere ----------------------
-    check_fails("satellite.variable.time\n", "a type with no name");
-    check_fails("satellite.capsule\n", "a capsule with no name");
-    check_fails("satellite.capsule f(\n{\n}\n", "an unclosed parameter list");
-    check_fails("satellite.return(\n", "an unclosed return");
-    check_fails("satellite.statement.if(a)\n", "an if with no block");
-    check_fails("satellite.container.list<satellite.variable.string ns\n",
-                "an unclosed generic");
-    check_fails("\"unterminated\n", "a lexer error surfaces as a parse error");
-    check_fails("satellite.nonsense.thing x = 1\n", "a bad type namespace");
-    check_fails("satellite.variable.number satellite = 1\n",
-                "'satellite' cannot name a variable");
-    check_fails("x = \n", "an assignment with no value");
-
-    {
-        // An error must carry a usable position and render with a caret.
-        const std::string src = "satellite.variable.number x = 1\n"
-                                "satellite.return(\n";
-        ParseResult r = parse(src);
-        check(!r.ok(), "the bad line is reported");
-        if (!r.errors.empty()) {
-            check(r.errors[0].span.line == 2, "the error points at line 2");
-            const std::string rendered = format_error(r.errors[0], SourceMap(src));
-            check(rendered.find("line 2") != std::string::npos,
-                  "the rendered error names the line");
-            check(rendered.find("^") != std::string::npos,
-                  "the rendered error draws a caret");
-            check(rendered.find("satellite.return(") != std::string::npos,
-                  "the rendered error shows the source line");
-
-            // The same error, from a source that HAS a name: §16's file id at
-            // work. A span carries the id, format_error looks the path up, and
-            // the header stops saying "line 2" about a file it cannot name.
-            const std::string named =
-                format_error(r.errors[0], SourceMap(src, "orbit.satl"));
-            check(named.find("orbit.satl:2") != std::string::npos,
-                  "a named source renders as path:line");
-            check(named.find("satellite.return(") != std::string::npos,
-                  "a named source still shows the source line");
-        }
-    }
-
-    {
-        // Two spaceships in one SourceMap, which is the case the file id
-        // exists for. Both errors are on line 1 and they must render against
-        // DIFFERENT text — that is precisely the lie §16 describes, and the
-        // only way to catch it is to make the two sources disagree.
-        SourceMap sources;
-        const uint32_t first = sources.add("satellite.return(\n", "first.satl");
-        const uint32_t second = sources.add("x = \n", "second.satl");
-
-        ParseResult a = parse("satellite.return(\n", first);
-        ParseResult b = parse("x = \n", second);
-        check(!a.ok() && !b.ok(), "both spaceships fail to parse");
-
-        if (!a.errors.empty() && !b.errors.empty()) {
-            const std::string ra = format_error(a.errors[0], sources);
-            const std::string rb = format_error(b.errors[0], sources);
-
-            check(ra.find("first.satl:1") != std::string::npos &&
-                      rb.find("second.satl:1") != std::string::npos,
-                  "each error names its own spaceship");
-            check(ra.find("satellite.return(") != std::string::npos &&
-                      ra.find("x = ") == std::string::npos,
-                  "the first error shows only the first spaceship's text");
-            check(rb.find("x = ") != std::string::npos &&
-                      rb.find("satellite.return(") == std::string::npos,
-                  "the second error shows only the second spaceship's text");
-        }
-    }
-
-    {
-        // A span whose file id names a source that cannot hold it. Impossible
-        // while format_error was handed the one true text, and reachable the
-        // moment a span picks its own — so the caret has to stay inside the
-        // line rather than padding out to the offset it was given.
-        ParseResult r = parse("satellite.variable.number x = 1\n"
-                              "satellite.return(\n");
-        check(!r.ok(), "the long source fails to parse");
-
-        if (!r.errors.empty()) {
-            const std::string rendered =
-                format_error(r.errors[0], SourceMap("x\n", "short.satl"));
-            check(rendered.find("short.satl:2") != std::string::npos,
-                  "a mismatched source still names where it thinks it is");
-            check(rendered.size() < 120,
-                  "a span past the end of its source does not pad the caret out "
-                  "to the offset");
-        }
-    }
-
-    {
-        // Recovery: a bad statement must not swallow the ones after it.
-        ParseResult r = parse("satellite.capsule a()\n{\n}\n"
-                              "satellite.variable.time\n"
-                              "satellite.capsule b()\n{\n}\n");
-        check(!r.ok(), "the malformed declaration is reported");
-        size_t capsules = 0;
-        for (const TopLevel &item : r.program.items)
-            if (std::holds_alternative<Capsule>(item))
-                capsules++;
-        check(capsules == 2, "both good capsules survive the bad line between");
-    }
-
-    // ---- unparse output always reparses ----------------------------------
-    // Idempotence holds even where exact round tripping cannot: reparsing the
-    // canonical form must give the canonical form back.
-    for (const std::string &src :
-         {std::string("a + (b + c) * -d\n"), std::string("((x))\n"),
-          std::string("l[0].f()[1:2]\n"), hello}) {
-        ParseResult first = parse(src);
-        check(first.ok(), "sample parses: " + src);
-        const std::string once = unparse(first.program);
-        ParseResult second = parse(once);
-        check(second.ok(), "canonical form reparses: " + once);
-        check(unparse(second.program) == once,
-              "unparse is idempotent: " + once);
-    }
+    // The same order the sections ran in when they were blocks in one main(),
+    // and the order is worth keeping: the run reads from hello world out to
+    // the error paths, and the idempotence section belongs last because it
+    // trusts unparse, which everything above it is busy proving.
+    parser_test_hello_world();
+    parser_test_duration_literals();
+    parser_test_declarations();
+    parser_test_method_calls();
+    parser_test_indexing_and_slicing();
+    parser_test_operators_and_precedence();
+    parser_test_control_flow();
+    parser_test_capsules();
+    parser_test_same_line_rule();
+    parser_test_nesting();
+    parser_test_top_level_order();
+    parser_test_error_reporting();
+    parser_test_error_rendering();
+    parser_test_error_recovery();
+    parser_test_unparse_idempotence();
 
     if (failures) {
         printf("%d parser check(s) failed\n", failures);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "abstract_syntax_tree/ast.hpp"
 #include "environment/env.hpp"
 #include "satellite_value/value.hpp"
@@ -152,6 +154,13 @@ private:
 
     ValuePtr eval(const Expr &expr);
     ValuePtr eval_member(const Member &node, Span span);
+
+    // One named entry of the arguments object, shared by the three spellings
+    // that reach one: the bare selector (eval_member), the string subscript
+    // (eval_index), and .get() (methods.cpp). One function so that the error
+    // text, which lists every name, cannot differ between them.
+    ValuePtr argument_named(const Arguments &args, const std::string &name,
+                            Span span);
     ValuePtr eval_call(const Call &node, Span span);
     ValuePtr eval_index(const Index &node, Span span);
     ValuePtr eval_slice(const Slice &node, Span span);
@@ -160,6 +169,31 @@ private:
 
     bool eval_args(const std::vector<ExprPtr> &args,
                    std::vector<ValuePtr> &argv);
+    // The four arms of call_method, one per receiver family. It was 715 lines
+    // in one function before the 2026-08-24 split. Same nullopt/engaged contract
+    // as the call_module arms above.
+    //
+    // method_arity and method_number_arg were LAMBDAS in call_method's prologue.
+    // Each arm still declares a lambda of the same name that forwards here, so
+    // every `arity(1)` and `number_arg(0, n)` call site moved unchanged.
+    bool method_arity(const char *module, const std::string &name,
+                      const std::vector<ValuePtr> &argv, size_t want, Span span);
+    bool method_number_arg(const char *module, const std::string &name,
+                           const std::vector<ValuePtr> &argv, size_t i,
+                           const Number *&out, Span span);
+    std::optional<ValuePtr> method_scalars(
+        const ValuePtr &recv, const std::string &name,
+        const std::vector<ValuePtr> &argv, const char *module, Span span);
+    std::optional<ValuePtr> method_file(
+        const ValuePtr &recv, const std::string &name,
+        const std::vector<ValuePtr> &argv, const char *module, Span span);
+    std::optional<ValuePtr> method_containers(
+        const ValuePtr &recv, const std::string &name,
+        const std::vector<ValuePtr> &argv, const char *module, Span span);
+    std::optional<ValuePtr> method_bits(
+        const ValuePtr &recv, const std::string &name,
+        const std::vector<ValuePtr> &argv, const char *module, Span span);
+
     ValuePtr call_method(const ValuePtr &recv, const Expr &recv_expr,
                          const std::string &name,
                          const std::vector<ValuePtr> &argv, Span span);
@@ -195,6 +229,34 @@ private:
         const Slot &slot, Span span,
         const std::function<bool(const Value &current, Value &next,
                                  std::string &error)> &transform);
+    // The six arms of call_module. It was 771 lines in one function before the
+    // 2026-08-24 split; each arm is now a file beside modules.cpp. std::nullopt
+    // means "not mine, keep looking", and an ENGAGED optional means the arm
+    // handled it -- the ValuePtr inside may still be null, because that is how a
+    // failed module call reports itself once fail() has run.
+    //
+    // They are tried in the order declared, which is the order the branches ran
+    // in before the split. The arms are NOT disjoint -- module_help_and_analyze
+    // matches a bare `path.size() == 2` -- so the order is load-bearing.
+    std::optional<ValuePtr> module_time_and_file(
+        const std::string &full, const std::vector<std::string> &path,
+        const std::vector<ValuePtr> &argv, Span span);
+    std::optional<ValuePtr> module_help_and_analyze(
+        const std::string &full, const std::vector<std::string> &path,
+        const std::vector<ValuePtr> &argv, Span span);
+    std::optional<ValuePtr> module_system(
+        const std::string &full, const std::vector<std::string> &path,
+        const std::vector<ValuePtr> &argv, Span span);
+    std::optional<ValuePtr> module_directory(
+        const std::string &full, const std::vector<std::string> &path,
+        const std::vector<ValuePtr> &argv, Span span);
+    std::optional<ValuePtr> module_random(
+        const std::string &full, const std::vector<std::string> &path,
+        const std::vector<ValuePtr> &argv, Span span);
+    std::optional<ValuePtr> module_console(
+        const std::string &full, const std::vector<std::string> &path,
+        const std::vector<ValuePtr> &argv, Span span);
+
     ValuePtr call_module(const std::vector<std::string> &path,
                          const std::vector<ValuePtr> &argv, Span span);
 
