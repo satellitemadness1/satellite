@@ -76,34 +76,54 @@ CLOSED except #9. Nine were closed by changing the LANGUAGE, not the program.
 
 - **missing.txt #9: `string + bool` is still refused.** `"flag=" + b` →
   `+ does not apply to flag= and true`. 0 sites today; string+number works.
-  The asymmetry is untouched.
-- **`make test` has 5 pre-existing failures, NOT from this work.** All five are
-  one root cause: the previous session made `.lines()` the default list echo,
-  so eval_test's `[1, 2, 3]`-style expectations fail (the map one fails on
-  `m.keys()`, which is a list). Confirmed pre-existing by mtime — helpers.cpp
-  23:50 and session.cpp 23:05, versus 01:11+ for everything touched here.
-  Decide whether `.lines()` really is the right default echo, then fix the
-  expectations. Everything else PASSES, including loader_test, interp_test,
-  spacesuit_test, env_test, parser_test, ast_test.
-- **TSAN: you do not need to rebuild LLVM.** `~/opt/clang-24` was built without
-  compiler-rt (`lib/clang/24/lib/` does not exist at all). GCC's libtsan 14.3.1
-  IS installed, and `make CXX=g++ src/satellite_library/library_test_tsan`
-  builds and **PASSES** — verified, including the new code paths. For clang's
-  own TSAN you need compiler-rt only, not a full clang rebuild.
-- **DESIGN.md now records all nine — DONE 2026-08-24.** New `## 19. Nine
-  additions, and the program that asked for them` (19.1 include paths, 19.2 the
-  list literal, 19.3 the rebind and the fresh-slot argument, 19.4 index
-  assignment, 19.5 console.input and the only out parameter, 19.6 named
-  arguments, 19.7 TRUE/FALSE without a reserved word, 19.8 else() and \',
-  19.9 what did not change and what is still open). Cross-references added into
-  the header status line, §3.4, §6, §7, §8 (generic element types), §8.4 and
-  §16, so no earlier section now silently contradicts §19. Two of those are
-  corrections rather than additions: §8.4's "would be the language's second and
-  third reserved words" objection is answered rather than overruled, and §8's
-  "check at insertion and literal construction" turned out to already cover the
-  new literal with no new code (verified).
-- **`plans/missing.txt` is now stale** — it describes a program that dies on
-  line 3. Kept as written; this file is the update.
+  The asymmetry is untouched. THIS IS THE ONLY ONE OF THE TEN STILL OPEN.
+
+## Closed since this file was written (2026-08-24, later the same day)
+
+- **`make test` is GREEN.** Seventeen binaries, ThreadSanitizer included. The
+  five eval_test failures were one cause -- a list echoes with `.lines()` now,
+  one element per line, and those five still spelled `[a, b]`. The behaviour was
+  confirmed intended ("one per line, always"), so the expectations were
+  rewritten and no code changed. Two facts recorded in the test while doing it:
+  an EMPTY list still prints `[]`, because zero lines cannot be told from a
+  broken echo; and a MAP still echoes as one value, so `.keys()` prints as a
+  listing and the map does not. Reading every file in a directory to get its
+  line count is accepted as the cost of a listing.
+
+- **TSAN works under clang, through a new `TSAN_CXX`.** The earlier note below
+  was right that a full LLVM rebuild was not needed for GCC's libtsan, but it
+  understated the problem: `make test` ABORTED before running anything, because
+  the clang at `$(LLVM_BIN)` has no compiler-rt at all. The Makefile now probes
+  by LINKING an empty `main` with `-fsanitize=thread` and uses `$(CXX)` if that
+  works, falling back to `/usr/bin/clang++` (21.1.8). Do NOT probe with
+  `-print-file-name=libtsan.so`: clang answers with GCC's 38-byte linker script
+  because it searches GCC's directories, so the lookup says yes for the one
+  compiler that cannot do it. When a clang built WITH
+  `-DLLVM_ENABLE_RUNTIMES="compiler-rt;..."` is installed at `$(LLVM_BIN)`,
+  `TSAN_CXX` resolves back to it on its own with no edit. compiler-rt belongs in
+  `LLVM_ENABLE_RUNTIMES`, not `LLVM_ENABLE_PROJECTS` -- in PROJECTS it is built
+  by the host compiler rather than the just-built clang.
+
+- **The design is no longer one file.** `DESIGN.md` is an 80-line index and the
+  nineteen sections live under `design/`, one section per file, each file
+  numbered by its section -- `§14` is `design/14-spacesuits.md`. Section bodies
+  moved byte for byte; nothing was renumbered, so all twenty `§N` citations
+  under `src/`, the man page, `install.sh`, `debian/` and `plans/` still resolve.
+  The thirty-five LINE citations under `plans/` (nearly all in
+  `pcg_k16384_spec.md`) do not, and cannot be repaired.
+
+- **Everything above is COMMITTED.** Five commits, working tree clean, 20
+  commits ahead of `origin/main` and still never pushed. The nine language
+  additions could not be their own commit: the `src/` move renames the same
+  files they edit, so splitting them would have made the first commit delete
+  `loader.cpp` without adding `src/spaceship_loader/loader.cpp`, and that commit
+  would not build.
+
+- **lld is available and unused.** `~/opt/clang-24/bin/ld.lld` works;
+  `LDFLAGS` is empty by design so the build links with GNU ld 2.46 from
+  `~/opt/binutils-246`. Measured on satl's link: 143 ms with GNU ld, 76 ms with
+  `-fuse-ld=lld`. Not adopted -- `LDFLAGS` is deliberately the environment's to
+  set (Makefile:111).
 
 ## The other programs
 
