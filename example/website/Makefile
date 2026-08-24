@@ -1,4 +1,4 @@
-LLVM_BIN = $(HOME)/.local/llvm/bin
+LLVM_BIN = $(HOME)/opt/clang-24/bin
 CXX      = $(LLVM_BIN)/clang++
 CXXFLAGS = -std=c++20 -Wall -Wextra -O2
 

@@ -21,6 +21,20 @@ include /usr/share/dpkg/buildflags.mk
 #            search path's third and last candidate is compiled in from it as
 #            -DSATELLITE_LIB_DIR, so a binary built with the default prefix
 #            would look in /usr/local/share/satellite/lib and find nothing.
+#   SATELLITE_AUTOINSTALL
+#            upstream's default goal INSTALLS what it built, into a prefix the
+#            caller owns, whenever make is run with the source tree as its
+#            working directory. dh_auto_build is run exactly that way, and with
+#            prefix=/usr and no DESTDIR — so left alone it would copy this
+#            package's files into the BUILD MACHINE's live /usr rather than into
+#            debian/tmp, and rebuild that machine's desktop, icon and mime
+#            indexes while it was there. Nothing would catch it: the files land
+#            outside debian/tmp, so dh_missing never sees them, and on a buildd
+#            that cannot write /usr the build simply fails. Upstream cannot
+#            detect this from inside make — `make -C <tree>` is byte-for-byte
+#            indistinguishable from `cd <tree> && make` — so the packaging says
+#            so explicitly here. One assignment covers all four dh_auto_*
+#            overrides below, because they all pass $(MAKEVARS).
 #   CXXFLAGS a command-line assignment replaces the variable whole, so the
 #            three flags upstream's build actually requires are restated ahead
 #            of dpkg's. Nothing load-bearing is lost by the replacement:
@@ -32,7 +46,7 @@ include /usr/share/dpkg/buildflags.mk
 # Makefile assigns it nothing, and buildflags.mk exports it — so it arrives
 # through the environment and a command-line assignment would only be a second
 # way to say the same thing.
-MAKEVARS = CXX="g++ -g" prefix=/usr \
+MAKEVARS = CXX="g++ -g" prefix=/usr SATELLITE_AUTOINSTALL=0 \
            CXXFLAGS="-std=c++20 -Wall -Wextra $(CXXFLAGS) $(CPPFLAGS)"
 
 # ThreadSanitizer is a 64-bit-only runtime: Debian builds libtsan2 for amd64,

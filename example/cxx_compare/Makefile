@@ -12,7 +12,7 @@
 # counterparts, so there is exactly one copy of each program and the two
 # languages' versions sit side by side.
 
-LLVM_BIN = $(HOME)/.local/llvm/bin
+LLVM_BIN = $(HOME)/opt/clang-24/bin
 CXX      = $(LLVM_BIN)/clang++
 CXXFLAGS = -std=c++20 -O2
 

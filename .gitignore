@@ -6,34 +6,35 @@
 satl
 satl-term
 
-# The fifteen test binaries (Makefile: test). library_test_tsan is the
-# ThreadSanitizer build and is 10MB, which is the one that really hurts.
+# The sixteen test binaries (Makefile: TESTBINS), each now built beside the code
+# it tests. library_test_tsan is the ThreadSanitizer build and is 27MB, which is
+# the one that really hurts.
 #
-# random_test is the fifteenth, added with §18 and added HERE in the same commit
-# as its Makefile rule, which is the discipline the note above asks for and the
-# one reg_test did not get.
+# console_test was the drift this note kept predicting: it was built, it was
+# 950KB, and it was NEVER in this list -- it sat untracked in `git status` until
+# the move into src/ rewrote these paths. reg_test did the same thing earlier and
+# was tracked at b0185ba, 561KB of binary committed.
 #
-# reg_test is a late addition to this list and was tracked at b0185ba — 561KB of
-# binary committed, exactly what the note above warns about, because the list was
-# written when there were eleven and nothing checks it against the Makefile. Kept
-# alphabetical so a missing name is visible; that is the only defence this file
-# has, and it is a weak one. The lasting fix is the same one format.hpp applies
-# to the registry: a list nothing consumes is a list that drifts.
-ast_test
-bignum_test
-env_test
-eval_test
-format_test
-interp_test
-lexer_test
-library_test
-library_test_tsan
-loader_test
-parser_test
-random_test
-reg_test
-satellite_string_test
-spacesuit_test
+# The Makefile now keeps ONE list, TESTBINS, and `test` and `clean` both read it
+# rather than restating it. This file is still a second hand-written copy and so
+# is still the half that can drift; kept alphabetical so a missing name is
+# visible, which remains the only defence it has.
+src/abstract_syntax_tree/ast_test
+src/bytecode_format/format_test
+src/console_output/console_test
+src/environment/env_test
+src/environment/spacesuit_test
+src/evaluator/eval_test
+src/interpreter/interp_test
+src/lexical_analyzer/lexer_test
+src/random_numbers/random_test
+src/register_file/reg_test
+src/satellite_library/library_test
+src/satellite_library/library_test_tsan
+src/satellite_number/bignum_test
+src/satellite_string/satellite_string_test
+src/spaceship_loader/loader_test
+src/syntax_parser/parser_test
 
 # pcg_test is a PROTOTYPE and not a Makefile product, so it is deliberately
 # outside the list above rather than another name in it. It is built by hand;
@@ -90,3 +91,19 @@ debian/*.debhelper.log
 # 23MB every clone pays forever. Kept on disk, out of history: `git add -f` can
 # always put one in later, and taking a blob back OUT needs a history rewrite.
 icon/**/*.xcf
+
+# The download bundle for satellite.foundation: two binaries and the installer,
+# rewritten by every build at the project root. Build products, not sources.
+enterprise_download/
+satellite_rhel.tar.xz
+
+# Build products that had no entry and were sitting untracked in `git status`:
+# a stamp the Makefile regenerates from FORCE and `clean` deletes, a tarball
+# made by hand at the project root (the Makefile's own bundle is
+# satellite_rhel.tar.xz above, which is why this one slipped the list), and the
+# two compiled drivers in speed_test/. The .cpp/.asm/.py/.satl sources beside
+# them are tracked; only the binaries are not.
+.cxxflags-stamp
+satl.tar.xz
+speed_test/nasm_speed
+speed_test/speed_test

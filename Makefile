@@ -1,17 +1,70 @@
 PKGS     = gtk4 vte-2.91-gtk4
 
+# pkg-config, and whether this machine has what satl-term needs.
+#
+# `make` used to die here, and the way it died is the point: PKGS is only ever
+# needed by ONE object, window.o, but `all` asked for satl-term unconditionally,
+# so a machine without the vte development package got pkg-config's complaint
+# followed by `fatal error: gtk/gtk.h: No such file or directory` -- and no
+# satl either, because make stops at the first failed recipe. The interpreter
+# needs neither library (see the note on CXXFLAGS below) and there was no reason
+# for it to go down with the window.
+#
+# So the packages are LOOKED FOR rather than assumed. Present, `make` builds
+# both, exactly as before. Absent, it builds the interpreter, says which package
+# is missing and how to install it, and exits 0 -- and `make satl-term` still
+# fails, loudly and with the same instruction, because someone who asked for the
+# window by name wants to know why they did not get it.
+#
+# --exists rather than --cflags: it answers yes or no and prints nothing either
+# way, so this is the one place the question is asked and the noise stops here.
+# := so it is asked once per make rather than once per reference.
+PKG_CONFIG ?= pkg-config
+MISSING_PKGS := $(strip $(foreach p,$(PKGS),     $(if $(shell $(PKG_CONFIG) --exists $(p) 2>/dev/null && echo yes),,$(p))))
+
+# What to type to fix it, in the words of whichever package manager is here.
+# A message that says "install the vte development package" and leaves the
+# reader to find out what it is called on their distribution is half a message.
+ifneq ($(shell command -v dnf 2>/dev/null),)
+  # The vte gtk4 bindings live in CodeReady Builder on RHEL and its rebuilds,
+  # which is disabled by default -- so the repository has to be named or dnf
+  # reports "No match for argument" on a package that is sitting right there.
+  DEPS_CMD = sudo dnf install --enablerepo=crb gtk4-devel vte291-gtk4-devel
+else ifneq ($(shell command -v apt-get 2>/dev/null),)
+  # The same names debian/control Build-Depends on, so the two cannot drift.
+  DEPS_CMD = sudo apt-get install libgtk-4-dev libvte-2.91-gtk4-dev pkg-config
+else ifneq ($(shell command -v pacman 2>/dev/null),)
+  DEPS_CMD = sudo pacman -S --needed gtk4 vte4
+else
+  DEPS_CMD =
+endif
+
+# The message itself, once, because three recipes print it.
+ifeq ($(DEPS_CMD),)
+  DEPS_ADVICE = install the gtk4 and vte-2.91-gtk4 development packages
+else
+  DEPS_ADVICE = run:  make deps    (which is: $(DEPS_CMD))
+endif
+
 # The clang 24 trunk build this project is developed against, but ONLY if it is
 # actually there. It lives under $HOME, and $HOME is not a constant: `sudo make`
-# runs with HOME=/root, so a hard-coded $(HOME)/.local/... resolved to
-# /root/.local/llvm/bin/clang++ and the build died with "No such file or
-# directory" on a machine where the compiler was sitting in plain sight. The
+# runs with HOME=/root, so a hard-coded $(HOME)/opt/... resolves to
+# /root/opt/clang-24/bin/clang++ and the build dies with "No such file or
+# directory" on a machine where the compiler is sitting in plain sight. The
 # same absence is the normal case on any build machine, which is why
 # debian/rules already overrides CXX by hand.
+#
+# The path moved from $(HOME)/.local/llvm/bin, which is where this line was
+# written and where nothing has been for some time -- so the wildcard below
+# quietly missed and every build since fell through to `c++`, which on this
+# machine is GCC 17. That is not a failure mode anybody sees: the fallback
+# compiles the tree perfectly well, so the only symptom was that the compiler
+# named in DESIGN's measurements was not the compiler doing the measuring.
 #
 # origin, rather than ?=, because CXX is one of make's built-in variables and is
 # therefore already set: ?= would never fire. `default` means nobody has chosen,
 # so `make CXX=g++` and CXX from the environment both still win.
-LLVM_BIN = $(HOME)/.local/llvm/bin
+LLVM_BIN = $(HOME)/opt/clang-24/bin
 ifeq ($(origin CXX),default)
   CXX := $(if $(wildcard $(LLVM_BIN)/clang++),$(LLVM_BIN)/clang++,c++)
 endif
@@ -21,9 +74,30 @@ endif
 # before main() on every run, and `satl --run` touches none of them:
 # 25.9 ms with the link, 2.5 ms without, against a 2.2 ms bare-process floor.
 # Only window.o gets them, and only satl-term links them.
-CXXFLAGS = -std=c++20 -Wall -Wextra -O2
-GTKFLAGS = $(shell pkg-config --cflags $(PKGS))
-LDLIBS   = $(shell pkg-config --libs $(PKGS))
+#
+# OPT is the knob, and CXXFLAGS is not one. A command-line `make CXXFLAGS=-O3`
+# REPLACES this variable whole -- that is what a command-line assignment means
+# in make -- so it takes -std=c++20 with it, and the build dies on
+# std::atomic<std::shared_ptr<T>> being a C++20 feature, twenty lines of
+# static_assert away from anything that names the real cause. Asking someone to
+# restate three flags to change one is a trap with a note beside it, so the one
+# flag anybody actually wants to change gets its own variable.
+#
+# `make OPT=-O3` and `make OPT="-O3 -march=native"` therefore work and keep the
+# three flags the build cannot compile without. -march=native is deliberately
+# not a default: it bakes in this machine's instruction set, and debian/rules
+# drives this same Makefile to build a package that has to run on machines that
+# are not this one.
+OPT ?= -O2
+CXXFLAGS = -std=c++20 -Wall -Wextra $(OPT)
+# Recursively expanded, so pkg-config is run only by the recipes that use them
+# -- window.o and the satl-term link -- and never by a `make satl` or a
+# `make test`. Errors are dropped because MISSING_PKGS above has already asked
+# the question properly and reported it; a second complaint from the same
+# missing package, in pkg-config's words, at the top of an otherwise fine build,
+# is the noise this replaces.
+GTKFLAGS = $(shell $(PKG_CONFIG) --cflags $(PKGS) 2>/dev/null)
+LDLIBS   = $(shell $(PKG_CONFIG) --libs $(PKGS) 2>/dev/null)
 
 # pcg-cpp is header-only and vendored in the tree, so it adds nothing to the
 # link -- `ldd satl` lists the same six shared objects it did before §18.
@@ -49,57 +123,125 @@ LDFLAGS ?=
 # architecture needs: both binary packages are Architecture: any, and that is a
 # promise the package builds everywhere (Debian Policy 5.6.8).
 TSAN      ?= 1
-TSAN_TEST  = $(if $(filter-out 0,$(TSAN)),library_test_tsan)
+TSAN_TEST  = $(if $(filter-out 0,$(TSAN)),$(LIBRARY)/library_test_tsan)
 
 # `prefix` is baked into the binary; DESTDIR is staging and is baked into
 # NOTHING. The distinction is the whole contract with a packaging system: a
 # .deb is built with prefix=/usr into a DESTDIR chroot, and a binary that had
 # learned the chroot's name would look for its library there on the user's
 # machine, where that directory does not exist.
-prefix  ?= /usr/local
+#
+# The DEFAULT follows who is running make, for the reason install.sh already
+# gives at length (install.sh:40-58) and now for a second one: `all` below ends
+# in an install, and an install a normal user cannot perform is not a default,
+# it is an error message. /usr/local is the right place for an install from
+# source and it needs root; $HOME/.local needs none, is already on PATH, and is
+# in the XDG data search path on any current desktop.
+#
+# id -u rather than $(HOME) alone: `sudo make` runs with HOME=/root, and a
+# default of $(HOME)/.local would drop a system build into /root/.local, which
+# is on nobody's PATH -- the same trap the note on LLVM_BIN above is about. A
+# HOME that is unset entirely falls back to /usr/local, where the writability
+# check in `all` refuses the install rather than inventing /.local.
+#
+# ONE prefix per invocation, and that is not a style point. prefix is compiled
+# into system.o through .libdir-stamp below, so a build at one prefix followed
+# by an install at another recompiles system.o and relinks satl -- in BOTH
+# directions, on every invocation, so `make` never reaches a fixed point. That
+# is why the auto-install below overrides nothing: it installs at the prefix
+# this build already used.
+SATELLITE_UID := $(shell id -u 2>/dev/null)
+ifeq ($(SATELLITE_UID),0)
+  DEFAULT_PREFIX = /usr/local
+else ifeq ($(strip $(HOME)),)
+  DEFAULT_PREFIX = /usr/local
+else
+  DEFAULT_PREFIX = $(HOME)/.local
+endif
+
+prefix  ?= $(DEFAULT_PREFIX)
 DESTDIR ?=
 bindir   = $(prefix)/bin
 datadir  = $(prefix)/share
 mandir   = $(datadir)/man
 docdir   = $(datadir)/doc/satellite
 
-# eval.cpp was 2208 lines. Split into eval/ at the seams the code already had,
-# none of the twelve reaching 400. Listed explicitly rather than by wildcard so
-# that a file added to the directory and forgotten here fails to link instead of
-# being silently dropped from the binary.
-ENV_SRCS = env/scopes.cpp env/names.cpp env/walk.cpp env/spacesuits.cpp \
-           env/run.cpp
+# Every module lives in its own directory under src/, named for the job the
+# module does rather than for the abbreviation its files still use. The FILE
+# names are deliberately unchanged -- ast.cpp is still ast.cpp -- so the
+# hundreds of references in DESIGN.md that name a file still name the right
+# file, and only the directory in front of it is new.
+#
+# These are variables rather than spelled-out paths so that the explicit source
+# lists below stay one file per name and readable at a glance, which is the
+# property the note on ENV_SRCS is about.
+SRC      = src
+AST      = $(SRC)/abstract_syntax_tree
+NUMBER   = $(SRC)/satellite_number
+STRING   = $(SRC)/satellite_string
+VALUE    = $(SRC)/satellite_value
+LIBRARY  = $(SRC)/satellite_library
+LEXER    = $(SRC)/lexical_analyzer
+PARSER   = $(SRC)/syntax_parser
+ENV      = $(SRC)/environment
+EVAL     = $(SRC)/evaluator
+INTERP   = $(SRC)/interpreter
+LOADER   = $(SRC)/spaceship_loader
+CONSOLE  = $(SRC)/console_output
+RANDOM   = $(SRC)/random_numbers
+SYSTEM   = $(SRC)/system_facts
+FORMAT   = $(SRC)/bytecode_format
+REG      = $(SRC)/register_file
+PROGRAMS = $(SRC)/programs
+
+# eval.cpp was 2208 lines. Split into evaluator/ at the seams the code already
+# had, none of the twelve reaching 400. Listed explicitly rather than by
+# wildcard so that a file added to the directory and forgotten here fails to
+# link instead of being silently dropped from the binary.
+ENV_SRCS = $(ENV)/scopes.cpp $(ENV)/names.cpp $(ENV)/walk.cpp \
+           $(ENV)/spacesuits.cpp $(ENV)/run.cpp
 ENV_OBJS = $(ENV_SRCS:.cpp=.o)
 
-BIGNUM_SRCS = bignum/limbs.cpp bignum/number_core.cpp bignum/number_query.cpp \
-              bignum/number_arith.cpp bignum/render.cpp bignum/random.cpp
+BIGNUM_SRCS = $(NUMBER)/limbs.cpp $(NUMBER)/number_core.cpp \
+              $(NUMBER)/number_query.cpp $(NUMBER)/number_arith.cpp \
+              $(NUMBER)/render.cpp $(NUMBER)/random.cpp
 BIGNUM_OBJS = $(BIGNUM_SRCS:.cpp=.o)
 
-PARSER_SRCS = parser/cursor.cpp parser/types.cpp parser/expr.cpp \
-              parser/stmt.cpp parser/decl.cpp parser/run.cpp
+PARSER_SRCS = $(PARSER)/cursor.cpp $(PARSER)/types.cpp $(PARSER)/expr.cpp \
+              $(PARSER)/stmt.cpp $(PARSER)/decl.cpp $(PARSER)/run.cpp
 PARSER_OBJS = $(PARSER_SRCS:.cpp=.o)
 
-EVAL_SRCS = eval/helpers.cpp eval/help.cpp eval/types.cpp eval/session.cpp \
-            eval/stmt.cpp eval/slots.cpp eval/expr.cpp eval/methods.cpp \
-            eval/mutators.cpp eval/modules.cpp eval/calls.cpp \
-            eval/operators.cpp eval/maps.cpp
+EVAL_SRCS = $(EVAL)/helpers.cpp $(EVAL)/help.cpp $(EVAL)/types.cpp \
+            $(EVAL)/analyze.cpp \
+            $(EVAL)/session.cpp $(EVAL)/stmt.cpp $(EVAL)/slots.cpp \
+            $(EVAL)/expr.cpp $(EVAL)/methods.cpp $(EVAL)/mutators.cpp \
+            $(EVAL)/modules.cpp $(EVAL)/calls.cpp $(EVAL)/operators.cpp \
+            $(EVAL)/maps.cpp
 EVAL_OBJS = $(EVAL_SRCS:.cpp=.o)
 
-OBJS      = main.o library.o satellite_string.o system.o lexer.o \
-            ast.o value.o loader.o interp.o random.o console.o $(EVAL_OBJS) \
+OBJS      = $(PROGRAMS)/main.o $(LIBRARY)/library.o \
+            $(STRING)/satellite_string.o $(SYSTEM)/system.o \
+            $(LEXER)/lexer.o $(AST)/ast.o $(VALUE)/value.o \
+            $(LOADER)/loader.o $(INTERP)/interp.o $(RANDOM)/random.o \
+            $(CONSOLE)/console.o $(EVAL_OBJS) \
             $(PARSER_OBJS) $(BIGNUM_OBJS) $(ENV_OBJS)
-HDRS      = library.hpp value.hpp satellite_string.hpp system.hpp bignum.hpp \
-            lexer.hpp ast.hpp parser.hpp env.hpp eval.hpp loader.hpp \
-            interp.hpp random.hpp console.hpp eval/eval_internal.hpp \
-            parser/parser_internal.hpp bignum/bignum_internal.hpp \
-            env/env_internal.hpp
+HDRS      = $(LIBRARY)/library.hpp $(VALUE)/value.hpp \
+            $(STRING)/satellite_string.hpp $(SYSTEM)/system.hpp \
+            $(NUMBER)/bignum.hpp $(LEXER)/lexer.hpp $(AST)/ast.hpp \
+            $(PARSER)/parser.hpp $(ENV)/env.hpp $(EVAL)/eval.hpp \
+            $(LOADER)/loader.hpp $(INTERP)/interp.hpp $(RANDOM)/random.hpp \
+            $(CONSOLE)/console.hpp $(EVAL)/eval_internal.hpp \
+            $(PARSER)/parser_internal.hpp $(NUMBER)/bignum_internal.hpp \
+            $(ENV)/env_internal.hpp
 # format.hpp and format.def are deliberately NOT in HDRS. Every object depends on
 # HDRS, and no object includes either file — there is no VM yet — so listing them
 # would make one edit to format.def rebuild the whole interpreter for nothing.
 # The format_test rule below names them itself, which is the dependency that is
 # actually real. Add them here when a translation unit in OBJS includes them.
-TESTSRCS  = library.cpp satellite_string.cpp system.cpp lexer.cpp \
-            ast.cpp value.cpp loader.cpp interp.cpp random.cpp console.cpp \
+TESTSRCS  = $(LIBRARY)/library.cpp $(STRING)/satellite_string.cpp \
+            $(SYSTEM)/system.cpp $(LEXER)/lexer.cpp $(AST)/ast.cpp \
+            $(VALUE)/value.cpp $(LOADER)/loader.cpp $(INTERP)/interp.cpp \
+            $(RANDOM)/random.cpp $(CONSOLE)/console.cpp \
             $(EVAL_SRCS) $(PARSER_SRCS) $(BIGNUM_SRCS) $(ENV_SRCS)
 TESTFLAGS = -std=c++20 -Wall -Wextra -pthread
 
@@ -112,25 +254,228 @@ TESTFLAGS = -std=c++20 -Wall -Wextra -pthread
 # main.o is excluded because it defines main() and so does every test.
 # library_test_tsan is NOT converted: -fsanitize=thread has to be on every
 # translation unit it links, and these objects are not built with it.
-LIBOBJS   = $(filter-out main.o,$(OBJS))
+LIBOBJS   = $(filter-out $(PROGRAMS)/main.o,$(OBJS))
 
-all: satl satl-term
+# Both, on a machine that can build both. On one that cannot, the interpreter
+# and an explanation -- see the note on MISSING_PKGS at the top.
+ifeq ($(MISSING_PKGS),)
+  GUI_TARGET = satl-term
+else
+  GUI_TARGET = gui-skipped
+endif
+
+# `make` at the top of this tree BUILDS and then INSTALLS, and the second half
+# of that sentence is unusual enough to earn a paragraph.
+#
+# A build tree is not an install, and at a shell prompt the two are
+# indistinguishable: ./satl and the satl on PATH are different files, and which
+# one answers to `satl` is whichever the shell finds first. So a fix compiled
+# here was routinely being tried against the copy installed last week, and the
+# artwork in dist/icons was routinely not the artwork the desktop was drawing.
+# No test catches either: the tests link the objects and never go near either
+# binary. Ending the build where the last install ended is what stops the two
+# from drifting. The icon walk in `install` below is an unconditional copy, so
+# every build overwrites the installed icons with what is in dist/icons right
+# now -- which is the point of doing it every time rather than when something
+# looks stale.
+#
+# It fires only when make was invoked with THIS directory as its working
+# directory: $(CURDIR) against the directory this file was read from. That is
+# necessary and it is NOT sufficient. `make -C <tree>` sets CURDIR to <tree>, so
+# it is indistinguishable from `cd <tree> && make` -- same CURDIR, same PWD,
+# same MAKELEVEL, measured -- and both of this repository's own callers invoke
+# make exactly that way: install.sh builds with `make -C "$repo"` before running
+# its own install, and debian/rules arrives through dh_auto_build with
+# prefix=/usr and no DESTDIR, where an install would write into the build
+# machine's live /usr instead of debian/tmp and slip past dh_missing entirely.
+# Neither is guessed at. Both pass SATELLITE_AUTOINSTALL=0 on the make command
+# line -- the one level that outranks the assignment below, for the reason
+# debian/rules:10-13 already spells out -- and this comment is what the comments
+# there point back to.
+#
+# And it never runs sudo. The prefix is the one chosen above, a directory the
+# caller already owns; where it is not writable the install is REFUSED, in
+# words, with the command that would have worked. `deps` above refuses to
+# escalate for the same reason, one target down. Nothing here can fail the
+# build, either: every path through the recipe exits 0, because a tarball built
+# by an rpm spec or a Nix derivation reaches this line with an unwritable
+# prefix and no way to pass the opt-out, and a printed note is the right
+# outcome there.
+# A NAMED prefix is the second half of the answer, and it is the half that
+# needs no cooperation from anybody. Every caller that must not auto-install --
+# debian/rules through dh_auto_build, install.sh's two build steps, and the rpm
+# spec or Nix derivation or PKGBUILD that no edit in this tree can reach --
+# passes prefix on the make command line, because all of them have somewhere
+# specific to put the files. So `$(origin prefix)` answers the question that
+# CURDIR cannot: a build that was told where the tree goes is a build whose
+# install somebody else is performing. The two callers in this repository pass
+# SATELLITE_AUTOINSTALL=0 as well, and the redundancy is deliberate -- it says
+# in their own files what they mean, rather than leaving it to be inferred from
+# a variable they pass for another reason entirely.
+#
+# lastword rather than firstword: the MAKEFILES environment variable prepends
+# to MAKEFILE_LIST, so firstword can name a file nobody here wrote. realpath
+# rather than abspath: CURDIR arrives from getcwd() with symlinks already
+# resolved, while a -f path does not, so abspath compares a resolved path
+# against an unresolved one and answers no to a tree reached through a symlink.
+SATELLITE_AUTOINSTALL ?= 1
+HERE := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+AUTOINSTALL := $(strip $(if $(filter-out 0,$(SATELLITE_AUTOINSTALL)),\
+                   $(if $(DESTDIR),,\
+                     $(if $(filter file undefined,$(origin prefix)),\
+                       $(if $(subst $(realpath $(CURDIR)),,$(HERE)),,\
+                         $(if $(filter 0,$(MAKELEVEL)),yes))))))
+
+# --silent for that sub-make, but only when this make is not a dry run: `make -n`
+# has to SHOW the install it would do, and -s suppresses exactly that printing.
+# A recipe line mentioning $(MAKE) is run even under -n -- that is how a dry run
+# recurses at all -- so the sub-make is where the question has to be asked. The
+# first word of MAKEFLAGS is the bundle of single-letter flags; long options
+# arrive later and start with a dash, which is what the filter drops.
+MAKE_SHORT_FLAGS := $(filter-out -%,$(firstword $(MAKEFLAGS)))
+INSTALL_QUIET    := $(if $(findstring n,$(MAKE_SHORT_FLAGS)),,--silent)
+
+# Three more words to that sub-make, each buying one thing:
+#
+#   -o satl -o satl-term   `make -B` means rebuild everything, and it reaches
+#                          the sub-make through MAKEFLAGS, where `install`
+#                          lists both binaries as prerequisites -- so a -B
+#                          build would compile the whole tree, install it, and
+#                          then compile the whole tree a second time. --old-file
+#                          on the two binaries `all` has just finished building
+#                          is exactly the statement that they are current, and
+#                          it beats -B (measured).
+#   GUI_TARGET=            the GUI question was already asked and answered by
+#                          the make that got here. Left to ask it again, the
+#                          sub-make prints the gui-skipped banner a second time
+#                          on every build on a machine without gtk.
+#
+# And where the advice below names a command for the caller to run as root, it
+# names install.sh and not `sudo make`. `make` inside the tree writes .o files,
+# relinks satl and rewrites .libdir-stamp, all as root, in a directory the user
+# owns -- after which their next ordinary `make` cannot write the stamp and the
+# build fails with a permission error nobody connects to the sudo they typed
+# an hour earlier. install.sh:263-273 already solves this: it compiles as the
+# human and uses root for the copy alone.
+# The folder https://satellite.foundation/ hands out when somebody clicks
+# download: the two binaries this machine just built, and the installer beside
+# them. Enterprise Linux is what it is because that is what this machine is --
+# an EL 10 build links EL 10's libstdc++ and runs on EL 9/10 and its rebuilds,
+# and on nothing older. A Debian bundle has to be built on Debian, which is why
+# this variable names the distribution rather than the word "linux".
+#
+# Under the same condition as the auto-install below, and not on `every make`
+# literally: debian/rules reaches `all` too, and a package build that dropped a
+# directory of binaries into the unpacked source would have dpkg-source
+# complaining about a tree that changed while it was being built.
+#
+# gitignored, because it holds build products. Nothing in it is a source file
+# and every one of them is rewritten by the next make.
+DOWNLOAD_DIR = enterprise_download
+DOWNLOAD_TAR = satellite_rhel.tar.xz
+
+# `all`, whatever order the rules below end up in.
+.DEFAULT_GOAL := all
+
+all: satl $(GUI_TARGET) $(if $(AUTOINSTALL),bundle)
+ifeq ($(AUTOINSTALL),yes)
+	@dir='$(prefix)'; \
+	while [ ! -d "$$dir" ] && [ "$$dir" != / ]; do dir=`dirname "$$dir"`; done; \
+	if [ ! -w "$$dir" ]; then \
+	    printf 'satl built, and NOT installed: %s is not writable by %s.\n' \
+	        "$$dir" "`id -un 2>/dev/null || echo you`"; \
+	    printf 'A build does not run sudo. To install it as root:\n'; \
+	    printf '    sudo ./install.sh --prefix %s\n' '$(prefix)'; \
+	elif ! $(MAKE) --no-print-directory $(INSTALL_QUIET) \
+	          -o satl -o satl-term GUI_TARGET= \
+	          install install-report SATELLITE_AUTOINSTALL=0; then \
+	    printf 'satl built, but the install did not finish.\n'; \
+	    printf 'Run `make install` to see what stopped it.\n'; \
+	fi
+endif
+
+# BELOW `all`, and that position is load-bearing: the first target in a
+# makefile is the default goal, so defining this one above `all` quietly made
+# `make` build the bundle and nothing else -- binaries fresh, install skipped,
+# exit 0, no error anywhere. .DEFAULT_GOAL is set at the top as well, so the
+# next rule that lands in the wrong place cannot repeat it.
+bundle: satl $(GUI_TARGET)
+	@install -d -m755 '$(DOWNLOAD_DIR)'
+	@install -m755 satl '$(DOWNLOAD_DIR)/satl'
+	@if [ -f satl-term ]; then \
+	    install -m755 satl-term '$(DOWNLOAD_DIR)/satl-term'; \
+	fi
+	@install -m755 install.sh '$(DOWNLOAD_DIR)/install.sh'
+# The tarball sits OUTSIDE the folder it archives, in the project root, so that
+# unpacking it recreates the folder rather than scattering three files into
+# whatever directory the download landed in.
+#
+# --sort=name, and the mtime/owner clamps, for the reason `gzip -9n` is used on
+# the man pages: two builds of the same binaries should produce the same
+# archive, byte for byte, so a published checksum means something.
+	@tar --create --xz --file '$(DOWNLOAD_TAR)' \
+	     --sort=name --owner=root:0 --group=root:0 \
+	     --mtime='@0' --format=gnu '$(DOWNLOAD_DIR)'
+	@printf 'bundled    %s/  and  %s\n' '$(DOWNLOAD_DIR)' '$(DOWNLOAD_TAR)'
+
+gui-skipped:
+	@printf 'satl built.\n'
+	@printf 'satl-term SKIPPED: pkg-config cannot find %s\n' '$(MISSING_PKGS)'
+	@printf 'To build the terminal window too, %s\n' '$(DEPS_ADVICE)'
+
+# Explicit, and never run by `make` on its own: installing system packages is
+# the user's decision, and a build that quietly took it would be a build that
+# runs sudo without being asked. No -y -- the package manager lists what it is
+# about to do and asks, which is the confirmation this deliberately keeps.
+deps:
+ifeq ($(DEPS_CMD),)
+	@printf 'No dnf, apt-get or pacman here -- %s\n' '$(DEPS_ADVICE)'
+	@exit 1
+else
+	$(DEPS_CMD)
+endif
 
 satl: $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^ -pthread
 
-satl-term: window.o
+satl-term: $(PROGRAMS)/window.o
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-window.o: window.cpp
-	$(CXX) $(CXXFLAGS) $(GTKFLAGS) -c -o $@ window.cpp
+# Every translation unit spells its includes from the top of src/ --
+# "evaluator/eval.hpp" and never "../eval.hpp" -- so the path a header is
+# included by is a property of the header and not of whoever reached for it.
+# That costs one -I, and this rule is where the objects under src/ get it.
+#
+# -I$(SRC) is a LITERAL on every recipe line rather than part of CXXFLAGS, for
+# exactly the reason -DSATELLITE_LIB_DIR is one on the system.o rule below: a
+# command-line `make CXXFLAGS=...` replaces that variable WHOLE, and
+# debian/rules does precisely that -- it restates -std=c++20 -Wall -Wextra
+# ahead of dpkg's hardening flags, and would have to learn to restate a -I as
+# well. A flag the build cannot compile a single file without is not one an
+# override may silently drop; the failure mode is every unit failing to find
+# every header, in a package build, on a machine that is not this one.
+$(SRC)/%.o: $(SRC)/%.cpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -c -o $@ $<
+
+# The one object that needs gtk and vte, and so the one place the missing-package
+# check has to bite: the guard is inside this recipe rather than on a
+# prerequisite because a phony prerequisite is always considered newer, which
+# would rebuild window.o on every make even when nothing had changed.
+$(PROGRAMS)/window.o: $(PROGRAMS)/window.cpp .cxxflags-stamp
+ifneq ($(MISSING_PKGS),)
+	@printf 'satl-term needs %s, which pkg-config cannot find.\n' '$(MISSING_PKGS)'
+	@printf 'To install it, %s\n' '$(DEPS_ADVICE)'
+	@printf 'satl, the interpreter, needs neither and builds with: make satl\n'
+	@exit 1
+endif
+	$(CXX) $(CXXFLAGS) $(GTKFLAGS) -I$(SRC) -c -o $@ $(PROGRAMS)/window.cpp
 
 # The only object that sees the vendored PCG headers, for the same reason
 # window.o is the only one that sees gtk: a dependency that one translation unit
-# needs is not one the whole build should carry. bignum/random.cpp does the
+# needs is not one the whole build should carry. $(NUMBER)/random.cpp does the
 # arbitrary-precision half of §18 and includes nothing from pcg-cpp at all.
-random.o: random.cpp
-	$(CXX) $(CXXFLAGS) $(PCGFLAGS) -c -o $@ random.cpp
+$(RANDOM)/random.o: $(RANDOM)/random.cpp
+	$(CXX) $(CXXFLAGS) $(PCGFLAGS) -I$(SRC) -c -o $@ $(RANDOM)/random.cpp
 
 # The prefix is written to a file so that make can see it. Make invalidates a
 # target when a PREREQUISITE changes, and the value below is not a prerequisite
@@ -144,59 +489,75 @@ random.o: random.cpp
 	@printf '%s' '$(datadir)/satellite/lib' | cmp -s - $@ || \
 	    printf '%s' '$(datadir)/satellite/lib' > $@
 
+# The same trick as .libdir-stamp, for the same reason, against a bigger hole:
+# make invalidates a target when a PREREQUISITE changes, and CXXFLAGS is not a
+# prerequisite of anything. So `make OPT=-O3` used to recompile NOTHING, and a
+# tree that had been built at -O2 quietly stayed at -O2 except for whatever
+# happened to be touched since -- a mixed binary that no output distinguishes
+# from a clean one. Switching compilers had the same hole: the whole tree was
+# built by GCC, CXX moved to clang, and `make` had nothing to say about it.
+#
+# CXX is in the stamp with the flags, because who compiled it is as much a
+# property of an object file as what flags did.
+.cxxflags-stamp: FORCE
+	@printf '%s' '$(CXX) $(CXXFLAGS)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) $(CXXFLAGS)' > $@
+
 FORCE:
 
 # system.o is the only object that learns the install prefix, so retargeting a
 # build invalidates one object and not twelve. DESTDIR is deliberately absent
 # from this define -- see the prefix/DESTDIR note above.
-system.o: system.cpp .libdir-stamp
-	$(CXX) $(CXXFLAGS) -DSATELLITE_LIB_DIR='"$(datadir)/satellite/lib"' \
-	    -c -o $@ system.cpp
+$(SYSTEM)/system.o: $(SYSTEM)/system.cpp .libdir-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) \
+	    -DSATELLITE_LIB_DIR='"$(datadir)/satellite/lib"' \
+	    -c -o $@ $(SYSTEM)/system.cpp
 
-$(OBJS): $(HDRS)
+$(OBJS): $(HDRS) .cxxflags-stamp
 
-library_test: library_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ library_test.cpp $(LIBOBJS)
+$(LIBRARY)/library_test: $(LIBRARY)/library_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(LIBRARY)/library_test.cpp $(LIBOBJS)
 
-library_test_tsan: library_test.cpp $(TESTSRCS) $(HDRS)
-	$(CXX) $(TESTFLAGS) $(PCGFLAGS) -O1 -g -fsanitize=thread -o $@ library_test.cpp $(TESTSRCS)
+$(LIBRARY)/library_test_tsan: $(LIBRARY)/library_test.cpp $(TESTSRCS) $(HDRS)
+	$(CXX) $(TESTFLAGS) $(PCGFLAGS) -I$(SRC) -O1 -g -fsanitize=thread \
+	    -o $@ $(LIBRARY)/library_test.cpp $(TESTSRCS)
 
-satellite_string_test: satellite_string_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ satellite_string_test.cpp $(LIBOBJS)
+$(STRING)/satellite_string_test: $(STRING)/satellite_string_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(STRING)/satellite_string_test.cpp $(LIBOBJS)
 
-lexer_test: lexer_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ lexer_test.cpp $(LIBOBJS)
+$(LEXER)/lexer_test: $(LEXER)/lexer_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(LEXER)/lexer_test.cpp $(LIBOBJS)
 
-ast_test: ast_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ ast_test.cpp $(LIBOBJS)
+$(AST)/ast_test: $(AST)/ast_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(AST)/ast_test.cpp $(LIBOBJS)
 
-parser_test: parser_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ parser_test.cpp $(LIBOBJS)
+$(PARSER)/parser_test: $(PARSER)/parser_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(PARSER)/parser_test.cpp $(LIBOBJS)
 
-eval_test: eval_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ eval_test.cpp $(LIBOBJS)
+$(EVAL)/eval_test: $(EVAL)/eval_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(EVAL)/eval_test.cpp $(LIBOBJS)
 
-interp_test: interp_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ interp_test.cpp $(LIBOBJS)
+$(INTERP)/interp_test: $(INTERP)/interp_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(INTERP)/interp_test.cpp $(LIBOBJS)
 
-loader_test: loader_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ loader_test.cpp $(LIBOBJS)
+$(LOADER)/loader_test: $(LOADER)/loader_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(LOADER)/loader_test.cpp $(LIBOBJS)
 
-env_test: env_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ env_test.cpp $(LIBOBJS)
+$(ENV)/env_test: $(ENV)/env_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(ENV)/env_test.cpp $(LIBOBJS)
 
-spacesuit_test: spacesuit_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ spacesuit_test.cpp $(LIBOBJS)
+$(ENV)/spacesuit_test: $(ENV)/spacesuit_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(ENV)/spacesuit_test.cpp $(LIBOBJS)
 
-bignum_test: bignum_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ bignum_test.cpp $(LIBOBJS)
+$(NUMBER)/bignum_test: $(NUMBER)/bignum_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(NUMBER)/bignum_test.cpp $(LIBOBJS)
 
 # The one test binary whose runtime is a design parameter rather than an
 # accident: every end-to-end case spends its tier's throwaway window before it
 # answers, so the cases here are on `fast` (50-100 ms) and the sampler itself is
 # tested through a stub generator that does not spin at all.
-random_test: random_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ random_test.cpp $(LIBOBJS)
+$(RANDOM)/random_test: $(RANDOM)/random_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(RANDOM)/random_test.cpp $(LIBOBJS)
 
 # format.hpp links against NOTHING — it includes only <cstdint> and <cstddef>,
 # so this is the one test binary that needs no objects at all. That is a
@@ -207,34 +568,72 @@ random_test: random_test.cpp $(LIBOBJS)
 # Most of this test runs at COMPILE time. format.hpp ends in static_asserts over
 # the X-macro lists, so a duplicate id or a hole in the registry fails right
 # here rather than in the binary.
-format_test: format_test.cpp format.hpp format.def
-	$(CXX) $(TESTFLAGS) -O2 -o $@ format_test.cpp
+$(FORMAT)/format_test: $(FORMAT)/format_test.cpp $(FORMAT)/format.hpp \
+                    $(FORMAT)/format.def
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(FORMAT)/format_test.cpp
 
 # reg.hpp is not linked into satl: there is no VM yet, and nothing in the
 # interpreter includes it. This binary is the only consumer.
-console_test: console_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ console_test.cpp $(LIBOBJS)
+$(CONSOLE)/console_test: $(CONSOLE)/console_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(CONSOLE)/console_test.cpp $(LIBOBJS)
 
-reg_test: reg_test.cpp reg.hpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -O2 -o $@ reg_test.cpp $(LIBOBJS)
+$(REG)/reg_test: $(REG)/reg_test.cpp $(REG)/reg.hpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(REG)/reg_test.cpp $(LIBOBJS)
 
-test: library_test $(TSAN_TEST) satellite_string_test bignum_test random_test format_test reg_test console_test lexer_test ast_test parser_test env_test eval_test interp_test loader_test spacesuit_test
-	./library_test
+# The fifteen test binaries, each one built beside the code it tests. ONE list,
+# used as the dependency list here, by the aliases below and by `clean` --
+# because .gitignore's own note records what a second hand-copied list costs:
+# reg_test drifted out of one and 561KB of binary went into a commit.
+TESTBINS = $(LIBRARY)/library_test $(STRING)/satellite_string_test \
+           $(NUMBER)/bignum_test $(RANDOM)/random_test \
+           $(FORMAT)/format_test $(REG)/reg_test $(CONSOLE)/console_test \
+           $(LEXER)/lexer_test $(AST)/ast_test $(PARSER)/parser_test \
+           $(ENV)/env_test $(EVAL)/eval_test $(INTERP)/interp_test \
+           $(LOADER)/loader_test $(ENV)/spacesuit_test
+
+test: $(TESTBINS) $(TSAN_TEST)
+	./$(LIBRARY)/library_test
 	$(if $(TSAN_TEST),./$(TSAN_TEST))
-	./satellite_string_test
-	./bignum_test
-	./random_test
-	./format_test
-	./reg_test
-	./console_test
-	./lexer_test
-	./ast_test
-	./parser_test
-	./env_test
-	./eval_test
-	./interp_test
-	./loader_test
-	./spacesuit_test
+	./$(STRING)/satellite_string_test
+	./$(NUMBER)/bignum_test
+	./$(RANDOM)/random_test
+	./$(FORMAT)/format_test
+	./$(REG)/reg_test
+	./$(CONSOLE)/console_test
+	./$(LEXER)/lexer_test
+	./$(AST)/ast_test
+	./$(PARSER)/parser_test
+	./$(ENV)/env_test
+	./$(EVAL)/eval_test
+	./$(INTERP)/interp_test
+	./$(LOADER)/loader_test
+	./$(ENV)/spacesuit_test
+
+# A test binary now sits beside its code, so its path is no longer its name.
+# These keep `make ast_test` working, which is what fingers already type and
+# what every note in DESIGN.md that mentions running one still says. Each is
+# phony and does nothing but ask for the real path.
+ast_test:              $(AST)/ast_test
+bignum_test:           $(NUMBER)/bignum_test
+console_test:          $(CONSOLE)/console_test
+env_test:              $(ENV)/env_test
+eval_test:             $(EVAL)/eval_test
+format_test:           $(FORMAT)/format_test
+interp_test:           $(INTERP)/interp_test
+lexer_test:            $(LEXER)/lexer_test
+library_test:          $(LIBRARY)/library_test
+library_test_tsan:     $(LIBRARY)/library_test_tsan
+loader_test:           $(LOADER)/loader_test
+parser_test:           $(PARSER)/parser_test
+random_test:           $(RANDOM)/random_test
+reg_test:              $(REG)/reg_test
+satellite_string_test: $(STRING)/satellite_string_test
+spacesuit_test:        $(ENV)/spacesuit_test
+
+TESTALIASES = ast_test bignum_test console_test env_test eval_test \
+              format_test interp_test lexer_test library_test \
+              library_test_tsan loader_test parser_test random_test \
+              reg_test satellite_string_test spacesuit_test
 
 # satellite against compiled C++ with the compiler's own time counted, which is
 # the comparison that changes the answer. Depends on `satl` because the
@@ -267,9 +666,23 @@ dist/%.1.gz: dist/%.1
 # path. Unquoted, `prefix="/opt/my satellite"` turns one path into two words
 # and the recipes below silently install to the wrong places -- and the
 # uninstall recipe, being rm -rf, deletes them.
-install: satl satl-term dist/satl.1.gz dist/satl-term.1.gz
+#
+# $(GUI_TARGET) rather than satl-term, and the two satl-term lines below ask
+# whether the file is there: this target is now reached by `all`, and `all` is
+# what must keep working on a machine with no gtk. Naming satl-term outright
+# made the missing-package guard on window.o fire (Makefile's note on
+# MISSING_PKGS at the top), which turned the graceful skip into the hard build
+# failure that guard exists to prevent. The interpreter still installs there,
+# alone, which is the same argument one target up: there is no reason for it to
+# go down with the window. A package build is unaffected -- debian/control
+# Build-Depends on both libraries, so the file is always there -- and if it ever
+# were not, debian/satellite-term.install names usr/bin/satl-term and dh_install
+# fails loudly, which is where that failure belongs.
+install: satl $(GUI_TARGET) dist/satl.1.gz dist/satl-term.1.gz
 	install -Dm755 satl "$(DESTDIR)$(bindir)/satl"
-	install -Dm755 satl-term "$(DESTDIR)$(bindir)/satl-term"
+	if [ -f satl-term ]; then \
+	    install -Dm755 satl-term "$(DESTDIR)$(bindir)/satl-term"; \
+	fi
 # Every directory this install creates gets its mode stated, for the same
 # reason every file does. install -d without -m takes the umask, so under the
 # 002 that is Ubuntu's default for the primary user -- and common in CI images
@@ -314,8 +727,12 @@ install: satl satl-term dist/satl.1.gz dist/satl-term.1.gz
 # the string GTK puts on the toplevel and the string a desktop shell looks a
 # .desktop file up by. Installed as satl-term.desktop the window arrives in the
 # shell associated with nothing: no icon, and nothing to pin.
-	install -Dm644 dist/org.satellite.terminal.desktop \
-	    "$(DESTDIR)$(datadir)/applications/org.satellite.terminal.desktop"
+# Under the same guard as the binary: a launcher whose Exec= names a program
+# that was never built is an entry in the shell's menu that fails when clicked.
+	if [ -f satl-term ]; then \
+	    install -Dm644 dist/org.satellite.terminal.desktop \
+	        "$(DESTDIR)$(datadir)/applications/org.satellite.terminal.desktop"; \
+	fi
 # The icon tree under dist/icons mirrors its install destination exactly, so
 # this is a copy and not a translation: every path under dist/icons/hicolor is
 # already <size>/<context>/<name>, and getting the layout wrong is a mistake
@@ -393,6 +810,88 @@ install: satl satl-term dist/satl.1.gz dist/satl-term.1.gz
 	install -Dm644 dist/satl.bash-completion \
 	    "$(DESTDIR)$(datadir)/bash-completion/completions/satl"
 
+# What the auto-install says when it is done, and the reason it is a target of
+# its own rather than three more lines in `all`: a recipe line that mentions
+# $(MAKE) is executed even under `make -n` -- that is how a dry run recurses at
+# all -- so a report printed inline would announce an install that a dry run did
+# not perform. Reached as a GOAL of that sub-make it inherits -n along with
+# everything else and is printed rather than run, which is what a dry run is for.
+#
+# It is deliberately NOT part of `install`. A packager staging a tree into
+# debian/tmp is not the audience for advice about this machine's PATH.
+install-report:
+	@printf 'installed  %s\n' '$(bindir)/satl'
+	@if [ -f satl-term ]; then printf 'installed  %s\n' '$(bindir)/satl-term'; fi
+	@printf 'icons      %s\n' '$(datadir)/icons/hicolor'
+# Membership in PATH is not the question; PRECEDENCE is. `satl` runs whichever
+# copy the shell finds first, so an install into a directory that is on PATH but
+# behind another directory that also has a satl changes nothing the user can
+# see -- and printing "installed" and stopping there would be the kind of true
+# sentence that misleads. install.sh:332 asks the membership question and says
+# "so `satl` finds it", which on this machine was already false.
+#
+# -ef as well as a string compare, because a PATH entry can reach the same
+# directory through a symlink: the strings differ, the file does not, and a
+# string compare alone reports a shadow that is not there.
+#
+# `hash -r` is named only in the branch that needs it. Overwriting a binary in
+# place needs nothing, because the shell caches the resolved path and not the
+# inode; CREATING one earlier in PATH than the copy the shell has already hashed
+# is the case that needs the reminder. Advice printed every time is advice
+# nobody reads.
+	@found=`command -v satl 2>/dev/null || :`; \
+	mine='$(bindir)/satl'; \
+	if [ -z "$$found" ]; then \
+	    printf 'note: %s is not on your PATH, so typing `satl` will not find it.\n' \
+	        '$(bindir)'; \
+	    printf '      Nothing was changed for you -- no startup file was edited.\n'; \
+	    printf '      To add it yourself:  export PATH="%s:$$PATH"\n' '$(bindir)'; \
+	elif [ "$$found" = "$$mine" ] || [ "$$found" -ef "$$mine" ]; then \
+	    printf 'satl       on your PATH is this one\n'; \
+	else \
+	    printf 'note: `satl` still runs %s, not the copy just installed.\n' "$$found"; \
+	    printf '      An earlier PATH entry shadows %s.\n' '$(bindir)'; \
+	    printf '      If this shell has run satl already, run: hash -r\n'; \
+	fi
+# GTK resolves an icon name to the LAST base directory in its search path that
+# holds it, and not the first -- measured on gtk4 4.16.7, in both directions:
+# with the search path [A,B] the icon in B answers, with [B,A] the one in A
+# does. That is the reverse of what the icon theme spec says, and it is the
+# difference between an install that changes the picture on the screen and one
+# that does not. $HOME/.local/share/icons comes FIRST in that path, so a copy of
+# this artwork left behind in /usr/local/share/icons or /usr/share/icons -- both
+# later -- goes on being drawn however many times this install refreshes ours.
+#
+# Reported, never repaired: those directories belong to root, and the note above
+# `all` is that a build does not escalate. cmp rather than mtimes, because
+# "different bytes" is the question and a timestamp answers a different one.
+	@if [ -z "$(DESTDIR)" ]; then \
+	    for base in /usr/local/share/icons /usr/share/icons; do \
+	        [ -d "$$base" ] || continue; \
+	        [ "$$base" = "$(datadir)/icons" ] && continue; \
+	        stale=0; \
+	        for f in `find dist/icons -type f -name '*.png' -printf '%P\n'`; do \
+	            if [ -f "$$base/$$f" ] && \
+	               ! cmp -s "dist/icons/$$f" "$$base/$$f"; then \
+	                stale=`expr $$stale + 1`; \
+	            fi; \
+	        done; \
+	        if [ "$$stale" -gt 0 ]; then \
+	            other=`dirname "$$base"`; other=`dirname "$$other"`; \
+	            printf 'note: %s holds %s satellite icons that are not these,\n' \
+	                "$$base" "$$stale"; \
+	            printf '      and GTK reads that directory AFTER %s.\n' \
+	                '$(datadir)/icons'; \
+	            printf '      The last one with an icon wins, so the desktop keeps drawing\n'; \
+	            printf '      the old artwork. It belongs to root, so this build leaves it:\n'; \
+	            printf '          sudo ./install.sh --prefix %s              refreshes it\n' \
+	                "$$other"; \
+	            printf '          sudo ./install.sh --uninstall --prefix %s  removes it\n' \
+	                "$$other"; \
+	        fi; \
+	    done; \
+	fi
+
 # Symmetric with install, and the asymmetry in the commands is deliberate:
 # share/satellite and share/doc/satellite are directories this install created
 # and owns outright, so removing the tree is exact. Everything else lives in a
@@ -429,11 +928,24 @@ uninstall:
 clean:
 	$(MAKE) -C example/cxx_compare clean
 	$(MAKE) -C example/py_compare clean
-	rm -f satl satl-term library_test library_test_tsan satellite_string_test \
-	      lexer_test ast_test parser_test env_test eval_test interp_test \
-	      loader_test spacesuit_test bignum_test random_test format_test reg_test \
-	      console_test \
-	      *.o eval/*.o parser/*.o bignum/*.o env/*.o *.o.tmp .libdir-stamp \
+# example/website has had a clean target of its own all along and this file
+# never called it, so `tour` and the two .out files it diffs survived every
+# clean in the tree. Called now, for the reason the two above are.
+	$(MAKE) -C example/website clean
+# library_test_tsan is named outright rather than through $(TSAN_TEST), so that
+# `make clean TSAN=0` still removes the 27MB binary an earlier build left.
+	rm -f satl satl-term $(TESTBINS) $(LIBRARY)/library_test_tsan \
+	      $(SRC)/*/*.o $(SRC)/*/*.o.tmp .libdir-stamp .cxxflags-stamp \
 	      dist/satl.1.gz dist/satl-term.1.gz
+# Three compiled things no rule in this file builds and no clean target had
+# ever claimed. example/website/gtk_window is the one that matters: debian/
+# rules deletes it during a package build with a note saying nothing else
+# does, and an ELF binary under share/satellite/examples breaks Debian Policy
+# 9.1.1's architecture-independence rule. The other two sit beside the sources
+# they were compiled from. A build product that survives `make clean` is a
+# build product that ends up in somebody's tarball.
+	rm -f example/website/gtk_window pcg_test/pcg_test speed_test/cxx_speed
+	rm -rf '$(DOWNLOAD_DIR)' '$(DOWNLOAD_TAR)'
 
-.PHONY: all test compare python install uninstall clean FORCE
+.PHONY: all test compare python install install-report uninstall clean deps \
+        bundle gui-skipped FORCE $(TESTALIASES)

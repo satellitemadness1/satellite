@@ -260,6 +260,24 @@ if [ "$action" = install ]; then
     # as SATELLITE_LIB_DIR, so building without it and installing with it would
     # bake /usr/local into a binary going to $HOME/.local. Passing the same
     # prefix to both is also what stops make from compiling everything twice.
+    #
+    # SATELLITE_AUTOINSTALL=0 goes to both build invocations below, because
+    # `make` at the top of the tree now installs what it built. That is right
+    # for someone typing make; it is wrong here twice over. The build below runs
+    # `make -C "$repo"`, which the Makefile cannot tell apart from a hand-typed
+    # build in that directory, so without this it would install once during the
+    # build and again at the `make install` further down -- and in the sudo
+    # branch the first one is fatal, not merely redundant: that build runs as
+    # the human, at a prefix only root can write, so it would refuse the install
+    # and (worse, on any make that returned non-zero for it) take `set -e` and
+    # the whole installer down before the privileged copy ever happened. This
+    # script chooses the prefix and this script performs the install; the build
+    # step it drives does neither.
+    #
+    # A command-line assignment rather than an exported variable, for the same
+    # reason the prefix is one: sudo's env_reset strips the environment across
+    # the -u boundary below, and the make command line is the only level that
+    # outranks an assignment inside the makefile.
     if [ "$(id -u)" = 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
         # Compile as the human, copy as root. Under sudo the compile would run
         # as root with HOME=/root, which fails to find a toolchain installed in
@@ -270,17 +288,19 @@ if [ "$action" = install ]; then
         # it.
         printf 'install.sh: building as %s; root is used only for the copy\n' \
             "$SUDO_USER"
-        run sudo -H -u "$SUDO_USER" "$MAKE" -C "$repo" "prefix=$prefix"
+        run sudo -H -u "$SUDO_USER" "$MAKE" -C "$repo" "prefix=$prefix" \
+            SATELLITE_AUTOINSTALL=0
     elif [ -x "$repo/satl" ] && [ -x "$repo/satl-term" ]; then
-        # Binaries left over from a plain `make` may carry a different prefix,
-        # and the `make install` below is what corrects them: the Makefile
-        # records the prefix in a stamp file that system.o depends on, so a
-        # changed prefix recompiles the one object that was told the old one
-        # and relinks. Nothing here has to force it.
+        # Binaries left over from a plain `make` carry that make's prefix, which
+        # is now the one it installed itself to -- $HOME/.local for an ordinary
+        # user, not /usr/local. The `make install` below is what corrects them:
+        # the Makefile records the prefix in a stamp file that system.o depends
+        # on, so a changed prefix recompiles the one object that was told the
+        # old one and relinks. Nothing here has to force it.
         printf 'install.sh: using the binaries already built in %s\n' "$repo"
     else
         printf 'install.sh: building\n'
-        run "$MAKE" -C "$repo" "prefix=$prefix"
+        run "$MAKE" -C "$repo" "prefix=$prefix" SATELLITE_AUTOINSTALL=0
     fi
 fi
 
@@ -329,10 +349,37 @@ printf 'install.sh: %s\n' "$did"
 printf '    %s\n' "$bindir/satl" "$bindir/satl-term"
 printf '    %s\n' "$prefix/share/satellite/lib"
 
+# Membership in PATH was the question this used to ask, and it is the wrong
+# one: `satl` runs whichever copy the shell finds FIRST, so a bindir that is on
+# PATH behind another directory that also holds a satl satisfies the case
+# statement and changes nothing the user can see. On the machine this was
+# written on that was not hypothetical -- /usr/local/bin was on PATH, the
+# sentence below said so, and the satl that answered came from $HOME/.local/bin.
+# `command -v` answers the question that was meant. -ef as well as a string
+# compare, because a PATH entry can reach the same directory through a symlink,
+# where the two spellings differ and the file does not.
+found=$(command -v satl 2>/dev/null || :)
 case ":${PATH:-}:" in
     *:"$bindir":*)
-        printf 'install.sh: %s is on your PATH, so `satl` finds it.\n' \
-            "$bindir"
+        if [ -n "$found" ] &&
+           { [ "$found" = "$bindir/satl" ] || [ "$found" -ef "$bindir/satl" ]; }
+        then
+            printf 'install.sh: %s is on your PATH, so `satl` finds it.\n' \
+                "$bindir"
+        elif [ -z "$found" ]; then
+            printf 'install.sh: note — %s is on your PATH but no `satl` is\n' \
+                "$bindir"
+            printf '            reachable through it. Check %s exists.\n' \
+                "$bindir/satl"
+        else
+            cat <<EOF
+install.sh: note — $bindir is on your PATH, but \`satl\` still runs
+            $found, which comes from an earlier entry, so the copy
+            just installed is shadowed. Remove the other one, or put $bindir
+            ahead of it, or spell this one out in full. If this shell has run
+            satl already, run \`hash -r\` as well.
+EOF
+        fi
         ;;
     *)
         cat <<EOF
