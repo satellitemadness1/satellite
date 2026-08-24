@@ -92,9 +92,52 @@ modes: a bare `tb` is a name the user owns (§1), so making it mean a unit would
 take a second reserved word, which is the one thing this language spends its
 whole design not doing.
 
-OPEN, FOR THE USER
-------------------
-- Gap 1 above: add `available` at machine level, or rename the thread pair?
-- Should `satellite.system.memory.swap(unit)` and `.swap.used(unit)` be joined
-  by `.swap.free(unit)`? Today swap has total and used but no free, while main
-  memory has all three.
+DONE 2026-08-24: SWAP ANSWERS ALL THREE
+---------------------------------------
+satellite.system.memory.swap.total / .used / .free, plus the bare .swap(unit)
+that already meant total. Measured:
+
+    swap.total  gb: 5.589839935302734375
+    swap.used   gb: 0
+    swap.free   gb: 5.589839935302734375
+
+`free` is COMPUTED as total - used rather than read from /proc/meminfo's
+SwapFree. Linux publishes SwapTotal and SwapFree; the pair this code already
+had is total and used. Subtracting keeps the three consistent with each other
+BY CONSTRUCTION -- total - used - free == 0 always -- which a second read taken
+a moment later could not guarantee.
+
+ON HOLD: THE this.* NAMING, AND WHY
+-----------------------------------
+The naming problem is real and is NOT being fixed yet, at the user's direction
+2026-08-24: "we are going to address that 8mb stack ceiling and try some other
+technique than having an 8mb stack.... so just hold on."
+
+So this is the state to come back to, and the reason to come back:
+
+  satellite.system.memory.this.available()   returns the stack CEILING (8 MB
+                                             here -- RLIMIT_STACK's soft limit)
+  satellite.system.memory.this.used()        how far down the stack
+  satellite.system.memory.this.free()        the headroom, ceiling - used
+
+`available` MEANS TOTAL AND READS LIKE FREE. That is the whole defect, and it
+already misled the person who wrote the language: the expectation was that
+this.available() meant the machine's free memory (54 GB here), not an 8 MB
+stack ceiling.
+
+It cannot mean that, and the reason is worth keeping. system.hpp says it:
+"The stack is the only memory a thread has of its own. Linux accounts an
+address space per PROCESS, and every thread shares it -- so a per-thread 'used
+memory' that meant heap would be the same number for all of them." A
+thread-level "available memory" would be the machine number wearing a thread
+costume.
+
+THE PROPOSAL WHEN THE STACK WORK LANDS: total/used/free at every level, with
+free == total - used everywhere, and `available` deleted. One word, one
+meaning, which is §1. Whatever replaces the 8 MB ceiling still has a total, a
+used and a free, so the shape survives the change.
+
+STILL OPEN
+----------
+- The machine level has no `available`. Under the proposal above it never will,
+  because `free` is that word. Recorded so nobody adds it as a synonym.

@@ -126,6 +126,19 @@ P3 — SPLIT THE SRC FILES                                  [~] IN PROGRESS
 
 P4 — MAKEFILE -> make_support/                               [ ] not started
 ---------------------------------------------------------------------------
+GROUNDWORK ALREADY DONE (2026-08-24): every source list is now a wildcard, so
+splitting any file under src/ needs NO Makefile edit at all.
+
+    EVAL_SRCS / ENV_SRCS / BIGNUM_SRCS / PARSER_SRCS  = $(sort $(wildcard .../*.cpp))
+    LEAF_SRCS = the ten wholly-interpreter modules, likewise
+    <test>_SRCS / <test>_HDRS = per-test wildcards driven by TESTNAMES
+
+$(PROGRAMS) IS DELIBERATELY NOT A WILDCARD and must never become one: it holds
+main.cpp AND window.cpp, and window.cpp is satl-term's GTK/VTE binary. §9 kept
+them two binaries after measuring 23.4 ms of GTK startup, and M7's done-when
+asserts "ldd satl still lists six objects". A wildcard there would link GTK into
+satl silently. VERIFIED after the change: ldd ./satl lists exactly six.
+
 User's words: "Makefile needs a folder called make_support and it can
 reference files in that folder, and everything can exist in that folder".
 So: a thin Makefile that includes make_support/*.mk.

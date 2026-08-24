@@ -62,8 +62,20 @@ std::optional<ValuePtr> Evaluator::module_system(
     if (path.size() >= 4 && path[0] == "satellite" && path[1] == "system" &&
         path[2] == "memory") {
         const std::string &what = path[3];
-        const bool swap_used_form =
-            path.size() == 5 && what == "swap" && path[4] == "used";
+        // satellite.system.memory.swap.<used|free|total>. Swap now answers the
+        // same three words the machine's own memory does, and for the same
+        // reason §1 gives: a word means one thing everywhere, so a reader who
+        // learns memory.free() has already learned memory.swap.free().
+        //
+        // free is computed here rather than read, because Linux publishes
+        // SwapTotal and SwapFree in /proc/meminfo but the pair this code
+        // already had is total and USED. Subtracting keeps the two answers
+        // consistent with each other by construction: total - used - free == 0
+        // always, which would not be guaranteed if free came from a separate
+        // read taken a moment later.
+        const bool swap_form =
+            path.size() == 5 && what == "swap" &&
+            (path[4] == "used" || path[4] == "free" || path[4] == "total");
         // satellite.system.memory.this.* -- the running THREAD, which owns
         // exactly one thing: its stack. Used is how far down it, available is
         // how big it is allowed to get, and free is the difference -- the
@@ -90,7 +102,7 @@ std::optional<ValuePtr> Evaluator::module_system(
             return make_value(Number::from_u64(answer));
         }
 
-        if (path.size() == 4 || swap_used_form || this_form) {
+        if (path.size() == 4 || swap_form || this_form) {
             unsigned long long bytes = 0;
             bool known = true;
             if (this_form) {
@@ -108,8 +120,16 @@ std::optional<ValuePtr> Evaluator::module_system(
                     bytes = total;
                 else
                     bytes = total > used ? total - used : 0;
-            } else if (swap_used_form)
-                bytes = swap_used_bytes();
+            } else if (swap_form) {
+                const unsigned long long swap_total = swap_total_bytes();
+                const unsigned long long swap_used = swap_used_bytes();
+                if (path[4] == "used")
+                    bytes = swap_used;
+                else if (path[4] == "total")
+                    bytes = swap_total;
+                else
+                    bytes = swap_total > swap_used ? swap_total - swap_used : 0;
+            }
             else if (what == "used")
                 bytes = mem_used_bytes();
             else if (what == "free")
