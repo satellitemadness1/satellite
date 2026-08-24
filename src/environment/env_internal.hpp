@@ -45,7 +45,7 @@ class Resolver {
 public:
     explicit Resolver(ResolveResult &out) : out_(out) {}
 
-    void run(const Program &program);
+    void run(const Program &program, const ResolveResult *inherited = nullptr);
 
 private:
     using Scope = std::unordered_map<std::string, int>;
@@ -67,6 +67,15 @@ private:
     int declare(const std::string &name, const Type &type, Span span);
     const int *lookup(const std::string &name) const;
     int lookup_field(const std::string &name) const;
+
+    // Set only while resolving the single argument of satellite.help(...), and
+    // only when that argument is a bare dotted path. It suppresses ONE thing:
+    // resolve_name's "unknown variable" complaint. Everything above that
+    // complaint still runs and still wins, so a local, field, method, capsule
+    // or spacesuit called `ultra` resolves exactly as it always did and
+    // satellite.help(ultra) still asks about the VALUE. §1 is untouched -- the
+    // word is never reserved, it is only allowed to name nothing.
+    bool help_topic_ = false;
 
     void fail(Span span, std::string message)
     {

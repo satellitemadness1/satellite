@@ -6,6 +6,7 @@
 // main() on every `--run`, costing 23.4 ms against an interpreter whose own
 // share of hello world is 0.3 ms. See window.cpp.
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -15,6 +16,7 @@
 #include <vector>
 
 #include "console_output/console.hpp"
+#include "system_facts/version.hpp"
 #include "interpreter/interp.hpp"
 #include "satellite_library/library.hpp"
 #include "satellite_string/satellite_string.hpp"
@@ -273,6 +275,19 @@ static bool exit_command(const std::string &line, int &status)
     return true;
 }
 
+// Both ways out of a half-typed block, in one place so they cannot report it
+// differently. Counting the lines is the point: "abandoned" without a number
+// leaves the reader wondering how much they lost.
+static void abandon_block(std::string &block, int &depth)
+{
+    const long lines = std::count(block.begin(), block.end(), '\n');
+    printf("satellite: multi-line entry abandoned, %ld line%s discarded\n",
+           lines, lines == 1 ? "" : "s");
+    fflush(stdout);
+    block.clear();
+    depth = 0;
+}
+
 static int run_repl()
 {
     start_runtime();
@@ -285,9 +300,12 @@ static int run_repl()
     // destroyed after it, so the thread outlives every write to it.
     satellite::Console console;
 
-    printf("satellite 0.1  (run <file> interprets a file; :set / :get / :vars "
+    // The banner reads its number from the same place --version does, so the
+    // prompt and the flag cannot drift into disagreeing about what is running.
+    printf("satellite %s  (run <file> interprets a file; :set / :get / :vars "
            "poke satellite.library; shuts down if free memory < "
-           "system.min_free_mb)\n");
+           "system.min_free_mb)\n",
+           satellite::version_line().c_str());
     // Said out loud because there is no shell behind this prompt and no `cd`
     // to fall back on: a name nobody has read is a name nobody can guess.
     printf("type  help  for the whole language on one screen\n");
@@ -295,10 +313,43 @@ static int run_repl()
            "where you are: satellite.directory.current()\n");
 
     std::string line;
+
+    // Multi-line entry. `block` is the accumulated source with REAL newlines in
+    // it -- not spaces -- because expect_statement_end() decides that two
+    // statements are illegally on one line by comparing their tokens' line
+    // numbers, so joining with anything else turns a correct capsule into
+    // "unexpected Word(satellite) after the end of a statement". It also makes
+    // the line numbers in an error report count the lines the user typed.
+    std::string block;
+    int depth = 0;
+    bool hinted = false;
+
     for (;;) {
-        // linux_username, cwd: type_here
-        printf("%s%s%s, %s%s%s: ", color_user, satellite::username().c_str(),
-               color_off, color_cwd, satellite::cwd().c_str(), color_off);
+        if (depth > 0) {
+            // A continuation line prints INDENTATION AND NO MARKER, and that is
+            // the load-bearing choice rather than a plain one.
+            //
+            // The tty echoes what the user types immediately after whatever we
+            // last wrote, so the screen column of their first character is
+            // exactly the width of what we printed. The same indentation is
+            // stored into `block` below, so the stored column and the screen
+            // column stay equal -- and an error caret, which is a byte offset
+            // into the stored line, lands under the character the reader is
+            // actually looking at. A "... " marker would print four columns the
+            // source does not contain and put every caret in the block wrong.
+            //
+            // The drain is the same barrier §19.5 uses before reading input: the
+            // prompt goes straight to stdout while program output goes through
+            // the Console's printer thread, so without it a queued line could
+            // land after the indentation we just wrote.
+            console.drain();
+            for (int i = 0; i < depth; i++)
+                printf("    ");
+        } else {
+            // linux_username, cwd: type_here
+            printf("%s%s%s, %s%s%s: ", color_user, satellite::username().c_str(),
+                   color_off, color_cwd, satellite::cwd().c_str(), color_off);
+        }
         fflush(stdout);
 
         int c;
@@ -308,7 +359,50 @@ static int run_repl()
 
         if (c == EOF) {         // Ctrl-D
             printf("\n");
+            if (depth > 0) {
+                // Inside a block, Ctrl-D ABANDONS the block and stays at the
+                // prompt. Exiting instead would drop a half-typed capsule with
+                // no diagnostic at all: the work is gone either way, and this
+                // way the person is told it went.
+                abandon_block(block, depth);
+                continue;
+            }
             return 0;
+        }
+
+        // Inside a block, before every other prompt convenience: `run`, `help`
+        // and the `:` commands are not satellite syntax, and a capsule body is.
+        if (depth > 0) {
+            if (line == ":cancel") {
+                abandon_block(block, depth);
+                continue;
+            }
+
+            // The indentation goes into the SOURCE and not merely onto the
+            // screen -- see the note above the prompt.
+            const satellite::BlockScan scan = satellite::scan_block(line);
+
+            for (int i = 0; i < depth; i++)
+                block += "    ";
+            block += line;
+            if (scan.opens_body) {
+                // A nested head gets its brace on the same terms the outermost
+                // one did. This arm exists because the first version supplied
+                // the brace only at depth 0, so a satellite.statement.if typed
+                // INSIDE a capsule -- which is where nearly every one of them
+                // lives -- opened a level the source never contained.
+                block += " {";
+                printf("{\n");
+            }
+            block += '\n';
+
+            depth += scan.depth;
+            if (depth <= 0) {
+                evaluate(block, &console);
+                block.clear();
+                depth = 0;
+            }
+            continue;
         }
         if (int status = 0; exit_command(line, status))
             return status;
@@ -340,6 +434,32 @@ static int run_repl()
         if (satellite::RunCommand command = satellite::parse_run_command(line);
             command.matched) {
             run_command(command, &console);
+            continue;
+        }
+
+        // Does this line open a body the prompt should keep reading into?
+        //
+        // Last, so that nothing above it changes meaning: `run`, `help` and the
+        // `:` commands are all matched first and none of them can open a brace.
+        if (satellite::BlockScan scan = satellite::scan_block(line);
+            !scan.lex_error && scan.depth > 0) {
+            block = line;
+            if (scan.opens_body) {
+                // Supply the brace AND SHOW IT. A prompt that silently rewrites
+                // what somebody typed is a prompt they cannot reason about, and
+                // the echoed '{' is also what makes the indentation below read
+                // as the inside of a block rather than as a hung program.
+                block += " {";
+                printf("{\n");
+            }
+            block += '\n';
+            depth = scan.depth;
+
+            if (!hinted) {
+                printf("  (multi-line: the block ends at its closing brace; "
+                       ":cancel or Ctrl-D abandons it)\n");
+                hinted = true;
+            }
             continue;
         }
 
@@ -392,7 +512,8 @@ static void usage()
             "       satl --where                     resolved library path\n"
             "\n"
             "at the prompt: run <file> [args]  (also spelled interpret, --run)\n"
-            "the gui terminal is a separate binary: satl-term\n");
+            "the gui terminal is a separate binary: satl-term\n"
+            "  satl --version            what this build is, and what built it\n");
 }
 
 int main(int argc, char **argv)
@@ -403,6 +524,14 @@ int main(int argc, char **argv)
         return run_repl();
     if (args.size() > 1 && args[1] == "--where")
         return where();
+    // Before --help and before the bare-filename arm, so a file that happens
+    // to be called --version cannot shadow the flag. Exit 0: asking a program
+    // what it is, is not an error, and a packaging script that greps this is
+    // entitled to a zero.
+    if (args.size() > 1 && (args[1] == "--version" || args[1] == "-V")) {
+        fputs(satellite::version_text("satl").c_str(), stdout);
+        return 0;
+    }
     if (args.size() > 1 && (args[1] == "-h" || args[1] == "--help")) {
         usage();
         return 2;

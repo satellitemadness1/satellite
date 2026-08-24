@@ -226,7 +226,15 @@ struct ResolveResult {
 // read to shadow), and a field is still not reachable from outside the suit —
 // which is what makes `satellite.protected` a statement about the language
 // rather than a comment.
-ResolveResult resolve(const Program &program);
+// `inherited` carries the capsules and spacesuits an earlier run of the same
+// PROMPT SESSION declared, so a capsule typed on one line is callable on the
+// next. Null for a file, which is a whole program with no earlier line.
+//
+// Merged after this program's own names and before every pass that consults
+// the tables, so a redefinition wins and a body written now can still see a
+// suit declared earlier. See Resolver::run.
+ResolveResult resolve(const Program &program,
+                      const ResolveResult *inherited = nullptr);
 
 // Takes the SourceMap rather than one text so the error is rendered against
 // the spaceship its span actually came from (§16). resolve() runs over a merged

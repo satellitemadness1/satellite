@@ -172,11 +172,46 @@ using ObjectPtr = std::shared_ptr<Object>;
 // error rather than a descriptor that has been reused by the OS for something
 // else. After a close, other snapshots see a closed handle; nothing ever
 // silently reopens.
+//
+// "NEVER SILENTLY REOPEN" IS A RULE ABOUT WHAT THE RUNTIME DOES BEHIND THE
+// PROGRAM'S BACK, and .open() is what made that worth spelling out. §8.3's
+// sentence is the answer to "what happens when a snapshot uses a closed
+// handle": it gets an error, and the runtime does not quietly hand it a fresh
+// descriptor. .read(), .write() and .clear() honour that literally — every one
+// of them still refuses a closed fd rather than reopening it. What the sentence
+// never governed is a reopen the program WRITES DOWN, which is the opposite of
+// silent: `f.open()` is a line of source with a status the caller can read.
 struct FileHandle {
     std::atomic<int> fd{-1};
     std::atomic<int> last_error{0};    // errno of the most recent failure
+
+    // Written once, before the handle is published into a Value, and read-only
+    // afterwards — the same contract `path` has always had, which is why none
+    // of these needs to be an atomic while `fd` does. `fd` is the one thing
+    // close() and open() move after publication.
     std::string path;
+
+    // WHAT THE HANDLE MAY DO, decided by the mode word at open time.
+    //
+    // `writable` has been here since §8.3.1 and NOTHING read it: set in
+    // satellite.file.open, consulted nowhere, so it recorded an intention
+    // instead of enforcing one. It is live now, and `readable` joins it,
+    // because "read_append" is what made the mistake they guard reachable.
+    // While every mode was one-directional, asking a handle for the wrong
+    // direction produced EBADF, and "Bad file descriptor" is the wrong sentence
+    // about a descriptor that is perfectly good. The direction is checked
+    // before the syscall now, and the message names the mode that would have
+    // worked.
+    bool readable = false;
     bool writable = false;
+
+    // What .open() reopens with, which is NOT always what the handle was
+    // created with. satellite.file.new adds O_EXCL so that creating a file that
+    // already exists is a refusal rather than a silent clobber; replaying
+    // O_EXCL on a reopen would then fail with EEXIST on the very file the
+    // program just made. The flags describing the ACCESS are stored here; the
+    // flags describing the CREATION are used once and dropped.
+    int reopen_flags = 0;
 
     // RAII stays as the backstop, but it is NOT the interface: §8.3 requires an
     // explicit close() returning a status, because a destructor cannot report

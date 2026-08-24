@@ -61,10 +61,19 @@ endif
 # compiles the tree perfectly well, so the only symptom was that the compiler
 # named in DESIGN's measurements was not the compiler doing the measuring.
 #
+# It moved a SECOND time on 2026-08-24, from clang-24 to clang-24-2, and that
+# move is not cosmetic even though both are the same source revision (git
+# 3c2eaf39, verified by --version on each). They are the same COMPILER and two
+# different INSTALLS: clang-24 was built without compiler-rt and clang-24-2
+# ships the whole set. `-print-runtime-dir` answers "(runtime dir is not
+# present)" for the first and a real path for the second. Repointing this one
+# line is therefore also what moves TSAN_CXX onto $(CXX), which is the
+# arrangement the note below has always said it wanted and could not have.
+#
 # origin, rather than ?=, because CXX is one of make's built-in variables and is
 # therefore already set: ?= would never fire. `default` means nobody has chosen,
 # so `make CXX=g++` and CXX from the environment both still win.
-LLVM_BIN = $(HOME)/opt/clang-24/bin
+LLVM_BIN = $(HOME)/opt/clang-24-2/bin
 ifeq ($(origin CXX),default)
   CXX := $(if $(wildcard $(LLVM_BIN)/clang++),$(LLVM_BIN)/clang++,c++)
 endif
@@ -83,13 +92,49 @@ endif
 # restate three flags to change one is a trap with a note beside it, so the one
 # flag anybody actually wants to change gets its own variable.
 #
-# `make OPT=-O3` and `make OPT="-O3 -march=native"` therefore work and keep the
-# three flags the build cannot compile without. -march=native is deliberately
+# `make OPT=-O2` and `make OPT="-O3 -march=native"` therefore work and keep the
+# three flags the build cannot compile without. The DEFAULT moved from -O2 to
+# -O3 on 2026-08-24, at the maintainer's request; -O2 is one word away and
+# every packaging path already names its own level, so nothing downstream is
+# committed by the choice. -march=native is deliberately
 # not a default: it bakes in this machine's instruction set, and debian/rules
 # drives this same Makefile to build a package that has to run on machines that
 # are not this one.
-OPT ?= -O2
+OPT ?= -O3
 CXXFLAGS = -std=c++20 -Wall -Wextra $(OPT)
+
+# TWO NUMBERS, moving at different rates. VERSION is the language and changes
+# rarely; REVISION is this build of it and goes up as work lands. Overridable,
+# so a packaging script can stamp its own without editing this file.
+SATELLITE_VERSION  ?= 002
+SATELLITE_REVISION ?= 01
+
+# When this build happened. SOURCE_DATE_EPOCH WINS WHENEVER IT IS SET, and that
+# is not a nicety: dpkg exports it precisely so that two builds of identical
+# source produce identical binaries, and a stamp that read the wall clock
+# instead would fail every reproducibility check Debian runs -- on packages
+# this repo actually ships, and marked Architecture: any, so on every port.
+# `date -u` because a timestamp without a zone is a timestamp that means
+# something different on each machine that reads it.
+BUILD_STAMP := $(shell date -u $(if $(SOURCE_DATE_EPOCH),-d @$(SOURCE_DATE_EPOCH),)                    '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || echo unrecorded)
+
+# On TWO recipes and never in CXXFLAGS. CXXFLAGS is what .cxxflags-stamp
+# records, and BUILD_STAMP changes every second -- so putting these there would
+# rewrite the stamp on every invocation and rebuild all forty-three objects,
+# every time, forever, permanently silencing the one check that exists to catch
+# a real flag change. This is the same reasoning that keeps -DSATELLITE_LIB_DIR
+# on the system.o recipe alone.
+#
+# $(CXX) is recorded as the path make INVOKED. What that path turned out to be
+# is a separate fact and version.hpp reads it from __VERSION__, because this
+# project has already been bitten once by the two disagreeing: LLVM_BIN pointed
+# at a directory that did not exist, `c++` answered instead, and every figure
+# attributed to clang was GCC's with nothing anywhere saying so.
+VERSION_DEFS = -DSATELLITE_VERSION='"$(SATELLITE_VERSION)"' \
+               -DSATELLITE_REVISION='"$(SATELLITE_REVISION)"' \
+               -DSATELLITE_BUILT='"$(BUILD_STAMP)"' \
+               -DSATELLITE_BUILD_CXX='"$(CXX)"' \
+               -DSATELLITE_BUILD_FLAGS='"$(CXXFLAGS)"'
 # Recursively expanded, so pkg-config is run only by the recipes that use them
 # -- window.o and the satl-term link -- and never by a `make satl` or a
 # `make test`. Errors are dropped because MISSING_PKGS above has already asked
@@ -126,12 +171,19 @@ TSAN      ?= 1
 TSAN_TEST  = $(if $(filter-out 0,$(TSAN)),$(LIBRARY)/library_test_tsan)
 
 # ThreadSanitizer needs a runtime the COMPILER supplies, and $(CXX) is not
-# guaranteed to have one. The clang at $(LLVM_BIN) on this machine is built
-# WITHOUT compiler-rt: `clang++ -print-runtime-dir` answers "(runtime dir is not
-# present)" and the link dies on a missing libclang_rt.tsan.a, which took the
-# whole of `make test` down with it. That is a property of that build of clang
-# and not of this machine -- /usr/bin/clang++ (21.1.8) ships the runtime, and so
-# does g++ as libtsan.
+# guaranteed to have one. The clang-24 build -- which $(LLVM_BIN) named until
+# 2026-08-24 -- is built WITHOUT compiler-rt: `clang++ -print-runtime-dir`
+# answers "(runtime dir is not present)" and the link dies on a missing
+# libclang_rt.tsan.a, which took the whole of `make test` down with it. That is
+# a property of that build of clang and not of this machine -- /usr/bin/clang++
+# (21.1.8) ships the runtime, and so does g++ as libtsan.
+#
+# $(LLVM_BIN) now names clang-24-2, which DOES ship it, so on this machine the
+# fallback no longer fires and TSAN_CXX resolves to $(CXX). None of the
+# machinery below changes, and it must not: it is not scaffolding for one
+# broken install, it is what keeps `make test` alive on any machine whose
+# compiler cannot supply the runtime -- which this one could not until today,
+# and a packaging machine still may not be able to.
 #
 # So the sanitized binary gets its own compiler. The default asks $(CXX)
 # whether it can supply either runtime and uses it if it can; otherwise it
@@ -153,10 +205,15 @@ TSAN_TEST  = $(if $(filter-out 0,$(TSAN)),$(LIBRARY)/library_test_tsan)
 # The lookup therefore said yes for the one compiler that cannot do it. Linking
 # an empty main is the only probe that answers the question actually being asked.
 #
-# **Verified** on this machine: the probe says no for $(LLVM_BIN)/clang++ and yes
-# for /usr/bin/clang++ and g++, TSAN_CXX resolves to /usr/bin/clang++, and the
-# binary it builds PASSES -- 160,000 increments intact, 403,921 lock-free reads,
-# 165 variables in satellite.library.
+# **Verified** on this machine on 2026-08-24, by running the probe below by hand
+# against all four candidates: yes for $(LLVM_BIN)/clang++ (clang-24-2), NO for
+# the old clang-24 build, yes for /usr/bin/clang++ and yes for c++. So TSAN_CXX
+# resolves to $(CXX) after the move and resolved to /usr/bin/clang++ before it,
+# and the one thing that must not be mixed -- instrumentation and runtime from
+# one project -- now holds without the fallback having to arrange it.
+#
+# The binary the /usr/bin/clang++ fallback built PASSED: 160,000 increments
+# intact, 403,921 lock-free reads, 165 variables in satellite.library.
 ifeq ($(origin TSAN_CXX),undefined)
   TSAN_OK   = $(shell printf 'int main(){}' | $(1) -fsanitize=thread -x c++ - \
                           -o /dev/null >/dev/null 2>&1 && echo ok)
@@ -272,6 +329,16 @@ HDRS      = $(LIBRARY)/library.hpp $(VALUE)/value.hpp \
             $(CONSOLE)/console.hpp $(EVAL)/eval_internal.hpp \
             $(PARSER)/parser_internal.hpp $(NUMBER)/bignum_internal.hpp \
             $(ENV)/env_internal.hpp
+# version.hpp is not in HDRS either, and for the OPPOSITE reason to format.hpp
+# below: three objects DO include it -- main.o, window.o and help.o -- and those
+# three name it as a prerequisite on their own rules instead. Every object
+# depends on HDRS, so listing it here would rebuild forty-three of them to
+# change a string three of them read, which is the same waste that keeps
+# VERSION_DEFS off CXXFLAGS twenty lines up. What must NOT happen is what was
+# true until this line was written: the header in no rule at all, so editing it
+# rebuilt nothing and the binary went on reporting the version it was built
+# with. That is format.def's defect exactly, and §17 spends a section on it.
+#
 # format.hpp and format.def are deliberately NOT in HDRS. Every object depends on
 # HDRS, and no object includes either file — there is no VM yet — so listing them
 # would make one edit to format.def rebuild the whole interpreter for nothing.
@@ -496,18 +563,32 @@ satl-term: $(PROGRAMS)/window.o
 $(SRC)/%.o: $(SRC)/%.cpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) -c -o $@ $<
 
+# main.o is one of the two objects that learn what this build IS, the same way
+# system.o is the one that learns where it will live. Both are explicit rules
+# for the same reason: the define belongs to one translation unit, so a change
+# to it invalidates one object rather than the whole tree.
+$(PROGRAMS)/main.o: $(PROGRAMS)/main.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/main.cpp
+
+# The third, and the reason is that satellite.help's banner names the version
+# too. It reads version_line() rather than carrying a literal, so the prompt,
+# the help text and --version cannot drift apart -- which they had: the banner
+# still said 0.1 on 2026-08-24.
+$(EVAL)/help.o: $(EVAL)/help.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(EVAL)/help.cpp
+
 # The one object that needs gtk and vte, and so the one place the missing-package
 # check has to bite: the guard is inside this recipe rather than on a
 # prerequisite because a phony prerequisite is always considered newer, which
 # would rebuild window.o on every make even when nothing had changed.
-$(PROGRAMS)/window.o: $(PROGRAMS)/window.cpp .cxxflags-stamp
+$(PROGRAMS)/window.o: $(PROGRAMS)/window.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 ifneq ($(MISSING_PKGS),)
 	@printf 'satl-term needs %s, which pkg-config cannot find.\n' '$(MISSING_PKGS)'
 	@printf 'To install it, %s\n' '$(DEPS_ADVICE)'
 	@printf 'satl, the interpreter, needs neither and builds with: make satl\n'
 	@exit 1
 endif
-	$(CXX) $(CXXFLAGS) $(GTKFLAGS) -I$(SRC) -c -o $@ $(PROGRAMS)/window.cpp
+	$(CXX) $(CXXFLAGS) $(GTKFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/window.cpp
 
 # The only object that sees the vendored PCG headers, for the same reason
 # window.o is the only one that sees gtk: a dependency that one translation unit
@@ -555,48 +636,52 @@ $(SYSTEM)/system.o: $(SYSTEM)/system.cpp .libdir-stamp
 $(OBJS): $(HDRS) .cxxflags-stamp
 
 $(LIBRARY)/library_test: $(LIBRARY)/library_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(LIBRARY)/library_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(LIBRARY)/library_test.cpp $(LIBOBJS)
 
+# The one test that does NOT follow $(OPT), and deliberately: a sanitizer build
+# wants -O1 and -g, because the instrumentation is what is being run and a
+# report without line numbers is not one. $(OPT) is the knob for the code that
+# ships, and this binary does not ship.
 $(LIBRARY)/library_test_tsan: $(LIBRARY)/library_test.cpp $(TESTSRCS) $(HDRS)
 	$(TSAN_CXX) $(TESTFLAGS) $(PCGFLAGS) -I$(SRC) -O1 -g -fsanitize=thread \
 	    -o $@ $(LIBRARY)/library_test.cpp $(TESTSRCS)
 
 $(STRING)/satellite_string_test: $(STRING)/satellite_string_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(STRING)/satellite_string_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(STRING)/satellite_string_test.cpp $(LIBOBJS)
 
 $(LEXER)/lexer_test: $(LEXER)/lexer_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(LEXER)/lexer_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(LEXER)/lexer_test.cpp $(LIBOBJS)
 
 $(AST)/ast_test: $(AST)/ast_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(AST)/ast_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(AST)/ast_test.cpp $(LIBOBJS)
 
 $(PARSER)/parser_test: $(PARSER)/parser_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(PARSER)/parser_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(PARSER)/parser_test.cpp $(LIBOBJS)
 
 $(EVAL)/eval_test: $(EVAL)/eval_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(EVAL)/eval_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(EVAL)/eval_test.cpp $(LIBOBJS)
 
 $(INTERP)/interp_test: $(INTERP)/interp_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(INTERP)/interp_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(INTERP)/interp_test.cpp $(LIBOBJS)
 
 $(LOADER)/loader_test: $(LOADER)/loader_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(LOADER)/loader_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(LOADER)/loader_test.cpp $(LIBOBJS)
 
 $(ENV)/env_test: $(ENV)/env_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(ENV)/env_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(ENV)/env_test.cpp $(LIBOBJS)
 
 $(ENV)/spacesuit_test: $(ENV)/spacesuit_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(ENV)/spacesuit_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(ENV)/spacesuit_test.cpp $(LIBOBJS)
 
 $(NUMBER)/bignum_test: $(NUMBER)/bignum_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(NUMBER)/bignum_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(NUMBER)/bignum_test.cpp $(LIBOBJS)
 
 # The one test binary whose runtime is a design parameter rather than an
 # accident: every end-to-end case spends its tier's throwaway window before it
 # answers, so the cases here are on `fast` (50-100 ms) and the sampler itself is
 # tested through a stub generator that does not spin at all.
 $(RANDOM)/random_test: $(RANDOM)/random_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(RANDOM)/random_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(RANDOM)/random_test.cpp $(LIBOBJS)
 
 # format.hpp links against NOTHING — it includes only <cstdint> and <cstddef>,
 # so this is the one test binary that needs no objects at all. That is a
@@ -609,15 +694,15 @@ $(RANDOM)/random_test: $(RANDOM)/random_test.cpp $(LIBOBJS)
 # here rather than in the binary.
 $(FORMAT)/format_test: $(FORMAT)/format_test.cpp $(FORMAT)/format.hpp \
                     $(FORMAT)/format.def
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(FORMAT)/format_test.cpp
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(FORMAT)/format_test.cpp
 
 # reg.hpp is not linked into satl: there is no VM yet, and nothing in the
 # interpreter includes it. This binary is the only consumer.
 $(CONSOLE)/console_test: $(CONSOLE)/console_test.cpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(CONSOLE)/console_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(CONSOLE)/console_test.cpp $(LIBOBJS)
 
 $(REG)/reg_test: $(REG)/reg_test.cpp $(REG)/reg.hpp $(LIBOBJS)
-	$(CXX) $(TESTFLAGS) -I$(SRC) -O2 -o $@ $(REG)/reg_test.cpp $(LIBOBJS)
+	$(CXX) $(TESTFLAGS) -I$(SRC) $(OPT) -o $@ $(REG)/reg_test.cpp $(LIBOBJS)
 
 # The fifteen test binaries, each one built beside the code it tests. ONE list,
 # used as the dependency list here, by the aliases below and by `clean` --

@@ -39,7 +39,7 @@ void Resolver::collect(const Program &program)
     }
 }
 
-void Resolver::run(const Program &program)
+void Resolver::run(const Program &program, const ResolveResult *inherited)
 {
     // Pass 1: every capsule name, before any body is walked. This is the pass
     // the parser could not have done — it is what makes a call to a capsule
@@ -52,15 +52,41 @@ void Resolver::run(const Program &program)
     // its superclass's; cycles broken between the two because everything after
     // walks the chain assuming it ends.
     collect_suits(program);
+
+    // A prompt session's earlier declarations, merged HERE: after this
+    // program's own names, so that re-typing a capsule or a suit replaces it
+    // rather than colliding with it; and before every pass below, so that a
+    // body written on this line can call a capsule and construct a suit
+    // declared on an earlier one.
+    //
+    // `borrowed` is what keeps the suit passes from walking a tree they have
+    // already walked. resolve_suit and resolve_bodies STAMP SLOTS into the AST
+    // nodes they visit, and those nodes belong to an earlier Image whose slots
+    // are already stamped and already being used by live instances -- so
+    // re-resolving them is not wasted work, it is writing over the answer. Pass
+    // 4 below never had this problem because it iterates program.items and so
+    // cannot reach a capsule this program did not declare; the suit passes
+    // iterate the TABLE, which is exactly what the merge has just widened.
+    std::unordered_set<std::string> borrowed;
+    if (inherited) {
+        for (const auto &entry : inherited->capsules)
+            out_.capsules.emplace(entry.first, entry.second);
+        for (const auto &entry : inherited->suits)
+            if (out_.suits.emplace(entry.first, entry.second).second)
+                borrowed.insert(entry.first);
+    }
+
     link_supers();
     break_inheritance_cycles();
     for (auto &entry : out_.suits)
-        resolve_suit(entry.second);
+        if (!borrowed.count(entry.first))
+            resolve_suit(entry.second);
     // Every layout before any body: a method may construct a spacesuit declared
     // further down the file, and that call's arity comes from the other suit's
     // constructor.
     for (auto &entry : out_.suits)
-        resolve_bodies(entry.second);
+        if (!borrowed.count(entry.first))
+            resolve_bodies(entry.second);
 
     // Pass 3: top-level statements. Globals, not slots.
     info_ = nullptr;
@@ -122,11 +148,11 @@ int SpacesuitInfo::find_field(const std::string &name) const
     return -1;
 }
 
-ResolveResult resolve(const Program &program)
+ResolveResult resolve(const Program &program, const ResolveResult *inherited)
 {
     ResolveResult result;
     Resolver resolver(result);
-    resolver.run(program);
+    resolver.run(program, inherited);
     return result;
 }
 

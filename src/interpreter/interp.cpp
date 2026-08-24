@@ -4,6 +4,7 @@
 #include "environment/env.hpp"
 #include "evaluator/eval.hpp"
 #include "spaceship_loader/loader.hpp"
+#include "lexical_analyzer/lexer.hpp"
 #include "syntax_parser/parser.hpp"
 #include "satellite_string/satellite_string.hpp"
 
@@ -48,12 +49,60 @@ struct Image {
 // blunt one: it retains whether or not an instance actually escaped. The sharp
 // version is the ProgramPtr ast.hpp already anticipates, where an Object holds
 // a shared_ptr<const Program> and keeps alive only what is reachable.
-void retain(std::shared_ptr<Image> image)
+std::mutex &image_lock()
 {
     static std::mutex lock;
-    static std::vector<std::shared_ptr<Image>> images;
-    std::lock_guard<std::mutex> guard(lock);
-    images.push_back(std::move(image));
+    return lock;
+}
+
+std::vector<std::shared_ptr<Image>> &images()
+{
+    static std::vector<std::shared_ptr<Image>> kept;
+    return kept;
+}
+
+void retain(std::shared_ptr<Image> image)
+{
+    std::lock_guard<std::mutex> guard(image_lock());
+    images().push_back(std::move(image));
+}
+
+// A capsule typed at the prompt survives to the next line.
+//
+// §16 left this open on purpose -- "Making the REPL accumulate a program across
+// lines is its own design question" -- and this is the answer, which turns out
+// to be smaller than the question sounds because retain() had already done the
+// hard half for spacesuits. What was missing was never lifetime; it was that
+// nothing ever READ the retained images back.
+//
+// It merges the resolved TABLES and not the source text, and that is the
+// decision worth recording. Re-parsing an accumulated prelude on every line was
+// the obvious alternative and it is wrong in a way the user sees: every error
+// on the line they just typed would be reported at a line number counting the
+// whole invisible prelude above it. Merging tables leaves the fresh program one
+// line long, so `line 1` still means the line under the cursor.
+//
+// It is safe because a CapsuleInfo's `const Capsule *` points into an Image
+// that retain() is holding, and because resolve() stamped its slots into those
+// AST nodes when the definition was typed -- so the body walks exactly as it
+// did on the line it was written, with a frame sized by its own slot_count.
+//
+// NEWEST WINS. The fresh resolve is authoritative for every name it defines, so
+// re-typing a capsule replaces it; only names the new program does NOT define
+// are inherited, and they are searched newest-first so the most recent
+// definition of a name shadows every earlier one. Without that, redefining a
+// capsule at the prompt would silently keep running the first version.
+ResolveResult inherited_tables()
+{
+    ResolveResult table;
+    std::lock_guard<std::mutex> guard(image_lock());
+    for (auto it = images().rbegin(); it != images().rend(); ++it) {
+        for (const auto &entry : (*it)->resolved.capsules)
+            table.capsules.emplace(entry.first, entry.second);
+        for (const auto &entry : (*it)->resolved.suits)
+            table.suits.emplace(entry.first, entry.second);
+    }
+    return table;
 }
 
 // Collects a parse or eval failure into the same text channel, so a caller
@@ -145,7 +194,7 @@ List args_to_list(const std::vector<std::string> &args)
 }
 
 InterpResult run_source(const std::string &source, const std::string &ns,
-                        bool echo, Console *console)
+                        bool echo, Console *console, bool session)
 {
     InterpResult result;
 
@@ -168,7 +217,15 @@ InterpResult run_source(const std::string &source, const std::string &ns,
     // layout and its method table. It is also where an unknown variable inside
     // a capsule is caught — before any of the program runs, instead of partway
     // through its output.
-    image->resolved = resolve(image->loaded.program);
+    // Built BEFORE resolve() and handed to it, not merged afterwards. A
+    // spacesuit type is checked while resolve() runs -- `box b` asks the table
+    // for `box` in pass 3 -- so a table filled in after resolve() returned
+    // would answer a question that had already been asked and failed.
+    const ResolveResult session_tables = session ? inherited_tables()
+                                                 : ResolveResult();
+
+    image->resolved = resolve(image->loaded.program,
+                              session ? &session_tables : nullptr);
     if (!image->resolved.ok()) {
         report(result.output, image->resolved.errors, image->loaded.sources);
         result.status = 1;
@@ -190,7 +247,11 @@ InterpResult run_source(const std::string &source, const std::string &ns,
     result.ok = evaluator.ok();
     result.status = status_of(evaluator.returned(), result.ok);
 
-    if (!image->resolved.suits.empty())
+    // Capsules join spacesuits in earning a retention, and only in a session.
+    // A file run keeps the old rule: it is a whole program, and there is no
+    // next line for it to be visible from.
+    if (!image->resolved.suits.empty() ||
+        (session && !image->resolved.capsules.empty()))
         retain(std::move(image));
     return result;
 }
@@ -266,7 +327,7 @@ InterpResult run_file(const std::string &path,
 
 std::string eval_line(const std::string &line, Console *console)
 {
-    return run_source(line, "main", true, console).output;
+    return run_source(line, "main", true, console, true).output;
 }
 
 RunCommand parse_run_command(const std::string &line)
@@ -300,6 +361,73 @@ RunCommand parse_run_command(const std::string &line)
     command.path = words.front();
     command.args.assign(words.begin() + 1, words.end());
     return command;
+}
+
+
+// ---------------------------------------------------------------------------
+// Multi-line entry at the prompt.
+//
+// A brace-depth counter over tokens is a COMPLETE trigger for every multi-line
+// form the language has: a capsule body, a spacesuit body, an access block, a
+// constructor, a method, and every satellite.statement.if / else / while / for
+// block. They all bottom out in the same braces, so none of them needs a rule
+// of its own here.
+//
+// What the prompt SUPPLIES a brace for is every head whose body is a block:
+// satellite.capsule, satellite.spacesuit, satellite.protected, satellite.public
+// and every satellite.statement form. All five are segment-1 dispatch keys in
+// §5's table, which is why one test over segment 1 covers them and why adding a
+// sixth would be one word here rather than a rule.
+//
+// The test is `!saw_brace` first. Somebody who typed the whole construct on one
+// line, brace and all, has said exactly what they meant, and a prompt that
+// added to that would be rewriting working input.
+// ---------------------------------------------------------------------------
+
+BlockScan scan_block(const std::string &line)
+{
+    BlockScan scan;
+
+    const std::vector<Token> tokens = lex(line);
+
+    bool saw_brace = false;
+    for (const Token &token : tokens) {
+        if (token.kind == TokenKind::Error) {
+            scan.lex_error = true;
+            return scan;
+        }
+        if (token.kind != TokenKind::Punct)
+            continue;
+        if (token.text == "{") {
+            scan.depth++;
+            saw_brace = true;
+        } else if (token.text == "}") {
+            scan.depth--;
+            saw_brace = true;
+        }
+    }
+
+    // A declaration head is three tokens, and this is the parser's own test --
+    // Parser::at_language_path is `Word(satellite) Punct(.) Word(<segment>)`.
+    // Repeating its SHAPE here rather than calling it keeps the prompt out of
+    // the parser, and the shape is stable because §1 fixes it: a language-owned
+    // name is a dotted path rooted at the one reserved word.
+    //
+    // `saw_brace` is what keeps this from firing on a one-line capsule that the
+    // user closed themselves. Somebody who types the whole thing on one line
+    // has said what they meant, and the prompt must not add to it.
+    if (!saw_brace && tokens.size() >= 3 &&
+        tokens[0].kind == TokenKind::Word && tokens[0].text == "satellite" &&
+        tokens[1].kind == TokenKind::Punct && tokens[1].text == "." &&
+        tokens[2].kind == TokenKind::Word &&
+        (tokens[2].text == "capsule" || tokens[2].text == "spacesuit" ||
+         tokens[2].text == "statement" || tokens[2].text == "protected" ||
+         tokens[2].text == "public")) {
+        scan.opens_body = true;
+        scan.depth = 1;
+    }
+
+    return scan;
 }
 
 } // namespace satellite

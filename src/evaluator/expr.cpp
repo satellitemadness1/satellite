@@ -7,6 +7,30 @@
 
 namespace satellite {
 
+namespace {
+
+// The dotted path an expression spells when it is nothing but bare words.
+// Narrower than flatten_path on purpose: that one accepts a `satellite` root
+// and a call anywhere in the chain, and neither can be a help topic.
+bool bare_dotted_path(const Expr &expr, std::string &out,
+                      const Name *&head)
+{
+    if (const Name *name = std::get_if<Name>(&expr)) {
+        out = name->text;
+        head = name;
+        return true;
+    }
+    if (const Member *member = std::get_if<Member>(&expr)) {
+        if (!member->target || !bare_dotted_path(*member->target, out, head))
+            return false;
+        out += "." + member->name;
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+
 ValuePtr Evaluator::eval(const Expr &expr)
 {
     if (depth_ >= max_depth_) {
@@ -181,6 +205,48 @@ ValuePtr Evaluator::eval_call(const Call &node, Span span)
             return nullptr;
         }
         return set_display_pace(duration, span);
+    }
+
+    // satellite.help(random), satellite.help(random.ultra) -- a TOPIC.
+    //
+    // Matched on the ARGUMENT EXPRESSION, before eval_args, for the same reason
+    // the duration form above is: a topic is a WORD and not a value, so there
+    // is nothing to reduce it to, and by the time argv exists the word is gone.
+    //
+    // §1 IS NOT WEAKENED, and the order of the tests below is the whole reason.
+    // A bare word reaches the topic table only after every scope the user owns
+    // has been asked -- resolve() asked the local, field, method, capsule and
+    // spacesuit scopes (src/environment/names.cpp) and left the slot global
+    // only if all of them said no, and satellite.library is asked here. So a
+    // variable called `ultra` still wins its own name and still reaches
+    // satellite.help(value). This is §19.7's rule for TRUE and FALSE, applied
+    // to a word that is not reserved either.
+    //
+    // A DOTTED path skips the library question, because `random.ultra` cannot
+    // name a variable at all: §10 makes the bare two-segment form illegal in
+    // program source, so there is nothing for it to lose to.
+    if (node.args.size() == 1 && node.args[0]) {
+        std::vector<std::string> target;
+        std::string topic;
+        const Name *head = nullptr;
+        if (flatten_path(*node.target, target) &&
+            join_path(target) == "satellite.help" &&
+            bare_dotted_path(*node.args[0], topic, head) && head) {
+            const bool dotted = topic != head->text;
+            const bool owned  = head->slot != SLOT_GLOBAL ||
+                                (!dotted &&
+                                 Library::instance().get(ns_, head->text));
+            if (dotted || !owned) {
+                const std::string listing = help_for_topic(topic);
+                if (!listing.empty())
+                    return make_value(encode_raw(listing));
+                fail(node.args[0]->span,
+                     "no help topic called " + topic +
+                     " -- the topics are random, fast, normal, ultra and "
+                     "wide, and satellite.help lists them");
+                return nullptr;
+            }
+        }
     }
 
     // satellite.console.input(prompt, target) — matched on the ARGUMENT

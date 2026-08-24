@@ -18,7 +18,7 @@ program against the interpreter, including quoted `satellite.include` paths, the
 list literal, and a redeclaration that rebinds.
 Last updated: 2026-08-24
 
-This file is the index. The design itself is nineteen numbered sections under
+This file is the index. The design itself is twenty numbered sections under
 [`design/`](design/), one section per file, and it fixes the syntax, names the
 decisions still open, and lays out the build order. Everything marked
 **verified** was checked by compiling and running code against the real source
@@ -26,12 +26,13 @@ in this repo, not reasoned about on paper.
 
 ---
 
-## The nineteen sections
+## The twenty sections
 
 **A file is numbered by its section**, so `§14` is `design/14-*.md` and there is
 nothing to look up. §1–§8 and §14 are the language; §9–§11 and §17 are the
 implementation; the rest is what is deferred, what is decided, and what a real
-program asked for. Read them in section order — that is the order they were
+program asked for. §20 is the first section written entirely ahead of the code
+it describes, and says so at the top. Read them in section order — that is the order they were
 written to be read in.
 
 | section | file | what it settles |
@@ -55,6 +56,7 @@ written to be read in.
 | §17 | [The abstract machine](design/17-the-abstract-machine.md) | the bytecode format, and worked dumps of real programs down to the bit |
 | §18 | [`satellite.random`](design/18-satellite-random.md) | three tiers, what each costs, and what none of them claims |
 | §19 | [Nine additions, and the program that asked for them](design/19-nine-additions.md) | the nine changes a real 13,273-line program asked for, and the one it did not |
+| §20 | [Networking](design/20-networking.md) | a client and a server, and how a satellite value crosses to another machine |
 
 ---
 

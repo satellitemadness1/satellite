@@ -115,7 +115,7 @@ static void test_registry()
     // green build lets you do without looking. Bump the number here, in the same
     // commit as the SAT_WORD row.
     check(static_cast<uint64_t>(Word::RANDOM) == 80, "the random block starts at 80 (§18)");
-    check(kWordIds[kWordCount - 1] == 99, "the registry ends at 99");
+    check(kWordIds[kWordCount - 1] == 101, "the registry ends at 101");
 
     // 18..20 are held for break and continue. This is the one hole allowed, and
     // it is checked from both sides so that filling it needs a deliberate edit.
@@ -136,10 +136,14 @@ static void test_registry()
     check_str(name(Word::DIGITS), "digits", "86 -> digits");
     check_str(name(Word::ANALYZE), "analyze", "87 -> analyze");
     check_str(name(Word::HOME), "home", "89 -> home");
-    // 99 is the last word in the registry, so this probe is also the one that
-    // catches a missing switch arm at the END of the list -- the position a new
-    // word always lands in, and the only one no earlier probe covers.
     check_str(name(Word::DELETE_), "delete", "99 -> delete");
+    check_str(name(Word::NEW_), "new", "100 -> new");
+    // The LAST word in the registry, so this probe is also the one that catches
+    // a missing switch arm at the END of the list -- the position a new word
+    // always lands in, and the only one no earlier probe covers. It has to move
+    // every time the registry grows, which is the point: it is the same
+    // deliberate tripwire the `registry ends at` check above is.
+    check_str(name(Word::CLEAR), "clear", "101 -> clear");
 
     // The identifiers are deliberately not the bare words where C++ forbids it,
     // and the quoted text is what the language actually calls the thing.
@@ -149,7 +153,7 @@ static void test_registry()
 
     // An id past the end is not a word. A decoder reading a stream from a newer
     // version must be able to say so rather than index off the end of a table.
-    check(!is_defined_word(100), "100 is not yet assigned");
+    check(!is_defined_word(102), "102 is not yet assigned");
     check(!is_defined_word(0), "0 is not a word — it means an absent segment");
 }
 
@@ -173,33 +177,37 @@ static void test_selectors()
     check(!is_selector(Word::CONSOLE), "console is not a selector");
     check(!is_selector(Word::LIST), "list is a type name, not a selector");
 
+    // §8.3.1's file surface, finished: `open` is a selector as well as the tail
+    // of satellite.file.open, and `clear` is new.
+    check(is_selector(Word::CLEAR), "clear is a selector — 101, the newest");
+    check(is_selector(Word::OPEN),
+          "open is a selector — 31, and also segment 3 of satellite.file.open");
+
     // The count §17.5 will quote. Computed, so the prose can be corrected from
     // the data rather than the other way round.
-    check(kSelectorCount == 42, "there are 42 selectors");
+    check(kSelectorCount == 44, "there are 44 selectors");
 
-    // Every selector sits in the method range, and no selector appears in the
-    // arity table AT ALL: CALL_METHOD carries an explicit count, so a row would
-    // be unreachable.
+    // NO SELECTOR IS A PATH BY ITSELF: CALL_METHOD carries an explicit operand
+    // count, so a `satellite.<sel>` arity row would be unreachable, and a bare
+    // selector's own one-segment name code must not find one either.
     //
-    // Every segment of every row is scanned, not just `satellite.<sel>`. §7 makes
-    // a method sugar for a module function over one table, so a selector could
-    // plausibly be written into a third or fourth segment — and probing only the
-    // two-segment shape would have called that absent when it was not.
+    // THIS CHECK USED TO BE WIDER AND THE WIDTH WAS WRONG. It scanned every
+    // segment of every row, on the reasoning that "a selector could plausibly
+    // be written into a third or fourth segment". A selector can be written
+    // there, and one now is — `open` is word 31 in `my_file.open()` and word 31
+    // in `satellite.file.open(path, mode)`, one word with one id, because the
+    // registry space is FLAT and that is what flat means. The two are still
+    // distinct paths, which is the fact that matters: §7 makes the method
+    // sugar for satellite.variable.file.open(my_file), {1,17,25,31}, against the
+    // module function's {1,25,31,0}, and find_path keys on all four segments.
+    // The old check was a true observation about the table as it stood, frozen
+    // into an invariant it never was — the third time a stale generalisation in
+    // this file has had to be narrowed to what it actually meant.
     for (size_t i = 0; i < kSelectorCount; i++) {
         const uint64_t id = static_cast<uint64_t>(kSelectors[i]);
-        // TWO ranges, because §8.7 appended `size` (85) and `digits` (86)
-        // above the random block and the method blocks stopped being
-        // contiguous. Widening this to a single `id <= 86` would have been the
-        // one-character fix and would have quietly begun accepting 80..84 —
-        // which is precisely the failure format.def records above its selector
-        // list, where a stale literal range started calling every map selector
-        // a user capsule. A range that has to be corrected is better than one
-        // that silently covers more than it was written for.
-        check((id >= 38 && id <= 79) || (id >= 85 && id <= 86),
-              "a selector is in the method blocks");
-        for (size_t j = 0; j < kPathCount; j++)
-            for (int s = 0; s < 4; s++)
-                check(kPaths[j].segment[s] != id, "a selector has no arity row");
+        check(is_defined_word(id), "a selector is a defined word");
+        const uint64_t alone[4] = {id, 0, 0, 0};
+        check(find_path(alone) == nullptr, "a selector alone is not a path");
     }
 }
 
@@ -268,7 +276,16 @@ static void test_paths()
     check(e != nullptr && !is_variadic(*e) && e->arity == 1,
           "satellite.system.delete takes exactly one operand");
 
-    check(kPathCount == 28, "twenty-eight paths carry an arity");
+    // satellite.file.new(path[, mode]). Variadic, and it is the second row of a
+    // pair that share their first three segments with nothing: {1,25,31,0} is
+    // open and {1,25,100,0} is new, which is what lets one word mean `open` in
+    // both a path and a selector without either becoming ambiguous.
+    const uint64_t made[4] = {1, 25, 100, 0};
+    const Path *m = find_path(made);
+    check(m != nullptr && is_variadic(*m),
+          "satellite.file.new is variadic — 1 or 2 arguments");
+
+    check(kPathCount == 29, "twenty-nine paths carry an arity");
 }
 
 // --- the variadic marker ----------------------------------------------------
@@ -309,7 +326,8 @@ static void test_variadic()
     for (size_t i = 0; i < kPathCount; i++)
         if (is_variadic(kPaths[i]))
             variadic++;
-    check(variadic == 7, "help, directory.list and the five memory quantities are variadic");
+    check(variadic == 8,
+          "help, directory.list, file.new and the five memory quantities are variadic");
 
     // Every other row is a count a decoder can consume directly, and small
     // enough to be one.
@@ -377,19 +395,32 @@ static void report()
     printf("  registry: %zu words, ids 1..%llu, 18..20 reserved\n", kWordCount,
            (unsigned long long)kWordIds[kWordCount - 1]);
 
-    // The holes are FOUND, not named. This line read "with 56 and 73 absent"
-    // against two hardcoded enumerators, which would have gone on saying exactly
-    // that after a third hole appeared — in a report whose whole purpose is to be
-    // the thing prose gets corrected from.
-    printf("  selectors: %zu, spanning %llu..%llu, with", kSelectorCount,
-           (unsigned long long)lo, (unsigned long long)hi);
+    // RUNS, not a span with holes named. The line before this one printed
+    // "spanning 38..86, with 56 and 73 absent", which was readable only while
+    // the selectors were one nearly-solid block; `open` (31) is a selector as of
+    // §8.3.1's completion, and the same code would now print a span of 31..101
+    // followed by every one of the twenty-odd module and type words in between.
+    // A shape that degenerates the moment the data stops being contiguous is the
+    // shape this file keeps having to replace — first the literal range in §17.5,
+    // then the two hardcoded holes here. Contiguous runs say the same thing and
+    // go on saying it however the set is scattered.
+    printf("  selectors: %zu, in runs", kSelectorCount);
     const char *sep = " ";
-    for (uint64_t id = lo; id <= hi; id++)
-        if (is_defined_word(id) && !is_selector(static_cast<Word>(id))) {
+    for (uint64_t id = lo; id <= hi; id++) {
+        if (!is_selector(static_cast<Word>(id)))
+            continue;
+        uint64_t end = id;
+        while (end + 1 <= hi && is_selector(static_cast<Word>(end + 1)))
+            end++;
+        if (end == id)
             printf("%s%llu", sep, (unsigned long long)id);
-            sep = " and ";
-        }
-    printf(" absent\n");
+        else
+            printf("%s%llu..%llu", sep, (unsigned long long)id,
+                   (unsigned long long)end);
+        sep = ", ";
+        id = end;
+    }
+    printf("\n");
     size_t variadic = 0;
     for (size_t i = 0; i < kPathCount; i++)
         if (is_variadic(kPaths[i]))

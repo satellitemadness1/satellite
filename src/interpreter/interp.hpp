@@ -53,9 +53,16 @@ List args_to_list(const std::vector<std::string> &args);
 // setting that belongs to the printer — satellite.console.display(100ms) —
 // stays set from one prompt to the next, while the Evaluator that received it
 // does not survive the line at all.
+//
+// `session` makes the run INHERIT the capsules and spacesuits every earlier
+// session run declared, and contribute its own to the next. It is OFF by
+// default and the default is the load-bearing half: five test files drive
+// run_source directly with a fresh namespace per case, and a declaration
+// leaking from one case into the next would make them pass or fail depending
+// on what ran before them. Only the prompt asks for it.
 InterpResult run_source(const std::string &source,
                         const std::string &ns = "main", bool echo = false,
-                        Console *console = nullptr);
+                        Console *console = nullptr, bool session = false);
 
 // Runs a whole program: top-level statements first, then satellite.main if the
 // program defines one, with `args` bound to its parameter.
@@ -111,5 +118,35 @@ struct RunCommand {
 };
 
 RunCommand parse_run_command(const std::string &line);
+
+// ---------------------------------------------------------------------------
+// Multi-line entry at the prompt.
+//
+// HERE and not in main.cpp for the same reason parse_run_command is here: this
+// is testable without linking gtk, and interp_test drives it directly. main.cpp
+// gets a loop and no language knowledge.
+// ---------------------------------------------------------------------------
+
+struct BlockScan {
+    // Net braces this line leaves OPEN. Negative when it closes more than it
+    // opens, which the prompt reads as "the block ended".
+    int depth = 0;
+
+    // The line is a declaration head whose body is missing -- a capsule or a
+    // spacesuit signature that ends without its '{'. The prompt supplies the
+    // brace, which is the whole of what makes typing a capsule at a prompt
+    // bearable: the alternative is remembering to close a line you have not
+    // finished thinking about.
+    bool opens_body = false;
+
+    // The lexer refused. The prompt then does nothing clever and hands the line
+    // to the evaluator, so the PARSER produces the complaint -- one diagnostic
+    // in one voice, rather than a second one invented here.
+    bool lex_error = false;
+};
+
+// Counted over TOKENS and never over raw bytes, because a '{' inside a string
+// literal is not a brace and the lexer has already absorbed the literal whole.
+BlockScan scan_block(const std::string &line);
 
 } // namespace satellite

@@ -332,6 +332,28 @@ SAT_WORD(98, AVAILABLE, "available")
 // language has already said it wants to reach (§9's Windows note).
 SAT_WORD(99, DELETE_,   "delete")
 
+// satellite.file.new(path[, mode]) and my_file.clear(). §8.3.1's file surface,
+// finished.
+//
+// `new` is a NEW word and not a reuse of `open` (31), because the two answer
+// different questions about the same file: `open` says "give me a handle on
+// what is there", `new` says "make one that is not there and give me a handle
+// on that". They differ in O_EXCL, which is the difference between a call that
+// may destroy an existing file and one that refuses to, and a name that has to
+// be disambiguated by an argument is a name that will be read wrong -- the
+// registry's own precedent, from `has` (77) over `contains` (50).
+//
+// `clear` is a new word for the same kind of reason: `remove` (76) takes an
+// entry out of a container and `delete` (99) takes a name out of a filesystem,
+// while this empties a file that goes on existing. Three operations, three
+// words.
+//
+// Trailing underscore on NEW_ for DELETE_'s reason: `new` is a C++ keyword and
+// pasting it into an enum name does not compile. The quoted string is what the
+// language calls the thing.
+SAT_WORD(100, NEW_,   "new")
+SAT_WORD(101, CLEAR,  "clear")
+
 // --- which words are SELECTORS ------------------------------------------------
 // §17.5: "when the selector is a builtin (38..72) CALL_METHOD builds no frame."
 // That sentence was true for exactly one commit. 906a4a8 ended the selectors at
@@ -379,6 +401,26 @@ SAT_SELECTOR(ERROR)
 SAT_SELECTOR(PATH)
 SAT_SELECTOR(NANOSECONDS)   // 66
 
+// 101 `clear` and 31 `open`, the two selectors §8.3.1's file surface was
+// missing.
+//
+// OPEN IS THE FIRST WORD IN THE REGISTRY THAT IS BOTH A SELECTOR AND A SEGMENT
+// OF A PATH: it is `open` in `my_file.open()` and `open` in
+// `satellite.file.open(path, mode)`, one word with one id, because the space is
+// FLAT and that is what flat means. Nothing is ambiguous, and the reason is
+// §7's own account of what a method is -- `my_file.open()` desugars to
+// satellite.variable.file.open(my_file), whose quadruple is {1,17,25,31}, and
+// the module function's is {1,25,31,0}. Two different name codes; find_path
+// distinguishes them the way it distinguishes every other pair, by all four
+// segments at once. This is the same call the table below already made when
+// segment 3 of P_DIR_LIST reused word 27 rather than minting a second `list`.
+//
+// format_test carried a check that no selector appears anywhere in the arity
+// table, and this is the row that retires it -- see the note there for what it
+// was replaced with and why the narrower statement is the true one.
+SAT_SELECTOR(CLEAR)         // 101
+SAT_SELECTOR(OPEN)          // 31
+
 // 67..72. These six are selectors the FORMAT declares and the tree walker does
 // not implement: there is no `.equals()` method anywhere in src/evaluator/, only the `==`
 // operator, and the same for the other five. They were minted in 906a4a8 purely
@@ -423,6 +465,11 @@ SAT_PATH(P_RETURN,         1,  5,  0, 0, 1)   // satellite.return(x)
 SAT_PATH(P_DISPLAY,        1,  6,  7, 0, 1)   // satellite.console.display(x)
 SAT_PATH(P_TIME_NOW,       1, 24, 30, 0, 0)   // satellite.time.now()
 SAT_PATH(P_FILE_OPEN,      1, 25, 31, 0, 2)   // satellite.file.open(path, mode)
+// Variadic for P_HELP's and P_DIR_LIST's reason, and not satellite.random's:
+// .new(path) and .new(path, mode) are ONE question about one file, differing
+// only in whether the caller accepted the default mode, so they are one name
+// with two shapes rather than two names.
+SAT_PATH(P_FILE_NEW,       1, 25, 100, 0, SAT_VARIADIC)   // satellite.file.new(path[, mode])
 SAT_PATH(P_DIR_CURRENT,    1, 32, 33, 0, 0)   // satellite.directory.current()
 SAT_PATH(P_DIR_CHANGE,     1, 32, 34, 0, 1)   // satellite.directory.change(d)
 SAT_PATH(P_DIR_EXISTS,     1, 32, 35, 0, 1)   // satellite.directory.exists(d)

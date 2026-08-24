@@ -30,6 +30,12 @@ relative to what precedes them, so they are bare: `count.to_string()`.
 That is why `satellite.include(satellite)` and `satellite.return(satellite)`
 both read sensibly: include the runtime, return the runtime — that is, succeed.
 
+## Building
+
+On Enterprise Linux (AlmaLinux, RHEL, Rocky), see [BUILDING.md](BUILDING.md).
+The short version is three commands, and the one package people get stuck on
+(`vte291-gtk4-devel`, which lives in CRB) is called out there.
+
 ## Status
 
 The interpreter runs. It is a **tree-walking interpreter, on purpose**, and it

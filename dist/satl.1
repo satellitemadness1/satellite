@@ -7,7 +7,7 @@
 .\" Every flag here is one that main() actually routes; see main.cpp. A man page
 .\" that documents a flag the binary does not have is worse than no man page,
 .\" because a man page is believed and a --help is checked.
-.TH SATL 1 2026-08-07 "satellite 0.1" "Satellite Manual"
+.TH SATL 1 2026-08-24 "satellite 002" "Satellite Manual"
 .SH NAME
 satl \- interpreter for the satellite programming language
 .SH SYNOPSIS
@@ -99,6 +99,17 @@ question worth asking when a program cannot find its library: which of the three
 tiers under
 .B ENVIRONMENT
 won, and what did it point at.
+.TP
+.BR \-V ", " \-\-version
+Print what this build is \(em version and revision, when it was built, the
+compiler that built it, the path
+.BR make (1)
+invoked and the flags it used \(em then exit 0. Asking a program what it is is
+not an error, so the status is zero and a packaging script may grep it.
+The compiler is reported from the compiler's own
+.B __VERSION__
+rather than from the build system's idea of it, because the two have disagreed
+here before.
 .TP
 .BR \-h ", " \-\-help
 Print a usage summary on standard error and exit 2.

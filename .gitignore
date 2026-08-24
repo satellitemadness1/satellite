@@ -107,3 +107,7 @@ satellite_rhel.tar.xz
 satl.tar.xz
 speed_test/nasm_speed
 speed_test/speed_test
+
+# The build_and_install driver's binary. The SOURCE is committed and the binary
+# is not, for the same reason satl and satl-term above are not: it is output.
+enterprise_satellite_builder

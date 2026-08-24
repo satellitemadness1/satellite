@@ -122,6 +122,12 @@ std::string help_for(const Value &value);
 // Empty for a name that is not a module, which is how the caller tells.
 std::string help_for_module(const std::string &module);
 
+// A topic: a thing the language DOES, as against a value's methods or a
+// module's functions. Empty when the name is not a topic, which is how both
+// callers tell -- src/evaluator/modules.cpp for the quoted spelling and
+// src/evaluator/expr.cpp for the bare one.
+std::string help_for_topic(const std::string &topic);
+
 // One element per line, with what each element IS when it names something on
 // disk. The rendering satellite.container.list.lines() hands back, and the one
 // the REPL echoes a list with.

@@ -22,6 +22,8 @@
 #include <gtk/gtk.h>
 #include <vte/vte.h>
 
+#include "system_facts/version.hpp"
+
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -178,6 +180,13 @@ int main(int argc, char **argv)
 {
     std::vector<std::string> args(argv, argv + argc);
 
+    // Answered here, before GTK is touched: asking the terminal what it is
+    // must not need a display, so `satl-term --version` works over ssh and in
+    // a package build the same way `satl --version` does.
+    if (args.size() > 1 && (args[1] == "--version" || args[1] == "-V")) {
+        fputs(satellite::version_text("satl-term").c_str(), stdout);
+        return 0;
+    }
     if (args.size() > 1 && (args[1] == "-h" || args[1] == "--help")) {
         usage();
         return 2;

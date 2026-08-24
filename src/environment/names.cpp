@@ -6,6 +6,42 @@
 
 namespace satellite {
 
+namespace {
+
+// The dotted path an expression spells, when it is nothing but bare words:
+// `ultra` yes, `random.ultra` yes, `f().x` and `satellite.random` no.
+//
+// Deliberately NOT src/evaluator/'s flatten_path, which also accepts a
+// `satellite` root and a call anywhere in the chain. This asks a narrower
+// question, and it has to be asked here because src/environment/ does not
+// include src/evaluator/ -- the dependency runs the other way and this is not
+// the change that should reverse it.
+bool bare_dotted_path(const Expr &expr, std::string &out)
+{
+    if (const Name *name = std::get_if<Name>(&expr)) {
+        out = name->text;
+        return true;
+    }
+    if (const Member *member = std::get_if<Member>(&expr)) {
+        if (!member->target || !bare_dotted_path(*member->target, out))
+            return false;
+        out += "." + member->name;
+        return true;
+    }
+    return false;
+}
+
+// `satellite.help`, which is the only shape that spelling can have: a Member
+// named help whose target is the runtime singleton.
+bool is_help_target(const Expr &target)
+{
+    const Member *member = std::get_if<Member>(&target);
+    return member && member->name == "help" && member->target &&
+           std::holds_alternative<SatelliteLit>(*member->target);
+}
+
+} // namespace
+
 void Resolver::resolve_name(const Name &name, Span span)
 {
     // Innermost outwards: a local, then a field of the enclosing spacesuit,
@@ -78,6 +114,16 @@ void Resolver::resolve_name(const Name &name, Span span)
     // A spacesuit member is closed the same way, and for a second reason: a
     // name that silently fell through to a global would make a typo'd field
     // read a variable somewhere else in the program.
+    // Inside satellite.help(...) a bare word is allowed to name nothing,
+    // because it may be naming a TOPIC instead. Reached only here, after every
+    // scope above has been asked and answered no, so the suppression cannot
+    // hide a name the user actually owns. The evaluator decides what the word
+    // means and reports an unknown topic itself, with the topics listed.
+    if (help_topic_) {
+        name.slot = SLOT_GLOBAL;
+        return;
+    }
+
     fail(span, suit_ ? "unknown variable in spacesuit " + suit_->name + ": " +
                            name.text
                      : "unknown variable in capsule: " + name.text);
@@ -136,6 +182,28 @@ void Resolver::resolve_call(const Call &call, Span span)
                 arity(callee->text, built->ctor_params());
                 return;
             }
+        }
+    }
+
+    // satellite.help(random), satellite.help(random.ultra) -- a bare word or a
+    // bare dotted path, which may be a TOPIC rather than a variable.
+    //
+    // The argument is resolved exactly as it always was; the only difference is
+    // that failing to resolve is not an error here. That ordering is what keeps
+    // §1: a variable, field, method, capsule or spacesuit called `ultra` still
+    // wins, and satellite.help(ultra) still answers about the value. The
+    // evaluator repeats the judgement on the same expression before evaluating
+    // anything (src/evaluator/expr.cpp), which is what makes the two agree.
+    if (call.args.size() == 1 && call.args[0] && is_help_target(*call.target)) {
+        std::string topic;
+        if (bare_dotted_path(*call.args[0], topic)) {
+            resolve_expr(*call.target);
+
+            const bool outer = help_topic_;
+            help_topic_ = true;
+            resolve_expr(*call.args[0]);
+            help_topic_ = outer;
+            return;
         }
     }
 
