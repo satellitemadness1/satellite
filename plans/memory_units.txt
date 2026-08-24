@@ -1,0 +1,100 @@
+MEMORY UNITS — satellite.system.memory.*(b|kb|mb|gb|tb)
+=======================================================
+Written 2026-08-24, out of the restructure. NOT IMPLEMENTED WORK — this is a
+record of what was asked, what turned out to already be true, and the two real
+gaps that are left.
+
+WHAT WAS ASKED
+--------------
+"free() used() and total() memories must accept (b,kb,mb,gb,tb) and return a
+float for all but kb and b."
+
+WHAT IS ACTUALLY THE CASE — MEASURED, NOT REASONED
+--------------------------------------------------
+**It already works.** All three take a unit and all three already return a
+fractional value where one is called for. Run on this machine, 2026-08-24,
+through ./satl --run:
+
+  satellite.system.memory.total()       63424.24609375
+  satellite.system.memory.total("b")    66505142272
+  satellite.system.memory.total("kb")   64946428
+  satellite.system.memory.total("mb")   63424.24609375
+  satellite.system.memory.total("gb")   61.937740325927734375
+  satellite.system.memory.total("tb")   0.0604860745370388031005859375
+  satellite.system.memory.used("gb")    5.747161865234375
+  satellite.system.memory.free("gb")    56.190578460693359375
+
+The default is "mb" when no unit is given (modules_system.cpp), and the code
+comment says why: "that is the unit a person reads a machine's memory in".
+
+THE ONE CORRECTION THAT MATTERS
+-------------------------------
+**It is not a float, and it must never become one.** §8.1 removed `double` from
+the Value variant entirely, and Number's float constructors are DELETED so that
+`Value v = 3.14` is a compile error rather than a silent truncation. There is no
+binary float anywhere in the language's value space.
+
+What comes back is a `satellite.variable.number` — an exact arbitrary-precision
+decimal — and the number above is EXACT, not rounded. Look at the tb line: 28
+digits after the point, and every one of them is correct. A double would have
+given roughly 0.06048607453703880 and then lied about the rest.
+
+That exactness is not luck. It is bought by a decision already recorded in the
+code, and the comment there says it outright:
+
+  "1024 and not 1000. Every divisor here is a power of two, which is the whole
+   reason the answers stay exact: a decimal division by 2^n terminates, so bytes
+   in terabytes is a finite decimal and not the 34-digit approximation §8.1
+   would otherwise have to carry."
+
+So the answer to "return a float for all but kb and b" is: **it returns an exact
+decimal for all five, and b and kb simply happen to come out whole.** That is a
+property of the SOURCE, not a rule in the code — /proc/meminfo publishes kB, so
+the byte count is always a multiple of 1024 and the first two divisions can
+never leave a remainder. The code divides identically for all five units and
+does not special-case any of them. Nothing needs to change for that to hold.
+
+THE TWO REAL GAPS
+-----------------
+1. **`free` and `available` are the same thing at machine level, and only one
+   spelling is accepted.**
+
+     satellite.system.memory.free(unit)         -> mem_available_bytes()
+     satellite.system.memory.available(unit)    -> NO SUCH MODULE FUNCTION
+
+   But one level down, BOTH exist and mean DIFFERENT things:
+
+     satellite.system.memory.this.used()        how far down the stack
+     satellite.system.memory.this.available()   how big the stack may get
+     satellite.system.memory.this.free()        the difference — the headroom
+
+   So `available` means "the ceiling" for a thread and is refused for the
+   machine, while `free` means "the headroom" for a thread and "what is
+   available" for the machine. A reader who learns one form learns the wrong
+   lesson about the other. DECIDE: either add machine-level `available` as a
+   synonym for `free`, or rename the thread-level pair. Do not leave it.
+
+2. **`frequency` and `bit` take no unit, correctly**, and that asymmetry is
+   deliberate and documented: "frequency and bit are not quantities of memory,
+   so no unit applies to either: one is MT/s and the other is a count of wires."
+   Recorded here only so nobody 'fixes' it into accepting one.
+
+WHERE THE CODE IS
+-----------------
+`unit_divisor` is the lambda that maps the five words to a divisor. As of the
+2026-08-24 restructure it lives at the top of `Evaluator::module_system` in
+src/evaluator/modules_system.cpp. Before that it sat in the middle of the
+771-line call_module, between the `analyze` branch and the memory branches,
+belonging to neither by position — its only caller is satellite.system.memory.*.
+
+The unit words are STRINGS and not an enum, for the reason §8.3.1 gives for file
+modes: a bare `tb` is a name the user owns (§1), so making it mean a unit would
+take a second reserved word, which is the one thing this language spends its
+whole design not doing.
+
+OPEN, FOR THE USER
+------------------
+- Gap 1 above: add `available` at machine level, or rename the thread pair?
+- Should `satellite.system.memory.swap(unit)` and `.swap.used(unit)` be joined
+  by `.swap.free(unit)`? Today swap has total and used but no free, while main
+  memory has all three.

@@ -18,3 +18,5 @@ src/register_file/reg.hpp is too long at 350
 src/evaluator/methods.cpp is too long 391
 src/bytecode/format.hpp is too long at 431
 src/abstract_syntax_tree/ast.cpp and ast.hpp are both too long
+
+compression/decompression options

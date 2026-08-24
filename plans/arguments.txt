@@ -1,0 +1,377 @@
+satellite — the arguments object
+================================
+Written 2026-08-24. Subject: the value satellite.main is handed.
+
+This is a plan, not a design section. When the work lands, §8 gets a new
+subsection for the type and §5 a line for bare selector access, and this file
+becomes history. References are by section number and never by line number.
+
+Every claim below marked **verified** was checked by running ./satl or by
+reading the source named beside it, today, in this tree. Everything else is a
+decision, and the reason for it is written down beside it so that changing the
+decision later means arguing with the reason rather than guessing at it.
+
+
+WHAT WAS ASKED FOR
+------------------
+Six spellings of the parameter name -- arg, args, argz, argument, arguments,
+argumentz -- all acceptable. The object holds what C++'s (argc, argv) holds,
+and then keeps going: the current directory, the Linux username, the operating
+system in separate entries, the C++ compiler and its version, the make that
+built it, and everything else we can truthfully provide. Each entry has a NAME.
+`arguments.cxx_compiler` -- no parentheses -- gives the string. Printing the
+object shows the names beside the data, so it is not an ordinary list.
+
+And satellite.help(arguments) has to exist, covering both this object and the
+ordinary business of passing arguments around.
+
+
+WHAT IS ALREADY TRUE
+--------------------
+**The parameter name is already free.** satellite.main's parameter is an
+ordinary frame slot -- src/evaluator/session.cpp:157 says so in a comment, and
+resolve() binds it by position, not by name. **Verified**: all six requested
+names run, and so does `banana`. So there is nothing to implement for the first
+half of the request; there is something to TEST, so that a later change cannot
+quietly take it away.
+
+That verification settles a design question the request leaves open, and it
+settles it against name-matching:
+
+    DECISION 1. BEHAVIOUR DOES NOT DEPEND ON HOW THE USER SPELLS THE PARAMETER.
+
+Every name gets the arguments object, `banana` included. Gating the feature on
+a list of six blessed spellings would mean a bare identifier -- something §1
+says the user owns -- changing what the language does. §1 is the one rule the
+whole surface is generated from, and a special-cased identifier is exactly the
+thing it exists to forbid. The six names are what the documentation uses and
+what the test pins; they are not a gate.
+
+**Bare selector access is refused by the EVALUATOR, not the parser.**
+`arguments.cxx_compiler` already lexes and already parses -- it becomes a
+Member node -- and src/evaluator/expr.cpp:171 is where it dies:
+
+    no bare field access in satellite; call length() instead
+
+**Verified** by running it. This is the single most important fact in this
+file: the feature needs no grammar change, no new token, and no change to §4's
+reservation rule. It needs one branch in eval_member(), placed before that
+fail().
+
+
+THE SHAPE OF THE VALUE
+----------------------
+    DECISION 2. A NEW VARIANT ALTERNATIVE, APPENDED.
+
+`using ArgsRef = std::shared_ptr<const Arguments>` joins ValueBase at index 10.
+
+APPENDED and not inserted, because value.hpp already says why in the comment
+above the variant: help_for() and module_of() switch on RAW variant indices, so
+inserting renumbers every alternative after it and silently changes what those
+switches mean. MapRef is index 8 and BitsRef is 9 for that reason; this is 10.
+
+A shared_ptr is 16 bytes and the variant already holds four of them, so
+sizeof(Value) stays 40 and the static_assert at value.hpp:463 keeps holding.
+That assert is load-bearing -- §8.1's Number migration and §10's refusal to
+fold Expr into Value both rest on the number -- so an alternative that grew it
+would be rejected on that ground alone.
+
+    struct ArgumentEntry {
+        std::string name;      // "cxx_compiler"; ASCII, lowercase, underscores
+        ValuePtr    value;     // always a string Value
+        bool        from_command_line;
+    };
+
+    struct Arguments {
+        std::vector<ArgumentEntry> entries;          // in display order
+        std::unordered_map<std::string, size_t> index;   // name -> position
+        size_t command_line_count = 0;               // argv entries, argv[0] in
+    };
+
+Built once, then frozen, exactly as MapBody is and for the same reason: the
+immutability contract and the lock-free publish protocol depend on nothing
+writing to a published body. The index is built before make_shared, never
+lazily -- value.hpp's note on MapBody explains that a lazily built index is a
+data race that nothing in the test suite would catch.
+
+    DECISION 3. IT SATISFIES list<string>, SO §2's SIGNATURE DOES NOT MOVE.
+
+matches() (src/evaluator/types.cpp:14) gains one clause: a
+`satellite.container.list<satellite.variable.string>` is satisfied by an
+Arguments. Hello world keeps its five lines and every existing program keeps
+compiling. The alternative -- a new declarable type name in main's signature --
+would rewrite §2, the man page, the README, every example and every program
+anybody has written, to buy nothing.
+
+A program cannot CONSTRUCT one. There is no `satellite.variable.arguments`
+declaration and no literal. It is what satellite.main is handed and nothing
+else hands one out, which is why it needs no place in the type grammar.
+
+
+WHAT .length() AND [i] MEAN
+---------------------------
+    DECISION 4. .length() AND NUMERIC [i] ARE THE COMMAND LINE, AND NOTHING ELSE.
+
+This is the decision that keeps the language honest, and it is worth spelling
+out because the request reads the other way -- "the next variable after the
+argc argv stuff will be the current directory" sounds positional.
+
+Consider what the other reading does. example/full_test.satl contains
+
+    satellite.statement.for (satellite.variable.number a = 1;
+                             a < argz.length(); a = a + 1) { ... }
+
+which is the loop every program that takes arguments writes. If .length()
+counted the environment entries, that loop would walk off the end of the user's
+arguments and start printing the kernel release and the compiler version as
+though the user had typed them. Every program in the world that loops over its
+arguments would silently start doing something else. A feature that breaks the
+one loop it is adjacent to is not worth its entries.
+
+So:
+    arguments.length()      how many command-line arguments, argv[0] included.
+                            Exactly what it means today.
+    arguments[0]            the script. Exactly what it means today.
+    arguments[1..n-1]       what the user typed. Exactly as today.
+    arguments.count()       every entry, command line and environment together.
+    arguments.names()       a list<string> of every entry name, in display order.
+
+Nothing that runs today changes its answer. That is the test.
+
+
+HOW A NAME IS REFERENCED
+------------------------
+    DECISION 5. THREE SPELLINGS, AND THE BARE ONE IS THE HEADLINE.
+
+    arguments.cxx_compiler        bare selector. What was asked for.
+    arguments["cxx_compiler"]     by name, when the name is computed.
+    arguments.get("cxx_compiler") the same, spelled as a call.
+
+The bare form is one branch in eval_member(), before the existing fail():
+evaluate node.target; if it is an Arguments and node.name is one of its
+entries, return the entry. Otherwise fall through to the message that is there
+now, unchanged, so `"abc".missing` still says what it says today and
+eval_test.cpp:1182 still passes.
+
+    DECISION 5a. THE BARE FORM IS NOT A GENERAL RELAXATION.
+
+§12 defers bare field access on purpose and §8.3 restates it: accessor methods
+only, so `my_window.height()` is the one spelling. That stays true of every
+other value in the language. What changes is that ONE value -- an object whose
+whole purpose is to be a bag of named strings, that the program cannot
+construct, and that has no methods a name could shadow -- answers a bare
+selector. The refusal is narrowed by one case, with a reason, rather than
+lifted.
+
+    DECISION 5b. A METHOD NAME WINS OVER AN ENTRY NAME.
+
+`arguments.length()` is the list method, always. No entry is named `length`,
+`count`, `names`, `has`, `get`, `first`, `last`, `contains`, `to_string`,
+`lines` or `size`, and a test asserts that the entry names and the method names
+are disjoint -- so the rule is stated and enforced rather than merely intended.
+
+    DECISION 5c. AN UNKNOWN NAME IS AN ERROR, NOT AN EMPTY STRING.
+
+`arguments.no_such_thing` fails with the list of names that do exist. A missing
+map key is already an error (§8.6) and this is the same call: a typo that
+returns "" is a bug that surfaces three functions away.
+
+Where a fact cannot be determined on this machine, the entry is PRESENT and its
+value says so in words -- `unrecorded` for a build fact the Makefile did not
+pass, `unavailable` for a runtime fact the kernel would not answer. An absent
+entry and an unknowable one are different, and .has() must be able to tell them
+apart. This is the same call §8.3 makes for a file: ask .ok(), read .error().
+
+
+HOW IT PRINTS
+-------------
+    DECISION 6. ONE ENTRY PER LINE, NAME THEN VALUE.
+
+A list prints `[a, b]` and a map prints `{k: v}`. This prints:
+
+    program                  example/full_test.satl
+    argument_1               alpha
+    current_directory        /home/madness/code/cxx/satellite
+    username                 madness
+    cxx_compiler             /home/madness/opt/clang-24-2/bin/clang++
+    cxx_compiler_version     Clang 24.0.0git (...)
+    ...
+
+Not `{a: b, c: d}` on one line, because there are ~30 entries and one of them
+is a compiler version string; a single line is unreadable and unusable in a
+terminal, which is the only place it is ever printed. `.lines()` on a list
+already established that "one per line, aligned" is a form this language has.
+
+to_string() gives that block, so satellite.console.display(arguments) does what
+the request asked for. The name column is padded to the widest name so the
+values line up.
+
+
+THE ENTRIES
+-----------
+"Everything that we can provide", and the constraint on that list is that every
+one of them must be TRUE. A wrong entry is worse than a missing one.
+
+THE COMMAND LINE -- from (argc, argv), as today
+    program                     argv[0]: the script as it was named
+    argument_1 .. argument_n    one per argument the user typed
+    argument_count              how many, as a string
+
+WHERE THE PROGRAM IS
+    current_directory           getcwd()
+    home_directory              $HOME, then getpwuid
+    username                    getpwuid(getuid()), then $USER
+    hostname                    gethostname()
+
+THE OPERATING SYSTEM -- separate entries, as asked
+    operating_system            uname.sysname       "Linux"
+    kernel_release              uname.release
+    kernel_version              uname.version
+    architecture                uname.machine
+    distribution                /etc/os-release PRETTY_NAME
+    distribution_id             /etc/os-release ID
+    distribution_version        /etc/os-release VERSION_ID
+
+WHAT BUILT THE INTERPRETER -- baked in at compile time
+    cxx_compiler                SATELLITE_BUILD_CXX     (exists today)
+    cxx_compiler_version        __VERSION__             (free, and exact)
+    cxx_standard                __cplusplus
+    cxx_flags                   SATELLITE_BUILD_FLAGS   (exists today)
+    make_version                SATELLITE_BUILD_MAKE    (NEW -- see below)
+    standard_library            _GLIBCXX_RELEASE / _LIBCPP_VERSION
+    c_library                   __GLIBC__.__GLIBC_MINOR__
+    built                       SATELLITE_BUILT         (exists today)
+
+THE INTERPRETER ITSELF
+    interpreter                 /proc/self/exe
+    interpreter_version         version_line()
+    library_path                library_path(), the answer --where prints
+    library_path_source         which of the three tiers answered
+
+THE PROCESS
+    process_id                  getpid()
+    parent_process_id           getppid()
+    thread_count                hardware_concurrency
+    page_size                   sysconf(_SC_PAGESIZE)
+    pointer_bits                sizeof(void*) * 8
+    byte_order                  "little" or "big"
+
+THE ENVIRONMENT IT WAS STARTED IN
+    shell                       $SHELL
+    terminal                    $TERM
+    language                    $LANG
+
+make_version is the one that needs a build change: the Makefile passes
+-DSATELLITE_BUILD_MAKE='"$(shell $(MAKE) --version | head -1)"' on the same
+three recipes VERSION_DEFS is already on. It goes there and NOT in CXXFLAGS,
+for the reason version.hpp:12 gives: a define in CXXFLAGS rewrites
+.cxxflags-stamp and rebuilds all 43 objects, and a per-build stamp there would
+do it on every make, forever.
+
+$PATH is deliberately NOT an entry. It is unbounded, it is the one variable
+most likely to contain something private, and printing the arguments object is
+about to become a thing people paste into bug reports.
+
+
+THE REGISTRY (§17)
+------------------
+    DECISION 7. THE BARE SELECTOR LOWERS TO .get(name). NO WORD PER ENTRY.
+
+If `arguments.cxx_compiler` were its own selector, §17 would need a word for
+every entry name, and adding an entry would mean a registry id -- frozen
+forever, per format.def's own rule -- for a piece of data. That is the registry
+recording facts about this machine, which is not what it is for.
+
+So the bare form is sugar: the compiler lowers `arguments.NAME` to
+`arguments.get("NAME")`, and the registry needs `get` (word 74, exists) plus
+two new words for the two genuinely new verbs:
+
+    SAT_WORD(109, COUNT, "count")
+    SAT_WORD(110, NAMES, "names")
+    SAT_SELECTOR(COUNT)
+    SAT_SELECTOR(NAMES)
+
+format_test.cpp's tripwires move from 108 to 110 and the selector count from 48
+to 50, by hand, as they were the last two times.
+
+
+satellite.help(arguments)
+-------------------------
+    DECISION 8. ONE TOPIC, TWO HALVES, AND THE SECOND HALF IS THE ONE THAT WAS
+    MISSING.
+
+help.cpp's help_for_topic() gains `arguments`, normalised the way `random`
+already is so that every spelling lands on the one entry. The full alias set,
+each accepted bare and quoted:
+
+    arg     args     argz     argument     arguments     argumentz
+    system arg   system args   system argz
+    system argument   system arguments   system argumentz
+
+Normalisation is two rules, not twelve table rows: strip a leading `system `
+(or `system.`, since a quoted topic may be typed either way), then map the six
+arg spellings onto `arguments`. The same normaliser already strips
+`satellite.statement.`, `satellite.random.` and `random.` for the random
+topics, so this is a third rule in a function that exists, not a new mechanism.
+
+Two of those aliases are bare identifiers with a space in them, which is not an
+identifier. `system args` is therefore reachable only in the QUOTED form,
+`satellite.help("system args")` -- the bare form `satellite.help(system args)`
+is two tokens and will not parse, and no change to §3 is worth making it. Bare
+works for the six single-word spellings; quoted works for all twelve. The help
+text says so in its own first line rather than leaving it to be discovered.
+
+Half one -- THIS object: that satellite.main gets one, that the name is yours
+to choose, that .length() is the command line and the rest is reached by name,
+the three spellings, the full entry list, and what printing it does.
+
+Half two -- PASSING ARGUMENTS, generally, which the help has never covered:
+    - a capsule's parameters, and that they are positional
+    - that a parameter is a frame slot, so a local shadows nothing and each
+      activation gets its own (§6)
+    - that a list or a map is passed as a handle, so the callee sees the
+      caller's items, while a number or a string is a value
+    - that a spacesuit is a REFERENCE, so a method that mutates one is visible
+      to the caller -- the asymmetry that actually catches people out
+    - that satellite.returns(T) is parsed and NOT enforced at run time, said
+      plainly, because a help topic that implies otherwise is a lie
+    - that there are no default arguments and no overloading (§12)
+    - satellite.main's own signature, and that it takes at most one parameter
+
+The one-screen `help` gains a line under `topics` pointing at it, beside the
+random ones. **That line is the discoverability of the whole feature** -- an
+arguments object nobody knows about is a struct nobody uses.
+
+
+THE ORDER OF WORK
+-----------------
+ 1. value.hpp        ArgumentEntry, Arguments, ArgsRef at index 10, as_arguments(),
+                     make_arguments(); the printer.  Check: sizeof(Value)==40.
+ 2. system.cpp       arguments_for(argv) -- gathers every entry above. The one
+                     place that touches uname, os-release, getpwuid, sysconf.
+ 3. Makefile         SATELLITE_BUILD_MAKE on the three VERSION_DEFS recipes.
+ 4. types.cpp        matches(): list<string> is satisfied by an Arguments.
+ 5. session.cpp      make_arguments(args) in place of make_list(args).
+ 6. methods.cpp      the list methods over .entries[0..command_line_count),
+                     plus .count() .names() .has() .get(); [i] and ["name"].
+ 7. expr.cpp         eval_member(): the Arguments branch, before the fail().
+ 8. format.def       words 109, 110; two selectors; format_test tripwires.
+ 9. help.cpp         the topic, both halves, and the line on the help screen.
+10. eval_test.cpp    the six names; .length() unchanged; bare selector; unknown
+                     name errors; entry names disjoint from method names;
+                     "abc".missing still refused.
+11. full_test.satl   an `== arguments ==` section.
+12. design/          §8's new subsection, §5's line, and DESIGN.md's index row.
+
+Steps 1-7 are one commit; nothing works until all of them are in. 8-12 are
+separable and each is worth its own.
+
+
+WHAT THIS PLAN DOES NOT DO
+--------------------------
+Environment variables in general. `arguments` carries four named ones and no
+mechanism for reading a fifth. A satellite.system.environment(name) is the
+right shape for that and it is not this.
+
+Writing to the object. It is read-only and there is no .set(). A program that
+wants to record something has satellite.library for it.

@@ -1,5 +1,6 @@
 #!/bin/sh
-# install.sh — install satellite from a source tarball.
+# install.sh — install satellite from a source tarball or from the prebuilt
+# download folder.
 #
 # For people who have a tarball rather than a .deb. It is deliberately thin: the
 # install tree is declared exactly once, in the Makefile's `install` target, and
@@ -7,6 +8,14 @@
 # files to install is how an install tree rots — the day someone adds a data
 # file to one of them, the other is silently wrong, and the failure surfaces as
 # a missing file on a user's machine rather than as a build error here.
+#
+# The prebuilt download folder has no Makefile to call, and that used to be the
+# end of the story: the script exited with "no Makefile beside ./install.sh"
+# and installed nothing. It carries install_tree/ instead — the output of that
+# same one declaration, staged prefix-relative by `make bundle` — and this
+# script copies it. Still one list, still in the Makefile; the bundle ships
+# what running it produced rather than a second copy of it. See the mode
+# detection further down.
 #
 # POSIX sh, not bash. On a minimal Ubuntu image /bin/sh is dash, and an
 # installer is the one program that has to run before anything is installed.
@@ -96,12 +105,23 @@ usage: $self [--prefix DIR] [-n|--dry-run]
 environment:
   DESTDIR        stage the tree under this directory instead of installing it
                  live. For package builds; never baked into any path.
-  MAKE           the make to use (default: $MAKE).
+  MAKE           the make to use (default: $MAKE). Source trees only -- the
+                 prebuilt download folder is installed without make.
 
-The work is done by "make install" so that the list of installed files lives in
-one place. This script chooses the prefix, builds if the binaries are missing,
-and reports afterwards; it never edits your shell startup files and never asks
-you to set an environment variable.
+This installs either of two things, and tells them apart by what is beside it:
+
+  a source tree      a Makefile is beside this script. The work is done by
+                     "make install", so that the list of installed files lives
+                     in one place, and this script builds first if the binaries
+                     are missing.
+  the download folder  install_tree/ is beside this script. That is the same
+                     "make install" tree, already staged, so it is copied into
+                     the prefix -- no Makefile, no sources and no compiler
+                     needed on this machine.
+
+Either way this script chooses the prefix and reports afterwards; it never
+edits your shell startup files and never asks you to set an environment
+variable.
 EOF
 }
 
@@ -208,8 +228,41 @@ done
 # `sh /mnt/satellite/install.sh` from $HOME must still build /mnt/satellite.
 repo=$(dirname -- "$self")
 repo=$(cd -- "$repo" && pwd)
-[ -f "$repo/Makefile" ] ||
-    die "no Makefile beside $self — run this from an unpacked satellite tarball"
+
+# TWO KINDS OF TARBALL REACH THIS SCRIPT, and which one this is decides
+# everything below.
+#
+#   source   the repository, or a tarball of it. There is a Makefile beside
+#            this script, so the install tree is declared next door and this
+#            script's whole job is to choose a prefix and call `make install`.
+#
+#   bundle   the download folder from the website: two prebuilt binaries, this
+#            script, and install_tree/ -- which is that same `make install`
+#            tree, already staged prefix-relative by `make bundle`. No
+#            Makefile, no sources, nothing to compile. That is the point of a
+#            prebuilt download: the machine receiving it needs no toolchain,
+#            and requiring one here would have made the whole bundle pointless.
+#
+# Until bundle mode existed this script died on the spot in the second case --
+# "no Makefile beside ./install.sh" -- so a user who downloaded the folder,
+# unpacked it and ran the installer inside it installed nothing at all.
+#
+# Source mode is tested FIRST, because one directory can be both: `make bundle`
+# leaves enterprise_download/ inside the repository, and a developer who runs
+# the repository's own install.sh means the Makefile, which is the newer and
+# more complete answer of the two.
+tree=$repo/install_tree
+if [ -f "$repo/Makefile" ]; then
+    mode=source
+elif [ -d "$tree" ]; then
+    mode=bundle
+else
+    die "no Makefile and no install_tree beside $self.
+       This installs one of two things: an unpacked satellite source tarball,
+       which has a Makefile beside it, or the prebuilt download folder, which
+       has an install_tree/ beside it. This directory is neither, so there is
+       nothing here to install."
+fi
 
 # The nearest existing ancestor is what actually decides the answer:
 # --prefix "$HOME/.local" is perfectly installable when .local does not exist
@@ -251,7 +304,10 @@ if [ ! -w "$ancestor" ]; then
     fi
 fi
 
-if [ "$action" = install ]; then
+# Source mode only: bundle mode has the binaries already, which is what it is
+# for. Everything inside this block is about compiling, and in bundle mode
+# there is no compiler, no sources and no Makefile to drive.
+if [ "$action" = install ] && [ "$mode" = source ]; then
     # `make install` would build these itself, but doing it as a separate step
     # means a compile failure is reported as a compile failure, before anything
     # has been copied anywhere.
@@ -307,10 +363,134 @@ fi
 printf 'install.sh: %s prefix=%s%s\n' "$action" "$prefix" \
     "${destdir:+ (staged under $destdir)}"
 
-if [ -n "$destdir" ]; then
-    run "$MAKE" -C "$repo" "$action" "prefix=$prefix" "DESTDIR=$destdir"
+# ---------------------------------------------------------------------------
+# Bundle mode: installing install_tree/ without a Makefile.
+#
+# The list of files is DERIVED BY WALKING WHAT WAS SHIPPED, never restated. That
+# is what keeps the promise at the top of this file. install_tree/ is not a
+# second copy of the install tree -- it is the RESULT of the one declaration in
+# the Makefile's `install` target, produced by running it into a staging
+# DESTDIR at an empty prefix. Add a data file to that target and it appears in
+# the next bundle, and in these two functions, with no edit here.
+#
+# `install -D` per file rather than `cp -R`, for two reasons that both bite:
+#
+#   - cp -R applies the umask to what it creates. Under the 002 that is Ubuntu's
+#     default for the primary user, share/ arrives group-writable -- the same
+#     trap the Makefile's note on `install -d` describes at length.
+#   - cp -Rp preserves the ownership of the unpacked tarball, which is whoever
+#     unpacked it. `sudo ./install.sh` would then fill /usr/local with files
+#     owned by that user. install(1) creates as the caller, which under sudo is
+#     root, which is what /usr/local wants.
+#
+# The mode comes from the shipped file's own executable bit, so the binaries
+# land 755 and the data lands 644, which is what the Makefile installed them as.
+bundle_install() {
+    # Directories first, and separately from the files, because
+    # share/satellite/lib is shipped EMPTY and is load-bearing:
+    # library_path()'s tier 2 accepts a candidate only if the directory exists,
+    # and that empty directory is the entire reason a relocated tree resolves
+    # to itself rather than falling through to the prefix it was built for
+    # (DESIGN §9). A walk over files alone drops it without a word, and the
+    # symptom is `satl --where` answering with this build machine's home
+    # directory on somebody else's computer.
+    #
+    # -m755 stated on every one, for the umask reason above. $target itself is
+    # not created here, for the same reason the Makefile does not create
+    # $(prefix): install -D makes the leading directories it needs, and a
+    # prefix the caller named is theirs to have made.
+    (cd "$tree" && find . -type d -print) | while read -r d; do
+        d=${d#.}
+        d=${d#/}
+        [ -n "$d" ] || continue
+        run install -d -m755 "$target/$d" || exit 1
+    done
+
+    (cd "$tree" && find . -type f -print) | while read -r f; do
+        f=${f#./}
+        if [ -x "$tree/$f" ]; then _m=755; else _m=644; fi
+        run install -D -m$_m "$tree/$f" "$target/$f" || exit 1
+    done
+}
+
+# Symmetric with the Makefile's `uninstall`, and asymmetric with the install
+# above in exactly the way that target is: share/satellite and
+# share/doc/satellite are trees this install created and owns outright, so
+# removing them wholesale is exact and also takes the empty lib/ with it.
+# Everything else lives in a directory shared with the rest of the system --
+# share/icons/hicolor, share/applications, share/mime/packages, share/man --
+# where only the named files may go and the directory itself must stay, so
+# those are removed one at a time by the same walk that installed them.
+bundle_uninstall() {
+    (cd "$tree" && find . -type f -print) | while read -r f; do
+        f=${f#./}
+        run rm -f "$target/$f" || exit 1
+    done
+    run rm -rf "$target/share/satellite" "$target/share/doc/satellite"
+}
+
+# The four things `make install` does at the end of its own recipe and this
+# staged tree could not carry: hicolor's index.theme, and the three indexes a
+# desktop reads once at session start.
+#
+# The Makefile does all four only when DESTDIR is empty, and `make bundle`
+# staged this tree with DESTDIR set -- correctly, because staging must not
+# touch the build machine's live share/. So in bundle mode they fall to this
+# script, and this is the ONE place where bundle mode restates something the
+# Makefile also says. The rot warned about at the top of this file does not
+# apply to it: this is four tool invocations, not a list of files, and nothing
+# here goes stale when a data file is added to the install tree.
+#
+# Each of the four is argued in full in the Makefile's `install` recipe. The
+# short version: an icon directory is not a THEME until it holds index.theme
+# and GTK does not look inside one that does not, so without it every icon just
+# installed is invisible at every size; and the other three are indexes, so a
+# launcher and a file type stay unknown to the shell until they are rebuilt.
+#
+# index.theme is copied only when absent and only from the system's own copy,
+# never invented -- it describes hicolor, not satellite -- and it is
+# deliberately NOT removed on the way out, because every other application that
+# installed an icon into this prefix depends on it.
+#
+# Failure is ignored throughout: none of these tools is required for the
+# install to be CORRECT, only for it to be noticed before the next login.
+bundle_reindex() {
+    # A staged tree is not an installation. Rebuilding this machine's indexes
+    # over a DESTDIR that will be packaged and installed somewhere else is at
+    # best noise and at worst a package build editing the build machine.
+    [ -n "$destdir" ] && return 0
+
+    _hicolor=$prefix/share/icons/hicolor
+    if [ -d "$_hicolor" ] && [ ! -f "$_hicolor/index.theme" ] &&
+       [ -f /usr/share/icons/hicolor/index.theme ]; then
+        run cp /usr/share/icons/hicolor/index.theme \
+               "$_hicolor/index.theme" 2>/dev/null || :
+    fi
+
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        run update-desktop-database "$prefix/share/applications" \
+            2>/dev/null || :
+    fi
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        run gtk-update-icon-cache -qtf "$_hicolor" 2>/dev/null || :
+    fi
+    if command -v update-mime-database >/dev/null 2>&1; then
+        run update-mime-database "$prefix/share/mime" 2>/dev/null || :
+    fi
+}
+
+if [ "$mode" = source ]; then
+    if [ -n "$destdir" ]; then
+        run "$MAKE" -C "$repo" "$action" "prefix=$prefix" "DESTDIR=$destdir"
+    else
+        run "$MAKE" -C "$repo" "$action" "prefix=$prefix"
+    fi
+elif [ "$action" = install ]; then
+    bundle_install
+    bundle_reindex
 else
-    run "$MAKE" -C "$repo" "$action" "prefix=$prefix"
+    bundle_uninstall
+    bundle_reindex
 fi
 
 # A dry run still reports, because a preview of where the tree lands and whether

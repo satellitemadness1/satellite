@@ -1,0 +1,7 @@
+The three most critical features that determine whether an interpreted language is productive and enjoyable to use:
+
+    First-Class C Foreign Function Interface (FFI): Instead of manually hardcoding bindings for GTK, compression libraries, or low-level OS calls inside your interpreter's source code, implement a clean, dynamic C FFI (or dlopen/dlsym wrapper). A solid FFI gives your users the entire native C ecosystem instantly—networking, GUI libraries, decompression, and OS utilities—without bloating your core runtime.
+
+    Comprehensive Filesystem & Process I/O (OS Interfacing): Basic system access (remove_dir, create_file, path manipulation, reading environment variables, and spawning child processes) makes an interpreted language immediately practical for scripting and automation. If a language cannot effortlessly touch the disk and talk to the OS, it remains a toy.
+
+    Informative Diagnostics with Stack Traces: For interpreted languages—especially dynamically typed ones—developer experience lives and dies by runtime errors. Providing clear error messages with precise line numbers, source column spans, and readable stack traces saves hundreds of hours of debugging and makes writing complex logic tenable.
