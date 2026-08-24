@@ -1,0 +1,33 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number thread_count = 0
+
+    while (thread_count < 24)
+    {
+        satellite.variable.thread local_thread = satellite.thread.new(add_number(999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999))
+
+        local_thread.start()
+
+        thread_count = thread_count + 1
+
+        satellite.console.display("thread_count=" + thread_count)
+    }
+
+    // wait while the threads run
+
+    satellite.console.input(">>>")
+
+    satellite.return(satellite)
+}
+
+satellite.capsule add_number(satellite.variable.number input_number)
+{
+    // I wanted to test big numbers
+
+    input_number = input_number - 1
+
+    add_number(input_number)
+}
