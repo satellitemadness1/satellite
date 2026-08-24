@@ -124,7 +124,7 @@ P3 — SPLIT THE SRC FILES                                  [~] IN PROGRESS
     help_for() and module_of() switch on raw variant indices. The variant
     declaration does not move away from the comment that explains it.
 
-P4 — MAKEFILE -> make_support/                               [ ] not started
+P4 — MAKEFILE -> make_support/                                  [X] DONE
 ---------------------------------------------------------------------------
 GROUNDWORK ALREADY DONE (2026-08-24): every source list is now a wildcard, so
 splitting any file under src/ needs NO Makefile edit at all.
@@ -141,8 +141,74 @@ satl silently. VERIFIED after the change: ldd ./satl lists exactly six.
 
 User's words: "Makefile needs a folder called make_support and it can
 reference files in that folder, and everything can exist in that folder".
-So: a thin Makefile that includes make_support/*.mk.
-1149 lines -> a root Makefile plus fragments, each under 325.
+
+RESULT: 1232 lines -> a 79-line index Makefile + sixteen fragments, the
+largest 170 lines.
+
+  010-packages.mk           56   gtk/vte detection, DEPS_CMD, DEPS_ADVICE
+  020-compiler.mk           64   CXX, OPT, CXXFLAGS
+  030-version.mk            60   VERSION/REVISION, BUILD_STAMP, VERSION_DEFS
+  040-flags.mk              31   GTKFLAGS, LDLIBS, PCGFLAGS, LDFLAGS
+  050-thread-sanitizer.mk   68   TSAN, and finding a compiler that can link it
+  060-prefix.mk             47   prefix, DESTDIR, bindir/datadir/mandir/docdir
+  070-directories.mk        49   one variable per module dir, TESTS, TESTNAMES
+  080-sources.mk           125   the wildcards, OBJS, HDRS, LIBOBJS, GUI_TARGET
+  090-autoinstall.mk       124   why `make` at the top also installs
+  100-build.mk             118   .DEFAULT_GOAL, all, bundle, deps, satl, satl-term
+  110-compile.mk            99   the pattern rule and the four objects that
+                                 need more than it
+  120-tests.mk             156   sixteen test recipes, TESTBINS, test, aliases
+  130-examples-and-man.mk   25   compare, python, dist/%.1.gz
+  140-install.mk           170   the install tree, declared exactly once
+  150-install-report.mk     88   what the install says when it is done
+  160-uninstall-clean.mk    64   uninstall, clean, .PHONY
+
+NAMED ONE BY ONE, NOT $(wildcard make_support/*.mk). Two reasons, and the
+first is fatal: a wildcard sorts asciibetically, so 100- lands between 010-
+and 020- and the order constraints below break on a filename. Second, a
+wildcard silently swallows an editor backup or a half-written fragment.
+
+ORDER IS LOAD-BEARING IN EXACTLY THREE PLACES, each stated at the top of the
+fragment that depends on it:
+  - 020 before 030: VERSION_DEFS bakes $(CXX) and $(CXXFLAGS) in as strings.
+  - 100 is the first fragment declaring a target, which makes `all` the first
+    target make sees. .DEFAULT_GOAL := all says it outright as well.
+  - 120 before 160: .PHONY reads $(TESTALIASES), and a prerequisite list is
+    expanded where it is read.
+Everywhere else the fragments are recursive variables and rules, which make
+resolves after the whole file is read, so the references cross freely.
+
+THE ONE LINE THAT CHANGED — and it would have failed SILENTLY.
+    HERE := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+090-autoinstall.mk compares HERE against $(CURDIR) to decide whether `make`
+should end in an install. MAKEFILE_LIST GROWS WITH EVERY INCLUDE, so read from
+inside a fragment its lastword is that fragment and $(dir ...) is make_support/
+-- the comparison would answer no on every machine and the auto-install would
+switch itself off with no error, no warning and no failing test. The root
+Makefile is the only file whose own position answers the question, so it takes
+the measurement as SATELLITE_TREE above the includes and the fragment reads
+    HERE := $(SATELLITE_TREE)
+Verified: HERE is the same absolute path before and after, and AUTOINSTALL is
+still `yes` at the top of the tree and empty under `make -C` from elsewhere.
+
+HOW IT WAS PROVEN — three checks, not one.
+1. REASSEMBLY. Stripping each fragment's new header and concatenating them in
+   include order reproduces every non-blank line of the 1232-line original, in
+   order: `diff` reports IDENTICAL. Nothing was rewritten.
+2. DRY RUNS. `make -n` for satl, test, install, uninstall, clean, the default
+   goal, bundle, compare and deps, before and against after: ZERO lines of
+   difference. Same commands, same order.
+3. THE WHOLE DATABASE. `make -p -n` dumped and diffed, with SOURCE_DATE_EPOCH
+   pinned so BUILD_STAMP does not move. The only differences are MAKEFILE_LIST
+   itself, the new SATELLITE_TREE, and the sixteen fragments appearing as files
+   make considered. Every variable and every rule is otherwise identical.
+   (That dump is three concatenated dumps -- the top-level make plus the two
+   recursive sub-makes -- so the sub-makes were compared too.)
+
+Then the ordinary gate: clean rebuild, 0 errors and 0 warnings, `ldd satl`
+still SIX shared objects, `make test` 16/16 exit 0, hello world runs.
+
+Also: BUILDING.md now says where the knobs went, under "Choosing a compiler".
 
 P5 — install.sh                                              [ ] not started
 ---------------------------------------------------------------------------
@@ -261,3 +327,8 @@ LOG
             and a new piece cannot be forgotten. `make test` green, 16/16.
             One fix in passing: the "reg.hpp is not linked into satl" comment
             sat above console_test's recipe and always described reg_test's.
+2026-08-24  P4 DONE. Makefile 1232 -> 79-line index + 16 fragments under
+            make_support/, largest 170. Proven by reassembly diff, nine
+            identical dry runs, and a full `make -p` database diff.
+            One line changed on purpose: HERE, which lastword would have
+            broken silently once includes existed.

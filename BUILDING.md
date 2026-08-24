@@ -89,6 +89,13 @@ The default is whatever `c++` is on your PATH, which on Enterprise Linux 10 is
 GCC. The Makefile prefers a clang at `$HOME/opt/clang-24-2/bin` if one is
 there, and falls back silently if it is not.
 
+That choice, and every other knob in this build, lives in `make_support/`. The
+`Makefile` at the top of the tree is an index: it names sixteen fragments and
+includes them in the order they are numbered, and each one is a single subject
+under 200 lines. The compiler is `make_support/020-compiler.mk`; the index
+lists the rest. You still type `make`, and nothing about the commands it runs
+changed when the file was split.
+
 To force one:
 
 ```sh
