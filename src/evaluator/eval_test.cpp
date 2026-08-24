@@ -492,7 +492,12 @@ int main()
                  "l.length()\n"
                  "l[0]\n"
                  "l[-1]\n",
-                 "[1, 2, 3]\n3\n1\n3\n", "append, length, index, negative index");
+                 // The echo of a list is .lines(): one element per line, not
+                 // the "[1, 2, 3]" of .to_string(). The three scalars after it
+                 // are .length(), l[0] and l[-1], which are numbers and echo as
+                 // themselves.
+                 "1\n2\n3\n"
+                 "3\n1\n3\n", "append, length, index, negative index");
 
     // Half-open: len(l[a:b]) == b - a, with no +1 anywhere.
     check_output("satellite.container.list<satellite.variable.number> l\n"
@@ -504,14 +509,23 @@ int main()
                  "l[2:]\n"
                  "l[:]\n"
                  "l[3:3]\n",
-                 "[2, 3]\n[1, 2]\n[3]\n[1, 2, 3]\n[]\n", "half-open slicing");
+                 // Five slices, each echoed one element per line, so the line
+                 // count is the sum of their lengths: 2 + 2 + 1 + 3 + 0. The
+                 // EMPTY slice is the exception and still prints "[]" -- zero
+                 // elements would otherwise be zero lines, and an echo that
+                 // prints nothing at all cannot be told from one that failed.
+                 "2\n3\n"
+                 "1\n2\n"
+                 "3\n"
+                 "1\n2\n3\n"
+                 "[]\n", "half-open slicing");
 
     // An out-of-range slice clamps; an out-of-range index is an error.
     check_output("satellite.container.list<satellite.variable.number> l\n"
                  "l.append(1)\n"
                  "l[0:99]\n"
                  "l[5:9]\n",
-                 "[1]\n[]\n", "slice clamps");
+                 "1\n[]\n", "slice clamps");
     check_output("\"abcde\"[1:3]\n", "bc\n", "string slice is half-open");
 
     // --- list literals -------------------------------------------------------
@@ -656,8 +670,13 @@ int main()
                  "m.keys()\n"
                  "m.values()\n"
                  "m.length()\n",
+                 // The MAP still echoes as one value -- only a list echoes as a
+                 // listing -- so the map keeps its braces and .keys()/.values()
+                 // are lists and do not.
                  "{bolt: 40, washer: 100, nut: 7}\n"
-                 "[bolt, washer, nut]\n[40, 100, 7]\n3\n",
+                 "bolt\nwasher\nnut\n"
+                 "40\n100\n7\n"
+                 "3\n",
                  "map keeps insertion order");
 
     // Updating an existing key KEEPS ITS POSITION. A symbol table that
@@ -1042,7 +1061,8 @@ int main()
                  "}\n"
                  "build(1)\n"
                  "build(5)\n",
-                 "[1, 2]\n[5, 6]\n", "a local list is per-activation");
+                 "1\n2\n"
+                 "5\n6\n", "a local list is per-activation");
 
     // The declared type of a local is the capsule's, held once for every
     // activation — and still checked, at assignment and at insertion (§7).
