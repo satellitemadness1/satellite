@@ -43,7 +43,10 @@ arbitrary-precision decimal numbers; strings, lists, maps, slicing; `if` /
 satellite's word for a file of includable code, and `satellite.include(helper)`
 loads `helper.satl` and merges its declarations into the program that included
 it; a global variable registry with lock-free reads; random numbers at arbitrary
-precision; a REPL; and a GTK terminal in a separate binary.
+precision; a REPL; and a GTK terminal in a separate binary. Output from
+`satl --run` streams as the program produces it, through a printer thread that
+frees each line once it is written, so a long-running program is no longer
+indistinguishable from a hung one.
 
 Includes are loaded once per file (so a diamond is not a duplicate-definition
 error), cycles terminate rather than being rejected, and an error inside an
@@ -59,7 +62,7 @@ is designed and unbuilt, which is also why `satellite.include(satellite.window)`
 evaluates one line at a time, so an include typed at the prompt does not outlive
 its line; neither does a capsule defined there.
 
-Fifteen test binaries cover the above and all pass, including a ThreadSanitizer
+Sixteen test binaries cover the above and all pass, including a ThreadSanitizer
 build of the registry test.
 
 ## What it is trying to be
@@ -133,27 +136,54 @@ runs — C++ is ahead essentially immediately once there is real work. Against t
 *already-compiled* binary, ignoring build time, satellite is 36× slower, which is
 where an unoptimised tree walker belongs.
 
+**Both tables predate the console change, and every row that prints is now
+optimistic.** Output moved from one accumulating `std::string` to a queue with
+its own printer thread, so that a program's output appears while it runs rather
+than at exit. Measured on 300,000 lines: 47% slower, and an 8.4× cut in peak
+memory. Three of the five rows above print, so their numbers moved. They have
+not been re-measured, because this machine no longer has the clang the tables
+were built with and a figure from a different compiler does not belong in the
+same column. [§9 of the design docs](design/09-runtime-architecture.md)
+records what *was* measured, including the two guesses at the cause that turned
+out to be wrong.
+
 ## Build, test, run
 
 Needs a C++20 compiler and libstdc++. Do not build with libc++: it has no
 `atomic<shared_ptr<T>>` specialization, and the registry's lock-free read path
 depends on it twice.
 
-```sh
-make                 # builds satl and satl-term
-make test            # fourteen test binaries, each PASS/FAIL on exit
-make TSAN=0 test     # the other thirteen, for platforms without libtsan
+`satl`, the interpreter, needs nothing else. `satl-term`, the window, needs
+gtk4 and vte — `libgtk-4-dev` and `libvte-2.91-gtk4-dev` on Debian and Ubuntu,
+`gtk4-devel` and `vte291-gtk4-devel` (the second from CRB) on RHEL rebuilds.
+`make deps` installs them with whichever package manager is here. Without them
+`make` builds the interpreter, says which package is missing, and does not fail.
 
-./satl --run FILE [args]   # run a program
-./satl                     # REPL on stdin/stdout
-./satl --where             # which library directory resolved, and why
+```sh
+make                 # builds satl and satl-term, then installs them
+make deps            # installs what satl-term needs, if it is missing
+make test            # sixteen test binaries, each PASS/FAIL on exit
+make TSAN=0 test     # the other fifteen, for platforms without libtsan
+
+satl --run FILE [args]     # run a program
+satl                       # REPL on stdin/stdout
+satl --where               # which library directory resolved, and why
 ```
 
-At the REPL, `help` prints the entire language on one screen — which is
-possible only because the language *is* one screen. `:set`, `:get` and `:vars`
-poke at the global registry directly.
+`make` run **from this directory** installs as well as builds, so the `satl` on
+your PATH is the one you just compiled and the desktop icons are the ones in
+`dist/icons`. It installs to `/usr/local` if you are root and `~/.local` if you
+are not — a directory you already own — and it never runs `sudo`. Run make from
+anywhere else, name a `prefix=` yourself, or pass `SATELLITE_AUTOINSTALL=0`, and
+it only builds. If the prefix is not writable it says so and installs nothing.
 
-Installing:
+Two copies of satellite can therefore exist at once, and `satl --where` is how
+you tell which one answered. GTK picks the icon the other way round from the
+binary — the *last* directory in its search path wins, not the first — so a
+copy left in `/usr/local/share/icons` goes on being drawn even after `make`
+refreshes yours. `make` says so when it finds one.
+
+Installing somewhere else:
 
 ```sh
 ./install.sh --prefix /usr/local          # -n prints every command and runs none
@@ -250,9 +280,24 @@ because a `satellite.variable.number` is.
 The tiers are a **statistical** character and not a security property. The
 generator underneath is PCG, which makes no cryptographic claim and whose state
 is recoverable from its output, so nothing here is described as secure — see
-[`DESIGN.md`](DESIGN.md) §18, which records what each step of the mechanism was
+[§18](design/18-satellite-random.md), which records what each step of the mechanism was
 measured to be worth, including the two changes that would make it stronger and
 have not been made.
+
+Output is printed by a thread of its own, and a program can ask it to slow down
+without slowing itself down:
+
+```satellite
+satellite.console.display(100ms)
+satellite.console.display("one line every tenth of a second")
+```
+
+`100ms` — or `100 ms`, the same literal — sets the pause the printer takes
+between two displayed lines. The pause is taken by the printer thread, so the
+program keeps running while its output is metered out; `0ms` puts it back to
+full speed. A duration is legal in that one position and nowhere else, because
+there is no duration *type* — `satellite.variable.number x = 100ms` is an error
+that says so.
 
 More in [`example/`](example/), including a satellite lexer written in
 satellite:
@@ -270,9 +315,11 @@ say. What it found is the "not built" list above.
 
 ## Where the design lives
 
-[`DESIGN.md`](DESIGN.md) is authoritative and long. It fixes the syntax, records
-what was measured rather than assumed, and names what is still open.
-[`plans/todo.txt`](plans/todo.txt) indexes it by section and says what is next,
+[`DESIGN.md`](DESIGN.md) is the index; the design itself is nineteen numbered
+sections under [`design/`](design/), one section per file, numbered so that
+`§14` is `design/14-*.md`. It is authoritative and long: it fixes the syntax,
+records what was measured rather than assumed, and names what is still open.
+Cite it by section number and never by line — `§8.3.1` is the whole address. [`plans/todo.txt`](plans/todo.txt) indexes it by section and says what is next,
 what is decided, and what must not be redone.
 
 Anything marked **verified** in either was checked by compiling and running code

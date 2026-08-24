@@ -707,6 +707,14 @@ install: satl $(GUI_TARGET) dist/satl.1.gz dist/satl-term.1.gz
 	        "$(DESTDIR)$(datadir)/satellite/examples/$$f" || exit 1; \
 	done
 	install -Dm644 DESIGN.md "$(DESTDIR)$(docdir)/DESIGN.md"
+# DESIGN.md is now the index and design/ is the document -- nineteen numbered
+# sections, one per file -- so installing one without the other ships a page
+# of links to nothing. Globbed rather than walked because design/ is flat and
+# every file in it is a part; -t rather than a per-file -D because a
+# multi-source install needs the destination named as a directory. The leading
+# directories still come out 755 under a 002 umask, which is what the note on
+# `install -d` above is about -- **verified** rather than assumed.
+	install -Dm644 -t "$(DESTDIR)$(docdir)/design" design/*.md
 # The licence ships under the name every tool looks for, so that a tarball
 # install states its terms as fully as the .deb does: dh_installdocs writes
 # debian/copyright to this same path, and debian/copyright is a transcription

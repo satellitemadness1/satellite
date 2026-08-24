@@ -3,12 +3,19 @@ satellite — where the project stands, and what to do next
 Rewritten 2026-08-07. The 2026-08-06 toolchain material is kept below, in
 substance unchanged, because nothing decided that day has been revisited.
 
-This file is an index, not a second design document. DESIGN.md is
+This file is an index, not a second design document. The design is
 authoritative, and every claim here names the section that carries the
 reasoning so the detail lives in exactly one place. Where this file and
-DESIGN.md disagree, DESIGN.md is right and this file is stale. References are
+the design disagree, the design is right and this file is stale. References are
 by section number and never by line number, because DESIGN.md was itself being
 revised on the afternoon this was written and every line number in it moved.
+
+Amended 2026-08-24: the design is no longer one file. DESIGN.md is now the
+index and the nineteen numbered sections live under design/, one section per
+file, each file numbered by its section -- so section 14 is design/14-*.md and
+there is nothing to look up. Nothing was renumbered and no section body was
+edited, so every "section N" reference in this file still resolves, which is the
+whole reason the rule above was "by section number and never by line number".
 
 Everything below was checked against the tree on 2026-08-07 before it was
 written down. Where a claim could not be verified, it says so rather than
