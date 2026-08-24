@@ -1,4 +1,4 @@
-*satellite design docs, §6 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §6 of 21. Index: [DESIGN.md](../DESIGN.md).*
 *Back: [§5](05-grammar.md), On: [§7](07-method-calls-indexing-slicing.md).*
 
 ---

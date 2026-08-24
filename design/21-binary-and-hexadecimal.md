@@ -1,5 +1,5 @@
 *satellite design docs, §21 of 21. Index: [DESIGN.md](../DESIGN.md).*
-*Back: [§20](20-networking.md).*
+*Back: [§20 part 3](20-c-the-frame-and-what-is-refused.md). This is the last section.*
 
 ---
 

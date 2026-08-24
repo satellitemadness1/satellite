@@ -1,4 +1,4 @@
-*satellite design docs, §3 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §3 of 21. Index: [DESIGN.md](../DESIGN.md).*
 *Back: [§2](02-hello-world.md), On: [§4](04-the-reservation-rule.md).*
 
 ---

@@ -1,4 +1,5 @@
-*satellite design docs, §1 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §1 of 21. Index: [DESIGN.md](../DESIGN.md).*
+*Start of the design, On: [§2](02-hello-world.md).*
 *On: [§2](02-hello-world.md).*
 
 ---

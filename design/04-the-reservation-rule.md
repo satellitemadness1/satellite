@@ -1,4 +1,4 @@
-*satellite design docs, §4 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §4 of 21. Index: [DESIGN.md](../DESIGN.md).*
 *Back: [§3](03-lexical-structure.md), On: [§5](05-grammar.md).*
 
 ---

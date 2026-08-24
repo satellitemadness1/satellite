@@ -1,4 +1,4 @@
-*satellite design docs, §2 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §2 of 21. Index: [DESIGN.md](../DESIGN.md).*
 *Back: [§1](01-the-generating-rule.md), On: [§3](03-lexical-structure.md).*
 
 ---

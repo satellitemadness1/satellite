@@ -1,5 +1,5 @@
-*satellite design docs, §7 of 19. Index: [DESIGN.md](../DESIGN.md).*
-*Back: [§6](06-scope-model.md), On: [§8](08-types.md).*
+*satellite design docs, §7 of 21. Index: [DESIGN.md](../DESIGN.md).*
+*Back: [§6](06-scope-model.md), On: [§8 part 1](08-a-numbers.md).*
 
 ---
 

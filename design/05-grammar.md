@@ -1,4 +1,4 @@
-*satellite design docs, §5 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §5 of 21. Index: [DESIGN.md](../DESIGN.md).*
 *Back: [§4](04-the-reservation-rule.md), On: [§6](06-scope-model.md).*
 
 ---
@@ -116,3 +116,12 @@ eval time, left to right, letting each object answer for its own members.
 The rule that distinguishes a call from a path is **one token**: after a dotted path, if the
 next token is `(`, it is a call — the last segment is the method name, everything before it
 is the receiver.
+
+---
+
+### One bare name after a dot is not a method call
+
+`a.cxx_compiler` — see §8.8. The postfix loop above already produces a `Member`
+node for it, and always did; what changed is that the evaluator answers it for
+one receiver instead of refusing it for all of them. The grammar is untouched,
+which is the point of recording it here rather than in the productions.

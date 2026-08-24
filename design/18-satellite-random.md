@@ -1,5 +1,5 @@
-*satellite design docs, §18 of 19. Index: [DESIGN.md](../DESIGN.md).*
-*Back: [§17](17-the-abstract-machine.md), On: [§19](19-nine-additions.md).*
+*satellite design docs, §18 of 21. Index: [DESIGN.md](../DESIGN.md).*
+*Back: [§17 part 3](17-c-strings-frames-and-operators.md), On: [§19 part 1](19-a-includes-literals-and-rebinding.md).*
 
 ---
 

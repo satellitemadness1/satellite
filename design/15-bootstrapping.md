@@ -1,4 +1,4 @@
-*satellite design docs, §15 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §15 of 21. Index: [DESIGN.md](../DESIGN.md).*
 *Back: [§14](14-spacesuits.md), On: [§16](16-including-a-file.md).*
 
 ---

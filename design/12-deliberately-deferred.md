@@ -1,4 +1,4 @@
-*satellite design docs, §12 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §12 of 21. Index: [DESIGN.md](../DESIGN.md).*
 *Back: [§11](11-build-order.md), On: [§13](13-decisions.md).*
 
 ---

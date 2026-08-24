@@ -1,5 +1,5 @@
-*satellite design docs, §10 of 19. Index: [DESIGN.md](../DESIGN.md).*
-*Back: [§9](09-runtime-architecture.md), On: [§11](11-build-order.md).*
+*satellite design docs, §10 of 21. Index: [DESIGN.md](../DESIGN.md).*
+*Back: [§9 part 2](09-b-the-console-and-windows.md), On: [§11](11-build-order.md).*
 
 ---
 

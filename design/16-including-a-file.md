@@ -1,5 +1,5 @@
-*satellite design docs, §16 of 19. Index: [DESIGN.md](../DESIGN.md).*
-*Back: [§15](15-bootstrapping.md), On: [§17](17-the-abstract-machine.md).*
+*satellite design docs, §16 of 21. Index: [DESIGN.md](../DESIGN.md).*
+*Back: [§15](15-bootstrapping.md), On: [§17 part 1](17-a-the-abstract-machine.md).*
 
 ---
 

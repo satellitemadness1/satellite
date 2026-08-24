@@ -1,4 +1,4 @@
-*satellite design docs, §13 of 19. Index: [DESIGN.md](../DESIGN.md).*
+*satellite design docs, §13 of 21. Index: [DESIGN.md](../DESIGN.md).*
 *Back: [§12](12-deliberately-deferred.md), On: [§14](14-spacesuits.md).*
 
 ---
