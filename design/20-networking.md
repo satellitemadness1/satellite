@@ -440,6 +440,81 @@ this is built, because `Resolver::check_type` validates a type's *space* and not
 its *name*. That is the same class of laxness §8.6 closed for
 `satellite.variable.number<A, B>`, and it means a phantom type is spellable now.
 
+### 20.6.3 How a program receives — DECIDED 2026-08-24
+
+The question §20 had left unanswered is "how do we receive bits", and the answer
+is that **a port receives nothing; a connection does.** Three steps, and the
+middle one is the one that was missing a name:
+
+1. **open** — claim the port. What comes back is a **listener**. A listener has
+   no `.receive()`; its only job is to answer "has anyone knocked?"
+2. **accept** — wait. When someone knocks this hands back a **second object**, a
+   connection. One listener produces many connections over its life.
+3. **receive / send** on that connection. Only now do bytes move.
+
+```satellite
+satellite.variable.network door = satellite.network.open(8080)
+
+satellite.statement.while(door.ok()) {
+    satellite.variable.network caller = door.accept()   // waits here
+    thing = caller.receive()                            // the object itself
+
+    satellite.console.display(thing)
+    caller.send(thing)
+    caller.close()
+}
+```
+
+and the one-liner, for a program that receives and never answers:
+
+```satellite
+thing = satellite.network.receive(8080)
+```
+
+**A listener and a connection are ONE type with different methods answering**,
+the way §20.1 collapsed the three protocols. Calling `.receive()` on a listener
+is refused in words that name the fix — it does not silently accept.
+
+**THE RECEIVER DOES NOT DECLARE WHAT IS COMING, and does not need to.** The wire
+format is self-describing: §20.3's every value opens with a tag saying what it
+is, which is the whole reason it has tags. The decoder reads the tag and builds
+what it says. The language already has the landing spot and it needed no
+addition — **verified**: a bare `thing = 5` binds with no type named, and a bare
+`satellite.container.list` holds `[5, hi, x0F]`, mixed. So a pile of received
+values of unlike type already has a home.
+
+Naming a type is therefore an **assertion, not a requirement**. A program that
+knows what it expects writes `satellite.variable.number n = caller.receive()`
+and gets a clean type error if something else arrives; a program that does not
+know writes `thing = caller.receive()`. Both are ordinary.
+
+**The one thing that must be known ahead is a spacesuit**, and §20.3.5 already
+settled why: the descriptor is verified, never constructed, because a receiver
+that builds a type from the wire is a receiver that can be made to run something
+it never declared. §16 is the agreement mechanism.
+
+### 20.6.4 What the wire owes the user
+
+The language's purpose governs this section as much as any: **do absolutely
+everything for the user**, and never make them think about the transport. So the
+codec is **entirely invisible** — there is no `.serialize()`, no buffer size, no
+framing to get right, no byte order to consider, no partial read to handle.
+`caller.send(thing)` and `thing = caller.receive()` are the whole surface, and
+`.receive()` blocks until a WHOLE value has arrived rather than ever handing
+back half of one.
+
+There are no flags and no bitmasks anywhere on this path. If an option is ever
+needed it is a **word** at the call site, which is the trade §8.3.1 made for
+file modes and §20.1 made for protocols.
+
+**"Do everything for the user" is not "do things behind the user's back",** and
+the language already drew that line: §8.3's rule for `file` is **never silently
+reopen**. So this path does all the plumbing — framing, byte order, buffering,
+sharing, cycles — and none of the policy. It never silently truncates a message,
+never silently converts a type, and never silently reconnects a dropped
+connection. §20.6's ceiling refuses in words rather than quietly delivering less
+than was sent, which is §18's refusal-not-clamp.
+
 ### 20.7 Build order
 
 1. `satellite.network.new(port)` and raw TCP. No new dependency; proves the
@@ -452,7 +527,9 @@ its *name*. That is the same class of laxness §8.6 closed for
    round-trips and terminates.
 5. `satellite.network.http` on top of 1 and 2.
 6. `https`, **after** §16's native module mechanism (M7) exists.
-7. The server half, **after** `satellite.variable.thread` exists.
+7. The server half, **after** `satellite.variable.thread` exists. §20.6.3 is
+   the surface it builds; the blocking single-caller form works before threads
+   and is where `accept()` should first be proven.
 
 Steps 2 through 4 are the durable part and depend on no socket, no TLS and no
 threads. They are the right place to start for that reason.
