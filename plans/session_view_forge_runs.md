@@ -1,7 +1,7 @@
 # view_forge runs — 2026-08-24
 
-Written so this survives a `/clear`. All of it is in the working tree, built
-clean with clang 24 at -O2.
+Written so this survives a `/clear`. All of it is COMMITTED as of 2026-08-24,
+built clean with clang 24 at -O2.
 
 ## The headline
 
@@ -112,7 +112,7 @@ CLOSED except #9. Nine were closed by changing the LANGUAGE, not the program.
   The thirty-five LINE citations under `plans/` (nearly all in
   `pcg_k16384_spec.md`) do not, and cannot be repaired.
 
-- **Everything above is COMMITTED.** Five commits, working tree clean, 20
+- **Everything above is COMMITTED.** Six commits, working tree clean, 21
   commits ahead of `origin/main` and still never pushed. The nine language
   additions could not be their own commit: the `src/` move renames the same
   files they edit, so splitting them would have made the first commit delete
