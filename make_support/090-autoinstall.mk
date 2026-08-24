@@ -108,7 +108,7 @@ INSTALL_QUIET    := $(if $(findstring n,$(MAKE_SHORT_FLAGS)),,--silent)
 # relinks satl and rewrites .libdir-stamp, all as root, in a directory the user
 # owns -- after which their next ordinary `make` cannot write the stamp and the
 # build fails with a permission error nobody connects to the sudo they typed
-# an hour earlier. install.sh:263-273 already solves this: it compiles as the
+# an hour earlier. install_support/050-building.sh already solves this: it compiles as the
 # human and uses root for the copy alone.
 # The folder https://satellite.foundation/ hands out when somebody clicks
 # download: the two binaries this machine just built, and the installer beside

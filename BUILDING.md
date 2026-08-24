@@ -26,6 +26,13 @@ make
 ./install.sh
 ```
 
+Both `Makefile` and `install.sh` are indexes. The build is sixteen fragments
+under `make_support/` and the installer is nine under `install_support/`, each
+one a single subject and none of them over 200 lines. You still type `make` and
+`./install.sh`; both folders travel with the tree, and the download folder that
+`make bundle` writes carries `install_support/` beside the installer for the
+same reason it already carries `install_tree/`.
+
 ## What you need first
 
 Two binaries come out of this tree and they have different dependencies.

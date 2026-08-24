@@ -1,6 +1,6 @@
 # satellite -- the install tree, declared exactly once.
 #
-# THIS RULE IS THE FILE LIST. install.sh:4-8 says so in as many words, and the
+# THIS RULE IS THE FILE LIST. install.sh says so in its header, in as many words,, and the
 # bundle in 100-build.mk is produced by RUNNING this target into a DESTDIR
 # rather than by a second list. A data file added here reaches the download
 # folder, the .deb and `make install` at once; a data file added anywhere else

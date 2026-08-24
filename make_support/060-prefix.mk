@@ -12,7 +12,7 @@
 # machine, where that directory does not exist.
 #
 # The DEFAULT follows who is running make, for the reason install.sh already
-# gives at length (install.sh:40-58) and now for a second one: `all` below ends
+# gives at length (install_support/010-defaults.sh) and now for a second one: `all` below ends
 # in an install, and an install a normal user cannot perform is not a default,
 # it is an error message. /usr/local is the right place for an install from
 # source and it needs root; $HOME/.local needs none, is already on PATH, and is

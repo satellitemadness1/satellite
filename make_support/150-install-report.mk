@@ -22,7 +22,7 @@ install-report:
 # copy the shell finds first, so an install into a directory that is on PATH but
 # behind another directory that also has a satl changes nothing the user can
 # see -- and printing "installed" and stopping there would be the kind of true
-# sentence that misleads. install.sh:332 asks the membership question and says
+# sentence that misleads. install_support/080-report.sh asks the membership question and says
 # "so `satl` finds it", which on this machine was already false.
 #
 # -ef as well as a string compare, because a PATH entry can reach the same

@@ -40,6 +40,14 @@ bundle: satl $(GUI_TARGET)
 	    install -m755 satl-term '$(DOWNLOAD_DIR)/satl-term'; \
 	fi
 	@install -m755 install.sh '$(DOWNLOAD_DIR)/install.sh'
+# install.sh IS AN INDEX, and the installer is the nine files beside it. It has
+# never been a file that works alone -- it needs a Makefile or an install_tree/
+# next to it, and says so -- so the folder travelling with it costs the bundle
+# nothing it was not already paying. A glob rather than a list, so a fragment
+# added to install_support/ reaches the download folder without an edit here;
+# 644 rather than 755, because they are sourced and never executed.
+	@install -d -m755 '$(DOWNLOAD_DIR)/install_support'
+	@install -m644 install_support/*.sh '$(DOWNLOAD_DIR)/install_support/'
 # THE DATA HALF OF THE BUNDLE, and the reason install.sh works from inside it.
 #
 # The three files above are a program; they are not an install. The icons, the
@@ -50,7 +58,7 @@ bundle: satl $(GUI_TARGET)
 # who downloaded, unpacked and ran it installed nothing at all.
 #
 # STAGED BY `make install` ITSELF rather than by a second list of files here.
-# That is the whole point: install.sh:4-8 says the install tree is declared
+# That is the whole point: install.sh's header says the install tree is declared
 # exactly once, in the `install` target, because two lists is how an install
 # tree rots. This bundle does not carry a copy of the list -- it carries the
 # RESULT of the one list, produced by running it. Add a data file to `install`
