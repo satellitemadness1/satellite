@@ -1,128 +1,137 @@
-// satl — the interpreter.
+// satl -- the interpreter.
 //
-// This binary links NO GUI: the window lives in satl-term, which spawns
-// this one into a PTY. The split is measured, not tidy-minded — linking gtk4
-// and vte here pulled 119 shared objects that the dynamic linker loaded before
-// main() on every `--run`, costing 23.4 ms against an interpreter whose own
-// share of hello world is 0.3 ms. See window.cpp.
+// THIS BINARY LINKS NO GUI. The window lives in satl-term (M11), and
+// satellite.window.new() will reach a dlopen'd library (M13). The split is
+// measured rather than tidy-minded: `ldd` on this satl lists 6 shared objects
+// and on the first satellite's satl-term lists 79, and the dynamic linker loads
+// every one of them before main() on every run. The first satellite measured
+// what that costs at 25.9 ms with the link against 2.5 ms without.
+//
+// See make_support/040-sources.mk for this build's own startup numbers and for
+// why the "119 shared objects" its predecessor's source claims is not repeated
+// here.
+//
+// At milestone 1 there is no interpreter behind any of this. What there is: a
+// binary that says what it is, says how to run a file, and refuses to pretend
+// about the parts that have not been built. See PLAN_ONE.md, M1.
 
-#include <algorithm>
+#include "programs/opening.hpp"
+#include "system_facts/version.hpp"
+
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <sstream>
 #include <string>
-#include <unistd.h>
 #include <vector>
 
-#include "console_output/console.hpp"
-#include "system_facts/version.hpp"
-#include "interpreter/interp.hpp"
-#include "satellite_library/library.hpp"
-#include "satellite_string/satellite_string.hpp"
-#include "system_facts/system.hpp"
+#include <unistd.h>
 
-// ---------------------------------------------------------------------------
-// REPL side (runs inside the terminal)
-// ---------------------------------------------------------------------------
+namespace {
 
-
-#include "programs/main_internal.hpp"
-
-// satl --where — the resolved library directory and which of the three
-// candidates in system.cpp produced it.
+// Whether a path names something this process can read.
 //
-// It exists to make an install falsifiable. `make install` can then be checked
-// without running a program, and someone whose install is broken has one
-// command to run instead of a guess to make about which tier answered: the
-// difference between "found it next to the binary" and "fell through to the
-// compiled-in default" is the whole diagnosis, and the path alone does not say
-// which happened.
-int where()
+// R_OK and not F_OK, because "it is there" and "I may open it" are different
+// answers and only the second one is useful to somebody about to be told their
+// file cannot be run. access() rather than a stat of the mode bits, because
+// access() asks the kernel the question with THIS process's real ids instead of
+// reconstructing the answer from permissions and getting it wrong on an ACL.
+bool readable(const std::string &path)
 {
-    satellite::LibraryPathSource source = satellite::LibraryPathSource::None;
-    std::string path = satellite::library_path(&source);
+    return access(path.c_str(), R_OK) == 0;
+}
 
-    const char *from = "";
-    switch (source) {
-    case satellite::LibraryPathSource::Environment:
-        from = "$SATELLITE_PATH (development override)";
-        break;
-    case satellite::LibraryPathSource::Relative:
-        from = "alongside the binary (relocatable install)";
-        break;
-    case satellite::LibraryPathSource::Compiled:
-        from = "compiled-in SATELLITE_LIB_DIR (packaged install)";
-        break;
-    case satellite::LibraryPathSource::None:
-        from = "nothing — no candidate exists";
-        break;
+// What satl says when the command line was right and the milestone is not here.
+//
+// SEPARATE FROM A USAGE ERROR, and that separation is the whole point of the
+// function. `satl hello.satl` is a correct sentence; answering it with a usage
+// dump teaches the user that they typed something wrong, which is false and
+// sends them to reread a specification that already agrees with them.
+//
+// The file is checked even though nothing will be run with it, because the two
+// failures a user is about to have are different and they should not have to
+// guess which one they are in. A misspelled path reported as "not built yet"
+// is a bug report waiting to be filed at M8.
+int not_yet(const std::string &what, const std::string &file,
+            const char *milestone)
+{
+    fprintf(stderr, "satl: %s is not built yet -- it lands at %s.\n",
+            what.c_str(), milestone);
+
+    if (!file.empty()) {
+        if (readable(file))
+            fprintf(stderr, "      %s was found and nothing was done with it.\n",
+                    file.c_str());
+        else
+            fprintf(stderr, "      %s could not be read either, so check the "
+                            "path before %s arrives.\n",
+                    file.c_str(), milestone);
     }
-
-    printf("library: %s\nfrom:    %s\n",
-           path.empty() ? "(not found)" : path.c_str(), from);
-    return 0;
+    return satellite::EXIT_NOT_YET;
 }
 
-
-void usage()
+// A usage failure: the command line did not name something satl can do.
+//
+// Usage goes to STDERR here and to stdout in the --help arm, and that is not an
+// inconsistency. `satl --help | less` is someone reading the list on purpose
+// and it belongs on stdout; a complaint about a bad command line belongs on
+// stderr, where it survives a pipe that was set up for output that will now
+// never come.
+int usage_error(const std::string &complaint)
 {
-    fprintf(stderr,
-            "usage: satl                             repl on stdin/stdout\n"
-            "       satl --repl                      the same, spelled out\n"
-            "       satl --run <file> [args]         run a file on stdout\n"
-            "       satl <file> [args]               same as --run\n"
-            "       satl --where                     resolved library path\n"
-            "\n"
-            "at the prompt: run <file> [args]  (also spelled interpret, --run)\n"
-            "the gui terminal is a separate binary: satl-term\n"
-            "  satl --version            what this build is, and what built it\n");
+    fprintf(stderr, "satl: %s\n", complaint.c_str());
+    fputs(satellite::usage_text().c_str(), stderr);
+    return satellite::EXIT_USAGE;
 }
+
+} // namespace
 
 int main(int argc, char **argv)
 {
-    std::vector<std::string> args(argv, argv + argc);
+    const std::vector<std::string> args(argv, argv + argc);
 
-    if (args.size() > 1 && args[1] == "--repl")
-        return run_repl();
-    if (args.size() > 1 && args[1] == "--where")
-        return where();
-    // Before --help and before the bare-filename arm, so a file that happens
-    // to be called --version cannot shadow the flag. Exit 0: asking a program
-    // what it is, is not an error, and a packaging script that greps this is
-    // entitled to a zero.
-    if (args.size() > 1 && (args[1] == "--version" || args[1] == "-V")) {
+    // NOTHING TO DO IS NOT AN ERROR. satl started with no arguments shows the
+    // opening information, which is what says how to run a file.
+    //
+    // At M11 this arm gains the prompt, and the banner it prints first is this
+    // same opening_text() -- which is why that function returns a string rather
+    // than printing one.
+    if (args.size() == 1) {
+        fputs(satellite::opening_text().c_str(), stdout);
+        return satellite::EXIT_FINE;
+    }
+
+    const std::string &first = args[1];
+
+    // BEFORE the bare-filename arm, so that a file which happens to be called
+    // --version cannot shadow the flag. Exit 0: asking a program what it is, is
+    // not an error, and a packaging script that greps this is entitled to a
+    // zero.
+    if (first == "--version" || first == "-V") {
         fputs(satellite::version_text("satl").c_str(), stdout);
-        return 0;
-    }
-    if (args.size() > 1 && (args[1] == "-h" || args[1] == "--help")) {
-        usage();
-        return 2;
+        return satellite::EXIT_FINE;
     }
 
-    std::string file;
-    std::vector<std::string> rest;
-
-    if (args.size() > 1 && args[1] == "--run") {
-        if (args.size() < 3) {
-            usage();
-            return 2;
-        }
-        file = args[2];
-        rest.assign(args.begin() + 3, args.end());
-    } else if (args.size() > 1 && !args[1].empty() && args[1][0] != '-') {
-        file = args[1];
-        rest.assign(args.begin() + 2, args.end());
-    } else if (args.size() > 1) {
-        fprintf(stderr, "satellite: unknown option %s\n", args[1].c_str());
-        usage();
-        return 2;
+    // Also before the bare-filename arm, and also exit 0. The first satellite
+    // exited 2 here; see the note on ExitStatus for why that changed.
+    if (first == "-h" || first == "--help") {
+        fputs(satellite::usage_text().c_str(), stdout);
+        return satellite::EXIT_FINE;
     }
 
-    // No file means the repl. It used to mean the window, which is now a
-    // separate binary that this one knows nothing about.
-    if (file.empty())
-        return run_repl();
+    if (first == "--repl")
+        return not_yet("the prompt", std::string(), "M11");
 
-    return run_file_mode(file, rest);
+    // --run takes an operand, so a missing one is a real usage error rather
+    // than a milestone that has not landed: `satl --run` with nothing after it
+    // is wrong at M8 too.
+    if (first == "--run") {
+        if (args.size() < 3)
+            return usage_error("--run needs a file after it");
+        return not_yet("running a file", args[2], "M8");
+    }
+
+    // A bare word that is not a flag is a filename. Checked LAST of the arms
+    // that can match a word, which is what the ordering above is for.
+    if (!first.empty() && first[0] != '-')
+        return not_yet("running a file", first, "M8");
+
+    return usage_error("unknown option " + first);
 }

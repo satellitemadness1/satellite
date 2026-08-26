@@ -1,0 +1,56 @@
+
+satellite is an interpreted programming language, so there is no compile step.
+
+It doesn't currently have a Just-In-Time compiler, and one is not currently planned
+
+It is a tree-walking ast eval -> parse > execute
+
+There is only limited error handling in the first satellite, I want to change that
+
+an example syntax:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(arguments[0]) // displays the current directory...
+
+    satellite.variable.string some_str = "Hello, World!"
+
+    satellite.variable.thread my_thread = satellite.thread.new(my_capsule_name(some_str))
+
+    satellite.return(satellite)
+}
+
+satellite.capsule my_capsule_name(satellite.variable.string str_input)
+{
+    satellite.console.display(str_input)
+
+    satellite.return()
+}
+
+// satellite.return() is not required, only satellite.main *must* have satellite.return(satellite)
+
+I want to keep a lot from the first version of satellite, because it worked, and it was also fast...
+
+So I want to keep it's working state, and the speed of it; But I also want to make improvements
+where we can as we pull from the old source code.
+
+satellite will eventually support:
+
+satellite.variable.number
+satellite.variable.string
+satellite.variable.float (an infinitely long (in both directions,) floating point number
+satellite.variable.bool a "TRUE" or "FALSE" variable
+satellite.container.list (a list of objects)
+satellite.container.map (variable amounts of objects)
+satellite.variable.variant (C++'s std::variant)
+
+satellite.variable.file
+satellite.variable.time
+satellite.variable.date
+satellite.random.fast(99) // 99 fast digits
+satellite.random.normal(99) // 99 random digits normally
+satellite.random.ultra(99) // an ultra secure random number;
+
+satellite.time.now() // though everything about time is not yet worked out; I usually go with the high_precision_clock
