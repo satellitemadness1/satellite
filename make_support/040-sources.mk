@@ -40,4 +40,12 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/opening.hpp
 
-OBJS = $(SATL_OBJS)
+# Every object in the tree, which is what 060-compile.mk hangs the header
+# dependency on. The haswell objects and the detector are named here rather than
+# only where they are built, so that adding a header stays one edit in HDRS
+# above and reaches every object rather than only the ones somebody remembered.
+#
+# $(SATL_HASWELL_OBJS) and $(CPU_LEVEL_OBJ) come from 045-microarchitecture.mk,
+# read after this file; recursive expansion is what makes that legal, and the
+# top-level Makefile says so once for all the fragments.
+OBJS = $(SATL_OBJS) $(SATL_HASWELL_OBJS) $(CPU_LEVEL_OBJ)

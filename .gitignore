@@ -1,8 +1,11 @@
 # Build output. Nothing here is source.
 *.o
 /satl
+/satl.haswell
+/satl-cpu-level
 /satl-term
 .cxxflags-stamp
+.cxxflags-stamp-haswell
 
 # The first satellite, kept beside this one to read and to pull from, and
 # DELIBERATELY NOT IN THIS REPOSITORY'S HISTORY. It is a whole second tree --

@@ -30,6 +30,30 @@ $(PROGRAMS)/main.o: $(PROGRAMS)/main.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 $(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/opening.cpp
 
+# The haswell half of the tree. A separate suffix rather than a separate
+# directory, so that `clean` keeps naming what it removes and this rule stays
+# one line like the baseline one above it.
+#
+# UNUSED TODAY and deliberately present: both of satl's two sources have
+# explicit rules below, which outrank any pattern, so nothing currently reaches
+# this. It is what makes adding a third source to SATL_SRCS a one-line edit in
+# 040-sources.mk instead of a one-line edit plus a rule somebody has to notice
+# is missing -- and the failure without it is a build looking for a
+# main.haswell.cpp that was never meant to exist.
+$(SRC)/%.haswell.o: $(SRC)/%.cpp
+	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) -c -o $@ $<
+
+# The two objects that learn what this build is, again, for the other variant.
+# VERSION_DEFS_HASWELL differs from VERSION_DEFS in exactly one string: the
+# flags. That is what makes an installed binary able to say which of the two it
+# is -- `satl --version` prints that line -- so the install needs no manifest
+# and cannot have one that disagrees with the file it describes.
+$(PROGRAMS)/main.haswell.o: $(PROGRAMS)/main.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp
+	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) $(VERSION_DEFS_HASWELL) -c -o $@ $(PROGRAMS)/main.cpp
+
+$(PROGRAMS)/opening.haswell.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp
+	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) $(VERSION_DEFS_HASWELL) -c -o $@ $(PROGRAMS)/opening.cpp
+
 # make invalidates a target when a PREREQUISITE changes, and CXXFLAGS is not a
 # prerequisite of anything. So without this, `make OPT=-O3` over a tree built at
 # -O2 recompiles NOTHING, and the result is a mixed binary that no output
@@ -41,8 +65,19 @@ $(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version
 	@printf '%s' '$(CXX) $(CXXFLAGS)' | cmp -s - $@ || \
 	    printf '%s' '$(CXX) $(CXXFLAGS)' > $@
 
+# The same guard for the haswell objects, and a SECOND stamp rather than one
+# covering both. With one stamp, changing MARCH_HASWELL would rebuild the
+# baseline objects too -- which is not wrong, merely a lie about what changed --
+# and, worse, the two variants would share a file whose content could only
+# describe one of them. Two stamps, each holding the exact command line its own
+# objects were compiled with.
+.cxxflags-stamp-haswell: FORCE
+	@printf '%s' '$(CXX) $(CXXFLAGS) $(MARCH_HASWELL)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) $(CXXFLAGS) $(MARCH_HASWELL)' > $@
+
 FORCE:
 
 $(OBJS): $(HDRS) .cxxflags-stamp
+$(SATL_HASWELL_OBJS): .cxxflags-stamp-haswell
 
 .PHONY: FORCE

@@ -33,8 +33,26 @@ BUILD_STAMP := $(shell date -u $(if $(SOURCE_DATE_EPOCH),-d @$(SOURCE_DATE_EPOCH
 # $(CXX) is recorded as the path make INVOKED. What that path turned out to be
 # is a separate fact, and version.hpp reads it from __VERSION__ instead. See
 # 010-compiler.mk for the time those two disagreed and nothing said so.
-VERSION_DEFS = -DSATELLITE_VERSION='"$(SATELLITE_VERSION)"' \
+#
+# A FUNCTION, because satl is built twice and the two builds must not describe
+# themselves identically. $(1) is whatever -march the caller compiled with, and
+# it lands in the flags string, so `satl --version` on an installed binary says
+# which of the two variants it is without anything having to record that
+# separately. The install writes no manifest and needs none: the binary is the
+# record. See make_support/045-microarchitecture.mk.
+#
+# $(strip) so the baseline call -- $(call version_defs,) with an empty argument
+# -- does not bake a trailing space into the string a user reads.
+#
+# MARCH_HASWELL is defined in 045-microarchitecture.mk, which make reads after
+# this file. That is fine and is the arrangement the top-level Makefile
+# describes: these are recursively expanded, so the reference below is resolved
+# when a recipe uses it, by which point every fragment has been read.
+version_defs = -DSATELLITE_VERSION='"$(SATELLITE_VERSION)"' \
                -DSATELLITE_REVISION='"$(SATELLITE_REVISION)"' \
                -DSATELLITE_BUILT='"$(BUILD_STAMP)"' \
                -DSATELLITE_BUILD_CXX='"$(CXX)"' \
-               -DSATELLITE_BUILD_FLAGS='"$(CXXFLAGS)"'
+               -DSATELLITE_BUILD_FLAGS='"$(strip $(CXXFLAGS) $(1))"'
+
+VERSION_DEFS         = $(call version_defs,)
+VERSION_DEFS_HASWELL = $(call version_defs,$(MARCH_HASWELL))
