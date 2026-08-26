@@ -16,10 +16,17 @@
 # nothing anywhere saying so. That is why version.hpp prints BOTH the path make
 # invoked and the __VERSION__ the compiler reported.
 #
+# clang-current, and NOT clang-24-2 or any other version directory, for exactly
+# that reason. Each rebuilt toolchain is installed to its own prefix and
+# ~/opt/clang-current is repointed at it, so naming a version here would go
+# stale the first time one of those directories is replaced -- and going stale
+# is the failure above, silent and attributed to the wrong compiler. A symlink
+# cannot drift out of date, because repointing it IS the install step.
+#
 # origin, rather than ?=, because CXX is one of make's built-in variables and is
 # therefore already set: ?= would never fire. `default` means nobody has chosen,
 # so `make CXX=g++` and CXX from the environment both still win.
-LLVM_BIN = $(HOME)/opt/clang-24-2/bin
+LLVM_BIN = $(HOME)/opt/clang-current/bin
 ifeq ($(origin CXX),default)
   CXX := $(if $(wildcard $(LLVM_BIN)/clang++),$(LLVM_BIN)/clang++,c++)
 endif

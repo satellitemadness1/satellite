@@ -61,7 +61,7 @@ EOF
     if ! command -v c++ >/dev/null 2>&1 &&
        ! command -v g++ >/dev/null 2>&1 &&
        ! command -v clang++ >/dev/null 2>&1 &&
-       [ ! -x "${HOME:-}/opt/clang-24-2/bin/clang++" ]; then
+       [ ! -x "${HOME:-}/opt/clang-current/bin/clang++" ]; then
         missing="$missing gcc-c++"
     fi
 
