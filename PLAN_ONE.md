@@ -1,5 +1,20 @@
 # PLAN_ONE
 
+> **SUPERSEDED, 2026-08-26.** This file has been replaced by [PLAN.md](PLAN.md)
+> and [DESIGN.md](DESIGN.md), both of which are permanent. Everything here worth
+> keeping is in one of those two, and three of its numbers were wrong and are
+> corrected there: the first satellite's registry holds 107 word entries and 29
+> paths (not 108 and 30), and its error surface is 199 `fail()` call sites (not
+> the 177 claimed once below). Those and every other error found on 2026-08-26 have
+> been **corrected in place**, each marked where it stood, so this file no longer
+> contradicts the two permanent ones.
+>
+> Read nothing here as current even so. Its milestone notes are dated records of
+> what one commit landed, not descriptions of the tree.
+>
+> **This file may be deleted as soon as nothing cites it.** Do not add to it, and
+> do not treat it as a reference — it is a draft that has been read and absorbed.
+
 **This file is disposable.** It is the first plan for the second satellite, written
 before any of the second satellite exists, and it will be thrown away entirely and
 replaced once enough of it has been built to know what it got wrong. Nothing here is
@@ -31,7 +46,7 @@ The finding that shapes everything else:
 **The first satellite already built the number table, and the evaluator never read
 it.**
 
-`src/bytecode_format/format.def` holds 108 words and 30 paths with frozen ids —
+`src/bytecode_format/format.def` holds 107 words and 29 paths with frozen ids —
 `SAT_WORD(1, SATELLITE, "satellite")`, `SAT_WORD(6, CONSOLE, "console")`,
 `SAT_WORD(7, DISPLAY, "display")`, `SAT_PATH(P_DISPLAY, 1, 6, 7, 0, 1)` — with
 static_asserts enforcing density, ascension and uniqueness. It is careful work.
@@ -42,10 +57,11 @@ thing in the language, is:
 1. `expr_call.cpp` flattens the `Member` chain into a `std::vector<std::string>`
 2. `modules.cpp:33` heap-allocates a joined `std::string` via `join_path()` —
    **on every module call, including the arms that never read it**
-3. six arms are tried in a **load-bearing order** (the file says so: "the arms are
+3. seven arms are tried in a **load-bearing order** (the file says so: "the arms are
    not disjoint"), each doing `full == "satellite…"` or `path[0] == "satellite" &&
    path[1] == "…"` string comparisons
-4. `module_console` is the **last** arm tried
+4. `module_console` is the **sixth** arm tried, and the free function
+   `search_threshold_call` is the seventh
 
 So the fastest identity the language has was compiled into a header, asserted over,
 documented at length — and then the hot path compared strings.
@@ -237,14 +253,17 @@ naive walk is the usual figure.
 The first satellite's tree is `shared_ptr<const Expr>` with `sizeof(Expr) == 96`,
 guarded by a static_assert. That means:
 
-- an **atomic refcount touch per node visit**
 - a **cache miss per child**, since children are wherever the allocator put them
-- **atomic contention across threads** walking one shared program
+- **96 bytes per node**, most of it paid by every node to fit the widest alternative
+- a refcount that **buys nothing**: the tree is immutable, lives as long as the
+  program, and nothing ever frees a node early
 
-And the refcounting buys nothing: the tree is immutable, lives as long as the
-program, and nothing ever frees a node early.
+*(This draft also claimed an atomic refcount touch per node visit and cross-thread
+contention from it. **Both were wrong** — `eval` takes `const Expr &`, `exec` takes
+`const Stmt &`, and every descent dereferences rather than copying the handle, so
+the walk touches no refcount at all. PLAN.md §2.2 carries the corrected list.)*
 
-An arena of PODs indexed by `uint32_t` fixes all four. Multi-threaded walking
+An arena of PODs indexed by `uint32_t` fixes all three. Multi-threaded walking
 becomes **atomic-free**, not merely safe — which matters because
 `satellite.variable.thread` is on the roadmap.
 
@@ -257,7 +276,7 @@ impossible** rather than documented.
 ### 3.4 Inline caches
 
 A `Call` node caches the resolved PathId and handler pointer on first execution,
-behind a guard. This is what permanently retires the six-arm chain: the second
+behind a guard. This is what permanently retires the seven-arm chain: the second
 execution of a call site does no lookup at all.
 
 ### 3.5 Why the explicit control stack is deferred, not dropped
@@ -358,8 +377,9 @@ Ported, adapted, or taken as-is from `old_versions/first_satellite/`:
 - **The syntax and the generating rule.** It is coherent and it is the identity.
   `design/01-the-generating-rule.md` through `design/21-*` are the prose to re-read,
   not to rewrite from scratch.
-- **`resolve()` and frames** — `src/environment/env.hpp`. Names to integer frame
-  slots, statically, before anything runs. Best engineering in the first satellite,
+- **`resolve()` and frames** — `src/environment/env.hpp` for resolve,
+  `src/evaluator/eval_types.hpp` for `Frame` itself. Names to integer frame slots,
+  statically, before anything runs. Best engineering in the first satellite,
   and measured: 1585 wrong results out of 1600 without it.
 - **Frames as isolation, library as the atomic global.** The `SLOT_GLOBAL` /
   `SLOT_CAPSULE` / `SLOT_METHOD` / `SLOT_SUIT` / `SLOT_FIELD` sentinel scheme.
@@ -373,14 +393,15 @@ Ported, adapted, or taken as-is from `old_versions/first_satellite/`:
   tell a real closed stdin from an EINTR-interrupted read. Hard-won; do not
   rediscover it.
 - **The search power** — `src/evaluator/search.hpp`, `search.cpp`,
-  `search_walk.cpp`. The comparator/walker split is clean, deliberately free of the
+  `search_walk.cpp`, `search_apply.cpp`. The comparator/walker split is clean,
+  deliberately free of the
   Evaluator class, and *callable from anything*. That is the point: the ten-level
   ladder (`SEARCH_EXACT` … `SEARCH_SUBSEQUENCE`) is a general power that can be
   applied to any value the language has, present or future. Port it close to
   unchanged.
 - **The X-macro registry mechanism**, ids frozen, append-only, static_asserts in
   the header so every consumer inherits them.
-- **`format.def`'s rule** (§2.5), verbatim.
+- **`format.def`'s rule** (§2.6), verbatim.
 - **Spans on every node.**
 - **PCG, and the fast / normal / ultra tiers.**
 - **The two-binary split and the startup measurement discipline.**
@@ -396,19 +417,22 @@ Ported, adapted, or taken as-is from `old_versions/first_satellite/`:
   change everything else hangs off.
 - **`shared_ptr<const Expr>` for the tree.** See §3.3.
 - **`mutable int slot` on `Name`.** See §3.3.
-- **`EvalError{std::string, Span}`.** 177 hand-written message strings, no codes, no
-  source excerpt, no caret, no call stack, no suggestions. The new shape is
+- **`EvalError{std::string, Span}`.** 199 call sites each composing their own
+  message, no codes, no call stack, no suggestions. (It *does* render a source
+  excerpt with a caret — three `format_error` implementations do — which is the half
+  that was done right.) The new shape is
   `{ErrorCode, Span, vector<Note>, vector<FrameRef>}` with rendering in exactly one
   place. `ResolveError` already grew a `note` / `note_span` pair — that is the model
   asking to be generalised.
 - **"Record the error and return `nullptr`."** Keep the decision *not* to throw —
-  it is measured, 8.5 ns as an enum against 1537 ns thrown, 181× — but 177 sites
+  it is measured, 8.5 ns as an enum against 1537 ns thrown, 181× — but 199 sites
   where a missed null check is a segfault is the wrong shape. Either a sticky
   machine flag checked at statement boundaries, or a return type that cannot be
   silently dropped.
 - **`help_for()` and `module_of()` switching on raw `std::variant` indices.** The
-  code documents this as a landmine — "APPEND ONLY", "silently renumber every
-  alternative after it". Make adding an alternative a compile error.
+  code documents this as a landmine — "APPEND ONLY", and, on inserting an
+  alternative, "renumbers every alternative after it and silently changes what
+  every existing switch means". Make adding an alternative a compile error.
 - **The `bytecode_format` module *as named*.** The ids are right; the framing is
   wrong. It is not a bytecode format, it is the language's word-and-path registry,
   and in the second satellite it belongs in the hot path, not in a serialiser. New
@@ -452,7 +476,9 @@ Consequences to plan for rather than discover:
 - **`words.def` is the one file that may exceed 300 lines.** It is data, not code,
   and splitting a numbering whose meaning is registration order is the one split
   that could silently change what the program means. The first satellite made the
-  same exception for `format.def` and gave the same reason.
+  same exception for `format.def` — though for its own reason, recorded in
+  `plans/restructure.txt` rather than in the file: it is one table with three
+  tripwires asserting over it, and splitting it would split them off from it.
 
 Markdown is not C++; this file is not bound by the rule.
 
@@ -471,7 +497,8 @@ The binary, the build, and the opening information. **No language at all.**
   final restructure was right, start there rather than arriving there)
 - `src/system_facts/version.hpp`, carried over: VERSION and REVISION as two numbers
   that move at different rates, arriving as `-D` on the two recipes that need them
-  and **deliberately not in `CXXFLAGS`**, so the build stamp stays quiet
+  and **deliberately not in `CXXFLAGS`**, so the build stamp stays quiet *(four
+  recipes once the haswell variant landed the same day)*
 - `satl` with **no arguments prints the opening information**, which says at minimum:
   what this is, the version, and **`satl filename.satl`** as the way to run a file
 - `satl --version` / `-V`, `satl --help` / `-h`
@@ -487,12 +514,15 @@ and startup is measured and recorded.
 
 **Landed 2026-08-26.** `Makefile` + seven fragments, `src/system_facts/version.hpp`,
 `src/programs/opening.{hpp,cpp}`, `src/programs/main.cpp`. Largest C++ file is 137
-lines. Best of five runs of 200 invocations: bare `int main(){return 0;}` 1.74 ms,
+lines. *(That is what the M1 commit contained. A microarchitecture fragment and
+`src/programs/cpu_level.cpp` landed the same day, after it — eight fragments and
+five C++ files now. PLAN.md §1 and LAYOUT.md carry the current tree.)* Best of five runs of 200 invocations: bare `int main(){return 0;}` 1.74 ms,
 `satl` 1.75 ms, `satl --version` 1.75 ms — so satl's own share of starting up is
 about 0.01 ms, and `ldd satl` lists 6 shared objects. Two things changed against
-the plan as written: `--help` exits 0 rather than 2 (a request correctly made is
-not an error), and the first satellite's "119 shared objects" turned out to be 78
-on this machine and is not repeated anywhere.
+the **first satellite**: `--help` exits 0 rather than 2 (a request correctly made
+is not an error), and its "119 shared objects" turned out to be 78 on this machine
+and is not repeated anywhere. Neither was a change against this file, which had
+called both already.
 
 ### M2 — the namespace trie and the path interner
 
@@ -514,8 +544,9 @@ Nothing executes. This is the spine.
 
 ### M3 — the lexer
 
-Tokens, spans, the reservation rule. Known words carry their `WordId` out of the
-lexer; user-owned bare words carry their text.
+Tokens, spans, the reservation rule. Known words carry their node identity out of
+the lexer; user-owned bare words carry their text. (`WordId` was this draft's name
+for it, from the flat registry §6 throws away; the trie has no such global id.)
 
 ### M4 — the arena AST and the parser
 
@@ -529,8 +560,8 @@ right before anything can run.
 caret, notes with their own spans, and "did you mean" over the trie level that
 failed. Every milestone after this one reports properly from its first commit.
 
-Retrofitting this is exactly how the first satellite ended up with 177 bespoke
-strings.
+Retrofitting this is exactly how the first satellite ended up with 199 bespoke
+message sites.
 
 ### M6 — resolve
 

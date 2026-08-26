@@ -1,0 +1,606 @@
+# satellite — the plan
+
+**This file is permanent**, and it is the second satellite's plan. It says how the
+language gets built: the architecture, the build, the install, the milestones, and
+what is carried over from the first satellite against what is deliberately left
+behind. [DESIGN.md](DESIGN.md) is the other half and says what the language *is*.
+
+It supersedes `PLAN_ONE.md`, which was written on 2026-08-25 before any of the
+second satellite existed and was always meant to be thrown away. Everything in it
+worth keeping is here. **`PLAN_ONE.md` may be deleted as soon as nothing cites it**
+— it is not a reference, it is a draft that has been superseded.
+
+The first satellite lives at `old_versions/first_satellite/`, is not going anywhere,
+and is the source this is pulled from. It works and it is fast.
+
+---
+
+## 1. Where things stand
+
+**Milestone 1 landed 2026-08-26.** There is a `satl` that says what it is, says how
+a file will be run, and refuses to pretend about the parts that do not exist. There
+is no interpreter behind it yet.
+
+What exists: the `Makefile` as an index over eight fragments under `make_support/`,
+five C++ files — `src/system_facts/version.hpp`, `src/programs/opening.{hpp,cpp}`,
+`src/programs/main.cpp` and `src/programs/cpu_level.cpp` — and
+`satellite_enterprise/`, the Enterprise Linux installer and the artwork. The largest
+C++ file is 137 lines. [LAYOUT.md](LAYOUT.md) lists all of it.
+
+Two things came out different from the **first satellite**, and both were right:
+`--help` exits 0 rather than 2 (a request correctly made is not an error), and that
+satellite's claim of "119 shared objects" turned out to be **78 on this machine** and
+is not repeated anywhere. Neither was a change against `PLAN_ONE.md`, which had
+already called both.
+
+**Next: milestone 2**, the namespace trie and the path interner (§8).
+
+### 1.1 The finding this whole plan hangs off
+
+Read the first satellite end to end and one thing shapes everything else:
+
+**It already built the number table, and the evaluator never read it.**
+
+`src/bytecode_format/format.def` holds **107 word entries** (ids running to 110, so
+three are spent and unused) and **29 paths**, with frozen ids and static_asserts
+enforcing density, ascension and uniqueness. It is careful work. *(Counted
+2026-08-26; `PLAN_ONE.md` said 108 and 30.)*
+
+Meanwhile the actual dispatch for `satellite.console.display(x)`, the most-called
+thing in the language, is: flatten the member chain into a `vector<string>`,
+heap-allocate a joined string **on every module call including the arms that never
+read it**, then try seven arms in a **load-bearing order** — the file says so, "the
+arms are not disjoint" — each doing `full == "satellite…"` or
+`path[0] == "satellite" && path[1] == "…"` string comparisons, with `module_console`
+tried **sixth** and the free function `search_threshold_call` seventh.
+
+So the fastest identity the language had was compiled into a header, asserted over,
+documented at length, and then the hot path compared strings.
+
+Frames tell the other half of the story. Resolve turns local names into integer slot
+indices statically, once, before anything runs — and it is the fastest part of the
+interpreter, measured at 7.1× (DESIGN §7.2).
+
+**Names got numbers and got fast. Paths got numbers and stayed strings.** The whole
+thesis of the second satellite is: finish the job the numbering started. DESIGN §4
+is that design.
+
+---
+
+## 2. Architecture
+
+### 2.1 The options considered
+
+Bytecode was ruled out by the brief. What remains:
+
+| | approach | verdict |
+|---|---|---|
+| 1 | naive tree-walk (`variant` visit, `shared_ptr` children) | what v1 is — the baseline we are beating |
+| 2 | **closure compilation** — walk once, emit a tree of callables with every static decision baked in | **adopt** |
+| 3 | **flattened arena AST** — nodes contiguous, children by `uint32_t` index | **adopt** |
+| 4 | **self-specializing nodes / inline caches** | **adopt, on call sites** |
+| 5 | explicit control stack (CEK) — pausable, resumable | **defer** — §2.5 |
+| 6 | graph reduction | no — for lazy functional languages |
+| — | copy-and-patch (pre-compiled machine-code stencils) | out of scope — it is a compiler |
+
+### 2.2 The arena, first
+
+The first satellite's tree is `shared_ptr<const Expr>` with `sizeof(Expr) == 96`,
+guarded by a static_assert. That means:
+
+- a **cache miss per child**, since children are wherever the allocator put them
+- **96 bytes per node**, most of it paid by every node to fit the widest alternative
+- a refcount on every node that **buys nothing**: the tree is immutable, lives as
+  long as the program, and nothing ever frees a node early
+
+*(Corrected 2026-08-26.)* This list used to claim an atomic refcount touch per node
+visit and cross-thread contention from it. Neither is true of the first satellite:
+`eval` takes `const Expr &` and `exec` takes `const Stmt &`, and every descent
+dereferences rather than copying the handle, so the walk touches no refcount at all.
+The layout costs are real; the atomic ones were not, and a plan that beats a
+strawman cannot tell you whether it won.
+
+An arena of PODs indexed by `uint32_t` fixes all three. Multi-threaded walking
+becomes **atomic-free, not merely safe** — which matters because
+`satellite.variable.thread` is on the roadmap (DESIGN §10.4).
+
+It also kills a documented data race. `Name::slot` is `mutable int` on a
+`shared_ptr<const Expr>`, and the comment holding the race off reads: *"resolve()
+must finish, on one thread, before any evaluation begins."* With an arena and a
+separate resolved side-table indexed by node id, that race is **structurally
+impossible** rather than documented.
+
+### 2.3 Closure compilation, and why it is not bytecode
+
+It needs saying, because they look adjacent:
+
+- no linear instruction stream
+- no opcode decode loop
+- no serializable format
+- **no compile step the user ever runs or waits for**
+
+The closure build is the same pass as resolve, measured in microseconds, and it
+happens between "parsed" and "running" exactly the way resolve already does. From
+outside, `satl file.satl` is as interpreted as it ever was.
+
+What it buys: every decision that *can* be made before execution *is*. Which frame
+slot. Which PathId. Which handler. How many arguments, already checked. At runtime a
+node is one indirect call with no tag test and no re-resolution. 2–5× over a naive
+walk is the usual figure — **to be measured here, not quoted.**
+
+### 2.4 Inline caches
+
+A `Call` node caches the resolved PathId and handler pointer on first execution,
+behind a guard. This is what permanently retires the seven-arm chain of §1.1: the
+second execution of a call site does no lookup at all.
+
+### 2.5 Why the explicit control stack is deferred, not dropped
+
+A CEK machine would make execution **pausable and resumable**, which is what you
+want for green threads, generators, a stepping debugger, Ctrl-C at an arbitrary
+point, and driving the interpreter from a GTK idle callback with no second thread.
+
+It also costs against direct recursion — the figure usually quoted for it is 2–3×,
+and **that one is borrowed rather than measured**, which by §9's own rule means it
+decides nothing here until this project measures it. It is genuinely hard to write.
+So: not now. But **bound the recursion depth from M7 onward** so deep recursion produces a
+clean `capsule call too deep` error rather than a segfault. DESIGN §7.5 has the
+numbers, and the first satellite's `system_facts/stack_facts.cpp` is half the
+machinery already.
+
+### 2.6 Order of adoption
+
+**Arena first** — it is a data-layout decision and everything else rides on it. Then
+closure compilation. Then inline caches. Doing them in the other order means doing
+the arena twice.
+
+---
+
+## 3. The line rule
+
+**No C++ file exceeds 300 lines.**
+
+This is tighter than the first satellite's 325 and it is a hard default rather than
+a suggestion. The first satellite arrived at its ceiling late, by splitting a
+2208-line `eval.cpp` and two 700-line functions *after* they had been written — and
+the splits are visible in the result, with headers named `eval_internal.hpp`
+existing to hold what an anonymous namespace used to, and comments explaining that
+"the bodies below are UNCHANGED; they moved."
+
+**Splitting a file after the fact preserves its shape. Writing to a ceiling changes
+the shape.** So the ceiling applies from the first commit of every file, not from
+the commit where somebody notices.
+
+Consequences to plan for rather than discover:
+
+- **An umbrella header is a legitimate answer.** One door that includes its parts in
+  an order that compiles, so every consumer's include line stays the same.
+- **A dispatch table is a legitimate answer and a chain of `if` arms is not.** This
+  is the same change §1.1 demands for other reasons — `handlers[path_id]` does not
+  grow with the number of paths, so the file holding it does not either.
+- **`words.def` is the one file that may exceed 300 lines.** It is data, not code,
+  and splitting a numbering whose meaning is registration order is the one split
+  that could silently change what a program means (DESIGN §4.3).
+
+Markdown is not C++. This file and DESIGN.md are not bound by the rule.
+
+The same argument produces the same shape one level up: **the `Makefile` is an index
+over `make_support/`, and `satellite_enterprise/install.sh` is an index over
+`install_support/`.** Both start that way rather than arriving there.
+
+---
+
+## 4. The build
+
+### 4.1 Two version numbers, moving at different rates
+
+`SATELLITE_VERSION` (003) is the **language**; it changes rarely and deliberately.
+`SATELLITE_REVISION` (01) is **this build of it** and goes up as work lands. 001 was
+what the first satellite carried while its design was being written, 002 is what it
+became, and 003 is the second satellite — the number moved because the language is
+being rebuilt, not because this build is newer.
+
+They arrive as `-D` on the four compile recipes that need them — `main.o` and
+`opening.o` in each of the two variants — and are **deliberately not in `CXXFLAGS`**, because `CXXFLAGS` is what `.cxxflags-stamp` records and a build stamp
+that changes every second would recompile the whole tree on every invocation,
+permanently silencing the one check that exists to catch a real flag change.
+
+`satl --version` prints **both the path make invoked and the `__VERSION__` the
+compiler reported**, because they are different facts. This project has already been
+bitten once by the difference: `LLVM_BIN` pointed at a directory that no longer
+existed, `c++` answered instead, and every figure attributed to clang was GCC's with
+nothing anywhere saying so.
+
+It caught a second, milder case on 2026-08-26: `CXX=clang++` is exported in this
+machine's environment, so `origin CXX` is `environment` rather than `default` and
+`010-compiler.mk`'s wildcard never fires. `__VERSION__` proved it was the same
+compiler anyway. **That is what printing both fields is for.**
+
+### 4.2 Two microarchitecture builds, and the program that chooses
+
+*Landed 2026-08-26.* `make` produces **three binaries on x86-64 and one everywhere
+else**:
+
+| binary | built with | what it is |
+|---|---|---|
+| `satl` | no `-march` | the baseline build; runs on any x86-64 |
+| `satl.haswell` | `-march=x86-64-v3 -mtune=haswell` | for Haswell (2013) and newer |
+| `satl-cpu-level` | no `-march`, deliberately | prints `haswell` or `baseline` |
+
+`satellite_enterprise/install.sh` runs `satl-cpu-level` and installs the answer as
+`$HOME/.satl/satl`. The machine gets the fastest build it can actually execute, and
+neither build has to be a compromise for the other.
+
+**`-march=x86-64-v3` and not `-march=haswell`, and that is the correctness argument
+for the whole mechanism.** `-march=haswell` additionally licenses FSGSBASE, PCLMUL, RDRND and
+XSAVEOPT on both of this project's compilers, plus INVPCID on clang 24 and HLE on
+gcc 17. *(Measured 2026-08-26 by diffing each compiler's own enabled-feature set;
+AES is in neither, and needs an explicit `-maes`.)* Every real Haswell has them, so the flag is not *wrong* — but the check
+on the other side, `__builtin_cpu_supports("x86-64-v3")` in
+`src/programs/cpu_level.cpp`, does not cover them. The set the compiler may emit
+from would then be a strict superset of the set that was verified, and **that gap is
+where a SIGILL on somebody else's machine comes from.** `-march=x86-64-v3` closes it
+by construction. *Check what you compiled for; compile for what you check.*
+
+`-mtune=haswell` is separate, because tuning is not licensing: it reorders and
+schedules for Haswell and emits no instruction `-march` did not already allow, so a
+Zen 4 running this build runs correct code that was merely scheduled for a different
+pipeline. It is the right guess, since Haswell is the oldest machine that can run it.
+
+**The detector is compiled at the baseline and must stay there.** It is the one
+binary that runs before anything is known about the machine, so an `-march` that let
+the compiler emit a single AVX2 instruction *there* would turn "you get the portable
+build" into a SIGILL on the machine that needed to be told that.
+
+**The build asks the compiler what it targets, not `uname` what the machine is** —
+`$(CXX) -dumpmachine`. The two answers differ under every cross build, and the flags
+go to the compiler, so the compiler decides. On aarch64 and ppc64le — both of which
+Enterprise Linux ships — `-march=x86-64-v3` is not a flag the compiler will take, and
+there is nothing for a second build to be second to; those machines build one `satl`.
+An unrecognised or empty triple takes the one-build branch too, because one build is
+the answer that is never wrong and two builds on a machine we could not identify is a
+guess.
+
+**The installed binary is its own record.** `SATELLITE_BUILD_FLAGS` is baked in per
+variant, so `satl --version` prints which of the two it is for the rest of its life.
+The install therefore writes **no manifest**, and cannot have one that disagrees with
+the file it describes.
+
+Measured on this machine, 2026-08-26 — Intel Xeon E5-2670 v3, which is Haswell-EP:
+
+- `satl-cpu-level` prints `haswell`, and `satl-cpu-level --explain` prints the three
+  levels it read — `x86-64-v2 yes  x86-64-v3 yes  x86-64-v4 no` — so this box gets
+  the haswell build.
+- The flag reaches the compiler: a vectorizable test loop compiles to **17 `ymm` /
+  `vfmadd` / `vmovups` instructions with `-march=x86-64-v3` and 0 without.**
+- `satl` contains **no v3 instruction at all**; `satl.haswell` contains **21** — 16
+  `vmovups` on 256-bit `%ymm0` and 5 `vzeroupper` — and every one of them is inside
+  `satellite::version_text`, where the compiler vectorised a string copy. That is
+  the honest state: the flag reaches the code and changes it, on the one function
+  M1 gave it to work with, and there is still no speed claim to make, because
+  nothing measurable runs there. The payoff arrives with DESIGN §8.1's base-10⁹
+  loops.
+
+Building the variants before there is anything to speed up is the same decision as
+measuring startup at M1 (§4.3): put the guardrail in before there is a language to
+regress it.
+
+Where it lives: `make_support/045-microarchitecture.mk` (the flags, the triple test
+and the object lists), `src/programs/cpu_level.cpp` (the detector), and a second
+stamp file `.cxxflags-stamp-haswell` — two stamps rather than one, because a shared
+stamp would rebuild the baseline objects whenever the haswell flags changed, and
+because a single file's contents could only ever describe one of the two variants.
+
+### 4.3 The startup budget
+
+Measured at M1, with `satl` doing nothing, so that every later milestone has a floor
+to be compared against and a regression has somewhere to be attributed. Best of five
+runs of 200 invocations:
+
+```
+bare int main(){return 0;}          1.74 ms
+satl (M1, opening information)      1.75 ms
+satl --version                      1.75 ms
+```
+
+So satl's own share of starting up is about **0.01 ms**, and `ldd satl` lists **6
+shared objects.**
+
+The numbers live in `make_support/040-sources.mk`, beside the decision they justify
+— not in a commit message, where nobody looks for them again.
+
+**This binary links no GUI, and that is measured rather than tidy-minded.** The first
+satellite's `satl-term` resolves 79 shared objects and maps 78 on this machine
+against `satl`'s 6, and the dynamic linker loads every one before `main()` on every
+run. The first satellite measured that at **25.9 ms with the GTK link against 2.5 ms
+without**, of which 23.4 ms is the linker and the interpreter's own share of hello
+world is 0.3 ms. Rendering was never the problem.
+
+### 4.4 The window needs `dlopen`, not the binary split
+
+The first satellite fixed the startup cost by making `satl` and `satl-term` two
+binaries. That works for a terminal host, which never interpreted anything anyway.
+
+**It does not work for `satellite.window.new()`**, which runs inside a user program,
+which runs in `satl`. You cannot split that out.
+
+The answer is to **`dlopen` a `libsatellite_window.so` the first time a window path
+executes.** Startup stays at this tree's own floor — 1.75 ms (§4.3) — for every
+program that never opens a window, and the 23 ms is paid only by programs that do.
+
+This is a port rather than an invention, and the first satellite deserves the
+credit: its `design/11-build-order.md` already schedules "a `dlopen`ed shim" as its
+own M7, with the done-when condition that `satellite.include(satellite.window)`
+opens a window *and* `ldd satl` still lists six objects. It was planned there and
+never built; it gets built here.
+
+`satl-term` stays, and keeps its name. `satl` keeps its name.
+
+---
+
+## 5. Installing
+
+`satellite_enterprise/` is the Enterprise Linux installer — written and tested on
+AlmaLinux 10.2, aimed at the RHEL family, and it **says so and carries on** if it
+finds itself elsewhere, because refusing on the strength of a name in
+`/etc/os-release` would be a policy dressed up as a check.
+
+`install.sh` is an index over eight fragments in `install_support/`, POSIX sh, and
+**needs no root ever** — everything it writes is under `$HOME`. That is a real
+simplification over the first satellite's installer, which had to compile as the
+human and copy as root; the fixed per-user root is what buys it.
+
+**The root is `$HOME/.satl` and it is not a prefix.** The binary is
+`$HOME/.satl/satl` rather than `$HOME/.satl/bin/satl`: a prefix layout exists so
+many packages can share `bin/`, `lib/` and `share/`, and nothing shares this
+directory. One name to remember, one directory to delete. `share/` underneath it
+keeps the XDG-relative paths so that publishing to the desktop is a link with the
+same relative path on both sides.
+
+Twenty files: the chosen `satl`, the `.satl` mime packet, and nine icon sizes in
+both `apps` and `mimetypes`.
+
+### 5.1 The rules it inherits
+
+- **Every command that changes anything goes through `run()`**, which is what makes
+  `--dry-run` a complete and honest transcript rather than an approximation. Purely
+  read-only helpers — reading `/etc/os-release`, sorting the install list — run
+  directly and deliberately, because a transcript of them is noise, and because a
+  `--dry-run` that could not read the machine could not tell you what it would do.
+- **Nothing edits `.profile`, `.bashrc` or any other file the user owns**, and
+  nothing tells the user to export a variable. A child process cannot change its
+  parent's environment, so an installer that "exports PATH" exports it into a shell
+  that exits one line later; editing a login file is a permanent change made by a
+  program somebody ran once, and `--uninstall` cannot reliably undo it.
+- **`rmdir`, never `rm -rf`.** An uninstall removes files by name and directories
+  only when they are empty, so anything the script did not install survives and is
+  *reported* rather than discovered later.
+- **The install tree is declared exactly once**, in `060-install-tree.sh`, and read
+  by both the install and the uninstall. Two lists is how an install tree rots. When
+  the Makefile grows an `install` target, that function is what should be **deleted**
+  rather than duplicated.
+
+### 5.2 What it will not do on its own
+
+`--link` (a symlink in `~/.local/bin`) and `--desktop` (the icons and file type in
+`~/.local/share`) are **off by default**, and the reason is measured rather than
+principled.
+
+This machine already has `~/.local/bin/satl` — 968536 bytes, the **first**
+satellite's interpreter — plus `satl-term`, the nine hicolor sizes, an `index.theme`
+and the mime packet, all installed there by that satellite's own installer. There is
+a third install at `/usr/local/bin/satl`, root-owned, and because `/usr/local/bin`
+precedes `~/.local/bin` on this PATH, **`satl` resolves to the first satellite** for
+anything that searches PATH. *(Not in this user's interactive shell, where `.bashrc`
+aliases `satl` to this tree's build and an alias beats PATH — so a terminal test and
+a script test answer differently. Noted 2026-08-26.)*
+
+Defaulting those flags on would have replaced a working interpreter with an M1 build
+that cannot interpret anything, on the first plain `./install.sh`. So they are
+opt-in, and even when asked for the script **refuses every path it does not already
+own** — verified: all twenty refused, nothing overwritten. It creates only symlinks,
+which is what makes ownership unambiguous when another install owns real files at
+the same paths.
+
+That is DESIGN §1.1's rule applied to an installer: do everything for the user, and
+never anything behind their back.
+
+### 5.3 The artwork
+
+`satellite_enterprise/icons/` is the installable tree, whose layout mirrors the
+install destination exactly, so installing is a copy and not a translation.
+`satellite_enterprise/icon_artwork/` is the source work, including the `.xcf`.
+Everything was copied byte-for-byte from the first satellite and verified with
+`cmp` — 43 files, no re-encoding.
+
+Two names must not drift: `org.satellite.terminal` (the app, matching the
+GApplication id and the `.desktop` filename) and `application-x-satellite` (the mime
+icon, matching the type with `/` replaced by `-`).
+
+**The SVG and the PNGs must never both be installed.** The icon theme spec lets
+either satisfy a lookup, so shipping both makes which one a shell draws
+unpredictable. The artwork is a photograph, which has no scalable form, so the PNGs
+are the ones that ship and `org.satellite.terminal.svg` travels in the tree
+uninstalled. The `.desktop` entry is likewise held back until M11 builds the binary
+it launches — a launcher for a missing program is a menu entry that does nothing.
+
+`satellite_enterprise/icons/application-x-satellite.xml` carries several findings in
+its own comments —
+why `generic-icon` points at our own icon, why `--` is banned inside its comments,
+why the magic offset window is 4096. **Read them before changing anything about
+icons or the mime type.** Each was found the hard way.
+
+---
+
+## 6. What we keep from the first satellite
+
+Ported, adapted, or taken as-is:
+
+- **The syntax and the generating rule.** It is coherent and it is the identity.
+  DESIGN §1–§6.
+- **Resolve and frames.** Names to integer frame slots, statically, before anything
+  runs. The best engineering in the first satellite, and measured. DESIGN §7.
+- **Frames as isolation, the library as the atomic global.** The `SLOT_GLOBAL` /
+  `SLOT_CAPSULE` / `SLOT_METHOD` / `SLOT_SUIT` / `SLOT_FIELD` sentinel scheme.
+- **Exact-decimal `Number` on base-10⁹ limbs, with `double` constructors deleted.**
+  Refusing binary floats at the C++ type level is a genuinely good call and it is
+  the foundation `satellite.variable.float` needs. DESIGN §8.1.
+- **The Console with its own printer thread**, and the `drain()` barrier before
+  reading input. DESIGN §10.1.
+- **The SIGINT handling** — installed without `SA_RESTART`, using `eof()` to tell a
+  real closed stdin from an interrupted read. Hard-won; do not rediscover.
+- **The search power** — the comparator/walker split, deliberately free of the
+  Evaluator class and *callable from anything*. The ten-level ladder is a general
+  power that applies to any value the language has, present or future. Port it close
+  to unchanged.
+- **The X-macro registry mechanism**, ids frozen, append-only, static_asserts in the
+  header so every consumer inherits them.
+- **`format.def`'s rule**, verbatim: prose may explain a number, it may never be the
+  only place the number lives.
+- **Spans on every node.**
+- **PCG, and the fast / normal / ultra tiers.** DESIGN §11.
+- **The two-binary split and the startup measurement discipline.**
+- **The comment culture.** Comments that state a number and where it came from,
+  rather than an intent. Rare and valuable. Keep writing them.
+
+---
+
+## 7. What we throw away
+
+- **String-keyed dispatch.** All of it: the joined path built per call, the ordered
+  arms, the `full == "…"` ladders. This is the change everything else hangs off
+  (§1.1).
+- **`shared_ptr<const Expr>` for the tree.** §2.2.
+- **`mutable int slot` on `Name`.** §2.2.
+- **`EvalError{std::string, Span}`** and the 199 `fail()` call sites that each
+  compose their own message string. DESIGN §9.
+- **"Record the error and return `nullptr`."** The decision not to throw is kept and
+  is measured; the 199 sites where a missed null check is a segfault are not. DESIGN
+  §9.1.
+- **Switching on raw `std::variant` indices.** The code documents this as a landmine
+  — "APPEND ONLY", "silently renumber every alternative after it". Make adding an
+  alternative a compile error.
+- **The `bytecode_format` module *as named*.** The ids are right; the framing is
+  wrong. It is not a bytecode format, it is the language's word-and-path registry,
+  and it belongs in the hot path rather than in a serialiser. New home:
+  `src/satellite_words/`.
+- **The fixed four-segment `SAT_PATH`.** No word limit — the trie has no depth limit
+  (DESIGN §4.5).
+- **The `100ms` special case** in `eval_call`, which matches on the argument
+  *expression* before evaluating arguments and hardcodes a string comparison against
+  `satellite.console.display`. With a real registry, `display` **declares** that it
+  accepts a pace argument.
+- **Housekeeping.** No `.o` files committed beside sources. No tarball blobs in the
+  tree. No scratch test directories at the root. Build output lives out of source.
+
+---
+
+## 8. Milestones
+
+Each milestone is a thing that **works and can be demonstrated.** No milestone is
+"the parser is half done."
+
+**M1 — `satl` exists and says how to use it.** *Landed 2026-08-26.* §1.
+
+**M2 — the namespace trie and the path interner.** ← next
+- `src/satellite_words/words.def`, written as a **tree**: each entry names its
+  parent, and its position among that parent's children *is* its number.
+- the trie, the spelling interner, and `PathId`.
+- `words.hpp` as the consumer, with the static_asserts **in the header** so every
+  future consumer inherits them. What they check, given per-parent numbering: every
+  parent's children are dense from 1 with no holes and no duplicates, every named
+  parent exists, and no node is its own ancestor.
+- `satl --words` dumps the tree with each node's number — **the registry gets a
+  consumer in the same milestone it gets written**, which is the one thing the first
+  satellite did not do. It shipped three commits where the registry had zero
+  consumers, which is how two sections assigned kind 4 to different things and
+  neither noticed.
+- a test proving `satellite.console.display` walks to `1 1 1`,
+  `satellite.random.normal` to `1 5 2`, and that both intern to stable `PathId`s.
+
+**Open, and it must be settled before `words.def` is written**, because DESIGN §4.3
+freezes registration order the moment that file lands: **seed it from the first
+satellite's whole 107-word surface, or only from what M8–M10 actually need?**
+
+Seeding wide freezes numbering for words we may not end up building the same way.
+Seeding narrow means `satellite.random` gets its number later and lands wherever it
+lands. DESIGN §4.1's worked examples already fix `satellite.random` at `1 5` and
+`satellite.random.normal` at `1 5 2`, which implies the wide seed — so either seed
+wide, or change those examples before anyone writes them down as a promise.
+
+Nothing executes. This is the spine.
+
+**M3 — the lexer.** Tokens, spans, the reservation rule. Known words carry their
+node identity out of the lexer; user-owned bare words carry their text. DESIGN §5.
+
+**M4 — the arena AST and the parser.** `uint32_t` node indices into a contiguous
+arena, no `shared_ptr` anywhere in the tree. `satl --unparse file.satl` round-trips,
+which is how we know the parser is right before anything can run.
+
+**M5 — the error reporter.** Built **before** the evaluator, deliberately. Codes,
+spans, a source excerpt with a caret, notes with their own spans, and "did you mean"
+over the trie level that failed. Every milestone after this reports properly from its
+first commit. Retrofitting this is exactly how the first satellite ended up with 200
+bespoke message sites.
+
+**M6 — resolve.** Names to integer frame slots. Capsules, frames, the `SLOT_*`
+sentinels. Resolved data in a side table indexed by arena node id, not `mutable` on
+the node. DESIGN §7.
+
+**M7 — the value model and closure compilation.** `Value` (40 bytes, the
+static_assert comes too), `Number`, `Str`. The arena AST compiles to a closure tree.
+Module calls dispatch through `handlers[path_id]`, and the **inline caches of §2.4
+land here too** — third of the three adoptions §2.6 orders, and the milestone that
+owns them. Recursion depth is bounded here.
+
+**M8 — hello world.** DESIGN §3 runs. Console with its printer thread,
+`satellite.main`, `satellite.return`. **Startup measured again against M1's number.**
+
+**M9 — scalars and control flow.** `if` / `else` / `while` / `for`.
+`satellite.variable.bool`, `.number`, `.string` and their methods.
+
+**M10 — containers and the search power.** `satellite.container.list`,
+`satellite.container.map`, and the search power ported close to unchanged.
+
+**M11 — the REPL and `satl-term`.** The prompt, Ctrl-C, the exit words, and the GTK4
++ VTE window binary. The `.desktop` entry joins the install here (§5.3).
+
+`satl-term` is a **fourth binary and not a fifth**: it links the window and nothing
+of the runtime, and spawns the installed `satl` into its PTY, so it never interprets
+and has nothing for `-march` to act on. It is built at the baseline like
+`satl-cpu-level`, and it gets the haswell interpreter for free by spawning whichever
+`satl` the installer chose. §4.2's table, `050-build.mk`'s "three binaries on x86-64
+and one everywhere else", and LAYOUT.md's build-output table all become four and two
+at this milestone.
+
+**M12 — threads.** `satellite.variable.thread`. The arena makes the walk atomic-free;
+the Console already keeps output lines atomic.
+
+**M13 — windows.** `libsatellite_window.so`, `dlopen`ed on first use. Marshalling to
+the UI thread is satellite's job, never the user's (DESIGN §10.3).
+
+**Later, in no fixed order.** `satellite.variable.file`, `.time`, `.date`;
+`satellite.random.*`; `satellite.variable.float`; `satellite.variable.variant`;
+spacesuits; `satellite.include` of other files; Satellite Orbit and the wire format.
+
+---
+
+## 9. Measurement discipline
+
+- **Measure on this machine, do not quote.** The first satellite's source says gtk4
+  and vte pull "119 shared objects"; the real number here is 78. The shape held and
+  the count did not, so the count is not repeated anywhere.
+- **A number goes beside the decision it justifies**, in the file that makes the
+  decision — not in a commit message, where nobody looks for it again.
+- **Say what was measured and when.** Every figure in this document carries the
+  machine or the date or both.
+- **Startup is re-measured every milestone** against §4.3's floor.
+- **Verify through the real code path.** If a check passes and the thing is still
+  broken, the check is wrong. Running the *installed* binary is what proves an
+  install, not comparing bytes.
+
+---
+
+*Companions: [DESIGN.md](DESIGN.md) — the generating rule, the syntax, the
+numbering, scope, types, and what the language refuses. [LAYOUT.md](LAYOUT.md) —
+every file in the tree and what it is for.*
