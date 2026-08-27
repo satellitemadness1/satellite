@@ -765,8 +765,32 @@ bespoke message sites.
 sentinels. Resolved data in a side table indexed by arena node id, not `mutable` on
 the node. DESIGN §7.
 
+**M6.5 — `satellite.variable.number`.** *(Its own milestone as of 2026-08-27; it was
+a bullet inside M7.)* The port of the first satellite's `satellite_number` — 10 files,
+1509 lines, internally closed, every file already under §3's ceiling (§6.1) — plus the
+one thing the port does not bring with it.
+
+**The sign becomes an explicit `satellite.variable.bool` named `positive`, defaulting
+to `true`**, and the magnitude never carries one (DESIGN §8.1). A number with no sign
+written is positive; something has to flip the flag for it to be otherwise.
+
+**It lands here rather than inside M7 because M7's `Value` contains one**, and because
+it is the milestone that builds the sign **both** numeric types share. M9.5's float
+inherits it rather than defining a second one, which is the whole reason the two can
+be milestones apart instead of one large one.
+
+Done when: exact arbitrary-precision arithmetic runs, negation and `abs` and ordering
+of negatives are right, there is no negative zero, and `sizeof` is inside DESIGN
+§8.2's 40-byte `Value` budget — which §6.1 names as the one number that could make
+this port not fit, and which is cheap to check first.
+
+Four things to settle before copying, in `SCRATCH.md/PORTING.md`, and **the sign is a
+fifth**: where v1 currently keeps it has to be checked against DESIGN §8.1 before the
+copy rather than after.
+
 **M7 — the value model and closure compilation.** `Value` (40 bytes, the
-static_assert comes too), `Number`, `Str`. The arena AST compiles to a closure tree.
+static_assert comes too) and `Str`. `Number` arrives at M6.5 and this milestone is its
+first consumer. The arena AST compiles to a closure tree.
 Module calls dispatch through `handlers[path_id]`, and the **inline caches of §2.4
 land here too** — third of the three adoptions §2.6 orders, and the milestone that
 owns them. Recursion depth is bounded here.
@@ -775,27 +799,29 @@ owns them. Recursion depth is bounded here.
 `satellite.main`, `satellite.return`. **Startup measured again against M1's number.**
 
 **M9 — scalars and control flow.** `if` / `else` / `while` / `for`.
-`satellite.variable.bool`, `.number`, `.string` and their methods — and
-**`satellite.variable.float`**, which moved here from "Later" on 2026-08-27.
+`satellite.variable.bool`, `.number`, `.string` and their methods.
 
-It is a scalar, and this is the scalars milestone, so anywhere later would mean a
-milestone whose only content is one type — which is what "Later, in no fixed order"
-already was. It sat there while DESIGN §13 called it *"on the critical path"* and
-QUAD.md §3.1 called it *"the whole remaining gap"*, and two permanent documents
-disagreeing about whether a thing is urgent is worse than either answer.
+**M9.5 — `satellite.variable.float`.** *(Its own milestone as of 2026-08-27. It spent
+the morning in "Later, in no fixed order", was moved into M9, and is separated out
+here because it is a type with a specification of its own and one undecided rule.)*
 
-*(2026-08-27, later the same day: the **representation** is now decided — a float is
-a `satellite.variable.bool` and two `satellite_number`s — a sign, then a side of the
-decimal point each, left exact and unbounded and right bounded. DESIGN §8.6. That costs **no new arithmetic**: §6.1 has
-`satellite_number` at 1509 lines porting as-is, and a float is composition over two of
-them. The rounding rule is what remains.)*
+A `satellite.variable.bool` and **two `satellite_number`s** — `positive`, then the
+integer part and the fractional part, each an exact base-10⁹ magnitude. **DESIGN §8.6
+is the specification**: the three invariants, `normalize`, the four operations,
+modulus, power, and the classification that says which operations round and which
+cannot.
 
-**The consequence is the reason for the move: M9 cannot land until the rounding rule
-is decided.** DESIGN §13 argues the rule is part of the type rather than a setting on
-it, because `pow` at a fractional exponent has no exact decimal value at any length —
-so there is nothing to build until that is settled, and `float_digits` at `1 14 2 4`
-has no meaning until it is. "Later, in no fixed order" is exactly what removed that
-forcing function.
+**It costs no new arithmetic.** M6.5 brought `satellite_number` across and built the
+sign; a float is composition over two of them plus rounding.
+
+Two documents used to disagree about whether this was urgent — PLAN filed it under
+"Later" while DESIGN §13 and QUAD.md §3.1 called it the critical path. It is the
+critical path: QUAD is 164 `double`s and cannot be written without it.
+
+**Done when the four operations run and — the blocker — the rounding rule is chosen.**
+Truncate, half-up, or half-even. No representation escapes it: `pow` at a fractional
+exponent is irrational, so the fractional half must be rounded to exist. QUAD's
+determinism invariant means a program's behaviour depends on the answer.
 
 **M10 — containers and the search power.** `satellite.container.list`,
 `satellite.container.map`, and the search power ported close to unchanged.

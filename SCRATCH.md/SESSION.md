@@ -353,7 +353,12 @@ number column is diffable.
    point, both halves magnitudes that never carry a sign. Left exact and unbounded,
    right bounded, and the right half's length is the precision. No negative zero.
    **DESIGN §8.6** is the specification: the invariants, `normalize`, the four
-   operations, modulus, power, and the three classes that say where rounding bites. It is **M9** and cannot land until the
+   operations, modulus, power, and the three classes that say where rounding bites.
+   The sign is an explicit `positive` bool defaulting to **true**, and DESIGN §8.1
+   now gives `satellite.variable.number` the same one, so the two types cannot
+   disagree about what negative means. Both are now milestones of their own —
+   **M6.5** for the number (before M7, whose `Value` holds one, and it is where the
+   shared sign is built) and **M9.5** for the float. It is **M9** and cannot land until the
    **rounding rule** — truncate, half-up, or half-even — is chosen, because
    `pow` at a fractional exponent is irrational and no pair of exact numbers
    represents it. Also still open: whether

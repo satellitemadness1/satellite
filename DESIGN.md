@@ -772,9 +772,9 @@ told. If the two ever need to differ, they need two different names.
 | satellite type | representation | notes |
 |---|---|---|
 | `satellite.variable.bool` | `bool` | written `satellite.bool.true` / `.false` |
-| `satellite.variable.number` | exact arbitrary-precision decimal | §8.1 |
+| `satellite.variable.number` | exact arbitrary-precision decimal, with a `positive` bool | §8.1 — the same sign mechanism §8.6 gives a float |
 | `satellite.variable.string` | `SatString` | 16-bit code table |
-| `satellite.variable.float` | a `bool` and **two `satellite_number`s** — sign, left of the point, right of it | §8.6. Left exact and unbounded; right bounded, and its length is the precision |
+| `satellite.variable.float` | a `bool` and **two `satellite_number`s** — `positive`, left of the point, right of it | §8.6. Left exact and unbounded; right bounded, and its length is the precision |
 | `satellite.container.list<T>` | vector of values | children shared |
 | `satellite.container.map<K,V>` | body behind a handle | insertion-ordered; keys restricted (§6.5) |
 | `satellite.variable.time` | absolute instant, UTC | §13, open: one clock, one epoch |
@@ -819,6 +819,25 @@ shifts in base 10⁹ against full base conversions in base 2³². Division is lo
 division one **decimal** digit at a time: the inner loop runs at most nine times, and
 getting nine comparisons right is a different proposition from getting base-10⁹
 quotient estimation and its correction step right.
+
+#### The sign is a `satellite.variable.bool`, and it is the same one a float uses
+
+*(2026-08-27.)* A number's sign is an explicit `satellite.variable.bool` named
+`positive`, **defaulting to `true`** — a number with no sign written is positive, and
+something has to flip the flag for it to be otherwise. The magnitude never carries a
+sign of its own.
+
+**It is deliberately the same mechanism §8.6 gives a float**, not a parallel one. The
+two types are the language's arithmetic and they will be compared, converted and
+mixed constantly; one sign rule held in one place is the difference between that being
+free and being a source of disagreements nobody can find. Negation, `abs`, the
+sign of a product, and the ordering of negatives are then written once and true of
+both. There is no negative zero in either.
+
+**This is a change to what gets ported.** PLAN §6.1 brings `satellite_number` across
+close to unchanged, and where its sign currently lives has to be checked against this
+before the copy — `SCRATCH.md/PORTING.md` has the other four things to settle and this
+is a fifth.
 
 **The small case never allocates.** A null bignum pointer is the fast path, so a
 loop counter, an index and every small literal live entirely in a `long long`, and
@@ -867,16 +886,29 @@ in another base. `hexadecimal` is the language's one alias, for `hex`.
 **A float is a `satellite.variable.bool` and two `satellite_number`s.**
 
 ```
-    float = (negative, L, R)      value = (negative ? -1 : +1) x (L + R)
+    float = (positive, L, R)      value = (positive ? +1 : -1) x (L + R)
 ```
 
 `L` is the integer part and `R` the fractional part, each an exact base-10⁹
-arbitrary-precision decimal (§8.1). `negative` is the sign of the whole value.
+arbitrary-precision magnitude (§8.1). `positive` is the sign of the whole value.
 Three invariants:
 
 1. **`L ≥ 0` and `R ≥ 0`** — the halves are magnitudes and never carry a sign.
 2. **`R < 1`.**
-3. **`negative` is false when `L` and `R` are both zero** — there is no negative zero.
+3. **`positive` is true when `L` and `R` are both zero** — there is no negative zero.
+
+**`positive`, and it defaults to `true`.** A number with no sign written is a positive
+number, so the default is the common case and nothing has to say so at a call site.
+The field is named for the true case rather than the false one deliberately: reading
+`positive: true` is one thought and reading `negative: false` is two, and §1.1's
+tie-breaker spends the language's cleverness on the reader rather than on the
+implementation.
+
+**The consequence to know before writing the C++**: a zero-initialised struct is
+therefore **not** a valid value — it reads as negative zero, which invariant 3
+forbids. That is a footgun and also a check: `memset` over one of these is detectable
+rather than silent. Construction must set the flag, and §8.1's guard is the model for
+making the compiler enforce it.
 
 **Sign-magnitude, with the sign in one place, and that is a correction.** An earlier
 draft of this section defined the value as `L + R` with each half carrying its own
@@ -886,10 +918,10 @@ violate silently rather than a thing the representation makes unsayable. One sig
 held once, is what every real float format does and it is what this does.
 
 ```
-     3.14  =  (false, 3, 0.14)
-    -3.14  =  (true,  3, 0.14)
-    -0.14  =  (true,  0, 0.14)
-         0  =  (false, 0, 0)
+     3.14  =  (true,  3, 0.14)
+    -3.14  =  (false, 3, 0.14)
+    -0.14  =  (false, 0, 0.14)
+         0  =  (true,  0, 0)
 ```
 
 **Invariant 3 is not fussiness.** `-0` would compare unequal to `0` while printing
@@ -915,7 +947,7 @@ that does not state one, not a global dial.
 Every operation ends here, and **it is one step, not two.**
 
 - **carry**: while `R ≥ 1`, move `trunc(R)` into `L`.
-- then clear `negative` if `L` and `R` are both zero (invariant 3).
+- then set `positive` if `L` and `R` are both zero (invariant 3).
 
 Sign-magnitude is what buys this. Because both halves are non-negative there is no
 sign disagreement to repair, so the borrow step the earlier signed-halves draft
@@ -929,7 +961,7 @@ digits sum to at most *n* digits, plus a carry that `normalize` moves into `L` �
 the property `double` does not have and it is free here.
 
 ```
-    negate                    flip `negative`, unless the value is zero
+    negate                    flip `positive`, unless the value is zero
     subtraction               addition of the negation
 
     same sign                 normalize(sign, L₁+L₂, R₁+R₂)
@@ -957,8 +989,8 @@ QUAD's per-tick decay produces, and precisely what the bound on `R` exists to st
 Round `R` to the result's precision.
 
 **Multiplication and division get their sign for free**, which is the other half of
-the trade: `negative` on the result is the exclusive-or of the operands', decided
-before any arithmetic runs and never revisited. Only the magnitudes are multiplied or
+the trade: the result is `positive` exactly when the operands' flags **agree**,
+decided before any arithmetic runs and never revisited. Only the magnitudes are multiplied or
 divided.
 
 **Division always rounds, because its answer is usually not finite.** `1/3` has no
@@ -1034,7 +1066,7 @@ belong together whenever they arrive. `1/3` and `pow(0.37, 4.65)` have no termin
 decimal, so there is nothing to round *from*; the rounding is what produces the value.
 
 `satellite.variable.number.truncate(a)` is `1 6 4 13` and `.sqrt(a)` is `1 6 4 14`.
-Sign-magnitude makes two of class 1 nearly free: **`abs` clears one bool** and
+Sign-magnitude makes two of class 1 nearly free: **`abs` sets one bool** and
 **`trunc` is just `L`**.
 
 **Conversion, for completeness.** A number becomes a float as `(n, 0)`, which is
@@ -1044,7 +1076,7 @@ conversion, so the program names it.
 
 #### Comparison
 
-Compare `negative` first — a false sorts above a true, and invariant 3 is what makes
+Compare `positive` first — a true sorts above a false, and invariant 3 is what makes
 that safe, since there is no `-0` to be unequal to `0`. Within one sign compare `L`,
 then `R`, reversing the result when both are negative.
 
@@ -1336,8 +1368,10 @@ critical path.
 ### Open
 
 - **`satellite.variable.float` — DECIDED 2026-08-27: a `satellite.variable.bool` and
-  two `satellite_number`s.** A sign, then left of the decimal point and right of it,
-  each an exact base-10⁹ arbitrary-precision magnitude. That is *"infinitely long in both
+  two `satellite_number`s.** A `positive` flag defaulting to `true`, then left of the
+  decimal point and right of it, each an exact base-10⁹ arbitrary-precision magnitude.
+  §8.1 now carries the same sign mechanism, so a number and a float agree about what
+  negative means by construction rather than by review. That is *"infinitely long in both
   directions"* read literally, and it is the author's decision.
 
   **The left half is exact and unbounded. The right half is bounded, and that is

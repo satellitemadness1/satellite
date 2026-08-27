@@ -61,10 +61,18 @@ it *"the whole remaining gap"* and DESIGN §13 called it *"on the critical path.
 permanent documents in direct contradiction about whether the acceptance test's one
 remaining blocker was urgent.
 
-**Now: M9**, the scalars milestone, because a float is a scalar and anywhere later
-would be a milestone containing one type. **M9 therefore cannot land until the
-rounding rule is decided**, which is the forcing function "Later" removed and the
-whole reason for moving it.
+**Now: its own milestone, M9.5**, with `satellite.variable.number` pulled out of M7
+into **M6.5** beside it. Both were bullets inside larger milestones and both are types
+with specifications of their own. They are apart rather than merged because M7's
+`Value` contains a `Number` — so number must precede M7 — while the float waits on a
+rule nobody has chosen.
+
+**M6.5 builds the sign both types share** (an explicit `positive` bool defaulting to
+true, DESIGN §8.1), so M9.5 inherits it instead of defining a second one. That shared
+sign is the reason they can be two milestones instead of one large one.
+
+**M9.5 cannot land until the rounding rule is decided** — truncate, half-up, or
+half-even — which is the forcing function "Later, in no fixed order" removed.
 
 It also carries work that is not just "build a type":
 
