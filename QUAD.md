@@ -116,11 +116,17 @@ digits per node, for a number the program prints at `%.2f`.
 **six significant digits** — and reads it back. Every save. The program round-trips
 its whole state through six digits and keeps working. Its display is two.
 
-So the open question is now precise: **what is the rounding rule, what is the
-default precision, and where does it live.**
-`satellite.library.system.float_digits` is numbered at `1 14 2 4` as the dial's
-home, beside `division_digits`, which may already be the same knob under a narrower
-name.
+**The representation was decided on 2026-08-27: a float is two `satellite_number`s**,
+one for each side of the decimal point (DESIGN §13). The left half stays exact and
+unbounded; the right half is bounded, which is where QUAD's per-tick decay grows and
+where `pow`'s irrational answer has to be rounded to exist. The right half's length is
+the precision, so `satellite.library.system.float_digits` (`1 14 2 4`) becomes the
+**default** length rather than a global dial — which is what QUAD needs, holding
+activations near six digits and printing them at two.
+
+**What is still open is the rounding rule** — truncate, half-up, or half-even. QUAD's
+invariant 8 is determinism, so its behaviour depends on the answer. PLAN §8 puts the
+float in **M9**, which cannot land until the rule is chosen.
 
 **This puts DESIGN §8.1 under pressure and §8.1 now says so.** Its argument — no
 `double`, exact always, guarded at the C++ type level — is right for

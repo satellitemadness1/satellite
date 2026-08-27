@@ -347,8 +347,14 @@ number column is diffable.
 
 ### 5.7 Still open after this session
 
-1. **The float.** Rounding rule, default precision, and whether
-   `satellite.library.system.division_digits` `1 14 2 1` is already the same dial as
+1. **The float — representation settled, rounding rule not.** The author decided
+   2026-08-27 that a float is **two `satellite_number`s**, one per side of the
+   decimal point; left exact and unbounded, right bounded, and the right half's
+   length is the precision (DESIGN §13). It is **M9** and cannot land until the
+   **rounding rule** — truncate, half-up, or half-even — is chosen, because
+   `pow` at a fractional exponent is irrational and no pair of exact numbers
+   represents it. Also still open: whether
+   `satellite.library.system.division_digits` `1 14 2 1` is the same knob as
    `float_digits` `1 14 2 4` under a narrower name.
 2. **Call shapes sit at two depths.** `include()` is a *child* of `include` at
    `1 1 0`; `input()` is a *sibling* of `display` at `1 5 2`. WORD_NUMBERS.md §4 now

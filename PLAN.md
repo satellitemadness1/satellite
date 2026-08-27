@@ -784,6 +784,12 @@ already was. It sat there while DESIGN §13 called it *"on the critical path"* a
 QUAD.md §3.1 called it *"the whole remaining gap"*, and two permanent documents
 disagreeing about whether a thing is urgent is worse than either answer.
 
+*(2026-08-27, later the same day: the **representation** is now decided — a float is
+two `satellite_number`s, one per side of the decimal point, left exact and unbounded
+and right bounded. DESIGN §13. That costs **no new arithmetic**: §6.1 has
+`satellite_number` at 1509 lines porting as-is, and a float is composition over two of
+them. The rounding rule is what remains.)*
+
 **The consequence is the reason for the move: M9 cannot land until the rounding rule
 is decided.** DESIGN §13 argues the rule is part of the type rather than a setting on
 it, because `pow` at a fractional exponent has no exact decimal value at any length —

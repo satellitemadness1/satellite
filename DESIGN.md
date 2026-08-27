@@ -774,7 +774,7 @@ told. If the two ever need to differ, they need two different names.
 | `satellite.variable.bool` | `bool` | written `satellite.bool.true` / `.false` |
 | `satellite.variable.number` | exact arbitrary-precision decimal | §8.1 |
 | `satellite.variable.string` | `SatString` | 16-bit code table |
-| `satellite.variable.float` | — | §13, open: what "infinite" means downward |
+| `satellite.variable.float` | **two `satellite_number`s** — left of the point, right of it | §13. Left exact and unbounded; right bounded, and its length is the precision |
 | `satellite.container.list<T>` | vector of values | children shared |
 | `satellite.container.map<K,V>` | body behind a handle | insertion-ordered; keys restricted (§6.5) |
 | `satellite.variable.time` | absolute instant, UTC | §13, open: one clock, one epoch |
@@ -1127,9 +1127,53 @@ critical path.
 
 ### Open
 
-- **`satellite.variable.float` — "infinitely long in both directions."** §8.1's
-  base-10⁹ representation gives the integer half. The fractional half was framed
-  here as a choice between *lazy* and *bounded by a precision dial*, and reading
+- **`satellite.variable.float` — DECIDED 2026-08-27: it is two `satellite_number`s,
+  one per direction.** Left of the decimal point and right of it, each an exact
+  base-10⁹ arbitrary-precision integer. That is *"infinitely long in both
+  directions"* read literally, and it is the author's decision.
+
+  **The left half is exact and unbounded. The right half is bounded, and that is
+  where every hard question lives.** Putting the bound there and only there is what
+  makes the representation work:
+
+  - repeated multiplication grows digits *downward* — `activation *= keep` every
+    tick, every node, in QUAD's `sky.hpp:355` — so bounding the right half bounds
+    the growth without ever truncating a magnitude
+  - a program that counts to a trillion and a program that decays a weight for a
+    thousand ticks want opposite things, and this gives each of them theirs
+
+  **The right half's length IS the precision**, so precision travels with the value
+  rather than living in a global. `satellite.library.system.float_digits`
+  (`1 14 2 4`) therefore stops being "the dial" and becomes **the default length of
+  the right half** for a value that does not state one. That matters for the program
+  this language exists to run: QUAD holds activations at about six significant digits
+  (`sky.hpp:461` round-trips its whole state through `operator<<` and works) and
+  prints them at two.
+
+  **What this costs to build: no new arithmetic.** PLAN §6.1 has `satellite_number` at
+  10 files and 1509 lines, internally closed, porting as-is. A float is composition
+  over two of them.
+
+  **What is still open is the rounding rule, and it is not a detail.** Truncate,
+  round-half-up, or round-half-even — and whichever it is, it must be stated, because
+  the answers genuinely differ and QUAD's determinism invariant means a program's
+  behaviour depends on it. It cannot be avoided by any choice of representation:
+  `rack.hpp:59` computes `pow(urgency, exp)` with `exp` always fractional, and `x^y`
+  at fractional `y` is irrational — **no pair of exact numbers represents it.** The
+  right half has to be *rounded to exist*, which is why the rule is part of the type
+  rather than a setting on it.
+
+  **M9 owns this** (PLAN §8) and cannot land until the rounding rule is chosen.
+
+  *(The two readings not taken, recorded so they are not re-proposed: **numerator and
+  denominator** is the rational §8.1 already refuses — denominators grow without
+  bound, and QUAD's per-tick decay is exactly that failure. **Significand and
+  exponent** is not two numbers at all; §8.1 defines a single `Number` as "a bignum
+  significand times a power of ten", so that reading makes float and number the same
+  type.)*
+
+- ~~**`satellite.variable.float` — the earlier framing.**~~ It was posed here as a
+  choice between *lazy* and *bounded by a precision dial*, and reading
   QUAD's source on 2026-08-27 showed that framing is answering the wrong question.
 
   **A dial is not a convenience. It is the only way some of these answers exist.**
