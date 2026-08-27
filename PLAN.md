@@ -775,7 +775,21 @@ owns them. Recursion depth is bounded here.
 `satellite.main`, `satellite.return`. **Startup measured again against M1's number.**
 
 **M9 — scalars and control flow.** `if` / `else` / `while` / `for`.
-`satellite.variable.bool`, `.number`, `.string` and their methods.
+`satellite.variable.bool`, `.number`, `.string` and their methods — and
+**`satellite.variable.float`**, which moved here from "Later" on 2026-08-27.
+
+It is a scalar, and this is the scalars milestone, so anywhere later would mean a
+milestone whose only content is one type — which is what "Later, in no fixed order"
+already was. It sat there while DESIGN §13 called it *"on the critical path"* and
+QUAD.md §3.1 called it *"the whole remaining gap"*, and two permanent documents
+disagreeing about whether a thing is urgent is worse than either answer.
+
+**The consequence is the reason for the move: M9 cannot land until the rounding rule
+is decided.** DESIGN §13 argues the rule is part of the type rather than a setting on
+it, because `pow` at a fractional exponent has no exact decimal value at any length —
+so there is nothing to build until that is settled, and `float_digits` at `1 14 2 4`
+has no meaning until it is. "Later, in no fixed order" is exactly what removed that
+forcing function.
 
 **M10 — containers and the search power.** `satellite.container.list`,
 `satellite.container.map`, and the search power ported close to unchanged.
@@ -798,8 +812,16 @@ the Console already keeps output lines atomic.
 the UI thread is satellite's job, never the user's (DESIGN §10.3).
 
 **Later, in no fixed order.** `satellite.variable.file`, `.time`, `.date`;
-`satellite.random.*`; `satellite.variable.float`; `satellite.variable.variant`;
-spacesuits; `satellite.include` of other files; Satellite Orbit and the wire format.
+`satellite.random.*`; `satellite.variable.variant`; spacesuits;
+`satellite.include` of other files; Satellite Orbit and the wire format.
+
+*(`satellite.variable.float` was here until 2026-08-27 and is now M9.)*
+**This list is not a milestone and things hide in it.**
+[SCRATCH.md/MILESTONE.md](SCRATCH.md/MILESTONE.md) is the audit: 50 of
+WORD_NUMBERS.md's 215 numbered paths belong to a namespace §8 never mentions at all —
+`satellite.system` alone is 30 — and `satellite.returns` is worse than unscheduled,
+because DESIGN §6.1 gives it its own parse rule, which means **M3 or M4 already owns
+it and does not say so.**
 
 ---
 
