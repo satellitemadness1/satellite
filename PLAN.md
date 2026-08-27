@@ -15,6 +15,21 @@ and is the source this is pulled from. It works and it is fast.
 
 ---
 
+## 0. What this is all for
+
+[QUAD.md](QUAD.md) names the program satellite has to be able to express:
+`/home/madness/code/cxx/quad_infinity/`, 3029 lines of C++ that run a model of a
+mind. It is a general-purpose language and everything below is meant generally,
+but that program is the acceptance test, and QUAD.md §3 lists **four things the
+language has not settled that it needs** — floats, a set, sorting, and a console
+that can address a screen. Two of those are currently in DESIGN §12's deferred list
+and one is in §13's open list, so the goal changes what "deferred" is allowed to
+mean.
+
+None of it touches M2 through M8. All of it lands on M9 and M10, and QUAD.md §4
+proposes a milestone that does not exist yet: **one mechanism out of `mind.hpp`,
+running.**
+
 ## 1. Where things stand
 
 **Milestone 1 landed 2026-08-26.** There is a `satl` that says what it is, says how
@@ -71,7 +86,10 @@ is that design.
 
 ### 2.1 The options considered
 
-Bytecode was ruled out by the brief. What remains:
+Bytecode was ruled out by the brief — meaning the *machinery*: an instruction
+stream, a decode loop, a compile step. **The part of a bytecode that earns its
+keep is kept**, and DESIGN §4 is where it went: every language-owned operation has
+a small integer, so dispatch is an array index. What remains:
 
 | | approach | verdict |
 |---|---|---|
@@ -112,12 +130,28 @@ impossible** rather than documented.
 
 ### 2.3 Closure compilation, and why it is not bytecode
 
-It needs saying, because they look adjacent:
+**One thing here *is* the bytecode, and it is not this.** DESIGN §4's numbering does
+the job an opcode table does — every language-owned operation gets a small integer
+so dispatch is `handlers[path_id]`, one array index. What satellite never builds is
+the *rest* of a bytecode VM: the linear instruction stream, the decode loop, the
+serialised format, and the compile step a user waits for. The numbers exist before
+any program does, because they belong to the namespace rather than to a program.
+
+With that said, closure compilation:
 
 - no linear instruction stream
 - no opcode decode loop
-- no serializable format
+- **no serialised form of the closure tree** — it is built in memory every run
 - **no compile step the user ever runs or waits for**
+
+*(Corrected 2026-08-27.)* This list used to say "no serializable format" flat, and
+that is no longer true: [SATC.md](SATC.md) specifies `.satc`, a written-down form
+of a program with its language-owned words replaced by their numbers. The
+distinction the line was reaching for is real and now stated precisely — what is
+never serialised is the **closure tree**, because writing that down would freeze an
+implementation. `.satc` serialises the layer above it, which is just the source
+with DESIGN §4's dictionary already applied, and it is a cache: deleting every one
+of them costs a walk and nothing else.
 
 The closure build is the same pass as resolve, measured in microseconds, and it
 happens between "parsed" and "running" exactly the way resolve already does. From
@@ -504,31 +538,66 @@ Each milestone is a thing that **works and can be demonstrated.** No milestone i
 
 **M2 — the namespace trie and the path interner.** ← next
 - `src/satellite_words/words.def`, written as a **tree**: each entry names its
-  parent, and its position among that parent's children *is* its number.
+  parent, and its position among that parent's children *is* its number. It is a
+  transcription of [WORD_NUMBERS.md](WORD_NUMBERS.md) and nothing else — that file
+  is the authority and this one is the copy a compiler can check.
 - the trie, the spelling interner, and `PathId`.
 - `words.hpp` as the consumer, with the static_asserts **in the header** so every
   future consumer inherits them. What they check, given per-parent numbering: every
   parent's children are dense from 1 with no holes and no duplicates, every named
   parent exists, and no node is its own ancestor.
+- **a digest over `words.def`**, so a `.satc` can name the numbering it was written
+  against and a changed numbering stops every stale cache being read on the same
+  instant. SATC.md §2 is why; M4.5 is where it gets used.
+- **a live child counter on every node**, so any node can be asked for the next
+  number free under it. See §8.1 below — this is not optional and it is what the
+  milestone did not originally know about.
 - `satl --words` dumps the tree with each node's number — **the registry gets a
   consumer in the same milestone it gets written**, which is the one thing the first
   satellite did not do. It shipped three commits where the registry had zero
   consumers, which is how two sections assigned kind 4 to different things and
   neither noticed.
-- a test proving `satellite.console.display` walks to `1 1 1`,
-  `satellite.random.normal` to `1 5 2`, and that both intern to stable `PathId`s.
+- a test proving `satellite.console.display` walks to `1 5 1`,
+  `satellite.random.normal` to `1 7 2`, and that both intern to stable `PathId`s.
+  The numbers come from WORD_NUMBERS.md and the test is how we know the
+  transcription did not drift.
 
-**Open, and it must be settled before `words.def` is written**, because DESIGN §4.3
-freezes registration order the moment that file lands: **seed it from the first
-satellite's whole 107-word surface, or only from what M8–M10 actually need?**
-
-Seeding wide freezes numbering for words we may not end up building the same way.
-Seeding narrow means `satellite.random` gets its number later and lands wherever it
-lands. DESIGN §4.1's worked examples already fix `satellite.random` at `1 5` and
-`satellite.random.normal` at `1 5 2`, which implies the wide seed — so either seed
-wide, or change those examples before anyone writes them down as a promise.
+**The seed is wide** — the whole first-satellite word surface, not just what M8–M10
+needs. *(Settled 2026-08-27.)* This closes what this section used to hold open.
+`SCRATCH.md/WORD_SURFACE.md` is the inventory it is seeded from: 111 real paths
+found by sweeping the v1 registry, the v1 evaluator, every v1 `.satl` program, the
+v1 design documents and this tree's own two, with each source swept once and then
+attacked by a second reader looking for what the first missed.
 
 Nothing executes. This is the spine.
+
+### 8.1 The numbering is partly dynamic, and that changes M2
+
+A user's capsules and spacesuits get numbers too — **the next one free under the
+node that owns them, allocated when the name is first met** (WORD_NUMBERS.md §3,
+DESIGN §4.3). `satellite.library.main` is `1 14 1` because the language put it
+there; a user's `x` is `1 14` followed by whatever is free.
+
+So M2 builds two things that look alike and are not:
+
+| | the language's words | the user's names |
+|---|---|---|
+| numbered | ahead of time, in `words.def` | at parse time, as met |
+| frozen | forever, across every program | for one run |
+| checked by | `static_assert` in the header | nothing a compiler can see |
+| a `PathId` is | stable and quotable | valid inside one run only |
+
+Three things follow, and each is a way to get this wrong:
+
+- **The header's static_asserts cover the frozen half only.** That has to be said
+  in the header itself, or it reads as a guarantee about the whole trie when it is
+  a guarantee about part of it.
+- **Anything that persists a PathId must record the name instead.** Satellite Orbit
+  and the wire format are the two that will want to, and both are far enough out
+  that the rule needs writing down now rather than remembering later.
+- **`satellite.library.<name>` means the library registry is reachable at M2**, at
+  least as a counter, years before the milestone that builds it. Decide whether M2
+  owns a real allocator or a stub, and say which in the code.
 
 **M3 — the lexer.** Tokens, spans, the reservation rule. Known words carry their
 node identity out of the lexer; user-owned bare words carry their text. DESIGN §5.
@@ -536,6 +605,14 @@ node identity out of the lexer; user-owned bare words carry their text. DESIGN �
 **M4 — the arena AST and the parser.** `uint32_t` node indices into a contiguous
 arena, no `shared_ptr` anywhere in the tree. `satl --unparse file.satl` round-trips,
 which is how we know the parser is right before anything can run.
+
+**M4.5 — `.satc`.** The cache [SATC.md](SATC.md) specifies: check for a `.satc`
+before walking a source, read it when its three header lines match, and write a
+fresh one afterwards on its own thread. It lands **after M4** because it serialises
+a parsed program and there is nothing to serialise before the parser exists, and
+**before M5** because a malformed `.satc` is the first thing in the language that
+has to say something to a user in plain words. Its digest covers `words.def`, so
+M2 has to be able to produce one.
 
 **M5 — the error reporter.** Built **before** the evaluator, deliberately. Codes,
 spans, a source excerpt with a caret, notes with their own spans, and "did you mean"

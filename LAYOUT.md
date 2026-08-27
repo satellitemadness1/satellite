@@ -13,7 +13,8 @@ So: when a file is added, add a line here too, and know that forgetting costs a
 reader a minute rather than costing a build a file.
 
 Companions: [DESIGN.md](DESIGN.md) is what the language is, [PLAN.md](PLAN.md) is
-how it gets built.
+how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, and
+[SATC.md](SATC.md) specifies the `.satc` file those numbers get written to.
 
 ---
 
@@ -24,6 +25,9 @@ how it gets built.
 | [README.md](README.md) | The front door: what satellite is, hello world, where the state of things is written down. An index, and deliberately holds no fact of its own. |
 | [DESIGN.md](DESIGN.md) | The language: the generating rule, syntax, the numbering, scope, types, and what it refuses. Permanent. |
 | [PLAN.md](PLAN.md) | The work: architecture, the build, the install, milestones, measurement discipline. Permanent. |
+| [WORD_NUMBERS.md](WORD_NUMBERS.md) | **The numbering**, and the authority over every number in the language. DESIGN §4 explains it; `words.def` transcribes it; when they disagree this file is right. Permanent. |
+| [SATC.md](SATC.md) | The `.satc` file format: a program with its language-owned words replaced by their numbers, cached beside its source. Specified before it is built, because it constrains the numbering. Permanent. |
+| [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and the four things the language has not settled that it needs. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
 | [Makefile](Makefile) | An index. Includes the eight fragments under `make_support/` in numbered order and does nothing else. |
@@ -124,11 +128,19 @@ Nothing here is installed and nothing here should be re-encoded.
 | `file_icon/file-icon.png`, `file_icon/file-icon-512.png` | Intermediate file-icon work. |
 | `file_icon_final/final_file_icon_{64,128,256,512}.png` | The finished file icon at four sizes. |
 
-## `plans/`
+## `SCRATCH.md/` — the things that do not last forever
 
-| file | what it is |
-| --- | --- |
-| [plans/madness/first_note.txt](plans/madness/first_note.txt) | The user's own first note on what satellite is and what it will eventually support. **Their words — do not edit.** |
+A folder, and the `.md` in its name is deliberate: it sorts beside the four
+permanent documents it is the opposite of. **Nothing in it decides anything**, and
+every file in it is written to be deleted. The test for whether something belongs
+here rather than in DESIGN, PLAN, LAYOUT or WORD_NUMBERS is whether it *stops being
+true when the work it describes is finished.*
+
+Its own [README.md](SCRATCH.md/README.md) lists what is in it and the condition for
+deleting each one, so this table does not repeat them. `plans/` used to hold the
+author's first note; that note has been converted into the permanent documents and
+the file deleted, and its conversion is recorded in
+[SCRATCH.md/FIRST_NOTE.md](SCRATCH.md/FIRST_NOTE.md) until nothing needs it.
 
 ## `old_versions/`
 

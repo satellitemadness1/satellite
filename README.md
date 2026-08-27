@@ -67,12 +67,15 @@ every path they do not already own.
 
 ## The documents
 
-Four files, each with one job, and none of them repeats another:
+Seven files, each with one job, and none of them repeats another:
 
 | | |
 | --- | --- |
 | [DESIGN.md](DESIGN.md) | **What the language is.** The generating rule, the syntax, the numbering, scope, the types, and what it deliberately refuses. Permanent. |
 | [PLAN.md](PLAN.md) | **How it gets built.** Architecture, the build, the install, the milestones, and the measurement discipline. Permanent. |
+| [WORD_NUMBERS.md](WORD_NUMBERS.md) | **The numbering.** Every number in the language, and the authority over all of them — DESIGN §4 explains the scheme, this holds the numbers. Permanent. |
+| [SATC.md](SATC.md) | **The `.satc` file.** A program with its words already numbered, cached beside its source. Permanent. |
+| [QUAD.md](QUAD.md) | **Why the language exists.** The program satellite has to be able to express, and what it is still missing to do it. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | **Every file in the tree**, and one line on what each is for. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan. **Superseded** — read it for history or not at all. |
 

@@ -168,26 +168,51 @@ first did not. The first satellite built a word-and-path registry with frozen id
 asserted over it at length — and then compared strings in the hot path. §4 is that
 job finished.
 
+**This numbering is satellite's bytecode.** The language never emits one — PLAN §2
+rules a bytecode VM out of the architecture and closure compilation replaces it —
+but the job a bytecode does, *give every operation a small integer so that
+dispatching on it is an array index rather than a comparison*, is the job §4 does.
+The difference is where the integer comes from: a bytecode assigns it at compile
+time to a linear instruction stream, and this assigns it to the **namespace**, once
+and permanently, so nothing has to be compiled for the number to exist.
+
+That is also why the number carries the **call shape** and not only the path
+(§4.5). An opcode encodes an operation together with its operands;
+`satellite.console.input()`, `input(prompt)` and `input(prompt, target)` are three
+different things a program can ask for, so they are three numbers, exactly as they
+would be three opcodes.
+
+The first satellite very nearly had this and did not use it: `format.def` held 107
+words and 29 paths with frozen ids and static_asserts over them, and the evaluator
+still joined the path into a heap string and ran a chain of string compares.
+**The table was the bytecode and nothing read it.**
+
+**[WORD_NUMBERS.md](WORD_NUMBERS.md) is the authority and this section only
+explains it.** Every actual number lives there; the examples below are quoted from
+it, and if they ever disagree with it, they are the ones that are wrong. This is
+the project's own rule applied to itself — prose may explain a number, but it may
+never be the only place the number lives.
+
 ### 4.1 Every node numbers its own children, starting at 1
 
 A path is the sequence of those numbers, read left to right.
 
 ```
 satellite . console . display
-    1     .    1    .    1
+    1     .    5    .    1
 ```
 
-`satellite` is 1 because it is the root. `console` is 1 because it is the first
+`satellite` is 1 because it is the root. `console` is 5 because it is the fifth
 child of `satellite`. `display` is 1 because it is the first child of `console`.
 
 ```
-satellite.console.display   1 1 1
-satellite.console.input     1 1 2      input is console's second child
-satellite.variable          1 2        variable is satellite's second child
-satellite.random            1 5        random is satellite's fifth child
-satellite.random.fast       1 5 1
-satellite.random.normal     1 5 2
-satellite.random.ultra      1 5 3
+satellite.console.display   1 5 1
+satellite.console.input     1 5 2      input is console's second child
+satellite.variable          1 6        variable is satellite's sixth child
+satellite.random            1 7        random is satellite's seventh child
+satellite.random.fast       1 7 1
+satellite.random.normal     1 7 2
+satellite.random.ultra      1 7 3
 ```
 
 Note what `satellite.console.input` and `satellite.random.normal` have in common:
@@ -196,6 +221,20 @@ the other "random's second child". That is the scheme working, not a collision.
 
 **So there are a lot of 1's and a lot of 2's, and that is correct.** A number on its
 own means nothing; a number means something *at a position, under a parent*.
+
+#### The order is the order words first appear
+
+Which word gets which number is decided by one rule, and it is not a ranking:
+**walk a real program from the top and change the number only when you must.**
+Hello world (§3) fixes the first six — `include`, `capsule`, `main`, `container`,
+`console`, `variable` — in the order a reader meets them, and everything after is
+appended as it is first needed.
+
+Nothing about `include` being 1 claims it matters more than `variable`. The
+alternative was to group namespaces by what they do and number the groups, and it
+was rejected for being an argument about taste that no two people settle the same
+way. Reading order is a fact about the program; importance is an opinion about the
+language.
 
 ### 4.2 The lists are per-parent, not per-level
 
@@ -206,9 +245,9 @@ separate lists**, each numbered from 1.
 
 Per-parent is the right one, for three reasons:
 
-- **Validation is free.** `1 2 1` means "take satellite's child 2, then take *that
+- **Validation is free.** `1 6 1` means "take satellite's child 6, then take *that
   node's* child 1." If the node has no child 1, the path does not exist, and you
-  learned that from the array bound. A flat per-level list would let `1 2 7` name a
+  learned that from the array bound. A flat per-level list would let `1 6 7` name a
   legal level-3 word that is not legal under `variable`, so legality would need a
   second check.
 - **It has no depth limit**, which is the requirement. A flat level-6 list mixing
@@ -223,22 +262,33 @@ registered in is the numbering**:
 
 > Never renumber. Never reuse. Always append.
 
-`console` is child 1 of `satellite` because it is registered first, and it stays
-child 1 forever. A new child of `satellite` goes on the end. Removing one leaves a
+`console` is child 5 of `satellite` because it was registered fifth, and it stays
+child 5 forever. A new child of `satellite` goes on the end. Removing one leaves a
 hole rather than shifting its neighbours down.
 
 This is stricter than the first satellite's flat list, and it has to be: there, a
 word id was global, so moving a word between namespaces did not change its number.
 Here the number *is* the position, so the position is the frozen thing.
 
-The numbering lives in `src/satellite_words/words.def` and nowhere else — it is
-data, and it is the one file exempt from PLAN.md §3's line ceiling, because
-splitting a numbering whose meaning is registration order is the one split that
-could silently change what a program means.
+The numbering is written down in **[WORD_NUMBERS.md](WORD_NUMBERS.md)**, which is
+the authority, and transcribed into `src/satellite_words/words.def`, which is the
+copy a compiler can check. `words.def` is the one file exempt from PLAN.md §3's
+line ceiling, because splitting a numbering whose meaning is registration order is
+the one split that could silently change what a program means.
+
+**This freeze is a promise about the language's own words, not about the user's.**
+A capsule or a spacesuit the user writes also gets a number — the next one free
+under the node that owns it, allocated when the name is first met rather than
+frozen in advance (WORD_NUMBERS.md §3). It cannot be frozen across programs,
+because it is not the same name in two of them. So every node keeps a live count
+of its children: the language's are numbered first and never move, and the user's
+are appended after them and last exactly as long as the program does. A user
+name's number is therefore **not stable between runs**, and anything that writes
+one down must record the name instead.
 
 ### 4.4 Spelling is a separate table
 
-A node stores its own spelling. Printing `1 2 1` back as
+A node stores its own spelling. Printing `1 6 1` back as
 `satellite.variable.string` is a walk from the root, one node per segment, and the
 whole path is always available wherever a number is — so nothing needs a global
 word-id-to-text table to produce a name.
@@ -257,7 +307,7 @@ position, not about a bare spelling.
 
 §4.1 is how a path is *structured*. This is what a path *is* at runtime.
 
-`satellite.console.display` is **one thing**. It should not travel as `1 1 1` in
+`satellite.console.display` is **one thing**. It should not travel as `1 5 1` in
 three registers, and it should not travel as three `long long`s — three 64-bit ints
 is 24 bytes where a `uint32_t` is 4 and covers four billion paths. The trie walk
 happens once, at parse time; the terminal node it lands on has an interned id; that
@@ -333,8 +383,11 @@ satellite has no `<<` or `>>` operator, ever, and that is written policy rather
 than an accident of the operator list. This is why nested generics need no special
 handling: `list<list<string>>` lexes as two independent `>` tokens and
 `parse_type`'s recursion consumes one per level. **The C++98 maximal-munch bug
-cannot occur.** Bit shifts, if ever needed, are `satellite.number.shift_left(n)`,
-consistent with §1.
+cannot occur.** Bit shifts, if ever needed, are
+`satellite.variable.number.shift_left(n)`, consistent with §1 — under
+`satellite.variable.number`, where every other number operation lives, and not
+under a top-level `satellite.number`, which does not exist. *(Corrected
+2026-08-27; this was the only place in either document that implied one.)*
 
 The greedy two-character operators are exactly `== <= >= !=`, and those are the only
 places `<` or `>` is not a single-character token. `>=` is the one that could in
@@ -625,6 +678,93 @@ holds exactly one dot with a non-empty segment on each side, which is
 `function_name.variable_name` and never a bare word. Capsules are written once at parse time and never reassigned; they need none
 of the registry's machinery.
 
+### 7.7 `arguments` — the one library global the language provides
+
+`satellite.main` takes a list, and that list is not only a list. It is the language
+handing the program everything it knows about the machine it woke up on, and it
+lives at **`satellite.library.main.arguments`** — a library global (§7.2), which is
+exactly what §7.2 reserves `satellite.library` for.
+
+```satellite
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(arguments.username)
+
+    satellite.return(satellite)
+}
+```
+
+**Displaying it bare prints all of it.** `satellite.console.display(arguments)` is
+how a program shows the user everything that went into the special variable, which
+is the §1.1 tie-breaker applied to introspection: the information is already there,
+so the language hands over all of it rather than making someone ask for it one
+field at a time.
+
+#### The name is any of six spellings
+
+`arg`, `args`, `argz`, `argument`, `arguments` and `argumentz` all become the
+special variable inside the program that declares one. The author writes
+`arguments`; the others exist because people type what they type, and a language
+whose tie-breaker is *do absolutely everything for the user* does not make somebody
+lose an afternoon to a plural.
+
+This is the **inverse of §4.4's interner** and needs saying plainly, because §4.4
+describes the opposite arrangement. There, two nodes share one spelling — `list`
+under `container` and `list` under `directory` are different nodes that happen to
+be spelled alike. Here, **one node answers to six spellings.** Deduplication is
+many-nodes-one-string; aliasing is one-node-many-strings, and the table has to hold
+both directions.
+
+It is also the one place a **bare** identifier is language-owned, which §1's
+generating rule otherwise forbids. The rule survives because the user still writes
+the name: the language does not introduce `arguments`, it *recognises* the name the
+user chose for `satellite.main`'s parameter when that name is one of the six.
+
+#### What it holds
+
+Nested, not flat — `memory` answers on its own *and* has children:
+
+```
+arguments.username              the login name
+arguments.memory                free memory
+arguments.memory.total          total memory
+arguments.machine               what the processor is
+arguments.machine.cpu           the same, asked for directly
+arguments.machine.cores         physical cores, a satellite number
+arguments.machine.threads       hardware threads, a satellite number
+```
+
+A node that is both a value and a parent is the general case here rather than a
+special one, and it is the same shape `satellite.container` already has — a bare
+form and a set of children, which is what the `(0)` in WORD_NUMBERS.md marks.
+
+#### Three surfaces, one set of facts
+
+`arguments.machine.threads`, `arguments.machine.cores` and `arguments.memory.total`
+are **the same numbers** as `THREAD_COUNT`, `CORE_COUNT` and `MEMORY_MAX` in the
+configuration, and the same numbers again as codes 97, 98 and 99 in
+`satellite_string`'s live code table (PLAN §6). Three ways to ask, one place that
+knows — `system_facts`.
+
+They must not be allowed to disagree. Whatever the configuration finally says, it
+is a *setting* and the machine is a *fact*, and a program that asks
+`arguments.machine.threads` is asking what the machine has, not what the config was
+told. If the two ever need to differ, they need two different names.
+
+#### Open
+
+- **Which spellings, exactly, and what happens to the seventh?** Declaring a
+  parameter named `argv` gets a plain list with no properties, silently. Under §9
+  that silence is wrong — the language should say so.
+- **What is `arguments[0]`?** It is a list as well as an object, and nothing yet
+  says whether index 0 is the program name, the current directory, or the first
+  thing the user typed. (§13.)
+- **The first satellite's version was flat and had 33 entries** —
+  `thread_count`, `architecture`, `distribution`, `cxx_compiler`, `process_id`,
+  `page_size`, `byte_order` and the rest, in `system_facts/arguments_facts.cpp`.
+  The nesting above is a redesign, so every one of those 33 needs placing under a
+  parent or dropping, and that is a decision per entry rather than a port.
+
 ---
 
 ## 8. Types and the value model
@@ -848,9 +988,22 @@ different path with a different name.
 A deferral list is only useful if the things missing from the language are on it,
 and equally only if the things on it are still missing.
 
+**[QUAD.md](QUAD.md) puts three of these under pressure.** The program this
+language exists to express needs sorting, which needs a capsule passed as a value;
+it needs real fractional arithmetic; and it uses containers this list does not
+have. A deferral is a decision that the thing is not needed *yet* — QUAD.md §3 is
+the argument that two of the entries below are needed sooner than "later".
+
 - **User-defined generics** — a bare name can be a value, which reopens §2.
 - **Durations** — `time` is an absolute instant only; subtraction yields a number of
   nanoseconds.
+- **A JIT.** Not built and not planned. satellite is interpreted and there is no
+  compile step the user ever runs; PLAN §2's closure compilation happens on the way
+  to the first execution and emits callables, not machine code. This is the first
+  question a tree-walking interpreter is asked, so the answer belongs in the list
+  rather than in someone's memory. **`.satc` is not a counter-example** — it is a
+  cache of §4's numbering applied to a source file, written after the program has
+  already started, and deleting every one of them costs a walk. [SATC.md](SATC.md).
 - **Bare field access** (`my_object.my_field`) — accessor methods only. A spacesuit
   field is reachable from inside the spacesuit and nowhere else, which is what makes
   `satellite.protected` a statement about the language rather than a comment.
@@ -907,13 +1060,31 @@ and equally only if the things on it are still missing.
 - **`satellite.variable.float` — "infinitely long in both directions."** §8.1's
   base-10⁹ representation gives the integer half. The fractional half needs a
   decision about what "infinite" means when a program asks for a digit: lazy, or
-  bounded by a precision dial.
+  bounded by a precision dial. **This is now on the critical path** rather than
+  merely open: QUAD.md §3.1 is a program that cannot be written without it, and it
+  is the largest single gap between this design and its own goal.
 - **Time.** `satellite.variable.time`, `.date` and `satellite.time.now()` must agree
-  on **one clock and one epoch** before any of them is built.
+  on **one clock and one epoch** before any of them is built. The author's stated
+  leaning is a high-precision clock, which settles the resolution question but not
+  the epoch — and not the harder one underneath it, that a high-resolution
+  monotonic clock and a wall-clock date are not the same clock and cannot both be
+  the one.
 - **Error codes: numbered or named?** Numbered is testable and translatable, named
   is readable. Probably both, the way words have an id and a spelling (§4.4).
 - **Unknown string escapes** (§5.4) — pass through, reject, or warn. The first
   satellite passed them through and printed a backslash 501 times in one program.
+- **What is in `arguments[0]`?** `satellite.main` takes a
+  `satellite.container.list<satellite.variable.string>`, and nothing says whether
+  its first element is the program name, the current directory, or the first
+  argument the user actually typed. The author's first note has it displaying the
+  current directory. Left undecided it will be settled by accident at M8, and
+  every program written before the accident will disagree with every program
+  written after.
+- **`satellite.thread.new` against `satellite.variable.thread`.** §10.4 and PLAN
+  M12 name only the type. The author's first note also uses a constructor under a
+  top-level `satellite.thread`, which is the same shape `satellite.file.new` and
+  `satellite.time.new` already have — a type under `variable`, a constructor under
+  a sibling namespace. Consistent, and currently unnumbered.
 
 ---
 
