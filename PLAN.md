@@ -372,6 +372,92 @@ never built; it gets built here.
 
 ---
 
+## 4.5 The machine limits, and the file that holds them
+
+*(Asked for 2026-08-27. Specified here; not built.)*
+
+satellite reads a **`satellite_config.ini`** and holds itself to what it says:
+
+```ini
+THREAD_COUNT=24     # hardware threads to use
+CORE_COUNT=12       # physical cores
+MEMORY_MAX=...      # satl must not exceed this
+```
+
+**This machine, measured 2026-08-27** — `lscpu` and `/proc/meminfo`: Intel Xeon
+E5-2670 v3, 1 socket, **24 hardware threads, 12 physical cores**, MemTotal
+64946428 kB = **61.9 GiB**.
+
+### 4.5.1 What gets threaded, and what must not
+
+The request was that converting `satellite.something.something` into integers be
+threaded — *"create that many threads and then hand them each a line that begins
+with satellite, or the fastest possible way to do it, whatever that may be."*
+
+**The line-per-thread part is right and the startup part is not**, and §4.3 is why.
+satl starts in 1.75 ms of which its **own share is 0.01 ms**. Spawning 24 threads
+costs roughly 0.5–1.5 ms — fifty to a hundred and fifty times satl's entire current
+startup — and the fixed word table is ~150 words, which a single thread walks in
+microseconds. **Threading the table at startup is a guaranteed loss.**
+
+Threading the walk over a *user's source* is a different question, because that
+work scales with the program and the table does not. The number that decides it is
+the **crossover**: how many satellite-rooted source lines a program needs before 24
+threads beat 1, counting thread creation. **That is not yet measured** — §9's rule
+is measure on this machine, do not quote, and this has not been.
+
+So the shape to build toward: a pool that is **created lazily, on first real
+threaded work**, sized from `THREAD_COUNT`, and shared by everything that needs
+threads — the console's printer thread (DESIGN §10.1), parse-time interning, and
+`satellite.variable.thread` at M12. One pool with three tenants amortises a cost
+that none of them could justify alone, and a program that never threads never pays.
+
+### 4.5.2 Knowing what satl is using
+
+**The first satellite already built most of this**, in
+`old_versions/first_satellite/src/system_facts/memory_facts.cpp`:
+
+- `process_memory_bytes()` reads `/proc/self/statm` field 2 × page size, fresh
+  every call, never cached — its own comment says *"the question is what this
+  program is using NOW."*
+- `start_memory_watchdog()` runs a detached thread that wakes once a second, reads
+  a threshold, compares, and exits through a hook that restores the terminal first.
+
+**Its policy is the opposite way round.** v1 watches the *machine's* available
+memory against a floor (`min_free_mb`, default 4096); MEMORY_MAX bounds *satl's
+own* use. Both are defensible and they are not the same guarantee — the second is
+the stronger promise and the easier one to explain, and `process_memory_bytes()` is
+already the call that implements it. **Keep the thread, keep the exit path, change
+what it compares**, and ideally keep both checks.
+
+### 4.5.3 A file is not the only place a setting lives
+
+v1's watchdog does not read a file. It reads
+`satellite.library.system.min_free_mb` — the language's own namespace, which a
+running program can read and retune — and `Number` does the same for
+`division_digits`. Both are numbered: `1 14 2 3` and `1 14 2 1`.
+
+The two answer different questions and are not in conflict: **the file is where a
+machine's settings live before a program starts**, and is what an installer writes
+and a person edits; **`satellite.library.system.*` is how a running program reads
+and changes them.** The obvious arrangement is that the file seeds the namespace at
+startup and the namespace is what everything reads afterwards — one authority at
+runtime, one place to edit at rest. Not yet decided.
+
+### 4.5.4 Open
+
+- **What unit is `MEMORY_MAX` in, and what is the default?** 61.9 GiB and 64.9 GB
+  are the same memory. Should the shipped default be the whole machine or a
+  fraction, and does a machine with less than the file claims win?
+- **A setting is not a fact.** `arguments.machine.threads` (DESIGN §7.7) asks what
+  the machine *has*; `THREAD_COUNT` says what satl may *use*. If they are ever
+  allowed to differ they need two names, and a program asking the first must never
+  get the second.
+- **The file does not exist yet.** Nothing reads it and nothing writes it. The
+  installer (§5) is the natural author.
+
+---
+
 ## 5. Installing
 
 `satellite_enterprise/` is the Enterprise Linux installer — written and tested on
@@ -496,6 +582,43 @@ Ported, adapted, or taken as-is:
 - **The two-binary split and the startup measurement discipline.**
 - **The comment culture.** Comments that state a number and where it came from,
   rather than an intent. Rare and valuable. Keep writing them.
+
+---
+
+### 6.1 `satellite_number` and `satellite_string` come across close to unchanged
+
+*(Surveyed 2026-08-27.)* `src/satellite_number/` and `src/satellite_string/` exist
+in this tree and are empty. What fills them is the first satellite's, and it very
+nearly ports as-is:
+
+| | files | lines | largest |
+|---|---:|---:|---:|
+| `satellite_number` | 10 | 1509 | `limbs.cpp` at 284 |
+| `satellite_string` | 2 | 249 | `satellite_string.cpp` at 155 |
+
+**Every file is already under §3's 300-line ceiling**, which is worth noticing
+given §3's argument that a ceiling applied after the fact preserves a file's shape
+rather than changing it. Here the shape already fits.
+
+`satellite_number` is internally closed — every include is a sibling or the
+standard library — so it ports alone. `satellite_string` needs `system_facts/`,
+because its code table is not only characters: **codes 95–100 are live values**
+resolved at decode time, and 97, 98 and 99 are `threads`, `mem_total_mb` and
+`mem_used_mb` — the same facts §4.5 and DESIGN §7.7 reach for by two other routes.
+
+Four things to settle before copying, and `SCRATCH.md/PORTING.md` has the detail:
+
+1. **Does `Number` keep its reach into `satellite.library`?** It reads
+   `division_digits` from there, which would drag the library registry in at M2,
+   years before §8 schedules it. A compile-time default now and the lookup restored
+   later is the alternative.
+2. **Does the code table stay 16-bit?** The header argues it well and nothing in
+   this design contradicts it. Port as-is unless something does.
+3. **Where does `satellite.random` live?** It is `satellite_number/random.cpp` in
+   v1; DESIGN §11 gives it a section of its own here.
+4. **`sizeof(Number)` on arrival.** DESIGN §8.2 budgets a `Value` at 40 bytes with
+   a static_assert to come. That is the one number that could make this port not
+   fit, and it is cheap to check first.
 
 ---
 
