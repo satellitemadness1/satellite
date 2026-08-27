@@ -73,7 +73,7 @@ That is **39 paths** in the wrong category, all in the direction of looking bett
 | `satellite.console` | **8** | 10 | M8 builds the *printer* — see §0.2 |
 | `satellite.container` | **7** | 39 | sort ×5, `.arguments`, `.result` |
 | `satellite.directory` | **6** | 6 | nothing |
-| `satellite.variable` leaves | **6** | 12 | `date`, `duration`, `expression`, `network`, `variant`, `capsule` |
+| `satellite.variable` leaves | **7** | 16 | `time`, `date`, `duration`, `expression`, `network`, `variant`, `capsule` |
 | `satellite.file` | **5** | 5 | nothing — a different node from `variable.file` |
 | `satellite.time` | **4** | 4 | nothing — same mistake, same shape |
 | `satellite.bool` | **3** | 3 | M9 says outright it is not M9 |
@@ -86,6 +86,13 @@ That is **39 paths** in the wrong category, all in the direction of looking bett
 
 `satellite.system` alone is a quarter of it, and `system` + `random` is **46** — more
 than the last audit's whole figure.
+
+*(Corrected 2026-08-27, second pass: this column used to sum to **121** against a
+headline of 122, and the headline was the right one. The `satellite.variable`
+leaves row said "6 of 12" — `satellite.variable` has **16** leaves, `1 6 1`
+through `1 6 16`, and the leaf it omitted was `satellite.variable.time` `1 6 3`,
+which "Later" names and no milestone does. A row that does not sum to its own
+total is the cheapest error in this file to find and it survived two readings.)*
 
 ### 0.2 The new gaps — found only by going path by path
 

@@ -14,7 +14,9 @@ authority over every number in the language.
 
 ## 1. Where the work is
 
-**M1 landed 2026-08-26.** **M2 is in progress** and has not committed any code.
+**M1 landed 2026-08-26. M11.A landed 2026-08-27** — out of order, because the
+author asked for the window and it needed nothing that has not been built.
+**M2 is in progress** and has not committed any code.
 
 M2 as PLAN §8 defines it is: `src/satellite_words/words.def`, the trie, the
 spelling interner, `PathId`, a digest over `words.def`, `satl --words` as its
@@ -372,9 +374,20 @@ number column is diffable.
 3. **`satellite.file` `1 8` and `satellite.variable.file` `1 6 2` both carry `new`.**
    The five new file methods went on the type node per DESIGN §6.4. Nothing says
    which a program should write.
-4. **`satellite.thread.new` has one number for two shapes.** Argued in WORD_NUMBERS.md
+4. **`satellite.window.console` has no number at all.** *(New 2026-08-27.)* The
+   author specified `satellite.window.console.new("title", 800, 600)` and built the
+   binary that is its first caller, but §2.2 has only `satellite.window` `1 24` and
+   `satellite.window.new` `1 24 1`. Whether `console` is a child of `1 24` or
+   `1 24 1` is already this call is unanswered, and §1.2's freeze means it is
+   answered once. See §5.8.
+5. **`satellite.thread.new` has one number for two shapes.** Argued in WORD_NUMBERS.md
    §4: its own arity is always 1. `1 23 2` is free if that is decided the other way.
-5. **122 of the 218 numbered paths reach no milestone** — 56% — and
+6. **M2's `static_assert` cannot be written as PLAN specifies it.** *(New
+   2026-08-27.)* "No duplicates" is false of §2.2 by design — the three `.range`
+   aliases. PLAN M2 now records it; the clause that fixes it is unwritten, and
+   QUAD.md §4 already states the check in a form that survives. **This blocks the
+   milestone that is in progress.**
+7. **122 of the 218 numbered paths reach no milestone** — 56% — and
    [MILESTONE.md](MILESTONE.md) is the ledger. *(Corrected 2026-08-27: the figure was
    50, then 41, then 29, and all three were namespace sweeps. §5 of that file admitted
    the 165 paths under milestoned namespaces had never been checked one at a time.
@@ -391,9 +404,109 @@ number column is diffable.
    M10 and the twenty-nine container methods. Each time it looked like an unscheduled
    namespace and was not.
 
-6. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
+8. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
    `Rack::draw` in satellite by hand against DESIGN.md. Between them they touch
    floats, the map, a weighted pick, and the one `pow` that has no exact answer.
+
+### 5.8 What landed on 2026-08-27, second half
+
+**`satl-term` is built and runs** — `src/programs/window.cpp` (209),
+`terminal.cpp` (232), `terminal.hpp` (35), and `make_support/047-window.mk`. One
+file reached 305 lines, so it is split by subject; PLAN §3's ceiling applies from
+the first commit. `satl` resolves **6** shared objects and `satl-term` **79**,
+measured here.
+
+**M11 became M11.A and M11.B**, and that was the author's call: M11.A is the
+window, M11.B is the prompt, and **M11.B's rule is that the window does not
+close.** Until there is a prompt the child lives milliseconds, so M11.A closes on
+a clean exit and holds on failure. `on_child_exited` marks its clean-exit arm as
+M11.A's so M11.B deletes it deliberately.
+
+**The window is the same one the language hands out.** The author's words:
+
+> *satl-term is the `satellite.variable.window my_console =
+> satellite.window.console.new("window_title", 800x600)` that takes 2 numbers as
+> arguments, and a satellite string as an argument*
+
+So the title and size are arguments, reached as `--title` and `--size 800x600`.
+
+**`satellite.window.console` and `satellite.window.console.new` ARE NOT
+NUMBERED.** §2.2 has `satellite.window` `1 24` and `satellite.window.new`
+`1 24 1` and nothing else under that node. **This is a question only the author
+can answer** and it belongs in §5.7's list: is the console window a *child* of
+`1 24`, or is `1 24 1` already what it describes? Nothing was assigned — the
+author owns the numbering.
+
+**The binaries carry a desktop icon as `gio` metadata**, not as anything in this
+tree: `metadata::custom-icon` points at
+`~/.local/share/icons/hicolor/256x256/apps/org.satellite.terminal.png`. It was on
+`satl` and `satl-term`; `satl.haswell` was given it on 2026-08-27 at the author's
+request. **`satl-cpu-level` still has none.** The metadata is keyed by path and
+**survives `make clean` and a rebuild** — checked, not assumed — and it is
+outside git, so it is not restored by a clone.
+
+**The `.desktop` entry is now installable and is not installed.** It was held back
+for want of a binary and that reason is gone; adding it to
+`install_support/060-install-tree.sh` is one line and was deliberately not taken,
+because it changes what an install puts on someone's system.
+
+### 5.9 Four milestone drafts exist and none is in PLAN §8
+
+[MILESTONE_DRAFTS.md](MILESTONE_DRAFTS.md) holds them, with the adversarial
+findings under each. **They are not in §8 because every lens found real errors**
+and none is fixed. The one that shows the shape of the rest: a draft glossed
+`1 22 4 6`–`1 22 4 12` as "`.free()` `.total()` `.used()` with their `(unit)`
+forms" — six things across a seven-wide range, missing that `1 22 4 9` is
+`satellite.system.memory.main(unit)`.
+
+Two findings from that pass are corrections to §5.7 itself and matter more than
+the drafts:
+
+- **`satellite.system.threshold()` `1 22 5` and `(n)` `1 22 6` are M10's, not a
+  machine milestone's.** They set how loose a search may be, and the search power
+  cannot ship without its dial. So `satellite.system` is **28** unscheduled paths
+  and not 30.
+- **Three of the four `satellite.library.system` dials are already owned and no
+  milestone says so** — `max_depth` `1 14 2 2` is M7's, `division_digits`
+  `1 14 2 1` is M6.5's, `float_digits` `1 14 2 4` is M9.5's. Only `min_free_mb`
+  `1 14 2 3` was unowned. **That is the M3/M4 pattern for the fourth time.**
+
+### 5.10 What the fourth milestone's pass found, which outranks the draft
+
+The `satellite.random` + `satellite.time` pass returned last and found more about the
+**documents** than about the milestone. In rough order of how much they cost:
+
+- **M2's `static_assert`, as PLAN specifies it, fails on the numbering it checks.**
+  §2.2 holds three duplicate numbers and they are deliberate — the `.range` aliases.
+  Now recorded in PLAN M2 itself, and it **blocks M2**, which is the next milestone.
+- **Every 218-vs-215 disagreement in every document is those same three rows.** All
+  218 number cells were extracted and sorted; the duplicates are exactly `1 7 5`,
+  `1 7 8`, `1 7 11` and nothing else. That question is now closed.
+- **M6.5 already owns the uniform draw and does not say so** —
+  `satellite_number/random.cpp` is one of the ten files in its port. **Fourth
+  occurrence of the M3/M4 pattern**, found the same way: by reading the inventory a
+  milestone claims rather than its sentence.
+- **WORD_NUMBERS.md drifted from the author's own note.** `satellite.random.fast`
+  `1 7 1`, `.normal` `1 7 2` and `.ultra` `1 7 3` are written **bare** in
+  WORD_NUMBERS_ORIGINAL.md, in DESIGN §11 and in PLAN M2's test, and **with
+  parentheses** in §2.2. The rewrite promised to preserve every *number*; the parens
+  are a change of meaning it did not promise, and v1 tests `satellite.random.fast()`
+  as an *error*. §1.4 also still calls `fast.range` "four numbers" while §2.2 and
+  §2.3 make it an alias at `1 7 5` — both shipped in the same commit.
+- **`satellite.variable.duration` `1 6 8` is a number minted from a refusal.** The
+  sweep sourced the word from v1's documents; the v1 source that uses it says *"there
+  is no satellite.variable.duration"* and gives four reasons, and DESIGN §12 still
+  defers durations today.
+- **`satellite.variable.date` `1 6 7` has a number and nothing else** — no row in
+  DESIGN §8's types table, no representation, no constructor, no methods, no v1 code.
+- **`satellite.time.new` `1 9 2` has never existed, and DESIGN §13 cites it as
+  established precedent** when settling `satellite.thread.new`. Its only description
+  anywhere is a parenthesis in a deleted scratch file.
+- **The two time methods v1 ships are unnumbered** — `.minus(t)` and
+  `.nanoseconds()`. `satellite.variable.time` has zero children while its three
+  hand-written siblings have 16, 7 and 14. **Not invented here; WORD_NUMBERS has to.**
+- **MILESTONE.md §0.1's column summed to 121 against its own headline of 122.** The
+  headline was right; the row was understated. Corrected in that file.
 
 ## 6. Jobs the user has asked for that are not started
 

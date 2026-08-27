@@ -682,6 +682,19 @@ Each milestone is a thing that **works and can be demonstrated.** No milestone i
   future consumer inherits them. What they check, given per-parent numbering: every
   parent's children are dense from 1 with no holes and no duplicates, every named
   parent exists, and no node is its own ancestor.
+
+  **As written that check fails, and it fails on the numbering it is checking.**
+  *(Found 2026-08-27.)* WORD_NUMBERS.md §2.2 holds **three duplicate numbers** and
+  they are deliberate: `satellite.random.fast.range(min, max)` is `1 7 5`,
+  `.normal.range` is `1 7 8` and `.ultra.range` is `1 7 11`, each an **alias** of
+  the call shape above it (§2.3). They are the *only* duplicates in the language —
+  every one of the 218-versus-215 disagreements across these documents is these
+  three rows and nothing else. So "no duplicates" is true of numbers-per-node only
+  after aliases are excluded, and the assert needs a fourth clause saying so.
+  QUAD.md §4 already states the check in the form that survives this: four
+  properties, including that **no alias points at a number that does not exist.**
+  This blocks M2 rather than something later, because M2 is where the assert is
+  written.
 - **a digest over `words.def`**, so a `.satc` can name the numbering it was written
   against and a changed numbering stops every stale cache being read on the same
   instant. SATC.md §2 is why; M4.5 is where it gets used.
