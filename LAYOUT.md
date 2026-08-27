@@ -27,12 +27,22 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [PLAN.md](PLAN.md) | The work: architecture, the build, the install, milestones, measurement discipline. Permanent. |
 | [WORD_NUMBERS.md](WORD_NUMBERS.md) | **The numbering**, and the authority over every number in the language. DESIGN §4 explains it; `words.def` transcribes it; when they disagree this file is right. Permanent. |
 | [SATC.md](SATC.md) | The `.satc` file format: a program with its language-owned words replaced by their numbers, cached beside its source. Specified before it is built, because it constrains the numbering. Permanent. |
-| [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and the four things the language has not settled that it needs. Permanent. |
+| [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and — after reading its source on 2026-08-27 — the one thing the language has not settled that it needs. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
 | [Makefile](Makefile) | An index. Includes the eight fragments under `make_support/` in numbered order and does nothing else. |
 | [LICENSE](LICENSE) | MIT (Expat). |
 | [.gitignore](.gitignore) | Build output, and the deliberate exclusion of `old_versions/` from this repository's history. |
+
+## `FORMAT/` — how the code is written
+
+| file | what it is |
+| --- | --- |
+| [FORMAT/CXX.md](FORMAT/CXX.md) | Everything needed to write C++ in this tree: the house style, the comment culture, how the build is edited to add a module, how a test is built, and the X-macro registry mechanism M2 ports from the first satellite. Its §9 lists what is **not** decided anywhere and blocks M2. Permanent. |
+
+The directory is separate from the root because these are documents about *writing the
+code*, not about the language or the plan. The four permanent documents at the root
+answer "what is satellite"; this one answers "what does a file here look like."
 
 ## `src/` — the interpreter
 

@@ -127,6 +127,52 @@ Three 64-bit integers would be 24 bytes to say what 4 bytes says, and a path of
 four segments is not a special case that needs a wider one — see
 `satellite.random.fast.range`, which is four numbers and nothing else.
 
+### 1.5 Paths are numbered in the file; selectors are numbered for dispatch
+
+Two different things carry numbers, and confusing them is how a `.satc` ends up
+naming a handler (SATC.md §7 forbids exactly that).
+
+A **path** is rooted at `satellite` and resolves with no context. Wherever
+`satellite.console.display` appears it is `1 5 1`, so a text substitution is sound
+and that is what a `.satc` writes.
+
+A **selector** is a bare word after a receiver — `sort` in `my_list.sort()`. It is
+language-owned and it has a number, but the number is only reachable *through the
+receiver's type*, and the receiver's type is not known until resolve runs. DESIGN
+§6.3 keeps the parser resolution-free and PLAN M4.5 writes the `.satc` from the
+parse tree, so at the moment the file is written the selector's identity is
+**unknowable**. It stays a bare word in the file.
+
+| | written in source | in a `.satc` | numbered for |
+|---|---|---|---|
+| **path** — `satellite.console.display`, `satellite.thread.new` | rooted at `satellite` | becomes a number | the file *and* dispatch |
+| **selector** — `sort`, `append`, `get`, `substring` | bare, after a receiver | stays bare | dispatch only |
+
+Most of §2.2 is the second kind. That costs the file nothing and buys the runtime
+everything: DESIGN §6.4's method sugar resolves once to a `PathId`, and every
+execution after that is `handlers[path_id]` — one array index. The number is what
+`my_list.sort()` *becomes*, never another way to spell it.
+
+#### A literal option folds into the number
+
+DESIGN §1.1 requires an option to be a word at the call site rather than a bitmask:
+`satellite.file.open("filename", "read_append")`. That word is a string, and testing
+it at runtime is the cost of the readability.
+
+It need not be. When the option is a **literal**, the parser already knows it, so
+`my_list.sort("down")` can intern to a different `PathId` than `my_list.sort("up")`
+— same readable surface, no runtime test, one more array index. `sort_down` at
+`1 4 2 5` is that fold; `sort(direction)` at `1 4 2 4` is the general form kept for
+when the option is a variable, where §2.4's inline cache takes over on the second
+execution.
+
+**The fold is a resolve-time decision and must never reach a `.satc`**, because
+SATC.md §3 says literals stay literal. The file keeps `"down"`; the runtime keeps
+the number. This is the one place where the numbering deliberately says more than
+the file does.
+
+---
+
 ---
 
 ## 2. The numbers
@@ -172,9 +218,41 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.main` | `1 3 (0)` |  |
 | `satellite.container` | `1 4 (0)` |  |
 | `satellite.container.map` | `1 4 1 (0)` |  |
+| `satellite.container.map.set(k, v)` | `1 4 1 1` | assigned |
+| `satellite.container.map.get(k)` | `1 4 1 2` | assigned |
+| `satellite.container.map.has(k)` | `1 4 1 3` | assigned |
+| `satellite.container.map.size` | `1 4 1 4` | assigned |
+| `satellite.container.map.empty` | `1 4 1 5` | assigned |
+| `satellite.container.map.clear` | `1 4 1 6` | assigned |
+| `satellite.container.map.remove(k)` | `1 4 1 7` | assigned |
+| `satellite.container.map.keys` | `1 4 1 8` | assigned |
+| `satellite.container.map.values` | `1 4 1 9` | assigned |
 | `satellite.container.list` | `1 4 2 (0)` |  |
 | `satellite.container.list.append` | `1 4 2 1` | assigned |
 | `satellite.container.list.size` | `1 4 2 2` | assigned |
+| `satellite.container.list.sort()` | `1 4 2 3` | assigned — ascending, no key |
+| `satellite.container.list.sort(direction)` | `1 4 2 4` | assigned — direction not a literal |
+| `satellite.container.list.sort_down()` | `1 4 2 5` | assigned — folded from `sort("down")`, §1.5 |
+| `satellite.container.list.sort_down(key)` | `1 4 2 6` | assigned |
+| `satellite.container.list.sort_up(key)` | `1 4 2 7` | assigned |
+| `satellite.container.list.contains(x)` | `1 4 2 8` | assigned |
+| `satellite.container.list.index_of(x)` | `1 4 2 9` | assigned |
+| `satellite.container.list.empty` | `1 4 2 10` | assigned |
+| `satellite.container.list.clear` | `1 4 2 11` | assigned |
+| `satellite.container.list.first` | `1 4 2 12` | assigned |
+| `satellite.container.list.last` | `1 4 2 13` | assigned |
+| `satellite.container.list.truncate(n)` | `1 4 2 14` | assigned |
+| `satellite.container.list.reserve(n)` | `1 4 2 15` | assigned |
+| `satellite.container.list.remove_first()` | `1 4 2 16` | assigned — the cheap front |
+| `satellite.container.list.remove_last()` | `1 4 2 17` | assigned |
+| `satellite.container.list.remove_at(n)` | `1 4 2 18` | assigned |
+| `satellite.container.list.remove(x)` | `1 4 2 19` | assigned — by value |
+| `satellite.container.list.insert(n, x)` | `1 4 2 20` | assigned |
+| `satellite.container.list.join(separator)` | `1 4 2 21` | assigned |
+| `satellite.container.list.reverse` | `1 4 2 22` | assigned |
+| `satellite.container.list.sum` | `1 4 2 23` | assigned |
+| `satellite.container.list.max` | `1 4 2 24` | assigned |
+| `satellite.container.list.min` | `1 4 2 25` | assigned |
 | `satellite.container.arguments` | `1 4 3` | assigned — the type of the arguments object |
 | `satellite.container.result` | `1 4 4` | assigned — Satellite Orbit's answer |
 | `satellite.console` | `1 5 (0)` |  |
@@ -182,14 +260,50 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.console.input()` | `1 5 2` |  |
 | `satellite.console.input(prompt)` | `1 5 3` | assigned |
 | `satellite.console.input(prompt, target)` | `1 5 4` | assigned — a place, not a value |
+| `satellite.console.typed()` | `1 5 5` | assigned — non-blocking; a line or nothing |
+| `satellite.console.width` | `1 5 6` | assigned |
+| `satellite.console.height` | `1 5 7` | assigned |
+| `satellite.console.clear()` | `1 5 8` | assigned |
+| `satellite.console.home()` | `1 5 9` | assigned |
 | `satellite.variable` | `1 6 (0)` |  |
 | `satellite.variable.string` | `1 6 1 (0)` |  |
+| `satellite.variable.string.size` | `1 6 1 1` | assigned |
+| `satellite.variable.string.empty` | `1 6 1 2` | assigned |
+| `satellite.variable.string.find(x)` | `1 6 1 3` | assigned |
+| `satellite.variable.string.contains(x)` | `1 6 1 4` | assigned |
+| `satellite.variable.string.substring(start, end)` | `1 6 1 5` | assigned |
+| `satellite.variable.string.starts_with(x)` | `1 6 1 6` | assigned |
+| `satellite.variable.string.ends_with(x)` | `1 6 1 7` | assigned |
+| `satellite.variable.string.lower` | `1 6 1 8` | assigned |
+| `satellite.variable.string.upper` | `1 6 1 9` | assigned |
+| `satellite.variable.string.split(separator)` | `1 6 1 10` | assigned |
+| `satellite.variable.string.trim` | `1 6 1 11` | assigned |
+| `satellite.variable.string.replace(a, b)` | `1 6 1 12` | assigned |
+| `satellite.variable.string.to_number` | `1 6 1 13` | assigned |
+| `satellite.variable.string.append(x)` | `1 6 1 14` | assigned |
+| `satellite.variable.string.clear` | `1 6 1 15` | assigned |
+| `satellite.variable.string.at(n)` | `1 6 1 16` | assigned |
 | `satellite.variable.file` | `1 6 2 (0)` |  |
 | `satellite.variable.file.new` | `1 6 2 1` | assigned |
 | `satellite.variable.file.open` | `1 6 2 2` | assigned |
+| `satellite.variable.file.read_line` | `1 6 2 3` | assigned — one line, or nothing at end |
+| `satellite.variable.file.write_line(s)` | `1 6 2 4` | assigned |
+| `satellite.variable.file.read_all` | `1 6 2 5` | assigned |
+| `satellite.variable.file.close` | `1 6 2 6` | assigned |
+| `satellite.variable.file.exists` | `1 6 2 7` | assigned |
 | `satellite.variable.time` | `1 6 3 (0)` |  |
 | `satellite.variable.number` | `1 6 4 (0)` |  |
 | `satellite.variable.number.shift_left` | `1 6 4 1` | assigned — relocated from the corrected §5.5 |
+| `satellite.variable.number.max(a, b)` | `1 6 4 2` | assigned |
+| `satellite.variable.number.min(a, b)` | `1 6 4 3` | assigned |
+| `satellite.variable.number.abs(a)` | `1 6 4 4` | assigned |
+| `satellite.variable.number.clamp(a, low, high)` | `1 6 4 5` | assigned |
+| `satellite.variable.number.to_string` | `1 6 4 6` | assigned |
+| `satellite.variable.number.floor` | `1 6 4 7` | assigned |
+| `satellite.variable.number.ceil` | `1 6 4 8` | assigned |
+| `satellite.variable.number.round` | `1 6 4 9` | assigned |
+| `satellite.variable.number.power(a, b)` | `1 6 4 10` | assigned |
+| `satellite.variable.number.shift_right(n)` | `1 6 4 11` | assigned |
 | `satellite.variable.binary` | `1 6 5` | assigned |
 | `satellite.variable.bool` | `1 6 6` | assigned |
 | `satellite.variable.date` | `1 6 7` | assigned |
@@ -201,6 +315,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.thread` | `1 6 13` | assigned |
 | `satellite.variable.variant` | `1 6 14` | assigned |
 | `satellite.variable.window` | `1 6 15` | assigned |
+| `satellite.variable.capsule` | `1 6 16` | assigned — the type of a deferred call; `satellite.capsule` `1 2` is the keyword |
 | `satellite.random` | `1 7 (0)` |  |
 | `satellite.random.fast()` | `1 7 1` |  |
 | `satellite.random.normal()` | `1 7 2` |  |
@@ -225,6 +340,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.time` | `1 9 (0)` |  |
 | `satellite.time.now` | `1 9 1` |  |
 | `satellite.time.new` | `1 9 2` |  |
+| `satellite.time.sleep(n)` | `1 9 3` | assigned |
 | `satellite.spacesuit` | `1 10 (0)` |  |
 | `satellite.protected` | `1 11 (0)` |  |
 | `satellite.public` | `1 12 (0)` |  |
@@ -247,6 +363,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.library.system.division_digits` | `1 14 2 1` | assigned |
 | `satellite.library.system.max_depth` | `1 14 2 2` | assigned |
 | `satellite.library.system.min_free_mb` | `1 14 2 3` | assigned — the watchdog threshold |
+| `satellite.library.system.float_digits` | `1 14 2 4` | assigned — the precision dial, DESIGN §13 |
 | `satellite.return` | `1 15` |  |
 | `satellite.return()` | `1 15 0` | RESOLVED from `?` by §1.3 |
 | `satellite.return(satellite)` | `1 15 1` |  |
@@ -353,80 +470,72 @@ Three consequences, and they matter enough to say once, here:
 
 ## 4. Still to be decided
 
-**Settled 2026-08-27: `0` is a real number meaning nothing in that position**, and
-a path id identifies a call shape rather than a path. §1.3 is the rule. What
-remains is mechanical but not small: **every variadic path from the first satellite
-has to be split into one number per call shape**, and the accepted shapes have to
-be read out of the v1 evaluator rather than guessed — `SAT_VARIADIC` recorded that
-a count varied without recording which counts were legal.
+*Last reconciled against §2.2 on 2026-08-27, when the table went from 144 entries
+to 215.*
 
-`?` is the other mark in the table and means something different: a number not
-fixed in advance because it is allocated when a name is first met (§3).
+**Four things this section used to hold open are now in §2.2 and are struck from
+the list**: `satellite.returns` (`1 21`), `satellite.thread` (`1 23`), the whole
+`arguments` object down to `arguments.machine.threads` at `1 14 1 1 1 3` — six
+numbers deep, and still the clearest argument in the language for §1.3 refusing a
+segment limit — and the 69-path backlog, which is empty. Nothing found by the
+sweep is unnumbered.
 
-**`satellite.returns` has no number.** DESIGN §6.1 lists it as one of the eleven
-segment-1 words with their own parse rule, and DESIGN §13 records the return-type
-syntax as decided.
+### What is actually still open
 
-**The `arguments` object has no numbers, and it is the deepest thing here.**
-`satellite.library.main.arguments` is a language-owned library global, not a user
-name — the one thing under `satellite.library.main` that is *not* covered by §3's
-dynamic rule — so it and every property it carries need frozen numbers. DESIGN §7.7
-is the design. The shape, with `satellite.library.main` already at `1 14 1`:
+**The variadic split is mechanical but not small.** Every variadic path from the
+first satellite has to become one number per call shape (§1.3), and the accepted
+shapes have to be read out of the v1 evaluator rather than guessed —
+`SAT_VARIADIC` recorded that a count varied without recording which counts were
+legal.
 
-| path | needs |
-|---|---|
-| `satellite.library.main.arguments` | a child number under `main` |
-| `arguments.username` | a child of `arguments` |
-| `arguments.memory` | a child of `arguments`, and it has children of its own |
-| `arguments.memory.total` | a child of `memory` |
-| `arguments.machine` | a child of `arguments`, and it has children of its own |
-| `arguments.machine.cpu` | a child of `machine` |
-| `arguments.machine.cores` | a child of `machine` |
-| `arguments.machine.threads` | a child of `machine` |
+**Call shapes sit at two different depths, and `words.def` can only encode one.**
+`include()` and `include(satellite)` are *children of* `include` at `1 1 0` and
+`1 1 1`; `input()` and `input(prompt)` are *siblings of* `display` under `console`
+at `1 5 2` and `1 5 3`. Both were written by hand and both were confirmed, so the
+table is faithful rather than uniform.
 
-`arguments.machine.threads` is **six numbers deep** —
-`satellite`, `library`, `main`, `arguments`, `machine`, `threads` — which is the
-clearest argument in the language for §1.3 refusing a segment limit. The first
-satellite's macro stopped at four and could not have expressed this path at all.
+There is a rule that fits both and it is worth checking before either is changed:
+a **language-owned** argument extends the path downward, because it has a number of
+its own to contribute (`satellite` is word 1, so `include(satellite)` is `1 1 1`);
+a **user-owned** argument cannot extend anything, so its call shape takes a slot
+beside its siblings. `include` has a bare number *and* a `0` child because it is
+the one word with both kinds of shape. If that reading holds, the inconsistency is
+apparent rather than real and the two depths are two different rules doing their
+jobs. **Confirm before `words.def` encodes it.**
 
-`memory` and `machine` both answer bare *and* have children, so both take a `(0)`
-form alongside their numbered children, the way `satellite.container` does.
+**`satellite.file` `1 8` and `satellite.variable.file` `1 6 2` both carry a `new`.**
+The type node's children are where DESIGN §6.4 dispatches a method — which is why
+the five file methods added on 2026-08-27 went to `1 6 2 3` through `1 6 2 7` —
+while `satellite.file.new(path)` at `1 8 1` is the module form. §6.4's own second
+qualification says constructors live in the same table with a flag for whether the
+first parameter binds the receiver, so the two can coexist. But nothing yet says
+which one a program should write, and two spellings for one construction is the
+kind of thing that gets decided by accident at M10.
 
-**The six spellings are one node, not six.** `arg`, `args`, `argz`, `argument`,
-`arguments` and `argumentz` all name the same thing and share one number; only the
-spelling table knows there are six (DESIGN §4.4, §7.7).
+**`satellite.thread.new` has one number for two shapes.** `thread.new(f())` and
+`thread.new(f(x))` both hand `new` exactly one thing — a deferred call — so its own
+arity is always 1, and the capsule's arity rides on the capsule's own number under
+§3. Splitting on the capsule's arity does not stop at two: `f(a,b)` and `f(a,b,c)`
+are equally distinct and the split becomes unbounded. `1 23 2` is free if this is
+decided the other way.
 
-**`satellite.thread` has no number.** The author's first note constructs a thread
-with `satellite.thread.new(...)`, under a top-level `thread` namespace, while the
-*type* is `satellite.variable.thread`. That is exactly the shape already numbered
-for files and time — `satellite.variable.file` at `1 6 2` with `satellite.file.new`
-at `1 8 1`, `satellite.variable.time` at `1 6 3` with `satellite.time.new` at
-`1 9 2` — so the pattern is settled and only the word is missing.
+**`satellite.container.set` is deliberately absent** and `1 4 5` is free. A set is a
+map with no values, and the map now has its own children at `1 4 1 1` onward. If a
+set earns its own type it takes `1 4 5`; until something needs one it is a word the
+language does not have.
 
-**69 paths are still unnumbered, but they are not 69 decisions.** Almost all of
-them are *the next available number*, which is a consequence and not a choice.
-`SCRATCH.md/WORD_SURFACE.md` sorts them by how much judgement each actually needs:
+### Two things that must never be numbered
 
-- **9 new children of `satellite`** — `analyze`, `bool`, `directory`, `help`,
-  `network`, `returns`, `system`, `thread`, `window`. **This is the only real
-  decision left**, because it is an ordering, and under §1.1 the order is the order
-  a program first meets them.
-- **23 append under a parent that already has a number**, so each continues a list
-  that is already running: `satellite.variable` has 13 waiting and its next free is
-  `1 6 5`, and the three `.range` paths sit at `1 7 1 1`, `1 7 2 1` and `1 7 3 1`.
-- **36 cannot be numbered until their namespace is**, and then they number from 1
-  under it with nothing further to settle. `satellite.system` alone is 19 of them.
-
-There is deliberately no `satellite.number`. A tenth candidate came from DESIGN
-§5.5's aside that bit shifts *"if ever needed"* would be
-`satellite.number.shift_left(n)` — the only place in either document that implied a
-top-level `number`, against every other number operation living under
-`satellite.variable.number`. **It was a slip and §5.5 is corrected.** *(2026-08-27.)*
-
-Two paths that appear in the documents must **never** be numbered:
 `satellite.control.return` (DESIGN §6.1) is a hypothetical showing a parse
-collision, and `satellite.consle.display` (DESIGN §4.6) is a deliberate
-misspelling in an error-message example.
+collision, and `satellite.consle.display` (DESIGN §4.6) is a deliberate misspelling
+in an error-message example.
+
+And there is deliberately no `satellite.number`. A candidate came from DESIGN §5.5's
+aside that bit shifts *"if ever needed"* would be `satellite.number.shift_left(n)` —
+the only place in either document that implied a top-level `number`, against every
+other number operation living under `satellite.variable.number`, which now holds ten
+more of them at `1 6 4 2` through `1 6 4 11`. **It was a slip and §5.5 is
+corrected.** *(2026-08-27.)*
 
 ---
 

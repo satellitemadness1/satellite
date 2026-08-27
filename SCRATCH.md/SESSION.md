@@ -22,13 +22,16 @@ consumer, and a test proving paths walk to their numbers. **No C++ is written ye
 The blocker was never code — it was that the numbering had to be settled first, and
 settling it took the whole session and changed the plan in six places (§3).
 
-**What IS done: the numbering itself.** WORD_NUMBERS.md §2.2 holds **144 numbered
-entries** and nothing found by the sweep is unnumbered. It validates the way M2's
-`static_assert`s will — checked mechanically on 2026-08-27:
+**What IS done: the numbering itself.** WORD_NUMBERS.md §2.2 holds **215 numbered
+entries** — 144 after the first pass, plus the 71 that settling QUAD.md §3 added
+later the same day (§5.6). Nothing found by the sweep is unnumbered. It validates
+the way M2's `static_assert`s will — checked mechanically on 2026-08-27, and again
+after the 71 landed:
 
     duplicate numbers that are not declared aliases      0
     parents with holes in their child list               0
     paths whose parent number is absent                  0
+    aliases pointing at a number that does not exist     0
 
 So `words.def` is now a transcription job against a table that is known to be
 internally consistent, rather than a design job.
@@ -237,18 +240,22 @@ sizes.
    the same memory. And should the shipped default be the whole machine, or a
    fraction of it, and should a machine with less than the file says win?
 
-3. **Is `satellite.number.shift_left` a slip for `satellite.variable.number.shift_left`?**
-   (§3.4.)
+3. ~~Is `satellite.number.shift_left` a slip for
+   `satellite.variable.number.shift_left`?~~ **Confirmed a slip.** DESIGN §5.5 is
+   corrected, and `satellite.variable.number` now holds ten more operations at
+   `1 6 4 2` through `1 6 4 11`, `shift_right` among them.
 
-4. **`satellite.returns` still has no number** — DESIGN §6.1 lists it as a
-   segment-1 form and DESIGN §13 marks the return-type syntax decided.
+4. ~~`satellite.returns` still has no number.~~ **Numbered `1 21`.**
 
 5. ~~In what order do the nine remaining top-level namespaces go?~~ **Done
    2026-08-27.** The author delegated the assignment; 16–24 went to `analyze`,
    `bool`, `directory`, `help`, `network`, `returns`, `system`, `thread`, `window`
    alphabetically, and everything below them followed by the next-lowest-free rule.
-   **WORD_NUMBERS.md §2.2 now holds 144 numbered entries and nothing in the sweep
-   is unnumbered.**
+   That pass ended at 144 entries; **§2.2 now holds 215** (§5.6) and nothing in the
+   sweep is unnumbered.
+
+6. **The float, and it is the only one on the critical path.** §5.7 has it, along
+   with the three that came out of the QUAD reading.
 
 ---
 
@@ -278,24 +285,84 @@ a `.satc` as names, never as numbers, because their numbers are allocated per ru
 
 ## 5.5 THE NEXT THING THE AUTHOR WILL SAY
 
-Stated explicitly at the end of the session, before the clear, so it is not lost:
+Stated explicitly at the end of the previous session, before the clear:
 
 > *we need to be able to express quad_infinity*
 
-**[QUAD.md](../QUAD.md) is that document** and it is the first thing to read after
-this one. `/home/madness/code/cxx/quad_infinity/` is 3029 lines of C++ that run a
-model of a mind, and expressing it in satellite is the literal purpose of the
-language — general-purpose everywhere else, but that program is the acceptance
-test.
+**[QUAD.md](../QUAD.md) is that document.** It was rewritten on 2026-08-27 after
+reading QUAD's source rather than inferring from its includes, and it now opens with
+the rule the author set: **both sides bend, and QUAD bends more.** satellite is the
+thing being built, so the burden of proof sits on satellite changing, and a feature
+enters the language only when QUAD's *meaning* cannot survive without it.
 
-QUAD.md §3 is the gap list. Four things satellite has not settled that QUAD needs:
-**floats** (DESIGN §13 open), **a set container** (not numbered), **sorting** — which
-is blocked on DESIGN §12's deferral of capsules-as-values — and **a console that can
-address a screen**. QUAD.md §5 says what the honest next step is: take one mechanism
-out of `mind.hpp` and try to write it in satellite by hand against DESIGN.md, which
-will find gaps this list does not have.
+**Four of the six holes closed.**
 
-The author expects this to be a long planning conversation and said so.
+| was | now |
+|---|---|
+| sorting needs capsules as values | all seven comparators are one shape — one primitive. DESIGN §12's deferral **survives** and §2 stays shut |
+| a set and a deque | membership tests and bounded ring buffers — map + `remove_first` + `truncate`. `1 4 5` left free |
+| a console that can address a screen | `view.hpp` never moves a cursor. The gap was **non-blocking input**, answered by a reader thread (DESIGN §10.1) |
+| map keys unchecked | every key is a number or a string. §6.5 costs QUAD nothing |
+
+**`satellite.variable.float` is the one that grew teeth**, and it is now the whole
+remaining gap. Three findings from the source, all in QUAD.md §3.1 and DESIGN §13:
+`pow` at a fractional exponent has no exact decimal value at any length, so a
+rounding rule is part of the type; `activation *= keep` every tick grows digits
+without bound; and `.sky` already round-trips the whole mind through six significant
+digits and works. DESIGN §8.1 now says its no-`double` argument does not reach the
+float.
+
+**One correction to QUAD.md §2 worth keeping:** QUAD spawns **zero threads**. The
+only `<thread>` use in 3029 lines is `sleep_for`. `satellite.time.sleep` is `1 9 3`.
+
+### 5.6 What landed in the documents on 2026-08-27
+
+**71 numbers, taking WORD_NUMBERS.md §2.2 from 144 entries to 215.** Validated
+mechanically the way M2's `static_assert`s will: 0 duplicates, 0 parents with holes,
+0 paths whose parent is absent, 0 aliases pointing at nothing.
+
+The map had **no** children before this and now has nine; the string had none and now
+has sixteen. Also: 23 more on the list, 10 on the number, 5 on the file, 5 on the
+console, `satellite.variable.capsule` `1 6 16`, `satellite.time.sleep` `1 9 3`,
+`satellite.library.system.float_digits` `1 14 2 4`.
+
+**Two new rules were written down**, and both came out of the author's questions
+rather than from planning:
+
+- **WORD_NUMBERS.md §1.5 — paths against selectors.** A path is rooted at `satellite`
+  and becomes a number in a `.satc`; a selector is a bare word after a receiver and
+  stays bare, because PLAN M4.5 writes the file from the parse tree and DESIGN §6.3
+  keeps the parser resolution-free, so the selector's identity is *unknowable* at that
+  point. Most of the 71 are selectors. They are numbered for dispatch only.
+- **A literal option folds into the number.** `my_list.sort("down")` can intern to a
+  different `PathId` than `sort("up")` — same readable surface per DESIGN §1.1, no
+  runtime test. Resolve-time only; SATC.md §3 keeps the literal in the file.
+
+**SATC.md gained four sections** — §3.1, §3.2, §5.1, §5.2 — covering the two
+populations, why the pipeline forces the split rather than taste, the five-step
+transformation order, and the one ordering the writer must preserve: **source
+order**, because user names are numbered as they are first met and a cache hit has to
+re-allocate them identically. That also answered §6's open question about whether the
+number column is diffable.
+
+### 5.7 Still open after this session
+
+1. **The float.** Rounding rule, default precision, and whether
+   `satellite.library.system.division_digits` `1 14 2 1` is already the same dial as
+   `float_digits` `1 14 2 4` under a narrower name.
+2. **Call shapes sit at two depths.** `include()` is a *child* of `include` at
+   `1 1 0`; `input()` is a *sibling* of `display` at `1 5 2`. WORD_NUMBERS.md §4 now
+   proposes a reading under which both are correct — language-owned arguments extend
+   downward, user-owned ones take a sibling slot — but it needs confirming before
+   `words.def` encodes one.
+3. **`satellite.file` `1 8` and `satellite.variable.file` `1 6 2` both carry `new`.**
+   The five new file methods went on the type node per DESIGN §6.4. Nothing says
+   which a program should write.
+4. **`satellite.thread.new` has one number for two shapes.** Argued in WORD_NUMBERS.md
+   §4: its own arity is always 1. `1 23 2` is free if that is decided the other way.
+5. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
+   `Rack::draw` in satellite by hand against DESIGN.md. Between them they touch
+   floats, the map, a weighted pick, and the one `pow` that has no exact answer.
 
 ## 6. Jobs the user has asked for that are not started
 

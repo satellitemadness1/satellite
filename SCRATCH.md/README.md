@@ -23,6 +23,7 @@ true. A measured startup floor does not.
 | file | what it is | delete when |
 | --- | --- | --- |
 | [SESSION.md](SESSION.md) | where the work stands, what is decided, what is in flight, and what only the user can answer | its "not yet in a permanent document" and "questions" lists are both empty |
+| [MILESTONE.md](MILESTONE.md) | every piece of specified work that belongs to **no milestone** in PLAN §8 — 50 of the 215 numbered paths among them | every row has a milestone in PLAN §8, moved there rather than copied |
 | [WORD_SURFACE.md](WORD_SURFACE.md) | every `satellite.*` path that exists in the first satellite or is promised by this one, and which of five sources each was found in | `words.def` is written and tested against it — **every path in it is now numbered** |
 | [PORTING.md](PORTING.md) | what `satellite_number` and `satellite_string` actually are in the first satellite, and what has to be decided before copying them | the port lands and PLAN §6 records what changed |
 | [FIRST_NOTE.md](FIRST_NOTE.md) | the ledger for converting `plans/madness/first_note.txt` into the permanent documents, with the original preserved verbatim | done — kept only until someone has read it once |

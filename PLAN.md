@@ -19,16 +19,26 @@ and is the source this is pulled from. It works and it is fast.
 
 [QUAD.md](QUAD.md) names the program satellite has to be able to express:
 `/home/madness/code/cxx/quad_infinity/`, 3029 lines of C++ that run a model of a
-mind. It is a general-purpose language and everything below is meant generally,
-but that program is the acceptance test, and QUAD.md §3 lists **four things the
-language has not settled that it needs** — floats, a set, sorting, and a console
-that can address a screen. Two of those are currently in DESIGN §12's deferred list
-and one is in §13's open list, so the goal changes what "deferred" is allowed to
-mean.
+mind. It is a general-purpose language and everything below is meant generally, but
+that program is the acceptance test.
 
-None of it touches M2 through M8. All of it lands on M9 and M10, and QUAD.md §4
-proposes a milestone that does not exist yet: **one mechanism out of `mind.hpp`,
-running.**
+**Both sides bend, and QUAD bends more** — QUAD.md §0 is that rule, and it is what
+keeps the language from being shaped by one program's C++ conveniences. A feature
+enters satellite only when QUAD's *meaning* cannot survive without it.
+
+*(2026-08-27.)* QUAD.md §3 used to list four unsettled things — floats, a set,
+sorting, and a console that could address a screen. **Reading the source closed
+three of them and one other**: sorting needs one primitive rather than comparators,
+so DESIGN §12's deferral of *a bare name can be a value* survives and §2 stays shut;
+the sets and deques are membership tests and bounded ring buffers; the display never
+moves a cursor and the real gap was non-blocking input; and QUAD's map keys all fall
+inside §6.5's restriction. **`satellite.variable.float` is the one that grew teeth**
+and is the whole remaining gap (QUAD.md §3.1, DESIGN §13).
+
+None of it touches M2 through M8 as *code* — but settling it added **71 numbers** to
+WORD_NUMBERS.md, taking §2.2 from 144 entries to 215, and M2 is the milestone that
+transcribes them. The rest lands on M9 and M10, and QUAD.md §4 proposes a milestone
+that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 ## 1. Where things stand
 
@@ -691,6 +701,14 @@ needs. *(Settled 2026-08-27.)* This closes what this section used to hold open.
 found by sweeping the v1 registry, the v1 evaluator, every v1 `.satl` program, the
 v1 design documents and this tree's own two, with each source swept once and then
 attacked by a second reader looking for what the first missed.
+
+**It got wider on 2026-08-27**, when settling QUAD.md §3 added 71 numbers and took
+WORD_NUMBERS.md §2.2 from 144 entries to 215. Most of them are **selectors rather
+than paths** — the map's nine methods and the string's sixteen, where both had none
+at all — and WORD_NUMBERS.md §1.5 is the distinction: a path is numbered in a `.satc`
+and a selector is numbered only for dispatch, because PLAN M4.5 writes the file from
+the parse tree and a selector's identity is not known until M6's resolve. Both kinds
+go in `words.def`; only one kind ever appears in a cached program.
 
 Nothing executes. This is the spine.
 

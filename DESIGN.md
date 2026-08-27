@@ -780,6 +780,7 @@ told. If the two ever need to differ, they need two different names.
 | `satellite.variable.time` | absolute instant, UTC | §13, open: one clock, one epoch |
 | `satellite.variable.file` | handle | reference type |
 | `satellite.variable.thread` | handle | reference type |
+| `satellite.variable.capsule` | `(capsule number, argument values)` | a deferred call; §13, and `1 6 16` |
 | `satellite.variable.variant` | — | deferred; PLAN.md §8, "Later" |
 | `satellite` | the runtime singleton | `satellite.return(satellite)` |
 
@@ -803,6 +804,14 @@ All three predicted traps fired as real compile errors:
    deleted overloads still participate in overload resolution.
 3. "Keep both `double` and `Number`" is worse than it looks: `Value v = 4096.0`
    silently selects `double` while `Value v = 42` is a hard compile error.
+
+**This argument is about `satellite.variable.number` and does not reach
+`satellite.variable.float`.** *(2026-08-27.)* Refusing `double` works here because
+every operation on an exact decimal has an exact decimal answer. That stops being
+true one type over: `pow` at a fractional exponent has no exact decimal value at any
+length, and repeated multiplication of fractions grows digits without bound on a hot
+path. §13 has the evidence and the open question. The guard below stays exactly as
+it is — what must not happen is reading it as a promise the float can also keep.
 
 The representation is **base-10⁹ limbs**, not base 2³². This backs a *decimal* type,
 so decimal I/O and scaling by powers of ten are most of the work, and both are limb
@@ -907,6 +916,18 @@ consumes. **A line stays atomic because the unit queued is a whole string.** The
 is a `drain()` barrier before reading input, so a prompt cannot appear before the
 output that explains it.
 
+**The same shape, reversed, is what non-blocking input is.** *(new, 2026-08-27.)*
+§10.3 observes that a GTK main loop is "the shape §10.1 already has, with the
+polarity flipped." Flip it once more for input: a **reader thread** blocks on stdin
+and pushes whole lines into a queue, and the program asks the queue and gets a line
+or nothing, immediately. `satellite.console.typed()` at `1 5 5` is that ask.
+
+This is what lets a program keep running while somebody types at it without the
+program ever learning what a terminal mode is — §1.1 applied to input. The blocking
+happens on a thread that is not the program's, which is strictly better than the
+poll loop the obvious alternative produces. `satellite.console.input` keeps its
+existing meaning: ask, and wait.
+
 `satellite.console.display` is ordinary stdout, and the flush is required for the
 cases line buffering does not cover. glibc line-buffers stdout only when it is a
 tty, and that case needs no help — the newline flushes it. The flush is for the
@@ -988,13 +1009,33 @@ different path with a different name.
 A deferral list is only useful if the things missing from the language are on it,
 and equally only if the things on it are still missing.
 
-**[QUAD.md](QUAD.md) puts three of these under pressure.** The program this
-language exists to express needs sorting, which needs a capsule passed as a value;
-it needs real fractional arithmetic; and it uses containers this list does not
-have. A deferral is a decision that the thing is not needed *yet* — QUAD.md §3 is
-the argument that two of the entries below are needed sooner than "later".
+**[QUAD.md](QUAD.md) put three of these under pressure, and reading QUAD's source
+on 2026-08-27 released two of them.** The argument had been that the program this
+language exists to express needs sorting, that sorting needs a capsule passed as a
+value, and that this forces *a bare name can be a value* out of the list. It does
+not.
+
+- **Sorting needs one primitive, not comparators.** All seven of QUAD's sort
+  comparators are the same shape — one numeric key descending, ties by identity
+  ascending — and `flock.hpp:232`'s own comment says why the tie-break is there
+  (`// deterministic ties`, because `std::sort` is not stable). Seven for seven.
+  `satellite.container.list.sort_down(key)` at `1 4 2 6` is that primitive.
+- **The one place QUAD genuinely stores behaviour is a deferred call, not a bare
+  name.** `rack.hpp:22` holds a `std::function` in a field, and eight of its eleven
+  uses capture nothing while the other three capture scalars *by value*. §13's
+  `satellite.thread.new(capsule_name(args))` already had to express exactly that
+  for the language's own reasons, and it is a **call form** rather than a bare name
+  used as a value.
+
+So §2 stays shut and the first entry below stands. What QUAD did move is
+`satellite.variable.float`, which is in §13 rather than here, and which is on the
+critical path.
 
 - **User-defined generics** — a bare name can be a value, which reopens §2.
+  *(Still deferred, 2026-08-27.* The deferred-call form
+  `satellite.thread.new(f(x))` does **not** reopen this: `f(x)` is a call, which
+  §6.2's postfix loop already produces, and the only new semantics is that one
+  handler packages its argument instead of performing the call.)
 - **Durations** — `time` is an absolute instant only; subtraction yields a number of
   nanoseconds.
 - **A JIT.** Not built and not planned. satellite is interpreted and there is no
@@ -1004,6 +1045,30 @@ the argument that two of the entries below are needed sooner than "later".
   rather than in someone's memory. **`.satc` is not a counter-example** — it is a
   cache of §4's numbering applied to a source file, written after the program has
   already started, and deleting every one of them costs a walk. [SATC.md](SATC.md).
+- **satellite written in satellite.** Not planned, and unlike most entries here it is
+  not deferred — it is a consequence of the two decisions above. What self-hosts in
+  other languages is a **compiler**: it emits machine code and the output runs with
+  the host gone. satellite has refused that twice on purpose — no JIT here, and PLAN
+  §2.1 rules copy-and-patch out of scope in one line, *"it is a compiler."* A
+  tree-walking interpreter cannot self-host its host away; satellite interpreting
+  satellite is slower forever with no compile step to ever cash the loss back in.
+
+  §6.5 already says this about the narrowest possible case — a map's hash and equality
+  *"must be native and can never be satellite code"* — and the general rule is the
+  same sentence without the hat. **[WORD_NUMBERS.md](WORD_NUMBERS.md) is the map of
+  it:** a path has a number because dispatch lands in a native handler, so its 215
+  numbered paths are 215 things that are C++ and cannot be anything else. Written in
+  satellite, `list.sort()` would need no number, because there would be no
+  `handlers[path_id]` to index.
+
+  So the C++ **grows with the language's ambition rather than shrinking**, which is
+  §1.1's tie-breaker read from the other side: *do absolutely everything for the user*
+  is a promise kept in native code — the base-10⁹ arithmetic, the printer thread,
+  SIGINT without `SA_RESTART`, the GTK marshalling nobody ever learns the words for.
+  A language that did less for people would have less C++ under it. The consequence
+  worth planning for is that this tree's C++ is a permanent artifact with the same
+  lifespan as the language, not scaffolding to be removed later — which is what
+  PLAN §3's line ceiling and [FORMAT/CXX.md](FORMAT/CXX.md) are for.
 - **Bare field access** (`my_object.my_field`) — accessor methods only. A spacesuit
   field is reachable from inside the spacesuit and nowhere else, which is what makes
   `satellite.protected` a statement about the language rather than a comment.
@@ -1013,6 +1078,11 @@ the argument that two of the entries below are needed sooner than "later".
   checking, not type checking.
 - **`m[k] = v` and `l[i] = v`** — assignment resolves a storage slot and an index
   expression names none. Fixing one fixes both.
+- **`satellite.container.set`, and a deque** — *(considered and declined,
+  2026-08-27.)* All five of QUAD's `std::set` are membership tests, which a map with
+  no values answers, and both its `std::deque` are bounded ring buffers, which
+  `list.remove_first()` at `1 4 2 16` and `truncate(n)` at `1 4 2 14` answer. `1 4 5`
+  is free if something later earns a real set.
 - **An in-place fast path for container mutation** — every append and set copies the
   whole body, which makes building a container quadratic. Safe only when the slot's
   handle is unshared, and then only for a **frame** slot; a field or a global may
@@ -1058,11 +1128,36 @@ the argument that two of the entries below are needed sooner than "later".
 ### Open
 
 - **`satellite.variable.float` — "infinitely long in both directions."** §8.1's
-  base-10⁹ representation gives the integer half. The fractional half needs a
-  decision about what "infinite" means when a program asks for a digit: lazy, or
-  bounded by a precision dial. **This is now on the critical path** rather than
-  merely open: QUAD.md §3.1 is a program that cannot be written without it, and it
-  is the largest single gap between this design and its own goal.
+  base-10⁹ representation gives the integer half. The fractional half was framed
+  here as a choice between *lazy* and *bounded by a precision dial*, and reading
+  QUAD's source on 2026-08-27 showed that framing is answering the wrong question.
+
+  **A dial is not a convenience. It is the only way some of these answers exist.**
+  `quad_infinity/rack.hpp:59` computes `pow(urgency, exp)` where
+  `exp = 0.15 + 4.5 * (1 - t)` — always fractional, 0.15 to 4.65. `x^y` at
+  fractional `y` has no exact decimal value at any length, so an exact
+  arbitrary-precision type cannot represent it and "lazy" has nothing to be lazy
+  about. The result has to be **rounded to exist**, which means a rounding rule is
+  part of the type rather than a setting on it.
+
+  **And exactness actively fails on the hot path.** `sky.hpp:355` runs
+  `activation *= keep` every tick on every node, where `keep = 0.15 + 0.85·alt²`.
+  Exact decimal multiplication adds the operands' digit counts, so a thousand ticks
+  is thousands of digits per node — for a value the program prints at `%.2f`.
+
+  **How much precision is actually needed is already on record.** `sky.hpp:461`
+  writes the entire mind to its `.sky` file with bare `operator<<` — six
+  significant digits — and reads it back, every save. The program round-trips its
+  whole state through six digits and keeps working.
+
+  So the open question is now: what is the rounding rule, what is the default
+  precision, and where does it live. `satellite.library.system.float_digits` is
+  numbered at `1 14 2 4` as the dial's home, beside `division_digits`, which may
+  already be the same knob under a narrower name.
+
+  **This also puts §8.1 under pressure and that needs saying where §8.1 is.** Its
+  argument — no `double`, exact always, guarded at the C++ type level — is right for
+  `satellite.variable.number` and is not available to `satellite.variable.float`.
 - **Time.** `satellite.variable.time`, `.date` and `satellite.time.now()` must agree
   on **one clock and one epoch** before any of them is built. The author's stated
   leaning is a high-precision clock, which settles the resolution question but not
@@ -1080,11 +1175,29 @@ the argument that two of the entries below are needed sooner than "later".
   current directory. Left undecided it will be settled by accident at M8, and
   every program written before the accident will disagree with every program
   written after.
-- **`satellite.thread.new` against `satellite.variable.thread`.** §10.4 and PLAN
-  M12 name only the type. The author's first note also uses a constructor under a
-  top-level `satellite.thread`, which is the same shape `satellite.file.new` and
-  `satellite.time.new` already have — a type under `variable`, a constructor under
-  a sibling namespace. Consistent, and currently unnumbered.
+- ~~**`satellite.thread.new` against `satellite.variable.thread`.**~~ **Settled
+  2026-08-27.** Both exist and they are the established two-part shape — the type
+  under `variable`, the constructor under a sibling namespace, exactly as
+  `satellite.file.new` and `satellite.time.new` already do. `satellite.thread` is
+  `1 23` and `satellite.thread.new` is `1 23 1`.
+
+  What the settling exposed is bigger than the numbering. The form is
+
+  ```satellite
+  satellite.variable.thread my_thread = satellite.thread.new(capsule_name(args))
+  ```
+
+  and it parses today with **no change to §6**: `var_decl := type IDENT "="
+  expression`, §6.1 dispatches on `path[1] == variable`, and the initialiser is
+  §6.2's postfix loop producing a Call over a Call. But `capsule_name(args)` at that
+  position is not performed — it is *packaged*. The handler evaluates the arguments
+  and stores `(capsule number, argument values)` for the thread to run later.
+
+  **That is a deferred call, and it is the language's own requirement rather than a
+  concession to anything.** It is also why §12's deferral of *a bare name can be a
+  value* survives: `capsule_name(args)` is a **call form**, not a bare name used as
+  a value, so §2 stays shut. Its type is `satellite.variable.capsule` at `1 6 16`.
+  `satellite.capsule` `1 2` remains the declaration keyword.
 
 ---
 

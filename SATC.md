@@ -102,6 +102,54 @@ Literals stay literal too: `"Hello, World!"` is a string in the source and a str
 in the `.satc`. Numbering it would buy nothing and cost the readability §1.1 exists
 for.
 
+### 3.1 Paths become numbers. Selectors do not.
+
+The rule in §3 is about *ownership* — the user's names stay names. There is a
+second line running the other way, through words the **language** owns, and it
+decides more of the file than the first one does.
+
+A **path** is rooted at `satellite` and resolves with no context. Wherever
+`satellite.console.display` appears it is `1.5.1`. Substituting it is sound
+anywhere in the file, which is what makes the whole format a substitution.
+
+A **selector** is a bare word after a receiver — `sort` in `my_list.sort()`. It is
+language-owned and it does have a number (`satellite.container.list.sort` is
+`1 4 2 3`), but that number is reachable only *through the receiver's type*.
+
+So a `.satc` keeps the sugar exactly as written:
+
+```
+my_list.sort()                 // stays. `sort` is a selector.
+1.5.1("Hello, World!")         // becomes a number. `display` is in a path.
+```
+
+**What it must never do is flip the sugar into its dispatch form.**
+`satellite.container.list.sort(my_list)` is what DESIGN §6.4 defines as the
+dispatch-table key — "the (type node, method name) key... with the receiver written
+out as the first argument" — and §6.4 says no program may write it. Writing it here
+would make the file name a handler, which §7 is the sentence forbidding.
+
+### 3.2 The pipeline decides this, not taste
+
+§3.1 is not a readability preference. It is forced, and the proof is where the
+writer runs.
+
+PLAN §8 schedules `.satc` as **M4.5 — after M4's parser and before M6's resolve.**
+DESIGN §6.3 keeps the parser resolution-free on purpose: it "emits a flat
+Member/Call/Index chain and resolves it afterwards, letting each object answer for
+its own members." So at the instant the file is written, nothing has yet decided
+that `my_list` is a list, and the identity of `sort` is **unknowable** — not
+awkward to record, unavailable.
+
+That is also why the file records no evaluation order and §7's claim survives: a
+`.satc` holds a **tree**, and a tree's evaluation order is decided by the evaluator
+on every run. There is no order in the file to get wrong.
+
+WORD_NUMBERS.md §1.5 holds the other half of this — why a selector is still worth
+numbering even though the number never appears here. Dispatch is
+`handlers[path_id]`, one array index, and it is reached through resolve rather than
+through the file.
+
 ---
 
 ## 4. Reading comes before writing
@@ -140,6 +188,51 @@ skipped:
   exception is §4's malformed file, which is a fact about the machine rather than a
   permission the user declined to give.
 
+### 5.1 The transformation order
+
+Five steps, and the first four are all parse-tree work. If any of them needs
+resolve, the writer is in the wrong place in the pipeline (§3.2) and the bug is
+there rather than here.
+
+1. **Collapse aliases.** `hexadecimal` → `hex`'s node, `.range(a, b)` → the
+   `(min, max)` node, all six spellings of `arguments` → one node
+   (WORD_NUMBERS.md §2.3). First, because an alias has no number of its own to
+   write.
+2. **Classify every dotted chain** — a path rooted at `satellite`, a selector after
+   a receiver, or a user name. Everything downstream depends on this and only the
+   first branch continues.
+3. **Absorb language-owned arguments.** `include(satellite)` → `1.1.1`. After (2),
+   because it depends on the argument being word 1 rather than a user value.
+4. **Slot by arity.** `input()` at `1 5 2` against `input(prompt)` at `1 5 3`.
+   Counting, not resolving.
+5. **Walk the trie and emit.**
+
+Three things stay untouched through all five: user names (§3), literals (§3), and
+selectors (§3.1).
+
+**A literal option is not folded here.** WORD_NUMBERS.md §1.5 lets
+`my_list.sort("down")` intern to a different `PathId` than `sort("up")` — but that
+is a resolve-time decision, and §3's "literals stay literal" governs the file. The
+`.satc` keeps `"down"` as a string. The runtime keeps the number. This is the one
+place the numbering deliberately says more than the file does, and it is not a
+contradiction as long as nobody tries to make the file say it.
+
+### 5.2 The writer must emit in source order
+
+This is the one ordering the file genuinely has to preserve, and it is not
+evaluation order.
+
+WORD_NUMBERS.md §3: a user capsule or spacesuit takes the next number free under
+its parent, "allocated when the name is first met." *First met* is an order. A
+program run from source numbers `fact` and `helper` in the order they appear; the
+same program read back from a `.satc` re-allocates them, and it must arrive at the
+same answer.
+
+So the writer emits declarations in the order the source declared them. It does not
+sort, group, or hoist. This is a constraint on the writer rather than a property
+that arrives for free — the same one §6 is reaching for when it asks whether the
+number column is stable enough to diff, and satisfying it answers both.
+
 ---
 
 ## 6. Open
@@ -156,10 +249,17 @@ skipped:
   meaning then depends on files it did not name in its own header, so either the
   header grows a line per included file or an included program invalidates the
   cache wholesale.
-- **Is the number column stable enough to diff?** If two runs of the same source
-  and the same numbering produce byte-identical output, a `.satc` becomes something
-  a test can compare. That is worth having and it is a constraint on the writer,
-  not a property that arrives for free.
+- ~~**Is the number column stable enough to diff?**~~ **Answered by §5.2**, which
+  the writer has to satisfy anyway for user-name allocation to survive a cache hit.
+  Emit in source order and byte-identical output falls out, so a `.satc` becomes
+  something a test can compare.
+
+- **A `.satc` is lossy, and nothing yet says so where a reader would look.** §5.1's
+  alias collapse means the file cannot say whether the source wrote `hex` or
+  `hexadecimal`, or which of six spellings of `arguments` was used. Harmless for a
+  cache — the program means the same thing either way — but it does mean a `.satc`
+  is never a substitute for its source, and §1.1 invites exactly that mistake by
+  making the file pleasant to read.
 
 ---
 
