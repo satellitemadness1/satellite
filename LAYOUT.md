@@ -31,7 +31,8 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
 | [Makefile](Makefile) | An index. Includes the nine fragments under `make_support/` in numbered order and does nothing else. |
-| [LICENSE](LICENSE) | MIT (Expat). |
+| [LICENSE](LICENSE) | MIT (Expat). **Incomplete as of 2026-08-27** — `pcg/` is Apache-2.0 and this file does not say so. |
+| [pcg/](pcg/) | The only third-party code in the tree: three pcg-cpp 0.98 headers, its licence, and a README recording what was cut, why `-isystem`, and why a 512-bit variant was refused. |
 | [.gitignore](.gitignore) | Build output, and the deliberate exclusion of `old_versions/` from this repository's history. |
 
 ## `FORMAT/` — how the code is written
@@ -60,10 +61,14 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/programs/terminal.cpp](src/programs/terminal.cpp) | The VTE widget and the `satl` it spawns into a PTY. Holds the exit policy — the clean-exit arm is M11.A's and M11.B deletes it. |
 | [src/programs/terminal.hpp](src/programs/terminal.hpp) | One door to the above. Split from `window.cpp` by subject, not by line count. |
 | [src/system_facts/version.hpp](src/system_facts/version.hpp) | The two version numbers and what a build records about itself, including both the compiler make invoked and the one that answered. |
+| [src/satellite_random/random.hpp](src/satellite_random/random.hpp) | `satellite.random`: the three tiers, the `Bits32` seam, `MAX_RANDOM_DIGITS`, and the spin. Names no PCG type, so nothing above it includes an Apache-2.0 header. |
+| [src/satellite_random/random.cpp](src/satellite_random/random.cpp) | The only translation unit that names a PCG entity. Compiled by `make` and **linked into nothing** — 040-sources.mk says why. |
 
 Two directories exist and are **empty**, holding names for work that has not
 started: `src/satellite_number/` and `src/satellite_string/`. `src/satellite_words/`
-is where M2's trie will go and does not exist yet.
+is where M2's trie will go and does not exist yet. `src/satellite_random/` exists and
+is built, and is the one module in the tree with **no consumer** — it landed ahead of
+any milestone that calls it, the way `satl-term` did.
 
 ## `make_support/` — the build
 

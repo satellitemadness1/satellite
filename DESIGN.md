@@ -1246,9 +1246,23 @@ Three tiers, differing in nothing a program can see except how long they take:
 
 | tier | throwaway window |
 |---|---|
-| `satellite.random.fast` | 50–100 ms |
-| `satellite.random.normal` | 250–300 ms |
+| `satellite.random.fast` | 50–300 ms |
+| `satellite.random.normal` | 500–600 ms |
 | `satellite.random.ultra` | 2000–3000 ms |
+
+*(Windows set 2026-08-27; `fast` widened from 50–100 and `normal` moved up from
+250–300.)* **The duration is itself random, drawn inside the window**, so the length
+of the spin is not a constant an observer can rely on.
+
+**The throwaway is whole numbers of the size being asked for, not raw words.** A
+request for a 40-digit number spins by generating and discarding 40-digit numbers;
+a request for 512 digits discards 512-digit ones. The discarded work is the same
+work as the answer, which is what makes the window mean anything — and it replaces
+the first satellite's arrangement, which folded 32-bit draws into a `uint64_t` and
+used that as a *seed* for a second generator. That funnelled all 524,544 bits of the
+first generator's state through 32 bits, and v1's own source says so at
+`random_numbers/random.cpp:112` and recommends answering from the first generator
+instead. This is that recommendation, taken.
 
 Two shapes on each:
 

@@ -44,6 +44,16 @@ $(PROGRAMS)/window.o: $(PROGRAMS)/window.cpp .cxxflags-stamp $(SYSTEM)/version.h
 $(PROGRAMS)/terminal.o: $(PROGRAMS)/terminal.cpp .cxxflags-stamp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(PROGRAMS)/terminal.cpp
 
+# satellite.random, which is the ONE object that sees a third-party header.
+#
+# -isystem AND NOT -I, and the first satellite found this the hard way:
+# pcg_extras.hpp:223 warns under -Wall -Wextra, which this build turns on for
+# everything. -isystem suppresses warnings from a header this project does not
+# own and cannot fix without forking it. pcg/README.md carries the rest --
+# which single type is used, and why 512-bit was investigated and refused.
+$(RANDOM)/random.o: $(RANDOM)/random.cpp .cxxflags-stamp $(RANDOM)/random.hpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -c -o $@ $(RANDOM)/random.cpp
+
 # The haswell half of the tree. A separate suffix rather than a separate
 # directory, so that `clean` keeps naming what it removes and this rule stays
 # one line like the baseline one above it.

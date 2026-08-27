@@ -40,7 +40,8 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 # either, revisit that decision on purpose rather than by drift.
 HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/opening.hpp \
-       $(PROGRAMS)/terminal.hpp
+       $(PROGRAMS)/terminal.hpp \
+       $(RANDOM)/random.hpp
 
 # Every object in the tree, which is what 060-compile.mk hangs the header
 # dependency on. The haswell objects and the detector are named here rather than
@@ -52,4 +53,24 @@ HDRS = $(SYSTEM)/version.hpp \
 # expansion is what makes that legal, and the top-level Makefile says so once
 # for all the fragments. TERM_OBJS is empty on a machine with no gtk4, which is
 # what keeps this line honest there rather than naming objects nothing builds.
-OBJS = $(SATL_OBJS) $(SATL_HASWELL_OBJS) $(CPU_LEVEL_OBJ) $(TERM_OBJS)
+# satellite.random -- DESIGN §11's three tiers, the 32-bit seam, and the spin.
+#
+# COMPILED BY `all` AND LINKED INTO NOTHING, which is a deliberate exception to
+# this project's own rule and is written here rather than left to be discovered.
+# PLAN M2 says the registry gets a consumer in the milestone that writes it,
+# because the first satellite shipped three commits where it had none. This
+# module has no consumer for a different reason: the thing that would call it is
+# `satellite.random.*`, which reaches no milestone at all (SCRATCH.md/MILESTONE.md
+# §0.1 counts its 16 paths), and the thing it would FEED -- drawing an N-digit
+# number -- needs the arbitrary-precision half that M6.5 has not ported yet.
+#
+# Compiling it under `all` is the cheapest thing that stops it rotting: a header
+# change or a compiler upgrade breaks the build rather than breaking silently
+# months later. FORMAT/CXX.md §6 is the real answer and it is not built -- there
+# is no test target in this tree, and porting the first satellite's harness is
+# the job that would give this module a genuine consumer.
+RANDOM_SRCS = $(RANDOM)/random.cpp
+
+RANDOM_OBJS = $(RANDOM_SRCS:.cpp=.o)
+
+OBJS = $(SATL_OBJS) $(SATL_HASWELL_OBJS) $(CPU_LEVEL_OBJ) $(TERM_OBJS) $(RANDOM_OBJS)

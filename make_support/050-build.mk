@@ -31,7 +31,9 @@ ifeq ($(HAVE_WINDOW),yes)
   ALL_TARGETS += satl-term
 endif
 
-all: $(ALL_TARGETS)
+# $(RANDOM_OBJS) is an object and not a binary, and it is in `all` so that the
+# module cannot rot unnoticed. 040-sources.mk says why it links into nothing.
+all: $(ALL_TARGETS) $(RANDOM_OBJS)
 ifneq ($(HAVE_WINDOW),yes)
 	@echo "note: satl-term not built -- no $(WINDOW_PKGS). The interpreter is unaffected."
 endif

@@ -11,6 +11,7 @@
 SRC      = src
 SYSTEM   = $(SRC)/system_facts
 PROGRAMS = $(SRC)/programs
+RANDOM   = $(SRC)/satellite_random
 
 # Declared here and empty until M2, so that adding the trie is one line in this
 # file and one in 040-sources.mk rather than a hunt through the build:
