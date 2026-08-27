@@ -53,7 +53,7 @@ std::string usage_text()
     return "usage: satl                       this opening information\n"
            "       satl <file> [args]         run a file            (M8)\n"
            "       satl --run <file> [args]   the same, spelled out (M8)\n"
-           "       satl --repl                the prompt            (M11)\n"
+           "       satl --repl                the prompt            (M11.B)\n"
            "       satl --version, -V         what this build is, and what\n"
            "                                  built it\n"
            "       satl --help, -h            this list\n"

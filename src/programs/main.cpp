@@ -1,6 +1,6 @@
 // satl -- the interpreter.
 //
-// THIS BINARY LINKS NO GUI. The window lives in satl-term (M11), and
+// THIS BINARY LINKS NO GUI. The window lives in satl-term (M11.A, built), and
 // satellite.window.new() will reach a dlopen'd library (M13). The split is
 // measured rather than tidy-minded: `ldd` on this satl lists 6 shared objects
 // and on the first satellite's satl-term lists 79, and the dynamic linker loads
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
     // NOTHING TO DO IS NOT AN ERROR. satl started with no arguments shows the
     // opening information, which is what says how to run a file.
     //
-    // At M11 this arm gains the prompt, and the banner it prints first is this
+    // At M11.B this arm gains the prompt, and the banner it prints first is this
     // same opening_text() -- which is why that function returns a string rather
     // than printing one.
     if (args.size() == 1) {
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     }
 
     if (first == "--repl")
-        return not_yet("the prompt", std::string(), "M11");
+        return not_yet("the prompt", std::string(), "M11.B");
 
     // --run takes an operand, so a missing one is a real usage error rather
     // than a milestone that has not landed: `satl --run` with nothing after it

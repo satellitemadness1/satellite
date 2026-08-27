@@ -24,7 +24,8 @@
 # of taking the measurement now: every later milestone has a floor to be
 # compared against, and a regression has somewhere to be attributed.
 #
-# The window is a separate binary (M11) and, for satellite.window.new(), a
+# The window is a separate binary (M11.A, built 2026-08-27) and, for
+# satellite.window.new(), a
 # dlopen'd library (M13) -- because the two-binary split cannot help a window
 # opened from inside a user program, which runs in this one. PLAN_ONE.md sec 4.4.
 SATL_SRCS = $(PROGRAMS)/main.cpp \
@@ -38,14 +39,17 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 # This list is short and stays short if it is maintained; when it stops being
 # either, revisit that decision on purpose rather than by drift.
 HDRS = $(SYSTEM)/version.hpp \
-       $(PROGRAMS)/opening.hpp
+       $(PROGRAMS)/opening.hpp \
+       $(PROGRAMS)/terminal.hpp
 
 # Every object in the tree, which is what 060-compile.mk hangs the header
 # dependency on. The haswell objects and the detector are named here rather than
 # only where they are built, so that adding a header stays one edit in HDRS
 # above and reaches every object rather than only the ones somebody remembered.
 #
-# $(SATL_HASWELL_OBJS) and $(CPU_LEVEL_OBJ) come from 045-microarchitecture.mk,
-# read after this file; recursive expansion is what makes that legal, and the
-# top-level Makefile says so once for all the fragments.
-OBJS = $(SATL_OBJS) $(SATL_HASWELL_OBJS) $(CPU_LEVEL_OBJ)
+# $(SATL_HASWELL_OBJS) and $(CPU_LEVEL_OBJ) come from 045-microarchitecture.mk
+# and $(TERM_OBJS) from 047-window.mk, both read after this file; recursive
+# expansion is what makes that legal, and the top-level Makefile says so once
+# for all the fragments. TERM_OBJS is empty on a machine with no gtk4, which is
+# what keeps this line honest there rather than naming objects nothing builds.
+OBJS = $(SATL_OBJS) $(SATL_HASWELL_OBJS) $(CPU_LEVEL_OBJ) $(TERM_OBJS)

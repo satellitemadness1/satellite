@@ -551,8 +551,11 @@ icon, matching the type with `/` replaced by `-`).
 either satisfy a lookup, so shipping both makes which one a shell draws
 unpredictable. The artwork is a photograph, which has no scalable form, so the PNGs
 are the ones that ship and `org.satellite.terminal.svg` travels in the tree
-uninstalled. The `.desktop` entry is likewise held back until M11 builds the binary
-it launches — a launcher for a missing program is a menu entry that does nothing.
+uninstalled. The `.desktop` entry was likewise held back until a binary existed for
+it to launch — a launcher for a missing program is a menu entry that does nothing.
+**M11.A built that binary on 2026-08-27**, so the entry is now installable and the
+remaining step is naming it in `060-install-tree.sh`, which is the one declaration of
+what gets installed.
 
 `satellite_enterprise/icons/application-x-satellite.xml` carries several findings in
 its own comments —
@@ -878,8 +881,10 @@ than comparators*; the search power is v1's comparator ladder, ported. Two diffe
 things that happen to land together, and saying so is what stops the next reader
 assuming "the search power" covered sorting.
 
-**M11 — the REPL and `satl-term`.** The prompt, Ctrl-C, the exit words, and the GTK4
-+ VTE window binary. The `.desktop` entry joins the install here (§5.3).
+**M11.A — the window.** *(Split from M11 on 2026-08-27, and built the same day —
+the window landed ahead of the prompt it will host.)* The GTK4 + VTE binary, and
+the `.desktop` entry joins the install here (§5.3), because the entry names a
+binary and now there is one.
 
 `satl-term` is a **fourth binary and not a fifth**: it links the window and nothing
 of the runtime, and spawns the installed `satl` into its PTY, so it never interprets
@@ -887,7 +892,48 @@ and has nothing for `-march` to act on. It is built at the baseline like
 `satl-cpu-level`, and it gets the haswell interpreter for free by spawning whichever
 `satl` the installer chose. §4.2's table, `050-build.mk`'s "three binaries on x86-64
 and one everywhere else", and LAYOUT.md's build-output table all become four and two
-at this milestone.
+at this milestone. Measured on this machine 2026-08-27: **`satl` resolves 6 shared
+objects and `satl-term` 79**, which is the split of §4.4 in one line.
+
+**It is the same window the language hands out**, and that is why it is a milestone
+rather than a build artefact. A program asks for one with
+
+    satellite.variable.window my_console =
+        satellite.window.console.new("window_title", 800, 600)
+
+— a string and two numbers — so the title and the size are **arguments** in
+`satl-term` too, reached as `--title` and `--size 800x600`. The binary is the first
+caller of that signature and must not be a special case of it; M13's `dlopen`'d
+library calls the same three values in. **`satellite.window.console` and its `new`
+are not yet numbered** — `satellite.window` is `1 24` and `satellite.window.new` is
+`1 24 1`, and whether the console window is a child of that node or is that node is
+a question only WORD_NUMBERS.md can answer.
+
+Done when: `satl-term` opens, spawns the `satl` beside it, and renders what it
+prints — which today is `satl --repl` saying the prompt is not built yet.
+
+**M11.B — the prompt, and the window stops closing.** The REPL itself: the prompt,
+Ctrl-C, the exit words. DESIGN §10.2 is why Ctrl-C is two different things.
+
+**M11.A closes the window when the interpreter exits cleanly, and M11.B ends that.**
+Until there is a prompt, the child runs for milliseconds and a window that outlived
+every one of them would only ever be a window nobody asked to keep — so M11.A closes
+on a clean exit and **holds on a failure**, because a failed child is holding the
+only copy of the reason and destroying the window destroys the message. That is what
+makes M11.A demonstrable before this milestone exists: `satl --repl` answers
+"not built yet" and exits `EXIT_NOT_YET`, so the window stays up with the
+explanation on it.
+
+Once the prompt is there the question is the other way round. **The window does not
+close.** A person who has been typing at a prompt has a screen full of what they
+did, and the exit word is the end of a session rather than the end of a window; the
+close button is how a window closes. `on_child_exited` in
+`src/programs/terminal.cpp` is the one function that changes, and it is written
+knowing this — the clean-exit arm is marked as M11.A's and this milestone removes
+it rather than discovering it.
+
+Done when: a person can start `satl-term`, type at the prompt, and have what they
+typed still on the screen after the interpreter is gone.
 
 **M12 — threads.** `satellite.variable.thread`. The arena makes the walk atomic-free;
 the Console already keeps output lines atomic.

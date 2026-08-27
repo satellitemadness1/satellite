@@ -30,6 +30,20 @@ $(PROGRAMS)/main.o: $(PROGRAMS)/main.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 $(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/opening.cpp
 
+# THE TWO WINDOW OBJECTS, which need $(WINDOW_CFLAGS) and are therefore the one
+# part of the tree the pattern rule above cannot compile: gtk4's headers are not
+# under src/ and no -I this build knows about reaches them. 047-window.mk is
+# where those flags come from and where the module name is argued.
+#
+# window.o also takes $(VERSION_DEFS), because `satl-term --version` prints the
+# same version_text() satl does. terminal.o does not -- it names no version, and
+# giving it the defines would rebuild it on every version bump for nothing.
+$(PROGRAMS)/window.o: $(PROGRAMS)/window.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/window.cpp
+
+$(PROGRAMS)/terminal.o: $(PROGRAMS)/terminal.cpp .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(PROGRAMS)/terminal.cpp
+
 # The haswell half of the tree. A separate suffix rather than a separate
 # directory, so that `clean` keeps naming what it removes and this rule stays
 # one line like the baseline one above it.

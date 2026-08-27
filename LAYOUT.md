@@ -30,7 +30,7 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and — after reading its source on 2026-08-27 — the one thing the language has not settled that it needs. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
-| [Makefile](Makefile) | An index. Includes the eight fragments under `make_support/` in numbered order and does nothing else. |
+| [Makefile](Makefile) | An index. Includes the nine fragments under `make_support/` in numbered order and does nothing else. |
 | [LICENSE](LICENSE) | MIT (Expat). |
 | [.gitignore](.gitignore) | Build output, and the deliberate exclusion of `old_versions/` from this repository's history. |
 
@@ -56,6 +56,9 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/programs/opening.cpp](src/programs/opening.cpp) | The banner and the usage text — the words, kept in a `.cpp` because they change every milestone. |
 | [src/programs/opening.hpp](src/programs/opening.hpp) | Declarations for the above, plus the exit-status enum so two arms cannot disagree about what a failure is worth. |
 | [src/programs/cpu_level.cpp](src/programs/cpu_level.cpp) | `satl-cpu-level`: prints `haswell` or `baseline`. Compiled at the baseline on purpose — it runs before anything is known about the machine. |
+| [src/programs/window.cpp](src/programs/window.cpp) | `satl-term`: the command line, the `GtkApplication`, and the window. Its title and size are the same string and two numbers `satellite.window.console.new` takes. |
+| [src/programs/terminal.cpp](src/programs/terminal.cpp) | The VTE widget and the `satl` it spawns into a PTY. Holds the exit policy — the clean-exit arm is M11.A's and M11.B deletes it. |
+| [src/programs/terminal.hpp](src/programs/terminal.hpp) | One door to the above. Split from `window.cpp` by subject, not by line count. |
 | [src/system_facts/version.hpp](src/system_facts/version.hpp) | The two version numbers and what a build records about itself, including both the compiler make invoked and the one that answered. |
 
 Two directories exist and are **empty**, holding names for work that has not
@@ -64,8 +67,9 @@ is where M2's trie will go and does not exist yet.
 
 ## `make_support/` — the build
 
-Numbered because the order is load-bearing in two places: 010 before 020, which both
-fragments say at their own top, and 045 before 050, which 045 says at its own top.
+Numbered because the order is load-bearing in three places: 010 before 020, which
+both fragments say at their own top, and 045 and 047 before 050, which each says at
+its own top.
 
 | file | what it is |
 | --- | --- |
@@ -74,7 +78,8 @@ fragments say at their own top, and 045 before 050, which 045 says at its own to
 | [make_support/030-directories.mk](make_support/030-directories.mk) | One variable per module directory, so a directory that moves is one edit. |
 | [make_support/040-sources.mk](make_support/040-sources.mk) | **What gets compiled and linked**, named one by one rather than wildcarded. Also holds the measured startup numbers. |
 | [make_support/045-microarchitecture.mk](make_support/045-microarchitecture.mk) | The two microarchitecture builds: the `-march=x86-64-v3` flags, the `-dumpmachine` test that decides whether there are two, and the object lists. |
-| [make_support/050-build.mk](make_support/050-build.mk) | The default goal and the three link rules. The first fragment that declares a target. |
+| [make_support/047-window.mk](make_support/047-window.mk) | Whether this machine can build `satl-term`: the `pkg-config vte-2.91-gtk4` probe, the flags it yields, and the window's two sources. |
+| [make_support/050-build.mk](make_support/050-build.mk) | The default goal and the four link rules. The first fragment that declares a target. |
 | [make_support/060-compile.mk](make_support/060-compile.mk) | How a `.cpp` becomes a `.o`, for both variants, plus the two flag stamps that catch a changed command line. |
 | [make_support/070-clean.mk](make_support/070-clean.mk) | Removing what a build made, named one by one rather than by deleting a directory. |
 
@@ -107,7 +112,7 @@ translation.
 | file | what it is |
 | --- | --- |
 | [application-x-satellite.xml](satellite_enterprise/icons/application-x-satellite.xml) | The `.satl` mime packet. **Read its comments before changing anything about icons or the mime type** — each records something found the hard way. |
-| [org.satellite.terminal.desktop](satellite_enterprise/icons/org.satellite.terminal.desktop) | The launcher for `satl-term`. **Not installed until M11** builds the binary it names. |
+| [org.satellite.terminal.desktop](satellite_enterprise/icons/org.satellite.terminal.desktop) | The launcher for `satl-term`. **M11.A built the binary it names on 2026-08-27**, so the reason it was held back is gone; adding it to `060-install-tree.sh` is the step that has not been taken. |
 | [org.satellite.terminal.svg](satellite_enterprise/icons/org.satellite.terminal.svg) | A complete scalable icon that is **deliberately never installed** — shipping it alongside the PNGs makes which one a shell draws unpredictable. |
 
 And the pixel artwork, two files at each of nine sizes:
@@ -168,6 +173,7 @@ name.
 | `satl` | The interpreter, baseline build — runs on any x86-64. |
 | `satl.haswell` | The interpreter, `-march=x86-64-v3 -mtune=haswell`. Built only on x86-64. |
 | `satl-cpu-level` | The detector the installer runs to choose between the two. |
+| `satl-term` | The GTK4 + VTE window (M11.A). Built once at the baseline, and only where `pkg-config` finds `vte-2.91-gtk4`; `make` skips it with a note elsewhere. |
 | `src/*/*.o` | Objects. `main.o` and `main.haswell.o` are the same source compiled against the two instruction sets. |
 | `.cxxflags-stamp` | The exact compiler and flags the baseline objects were built with, so a changed command line forces a rebuild. |
 | `.cxxflags-stamp-haswell` | The same for the haswell objects — a second file, because one could only ever describe one of the two. |

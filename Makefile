@@ -14,6 +14,7 @@
 #     a new source directory .............. 030-directories.mk
 #     what gets compiled or linked ........ 040-sources.mk
 #     the two microarchitecture builds .... 045-microarchitecture.mk
+#     satl-term and whether it is built ... 047-window.mk
 #     a new target ........................ 050-build.mk
 #     how a .cpp becomes a .o ............. 060-compile.mk
 #
@@ -21,12 +22,13 @@
 # 010 before 020, because VERSION_DEFS bakes $(CXX) and $(CXXFLAGS) into the
 # binary as strings and both must be settled first; and 050 is the first
 # fragment that declares a target, which is what makes `all` the default goal.
-# 045 is also read before 050, and that one IS a hard requirement rather than a
-# convention: it sets MICROARCH_VARIANTS with a plain =, and 050 tests it with
-# an ifeq, which make evaluates as it reads rather than afterwards. A variable
-# read by a conditional has to be set by the time that conditional is reached.
-# 045 is numbered between 040 and 050 rather than appended for exactly that
-# reason -- it belongs where it is read, not where it was added.
+# 045 and 047 are also read before 050, and that one IS a hard requirement
+# rather than a convention: they set MICROARCH_VARIANTS and HAVE_WINDOW with a
+# plain =, and 050 tests both with an ifeq, which make evaluates as it reads
+# rather than afterwards. A variable read by a conditional has to be set by the
+# time that conditional is reached. Both are numbered between 040 and 050
+# rather than appended for exactly that reason -- they belong where they are
+# read, not where they were added.
 # Everywhere else these are recursively expanded variables and rules, which make
 # resolves after the whole file is read, so a later fragment naming an earlier
 # one's variable is fine and so is the reverse.
@@ -46,6 +48,7 @@ include make_support/020-version.mk
 include make_support/030-directories.mk
 include make_support/040-sources.mk
 include make_support/045-microarchitecture.mk
+include make_support/047-window.mk
 include make_support/050-build.mk
 include make_support/060-compile.mk
 include make_support/070-clean.mk
