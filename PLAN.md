@@ -743,9 +743,39 @@ Three things follow, and each is a way to get this wrong:
 **M3 — the lexer.** Tokens, spans, the reservation rule. Known words carry their
 node identity out of the lexer; user-owned bare words carry their text. DESIGN §5.
 
+**It also owns `satellite.variable.binary` `1 6 5` and `.hex` `1 6 11`**, and that was
+unsaid until 2026-08-27. DESIGN §8.5 makes them real types **with literals** —
+`x00FF` and `b1010`, where **the width is part of the value**, so `x0009` is not `x9`.
+A literal is lexed, so the lexer decides them whether or not a milestone says so.
+`hexadecimal` is the language's one alias for `hex` (WORD_NUMBERS §2.3), which the
+lexer's spelling table has to know.
+
 **M4 — the arena AST and the parser.** `uint32_t` node indices into a contiguous
 arena, no `shared_ptr` anywhere in the tree. `satl --unparse file.satl` round-trips,
 which is how we know the parser is right before anything can run.
+
+**It owns all eleven of DESIGN §6.1's segment-1 words, and naming them is a fix rather
+than an addition.** *(2026-08-27.)* §6.1's table is authoritative: a segment-1 word
+either has a parse rule of its own or it does not, and these are the ones that do —
+
+> `variable`, `container` · `library` · `statement` ·
+> `include`, `capsule`, `spacesuit`, `return`, `returns`, `protected`, `public`
+
+Until now this milestone described the arena and the round-trip and referenced none of
+them, so eight of the eleven appeared in `SCRATCH.md/MILESTONE.md` as work with no
+milestone when the truth was **a milestone owned them and did not say so.** That is a
+worse failure than an unscheduled namespace, because nothing looks wrong.
+
+**§6.1's table is the checklist**, and it is how the last gap of this kind was found:
+a word present in that table and missing from the numbering is a word the parser
+cannot reach. All eleven are now numbered — `returns` at `1 21` was the last, and
+`statement`'s four children are `1 13 1`–`1 13 4`.
+
+`satellite.returns` is the one to be most careful with. DESIGN §13 records the
+return-type syntax as **decided** — an optional `satellite.returns(TYPE)` after the
+parameter list, defaulting to the `satellite` type, which leaves hello world
+byte-identical — and §6's grammar already has the rule written. It is not new work;
+it is work that had no name in this list.
 
 **M4.5 — `.satc`.** The cache [SATC.md](SATC.md) specifies: check for a `.satc`
 before walking a source, read it when its three header lines match, and write a
@@ -798,8 +828,16 @@ owns them. Recursion depth is bounded here.
 **M8 — hello world.** DESIGN §3 runs. Console with its printer thread,
 `satellite.main`, `satellite.return`. **Startup measured again against M1's number.**
 
-**M9 — scalars and control flow.** `if` / `else` / `while` / `for`.
-`satellite.variable.bool`, `.number`, `.string` and their methods.
+**M9 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
+`.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);
+what lands here is running them. `satellite.variable.bool`, `.number`, `.string` and
+their methods.
+
+**`satellite.bool` `1 17` is a different node and is not this milestone.** The type is
+`satellite.variable.bool` `1 6 6`; the module constants `satellite.bool.true` `1 17 2`
+and `.false` `1 17 1` hang off a top-level namespace that no milestone claims
+(DESIGN §6.1 cites them as the module-constant case). Reading M9 as covering both is
+the mistake this paragraph exists to stop.
 
 **M9.5 — `satellite.variable.float`.** *(Its own milestone as of 2026-08-27. It spent
 the morning in "Later, in no fixed order", was moved into M9, and is separated out
