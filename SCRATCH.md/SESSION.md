@@ -374,12 +374,22 @@ number column is diffable.
    which a program should write.
 4. **`satellite.thread.new` has one number for two shapes.** Argued in WORD_NUMBERS.md
    §4: its own arity is always 1. `1 23 2` is free if that is decided the other way.
-5. **41 of the 218 numbered paths reach no milestone**, and
-   [MILESTONE.md](MILESTONE.md) is the ledger. Its §0 splits that into the three
-   different failures it was hiding. **`satellite.returns` is the one to fix first**
-   and it is the only *bug* in the list rather than a gap: DESIGN §6.1 gives it its
-   own parse rule and §13 calls the syntax decided, so **M3 or M4 already owns it and
-   does not say so.**
+5. **122 of the 218 numbered paths reach no milestone** — 56% — and
+   [MILESTONE.md](MILESTONE.md) is the ledger. *(Corrected 2026-08-27: the figure was
+   50, then 41, then 29, and all three were namespace sweeps. §5 of that file admitted
+   the 165 paths under milestoned namespaces had never been checked one at a time.
+   They have been now.)* Another 35 are covered only by a sentence about their parent,
+   which is the half that hides.
+
+   **`satellite.system` is 30 of the 122 and `satellite.random` is 16** — between them
+   more than the whole of the old figure. Neither is in "Later"; `satellite.system`
+   appears in PLAN.md on exactly one line, the audit paragraph saying it is
+   unscheduled.
+
+   **The pattern to keep watching for** is a milestone that owns work and does not say
+   so. It has now been caught three times — M3/M4 and DESIGN §6.1's eleven words, then
+   M10 and the twenty-nine container methods. Each time it looked like an unscheduled
+   namespace and was not.
 
 6. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
    `Rack::draw` in satellite by hand against DESIGN.md. Between them they touch
