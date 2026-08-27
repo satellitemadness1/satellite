@@ -774,7 +774,7 @@ told. If the two ever need to differ, they need two different names.
 | `satellite.variable.bool` | `bool` | written `satellite.bool.true` / `.false` |
 | `satellite.variable.number` | exact arbitrary-precision decimal | §8.1 |
 | `satellite.variable.string` | `SatString` | 16-bit code table |
-| `satellite.variable.float` | **two `satellite_number`s** — left of the point, right of it | §13. Left exact and unbounded; right bounded, and its length is the precision |
+| `satellite.variable.float` | a `bool` and **two `satellite_number`s** — sign, left of the point, right of it | §8.6. Left exact and unbounded; right bounded, and its length is the precision |
 | `satellite.container.list<T>` | vector of values | children shared |
 | `satellite.container.map<K,V>` | body behind a handle | insertion-ordered; keys restricted (§6.5) |
 | `satellite.variable.time` | absolute instant, UTC | §13, open: one clock, one epoch |
@@ -859,6 +859,214 @@ preference about extensibility — it is §6.5's deadlock one level down.
 `x00FF` and `b1010` are real types with literals, and **the width is part of the
 value**: `x0009` is not `x9`. That is the whole reason they are not number literals
 in another base. `hexadecimal` is the language's one alias, for `hex`.
+
+### 8.6 Floats — two numbers, and the four operations
+
+*(Decided 2026-08-27.)* §13 records the decision; this is the specification.
+
+**A float is a `satellite.variable.bool` and two `satellite_number`s.**
+
+```
+    float = (negative, L, R)      value = (negative ? -1 : +1) x (L + R)
+```
+
+`L` is the integer part and `R` the fractional part, each an exact base-10⁹
+arbitrary-precision decimal (§8.1). `negative` is the sign of the whole value.
+Three invariants:
+
+1. **`L ≥ 0` and `R ≥ 0`** — the halves are magnitudes and never carry a sign.
+2. **`R < 1`.**
+3. **`negative` is false when `L` and `R` are both zero** — there is no negative zero.
+
+**Sign-magnitude, with the sign in one place, and that is a correction.** An earlier
+draft of this section defined the value as `L + R` with each half carrying its own
+sign and an invariant that the two must agree. That works arithmetically and it is
+worse: it stores one logical fact twice, so the invariant is a thing a bug can
+violate silently rather than a thing the representation makes unsayable. One sign,
+held once, is what every real float format does and it is what this does.
+
+```
+     3.14  =  (false, 3, 0.14)
+    -3.14  =  (true,  3, 0.14)
+    -0.14  =  (true,  0, 0.14)
+         0  =  (false, 0, 0)
+```
+
+**Invariant 3 is not fussiness.** `-0` would compare unequal to `0` while printing
+the same, and QUAD's seven sort comparators are all `if (a != b) return a > b` over
+floats (QUAD.md §3.3). A value that is neither equal nor orderable against its own
+twin is how a deterministic program stops being one. Normalise it away on
+construction, not at comparison time.
+
+**Why two halves rather than one number.** §8.1's `Number` can already hold `3.14`
+exactly — it is a significand times a power of ten. What it cannot do is carry
+**different bounding policies above and below the point**, because its precision is
+one count of significant digits across the whole value. The split exists so that
+**`L` is never rounded and `R` always may be.** That is the entire reason for it, and
+it is what makes a float safe for QUAD's `activation *= keep` on every node every
+tick: the growth is downward, so the bound belongs downward.
+
+**`R`'s digit count is the float's precision**, so precision travels with the value.
+`satellite.library.system.float_digits` (`1 14 2 4`) is the **default** for a value
+that does not state one, not a global dial.
+
+#### normalize — the one shared step
+
+Every operation ends here, and **it is one step, not two.**
+
+- **carry**: while `R ≥ 1`, move `trunc(R)` into `L`.
+- then clear `negative` if `L` and `R` are both zero (invariant 3).
+
+Sign-magnitude is what buys this. Because both halves are non-negative there is no
+sign disagreement to repair, so the borrow step the earlier signed-halves draft
+needed does not exist. Carry is exact and cannot round.
+
+#### The four operations
+
+**Addition and subtraction are EXACT and never round.** Two fractions of at most *n*
+digits sum to at most *n* digits, plus a carry that `normalize` moves into `L` — and
+`L` is unbounded, so nothing is ever lost. This is worth stating plainly because it is
+the property `double` does not have and it is free here.
+
+```
+    negate                    flip `negative`, unless the value is zero
+    subtraction               addition of the negation
+
+    same sign                 normalize(sign, L₁+L₂, R₁+R₂)
+    opposite signs            compare magnitudes; subtract the smaller from the
+                              larger; the result takes the LARGER's sign
+```
+
+**The opposite-sign case is where the code is**, and that is the one cost of
+sign-magnitude: a comparison and a conditional swap that the signed-halves draft got
+for free. It buys invariant 1, which is worth more — a magnitude that can never be
+negative is a state a bug cannot reach, and a sign that agrees with itself is a state
+a bug can only be *tested* for.
+
+**Multiplication is four products and then rounds.**
+
+```
+    (L₁+R₁)(L₂+R₂)  =  L₁L₂  +  L₁R₂ + R₁L₂  +  R₁R₂
+                       ↑exact    ↑ carry into L      ↑ this is what grows
+```
+
+`L₁L₂` is an exact integer product and stays in `L`. The three remaining terms are
+summed, `normalize` carries their integer part into `L`, and the fraction that
+remains is **2n digits wide from an n-digit input** — which is precisely the growth
+QUAD's per-tick decay produces, and precisely what the bound on `R` exists to stop.
+Round `R` to the result's precision.
+
+**Multiplication and division get their sign for free**, which is the other half of
+the trade: `negative` on the result is the exclusive-or of the operands', decided
+before any arithmetic runs and never revisited. Only the magnitudes are multiplied or
+divided.
+
+**Division always rounds, because its answer is usually not finite.** `1/3` has no
+terminating decimal. Long division proceeds one decimal digit at a time — v1's
+`Number` already does exactly this and already reads a digit budget from
+`satellite.library.system.division_digits` (`1 14 2 1`) — producing the result's
+precision plus guard digits, then rounding to precision. Division by zero is an error
+in plain words (§9), never an infinity and never a silent zero.
+
+**The result's precision is `max` of the operands', floored at `float_digits`.** So
+precision never silently shrinks and never grows without bound.
+
+#### Modulus, and why it is exact
+
+`a % b` is `a - b × trunc(a/b)`, and **it never rounds** — which is worth stating
+because `/` always does. The quotient is only ever needed as an *integer*, so the
+inexact tail of the division is discarded before it can matter: the truncated
+quotient is exact, one multiplication and one subtraction follow, and both are
+operations on values that already fit.
+
+```
+    7.5 % 2.1  →  trunc(7.5 / 2.1) = 3   exact
+                  3 × 2.1 = 6.3          exact
+                  7.5 − 6.3 = 1.2        exact
+```
+
+**Truncated and not floored**, so the result takes the sign of `a` — which is C's
+rule rather than Python's, and it is chosen because `trunc` is the free operation
+here: under the invariants above, `trunc` is **`L` with `a`'s sign**. Dropping `R` is
+the whole implementation.
+
+`satellite.variable.number.modulus(a, b)` is `1 6 4 12`.
+
+#### Power, which returns a float
+
+Three cases, and they are not one operation:
+
+| exponent | how | exact? |
+|---|---|---|
+| integer, ≥ 0 | repeated multiplication | **exact**, and grows — `R` doubles per squaring |
+| integer, < 0 | reciprocal, then the above | rounds, because `1/x` does |
+| fractional | irrational in general | **must** round |
+
+`2 ^ 3` is exactly 8 and `pow(0.37, 4.65)` is irrational, and the same path serves
+both — which is why **power returns a float and not a number.** A result type that
+depended on the *value* of an argument would make `a ^ b` mean two different things
+with nothing at the call site to say which.
+
+`satellite.variable.number.power(a, b)` is already `1 6 4 10`.
+
+#### What else — the three classes, which is the useful answer
+
+Every operation on a float falls in one of three groups, and the group says exactly
+where the rounding rule bites.
+
+**1 — Exact and bounded. Never rounds, never grows.**
+`+` `−` negate `abs` `trunc` `floor` `ceil` `%` comparison `min` `max` `is_integer`
+(which is just `R == 0`). These are safe in a loop forever. Addition and subtraction
+being here is the property `double` does not have.
+
+**2 — Exact but growing. Rounding is a policy, not a necessity.**
+`×`, and power at a non-negative integer exponent. The exact answer exists and is
+finite — an *n*-digit fraction times an *n*-digit fraction is exactly 2*n* digits —
+so rounding here is a deliberate choice to stop growth rather than a mathematical
+requirement. **This is the class QUAD lives in**: `activation *= keep` every tick on
+every node, where the exact answer after a thousand ticks is thousands of digits wide
+and entirely correct and entirely useless.
+
+**3 — Not finite. Rounding is required for an answer to exist at all.**
+`÷`, power at a fractional or negative exponent, `sqrt`, and the transcendental family
+— `log`, `exp`, and trigonometry — none of which is numbered yet and all of which
+belong together whenever they arrive. `1/3` and `pow(0.37, 4.65)` have no terminating
+decimal, so there is nothing to round *from*; the rounding is what produces the value.
+
+`satellite.variable.number.truncate(a)` is `1 6 4 13` and `.sqrt(a)` is `1 6 4 14`.
+Sign-magnitude makes two of class 1 nearly free: **`abs` clears one bool** and
+**`trunc` is just `L`**.
+
+**Conversion, for completeness.** A number becomes a float as `(n, 0)`, which is
+exact and always succeeds. A float becomes a number by `trunc`, `floor`, `ceil` or
+`round`, and **which one is never chosen silently** — §1.1 forbids a silent
+conversion, so the program names it.
+
+#### Comparison
+
+Compare `negative` first — a false sorts above a true, and invariant 3 is what makes
+that safe, since there is no `-0` to be unequal to `0`. Within one sign compare `L`,
+then `R`, reversing the result when both are negative.
+
+Total and exact with no normalisation first, which matters because QUAD's seven sort
+comparators are all `if (a != b) return a > b` over floats (QUAD.md §3.3).
+
+#### What this costs to build
+
+**No new arithmetic.** PLAN §6.1 has `satellite_number` at 10 files and 1509 lines,
+internally closed, porting as-is. Every operation above is composition over two of
+them plus `normalize`, and the only genuinely new code is the rounding step.
+
+#### Still open
+
+**The rounding rule** — truncate, half-up, or half-even. It cannot be avoided by any
+choice of representation: `rack.hpp:59` computes `pow(urgency, exp)` with `exp` always
+fractional, and `x^y` at fractional `y` is irrational, so **no pair of exact numbers
+represents it** and `R` must be rounded to exist. QUAD's determinism invariant means a
+program's behaviour depends on which rule is chosen. PLAN §8 puts the float in **M9**,
+which cannot land until it is.
+
+---
 
 ---
 
@@ -1127,9 +1335,9 @@ critical path.
 
 ### Open
 
-- **`satellite.variable.float` — DECIDED 2026-08-27: it is two `satellite_number`s,
-  one per direction.** Left of the decimal point and right of it, each an exact
-  base-10⁹ arbitrary-precision integer. That is *"infinitely long in both
+- **`satellite.variable.float` — DECIDED 2026-08-27: a `satellite.variable.bool` and
+  two `satellite_number`s.** A sign, then left of the decimal point and right of it,
+  each an exact base-10⁹ arbitrary-precision magnitude. That is *"infinitely long in both
   directions"* read literally, and it is the author's decision.
 
   **The left half is exact and unbounded. The right half is bounded, and that is
@@ -1163,7 +1371,9 @@ critical path.
   right half has to be *rounded to exist*, which is why the rule is part of the type
   rather than a setting on it.
 
-  **M9 owns this** (PLAN §8) and cannot land until the rounding rule is chosen.
+  **§8.6 is the specification** — the invariants, `normalize`, and the four
+  operations, of which addition and subtraction turn out to be **exact**. **M9 owns
+  this** (PLAN §8) and cannot land until the rounding rule is chosen.
 
   *(The two readings not taken, recorded so they are not re-proposed: **numerator and
   denominator** is the rational §8.1 already refuses — denominators grow without

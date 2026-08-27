@@ -116,8 +116,10 @@ digits per node, for a number the program prints at `%.2f`.
 **six significant digits** — and reads it back. Every save. The program round-trips
 its whole state through six digits and keeps working. Its display is two.
 
-**The representation was decided on 2026-08-27: a float is two `satellite_number`s**,
-one for each side of the decimal point (DESIGN §13). The left half stays exact and
+**The representation was decided on 2026-08-27: a float is a `satellite.variable.bool`
+and two `satellite_number`s** — a sign, and one number for each side of the decimal
+point (DESIGN §8.6). The sign is held once, in the bool, and the two halves are
+magnitudes that never carry one. The left half stays exact and
 unbounded; the right half is bounded, which is where QUAD's per-tick decay grows and
 where `pow`'s irrational answer has to be rounded to exist. The right half's length is
 the precision, so `satellite.library.system.float_digits` (`1 14 2 4`) becomes the

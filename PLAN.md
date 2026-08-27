@@ -785,8 +785,8 @@ QUAD.md §3.1 called it *"the whole remaining gap"*, and two permanent documents
 disagreeing about whether a thing is urgent is worse than either answer.
 
 *(2026-08-27, later the same day: the **representation** is now decided — a float is
-two `satellite_number`s, one per side of the decimal point, left exact and unbounded
-and right bounded. DESIGN §13. That costs **no new arithmetic**: §6.1 has
+a `satellite.variable.bool` and two `satellite_number`s — a sign, then a side of the
+decimal point each, left exact and unbounded and right bounded. DESIGN §8.6. That costs **no new arithmetic**: §6.1 has
 `satellite_number` at 1509 lines porting as-is, and a float is composition over two of
 them. The rounding rule is what remains.)*
 

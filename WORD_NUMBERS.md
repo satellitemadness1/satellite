@@ -304,6 +304,9 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.number.round` | `1 6 4 9` | assigned |
 | `satellite.variable.number.power(a, b)` | `1 6 4 10` | assigned |
 | `satellite.variable.number.shift_right(n)` | `1 6 4 11` | assigned |
+| `satellite.variable.number.modulus(a, b)` | `1 6 4 12` | assigned — exact; DESIGN §8.6 |
+| `satellite.variable.number.truncate(a)` | `1 6 4 13` | assigned — on a float this is just its left half |
+| `satellite.variable.number.sqrt(a)` | `1 6 4 14` | assigned — irrational in general, so it rounds |
 | `satellite.variable.binary` | `1 6 5` | assigned |
 | `satellite.variable.bool` | `1 6 6` | assigned |
 | `satellite.variable.date` | `1 6 7` | assigned |
