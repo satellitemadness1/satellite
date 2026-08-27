@@ -17,71 +17,117 @@ half-*specified* and will be finished by accident.
 
 ## 0. The headline
 
-*Re-audited 2026-08-27 after `satellite.variable.number` became **M6.5** and
-`satellite.variable.float` became **M9.5**.* **About 29 of the 218 numbered paths in WORD_NUMBERS.md §2.2** are not reached by a
-milestone — 50 at the first audit, 41 at the second, and down again after §0.2's fix.
-It is three different problems rather than one, and **§0.2's turned out not to be a
-gap at all.**
+*Third audit, 2026-08-27, and the first one that actually counted.* The two before it
+swept **top-level namespaces** and reported **50**, then **41**, then **about 29**. Its
+own §5 said why that number could not be trusted:
 
-### 0.1 Nothing anywhere — not a milestone, not "Later", not prose (19 paths)
+> **The 165 numbered paths under milestoned namespaces were not checked
+> individually.**
 
-| namespace | paths | note |
+That sweep has now been done — **all 218 rows of WORD_NUMBERS.md §2.2, one at a time,
+against PLAN §8.** The answer is not 29.
+
+| verdict | paths | |
 |---|---:|---|
-| `satellite.network` | 8 | |
-| `satellite.directory` | 6 | |
-| `satellite.bool` | 3 | **not** `satellite.variable.bool`, which M9 has. These are the module constants `satellite.bool.true` / `.false` (DESIGN §6.1) — a different node under a different parent |
-| `satellite.analyze` | 1 | |
-| `satellite.help` | 1 | the cheap one: DESIGN §4.6 says help *"becomes a walk of the trie"*, so it is nearly free once M2 lands, and nobody scheduled it |
+| **named** — a milestone names the path or its number | **61** | 28% |
+| **implied** — only a parent is named, never the path | **35** | 16% |
+| **uncovered** — no milestone reaches it at all | **122** | **56%** |
 
-`satellite.system`'s 30 paths **left this table** — not because they were scheduled,
-but because the re-audit reads the whole of §8 rather than the milestone bodies, and
-"Later" now names them. That is §0.2's problem, not a fix.
+**122 of 218, not 29.** More than half the language is unscheduled, and another 35
+paths are covered only by a sentence about their parent. **96 covered, 122 not.**
 
-### 0.2 ~~Covered only by prose, or by "Later"~~ — mostly FIXED 2026-08-27
+Nothing was descoped between audits. The earlier numbers were the answer to a
+different question — *"which top-level namespaces does §8 never mention?"* — and that
+question cannot see a path hiding under a parent §8 happens to name. §0.3 found three
+of those by hand and stopped; there were far more than three.
 
-**The diagnosis in this section was wrong and the fix was one edit, not eight.**
+### 0.0 Two premises the last audit had backwards
 
-`returns`, `statement`, `capsule`, `spacesuit`, `protected`, `public`, `include` and
-`return` were listed here as work with no milestone. They were not unscheduled —
-**M3 and M4 owned all of them and did not say so.** DESIGN §6.1 holds an authoritative
-table of the eleven segment-1 words that each get their own parse rule, and PLAN's
-parser milestones referenced none of it.
+Both moved paths **out** of the worst category on a reading of "Later" that the text
+does not support. `grep -n 'satellite\.system' PLAN.md` returns **one line**, and it is
+the audit paragraph saying the namespace is unscheduled.
 
-**A milestone that owns work without naming it is worse than an unscheduled namespace,
-because nothing looks wrong.** M4 now names the table and cites it as the checklist;
-M3 gained `satellite.variable.binary` and `.hex`, unsaid for the same reason (DESIGN
-§8.5 makes them real types *with literals*, and a literal is lexed whether a milestone
-says so or not); M9 now names the four `satellite.statement` paths and says outright
-that their **parse** rules land at M4 while **running** them lands at M9.
+- **`satellite.system`'s 30 paths were removed from §0.1** on the grounds that
+  *"'Later' now names them."* **It does not.** The Later list is, in full:
+  `satellite.variable.file`, `.time`, `.date`; `satellite.random.*`;
+  `satellite.variable.variant`; spacesuits; `satellite.include` of other files;
+  Satellite Orbit and the wire format. `satellite.system` is not in it. Those 30 are
+  **nothing anywhere**, which is where §0.1 had them.
+- **`satellite.file` `1 8` (5) and `satellite.time` `1 9` (4) were filed as
+  "covered only by Later."** Later names `satellite.variable.file` and
+  `satellite.variable.time` — **different nodes**, exactly the distinction §0.2 drew
+  correctly for `satellite.bool` and then missed here. Nine more paths with nothing
+  anywhere.
 
-M9 also now says that `satellite.bool` `1 17` is **not** M9 — the type is
-`satellite.variable.bool` `1 6 6` and the module constants `.true` / `.false` are a
-different node under a different parent, which was the confusion §0.1 flagged.
+That is **39 paths** in the wrong category, all in the direction of looking better.
 
-**Still genuinely covered only by "Later", which is not a milestone:**
-`satellite.time` (4, including `sleep` at `1 9 3`, which QUAD's main loop cannot run
-without), `satellite.file` (5 — a different node from the `satellite.variable.file`
-that "Later" names), `satellite.thread.new` (2 — M12 names only the *type*), and
-`satellite.window` (2 — M13 says "windows" in prose).
+### 0.1 Where the 122 are
 
-*Count after the fix: **33 of 218** by a literal `satellite.X` sweep, and four of those
-— `capsule`, `protected`, `public`, `spacesuit` — are false positives, because M4
-names them as bare words inside §6.1's table. About **29** is the honest figure.*
+| namespace | uncovered | of | what reaches it |
+|---|---:|---:|---|
+| `satellite.system` | **30** | 30 | nothing. Not §8, not Later, not prose |
+| `satellite.random` | **16** | 16 | Later only, which is not a milestone |
+| `satellite.library.*` | **11** | 15 | the whole `arguments` subtree — see §0.2 |
+| `satellite.network` | **8** | 8 | nothing |
+| `satellite.variable.file` | **8** | 8 | Later only |
+| `satellite.console` | **8** | 10 | M8 builds the *printer* — see §0.2 |
+| `satellite.container` | **7** | 39 | sort ×5, `.arguments`, `.result` |
+| `satellite.directory` | **6** | 6 | nothing |
+| `satellite.variable` leaves | **6** | 12 | `date`, `duration`, `expression`, `network`, `variant`, `capsule` |
+| `satellite.file` | **5** | 5 | nothing — a different node from `variable.file` |
+| `satellite.time` | **4** | 4 | nothing — same mistake, same shape |
+| `satellite.bool` | **3** | 3 | M9 says outright it is not M9 |
+| `satellite.help` | **3** | 3 | nothing. DESIGN §4.6 makes it a trie walk, nearly free |
+| `satellite.thread` | **2** | 2 | M12 names only `satellite.variable.thread` |
+| `satellite.window` | **2** | 2 | M13 says "windows" in prose |
+| `satellite.analyze` | **1** | 1 | nothing |
+| `satellite.include(spaceship)` | **1** | 5 | loading another file is Later |
+| **total** | **122** | **218** | |
 
-### 0.3 Hiding under a namespace a milestone *does* mention
+`satellite.system` alone is a quarter of it, and `system` + `random` is **46** — more
+than the last audit's whole figure.
 
-**A count of top-level namespaces cannot see these**, which is why §5's list of what
-this audit does not check matters. Each sits under a parent some milestone names, so
-the parent looks covered:
+### 0.2 The new gaps — found only by going path by path
 
-| what | hides under | the gap |
-|---|---|---|
-| `satellite.console.typed()` and the **reader thread** | `console`, which M8 names | M8 builds the *printer* thread. Non-blocking input is neither M8 nor M11 |
-| `satellite.console.width` / `.height` / `.clear()` / `.home()` | same | terminal facts, unscheduled |
-| `satellite.variable.capsule` `1 6 16` — the deferred call | `variable`, which M9 names | M12 cannot do `thread.new(f(x))` without it and does not say so |
-| the **sort primitive** `1 4 2 3`–`1 4 2 7` | `container`, which M10 names | M10 says "containers and the search power" and never says **sort** |
-| the **literal-option fold** (WORD_NUMBERS §1.5) | — | a resolve-time decision; nothing says whether M6 or M7 owns it |
-| `satellite.variable.file`'s five methods | "Later" | QUAD's `.sky` persistence needs them at M10 |
+These are the ones no namespace count could reach. Each sits under a parent some
+milestone names, so the parent looks covered. This is §0.3's category, finished.
+
+| what | number | hides under | the gap |
+|---|---|---|---|
+| **the whole `arguments` subtree** — `.machine.cores` / `.cpu` / `.threads`, `.memory.total`, `.username` | `1 14 1 1`–`1 14 1 1 3` | `library`, which M4 parses | **8 paths.** DESIGN §7.7 specifies it, PLAN §4.5.3 argues about it, no milestone builds it. The largest single find of this audit |
+| **`satellite.console.input`, all three shapes** | `1 5 2`–`1 5 4` | `console`, which M8 names | M8 is *"Console with its printer thread."* Reading a line is not the printer. The last audit caught `typed()` and missed blocking input entirely |
+| **`satellite.variable.duration`, `.expression`** | `1 6 8`, `1 6 9` | `variable`, which M9 names | not in §8, not in Later, not in prose. §5 listed them as "unaccounted for" and never counted them |
+| **`satellite.library.main` and `.system`** | `1 14 1`, `1 14 2` | `library` | §8.1 discusses their *numbering* at M2 and nothing builds them |
+| **the 29 container methods** | `1 4 1 1`–`1 4 2 25` | M10 names both types | not counted as uncovered here, but see §0.3 — M9 says *"and their methods"* and M10 does not |
+
+### 0.3 The 35 implied — covered by a parent's sentence and never by name
+
+Not counted in the 122, because a fair reader would say the milestone means to include
+them. But **M9 writes `satellite.variable.bool`, `.number`, `.string` and their
+methods** — the author knows to say "and their methods" when they mean it, and M10
+does not say it:
+
+- **29 container methods.** M10 is *"containers and the search power."* Nine map
+  methods and twenty list methods, none named. The five sort paths are already known
+  not to be M10's, which proves the wording does not automatically reach a child.
+- **`satellite.variable.window` `1 6 15`** — M13 names the `.so`, not the type.
+- **`division_digits`, `max_depth`, `float_digits`** — M9.5 asks whether
+  `division_digits` is the same dial as the float precision; asking is not owning.
+- **`satellite` `1` itself**, the runtime singleton, and
+  `satellite.include(satellite)` `1 1 1` — DESIGN §3's hello world uses both and M8
+  runs DESIGN §3.
+
+**Adding one clause to M10 — "and their methods", the words M9 already uses — moves 29
+paths from implied to named.** That is this audit's cheapest fix and the direct
+descendant of the last one, where naming DESIGN §6.1's table moved eight.
+
+### 0.4 One ordering problem, which is not a coverage gap
+
+M9 owns `satellite.variable.number`'s fourteen methods. Four of them cannot be
+finished at M9: `power` `1 6 4 10`, `sqrt` `1 6 4 14` (*"irrational in general, so it
+rounds"*), `modulus` `1 6 4 12` (cites DESIGN §8.6, the float spec) and `truncate`
+`1 6 4 13` (*"on a float this is just its left half"*). **Rounding is M9.5's blocker
+and M9 comes first.** Either those four move to M9.5 or M9.5 moves ahead of M9.
 
 ## 1. Added on 2026-08-27 and given no milestone
 
@@ -157,22 +203,33 @@ number in §8.
 
 ## 5. What this audit did *not* check
 
-Said plainly so nobody reads this file as complete:
+Said plainly so nobody reads this file as complete. **The per-path sweep this section
+used to call for has now been done** — all 218 rows, §0 is its result. What is left:
 
-- **Only PLAN §8 was audited.** A thing mentioned in DESIGN or SATC with no milestone
-  and no §8 mention would be caught; a thing mentioned nowhere at all would not.
-- **The 165 numbered paths under milestoned namespaces were not checked individually.**
-  `satellite.variable` is named by M9, which does not mean every one of its fifteen
-  children is scheduled — M9 names `bool`, `number` and `string` and leaves `binary`,
-  `date`, `duration`, `expression`, `float`, `hex`, `network`, `thread`, `variant`,
-  `window` and `capsule` unaccounted for. §1 and §3 above catch several of those by
-  other routes; a full per-path sweep has not been done.
+- **Only PLAN §8 counts as a milestone.** That is the rule, not a limitation: §8's own
+  opening says a milestone is *"a thing that works and can be demonstrated."* But it
+  means a path DESIGN specifies in full and §8 never mentions reads here as
+  **uncovered** even though the design work is done. `satellite.system`'s 30 are the
+  large case — WORD_SURFACE.md swept them out of v1, so most already have an
+  implementation to port. **Uncovered means unscheduled, not unknown.**
+- **Coverage was judged from §8's words, not from what a milestone would have to build
+  anyway.** M8 cannot run DESIGN §3 without the `satellite` singleton, so the singleton
+  is real work M8 must do; it is filed as *implied* because M8 does not say so. Every
+  one of §0.3's 35 is that shape, and the M3/M4 lesson is that this is the dangerous
+  half, not the safe one.
+- **The 122 were not sized.** `satellite.help` is 3 paths and DESIGN §4.6 makes it a
+  walk of the trie — nearly free once M2 lands. `satellite.network` is 8 paths and a
+  protocol stack. They count the same in §0.1's table and are not the same work. **The
+  count is a coverage figure, not an estimate.**
+- **The three aliases were counted as their own rows**, because §2.2 lists them:
+  `random.fast.range`, `.normal.range`, `.ultra.range` share numbers with the call
+  shapes above them (§2.3). A by-number count would be 215, not 218.
 - **`src/` was not audited**, because there is almost none of it: five files, 459
   lines, all M1.
 
 ---
 
 *Companions: [PLAN.md](../PLAN.md) §8 is the list this file is the complement of.
-[WORD_NUMBERS.md](../WORD_NUMBERS.md) §2.2 is the 215 paths it was counted against.
+[WORD_NUMBERS.md](../WORD_NUMBERS.md) §2.2 is the 218 paths it was counted against.
 [QUAD.md](../QUAD.md) §4 is the milestone that does not exist.
 [SESSION.md](SESSION.md) §5.7 is what is open for other reasons.*

@@ -862,7 +862,21 @@ exponent is irrational, so the fractional half must be rounded to exist. QUAD's
 determinism invariant means a program's behaviour depends on the answer.
 
 **M10 — containers and the search power.** `satellite.container.list`,
-`satellite.container.map`, and the search power ported close to unchanged.
+`satellite.container.map`, **and their methods** — the map's nine `1 4 1 1`–`1 4 1 9`
+and the list's twenty-five `1 4 2 1`–`1 4 2 25` — plus the search power ported close
+to unchanged.
+
+**That clause is a fix, not an addition.** *(2026-08-27.)* M9 writes "`.bool`,
+`.number`, `.string` **and their methods**" and this milestone did not, so twenty-nine
+numbered paths sat under a type name that a milestone mentioned and were owned by
+nothing that said so. Same failure as M3/M4 and DESIGN §6.1's eleven words, one
+milestone later.
+
+**The sort primitive is part of this milestone and is not the search power.**
+`sort()` `1 4 2 3` through `sort_up(key)` `1 4 2 7` are §1.1's *one primitive rather
+than comparators*; the search power is v1's comparator ladder, ported. Two different
+things that happen to land together, and saying so is what stops the next reader
+assuming "the search power" covered sorting.
 
 **M11 — the REPL and `satl-term`.** The prompt, Ctrl-C, the exit words, and the GTK4
 + VTE window binary. The `.desktop` entry joins the install here (§5.3).
@@ -887,11 +901,16 @@ the UI thread is satellite's job, never the user's (DESIGN §10.3).
 
 *(`satellite.variable.float` was here until 2026-08-27 and is now M9.)*
 **This list is not a milestone and things hide in it.**
-[SCRATCH.md/MILESTONE.md](SCRATCH.md/MILESTONE.md) is the audit: 50 of
-WORD_NUMBERS.md's 215 numbered paths belong to a namespace §8 never mentions at all —
-`satellite.system` alone is 30 — and `satellite.returns` is worse than unscheduled,
-because DESIGN §6.1 gives it its own parse rule, which means **M3 or M4 already owns
-it and does not say so.**
+[SCRATCH.md/MILESTONE.md](SCRATCH.md/MILESTONE.md) is the audit, and on
+**2026-08-27** it was finally run per path rather than per namespace:
+**122 of WORD_NUMBERS.md's 218 numbered paths are reached by no milestone at all**,
+and another 35 only by a sentence about their parent. **56% of the language is not in
+this list.** The three namespace sweeps before it reported 50, then 41, then 29 —
+none of them could see a path hiding under a parent §8 happens to name, which is where
+most of them were.
+
+`satellite.system` alone is 30 of the 122 and is named nowhere in this document except
+here. `satellite.random` is 16 more, in "Later" above, which is not a milestone.
 
 ---
 
