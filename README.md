@@ -89,4 +89,6 @@ number lives beside the decision it justifies, in the file that makes it, becaus
 
 ## Licence
 
-MIT (Expat). See [LICENSE](LICENSE).
+MIT (Expat) for satellite's own source. See [LICENSE](LICENSE), whose
+third-party section covers the one component that is not satellite's:
+[pcg/](pcg/) is pcg-cpp 0.98, **Apache-2.0**, three unmodified headers.

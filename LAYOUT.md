@@ -31,7 +31,7 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
 | [Makefile](Makefile) | An index. Includes the nine fragments under `make_support/` in numbered order and does nothing else. |
-| [LICENSE](LICENSE) | MIT (Expat). **Incomplete as of 2026-08-27** — `pcg/` is Apache-2.0 and this file does not say so. |
+| [LICENSE](LICENSE) | MIT (Expat) for satellite's own source, plus a third-party section for `pcg/`, which is Apache-2.0. It also records that no built binary currently contains any of it. |
 | [pcg/](pcg/) | The only third-party code in the tree: three pcg-cpp 0.98 headers, its licence, and a README recording what was cut, why `-isystem`, and why a 512-bit variant was refused. |
 | [.gitignore](.gitignore) | Build output, and the deliberate exclusion of `old_versions/` from this repository's history. |
 
