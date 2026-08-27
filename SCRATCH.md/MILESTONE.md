@@ -17,26 +17,53 @@ half-*specified* and will be finished by accident.
 
 ## 0. The headline
 
-**50 of the 215 numbered paths in WORD_NUMBERS.md §2.2 belong to a top-level
-namespace that PLAN §8 never mentions — not in a milestone, not in "Later", not in
-prose.** Counted mechanically 2026-08-27.
+*Re-audited 2026-08-27 after `satellite.variable.number` became **M6.5** and
+`satellite.variable.float` became **M9.5**.* **41 of the 218 numbered paths in
+WORD_NUMBERS.md §2.2** are not reached by a milestone — down from 50, and it is three
+different problems rather than one.
 
-| namespace | numbered paths | said about it anywhere in §8 |
+### 0.1 Nothing anywhere — not a milestone, not "Later", not prose (19 paths)
+
+| namespace | paths | note |
 |---|---:|---|
-| `satellite.system` | 30 | nothing |
-| `satellite.network` | 8 | nothing |
-| `satellite.directory` | 6 | nothing |
-| `satellite.bool` | 3 | nothing — and this is **not** `satellite.variable.bool`, which M9 has. It is the module-constant namespace `satellite.bool.true` / `.false` (DESIGN §6.1) |
-| `satellite.analyze` | 1 | nothing |
-| `satellite.help` | 1 | nothing — DESIGN §4.6 says help "becomes a walk of the trie", which makes it nearly free once M2 lands, and nobody has scheduled it |
-| `satellite.returns` | 1 | nothing — DESIGN §13 records the return-type syntax as **decided** and DESIGN §6.1 lists it among the eleven segment-1 words with their own parse rule, so **M3 or M4 has to parse it** whether or not anyone scheduled it |
+| `satellite.network` | 8 | |
+| `satellite.directory` | 6 | |
+| `satellite.bool` | 3 | **not** `satellite.variable.bool`, which M9 has. These are the module constants `satellite.bool.true` / `.false` (DESIGN §6.1) — a different node under a different parent |
+| `satellite.analyze` | 1 | |
+| `satellite.help` | 1 | the cheap one: DESIGN §4.6 says help *"becomes a walk of the trie"*, so it is nearly free once M2 lands, and nobody scheduled it |
 
-`satellite.returns` is the sharpest of these: it is a *parse rule*, so a milestone
-already owns it and does not say so. The other six are runtime namespaces that could
-sit late without hurting anything — but "could sit late" is a decision, and right now
-it is an omission.
+`satellite.system`'s 30 paths **left this table** — not because they were scheduled,
+but because the re-audit reads the whole of §8 rather than the milestone bodies, and
+"Later" now names them. That is §0.2's problem, not a fix.
 
----
+### 0.2 Covered only by prose, or by "Later", which is not a milestone (~22 paths)
+
+`satellite.statement` (5) — M9 says *"`if` / `else` / `while` / `for`"* and never the
+path. `satellite.file` (5) — a different node from the `satellite.variable.file` in
+"Later". `satellite.time` (4), including `sleep` at `1 9 3` which QUAD's main loop
+cannot run without. Spacesuits, `protected` and `public` (3). `satellite.thread.new`
+(2) — M12 names only the *type*. `satellite.window` (2). `satellite.capsule` (1).
+
+**`satellite.returns` is the one to fix first**, and it is a different kind of wrong
+from everything else here: DESIGN §6.1 gives it its **own parse rule** and §13 records
+the return-type syntax as **decided**, so **M3 or M4 already owns it and does not say
+so.** Left silent, M4 lands with an incomplete grammar and nobody notices until a
+program declares a return type.
+
+### 0.3 Hiding under a namespace a milestone *does* mention
+
+**A count of top-level namespaces cannot see these**, which is why §5's list of what
+this audit does not check matters. Each sits under a parent some milestone names, so
+the parent looks covered:
+
+| what | hides under | the gap |
+|---|---|---|
+| `satellite.console.typed()` and the **reader thread** | `console`, which M8 names | M8 builds the *printer* thread. Non-blocking input is neither M8 nor M11 |
+| `satellite.console.width` / `.height` / `.clear()` / `.home()` | same | terminal facts, unscheduled |
+| `satellite.variable.capsule` `1 6 16` — the deferred call | `variable`, which M9 names | M12 cannot do `thread.new(f(x))` without it and does not say so |
+| the **sort primitive** `1 4 2 3`–`1 4 2 7` | `container`, which M10 names | M10 says "containers and the search power" and never says **sort** |
+| the **literal-option fold** (WORD_NUMBERS §1.5) | — | a resolve-time decision; nothing says whether M6 or M7 owns it |
+| `satellite.variable.file`'s five methods | "Later" | QUAD's `.sky` persistence needs them at M10 |
 
 ## 1. Added on 2026-08-27 and given no milestone
 
