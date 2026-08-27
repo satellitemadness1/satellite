@@ -138,13 +138,45 @@ name and a variable name are both bare identifiers. Here they never are.
 ```satellite
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main()
 {
     satellite.console.display("Hello, World!")
 
     satellite.return(satellite)
 }
 ```
+
+**`satellite.main` takes no arguments here, and that is the whole point of the
+program.** *(Decided 2026-08-27; `example/hello_world.satl` is this file's copy of
+it.)* This section used to declare the parameter —
+`satellite.main(satellite.container.list<satellite.variable.string> arguments)` —
+and that made hello world **unreachable at the milestone that owns it.** Handing
+`main` that parameter means constructing a `list` of `string` and passing it, so
+PLAN M8 could not run this program until M10 had built the container and M9 the
+string. A first program is the one thing in a language that must depend on almost
+nothing.
+
+The numbering already said so and nobody read it that way: WORD_NUMBERS.md §2.2
+writes `satellite.main` as **`1 3 (0)`**, and §1.3's `(0)` means *zero arguments,
+nothing there*. The bare form is the numbered one. **The parameterised form is the
+shape without a number**, and §7.7 — which is where `arguments` is specified — is
+the section that has to carry it.
+
+Both shapes are legal and §6's grammar already allows both: `capsule_decl` reads
+`"(" [ param_list ] ")"`, and the brackets are not new. A program that wants what
+the machine knows declares the parameter and gets §7.7's special variable; a
+program that does not, does not pay for it.
+
+**WORD_NUMBERS.md §1.1 still shows the parameterised program and must keep it.**
+That section is the worked example of §4.3's order-of-first-appearance rule, and
+the parameter is what fixes two of the first six numbers: `container` `1 4` and
+`variable` `1 6` are met **only** inside
+`satellite.container.list<satellite.variable.string>`. Walk the program above
+instead and `console` lands on `1 4` rather than `1 5`, with `container` and
+`variable` never met at all. Nothing renumbers — §4.3 froze the order and the
+freeze is the point — but the example there is now **the historical walk that
+produced the numbers rather than the current hello world**, and editing it to match
+this section would silently renumber the language.
 
 - **capsule** = function.
 - **`satellite` as a value** is the singleton runtime object, not a zero sentinel.
@@ -157,7 +189,8 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 - **`satellite.return()`** is not required. Only `satellite.main` *must* have
   `satellite.return(satellite)`.
 
-This program is the target of milestone 8 (PLAN.md §8).
+This program is the target of milestone 8 (PLAN.md §8), and after the change above
+it is a target M8 can actually hit.
 
 ---
 

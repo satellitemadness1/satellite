@@ -844,6 +844,20 @@ owns them. Recursion depth is bounded here.
 **M8 — hello world.** DESIGN §3 runs. Console with its printer thread,
 `satellite.main`, `satellite.return`. **Startup measured again against M1's number.**
 
+**`satellite.main` takes no arguments at this milestone, and that is what makes the
+milestone reachable.** *(Decided 2026-08-27.)* DESIGN §3 used to declare
+`satellite.container.list<satellite.variable.string> arguments`, which meant M8
+could not run its own acceptance program until **M10** had built the container and
+**M9** the string — a milestone depending on two that come after it. The bare form
+needs the include, the capsule, `display` with a string *literal*, and the return,
+and every one of those is here or earlier. WORD_NUMBERS.md §2.2 had it right the
+whole time: `satellite.main` is `1 3 (0)`, and `(0)` means zero arguments.
+
+**`example/hello_world.satl` is the done-when**, rather than a paragraph describing
+one. The parameterised `main` and the `arguments` object it carries belong to the
+milestone that builds §7.7, and **that milestone does not exist yet** —
+`SCRATCH.md/MILESTONE_DRAFTS.md` has the draft.
+
 **M9 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
 `.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);
 what lands here is running them. `satellite.variable.bool`, `.number`, `.string` and

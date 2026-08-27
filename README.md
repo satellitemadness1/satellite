@@ -5,7 +5,7 @@ A programming language where **the path is the interface**.
 ```satellite
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main()
 {
     satellite.console.display("Hello, World!")
 
