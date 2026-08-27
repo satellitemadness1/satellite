@@ -18,9 +18,10 @@ half-*specified* and will be finished by accident.
 ## 0. The headline
 
 *Re-audited 2026-08-27 after `satellite.variable.number` became **M6.5** and
-`satellite.variable.float` became **M9.5**.* **41 of the 218 numbered paths in
-WORD_NUMBERS.md §2.2** are not reached by a milestone — down from 50, and it is three
-different problems rather than one.
+`satellite.variable.float` became **M9.5**.* **About 29 of the 218 numbered paths in WORD_NUMBERS.md §2.2** are not reached by a
+milestone — 50 at the first audit, 41 at the second, and down again after §0.2's fix.
+It is three different problems rather than one, and **§0.2's turned out not to be a
+gap at all.**
 
 ### 0.1 Nothing anywhere — not a milestone, not "Later", not prose (19 paths)
 
@@ -36,19 +37,36 @@ different problems rather than one.
 but because the re-audit reads the whole of §8 rather than the milestone bodies, and
 "Later" now names them. That is §0.2's problem, not a fix.
 
-### 0.2 Covered only by prose, or by "Later", which is not a milestone (~22 paths)
+### 0.2 ~~Covered only by prose, or by "Later"~~ — mostly FIXED 2026-08-27
 
-`satellite.statement` (5) — M9 says *"`if` / `else` / `while` / `for`"* and never the
-path. `satellite.file` (5) — a different node from the `satellite.variable.file` in
-"Later". `satellite.time` (4), including `sleep` at `1 9 3` which QUAD's main loop
-cannot run without. Spacesuits, `protected` and `public` (3). `satellite.thread.new`
-(2) — M12 names only the *type*. `satellite.window` (2). `satellite.capsule` (1).
+**The diagnosis in this section was wrong and the fix was one edit, not eight.**
 
-**`satellite.returns` is the one to fix first**, and it is a different kind of wrong
-from everything else here: DESIGN §6.1 gives it its **own parse rule** and §13 records
-the return-type syntax as **decided**, so **M3 or M4 already owns it and does not say
-so.** Left silent, M4 lands with an incomplete grammar and nobody notices until a
-program declares a return type.
+`returns`, `statement`, `capsule`, `spacesuit`, `protected`, `public`, `include` and
+`return` were listed here as work with no milestone. They were not unscheduled —
+**M3 and M4 owned all of them and did not say so.** DESIGN §6.1 holds an authoritative
+table of the eleven segment-1 words that each get their own parse rule, and PLAN's
+parser milestones referenced none of it.
+
+**A milestone that owns work without naming it is worse than an unscheduled namespace,
+because nothing looks wrong.** M4 now names the table and cites it as the checklist;
+M3 gained `satellite.variable.binary` and `.hex`, unsaid for the same reason (DESIGN
+§8.5 makes them real types *with literals*, and a literal is lexed whether a milestone
+says so or not); M9 now names the four `satellite.statement` paths and says outright
+that their **parse** rules land at M4 while **running** them lands at M9.
+
+M9 also now says that `satellite.bool` `1 17` is **not** M9 — the type is
+`satellite.variable.bool` `1 6 6` and the module constants `.true` / `.false` are a
+different node under a different parent, which was the confusion §0.1 flagged.
+
+**Still genuinely covered only by "Later", which is not a milestone:**
+`satellite.time` (4, including `sleep` at `1 9 3`, which QUAD's main loop cannot run
+without), `satellite.file` (5 — a different node from the `satellite.variable.file`
+that "Later" names), `satellite.thread.new` (2 — M12 names only the *type*), and
+`satellite.window` (2 — M13 says "windows" in prose).
+
+*Count after the fix: **33 of 218** by a literal `satellite.X` sweep, and four of those
+— `capsule`, `protected`, `public`, `spacesuit` — are false positives, because M4
+names them as bare words inside §6.1's table. About **29** is the honest figure.*
 
 ### 0.3 Hiding under a namespace a milestone *does* mention
 
