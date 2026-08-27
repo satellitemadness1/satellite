@@ -374,7 +374,14 @@ number column is diffable.
    which a program should write.
 4. **`satellite.thread.new` has one number for two shapes.** Argued in WORD_NUMBERS.md
    §4: its own arity is always 1. `1 23 2` is free if that is decided the other way.
-5. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
+5. **41 of the 218 numbered paths reach no milestone**, and
+   [MILESTONE.md](MILESTONE.md) is the ledger. Its §0 splits that into the three
+   different failures it was hiding. **`satellite.returns` is the one to fix first**
+   and it is the only *bug* in the list rather than a gap: DESIGN §6.1 gives it its
+   own parse rule and §13 calls the syntax decided, so **M3 or M4 already owns it and
+   does not say so.**
+
+6. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
    `Rack::draw` in satellite by hand against DESIGN.md. Between them they touch
    floats, the map, a weighted pick, and the one `pow` that has no exact answer.
 

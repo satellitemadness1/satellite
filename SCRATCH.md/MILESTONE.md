@@ -81,7 +81,7 @@ PLAN §8.
 | the **literal-option fold** (WORD_NUMBERS §1.5) | — | M6 or M7 | it is a resolve-time decision that changes which `PathId` a call site interns. Nothing says whether resolve (M6) or closure compilation (M7) owns it |
 | `satellite.variable.file`'s five methods | `1 6 2 3`–`1 6 2 7` | "Later" has `satellite.variable.file` | QUAD's `.sky` persistence needs them, and QUAD.md §4 puts QUAD's needs at M10 |
 
-## 2. ~~`satellite.variable.float`~~ — SETTLED 2026-08-27, it is M9
+## 2. ~~`satellite.variable.float`~~ — SETTLED 2026-08-27, it is M9.5
 
 **Was:** PLAN §8 filed it under *"Later, in no fixed order"* while QUAD.md §3.1 called
 it *"the whole remaining gap"* and DESIGN §13 called it *"on the critical path."* Two
