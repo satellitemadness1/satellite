@@ -89,6 +89,17 @@ satellite.include(satellite)     1 1 1
 a piece of notation, which is why `include()` and `include(satellite)` are two
 different sequences rather than one path called two ways.
 
+**`(0)` in §2.2 is that same `0`, and nothing else.** *(Defined 2026-08-28; it was
+used on forty-odd rows and defined nowhere.)* A row written `satellite.container`
+`1 4 (0)` says the node is `1 4` and its **zero-argument call shape is `1 4 0`** —
+exactly what `satellite.include()` `1 1 0` says without the parentheses. The
+brackets are a reading aid marking a node that is reached both bare and as a
+parent; they are not a third kind of thing, and there is no second rule to learn.
+
+**A trailing `0` is written only where a program can actually write the bare
+form.** `satellite.variable.binary` `1 6 5` has no `(0)` because nothing calls it
+with no arguments — it is a type name, and the number is the whole of it.
+
 **A user-owned argument cannot extend anything**, because a string literal or a
 variable the user named has no number to contribute. So what distinguishes those
 calls is *how many* arguments there are, and each count takes its own slot under
@@ -123,9 +134,33 @@ trie walk happens once, when the source is read; the node it lands on has an
 interned id; that single `uint32_t` is what everything downstream holds, and
 dispatch is one array index and one indirect call.
 
-Three 64-bit integers would be 24 bytes to say what 4 bytes says, and a path of
-four segments is not a special case that needs a wider one — see
-`satellite.random.fast.range`, which is four numbers and nothing else.
+Three 64-bit integers would be 24 bytes to say what 4 bytes says, and **depth is
+not what the integer is holding**, so no path is a special case that needs a wider
+one. The deepest in §2.2 is six segments —
+`satellite.library.main.arguments.machine.cores` `1 14 1 1 1 1` — and it interns to
+the same four bytes as `satellite.main` `1 3`.
+
+*(Corrected 2026-08-28. This paragraph used to cite `satellite.random.fast.range`
+as "four numbers and nothing else". It is not four numbers: §2.3 makes it an
+**alias at `1 7 5`**, three numbers, sharing with the call shape above it. Both
+statements were written in the same commit and disagreed from the start.)*
+
+**So the path is NOT padded to a fixed number of segments, and that was decided
+rather than left.** *(2026-08-28.)* Fixing every path at six — today's maximum —
+was considered and declined for three reasons, in the order they bite:
+
+- **It buys the runtime nothing.** The `uint32_t` above is an interned id, an index
+  into a node table. It is not six segments packed into 32 bits, so a fixed segment
+  count constrains nothing it does.
+- **§3 makes fixed-width packing impossible anyway.** The widest child list in the
+  language is `satellite.container.list` `1 4 2` with 25 children, which needs 5
+  bits, and 6 × 5 = 30 fits in 32 with two to spare. Then a user's capsules take
+  the next free number under their parent, **allocated at parse time and unbounded**
+  — forty capsules need 6 bits and a thousand need 10. Fixed-width packing and §3
+  cannot both be true.
+- **Six is today's maximum, not a bound.** `satellite.system.memory.swap.free(unit)`
+  `1 22 4 4 4` is already five, and a seventh level is one namespace away. Freezing
+  a depth that would have to be broken is worse than not freezing one.
 
 ### 1.5 Paths are numbered in the file; selectors are numbered for dispatch
 

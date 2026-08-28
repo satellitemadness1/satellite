@@ -379,8 +379,10 @@ number column is diffable.
    `satellite.window` and **not** the same thing as `satellite.window.new` `1 24 1`.
    The author delegated this one assignment and the two thread selectors below;
    WORD_NUMBERS.md §2.2 carries them and records who assigned them and why.
-   **Still open there: what parenthesised `(0)` means.** §1.3 defines bare `0` and
-   never defines `(0)`, which forty-odd rows use.
+   **`(0)` was defined 2026-08-28** and is no longer open: §1.3 now says it is the
+   same `0` it already defined, so `satellite.container` `1 4 (0)` means the bare
+   call shape is `1 4 0`. Not a third concept — a reading aid on a node reached both
+   bare and as a parent.
 5. **`satellite.variable.thread.start()` `1 6 13 1` and `.join()` `1 6 13 2` now
    exist** *(assigned 2026-08-28)*, so `example/thread_test.satl` names only real
    paths. **M12 still owns neither**, and the deferred call `satellite.variable.capsule`
@@ -513,6 +515,29 @@ The `satellite.random` + `satellite.time` pass returned last and found more abou
   hand-written siblings have 16, 7 and 14. **Not invented here; WORD_NUMBERS has to.**
 - **MILESTONE.md §0.1's column summed to 121 against its own headline of 122.** The
   headline was right; the row was understated. Corrected in that file.
+
+### 5.10.5 What was settled about the numbering itself on 2026-08-28
+
+**`(0)` is defined**, as §1.3's `0`. Forty-odd rows used it and nothing said what it
+meant. A trailing `0` is written only where a program can write the bare form, which
+is why `satellite.variable.binary` `1 6 5` has none.
+
+**§1.4's illustration was false and is corrected.** It cited
+`satellite.random.fast.range` as *"four numbers and nothing else"*; §2.3 makes it an
+**alias at `1 7 5`**, three numbers. Both shipped in the same commit. The true
+example makes the point better: the deepest path is six segments —
+`satellite.library.main.arguments.machine.cores` `1 14 1 1 1 1` — and it interns to
+the same four bytes as `satellite.main` `1 3`.
+
+**Fixed-length paths were considered and DECLINED**, and the reasons are in §1.4 so
+nobody re-opens it without them. It buys the runtime nothing, because the `uint32_t`
+is an interned id and not a packed path; **§3 makes fixed-width packing impossible
+anyway**, since user capsules take unbounded numbers at parse time while the widest
+language child list is 25; and six is today's maximum rather than a bound.
+
+**Four numbers were assigned by delegation** — `1 6 13 1`, `1 6 13 2`, `1 24 2`,
+`1 24 2 1` — and WORD_NUMBERS §2.4 records that they were, by whom, and what rule
+decided each. **That delegation was for those four only.**
 
 ### 5.11 The second half of 2026-08-27 — what was built, not just decided
 
