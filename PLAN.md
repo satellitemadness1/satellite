@@ -552,16 +552,60 @@ starts walking immediately and the pool takes the remainder once it exists.*
 startup window to hide 600 µs of thread creation behind. The only thing long
 enough to hide it behind is the walk itself.
 
-**So the rule is neither "lazily on first use" nor "always warm". It is decided
-from the source size, before anything is paid:**
+### 4.5.1.2 The pool starts at startup, always — the author's decision
 
-> **satl reads the file before it parses it — 4–8 µs — so it already knows how big
-> the program is. Above roughly 2,300 satellite-rooted lines, start warming the
-> pool and thread the walk. Below it, stay on one thread and never build a pool.**
+**Decided by the author 2026-08-28, and it supersedes both §4.5.1's "lazily, on
+first real threaded work" and the size rule §4.5.1.1 first proposed:**
 
-That decision costs nothing to make, uses a number satl has in hand, and is right
-at both ends: hello world pays nothing at all, and a large program gets the pool
-warming while the main thread is already working through the source.
+> *satl almost must start the THREAD_COUNT in satellite_config.ini because we
+> almost have to assume the user will call parallel_for, so that requires a warm
+> pool no matter what; in other words, MOST satellite code will require 24, so
+> start them now.*
+
+**This changes the question, and the measurements above were answering the wrong
+one.** Everything in §4.5.1.1 measures the pool against *parse-time interning* —
+27 µs of work for a small program, which nothing can usefully thread. The pool's
+real tenant is the **running program**, and a program's parallelism has nothing to
+do with the size of its source: ten lines can run a million-iteration loop. **A
+size trigger predicts parse cost and is therefore the wrong trigger**, and it is
+also the kind of hidden threshold DESIGN §1.1 refuses — *do absolutely everything
+for the user, and pay for it in performance rather than in their attention.*
+
+**The arithmetic supports it once the base is stated in absolute terms rather than
+as a ratio.** §4.5.1.1's frightening "0.42×–0.60×" is a ratio on a very small base:
+
+| | eager costs a program that never threads |
+|---|---:|
+| 100 satellite-rooted lines | **+21 µs** |
+| 500 | **+47 µs** |
+| 1,000 | +182 µs |
+| against satl's whole process startup (§4.3) | 1,750 µs |
+
+So a program that never threads pays **1–3% of startup**, and a program that does
+avoids **~590 µs of blocked execution** at its first parallel call. The trade is
+worth taking well before "most" — one program in four is enough.
+
+**Two implementation requirements this decision carries**, both measured above:
+
+- **The main thread must not build the pool itself.** Spawn one thread and let it
+  build the other 23: that is ~20 µs on the main thread instead of ~590 µs.
+- **`THREAD_COUNT` has to be readable before the pool is built**, and
+  `satellite_config.ini` does not exist yet (§4.5.4). Until it does, the count
+  falls back to what the OS reports — 24 on this machine, and **not** cores × 2,
+  which is this CPU's SMT ratio and not a rule.
+
+**Two facts the author should have in view, neither of which blocks the decision:**
+
+- **`parallel_for` does not exist.** It is in no numbering, no milestone and no
+  document; the language's whole parallelism surface today is
+  `satellite.thread.new` `1 23 1` and `satellite.variable.thread.start()` /
+  `.join()` `1 6 13 1`–`1 6 13 2`. The decision above assumes a construct that has
+  to be designed, numbered and built, and that work is not scheduled anywhere.
+- **QUAD spawns zero threads.** The only `<thread>` use in its 3,029 lines is
+  `sleep_for` (QUAD.md §2, checked against the source). The one program this
+  language exists to express would never touch the pool — which does not make the
+  decision wrong, but does mean *"most satellite code will require 24"* is a
+  statement about where the language is going rather than about what it runs today.
 
 **The `.satc` write is untouched by all of this and stays threaded always.**
 SATC.md §5 puts the write on its own thread so the run never waits for it — that

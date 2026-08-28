@@ -1017,9 +1017,19 @@ history; this is the state. Two commits landed today: `d9ff549` (M2) and `bb0af1
    DESIGN §9 says that silence is wrong.
 7. **What is `arguments[0]`** — program name, current directory, or first argument?
 8. **Scheduling.** 121 of 222 paths reach no milestone (`MILESTONE.md`), and the
-   **lazy thread pool now has a measured justification and still has no milestone**
-   — which after today is the sharpest gap in §8, because the number says the
-   author's own threading request does not pay without it.
+   **thread pool now has a measured justification, a decided shape and still no
+   milestone** — which after today is the sharpest gap in §8.
+
+9. **`parallel_for` has to be designed, numbered and scheduled.** PLAN §4.5.1.2
+   rests on it — *"we almost have to assume the user will call parallel_for"* — and
+   it appears in no numbering, no milestone and no document. It needs a call shape
+   (WORD_NUMBERS §1.3), a number under whichever parent owns it, and a milestone.
+   **This is the newest and largest open item in the project.**
+
+10. **`satellite_config.ini` moved onto the critical path.** It was a later nicety;
+    §4.5.1.2 makes `THREAD_COUNT` something satl reads before it builds the pool,
+    which is before it does anything else. Its unit-and-default question (§5 q2)
+    now blocks startup rather than a setting.
 
 #### Open, and MINE — no decision needed, only work
 
@@ -1032,11 +1042,31 @@ history; this is the state. Two commits landed today: `d9ff549` (M2) and `bb0af1
   threads contends with the main thread's own page faults. And **file I/O hides
   nothing** — reading hello world takes 4.4 µs against ~600 µs to warm.
 
-  **So the rule is decided from the source size, before anything is paid:** satl
-  reads the file first, so it knows how big the program is; above ~2,300
-  satellite-rooted lines, warm the pool and thread the walk, below it stay on one
-  thread and never build one. PLAN §4.5.1 as written — *"created lazily, on first
-  real threaded work"* — should be read as superseded by §4.5.1.1.
+  **AND THEN THE AUTHOR DECIDED IT, and the size rule is gone.** PLAN §4.5.1.2:
+  *"satl almost must start the THREAD_COUNT in satellite_config.ini because we
+  almost have to assume the user will call parallel_for... MOST satellite code will
+  require 24, so start them now."* **The pool is built at startup, always.**
+
+  That is right and my size rule was wrong, because every measurement I took was
+  against **parse-time interning** and the pool's real tenant is the **running
+  program** — a ten-line program can run a million-iteration parallel loop, so
+  source size predicts parse cost and not parallelism. In absolute terms the cost
+  to a program that never threads is **+21 µs at 100 lines and +47 µs at 500**,
+  against 1,750 µs of process startup; a program that does thread saves ~590 µs of
+  blocked execution at its first parallel call. **PLAN §4.5.1's "lazily, on first
+  real threaded work" is superseded, and so is §4.5.1.1's size trigger.**
+
+  Two things this carries: the main thread must **not** build the pool itself
+  (spawn one, let it build 23 — 20 µs instead of 590), and `THREAD_COUNT` has to be
+  readable first, which means `satellite_config.ini` — **which still does not
+  exist** and is now on the critical path for startup rather than a later nicety.
+
+  **Two facts flagged to the author and not blocking:** `parallel_for` exists in no
+  numbering, no milestone and no document — the whole parallelism surface is
+  `satellite.thread.new` and `.start()`/`.join()` — so the decision assumes a
+  construct that still has to be designed, numbered and built. And **QUAD spawns
+  zero threads**, so the one program the language exists to express would never
+  touch the pool.
 
   **The `.satc` write is a different job and is unaffected**: SATC §5 keeps it on
   its own thread always, which is one thread hiding disk latency, not
