@@ -682,23 +682,27 @@ Each milestone is a thing that **works and can be demonstrated.** No milestone i
 "the parser is half done."
 
 **The numbers are assignment order and the list is build order, and since
-2026-08-28 they differ.** M8 and M8.5 are built **after M10** and appear there.
-They keep their names: seven documents cite "M8" — DESIGN §3, LAYOUT, MILESTONE.md,
-THREADS.md and the drafts among them — and renumbering to fix the appearance of the
-list would rewrite all of them to say something the numbers never promised. That is
-WORD_NUMBERS §1.2's rule applied to the plan rather than to the language: **never
-renumber, never reuse, and record the order where it can be read.** The order is
-this list, top to bottom.
+2026-08-28 they differ.** Read the list top to bottom; the numbers are names, not
+positions. That is WORD_NUMBERS §1.2's rule applied to the plan rather than to the
+language: **never renumber, never reuse, and record the order where it can be read.**
 
-**One consequence has to be resolved before M9 starts, and it is not small.** M8
-builds *"Console with its printer thread"*, so moving M8 after M10 leaves **M9 and
-M10 with nothing to print through** — against this section's own opening rule that a
-milestone can be demonstrated. **The remedy is almost certainly to split M8**: the
-console and its printer thread stay where M8 was, between M7 and M9, and only *hello
-world the program* — `satellite.main` with its parameter, `satellite.return`, and
-the startup measurement — moves after M10, because the parameter is the only part
-that ever needed a list. **The author has not made that split**, so it is written
-here rather than assumed.
+**M8 is split, and only its second half moved.** *(2026-08-28.)* The empty
+`satellite.container.list` that `satellite.main`'s parameter binds to was ruled
+M10's, which would have put the whole of M8 after M10 and left **M9 and M10 with no
+console to print through** — against this section's own opening rule. The parameter
+was the only part that ever needed a list, so:
+
+    M8.A   the console, satellite.main, satellite.return    between M7 and M9
+    M8.B   hello world — DESIGN §3, and the parameter       after M10
+    M8.5   satellite.help                                   after M8.B
+
+**A bare "M8" in text written before 2026-08-28 means M8.A**, the console, which is
+where nearly every citation of it points — MILESTONE.md's console rows, the console
+draft in MILESTONE_DRAFTS.md, QUAD §4's *"nothing before M8"*. The exceptions are
+the ones that name **hello world or DESIGN §3 as a done-when**, and those mean M8.B.
+The permanent documents have been corrected; **the dated adversarial findings in
+`SCRATCH.md/MILESTONE_DRAFTS.md` have not**, because they are verbatim records of
+what a review said on a day and rewriting them would falsify the record.
 
 **M1 — `satl` exists and says how to use it.** *Landed 2026-08-26.* §1.
 
@@ -888,6 +892,27 @@ Module calls dispatch through `handlers[path_id]`, and the **inline caches of §
 land here too** — third of the three adoptions §2.6 orders, and the milestone that
 owns them. Recursion depth is bounded here.
 
+**M8.A — the console, and the first program that runs.** *(Split from M8 on
+2026-08-28.)* Console with its printer thread, `satellite.main`, `satellite.return`.
+**This is the milestone at which satellite executes anything at all**, and
+everything from M9 on depends on it for the same reason every milestone after M1
+depends on there being a binary: without it there is nothing to print through and
+nothing can be demonstrated.
+
+**Why the split.** M8 was one milestone until the empty `satellite.container.list`
+that `satellite.main`'s parameter binds to was ruled M10's, which pushed M8 after
+M10 and left M9 and M10 with no console — against §8's opening rule. **The
+parameter is the only part that ever needed a list.** So the console, `main` and
+`return` stay here, and hello world itself is **M8.B**, after M10.
+
+**Its done-when cannot be DESIGN §3**, which is the thing worth saying out loud:
+§3's hello world declares the parameter, and the parameter is M8.B's. What runs here
+is the **bare `satellite.main()` form**, which is still legal and always was — §6's
+grammar reads `"(" [ param_list ] ")"` and DESIGN §3 keeps both shapes. **`example/`
+holds no bare-main program**, so this milestone has no acceptance file yet; writing
+one is the author's, and until then its done-when is prose, which §8's opening calls
+the weaker kind.
+
 **M9 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
 `.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);
 what lands here is running them. `satellite.variable.bool`, `.number`, `.string` and
@@ -937,8 +962,8 @@ milestone later.
 `satellite.container.list<satellite.variable.string> arguments` and never reads it,
 so what it needs is one empty `satellite.container.list` and no `string` at all.
 **That is this milestone's type, not M8's** — an empty list is still a list, and a
-milestone that constructs one has built the type. **M8 therefore runs after this
-one**, and the ordering note in §8's opening carries what that costs.
+milestone that constructs one has built the type. **M8.B therefore runs after this
+one**, and it is why M8 was split at all; §8's opening carries the split.
 
 **The sort primitive is part of this milestone and is not the search power.**
 `sort()` `1 4 2 3` through `sort_up(key)` `1 4 2 7` are §1.1's *one primitive rather
@@ -946,12 +971,14 @@ than comparators*; the search power is v1's comparator ladder, ported. Two diffe
 things that happen to land together, and saying so is what stops the next reader
 assuming "the search power" covered sorting.
 
-**M8 — hello world.** DESIGN §3 runs. Console with its printer thread,
-`satellite.main`, `satellite.return`. **Startup measured again against M1's number.**
+**M8.B — hello world.** *(Split from M8 on 2026-08-28; M8.A is the console, between
+M7 and M9 above.)* DESIGN §3 runs, byte for byte. What is left once M8.A has built
+the console, `satellite.main` and `satellite.return` is **one thing: the parameter**,
+and the parameter is why this half is here rather than there.
 
 **`satellite.main` declares `satellite.container.list<satellite.variable.string>
-arguments`, and M8 must say what it hands over.** *(Restored 2026-08-28, reversing
-the 2026-08-27 removal.)* For one day this milestone read "`satellite.main` takes no
+arguments`, and this milestone must say what it hands over.** *(Restored 2026-08-28,
+reversing the 2026-08-27 removal.)* For one day M8 read "`satellite.main` takes no
 arguments at this milestone, and that is what makes the milestone reachable",
 resting on WORD_NUMBERS.md §2.2 writing `satellite.main` as `1 3 (0)` with `(0)`
 read as *zero arguments*. WORD_NUMBERS §1.3 defines that marker as **a node reached
@@ -959,33 +986,34 @@ both bare and as a parent** — a fact about reaching `satellite.main`, not abou
 declaring it — so the argument was reading the authority backwards. DESIGN §3 has
 the full reversal.
 
-**What that costs this milestone is one empty list, and the author has decided
-whose it is.** *(Decided 2026-08-28.)* Hello world never reads `arguments`, so no
+**What it costs is one empty list, and the author has decided whose it is.**
+*(Decided 2026-08-28.)* Hello world never reads `arguments`, so no
 `satellite.variable.string` value is ever constructed — **M9 is not a dependency** —
 and none of M10's twenty-five list methods is reached. What remains is a single
-empty `satellite.container.list` bound to the slot. **That list is M10's, not this
-milestone's, and this milestone therefore runs after M10** — which is why it appears
-after M10 above while keeping the name M8 (§8's opening).
+empty `satellite.container.list` bound to the slot. **That list is M10's**, which is
+what puts this milestone after M10 and is the whole reason M8 was split at all.
 
-**The reason it went that way rather than the other is that M8 owning it would have
-been M10's type built twice.** An empty `satellite.container.list` is still a
+**The reason it went that way rather than the other is that owning it here would
+have been M10's type built twice.** An empty `satellite.container.list` is still a
 `satellite.container.list`; a milestone that constructs one has built the type, and
-the type belongs to the milestone that says so. The alternative — M8 owning a
-private empty-list shape that M10 later replaces — is the kind of thing that looks
-free and is discovered later as two implementations of one type.
+the type belongs to the milestone that says so. The alternative — a private
+empty-list shape that M10 later replaces — is the kind of thing that looks free and
+is discovered later as two implementations of one type.
 
-**Whichever way that goes, M8 hands `satellite.main` a slot named `arguments` two
-milestones before anything can make it real**, and §7.7 puts the recognition of the
-name at resolve, which is M6. A program written between M8 and the milestone that
-builds §7.7 will therefore ask for `arguments.username` and get an error that no
-document predicts unless this milestone writes the handover down. That is the M3/M4
-failure caught before it happens instead of after.
+**It hands `satellite.main` a slot named `arguments` before anything can make it
+real**, and §7.7 puts the recognition of the name at resolve, which is M6. A program
+written between here and the milestone that builds §7.7 will ask for
+`arguments.username` and get an error that no document predicts unless this
+milestone writes the handover down. That is the M3/M4 failure caught before it
+happens instead of after.
 
 **`example/hello_world.satl` is the done-when**, rather than a paragraph describing
 one. DESIGN §3 is a byte-for-byte copy of that file so the two cannot drift. The
 `arguments` **object** — `arguments.username`, `arguments.machine.cores` and the
 rest of §7.7 — belongs to the milestone that builds §7.7, and **that milestone does
-not exist yet**; `SCRATCH.md/MILESTONE_DRAFTS.md` has the draft.
+not exist yet**; `SCRATCH.md/MILESTONE_DRAFTS.md` has the draft. **Startup is
+measured again against M1's number here**, because this is where DESIGN §3 itself
+first runs.
 
 **M8.5 — `satellite.help`, and the trie answering for itself.** *(Its own milestone
 as of 2026-08-28.)* Three paths — `satellite.help` `1 19`, `satellite.help()`
@@ -995,10 +1023,18 @@ the cheapest row in the ledger: *"3 paths and DESIGN §4.6 makes it a walk of th
 trie — nearly free once M2 lands."*
 
 **Everything it needs is behind it.** M2 gives the trie and the interner, M5 the
-refusal text, M7 the `handlers[path_id]` table, M8 the console to print through.
-Nothing later is required, which is the argument for putting it here rather than at
-the end: **help that arrives last is help nobody had while the language was being
-built.**
+refusal text, M7 the `handlers[path_id]` table, **M8.A** the console to print
+through. Nothing later is required, which is the argument for putting it here rather
+than at the end: **help that arrives last is help nobody had while the language was
+being built.**
+
+**Its real floor is M8.A, not M8.B, and that is worth knowing.** *(2026-08-28.)*
+Help needs a console and a `main` to run inside; it does not need the parameter, so
+nothing stops this milestone landing immediately after M8.A and giving M9, M9.5 and
+M10 a live account of themselves while they are being built. It is left after M8.B
+because that is where the split put it and moving it is a second decision — but **if
+help is wanted during M9 and M10, this is the one that can move, and it moves
+without consequence.**
 
 **Help is a walk, not a document, and v1 is the evidence for why.**
 `old_versions/first_satellite/src/evaluator/help.cpp` is 221 lines and
@@ -1066,7 +1102,7 @@ anywhere, and the topic *pages* as prose. Adding a node's one-line description t
 
 **Done when** `satl` runs a program whose whole body is `satellite.help` and the
 output names exactly the paths that are built when it runs — everything through M10
-and M8, in build order, and no others — so the same unedited program run again at
+and M8.B, in build order, and no others — so the same unedited program run again at
 M13 prints a different and equally correct language. Two
 checks make it self-verifying, which no earlier milestone is: the output is
 comparable to the non-null entries of `handlers[]` by construction, and

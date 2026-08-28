@@ -70,7 +70,7 @@ That is **39 paths** in the wrong category, all in the direction of looking bett
 | `satellite.library.*` | **11** | 15 | the whole `arguments` subtree — see §0.2 |
 | `satellite.network` | **8** | 8 | nothing |
 | `satellite.variable.file` | **8** | 8 | Later only |
-| `satellite.console` | **8** | 10 | M8 builds the *printer* — see §0.2 |
+| `satellite.console` | **8** | 10 | M8.A builds the *printer* — see §0.2 |
 | `satellite.container` | **7** | 39 | sort ×5, `.arguments`, `.result` |
 | `satellite.directory` | **6** | 6 | nothing |
 | `satellite.variable` leaves | **7** | 16 | `time`, `date`, `duration`, `expression`, `network`, `variant`, `capsule` |
@@ -121,7 +121,7 @@ milestone names, so the parent looks covered. This is §0.3's category, finished
 | what | number | hides under | the gap |
 |---|---|---|---|
 | **the whole `arguments` subtree** — `.machine.cores` / `.cpu` / `.threads`, `.memory.total`, `.username` | `1 14 1 1`–`1 14 1 1 3` | `library`, which M4 parses | **8 paths.** DESIGN §7.7 specifies it, PLAN §4.5.3 argues about it, no milestone builds it. The largest single find of this audit |
-| **`satellite.console.input`, all three shapes** | `1 5 2`–`1 5 4` | `console`, which M8 names | M8 is *"Console with its printer thread."* Reading a line is not the printer. The last audit caught `typed()` and missed blocking input entirely |
+| **`satellite.console.input`, all three shapes** | `1 5 2`–`1 5 4` | `console`, which M8.A names | M8.A is *"Console with its printer thread."* Reading a line is not the printer. The last audit caught `typed()` and missed blocking input entirely |
 | **`satellite.variable.duration`, `.expression`** | `1 6 8`, `1 6 9` | `variable`, which M9 names | not in §8, not in Later, not in prose. §5 listed them as "unaccounted for" and never counted them |
 | **`satellite.library.main` and `.system`** | `1 14 1`, `1 14 2` | `library` | §8.1 discusses their *numbering* at M2 and nothing builds them |
 | **the 29 container methods** | `1 4 1 1`–`1 4 2 25` | M10 names both types | not counted as uncovered here, but see §0.3 — M9 says *"and their methods"* and M10 does not |
@@ -140,8 +140,8 @@ does not say it:
 - **`division_digits`, `max_depth`, `float_digits`** — M9.5 asks whether
   `division_digits` is the same dial as the float precision; asking is not owning.
 - **`satellite` `1` itself**, the runtime singleton, and
-  `satellite.include(satellite)` `1 1 1` — DESIGN §3's hello world uses both and M8
-  runs DESIGN §3.
+  `satellite.include(satellite)` `1 1 1` — DESIGN §3's hello world uses both and
+  **M8.B** runs DESIGN §3.
 
 **Adding one clause to M10 — "and their methods", the words M9 already uses — moves 29
 paths from implied to named.** That is this audit's cheapest fix and the direct
@@ -162,7 +162,7 @@ PLAN §8.
 
 | what | number | where it probably belongs | why it is not obvious |
 |---|---|---|---|
-| `satellite.console.typed()` and the **reader thread** | `1 5 5` | new, between M8 and M11 | M8 builds the console's *printer* thread; M11 builds the REPL. The **input** thread (DESIGN §10.1, the polarity flipped again) is neither, and QUAD needs it before either |
+| `satellite.console.typed()` and the **reader thread** | `1 5 5` | new, between M8.A and M11 | M8.A builds the console's *printer* thread; M11 builds the REPL. The **input** thread (DESIGN §10.1, the polarity flipped again) is neither, and QUAD needs it before either |
 | `satellite.console.width` / `.height` / `.clear()` / `.home()` | `1 5 6`–`1 5 9` | with the above | terminal facts, not console I/O. Might belong with `arguments.machine.*` instead |
 | `satellite.variable.capsule` — the deferred call | `1 6 16` | **M12 at the latest, and probably earlier** | M12 says only `satellite.variable.thread`. But `satellite.thread.new(f(x))` cannot work without the packaging semantics, and DESIGN §12/§13 now lean on it to keep §2 shut. If it slips, so does the argument that sorting did not need first-class capsules |
 | `satellite.time.sleep(n)` | `1 9 3` | "Later" has `.time` | QUAD's main loop cannot run without it, so it is not "later" in any sense QUAD.md §4 recognises |
@@ -239,14 +239,14 @@ used to call for has now been done** — all 218 rows, §0 is its result. What i
   large case — WORD_SURFACE.md swept them out of v1, so most already have an
   implementation to port. **Uncovered means unscheduled, not unknown.**
 - **Coverage was judged from §8's words, not from what a milestone would have to build
-  anyway.** M8 cannot run DESIGN §3 without the `satellite` singleton, so the singleton
-  is real work M8 must do; it is filed as *implied* because M8 does not say so. Every
+  anyway.** M8.B cannot run DESIGN §3 without the `satellite` singleton, so the
+  singleton is real work it must do; it is filed as *implied* because it does not say so. Every
   one of §0.3's 35 is that shape, and the M3/M4 lesson is that this is the dangerous
   half, not the safe one.
 - **The 122 were not sized.** `satellite.help` is 3 paths and DESIGN §4.6 makes it a
   walk of the trie — nearly free once M2 lands. `satellite.network` is 8 paths and a
   protocol stack. *(2026-08-28: help was written as M8.5 and the sizing held — its
-  dependencies are M2, M5, M7 and M8, all behind it. Network is still 8 paths and a
+  dependencies are M2, M5, M7 and M8.A, all behind it. Network is still 8 paths and a
   protocol stack, and `SCRATCH.md/WORD_SURFACE.md` notes that **nothing in this
   tree's documents promises it yet**, which is a different and worse position than
   unscheduled.)* They count the same in §0.1's table and are not the same work. **The

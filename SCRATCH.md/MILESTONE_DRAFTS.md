@@ -112,7 +112,8 @@ day, and true again — the removal was reversed. **PLAN M8 has now adopted this
 the part the paragraph assumed away is settled too: the empty `list<string>` M8
 hands over is a `satellite.container.list` value, **that value is M10's, and M8
 therefore runs after M10.** So "two milestones before this one can make it real" is
-no longer the right count — M8 now sits between M10 and M11.A.)*
+no longer the right count — **M8 was split on 2026-08-28**, and the half this
+paragraph is about is **M8.B**, which now sits between M10 and M8.5.)*
 
 **Why here.** The `arguments` half has a hard floor at M10: the object *is* a
 `list<string>` to the type system, `.names()` returns one, and `args[i]` falls through

@@ -271,7 +271,8 @@ storing a capsule identity rather than a closure is arguably the shape it wanted
 
 ## 4. What this changes about the plan
 
-**Nothing before M8.** The trie, the lexer, the arena, the parser, resolve and the
+**Nothing before M8.A.** *(Read as M8 until PLAN split it 2026-08-28; M8.A is the
+console and the first program that runs.)* The trie, the lexer, the arena, the parser, resolve and the
 closure tree are all needed whatever QUAD turns out to require, and none of the holes
 above touches them.
 

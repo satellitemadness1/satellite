@@ -198,7 +198,7 @@ walk atomic-free; the Console already keeps output lines atomic."* Four things f
 One operational note, since it bears on the done-when: ~~`example/` is untracked —
 `git status --porcelain example/` returns `?? example/`~~ — **no longer true as of
 commit `6209c83`.** The four programs are tracked, so the specification program for
-all of the above, and `hello_world.satl` which PLAN M8 names as its done-when, now
+all of the above, and `hello_world.satl` which PLAN M8.B names as its done-when, now
 survive a `git clean -fd`. **The done-when problem this note framed is unchanged**:
 `thread_test.satl` being in the repository does not make M12 able to run it.
 

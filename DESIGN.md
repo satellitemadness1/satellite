@@ -150,7 +150,7 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 }
 ```
 
-**That is `example/hello_world.satl`, byte for byte, comments included.** PLAN M8
+**That is `example/hello_world.satl`, byte for byte, comments included.** PLAN M8.B
 names the file rather than a paragraph as its done-when, so the two must not be
 able to drift; the way to guarantee that is for this section to be a copy rather
 than a description. The `//` comments are part of the program and are specified in
@@ -192,16 +192,17 @@ matching the program that produced it. Nothing renumbers either way — §4.3 fr
 the order and the freeze is the point — but a frozen numbering whose worked example
 still runs is worth more than one whose example has to be explained away.
 
-**What it costs M8, stated plainly rather than assumed away.** The program never
-reads `arguments`, so what M8 owes is an empty list bound to the slot and nothing
+**What it costs, stated plainly rather than assumed away.** The program never
+reads `arguments`, so what it owes is an empty list bound to the slot and nothing
 else: no `satellite.variable.string` value is ever constructed, so M9 is not a
 dependency, and none of M10's twenty-five list methods is reached. What is left is
 one empty `satellite.container.list` value, and **that list is M10's.** *(Decided
 2026-08-28.)* An empty list is still a list, and the milestone that constructs one
-has built the type — so **M8 runs after M10**, and PLAN §8's opening carries what
-that reordering costs. The milestone is still the place that has to say what it
-hands over, or a program written between M8 and the milestone that builds §7.7 gets
-an error for `arguments.username` that no document predicts.
+has built the type — so **hello world is PLAN M8.B and runs after M10**, while the
+console it prints through stays at **M8.A**, before M9. PLAN §8's opening carries
+that split. The milestone is still the place that has to say what it hands over, or
+a program written between M8.B and the milestone that builds §7.7 gets an error for
+`arguments.username` that no document predicts.
 
 Both shapes remain legal and §6's grammar already allows both: `capsule_decl` reads
 `"(" [ param_list ] ")"`, and the brackets are not new. A program that wants what
@@ -1567,7 +1568,7 @@ critical path.
   `satellite.container.list<satellite.variable.string>`, and nothing says whether
   its first element is the program name, the current directory, or the first
   argument the user actually typed. The author's first note has it displaying the
-  current directory. Left undecided it will be settled by accident at M8, and
+  current directory. Left undecided it will be settled by accident at M8.B, and
   every program written before the accident will disagree with every program
   written after.
 - ~~**`satellite.thread.new` against `satellite.variable.thread`.**~~ **Settled

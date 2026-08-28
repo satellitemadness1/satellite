@@ -747,18 +747,53 @@ that constructs one has built the type. M8 owning a private empty-list shape tha
 M10 later replaces is the thing that looks free and is found later as two
 implementations of one type.
 
-**ONE CONSEQUENCE IS OPEN AND IS THE NEXT THING TO SETTLE.** M8 builds *"Console
-with its printer thread"*, so moving M8 after M10 leaves **M9 and M10 with nothing
-to print through** — against PLAN §8's own opening rule that a milestone must be
-demonstrable. **The remedy is almost certainly to split M8**: the console and its
-printer thread stay between M7 and M9, and only hello world the program —
-`satellite.main` with its parameter, `satellite.return`, the startup measurement —
-moves after M10, because the parameter is the only part that ever needed a list.
-**That split has not been made.** It is written into §8's opening rather than
-assumed, and it should be the first thing looked at when M9 is planned.
+**ONE CONSEQUENCE WAS OPEN FOR ABOUT AN HOUR AND IS NOW CLOSED — see §5.16.** M8
+builds *"Console with its printer thread"*, so moving all of M8 after M10 would have
+left **M9 and M10 with nothing to print through**, against PLAN §8's own opening rule
+that a milestone must be demonstrable. **The author split M8 the same session.**
 
 Propagated to DESIGN §3, LAYOUT's hello world row, PLAN M8 / M8.5 / M10 / §8
 opening, and MILESTONE_DRAFTS' M8 handover note.
+
+### 5.16 2026-08-28 — M8 is split, and the build order is settled
+
+**The author's second decision of the session, and it closes the consequence §5.15
+opened.** M8 was one milestone; the empty list ruling would have moved all of it
+after M10 and left M9 and M10 with no console. **Only the parameter ever needed a
+list**, so the split falls exactly there:
+
+    M8.A   the console, satellite.main, satellite.return    between M7 and M9
+    M8.B   hello world — DESIGN §3, and the parameter       after M10
+    M8.5   satellite.help                                   after M8.B
+
+**Build order in PLAN §8 is now** M1, M2, M3, M4, M4.5, M5, M6, M6.5, M7, **M8.A**,
+M9, M9.5, M10, **M8.B**, M8.5, M11.A, M11.B, M12, M13. Naming follows the author's
+own M11.A/M11.B precedent.
+
+**M8.A is the milestone at which satellite executes anything at all**, which is why
+everything from M9 on depends on it. **Its done-when cannot be DESIGN §3** — §3's
+hello world declares the parameter and the parameter is M8.B's — so what runs there
+is the **bare `satellite.main()` form**, still legal under §6's grammar and kept by
+DESIGN §3 on purpose. **`example/` holds no bare-main program**, so M8.A has no
+acceptance file; writing one is the author's, and until then its done-when is prose,
+which §8's opening calls the weaker kind. **That is the one thing this split leaves
+open.**
+
+**A disambiguation rule is written into §8's opening, because ~30 citations of "M8"
+exist across the tree.** A bare "M8" written before 2026-08-28 means **M8.A**, the
+console — MILESTONE.md's console rows, MILESTONE_DRAFTS' console draft, QUAD §4's
+*"nothing before M8"*. The exceptions name **hello world or DESIGN §3 as a
+done-when** and mean **M8.B**. Corrected in DESIGN, LAYOUT, QUAD, PLAN, MILESTONE.md,
+THREADS.md and the drafts' M8 handover note. **Deliberately not corrected: the dated
+adversarial findings in MILESTONE_DRAFTS.md**, which are verbatim records of what a
+review said on a day — rewriting them would falsify the record, and §8's rule covers
+reading them.
+
+**One thing noticed and left alone.** M8.5's real floor is **M8.A**, not M8.B — help
+needs a console and a `main` to run inside, not the parameter — so it could land
+right after M8.A and give M9, M9.5 and M10 a live account of themselves while they
+are being built. It is left where the split put it because moving it is a second
+decision; PLAN M8.5 says so, and says it moves without consequence.
 
 ## 6. Jobs the user has asked for that are not started
 
