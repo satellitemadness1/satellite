@@ -36,8 +36,8 @@ inside §6.5's restriction. **`satellite.variable.float` is the one that grew te
 and is the whole remaining gap (QUAD.md §3.1, DESIGN §13).
 
 None of it touches M2 through M8 as *code* — but settling it added **71 numbers** to
-WORD_NUMBERS.md, taking §2.2 from 144 entries to 215, and M2 is the milestone that
-transcribes them. The rest lands on M9 and M10, and QUAD.md §4 proposes a milestone
+WORD_NUMBERS.md, taking §2.2 from 144 entries to 215 and eventually 222, and **M2
+transcribed all of them on 2026-08-28.** The rest lands on M9 and M10, and QUAD.md §4 proposes a milestone
 that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 ## 1. Where things stand
@@ -441,21 +441,66 @@ with satellite, or the fastest possible way to do it, whatever that may be."*
 
 **The line-per-thread part is right and the startup part is not**, and §4.3 is why.
 satl starts in 1.75 ms of which its **own share is 0.01 ms**. Spawning 24 threads
-costs roughly 0.5–1.5 ms — fifty to a hundred and fifty times satl's entire current
-startup — and the fixed word table is ~150 words, which a single thread walks in
-microseconds. **Threading the table at startup is a guaranteed loss.**
+costs **690 µs measured** — seventy times satl's entire current startup — and the
+fixed word table is 254 nodes, which a single thread walks in microseconds.
+**Threading the table at startup is a guaranteed loss**, and M2 settled it a second
+way: the table is `constexpr` and lands in rodata, so there is no startup work left
+to thread.
 
 Threading the walk over a *user's source* is a different question, because that
 work scales with the program and the table does not. The number that decides it is
 the **crossover**: how many satellite-rooted source lines a program needs before 24
-threads beat 1, counting thread creation. **That is not yet measured** — §9's rule
-is measure on this machine, do not quote, and this has not been.
+threads beat 1, counting thread creation. **Measured 2026-08-28, below.**
 
 So the shape to build toward: a pool that is **created lazily, on first real
 threaded work**, sized from `THREAD_COUNT`, and shared by everything that needs
 threads — the console's printer thread (DESIGN §10.1), parse-time interning, and
 `satellite.variable.thread` at M12. One pool with three tenants amortises a cost
 that none of them could justify alone, and a program that never threads never pays.
+
+**Measured 2026-08-28, and the pool is not an optimisation — it is the thing that
+makes the request worth honouring at all.** M2 built the walk, so the crossover
+this section had been holding open since 2026-08-27 could finally be taken against
+the real code path rather than a stand-in: `words::walk()` over real paths of the
+real language, on this machine, 24 hardware threads, best of 15 runs, load average
+under 1 before starting.
+
+| satellite-rooted lines | 1 thread | 24 fresh threads | 24 from a pool |
+|---:|---:|---:|---:|
+| 150 | 41 µs | 695 µs (0.06×) | 48 µs (0.85×) |
+| **180** | 51 µs | 692 µs (0.07×) | **48 µs (1.07×)** |
+| 300 | 90 µs | 684 µs (0.13×) | 47 µs (1.90×) |
+| 2,500 | 676 µs | 717 µs (0.94×) | 129 µs (5.25×) |
+| **2,800** | 778 µs | **709 µs (1.10×)** | 125 µs (6.21×) |
+| 50,000 | 13,264 µs | 1,688 µs (7.9×) | 1,124 µs (11.8×) |
+
+**Two crossovers, and they are fifteen times apart:**
+
+- **Spawning 24 fresh threads breaks even at about 2,650 lines.** Creating them
+  costs **~690 µs** flat — which is the 0.5–1.5 ms this section estimated,
+  measured — and that cost does not move with the size of the program, so the
+  whole of the left-hand column is spent paying it back.
+- **Waking 24 threads that already exist costs ~47 µs and breaks even at about
+  170 lines.**
+
+**The consequence for the request as it was made.** *"Create that many threads and
+then hand them each a line that begins with satellite"* is a **loss** for any
+program under ~2,650 satellite-rooted lines if the threads are created for the
+job, and almost nothing anyone writes is that big. The same instruction against a
+pool that is already warm wins from ~170 lines, which real programs do reach. **So
+the line-per-thread part was right and the create-them-first part was not**, which
+is what this section argued from first principles a day before it could be checked.
+
+**And below ~170 lines the walk must stay single-threaded**, which is a rule the
+pool's owner has to enforce rather than a suggestion: at 80 lines the pooled arm is
+still 0.48× — it takes twice as long as doing the work — and hello world is one
+line. The speedup tops out near 12× on 24 hardware threads, which is 12 physical
+cores answering, exactly as §4.5's table says the machine is built.
+
+*(The measurement that matters is the pooled one, and it is the one this section
+proposed before it had a number. The benchmark is
+`SCRATCH.md`-adjacent scratch and is not in the tree; what is in the tree is the
+result, here, beside the decision it justifies.)*
 
 ### 4.5.2 Knowing what satl is using
 
@@ -822,11 +867,16 @@ does not exist apart from them, so its shapes are siblings (`input()` is
 rule in ten lines.
 
 **M2 is not threaded, and that is a decision rather than an omission.** §4.5.1
-already argues that threading the fixed table at startup is a guaranteed loss;
-the measurement above is why it is not even close. **The crossover §4.5.1 wants
-measured is about the walk over a USER'S SOURCE**, which does not exist until M3,
-so the number is not blocked on anything M2 could have done and M3 is where it
-can first be taken.
+already argues that threading the fixed table at startup is a guaranteed loss, and
+M2 settled it twice over: the tables are `constexpr` and land in rodata, so there
+is no startup work left to thread at all.
+
+**And M2 is what finally made §4.5.1's crossover measurable**, because the walk it
+is a crossover *of* did not exist until this milestone. Taken 2026-08-28 and
+written into §4.5.1: **~2,650 satellite-rooted lines** before 24 freshly created
+threads beat one, and **~170** before 24 threads from a warm pool do. That is the
+number this plan had been holding open since 2026-08-27, and it says the
+line-per-thread request only pays against the pool §4.5.1 already proposed.
 
 **The seed is wide** — the whole first-satellite word surface, not just what M8–M10
 needs. *(Settled 2026-08-27.)* This closes what this section used to hold open.

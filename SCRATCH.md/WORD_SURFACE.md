@@ -1,9 +1,33 @@
-# The word surface — **fully numbered as of 2026-08-27**
+# The word surface — **fully numbered, and words.def checked against it**
 
-> **This file has done its job.** Every path in it now has a number in
-> [WORD_NUMBERS.md](../WORD_NUMBERS.md) §2.2, which is the authority. What is left
-> below is the evidence trail — which source each path was found in — kept only
-> until `words.def` is written and tested against it. **Delete it then.**
+> **This file has done its job, and the condition for deleting it is now MET.**
+> Every path in it has a number in [WORD_NUMBERS.md](../WORD_NUMBERS.md) §2.2,
+> which is the authority — and as of **2026-08-28** `words.def` is written and has
+> been checked against this file by walking it. **This file may be deleted.** What
+> is left below is only the evidence trail: which source each path was found in.
+>
+> **Checked mechanically, not by eye.** All **95** distinct `satellite.*` paths
+> this file names were run through `satl --words`. **85 resolve. The other ten are
+> each correctly absent**, and that they are the *only* ten is the result:
+>
+> - `satellite.consle.display` and `satellite.control.return` — the two things
+>   WORD_NUMBERS §4 says **must never be numbered**: a deliberate misspelling in
+>   DESIGN §4.6's error example, and a hypothetical showing a parse collision.
+> - `satellite.library.main.` `calls` / `greeting` / `ready` / `total` / `x` —
+>   **user-defined names** from the example programs, which is exactly what
+>   `words::Words` allocates at parse time and what `words.def` must NOT contain
+>   (WORD_NUMBERS §3).
+> - `satellite.number` and `satellite.number.shift_left` — the DESIGN §5.5 slip,
+>   confirmed by the author 2026-08-27 and corrected to
+>   `satellite.variable.number.shift_left`. Their absence is the correction working.
+> - `satellite.variable.timemy_time` — a typo in **this file**, line 164; it is
+>   `satellite.variable.time` with a declaration's variable name run into it.
+>
+> **The sweep also found one real defect in the walk**, which is the argument for
+> having run it: this file writes all three `.range` rows bare, and
+> `satellite.random.normal.range` did not resolve while
+> `satellite.random.normal.range(min, max)` did — an alias behaving unlike the word
+> it aliases. Fixed 2026-08-28, with a test.
 
 
 **This file is scratch.** It is raw material for [WORD_NUMBERS.md](../WORD_NUMBERS.md),
@@ -161,7 +185,7 @@ Anything else in the language with that property is invisible to this file too.
 | `satellite.variable.hexadecimal` | n/a (alias of .hex) | evaluator, programs, v1docs |
 | `satellite.variable.network` | n/a | v1docs |
 | `satellite.variable.thread` | unknown (type, no parameters) | programs, v1docs, v2docs |
-| `satellite.variable.timemy_time` | — | v2docs |
+| `satellite.variable.time` *(was written `satellite.variable.timemy_time` — a declaration's variable name run into the type; corrected 2026-08-28)* | — | v2docs |
 | `satellite.variable.variant` | n/a — type | v2docs |
 | `satellite.variable.window` | n/a | v1docs |
 

@@ -123,15 +123,26 @@ inline PathId match_alias(NodeId node, std::string_view rest, size_t &length)
         if (parent_of(kAliases[i].of) != node)
             continue;
         const std::string_view text = kAliases[i].text;
-        if (text.size() <= best || rest.size() < text.size())
-            continue;
-        if (rest.compare(0, text.size(), text) != 0)
-            continue;
-        if (rest.size() > text.size() && rest[text.size()] != '.' &&
-            rest[text.size()] != '(')
-            continue;
-        found = static_cast<PathId>(kAliases[i].of);
-        best = text.size();
+        // TWO FORMS ANSWER FOR AN ALIAS, EXACTLY AS TWO ANSWER FOR A WORD: the
+        // whole of it, and the part before its argument list. Without the
+        // second, `satellite.random.normal` resolved to 1 7 2 while
+        // `satellite.random.normal.range` -- its own declared spelling, naming
+        // one shape and no other -- did not resolve at all, and said "no such
+        // word under satellite.random.normal()". A second spelling of a node
+        // that behaves differently from the first is not a second spelling.
+        // (Found 2026-08-28 by walking SCRATCH.md/WORD_SURFACE.md's survey,
+        // which writes all three `.range` rows bare.)
+        for (const std::string_view form : {text, spelling_of(text)}) {
+            if (form.empty() || form.size() <= best || rest.size() < form.size())
+                continue;
+            if (rest.compare(0, form.size(), form) != 0)
+                continue;
+            if (rest.size() > form.size() && rest[form.size()] != '.' &&
+                rest[form.size()] != '(')
+                continue;
+            found = static_cast<PathId>(kAliases[i].of);
+            best = form.size();
+        }
     }
     length = best;
     return found;

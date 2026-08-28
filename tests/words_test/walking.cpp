@@ -127,6 +127,19 @@ void section_walking()
     check(walk("satellite.console.display.more").error == WalkError::NO_SUCH_WORD,
           "a leaf has no children to walk into");
 
+    // AN ALIAS ANSWERS BARE, THE WAY THE WORD IT ALIASES DOES. `normal` walks
+    // to 1 7 2, its lowest-numbered shape; `normal.range` names exactly one
+    // shape and must walk to it rather than failing. Found 2026-08-28 while
+    // checking words.def against SCRATCH.md/WORD_SURFACE.md, whose survey
+    // writes all three `.range` rows without their arguments.
+    for (const char *tier : {"fast", "normal", "ultra"}) {
+        const std::string bare = std::string("satellite.random.") + tier + ".range";
+        const PathId with = walked((bare + "(min, max)").c_str());
+        check(with != kNoPath, bare + "(min, max) must walk");
+        check(walked(bare.c_str()) == with,
+              bare + " must reach the same node as " + bare + "(min, max)");
+    }
+
     // --- the shapes of one word ---------------------------------------------
     //
     // WORD_NUMBERS §1.3's own example, and the reason a number identifies a

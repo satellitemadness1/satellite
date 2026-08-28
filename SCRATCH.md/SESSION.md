@@ -161,15 +161,24 @@ The user's guesses of 24 and 12 were exactly right.
 §4.3 measured startup at 1.75 ms total with satl's own share at **0.01 ms**.
 Spawning 24 threads costs roughly 0.5–1.5 ms — 50 to 150 times satl's entire
 current startup cost — and it would be paid by every program including one that
-prints a line. Threading the *fixed 150-word table* at startup is a guaranteed
-loss. Threading the *user's source lines* is a different question with a different
+prints a line. Threading the *fixed table* at startup is a guaranteed loss — and M2 removed
+even that possibility, since the table is now `constexpr` and nothing runs
+before `main()`. *(It is 254 nodes, not the ~150 this paragraph guessed.)* Threading the *user's source lines* is a different question with a different
 answer, because that work scales with the program and the table does not.
 
 The number that decides it is the **crossover**: how many satellite-rooted source
-lines a program needs before 24 threads beat 1, counting thread creation. That
-number is not yet measured. A benchmark was written and then killed — it was
-competing for the same 24 cores as the design workflow's own measurement agents,
-which made both sets of numbers wrong. See §4.
+lines a program needs before 24 threads beat 1, counting thread creation.
+
+**MEASURED 2026-08-28 and the answer is in PLAN §4.5.1.** ~2,650 lines against 24
+freshly created threads; **~170** against 24 from a warm pool. It could not have
+been taken before M2 — the thing it measures is `words::walk()` over a user's
+source, and that did not exist. *(An earlier benchmark was written and killed: it
+was competing for the same 24 cores as a workflow's own measurement agents, which
+made both sets of numbers wrong. This one ran with the machine at load 0.55.)*
+
+**So this section's requirement is half right and the half that is wrong is the
+expensive half.** One line per thread pays; creating the threads to do it does not.
+See §4.
 
 ### 3.3 The four segment-1 words that were missing, now fixed
 
@@ -237,10 +246,19 @@ as sound and its design conclusions as needing that correction applied.
 
 If that result is lost, the script is on disk and can be re-run.
 
-**Not measured, still needed:** the crossover point in §3.2. The killed benchmark
-source is at `line_intern.cpp` in this session's scratchpad; it works but must be
-run when nothing else is using the cores, with fewer repetitions at the large
-sizes.
+**MEASURED 2026-08-28 — §3.2's crossover is answered and is in PLAN §4.5.1.**
+It could not have been taken earlier: the thing it measures is `words::walk()`
+over a user's source, and that did not exist until M2. Run against the real code
+path with the machine quiet, best of 15: **24 fresh threads break even at ~2,650
+satellite-rooted lines** (creating them costs ~690 µs flat), **24 from a warm pool
+break even at ~170** (waking them costs ~47 µs). Below ~170 the walk must stay
+single-threaded — at 80 lines the pooled arm is 0.48×, i.e. twice as slow as just
+doing the work.
+
+**So the author's instruction splits in half.** *"Hand them each a line that
+begins with satellite"* is right; *"create that many threads"* to do it is a loss
+for anything under ~2,650 lines. The pool PLAN §4.5.1 already proposed is what
+makes the request pay, and it is now a requirement rather than a nicety.
 
 ---
 
@@ -389,11 +407,15 @@ number column is diffable.
    represents it. Also still open: whether
    `satellite.library.system.division_digits` `1 14 2 1` is the same knob as
    `float_digits` `1 14 2 4` under a narrower name.
-2. **Call shapes sit at two depths.** `include()` is a *child* of `include` at
-   `1 1 0`; `input()` is a *sibling* of `display` at `1 5 2`. WORD_NUMBERS.md §4 now
-   proposes a reading under which both are correct — language-owned arguments extend
-   downward, user-owned ones take a sibling slot — but it needs confirming before
-   `words.def` encodes one.
+2. **~~Call shapes sit at two depths.~~ — RESOLVED 2026-08-28 by M2, and it needed
+   no new decision.** WORD_NUMBERS §1.3's definition of `(0)`, written the same day,
+   had already settled it: `include()` `1 1 0` is include's **bare call shape**, the
+   same marker `satellite.container` `1 4 (0)` carries, and not a child at an odd
+   depth. So the rule is one rule seen twice — **a word reached bare holds its shapes
+   as children; a word only ever called does not exist apart from them, so its shapes
+   are siblings.** `input` has no number anywhere in §2.2, which is why its three
+   shapes sit beside `display`. `words.def`'s header carries the argument and
+   `match_shape()` is the rule in ten lines. **No number moved.**
 3. **`satellite.file` `1 8` and `satellite.variable.file` `1 6 2` both carry `new`.**
    The five new file methods went on the type node per DESIGN §6.4. Nothing says
    which a program should write.
@@ -442,6 +464,18 @@ number column is diffable.
 9. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
    `Rack::draw` in satellite by hand against DESIGN.md. Between them they touch
    floats, the map, a weighted pick, and the one `pow` that has no exact answer.
+   **Still not done, and it is the largest thing left that needs no decision from
+   the author** — it is writing, not choosing. QUAD.md §5 names it as the milestone
+   PLAN §8 does not have.
+
+10. **The threading question is CLOSED as of 2026-08-28** — see §4. The crossover is
+    measured and PLAN §4.5.1 carries it. What remains is not a measurement but a
+    build: the lazy shared pool, which now has a number justifying it and still has
+    no milestone (`MILESTONE.md` §3).
+
+11. **`satellite_config.ini` still does not exist**, and §5 question 2 —
+    `MEMORY_MAX`'s unit and default — is the author's and is unanswered. PLAN §4.5.4
+    holds it.
 
 ### 5.8 What landed on 2026-08-27, second half
 
