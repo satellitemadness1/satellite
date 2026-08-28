@@ -6,6 +6,7 @@
 /satl-term
 .cxxflags-stamp
 .cxxflags-stamp-haswell
+.ldflags-stamp
 
 # The test binaries, which live BESIDE their sources rather than in a build
 # directory, so this cannot be a directory exclusion -- tests/words_test/ is

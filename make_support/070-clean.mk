@@ -17,4 +17,4 @@
 # `make test` will happily run.
 clean:
 	rm -f satl satl.haswell satl-cpu-level satl-term $(SRC)/*/*.o \
-	      $(TESTBINS) .cxxflags-stamp .cxxflags-stamp-haswell
+	      $(TESTBINS) .cxxflags-stamp .cxxflags-stamp-haswell .ldflags-stamp

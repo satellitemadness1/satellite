@@ -50,6 +50,7 @@ include make_support/030-directories.mk
 include make_support/040-sources.mk
 include make_support/045-microarchitecture.mk
 include make_support/047-window.mk
+include make_support/048-static.mk
 include make_support/050-build.mk
 include make_support/060-compile.mk
 include make_support/065-tests.mk

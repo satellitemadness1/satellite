@@ -38,9 +38,15 @@ ifneq ($(HAVE_WINDOW),yes)
 	@echo "note: satl-term not built -- no $(WINDOW_PKGS). The interpreter is unaffected."
 endif
 
+# ALL FOUR DEPEND ON THE LINK STAMP, so that changing STATIC relinks them the
+# way changing CXXFLAGS recompiles the objects. 048-static.mk writes it and
+# says why it is one file rather than two. Named here, beside the rules it
+# guards, for the reason 060-compile.mk names its stamps beside the objects.
+satl satl.haswell satl-cpu-level satl-term: .ldflags-stamp
+
 # $(LDFLAGS) BEFORE the objects, which is where a linker wants its options.
 satl: $(SATL_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(SATL_OBJS)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) -o $@ $(SATL_OBJS)
 
 # $(MARCH_HASWELL) ON THE LINK LINE TOO, and not only on the compiles. It
 # changes nothing today -- the objects are already compiled and this build has
@@ -48,13 +54,14 @@ satl: $(SATL_OBJS)
 # optimisation, where the linker becomes a compiler and would otherwise
 # re-emit these objects against the baseline it was told nothing about.
 satl.haswell: $(SATL_HASWELL_OBJS)
-	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) $(LDFLAGS) -o $@ $(SATL_HASWELL_OBJS)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(MARCH_HASWELL) $(LDFLAGS) $(STATIC_LDFLAGS) \
+	    -o $@ $(SATL_HASWELL_OBJS)
 
 # NO -march, deliberately, and it is the one binary here for which that is a
 # correctness requirement rather than a default. This is the program that runs
 # before anything is known about the machine. See src/programs/cpu_level.cpp.
 satl-cpu-level: $(CPU_LEVEL_OBJ)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(CPU_LEVEL_OBJ)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) -o $@ $(CPU_LEVEL_OBJ)
 
 # NO -march here either, and for a different reason than satl-cpu-level's: this
 # binary interprets nothing, so there is no hot loop for an instruction set to
@@ -87,8 +94,13 @@ satl-cpu-level: $(CPU_LEVEL_OBJ)
 # than declaring a file this make could not have produced to be up to date.
 ifeq ($(HAVE_WINDOW),yes)
 
+# $(TERM_STATIC_LDFLAGS) AND NOT $(STATIC_LDFLAGS), which is the one place the
+# two differ: under STATIC=full the other three take -static and this one may
+# not, because gtk and vte dlopen their own modules and a static binary cannot.
+# 048-static.mk carries the argument.
 satl-term: $(TERM_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(TERM_OBJS) $(WINDOW_LIBS)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(TERM_STATIC_LDFLAGS) \
+	    -o $@ $(TERM_OBJS) $(WINDOW_LIBS)
 
 else
 
