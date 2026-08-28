@@ -969,6 +969,60 @@ both verified — but the author saw it and asked. **A review that mutates files
 be given its own copy of the tree**, and the sibling agents also collided in a
 shared scratch directory. Neither was instructed; both should have been.
 
+### 5.19 2026-08-28 — WHAT IS ACTUALLY LEFT, after M2 and the crossover
+
+**Read this one first if you are picking the work up cold.** Everything above is
+history; this is the state. Two commits landed today: `d9ff549` (M2) and `bb0af1c`
+(the crossover, the bare-alias fix, and the ledger closes).
+
+**Nothing is running. The build is clean, `make test` passes, four binaries.**
+
+#### Closed today, and not to be re-derived
+
+| was open | now |
+|---|---|
+| M2 itself — the trie, the interner, `PathId`, the digest, `--words`, the test | **built, committed, tested against all 222 rows of the authority** |
+| FORMAT/CXX.md §9's ten blockers | **all ten answered**, each recorded in §9 beside what settled it |
+| "call shapes sit at two depths" | **one rule seen twice**; §1.3's `(0)` had already settled it and no number moved |
+| SATC §6 — what the digest is over | **the numbering, not the file's bytes** |
+| PLAN §8.1 — real allocator or stub | **real**, and M4 is marked as its first caller |
+| PLAN §4.5.1's crossover | **measured**: ~2,650 lines against fresh threads, **~170** against a warm pool |
+| `WORD_SURFACE.md`'s delete-when | **met and verified** by walking all 95 paths; the file is deletable |
+| MILESTONE.md's binary/`.hex` row | **struck** — PLAN M3 owns them and says so |
+| PORTING.md item 3 (`satellite.random`'s directory) | **settled by the tree** — `src/satellite_random/` exists |
+| PORTING.md item 1 (`Number`'s library dependency) | **half dissolved** — the registry exists now; what is missing is anywhere to keep values |
+| the container methods count | **34, not 29**, in PLAN M10 and MILESTONE.md §0.3, whose "35 implied" is 40 |
+
+#### Open, and ONLY THE AUTHOR CAN ANSWER
+
+1. **The float's rounding rule — truncate, half-up, or half-even.** M9.5 cannot
+   land without it and QUAD §3.1 calls the float the whole remaining gap. **This is
+   the single most blocking open question in the project.**
+2. **Is `division_digits` `1 14 2 1` the same dial as `float_digits` `1 14 2 4`?**
+3. **`MEMORY_MAX`'s unit and default** — 61.9 GiB and 64.9 GB are the same memory.
+   Whole machine or a fraction, and does a smaller machine win? PLAN §4.5.4.
+4. **`satellite.file.new` `1 8 1` vs `satellite.variable.file.new` `1 6 2 1`** —
+   which does a program write? Two spellings for one construction.
+5. **`satellite.thread.new`, one number for two shapes.** `1 23 2` is free if it
+   goes the other way.
+6. **The seventh spelling of `arguments`** — `argv` gets a plain list silently, and
+   DESIGN §9 says that silence is wrong.
+7. **What is `arguments[0]`** — program name, current directory, or first argument?
+8. **Scheduling.** 121 of 222 paths reach no milestone (`MILESTONE.md`), and the
+   **lazy thread pool now has a measured justification and still has no milestone**
+   — which after today is the sharpest gap in §8, because the number says the
+   author's own threading request does not pay without it.
+
+#### Open, and MINE — no decision needed, only work
+
+- **Write `Sky::decay` and `Rack::draw` in satellite by hand** against DESIGN.md.
+  QUAD §5 calls it the smallest thing that would prove the language works, and it
+  is the largest remaining item that needs nothing from the author. **It will stop
+  at the rounding rule** — that is the point of writing it, and it is worth doing
+  before M9.5 rather than after.
+- Everything from M3 on. **M3, the lexer, is next**, and it owns
+  `satellite.variable.binary` and `.hex`, whose literals the lexer decides.
+
 ## 6. Jobs the user has asked for that are not started
 
 - **Convert `plans/madness/first_note.txt` into the permanent documents, then

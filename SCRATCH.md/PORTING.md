@@ -131,18 +131,33 @@ WORD_NUMBERS.md (it does, if a program can name it).
 ## 6. What still has to be decided before copying
 
 1. **Does `Number` keep its dependency on `satellite.library`?** Two constants —
-   `division_digits` and `min_free_mb` — reach into the library namespace, so
-   porting `Number` as-is drags the library registry in with it, at M2, years
-   before PLAN §8 schedules it. The alternative is a compile-time default now and
-   the library lookup restored at the milestone that builds the library.
+   `division_digits` and `min_free_mb` — reach into the library namespace.
+
+   **Half of this dissolved when M2 landed, 2026-08-28, and the half that is left
+   is a different question than the one written here.** The fear was that porting
+   `Number` as-is "drags the library registry in with it, at M2, years before PLAN
+   §8 schedules it." The registry now **exists**: `satellite.library.system.division_digits`
+   is `1 14 2 1` and `.min_free_mb` is `1 14 2 3`, both walkable today
+   (`satl --words satellite.library.system.division_digits`), and reaching them
+   costs one `uint32_t`.
+
+   **What does not exist is anywhere to keep their VALUES.** M2 built the trie and
+   no handler table — `handlers[path_id]` appears in that module only in comments —
+   so a ported `Number` asking the namespace for a number would be asking something
+   that can name the question and not answer it. So the choice is unchanged in
+   substance and cheaper than it looked: **a compile-time default at M6.5, and the
+   library lookup restored at the milestone that gives the namespace values.** PLAN
+   §4.5.3 is the same question one level up, and says the same thing — the file
+   seeds the namespace and the namespace is what everything reads afterwards.
 2. **Does the code table stay 16-bit?** The header argues it well — 101 codes plus
    a 256-entry raw area does not fit in 8 bits, and 16 bits halves what a corpus
    costs against 32. Nothing in the second satellite's design contradicts it. Port
    as-is unless something does.
-3. **`satellite.random` lives in `satellite_number/random.cpp` in v1.** In this
-   tree it may want its own directory, since DESIGN §11 gives it a whole section
-   and three tiers with a documented statistical character. A naming decision, not
-   a code one.
+3. ~~**`satellite.random` lives in `satellite_number/random.cpp` in v1.**~~
+   **SETTLED, and by the tree rather than by a decision.** It has its own directory:
+   `src/satellite_random/`, landed 2026-08-27 ahead of any milestone that calls it,
+   with `random.hpp` naming no PCG type so nothing above it includes an Apache-2.0
+   header. This row was written before that happened and outlived it.
 4. **The arena.** PLAN §2.2 replaces the AST with an arena of PODs. `Number` and
    `SatString` are *values*, not AST nodes, so the arena does not touch them — but
    DESIGN §8.2 says a `Value` is 40 bytes with the static_assert to come, and a
