@@ -170,15 +170,23 @@ The number that decides it is the **crossover**: how many satellite-rooted sourc
 lines a program needs before 24 threads beat 1, counting thread creation.
 
 **MEASURED 2026-08-28 and the answer is in PLAN §4.5.1.** ~2,650 lines against 24
-freshly created threads; **~170** against 24 from a warm pool. It could not have
-been taken before M2 — the thing it measures is `words::walk()` over a user's
-source, and that did not exist. *(An earlier benchmark was written and killed: it
-was competing for the same 24 cores as a workflow's own measurement agents, which
-made both sets of numbers wrong. This one ran with the machine at load 0.55.)*
+freshly created threads; **~170** against 24 from a pool that is already warm. It
+could not have been taken before M2 — the thing it measures is `words::walk()` over
+a user's source, and that did not exist. *(An earlier benchmark was written and
+killed: it was competing for the same 24 cores as a workflow's own measurement
+agents, which made both sets of numbers wrong. This one ran at load 0.55.)*
 
-**So this section's requirement is half right and the half that is wrong is the
-expensive half.** One line per thread pays; creating the threads to do it does not.
-See §4.
+**AND THE 170 IS A SECOND-BATCH NUMBER**, which the first write-up of this did not
+say and which is the whole point. Creating the 24 parked threads costs **~590 µs**,
+so a **cold** pool crosses at ~2,650 too — a cold pool *is* 24 fresh threads plus a
+cheap wake. **A program that threads exactly once gets nothing from a pool**, and
+`satl program.satl` is exactly that program.
+
+**So this section's requirement is half right, and the fix is not "use a pool".**
+One line per thread pays; creating the threads to do it does not; and the pool earns
+its keep by being **shared across a run** — PLAN §4.5.1's "three tenants amortise a
+cost none of them could justify alone" — rather than by making one parse cheaper.
+A one-shot parse should stay single-threaded. See §4.
 
 ### 3.3 The four segment-1 words that were missing, now fixed
 
@@ -986,7 +994,7 @@ history; this is the state. Two commits landed today: `d9ff549` (M2) and `bb0af1
 | "call shapes sit at two depths" | **one rule seen twice**; §1.3's `(0)` had already settled it and no number moved |
 | SATC §6 — what the digest is over | **the numbering, not the file's bytes** |
 | PLAN §8.1 — real allocator or stub | **real**, and M4 is marked as its first caller |
-| PLAN §4.5.1's crossover | **measured**: ~2,650 lines against fresh threads, **~170** against a warm pool |
+| PLAN §4.5.1's crossover | **measured**: ~2,650 lines against fresh threads **or a cold pool**; **~170** only against a pool something else already warmed |
 | `WORD_SURFACE.md`'s delete-when | **met and verified** by walking all 95 paths; the file is deletable |
 | MILESTONE.md's binary/`.hex` row | **struck** — PLAN M3 owns them and says so |
 | PORTING.md item 3 (`satellite.random`'s directory) | **settled by the tree** — `src/satellite_random/` exists |
@@ -1014,6 +1022,12 @@ history; this is the state. Two commits landed today: `d9ff549` (M2) and `bb0af1
    author's own threading request does not pay without it.
 
 #### Open, and MINE — no decision needed, only work
+
+- **The threading conclusion is now sharper than "build a pool":** a one-shot
+  parse should not be threaded at all, and the pool's value is amortisation across
+  a run (M11.B's prompt, `satellite.include`, M12, the console printer). Whoever
+  schedules the pool should schedule it as *shared infrastructure*, not as a parse
+  optimisation — PLAN §4.5.1 now says so with the numbers.
 
 - **Write `Sky::decay` and `Rack::draw` in satellite by hand** against DESIGN.md.
   QUAD §5 calls it the smallest thing that would prove the language works, and it

@@ -483,13 +483,46 @@ under 1 before starting.
 - **Waking 24 threads that already exist costs ~47 µs and breaks even at about
   170 lines.**
 
+**THE 170 IS A SECOND-BATCH NUMBER, AND SAYING SO IS THE WHOLE OF WHAT THIS
+MEASUREMENT IS WORTH.** *(Corrected 2026-08-28, hours after it was first written
+here.)* The pooled column above was timed with the pool **already built**, because
+that is what "waking threads that already exist" means. **Creating those parked
+threads costs ~590 µs** — measured separately, best of five — which is the spawn
+cost again, near enough. So a pool's FIRST batch pays it:
+
+| | 2,500 lines | 2,800 lines |
+|---|---:|---:|
+| 1 thread | 676 µs | 778 µs |
+| pool, **cold** — create + wake + work | 712 µs | 708 µs |
+| pool, **warm** — wake + work | 129 µs | 125 µs |
+
+**A cold pool crosses at ~2,650 lines, which is the spawn figure**, and it could
+not be otherwise: a cold pool *is* 24 fresh threads plus a cheap wake.
+
+**So the pool does nothing for a program that threads exactly once**, and that is
+the common case this section was reasoning about — `satl program.satl` parses one
+file and exits, and parse-time interning is likely to be the FIRST threaded work in
+the run, so it pays the creation itself and crosses at ~2,650 like everything else.
+
+**What the pool actually buys is the second tenant onward**, which is the argument
+this section already made from first principles and can now put a number on:
+*"one pool with three tenants amortises a cost that none of them could justify
+alone."* The tenants that collect the ~170 figure are the ones that are not first —
+the console's printer thread if it started earlier, `satellite.include` of another
+file, M11.B's prompt parsing repeatedly, and M12. **The lazy pool is right and the
+reason is amortisation across a run, not a cheaper parse.**
+
 **The consequence for the request as it was made.** *"Create that many threads and
 then hand them each a line that begins with satellite"* is a **loss** for any
-program under ~2,650 satellite-rooted lines if the threads are created for the
-job, and almost nothing anyone writes is that big. The same instruction against a
-pool that is already warm wins from ~170 lines, which real programs do reach. **So
-the line-per-thread part was right and the create-them-first part was not**, which
-is what this section argued from first principles a day before it could be checked.
+program under ~2,650 satellite-rooted lines, and almost nothing anyone writes is
+that big. **That figure holds whether the threads are spawned or a pool is built to
+hold them**, because building the pool is the same cost. The instruction pays only
+against a pool something else already warmed, and then from ~170 lines.
+
+**So the line-per-thread part was right and the create-them-first part was not** —
+and the fix is not "use a pool" but "**do not thread a one-shot parse at all**".
+A single `satl program.satl` should walk its source on one thread unless the file
+is enormous; the pool earns its keep across a run, not inside one parse.
 
 **And below ~170 lines the walk must stay single-threaded**, which is a rule the
 pool's owner has to enforce rather than a suggestion: at 80 lines the pooled arm is
