@@ -14,8 +14,9 @@ die() {
 
 usage() {
     cat <<EOF
-usage: $self [--link] [--desktop] [-n|--dry-run]
-       $self --uninstall [-n|--dry-run]
+usage: $self [--no-link] [--desktop] [-n|--dry-run]
+       $self --system [-n|--dry-run]              (needs to be run as root)
+       $self --uninstall [--system] [-n|--dry-run]
        $self --help
 
 Installs every satellite program, the .satl file type and the artwork into
@@ -29,20 +30,44 @@ this CPU which of them it can execute, and installs that one under the name
 satl. So the build makes four files and the install is three programs:
 satl.haswell is not a fourth program, it is satl compiled a second time.
 
-  --link         also symlink ~/.local/bin/satl and ~/.local/bin/satl-term at
-                 the installed programs, so that typing either name finds it.
-                 Off by default because those paths may already hold another
-                 satl -- this machine's does -- and this script refuses to
-                 overwrite anything it does not own. It never edits a shell
-                 startup file either way.
+  --no-link      do NOT symlink ~/.local/bin/satl and ~/.local/bin/satl-term
+                 at the installed programs. The links are made by default, and
+                 they are what makes typing \`satl\` work: ~/.local/bin is on
+                 PATH by convention, and $root deliberately is not. Nothing is
+                 ever overwritten -- a path holding something this script did
+                 not create is refused and listed at the end -- so the reason
+                 to decline is that you want the name left alone, not safety.
+                 It never edits a shell startup file either way, and never
+                 asks you to set a variable.
   --desktop      also symlink the icons, the .satl file type and the satl-term
                  launcher into ~/.local/share, which is where a desktop
                  actually looks. Without it they are installed under the root
                  above, which no desktop reads, so .satl files keep whatever
                  icon they already had. The interpreter is unaffected either
-                 way. Worth giving WITH --link: the launcher runs \`satl-term\`
-                 by bare name, so it hides itself until that name is on PATH.
-  --uninstall    remove everything this script installed, by name.
+                 way. OFF by default, unlike --link, because it also rebuilds
+                 three indexes covering every application on the machine, and
+                 that is a fair thing to ask for and an unfair thing to
+                 assume.
+  --system       install into the operating system -- /usr/local, in the bin/
+                 and share/ shape, over whatever satl is there now -- instead
+                 of into your home directory. This is the one that makes the
+                 word \`satl\` mean this build for every user of the machine,
+                 and the one that fixes the icon a .satl file is drawn with,
+                 because a desktop reads /usr/local/share and never reads
+                 the private root above. It needs a writable prefix, and says
+                 so rather than calling sudo itself.
+  --static       link the C++ runtime into the programs instead of loading it
+                 at run time, so they do not need a libstdc++ on the machine
+                 they run on. ON BY DEFAULT UNDER --system, where it matters:
+                 a build made in an environment with LD_RUN_PATH set otherwise
+                 loads its libstdc++ out of the builder's home directory, and
+                 in /usr/local/bin that is a program every account can find and
+                 one account can start. Off by default for a home install,
+                 which is run by that account anyway. --no-static turns it off.
+                 satl-term is never fully static -- gtk and vte load their own
+                 modules -- but its C++ runtime is linked in like the rest.
+  --uninstall    remove everything this script installed, by name. Give it
+                 with --system to remove a system install.
   -n, --dry-run  print the commands that would run, and run none of them.
   --help         this text.
 
@@ -52,12 +77,17 @@ options for rehearsing and packaging:
                  home directory it is meant for; it is not a prefix, and
                  satellite does not look for itself anywhere but where it was
                  put.
+  --prefix DIR   --system, but somewhere other than /usr/local. bin/ and
+                 share/ are written underneath DIR. Give one of --root and
+                 --prefix: they are two layouts, not two spellings.
 
 environment:
   MAKE           the make to use (default: $MAKE).
 
-Nothing here needs root, because nothing here is written outside your home
-directory. Nothing here edits .profile, .bashrc or any other file you own.
+Without --system nothing here needs root, because nothing is written outside
+your home directory. With it, everything is written under the prefix and
+nothing else changes: this script never calls sudo, never edits .profile,
+.bashrc or any other file you own, and never asks you to export a variable.
 EOF
 }
 

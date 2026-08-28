@@ -1,16 +1,7 @@
 # satellite -- what happened, and whether `satl` will actually be found.
 #
-# A dry run reports too, in the conditional: telling someone their files were
-# installed when the whole point of -n was that they were not is the kind of
-# small lie that costs somebody an hour later.
-
-if [ "$dry_run" = yes ]; then
-    did='would install'
-    removed='would remove'
-else
-    did=installed
-    removed=removed
-fi
+# $did and $removed come from 030-arguments.sh, which derives them from
+# --dry-run along with the installed paths this file verifies.
 
 # Anything under the root that this script did not put there. 060-install-tree.sh
 # removes files by name and directories with rmdir, so whatever is left is
@@ -47,15 +38,15 @@ if [ "$action" = uninstall ]; then
 fi
 
 printf 'install.sh: %s\n' "$did"
-printf '    %s\n' "$root/satl"
-if [ -x "$repo/satl-cpu-level" ] || [ -x "$root/satl-cpu-level" ]; then
-    printf '    %s\n' "$root/satl-cpu-level"
+printf '    %s\n' "$installed_satl"
+if [ -x "$repo/satl-cpu-level" ] || [ -x "$installed_cpu" ]; then
+    printf '    %s\n' "$installed_cpu"
 fi
 case ${have_term:-unknown} in
-    yes)       printf '    %s\n' "$root/satl-term"
+    yes)       printf '    %s\n' "$installed_term"
                printf '    %s\n' \
                    "$root/share/applications/org.satellite.terminal.desktop" ;;
-    undecided) printf '    %s   (if gtk4 and vte are present)\n' "$root/satl-term" ;;
+    undecided) printf '    %s   (if gtk4 and vte are present)\n' "$installed_term" ;;
 esac
 printf '    %s\n' "$root/share/mime/packages/application-x-satellite.xml"
 printf '    %s   (nine sizes, apps and mimetypes)\n' "$root/share/icons/hicolor"
@@ -125,10 +116,10 @@ fi
 # CPU, which is the one way a wrong variant choice would show up.
 if [ "$dry_run" = no ]; then
     printf 'install.sh: checking the installed binaries by running them\n'
-    if "$root/satl" --version; then
+    if "$installed_satl" --version; then
         :
     else
-        die "$root/satl was installed but would not run.
+        die "$installed_satl was installed but would not run.
        If this CPU was told it could run the haswell build and could not, that
        is the one bug this check exists to catch: re-run with
        $(quoted "$self") and report what $repo/satl-cpu-level --explain says."
@@ -144,13 +135,13 @@ if [ "$dry_run" = no ]; then
     # that links anything outside libc and libstdc++, so it is the one whose
     # copy can arrive at a machine that cannot load its libraries.
     if [ "$have_term" = yes ]; then
-        if "$root/satl-term" --version; then
+        if "$installed_term" --version; then
             :
         else
-            die "$root/satl-term was installed but would not run.
+            die "$installed_term was installed but would not run.
        It answers --version without opening a window, so a failure here is the
        loader, not the display: run ldd on it and look for gtk4 or
-       vte-2.91-gtk4. The interpreter at $root/satl is unaffected and was
+       vte-2.91-gtk4. The interpreter at $installed_satl is unaffected and was
        checked first."
         fi
     fi
@@ -161,9 +152,9 @@ if [ "$dry_run" = no ]; then
     # question a second time and would prove nothing the line above has not.
 else
     printf 'install.sh: a real run would now execute %s --version, which is\n' \
-        "$root/satl"
+        "$installed_satl"
     printf '            what proves the chosen build actually runs on this CPU,\n'
-    printf '            and %s --version, which answers\n' "$root/satl-term"
+    printf '            and %s --version, which answers\n' "$installed_term"
     printf '            without opening a window and so proves its libraries load.\n'
 fi
 
@@ -179,17 +170,75 @@ if [ -z "$found" ]; then
     cat <<EOF
 install.sh: \`satl\` is not on your PATH. Run it in full:
 
-                $(quoted "$root/satl")
+                $(quoted "$installed_satl")
 
             or re-run this script with --link, which puts a symlink in
             ~/.local/bin (already on your PATH) and which --uninstall removes
-            again. Nothing here edits .profile, .bashrc or any other file you
-            own; if you would rather do it yourself, this is the line:
+            again, or with --system, which installs into /usr/local/bin, a
+            directory every shell already searches.
 
-                export PATH="$root:\$PATH"
+            Nothing here edits .profile, .bashrc or any other file you own, and
+            nothing here will suggest a line for you to add to one.
 EOF
-elif [ "$found" = "$root/satl" ] || [ "$found" -ef "$root/satl" ]; then
+elif [ "$found" = "$installed_satl" ] || [ "$found" -ef "$installed_satl" ]; then
     printf 'install.sh: `satl` runs the copy just installed.\n'
+elif [ -L "$user_bin/satl" ] && [ "$user_bin/satl" -ef "$installed_satl" ]; then
+    # SHADOWED, WHICH IS NOT THE SAME FACT AS "NOT LINKED", and telling the two
+    # apart is the whole reason this branch exists. Until 2026-08-28 both landed
+    # in the else below, whose "nothing was done about it: this install put its
+    # interpreter in $root and touched nothing else" is true when --link was
+    # never asked for and a plain untruth here, where the link WAS made, points
+    # at the right file, and is simply never reached. Reported by the author,
+    # who had just taken the `satl` alias out of .bashrc and so met PATH order
+    # for the first time: run --link, be told `satl` still runs something else,
+    # read that the installer touched nothing, and the only available conclusion
+    # is that the installer does not work. It does. PATH order does not care.
+    #
+    # The link is checked against the FILESYSTEM rather than against $linked,
+    # which holds only what THIS run created: a correct link left by an earlier
+    # run is the same fact for the reader and would otherwise report itself as
+    # the missing-link case every second time the script was run.
+    _shadow_dir=$(dirname -- "$found")
+
+    printf 'install.sh: note -- `satl` runs %s, which is not the\n' "$found"
+    printf '            copy just installed. The symlink is NOT the problem --\n\n'
+    printf '                %s -> %s\n\n' "$user_bin/satl" "$installed_satl"
+    printf '            is exactly right, and re-running this script cannot change\n'
+    printf '            anything, because what decides is the order of your PATH:\n\n'
+    case ":$PATH:" in
+        *":$user_bin:"*)
+            printf '                %s comes BEFORE %s\n\n' "$_shadow_dir" "$user_bin"
+            printf '            so the shell stops at the first satl it finds and never\n'
+            printf '            reaches ours.\n' ;;
+        *)
+            printf '                %s is not on your PATH at all\n\n' "$user_bin"
+            printf '            so the link sitting in it is never consulted.\n' ;;
+    esac
+
+    # THE REMEDY IS PRINTED AND NOT PERFORMED. Taking the older file out needs
+    # root, and this script's first rule is NO ROOT, EVER -- a script that
+    # shells out to sudo in order to honour that rule has not honoured it. The
+    # prefix is derived from the shadowing file rather than assumed, so this
+    # names /usr/local because that is where the file actually is.
+    printf '\n            This script will not touch %s: it is\n' "$found"
+    printf '            not this install%ss file, and removing it needs a privilege\n' "'"
+    printf '            nothing here takes. Two ways out --\n'
+    if [ -f "$repo/old_versions/first_satellite/install.sh" ]; then
+        printf '\n              1. remove the older install with its OWN uninstaller,\n'
+        printf '                 which removes only the files it named:\n\n'
+        printf '                     sudo sh %s \\\n' \
+            "$(quoted "$repo/old_versions/first_satellite/install.sh")"
+        printf '                          --uninstall --prefix %s\n' \
+            "$(quoted "$(dirname -- "$_shadow_dir")")"
+    else
+        printf '\n              1. remove the older install, using whatever put it there;\n'
+    fi
+    printf '\n              2. or put %s ahead of\n' "$user_bin"
+    printf '                 %s in your PATH yourself. That is a\n' "$_shadow_dir"
+    printf '                 change to a file you own, so it is yours to make and not\n'
+    printf '                 this script%ss business.\n' "'"
+    printf '\n            Either way run `hash -r` afterwards, or open a new shell:\n'
+    printf '            this one has already remembered where satl was.\n'
 else
     cat <<EOF
 install.sh: note -- \`satl\` already runs $found,
@@ -198,25 +247,9 @@ install.sh: note -- \`satl\` already runs $found,
             install put its interpreter in $root and touched
             nothing else. To run the one from this tree, spell it out:
 
-                $(quoted "$root/satl")
+                $(quoted "$installed_satl")
 
             If this shell has run satl already, run \`hash -r\` first.
-EOF
-fi
-
-# THE LAUNCHER NEEDS THE LINK, and a desktop install without one is the single
-# way this script can leave something that looks broken rather than absent: the
-# entry is installed, TryExec cannot find satl-term on PATH, and the menu shows
-# nothing at all with no error anywhere.
-if [ "$desktop" = yes ] && [ "$link_bin" = no ] && term_linkable; then
-    cat <<EOF
-
-install.sh: note -- --desktop was given without --link, so the launcher was
-            installed and will hide itself: its Exec and TryExec name
-            \`satl-term\`, which is not on your PATH. Re-run with both to
-            finish it:
-
-                $(quoted "$self") --link --desktop
 EOF
 fi
 

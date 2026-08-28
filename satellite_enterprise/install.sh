@@ -7,11 +7,32 @@
 # that can build satellite can install it and refusing on the strength of a name
 # in /etc/os-release would be a policy, not a check.
 #
-# NO ROOT, EVER. Everything this script writes is under $HOME, so there is no
-# sudo branch, no privilege to drop, and no root-owned object file left in a
-# source tree afterwards. That is a real simplification over the first
-# satellite's installer, which had to compile as the human and copy as root; the
-# fixed per-user root is what buys it.
+# TWO LAYOUTS, AND ONLY THE FIRST IS THE DEFAULT.
+#
+#     (no flags)  $HOME/.satl. Everything this script writes is under $HOME,
+#                 there is no privilege to drop and no root-owned object file
+#                 left in a source tree afterwards.
+#     --system    /usr/local, in the bin/ and share/ shape an operating system
+#                 expects, INSTALLING OVER whatever satl is already there.
+#
+# THE SECOND ONE ARRIVED ON 2026-08-28 AND REPLACED A RULE THAT SAID "NO ROOT,
+# EVER". It was a good rule and it was overtaken by a machine it could not fix.
+# The first satellite is installed at /usr/local; /usr/local/bin precedes
+# ~/.local/bin on PATH; so `satl` typed at a prompt ran the 2026-08-23 build no
+# matter what this script did under $HOME, and the .satl file type and both
+# icons the desktop draws belonged to that install too. A per-user installer can
+# NOTICE all of that -- 080-report.sh does, in detail -- and can never repair
+# any of it, because the files are root-owned and outside every directory it was
+# allowed to write. An installer that reports a problem it has decided in
+# advance never to fix has not been careful, it has been useless, and satellite's
+# rule is to do everything for the user.
+#
+# WHAT SURVIVED THE CHANGE IS THE HALF THAT WAS LOAD-BEARING: THIS SCRIPT STILL
+# NEVER CALLS sudo. --system checks that the prefix is writable and stops with
+# the command to run otherwise (040-machine.sh); it does not escalate on your
+# behalf. From the first satellite, which said it best -- "a program that
+# silently escalates is a program you cannot audit by reading the command you
+# typed."
 #
 # WHAT IT INSTALLS. install_support/060-install-tree.sh is the one place the
 # tree is DECLARED -- this is a copy of it in prose, and if the two ever
@@ -25,6 +46,12 @@
 #     $HOME/.satl/share/applications/...      the satl-term launcher, with it
 #     $HOME/.satl/share/mime/packages/...     the .satl file type
 #     $HOME/.satl/share/icons/hicolor/...     the artwork, nine sizes
+#
+# Under --system the same tree lands in the prefix, with the three programs in
+# bin/ and share/ where it already was -- plus share/icons/hicolor/index.theme,
+# which is not artwork and is what decides whether any of the artwork is ever
+# drawn. 075-system.sh is entirely about that file and about the first
+# satellite's leftovers beside it.
 #
 # FOUR FILES ARE BUILT AND THREE PROGRAMS ARE INSTALLED, which is not an
 # omission. On x86-64 the build produces satl and satl.haswell -- the same
@@ -49,6 +76,13 @@
 # and says so. A machine with no desktop libraries gets a correct install, not
 # a failed one.
 #
+# A PLAIN RUN NOW ALSO LINKS ~/.local/bin/satl, changed 2026-08-28. It used to
+# write under $root and nowhere else, which read well and shipped a language the
+# word `satl` could not reach -- so the author hand-edited a PATH into ~/.bashrc
+# and then said, correctly, that the installer must make that unnecessary.
+# 010-defaults.sh carries the argument and the measurement that expired.
+# --no-link declines it; --desktop is still opt-in and says why.
+#
 # NOTHING HERE EDITS .profile, .bashrc, .zshrc OR ANY OTHER FILE THE USER OWNS,
 # and nothing tells the user to export a variable. Inherited from the first
 # satellite's installer, along with the reasons, of which the third is the one
@@ -63,7 +97,7 @@
 # POSIX sh, not bash. An installer is the one program that has to run before
 # anything is installed, so it may not assume a shell that might not be there.
 #
-# THIS FILE IS AN INDEX. The installer is the eight fragments under
+# THIS FILE IS AN INDEX. The installer is the nine fragments under
 # install_support/, sourced below in the order they are numbered. The first
 # satellite arrived at this arrangement by splitting a 634-line install.sh after
 # the fact, and PLAN_ONE.md sec 6a makes the same argument about C++ files:
@@ -73,8 +107,12 @@
 # A SOURCED FRAGMENT RUNS AS IT IS READ, unlike an included makefile, so the
 # order below is not a convenience -- it is the script. 010 and 020 define; 030
 # reads the command line; 040 looks at the machine; 050 builds and chooses;
-# 060 installs or removes; 070 does the optional work outside the root; 080
-# reports.
+# 060 installs or removes; 070 does the optional work outside the root; 075
+# does the work that only a system install has; 080 reports.
+#
+# 075 is numbered in fives rather than taking the next ten because it belongs
+# BETWEEN those two and the tens were already spent. It reads
+# rebuild_data_indexes() out of 070, so it cannot move above it.
 #
 # WHERE TO LOOK, by what you want to change:
 #
@@ -84,6 +122,7 @@
 #     how the variant is chosen ........ 050-building.sh
 #     WHAT gets installed .............. 060-install-tree.sh
 #     the PATH link and the icons ...... 070-desktop.sh
+#     the --system takeover ............ 075-system.sh
 #     what it says afterwards .......... 080-report.sh
 
 set -eu
@@ -127,4 +166,5 @@ fi
 . "$support/050-building.sh"
 . "$support/060-install-tree.sh"
 . "$support/070-desktop.sh"
+. "$support/075-system.sh"
 . "$support/080-report.sh"

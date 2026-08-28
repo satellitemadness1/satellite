@@ -76,6 +76,60 @@ EOF
     fi
 fi
 
+# CAN THIS USER WRITE THERE. Asked of the deepest ancestor that actually
+# exists, because the prefix itself is routinely the directory being created:
+# testing -w on /usr/local/lib/satellite before it is there answers no for the
+# wrong reason and would send a root user away with a sudo instruction.
+#
+# WRITABILITY AND NOT `id -u`. A prefix under /opt or /srv that the installing
+# user owns is a legitimate --prefix and needs no privilege at all, and a check
+# that insisted on uid 0 would refuse it. On /usr/local the two questions have
+# the same answer, which is the case this exists for.
+writable_ancestor() {
+    _p=$1
+    while [ ! -e "$_p" ]; do
+        _parent=${_p%/*}
+        [ -z "$_parent" ] && _parent=/
+        [ "$_parent" = "$_p" ] && break
+        _p=$_parent
+    done
+    [ -w "$_p" ]
+}
+
+# Checked on an uninstall too. Removing /usr/local/bin/satl needs exactly the
+# privilege installing it did, and finding that out one rm at a time leaves a
+# half-removed install behind.
+#
+# NOT CHECKED IN A DRY RUN, which is not a loosening -- it is what makes the
+# advice below possible. That message tells the reader to look at the command
+# before running it under sudo, and the way to look at what this script would do
+# is -n; refusing to print a transcript because the run it describes would need
+# a privilege makes the one safe way to inspect it the one thing you cannot do
+# without granting it. A dry run writes nothing, so there is nothing to be
+# permitted. Found while writing the message itself.
+if [ "$layout" = prefix ] && [ "$dry_run" = yes ] &&
+   ! writable_ancestor "$root"; then
+    cat <<EOF
+install.sh: note -- $root is not writable by $(id -un), so the run
+            described below would have to be made under sudo. Nothing is
+            written by a dry run, so it is printed rather than refused.
+EOF
+elif [ "$layout" = prefix ] && ! writable_ancestor "$root"; then
+    die "$root is not writable by $(id -un).
+       That is what --system means: it installs INTO the operating system, over
+       whatever satl is there now, and those files are root's.
+
+           sudo sh $(quoted "$self") --prefix $(quoted "$root")
+
+       THIS SCRIPT WILL NOT RUN sudo FOR YOU, which is the one part of its
+       no-root rule that never depended on where the files went: a program that
+       escalates on your behalf is a program you cannot audit by reading the
+       command you typed. Run that line yourself, or read it first and then run
+       it, or install into your home directory instead, which needs nothing:
+
+           sh $(quoted "$self") --link"
+fi
+
 # satl-term, at M11, will need gtk4-devel and vte291-gtk4-devel, and the second
 # of those lives in the CRB repository:
 #
