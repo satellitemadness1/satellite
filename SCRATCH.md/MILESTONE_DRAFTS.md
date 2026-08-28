@@ -1,4 +1,4 @@
-# Milestone drafts — written, verified, NOT YET IN PLAN §8
+# Milestone drafts — CORRECTED AND MOVED INTO PLAN §8 on 2026-08-28
 
 **This file is scratch and is meant to be deleted.** Four milestones were drafted
 on **2026-08-27** to cover the largest blocks of the 122 paths
@@ -7,18 +7,47 @@ documents, drafted in §8's voice, and then attacked by two adversarial lenses �
 checking every number against WORD_NUMBERS.md §2.2, one checking whether an existing
 milestone already owned the work.
 
-**Every lens reported problems, and none of the corrections has been applied.**
-That is why these are here and not in PLAN.md: a draft with a known error in it is
-worse in §8 than out of it, because §8 is read as settled. **Delete this file when
-all four have been corrected and moved into §8** — moved, not copied.
+**Every lens reported problems, and for one day none of the corrections had been
+applied.** That is why these were here and not in PLAN.md: a draft with a known
+error in it is worse in §8 than out of it, because §8 is read as settled.
+
+**On 2026-08-28 all four were corrected against their lenses and moved into PLAN
+§8** — moved, not copied. **PLAN §8 is now the authority and the draft prose below
+is not.** Where a draft and its milestone disagree, the milestone is right and the
+draft is a record of what was written before the lens was read:
+
+| draft | milestone |
+|---|---|
+| the machine, its facts and its ceiling | **PLAN M14** (the readers, the pool, the ceiling) and **PLAN M19** (the language surface) |
+| persistence — files and directories | **PLAN M18** |
+| the console's other half | **PLAN M17** |
+| the clock and the dice | **PLAN M16** |
+
+**What is kept, and why this file is not deleted yet.** The lens findings under each
+draft are **verbatim records of what a review said on a day**, and PLAN §8's own
+opening points at them as such. They are the evidence for the corrections, and
+several name v1 line numbers and file ranges that the milestones cite without
+repeating. **Delete this file when the milestones have been built** — at which point
+the ranges are in the tree and the record is the code.
 
 The drafts are the agents' words. The corrections under each are the lenses'. Where
-they disagree the lens read the table and the draft did not, so the lens is right
-until someone checks.
+they disagree the lens read the table and the draft did not, and **the milestone in
+§8 followed the lens.**
 
 ---
 
 ## The machine, its facts and its ceiling
+
+> **SUPERSEDED 2026-08-28 — this draft is now PLAN §8's M14 and M19.** The lens
+> finding that reshaped it is the second lens's first two: the draft claimed
+> `stack_facts.cpp`, `host_facts.cpp`, `memory_facts.cpp` and `helpers_limits.cpp`
+> for a milestone after M10, and every one of them is consumed at M6.5, M7 or M8.A.
+> **The split is at that seam** — M14 takes the config file, the pool, the watchdog
+> and the three fact readers and lands before M6; M19 takes `satellite.system`'s
+> twenty-seven, the `arguments` object and `satellite.container.arguments` `1 4 3`.
+> `1 22 1` went to M18 and `1 22 5`–`1 22 6` to M10. The `1 22 4 9` enumeration
+> defect, the DESIGN §7.7 live-code contradiction, the `.environment` finding, the
+> three missing arities and the §1.3 citation are all applied in M19.
 
 ### The draft
 
@@ -296,6 +325,17 @@ problem and not a hypothetical one.
 
 ## Persistence — files and directories
 
+> **SUPERSEDED 2026-08-28 — this draft is now PLAN §8's M18.** The finding that
+> reshaped it: **its done-when could run only once**, because `1 8 1` is `O_EXCL`
+> and the only removal verb in the language is `satellite.system.delete` `1 22 1`,
+> which the draft argued depended on *it*. **M18 takes `1 22 1`**, and its round
+> trip leaves the tree as it found it. Also applied: the QUAD §4 claim is dropped
+> (that milestone is **M20**), the three MILESTONE.md misreadings are gone, v1's
+> `satellite.file` module is two verbs and not three, the mode word is not a trie
+> level, the arity gap covers `1 18 1`–`1 18 3` as well as `1 8 2`–`1 8 3`,
+> `substring(start, end)` is written with both arguments, and M7 is amended in M7
+> rather than legislated from here.
+
 ### The draft
 
 **M10.5 — persistence: files and directories.** *(New 2026-08-27.)* **Nineteen
@@ -540,6 +580,17 @@ Files: /home/madness/code/cxx/satellite/WORD_NUMBERS.md (§1.3, §2.2, §2.3, §
 
 ## The console's other half — the reader thread and the terminal's facts
 
+> **SUPERSEDED 2026-08-28 — this draft is now PLAN §8's M17.** The finding that
+> reshaped it: its "does not spin" clause needs `satellite.time.sleep(n)` `1 9 3`,
+> which the draft filed in "Later" and which was in fact reached by nothing —
+> MILESTONE §0.0's own correction, copied back in from a stale row. **M16 now
+> precedes M17 and owns `1 9 3`.** Also applied: nobody owns half a numbered path
+> (M8.A owns `display`'s un-newlined form and `drain()`, M17 owns all of `1 5 3`),
+> the SIGINT half is **M9's** because `while` is the first walk long enough to stop,
+> M11.B's line now says `0x03`, the port range is 62–187, the `100ms` hack is forty
+> lines away, `console.hpp` declares three condition variables, and
+> `arguments.clear()` is a spelling collision resolving to `1 4 2 11` alone.
+
 ### The draft
 
 **M9.25 — the console's other half.** *(New milestone, 2026-08-27.
@@ -776,6 +827,18 @@ On the trap in both directions: the M8 finding is sound and checks out verbatim 
 ---
 
 ## The clock and the dice — the two sources of nondeterminism
+
+> **SUPERSEDED 2026-08-28 — this draft is now PLAN §8's M16.** The finding that
+> reshaped it: it slotted itself behind M9.5 in order to *"report that the dice
+> cannot use the float"*, which is a type confusion — DESIGN §8.1 makes
+> `satellite.variable.number` an exact decimal, so `1.5` is a `Number` and every
+> fractional refusal v1 tests is a `Number` test. **M16 has no float dependency and
+> is not behind M9.5.** Also applied: `1 6 7` and `1 6 8` are siblings of `1 6 3`
+> and not its children, nine rows of v1 code rather than sixteen, five numbers
+> absent from "Later" rather than two, eight refusals over six texts, QUAD §2
+> rather than §4 for `sleep`, the author's note settles nothing about `1 7 1`, the
+> alias is M2's and **M2 landed with nine of them**, and the seed path's RDRAND
+> abort is a done-when.
 
 ### The draft
 

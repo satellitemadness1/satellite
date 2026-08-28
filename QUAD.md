@@ -298,6 +298,18 @@ condition is *a piece of QUAD, running*. Not the whole program — one mechanism
 `mind.hpp`, chosen because it exercises floats, containers, sorting and persistence
 at once.
 
+***(2026-08-28: it exists. It is PLAN §8's **M20**, and its done-when is this
+paragraph's sentence with §5's candidate in it — `Sky::decay` plus `Rack::draw`.)***
+Two of the three items above have also moved out of "what M9 and M10 carry" and into
+milestones of their own: **the reader thread and `typed()` are M17**, eight paths
+`1 5 2`–`1 5 9`; the float is **M9.5**, not M9, and the stable descending sort is
+M10's, which now says `sort()` `1 4 2 3`–`sort_up(key)` `1 4 2 7` outright. **The
+dice did not survive the same treatment**: PLAN M16 records that
+`satellite.random` cannot write `Rack::draw` at all — no float draw, no seed, and a
+50–100 ms floor per call against a 90 ms tick — so §2's filing of `random` under
+*"already decided in satellite, and fine"* is the one row of that table that is
+wrong, and M20 carries the gap.
+
 ---
 
 ## 5. The honest risk
@@ -323,6 +335,16 @@ work and it will find things this list does not have.
 The candidate mechanism is `Sky::decay` plus `Rack::draw` — between them they touch
 floats, the map, a weighted pick, and the one `pow` that §3.1 says has no exact
 answer.
+
+***(2026-08-28.)* PLAN M20 is that milestone, and writing it found the split this
+paragraph does not have: `Sky::decay` uses no randomness at all — `sky.hpp`'s decay
+is float arithmetic over a live list — so it is M9.5 plus M10 and nothing else,
+while `Rack::draw` needs a seeded fractional draw that `satellite.random` has no
+number for. `1 7 13` is free; PLAN M16 declines to assign it because minting a
+number is the numbering's, and M20 carries it as its one blocker. That is this
+section's own prediction landing early: the gap between "the language has floats"
+and "this expression is writable" was found by reading `rack.hpp` against the
+numbering, and not by building either.
 
 *Companions: [DESIGN.md](DESIGN.md) — what the language is. [PLAN.md](PLAN.md) —
 how it gets built, and the milestones §4 above amends. [WORD_NUMBERS.md](WORD_NUMBERS.md)

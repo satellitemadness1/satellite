@@ -895,6 +895,53 @@ The permanent documents have been corrected; **the dated adversarial findings in
 `SCRATCH.md/MILESTONE_DRAFTS.md` have not**, because they are verbatim records of
 what a review said on a day and rewriting them would falsify the record.
 
+**Eleven milestones were added on 2026-08-28, and the list below is the result.**
+`SCRATCH.md/MILESTONE.md` had counted **121 of WORD_NUMBERS.md §2.2's 222 numbered
+paths reached by no milestone at all** — more than half the language — and four
+milestones drafted on 2026-08-27 to cover the largest blocks had been sitting in
+`SCRATCH.md/MILESTONE_DRAFTS.md` ever since, because a lens found real errors in
+every one of them and *a draft with a known error in it is worse in §8 than out of
+it.* Those four are corrected and are here. The rest of the 121 are covered two
+ways: by seven further milestones, and by **naming clauses added to milestones that
+already owned the work and did not say so** — this document's oldest recurring
+failure, and its cheapest fix, applied for the fourth and fifth time.
+
+**They take the next numbers rather than decimals, and that is this section's own
+rule doing what it promised.** M4.5, M6.5, M8.5 and M9.5 are interpolations from
+before the rule at the top of this section existed. Once the numbers are names and
+the list is build order, an inserted milestone does not need a number between its
+neighbours' and is worse for having one: the console draft called itself **M9.25**
+and then spent a paragraph arguing about what its own name becomes if
+`MILESTONE.md` §0.4 moves M9.5 ahead of M9. **A name that changes when its
+neighbours move is a position wearing a name's clothes.** M14 upward have no such
+problem, and WORD_NUMBERS §1.2 is the same argument one level down.
+
+    M14   the machine limits — the file, the pool, the ceiling   after M5
+    M15   the variant, and what "nothing" is                     after M9
+    M16   the clock and the dice                                 after M15
+    M17   the console's other half                               after M16
+    M18   persistence — files and directories                    after M8.5
+    M19   the machine's facts in the language                    after M18
+    M20   a piece of QUAD, running                               after M19
+    M21   another file — satellite.include and satellite.analyze after M13
+    M22   spacesuits                                             after M21
+    M23   the network                                            after M22
+    M24   Satellite Orbit and the wire format                    last
+
+**"Later, in no fixed order" is gone, and emptying it is most of what this pass
+did.** Every one of its eight entries now has a milestone that names it, which is
+the only thing that was ever wrong with it: a pile is not an order, and this
+section's own closing sentence had been calling it *"not a milestone"* while
+`satellite.random`'s sixteen rows of working, tested v1 code sat in it.
+
+**What this pass did not do is make the language smaller or the work smaller.**
+Naming a path is not building it. Several of the milestones below are mostly a list
+of decisions only the author can take, and they say so in their own done-when the
+way M9.5 does; **§8.2 counts them** rather than letting a future audit rediscover
+them. The claim this pass makes is narrower than "everything is scheduled" and is
+the one the ledger asked for: *every numbered path is now named by exactly one
+milestone, and every milestone that cannot start says what it is waiting for.*
+
 **M1 — `satl` exists and says how to use it.** *Landed 2026-08-26.* §1.
 
 **M2 — the namespace trie and the path interner.** *Landed 2026-08-28.*
@@ -1057,8 +1104,17 @@ node identity out of the lexer; user-owned bare words carry their text. DESIGN �
 unsaid until 2026-08-27. DESIGN §8.5 makes them real types **with literals** —
 `x00FF` and `b1010`, where **the width is part of the value**, so `x0009` is not `x9`.
 A literal is lexed, so the lexer decides them whether or not a milestone says so.
-`hexadecimal` is the language's one alias for `hex` (WORD_NUMBERS §2.3), which the
-lexer's spelling table has to know.
+`hexadecimal` is one of the language's aliases for `hex` (WORD_NUMBERS §2.3), which
+the lexer's spelling table has to know.
+
+**"One alias" was wrong and it was wrong in a way that hid work.** *(Corrected
+2026-08-28.)* §2.3 has **three rows**, not one: `hexadecimal`; the three
+`satellite.random.<tier>.range(min, max)` spellings, which are the only duplicate
+numbers in the language and are M16's; and `arg` `args` `argz` `argument`
+`arguments` `argumentz` — *one node, six spellings* (DESIGN §7.7), which is M19's
+headline demonstration and M6's to recognise at resolve. **M2's `words.def` landed
+holding nine aliases**, so the mechanism exists and what this milestone owes it is
+the lexer's half of the spelling table.
 
 **M4 — the arena AST and the parser.** `uint32_t` node indices into a contiguous
 arena, no `shared_ptr` anywhere in the tree. `satl --unparse file.satl` round-trips,
@@ -1111,9 +1167,118 @@ over the trie level that failed. Every milestone after this reports properly fro
 first commit. Retrofitting this is exactly how the first satellite ended up with 200
 bespoke message sites.
 
+**M14 — the machine limits: the file, the pool and the ceiling.** *(New
+2026-08-28. After M5, before M6.)* `satellite_config.ini` (§4.5), the thread pool
+§4.5.1.2 rules starts at startup **always**, the memory watchdog §4.5.2 describes,
+and the three fact readers all of it is built out of. It closes three of
+`SCRATCH.md/MILESTONE.md` §3's rows at once, and those three were the oldest
+un-milestoned work in this plan — specified in §4.5 on 2026-08-27 and never
+scheduled.
+
+**Five numbered paths, and it owns one of them as behaviour**:
+`satellite.library.system` `1 14 2 (0)` and its four dials — `division_digits`
+`1 14 2 1`, `max_depth` `1 14 2 2`, `min_free_mb` `1 14 2 3`, `float_digits`
+`1 14 2 4`. The node and the storage land here; **`min_free_mb` is the only one
+whose meaning is this milestone's.** `division_digits` is M6.5's, because `Number`
+reads it (§6.1, open question 1); `max_depth` is M7's by DESIGN §7.5, with M10's
+search walk as a second consumer that must say it reads the dial M7 built rather
+than inventing one; `float_digits` is M9.5's, and DESIGN §13 has already redefined
+it from "the dial" into **the default length of a float's right half**. A milestone
+that quietly built all four would be building three other milestones' decisions.
+
+- **The file.** `THREAD_COUNT`, `CORE_COUNT`, `MEMORY_MAX`, read at startup and
+  refused in M5's plain words when it is malformed rather than ignored — which is
+  the same argument M4.5 makes about a bad `.satc`, one milestone earlier in the
+  reading order and one later in this list.
+- **The pool**, with §4.5.1.2's two implementation requirements as its
+  specification rather than as advice: the main thread **spawns one thread which
+  builds the other 23** — ~20 µs on the main thread instead of ~590 µs — and
+  **below ~170 satellite-rooted lines the walk stays single-threaded**, which
+  §4.5.1.2 says is a rule the pool's owner enforces. Both numbers were measured on
+  2026-08-28 and both are in §4.5.1.1 beside the decision they justify.
+- **The watchdog.** §4.5.2's instruction is *"keep the thread, keep the exit path,
+  change what it compares, and ideally keep both checks"*, so both are here:
+  `process_memory_bytes()` against `MEMORY_MAX`, which is the stronger promise and
+  the one nothing has ever demonstrated, and `mem_available_mb()` against
+  `min_free_mb`, which is v1's check ported as a regression.
+- **The fact readers**, `old_versions/first_satellite/src/system_facts/`:
+  `memory_facts.cpp` (236 lines), `host_facts.cpp` (44) and `stack_facts.cpp` (52).
+
+**It lands before M6 because three later milestones cannot be built without it and
+none of them says so today.** M6.5's `Number` reads `division_digits`. M7 bounds
+recursion, and DESIGN §7.5 derives that ceiling from `RLIMIT_STACK` rather than
+fixing it — which is `stack_facts.cpp`'s `stack_limit_bytes()`; M7's `Str` needs
+`mem_total_mb()`, `mem_used_mb()` and `hardware_threads()` besides, because §6.1
+records that `satellite_string`'s codes 97, 98 and 99 are **live values resolved at
+decode time**. M8.A's printer thread is the pool's first tenant. That is the
+machine draft in `SCRATCH.md/MILESTONE_DRAFTS.md` turned inside out: it claimed
+these three files for a milestone after M10, and its own lens found every one of
+them consumed at M6.5 or M7. **The seam is between the readers and the language
+surface** — the readers are here, and `satellite.system`'s twenty-eight paths are
+M19.
+
+**`parallel_for` does not exist, and this milestone is where that stops being
+invisible.** §4.5.1.2's decision — start the pool always, because most satellite
+code will call `parallel_for` — rests on a construct that is in no numbering, no
+document and no milestone, including this one. The pool is still right without it,
+for the reason §4.5.1 gives on its own terms (amortisation across a run, the second
+tenant onward), and **naming the missing construct is the honest form of the
+dependency.**
+
+**Blockers, all three of them §4.5's own and none of them this milestone's to
+take:**
+
+- **What unit `MEMORY_MAX` is in, and what its default is** (§4.5.4). 61.9 GiB and
+  64.9 GB are the same memory. The watchdog's headline check cannot be written
+  until this is answered, which is why it is a blocker and not an open question.
+- **Whether the file seeds the namespace** (§4.5.3, *"Not yet decided"*). It is the
+  difference between one authority at runtime and a reconciliation rule.
+- **Whether a setting may differ from a fact** (§4.5.4). `THREAD_COUNT` says what
+  satl may *use*; `arguments.machine.threads` (DESIGN §7.7) says what the machine
+  *has*. The answer decides whether M19 builds one reader or two.
+
+**Done when** `satl --limits` prints every value it is holding to and where each one
+came from — the file, or the OS fallback §4.5.1.2 specifies, which is what the OS
+reports and **not** cores × 2; a malformed file is refused with a code, a span and
+a caret; `satl --words` shows the pool parked before the walk begins and the walk
+itself single-threaded, because 254 nodes is far under the 170-line floor; and
+**the watchdog fires** — `MEMORY_MAX` set below what satl is already using, exit
+status 2, one line in plain words on stderr, and the process gone within a second
+of the threshold being crossed. A watchdog that never fires is indistinguishable
+from no watchdog, so the demonstration is the one that kills the process, and §9
+means the *installed* binary.
+
+**The terminal-restoring hook is not here, and that is a correction to the draft
+this milestone comes from.** v1 leaves through `run_emergency_exit_hook()`, whose
+only registrar anywhere in v1 is the line editor's raw mode — M11.B's. Until a
+prompt exists nothing has put the terminal into raw mode and the hook has nothing
+to undo, so a done-when clause asserting *the terminal is still usable* would be a
+test that cannot fail. This milestone registers no hook; **M11.B inherits the exit
+path and adds the registration**, and its line says so.
+
 **M6 — resolve.** Names to integer frame slots. Capsules, frames, the `SLOT_*`
 sentinels. Resolved data in a side table indexed by arena node id, not `mutable` on
 the node. DESIGN §7.
+
+**Three things it owns that its own line did not say.** *(2026-08-28.)*
+
+- **`satellite.capsule` `1 2 (0)`.** M4 parses `capsule_decl`; this is where a
+  capsule name becomes a slot, and §7 already orders the work — resolve runs every
+  capsule name first, then every spacesuit name (M22), which is what makes forward
+  reference work without a second pass.
+- **The literal-option fold, WORD_NUMBERS §1.5.** It is a **resolve-time** decision
+  that changes which `PathId` a call site interns — `sort("down")` becoming
+  `sort_down()` `1 4 2 5` — so it is this milestone's and not M7's.
+  `SCRATCH.md/MILESTONE.md` §1 filed it as *"M6 or M7 — nothing says whether resolve
+  or closure compilation owns it"*, and the answer is that closure compilation is
+  already past the point where the option is a literal. **M18 is waiting on this**:
+  whether `satellite.file.open`'s four mode words fold decides whether its bad-mode
+  message is M5's suggester or a runtime check.
+- **The six spellings of `arguments` become the special variable here.** WORD_NUMBERS
+  §2.3's third alias row is one node with six spellings; M2 and M3 hold the spelling
+  table that says so, and **resolve is where a parameter named `argz` is recognised
+  as §7.7's object rather than as a user's name.** M19's demonstration rests on it,
+  and until this pass no milestone claimed it.
 
 **M6.5 — `satellite.variable.number`.** *(Its own milestone as of 2026-08-27; it was
 a bullet inside M7.)* The port of the first satellite's `satellite_number` — 10 files,
@@ -1138,12 +1303,74 @@ Four things to settle before copying, in `SCRATCH.md/PORTING.md`, and **the sign
 fifth**: where v1 currently keeps it has to be checked against DESIGN §8.1 before the
 copy rather than after.
 
+**Eleven numbered paths, and the four it does not take.** *(2026-08-28.)*
+`satellite.variable.number` `1 6 4 (0)` and ten of its fourteen methods land here —
+`shift_left` `1 6 4 1` through `round` `1 6 4 9`, and `shift_right(n)` `1 6 4 11`.
+**`power(a, b)` `1 6 4 10`, `modulus(a, b)` `1 6 4 12`, `truncate(a)` `1 6 4 13` and
+`sqrt(a)` `1 6 4 14` are M9.5's**, because none of them can be finished before the
+rounding rule is chosen: `sqrt` is irrational in general, `modulus` cites DESIGN
+§8.6, and truncating a float is its left half. That is
+`SCRATCH.md/MILESTONE.md` §0.4's *"either those four move to M9.5 or M9.5 moves ahead
+of M9"* answered the cheaper way — **four methods move, and no milestone is
+reordered.**
+
+**It reads `satellite.library.system.division_digits` `1 14 2 1` and M14 built the
+node it lives on.** §6.1's open question 1 is what makes the dial `Number`'s; M14
+owns the file, the storage and `min_free_mb`, and this is the first milestone to give
+one of the four dials a meaning.
+
+**It also owns the uniform draw, and its own line did not say so.** *(2026-08-28,
+and this is the fourth instance of that failure after M3/M4's eleven words, M10's
+thirty-four methods and M9's `satellite.bool`.)* `satellite_number/random.cpp` — 121
+lines: the limb-aligned draw in base 10⁹, the rejection sampler that exists because a
+bare `%` would skew 2:1, and `MAX_RANDOM_DIGITS = 100000` — is one of the ten files
+this port brings across. `SCRATCH.md/PORTING.md` has the row; this milestone had it
+and never repeated it, and **M16 needs to be able to say it is inheriting the bignum
+half of the dice rather than writing one.**
+
+**This closes half of `SCRATCH.md/MILESTONE.md` §3's porting row**; M7 closes the
+other half with `satellite_string`.
+
 **M7 — the value model and closure compilation.** `Value` (40 bytes, the
 static_assert comes too) and `Str`. `Number` arrives at M6.5 and this milestone is its
 first consumer. The arena AST compiles to a closure tree.
 Module calls dispatch through `handlers[path_id]`, and the **inline caches of §2.4
 land here too** — third of the three adoptions §2.6 orders, and the milestone that
 owns them. Recursion depth is bounded here.
+
+**Five things it owns and had never written down.** *(2026-08-28. Four of them are
+consumed by later milestones that had each assumed somebody else built them.)*
+
+- **`Str` is the port of `satellite_string`, and it needs M14's fact readers.** §6.1
+  records that the code table is not only characters: **codes 95–100 are live values
+  resolved at decode time**, and 97, 98 and 99 are `threads`, `mem_total_mb` and
+  `mem_used_mb`. So this milestone calls `hardware_threads()`, `mem_total_mb()` and
+  `mem_used_mb()`, which M14 ports. **This closes the other half of
+  `SCRATCH.md/MILESTONE.md` §3's porting row**, whose whole complaint was that M7
+  needs `Number` and does not say the port happens here.
+- **The recursion ceiling is derived, not fixed** — DESIGN §7.5 takes it from
+  `RLIMIT_STACK`, which is `system_facts/stack_facts.cpp`'s `stack_limit_bytes()`,
+  also M14's. *"Recursion depth is bounded here"* is what that sentence meant and
+  did not say.
+- **`satellite.library.system.max_depth` `1 14 2 2` is this milestone's dial**, and
+  **M10's search walk is its second consumer** with a depth error of its own. Both
+  entries now say so, because "M7 builds it and M10 reuses it" is fine and "neither
+  milestone ever says it" is how this gets built twice.
+- **The variant is append-only, and three appends are already known.** v1 appended
+  `ArgsRef` and `ResultRef` and `sizeof(Value)` stayed at 40 with the static_assert
+  holding. The three are: **`Value`'s reference-type handle arm, which M18 appends**
+  — DESIGN §8's table makes a file a reference type, two variables holding one file
+  share one descriptor, and v1 carries it as `FilePtr`, the eighth of its twelve
+  arms; **the arguments object's arm, which M19 appends**; and whatever Orbit's
+  result becomes at M24. **Each re-runs this milestone's static_assert.** DESIGN
+  §8.2 budgets the 40 bytes and §6.1 calls `sizeof` the one number that could make
+  the port not fit, so the rule belongs here rather than in the milestone that trips
+  over it.
+- **The dispatch table carries DESIGN §6.4 qualification 2's receiver-binding tag.**
+  It is the only reason `satellite.file.new(path)` `1 8 1` and
+  `satellite.variable.file.new` `1 6 2 1` can coexist — WORD_NUMBERS §4 calls that
+  pair *"the kind of thing that gets decided by accident at M10"* — and M18 needs it
+  built rather than legislated from three milestones later.
 
 **M8.A — the console, and the first program that runs.** *(Split from M8 on
 2026-08-28.)* Console with its printer thread, `satellite.main`, `satellite.return`.
@@ -1166,16 +1393,518 @@ holds no bare-main program**, so this milestone has no acceptance file yet; writ
 one is the author's, and until then its done-when is prose, which §8's opening calls
 the weaker kind.
 
+**Its seven paths, and the two unnumbered mechanisms M17 consumes.**
+*(2026-08-28.)* `satellite.main` `1 3 (0)`; `satellite.console` `1 5 (0)` and
+`display` `1 5 1`; `satellite.return` `1 15` with all three shapes — `return()`
+`1 15 0`, `return(satellite)` `1 15 1`, `return(value)` `1 15 2`, where DESIGN §4 is
+why the middle one means success. The other eight children of `console` are
+**M17's**. What is not numbered and is still this milestone's: **`display`'s
+un-newlined form**, which lives under `1 5 1`, and **the `drain()` barrier**, which
+§6 keeps in as many words — *"the Console with its own printer thread, and the
+`drain()` barrier before reading input"* — and which DESIGN §10.1 justifies by *"a
+prompt written with no trailing newline."* **Both exist for input**, three milestones
+before anything reads any, and M17 consumes them rather than rebuilding them.
+
+**The printer thread is the pool's first tenant and takes a thread from M14** rather
+than spawning one of its own. §4.5.1's whole argument for a pool is *"one pool with
+three tenants amortises a cost that none of them could justify alone"*, and this is
+the tenant that arrives first in build order.
+
 **M9 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
 `.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);
 what lands here is running them. `satellite.variable.bool`, `.number`, `.string` and
 their methods.
 
-**`satellite.bool` `1 17` is a different node and is not this milestone.** The type is
-`satellite.variable.bool` `1 6 6`; the module constants `satellite.bool.true` `1 17 2`
-and `.false` `1 17 1` hang off a top-level namespace that no milestone claims
-(DESIGN §6.1 cites them as the module-constant case). Reading M9 as covering both is
-the mistake this paragraph exists to stop.
+**`satellite.bool` `1 17` is a different node and IS this milestone, as of
+2026-08-28.** The type is `satellite.variable.bool` `1 6 6`; the module constants
+`satellite.bool.false` `1 17 1` and `.true` `1 17 2` hang off a top-level namespace
+`1 17 (0)` that DESIGN §6.1 cites as the module-constant case. Until this pass the
+paragraph here read *"is not this milestone"* and no other milestone claimed them, so
+three paths were refused by the only milestone in a position to build them — which is
+the M3/M4 failure with the sign flipped, and worse, because it was written down
+deliberately. **The distinction it was drawing is still true and still worth
+keeping**: two nodes, two numbers, and reading `satellite.bool.true` as a way of
+spelling the type would be a real error. What was wrong was the conclusion.
+**Building them costs a `handlers[path_id]` entry each**, because a module constant
+is a path that evaluates without a call, and this milestone already builds the type
+they answer with.
+
+**It also owns the SIGINT half of Ctrl-C, and that was nobody's.** *(2026-08-28.)*
+v1's `install_interrupt_handler()` — 249 lines in `system_facts/interrupt.{hpp,cpp}`,
+installed **without `SA_RESTART`**, which §6 marks *hard-won; do not rediscover* —
+works by having the first SIGINT set a flag and *"let the walk stop itself at the
+next statement, which is what makes an interrupted program report the line it was
+on."* **The first walk long enough to be stopped is `while` `1 13 3`, here.** M11.B
+owns the other half — the prompt's Ctrl-C, which arrives as the byte `0x03` because
+raw mode turns ISIG off, so it never reaches a handler — and M17's `1 5 2`–`1 5 4`
+need this half to tell an interrupted read from a closed stdin.
+
+**M15 — the variant, and what "nothing" is.** *(New 2026-08-28. After M9.)* Two
+numbered paths — `satellite.variable.variant` `1 6 14` and
+`satellite.variable.expression` `1 6 9` — and it builds one of them. It is a small
+milestone that exists first for a reason that has nothing to do with its size:
+**two later milestones ask the same question in the same words, and it has to be
+answered once, in front of both, or it gets answered twice.**
+
+> `satellite.console.typed()` `1 5 5` — *a line, or nothing.* (M17.)
+> `satellite.variable.file.read_line` `1 6 2 3` — *one line, or nothing at end.*
+> (M18.)
+
+**Nil is already in the value model and is not already in the language.** DESIGN
+§8.2 requires that `bool` and nil never allocate, so M7's `Value` carries the state;
+DESIGN §6.4 qualification 3 names it — *"two non-dispatchable states needing
+different messages: an undeclared variable, and a declared variable holding
+nothing"* — and that is a rule about **error messages**, not a way for a program to
+ask. Between M7 and here a satellite program can be handed nothing and has no
+sentence it can write about it. That is the gap this milestone closes, and DESIGN
+§1.1 is why it is not acceptable to leave it to whichever of M17 and M18 lands
+first.
+
+**`satellite.variable.variant` is the type the question belongs on.** A variable
+declared as one type either holds a value of it or is the declared-and-empty state
+§6.4 names; a variable declared `variant` is the one that can truthfully answer
+*what are you holding*, which is the answer both call sites above need. DESIGN §8's
+table carries the row with a dash for its representation and *"deferred; PLAN §8,
+Later"* as its whole specification, so **the representation is this milestone's
+first piece of work and DESIGN §8 gains a real row here.**
+
+**Blocker, and only the author can take it: is "nothing" a state every type has, or
+a value only a `variant` can hold?** The two readings produce different languages
+and both are consistent with what is written down today. Under the first,
+`satellite.variable.string line = my_file.read_line()` is legal and `line` may be
+empty-or-nothing; under the second, that declaration is a type error at end of file
+and `read_line` returns a `variant`. **§6.4's "declared variable holding nothing"
+reads as the first** and DESIGN §8's deferral of `variant` reads as the second, and
+nothing reconciles them. M17 and M18 both inherit whichever answer is given, so the
+answer is worth more than either milestone.
+
+**`satellite.variable.expression` `1 6 9` stays numbered and unbuilt, and saying so
+is the work.** Its entire provenance is one row in `SCRATCH.md/WORD_SURFACE.md`
+sourced to `v1docs` — no representation, no method, no v1 code, no sentence in
+DESIGN. WORD_NUMBERS §1.2 means it cannot be withdrawn without leaving a hole, and
+M2's density check refuses holes, so it keeps its number whatever happens to it.
+This is `satellite.variable.duration` `1 6 8`'s shape exactly (M16), and both are
+here rather than in a future audit's table.
+
+**Done when** one program declares a `satellite.variable.variant`, puts a number in
+it, then a string, then nothing, and prints a different and correct answer at each
+step through `satellite.console.display` — and when a `variant` that holds nothing
+is refused by name if a method is called on it, which is §6.4 q3's second message
+becoming something a person can read. Nothing here needs a float, a container, a
+thread or a file; **it needs M7's `Value`, M8.A's console and M9's scalars, and
+that is the whole of its dependency list.**
+
+**M16 — the clock and the dice, the two sources of nondeterminism.** *(New
+2026-08-28, corrected from the 2026-08-27 draft. After M15.)* **Twenty numbers on
+twenty-three rows**, named individually here because a milestone that says only
+`satellite.random` leaves twelve children owned by nothing, which is the failure
+this whole pass exists to end:
+
+- `satellite.random` `1 7 (0)` and `1 7 1` through `1 7 12`.
+- `satellite.time` `1 9 (0)`, `.now` `1 9 1`, `.new` `1 9 2`, `.sleep(n)` `1 9 3`.
+- `satellite.variable.time` `1 6 3 (0)`, `satellite.variable.date` `1 6 7` and
+  `satellite.variable.duration` `1 6 8` — **three siblings under
+  `satellite.variable`**, not a subtree. A child of `1 6 3` would be `1 6 3 n`, and
+  §1's per-parent rule is the reason that sentence has to be written out rather
+  than abbreviated with leading dots.
+
+**`satellite.random` is thirteen numbers on sixteen rows.** `.range` is a second
+spelling of the two-argument shape, not a fourth segment and not a path
+(WORD_NUMBERS §2.3): `fast.range(min, max)` **is** `1 7 5`, `normal.range` **is**
+`1 7 8`, `ultra.range` **is** `1 7 11`. **Those three are the only duplicate
+numbers in the language**, and they are the whole of the difference between the 222
+rows §2.2 holds and the 219 distinct numbers it carries. That reconciliation was
+written down only in `SCRATCH.md/MILESTONE.md` §5, which is scratch; it lives here
+now.
+
+**M2 already built the alias, so this milestone inherits it rather than finding
+it.** The draft this comes from reported the three rows as a finding *about* M2 —
+that a tree whose position is its number cannot express `1 7 5` for a node named
+`range` under `fast`, and that the density assert would fire. Both halves were true
+of M2 as specified and neither survived M2 as built: `words.def` holds **254 nodes
+and 9 aliases**, an alias is a second spelling rather than a second node, and
+"no duplicates" is by construction because a number is a position. `hexadecimal`
+and DESIGN §7.7's six spellings of `arguments` are the same mechanism at two other
+scales. What is left for this milestone is to use it and to test it, which
+done-when clause 2 does.
+
+**DESIGN §11 is stale about how many shapes there are and says so nowhere, and
+correcting it is part of this milestone.** §11 says *"two shapes on each"*, which
+was true of the first satellite — six random paths in its registry, and a header
+saying the public surface is two shapes per tier. §2.2 gives each tier four slots.
+§11 is one commit older than the numbering (`095eb49`, against `99fa6d9` and
+`cc3f813`) and neither numbering commit touched it. **Building four shapes out of a
+section that says two is the M3/M4 failure run backwards.** Everything else in §11
+is still true and stays — the tier table, uniform over [0, 10⁴⁰), inclusive at both
+ends, the one-in-ten paragraph and all of §11.1. What replaces the stale sentence
+is a pointer to §2.2 and a line saying which numbers are specified, **plus a date**,
+which §11 carries neither of and is how it went stale without ever looking wrong:
+
+- `1 7 4`, `1 7 7`, `1 7 10` — `<tier>(digits)`. Specified, built in v1, tested.
+- `1 7 5`, `1 7 8`, `1 7 11` — `<tier>(min, max)`, spelled `.range` in v1. The same.
+- `1 7 6`, `1 7 9`, `1 7 12` — `<tier>(min, max, step)`. Specified in no document.
+- `1 7 1`, `1 7 2`, `1 7 3` — blocked below, and the answer decides whether the
+  call surface is nine shapes or twelve.
+
+**Nine of the sixteen rows are code v1 built and tested; seven are not.** v1's
+registry carries exactly six random paths — its own `format.def` says *"Five words
+buy six paths"* — and those six are `fast/normal/ultra(digits)` and the three
+`.range` spellings, which is nine §2.2 rows over six numbers. The other seven rows
+are `1 7 (0)` and the six numbers this milestone leaves reserved. **"Sixteen rows
+of working code sitting in Later" was the draft's sentence and it overstates in the
+direction that makes the finding look bigger**, which is the failure the last three
+commits before this pass were about.
+
+**Five of these twenty numbers were not in "Later" at all**, which is worth saying
+because "Later" is what this milestone empties: all four under `satellite.time`
+`1 9 (0)` — a different node from `satellite.variable.time` `1 6 3`, and
+`SCRATCH.md/MILESTONE.md` §0.0 exists to correct exactly that confusion — and
+`satellite.variable.duration` `1 6 8`, which is in no list anywhere except DESIGN
+§12's deferrals.
+
+**The bignum half of the dice is M6.5's and this milestone does not claim it.**
+`satellite_number/random.cpp` — 121 lines: the limb-aligned uniform draw in base
+10⁹, the rejection sampler that exists because a bare `%` would skew 2:1, and
+`MAX_RANDOM_DIGITS = 100000` — is one of the ten files M6.5 ports, and §6.1's open
+question 3 says as much while M6.5's own entry did not. **M6.5 now says it.** What
+this milestone ports is the other half — `random_numbers/random.{hpp,cpp}`, 260
+lines: the tiers, the seed, the fold and the watchdog — plus a dispatch that is a
+**rewrite and not a copy**, because v1's `modules_random.cpp` is a string compare on
+the tier and on `"range"` and §7 throws exactly that away. What survives is the
+argument checking and v1's nine failure texts, reached through `handlers[path_id]`
+and reported through M5.
+
+**The seed path is broken as built, and porting it unchanged ports a crash.** v1's
+own `plans/pcg_k16384_spec.md` records that under `strace` the built `./satl`
+issues exactly one `getrandom` in the whole process — glibc's own 8-byte startup
+draw — and that its 65,568 seed bytes come from RDRAND through libstdc++'s default
+token, never touching the kernel, while three comments in the code say otherwise.
+Worse, that path **throws**: libstdc++ retries RDRAND a hundred times and then
+raises, and there is no `catch` anywhere under v1's `src/`, so the failure mode of
+a language builtin is `SIGABRT`. The recommended replacement is `getrandom(2)` with
+flags 0 in a loop — 12.4× faster, an `errno` instead of an exception, and `ldd`
+unchanged. **This is a done-when, not a footnote.**
+
+**The vendored PCG is the project's first third-party dependency and LAYOUT.md has
+no row for one.** Three headers, 3,138 lines, Apache-2.0 inside an MIT tree,
+header-only so `ldd` does not change. It is reached through `-isystem` for a
+load-bearing reason rather than a stylistic one: `pcg_extras.hpp` warns under this
+project's `-Wall -Wextra`, and §4's silent from-scratch rebuild depends on that
+warning not being ours. **This milestone writes LAYOUT.md's first vendored row**,
+and the Apache notice travels with it.
+
+**The tier windows are a design choice and stand; the watchdog is a measurement and
+does not.** §9 says measure on this machine and do not quote. v1's figures are a
+Xeon E5-2670 v3's: about 153,600 draws per millisecond, `ultra` reaching roughly
+249M draws at 2,000 ms and 310M at 3,000 ms against a cap drawn from [500M, 600M] —
+a margin of about 1.6–1.9×. **On a machine 1.7× faster `ultra` reaches the cap and
+the watchdog stops being a failsafe and becomes part of the mechanism**, silently
+shortening the spin. Re-measure before claiming the tiers behave as documented; if
+the margin has closed, the per-tier caps v1 recorded and declined are this
+milestone's work.
+
+**What this milestone produces for QUAD is a correction, not a mechanism.** QUAD.md
+§2 files `random` under *"already decided in satellite, and fine."* It is not.
+`quad_core.hpp`'s entire randomness is one primitive — a uniform `double` in [0, 1)
+from a seeded `mt19937` — and `Rack::draw` is a roulette wheel over `std::pow`
+weights. Three independent reasons `satellite.random` cannot write it: **no float
+draw exists in any of the thirteen numbers**, and v1 refuses fractional bounds
+deliberately; **there is no seed**, so QUAD's determinism invariant is not
+expressible; and **the cheapest tier throws draws away for 50–100 ms before it
+answers**, against a 90 ms tick that draws from the rack once and calls the rng
+nineteen more times. The shape of an answer is a fourth thing under
+`satellite.random` that takes a seed and does not spin, and **`1 7 13` is free** —
+this milestone does not assign it, because minting a number is the numbering's and
+the author's. M20 is where that debt comes due.
+
+**Blockers — the milestone is not finishable around these:**
+
+- **One clock, or two.** DESIGN §13 requires `satellite.variable.time`, `.date` and
+  `satellite.time.now` to agree on **one clock and one epoch**, and says a monotonic
+  clock and a wall clock cannot both be it. **v1 answered both halves and the
+  answers do not compete**: `system_clock` and the Unix epoch for the *value*,
+  because `steady_clock`'s epoch is unspecified and the value has to mean something
+  outside this process; `steady_clock` for the *timer* — the spin deadline and the
+  sleep — because `high_resolution_clock` is the same type as `system_clock` here,
+  `is_steady` is false, both tick at 1 ns with 21 ns granularity so there is no
+  precision to trade away, and NTP can step `system_clock` backwards under a
+  running deadline. Only one of the two is ever a satellite *value*, so *"one clock,
+  one epoch"* is a rule about the type and not about the implementation. **That
+  reading measured the author's stated leaning and rejected it, so it is put to the
+  author rather than taken here.**
+- **What `1 7 1`, `1 7 2` and `1 7 3` name** — the tier node, or a zero-argument
+  call. DESIGN §4's example writes all three tiers bare, and M2's acceptance test
+  writes `satellite.random.normal` bare at `1 7 2`; the author's note writes the
+  digit shape only, `satellite.random.fast(99)`, which is `1 7 4` and settles
+  nothing. The parentheses appear first in §2.2's rewrite, whose preamble promised
+  that every number was preserved — a promise about numbers, not about what they
+  name. Under the call reading, v1 tests that source as an arity error and there is
+  no number left for the node the spelling `ultra` lands on; under the node reading,
+  the tier is a path that is not a value, which v1 also tests. **The answer is a
+  precondition of this milestone's own number list**, which is why the draft could
+  count `1 7 2` as covered on one page and reserved on another.
+- **The step forms `1 7 6`, `1 7 9`, `1 7 12`.** Assigned by rule, specified
+  nowhere, built nowhere, and they collide with the one promise §11 makes: `.range`
+  is inclusive at both ends, and `(min, max, step)` reaches `max` only when
+  `max - min` is a multiple of `step`. Whether `(1, 10, 3)` can answer 10 is exactly
+  what DESIGN §13 warns gets settled by accident.
+- **What `satellite.time.new` `1 9 2` takes.** Its only specification anywhere is
+  nine words in a deleted note — *"set the arguments for a point in time"* — which
+  reads as a component constructor and contradicts v1's rule that an instant is read
+  off the clock and never written down as a literal. It cannot be designed apart
+  from `satellite.variable.date` `1 6 7`. **DESIGN §13 cites it as an established
+  precedent** — *"exactly as `satellite.file.new` and `satellite.time.new` already
+  do"* — when it has never existed; the argument still holds on `file.new` alone,
+  and §13 should say so.
+- **The unit of `satellite.time.sleep(n)`.** QUAD's call is
+  `sleep_for(milliseconds(90))` at `quad_main.cpp:260`. The one unit v1 spells is
+  `100ms`, a lexed literal converted at parse time, and §7 throws away the special
+  case that consumed it but not the literal. A bare number makes the unit invisible
+  at the call site, which is the readability failure DESIGN §1.1 exists to prevent.
+- **`satellite.variable.date` `1 6 7` has a number and nothing else** — no row in
+  DESIGN §8's types table, no representation, no constructor, no method, no v1 code.
+  Either the specification work is carried here or the number stays reserved and
+  this milestone says which.
+- **The two-or-more time methods v1 ships are unnumbered.** `.minus(t)`,
+  `.nanoseconds()` and `.to_string()` are all handled on a `Time` in v1, and help
+  advertises `.size()` on the next line. `satellite.variable.time` `1 6 3 (0)` has
+  **zero** children in §2.2 while its three hand-written siblings have 16, 7 and 14.
+  **WORD_NUMBERS has to number them and this milestone must not**; until it does, a
+  program can obtain an instant and do nothing whatever with one — which also means
+  this milestone cannot time its own tier floors in satellite.
+
+**`satellite.variable.duration` `1 6 8` stays numbered and unbuilt, and saying so is
+the work.** The sweep sourced it from v1's documents; the v1 source that uses the
+phrase says there is no such type and gives four reasons, and DESIGN §12 still
+defers durations today. It cannot simply be struck either: §1.2 leaves a hole where
+a child is removed and M2's density check refuses holes. So it keeps its number
+whatever is decided about it, and it is listed here rather than left to an audit —
+the same treatment `satellite.variable.expression` `1 6 9` gets at M15.
+
+**Done when** this runs inside `satellite.main` and every clause below holds:
+
+```satellite
+satellite.variable.number big = satellite.random.ultra(40)
+satellite.console.display(big)
+
+satellite.variable.number die = satellite.random.fast.range(1, 6)
+satellite.console.display(die)
+
+satellite.variable.number i = 0
+satellite.statement.while (i < 10)
+{
+    satellite.console.display(satellite.time.now)
+    satellite.time.sleep(90)
+    i = i + 1
+}
+```
+
+1. `ultra(40)` is uniform over [0, 10⁴⁰), and a hundred runs give **about ten
+   answers of 39 digits or fewer**. §11 says the leading-zero fact is stated in the
+   header and in the test, so the test asserts the short answers *happen*; one that
+   merely tolerates them is not the test §11 asked for.
+2. `.range(1, 100)` answers both 1 and 100, `.range(7, 7)` is 7, and
+   `.range(-100, -90)` lands inside itself — v1's assertions, ported, and the proof
+   that M2's alias rewrite carries a real call.
+3. All three tier windows are honoured, timed against `steady_clock` and asserted
+   **on the floor only** — a ceiling is a machine's to miss under load, and a test
+   that fails when the build box is busy is a test nobody trusts.
+4. Draws per millisecond and `ultra`'s real draw count at 3,000 ms are measured **on
+   this machine, with the date, beside the watchdog cap they justify**, and the
+   margin is stated (§9).
+5. **Eight refusals through six ported texts**, plus two that are not random's at
+   all: `fast("x")` and `fast(1.5)` share one text, `fast(0 - 1)` and
+   `fast(100001)` share another, and the two unlisted texts — `.range` wanting two
+   numbers, and the could-not-draw and spans-more-than failures — come across with
+   them. **An unknown tier and an unknown tail segment are M5's did-you-mean over
+   the failing trie level, not this milestone's strings**; v1 answers both from one
+   generic *"no such module function"* and §7 throws that dispatch away.
+6. `satellite.time.now` twice in succession returns two different values — the
+   one-line proof that int64 nanoseconds is the representation and a `double` is
+   not, since 61 bits of epoch against a 53-bit mantissa is 198 ns of resolution.
+7. The loop paces at 90 ms, which is QUAD's main loop shape and the whole of what
+   QUAD.md §2 asked `sleep` for, naming `quad_main.cpp:260`. *(90 ms is QUAD's
+   number, not this machine's; §9 means it is re-measured here or sourced there.)*
+8. **No tier is described as secure, anywhere** — not in a header, not in
+   `satellite.help`, not in an error message. DESIGN §11.1, and the first
+   satellite's reason for wording the refusal that hard travels with it: the word
+   "secure" in a language's documentation is load-bearing, because someone will key
+   something on it. The answer not taken, `getrandom(2)` at 256 bits for about a
+   microsecond and no new dependency, travels with it too.
+9. The seed comes from the kernel and cannot abort, or the refusal to change it is
+   written down beside the measurement that condemns it.
+
+**Nine of the twenty numbers stay reserved and unbuilt, and are listed rather than
+left to a later audit**: `1 7 1`, `1 7 2`, `1 7 3`, `1 7 6`, `1 7 9`, `1 7 12`,
+`1 9 2`, `1 6 7` and `1 6 8`. **A milestone that quietly leaves numbers behind it
+is how this document came to have a 121-path ledger.**
+
+**It does not depend on M9.5 and must not be placed behind it.** The draft put
+itself after the float *"because this one has to report that the dice cannot use
+it"*, which is a type confusion: DESIGN §8.1 makes `satellite.variable.number` an
+exact arbitrary-precision decimal, so `1.5` is a `Number` and every fractional
+refusal v1 tests is a `Number` test. Nothing here needs a float, and M9.5 is the one
+milestone in this list that cannot land until an undecided rule is chosen. Its real
+dependencies are M6.5 for the bignum, M8.A for `display` and `satellite.main`, and
+M9 for `while`.
+
+**M17 — the console's other half: the reader thread and the terminal's facts.**
+*(New 2026-08-28, corrected from the 2026-08-27 draft. After M16.)* **Eight paths —
+`1 5 2` through `1 5 9`, every child of `console` except `display` `1 5 1`**, which
+is M8.A's. §2.2 has no tenth child, so with M8.A this namespace is finished:
+
+- `satellite.console.input()` `1 5 2`, `input(prompt)` `1 5 3` and
+  `input(prompt, target)` `1 5 4` — ask, and wait, in three shapes. WORD_NUMBERS
+  §1.3 is why that is three numbers rather than one with an arity check: a
+  user-owned argument cannot extend a path, so the count takes its own slot and
+  **the arity is the identity**, settled at M4's parse before an argument is
+  evaluated. `1 5 4` writes a place and returns nothing — the only out parameter in
+  the language, and deliberately not the start of a general facility.
+- `satellite.console.typed()` `1 5 5` — a line, or nothing, immediately. **The one
+  genuinely new mechanism here**; v1 has no non-blocking input of any kind, and
+  M15 is what makes *nothing* a thing a program can ask about.
+- `satellite.console.width` `1 5 6` and `.height` `1 5 7` — property-shaped in the
+  table because they are facts, asked fresh rather than sampled. v1 has no `height`
+  at all: `ws_row` appears zero times in it.
+- `satellite.console.clear()` `1 5 8` and `.home()` `1 5 9` — call-shaped because
+  they are actions, and **both go through the printer's queue**. v1 writes them as
+  one escape straight to the fd, which is a frame shredded between two queued lines.
+
+**The reader thread is DESIGN §10.1's printer with the polarity named.** The
+printer's producer is the program and its consumer is a dedicated thread; the reader
+is that reversed — the dedicated thread blocks on stdin and pushes whole lines in,
+and the program asks and is answered at once. The invariant that survives both
+directions, and the reason no satellite program ever learns what a terminal mode
+is: **the program's own thread never blocks on the terminal.** §1.1 applied to
+input. QUAD.md §3.4 is the requirements document, and it is what retires QUAD's
+`VMIN=0` poll loop.
+
+**M8.A owns two things this milestone consumes and must not rebuild**, and M8.A's
+entry now says so: `display`'s **un-newlined form**, which lives under `1 5 1`, and
+the **`drain()` barrier**, which has no number at all and which §6 keeps in as many
+words — *"the Console with its own printer thread, and the `drain()` barrier before
+reading input"* — while DESIGN §10.1 justifies the flush by *"a prompt written with
+no trailing newline."* Both exist **for input** and neither is `1 5 3`. The draft
+this milestone comes from wrote that M8 *"owns the output half of `1 5 3`"*, which
+would split one numbered path across two milestones — the failure it was written to
+prevent, committed in the sentence preventing it. **This milestone owns all of
+`1 5 3`.**
+
+**This is not a line editor, and M11.B's prompt is not `satellite.console.input`.**
+M11.B's prompt is a second, unrelated reader: v1's `console_input/` is 1,449 lines
+of raw mode, key decoding, history and a wrap-aware renderer, and its own header
+states that no satellite program can reach anything in it, while
+`satellite.console.input` runs through `std::getline` in the evaluator. Two readers,
+one language. **Only 14 of those 1,449 lines come here** — `terminal_columns()`'s
+ioctl with its 80-column fallback, and the clear — and **M11.B consumes both from
+here** rather than reimplementing them, which its entry now says.
+
+**Ctrl-C is two halves and this milestone takes one of them.** DESIGN §10.2 gives
+the key two meanings; raw mode turns ISIG off, so the prompt's Ctrl-C arrives as the
+byte `0x03` and never reaches a handler — **that half is M11.B's, and M11.B's line
+now says `0x03` rather than bare "Ctrl-C"**, because a bare "Ctrl-C" reads as owning
+both. The SIGINT half is not this milestone's either, and the draft's claim that it
+was is refuted by the draft's own dependency argument: v1's handler *"sets the flag
+and lets the walk stop itself at the next statement"*, and the first walk long
+enough to be stopped is M9's `while`. **`install_interrupt_handler()` — 249 lines,
+installed without `SA_RESTART`, which §6 marks *hard-won; do not rediscover* — is
+M9's, and M9's entry now names it.** What is genuinely this milestone's is the
+read side: **`eof()` is the entire discrimination between a closed stdin and an
+interrupted read**, so `1 5 2`–`1 5 4` cannot report truthfully without it.
+
+**`width` and `height` are not `arguments.machine.*`**, which the ledger wondered
+about. DESIGN §7.7's test is three surfaces over one set of facts:
+`arguments.machine.threads` `1 14 1 1 1 3`, `.machine.cores` `1 14 1 1 1 1` and
+`arguments.memory.total` `1 14 1 1 2 1` — **`memory` is a sibling of `machine`, not
+a child of it** — live there because they are also `THREAD_COUNT`, `CORE_COUNT` and
+`MEMORY_MAX` and `satellite_string`'s live codes, and *"must not be allowed to
+disagree."* Terminal size has no second surface, no config counterpart, and
+**changes during a run**, which a startup-sampled object cannot express. And
+`arguments.clear()` would already mean something: `arguments` is a
+`satellite.container.list` (DESIGN §7.7), so §1.5 resolves the bare `clear` through
+the receiver's type to `satellite.container.list.clear` `1 4 2 11`. **That is a
+spelling collision and never a numbering one** — §1's lists are per-parent, so the
+numbers could not clash.
+
+**Roughly 126 lines port close to unchanged** — `evaluator/modules.cpp` 62–187
+(`read_input_line`, `console_input`, `console_input_into`), where the comments are
+the specification and come across with the code. **Lines 188 onward are `display`'s
+and stay with M8.A**: `named_arg_misuse()` is the message for
+`display(text, end="")` and `display_with_end()` begins at 205, so the draft's
+62–204 pulled seventeen of M8.A's lines into this port — the ownership blur two
+paragraphs above exist to prevent. `set_display_pace` is the `100ms` special case §7
+throws away. `typed()` and the reader thread port nothing.
+`console_output/console.cpp` is not ported here and **is the file to read before
+writing the reader**, because every hazard it documents reappears reversed —
+swapping the vector out under the lock rather than erasing the front, and **three**
+condition variables (`arrived_`, `emptied_`, and `pace_woken_` on a mutex of its
+own) so that a waiting drain and a sleeping printer are never woken for each other's
+reason.
+
+**Open, and each of these shapes the milestone rather than decorates it:**
+
+- **One reader of stdin, or two?** A reader thread parked in `read()` and an
+  `input()` calling `getline` on the walking thread are two consumers racing one fd.
+  Routing `input()` through the same queue is almost certainly right, and it changes
+  code §6 marks *do not rediscover*, so it is a decision and not a detail.
+- **Ctrl-C across a thread boundary.** §10.2's mechanism was designed for a read on
+  the walking thread. Move the read and the signal lands on an arbitrary thread,
+  `EINTR` surfaces where there is no error to report, and the
+  interrupted-versus-EOF answer has to travel back through the queue.
+- **How the thread stops.** The pool starts at startup from M14, so *when it starts*
+  is no longer this milestone's question — but a thread blocked in `read()` cannot
+  be joined at exit the way `~Console()` joins the printer. A self-pipe wakeup or a
+  detach-and-leak differ in whether `satl` exits cleanly. **This is the pool's
+  fourth tenant and §4.5.1 names three.**
+- **How the registry declares that a parameter is a place.** §7 condemns v1's route
+  to `1 5 4` — its first bullet, *"the joined path built per call"*, covers
+  `expr_call.cpp:113–114` flattening the path and comparing it against a string
+  literal before evaluating arguments, the same hack as the `100ms` case forty lines
+  above it. The replacement is a declaration on the word, the way `display` will
+  *declare* that it accepts a pace argument. **§6.4 qualification 2's
+  receiver-binding tag is the nearest precedent and nothing extends it to a
+  non-receiver parameter.**
+- **Does `clear()` imply `home()`?** v1 emits both as one sequence. If `1 5 8`
+  homes, `1 5 9` is only ever useful alone; if it does not, QUAD's frame draw is two
+  calls where `view.hpp` had one. Small, and it is a promise.
+- **What the reader does during M11.B's prompt**, which puts the terminal in raw
+  mode and thinks it owns stdin. Whichever of the two lands second decides it, and
+  saying so now is cheaper than finding it at M11.B.
+
+**Done when** one program run under `pty.fork()` — assert on the screen, not on the
+bytes — proves all eight paths, each clause a separate assertion:
+
+1. **A counter keeps rising while a line is half-typed.** Send `/q` a byte at a
+   time; the number advances across every pause. QUAD.md §3.4 requirement (1), with
+   `VMIN=0` retired, and the one claim this milestone exists to make.
+2. **And it does not spin.** CPU near idle between keystrokes, because the blocking
+   happens on a thread that waits — *"strictly better than the poll loop the obvious
+   alternative produces"* (DESIGN §10.1). **This clause is why M16 comes first**:
+   it needs `satellite.time.sleep(n)` `1 9 3`, a busy-spin loop makes it
+   untestable, and in the draft that path was reached by no milestone at all.
+3. **`typed()` tells an empty line from no line.** Return on an empty line is a
+   line; nobody typing is nothing. Two answers, not one empty string — **M15's
+   answer, consumed here rather than invented here.**
+4. **The prompt appears before the cursor waits.** `1 5 3` prints with no trailing
+   newline and with the queue drained; a prompt arriving after the program has
+   already blocked is the failure `drain()` exists to prevent, and it is observable
+   only here.
+5. **`1 5 4` writes a place and yields nothing**, assigning its result is an error,
+   and a non-variable second argument fails *before* the prompt prints — so nobody
+   types an answer that is then thrown away.
+6. **Ctrl-C is not end of input.** At the prompt it reports `interrupted`;
+   `satl demo.satl < /dev/null` reports reaching the end of input and exits instead
+   of looping. Getting those two backwards is the regression §6 says not to
+   rediscover.
+7. **`width` and `height` are live.** Resize the pty between two frames and both
+   numbers change without a restart.
+8. **`clear()` and `home()` never race the printer.** Alternating `home()` with
+   `display()` in a tight loop never shows an escape landing between two queued
+   lines — proof both went through the queue rather than the fd.
+
+**Clauses 1, 2 and 8 cannot be demonstrated by any earlier milestone and cannot be
+demonstrated by the eight paths one at a time**, which is §8's own argument that
+this is one milestone rather than a bullet added to two.
 
 **M9.5 — `satellite.variable.float`.** *(Its own milestone as of 2026-08-27. It spent
 the morning in "Later, in no fixed order", was moved into M9, and is separated out
@@ -1193,6 +1922,18 @@ sign; a float is composition over two of them plus rounding.
 Two documents used to disagree about whether this was urgent — PLAN filed it under
 "Later" while DESIGN §13 and QUAD.md §3.1 called it the critical path. It is the
 critical path: QUAD is 164 `double`s and cannot be written without it.
+
+**Five numbered paths, and four of them are M6.5's type rather than this one's.**
+*(2026-08-28.)* `satellite.variable.float` `1 6 10`, plus
+`satellite.variable.number.power(a, b)` `1 6 4 10`, `modulus(a, b)` `1 6 4 12`,
+`truncate(a)` `1 6 4 13` and `sqrt(a)` `1 6 4 14` — the four of the number's fourteen
+methods that **cannot be finished before the rounding rule is chosen**, which is this
+milestone's blocker and not M6.5's. `SCRATCH.md/MILESTONE.md` §0.4 named the choice —
+*"either those four move to M9.5 or M9.5 moves ahead of M9"* — and moving four
+methods is the smaller move. **`satellite.library.system.float_digits` `1 14 2 4` is
+this milestone's dial**, on the node M14 builds, and DESIGN §13 has already redefined
+it from *the* dial into **the default length of a float's right half** for a value
+that does not state one.
 
 **Done when the four operations run and — the blocker — the rounding rule is chosen.**
 Truncate, half-up, or half-even. No representation escapes it: `pow` at a fractional
@@ -1224,6 +1965,26 @@ so what it needs is one empty `satellite.container.list` and no `string` at all.
 **That is this milestone's type, not M8's** — an empty list is still a list, and a
 milestone that constructs one has built the type. **M8.B therefore runs after this
 one**, and it is why M8 was split at all; §8's opening carries the split.
+
+**Thirty-nine numbered paths, and three of them are not under `container`.**
+*(2026-08-28.)* `satellite.container` `1 4 (0)`, the map and its nine, the list and
+its twenty-five — **and `satellite.system.threshold()` `1 22 5` and `(n)` `1 22 6`,
+which move here from a namespace M19 otherwise owns.** They are spelled under
+`system` because that is where a knob belongs beside `max_depth`, but they set how
+loose a search may be over the ten-level ladder, and v1 says it in its own comment:
+*"it is not a system FACT: uname and getpwuid answer what the machine is, and this
+sets how the search behaves."* **The search power cannot ship without its dial.**
+
+**`satellite.container.arguments` `1 4 3` and `satellite.container.result` `1 4 4`
+are not this milestone's**, and saying so is what stops a reader taking "containers"
+as the namespace rather than the two types. `1 4 3` is the type name M19's arguments
+object answers to; `1 4 4` is §2.2's *"Satellite Orbit's answer"* and is M24's.
+
+**Its second dial is M7's and it must not invent one.** The search walk reads
+`satellite.library.system.max_depth` `1 14 2 2` — v1 has its own depth error text
+for it, separate from the recursion ceiling's — and M7 is where the dial is built.
+Two consumers of one dial is fine; two milestones each building it is not, and
+neither entry said which until this pass.
 
 **The sort primitive is part of this milestone and is not the search power.**
 `sort()` `1 4 2 3` through `sort_up(key)` `1 4 2 7` are §1.1's *one primitive rather
@@ -1369,6 +2130,428 @@ comparable to the non-null entries of `handlers[]` by construction, and
 `satellite.help(satellite.network)` **refuses in plain words** rather than printing
 seven shapes nobody has written.
 
+**M18 — persistence: files and directories.** *(New 2026-08-28, corrected from the
+2026-08-27 draft. After M8.5.)* **Twenty numbered paths**, in three of
+`SCRATCH.md/MILESTONE.md` §0.1's rows — the 5th, 8th and 10th of seventeen, not a
+contiguous block and not the largest one; `satellite.system` alone was thirty:
+
+- the module face — `satellite.file` `1 8 (0)`, `.new(path)` `1 8 1`, `.open`
+  `1 8 2`, `.clear` `1 8 3`, `.new(path, mode)` `1 8 4`, which is WORD_NUMBERS
+  §1.3's own worked example of the variadic split
+- the handle — `satellite.variable.file` `1 6 2 (0)`, `new` `1 6 2 1`, `open`
+  `1 6 2 2`, `read_line` `1 6 2 3`, `write_line(s)` `1 6 2 4`, `read_all`
+  `1 6 2 5`, `close` `1 6 2 6`, `exists` `1 6 2 7`
+- the directory — `satellite.directory` `1 18 (0)`, `.change` `1 18 1`, `.current`
+  `1 18 2`, `.exists` `1 18 3`, `.list()` `1 18 4`, `.list(d)` `1 18 5`
+- **`satellite.system.delete` `1 22 1`**, which is the twentieth and which the draft
+  argued at length belonged to somebody else — see below.
+
+**Of the nineteen in the first three groups, "Later" reached only
+`satellite.variable.file`'s eight, and Later is not a milestone.** The other eleven
+were reached by nothing: §0.0 corrected the reading that had Later covering
+`satellite.file` `1 8` — Later names `satellite.variable.file` and
+`satellite.variable.time`, **different nodes**, which is the same one-spelling-two-nodes
+hazard DESIGN §4.4 and WORD_NUMBERS §2.3 describe. **This milestone strikes
+`satellite.variable.file` from that list** and closes `SCRATCH.md/MILESTONE.md`
+§1's five-methods row.
+
+**It writes no new syntax, and a plan for it that contains a parse rule is wrong.**
+M4 owns DESIGN §6.1's eleven segment-1 words, `variable` among them, so
+`satellite.variable.file f = satellite.file.open(p, "read")` already parses as a
+declaration on `path[1] == "variable"`; §6.1's last row parses `satellite.file.*`
+and `satellite.directory.*` as modules, needing a `(`; and §6.2's postfix loop gives
+`f.read_line()` and `satellite.file.new(p).close()` for nothing. That is M4 owning
+the eleven words and not saying so, one milestone further on — so this one says so.
+
+**What it does not own.** M2 registers all twenty nodes and their numbers, **because
+all twenty are in §2.2** — which is M2's own rule, *"a transcription of
+WORD_NUMBERS.md and nothing else"*, and not because the v1 sweep found them; five of
+them (`1 6 2 3`–`1 6 2 7`) came from settling QUAD.md §3 on 2026-08-27, among the
+71 numbers that took §2.2 from 144 rows to 215. M5 owns the shape of every message
+here, **but not the mode-word suggestion** — see the open item. M7 owns `Value`'s
+reference-type handle alternative and §6.4 qualification 2's receiver-binding tag,
+**and M7's own entry now says both**, because a constraint that lives only in a
+later milestone's prose is the constraint that gets settled by accident. M10 owns
+the list that `1 18 4` and `1 18 5` return, sorted by M10's `sort()` `1 4 2 3` and
+not by a second sort here.
+
+**SATC.md §5's atomic write is a different mechanism**, not an early version of this
+one: tmp, `fsync`, rename is M4.5 doing the interpreter's own C++ file I/O, and a
+reader who has just landed M4.5 could reasonably think the ground was taken.
+
+**`satellite.system.delete` `1 22 1` moves here, and the demonstration is why.**
+v1 argues in twenty lines that `unlink` acts on a **name**, so one verb covers a
+file and an empty directory and belongs under neither — which is why the number is
+under `system` and why M19 does not have it. But v1's body accepts an **open
+`satellite.variable.file` handle** as well as a string, so the only milestone that
+can give it its second argument shape is this one; and without a removal verb
+**this milestone's own done-when runs exactly once.** `1 8 1` is `O_EXCL` — *new
+says make one that is not there* — so on a second run the first `new` is the call
+that comes back not-ok and the round trip fails, while `1 8 3` clear *"empties a
+file that goes on existing"*. A done-when that passes once and cannot restore its
+own tree is not a thing that works and can be demonstrated. **Taking `1 22 1` here
+is the smaller of the two fixes** and it removes a circular dependency the draft
+asserted from the outside.
+
+**`satellite.directory` has no create verb, and that is a real hole under a node
+this milestone otherwise finishes.** §2.2 gives it change / current / exists /
+list() / list(d) and nothing that makes a directory. The done-when below is written
+so that it needs none; **whether one is minted is the numbering's, and it is named
+here so it is not discovered inside a demonstration.**
+
+**The port is a rewrite, and what survives it is the arguments.** About 849 lines
+under `old_versions/first_satellite/src/`: `modules_file.cpp` (304),
+`methods_file.cpp` (324), `modules_directory.cpp` (221), plus `FileHandle` in
+`satellite_value/value_types.hpp` and the six file/directory `format.def` rows,
+which are the arity evidence WORD_NUMBERS §4 says has to be read out of the v1
+evaluator rather than guessed. Two of the three files are already over §3's target.
+Every arm is the `full == "satellite.file.open"` string compare §7 throws away;
+every failure is `fail()`-then-return-`nullptr`, which DESIGN §9.1 throws away. What
+ports is the comment culture §6 says to keep — the `O_RDWR|O_APPEND` paragraph, the
+rewind paragraph, the `O_EXCL` paragraph, the `.` and `..` paragraph, the
+sort-as-`SatString`s paragraph. The `std::atomic` fd comes across with it, because
+DESIGN §8's reference semantics are what make two handles race; **M12 is when that
+first gets exercised, not when it gets written.**
+
+**`helpers_listing.cpp` and the two `helpers_file_facts` files do not port** — 418
+lines of columnar `ls`-style rendering, with no number in §2.2 and nothing to do
+with `.list`, which returns plain sorted names. A reader sweeping v1 for "file"
+finds that half first. **It is not only the REPL's echo, though**: v1 also reaches it
+as a list method, `.lines()`, and v1's own comment says the rendering exists because
+*"the commonest list anyone types at this prompt is `satellite.directory.list()`."*
+`.lines()` has no number in §2.2, and **whether it gets one is M10's question or
+M11.B's, not this milestone's to settle by declining it.**
+
+**Open, and the first two stand between this milestone and its demonstration:**
+
+- **The failed-open contract has no numbers.** v1's whole answer to DESIGN §9 for
+  files is that a failed open is a **value** — the handle comes back holding `errno`
+  and the caller asks `.ok()`. `.ok()`, `.path()` and `.error()` have **no rows in
+  §2.2** and the v1 sweep missed all three, and v1's handle also has a `clear` of its
+  own. **This milestone owns them as behaviour and is blocked only on their
+  numbers**, which only the author assigns — so its real size is twenty paths plus
+  the three-or-four the failure contract requires, and the moment those numbers
+  exist they must not read as fresh uncovered rows under a node this plan calls
+  finished.
+- **The mode word is not a trie level, so it is not M5's "did you mean".** DESIGN
+  §4.6's mechanism is edit distance over one node's *children*;
+  `read` / `write` / `append` / `read_append` are string literals in argument
+  position and `satellite.file.open` is one number, `1 8 2`, for all four. Either
+  they fold — WORD_NUMBERS §1.5's own worked example of the literal-option fold is
+  `satellite.file.open("filename", "read_append")`, and the fold gave `sort_down()`
+  a row of its own at `1 4 2 5` — in which case the folded rows are the author's to
+  assign and **M6 owns the fold** (its entry now says so); or they do not, and the
+  bad-mode message is a runtime check this milestone owns, using M5's *reporter*
+  rather than M5's *suggester*.
+- **Eleven of the twenty rows carry no call shape**, and §1.3 makes the shape part
+  of the number. `1 8 2`, `1 8 3` and `1 18 1`–`1 18 3` are the module rows where a
+  sibling carries one and they do not; v1 records their arities as legibly as
+  `open`'s — `SAT_PATH(P_FILE_OPEN, 1, 25, 31, 0, 2)`, and 1, 0, 1 for
+  `change`, `current`, `exists`. **Only the author may write them into §2.2**, and a
+  milestone that raises the question for two rows and silently ports the other three
+  is how §1.3 gets decided by accident.
+- **Which spelling constructs a file.** DESIGN §13's settled `satellite.thread.new`
+  entry calls the two-part shape established *"exactly as `satellite.file.new` and
+  `satellite.time.new` already do"*, which reads as: `1 8 1` and `1 8 4` are what a
+  program writes, and `1 6 2 1` is the dispatch-table row §6.4 qualification 2
+  describes. Confirm that reading — `1 6 2 1`'s entire origin is §6.4's example
+  sentence `my_file.new()`, and v1 has no `new` handle method at all. `open` is
+  **not** a second collision: `1 8 2` opens a path, `1 6 2 2` reopens a handle that
+  was closed or whose open failed.
+- **`1 8 3` `clear` has no v1 module form to read.** v1's `satellite.file` module is
+  `new` and `open` and nothing else — its `clear` is a handle method (`ftruncate`
+  then `lseek`) and its delete is `satellite.system.delete`, by v1's own argument.
+  So decide whether `1 8 3` is `clear(path)`, the module face of the handle method,
+  or a row that should never have left the handle.
+- **`read_line` `1 6 2 3` wants the one thing v1 refused.** v1's `.read()` seeks to
+  0 on every call, and the recorded reason is that with no `.seek()` in the language,
+  *read from wherever the offset happens to be* is a question no satellite program
+  can pose. Does `read_line` advance a per-handle cursor, and what does `read_all`
+  `1 6 2 5` do to that cursor when both are called on one handle?
+- **`write_line(s)` `1 6 2 4` overrules an argument that is written down.** v1's
+  `.write(s)` deliberately appends no newline: otherwise a file with no trailing
+  newline, and a line assembled from several writes, both become unwritable, and
+  §5.4 gave the language a real `\n` so `f.write("x\n")` already says what it means.
+  Either `write_line` is a second verb beside a byte-exact write, or that argument
+  loses. Say which — DESIGN §5.5 refuses `<<` for good, and this is the only surface
+  a `.sky` writer can use.
+- **`exists` `1 6 2 7` sits on the type node**, so §6.4 desugars it to a call whose
+  first argument binds a receiver — and *does this file exist* is asked before a
+  handle exists. Either it asks about an open handle's own path, which is a narrow
+  question, or it wants to be a module path under `1 8` the way
+  `satellite.directory.exists` `1 18 3` is.
+- **`.list` is the one failure in its module that is an error and not a value**,
+  because the empty list already means an empty directory and spending it on *there
+  was no directory* makes the two indistinguishable. Defensible under DESIGN §9's
+  reporter — but re-affirm it rather than inherit it by porting.
+
+**Done when two programs run under `satl --run`.** The first is a round trip over
+all twenty paths printing one `PASS`, and it **leaves the tree as it found it**, so
+it can run twice: create with `1 8 1`, confirm a second `new` on the same path comes
+back as a value that is not ok rather than clobbering the file (DESIGN §1.1 — *never
+silently truncate*), write N lines, `close` and read the status, reopen with `1 8 2`
+and `read_line` until nothing with the lines identical and in order, `read_all` and
+assert it equals them joined, **open a path that does not exist, print the reason,
+and keep running** — DESIGN §9's ordinary case, and the one assertion that cannot be
+faked — ask for a mode word that is not one of the four and get a code, a span and a
+caret naming them, then `1 18 2`, `1 18 4` with the new file in it, `1 18 3` true
+then false, `1 18 1` into a directory that exists and a `1 18 1` onto a plain file
+that returns false without dying, `1 18 5`, `1 8 3` leaving the file at zero bytes,
+and `1 22 1` removing it — **both shapes, the path and the open handle** — with
+`1 18 3` false afterwards.
+
+The second is **QUAD's corpus reader** — `quad_main.cpp:184–197` — written in
+satellite by hand against DESIGN.md: `read_line` until nothing, skip empty lines, a
+line starting `"# "` opens a document (`starts_with(x)` `1 6 1 6`,
+`substring(start, end)` `1 6 1 5` — §2.2 has no one-argument shape, so the call is
+written with both), count lines and documents, print the two counts, and they must
+match the C++ QUAD's on the same file. It needs no float and no `pow`.
+
+**It is not the milestone QUAD.md §4 asks for, and this milestone does not claim to
+be.** §4 wants *"one mechanism out of `mind.hpp`, chosen because it exercises floats,
+containers, sorting and persistence at once"*; the corpus reader is in
+`quad_main.cpp`, touches no float and no sort, and QUAD.md §5, `MILESTONE.md` §4 and
+SESSION.md §5.7 all independently name the candidate as `Sky::decay` plus
+`Rack::draw`. **That is M20**, and claiming it here would strike the ledger's row
+and orphan the one thing three documents agree on.
+
+**Its slot, stated as a relation rather than a decimal.** After M10, because
+`.list()` returns M10's list and there is no faking it — a directory listing that is
+not a list is not the thing. The other seventeen need only M9's strings: a path is a
+string, a mode word is a string, a line is a string, and a `.sky` record is
+`split(separator)` `1 6 1 10` and `to_number` `1 6 1 13`. **It inherits M9.5's
+undecided rounding rule only through M10**, so if the float stalls, the thirteen
+paths under `1 8` and `1 6 2` can run at M9 — that is the seam, and splitting there
+orphans `satellite.directory` a second time, which is the precise failure
+`MILESTONE.md` exists to record.
+
+**M19 — the machine's facts, in the language.** *(New 2026-08-28, corrected from
+the 2026-08-27 draft. After M18.)* **Thirty-seven numbered paths** — the
+`satellite.system` namespace, the `arguments` object DESIGN §7.7 specifies, and the
+type name an error message needs. It is the second-largest single milestone in
+this list by paths, behind M10's thirty-nine once `threshold` moves there — **the
+two are within two of each other, and the comparison is over behaviour rather than
+over `words.def`, since M2 names all 222.**
+
+- **`satellite.system` `1 22 (0)` and twenty-six below it**: `.environment`
+  `1 22 2`, `.home` `1 22 3`, and all of `.memory` `1 22 4 (0)` — `.bit` `1 22 4 1`
+  and `.frequency` `1 22 4 2` off SMBIOS type 17, `.main()` `1 22 4 3`, `.swap`
+  `1 22 4 4 (0)` with `1 22 4 4 1`–`1 22 4 4 6`, `.this` `1 22 4 5 (0)` with
+  `1 22 4 5 1`–`1 22 4 5 5`, then **`.free()` `.total()` `.used()` at `1 22 4 6`–
+  `1 22 4 8`, `.main`'s unit shape at `1 22 4 9` — six slots from `.main()`
+  `1 22 4 3`, which is §1.2 doing exactly what it promises — and `.free(unit)`
+  `.total(unit)` `.used(unit)` at `1 22 4 10`–`1 22 4 12`.** *(That enumeration is a
+  correction: the draft glossed the whole seven-wide run as three verbs and their
+  unit forms, which is six things, and its total of 27 came out right only because
+  the range is seven wide. `1 22 4 9` is the number a reader building from the
+  sentence would never build.)*
+- **`satellite.library.main` `1 14 1 (0)` and `satellite.library.main.arguments`
+  `1 14 1 1 (0)` with its seven** — `.machine` `1 14 1 1 1 (0)`, `.machine.cores`
+  `1 14 1 1 1 1`, `.machine.cpu` `1 14 1 1 1 2`, `.machine.threads`
+  `1 14 1 1 1 3`, `.memory` `1 14 1 1 2 (0)`, `.memory.total` `1 14 1 1 2 1`,
+  `.username` `1 14 1 1 3`. **`memory` is a sibling of `machine`, not a child**, and
+  §8.1 discusses `satellite.library.main`'s numbering at M2 while nothing built it.
+- **`satellite.container.arguments` `1 4 3`**, the type name an error message uses
+  so it does not send the reader to the list's method table.
+
+**Three of `satellite.system`'s thirty are not this milestone's**, and all three are
+named here so the subtraction is visible. `satellite.system.threshold()` `1 22 5` and
+`(n)` `1 22 6` are **M10's**: they are spelled under `system` because that is where
+a knob belongs beside `max_depth`, but they set how loose a search may be over the
+ten-level ladder, and v1 says it in its own comment — *"it is not a system FACT:
+uname and getpwuid answer what the machine is, and this sets how the search
+behaves."* `satellite.system.delete` `1 22 1` is **M18's**, because its second
+argument shape is an open `satellite.variable.file` handle and M18 is the only
+milestone that can hand it one.
+
+**M14 built the readers; this milestone builds the language over them.** That is the
+seam the 2026-08-27 draft was half-arguing for and got the wrong way round:
+`memory_facts.cpp`, `host_facts.cpp` and `stack_facts.cpp` are consumed at M6.5, M7
+and M8.A, so a milestone here cannot introduce them. **What was never inside
+`system_facts/` at all is the language surface**, and it is most of the work:
+`modules_system.cpp` (321 lines) is the actual `satellite.system.*` dispatch, the
+unit table and every error message — over §3's target, so it splits by subject;
+`methods_containers.cpp:118–199`, `subscripts.cpp`, `helpers.cpp:174–190`,
+`value_arguments.hpp` and `value_printer.hpp:114–135` are the arguments object.
+**`system_facts/system.cpp` (263 lines) splits across two milestones**: its
+`arguments_for()` — the assembler nothing else has — comes here with
+`arguments_facts.cpp` (113), and its `library_path()` and the
+`-DSATELLITE_LIB_DIR` / `VERSION_DEFS` build coupling go to **M21**, which is where
+`satellite.include` of another file lands. **`helpers_limits.cpp` is not this
+milestone's at all**: its 121 lines are entirely `max_depth` and `division_digits`,
+which are M7's and M6.5's dials, and `min_free_mb` — the one dial that was ever in
+question — is eight lines inside M14's watchdog loop and needs no file.
+
+**`satellite.system.environment` `1 22 2` is the one path here that is not a port.**
+`SCRATCH.md/WORD_SURFACE.md` sources it to `v1docs` alone — not the registry, not
+the evaluator, not the programs, which every other `satellite.system` row carries —
+and v1's own comment says *"environment in general is
+`satellite.system.environment(name)`'s job"*, which is to say it never built it. It
+takes an argument and §2.2 has no `(name)` shape for it. So it is **new work with a
+decision of its own** — whether an environment answer is the whole block, one named
+variable, or a map — and it is in the open list rather than in the port.
+
+**It needs no float, and that is worth saying because everything around it is
+waiting on one.** Every unit is `b`/`kb`/`mb`/`gb`/`tb`, default `mb`, every divisor
+a power of 1024, and a decimal division by 2ⁿ terminates exactly. M9.5's undecided
+rounding rule does not reach this milestone.
+
+**M2 owns the name and this milestone owns the behaviour.** All thirty-seven are in
+`words.def` and come out of `satl --words` long before any of them answers anything,
+so a sweep that reads the dump as coverage reads `1 22 4 3` as done. Saying it in
+both places is what stops the next audit making that mistake — as is the fact that
+`satellite.library` `1 14 (0)` parses at M4 as one of DESIGN §6.1's eleven segment-1
+words, so `satellite.library.system.min_free_mb = 8192` **parses three milestones
+before it means anything**, and M14 is where it starts meaning something.
+
+**`Value` gains one alternative here and M7 has been told.** v1's `ArgsRef` is a
+variant arm appended after the fact, and appending it and `ResultRef` both left
+`sizeof(Value)` at 40 with the static_assert holding. DESIGN §8.2 budgets that 40
+bytes and §6.1 calls `sizeof` *"the one number that could make this port not fit"*,
+so **M7's entry now records that the variant is append-only and that these two are
+the known future appends**; this milestone appends one and re-runs M7's assert.
+v1's other consequence does not follow: its `help_for(const Value &)` switch on a
+raw variant index is **deleted rather than extended** at M8.5, because a value's
+type is a node and its methods are that node's children.
+
+**Open, and none of these is small:**
+
+- **The 33.** DESIGN §7.7 says each of v1's flat entries needs placing under a
+  parent or dropping. v1 took a third option and shipped it: the entry names get
+  **no registry ids at all**, the bare selector lowers to `.get(name)`, and
+  *"spending a permanent registry id on `kernel_release` would be the registry
+  recording a fact about somebody's machine."* §1.2's freeze is forever, so this is
+  33 permanent choices and the largest irreversible decision in the milestone.
+- **Three call shapes v1 accepts have no number.** The unit block is reached for
+  every swap and `this` form, so v1 answers `.swap.used(unit)` and `.this.used(unit)`
+  while §2.2 writes `1 22 4 4 3` and `1 22 4 5 3` without the parens their siblings
+  carry — the table recording a sweep's arity rather than the code, and v1's own
+  acceptance program writes `.this.used("kb")`. **`.environment(name)` is the
+  third.** Only WORD_NUMBERS can assign them.
+- **`satellite.container.arguments` `1 4 3` has no children and the object answers
+  ten selectors** — `.length()`, `.count()`, `.names()`, `.to_string()`, `.lines()`,
+  `.has(k)`, `.get(k)`, `.first()`, `.last()`, `.contains(x)`. That is M10's
+  thirty-four container methods again, one level down, in a namespace nobody has
+  looked at.
+- **DESIGN §7.7's live-code mapping is wrong and this milestone is where it is
+  fixed.** §7.7 reads *"`arguments.machine.threads`, `arguments.machine.cores` and
+  `arguments.memory.total` … the same numbers again as codes 97, 98 and 99"*, which
+  positionally makes 98 `cores`. v1's header and PLAN §6.1 both give **97 threads,
+  98 mem_total_mb, 99 mem_used_mb**, and there is no live code for cores at all — so
+  §7.7's *"three surfaces, one set of facts"* is **two** surfaces for
+  `arguments.machine.cores`. Either a code is assigned or the rule is restated, and
+  this milestone must not quietly pick a side of a contradiction whose whole point
+  is that these must not disagree.
+- **The seventh spelling, and `arguments[0]`.** A parameter named `argv` gets a
+  plain list with no properties, silently, and DESIGN §9 says that silence is wrong.
+  `arguments[0]` v1 already answered — `.length()` and numeric `[i]` cover the
+  command line and nothing else, so index 0 is the program name — and the author
+  only has to confirm that answer is kept.
+- **The arguments object is a startup cost.** v1 builds all 33 eagerly — `uname`,
+  `/etc/os-release`, `getpwuid`, `gethostname`, `getcwd`, two `readlink`s,
+  `sysconf` — a dozen syscalls and a file parse against satl's own measured 0.01 ms
+  share (§4.3). §7.7's redesign is the chance to make it lazy, and §9 says measure it
+  here.
+- **`.bit` `1 22 4 1` and `.frequency` `1 22 4 2` cannot be demonstrated as an
+  ordinary user.** Both come from SMBIOS type 17 through
+  `/sys/firmware/dmi/entries/*/raw`, and v1's comment on the failure path reads
+  *"root-only, which is the usual answer"*, so both answer 0. **0 is a truthful
+  answer and not an error**, and the done-when says so rather than letting two paths
+  ship answering 0 with nothing that fails.
+
+**The recognition of the six spellings is M6's and the spelling table is M2's**, and
+neither said so before this pass. WORD_NUMBERS §2.3's third alias row is
+`arg` `args` `argz` `argument` `arguments` `argumentz` — *one node, six spellings* —
+which is the same mechanism `words.def` already carries nine of; **resolve is where
+a parameter name matching one of them becomes the special variable**, and M6's entry
+now says it. This milestone's headline demonstration rests on that table, and the
+draft it comes from asserted the whole mechanism was M6's while M3's own sentence
+called `hexadecimal` *"the language's one alias"*. **M3's word was wrong and is
+corrected**: §2.3 has three rows.
+
+**`SAT_PATH`'s four-segment limit does not come across.** v1's
+`SAT_PATH(ident, s1, s2, s3, s4, arity)` could not hold
+`satellite.system.memory.swap.used` `1 22 4 4 3`, which is five. **WORD_NUMBERS §1.3
+is what refuses a segment limit** — §1.4's argument is about integer width, that one
+`uint32_t` carries the whole path — and §4 credits the arguments subtree, six
+numbers deep, as the clearest case for the refusal. That is a fix rather than a
+port.
+
+**Done when** one program prints `arguments.memory.total`,
+`satellite.system.memory.total("mb")` and `satellite_string`'s live code 98 and
+**asserts all three are the same number** — DESIGN §7.7's *"they must not be allowed
+to disagree"* turned into something that can fail — and the same for threads across
+`arguments.machine.threads` and code 97; when **`argz.machine.threads` answers 24 on
+this machine**, which is the one line that proves §2.3's one-node-six-spellings
+rather than five words that happen to be registered; when
+`satellite.console.display(arguments)` prints all of it (§7.7); when `.bit` and
+`.frequency` answer 0 as an ordinary user **and the program says that is the
+truthful answer**; and when `satellite.system.home` and the memory verbs match
+`example/full_test.satl:605–613`, which ports almost verbatim and is the regression
+floor — five assertions over `.home`, `.total`, `.free`, `.main` and
+`.this.used("kb")`, and that last line is also the proof that the missing `(unit)`
+numbers are a real problem and not a hypothetical one.
+
+**The watchdog is not in this done-when**, and that is the M14 seam holding: the
+ceiling, the file and the exit path are demonstrated at M14 against no language at
+all, and what is left here is `min_free_mb` being **readable and retunable from a
+running program** through `satellite.library.system` — which is §4.5.3's *"the file
+is where a machine's settings live before a program starts; the namespace is how a
+running program reads and changes them"*, and the first time any milestone can show
+both halves.
+
+**M20 — a piece of QUAD, running.** *(New 2026-08-28. After M19.)* **The milestone
+QUAD.md §4 has asked for since its first draft and this list did not have**, in §4's
+own words: *"one whose done-when condition is a piece of QUAD, running. Not the whole
+program — one mechanism out of `mind.hpp`, chosen because it exercises floats,
+containers, sorting and persistence at once."* QUAD.md §5, `SCRATCH.md/MILESTONE.md`
+§4 and SESSION.md §5.7 independently name the same candidate: **`Sky::decay` plus
+`Rack::draw`.**
+
+**It adds no numbered path, and it is not an acceptance test bolted onto the list.**
+Every milestone before it demonstrates a mechanism the language provides. This one
+demonstrates that a program somebody else wrote in another language can be written
+in this one, which is the only claim that cannot be made by building any single
+mechanism correctly — and QUAD.md §5 says why it has to be a separate milestone
+rather than a clause in M10: *"the gap between 'the language has floats' and 'this
+expression is writable' is where languages actually fail."*
+
+**The two halves are not the same size and the milestone says so.**
+
+- **`Sky::decay` uses no randomness at all.** `sky.hpp`'s decay is float arithmetic
+  over a live list, and `quad_core.hpp`'s persistence term is `0.15 + 0.85·alt²` with
+  no fractional `pow`. **It is M9.5 plus M10 and nothing else**, and it is
+  demonstrable the day both have landed.
+- **`Rack::draw` is a roulette wheel over `std::pow` weights and cannot be written
+  today.** M16 records the three reasons in full: `satellite.random` has **no float
+  draw** in any of its thirteen numbers, **no seed** — so QUAD's determinism
+  invariant is not expressible — and a cheapest tier that **throws draws away for
+  50–100 ms** against a 90 ms tick. `1 7 13` is free and M16 declines to assign it,
+  because minting a number is the numbering's.
+
+**So this milestone carries one blocker, and it is a number rather than a
+decision.** A fourth shape under `satellite.random` that **takes a seed and does not
+spin**, and a draw that can answer a fraction. Until it exists, `Rack::draw` is
+writable only by drawing an integer and dividing, which is a `satellite.variable.float`
+built out of two `satellite_number`s and is exactly the thing DESIGN §11's tiers
+refuse to pretend to do. **Done when the number is assigned and the shape is built,
+or when the refusal is written down beside the mechanism it blocks** — the same form
+M9.5 uses for the rounding rule.
+
+**Its floor is M9.5, M10, M16 and M18**, one for each thing QUAD.md §4 names: floats,
+containers and sorting, the dice, and persistence. **`Sky::save` / `Sky::load` is the
+fuller persistence half** and round-trips 164 doubles at six significant digits, which
+is DESIGN §13's *"the right half's length IS the precision"* under load; it belongs
+here rather than at M18, because M18's corpus reader deliberately touches no float.
+
+**Done when** `Sky::decay` and `Rack::draw`, written in satellite by hand against
+DESIGN.md, produce the same numbers as the C++ QUAD on the same input — and when the
+day of writing them has produced its own list of what the language still cannot say.
+**QUAD.md §5 predicts that list exists and this milestone is what finds it**: *"§3 is
+a floor on what is missing and not a ceiling."* A milestone whose output includes new
+holes is not a failed milestone; it is the only one in this section positioned to
+find them before a user does.
+
 **M11.A — the window.** *(Split from M11 on 2026-08-27, and built the same day —
 the window landed ahead of the prompt it will host.)* The GTK4 + VTE binary, and
 the `.desktop` entry joins the install here (§5.3), because the entry names a
@@ -1401,7 +2584,21 @@ Done when: `satl-term` opens, spawns the `satl` beside it, and renders what it
 prints — which today is `satl --repl` saying the prompt is not built yet.
 
 **M11.B — the prompt, and the window stops closing.** The REPL itself: the prompt,
-Ctrl-C, the exit words. DESIGN §10.2 is why Ctrl-C is two different things.
+**the prompt's Ctrl-C — the byte `0x03`, because raw mode turns ISIG off and the
+signal never arrives** — and the exit words. DESIGN §10.2 is why Ctrl-C is two
+different things, and **the other one is M9's**: the SIGINT that sets a flag and lets
+the walk stop itself at the next statement. *(The word was bare "Ctrl-C" until
+2026-08-28, which read as owning both halves of a mechanism this milestone owns half
+of.)*
+
+**Two things it inherits rather than writes.** *(2026-08-28.)* `terminal_columns()`'s
+ioctl with its 80-column fallback, and the clear — 14 lines that **M17 builds** for
+`satellite.console.width` `1 5 6` and `clear()` `1 5 8`, and that v1's line editor
+calls from two places. And **the emergency-exit hook**: M14 builds the watchdog's
+exit path and deliberately registers no hook, because until there is a prompt nothing
+has put the terminal into raw mode; **this milestone is the only registrar**, exactly
+as v1's is, and it is what makes a `_exit(2)` from the watchdog leave a usable
+terminal behind.
 
 **M11.A closes the window when the interpreter exits cleanly, and M11.B ends that.**
 Until there is a prompt, the child runs for milliseconds and a window that outlived
@@ -1426,27 +2623,372 @@ typed still on the screen after the interpreter is gone.
 **M12 — threads.** `satellite.variable.thread`. The arena makes the walk atomic-free;
 the Console already keeps output lines atomic.
 
+**Six numbered paths, and its own line named one of them.** *(2026-08-28.)*
+`satellite.thread` `1 23 (0)` and `.new` `1 23 1` — the module face, which is what a
+program actually writes — and `satellite.variable.thread` `1 6 13 (0)` with
+`start()` `1 6 13 1` and `join()` `1 6 13 2`, the two children assigned on
+2026-08-28 out of `example/thread_test.satl`, which writes `my_thread.start()` before
+`my_thread.join()`. **The ledger caught this one the day the numbers were minted**:
+"M12 names only `satellite.variable.thread`" was true of five of these six.
+
+**And `satellite.variable.capsule` `1 6 16` — the deferred call — is this
+milestone's.** `satellite.thread.new(f(x))` takes an unevaluated call expression as
+the thread body, which is the packaging semantics DESIGN §12 and §13 lean on to keep
+§2 shut, and **nothing earlier needs it**: M10's `sort_down(key)` is §1.1's one
+primitive rather than a comparator, which is exactly why sorting did not need
+first-class capsules. `SCRATCH.md/MILESTONE.md` §1 filed it as *"M12 at the latest,
+and probably earlier"* — it is M12, and if something earlier turns out to need it,
+the argument that sorting did not is the thing that has to fall first.
+
+**`parallel_for` is not here, and §4.5.1.2's decision assumes it.** The whole
+parallelism surface of the language is the six paths above; the pool starts at
+startup because *most satellite code will call `parallel_for`*, and that construct is
+in no numbering, no document and no milestone. **This is the milestone it would
+belong to**, and it is named here so the gap is visible from the one entry a reader
+would look in.
+
 **M13 — windows.** `libsatellite_window.so`, `dlopen`ed on first use. Marshalling to
 the UI thread is satellite's job, never the user's (DESIGN §10.3).
 
-**Later, in no fixed order.** `satellite.variable.file`, `.time`, `.date`;
-`satellite.random.*`; `satellite.variable.variant`; spacesuits;
-`satellite.include` of other files; Satellite Orbit and the wire format.
+**Three numbered paths, and "windows" in prose was reaching none of them.**
+*(2026-08-28.)* `satellite.window` `1 24 (0)` and `satellite.window.new` `1 24 1` —
+**a different node from `satellite.window.console` `1 24 2` and its
+`new(title, width, height)` `1 24 2 1`, which are M11.A's** and which M11.A names —
+plus the type `satellite.variable.window` `1 6 15`, which M11.A's own example
+declares:
 
-*(`satellite.variable.float` was here until 2026-08-27 and is now M9.)*
-**This list is not a milestone and things hide in it.**
-[SCRATCH.md/MILESTONE.md](SCRATCH.md/MILESTONE.md) is the audit, and on
-**2026-08-27** it was finally run per path rather than per namespace:
-**124 of WORD_NUMBERS.md's 222 numbered paths are reached by no milestone at all**,
-and another 35 only by a sentence about their parent. **56% of the language is not in
-this list.** *(The sweep was run against 218 rows; four were added on 2026-08-28 —
-`satellite.window.console` and its `new`, which M11.A names, and
-`satellite.variable.thread`'s `start` and `join`, which M12 does not.)* The three namespace sweeps before it reported 50, then 41, then 29 —
-none of them could see a path hiding under a parent §8 happens to name, which is where
-most of them were.
+    satellite.variable.window my_console =
+        satellite.window.console.new("window_title", 800, 600)
 
-`satellite.system` alone is 30 of the 122 and is named nowhere in this document except
-here. `satellite.random` is 16 more, in "Later" above, which is not a milestone.
+So M11.A wrote a program against a type no milestone built. **The declaration is
+this milestone's and the constructor on the right-hand side is M11.A's**, which is
+the split DESIGN §4.4 predicts whenever one spelling is two nodes, and it is why
+naming all three here is a fix rather than an addition.
+
+**M21 — another file: `satellite.include(spaceship)` and `satellite.analyze`.**
+*(New 2026-08-28. After M13.)* **Two numbered paths and one mechanism.**
+`satellite.include(spaceship)` `1 1 2` loads another `.satl` file and runs it;
+`satellite.analyze` `1 16` reads another `.satl` file and reports on it without
+running it. **They are the same act — the front end turned on a file that is not
+the one being run — and they were the last two paths in this list that nothing
+reached**, `1 1 2` sitting in "Later" as *"`satellite.include` of other files"* and
+`1 16` sitting in nothing at all, which M8.5 named and declined in as many words.
+
+**`satellite.include`'s other three shapes are already owned and this milestone
+takes only the fourth.** `satellite.include` `1 1`, `include()` `1 1 0` and
+`include(satellite)` `1 1 1` are M8.B's: DESIGN §3's hello world writes
+`satellite.include(satellite)`, and §4 explains it as *"the one include form that
+does nothing — include the runtime, which a running program already has. Every other
+form names a **spaceship** and loads it."* **This milestone is "every other form".**
+
+- **A spaceship is a unit of includable code** (DESIGN §13, decided), and
+  `include_decl` is already in §6's grammar as a top-level form taking an
+  expression, so **M4 parses it** and nothing new is parsed here.
+- **What is new is a second program in one run**, and everything hard is in that
+  sentence: whose numbering the loaded file's user names take (WORD_NUMBERS §3 — the
+  next number free under the node that owns them, *allocated when the name is first
+  met*, so two files met in one run allocate from one counter and a `PathId` is still
+  valid for one run only); whether a spaceship is loaded once or once per include;
+  and what a cycle does.
+- **`satl` already knows how to find one.** v1's `system_facts/system.cpp` carries
+  `library_path()` and the `-DSATELLITE_LIB_DIR` / `VERSION_DEFS` build coupling —
+  *"system.o is the one object the Makefile compiles with `-DSATELLITE_LIB_DIR`"* —
+  and **M19 hands that half of the file here** rather than porting it with the
+  machine facts it has nothing to do with.
+- **It is the pool's clearest tenant.** §4.5.1's own list of the tenants that collect
+  the ~170-line figure rather than the ~2,650 one names *"`satellite.include` of
+  another file"* first: the second file parsed in a run is the second batch, and the
+  pool is already warm.
+
+**`satellite.analyze` `1 16` is real in v1 and is the last of its modules with no
+milestone.** v1 advertises it as `satellite.analyze("file.satl")` — one argument,
+present in the registry, the evaluator and the programs — and M8.5 records the
+defect that makes it worth naming: v1's own help answers for six modules and returns
+the empty string for `analyze`, *"which is how both callers tell"* a name is not a
+module, so **asking v1 about `analyze` answers as though it does not exist.** A help
+that walks the trie (M8.5) cannot repeat that; a path that nothing builds still can.
+
+**Its call shape has no number, and that is the milestone's first blocker.** §2.2
+writes `satellite.analyze` `1 16` bare — one of only three parents in that table
+written without the `(0)` marker — and v1 takes exactly one argument. So
+`satellite.analyze(path)` needs a number and **only WORD_NUMBERS can assign it**;
+the same question `1 8 2` and `1 18 1`–`1 18 3` raise at M18, and the answer should
+be given to all of them at once.
+
+**Second blocker: what an analysis says.** M4 already gives `satl --unparse` and M5
+gives codes, spans, carets and *did you mean*; **what `analyze` adds over running
+`satl` on the file is a decision nobody has taken.** v1's answer is not recoverable
+as a specification — it is a module that existed and was never described. The honest
+options are that it is the front end's diagnostics as a value a program can read,
+which makes it the first piece of Satellite Orbit's shape (M24), or that it is
+`--unparse` with a report, which makes it small. **It must not be a third help
+system**; M8.5's whole argument is that a second document is the drift being removed.
+
+**Done when** a program includes a spaceship that declares a capsule, calls it, and
+prints its answer — with the spaceship's own `satellite.library` globals visible
+under §7's rules and its user names numbered from the same counter the host file
+used — and when `satellite.analyze` over a file with a deliberate error prints the
+same code, span and caret M5 would print for it **without running a line of it**,
+and over a clean file says so. **Two files, one run, one numbering** is the whole
+claim.
+
+**M22 — spacesuits.** *(New 2026-08-28. After M21.)* **Three numbered paths** —
+`satellite.spacesuit` `1 10 (0)`, `satellite.protected` `1 11 (0)` and
+`satellite.public` `1 12 (0)` — and the largest feature in this list by everything
+except path count. DESIGN §13 has it under **Decided**: *"Classes are
+`satellite.spacesuit`, with `satellite.protected` / `.public` blocks and a bare-name
+type. Reference semantics."*
+
+**Nothing here is speculative and that is unusual for a milestone this late.** §6's
+grammar already writes the rule — `spacesuit_decl`, `suit_block`, `suit_section`,
+and `type := IDENT` for a spacesuit named bare — **so M4 parses it**, as three of
+DESIGN §6.1's eleven segment-1 words; §7 already says resolve runs every capsule
+name first and then every spacesuit name, so **M6 resolves it**; and §7 already
+records that a spacesuit is a reference type with a fresh slot that *"is not an
+implementation detail."* What has never had a milestone is the part that runs.
+
+**It sat in "Later, in no fixed order" with a grammar rule already written**, which
+`SCRATCH.md/MILESTONE.md` §3 called out as its own row: *"a whole feature, with a
+grammar rule already written, in the unordered pile."*
+
+- **The type.** A bare `IDENT` in type position is a spacesuit (§6 grammar), which
+  is the **second** place in the language where a bare identifier means something
+  other than a user's own name — §7.7's six spellings of `arguments` is the first,
+  and M8.5's topic pages would be the third. All three should be settled the same
+  way: the language *recognises* a name rather than introducing one.
+- **The two sections.** `satellite.protected` and `satellite.public` are blocks
+  inside the suit, not modifiers on a member, which is why they are segment-1 words
+  with numbers of their own rather than syntax.
+- **Reference semantics, and DESIGN §12's refusals stay refused**: bare field access
+  is accessor methods only, *"a spacesuit field is reachable from inside the
+  spacesuit and nowhere else"*; user-defined operators and a spacesuit `to_string`
+  the printer consults remain deferred, and this milestone must not quietly grant
+  either by needing one for its own demonstration.
+- **`satellite.returns(TYPE)` reaches its interesting case here.** DESIGN §13
+  settles the return-type syntax and adds *"a constructor is the one member forbidden
+  to declare one, since what a constructor produces is the object"* — a rule with
+  nothing to apply to until spacesuits exist. M4 parses `returns` at `1 21`; this is
+  where the refusal is enforced.
+- **It is measured against a number v1 already has.** DESIGN §8.1 records the first
+  satellite's spacesuit benchmark — a million constructions, a million prints and a
+  million string transfers, at 2.79 s against the `double` version's 2.79 s — and
+  §9 of this plan says a figure is re-measured on this machine rather than quoted.
+
+**Blocker: two objects naming each other, and DESIGN §12 has already conceded the
+argument.** Its garbage-collection entry says the original reasoning *"no longer
+holds"* — refcounting sufficed because every value was immutable and cycles could
+not be constructed, and **a spacesuit instance is mutable**, so *"two objects can
+name each other and neither is ever freed. This is a real leak, it is the price of
+reference semantics, and it is not fixable by being careful."* §12 names both
+answers — a weak-reference field as the cheap partial one, a tracing collector over
+the object table as the complete one — and **names neither as chosen.** This is the
+milestone that creates the leak, so it is the milestone that has to say which, and
+the choice is the author's.
+
+**Done when** a program declares a spacesuit with a protected field and a public
+accessor, constructs two of them, passes one into a capsule that mutates it, and
+proves the caller sees the mutation — reference semantics, demonstrated rather than
+asserted — and when reaching a protected field from outside is refused by name with
+M5's caret rather than by silence.
+
+**M23 — the network.** *(New 2026-08-28. After M22.)* **Nine numbered paths** —
+`satellite.network` `1 20 (0)`, `.http(port)` `1 20 1`, `.https(host, port)`
+`1 20 2`, `.new` `1 20 3`, `.open` `1 20 4`, `.receive` `1 20 5`,
+`.http(host, port)` `1 20 6`, `.https(port, cert, key)` `1 20 7`, and the type
+`satellite.variable.network` `1 6 12`.
+
+**This is the one milestone in this list whose first job is a specification rather
+than a build, and it says so instead of pretending otherwise.**
+`SCRATCH.md/WORD_SURFACE.md` sources the whole namespace to `v1docs` and records the
+position in one clause: *"v1 surface; nothing in this tree's documents promises it
+yet."* There is **no v1 implementation** — five words in a first-satellite document,
+swept into the numbering because §1's generating rule numbers what it finds — no
+DESIGN section, and no sentence in this plan outside the ledger that counts it.
+**That is a different and worse position than unscheduled**, and it is why this
+milestone is late in build order and honest in shape: eight of its nine numbers
+describe a protocol stack in five words.
+
+**What the numbering already commits to, and it is more than it looks.** The two
+`http` shapes are a **server** (`port`) and a **client** (`host, port`), and the two
+`https` shapes are the same split with the server's `(port, cert, key)` — so §1.3's
+*the arity is the identity* has already decided that one word serves both ends of a
+connection and that the distinction is carried by argument count rather than by two
+names. **That is a language decision made by a sweep**, and it is the first thing to
+confirm or overturn, because §1.2 makes it permanent the moment anything is built
+against it.
+
+**M8.5 already refuses these paths and that is the shape of the guarantee.** Help
+prints a node when `handlers[path_id]` is non-null, so
+`satellite.help(satellite.network)` **refuses in plain words** rather than printing
+seven shapes nobody has written — one of M8.5's two self-verifying checks. Until
+this milestone lands, that refusal *is* the language's honest answer about the
+network, and DESIGN §1.1 is why that beats a stub.
+
+**Blockers, and none of them is this milestone's to take alone:**
+
+- **What a `satellite.variable.network` `1 6 12` value is.** DESIGN §8's types table
+  has no row for it. A socket is a reference type with the same two-handles-one-fd
+  problem M18's file has, and DESIGN §8's reference semantics plus M18's
+  `std::atomic` fd is the precedent to follow or to depart from deliberately.
+- **What `receive` `1 20 5` blocks on, and on whose thread.** DESIGN §10.1's rule is
+  that the program's own thread never blocks on the terminal; a socket is the same
+  argument with a different fd, and M17 has already built the machinery — a reader
+  thread and a queue — for the terminal case. **Whether that generalises is the
+  design question this namespace exists to ask**, and answering it in a network
+  milestone without saying so would be building a second reader.
+- **Whether `https` implies a dependency.** Certificates and a TLS stack are the
+  first thing in this language that cannot be written from libc, and §4's `ldd`
+  discipline — six shared objects for `satl`, measured, not quoted — has been a
+  stated property since M11.A. **A milestone that silently takes satl from six to
+  a dozen would be changing a promise nobody wrote down as a promise**, and M16's
+  vendored-PCG row in LAYOUT.md is the precedent for how a dependency arrives.
+- **Nothing about it is QUAD's.** QUAD.md's table credits it with none of this, so
+  unlike every other milestone in this list it has no acceptance program waiting for
+  it. Its done-when has to be invented rather than found.
+
+**Done when** a satellite program serves one HTTP request on a port and another
+satellite program on the same machine fetches it and prints the body — two
+processes, no C++ in the middle — **and when DESIGN has a section for the namespace
+that this milestone wrote before it built anything.** The order matters: this is the
+one milestone in the list where demonstrating first would *be* the specification,
+which inverts what every other section of this plan does.
+
+**M24 — Satellite Orbit and the wire format.** *(New 2026-08-28. Last in build
+order.)* **One numbered path, `satellite.container.result` `1 4 4`** — §2.2's own
+gloss for it is *"Satellite Orbit's answer"* — and one rule that three documents
+already impose on a thing that does not exist.
+
+**It is last because everything it distributes has to exist first**, and it is a
+milestone rather than a line in a pile for one reason: **§8.1's constraint has no
+enforcer until this exists.** *"Anything that persists a PathId must record the name
+instead."* A language word's `PathId` is frozen forever and quotable; **a user's
+capsule or spacesuit takes the next number free under its parent, allocated when the
+name is first met, and is valid inside one run only** (WORD_NUMBERS §3, DESIGN §4.3,
+§8.1's table). Orbit and the wire format are the two things that will want to write
+one down, and SATC.md §3 imposes the same rule on the `.satc` — where M4.5 already
+obeys it. **Nothing checks the rule for Orbit, and nothing can until Orbit is a
+milestone**, which is precisely what `SCRATCH.md/MILESTONE.md` §3's row said: *"fine
+where it is, but WORD_NUMBERS §3 and SATC.md §3 both impose a constraint on it, and
+nothing will check that until it exists."*
+
+**`1 4 4` is the whole of its numbered surface today, and that is a warning rather
+than a size.** A result type under `container` says that Orbit's answer is a value a
+program holds and asks about — the shape M21's `satellite.analyze` also gestures at
+— and nothing else about the feature is numbered at all. **Every other path this
+milestone needs would be new**, which under §1.2 means permanent, and under §1.1
+means numbered in the order they are first written down. **Doing that badly is the
+one mistake in this list that cannot be undone**, and it is the argument for this
+milestone being last rather than for it being small.
+
+**Blockers, and the first is not about the network:**
+
+- **What Orbit is.** It has no section in DESIGN, no paragraph in this plan, and one
+  gloss in the numbering. Every other milestone here could name the document that
+  specifies it; this one cannot.
+- **What a wire format persists.** The rule says never a user `PathId`; the name
+  instead. Then a receiver has to allocate its own number for that name **under the
+  same parent**, and §8.1's *"valid inside one run only"* becomes *valid inside one
+  process only* — which is the same sentence and a much harder one, because two
+  processes met the same name at different times.
+- **Its relationship to M23.** Orbit over a socket is the obvious reading and the
+  numbering does not say so; `satellite.container.result` is under `container`, not
+  under `network`.
+
+**Done when** two `satl` processes exchange a value and the receiver's answer is
+identical to a local computation of it — and when a user name that both processes
+know is proved to have **different numbers in each**, and to work anyway. That
+second clause is the whole milestone: it is §8.1's rule turned into a test, and it
+is the only test in this list that can fail for a reason no single process can see.
+
+**"Later, in no fixed order" is empty, and this is where it used to be.** It held
+eight entries — `satellite.variable.file`, `.time`, `.date`; `satellite.random.*`;
+`satellite.variable.variant`; spacesuits; `satellite.include` of other files;
+Satellite Orbit and the wire format — and every one of them now has a milestone that
+names it: M18, M16, M16, M16, M15, M22, M21 and M24 in that order.
+*(`satellite.variable.float` left it on 2026-08-27 and is M9.5, not M9, which this
+sentence said until 2026-08-28.)*
+
+**The list is not a milestone and things hid in it**, which is the only thing that
+was ever wrong with it. `SCRATCH.md/MILESTONE.md` is the audit that proved it: run
+per path rather than per namespace on **2026-08-27**, it found **122 of 218 numbered
+paths reached by no milestone at all** and another 40 reached only by a sentence
+about their parent. The three namespace sweeps before it reported 50, then 41, then
+29 — none of them could see a path hiding under a parent §8 happens to name, which is
+where most of them were. `satellite.random` was sixteen of them, sitting in this
+list, with working and tested v1 code behind nine of its rows.
+
+### 8.2 Every numbered path is named, and here is exactly what that claims
+
+*(2026-08-28, at the end of the pass that added M14–M24.)* WORD_NUMBERS.md §2.2
+holds **222 rows and 219 distinct numbers** — the three duplicates are §2.3's
+`.range` aliases and nothing else. **All 222 rows are named by exactly one milestone
+above**, counted mechanically against §2.2 rather than read off the prose:
+
+| | paths | | | paths |
+|---|---:|---|---|---:|
+| M3 | 2 | | M13 | 3 |
+| M4 | 3 | | M14 | 5 |
+| M6 | 1 | | M15 | 2 |
+| M6.5 | 11 | | M16 | 23 |
+| M8.A | 7 | | M17 | 8 |
+| M8.B | 4 | | M18 | 20 |
+| M8.5 | 3 | | M19 | 37 |
+| M9 | 26 | | M21 | 2 |
+| M9.5 | 5 | | M22 | 3 |
+| M10 | 39 | | M23 | 9 |
+| M11.A | 2 | | M24 | 1 |
+| M12 | 6 | | **total** | **222** |
+
+**M1, M2, M4.5, M5, M7, M11.B and M20 hold none, and that is right rather than a
+gap.** M2 registers all 222 and owns no behaviour; M5 and M7 build the machinery
+every other row dispatches through; M20's whole content is a program. **The table
+counts the milestone that makes a path answer, not the one that parses it** — M4
+parses DESIGN §6.1's eleven segment-1 words and appears here with three, and M9's
+`satellite.statement.*` rows say their parse rules land at M4.
+
+**Four things this table does not claim, said plainly so nobody reads it as
+finished:**
+
+- **Named is not built, and it is not even specified.** M23's nine paths are five
+  words in a first-satellite document, and its own entry says the first job is
+  writing the DESIGN section that does not exist. M24 has one numbered path and no
+  specification anywhere.
+- **Eleven numbers are reserved and unbuilt on purpose**, listed by the milestone
+  that owns them rather than left to a later audit: `1 7 1`, `1 7 2`, `1 7 3`,
+  `1 7 6`, `1 7 9`, `1 7 12`, `1 9 2`, `1 6 7`, `1 6 8` (M16); `1 6 9` (M15);
+  `1 22 2` (M19, the one `satellite.system` path with no v1 code behind it). A
+  milestone that quietly leaves numbers behind it is how this document came to have
+  a 121-path ledger.
+- **Some numbers do not exist yet and are owed.** The failure contract's `.ok()`,
+  `.path()` and `.error()` (M18); `.swap.used(unit)`, `.this.used(unit)` and
+  `.environment(name)` (M19); a call shape for `satellite.analyze` `1 16` (M21) and
+  for `1 8 2`, `1 8 3` and `1 18 1`–`1 18 3` (M18); a fourth `satellite.random`
+  shape that takes a seed, for which `1 7 13` is free (M16, declined; M20, needed).
+  **Only WORD_NUMBERS can assign them**, and when it does they arrive as new rows
+  under nodes this table calls finished — which is exactly the shape of the failure
+  that produced the 122 in the first place, and the reason they are enumerated here.
+- **Ten milestones state something only the author can clear**, six of them under a
+  heading that says *Blocker* and four inside an open list that stands in front of a
+  demonstration: M9.5 (the rounding rule), M14 (three, all §4.5's), M15 (whether
+  "nothing" is a state or a value), M16 (the clock, and what `1 7 1`–`1 7 3` name),
+  M18 (the mode-word fold, and the failed-open contract's missing numbers), M19
+  (DESIGN §7.7's live-code mapping, and the 33), M20 (a seeded draw with no number),
+  M22 (cycles), M23 (four, starting with what a `satellite.variable.network` is),
+  M24 (what Orbit is). **A milestone with a blocker in its done-when is scheduled; it
+  is not startable**, and the two are worth telling apart.
+
+**The cheapest ten came from a clause, not from a milestone.** Ten of the 121
+uncovered paths were closed by adding a sentence to a milestone that already owned
+the work and had never said so: **`satellite.bool`'s three to M9** — which had said
+outright that they were not its — **`satellite.thread` and its `new` plus
+`satellite.variable.thread`'s `start()` and `join()`, four, to M12**,
+**`satellite.variable.capsule` `1 6 16` to M12**, and **`satellite.window` `1 24 (0)`
+and `.new` `1 24 1` to M13**. Two more moved from *implied* to *named* in the same
+clauses — `satellite.variable.window` `1 6 15`, which M13 now names beside the `.so`,
+and `satellite.capsule` `1 2 (0)`, which M6 now names beside its frames. That is the
+M3/M4 and M10 fix for the fourth and fifth time. **The lesson has not changed since
+the first time it was written down here: the dangerous half is not the unscheduled
+namespace, it is the path sitting under a parent some milestone happens to name.**
 
 ---
 
