@@ -47,10 +47,18 @@ a file will be run, and refuses to pretend about the parts that do not exist. Th
 is no interpreter behind it yet.
 
 What exists: the `Makefile` as an index over eight fragments under `make_support/`,
-five C++ files — `src/system_facts/version.hpp`, `src/programs/opening.{hpp,cpp}`,
-`src/programs/main.cpp` and `src/programs/cpu_level.cpp` — and
-`satellite_enterprise/`, the Enterprise Linux installer and the artwork. The largest
-C++ file is 137 lines. [LAYOUT.md](LAYOUT.md) lists all of it.
+**ten C++ files totalling 1,153 lines**, and `satellite_enterprise/`, the Enterprise
+Linux installer and the artwork. [LAYOUT.md](LAYOUT.md) lists all of it.
+
+*(Recounted 2026-08-28. This paragraph said "five C++ files… the largest C++ file is
+137 lines", which was true of M1 alone and stopped being true the next day.)* M1's
+five are `src/system_facts/version.hpp` (76), `src/programs/opening.hpp` (45) and
+`.cpp` (68), `src/programs/main.cpp` (137) and `src/programs/cpu_level.cpp` (133).
+**Five more landed ahead of their milestones on 2026-08-27** —
+`src/programs/terminal.{hpp,cpp}` (35, 236) and `window.cpp` (209), which are
+`satl-term` and M11.A, and `src/satellite_random/random.{hpp,cpp}` (106, 108),
+which is `satellite.random` and has no milestone at all. **The largest C++ file is
+`terminal.cpp` at 236 lines**, inside the 300-line rule and the number to watch.
 
 Two things came out different from the **first satellite**, and both were right:
 `--help` exits 0 rather than 2 (a request correctly made is not an error), and that
@@ -58,7 +66,10 @@ satellite's claim of "119 shared objects" turned out to be **78 on this machine*
 is not repeated anywhere. Neither was a change against `PLAN_ONE.md`, which had
 already called both.
 
-**Next: milestone 2**, the namespace trie and the path interner (§8).
+**Next: milestone 2**, the namespace trie and the path interner (§8). Its
+`static_assert` was blocked from 2026-08-27 until 2026-08-28 on a "no duplicates"
+clause the language's three deliberate aliases falsify; §8's M2 now carries the
+four-property form that survives them, so the transcription can start.
 
 ### 1.1 The finding this whole plan hangs off
 
@@ -683,18 +694,35 @@ Each milestone is a thing that **works and can be demonstrated.** No milestone i
   parent's children are dense from 1 with no holes and no duplicates, every named
   parent exists, and no node is its own ancestor.
 
-  **As written that check fails, and it fails on the numbering it is checking.**
-  *(Found 2026-08-27.)* WORD_NUMBERS.md §2.2 holds **three duplicate numbers** and
-  they are deliberate: `satellite.random.fast.range(min, max)` is `1 7 5`,
-  `.normal.range` is `1 7 8` and `.ultra.range` is `1 7 11`, each an **alias** of
-  the call shape above it (§2.3). They are the *only* duplicates in the language —
-  every one of the 218-versus-215 disagreements across these documents is these
-  three rows and nothing else. So "no duplicates" is true of numbers-per-node only
-  after aliases are excluded, and the assert needs a fourth clause saying so.
-  QUAD.md §4 already states the check in the form that survives this: four
-  properties, including that **no alias points at a number that does not exist.**
-  This blocks M2 rather than something later, because M2 is where the assert is
-  written.
+  **As first written that check failed, and it failed on the numbering it was
+  checking.** *(Found 2026-08-27, resolved 2026-08-28.)* WORD_NUMBERS.md §2.2 holds
+  **three duplicate numbers** and they are deliberate: `satellite.random.fast.range(min,
+  max)` is `1 7 5`, `.normal.range` is `1 7 8` and `.ultra.range` is `1 7 11`, each an
+  **alias** of the call shape above it (§2.3). They are the *only* duplicates in the
+  language — every one of the 218-versus-215 disagreements across these documents is
+  these three rows and nothing else.
+
+  **So "no duplicates" is false as stated, and the check is these four properties
+  instead**, which is the form QUAD.md §4 states and the form that survives:
+
+  1. **No holes.** Every parent's children are dense from 1.
+  2. **No duplicates *among non-aliases*.** Two entries may share a number only when
+     one is declared an alias of the other.
+  3. **No orphans.** Every named parent exists, and no node is its own ancestor.
+  4. **No alias points at a number that does not exist.**
+
+  **The load-bearing part is property 2's escape clause, and it is a `words.def`
+  requirement before it is an assert requirement.** An alias has to be *declarable*
+  in the file, or the check cannot tell a deliberate duplicate from a typo — and a
+  check that cannot tell those apart is worth nothing, because the three real
+  aliases would train whoever hits it to loosen the assert. §2.3's model is what the
+  syntax must express: **an alias is one node with a second spelling, not a second
+  node.** That also settles the count — 218 rows, 215 numbers — and the same
+  mechanism carries §7.7's six spellings of `arguments`, which are the same shape at
+  a different scale.
+
+  **This no longer blocks M2.** Write the four properties, give `words.def` an alias
+  form, and the transcription can start.
 - **a digest over `words.def`**, so a `.satc` can name the numbering it was written
   against and a changed numbering stops every stale cache being read on the same
   instant. SATC.md §2 is why; M4.5 is where it gets used.
@@ -844,19 +872,122 @@ owns them. Recursion depth is bounded here.
 **M8 — hello world.** DESIGN §3 runs. Console with its printer thread,
 `satellite.main`, `satellite.return`. **Startup measured again against M1's number.**
 
-**`satellite.main` takes no arguments at this milestone, and that is what makes the
-milestone reachable.** *(Decided 2026-08-27.)* DESIGN §3 used to declare
-`satellite.container.list<satellite.variable.string> arguments`, which meant M8
-could not run its own acceptance program until **M10** had built the container and
-**M9** the string — a milestone depending on two that come after it. The bare form
-needs the include, the capsule, `display` with a string *literal*, and the return,
-and every one of those is here or earlier. WORD_NUMBERS.md §2.2 had it right the
-whole time: `satellite.main` is `1 3 (0)`, and `(0)` means zero arguments.
+**`satellite.main` declares `satellite.container.list<satellite.variable.string>
+arguments`, and M8 must say what it hands over.** *(Restored 2026-08-28, reversing
+the 2026-08-27 removal.)* For one day this milestone read "`satellite.main` takes no
+arguments at this milestone, and that is what makes the milestone reachable",
+resting on WORD_NUMBERS.md §2.2 writing `satellite.main` as `1 3 (0)` with `(0)`
+read as *zero arguments*. WORD_NUMBERS §1.3 defines that marker as **a node reached
+both bare and as a parent** — a fact about reaching `satellite.main`, not about
+declaring it — so the argument was reading the authority backwards. DESIGN §3 has
+the full reversal.
+
+**What that costs this milestone is one empty list, and nothing else.** Hello world
+never reads `arguments`, so no `satellite.variable.string` value is ever
+constructed — **M9 is not a dependency** — and none of M10's twenty-five list
+methods is reached. What remains is a single empty `satellite.container.list` bound
+to the slot. **If M8 may own that empty list, this milestone does not move. If it is
+M10's, M8 moves after M10, and the ordering is the decision to make here.** Say
+which, in this paragraph, before M8 is built.
+
+**Whichever way that goes, M8 hands `satellite.main` a slot named `arguments` two
+milestones before anything can make it real**, and §7.7 puts the recognition of the
+name at resolve, which is M6. A program written between M8 and the milestone that
+builds §7.7 will therefore ask for `arguments.username` and get an error that no
+document predicts unless this milestone writes the handover down. That is the M3/M4
+failure caught before it happens instead of after.
 
 **`example/hello_world.satl` is the done-when**, rather than a paragraph describing
-one. The parameterised `main` and the `arguments` object it carries belong to the
-milestone that builds §7.7, and **that milestone does not exist yet** —
-`SCRATCH.md/MILESTONE_DRAFTS.md` has the draft.
+one. DESIGN §3 is a byte-for-byte copy of that file so the two cannot drift. The
+`arguments` **object** — `arguments.username`, `arguments.machine.cores` and the
+rest of §7.7 — belongs to the milestone that builds §7.7, and **that milestone does
+not exist yet**; `SCRATCH.md/MILESTONE_DRAFTS.md` has the draft.
+
+**M8.5 — `satellite.help`, and the trie answering for itself.** *(Its own milestone
+as of 2026-08-28.)* Three paths — `satellite.help` `1 19`, `satellite.help()`
+`1 19 0`, `satellite.help(x)` `1 19 1` — **moved here out of
+`SCRATCH.md/MILESTONE.md` §0.1**, which had them under *"nothing"* and sized them as
+the cheapest row in the ledger: *"3 paths and DESIGN §4.6 makes it a walk of the
+trie — nearly free once M2 lands."*
+
+**Everything it needs is behind it.** M2 gives the trie and the interner, M5 the
+refusal text, M7 the `handlers[path_id]` table, M8 the console to print through.
+Nothing later is required, which is the argument for putting it here rather than at
+the end: **help that arrives last is help nobody had while the language was being
+built.**
+
+**Help is a walk, not a document, and v1 is the evidence for why.**
+`old_versions/first_satellite/src/evaluator/help.cpp` is 221 lines and
+`help_topics.cpp` another 315, all of it string literals, and it had already
+drifted from the language it describes. `help_for_module()` answers for six modules
+— `console`, `time`, `file`, `directory`, `system`, `random` — and returns the empty
+string for every other name, while its own comment states the contract that makes
+that a defect: *"An empty answer means the name is not a module, which is how both
+callers tell."* `satellite.analyze` is a module in v1, advertised two groups above
+in the same file's overview as `satellite.analyze("file.satl")`, and asking help
+about it answers as though it does not exist. **A help text that drifts is the
+thing DESIGN §4.6 exists to end**, and it ended up inside the file that was supposed
+to be the language's own account of itself.
+
+**§4.6 needs one correction before it is safe to build, and this milestone is where
+it lands: the trie is what is *numbered*, not what is *built*.** §4.6 says *"help
+cannot drift from what exists — the trie **is** what exists."* After M2 the trie
+holds every path in `words.def`, so a help that walks it at this milestone
+advertises `satellite.network.https(port, cert, key)` `1 20 7` and the other 121
+paths the ledger counts as unscheduled. That is **worse than v1**, which at least
+only listed what somebody had written, and it breaks DESIGN §1.1 outright — telling
+a user a path works when nothing implements it is doing something behind their
+back, and *a refusal in plain words beats a guess.*
+
+**The fix needs no new machinery: help prints a node when `handlers[path_id]` is
+non-null.** That table is already the dispatch mechanism (DESIGN §4.5, and this
+plan's §6 where M7 builds it), so **the same table that decides whether a call runs
+decides whether help mentions it.** Help cannot advertise what cannot run and
+cannot omit what can. §4.6's sentence then becomes true as written, one word
+narrower — the trie is what exists; the handler table is what *works*.
+
+**The value listing stops being a switch, and that closes an open handoff.** v1's
+`help_for(const Value &)` dispatches on `value.index()`, one of exactly two places
+in v1's tree that read a raw variant index, and the **M10.5 draft in
+`SCRATCH.md/MILESTONE_DRAFTS.md` leaves its new arm *"either taken here or left for
+whoever gets `satellite.help`."*** This milestone takes neither, because the switch
+should not exist: **a value's type is a node and its methods are that node's
+children.** `satellite.variable.string` is `1 6 1` and its sixteen methods are
+`1 6 1 1`–`1 6 1 16`, so *what does this value answer to* is the same walk started
+lower down. The function is deleted rather than extended, and M10.5 appending
+`ResultRef` to `Value` stops touching help at all.
+
+**The three shapes are one walk at three depths.** Bare `satellite.help` and
+`satellite.help()` start at the root; `satellite.help(x)` starts at `x`'s node. The
+parentheses being optional is why WORD_NUMBERS §2.2 carries a bare `1 19` row
+alongside `1 19 0` and `1 19 1` — one of only three parents in that table written
+without the `(0)` marker (`SCRATCH.md/THREADS.md` finding 211 has the other two).
+
+**Open, and it is the one thing here that is not already decided: a topic is not a
+path.** v1 accepted `satellite.help(random)` and `satellite.help("random")` for
+seven topic pages — `arguments`, `random`, `fast`, `normal`, `ultra`,
+`random.ultra`, `wide` — and none of those is a path with a number. Under §1's
+generating rule a bare word is user-owned, so **this is the second place in the
+language where a bare identifier means something language-owned**, the first being
+§7.7's six spellings of `arguments`. It is the same shape and it should be settled
+the same way: the language *recognises* a name rather than introducing one. Whether
+the seven survive at all, and where their text lives if they do, is undecided —
+**but it must not be a second document**, because a second document is the drift
+§4.6 is removing. Per-node text in `words.def` is the shape that keeps the walk the
+only source.
+
+**Not this milestone.** `satellite.analyze` `1 16`, which still has no milestone
+anywhere, and the topic *pages* as prose. Adding a node's one-line description to
+`words.def` is this milestone; writing seven essays is not.
+
+**Done when** `satl` runs a program whose whole body is `satellite.help` and the
+output names exactly the paths M1–M8 built and no others — so the same unedited
+program run again at M13 prints a different and equally correct language. Two
+checks make it self-verifying, which no earlier milestone is: the output is
+comparable to the non-null entries of `handlers[]` by construction, and
+`satellite.help(satellite.network)` **refuses in plain words** rather than printing
+seven shapes nobody has written.
+
 
 **M9 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
 `.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);

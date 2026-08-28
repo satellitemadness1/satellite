@@ -1,9 +1,8 @@
-
 // this is a comment
 
 satellite.include(satellite)
 
-satellite.capsule satellite.main()
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
 {
     satellite.console.display("Hello, World!")
 

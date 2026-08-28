@@ -107,6 +107,12 @@ what it hands over**, or a program written in between gets an error for
 `arguments.username` that no document predicts. This is the M3/M4 failure caught
 before it happens instead of after.
 
+*(2026-08-28: written before DESIGN §3 dropped the parameter, false for exactly one
+day, and true again — the removal was reversed. **PLAN M8 has now adopted this**, and
+adds the part the paragraph assumed away: the empty `list<string>` M8 hands over is a
+`satellite.container.list` value, and whether M8 may own one or must wait for M10 is
+the open ordering question.)*
+
 **Why here.** The `arguments` half has a hard floor at M10: the object *is* a
 `list<string>` to the type system, `.names()` returns one, and `args[i]` falls through
 to the list's own bounds and error text. The `satellite.system` half has no such

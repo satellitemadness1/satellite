@@ -77,12 +77,12 @@ That is **39 paths** in the wrong category, all in the direction of looking bett
 | `satellite.file` | **5** | 5 | nothing — a different node from `variable.file` |
 | `satellite.time` | **4** | 4 | nothing — same mistake, same shape |
 | `satellite.bool` | **3** | 3 | M9 says outright it is not M9 |
-| `satellite.help` | **3** | 3 | nothing. DESIGN §4.6 makes it a trie walk, nearly free |
+| ~~`satellite.help`~~ | ~~3~~ | 3 | **MOVED 2026-08-28 — it is PLAN M8.5.** The sizing below held: DESIGN §4.6's trie walk, with `handlers[path_id]` deciding what the walk is allowed to print |
 | `satellite.thread` | **2** | 2 | M12 names only `satellite.variable.thread` |
 | `satellite.window` | **2** | 2 | M13 says "windows" in prose |
 | `satellite.analyze` | **1** | 1 | nothing |
 | `satellite.include(spaceship)` | **1** | 5 | loading another file is Later |
-| **total** | **122** | **218** | |
+| **total** | **119** | **218** | 122 at the sweep, less the 3 moved to M8.5 |
 
 *(Four paths added 2026-08-28, after this sweep ran: `satellite.window.console`
 `1 24 2` and its `new` `1 24 2 1`, which **M11.A names**, and
@@ -90,6 +90,18 @@ That is **39 paths** in the wrong category, all in the direction of looking bett
 **M12 does not** — it names only `satellite.variable.thread`. So the current
 figure is **124 of 222**, and the two new uncovered ones are the same M12 gap
 `example/thread_test.satl` already demonstrates.)*
+
+*(**First row moved out, 2026-08-28.** `satellite.help` `1 19`, `1 19 0` and
+`1 19 1` are **PLAN M8.5**, written into §8 rather than into
+[MILESTONE_DRAFTS.md](MILESTONE_DRAFTS.md) — this file's opening rule is that a row
+which gets a milestone is *moved* into §8, and the four drafts that stopped short of
+it are why the rule is worth obeying. **The running figure is 121 of 222.** M8.5
+also settles something this ledger implies and never says: help walking the trie
+would advertise all 121 of these to a user as though they worked, so the milestone
+makes the walk read `handlers[path_id]` and print only what is built. **That makes
+`satellite.help` a live version of this file** — which is the condition under which
+the opening line, *"delete this file when every row has a milestone"*, can actually
+be checked rather than believed.)*
 
 `satellite.system` alone is a quarter of it, and `system` + `random` is **46** — more
 than the last audit's whole figure.
@@ -233,7 +245,11 @@ used to call for has now been done** — all 218 rows, §0 is its result. What i
   half, not the safe one.
 - **The 122 were not sized.** `satellite.help` is 3 paths and DESIGN §4.6 makes it a
   walk of the trie — nearly free once M2 lands. `satellite.network` is 8 paths and a
-  protocol stack. They count the same in §0.1's table and are not the same work. **The
+  protocol stack. *(2026-08-28: help was written as M8.5 and the sizing held — its
+  dependencies are M2, M5, M7 and M8, all behind it. Network is still 8 paths and a
+  protocol stack, and `SCRATCH.md/WORD_SURFACE.md` notes that **nothing in this
+  tree's documents promises it yet**, which is a different and worse position than
+  unscheduled.)* They count the same in §0.1's table and are not the same work. **The
   count is a coverage figure, not an estimate.**
 - **The three aliases were counted as their own rows**, because §2.2 lists them:
   `random.fast.range`, `.normal.range`, `.ultra.range` share numbers with the call

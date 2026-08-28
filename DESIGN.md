@@ -136,47 +136,77 @@ name and a variable name are both bare identifiers. Here they never are.
 ## 3. Hello world
 
 ```satellite
+// this is a comment
+
 satellite.include(satellite)
 
-satellite.capsule satellite.main()
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
 {
     satellite.console.display("Hello, World!")
+
+    // this is a comment inside of main
 
     satellite.return(satellite)
 }
 ```
 
-**`satellite.main` takes no arguments here, and that is the whole point of the
-program.** *(Decided 2026-08-27; `example/hello_world.satl` is this file's copy of
-it.)* This section used to declare the parameter —
-`satellite.main(satellite.container.list<satellite.variable.string> arguments)` —
-and that made hello world **unreachable at the milestone that owns it.** Handing
-`main` that parameter means constructing a `list` of `string` and passing it, so
-PLAN M8 could not run this program until M10 had built the container and M9 the
-string. A first program is the one thing in a language that must depend on almost
-nothing.
+**That is `example/hello_world.satl`, byte for byte, comments included.** PLAN M8
+names the file rather than a paragraph as its done-when, so the two must not be
+able to drift; the way to guarantee that is for this section to be a copy rather
+than a description. The `//` comments are part of the program and are specified in
+§5.6.
 
-The numbering already said so and nobody read it that way: WORD_NUMBERS.md §2.2
-writes `satellite.main` as **`1 3 (0)`**, and §1.3's `(0)` means *zero arguments,
-nothing there*. The bare form is the numbered one. **The parameterised form is the
-shape without a number**, and §7.7 — which is where `arguments` is specified — is
-the section that has to carry it.
+**The parameter is back.** *(Restored 2026-08-28, reversing the 2026-08-27
+removal.)* This section spent a day showing `satellite.main()` with no parameter,
+on the argument that declaring
+`satellite.container.list<satellite.variable.string> arguments` made hello world
+**unreachable at the milestone that owns it** — M8 could not construct a `list` of
+`string` before M10 built the container and M9 the string. The removal was made in
+good faith and it was wrong on the point it rested on.
 
-Both shapes are legal and §6's grammar already allows both: `capsule_decl` reads
-`"(" [ param_list ] ")"`, and the brackets are not new. A program that wants what
-the machine knows declares the parameter and gets §7.7's special variable; a
-program that does not, does not pay for it.
+**Its load-bearing citation misread the numbering.** The removal argued that
+WORD_NUMBERS.md §2.2 writes `satellite.main` as **`1 3 (0)`** and that §1.3's `(0)`
+means *zero arguments, nothing there*. WORD_NUMBERS §1.3 settled what the marker
+means the day after, and it means something else: `(0)` is **a reading aid marking
+a node that is reached both bare and as a parent**, and a row written `1 3 (0)`
+says the node is `1 3` and its zero-argument call shape is `1 3 0`. That is a fact
+about how `satellite.main` can be *reached*. It says nothing about how the capsule
+is *declared*, and it never did. WORD_NUMBERS is the authority (its own opening
+rule), so the reading that contradicted it was the bug.
 
-**WORD_NUMBERS.md §1.1 still shows the parameterised program and must keep it.**
+**Hello world was also the only one of the four acceptance programs without the
+parameter.** `advanced.satl`, `thread_test.satl` and `super_advanced.satl` all
+declare it, and SATC.md §1.1's specimen listing compiles this program's signature
+as `1.2 1.3(1.4.2<1.6.1> arguments)` — the parameterised form, which that section
+never stopped showing. One program out of four disagreed with the other three and
+with the cache format's own worked example.
+
+**And WORD_NUMBERS.md §1.1 is the current program again, not a historical walk.**
 That section is the worked example of §4.3's order-of-first-appearance rule, and
 the parameter is what fixes two of the first six numbers: `container` `1 4` and
 `variable` `1 6` are met **only** inside
-`satellite.container.list<satellite.variable.string>`. Walk the program above
-instead and `console` lands on `1 4` rather than `1 5`, with `container` and
-`variable` never met at all. Nothing renumbers — §4.3 froze the order and the
-freeze is the point — but the example there is now **the historical walk that
-produced the numbers rather than the current hello world**, and editing it to match
-this section would silently renumber the language.
+`satellite.container.list<satellite.variable.string>`. With the bare form, `console`
+walked onto `1 4` and neither `container` nor `variable` was met at all, so the
+document that *is* the authority on the numbering had to be annotated as no longer
+matching the program that produced it. Nothing renumbers either way — §4.3 froze
+the order and the freeze is the point — but a frozen numbering whose worked example
+still runs is worth more than one whose example has to be explained away.
+
+**What it costs M8, stated plainly rather than assumed away.** The program never
+reads `arguments`, so what M8 owes is an empty list bound to the slot and nothing
+else: no `satellite.variable.string` value is ever constructed, so M9 is not a
+dependency, and none of M10's twenty-five list methods is reached. What is left is
+one empty `satellite.container.list` value, and **whether M8 may own that or must
+wait for M10 is the one real cost of this restoration.** PLAN §8's M8 carries the
+answer, because the milestone is the place that has to say what it hands over —
+otherwise a program written between M8 and the milestone that builds §7.7 gets an
+error for `arguments.username` that no document predicts.
+
+Both shapes remain legal and §6's grammar already allows both: `capsule_decl` reads
+`"(" [ param_list ] ")"`, and the brackets are not new. A program that wants what
+the machine knows declares the parameter and gets §7.7's special variable; a
+program that does not, does not pay for it. Hello world declares it because the
+first program in a language should show the shape every other program will use.
 
 - **capsule** = function.
 - **`satellite` as a value** is the singleton runtime object, not a zero sentinel.
@@ -188,9 +218,10 @@ this section would silently renumber the language.
   already has. Every other form names a **spaceship** and loads it.
 - **`satellite.return()`** is not required. Only `satellite.main` *must* have
   `satellite.return(satellite)`.
+- **`arguments`** is one of §7.7's six accepted spellings, and §7.7 is where the
+  special variable it becomes is specified.
 
-This program is the target of milestone 8 (PLAN.md §8), and after the change above
-it is a target M8 can actually hit.
+This program is the target of milestone 8 (PLAN.md §8).
 
 ---
 
@@ -260,14 +291,28 @@ own means nothing; a number means something *at a position, under a parent*.
 Which word gets which number is decided by one rule, and it is not a ranking:
 **walk a real program from the top and change the number only when you must.**
 Hello world (§3) fixes the first six — `include`, `capsule`, `main`, `container`,
-`console`, `variable` — in the order a reader meets them, and everything after is
-appended as it is first needed.
+`console`, `variable` — and everything after is appended as it is first needed.
 
 Nothing about `include` being 1 claims it matters more than `variable`. The
 alternative was to group namespaces by what they do and number the groups, and it
 was rejected for being an argument about taste that no two people settle the same
 way. Reading order is a fact about the program; importance is an opinion about the
 language.
+
+**The last two of those six do not fall out of a strict walk, and WORD_NUMBERS.md
+§1.1 now carries the correction in full.** *(Found and fixed 2026-08-28.)*
+`satellite.variable.string` sits inside the parameter's type, so a reader meets
+`variable` on §3's third line, before the fifth reaches `console` — read strictly,
+that program gives `variable` 5 and `console` 6, and the table has them the other way
+round. **The numbers do not move**; §4.3 froze them and the freeze is the whole point.
+WORD_NUMBERS §2.1 says what actually happened — **1 to 15 were written by hand**, and
+16 to 24 were assigned by this rule applied strictly — and §3's own last line proves
+it, since `satellite.return` is met there and is **15**, not 7.
+
+So the walk is why the order is this one and not another, and it is the rule that
+decides every number from 16 on. **It is not a procedure that regenerates 1 through
+15**, and saying so is cheaper than letting a reader find the gap and conclude the
+numbering is arbitrary. It is frozen, which is a different thing.
 
 ### 4.2 The lists are per-parent, not per-level
 
@@ -365,7 +410,13 @@ this language does not want.
   distance over that one node's children. The first satellite's answer was
   `no such module function: satellite.consle.display`.
 - **`satellite.help` becomes a walk of the trie**, so help cannot drift from what
-  exists — the trie *is* what exists.
+  exists. **The trie is what is *numbered*, though, and that is not the same as what
+  is built** *(corrected 2026-08-28)* — after M2 it holds every path in `words.def`,
+  including the ones no milestone has reached, so a walk of it alone would advertise
+  unwritten paths as working and break §1.1's *never behind their back*. The walk
+  therefore prints a node only when `handlers[path_id]` (§4.5) is non-null: **the
+  trie is what exists, the handler table is what works**, and help reads both. PLAN
+  M8.5 is where this is built and carries the argument in full.
 - **The reservation rule becomes one interner lookup.**
 
 ---
@@ -430,6 +481,14 @@ type is only ever followed by IDENT, `)`, `,` or `>`.
 
 ### 5.6 The rest
 
+- **`//` runs to the end of the line and never reaches the parser.** *(Specified
+  2026-08-28; every program in `example/` used it and no section defined it.)* It is
+  discarded in the lexer, not stored as a token, so it costs the grammar in §6
+  nothing. There is no block comment — `/*` is two ordinary punctuation tokens, and
+  a form that can be left unclosed is a form that can swallow a file. §3's hello
+  world is the worked example, and SATC.md §1.1 uses the same two characters for the
+  comment column of a `.satc`, which is read by people and **never trusted** on
+  load.
 - **Never fold a sign into a Number.** `-1` is always `Punct(-) Number(1)`. Folding
   would turn `a-1` into `Word(a) Number(-1)` and break subtraction. Unary minus is
   an expression rule.

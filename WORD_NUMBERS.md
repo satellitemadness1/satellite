@@ -48,9 +48,25 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 }
 ```
 
-`include` is met first, so it is 1. `capsule` is next, so it is 2. Then `main`,
-then `container`, then `console`, then `variable`. Nothing about that order claims
-`include` is more important than `variable` — only that a reader meets it sooner.
+`include` is met first, so it is 1. `capsule` is next, so it is 2. Then `main`, then
+`container`. Nothing about that order claims `include` is more important than
+`variable` — only that a reader meets it sooner.
+
+**The last two of the six do not fall out of a strict walk of this program, and
+saying so costs no number.** *(Corrected 2026-08-28.)* `console` is 5 and `variable`
+is 6, but `satellite.variable.string` sits inside the parameter's type on line 3,
+where a reader meets it **before** line 5 reaches `satellite.console.display`. Read
+strictly, this program gives `variable` 5 and `console` 6.
+
+**§2.1 already says what actually happened — *1 to 15 were written by hand*** — and
+this same program carries the plainest proof of it: `satellite.return` is on its last
+line and is **15**, not 7. The walk was never run to the end of it.
+
+So the walk is **why the order is this one and not another**, and it is the rule that
+decides every number from 16 on, where §2.1 applies it strictly and says so. It is
+not a procedure that regenerates 1 through 15. Where the two disagree, §1.2 settles
+which gives way: **the numbers are frozen, so a sentence about them is the only thing
+here that can be wrong.**
 
 The alternative was to group the namespaces by what they do and number the groups,
 and it was rejected: it makes the numbering an argument about taste, and there is no

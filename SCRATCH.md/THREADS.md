@@ -178,21 +178,29 @@ walk atomic-free; the Console already keeps output lines atomic."* Four things f
   carry one.
 - **The obvious Done when is `example/thread_test.satl`, and it cannot be, as
   written.** Its signature declares `satellite.container.list<satellite.variable.string>
-  arguments` — the exact parameter DESIGN §3 removed from hello world on 2026-08-27
-  because it made the program "unreachable at the milestone that owns it" — so it
-  pulls in M9, M10, and the whole `arguments` subtree, which MILESTONE.md calls the
-  largest single find of its audit and which no milestone builds. **The program never
-  reads `arguments`**, so the parameter costs three dependencies and buys nothing.
+  arguments`, which pulls in the whole `arguments` subtree — MILESTONE.md calls that
+  the largest single find of its audit, and no milestone builds it. *(Updated
+  2026-08-28.)* This bullet used to add that the same parameter had been "removed from
+  hello world on 2026-08-27 because it made the program unreachable at the milestone
+  that owns it." **That removal was itself reversed on 2026-08-28** — it misread
+  WORD_NUMBERS §1.3's `(0)` — so hello world declares the parameter again and the
+  precedent this bullet leaned on is gone. The narrower point survives and still holds
+  here: **`thread_test.satl` never reads `arguments`**, so the parameter is cost with
+  no purchase. The difference from hello world is what the two programs need to make
+  the parameter real — hello world can be handed an empty list, and this one cannot,
+  because M12's own acceptance depends on a subtree nobody builds.
 - **`satellite.variable.capsule` `1 6 16` should not be inside M12.** No milestone
   owns it (MILESTONE.md: "M12 at the latest, and probably earlier"), and QUAD needs
   it — `rack.hpp:22`'s stored `std::function`, eleven post sites — while **QUAD spawns
   zero threads** (QUAD.md §2, verified against the source). Left where it is, the
   acceptance program waits on a milestone it has no use for.
 
-One operational note, since it bears on the done-when: `example/` is untracked —
-`git status --porcelain example/` returns `?? example/`, and it is not ignored. The
-specification program for all of the above, and `hello_world.satl` which PLAN M8
-names as its done-when, would both be removed by a `git clean -fd`.
+One operational note, since it bears on the done-when: ~~`example/` is untracked —
+`git status --porcelain example/` returns `?? example/`~~ — **no longer true as of
+commit `6209c83`.** The four programs are tracked, so the specification program for
+all of the above, and `hello_world.satl` which PLAN M8 names as its done-when, now
+survive a `git clean -fd`. **The done-when problem this note framed is unchanged**:
+`thread_test.satl` being in the repository does not make M12 able to run it.
 
 
 ---

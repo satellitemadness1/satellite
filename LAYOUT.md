@@ -77,7 +77,7 @@ PLAN §8 and DESIGN §3 cite them by path rather than describing them in prose.
 
 | file | what it is the done-when for |
 | --- | --- |
-| [example/hello_world.satl](example/hello_world.satl) | **M8.** DESIGN §3, and the reason `satellite.main` takes no arguments — with the parameter, M8 would need M9's string and M10's container. Uses `//` comments, which DESIGN §5 does not specify. |
+| [example/hello_world.satl](example/hello_world.satl) | **M8**, and DESIGN §3 is a byte-for-byte copy of it. Declares `satellite.container.list<satellite.variable.string> arguments` again as of 2026-08-28; the program never reads it, so what M8 owes is one empty list and the ordering question PLAN M8 now carries. Its `//` comments are specified in DESIGN §5.6. |
 | [example/advanced.satl](example/advanced.satl) | The console milestone that **does not exist** — `input(prompt)` `1 5 3` and `input(prompt, target)` `1 5 4`. Also uses `+` on strings, specified nowhere. |
 | [example/thread_test.satl](example/thread_test.satl) | **M12**, and it cannot be M12's done-when yet: `.start()` and `.join()` are unnumbered, and `satellite.thread.new(f(x))` needs the deferred call `1 6 16` that no milestone owns. SCRATCH.md/THREADS.md. |
 | [example/super_advanced.satl](example/super_advanced.satl) | **M9.5**, and it is the float's *exact* half — `+` is DESIGN §8.6's class 1, which never rounds, so it runs before the rounding rule is chosen. |

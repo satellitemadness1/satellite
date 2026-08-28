@@ -1,4 +1,4 @@
-# Session state — 2026-08-27
+# Session state — 2026-08-28
 
 **This file is scratch and is meant to be deleted.** It exists so that a `/clear`
 costs nothing. Everything in here is either (a) waiting to be moved into a
@@ -16,7 +16,9 @@ authority over every number in the language.
 
 **M1 landed 2026-08-26. M11.A landed 2026-08-27** — out of order, because the
 author asked for the window and it needed nothing that has not been built.
-**M2 is in progress** and has not committed any code.
+**M2 is in progress** and has not committed any code. **It is no longer blocked**
+*(2026-08-28)*: PLAN §8's M2 now carries the four-property `static_assert` instead
+of the "no duplicates" clause the aliases falsified. See §5.14.
 
 M2 as PLAN §8 defines it is: `src/satellite_words/words.def`, the trie, the
 spelling interner, `PathId`, a digest over `words.def`, `satl --words` as its
@@ -24,11 +26,12 @@ consumer, and a test proving paths walk to their numbers. **No C++ is written ye
 The blocker was never code — it was that the numbering had to be settled first, and
 settling it took the whole session and changed the plan in six places (§3).
 
-**What IS done: the numbering itself.** WORD_NUMBERS.md §2.2 holds **215 numbered
-entries** — 144 after the first pass, plus the 71 that settling QUAD.md §3 added
-later the same day (§5.6). Nothing found by the sweep is unnumbered. It validates
-the way M2's `static_assert`s will — checked mechanically on 2026-08-27, and again
-after the 71 landed:
+**What IS done: the numbering itself.** WORD_NUMBERS.md §2.2 now holds **222 rows
+carrying 219 distinct numbers** — 144 after the first pass, then the 71 that settling
+QUAD.md §3 added the same day (§5.6), then four assigned 2026-08-28 (§2.4). Nothing
+found by the sweep is unnumbered. **Re-verified mechanically on 2026-08-28**, and the
+three-versus-219 gap is exactly the three declared `.range` aliases — `1 7 5`,
+`1 7 8`, `1 7 11` — and nothing else, which is what makes M2's check writable:
 
     duplicate numbers that are not declared aliases      0
     parents with holes in their child list               0
@@ -39,7 +42,10 @@ So `words.def` is now a transcription job against a table that is known to be
 internally consistent, rather than a design job.
 
 **The build is clean.** `make` produces `satl`, `satl.haswell` and `satl-cpu-level`
-and `satl --version` runs. Nothing in this session touched `src/`.
+and `satl --version` runs. `src/` is **ten C++ files, 1,153 lines** — M1's five, plus
+`satl-term` (M11.A) and `satellite_random/`, both of which landed ahead of their
+milestones on 2026-08-27. The largest is `src/programs/terminal.cpp` at 236, inside
+the 300-line rule. **No session since M1 has written interpreter code.**
 
 ---
 
@@ -184,7 +190,14 @@ present in that table is a word the parser cannot reach.
   numbered. It is a hypothetical, there to show a parse collision. Likewise
   `satellite.consle.display` in §4.6 is a deliberate misspelling.
 
-### 3.5 DESIGN §4.1 is now stale
+### 3.5 ~~DESIGN §4.1 is now stale~~ — FIXED, verified 2026-08-28
+
+**§4.1 now reads `1 5`, `1 6`, `1 7` and matches WORD_NUMBERS.md**, and §4's opening
+carries the authority line this entry asked for. Kept as a record of what was wrong.
+*(A different §4.1 defect was found on 2026-08-28 and is in §5.14: its "walk the
+program" order says `console` before `variable`, and a literal walk of §3 gives the
+reverse. The numbers are frozen and right; the sentence is the imprecise part, and
+§4.1 now says so.)* The original entry:
 
 §4.1's worked examples say `satellite.console` = `1 1`, `satellite.variable` =
 `1 2`, `satellite.random` = `1 5`. Under `WORD_NUMBERS.md` those are `1 5`, `1 6`
@@ -199,6 +212,12 @@ own saved memory; both are corrected.
 ---
 
 ## 4. In flight right now
+
+**Nothing is running as of 2026-08-28.** No workflow, no background task, no
+uncommitted build. The tree has **uncommitted document changes in nine files** —
+see §5.14 — and `git status` is the list.
+
+The entry below is from the 2026-08-27 session and is kept only for its script path.
 
 **Workflow `wf_c906ee56-f2d`** — designs `satellite_config.ini`, the thread pool and
 the MEMORY_MAX ceiling. Four phases: measure on this machine, three independent
@@ -390,13 +409,17 @@ number column is diffable.
    [THREADS.md](THREADS.md) is the brief.
 6. **`satellite.thread.new` has one number for two shapes.** Argued in WORD_NUMBERS.md
    §4: its own arity is always 1. `1 23 2` is free if that is decided the other way.
-7. **M2's `static_assert` cannot be written as PLAN specifies it.** *(New
-   2026-08-27.)* "No duplicates" is false of §2.2 by design — the three `.range`
-   aliases. PLAN M2 now records it; the clause that fixes it is unwritten, and
-   QUAD.md §4 already states the check in a form that survives. **This blocks the
-   milestone that is in progress.**
-8. **124 of the 222 numbered paths reach no milestone** — 56% — and
-   [MILESTONE.md](MILESTONE.md) is the ledger. *(Corrected 2026-08-27: the figure was
+7. **~~M2's `static_assert` cannot be written as PLAN specifies it.~~ — RESOLVED
+   2026-08-28.** "No duplicates" was false of §2.2 by design — the three `.range`
+   aliases. **PLAN M2 now carries the four properties in full** (no holes; no
+   duplicates *among non-aliases*; no orphans; no alias pointing at a number that
+   does not exist), which is QUAD.md §4's form. The part that was not obvious and is
+   now written down: **property 2 is a `words.def` requirement before it is an assert
+   requirement** — an alias must be *declarable*, or the check cannot tell a
+   deliberate duplicate from a typo. **This no longer blocks M2.**
+8. **121 of the 222 numbered paths reach no milestone** — 54% — and
+   [MILESTONE.md](MILESTONE.md) is the ledger. *(Was 124; `satellite.help`'s three
+   moved out to **PLAN M8.5** on 2026-08-28, the first row ever moved. §5.14.)* *(Corrected 2026-08-27: the figure was
    50, then 41, then 29, and all three were namespace sweeps. §5 of that file admitted
    the 165 paths under milestoned namespaces had never been checked one at a time.
    They have been now.)* Another 35 are covered only by a sentence about their parent,
@@ -574,7 +597,10 @@ expiry condition written in.
 
 ### 5.12 Two things left dangling on purpose
 
-1. **`example/` is untracked and two permanent documents cite it.** PLAN M8 says
+1. ~~**`example/` is untracked and two permanent documents cite it.**~~ **RESOLVED —
+   commit `6209c83`, "example/ is four acceptance programs, and PLAN already cited
+   them."** The four programs are in the repository and `git clean -fd` no longer
+   removes M8's acceptance program. The original entry, for the record: PLAN M8 says
    *"`example/hello_world.satl` is the done-when"* and DESIGN §3 calls it *"this
    file's copy of it"*. **A fresh clone gets a milestone whose acceptance program is
    not in the repository.** The four programs are the author's, one of them
@@ -586,6 +612,126 @@ expiry condition written in.
    are two unnumbered paths on a type with zero children, `.detach()` is argued as
    **refused rather than deferred**, and the one genuine race is a started thread that
    `main` never joins. Nothing there is numbered and nothing may be.
+
+### 5.13 2026-08-28 — hello world's parameter came back, and §5.11 above is now history
+
+**The author reversed the 2026-08-27 removal.** `satellite.main` declares
+`satellite.container.list<satellite.variable.string> arguments` again, in
+`example/hello_world.satl`, DESIGN §3 and README. **§5.11's paragraph above records
+the removal as "a bug fix" and it should be read as a record of what was believed on
+2026-08-27, not as current.**
+
+**The removal misread the authority.** It rested on WORD_NUMBERS §2.2 writing
+`satellite.main` as `1 3 (0)` with `(0)` read as *zero arguments, nothing there*.
+§5.10.5 above records what `(0)` was actually defined to mean the next day — **a
+node reached both bare and as a parent** — which is a fact about reaching
+`satellite.main`, not about declaring it. The two entries were written a day apart
+and the second unmakes the first's argument. THREADS.md finding 205 had already
+caught DESIGN defining `(0)` twice and differently; this is what that cost.
+
+**Three further facts the removal did not weigh.** Hello world was the only one of
+the four acceptance programs without the parameter — `advanced`, `thread_test` and
+`super_advanced` all declare it. SATC.md §1.1's specimen listing already compiles
+the parameterised signature as `1.2 1.3(1.4.2<1.6.1> arguments)` and never stopped.
+And WORD_NUMBERS §1.1 is the current program again rather than "the historical
+walk", so **the sentence §5.11 reserved for the author — why §1.1's hello world
+differs from DESIGN §3's — is moot: they no longer differ.**
+
+**What is still open, and it is the one real cost.** Hello world never reads
+`arguments`, so no `string` is ever constructed and M9 is not a dependency. What is
+left is **one empty `satellite.container.list` bound to the slot**, and whether M8
+may own that or must wait for M10 is unanswered. PLAN M8 now states the question in
+the paragraph that has to answer it. Until it does, M8's position in the order is
+provisional.
+
+**`//` comments are specified as of today, in DESIGN §5.6.** Every program in
+`example/` used them and no section defined them — LAYOUT.md had been carrying the
+gap as a note on the hello world row. §5.6 now says `//` runs to end of line, is
+discarded in the lexer, and that there is no block comment.
+
+**One thing found and not touched: WORD_NUMBERS §1.1's prose does not match its own
+program.** It says the walk goes "`main`, then `container`, then `console`, then
+`variable`", but `satellite.container.list<satellite.variable.string>` meets
+`variable` before the next line meets `console`. A literal walk gives `variable` 5
+and `console` 6; the table gives `console` 5 and `variable` 6. **The numbers are
+frozen and correct — it is the sentence describing them that is wrong** — and this
+mattered less while §1.1 was annotated as historical. It is load-bearing again now.
+**WORD_NUMBERS.md is the author's and was not edited.**
+
+### 5.14 2026-08-28, second half — M2 unblocked, and the first ledger row moved
+
+**START HERE AFTER A CLEAR.** Nothing is running. Nine files carry uncommitted
+document changes and no code changed. `git status` is the list; **nothing has been
+committed this session**, and the author has not been asked for one.
+
+**M2 is unblocked and is the next action.** §5.7 item 7 was the blocker on the
+milestone in progress and PLAN §8's M2 now carries the four-property `static_assert`
+— no holes; no duplicates **among non-aliases**; no orphans; no alias pointing at a
+number that does not exist. The thing worth not re-deriving: **property 2 is a
+`words.def` requirement before it is an assert requirement.** An alias has to be
+declarable in the file, or the check cannot tell a deliberate duplicate from a typo,
+and the three real aliases would then train whoever hits it to loosen the assert.
+WORD_NUMBERS §2.3's model is the one the syntax must express — **one node with a
+second spelling, not a second node** — and it carries §7.7's six spellings of
+`arguments` too.
+
+**Verified mechanically on 2026-08-28, so M2 can be written against it:**
+WORD_NUMBERS §2.2 is **222 rows, 219 distinct numbers, and exactly three duplicates
+— `1 7 5`, `1 7 8`, `1 7 11`, all three the declared `.range` aliases.** PLAN M2's
+claim that they are the only duplicates in the language is true as of today.
+
+**`satellite.help` is PLAN M8.5, and it is the first row ever moved out of the
+ledger.** Three paths — `1 19`, `1 19 0`, `1 19 1` — written into §8 rather than
+into [MILESTONE_DRAFTS.md](MILESTONE_DRAFTS.md), because MILESTONE.md's opening rule
+is that a row which gets a milestone is *moved* into §8, and the four drafts that
+stopped short of §8 are why the rule is worth obeying. Running figure: **121 of 222.**
+
+**The milestone found a real defect in DESIGN §4.6, now corrected.** §4.6 said *"help
+cannot drift from what exists — the trie **is** what exists."* **The trie is what is
+*numbered*, not what is *built*.** After M2 it holds every path in `words.def`, so a
+walk of it would advertise the 121 unscheduled paths to a user as working — worse
+than v1, and DESIGN §1.1's *never behind their back* broken outright. The fix needs
+no new machinery: **print a node when `handlers[path_id]` is non-null**, so the table
+that decides whether a call runs decides whether help mentions it. Two consequences
+worth keeping: v1's `help_for()` switch on `value.index()` is **deleted rather than
+extended** — a value's type is a node and its methods are its children — which closes
+the handoff M10.5's draft leaves open; and `satellite.help` becomes a live version of
+MILESTONE.md, which is the condition under which *"delete this file when every row
+has a milestone"* can be checked rather than believed.
+
+**Grounded against v1's source, not memory.**
+`old_versions/first_satellite/src/evaluator/help.cpp` is 221 lines and
+`help_topics.cpp` another 315, all string literals, and it had already drifted:
+`help_for_module()` answers for six modules and returns empty for every other name,
+while its own comment says *"an empty answer means the name is not a module."*
+`satellite.analyze` is a module, advertised in the same file's overview, and help
+denies it exists.
+
+**Two stale documents corrected.** PLAN §1 said *"five C++ files… the largest C++
+file is 137 lines"*, true of M1 alone; `src/` is **ten files, 1,153 lines**, largest
+`terminal.cpp` at 236. And `example/` is **tracked** as of commit `6209c83` — both
+SESSION §5.12 and THREADS' operational note said otherwise.
+
+**One new finding, and the author asked for it to be fixed rather than flagged.**
+WORD_NUMBERS §1.1's prose said the walk goes *"`main`, then `container`, then
+`console`, then `variable`"*, but §3's program meets `variable` inside the parameter
+type **before** the next line reaches `console`. A literal walk gives `variable` 5 and
+`console` 6; §2.1's table has the reverse. **The numbers are frozen and right — the
+sentence was the imprecise part**, and the file already contained its own answer:
+**§2.1 says *1 to 15 were written by hand***, and §3's last line proves it, because
+`satellite.return` is met there and is **15**, not 7. §1.1 and DESIGN §4.1 both now
+say that the walk is why the order is this one and not another, and is the rule that
+decides every number from 16 on — **not a procedure that regenerates 1 through 15.**
+No number moved. *(This is the one edit made to WORD_NUMBERS.md, and it was asked
+for.)*
+
+**Still open, and it is the author's call:**
+
+1. **PLAN M8's ordering.** Hello world's restored parameter costs M8 *one empty
+   `satellite.container.list`* and nothing else — no string is constructed, so M9 is
+   not a dependency. If M8 may own that empty list it does not move; if it is M10's,
+   M8 moves after M10. The question is written into the paragraph that has to answer
+   it.
 
 ## 6. Jobs the user has asked for that are not started
 
