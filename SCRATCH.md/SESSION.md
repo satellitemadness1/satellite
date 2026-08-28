@@ -508,6 +508,54 @@ The `satellite.random` + `satellite.time` pass returned last and found more abou
 - **MILESTONE.md §0.1's column summed to 121 against its own headline of 122.** The
   headline was right; the row was understated. Corrected in that file.
 
+### 5.11 The second half of 2026-08-27 — what was built, not just decided
+
+**`satl-term` (M11.A) and `satellite.random` both landed ahead of their milestones.**
+Five commits, all on `main`, all with the tree clean afterwards.
+
+**M11 became M11.A and M11.B**, the author's split. M11.B's rule is that **the window
+does not close**; M11.A closes on a clean exit and holds on failure, and
+`on_child_exited` names its clean-exit arm as M11.A's so M11.B deletes it on purpose.
+
+**DESIGN §3's hello world lost its parameter, and that was a bug fix.** Declaring
+`satellite.container.list<satellite.variable.string> arguments` made M8 depend on M10
+for the container and M9 for the string — a milestone needing two that come after it.
+`satellite.main` is `1 3 (0)` and always was. **WORD_NUMBERS.md §1.1 must keep the old
+program**: the parameter is what fixes `container` `1 4` and `variable` `1 6`, and
+walking the new one puts `console` on `1 4`. Nothing renumbers, but the example there
+is now the historical walk. **The sentence saying so inside WORD_NUMBERS is unwritten
+and is the author's.**
+
+**DESIGN §11's windows changed** to fast 50–300 ms, normal 500–600 ms, ultra
+2000–3000 ms, all random within range, and **the throwaway is whole numbers of the
+size being asked for** with **at least one always** — a `do/while`, so a draw that
+outlasts its window still costs exactly one. Built in `src/satellite_random/`,
+measured on this machine, every tier inside its window.
+
+**A 512-bit PCG was asked for and refused with a reason.** `uint_x4` hard-codes the
+word width at `pcg_uint128.hpp:531, 534, 543, 558`, so composing it to 64-bit words
+compiles and multiplies **wrong**. `pcg/README.md` has the full cost of doing it
+properly and the argument that width belongs to the sampler, not the generator.
+
+**The tree is now MIT and Apache-2.0 and says so.** pcg-cpp 0.98 is Apache-2.0 only.
+`nm` says no built binary contains any of it, and LICENSE states that with its own
+expiry condition written in.
+
+### 5.12 Two things left dangling on purpose
+
+1. **`example/` is untracked and two permanent documents cite it.** PLAN M8 says
+   *"`example/hello_world.satl` is the done-when"* and DESIGN §3 calls it *"this
+   file's copy of it"*. **A fresh clone gets a milestone whose acceptance program is
+   not in the repository.** The four programs are the author's, one of them
+   (`super_advanced.satl`) still being written, so nothing was committed. Either they
+   go in or those two citations have to soften — and the first is much better,
+   because an acceptance program that lives outside the repo is not an acceptance
+   program.
+2. **`SCRATCH.md/THREADS.md`** holds the grounded thread surface. `start` and `join`
+   are two unnumbered paths on a type with zero children, `.detach()` is argued as
+   **refused rather than deferred**, and the one genuine race is a started thread that
+   `main` never joins. Nothing there is numbered and nothing may be.
+
 ## 6. Jobs the user has asked for that are not started
 
 - **Convert `plans/madness/first_note.txt` into the permanent documents, then
