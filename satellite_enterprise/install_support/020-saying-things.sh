@@ -58,7 +58,10 @@ satl.haswell is not a fourth program, it is satl compiled a second time.
                  so rather than calling sudo itself.
   --static       link the C++ runtime into the programs instead of loading it
                  at run time, so they do not need a libstdc++ on the machine
-                 they run on. ON BY DEFAULT UNDER --system, where it matters:
+                 they run on. ON BY DEFAULT wherever this machine can do it,
+                 which costs about a megabyte a binary and buys one that runs
+                 with an empty environment and no compiler present. It matters
+                 most under --system:
                  a build made in an environment with LD_RUN_PATH set otherwise
                  loads its libstdc++ out of the builder's home directory, and
                  in /usr/local/bin that is a program every account can find and

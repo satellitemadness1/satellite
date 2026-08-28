@@ -89,13 +89,28 @@ if [ "$action" = install ]; then
     case $static in
         yes)  static_arg=STATIC=full ;;
         auto)
-            if [ "$layout" = prefix ]; then
-                _can=$(query_make -s -C "$repo" static-available 2>/dev/null ||
-                       printf 'no')
-                case $_can in
-                    full | 1) static_arg=STATIC=$_can ;;
-                esac
-            fi
+            # BOTH LAYOUTS, changed 2026-08-28 the same day the layout gate was
+            # written. The gate rested on "a home install is run by the account
+            # whose home the libraries came out of", which is true and is not
+            # the whole risk: MEASURED on this machine, the dynamic
+            # $HOME/.satl/satl loads libstdc++.so.6 from
+            # /home/madness/opt/gcc-17/lib64 -- a HAND-BUILT toolchain in that
+            # same home, not a packaged one. It survives that directory moving
+            # only because /lib64 happens to carry a newer GLIBCXX than the
+            # binary asks for, which is luck rather than design and stops being
+            # true the day something is built against a newer libstdc++ than
+            # the distribution ships.
+            #
+            # So the question was never which layout, it was whether an
+            # installed program should depend on the toolchain that happened to
+            # build it. It should not, and the cost is 66920 bytes becoming
+            # 1078832 -- a megabyte, once, for a binary that runs with an empty
+            # environment on a machine with no compiler.
+            _can=$(query_make -s -C "$repo" static-available 2>/dev/null ||
+                   printf 'no')
+            case $_can in
+                full | 1) static_arg=STATIC=$_can ;;
+            esac
             ;;
     esac
 

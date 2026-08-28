@@ -131,12 +131,14 @@ theme_index_state=present
 # WHETHER TO LINK THE C++ RUNTIME IN. auto | yes | no, resolved by
 # 050-building.sh into a STATIC= for make.
 #
-#   auto  off for a home install, and the best this machine can link for a
-#         --system one. Not the same answer twice because it is not the same
-#         question: $HOME/.satl is run by the one account that owns the home
-#         directory its libraries came out of, and /usr/local/bin/satl is on
-#         every account's PATH. See 048-static.mk for what LD_RUN_PATH does to
-#         a binary built in this environment.
+#   auto  the best this machine can link, in BOTH layouts, and `no` when it
+#         has neither libstdc++-static nor glibc-static -- which is not an
+#         error, just the build it has always got. This was briefly off for a
+#         home install on the theory that only one account runs it; the
+#         measurement that ended that is in 050-building.sh, and the short of
+#         it is that the dynamic build binds to a hand-built gcc in $HOME and
+#         survives only by luck. See 048-static.mk for what LD_RUN_PATH does
+#         to anything linked in this environment.
 #   yes   STATIC=full, and make stops with a package name if it cannot.
 #   no    link as before.
 static=auto
