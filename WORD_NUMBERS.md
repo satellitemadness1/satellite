@@ -315,7 +315,9 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.float` | `1 6 10` | assigned |
 | `satellite.variable.hex` | `1 6 11` | assigned; also spelled `hexadecimal` |
 | `satellite.variable.network` | `1 6 12` | assigned |
-| `satellite.variable.thread` | `1 6 13` | assigned |
+| `satellite.variable.thread` | `1 6 13 (0)` | assigned — the `(0)` is new with its children below |
+| `satellite.variable.thread.start()` | `1 6 13 1` | assigned 2026-08-28 |
+| `satellite.variable.thread.join()` | `1 6 13 2` | assigned 2026-08-28 |
 | `satellite.variable.variant` | `1 6 14` | assigned |
 | `satellite.variable.window` | `1 6 15` | assigned |
 | `satellite.variable.capsule` | `1 6 16` | assigned — the type of a deferred call; `satellite.capsule` `1 2` is the keyword |
@@ -427,6 +429,8 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.thread.new` | `1 23 1` | assigned |
 | `satellite.window` | `1 24 (0)` | assigned |
 | `satellite.window.new` | `1 24 1` | assigned |
+| `satellite.window.console` | `1 24 2 (0)` | assigned 2026-08-28 |
+| `satellite.window.console.new(title, width, height)` | `1 24 2 1` | assigned 2026-08-28 |
 
 ### 2.3 Two spellings, one number
 
@@ -442,6 +446,46 @@ DESIGN §4.4 describes the opposite arrangement — two nodes sharing one piece 
 text, as `list` under `container` and `list` under `directory` do. **Both
 directions are real** and the spelling table has to hold each: deduplication is
 many-nodes-one-string, aliasing is one-node-many-strings.
+
+### 2.4 Four numbers assigned 2026-08-28, and by whom
+
+
+**The table below repeats numbers that already appear in §2.2 and is NOT a source.**
+§2.2 is the only place a number is declared; anything counting or transcribing the
+numbering must read that section and stop at its end. This note sat *inside* §2.2
+for one commit on 2026-08-28 and a mechanical count read its four paths twice —
+226 rows instead of 222 — which is exactly the failure §2.2 exists to prevent.
+
+**The author delegated these four and only these four.** Everything else in §2.2 is
+theirs. They are recorded here because a number assigned by somebody else, once, is
+exactly the kind of fact that becomes invisible a month later.
+
+| path | number | what decided it |
+|---|---|---|
+| `satellite.variable.thread.start()` | `1 6 13 1` | §1.1 — `example/thread_test.satl` writes `my_thread.start()` before `my_thread.join()`, and `1 6 13` had no children, so start is first |
+| `satellite.variable.thread.join()` | `1 6 13 2` | the same walk, one line later |
+| `satellite.window.console` | `1 24 2 (0)` | §4.2 — numbering is per-parent, and `satellite.window` `1 24` already had `new` at 1, so the next free child is 2 |
+| `satellite.window.console.new(title, width, height)` | `1 24 2 1` | §1.3 — a string and two numbers are all user-owned, so none extends the path and the three of them are one shape, the first child of `console` |
+
+**`console` is spelled twice in the language and is two different nodes.**
+`satellite.console` is `1 5`; this one is `1 24 2`. DESIGN §4.4 is the case exactly —
+*"`list` under `container` and `list` under `directory` are different nodes that
+happen to be spelled alike"* — and the spelling table holds the dedup, not the trie.
+
+**`1 6 13` gained a `(0)` and did not change number.** Every other node in §2.2 with
+children carries the marker — `1 4 1 (0)`, `1 6 1 (0)`, `1 22 4 (0)`, `1 24 (0)` — and
+`satellite.variable.thread` had none because it had no children. **This is a notation
+edit, not a renumbering**, and §1.2's freeze is untouched: nothing moved, two things
+were appended.
+
+**What §1.3 does not define.** Bare `0` is defined above — *"`0` means nothing in that
+position, a real number in the sequence."* Parenthesised `(0)` is used on forty-odd
+rows and is defined nowhere. The two were kept consistent here by copying what the
+table already does; **the sentence that says what `(0)` means is still unwritten**,
+and it is the author's.
+
+**§2.2 is now 222 rows and 219 distinct numbers.** Counted mechanically after the
+edit; the only duplicates are still §2.3's three aliases below.
 
 ## 3. User-defined names take the next free number
 

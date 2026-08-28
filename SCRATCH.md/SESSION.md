@@ -374,20 +374,26 @@ number column is diffable.
 3. **`satellite.file` `1 8` and `satellite.variable.file` `1 6 2` both carry `new`.**
    The five new file methods went on the type node per DESIGN §6.4. Nothing says
    which a program should write.
-4. **`satellite.window.console` has no number at all.** *(New 2026-08-27.)* The
-   author specified `satellite.window.console.new("title", 800, 600)` and built the
-   binary that is its first caller, but §2.2 has only `satellite.window` `1 24` and
-   `satellite.window.new` `1 24 1`. Whether `console` is a child of `1 24` or
-   `1 24 1` is already this call is unanswered, and §1.2's freeze means it is
-   answered once. See §5.8.
-5. **`satellite.thread.new` has one number for two shapes.** Argued in WORD_NUMBERS.md
+4. **~~`satellite.window.console` has no number~~ — ANSWERED 2026-08-28.** It is
+   `1 24 2` and its `new(title, width, height)` is `1 24 2 1`, a child of
+   `satellite.window` and **not** the same thing as `satellite.window.new` `1 24 1`.
+   The author delegated this one assignment and the two thread selectors below;
+   WORD_NUMBERS.md §2.2 carries them and records who assigned them and why.
+   **Still open there: what parenthesised `(0)` means.** §1.3 defines bare `0` and
+   never defines `(0)`, which forty-odd rows use.
+5. **`satellite.variable.thread.start()` `1 6 13 1` and `.join()` `1 6 13 2` now
+   exist** *(assigned 2026-08-28)*, so `example/thread_test.satl` names only real
+   paths. **M12 still owns neither**, and the deferred call `satellite.variable.capsule`
+   `1 6 16` that `satellite.thread.new(f(x))` needs is owned by nothing at all.
+   [THREADS.md](THREADS.md) is the brief.
+6. **`satellite.thread.new` has one number for two shapes.** Argued in WORD_NUMBERS.md
    §4: its own arity is always 1. `1 23 2` is free if that is decided the other way.
-6. **M2's `static_assert` cannot be written as PLAN specifies it.** *(New
+7. **M2's `static_assert` cannot be written as PLAN specifies it.** *(New
    2026-08-27.)* "No duplicates" is false of §2.2 by design — the three `.range`
    aliases. PLAN M2 now records it; the clause that fixes it is unwritten, and
    QUAD.md §4 already states the check in a form that survives. **This blocks the
    milestone that is in progress.**
-7. **122 of the 218 numbered paths reach no milestone** — 56% — and
+8. **124 of the 222 numbered paths reach no milestone** — 56% — and
    [MILESTONE.md](MILESTONE.md) is the ledger. *(Corrected 2026-08-27: the figure was
    50, then 41, then 29, and all three were namespace sweeps. §5 of that file admitted
    the 165 paths under milestoned namespaces had never been checked one at a time.
@@ -404,7 +410,7 @@ number column is diffable.
    M10 and the twenty-nine container methods. Each time it looked like an unscheduled
    namespace and was not.
 
-8. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
+9. **The honest next step is unchanged** and is now named: write `Sky::decay` plus
    `Rack::draw` in satellite by hand against DESIGN.md. Between them they touch
    floats, the map, a weighted pick, and the one `pow` that has no exact answer.
 

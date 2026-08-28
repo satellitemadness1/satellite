@@ -1,7 +1,11 @@
 # The thread surface — grounded 2026-08-27, decided by nobody yet
 
 **This file is scratch and is meant to be deleted.** `example/thread_test.satl`
-writes `my_thread.start()` and `my_thread.join()`, and neither path exists:
+writes `my_thread.start()` and `my_thread.join()`. **Both are numbered as of
+2026-08-28** — `1 6 13 1` and `1 6 13 2`, assigned by delegation and recorded in
+WORD_NUMBERS.md §2.2 — so the brief below is out of date in exactly one way: where it
+says these paths do not exist, they now do. **Nothing else in it is settled.** When it
+was written:
 `satellite.variable.thread` `1 6 13` has **zero children numbered**, and the whole
 thread surface is three rows. This is the brief that came back from grounding it
 against DESIGN, the first satellite's source, and QUAD.

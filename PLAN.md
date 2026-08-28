@@ -931,10 +931,10 @@ rather than a build artefact. A program asks for one with
 — a string and two numbers — so the title and the size are **arguments** in
 `satl-term` too, reached as `--title` and `--size 800x600`. The binary is the first
 caller of that signature and must not be a special case of it; M13's `dlopen`'d
-library calls the same three values in. **`satellite.window.console` and its `new`
-are not yet numbered** — `satellite.window` is `1 24` and `satellite.window.new` is
-`1 24 1`, and whether the console window is a child of that node or is that node is
-a question only WORD_NUMBERS.md can answer.
+library calls the same three values in. **`satellite.window.console` is `1 24 2` and its
+`new(title, width, height)` is `1 24 2 1`** *(assigned 2026-08-28)*, so this
+milestone's paths are real. It is a **different node from `satellite.window.new`
+`1 24 1`**, which is still M13's and still reached by nothing that names it.
 
 Done when: `satl-term` opens, spawns the `satl` beside it, and renders what it
 prints — which today is `satl --repl` saying the prompt is not built yet.
@@ -976,9 +976,11 @@ the UI thread is satellite's job, never the user's (DESIGN §10.3).
 **This list is not a milestone and things hide in it.**
 [SCRATCH.md/MILESTONE.md](SCRATCH.md/MILESTONE.md) is the audit, and on
 **2026-08-27** it was finally run per path rather than per namespace:
-**122 of WORD_NUMBERS.md's 218 numbered paths are reached by no milestone at all**,
+**124 of WORD_NUMBERS.md's 222 numbered paths are reached by no milestone at all**,
 and another 35 only by a sentence about their parent. **56% of the language is not in
-this list.** The three namespace sweeps before it reported 50, then 41, then 29 —
+this list.** *(The sweep was run against 218 rows; four were added on 2026-08-28 —
+`satellite.window.console` and its `new`, which M11.A names, and
+`satellite.variable.thread`'s `start` and `join`, which M12 does not.)* The three namespace sweeps before it reported 50, then 41, then 29 —
 none of them could see a path hiding under a parent §8 happens to name, which is where
 most of them were.
 

@@ -84,6 +84,13 @@ That is **39 paths** in the wrong category, all in the direction of looking bett
 | `satellite.include(spaceship)` | **1** | 5 | loading another file is Later |
 | **total** | **122** | **218** | |
 
+*(Four paths added 2026-08-28, after this sweep ran: `satellite.window.console`
+`1 24 2` and its `new` `1 24 2 1`, which **M11.A names**, and
+`satellite.variable.thread.start()` `1 6 13 1` and `.join()` `1 6 13 2`, which
+**M12 does not** — it names only `satellite.variable.thread`. So the current
+figure is **124 of 222**, and the two new uncovered ones are the same M12 gap
+`example/thread_test.satl` already demonstrates.)*
+
 `satellite.system` alone is a quarter of it, and `system` + `random` is **46** — more
 than the last audit's whole figure.
 
