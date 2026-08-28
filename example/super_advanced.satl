@@ -1,0 +1,19 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(arguments) // has to display all names and values
+
+    satellite.variable.float my_double = 98734549823759847598247598234787326432876453464466464327864582734658792345.38746587435648765783246587342648732648736487287346823746287346374
+
+    satellite.variable.float to_add = 39487534987598457984375934257432987542985732498753498573498573498734209867345986753498675498.92386748923476289479823749827349827349827398567348756834765487564875647564
+
+    satellite.console.display(my_double + to_add)
+
+    satellite.variable.number my_random_number = satellite.random.fast(999999999999999) // that many digits;
+
+    satellite.console.display(my_double + to_add + my_random_number) // does something with the random number;
+
+    satellite.return(satellite)
+}

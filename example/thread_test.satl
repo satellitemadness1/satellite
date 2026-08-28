@@ -1,0 +1,23 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.string arg_test_str = "HELLO, WORLD!"
+
+    satellite.variable.thread my_thread = satellite.thread.new(capsule_test(arg_test_str))
+
+    my_thread.start()
+
+    my_thread.join()
+
+    // exit the program
+    satellite.return(satellite)
+}
+
+satellite.capsule capsule_test(satellite.variable.string input_str)
+{
+    satellite.console.display(input_str)
+
+    satellite.return()
+}

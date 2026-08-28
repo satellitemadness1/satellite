@@ -1,0 +1,17 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.string local_user_input = "UNSET"
+
+    satellite.console.input(">>>", local_user_input)
+
+    satellite.console.display("YOU ENTERED: " + local_user_input)
+
+    satellite.variable.number my_int = satellite.console.input("ENTER A NUMBER: ")
+
+    satellite.console.display("YOU ENTERED: " + my_int)
+
+    satellite.return(satellite)
+}

@@ -70,6 +70,22 @@ is where M2's trie will go and does not exist yet. `src/satellite_random/` exist
 is built, and is the one module in the tree with **no consumer** — it landed ahead of
 any milestone that calls it, the way `satl-term` did.
 
+## `example/` — the acceptance programs
+
+Not samples. **Each of these is what a milestone means by done**, which is why
+PLAN §8 and DESIGN §3 cite them by path rather than describing them in prose.
+
+| file | what it is the done-when for |
+| --- | --- |
+| [example/hello_world.satl](example/hello_world.satl) | **M8.** DESIGN §3, and the reason `satellite.main` takes no arguments — with the parameter, M8 would need M9's string and M10's container. Uses `//` comments, which DESIGN §5 does not specify. |
+| [example/advanced.satl](example/advanced.satl) | The console milestone that **does not exist** — `input(prompt)` `1 5 3` and `input(prompt, target)` `1 5 4`. Also uses `+` on strings, specified nowhere. |
+| [example/thread_test.satl](example/thread_test.satl) | **M12**, and it cannot be M12's done-when yet: `.start()` and `.join()` are unnumbered, and `satellite.thread.new(f(x))` needs the deferred call `1 6 16` that no milestone owns. SCRATCH.md/THREADS.md. |
+| [example/super_advanced.satl](example/super_advanced.satl) | **M9.5**, and it is the float's *exact* half — `+` is DESIGN §8.6's class 1, which never rounds, so it runs before the rounding rule is chosen. |
+
+**None of them runs.** M2 is the milestone in progress and nothing executes until
+M8; these are written first on purpose, because a milestone whose done-when is a
+program somebody can read is one that cannot be argued about afterwards.
+
 ## `make_support/` — the build
 
 Numbered because the order is load-bearing in three places: 010 before 020, which
