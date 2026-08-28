@@ -70,6 +70,38 @@ int not_yet(const std::string &what, const std::string &file,
     return satellite::EXIT_NOT_YET;
 }
 
+// A FLAG THAT ONLY PRINTS AND EXITS, which is the one kind of argument that
+// must never open a window.
+//
+// --no-window was the first of these and was special-cased at the handover call
+// below. It turned out not to be special: it is one member of a class, and the
+// rest of the class was found the hard way on 2026-08-28, when `./install.sh`
+// with its output redirected died on
+//     satl-term: unknown option --version
+// The installer verifies what it installed by running `satl --version`, and
+// window_handover.cpp's six refusals do not cover that case -- refusal TWO is
+// a controlling terminal, which a package build, a cron job, an ssh command
+// without a tty and a CI runner all lack, and refusal THREE is something
+// READING our output, which a plain `> file` is not. So satl handed a
+// machine-readable query to a GUI binary that has no such flag, and exited 2.
+//
+// The handover's own comment says it runs "BEFORE ANY ARGUMENT IS READ, AND
+// THAT IS THE POINT", and that is still right for everything that RUNS
+// something: those can fail, and their diagnosis has to be somewhere a person
+// launching from a menu can see it. But these five produce an answer on stdout
+// and stop. Nobody double-clicks an icon to be told a version number, and the
+// answer has to reach a pipe, a file and a variable, which a window cannot do.
+// 080-report.sh in the installer already states the rule for the other binary
+// -- "window.cpp answers --version before it touches GTK, on purpose ... so
+// this check runs on a headless box and in a container" -- and this is that
+// same rule, arriving late on the side that needed it more.
+bool only_prints_and_exits(const char *arg)
+{
+    const std::string flag(arg);
+    return flag == "--no-window" || flag == "--version" || flag == "-V" ||
+           flag == "--help" || flag == "-h" || flag == "--words";
+}
+
 // A usage failure: the command line did not name something satl can do.
 //
 // Usage goes to STDERR here and to stdout in the --help arm, and that is not an
@@ -95,12 +127,15 @@ int main(int argc, char **argv)
     // whatever satl was going to say, rather than seeing the window only in the
     // cases somebody remembered to route through it.
     //
-    // It returns here on a terminal, in a pipeline, with output redirected,
-    // with no display, without a satl-term to hand to, or when SATL_NO_WINDOW
-    // is set -- six refusals, all named in window_handover.cpp. --no-window is
-    // the seventh and is handled below, because it is a flag and flags are this
-    // function's business.
-    if (argc < 2 || std::string(argv[1]) != "--no-window")
+    // It returns here on a terminal, in a pipeline, with output redirected to
+    // something that is READING it, with no display, without a satl-term to
+    // hand to, or when SATL_NO_WINDOW is set -- six refusals, all named in
+    // window_handover.cpp. The seventh is here rather than there, because it is
+    // about flags and flags are this function's business:
+    // only_prints_and_exits() names the arguments that answer a question and
+    // stop, and those are answered where they were asked. See its comment for
+    // the installer failure that found the other four.
+    if (argc < 2 || !only_prints_and_exits(argv[1]))
         satellite::hand_over_to_the_window(argv);
 
     // --no-window IS CONSUMED HERE AND EXISTS NOWHERE BELOW. Filtered out of the
