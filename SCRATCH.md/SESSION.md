@@ -980,8 +980,20 @@ shared scratch directory. Neither was instructed; both should have been.
 ### 5.19 2026-08-28 — WHAT IS ACTUALLY LEFT, after M2 and the crossover
 
 **Read this one first if you are picking the work up cold.** Everything above is
-history; this is the state. Two commits landed today: `d9ff549` (M2) and `bb0af1c`
-(the crossover, the bare-alias fix, and the ledger closes).
+history; this is the state. **Six commits landed 2026-08-28**, in order:
+
+    d9ff549  M2 lands -- the registry, the trie, the interner, --words, the test
+    bb0af1c  the crossover measured; the bare-alias fix; ledger closes
+    c48014d  four more ledger rows struck; §5.19 written
+    c368a29  correction: the 170 is a second-batch number, a cold pool crosses
+             where spawning does
+    04b4329  eager warming beats lazy; a size trigger proposed
+    8b0ad56  the author's decision: the pool starts at startup, ALWAYS --
+             which supersedes both of the two above it
+
+**The last three are one argument that changed answer twice**, so read only
+`8b0ad56` and PLAN §4.5.1.2 as current; the two before it are kept because each
+was measured and each was wrong for a reason worth not repeating.
 
 **Nothing is running. The build is clean, `make test` passes, four binaries.**
 
@@ -995,6 +1007,7 @@ history; this is the state. Two commits landed today: `d9ff549` (M2) and `bb0af1
 | SATC §6 — what the digest is over | **the numbering, not the file's bytes** |
 | PLAN §8.1 — real allocator or stub | **real**, and M4 is marked as its first caller |
 | PLAN §4.5.1's crossover | **measured**: ~2,650 lines against fresh threads **or a cold pool**; **~170** only against a pool something else already warmed |
+| where the thread pool is built | **decided by the author: at startup, always** (PLAN §4.5.1.2). Both "lazily, on first threaded work" and the size trigger are superseded |
 | `WORD_SURFACE.md`'s delete-when | **met and verified** by walking all 95 paths; the file is deletable |
 | MILESTONE.md's binary/`.hex` row | **struck** — PLAN M3 owns them and says so |
 | PORTING.md item 3 (`satellite.random`'s directory) | **settled by the tree** — `src/satellite_random/` exists |
