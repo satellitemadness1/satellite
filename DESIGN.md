@@ -196,11 +196,12 @@ still runs is worth more than one whose example has to be explained away.
 reads `arguments`, so what M8 owes is an empty list bound to the slot and nothing
 else: no `satellite.variable.string` value is ever constructed, so M9 is not a
 dependency, and none of M10's twenty-five list methods is reached. What is left is
-one empty `satellite.container.list` value, and **whether M8 may own that or must
-wait for M10 is the one real cost of this restoration.** PLAN §8's M8 carries the
-answer, because the milestone is the place that has to say what it hands over —
-otherwise a program written between M8 and the milestone that builds §7.7 gets an
-error for `arguments.username` that no document predicts.
+one empty `satellite.container.list` value, and **that list is M10's.** *(Decided
+2026-08-28.)* An empty list is still a list, and the milestone that constructs one
+has built the type — so **M8 runs after M10**, and PLAN §8's opening carries what
+that reordering costs. The milestone is still the place that has to say what it
+hands over, or a program written between M8 and the milestone that builds §7.7 gets
+an error for `arguments.username` that no document predicts.
 
 Both shapes remain legal and §6's grammar already allows both: `capsule_decl` reads
 `"(" [ param_list ] ")"`, and the brackets are not new. A program that wants what

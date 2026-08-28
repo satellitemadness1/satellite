@@ -637,12 +637,11 @@ And WORD_NUMBERS §1.1 is the current program again rather than "the historical
 walk", so **the sentence §5.11 reserved for the author — why §1.1's hello world
 differs from DESIGN §3's — is moot: they no longer differ.**
 
-**What is still open, and it is the one real cost.** Hello world never reads
-`arguments`, so no `string` is ever constructed and M9 is not a dependency. What is
-left is **one empty `satellite.container.list` bound to the slot**, and whether M8
-may own that or must wait for M10 is unanswered. PLAN M8 now states the question in
-the paragraph that has to answer it. Until it does, M8's position in the order is
-provisional.
+**What it cost, and the author settled it the same day.** Hello world never reads
+`arguments`, so no `string` is ever constructed and M9 is not a dependency. What was
+left is **one empty `satellite.container.list` bound to the slot**, and **the author
+ruled that list M10's and moved M8 after M10** — an empty list is still a list, and
+the milestone that constructs one has built the type. See §5.15.
 
 **`//` comments are specified as of today, in DESIGN §5.6.** Every program in
 `example/` used them and no section defined them — LAYOUT.md had been carrying the
@@ -725,13 +724,41 @@ decides every number from 16 on — **not a procedure that regenerates 1 through
 No number moved. *(This is the one edit made to WORD_NUMBERS.md, and it was asked
 for.)*
 
-**Still open, and it is the author's call:**
+**Nothing was left open from this half.** PLAN M8's ordering question was put to the
+author and answered the same day — §5.15.
 
-1. **PLAN M8's ordering.** Hello world's restored parameter costs M8 *one empty
-   `satellite.container.list`* and nothing else — no string is constructed, so M9 is
-   not a dependency. If M8 may own that empty list it does not move; if it is M10's,
-   M8 moves after M10. The question is written into the paragraph that has to answer
-   it.
+### 5.15 2026-08-28 — the empty list is M10's, and M8 now runs after M10
+
+**The author's decision, asked for and given before the clear.** Hello world's
+restored parameter needs one empty `satellite.container.list` and nothing else.
+**That list is M10's**, and **M8 moves after M10.** PLAN §8's build order is now
+M7, M9, M9.5, M10, **M8, M8.5**, M11.A — and M8 keeps its name.
+
+**Why the name did not change.** Seven documents cite "M8" — DESIGN §3, LAYOUT,
+MILESTONE.md, THREADS.md, MILESTONE_DRAFTS.md among them — and renumbering to make
+the list read in sequence would rewrite all of them to say something the numbers
+never promised. **§8's opening now states that the numbers are assignment order and
+the list is build order**, which is WORD_NUMBERS §1.2's own rule applied to the plan
+instead of the language: never renumber, and record the order where it can be read.
+
+**The argument written into M8 and M10, so it is not re-litigated:** an empty
+`satellite.container.list` is still a `satellite.container.list`, and a milestone
+that constructs one has built the type. M8 owning a private empty-list shape that
+M10 later replaces is the thing that looks free and is found later as two
+implementations of one type.
+
+**ONE CONSEQUENCE IS OPEN AND IS THE NEXT THING TO SETTLE.** M8 builds *"Console
+with its printer thread"*, so moving M8 after M10 leaves **M9 and M10 with nothing
+to print through** — against PLAN §8's own opening rule that a milestone must be
+demonstrable. **The remedy is almost certainly to split M8**: the console and its
+printer thread stay between M7 and M9, and only hello world the program —
+`satellite.main` with its parameter, `satellite.return`, the startup measurement —
+moves after M10, because the parameter is the only part that ever needed a list.
+**That split has not been made.** It is written into §8's opening rather than
+assumed, and it should be the first thing looked at when M9 is planned.
+
+Propagated to DESIGN §3, LAYOUT's hello world row, PLAN M8 / M8.5 / M10 / §8
+opening, and MILESTONE_DRAFTS' M8 handover note.
 
 ## 6. Jobs the user has asked for that are not started
 

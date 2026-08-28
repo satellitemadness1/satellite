@@ -681,6 +681,25 @@ Four things to settle before copying, and `SCRATCH.md/PORTING.md` has the detail
 Each milestone is a thing that **works and can be demonstrated.** No milestone is
 "the parser is half done."
 
+**The numbers are assignment order and the list is build order, and since
+2026-08-28 they differ.** M8 and M8.5 are built **after M10** and appear there.
+They keep their names: seven documents cite "M8" — DESIGN §3, LAYOUT, MILESTONE.md,
+THREADS.md and the drafts among them — and renumbering to fix the appearance of the
+list would rewrite all of them to say something the numbers never promised. That is
+WORD_NUMBERS §1.2's rule applied to the plan rather than to the language: **never
+renumber, never reuse, and record the order where it can be read.** The order is
+this list, top to bottom.
+
+**One consequence has to be resolved before M9 starts, and it is not small.** M8
+builds *"Console with its printer thread"*, so moving M8 after M10 leaves **M9 and
+M10 with nothing to print through** — against this section's own opening rule that a
+milestone can be demonstrated. **The remedy is almost certainly to split M8**: the
+console and its printer thread stay where M8 was, between M7 and M9, and only *hello
+world the program* — `satellite.main` with its parameter, `satellite.return`, and
+the startup measurement — moves after M10, because the parameter is the only part
+that ever needed a list. **The author has not made that split**, so it is written
+here rather than assumed.
+
 **M1 — `satl` exists and says how to use it.** *Landed 2026-08-26.* §1.
 
 **M2 — the namespace trie and the path interner.** ← next
@@ -869,6 +888,64 @@ Module calls dispatch through `handlers[path_id]`, and the **inline caches of §
 land here too** — third of the three adoptions §2.6 orders, and the milestone that
 owns them. Recursion depth is bounded here.
 
+**M9 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
+`.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);
+what lands here is running them. `satellite.variable.bool`, `.number`, `.string` and
+their methods.
+
+**`satellite.bool` `1 17` is a different node and is not this milestone.** The type is
+`satellite.variable.bool` `1 6 6`; the module constants `satellite.bool.true` `1 17 2`
+and `.false` `1 17 1` hang off a top-level namespace that no milestone claims
+(DESIGN §6.1 cites them as the module-constant case). Reading M9 as covering both is
+the mistake this paragraph exists to stop.
+
+**M9.5 — `satellite.variable.float`.** *(Its own milestone as of 2026-08-27. It spent
+the morning in "Later, in no fixed order", was moved into M9, and is separated out
+here because it is a type with a specification of its own and one undecided rule.)*
+
+A `satellite.variable.bool` and **two `satellite_number`s** — `positive`, then the
+integer part and the fractional part, each an exact base-10⁹ magnitude. **DESIGN §8.6
+is the specification**: the three invariants, `normalize`, the four operations,
+modulus, power, and the classification that says which operations round and which
+cannot.
+
+**It costs no new arithmetic.** M6.5 brought `satellite_number` across and built the
+sign; a float is composition over two of them plus rounding.
+
+Two documents used to disagree about whether this was urgent — PLAN filed it under
+"Later" while DESIGN §13 and QUAD.md §3.1 called it the critical path. It is the
+critical path: QUAD is 164 `double`s and cannot be written without it.
+
+**Done when the four operations run and — the blocker — the rounding rule is chosen.**
+Truncate, half-up, or half-even. No representation escapes it: `pow` at a fractional
+exponent is irrational, so the fractional half must be rounded to exist. QUAD's
+determinism invariant means a program's behaviour depends on the answer.
+
+**M10 — containers and the search power.** `satellite.container.list`,
+`satellite.container.map`, **and their methods** — the map's nine `1 4 1 1`–`1 4 1 9`
+and the list's twenty-five `1 4 2 1`–`1 4 2 25` — plus the search power ported close
+to unchanged.
+
+**That clause is a fix, not an addition.** *(2026-08-27.)* M9 writes "`.bool`,
+`.number`, `.string` **and their methods**" and this milestone did not, so twenty-nine
+numbered paths sat under a type name that a milestone mentioned and were owned by
+nothing that said so. Same failure as M3/M4 and DESIGN §6.1's eleven words, one
+milestone later.
+
+**This milestone also owns the empty list `satellite.main`'s parameter binds to.**
+*(Decided 2026-08-28.)* DESIGN §3's hello world declares
+`satellite.container.list<satellite.variable.string> arguments` and never reads it,
+so what it needs is one empty `satellite.container.list` and no `string` at all.
+**That is this milestone's type, not M8's** — an empty list is still a list, and a
+milestone that constructs one has built the type. **M8 therefore runs after this
+one**, and the ordering note in §8's opening carries what that costs.
+
+**The sort primitive is part of this milestone and is not the search power.**
+`sort()` `1 4 2 3` through `sort_up(key)` `1 4 2 7` are §1.1's *one primitive rather
+than comparators*; the search power is v1's comparator ladder, ported. Two different
+things that happen to land together, and saying so is what stops the next reader
+assuming "the search power" covered sorting.
+
 **M8 — hello world.** DESIGN §3 runs. Console with its printer thread,
 `satellite.main`, `satellite.return`. **Startup measured again against M1's number.**
 
@@ -882,13 +959,20 @@ both bare and as a parent** — a fact about reaching `satellite.main`, not abou
 declaring it — so the argument was reading the authority backwards. DESIGN §3 has
 the full reversal.
 
-**What that costs this milestone is one empty list, and nothing else.** Hello world
-never reads `arguments`, so no `satellite.variable.string` value is ever
-constructed — **M9 is not a dependency** — and none of M10's twenty-five list
-methods is reached. What remains is a single empty `satellite.container.list` bound
-to the slot. **If M8 may own that empty list, this milestone does not move. If it is
-M10's, M8 moves after M10, and the ordering is the decision to make here.** Say
-which, in this paragraph, before M8 is built.
+**What that costs this milestone is one empty list, and the author has decided
+whose it is.** *(Decided 2026-08-28.)* Hello world never reads `arguments`, so no
+`satellite.variable.string` value is ever constructed — **M9 is not a dependency** —
+and none of M10's twenty-five list methods is reached. What remains is a single
+empty `satellite.container.list` bound to the slot. **That list is M10's, not this
+milestone's, and this milestone therefore runs after M10** — which is why it appears
+after M10 above while keeping the name M8 (§8's opening).
+
+**The reason it went that way rather than the other is that M8 owning it would have
+been M10's type built twice.** An empty `satellite.container.list` is still a
+`satellite.container.list`; a milestone that constructs one has built the type, and
+the type belongs to the milestone that says so. The alternative — M8 owning a
+private empty-list shape that M10 later replaces — is the kind of thing that looks
+free and is discovered later as two implementations of one type.
 
 **Whichever way that goes, M8 hands `satellite.main` a slot named `arguments` two
 milestones before anything can make it real**, and §7.7 puts the recognition of the
@@ -981,63 +1065,13 @@ anywhere, and the topic *pages* as prose. Adding a node's one-line description t
 `words.def` is this milestone; writing seven essays is not.
 
 **Done when** `satl` runs a program whose whole body is `satellite.help` and the
-output names exactly the paths M1–M8 built and no others — so the same unedited
-program run again at M13 prints a different and equally correct language. Two
+output names exactly the paths that are built when it runs — everything through M10
+and M8, in build order, and no others — so the same unedited program run again at
+M13 prints a different and equally correct language. Two
 checks make it self-verifying, which no earlier milestone is: the output is
 comparable to the non-null entries of `handlers[]` by construction, and
 `satellite.help(satellite.network)` **refuses in plain words** rather than printing
 seven shapes nobody has written.
-
-
-**M9 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
-`.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);
-what lands here is running them. `satellite.variable.bool`, `.number`, `.string` and
-their methods.
-
-**`satellite.bool` `1 17` is a different node and is not this milestone.** The type is
-`satellite.variable.bool` `1 6 6`; the module constants `satellite.bool.true` `1 17 2`
-and `.false` `1 17 1` hang off a top-level namespace that no milestone claims
-(DESIGN §6.1 cites them as the module-constant case). Reading M9 as covering both is
-the mistake this paragraph exists to stop.
-
-**M9.5 — `satellite.variable.float`.** *(Its own milestone as of 2026-08-27. It spent
-the morning in "Later, in no fixed order", was moved into M9, and is separated out
-here because it is a type with a specification of its own and one undecided rule.)*
-
-A `satellite.variable.bool` and **two `satellite_number`s** — `positive`, then the
-integer part and the fractional part, each an exact base-10⁹ magnitude. **DESIGN §8.6
-is the specification**: the three invariants, `normalize`, the four operations,
-modulus, power, and the classification that says which operations round and which
-cannot.
-
-**It costs no new arithmetic.** M6.5 brought `satellite_number` across and built the
-sign; a float is composition over two of them plus rounding.
-
-Two documents used to disagree about whether this was urgent — PLAN filed it under
-"Later" while DESIGN §13 and QUAD.md §3.1 called it the critical path. It is the
-critical path: QUAD is 164 `double`s and cannot be written without it.
-
-**Done when the four operations run and — the blocker — the rounding rule is chosen.**
-Truncate, half-up, or half-even. No representation escapes it: `pow` at a fractional
-exponent is irrational, so the fractional half must be rounded to exist. QUAD's
-determinism invariant means a program's behaviour depends on the answer.
-
-**M10 — containers and the search power.** `satellite.container.list`,
-`satellite.container.map`, **and their methods** — the map's nine `1 4 1 1`–`1 4 1 9`
-and the list's twenty-five `1 4 2 1`–`1 4 2 25` — plus the search power ported close
-to unchanged.
-
-**That clause is a fix, not an addition.** *(2026-08-27.)* M9 writes "`.bool`,
-`.number`, `.string` **and their methods**" and this milestone did not, so twenty-nine
-numbered paths sat under a type name that a milestone mentioned and were owned by
-nothing that said so. Same failure as M3/M4 and DESIGN §6.1's eleven words, one
-milestone later.
-
-**The sort primitive is part of this milestone and is not the search power.**
-`sort()` `1 4 2 3` through `sort_up(key)` `1 4 2 7` are §1.1's *one primitive rather
-than comparators*; the search power is v1's comparator ladder, ported. Two different
-things that happen to land together, and saying so is what stops the next reader
-assuming "the search power" covered sorting.
 
 **M11.A — the window.** *(Split from M11 on 2026-08-27, and built the same day —
 the window landed ahead of the prompt it will host.)* The GTK4 + VTE binary, and
