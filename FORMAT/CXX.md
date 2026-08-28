@@ -9,20 +9,24 @@ It is **not** a design document. [DESIGN.md](../DESIGN.md) says what the languag
 [PLAN.md](../PLAN.md) says how it gets built, [WORD_NUMBERS.md](../WORD_NUMBERS.md) is
 the authority over every number. This file says how the code is written.
 
-**§9 is the part to read first if you are about to write M2**, because it lists what
-is *not* decided anywhere and would otherwise be decided by accident at the keyboard.
+**§9 listed the ten things that were not decided anywhere and blocked M2.** All ten
+were settled when M2 was written on 2026-08-28, and §9 now records each answer and
+the file it lives in — which is the part to read before M3 inherits them.
 
 ---
 
 ## 1. The three rules everything else serves
 
-**No C++ file exceeds 300 lines.** PLAN §3. From the first commit of every file, not
-from the commit where somebody notices — *"splitting a file after the fact preserves
-its shape; writing to a ceiling changes the shape."* `words.def` is the one exemption,
-because it is data and splitting a numbering whose meaning is registration order could
-silently change what a program means.
+**Try to build for 300 lines.** PLAN §3, softened by the author on 2026-08-28 —
+it is a target to write toward and not a ceiling that fails a build. What it is for
+is the shape a file comes out in: *"splitting a file after the fact preserves its
+shape; writing to a target changes the shape."* Aim at it from a file's first
+commit. Going over is not wrong; getting long because nobody was aiming is, and so
+is splitting at a seam chosen to satisfy an arithmetic rather than a subject.
+`words.def` is exempt outright, because it is data and splitting a numbering whose
+meaning is registration order could silently change what a program means.
 
-An umbrella header is a legitimate answer to the ceiling. A dispatch table is a
+An umbrella header is a legitimate answer to it. A dispatch table is a
 legitimate answer and a chain of `if` arms is not.
 
 **One place per fact.** The `Makefile` is an index over `make_support/`;
@@ -162,20 +166,17 @@ Corollaries worth stating because they are easy to violate:
 
 ## 5. Adding a module to the build
 
-The build is eight fragments under `make_support/`, included by name in numeric order
-from the `Makefile`. Order is load-bearing in three places and each fragment says so
-at its top.
+The build is ten fragments under `make_support/`, included by name in numeric order
+from the `Makefile`. Order is load-bearing in four places and each fragment says so
+at its top — 065-tests.mk is read before 070-clean.mk so `clean` can name `$(TESTBINS)`.
 
-**M2's directory line is already written and commented out**, at the bottom of
-`030-directories.mk`:
+**M2 used that line on 2026-08-28 and it is now live**: `WORDS = $(SRC)/satellite_words`
+sits with the other module variables at the top of `030-directories.mk`, which is
+where `TESTS` and `TESTNAMES` were added beside it. The prediction held — adding the
+module was the two edits below, plus the test fragment, which is a target and not a
+module.
 
-```make
-# Declared here and empty until M2, so that adding the trie is one line in this
-# file and one in 040-sources.mk rather than a hunt through the build:
-#   WORDS  = $(SRC)/satellite_words
-```
-
-So adding `src/satellite_words/` is exactly three edits:
+So adding a module under `src/` is exactly three edits:
 
 1. **`030-directories.mk`** — uncomment `WORDS = $(SRC)/satellite_words`.
 2. **`040-sources.mk`** — add each `.cpp` to `SATL_SRCS`, and each `.hpp` to `HDRS`.
@@ -192,8 +193,10 @@ $(SRC)/%.haswell.o: $(SRC)/%.cpp   →  ... $(MARCH_HASWELL) ...
 ```
 
 Explicit rules exist only for the two objects that bake in `VERSION_DEFS`
-(`main.o`, `opening.o`) — an explicit rule outranks a pattern, which is why the
-haswell pattern rule is currently unreached and deliberately present.
+(`main.o`, `opening.o`) — an explicit rule outranks a pattern. **The haswell
+pattern rule was unreached until M2 and is reached now**: `dump.cpp` was the third
+source added to `SATL_SRCS`, and `dump.haswell.o` is built by that rule and no
+other, which is exactly what it was written in advance for.
 
 Two things not to break:
 
@@ -206,12 +209,14 @@ Two things not to break:
 
 ## 6. Tests
 
-**There is no test infrastructure in this tree.** Not a target, not a directory, not a
-harness. `make` builds three binaries and that is all.
+**Ported at M2 on 2026-08-28.** Until then this section opened *"there is no test
+infrastructure in this tree -- not a target, not a directory, not a harness"*, and
+that was literally true. There is now `make test`, `tests/words_test/` and
+`make_support/065-tests.mk`, which is the first satellite's fragment cut down to
+what one test needs. Everything below is what was ported, and why.
 
-**The first satellite had a good one and it should be ported**, not reinvented.
 `old_versions/first_satellite/make_support/120-tests.mk` plus `TESTNAMES` in its
-`070-directories.mk`. The shape:
+`070-directories.mk` is the original. The shape:
 
 - **`TESTNAMES` is the single place a test is declared to exist.** Everything else —
   the per-test source list, the binary list, the phony aliases — is derived from it
@@ -252,11 +257,31 @@ That is exactly M2's test: **`satellite.console.display` must walk to `1 5 1` an
 `satellite.random.normal` to `1 7 2`**, because those numbers are claims WORD_NUMBERS.md
 makes in prose and the test is how we know the transcription did not drift.
 
-## 7. The X-macro registry — the mechanism M2 ports
+**And it went further, because two rows are not a transcription check.**
+`tests/words_test/authority.cpp` **opens WORD_NUMBERS.md at run time**, parses §2.2
+and walks all 222 of its paths, then §2.3's nine spellings. That is unusual and it
+is the point: WORD_NUMBERS.md is not documentation *about* the numbering, it **is**
+the numbering, so checking the code against it is §1's third rule pointed at the
+code. Hard-coding the 222 rows into C++ would have made a second place they live.
+
+**The failure it exists for cannot be caught any other way.** `words.def` numbers by
+POSITION, so a row left out does not leave a hole — it silently renumbers every
+sibling after it, and both files stay internally consistent. **Verified by mutation
+on 2026-08-28:** deleting `satellite.console.typed()` `1 5 5` from `words.def`
+**compiles clean**, every `static_assert` passing, and the test then reports the
+missing row plus the four siblings it shifted. A green build and a wrong language.
+
+Two rules came out of writing it, and both are the stale-binary lesson again: **a
+test whose subject is a document must fail loudly when it cannot read that
+document**, never skip; and **the counts are checked before the rows** — 222 rows,
+219 numbers, 3 aliases, 35 `(0)` markers — because a parser bug that silently read
+half the table would otherwise report PASS over the half it read.
+
+## 7. The X-macro registry — the mechanism M2 ported
 
 `old_versions/first_satellite/src/bytecode_format/` is 1133 lines across five files
-and it is the thing being ported and finished. Read it before writing
-`src/satellite_words/`.
+and it is what was ported and finished on 2026-08-28. Read it beside
+`src/satellite_words/`, which is what it became.
 
 **There is no generator and no build step.** Every consumer defines the macros,
 includes the `.def`, and undefines them. The `.def` opens by defining each macro to
@@ -347,72 +372,102 @@ what hid the bug."*
 These are the same four checks the numbering was validated against by hand on
 2026-08-27, when WORD_NUMBERS.md §2.2 went to 215 entries and all four came back zero.
 
+**Written on 2026-08-28, three of the four turned out not to need an assert**, and
+that is the encoding paying rather than a corner cut: a number is a POSITION, so
+holes and duplicates cannot be expressed; an alias names an IDENTIFIER, so a bad one
+is an unknown enumerator. Only *no orphans, no node is its own ancestor* was left to
+assert. **Say which is which in the header** — `words_invariants.hpp` does, because a
+reader who counts four here and one there will conclude three were forgotten.
+
 **And one thing the header must say out loud**, or it promises more than it keeps: the
 asserts cover the **frozen** half only. User capsules and spacesuits are numbered at
 parse time (WORD_NUMBERS §3) and no compiler can see them.
 
 ---
 
-## 9. What is not decided anywhere, and blocks writing M2
+## 9. What blocked M2, and what each answer turned out to be
 
-Everything above is documented somewhere. The following is not — in any of the six
-permanent documents or in the existing code — and each would otherwise be settled by
-whoever types first.
+**All ten were settled on 2026-08-28, when M2 was written.** This section used to
+open *"the following is not documented anywhere and each would otherwise be settled
+by whoever types first"* — that was its whole purpose and it worked, so what
+replaces it is the answers rather than the questions. **Read this before M3**, which
+inherits every one of them.
 
-**1. How is `words.def` written as a tree?** PLAN §8 says *"each entry names its
-parent, and its position among that parent's children **is** its number."* The first
-satellite's rows carry an explicit `id` column; here the number is **implicit in
-order**, which is a different macro and a different set of asserts. Nobody has written
-the signature. Something like `SAT_NODE(parent_ident, ident, text)` — but the parent
-must be declared before the child, and whether that is enforced or merely assumed is
-part of the same decision.
+**1. How is `words.def` written as a tree?** `SAT_NODE(parent, ident, text, kind)`,
+and **the number is not a column** — it is the row's POSITION among its parent's
+`SAT_NUMBERED` siblings, computed at compile time in one forward pass. A parent must
+therefore be declared before its children, and that is `parents_come_first()` rather
+than a convention. The `// 1 5 1` ending each row is a comment nothing reads.
 
-**2. Call shapes sit at two depths, and the `.def` can only encode one.**
-WORD_NUMBERS §4 is explicit that this is unsettled: `include()` is a *child* of
-`include` at `1 1 0`, while `input()` is a *sibling* of `display` at `1 5 2`. §4
-proposes a reading under which both are correct and asks for it to be confirmed
-**before `words.def` encodes it**. This is a hard blocker on writing the file.
+**2. Call shapes at two depths.** Not a conflict, and WORD_NUMBERS §1.3's definition
+of `(0)` on 2026-08-28 had already settled it before the file was written: **a word
+reached bare holds its shapes as children** (`include()` is `1 1 0`, a child of
+`include`); **a word only ever called does not exist apart from them**, so its shapes
+are siblings (`input()` is `1 5 2`, beside `display`). One rule, two appearances.
+`match_shape()` in `words_walk.hpp` looks in both places, in that order, and nothing
+else in the module has to know which kind a word is.
 
-**3. What is a `PathId`, exactly?** DESIGN §4.5 says one `uint32_t` for a whole path,
-and that it is *"the interned id of the terminal node"* — so it is an index into a node
-table, not the numbers packed into bit-fields. What is not said: the node table's C++
-type, the maximum node count, and what happens on overflow. Four billion is the
-headline figure and the real ceiling is whatever the table is.
+**3. What is a `PathId`?** `uint32_t`, an index into the node table. `0` is no path;
+`1`–`254` are the language's frozen words in `words.def` order; a user's names are
+allocated from `255` upward at parse time. `is_language_word(id)` is the boundary,
+and it is the predicate anything about to write a `PathId` down must ask first.
 
-**4. `(0)` forms.** A node that answers bare *and* has children — `satellite.container`,
-`arguments.memory`, `arguments.machine` — is marked `(0)` in WORD_NUMBERS §2.2. How
-that is expressed in the `.def` is undecided.
+**4. `(0)` forms.** A `SAT_BARE` row whose text is exactly `"()"`, taking position 0
+and **not advancing its parent's counter** — which is what keeps a parent's numbered
+children dense from 1 whether it has a bare shape or not. The kind and the text both
+say it, and an assert requires them to agree.
 
-**5. Aliases.** Six spellings of `arguments`, `hexadecimal` for `hex`, `.range` for
-its `(min,max)` sibling. One node, many spellings — the inverse of the interner's
-many-nodes-one-string. The spelling table has to hold both directions (DESIGN §4.4)
-and nothing says how the `.def` declares an alias.
+**5. Aliases.** `SAT_ALIAS(ident, text)`: a second spelling of a node, written
+relative to that node's **parent**, free to carry a dot. All nine live in
+`words.def`. Two things fell out: an alias takes no number, so **properties 2 and 4
+of M2 hold by construction and by the compiler**; and the alias match must end at
+`.`, `(` or the end of the path, because `argument` is a declared spelling and is a
+prefix of `arguments`.
 
-**6. The digest.** SATC.md §2 requires one over `words.def` so a `.satc` can name the
-numbering it was written against, and SATC.md §6 openly asks *what it is over* — if
-the trie is built from more than that one file, the digest has to cover all of it or
-two numberings can share a hash. Algorithm, input set and storage are all unchosen.
+**6. The digest.** `constexpr` FNV-1a over **the numbering** — each node's parent,
+number, kind and text, then every alias — and not over the file's bytes.
+`words_digest.hpp` carries the argument and SATC.md §6 now records it: every input to
+the numbering is in one file, so §6's worry does not arise, and hashing bytes would
+invalidate every cached `.satc` on the machine when a comment was rewritten.
 
-**7. How does a live child counter coexist with a `constexpr` frozen table?** PLAN
-§8.1 requires both: the language's children frozen and asserted, the user's appended at
-parse time. A `constexpr` array cannot grow, so the runtime trie is a separate mutable
-structure seeded from the frozen one — but that is an inference, not a written
-decision, and §8.1 explicitly asks whether M2 owns a real allocator or a stub.
+**7. Live counter beside a `constexpr` table.** The frozen table stays `constexpr`
+and is never copied. `words::Words` holds one array of counters seeded from it and a
+vector that stays empty until a name is defined — so a program that never defines one
+pays nothing. **M2 owns a real allocator, not a stub** (PLAN §8.1 asked; the answer
+is recorded in `words_runtime.hpp`), and **its caller arrives at M4.**
 
-**8. Error handling before M5 exists.** M5 builds the error reporter and M2 comes
-first, so a failed trie walk at M2 has nowhere to report to. DESIGN §9.1 rules out
-throwing (measured: 8.5 ns as an enum against 1537 ns thrown) and rules out
-*"record the error and return nullptr"*. What M2 returns instead is unwritten.
+**8. Error handling before M5 exists.** `walk()` returns a `Walk`: the id, and when
+there is no id, **which segment failed and which node it failed under**. Neither a
+throw (DESIGN §9.1) nor a bare null — `under` is the load-bearing field, because
+§4.6's *"did you mean `console`?"* is edit distance over one node's children and that
+node is the one it names. M5 can be built against this without the signature moving.
 
-**9. The C++ names.** `satellite::words::Node`? `Trie`? `Interner`? `PathId` is the one
-name any document uses. Everything else is unnamed, and a name chosen at the keyboard
-is a name every later file inherits.
+**9. The C++ names.** `namespace satellite::words`, and: `NodeId`, `PathId`,
+`SpellingId`, `Node`, `Alias`, `Walk`, `WalkError`, `Words`. No `Trie` and no
+`Interner` — the trie is the node table and the interner is a `constexpr` array, and
+neither earned a type.
 
-**10. Whether M2's interning is threaded at all.** PLAN §4.5.1 says the crossover — how
-many satellite-rooted source lines before 24 threads beat 1 — *"is not yet measured"*,
-and §9's rule is measure on this machine rather than quote. Threading the fixed table
-at startup is already argued to be a guaranteed loss; threading the user's source is
-open, and the measurement blocks the decision.
+**10. Whether M2's interning is threaded.** **It is not, and that is a decision.**
+PLAN §4.5.1 already argued threading the fixed table at startup is a guaranteed loss;
+the M2 startup measurement (PLAN §1) is why it is not close — `constexpr` tables land
+in rodata and nothing runs before `main()`. **The crossover §4.5.1 wants measured is
+about the walk over a USER'S SOURCE**, which does not exist until M3, so the
+measurement was never M2's to take and M3 is where it can first be taken.
+
+### What M2 found that this section could not have asked for
+
+- **Only one of PLAN M2's four properties needed a `static_assert`.** Choosing
+  position-as-number made "no holes" and "no duplicates" unrepresentable, and naming
+  an identifier made "no alias points at a number that does not exist" a compiler
+  error. `words_invariants.hpp` says which is which — because a reader who counts
+  four in the plan and one in the header will otherwise conclude three were
+  forgotten — and adds eight the encoding needs instead.
+- **The transcription is the one thing no assert can reach**, and §6 above records
+  the mutation test that proves it.
+- **A predicate is easy to write about the wrong thing**, which is §8's whole
+  warning, and it happened here on the first attempt: `argument_rows_have_no_spelling`
+  reasoned about a row's *kind* when the honest property was about its first
+  *character*, and it fired on all 38 bare rows. It is `spellings_match_texts()` now.
 
 **Also unscheduled rather than undecided:** [SCRATCH.md/MILESTONE.md](../SCRATCH.md/MILESTONE.md)
 lists everything with no milestone at all, including the test infrastructure §6 says
@@ -422,14 +477,14 @@ does not exist.
 
 ## 10. The checklist, before a file is committed
 
-- [ ] under 300 lines
+- [ ] aimed at 300 lines, and split by subject if it was split at all
 - [ ] `#pragma once`, includes spelled from `src/`, grouped and ordered per §2
 - [ ] `namespace satellite`, closed with its `// namespace satellite` comment
 - [ ] a file-top comment saying what it is and **why it is this way**
 - [ ] every number in it carries where it came from and when
 - [ ] anything that would break if wrong is a `static_assert`, not a comment
 - [ ] added to `040-sources.mk` — `SATL_SRCS` and `HDRS`, spelled out
-- [ ] `make` builds all three binaries clean under `-Wall -Wextra`
+- [ ] `make` builds all four binaries clean under `-Wall -Wextra`, and `make test` passes
 - [ ] the new thing has a consumer **in the same milestone it is written** — the
       first satellite shipped three commits where the registry had none, which is
       how four defects accumulated behind a guarantee nothing checked

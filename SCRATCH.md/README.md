@@ -27,7 +27,7 @@ true. A measured startup floor does not.
 | [WORD_SURFACE.md](WORD_SURFACE.md) | every `satellite.*` path that exists in the first satellite or is promised by this one, and which of five sources each was found in | `words.def` is written and tested against it — **every path in it is now numbered** |
 | [PORTING.md](PORTING.md) | what `satellite_number` and `satellite_string` actually are in the first satellite, and what has to be decided before copying them | the port lands and PLAN §6 records what changed |
 | [FIRST_NOTE.md](FIRST_NOTE.md) | the ledger for converting `plans/madness/first_note.txt` into the permanent documents, with the original preserved verbatim | done — kept only until someone has read it once |
-| [WORD_NUMBERS_ORIGINAL.md](WORD_NUMBERS_ORIGINAL.md) | the author's hand-written numbering, before it was rewritten as prose. It was never committed, so this is the only copy of what they actually typed | the rewritten WORD_NUMBERS.md has been read and accepted |
+| [WORD_NUMBERS_ORIGINAL.md](WORD_NUMBERS_ORIGINAL.md) | **the account of the numbering** — the author's 36 hand-written lines preserved verbatim, what each became, the two `?`s resolved, and where the numbering stands in code. Handed over 2026-08-28; §1 is theirs and uneditable, the rest is mine | the history in it stops being useful — **not** when the rewrite is accepted, which already happened |
 
 ## Why this folder exists
 

@@ -42,13 +42,17 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 ## 1. Where things stand
 
-**Milestone 1 landed 2026-08-26.** There is a `satl` that says what it is, says how
-a file will be run, and refuses to pretend about the parts that do not exist. There
-is no interpreter behind it yet.
+**Milestone 1 landed 2026-08-26. Milestone 2 landed 2026-08-28.** There is a
+`satl` that says what it is, says how a file will be run, refuses to pretend about
+the parts that do not exist, and now **holds the whole numbering and can be asked
+about it** — `satl --words`. There is still no interpreter behind it.
 
-What exists: the `Makefile` as an index over eight fragments under `make_support/`,
-**ten C++ files totalling 1,153 lines**, and `satellite_enterprise/`, the Enterprise
-Linux installer and the artwork. [LAYOUT.md](LAYOUT.md) lists all of it.
+What exists: the `Makefile` as an index over ten fragments under `make_support/`,
+**twenty-five C++ files totalling 3,148 lines** plus `words.def` at 542, the tree's
+first `tests/` directory, and `satellite_enterprise/`, the Enterprise Linux
+installer and the artwork. *(Counted 2026-08-28.)* The largest C++ file is
+`tests/words_test/authority.cpp` at 261 and the largest under `src/` is
+`src/satellite_words/words_invariants.hpp` at 244. [LAYOUT.md](LAYOUT.md) lists all of it.
 
 *(Recounted 2026-08-28. This paragraph said "five C++ files… the largest C++ file is
 137 lines", which was true of M1 alone and stopped being true the next day.)* M1's
@@ -66,10 +70,22 @@ satellite's claim of "119 shared objects" turned out to be **78 on this machine*
 is not repeated anywhere. Neither was a change against `PLAN_ONE.md`, which had
 already called both.
 
-**Next: milestone 2**, the namespace trie and the path interner (§8). Its
-`static_assert` was blocked from 2026-08-27 until 2026-08-28 on a "no duplicates"
-clause the language's three deliberate aliases falsify; §8's M2 now carries the
-four-property form that survives them, so the transcription can start.
+**M2 cost nothing measurable at startup**, which §4.3's floor exists to check.
+Measured on this machine 2026-08-28, best of seven runs of 200 invocations, all
+three binaries on the same filesystem: a bare `int main(){return 0;}` at
+**1.59 ms**, `satl` built from M1's sources at **1.60 ms**, this `satl` at
+**1.61 ms**, and a repeat of the bare binary at 1.58 ms — so the noise floor is
+about 0.02 ms and the M1-to-M2 difference is inside it. That is what the encoding
+buys: the tables are `constexpr` and land in rodata, so nothing runs before
+`main()` and a program that never asks about a word never pays for one.
+
+*(The first attempt at this measurement put the bare binary in `/tmp` and the
+others in the tree, and reported `satl` as **faster** than an empty `main` — a
+result that cannot be true and was a different filesystem rather than a finding.
+Recorded because §9's rule is to measure on this machine, and a measurement whose
+setup differs between arms is not one.)*
+
+**Next: milestone 3**, the lexer (§8).
 
 ### 1.1 The finding this whole plan hangs off
 
@@ -213,18 +229,26 @@ the arena twice.
 
 ## 3. The line rule
 
-**No C++ file exceeds 300 lines.**
+**Try to build for 300 lines.**
 
-This is tighter than the first satellite's 325 and it is a hard default rather than
-a suggestion. The first satellite arrived at its ceiling late, by splitting a
-2208-line `eval.cpp` and two 700-line functions *after* they had been written — and
-the splits are visible in the result, with headers named `eval_internal.hpp`
-existing to hold what an anonymous namespace used to, and comments explaining that
-"the bodies below are UNCHANGED; they moved."
+*(Softened from "no C++ file exceeds 300 lines" on 2026-08-28, by the author, and
+the word that changed is `try`.)* It is a target to write toward, not a ceiling
+that fails a build — the number is tighter than the first satellite's 325 and it
+is aimed at the shape a file comes out in, which is a thing a person judges.
 
-**Splitting a file after the fact preserves its shape. Writing to a ceiling changes
-the shape.** So the ceiling applies from the first commit of every file, not from
-the commit where somebody notices.
+The first satellite arrived at its ceiling late, by splitting a 2208-line
+`eval.cpp` and two 700-line functions *after* they had been written — and the
+splits are visible in the result, with headers named `eval_internal.hpp` existing
+to hold what an anonymous namespace used to, and comments explaining that "the
+bodies below are UNCHANGED; they moved."
+
+**Splitting a file after the fact preserves its shape. Writing to a target changes
+the shape.** So the target is what you aim at from a file's first commit rather
+than something applied at the commit where somebody notices — and that is the
+whole of what it is for. **A file that goes over is not wrong; a file that got
+long because nobody was aiming is.** Split by SUBJECT when you split at all: a
+seam chosen to satisfy an arithmetic is a seam in the wrong place, which is the
+failure the first satellite's `eval_internal.hpp` records.
 
 Consequences to plan for rather than discover:
 
@@ -706,7 +730,7 @@ what a review said on a day and rewriting them would falsify the record.
 
 **M1 — `satl` exists and says how to use it.** *Landed 2026-08-26.* §1.
 
-**M2 — the namespace trie and the path interner.** ← next
+**M2 — the namespace trie and the path interner.** *Landed 2026-08-28.*
 - `src/satellite_words/words.def`, written as a **tree**: each entry names its
   parent, and its position among that parent's children *is* its number. It is a
   transcription of [WORD_NUMBERS.md](WORD_NUMBERS.md) and nothing else — that file
@@ -762,6 +786,48 @@ what a review said on a day and rewriting them would falsify the record.
   The numbers come from WORD_NUMBERS.md and the test is how we know the
   transcription did not drift.
 
+**What landed, and the four things the milestone decided on its way.**
+*(2026-08-28.)* `src/satellite_words/` is nine files plus `words.def`;
+`tests/words_test/` is the tree's first test; `satl --words` is the consumer.
+
+- **`words.def` holds 254 nodes and 9 aliases**, and 254 is a count no document
+  had. §2.2's 219 numbers do not include the bare shape a `(0)` marker names —
+  the marker rides on the row of the node it belongs to, so it is a number that
+  section carries without counting. 216 numbered rows + 38 bare shapes = 254.
+- **A number is a position and is not a column.** The `// 1 5 1` ending each row
+  is a comment nothing reads. That closes FORMAT/CXX.md §9's first question and
+  it is what makes the next point necessary.
+- **Only one of this milestone's four properties is a `static_assert`, and that
+  is the encoding paying off rather than three being forgotten.** No holes and no
+  duplicates are BY CONSTRUCTION — a number is a position, so the file cannot
+  express either. No alias pointing at a number that does not exist is BY THE
+  COMPILER, because an alias names an identifier. **Only "no orphans, no node is
+  its own ancestor" needed asserting.** `words_invariants.hpp` says which is
+  which, and adds eight more the encoding needs and §8 could not have known to
+  ask for.
+- **The transcription is the one thing no assert can reach, so the test reads
+  the authority.** A row left out of `words.def` does not leave a hole; it
+  silently renumbers every sibling after it, and *both files stay internally
+  consistent.* `tests/words_test` therefore opens WORD_NUMBERS.md, parses §2.2
+  and walks all 222 paths. **Verified by mutation on 2026-08-28**: deleting one
+  row — `satellite.console.typed()` `1 5 5` — compiles clean with every assert
+  passing, and the test names the missing row and the four siblings it shifted.
+
+**The call-shape question is answered and the two depths are one rule.**
+WORD_NUMBERS §4 asked for confirmation *before* `words.def` encoded it, and §1.3's
+definition of `(0)` on 2026-08-28 had already settled it: **a word reached bare
+holds its shapes as children (`include()` is `1 1 0`); a word only ever called
+does not exist apart from them, so its shapes are siblings (`input()` is
+`1 5 2`).** `words.def`'s header carries the argument and `match_shape()` is the
+rule in ten lines.
+
+**M2 is not threaded, and that is a decision rather than an omission.** §4.5.1
+already argues that threading the fixed table at startup is a guaranteed loss;
+the measurement above is why it is not even close. **The crossover §4.5.1 wants
+measured is about the walk over a USER'S SOURCE**, which does not exist until M3,
+so the number is not blocked on anything M2 could have done and M3 is where it
+can first be taken.
+
 **The seed is wide** — the whole first-satellite word surface, not just what M8–M10
 needs. *(Settled 2026-08-27.)* This closes what this section used to hold open.
 `SCRATCH.md/WORD_SURFACE.md` is the inventory it is seeded from: 111 real paths
@@ -804,10 +870,15 @@ Three things follow, and each is a way to get this wrong:
   and the wire format are the two that will want to, and both are far enough out
   that the rule needs writing down now rather than remembering later.
 - **`satellite.library.<name>` means the library registry is reachable at M2**, at
-  least as a counter, years before the milestone that builds it. Decide whether M2
-  owns a real allocator or a stub, and say which in the code.
+  least as a counter, years before the milestone that builds it. ~~Decide whether M2
+  owns a real allocator or a stub, and say which in the code.~~ **Decided
+  2026-08-28: a real allocator.** The counter was never optional — this section
+  requires it — and once it exists, refusing to hand out the number it is holding
+  buys nothing and leaves a second thing to build later.
+  `src/satellite_words/words_runtime.hpp` is the record, as this asked.
+  **Its caller arrives at M4**, which now says so.
 
-**M3 — the lexer.** Tokens, spans, the reservation rule. Known words carry their
+**M3 — the lexer.** ← next. Tokens, spans, the reservation rule. Known words carry their
 node identity out of the lexer; user-owned bare words carry their text. DESIGN §5.
 
 **It also owns `satellite.variable.binary` `1 6 5` and `.hex` `1 6 11`**, and that was
@@ -820,6 +891,16 @@ lexer's spelling table has to know.
 **M4 — the arena AST and the parser.** `uint32_t` node indices into a contiguous
 arena, no `shared_ptr` anywhere in the tree. `satl --unparse file.satl` round-trips,
 which is how we know the parser is right before anything can run.
+
+**It is also the first caller of M2's name allocator.** *(2026-08-28.)* §8.1
+requires every node to keep a live count of its children so a user's capsules and
+spacesuits can take the next number free under the node that owns them, allocated
+**when the name is first met** — and the parser is what meets a name for the first
+time. `words::Words::intern(parent, name)` is built, tested and called by nothing
+until here. Two things M4 inherits with it: a name the language already owns under
+that parent is **refused** rather than renumbered, and DESIGN §2's reservation rule
+decides at M6 whether that refusal is the right policy; and a user's `PathId` is
+valid **inside one run only**, so M4.5's `.satc` writer must record the name.
 
 **It owns all eleven of DESIGN §6.1's segment-1 words, and naming them is a fix rather
 than an addition.** *(2026-08-27.)* §6.1's table is authoritative: a segment-1 word
@@ -952,9 +1033,16 @@ and the list's twenty-five `1 4 2 1`–`1 4 2 25` — plus the search power port
 to unchanged.
 
 **That clause is a fix, not an addition.** *(2026-08-27.)* M9 writes "`.bool`,
-`.number`, `.string` **and their methods**" and this milestone did not, so twenty-nine
-numbered paths sat under a type name that a milestone mentioned and were owned by
-nothing that said so. Same failure as M3/M4 and DESIGN §6.1's eleven words, one
+`.number`, `.string` **and their methods**" and this milestone did not, so
+**thirty-four** numbered paths sat under a type name that a milestone mentioned and
+were owned by nothing that said so.
+
+*(Was "twenty-nine" until 2026-08-28, in the same paragraph that names nine and
+twenty-five two lines above — 9 + 25 is 34. The 29 came from
+`SCRATCH.md/MILESTONE.md` §0.3 counting the list at **twenty** when §2.2 gives it
+twenty-five; the ledger is corrected too, and its "35 implied" becomes 40. Found
+while transcribing the numbering at M2, which is the first time anything counted
+those rows rather than repeating the count.)* Same failure as M3/M4 and DESIGN §6.1's eleven words, one
 milestone later.
 
 **This milestone also owns the empty list `satellite.main`'s parameter binds to.**

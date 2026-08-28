@@ -12,7 +12,17 @@ SRC      = src
 SYSTEM   = $(SRC)/system_facts
 PROGRAMS = $(SRC)/programs
 RANDOM   = $(SRC)/satellite_random
+WORDS    = $(SRC)/satellite_words
 
-# Declared here and empty until M2, so that adding the trie is one line in this
-# file and one in 040-sources.mk rather than a hunt through the build:
-#   WORDS  = $(SRC)/satellite_words
+# The tests root, and TESTNAMES is THE SINGLE PLACE A TEST IS DECLARED TO EXIST.
+# 065-tests.mk derives everything else from it -- the per-test source lists, the
+# binaries, the run list, the aliases and what `clean` removes.
+#
+# DERIVED AND NEVER HAND-COPIED, and the first satellite paid for that rule
+# twice: its test binary list WAS written out by hand, two tests were added to
+# the run list and to neither build list, and `make test` ran binaries nobody
+# had built -- reporting PASS from objects compiled before the change under
+# test. That is the worst failure a suite has: not a red line, a green one that
+# is out of date.
+TESTS     = tests
+TESTNAMES = words_test

@@ -16,15 +16,16 @@ authority over every number in the language.
 
 **M1 landed 2026-08-26. M11.A landed 2026-08-27** — out of order, because the
 author asked for the window and it needed nothing that has not been built.
-**M2 is in progress** and has not committed any code. **It is no longer blocked**
-*(2026-08-28)*: PLAN §8's M2 now carries the four-property `static_assert` instead
-of the "no duplicates" clause the aliases falsified. See §5.14.
+**M2 LANDED 2026-08-28** — see §5.17, which is the section to read first.
+**M3, the lexer, is next.**
 
-M2 as PLAN §8 defines it is: `src/satellite_words/words.def`, the trie, the
+M2 as PLAN §8 defined it was: `src/satellite_words/words.def`, the trie, the
 spelling interner, `PathId`, a digest over `words.def`, `satl --words` as its
-consumer, and a test proving paths walk to their numbers. **No C++ is written yet.**
-The blocker was never code — it was that the numbering had to be settled first, and
-settling it took the whole session and changed the plan in six places (§3).
+consumer, and a test proving paths walk to their numbers. **All of it is built**,
+plus the tree's first `tests/` directory and `make test`, which FORMAT/CXX.md §6
+said did not exist. The blocker was never code — it was that the numbering had to
+be settled first, and settling it took a whole session and changed the plan in six
+places (§3).
 
 **What IS done: the numbering itself.** WORD_NUMBERS.md §2.2 now holds **222 rows
 carrying 219 distinct numbers** — 144 after the first pass, then the 71 that settling
@@ -41,11 +42,14 @@ three-versus-219 gap is exactly the three declared `.range` aliases — `1 7 5`,
 So `words.def` is now a transcription job against a table that is known to be
 internally consistent, rather than a design job.
 
-**The build is clean.** `make` produces `satl`, `satl.haswell` and `satl-cpu-level`
-and `satl --version` runs. `src/` is **ten C++ files, 1,153 lines** — M1's five, plus
-`satl-term` (M11.A) and `satellite_random/`, both of which landed ahead of their
-milestones on 2026-08-27. The largest is `src/programs/terminal.cpp` at 236, inside
-the 300-line rule. **No session since M1 has written interpreter code.**
+**The build is clean.** `make` produces all four binaries, `make test` passes, and
+`satl --words` prints the whole numbering. `src/` and `tests/` are **25 C++ files,
+3,148 lines**, plus `words.def` at 542. The largest is
+`tests/words_test/authority.cpp` at 261; nothing is over 300. `words_walk.hpp`
+reached **305** before being split by subject into it and `words_spellings.hpp`,
+and that 305 is what prompted the author to soften PLAN §3 to **"try to build for
+300 lines"** on 2026-08-28 — mid-split, with *"we can modularize later."* **M2 is the first session
+since M1 to write interpreter code.**
 
 ---
 
@@ -794,6 +798,142 @@ needs a console and a `main` to run inside, not the parameter — so it could la
 right after M8.A and give M9, M9.5 and M10 a live account of themselves while they
 are being built. It is left where the split put it because moving it is a second
 decision; PLAN M8.5 says so, and says it moves without consequence.
+
+### 5.17 2026-08-28 — M2 LANDED
+
+**START HERE AFTER A CLEAR.** Nothing is running. `make` builds four binaries
+clean, `make test` passes, and nothing is committed — `git status` is the list.
+
+**What is on disk that was not before:**
+
+    src/satellite_words/   words.def (542 lines) + 9 headers + dump.cpp
+    tests/words_test/      5 files, the tree's FIRST test
+    make_support/065-tests.mk
+
+**The encoding, which is the part not to re-derive.** `words.def` is
+`SAT_NODE(parent, ident, text, kind)` and **the number is a POSITION, not a
+column** — computed at compile time in one forward pass, which is why a parent
+must be declared before its children and why that is asserted. `kind` is
+`SAT_NUMBERED` or `SAT_BARE`; a bare row is WORD_NUMBERS §1.3's `(0)`, takes
+position 0 and **does not advance its parent's counter**. `text` is §2.2's path
+column with the parent's path removed, character for character, and a text
+beginning with `(` joins with no dot — which is what lets `path_text()` reproduce
+the authority's path column exactly, checked for all 219 non-alias rows.
+
+**254 nodes, and that count was in no document.** 216 numbered + 38 bare. §2.2's
+219 does not include the bare shape a `(0)` marker names, because the marker rides
+on the row of the node it belongs to.
+
+**Three of PLAN M2's four properties needed no assert**, which is the encoding
+paying off: no holes and no duplicates are unrepresentable when a number is a
+position, and an alias naming an identifier makes property 4 a compiler error.
+Only *no orphans / no cycles* was left. `words_invariants.hpp` says so out loud
+and adds eight more the encoding needs.
+
+**THE MUTATION TEST IS THE THING TO REMEMBER.** Deleting one row from `words.def`
+— `satellite.console.typed()` `1 5 5` — **compiles clean, every static_assert
+passing**, because the file stays internally consistent; it just silently
+renumbers every later sibling. `tests/words_test` caught it and named the missing
+row plus the four it shifted. That is why the test **opens WORD_NUMBERS.md at run
+time** and walks all 222 paths rather than the two PLAN names.
+
+**Measured, not quoted.** M1 `satl` 1.60 ms, M2 `satl` 1.61 ms, bare
+`int main(){return 0;}` 1.59 ms, noise floor ~0.02 ms — best of seven runs of 200
+invocations, all binaries on the same filesystem. M2 costs nothing at startup
+because the tables are `constexpr` rodata. *(The first attempt put the bare binary
+in `/tmp` and reported satl as faster than an empty main. A result that cannot be
+true is a setup difference, not a finding.)*
+
+**Decisions the author made this session:**
+
+- **the test reads WORD_NUMBERS.md and checks all 222 rows** rather than PLAN's two
+- **a real allocator, not a stub** (PLAN §8.1's open question), **and M4 is marked
+  as the milestone that starts calling it**
+- **the digest is over the numbering, not over `words.def`'s bytes** (SATC §6)
+- **PLAN §3's line rule is now "try to build for 300 lines"** — the author softened
+  it mid-session after a header came out at 305. It is a target, not a ceiling.
+  FORMAT/CXX.md §1 and §10 match. *"We can modularize later."*
+
+**What moved in the permanent documents:** PLAN §1 (M2 landed, the measurement),
+§3 (the softened rule), §8 (M2 landed + what it decided, M3 next, M4 owns the
+allocator's first call, §8.1's question answered); FORMAT/CXX.md §1, §5, §6, §7,
+§8, §9 (all ten blockers answered), §10; SATC.md §6; LAYOUT.md (the module, the
+new `tests/` section, 065-tests.mk, and two stale claims fixed — `.start()` and
+`.join()` were numbered on 2026-08-28 and LAYOUT still said they were not).
+
+**WORD_NUMBERS.md was not touched.** It is the author's and it is the authority;
+M2's job was to transcribe it, and the test is the proof that it did.
+
+**What M2 did NOT do**, said plainly so nobody reads this as more than it is:
+nothing executes, there are no handlers, `handlers[path_id]` appears in this
+module only in comments, and `satl --words` ends by saying so. The 121 unscheduled
+paths of `SCRATCH.md/MILESTONE.md` are all numbered now and none is built — which
+is exactly the gap DESIGN §4.6 was corrected for, and M8.5's job.
+
+### 5.18 2026-08-28 — what the adversarial review of M2 found
+
+**Fifteen findings confirmed out of twenty-nine raised**, six lenses over the M2
+implementation with each finding independently attacked before it was believed.
+**All fifteen are fixed.** Recorded because the four code defects are the kind that
+come back.
+
+**Three real bugs in the walk and the allocator, all reachable:**
+
+1. **An empty path segment matched every `(`-row.** The 38 bare rows and the 6
+   argument rows have an EMPTY spelling by design, so an empty `word` compared
+   equal to all of them and the walk handed back the bare shape.
+   `satl --words satellite.console.` answered `1 5 0` and **exited 0**;
+   `satellite.include.(satellite)` answered `1 1 1`. Fixed with a guard in
+   `match_shape()`, and four regression checks in `walking.cpp`.
+2. **`Words::find` never consulted the aliases**, so
+   `intern(satellite.library.main, "args")` allocated a **user** number for one of
+   DESIGN §7.7's six spellings of `arguments` — while `walk()` answered `1 14 1 1`
+   for the same spelling under the same parent, at the same moment. Two numbers for
+   one word, and a parser would have called the half that was wrong. The comment
+   above the function claimed the opposite.
+3. **`find("")` returned the parent's bare shape** as a language word, which
+   `define()` had always refused and `intern()` reached `find()` before ever getting
+   to that refusal. Same root cause as (1).
+
+**One real build defect.** The test binary had no `.cxxflags-stamp` prerequisite,
+so **`make OPT=-O0 test` and `make CXX=g++ test` re-ran the binary the previous
+build left** — printing `ok` from a clang -O3 build while the command line said
+g++ -O0. Most of `words_test` is `static_assert`s, so "does the registry compile
+under this compiler at this -O" IS the test, and that is exactly what was skipped.
+
+**The test was half-blind, and the half it could not see is the everyday edit.**
+`section_authority()` walked the authority INTO the code, which only ever catches a
+row `words.def` is **missing**. A row it has and the authority does not takes no
+number from anybody: appending `satellite.container.set` at `1 4 5` — which
+WORD_NUMBERS §4 says is deliberately free — compiled clean and the suite printed
+`ok`, with the digest silently moved and every cached `.satc` invalidated. **The
+converse is now checked**, derived from the authority so no number gets a second
+home: `kNodeCount == rows - aliases + markers` and `kAliasCount` from §2.2 plus
+§2.3. Verified by mutation in an isolated copy.
+
+**Six comment and count errors, in a tree whose whole culture is that a comment
+states a finding.** `if`/`for`/`while`/`else` called segment-1 words when
+`statement` is the one of the eleven and they are its children; "the map's
+twenty-nine methods" when the map has nine and ten rows sit between; `dump.cpp`'s
+"measured" longest path at 48 characters when it is **50** and a different row;
+"nine spellings over four nodes" when it is five; `060-compile.mk` and FORMAT §5
+still calling the haswell pattern rule unreached in the milestone that reached it;
+`040-sources.mk` still saying "there is no test target in this tree" in the
+milestone that added one. And **065-tests.mk claimed an include-order constraint it
+does not have** — the real one, 030 before 065, was stated nowhere.
+
+**One pre-existing document error, found by counting:** the container methods are
+**34**, not 29. `MILESTONE.md` §0.3 counted the list at twenty when §2.2 gives it
+twenty-five, and PLAN M10 inherited the 29 into a sentence naming nine and
+twenty-five two lines above. **§0.3's "35 implied" is 40.** Corrected in both.
+
+**One process failure that is mine and worth not repeating.** A review agent ran
+mutation probes against the **live working tree** rather than a copy, and for a few
+seconds `words.def` carried two rows it should not have. Nothing was lost —
+`WORD_NUMBERS.md` is byte-identical to HEAD and `words.def` is back at 254 nodes,
+both verified — but the author saw it and asked. **A review that mutates files must
+be given its own copy of the tree**, and the sibling agents also collided in a
+shared scratch directory. Neither was instructed; both should have been.
 
 ## 6. Jobs the user has asked for that are not started
 

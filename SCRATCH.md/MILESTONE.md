@@ -124,17 +124,22 @@ milestone names, so the parent looks covered. This is §0.3's category, finished
 | **`satellite.console.input`, all three shapes** | `1 5 2`–`1 5 4` | `console`, which M8.A names | M8.A is *"Console with its printer thread."* Reading a line is not the printer. The last audit caught `typed()` and missed blocking input entirely |
 | **`satellite.variable.duration`, `.expression`** | `1 6 8`, `1 6 9` | `variable`, which M9 names | not in §8, not in Later, not in prose. §5 listed them as "unaccounted for" and never counted them |
 | **`satellite.library.main` and `.system`** | `1 14 1`, `1 14 2` | `library` | §8.1 discusses their *numbering* at M2 and nothing builds them |
-| **the 29 container methods** | `1 4 1 1`–`1 4 2 25` | M10 names both types | not counted as uncovered here, but see §0.3 — M9 says *"and their methods"* and M10 does not |
+| **the 34 container methods** | `1 4 1 1`–`1 4 2 25` | M10 names both types | not counted as uncovered here, but see §0.3 — M9 says *"and their methods"* and M10 does not |
 
-### 0.3 The 35 implied — covered by a parent's sentence and never by name
+### 0.3 The 40 implied — covered by a parent's sentence and never by name
 
 Not counted in the 122, because a fair reader would say the milestone means to include
 them. But **M9 writes `satellite.variable.bool`, `.number`, `.string` and their
 methods** — the author knows to say "and their methods" when they mean it, and M10
 does not say it:
 
-- **29 container methods.** M10 is *"containers and the search power."* Nine map
-  methods and twenty list methods, none named. The five sort paths are already known
+- **34 container methods.** M10 is *"containers and the search power."* Nine map
+  methods and **twenty-five** list methods, none named. *(Corrected 2026-08-28.
+  This row said 29, from "nine map methods and **twenty** list methods" — but its
+  own number range, `1 4 1 1`–`1 4 2 25`, runs to twenty-five, and §2.2 gives the
+  list twenty-five. **So §0.3's "35 implied" is 40**, and PLAN M10 inherited the
+  29 into a sentence that names nine and twenty-five. Found at M2, which is the
+  first time anything counted those rows instead of repeating the count.)* The five sort paths are already known
   not to be M10's, which proves the wording does not automatically reach a child.
 - **`satellite.variable.window` `1 6 15`** — M13 names the `.so`, not the type.
 - **`division_digits`, `max_depth`, `float_digits`** — M9.5 asks whether
@@ -143,7 +148,7 @@ does not say it:
   `satellite.include(satellite)` `1 1 1` — DESIGN §3's hello world uses both and
   **M8.B** runs DESIGN §3.
 
-**Adding one clause to M10 — "and their methods", the words M9 already uses — moves 29
+**Adding one clause to M10 — "and their methods", the words M9 already uses — moves 34
 paths from implied to named.** That is this audit's cheapest fix and the direct
 descendant of the last one, where naming DESIGN §6.1's table moved eight.
 

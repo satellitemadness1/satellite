@@ -58,12 +58,17 @@ $(RANDOM)/random.o: $(RANDOM)/random.cpp .cxxflags-stamp $(RANDOM)/random.hpp
 # directory, so that `clean` keeps naming what it removes and this rule stays
 # one line like the baseline one above it.
 #
-# UNUSED TODAY and deliberately present: both of satl's two sources have
-# explicit rules below, which outrank any pattern, so nothing currently reaches
-# this. It is what makes adding a third source to SATL_SRCS a one-line edit in
-# 040-sources.mk instead of a one-line edit plus a rule somebody has to notice
-# is missing -- and the failure without it is a build looking for a
-# main.haswell.cpp that was never meant to exist.
+# REACHED SINCE M2, and the prediction this comment used to make came true in
+# the milestone that followed it. It read "UNUSED TODAY and deliberately
+# present: both of satl's two sources have explicit rules below, which outrank
+# any pattern, so nothing currently reaches this" -- then M2 added
+# $(WORDS)/dump.cpp to SATL_SRCS, and `make -n satl.haswell` now compiles
+# dump.haswell.o through this rule and no other.
+#
+# Kept as written because it is the reason adding that third source was a
+# one-line edit in 040-sources.mk rather than a one-line edit plus a rule
+# somebody had to notice was missing. The failure without it would have been a
+# build looking for a dump.haswell.cpp that was never meant to exist.
 $(SRC)/%.haswell.o: $(SRC)/%.cpp
 	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) -c -o $@ $<
 

@@ -7,6 +7,24 @@
 .cxxflags-stamp
 .cxxflags-stamp-haswell
 
+# The test binaries, which live BESIDE their sources rather than in a build
+# directory, so this cannot be a directory exclusion -- tests/words_test/ is
+# source and must stay tracked.
+#
+# IGNORE EVERYTHING IN A TEST FOLDER, THEN NAME WHAT IS SOURCE. The other way
+# round -- listing the binaries -- was written first and was wrong: 065-tests.mk
+# builds tests/<name>/<name>, so the pattern would have to repeat every test's
+# name, and the comment above it claimed adding a test needed no edit here while
+# the line below it said otherwise. This way adding a test really does need no
+# edit, which is the same property TESTNAMES has.
+#
+# A test that ever needs a DATA file beside its sources needs a `!` line for it,
+# and that is a real edit. Said here rather than found later, when the file is
+# missing from a fresh clone and the test fails for a reason nothing names.
+/tests/*/*
+!/tests/*/*.cpp
+!/tests/*/*.hpp
+
 # The first satellite, kept beside this one to read and to pull from, and
 # DELIBERATELY NOT IN THIS REPOSITORY'S HISTORY. It is a whole second tree --
 # 371 tracked files, its own build, its own design/, plus built binaries and

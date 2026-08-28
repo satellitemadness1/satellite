@@ -11,6 +11,10 @@
 # clean on a machine that has since lost its gtk4 must still remove the binary
 # an earlier build left behind, and `rm -f` on a name that is not there is
 # already the no-op this needs.
+# $(TESTBINS) IS DERIVED FROM TESTNAMES and never spelled out, for the same
+# reason 065-tests.mk derives the build list: a clean that names test binaries
+# by hand goes stale the first time one is added, and leaves a stale binary that
+# `make test` will happily run.
 clean:
 	rm -f satl satl.haswell satl-cpu-level satl-term $(SRC)/*/*.o \
-	      .cxxflags-stamp .cxxflags-stamp-haswell
+	      $(TESTBINS) .cxxflags-stamp .cxxflags-stamp-haswell

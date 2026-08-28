@@ -28,8 +28,16 @@
 # satellite.window.new(), a
 # dlopen'd library (M13) -- because the two-binary split cannot help a window
 # opened from inside a user program, which runs in this one. PLAN_ONE.md sec 4.4.
+#
+# $(WORDS)/dump.cpp IS THE ONLY .cpp THE WORD REGISTRY HAS, and that is a
+# property of the module rather than an omission. Everything else under
+# satellite_words/ is constexpr data and pure functions over it, so a future
+# .satc reader or disassembler can read the numbering without linking anything
+# -- which was true of the first satellite's registry and is worth keeping. The
+# one file that prints is the one that had to be a translation unit.
 SATL_SRCS = $(PROGRAMS)/main.cpp \
-            $(PROGRAMS)/opening.cpp
+            $(PROGRAMS)/opening.cpp \
+            $(WORDS)/dump.cpp
 
 SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 
@@ -38,10 +46,26 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 # the tree and makes a from-scratch build depend on files a clean has removed.
 # This list is short and stays short if it is maintained; when it stops being
 # either, revisit that decision on purpose rather than by drift.
+#
+# words.def IS IN THIS LIST AND IS NOT A HEADER, deliberately. It is included by
+# six of the seven headers below and it is the file that actually changes when
+# the language gains a word, so a build that did not depend on it would compile
+# a stale numbering into every object -- silently, since the header it was
+# expanded into would look untouched.
 HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/terminal.hpp \
-       $(RANDOM)/random.hpp
+       $(RANDOM)/random.hpp \
+       $(WORDS)/words.def \
+       $(WORDS)/words.hpp \
+       $(WORDS)/words_nodes.hpp \
+       $(WORDS)/words_numbers.hpp \
+       $(WORDS)/words_spellings.hpp \
+       $(WORDS)/words_walk.hpp \
+       $(WORDS)/words_invariants.hpp \
+       $(WORDS)/words_digest.hpp \
+       $(WORDS)/words_runtime.hpp \
+       $(WORDS)/dump.hpp
 
 # Every object in the tree, which is what 060-compile.mk hangs the header
 # dependency on. The haswell objects and the detector are named here rather than
@@ -66,9 +90,15 @@ HDRS = $(SYSTEM)/version.hpp \
 #
 # Compiling it under `all` is the cheapest thing that stops it rotting: a header
 # change or a compiler upgrade breaks the build rather than breaking silently
-# months later. FORMAT/CXX.md §6 is the real answer and it is not built -- there
-# is no test target in this tree, and porting the first satellite's harness is
-# the job that would give this module a genuine consumer.
+# months later.
+#
+# THE HARNESS LANDED AT M2 AND THIS MODULE STILL HAS NO TEST. This paragraph
+# used to end "there is no test target in this tree, and porting the first
+# satellite's harness is the job that would give this module a genuine
+# consumer" -- 065-tests.mk is that harness and TESTNAMES is three fragments
+# away, so the reason is now simply that nobody has written a random_test.
+# Said plainly, because the old sentence deferred the work behind a blocker
+# that no longer exists and a reader would have believed it.
 RANDOM_SRCS = $(RANDOM)/random.cpp
 
 RANDOM_OBJS = $(RANDOM_SRCS:.cpp=.o)

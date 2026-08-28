@@ -30,7 +30,7 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and — after reading its source on 2026-08-27 — the one thing the language has not settled that it needs. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
-| [Makefile](Makefile) | An index. Includes the nine fragments under `make_support/` in numbered order and does nothing else. |
+| [Makefile](Makefile) | An index. Includes the ten fragments under `make_support/` in numbered order and does nothing else. |
 | [LICENSE](LICENSE) | MIT (Expat) for satellite's own source, plus a third-party section for `pcg/`, which is Apache-2.0. It also records that no built binary currently contains any of it. |
 | [pcg/](pcg/) | The only third-party code in the tree: three pcg-cpp 0.98 headers, its licence, and a README recording what was cut, why `-isystem`, and why a 512-bit variant was refused. |
 | [.gitignore](.gitignore) | Build output, and the deliberate exclusion of `old_versions/` from this repository's history. |
@@ -39,7 +39,7 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 
 | file | what it is |
 | --- | --- |
-| [FORMAT/CXX.md](FORMAT/CXX.md) | Everything needed to write C++ in this tree: the house style, the comment culture, how the build is edited to add a module, how a test is built, and the X-macro registry mechanism M2 ports from the first satellite. Its §9 lists what is **not** decided anywhere and blocks M2. Permanent. |
+| [FORMAT/CXX.md](FORMAT/CXX.md) | Everything needed to write C++ in this tree: the house style, the comment culture, how the build is edited to add a module, how a test is built, and the X-macro registry mechanism M2 ports from the first satellite. Its §9 listed the ten things that were **not** decided anywhere and blocked M2; all ten were settled when M2 was written and §9 now records each answer and where it lives. Permanent. |
 
 The directory is separate from the root because these are documents about *writing the
 code*, not about the language or the plan. The four permanent documents at the root
@@ -63,12 +63,24 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/system_facts/version.hpp](src/system_facts/version.hpp) | The two version numbers and what a build records about itself, including both the compiler make invoked and the one that answered. |
 | [src/satellite_random/random.hpp](src/satellite_random/random.hpp) | `satellite.random`: the three tiers, the `Bits32` seam, `MAX_RANDOM_DIGITS`, and the spin. Names no PCG type, so nothing above it includes an Apache-2.0 header. |
 | [src/satellite_random/random.cpp](src/satellite_random/random.cpp) | The only translation unit that names a PCG entity. Compiled by `make` and **linked into nothing** — 040-sources.mk says why. |
+| [src/satellite_words/words.def](src/satellite_words/words.def) | **The numbering, as data** — 254 nodes and 9 aliases, a transcription of WORD_NUMBERS §2.2 and nothing else. A node's number is its **position** among its parent's children and is not a column. The one file exempt from PLAN §3's line ceiling. |
+| [src/satellite_words/words.hpp](src/satellite_words/words.hpp) | The umbrella: one door over the seven parts below, in an order that compiles. Include this and you get everything. |
+| [src/satellite_words/words_nodes.hpp](src/satellite_words/words_nodes.hpp) | `NodeId`, `PathId`, the node table, the aliases, and how a row's text splits into a word and a call shape. |
+| [src/satellite_words/words_numbers.hpp](src/satellite_words/words_numbers.hpp) | The numbers, computed from file order at compile time, plus `number_text` and `path_text` — which is what reproduces §2.2's path column character for character. |
+| [src/satellite_words/words_spellings.hpp](src/satellite_words/words_spellings.hpp) | **The spelling interner** — many nodes, one string (DESIGN §4.4) — and every node's children as a first/next pair, because a node's children are not contiguous in a depth-first file. |
+| [src/satellite_words/words_walk.hpp](src/satellite_words/words_walk.hpp) | `walk()`: a path read against the trie. A failed walk returns which segment failed and **which node it failed under**, which is what DESIGN §4.6's "did you mean" needs and what M5 will be built from. |
+| [src/satellite_words/words_invariants.hpp](src/satellite_words/words_invariants.hpp) | The `static_assert`s, in a header so every consumer inherits them. Says which of PLAN M2's four properties are enforced here and which the encoding already made unrepresentable. |
+| [src/satellite_words/words_digest.hpp](src/satellite_words/words_digest.hpp) | The numbering's identity as one 64-bit number, for a `.satc` header. Over the **numbering** and not the file's bytes — SATC §6 asked and this answers. |
+| [src/satellite_words/words_runtime.hpp](src/satellite_words/words_runtime.hpp) | The user's half: the live child counter, and names numbered as they are met. PLAN §8.1's second table, and the half no `static_assert` can reach. |
+| [src/satellite_words/dump.hpp](src/satellite_words/dump.hpp) · [dump.cpp](src/satellite_words/dump.cpp) | `satl --words`. The **registry's consumer, in the milestone that wrote it** — which the first satellite did not have for three commits, and four defects accumulated in that window. The only part of the module that prints. |
 
 Two directories exist and are **empty**, holding names for work that has not
-started: `src/satellite_number/` and `src/satellite_string/`. `src/satellite_words/`
-is where M2's trie will go and does not exist yet. `src/satellite_random/` exists and
-is built, and is the one module in the tree with **no consumer** — it landed ahead of
-any milestone that calls it, the way `satl-term` did.
+started: `src/satellite_number/` and `src/satellite_string/`.
+`src/satellite_random/` is built and is the one module in the tree with **no
+consumer** — it landed ahead of any milestone that calls it, the way `satl-term`
+did. Everything under `satellite_words/` except `dump.cpp` is `constexpr` data and
+pure functions over it, so a future `.satc` reader or disassembler can read the
+numbering without linking anything.
 
 ## `example/` — the acceptance programs
 
@@ -79,12 +91,35 @@ PLAN §8 and DESIGN §3 cite them by path rather than describing them in prose.
 | --- | --- |
 | [example/hello_world.satl](example/hello_world.satl) | **M8.B**, and DESIGN §3 is a byte-for-byte copy of it. Declares `satellite.container.list<satellite.variable.string> arguments` again as of 2026-08-28; the program never reads it, so what it needs is one empty list — **which is M10's, so M8 runs after M10** and PLAN §8's opening carries the reordering. Its `//` comments are specified in DESIGN §5.6. |
 | [example/advanced.satl](example/advanced.satl) | The console milestone that **does not exist** — `input(prompt)` `1 5 3` and `input(prompt, target)` `1 5 4`. Also uses `+` on strings, specified nowhere. |
-| [example/thread_test.satl](example/thread_test.satl) | **M12**, and it cannot be M12's done-when yet: `.start()` and `.join()` are unnumbered, and `satellite.thread.new(f(x))` needs the deferred call `1 6 16` that no milestone owns. SCRATCH.md/THREADS.md. |
+| [example/thread_test.satl](example/thread_test.satl) | **M12**, and it cannot be M12's done-when yet. `.start()` `1 6 13 1` and `.join()` `1 6 13 2` **were numbered on 2026-08-28** and this row said otherwise until M2 transcribed them; what is still missing is that `satellite.thread.new(f(x))` needs the deferred call `1 6 16`, which no milestone owns. SCRATCH.md/THREADS.md. |
 | [example/super_advanced.satl](example/super_advanced.satl) | **M9.5**, and it is the float's *exact* half — `+` is DESIGN §8.6's class 1, which never rounds, so it runs before the rounding rule is chosen. |
 
-**None of them runs.** M2 is the milestone in progress and nothing executes until
-**M8.A**, which is where a program first runs at all; these are written first on purpose, because a milestone whose done-when is a
-program somebody can read is one that cannot be argued about afterwards.
+**None of them runs.** M2 landed on 2026-08-28 and **M3, the lexer, is the
+milestone in progress**; nothing executes until **M8.A**, which is where a program
+first runs at all. These are written first on purpose, because a milestone whose
+done-when is a program somebody can read is one that cannot be argued about
+afterwards.
+
+## `tests/` — the suite
+
+**New at M2**, and until then FORMAT/CXX.md §6's opening sentence was literally
+true: *"there is no test infrastructure in this tree -- not a target, not a
+directory, not a harness."* The first satellite's was ported rather than
+reinvented, cut down to what one test needs.
+
+`TESTNAMES` in `030-directories.mk` is the single place a test is declared to
+exist; the source lists, the binaries, the run list and what `clean` removes are
+all derived from it. The first satellite hand-copied that list, added two tests
+to the run list and to neither build list, and `make test` ran binaries nobody
+had built — reporting PASS from stale objects.
+
+| file | what it is |
+| --- | --- |
+| [tests/words_test/words_test.cpp](tests/words_test/words_test.cpp) | The harness — three functions and a counter, no framework — and `main`. |
+| [tests/words_test/words_test.hpp](tests/words_test/words_test.hpp) | The harness declarations and the three section prototypes. A *dependency*, which is why 065-tests.mk wildcards headers separately from sources. |
+| [tests/words_test/authority.cpp](tests/words_test/authority.cpp) | **Opens WORD_NUMBERS.md and walks all 222 rows of §2.2**, plus §2.3's nine spellings. The one check no `static_assert` can make: a row left out of `words.def` does not leave a hole, it silently renumbers every sibling after it, and both files stay internally consistent. |
+| [tests/words_test/walking.cpp](tests/words_test/walking.cpp) | PLAN M2's two worked examples by name, the interner in both directions, and what a failed walk says. |
+| [tests/words_test/runtime.cpp](tests/words_test/runtime.cpp) | The live child counter and user names — PLAN §8.1's half, and the only check it gets until M4 calls it. |
 
 ## `make_support/` — the build
 
@@ -102,6 +137,7 @@ its own top.
 | [make_support/047-window.mk](make_support/047-window.mk) | Whether this machine can build `satl-term`: the `pkg-config vte-2.91-gtk4` probe, the flags it yields, and the window's two sources. |
 | [make_support/050-build.mk](make_support/050-build.mk) | The default goal and the four link rules. The first fragment that declares a target. |
 | [make_support/060-compile.mk](make_support/060-compile.mk) | How a `.cpp` becomes a `.o`, for both variants, plus the two flag stamps that catch a changed command line. |
+| [make_support/065-tests.mk](make_support/065-tests.mk) | **New at M2.** The `test` target and the per-test source wildcards, all derived from `TESTNAMES`. Read before 070 so `clean` can name `$(TESTBINS)`. |
 | [make_support/070-clean.mk](make_support/070-clean.mk) | Removing what a build made, named one by one rather than by deleting a directory. |
 
 ## `satellite_enterprise/` — the Enterprise Linux install

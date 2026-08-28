@@ -241,10 +241,21 @@ number column is stable enough to diff, and satisfying it answers both.
   source is the readable answer and the one that makes `--dry-run`-style inspection
   obvious. A cache directory under `$HOME/.satl` always works and is invisible.
   Doing both means two places to look and a rule about which wins.
-- **What is the digest over?** `words.def` alone is the honest answer if the file
-  is the only input to the numbering. If the trie is built from more than that
-  file, the digest has to cover all of it, or two different numberings can share
-  one digest — which is the exact failure §2 exists to prevent.
+- ~~**What is the digest over?**~~ **Answered 2026-08-28, when M2 was built.** It
+  is over **the numbering** — every node's parent, number, kind and text in file
+  order, then every alias — and not over `words.def`'s bytes. Three reasons, in
+  the order they bite, and `src/satellite_words/words_digest.hpp` is where they
+  live: every input to the numbering is in that one file, so this bullet's own
+  worry does not arise and the function is the one place to change if it ever
+  does; hashing the bytes would move the digest when a **comment** moved, and
+  `words.def` is more comment than data, so every cached `.satc` on the machine
+  would be invalidated to record that a sentence was rewritten; and a `constexpr`
+  digest needs no build step, where a `sha256sum` in the Makefile would leave a
+  hand-compiled translation unit with no digest at all — and a `.satc` written by
+  a binary whose digest defaulted to "unrecorded" is worse than no cache.
+
+  What §2 asks for is unchanged and still holds: appending a word, moving a row,
+  renaming a spelling or adding an alias all move it. `satl --words` prints it.
 - **Does a `.satc` survive `satellite.include` of a spaceship?** A program's
   meaning then depends on files it did not name in its own header, so either the
   header grows a line per included file or an included program invalidates the

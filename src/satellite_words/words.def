@@ -1,0 +1,548 @@
+// The numbering, as data. WORD_NUMBERS.md is the authority and this file is the
+// copy a compiler can check -- when the two disagree, that file is right and
+// this one is the bug.
+//
+// THERE IS NO GENERATOR AND NO BUILD STEP. These are X-macro lists: a consumer
+// defines SAT_NODE and SAT_ALIAS, includes this file, and undefines them again.
+// The enum, the node table, the spelling interner, the invariants, the digest
+// and `satl --words` therefore all come from ONE list and cannot drift apart,
+// which is the whole reason the file exists. Adding a word is one line here.
+//
+// The first satellite's registry made that same promise with NO CONSUMER for
+// three commits, and four defects accumulated behind it: two sections of its
+// design assigned kind 4 to different things, an id was frozen for a selector
+// no receiver implemented, and one section pinned the builtin selectors to a
+// literal range one commit before the map made it wrong. PLAN M2 requires a
+// consumer in the milestone that writes the registry for exactly that reason --
+// words.hpp, `satl --words` and tests/words_test are it.
+//
+// THIS FILE IS THE ONE EXEMPTION FROM PLAN §3's 300-LINE CEILING. It is data,
+// and splitting a numbering whose meaning is registration order is the one
+// split that could silently change what a program means (DESIGN §4.3).
+
+// --- how a row is read ------------------------------------------------------
+//
+//     SAT_NODE(parent, ident, text, kind)
+//
+// THE NUMBER IS NOT A COLUMN. A node's number is its POSITION among its
+// parent's SAT_NUMBERED children, counting from 1, in the order the rows appear
+// here -- PLAN §8's "each entry names its parent, and its position among that
+// parent's children IS its number." The `// 1 5 1` ending every row is a
+// comment and nothing reads it; it is there so this file can be read against
+// WORD_NUMBERS §2.2 by eye. What actually checks the transcription is
+// tests/words_test, which opens that section of the markdown and walks all 222
+// of its paths -- because a number that only a human compares is not checked.
+//
+// So ORDER IS MEANING here, everywhere, and DESIGN §4.3 is the whole of the
+// editing discipline: never renumber, never reuse, always append. A row
+// inserted in the middle silently renumbers every sibling after it, and every
+// already-written program with it.
+//
+// `kind` is one of two things:
+//
+//     SAT_NUMBERED   takes the next position under its parent: 1, 2, 3, ...
+//     SAT_BARE       is that parent called with NO ARGUMENTS, and is position 0
+//
+// SAT_BARE IS WORD_NUMBERS §1.3's `(0)`, WHICH IS A NUMBER AND NOT A NOTATION.
+// `satellite.container` `1 4 (0)` says the node is 1 4 and its zero-argument
+// call shape is 1 4 0 -- exactly what `satellite.include()` `1 1 0` says
+// without the parentheses. §2.2 writes 35 of them as a marker on a row and 3 as
+// rows of their own; that difference is spelling, so both are one form here and
+// there are 38.
+//
+// A BARE SHAPE TAKES NO POSITION FROM ITS SIBLINGS, which is what keeps a
+// parent's numbered children dense from 1 whether it has one or not -- and
+// therefore what makes PLAN M2's first property, no holes, checkable as
+// written rather than as an exception list.
+//
+// `text` is §2.2's PATH COLUMN with the parent's path removed, character for
+// character. Joining a node's texts from the root reproduces the row:
+//
+//     satellite . console . input(prompt, target)          1 5 4
+//     satellite . include (satellite)                      1 1 1
+//
+// A text beginning with `(` joins with NO DOT, because it is an argument and
+// not a word. `satellite.include(satellite)` is include's child 1 because
+// `satellite` is word 1 and extends the path (§1.3); `include(spaceship)` is
+// child 2 because a user-owned argument has no number to contribute and takes
+// the next slot instead. Such a row HAS NO SPELLING OF ITS OWN and is never
+// walked to by name -- it is chosen by what the call hands over.
+//
+// THREE SPELLINGS OF `input` UNDER ONE PARENT IS CORRECT, and is the other half
+// of the same rule. `input` has no number of its own anywhere in §2.2, so its
+// three call shapes are siblings of `display` at 1 5 2, 1 5 3 and 1 5 4, and
+// they share a spelling -- which is precisely the many-nodes-one-string case
+// DESIGN §4.4 builds the interner for. `include` DOES have a number, so its
+// shapes are its children instead.
+//
+// That is the "call shapes sit at two different depths" WORD_NUMBERS §4 asks to
+// have confirmed before this file encodes it, and the two depths are one rule:
+// A WORD THAT IS REACHED BARE HOLDS ITS SHAPES; A WORD THAT IS ONLY EVER CALLED
+// DOES NOT EXIST APART FROM THEM.
+
+// --- aliases ----------------------------------------------------------------
+//
+//     SAT_ALIAS(ident, text)
+//
+// A SECOND SPELLING FOR A NODE, NOT A SECOND NODE (WORD_NUMBERS §2.3), written
+// relative to that node's PARENT, and it may carry a dot:
+// `satellite.random.fast.range(min, max)` is four segments spelling a node that
+// is three numbers.
+//
+// AN ALIAS TAKES NO NUMBER, so it cannot collide with one -- and that settles
+// two of PLAN M2's four properties by construction instead of by assertion:
+//
+//   property 2, no duplicates among non-aliases. The numbering cannot express a
+//     duplicate at all, because a number IS a position. §2.2's only three
+//     duplicate numbers are the three `.range` rows below, and each is one node
+//     here, which is exactly why that section is 222 rows carrying 219 numbers.
+//   property 4, no alias points at a number that does not exist. An alias names
+//     an IDENTIFIER, so the compiler rejects one that does not.
+//
+// Both are stronger than the asserts PLAN M2 describes, and this is why the
+// alias form had to exist before the transcription could begin: an alias that
+// could not be DECLARED would arrive as a duplicate number, and a check that
+// cannot tell a deliberate duplicate from a typo teaches whoever hits it to
+// loosen the check.
+
+// --- the identifiers --------------------------------------------------------
+//
+// The path with `satellite` dropped, uppercased, dots to underscores, and an
+// argument suffix ONLY where the same word is written more than once:
+// CONSOLE_DISPLAY, but CONSOLE_INPUT_0 / _PROMPT / _PROMPT_TARGET.
+//
+// NOT THE BARE WORD, deliberately. The first satellite records why: `and`,
+// `or`, `true` and `false` are C++ keywords or alternative tokens and pasting
+// them into an enum name is a trap. The quoted text is what the language calls
+// the thing; the identifier only has to be unique.
+
+// --- what is in here --------------------------------------------------------
+//
+// Transcribed 2026-08-28 from WORD_NUMBERS §2.2 at 222 rows / 219 numbers:
+//
+//     216   SAT_NUMBERED   222 rows, less 3 written as bare shapes and 3 aliases
+//      38   SAT_BARE       35 `(0)` markers plus those 3 rows
+//     ---
+//     254   nodes, each with a PathId
+//       9   SAT_ALIAS      3 `.range`, `hexadecimal`, 5 spellings of `arguments`
+//
+// 254 is a count nobody had written down, because §2.2's 219 does not include
+// the bare shape a `(0)` marker names -- the marker rides on the row of the node
+// it belongs to, so it is a number that section carries without counting.
+
+#ifndef SAT_NODE
+#define SAT_NODE(parent, ident, text, kind)
+#endif
+#ifndef SAT_ALIAS
+#define SAT_ALIAS(ident, text)
+#endif
+
+// The two kinds, as values, so the numbers live here and only here -- read back
+// as words::kNumbered and words::kBare. NOT #undef'd at the bottom with the
+// macros above, for that reason.
+#ifndef SAT_NUMBERED
+#define SAT_NUMBERED 1
+#endif
+#ifndef SAT_BARE
+#define SAT_BARE 0
+#endif
+
+// The root, and the only node with no parent. It is 1 because it is the root,
+// and it is also a value -- the runtime singleton, which is why
+// satellite.include(satellite) and satellite.return(satellite) both mean
+// something (DESIGN §3).
+SAT_NODE(NONE, SATELLITE, "satellite", SAT_NUMBERED)  // 1
+
+// --- include ----------------------------------------------------------------
+// DESIGN §3 line 1. The one word with both kinds of call shape: a bare form,
+// a language-owned argument, and a user-named one.
+//
+SAT_NODE(SATELLITE, INCLUDE,           "include",     SAT_NUMBERED)  // 1 1
+SAT_NODE(INCLUDE,   INCLUDE_0,         "()",          SAT_BARE)  // 1 1 0
+SAT_NODE(INCLUDE,   INCLUDE_SATELLITE, "(satellite)", SAT_NUMBERED)  // 1 1 1
+SAT_NODE(INCLUDE,   INCLUDE_SPACESHIP, "(spaceship)", SAT_NUMBERED)  // 1 1 2
+
+// --- capsule ----------------------------------------------------------------
+// the keyword that declares one. The TYPE of a deferred call is
+// satellite.variable.capsule 1 6 16, which is a different node.
+//
+SAT_NODE(SATELLITE, CAPSULE,   "capsule", SAT_NUMBERED)  // 1 2
+SAT_NODE(CAPSULE,   CAPSULE_0, "()",      SAT_BARE)  // 1 2 0
+
+// --- main -------------------------------------------------------------------
+// the capsule satl calls. Its parameter is M8.B's.
+//
+SAT_NODE(SATELLITE, MAIN,   "main", SAT_NUMBERED)  // 1 3
+SAT_NODE(MAIN,      MAIN_0, "()",   SAT_BARE)  // 1 3 0
+
+// --- container --------------------------------------------------------------
+// the map and the list, and their 34 methods -- the map's nine 1 4 1 1-1 4 1 9
+// and the list's twenty-five 1 4 2 1-1 4 2 25. PLAN M10.
+//
+// 34 AND NOT 29, which is the figure PLAN M10 and SCRATCH.md/MILESTONE.md both
+// carried. It came from the ledger counting the list at twenty when §2.2 gives
+// it twenty-five, and PLAN inherited it into a sentence that names nine and
+// twenty-five two lines above. Corrected in all three on 2026-08-28.
+//
+SAT_NODE(SATELLITE,      CONTAINER,                     "container",       SAT_NUMBERED)  // 1 4
+SAT_NODE(CONTAINER,      CONTAINER_0,                   "()",              SAT_BARE)  // 1 4 0
+SAT_NODE(CONTAINER,      CONTAINER_MAP,                 "map",             SAT_NUMBERED)  // 1 4 1
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_0,               "()",              SAT_BARE)  // 1 4 1 0
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_SET,             "set(k, v)",       SAT_NUMBERED)  // 1 4 1 1
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_GET,             "get(k)",          SAT_NUMBERED)  // 1 4 1 2
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_HAS,             "has(k)",          SAT_NUMBERED)  // 1 4 1 3
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_SIZE,            "size",            SAT_NUMBERED)  // 1 4 1 4
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_EMPTY,           "empty",           SAT_NUMBERED)  // 1 4 1 5
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_CLEAR,           "clear",           SAT_NUMBERED)  // 1 4 1 6
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_REMOVE,          "remove(k)",       SAT_NUMBERED)  // 1 4 1 7
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_KEYS,            "keys",            SAT_NUMBERED)  // 1 4 1 8
+SAT_NODE(CONTAINER_MAP,  CONTAINER_MAP_VALUES,          "values",          SAT_NUMBERED)  // 1 4 1 9
+SAT_NODE(CONTAINER,      CONTAINER_LIST,                "list",            SAT_NUMBERED)  // 1 4 2
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_0,              "()",              SAT_BARE)  // 1 4 2 0
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_APPEND,         "append",          SAT_NUMBERED)  // 1 4 2 1
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_SIZE,           "size",            SAT_NUMBERED)  // 1 4 2 2
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_SORT_0,         "sort()",          SAT_NUMBERED)  // 1 4 2 3
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_SORT_DIRECTION, "sort(direction)", SAT_NUMBERED)  // 1 4 2 4
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_SORT_DOWN_0,    "sort_down()",     SAT_NUMBERED)  // 1 4 2 5
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_SORT_DOWN_KEY,  "sort_down(key)",  SAT_NUMBERED)  // 1 4 2 6
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_SORT_UP,        "sort_up(key)",    SAT_NUMBERED)  // 1 4 2 7
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_CONTAINS,       "contains(x)",     SAT_NUMBERED)  // 1 4 2 8
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_INDEX_OF,       "index_of(x)",     SAT_NUMBERED)  // 1 4 2 9
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_EMPTY,          "empty",           SAT_NUMBERED)  // 1 4 2 10
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_CLEAR,          "clear",           SAT_NUMBERED)  // 1 4 2 11
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_FIRST,          "first",           SAT_NUMBERED)  // 1 4 2 12
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_LAST,           "last",            SAT_NUMBERED)  // 1 4 2 13
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_TRUNCATE,       "truncate(n)",     SAT_NUMBERED)  // 1 4 2 14
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_RESERVE,        "reserve(n)",      SAT_NUMBERED)  // 1 4 2 15
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_REMOVE_FIRST_0, "remove_first()",  SAT_NUMBERED)  // 1 4 2 16
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_REMOVE_LAST_0,  "remove_last()",   SAT_NUMBERED)  // 1 4 2 17
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_REMOVE_AT,      "remove_at(n)",    SAT_NUMBERED)  // 1 4 2 18
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_REMOVE,         "remove(x)",       SAT_NUMBERED)  // 1 4 2 19
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_INSERT,         "insert(n, x)",    SAT_NUMBERED)  // 1 4 2 20
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_JOIN,           "join(separator)", SAT_NUMBERED)  // 1 4 2 21
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_REVERSE,        "reverse",         SAT_NUMBERED)  // 1 4 2 22
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_SUM,            "sum",             SAT_NUMBERED)  // 1 4 2 23
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_MAX,            "max",             SAT_NUMBERED)  // 1 4 2 24
+SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_MIN,            "min",             SAT_NUMBERED)  // 1 4 2 25
+SAT_NODE(CONTAINER,      CONTAINER_ARGUMENTS,           "arguments",       SAT_NUMBERED)  // 1 4 3
+SAT_NODE(CONTAINER,      CONTAINER_RESULT,              "result",          SAT_NUMBERED)  // 1 4 4
+
+// --- console ----------------------------------------------------------------
+// DESIGN §10.1. display is M8.A; input and typed() are the reader thread,
+// which reaches no milestone.
+//
+SAT_NODE(SATELLITE, CONSOLE,                     "console",               SAT_NUMBERED)  // 1 5
+SAT_NODE(CONSOLE,   CONSOLE_0,                   "()",                    SAT_BARE)  // 1 5 0
+SAT_NODE(CONSOLE,   CONSOLE_DISPLAY,             "display",               SAT_NUMBERED)  // 1 5 1
+SAT_NODE(CONSOLE,   CONSOLE_INPUT_0,             "input()",               SAT_NUMBERED)  // 1 5 2
+SAT_NODE(CONSOLE,   CONSOLE_INPUT_PROMPT,        "input(prompt)",         SAT_NUMBERED)  // 1 5 3
+SAT_NODE(CONSOLE,   CONSOLE_INPUT_PROMPT_TARGET, "input(prompt, target)", SAT_NUMBERED)  // 1 5 4
+SAT_NODE(CONSOLE,   CONSOLE_TYPED_0,             "typed()",               SAT_NUMBERED)  // 1 5 5
+SAT_NODE(CONSOLE,   CONSOLE_WIDTH,               "width",                 SAT_NUMBERED)  // 1 5 6
+SAT_NODE(CONSOLE,   CONSOLE_HEIGHT,              "height",                SAT_NUMBERED)  // 1 5 7
+SAT_NODE(CONSOLE,   CONSOLE_CLEAR_0,             "clear()",               SAT_NUMBERED)  // 1 5 8
+SAT_NODE(CONSOLE,   CONSOLE_HOME_0,              "home()",                SAT_NUMBERED)  // 1 5 9
+
+// --- variable ---------------------------------------------------------------
+// the types. string 16 methods, number 14, file 5, thread 2.
+//
+SAT_NODE(SATELLITE,       VARIABLE,                    "variable",              SAT_NUMBERED)  // 1 6
+SAT_NODE(VARIABLE,        VARIABLE_0,                  "()",                    SAT_BARE)  // 1 6 0
+SAT_NODE(VARIABLE,        VARIABLE_STRING,             "string",                SAT_NUMBERED)  // 1 6 1
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_0,           "()",                    SAT_BARE)  // 1 6 1 0
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_SIZE,        "size",                  SAT_NUMBERED)  // 1 6 1 1
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_EMPTY,       "empty",                 SAT_NUMBERED)  // 1 6 1 2
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_FIND,        "find(x)",               SAT_NUMBERED)  // 1 6 1 3
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_CONTAINS,    "contains(x)",           SAT_NUMBERED)  // 1 6 1 4
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_SUBSTRING,   "substring(start, end)", SAT_NUMBERED)  // 1 6 1 5
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_STARTS_WITH, "starts_with(x)",        SAT_NUMBERED)  // 1 6 1 6
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_ENDS_WITH,   "ends_with(x)",          SAT_NUMBERED)  // 1 6 1 7
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_LOWER,       "lower",                 SAT_NUMBERED)  // 1 6 1 8
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_UPPER,       "upper",                 SAT_NUMBERED)  // 1 6 1 9
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_SPLIT,       "split(separator)",      SAT_NUMBERED)  // 1 6 1 10
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_TRIM,        "trim",                  SAT_NUMBERED)  // 1 6 1 11
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_REPLACE,     "replace(a, b)",         SAT_NUMBERED)  // 1 6 1 12
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_TO_NUMBER,   "to_number",             SAT_NUMBERED)  // 1 6 1 13
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_APPEND,      "append(x)",             SAT_NUMBERED)  // 1 6 1 14
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_CLEAR,       "clear",                 SAT_NUMBERED)  // 1 6 1 15
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_AT,          "at(n)",                 SAT_NUMBERED)  // 1 6 1 16
+SAT_NODE(VARIABLE,        VARIABLE_FILE,               "file",                  SAT_NUMBERED)  // 1 6 2
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_0,             "()",                    SAT_BARE)  // 1 6 2 0
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_NEW,           "new",                   SAT_NUMBERED)  // 1 6 2 1
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_OPEN,          "open",                  SAT_NUMBERED)  // 1 6 2 2
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_READ_LINE,     "read_line",             SAT_NUMBERED)  // 1 6 2 3
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_WRITE_LINE,    "write_line(s)",         SAT_NUMBERED)  // 1 6 2 4
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_READ_ALL,      "read_all",              SAT_NUMBERED)  // 1 6 2 5
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_CLOSE,         "close",                 SAT_NUMBERED)  // 1 6 2 6
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_EXISTS,        "exists",                SAT_NUMBERED)  // 1 6 2 7
+SAT_NODE(VARIABLE,        VARIABLE_TIME,               "time",                  SAT_NUMBERED)  // 1 6 3
+SAT_NODE(VARIABLE_TIME,   VARIABLE_TIME_0,             "()",                    SAT_BARE)  // 1 6 3 0
+SAT_NODE(VARIABLE,        VARIABLE_NUMBER,             "number",                SAT_NUMBERED)  // 1 6 4
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_0,           "()",                    SAT_BARE)  // 1 6 4 0
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_SHIFT_LEFT,  "shift_left",            SAT_NUMBERED)  // 1 6 4 1
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_MAX,         "max(a, b)",             SAT_NUMBERED)  // 1 6 4 2
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_MIN,         "min(a, b)",             SAT_NUMBERED)  // 1 6 4 3
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_ABS,         "abs(a)",                SAT_NUMBERED)  // 1 6 4 4
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_CLAMP,       "clamp(a, low, high)",   SAT_NUMBERED)  // 1 6 4 5
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_TO_STRING,   "to_string",             SAT_NUMBERED)  // 1 6 4 6
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_FLOOR,       "floor",                 SAT_NUMBERED)  // 1 6 4 7
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_CEIL,        "ceil",                  SAT_NUMBERED)  // 1 6 4 8
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_ROUND,       "round",                 SAT_NUMBERED)  // 1 6 4 9
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_POWER,       "power(a, b)",           SAT_NUMBERED)  // 1 6 4 10
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_SHIFT_RIGHT, "shift_right(n)",        SAT_NUMBERED)  // 1 6 4 11
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_MODULUS,     "modulus(a, b)",         SAT_NUMBERED)  // 1 6 4 12
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_TRUNCATE,    "truncate(a)",           SAT_NUMBERED)  // 1 6 4 13
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_SQRT,        "sqrt(a)",               SAT_NUMBERED)  // 1 6 4 14
+SAT_NODE(VARIABLE,        VARIABLE_BINARY,             "binary",                SAT_NUMBERED)  // 1 6 5
+SAT_NODE(VARIABLE,        VARIABLE_BOOL,               "bool",                  SAT_NUMBERED)  // 1 6 6
+SAT_NODE(VARIABLE,        VARIABLE_DATE,               "date",                  SAT_NUMBERED)  // 1 6 7
+SAT_NODE(VARIABLE,        VARIABLE_DURATION,           "duration",              SAT_NUMBERED)  // 1 6 8
+SAT_NODE(VARIABLE,        VARIABLE_EXPRESSION,         "expression",            SAT_NUMBERED)  // 1 6 9
+SAT_NODE(VARIABLE,        VARIABLE_FLOAT,              "float",                 SAT_NUMBERED)  // 1 6 10
+SAT_NODE(VARIABLE,        VARIABLE_HEX,                "hex",                   SAT_NUMBERED)  // 1 6 11
+SAT_NODE(VARIABLE,        VARIABLE_NETWORK,            "network",               SAT_NUMBERED)  // 1 6 12
+SAT_NODE(VARIABLE,        VARIABLE_THREAD,             "thread",                SAT_NUMBERED)  // 1 6 13
+SAT_NODE(VARIABLE_THREAD, VARIABLE_THREAD_0,           "()",                    SAT_BARE)  // 1 6 13 0
+SAT_NODE(VARIABLE_THREAD, VARIABLE_THREAD_START_0,     "start()",               SAT_NUMBERED)  // 1 6 13 1
+SAT_NODE(VARIABLE_THREAD, VARIABLE_THREAD_JOIN_0,      "join()",                SAT_NUMBERED)  // 1 6 13 2
+SAT_NODE(VARIABLE,        VARIABLE_VARIANT,            "variant",               SAT_NUMBERED)  // 1 6 14
+SAT_NODE(VARIABLE,        VARIABLE_WINDOW,             "window",                SAT_NUMBERED)  // 1 6 15
+SAT_NODE(VARIABLE,        VARIABLE_CAPSULE,            "capsule",               SAT_NUMBERED)  // 1 6 16
+
+// --- random -----------------------------------------------------------------
+// DESIGN §11. Three tiers, four call shapes each, three aliases.
+//
+SAT_NODE(SATELLITE, RANDOM,                     "random",                 SAT_NUMBERED)  // 1 7
+SAT_NODE(RANDOM,    RANDOM_0,                   "()",                     SAT_BARE)  // 1 7 0
+SAT_NODE(RANDOM,    RANDOM_FAST_0,              "fast()",                 SAT_NUMBERED)  // 1 7 1
+SAT_NODE(RANDOM,    RANDOM_NORMAL_0,            "normal()",               SAT_NUMBERED)  // 1 7 2
+SAT_NODE(RANDOM,    RANDOM_ULTRA_0,             "ultra()",                SAT_NUMBERED)  // 1 7 3
+SAT_NODE(RANDOM,    RANDOM_FAST_DIGITS,         "fast(digits)",           SAT_NUMBERED)  // 1 7 4
+SAT_NODE(RANDOM,    RANDOM_FAST_MIN_MAX,        "fast(min, max)",         SAT_NUMBERED)  // 1 7 5
+SAT_NODE(RANDOM,    RANDOM_FAST_MIN_MAX_STEP,   "fast(min, max, step)",   SAT_NUMBERED)  // 1 7 6
+SAT_NODE(RANDOM,    RANDOM_NORMAL_DIGITS,       "normal(digits)",         SAT_NUMBERED)  // 1 7 7
+SAT_NODE(RANDOM,    RANDOM_NORMAL_MIN_MAX,      "normal(min, max)",       SAT_NUMBERED)  // 1 7 8
+SAT_NODE(RANDOM,    RANDOM_NORMAL_MIN_MAX_STEP, "normal(min, max, step)", SAT_NUMBERED)  // 1 7 9
+SAT_NODE(RANDOM,    RANDOM_ULTRA_DIGITS,        "ultra(digits)",          SAT_NUMBERED)  // 1 7 10
+SAT_NODE(RANDOM,    RANDOM_ULTRA_MIN_MAX,       "ultra(min, max)",        SAT_NUMBERED)  // 1 7 11
+SAT_NODE(RANDOM,    RANDOM_ULTRA_MIN_MAX_STEP,  "ultra(min, max, step)",  SAT_NUMBERED)  // 1 7 12
+
+// --- file -------------------------------------------------------------------
+// the module form. satellite.variable.file 1 6 2 is the type and carries its
+// own new -- WORD_NUMBERS §4 leaves which to write open.
+//
+SAT_NODE(SATELLITE, FILE,               "file",            SAT_NUMBERED)  // 1 8
+SAT_NODE(FILE,      FILE_0,             "()",              SAT_BARE)  // 1 8 0
+SAT_NODE(FILE,      FILE_NEW_PATH,      "new(path)",       SAT_NUMBERED)  // 1 8 1
+SAT_NODE(FILE,      FILE_OPEN,          "open",            SAT_NUMBERED)  // 1 8 2
+SAT_NODE(FILE,      FILE_CLEAR,         "clear",           SAT_NUMBERED)  // 1 8 3
+SAT_NODE(FILE,      FILE_NEW_PATH_MODE, "new(path, mode)", SAT_NUMBERED)  // 1 8 4
+
+// --- time -------------------------------------------------------------------
+// sleep(n) 1 9 3 is what QUAD's main loop cannot run without.
+//
+SAT_NODE(SATELLITE, TIME,       "time",     SAT_NUMBERED)  // 1 9
+SAT_NODE(TIME,      TIME_0,     "()",       SAT_BARE)  // 1 9 0
+SAT_NODE(TIME,      TIME_NOW,   "now",      SAT_NUMBERED)  // 1 9 1
+SAT_NODE(TIME,      TIME_NEW,   "new",      SAT_NUMBERED)  // 1 9 2
+SAT_NODE(TIME,      TIME_SLEEP, "sleep(n)", SAT_NUMBERED)  // 1 9 3
+
+// --- spacesuit --------------------------------------------------------------
+// DESIGN §13. Decided, unscheduled, and the grammar rule is written.
+//
+SAT_NODE(SATELLITE, SPACESUIT,   "spacesuit", SAT_NUMBERED)  // 1 10
+SAT_NODE(SPACESUIT, SPACESUIT_0, "()",        SAT_BARE)  // 1 10 0
+
+// --- protected --------------------------------------------------------------
+SAT_NODE(SATELLITE, PROTECTED,   "protected", SAT_NUMBERED)  // 1 11
+SAT_NODE(PROTECTED, PROTECTED_0, "()",        SAT_BARE)  // 1 11 0
+
+// --- public -----------------------------------------------------------------
+SAT_NODE(SATELLITE, PUBLIC,   "public", SAT_NUMBERED)  // 1 12
+SAT_NODE(PUBLIC,    PUBLIC_0, "()",     SAT_BARE)  // 1 12 0
+
+// --- statement --------------------------------------------------------------
+// if, for, while, else -- four of DESIGN §6.1's eleven segment-1 words.
+//
+SAT_NODE(SATELLITE, STATEMENT,       "statement", SAT_NUMBERED)  // 1 13
+SAT_NODE(STATEMENT, STATEMENT_0,     "()",        SAT_BARE)  // 1 13 0
+SAT_NODE(STATEMENT, STATEMENT_IF,    "if",        SAT_NUMBERED)  // 1 13 1
+SAT_NODE(STATEMENT, STATEMENT_FOR,   "for",       SAT_NUMBERED)  // 1 13 2
+SAT_NODE(STATEMENT, STATEMENT_WHILE, "while",     SAT_NUMBERED)  // 1 13 3
+SAT_NODE(STATEMENT, STATEMENT_ELSE,  "else",      SAT_NUMBERED)  // 1 13 4
+
+// --- library ----------------------------------------------------------------
+// DESIGN §7.7. The arguments object is six numbers deep, which is the
+// clearest argument in the language for §1.4 refusing a depth limit.
+//
+SAT_NODE(SATELLITE,                      LIBRARY,                                "library",         SAT_NUMBERED)  // 1 14
+SAT_NODE(LIBRARY,                        LIBRARY_0,                              "()",              SAT_BARE)  // 1 14 0
+SAT_NODE(LIBRARY,                        LIBRARY_MAIN,                           "main",            SAT_NUMBERED)  // 1 14 1
+SAT_NODE(LIBRARY_MAIN,                   LIBRARY_MAIN_0,                         "()",              SAT_BARE)  // 1 14 1 0
+SAT_NODE(LIBRARY_MAIN,                   LIBRARY_MAIN_ARGUMENTS,                 "arguments",       SAT_NUMBERED)  // 1 14 1 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,         LIBRARY_MAIN_ARGUMENTS_0,               "()",              SAT_BARE)  // 1 14 1 1 0
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,         LIBRARY_MAIN_ARGUMENTS_MACHINE,         "machine",         SAT_NUMBERED)  // 1 14 1 1 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_0,       "()",              SAT_BARE)  // 1 14 1 1 1 0
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_CORES,   "cores",           SAT_NUMBERED)  // 1 14 1 1 1 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_CPU,     "cpu",             SAT_NUMBERED)  // 1 14 1 1 1 2
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_THREADS, "threads",         SAT_NUMBERED)  // 1 14 1 1 1 3
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,         LIBRARY_MAIN_ARGUMENTS_MEMORY,          "memory",          SAT_NUMBERED)  // 1 14 1 1 2
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MEMORY,  LIBRARY_MAIN_ARGUMENTS_MEMORY_0,        "()",              SAT_BARE)  // 1 14 1 1 2 0
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MEMORY,  LIBRARY_MAIN_ARGUMENTS_MEMORY_TOTAL,    "total",           SAT_NUMBERED)  // 1 14 1 1 2 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,         LIBRARY_MAIN_ARGUMENTS_USERNAME,        "username",        SAT_NUMBERED)  // 1 14 1 1 3
+SAT_NODE(LIBRARY,                        LIBRARY_SYSTEM,                         "system",          SAT_NUMBERED)  // 1 14 2
+SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_0,                       "()",              SAT_BARE)  // 1 14 2 0
+SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_DIVISION_DIGITS,         "division_digits", SAT_NUMBERED)  // 1 14 2 1
+SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_MAX_DEPTH,               "max_depth",       SAT_NUMBERED)  // 1 14 2 2
+SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_MIN_FREE_MB,             "min_free_mb",     SAT_NUMBERED)  // 1 14 2 3
+SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_FLOAT_DIGITS,            "float_digits",    SAT_NUMBERED)  // 1 14 2 4
+
+// --- return -----------------------------------------------------------------
+// the last line of DESIGN §3, and 15 rather than 7 -- which is how
+// WORD_NUMBERS §1.1 knows 1 to 15 were written by hand.
+//
+SAT_NODE(SATELLITE, RETURN,           "return",      SAT_NUMBERED)  // 1 15
+SAT_NODE(RETURN,    RETURN_0,         "()",          SAT_BARE)  // 1 15 0
+SAT_NODE(RETURN,    RETURN_SATELLITE, "(satellite)", SAT_NUMBERED)  // 1 15 1
+SAT_NODE(RETURN,    RETURN_VALUE,     "(value)",     SAT_NUMBERED)  // 1 15 2
+
+// --- analyze ----------------------------------------------------------------
+// one path. v1 advertised it as a module and its help denied it existed.
+//
+SAT_NODE(SATELLITE, ANALYZE, "analyze", SAT_NUMBERED)  // 1 16
+
+// --- bool -------------------------------------------------------------------
+// the MODULE, and a different node from the type satellite.variable.bool 1 6
+// 6. false is 1 and true is 2 by §2.1's alphabetical tie-break.
+//
+SAT_NODE(SATELLITE, BOOL,       "bool",  SAT_NUMBERED)  // 1 17
+SAT_NODE(BOOL,      BOOL_0,     "()",    SAT_BARE)  // 1 17 0
+SAT_NODE(BOOL,      BOOL_FALSE, "false", SAT_NUMBERED)  // 1 17 1
+SAT_NODE(BOOL,      BOOL_TRUE,  "true",  SAT_NUMBERED)  // 1 17 2
+
+// --- directory --------------------------------------------------------------
+SAT_NODE(SATELLITE, DIRECTORY,         "directory", SAT_NUMBERED)  // 1 18
+SAT_NODE(DIRECTORY, DIRECTORY_0,       "()",        SAT_BARE)  // 1 18 0
+SAT_NODE(DIRECTORY, DIRECTORY_CHANGE,  "change",    SAT_NUMBERED)  // 1 18 1
+SAT_NODE(DIRECTORY, DIRECTORY_CURRENT, "current",   SAT_NUMBERED)  // 1 18 2
+SAT_NODE(DIRECTORY, DIRECTORY_EXISTS,  "exists",    SAT_NUMBERED)  // 1 18 3
+SAT_NODE(DIRECTORY, DIRECTORY_LIST_0,  "list()",    SAT_NUMBERED)  // 1 18 4
+SAT_NODE(DIRECTORY, DIRECTORY_LIST_D,  "list(d)",   SAT_NUMBERED)  // 1 18 5
+
+// --- help -------------------------------------------------------------------
+// PLAN M8.5, and the first row ever moved out of the ledger.
+//
+SAT_NODE(SATELLITE, HELP,   "help", SAT_NUMBERED)  // 1 19
+SAT_NODE(HELP,      HELP_0, "()",   SAT_BARE)  // 1 19 0
+SAT_NODE(HELP,      HELP_X, "(x)",  SAT_NUMBERED)  // 1 19 1
+
+// --- network ----------------------------------------------------------------
+// eight paths and a protocol stack. Nothing in this tree promises it yet.
+//
+SAT_NODE(SATELLITE, NETWORK,                     "network",                SAT_NUMBERED)  // 1 20
+SAT_NODE(NETWORK,   NETWORK_0,                   "()",                     SAT_BARE)  // 1 20 0
+SAT_NODE(NETWORK,   NETWORK_HTTP_PORT,           "http(port)",             SAT_NUMBERED)  // 1 20 1
+SAT_NODE(NETWORK,   NETWORK_HTTPS_HOST_PORT,     "https(host, port)",      SAT_NUMBERED)  // 1 20 2
+SAT_NODE(NETWORK,   NETWORK_NEW,                 "new",                    SAT_NUMBERED)  // 1 20 3
+SAT_NODE(NETWORK,   NETWORK_OPEN,                "open",                   SAT_NUMBERED)  // 1 20 4
+SAT_NODE(NETWORK,   NETWORK_RECEIVE,             "receive",                SAT_NUMBERED)  // 1 20 5
+SAT_NODE(NETWORK,   NETWORK_HTTP_HOST_PORT,      "http(host, port)",       SAT_NUMBERED)  // 1 20 6
+SAT_NODE(NETWORK,   NETWORK_HTTPS_PORT_CERT_KEY, "https(port, cert, key)", SAT_NUMBERED)  // 1 20 7
+
+// --- returns ----------------------------------------------------------------
+// DESIGN §13's optional return type. Written into §6's grammar, never built.
+//
+SAT_NODE(SATELLITE, RETURNS, "returns", SAT_NUMBERED)  // 1 21
+
+// --- system -----------------------------------------------------------------
+// thirty paths, the largest namespace here, and the one no milestone
+// reaches.
+//
+SAT_NODE(SATELLITE,          SYSTEM,                            "system",          SAT_NUMBERED)  // 1 22
+SAT_NODE(SYSTEM,             SYSTEM_0,                          "()",              SAT_BARE)  // 1 22 0
+SAT_NODE(SYSTEM,             SYSTEM_DELETE,                     "delete",          SAT_NUMBERED)  // 1 22 1
+SAT_NODE(SYSTEM,             SYSTEM_ENVIRONMENT,                "environment",     SAT_NUMBERED)  // 1 22 2
+SAT_NODE(SYSTEM,             SYSTEM_HOME,                       "home",            SAT_NUMBERED)  // 1 22 3
+SAT_NODE(SYSTEM,             SYSTEM_MEMORY,                     "memory",          SAT_NUMBERED)  // 1 22 4
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_0,                   "()",              SAT_BARE)  // 1 22 4 0
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_BIT,                 "bit",             SAT_NUMBERED)  // 1 22 4 1
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_FREQUENCY,           "frequency",       SAT_NUMBERED)  // 1 22 4 2
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_MAIN_0,              "main()",          SAT_NUMBERED)  // 1 22 4 3
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_SWAP,                "swap",            SAT_NUMBERED)  // 1 22 4 4
+SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_0,              "()",              SAT_BARE)  // 1 22 4 4 0
+SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_FREE_0,         "free()",          SAT_NUMBERED)  // 1 22 4 4 1
+SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_TOTAL_0,        "total()",         SAT_NUMBERED)  // 1 22 4 4 2
+SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_USED,           "used",            SAT_NUMBERED)  // 1 22 4 4 3
+SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_FREE_UNIT,      "free(unit)",      SAT_NUMBERED)  // 1 22 4 4 4
+SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_TOTAL_UNIT,     "total(unit)",     SAT_NUMBERED)  // 1 22 4 4 5
+SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_UNIT,           "(unit)",          SAT_NUMBERED)  // 1 22 4 4 6
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_THIS,                "this",            SAT_NUMBERED)  // 1 22 4 5
+SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_0,              "()",              SAT_BARE)  // 1 22 4 5 0
+SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_AVAILABLE_0,    "available()",     SAT_NUMBERED)  // 1 22 4 5 1
+SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_FREE_0,         "free()",          SAT_NUMBERED)  // 1 22 4 5 2
+SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_USED,           "used",            SAT_NUMBERED)  // 1 22 4 5 3
+SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_AVAILABLE_UNIT, "available(unit)", SAT_NUMBERED)  // 1 22 4 5 4
+SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_FREE_UNIT,      "free(unit)",      SAT_NUMBERED)  // 1 22 4 5 5
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_FREE_0,              "free()",          SAT_NUMBERED)  // 1 22 4 6
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_TOTAL_0,             "total()",         SAT_NUMBERED)  // 1 22 4 7
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_USED_0,              "used()",          SAT_NUMBERED)  // 1 22 4 8
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_MAIN_UNIT,           "main(unit)",      SAT_NUMBERED)  // 1 22 4 9
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_FREE_UNIT,           "free(unit)",      SAT_NUMBERED)  // 1 22 4 10
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_TOTAL_UNIT,          "total(unit)",     SAT_NUMBERED)  // 1 22 4 11
+SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_USED_UNIT,           "used(unit)",      SAT_NUMBERED)  // 1 22 4 12
+SAT_NODE(SYSTEM,             SYSTEM_THRESHOLD_0,                "threshold()",     SAT_NUMBERED)  // 1 22 5
+SAT_NODE(SYSTEM,             SYSTEM_THRESHOLD_N,                "threshold(n)",    SAT_NUMBERED)  // 1 22 6
+
+// --- thread -----------------------------------------------------------------
+// PLAN M12. new has one number for two shapes -- WORD_NUMBERS §4.
+//
+SAT_NODE(SATELLITE, THREAD,     "thread", SAT_NUMBERED)  // 1 23
+SAT_NODE(THREAD,    THREAD_0,   "()",     SAT_BARE)  // 1 23 0
+SAT_NODE(THREAD,    THREAD_NEW, "new",    SAT_NUMBERED)  // 1 23 1
+
+// --- window -----------------------------------------------------------------
+// PLAN M11.A built satl-term; M13 is the dlopen. console here is 1 24 2 and
+// is NOT satellite.console 1 5 (DESIGN §4.4).
+//
+SAT_NODE(SATELLITE,      WINDOW,             "window",                    SAT_NUMBERED)  // 1 24
+SAT_NODE(WINDOW,         WINDOW_0,           "()",                        SAT_BARE)  // 1 24 0
+SAT_NODE(WINDOW,         WINDOW_NEW,         "new",                       SAT_NUMBERED)  // 1 24 1
+SAT_NODE(WINDOW,         WINDOW_CONSOLE,     "console",                   SAT_NUMBERED)  // 1 24 2
+SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_0,   "()",                        SAT_BARE)  // 1 24 2 0
+SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_NEW, "new(title, width, height)", SAT_NUMBERED)  // 1 24 2 1
+
+// --- the aliases ------------------------------------------------------------
+// WORD_NUMBERS §2.3, in full. Nine spellings over five nodes, and the whole of
+// the language's aliasing: every one of the 218-versus-215 and 222-versus-219
+// disagreements across these documents is the first three rows and nothing else.
+//
+// The `.range` three are the reason an alias cannot be a node. Each is a FOUR
+// segment spelling of a node that is three numbers, so writing them as children
+// of `fast`, `normal` and `ultra` would have invented three parents the
+// numbering does not have and taken three numbers §2.2 never assigned.
+SAT_ALIAS(RANDOM_FAST_MIN_MAX,   "fast.range(min, max)")     // 1 7 5
+SAT_ALIAS(RANDOM_NORMAL_MIN_MAX, "normal.range(min, max)")   // 1 7 8
+SAT_ALIAS(RANDOM_ULTRA_MIN_MAX,  "ultra.range(min, max)")    // 1 7 11
+
+// The language's one alias for a type name, which the LEXER's spelling table has
+// to know rather than the parser -- PLAN M3 owns `binary` and `hex` because
+// DESIGN §8.5 gives them literals, and a literal is lexed.
+SAT_ALIAS(VARIABLE_HEX, "hexadecimal")                       // 1 6 11
+
+// DESIGN §7.7's six spellings of the one library global. Five here; `arguments`
+// is the node's own text and is not repeated.
+//
+// THE ONE PLACE A BARE IDENTIFIER IS LANGUAGE-OWNED, which DESIGN §1's
+// generating rule otherwise forbids. The rule survives because the user still
+// writes the name: the language does not introduce `arguments`, it RECOGNISES
+// the name the user chose for satellite.main's parameter when it is one of the
+// six. §7.7 leaves open what happens to a seventh -- `argv` gets a plain list
+// with no properties, silently, and DESIGN §9 says that silence is wrong.
+SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "arg")                     // 1 14 1 1
+SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "args")
+SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argz")
+SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argument")
+SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argumentz")
+
+#undef SAT_NODE
+#undef SAT_ALIAS

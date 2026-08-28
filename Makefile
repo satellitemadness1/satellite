@@ -17,6 +17,7 @@
 #     satl-term and whether it is built ... 047-window.mk
 #     a new target ........................ 050-build.mk
 #     how a .cpp becomes a .o ............. 060-compile.mk
+#     a test, or the test target .......... 065-tests.mk
 #
 # ORDER IS LOAD-BEARING in two places, and each fragment says so at its top:
 # 010 before 020, because VERSION_DEFS bakes $(CXX) and $(CXXFLAGS) into the
@@ -51,4 +52,5 @@ include make_support/045-microarchitecture.mk
 include make_support/047-window.mk
 include make_support/050-build.mk
 include make_support/060-compile.mk
+include make_support/065-tests.mk
 include make_support/070-clean.mk

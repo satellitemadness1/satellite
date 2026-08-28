@@ -16,6 +16,7 @@
 // about the parts that have not been built. See PLAN_ONE.md, M1.
 
 #include "programs/opening.hpp"
+#include "satellite_words/dump.hpp"
 #include "system_facts/version.hpp"
 
 #include <cstdio>
@@ -114,6 +115,31 @@ int main(int argc, char **argv)
     if (first == "-h" || first == "--help") {
         fputs(satellite::usage_text().c_str(), stdout);
         return satellite::EXIT_FINE;
+    }
+
+    // THE REGISTRY'S CONSUMER, AND THE REASON M2 HAS ONE. PLAN M2 asks for
+    // this by name because the first satellite shipped three commits where its
+    // word registry had no reader at all, and four defects accumulated behind a
+    // guarantee nothing was checking.
+    //
+    // NOT AN ARM THAT SAYS "not built yet", which every other unfinished thing
+    // here does. The numbering IS built, so this answers -- and what it prints
+    // ends by saying that almost nothing it lists runs yet, because a dump of
+    // 254 paths with no such line would read as a feature list.
+    if (first == "--words") {
+        if (args.size() < 3) {
+            fputs(satellite::words::dump_text().c_str(), stdout);
+            return satellite::EXIT_FINE;
+        }
+        // A path that resolves is an answer and goes to stdout; a path the
+        // language does not have is a command line that named something satl
+        // cannot do, so it goes to stderr with the same status a bad option
+        // gets. That is the split the --help arm already makes, applied to an
+        // operand instead of to a flag.
+        bool resolved = false;
+        const std::string report = satellite::words::walk_text(args[2], resolved);
+        fputs(report.c_str(), resolved ? stdout : stderr);
+        return resolved ? satellite::EXIT_FINE : satellite::EXIT_USAGE;
     }
 
     if (first == "--repl")
