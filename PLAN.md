@@ -157,7 +157,7 @@ strawman cannot tell you whether it won.
 
 An arena of PODs indexed by `uint32_t` fixes all three. Multi-threaded walking
 becomes **atomic-free, not merely safe** — which matters because
-`satellite.variable.thread` is on the roadmap (DESIGN §10.4).
+`satellite.variable.thread` is on the roadmap (DESIGN §10.5).
 
 It also kills a documented data race. `Name::slot` is `mutable int` on a
 `shared_ptr<const Expr>`, and the comment holding the race off reads: *"resolve()
@@ -2594,6 +2594,17 @@ milestone's paths are real. It is a **different node from `satellite.window.new`
 
 Done when: `satl-term` opens, spawns the `satl` beside it, and renders what it
 prints — which today is `satl --repl` saying the prompt is not built yet.
+
+**`satl` now hands itself over to this binary when it was started with no
+console**, which is DESIGN §10.4 and was built 2026-08-28. It is here rather than
+in a milestone of its own because it is one function and it only means anything
+once this binary exists: opened from a file manager or a desktop menu, `satl` has
+nowhere to print, and a program that runs correctly and shows nothing is
+§1.1's failure exactly. **The test is a controlling terminal and not
+`isatty(stdout)`** — the obvious version breaks every pipeline — and the recursion
+terminates because this binary spawns its child on a pty. `--no-window` and
+`SATL_NO_WINDOW=1` turn it off; `src/programs/window_handover.cpp` names all six
+conditions under which it declines.
 
 **M11.B — the prompt, and the window stops closing.** The REPL itself: the prompt,
 **the prompt's Ctrl-C — the byte `0x03`, because raw mode turns ISIG off and the

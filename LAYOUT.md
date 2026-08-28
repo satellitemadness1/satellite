@@ -55,6 +55,7 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | --- | --- |
 | [src/programs/main.cpp](src/programs/main.cpp) | `satl` itself: reads the command line, answers `--version` / `--help`, and reports honestly that running a file lands at M8. |
 | [src/programs/opening.cpp](src/programs/opening.cpp) | The banner and the usage text — the words, kept in a `.cpp` because they change every milestone. |
+| [src/programs/window_handover.hpp](src/programs/window_handover.hpp) · [.cpp](src/programs/window_handover.cpp) | Started with no console, `satl` hands itself to `satl-term` (DESIGN §10.4). The test is a **controlling terminal**, not `isatty(stdout)` — the obvious version opens a window instead of feeding a pipe. Six named refusals. |
 | [src/programs/opening.hpp](src/programs/opening.hpp) | Declarations for the above, plus the exit-status enum so two arms cannot disagree about what a failure is worth. |
 | [src/programs/cpu_level.cpp](src/programs/cpu_level.cpp) | `satl-cpu-level`: prints `haswell` or `baseline`. Compiled at the baseline on purpose — it runs before anything is known about the machine. |
 | [src/programs/window.cpp](src/programs/window.cpp) | `satl-term`: the command line, the `GtkApplication`, and the window. Its title and size are the same string and two numbers `satellite.window.console.new` takes. |

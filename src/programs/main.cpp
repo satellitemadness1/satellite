@@ -16,9 +16,11 @@
 // about the parts that have not been built. See PLAN_ONE.md, M1.
 
 #include "programs/opening.hpp"
+#include "programs/window_handover.hpp"
 #include "satellite_words/dump.hpp"
 #include "system_facts/version.hpp"
 
+#include <cstddef>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -86,7 +88,33 @@ int usage_error(const std::string &complaint)
 
 int main(int argc, char **argv)
 {
-    const std::vector<std::string> args(argv, argv + argc);
+    // BEFORE ANY ARGUMENT IS READ, AND THAT IS THE POINT. If this process was
+    // started with no console -- a file manager, a .desktop entry, a desktop
+    // menu -- then every line below prints into nothing, INCLUDING the usage
+    // text and the error messages. Handing over first means the person sees
+    // whatever satl was going to say, rather than seeing the window only in the
+    // cases somebody remembered to route through it.
+    //
+    // It returns here on a terminal, in a pipeline, with output redirected,
+    // with no display, without a satl-term to hand to, or when SATL_NO_WINDOW
+    // is set -- six refusals, all named in window_handover.cpp. --no-window is
+    // the seventh and is handled below, because it is a flag and flags are this
+    // function's business.
+    if (argc < 2 || std::string(argv[1]) != "--no-window")
+        satellite::hand_over_to_the_window(argv);
+
+    // --no-window IS CONSUMED HERE AND EXISTS NOWHERE BELOW. Filtered out of the
+    // arguments rather than skipped over at each use: the arms further down
+    // index args[2] for their operands, so carrying the flag would make every
+    // one of them off by one in exactly the case nobody tests. `satl
+    // --no-window` alone is therefore `satl` alone, which is what it reads as.
+    std::vector<std::string> args;
+    args.reserve(static_cast<std::size_t>(argc));
+    for (int i = 0; i < argc; ++i) {
+        if (i == 1 && std::string(argv[i]) == "--no-window")
+            continue;
+        args.emplace_back(argv[i]);
+    }
 
     // NOTHING TO DO IS NOT AN ERROR. satl started with no arguments shows the
     // opening information, which is what says how to run a file.

@@ -1293,7 +1293,38 @@ So §1.1 decides the surface: the user writes `satellite.window.new(...)` from a
 thread and **satellite does the marshalling silently. The user never learns the words
 "main thread."**
 
-### 10.4 Threads
+### 10.4 `satl` with no console hands itself to `satl-term`
+
+*(Decided and built 2026-08-28.)* Started from a file manager, a desktop menu or a
+`.satl` file association, `satl` has nowhere to print: its output goes to
+`/dev/null` or to the session journal, and **a program that runs correctly and shows
+nothing is indistinguishable from one that did not start.** That is §1.1 broken in
+the way §1.1 cares about most — the work was done and the person was not told.
+
+So `satl` re-execs `satl-term`, which has a screen, passing `--hold` and its own
+arguments through. The window then spawns the `satl` beside it and that copy runs
+with a pty for a console.
+
+**The obvious test is `isatty(stdout)` and it is wrong.** A pipeline has a pipe on
+stdout and answers *no*, so `satl --words | grep console` would open a window instead
+of feeding the pipe — every script on the machine, broken, to fix a case none of them
+are in. The question that separates a launcher from a terminal is whether the process
+has a **controlling terminal**, and `/dev/tty` is the file that answers it: it fails
+with `ENXIO` when there is none, and a pipeline still has the shell's.
+
+**There is no recursion and it is not luck.** `satl-term` spawns its child on a pty,
+so the child has a controlling terminal and answers the question the other way the
+first time it asks. The condition is a fact about the process rather than a flag
+somebody has to remember to clear.
+
+**Six refusals, and each is a case where a window would be the wrong answer**:
+`SATL_NO_WINDOW` is set; there is a controlling terminal; stdout is a pipe or a
+regular file, so something is deliberately reading; there is no display; there is no
+`satl-term` beside us, which is ordinary on a build without gtk4; or the `execv`
+failed. `--no-window` is a seventh and is a flag rather than a condition.
+`src/programs/window_handover.cpp` is the whole of it and names all six.
+
+### 10.5 Threads
 
 `satellite.variable.thread`. §7's frames are what make a capsule call safe to run on
 one; PLAN.md §2.2's arena is what makes walking the program **atomic-free** rather

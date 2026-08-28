@@ -37,6 +37,7 @@
 # one file that prints is the one that had to be a translation unit.
 SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/opening.cpp \
+            $(PROGRAMS)/window_handover.cpp \
             $(WORDS)/dump.cpp
 
 SATL_OBJS = $(SATL_SRCS:.cpp=.o)
@@ -55,6 +56,7 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/terminal.hpp \
+       $(PROGRAMS)/window_handover.hpp \
        $(RANDOM)/random.hpp \
        $(WORDS)/words.def \
        $(WORDS)/words.hpp \

@@ -38,7 +38,8 @@ type, and `satellite.thread.new` is the constructor that makes one — under a
 top-level `satellite.thread`, not under `variable`.
 
 Everywhere else in the current documents only `satellite.variable.thread` appears
-(DESIGN §10.4, PLAN M12). **`satellite.thread` is not in DESIGN, not in PLAN, and
+(DESIGN §10.5 — §10.4 until a section was inserted ahead of it on 2026-08-28 —
+PLAN M12). **`satellite.thread` is not in DESIGN, not in PLAN, and
 not in WORD_NUMBERS.md.** It needs a number, and the pattern it sets — a type under
 `variable` with its constructor under a sibling namespace — is worth checking
 against `satellite.file.new` (which is already numbered `1 8 1`) and
