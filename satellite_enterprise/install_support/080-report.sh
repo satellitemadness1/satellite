@@ -48,8 +48,48 @@ fi
 
 printf 'install.sh: %s\n' "$did"
 printf '    %s\n' "$root/satl"
+if [ -x "$repo/satl-cpu-level" ] || [ -x "$root/satl-cpu-level" ]; then
+    printf '    %s\n' "$root/satl-cpu-level"
+fi
+case ${have_term:-unknown} in
+    yes)       printf '    %s\n' "$root/satl-term"
+               printf '    %s\n' \
+                   "$root/share/applications/org.satellite.terminal.desktop" ;;
+    undecided) printf '    %s   (if gtk4 and vte are present)\n' "$root/satl-term" ;;
+esac
 printf '    %s\n' "$root/share/mime/packages/application-x-satellite.xml"
 printf '    %s   (nine sizes, apps and mimetypes)\n' "$root/share/icons/hicolor"
+
+# SAID WHENEVER IT IS TRUE, and not only when somebody asks. A machine with no
+# gtk4 gets a complete install of the interpreter and no window, and the
+# difference between that and a broken install is one line of output.
+if [ "$have_term" = no ]; then
+    cat <<EOF
+install.sh: note -- satl-term was not built, so the window and its launcher
+            were not installed. The interpreter is unaffected. To get one:
+              AlmaLinux/RHEL: dnf --enablerepo=crb install vte291-gtk4-devel
+              Debian/Ubuntu:  apt install libvte-2.91-gtk4-dev
+            then re-run this script.
+EOF
+fi
+
+# satl.haswell IS NOT MISSING. Said here rather than left to be noticed, because
+# a person who has just watched `make` produce four files and an installer
+# announce three has a reasonable question, and the answer is a design decision
+# rather than an omission -- PLAN.md sec 4.2.
+if [ "$variant" = haswell ] || [ "$variant" = baseline ]; then
+    if [ "$have_term" = yes ]; then
+        printf 'install.sh: the build made four files and this installed three\n'
+        printf '            programs: satl.haswell and satl are one program\n'
+        printf '            compiled twice, and the %s one went in as satl.\n' \
+            "$variant"
+    else
+        printf 'install.sh: satl.haswell is not missing -- it and satl are one\n'
+        printf '            program compiled twice, and the %s one went in\n' \
+            "$variant"
+        printf '            as satl. Only one of the pair is ever installed.\n'
+    fi
+fi
 
 if [ -n "$linked" ]; then
     printf 'install.sh: %s these symlinks, which point back into %s:\n' "$did" "$root"
@@ -84,7 +124,7 @@ fi
 # only check that the copy arrived, is executable, and does not fault on this
 # CPU, which is the one way a wrong variant choice would show up.
 if [ "$dry_run" = no ]; then
-    printf 'install.sh: checking the installed binary by running it\n'
+    printf 'install.sh: checking the installed binaries by running them\n'
     if "$root/satl" --version; then
         :
     else
@@ -93,10 +133,38 @@ if [ "$dry_run" = no ]; then
        is the one bug this check exists to catch: re-run with
        $(quoted "$self") and report what $repo/satl-cpu-level --explain says."
     fi
+
+    # THE WINDOW IS CHECKED THE SAME WAY AND WITHOUT OPENING ONE.
+    # src/programs/window.cpp answers --version before it touches GTK, on
+    # purpose -- "works over ssh and in a package build the same way `satl
+    # --version` does" -- so this check runs on a headless box and in a
+    # container, which is where an install is most likely to be rehearsed.
+    #
+    # It is a real check and not a formality: satl-term is the one binary here
+    # that links anything outside libc and libstdc++, so it is the one whose
+    # copy can arrive at a machine that cannot load its libraries.
+    if [ "$have_term" = yes ]; then
+        if "$root/satl-term" --version; then
+            :
+        else
+            die "$root/satl-term was installed but would not run.
+       It answers --version without opening a window, so a failure here is the
+       loader, not the display: run ldd on it and look for gtk4 or
+       vte-2.91-gtk4. The interpreter at $root/satl is unaffected and was
+       checked first."
+        fi
+    fi
+
+    # satl-cpu-level IS NOT RE-RUN. 050-building.sh already ran it, from the
+    # build tree, and its answer is what chose the file that was just verified
+    # above -- running the installed copy again would be asking the same
+    # question a second time and would prove nothing the line above has not.
 else
     printf 'install.sh: a real run would now execute %s --version, which is\n' \
         "$root/satl"
-    printf '            what proves the chosen build actually runs on this CPU.\n'
+    printf '            what proves the chosen build actually runs on this CPU,\n'
+    printf '            and %s --version, which answers\n' "$root/satl-term"
+    printf '            without opening a window and so proves its libraries load.\n'
 fi
 
 # `satl` runs whichever copy the shell finds FIRST, and $root is not on PATH by
@@ -136,9 +204,31 @@ install.sh: note -- \`satl\` already runs $found,
 EOF
 fi
 
+# THE LAUNCHER NEEDS THE LINK, and a desktop install without one is the single
+# way this script can leave something that looks broken rather than absent: the
+# entry is installed, TryExec cannot find satl-term on PATH, and the menu shows
+# nothing at all with no error anywhere.
+if [ "$desktop" = yes ] && [ "$link_bin" = no ] && term_linkable; then
+    cat <<EOF
+
+install.sh: note -- --desktop was given without --link, so the launcher was
+            installed and will hide itself: its Exec and TryExec name
+            \`satl-term\`, which is not on your PATH. Re-run with both to
+            finish it:
+
+                $(quoted "$self") --link --desktop
+EOF
+fi
+
 # Said last, because it is the thing a reader of the banner will want next and
-# because at M1 it is the honest headline: there is a binary, and it does not
-# interpret anything yet.
+# because it is still the honest headline: there are binaries, and none of them
+# interprets anything yet.
 printf '\n'
-printf 'install.sh: this build is milestone 1 -- it says what it is and how a\n'
-printf '            file will be run. Running one lands at M8.\n'
+printf 'install.sh: this build is milestone 2 -- the trie and the path interner\n'
+printf '            landed 2026-08-28, so satl knows every word in the language\n'
+printf '            and can dump the numbering with --words. It still runs no\n'
+printf '            program: the lexer is M3 and the first program runs at M8.A.\n'
+if [ "$have_term" = yes ]; then
+    printf '            satl-term opens, spawns the satl beside it, and shows you\n'
+    printf '            what that satl says -- which today is --repl declining.\n'
+fi

@@ -26,12 +26,88 @@ icon_sizes='16x16 22x22 24x24 32x32 48x48 64x64 128x128 256x256 512x512'
 # PNGs are the ones that ship. See make_support/140-install.mk in
 # old_versions/first_satellite.
 #
-# THE .desktop ENTRY IS NOT IN THIS LIST EITHER, yet. It launches satl-term,
-# which lands at M11 and does not exist in this tree; installing a launcher for
-# a missing binary puts an entry in the user's menu that does nothing. It comes
-# back as one line here in the milestone that builds the binary it names.
+# THE .desktop ENTRY IS IN THIS LIST AS OF 2026-08-28, and it was held out until
+# now for a reason that has expired. It launches satl-term, and installing a
+# launcher for a missing binary puts an entry in the user's menu that does
+# nothing -- so it waited for the milestone that builds the binary it names.
+# M11.A built satl-term on 2026-08-27, PLAN.md sec 5.3 says the remaining step
+# was naming it here, and this is that line. It is still conditional: the entry
+# and the binary arrive together or neither arrives, because the reason for
+# holding it back was never the date, it was the binary.
+#
+# THREE PROGRAMS INSTALL, OR FOUR ARE BUILT AND THREE INSTALL, and the
+# difference is worth stating in the one place the tree is declared:
+#
+#     satl            the interpreter, whichever of the two builds this CPU can
+#                     run. See 050-building.sh for the choice.
+#     satl-cpu-level  the program that made that choice, kept because it is
+#                     also how a person checks it afterwards, and because a
+#                     machine that is upgraded is a machine whose answer moved.
+#     satl-term       the GTK4/VTE window, when the libraries to build it were
+#                     there.
+#
+# satl.haswell IS NOT A FOURTH PROGRAM AND IS NOT INSTALLED. It is the same
+# program as satl compiled against a second instruction set, and exactly one of
+# the pair is installed, under the name satl, by design: PLAN.md sec 4.2's
+# whole argument is that the installed binary is its own record -- `satl
+# --version` prints the flags its objects were compiled with -- which stops
+# being true the moment two interpreters sit in the root and something has to
+# say which one runs. The build makes four files; the install is three
+# programs.
+#
+# satl-term FINDS ITS INTERPRETER BY SITTING NEXT TO IT. src/programs/terminal.cpp
+# reads /proc/self/exe and spawns the `satl` beside it -- "not this binary
+# again, and not whatever PATH happens to resolve" -- so these two must land in
+# ONE directory, which the fixed root gives for free and a prefix layout with a
+# bin/ would also give. It is written down here because it is a constraint on
+# this list rather than a property of the tree: move satl-term out of the root
+# and the window spawns nothing.
 install_tree() {
     printf '755 %s satl\n' "${satl_source:--}"
+
+    # UNCONDITIONAL ON x86-64 AND ABSENT EVERYWHERE ELSE, which is why this asks
+    # the file rather than the architecture: 045-microarchitecture.mk builds one
+    # satl and no detector on a machine that has no variants to choose between,
+    # and 050-building.sh has already run whatever is there.
+    if [ -x "$repo/satl-cpu-level" ] || [ "$action" = uninstall ]; then
+        printf '755 %s satl-cpu-level\n' "$repo/satl-cpu-level"
+    fi
+
+    # THE WINDOW AND ITS LAUNCHER, TOGETHER OR NOT AT ALL. On an uninstall both
+    # are named whatever this run knows, because an uninstall builds nothing and
+    # so never learns whether they were installed; rm -f on a file that is not
+    # there costs nothing, and leaving a binary behind because this run could
+    # not prove it was installed is how a tree rots. 010-defaults.sh says the
+    # same thing where have_term is declared.
+    case ${have_term:-unknown} in
+        yes)
+            printf '755 %s satl-term\n' "$repo/satl-term"
+            printf '644 %s share/applications/org.satellite.terminal.desktop\n' \
+                "$here/icons/org.satellite.terminal.desktop"
+            ;;
+        undecided)
+            # A dry run on a tree that has not been built. The bracket is the
+            # same device 050-building.sh uses for satl: it names a file the
+            # transcript cannot yet be sure of, and the check below skips any
+            # source with a bracket in it rather than reporting it missing.
+            printf '755 %s satl-term\n' "$repo/satl-term[ if gtk4 is present ]"
+            printf '644 %s share/applications/org.satellite.terminal.desktop\n' \
+                "$here/icons/org.satellite.terminal.desktop"
+            ;;
+        *)
+            # no, or unknown-on-an-uninstall. Nothing is printed on an install
+            # with no window; an uninstall prints both so it can remove them.
+            # A `return` here instead of an `if` would drop the mime packet and
+            # the icons from the rest of this function, which is the one way a
+            # gate inside a list of files can go badly wrong.
+            if [ "$action" = uninstall ]; then
+                printf '755 %s satl-term\n' "$repo/satl-term"
+                printf '644 %s share/applications/org.satellite.terminal.desktop\n' \
+                    "$here/icons/org.satellite.terminal.desktop"
+            fi
+            ;;
+    esac
+
     printf '644 %s share/mime/packages/application-x-satellite.xml\n' \
         "$here/icons/application-x-satellite.xml"
 

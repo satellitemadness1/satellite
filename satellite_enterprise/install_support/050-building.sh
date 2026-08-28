@@ -73,4 +73,43 @@ if [ "$action" = install ]; then
             step "the build to install is chosen after the build, by satl-cpu-level"
             ;;
     esac
+
+    # THE OTHER TWO PROGRAMS, and this is where the run learns whether there are
+    # two of them. satl-cpu-level is unconditional on x86-64 -- the choice above
+    # could not have been made without it -- but satl-term is conditional on
+    # gtk4 and vte-2.91-gtk4 being installed, which 047-window.mk asks
+    # pkg-config and 050-build.mk answers by dropping the target from `all` with
+    # a note. A machine without them gets a correct install of three programs,
+    # not a failed install of four.
+    #
+    # ASKED OF THE FILE AND NOT OF pkg-config, deliberately. The build has just
+    # run; whether the binary is there is the only fact that matters to a copy,
+    # and re-asking pkg-config would be this script forming its own opinion
+    # about a question make has already answered. §9's rule about verifying
+    # through the real code path is the same argument.
+    if [ -x "$repo/satl-term" ]; then
+        have_term=yes
+    elif [ "$dry_run" = yes ] && [ ! -f "$repo/satl-term" ]; then
+        # A dry run on a clean tree has nothing to look at, and the honest
+        # answer is that a real run would build it and then know. The
+        # transcript says so rather than guessing either way.
+        have_term=undecided
+    else
+        have_term=no
+    fi
+
+    case $have_term in
+        yes)
+            step "satl-term was built, so the window and its launcher install too"
+            ;;
+        no)
+            # NO COUNT IN THIS LINE, on purpose: how many programs install
+            # depends on the architecture as well as on the libraries, and a
+            # number here would be wrong on the machine that has neither.
+            step "satl-term was not built -- no gtk4/vte -- so no window installs"
+            ;;
+        undecided)
+            step "whether satl-term installs is decided by whether the build makes one"
+            ;;
+    esac
 fi

@@ -13,20 +13,41 @@
 # satellite's installer, which had to compile as the human and copy as root; the
 # fixed per-user root is what buys it.
 #
-# WHAT IT INSTALLS, and this is the one place the tree is declared:
+# WHAT IT INSTALLS. install_support/060-install-tree.sh is the one place the
+# tree is DECLARED -- this is a copy of it in prose, and if the two ever
+# disagree that file is right:
 #
 #     $HOME/.satl/satl                        the interpreter
+#     $HOME/.satl/satl-cpu-level              the detector, kept so the choice
+#                                             below can be checked afterwards
+#     $HOME/.satl/satl-term                   the GTK4/VTE window, when the
+#                                             libraries to build it were there
+#     $HOME/.satl/share/applications/...      the satl-term launcher, with it
 #     $HOME/.satl/share/mime/packages/...     the .satl file type
 #     $HOME/.satl/share/icons/hicolor/...     the artwork, nine sizes
 #
-# TWO BUILDS, ONE INSTALLED. On x86-64 the build produces satl and satl.haswell
-# -- the same sources compiled against the x86-64 baseline and against
-# x86-64-v3, the instruction set Haswell introduced in 2013 -- plus
-# satl-cpu-level, which asks the CPU which of them it can run. This script runs
-# that program and installs the answer. The installed binary then says which one
-# it is for the rest of its life: `satl --version` prints the flags its objects
-# were compiled with, so the install needs no manifest and cannot have one that
-# disagrees with the file it describes. See make_support/045-microarchitecture.mk.
+# FOUR FILES ARE BUILT AND THREE PROGRAMS ARE INSTALLED, which is not an
+# omission. On x86-64 the build produces satl and satl.haswell -- the same
+# sources compiled against the x86-64 baseline and against x86-64-v3, the
+# instruction set Haswell introduced in 2013 -- plus satl-cpu-level, which asks
+# the CPU which of them it can run, plus satl-term. This script runs the
+# detector and installs its answer UNDER THE NAME satl. The installed binary
+# then says which one it is for the rest of its life: `satl --version` prints
+# the flags its objects were compiled with, so the install needs no manifest and
+# cannot have one that disagrees with the file it describes -- which is exactly
+# what a second interpreter sitting beside it would create.
+# See make_support/045-microarchitecture.mk and PLAN.md sec 4.2.
+#
+# satl-term MUST LAND BESIDE satl AND DOES. src/programs/terminal.cpp reads
+# /proc/self/exe and spawns the `satl` next to itself rather than the one PATH
+# finds, so the two share one directory here by requirement and not by tidiness.
+# The fixed root gives that for free.
+#
+# THE WINDOW IS CONDITIONAL AND THE INTERPRETER IS NOT. 047-window.mk asks
+# pkg-config for gtk4 and vte-2.91-gtk4; without them 050-build.mk drops
+# satl-term from `all` with a note, and this script installs three files less
+# and says so. A machine with no desktop libraries gets a correct install, not
+# a failed one.
 #
 # NOTHING HERE EDITS .profile, .bashrc, .zshrc OR ANY OTHER FILE THE USER OWNS,
 # and nothing tells the user to export a variable. Inherited from the first

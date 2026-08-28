@@ -23,12 +23,58 @@ user_bin=$HOME/.local/bin
 # Lines of "link-target destination". The targets are inside $root, so these
 # point at what was just installed rather than at the source tree, and an
 # install that later moves is a re-run rather than a set of dangling links.
+# Whether this run should be linking the window and its launcher. Yes when the
+# build made one; yes on an uninstall, which builds nothing and therefore never
+# learns, and where ours() checks every path before it is touched so naming one
+# that was never linked removes nothing. 060-install-tree.sh gates its own list
+# the same way and for the same reason.
+term_linkable() {
+    [ "${have_term:-unknown}" = yes ] || [ "$action" = uninstall ]
+}
+
 desktop_tree() {
-    [ "$link_bin" = yes ] && printf '%s %s\n' "$root/satl" "$user_bin/satl"
+    if [ "$link_bin" = yes ]; then
+        printf '%s %s\n' "$root/satl" "$user_bin/satl"
+
+        # satl-term TOO, AND IT IS NOT A CONVENIENCE. The launcher installed
+        # below has `Exec=satl-term` and `TryExec=satl-term` -- bare command
+        # names, because the entry is written once and cannot know a prefix --
+        # so a desktop shell finds the window only if that name is on PATH.
+        # Without this link the entry installs, hides itself, and looks like a
+        # broken install rather than an incomplete one.
+        #
+        # The link is safe for the reason terminal.cpp is written the way it
+        # is: /proc/self/exe resolves the symlink, so the window still finds
+        # the `satl` sitting beside the real binary in $root rather than
+        # whatever else is in ~/.local/bin.
+        if term_linkable; then
+            printf '%s %s\n' "$root/satl-term" "$user_bin/satl-term"
+        fi
+    fi
+
+    # satl-cpu-level IS DELIBERATELY NOT LINKED. It is installed -- it is how
+    # the choice this script made can be checked afterwards -- but it is a
+    # question about the machine, not a command anybody types by habit, and
+    # ~/.local/bin is a directory of things a person means to run.
+
     if [ "$desktop" = yes ]; then
         printf '%s %s\n' \
             "$root/share/mime/packages/application-x-satellite.xml" \
             "$xdg_data/mime/packages/application-x-satellite.xml"
+
+        # THE LAUNCHER, which is the whole reason --desktop is worth asking for
+        # once there is a window: the mime packet gives a .satl file its icon
+        # and its type, and this is what gives a file manager something to open
+        # it WITH. The file name is the GApplication id window.cpp registers,
+        # and it has to stay that -- the entry, the icon and StartupWMClass all
+        # agree on org.satellite.terminal so that a shell finding any one of
+        # them finds the others.
+        if term_linkable; then
+            printf '%s %s\n' \
+                "$root/share/applications/org.satellite.terminal.desktop" \
+                "$xdg_data/applications/org.satellite.terminal.desktop"
+        fi
+
         for _size in $icon_sizes; do
             printf '%s %s\n' \
                 "$root/share/icons/hicolor/$_size/apps/org.satellite.terminal.png" \
@@ -44,9 +90,26 @@ desktop_tree() {
 # Whether a path is a symlink this script would have made: a link, resolving
 # somewhere inside $root. Anything else -- a real file, or a link pointing
 # elsewhere -- belongs to something that is not us.
+#
+# THE DANGLING CASE IS THE NORMAL CASE ON AN UNINSTALL, and missing it made
+# --uninstall leave every symlink it had created. Found 2026-08-28 by running
+# --link --desktop and then --uninstall against a scratch HOME, which is a path
+# this machine never took: here the first satellite owns those names, so every
+# one of them is refused on the way in and there was never a link of ours to
+# remove on the way out.
+#
+# install.sh sources 060 before 070, so by the time this runs the install tree
+# has already been removed -- and `readlink -f` cannot canonicalise a path whose
+# parent directories are gone, so it fails and every link looked like somebody
+# else's. Falling back to the LITERAL target is exactly right and is not a
+# loosening: the literal is what this script wrote into the link, and a target
+# that cannot be resolved cannot be a live file belonging to anything else.
 ours() {
     [ -L "$1" ] || return 1
-    _t=$(readlink -f -- "$1" 2>/dev/null) || return 1
+    _t=$(readlink -f -- "$1" 2>/dev/null) || _t=
+    if [ -z "$_t" ]; then
+        _t=$(readlink -- "$1" 2>/dev/null) || return 1
+    fi
     case $_t in
         "$root"/*) return 0 ;;
         *) return 1 ;;
@@ -62,6 +125,15 @@ refresh_indexes() {
         fi
         if command -v gtk-update-icon-cache >/dev/null 2>&1; then
             run gtk-update-icon-cache -qtf "$xdg_data/icons/hicolor"
+        fi
+        # THE THIRD INDEX, new with the launcher. A .desktop file dropped into
+        # applications/ is found by a menu on its own, but the MimeType= line is
+        # only consulted through mimeinfo.cache, which this builds -- so without
+        # it the entry appears in the menu and a .satl file still has nothing
+        # offered to open it, which is the half of the install that would look
+        # like it worked.
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            run update-desktop-database "$xdg_data/applications"
         fi
     fi
 }
@@ -152,7 +224,8 @@ EOF
 
     # Only the directories this script could have created, and only when empty.
     # ~/.local/bin and ~/.local/share belong to the user and are never touched.
-    for _d in "$xdg_data/mime/packages" "$xdg_data/icons/hicolor"; do
+    for _d in "$xdg_data/mime/packages" "$xdg_data/icons/hicolor" \
+              "$xdg_data/applications"; do
         [ -d "$_d" ] && run rmdir "$_d" 2>/dev/null || :
     done
     :

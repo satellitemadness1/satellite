@@ -755,9 +755,21 @@ unpredictable. The artwork is a photograph, which has no scalable form, so the P
 are the ones that ship and `org.satellite.terminal.svg` travels in the tree
 uninstalled. The `.desktop` entry was likewise held back until a binary existed for
 it to launch — a launcher for a missing program is a menu entry that does nothing.
-**M11.A built that binary on 2026-08-27**, so the entry is now installable and the
-remaining step is naming it in `060-install-tree.sh`, which is the one declaration of
-what gets installed.
+**M11.A built that binary on 2026-08-27, and the entry was named in
+`060-install-tree.sh` on 2026-08-28**, which is the one declaration of what gets
+installed. It is still conditional on the binary: `047-window.mk` drops `satl-term`
+from `all` when gtk4 and vte are missing, and the installer then installs neither the
+window nor its launcher and says so, because the reason for holding the entry back
+was never the date — it was the binary.
+
+**The installer installs three programs and the build makes four files.** `satl`,
+`satl-cpu-level` and `satl-term` go in; `satl.haswell` does not, because it and
+`satl` are one program compiled twice and §4.2's argument is that the installed
+binary is its own record — which stops being true the moment two interpreters sit in
+the root and something has to say which one runs. **`satl-term` must land beside
+`satl`**: `src/programs/terminal.cpp` reads `/proc/self/exe` and spawns the `satl`
+next to itself rather than the one PATH finds, so the fixed root is a requirement
+here and not only a tidiness.
 
 `satellite_enterprise/icons/application-x-satellite.xml` carries several findings in
 its own comments —

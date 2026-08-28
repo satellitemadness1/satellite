@@ -156,10 +156,10 @@ A sourced fragment runs as it is read, so the order below *is* the script.
 | [020-saying-things.sh](satellite_enterprise/install_support/020-saying-things.sh) | `die`, `usage`, and the `run`/`show`/`quoted` trio that makes `--dry-run` an honest, pasteable transcript. |
 | [030-arguments.sh](satellite_enterprise/install_support/030-arguments.sh) | The command line, and the refusal to accept a root that belongs to something else. |
 | [040-machine.sh](satellite_enterprise/install_support/040-machine.sh) | Reads `/etc/os-release` without sourcing it, notes a non-EL system, and checks there is a compiler and a make. |
-| [050-building.sh](satellite_enterprise/install_support/050-building.sh) | Builds, then runs `satl-cpu-level` and picks the variant to install. |
-| [060-install-tree.sh](satellite_enterprise/install_support/060-install-tree.sh) | **The one declaration of what gets installed**, read by both the install and the uninstall. |
-| [070-desktop.sh](satellite_enterprise/install_support/070-desktop.sh) | The optional symlinks under `~/.local`, and the ownership check that refuses to overwrite another install's files. |
-| [080-report.sh](satellite_enterprise/install_support/080-report.sh) | What happened, verification by running the installed binary, and what the word `satl` actually gets you. |
+| [050-building.sh](satellite_enterprise/install_support/050-building.sh) | Builds, then runs `satl-cpu-level` to pick the variant to install, and looks for `satl-term` to decide whether the window installs. |
+| [060-install-tree.sh](satellite_enterprise/install_support/060-install-tree.sh) | **The one declaration of what gets installed**, read by both the install and the uninstall: three programs — `satl`, `satl-cpu-level`, `satl-term` — the launcher, the mime packet and the artwork. |
+| [070-desktop.sh](satellite_enterprise/install_support/070-desktop.sh) | The optional symlinks under `~/.local` — `satl`, `satl-term`, the launcher, the mime packet, the icons — and the ownership check that refuses to overwrite another install's files. |
+| [080-report.sh](satellite_enterprise/install_support/080-report.sh) | What happened, verification by running the installed `satl` **and `satl-term`** — both answer `--version` without a display — and what the word `satl` actually gets you. |
 
 ### `icons/` — installed
 
@@ -169,7 +169,7 @@ translation.
 | file | what it is |
 | --- | --- |
 | [application-x-satellite.xml](satellite_enterprise/icons/application-x-satellite.xml) | The `.satl` mime packet. **Read its comments before changing anything about icons or the mime type** — each records something found the hard way. |
-| [org.satellite.terminal.desktop](satellite_enterprise/icons/org.satellite.terminal.desktop) | The launcher for `satl-term`. **M11.A built the binary it names on 2026-08-27**, so the reason it was held back is gone; adding it to `060-install-tree.sh` is the step that has not been taken. |
+| [org.satellite.terminal.desktop](satellite_enterprise/icons/org.satellite.terminal.desktop) | The launcher for `satl-term`. **Installed since 2026-08-28**, conditional on the binary it names having been built — M11.A built that on 2026-08-27 and `060-install-tree.sh` now carries the row. |
 | [org.satellite.terminal.svg](satellite_enterprise/icons/org.satellite.terminal.svg) | A complete scalable icon that is **deliberately never installed** — shipping it alongside the PNGs makes which one a shell draws unpredictable. |
 
 And the pixel artwork, two files at each of nine sizes:

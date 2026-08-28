@@ -51,3 +51,17 @@ desktop=no
 # Which satl was installed. Set by 050-building.sh, read by 080-report.sh, and
 # empty on an uninstall, which builds nothing and chooses nothing.
 variant=
+
+# WHETHER THE WINDOW WAS BUILT, which is a question about this machine's
+# libraries and not about its instruction set. 047-window.mk asks pkg-config for
+# gtk4 and vte-2.91-gtk4 and drops satl-term from `all` when they are missing,
+# with a note rather than an error -- so an install on a headless box is a
+# correct install of three programs rather than a failure. Set by
+# 050-building.sh; read by 060-install-tree.sh, 070-desktop.sh and 080-report.sh.
+#
+# It starts as `unknown` rather than `no` so that the uninstall can tell the two
+# apart: an uninstall builds nothing, so it never learns the answer, and it
+# removes satl-term and the launcher by name regardless. Removing a file that
+# was never installed costs an rm -f that finds nothing; leaving one behind
+# because this run could not prove it was there is how a tree rots.
+have_term=unknown
