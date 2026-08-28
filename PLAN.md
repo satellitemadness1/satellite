@@ -512,17 +512,62 @@ the console's printer thread if it started earlier, `satellite.include` of anoth
 file, M11.B's prompt parsing repeatedly, and M12. **The lazy pool is right and the
 reason is amortisation across a run, not a cheaper parse.**
 
-**The consequence for the request as it was made.** *"Create that many threads and
-then hand them each a line that begins with satellite"* is a **loss** for any
-program under ~2,650 satellite-rooted lines, and almost nothing anyone writes is
-that big. **That figure holds whether the threads are spawned or a pool is built to
-hold them**, because building the pool is the same cost. The instruction pays only
-against a pool something else already warmed, and then from ~170 lines.
+### 4.5.1.1 Warming the pool at startup — measured, and it beats the lazy rule
 
-**So the line-per-thread part was right and the create-them-first part was not** —
-and the fix is not "use a pool" but "**do not thread a one-shot parse at all**".
-A single `satl program.satl` should walk its source on one thread unless the file
-is enormous; the pool earns its keep across a run, not inside one parse.
+**The author's question, 2026-08-28: if satl is started we must assume a `.satl`
+file is coming, so should the pool not be warming from the moment satl starts?**
+It is the right question and it makes §4.5.1's *"created lazily, on first real
+threaded work"* the wrong rule. Three arms, same corpus, same machine, best of
+seven, load average 0.02:
+
+| satellite-rooted lines | single | lazy — build at the parse | **eager** — warm from startup |
+|---:|---:|---:|---:|
+| 100 | **27 µs** | 672 µs (0.04×) | 48 µs (0.57×) |
+| 1,000 | **309 µs** | 742 µs (0.42×) | 491 µs (0.63×) |
+| 2,000 | **602 µs** | 716 µs (0.84×) | 622 µs (0.97×) |
+| 2,500 | 733 µs | 745 µs (0.98×) | **641 µs (1.14×)** |
+| 4,000 | 1,113 µs | 715 µs (1.56×) | **675 µs (1.65×)** |
+| 50,000 | 13,745 µs | 1,882 µs (7.3×) | **1,825 µs (7.5×)** |
+
+*Eager is: spawn ONE thread at startup, which builds the other 23; the main thread
+starts walking immediately and the pool takes the remainder once it exists.*
+
+**Three findings, and the first two say the author is right.**
+
+- **Lazy is dominated. Eager beats it at every size measured**, because the main
+  thread never waits for the pool. Kicking the build off costs the main thread
+  **~20 µs**, not the ~590 µs it costs to build the pool yourself.
+- **The crossover moves in, from ~2,650 to ~2,300 lines.** By the time the pool is
+  ready — ~600 µs — a single thread has already walked ~2,150 lines, so anything
+  smaller finishes before the pool exists. That is not a flaw in the scheme; it is
+  the ceiling on what any scheme can do.
+- **But warming is NOT free, and this is the part the argument gets wrong.**
+  Eager runs at **0.42×–0.60× of single-threaded between 100 and 1,000 lines** —
+  reproduced twice. Creating 23 threads is `mmap` and `clone`, which contends with
+  the main thread's own allocation and page faults on the process's memory locks
+  while it walks. **The main thread is slowed by warming a pool it will never use.**
+
+**And file I/O hides none of it.** Reading `example/hello_world.satl` takes
+**4.4 µs** and reading a 35 KB file takes **8.1 µs** — measured. There is no
+startup window to hide 600 µs of thread creation behind. The only thing long
+enough to hide it behind is the walk itself.
+
+**So the rule is neither "lazily on first use" nor "always warm". It is decided
+from the source size, before anything is paid:**
+
+> **satl reads the file before it parses it — 4–8 µs — so it already knows how big
+> the program is. Above roughly 2,300 satellite-rooted lines, start warming the
+> pool and thread the walk. Below it, stay on one thread and never build a pool.**
+
+That decision costs nothing to make, uses a number satl has in hand, and is right
+at both ends: hello world pays nothing at all, and a large program gets the pool
+warming while the main thread is already working through the source.
+
+**The `.satc` write is untouched by all of this and stays threaded always.**
+SATC.md §5 puts the write on its own thread so the run never waits for it — that
+is **one** thread hiding disk latency, not twenty-four splitting work, and it is
+worth its ~25 µs at any program size. *"Thread the conversion no matter what"* is
+right about the write and wrong about the walk, and they are different jobs.
 
 **And below ~170 lines the walk must stay single-threaded**, which is a rule the
 pool's owner has to enforce rather than a suggestion: at 80 lines the pooled arm is

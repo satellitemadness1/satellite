@@ -1023,11 +1023,24 @@ history; this is the state. Two commits landed today: `d9ff549` (M2) and `bb0af1
 
 #### Open, and MINE — no decision needed, only work
 
-- **The threading conclusion is now sharper than "build a pool":** a one-shot
-  parse should not be threaded at all, and the pool's value is amortisation across
-  a run (M11.B's prompt, `satellite.include`, M12, the console printer). Whoever
-  schedules the pool should schedule it as *shared infrastructure*, not as a parse
-  optimisation — PLAN §4.5.1 now says so with the numbers.
+- **The threading conclusion is settled and is in PLAN §4.5.1.1.** It took three
+  measurements in one day and each changed the answer, so the short version:
+  **lazy-on-first-use is dominated** — warming from startup beats it at every size,
+  because the main thread never waits for the pool and kicking the build off costs
+  it ~20 µs rather than ~590. **But warming is not free either**: it runs at
+  0.42×–0.60× of single-threaded between 100 and 1,000 lines, because creating 23
+  threads contends with the main thread's own page faults. And **file I/O hides
+  nothing** — reading hello world takes 4.4 µs against ~600 µs to warm.
+
+  **So the rule is decided from the source size, before anything is paid:** satl
+  reads the file first, so it knows how big the program is; above ~2,300
+  satellite-rooted lines, warm the pool and thread the walk, below it stay on one
+  thread and never build one. PLAN §4.5.1 as written — *"created lazily, on first
+  real threaded work"* — should be read as superseded by §4.5.1.1.
+
+  **The `.satc` write is a different job and is unaffected**: SATC §5 keeps it on
+  its own thread always, which is one thread hiding disk latency, not
+  twenty-four splitting work.
 
 - **Write `Sky::decay` and `Rack::draw` in satellite by hand** against DESIGN.md.
   QUAD §5 calls it the smallest thing that would prove the language works, and it
