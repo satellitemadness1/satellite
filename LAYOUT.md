@@ -145,6 +145,19 @@ did. Everything under `satellite_words/` except `dump.cpp` is `constexpr` data a
 pure functions over it, so a future `.satc` reader or disassembler can read the
 numbering without linking anything.
 
+## `MILESTONES/` — what each milestone did
+
+One file per milestone that has been built, written when it landed. **Reviews
+and not plans**: PLAN §8 says what a milestone *will* be and a file here says
+what it turned out to be. [MILESTONES/README.md](MILESTONES/README.md) is the
+index and the convention — a note opens `**Landed <date>** (`<hash>`)`, naming
+the commit that landed the **work** rather than the one that added the note.
+
+**Two of the eight are reviews of `prototype/` and say so in their first line.**
+`M9.md` and `M10.md` opened "Landed 2026-08-29" flat until 2026-08-30, which
+reads as landed in `src/` and is not what happened; PLAN §8 lists both as
+milestones that have not started. Recording the commit is what found it.
+
 ## `example/` — the acceptance programs
 
 Not samples. **Each of these is what a milestone means by done**, which is why
