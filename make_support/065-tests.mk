@@ -120,6 +120,45 @@ $(TESTS)/parser_test/parser_test: $(parser_test_SRCS) $(parser_test_HDRS) \
 	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/parser_test -o $@ \
 	    $(parser_test_SRCS) $(PARSER_TEST_SRCS)
 
+# satc_test LINKS THE MOST OF ANY TEST SO FAR, and for the reason parser_test
+# gives one rule up carried one milestone on: a `.satc` writer runs over a
+# parse tree, so it needs the parser, the parser needs the lexer, the lexer
+# needs the alphabet -- and unparse.cpp is here because the writer is that
+# printer with the paths substituted, and the two are compared.
+#
+# NOT $(SATL_OBJS), for the third time and for the same reason: linking the
+# interpreter's objects would drag main.o and its window handover into a test
+# binary, and a test that starts by deciding whether to open a GUI hangs on a
+# build machine.
+SATC_TEST_SRCS = $(CACHE)/paths.cpp \
+                 $(CACHE)/write.cpp \
+                 $(CACHE)/write_declarations.cpp \
+                 $(CACHE)/write_expressions.cpp \
+                 $(CACHE)/read.cpp \
+                 $(CACHE)/unnumber.cpp \
+                 $(CACHE)/save.cpp \
+                 $(CACHE)/file.cpp \
+                 $(PARSER)/parser.cpp \
+                 $(PARSER)/parser_declarations.cpp \
+                 $(PARSER)/parser_statements.cpp \
+                 $(PARSER)/parser_control_flow.cpp \
+                 $(PARSER)/parser_expressions.cpp \
+                 $(PARSER)/parser_types.cpp \
+                 $(TREE)/ast.cpp \
+                 $(TREE)/unparse.cpp \
+                 $(LEXER)/lexer.cpp \
+                 $(STRING)/satellite_string.cpp
+
+# AND ON THE PROGRAMS IN example/, the same argument the three rules above make
+# and the fourth place it is made. section_examples() writes all four
+# acceptance programs as `.satc` files and checks the comment column against
+# the trie; editing one must re-run the test that reads it.
+$(TESTS)/satc_test/satc_test: $(satc_test_SRCS) $(satc_test_HDRS) \
+                              $(SATC_TEST_SRCS) $(WORDS)/words.def $(HDRS) \
+                              $(wildcard example/*.satl) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/satc_test -o $@ \
+	    $(satc_test_SRCS) $(SATC_TEST_SRCS)
+
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
 #
@@ -131,12 +170,14 @@ test: $(TESTBINS)
 	./$(TESTS)/words_test/words_test WORD_NUMBERS.md
 	./$(TESTS)/lexer_test/lexer_test example/hello_world.satl
 	./$(TESTS)/parser_test/parser_test example
+	./$(TESTS)/satc_test/satc_test example
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
 lexer_test: $(TESTS)/lexer_test/lexer_test
 parser_test: $(TESTS)/parser_test/parser_test
+satc_test: $(TESTS)/satc_test/satc_test
 
-TESTALIASES = words_test lexer_test parser_test
+TESTALIASES = words_test lexer_test parser_test satc_test
 
 .PHONY: test $(TESTALIASES)

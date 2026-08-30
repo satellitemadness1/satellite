@@ -42,22 +42,31 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 ## 1. Where things stand
 
-**Milestone 1 landed 2026-08-26. M2 landed 2026-08-28, M3 on 2026-08-29 and M4
-on 2026-08-30.** There is a `satl` that says what it is, says how a file will be
-run, refuses to pretend about the parts that do not exist, **holds the whole
-numbering and can be asked about it** — `satl --words` — reads a file into tokens
-— `satl --tokens` — and now **parses one and prints it back**: `satl --unparse`,
-the first command in this tree that answers *in satellite*. There is still no
-interpreter behind it; running a program lands at M8.
+**Milestone 1 landed 2026-08-26. M2 landed 2026-08-28, M3 on 2026-08-29, and M4
+and M4.5 both on 2026-08-30.** There is a `satl` that says what it is, says how a
+file will be run, refuses to pretend about the parts that do not exist, **holds
+the whole numbering and can be asked about it** — `satl --words` — reads a file
+into tokens — `satl --tokens` — **parses one and prints it back** — `satl
+--unparse`, the first command in this tree that answers *in satellite* — and now
+**caches one to the disk with its words as numbers and reads it back**:
+`satl --satc`, which is the first command that leaves anything behind it. There
+is still no interpreter behind any of it; running a program lands at M8.
 
 What exists: the `Makefile` as an index over ten fragments under `make_support/`,
-**sixty-one C++ files totalling 9,053 lines** plus `words.def` at 548, three test
-suites under `tests/`, and `satellite_enterprise/`, the Enterprise Linux
-installer and the artwork. *(Recounted 2026-08-30, at M4.)* **The largest C++
-file is `src/abstract_syntax_tree/unparse.cpp` at 341**, which passes the 304 of
-`src/lexical_analyzer/lexer.cpp` — MILESTONES/M4.md §6 names the seam and says
-why it was not taken, which is the answer M3 gave for `lexer.cpp` and M2 for
-`authority.cpp` before it. `src/parser/parser_declarations.cpp` at 309 is second.
+**eighty-two C++ files totalling 12,384 lines** plus `words.def` at 548, four
+test suites under `tests/`, and `satellite_enterprise/`, the Enterprise Linux
+installer and the artwork. *(Recounted 2026-08-30, at M4.5.)*
+
+**The largest C++ file is `src/programs/main.cpp` at 348**, then
+`src/abstract_syntax_tree/unparse.cpp` at 341,
+`src/parser/parser_declarations.cpp` at 311 and
+`src/satellite_cache/paths.cpp` at 308. *(This paragraph named `unparse.cpp` as
+the largest at M4 and that was wrong on the day it was written — `main.cpp` was
+380 then, and a count that skips the one file everybody edits is the count most
+likely to go stale. M4.5 took sixty lines off it by giving `--satc` a file of its
+own, which is why it is 348 rather than 440.)* MILESTONES/M4.md §6 names
+`unparse.cpp`'s seam and says why it was not taken, which is the answer M3 gave
+for `lexer.cpp` and M2 for `authority.cpp` before it.
 [LAYOUT.md](LAYOUT.md) lists all of it.
 
 *(The figures this paragraph carried on 2026-08-28 — twenty-five files, 3,148
@@ -1245,13 +1254,38 @@ parameter list, defaulting to the `satellite` type, which leaves hello world
 byte-identical — and §6's grammar already has the rule written. It is not new work;
 it is work that had no name in this list.
 
-**M4.5 — `.satc`.** The cache [SATC.md](SATC.md) specifies: check for a `.satc`
-before walking a source, read it when its three header lines match, and write a
-fresh one afterwards on its own thread. It lands **after M4** because it serialises
+**M4.5 — `.satc`. LANDED 2026-08-30**, and [MILESTONES/M4.5.md](MILESTONES/M4.5.md)
+is the review. The cache [SATC.md](SATC.md) specifies: check for a `.satc` before
+walking a source, read it when its three header lines match, and write a fresh
+one afterwards on its own thread. It lands **after M4** because it serialises
 a parsed program and there is nothing to serialise before the parser exists, and
 **before M5** because a malformed `.satc` is the first thing in the language that
-has to say something to a user in plain words. Its digest covers `words.def`, so
-M2 has to be able to produce one.
+has to say something to a user in plain words — and that sentence is now written,
+in `src/satellite_cache/read.cpp`, as the model DESIGN §9 asks for. Its digest is
+over **the numbering** and not over `words.def`'s bytes; SATC §6's second bullet
+is where that was settled and why, and M2 produces it as a `constexpr`.
+
+*`satl --satc file.satl` is the consumer and it runs the whole loop rather than
+only printing one: it reads the cache when it hits, walks and writes when it
+misses, prints the `.satc` on stdout either way, and says on stderr which of the
+two happened. **The done-when is a fixpoint one step longer than M4's** — write a
+program, read the file back, write that, and the two files are identical — which
+is checked over all four acceptance programs.*
+
+**Three things it decided that SATC.md did not say, all now corrected there.**
+Every `.satc` lives in `$HOME/.satl/cache` rather than beside its source, which
+closes §6's first bullet. A path is written `#1.5.1` and not `1.5.1`, because
+`satellite.console` closes up to `1.5` and so does the float one-and-a-half. And
+§5's write thread is **joined and not detached**, because a detached writer is a
+thread a sub-millisecond process exits out from under, so the cache would never
+actually be on the disk.
+
+**What it does NOT yet buy is the numbering, only the walk.** The tree a reader
+hands back has nowhere to put the `PathId`s the file already carries — `ast.hpp`
+reserves that side table for M6 — so **M6's resolve has to learn to skip a path
+the `.satc` has already numbered**, and until it does, a cache hit saves the walk
+and nothing else. SATC §4.1 and M4.5.md §5 both carry it; it is written down
+rather than left for whoever wonders why the cache is not faster.
 
 **M5 — the error reporter.** Built **before** the evaluator, deliberately. Codes,
 spans, a source excerpt with a caret, notes with their own spans, and "did you mean"

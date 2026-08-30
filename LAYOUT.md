@@ -26,7 +26,7 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [DESIGN.md](DESIGN.md) | The language: the generating rule, syntax, the numbering, scope, types, and what it refuses. Permanent. |
 | [PLAN.md](PLAN.md) | The work: architecture, the build, the install, milestones, measurement discipline. Permanent. |
 | [WORD_NUMBERS.md](WORD_NUMBERS.md) | **The numbering**, and the authority over every number in the language. DESIGN §4 explains it; `words.def` transcribes it; when they disagree this file is right. Permanent. |
-| [SATC.md](SATC.md) | The `.satc` file format: a program with its language-owned words replaced by their numbers, cached beside its source. Specified before it is built, because it constrains the numbering. Permanent. |
+| [SATC.md](SATC.md) | The `.satc` file format: a program with its language-owned words replaced by their numbers, cached in `$HOME/.satl/cache`. Specified before it was built, because it constrains the numbering; **built at M4.5 on 2026-08-30**, which corrected three things in it. Permanent. |
 | [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and — after reading its source on 2026-08-27 — the one thing the language has not settled that it needs. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
@@ -53,7 +53,7 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 
 | file | what it is |
 | --- | --- |
-| [src/programs/main.cpp](src/programs/main.cpp) | `satl` itself: reads the command line, answers `--version` / `--help` / `--words` / `--tokens` / `--unparse`, and reports honestly that running a file lands at M8. *What to say* when a file will not open is this program's business; **getting the bytes is `source_file.cpp`'s**. |
+| [src/programs/main.cpp](src/programs/main.cpp) | `satl` itself: reads the command line, answers `--version` / `--help` / `--words` / `--tokens` / `--unparse`, hands `--satc` to `cache_command.cpp`, and reports honestly that running a file lands at M8. *What to say* when a file will not open is this program's business; **getting the bytes is `source_file.cpp`'s**. |
 | [src/programs/opening.cpp](src/programs/opening.cpp) | The banner and the usage text — the words, kept in a `.cpp` because they change every milestone. |
 | [src/programs/window_handover.hpp](src/programs/window_handover.hpp) · [.cpp](src/programs/window_handover.cpp) | Started with no console, `satl` hands itself to `satl-term` (DESIGN §10.4). The test is a **controlling terminal**, not `isatty(stdout)` — the obvious version opens a window instead of feeding a pipe. Six named refusals. |
 | [src/programs/opening.hpp](src/programs/opening.hpp) | Declarations for the above, plus the exit-status enum so two arms cannot disagree about what a failure is worth. |
@@ -81,6 +81,28 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/lexical_analyzer/lexer_chars.hpp](src/lexical_analyzer/lexer_chars.hpp) | What a character *is*, written against the code table and never against `ctype` — DESIGN §5.2, where the failure is one Error token per space. Underscore is where the table and the lexer disagree on purpose (§5.1). |
 | [src/lexical_analyzer/lexer.cpp](src/lexical_analyzer/lexer.cpp) | One pass, one character of lookahead, no backtracking — which DESIGN §5.5 buys by refusing `<<` and `>>`. Also `intern_word()`, **the lexer's half of the spelling table**: the six single-segment aliases, and the dot filter that leaves the three path rewrites to M16. |
 | [src/lexical_analyzer/dump.hpp](src/lexical_analyzer/dump.hpp) · [dump.cpp](src/lexical_analyzer/dump.cpp) | `satl --tokens`. **The lexer's consumer, in the milestone that wrote it** — the same rule M2 made for the registry, one milestone on. The only part of the module that prints. |
+
+| [src/satellite_cache/cache.hpp](src/satellite_cache/cache.hpp) | The `.satc` module's one door: `Source`, the writer's three entry points, `Reading` and its four answers, and `Save`. The header to read first for **why a `.satc` is a cache and not a bytecode VM** — SATC §7's line, which is that nothing in the file names a handler, an instruction or an evaluation order. |
+| [src/satellite_cache/paths.hpp](src/satellite_cache/paths.hpp) · [.cpp](src/satellite_cache/paths.cpp) | SATC §5.1's first four steps — collapse aliases, classify, absorb, slot by arity — over the tree rather than over a string, which is why it is not `words::walk()`. **`kPathMark` is here**: `#` is what stops `1.5` the path being read as `1.5` the float. Carries the two defects the writer's consumer caught, both of which produced files that still parsed. |
+| [src/satellite_cache/write_internal.hpp](src/satellite_cache/write_internal.hpp) | The `Writer`, split `parser_internal`-style so each part is a translation unit about one thing. **Everything that turns a path into digits is in `write.cpp`** — a second place that formatted a path id would be a second place the numbering's spelling lives. |
+| [src/satellite_cache/write.cpp](src/satellite_cache/write.cpp) | The entry points, the header line, the comment column, and every function that spells a number. **This is `unparse.cpp` with the paths substituted**, said out loud because that is the whole safety argument for having written the printer twice — and the drift is answered by a test rather than by structure. |
+| [src/satellite_cache/write_declarations.cpp](src/satellite_cache/write_declarations.cpp) | DESIGN §6's `top_level` and its blocks. Every form here is one the parser gave a node of its own, so none of them reaches the chain matcher and each finds its number by naming the path it always is. |
+| [src/satellite_cache/write_expressions.cpp](src/satellite_cache/write_expressions.cpp) | §6's `expression`, and **SATC §3.1's one real decision**: a path becomes a number, a selector stays sugar, and the brackets come back from precedence rather than from memory. |
+| [src/satellite_cache/read.cpp](src/satellite_cache/read.cpp) | SATC §4 steps 1 and 2, which is the **order** things are checked in: the format line first because it says what the other two mean, then both of them compared as whole lines against the ones this build would write. Also the milestone's plain-words note, which is the first sentence in this language written for a user rather than for a compiler — and the local numbering that means **a miss costs exactly one walk and leaves nothing behind**. |
+| [src/satellite_cache/unnumber.cpp](src/satellite_cache/unnumber.cpp) | The mirror of `paths.cpp` and `write.cpp`: `#1.5.1` back into `satellite.console.display`, and the text handed to **the same lexer and parser a source goes through** — a second grammar for `.satc` would be a second place the language is defined. A text pass, so it skips string literals and comments; a `#` inside a string is five characters and not a path. |
+| [src/satellite_cache/save.cpp](src/satellite_cache/save.cpp) | SATC §5: tmp, `fsync`, `rename`, and the thread it happens on. **Joined and not detached** — a detached writer is a thread the process exits out from under, so the cache would never actually be there. A failed write is silent, which is the section's own rule. |
+| [src/satellite_cache/file.cpp](src/satellite_cache/file.cpp) | Where a `.satc` lives — `$HOME/.satl/cache`, named with a digest of the source's **absolute** path — and a source's identity for the header. The mtime is whole seconds on purpose; the comment says which filesystems that is for. |
+| [src/programs/cache_command.hpp](src/programs/cache_command.hpp) · [.cpp](src/programs/cache_command.cpp) | `satl --satc`. **The only flag with a file of its own**, because it is the only one that is a loop rather than a print: read the cache if it hits, walk and write if it misses, print the `.satc` either way and say on stderr which happened. |
+
+**`src/satellite_cache/` landed at M4.5 on 2026-08-30**, between the parser and
+the error reporter, because it serialises a parsed program — there is nothing to
+serialise before M4 — and because a malformed `.satc` is the first thing in the
+language that has to say something to a user in plain words, which is the job M5
+inherits and generalises.
+
+`src/abstract_syntax_tree/` and `src/parser/` have a paragraph above and **no
+rows in this table**, which is a gap M4 left and M4.5 did not close because the
+files are M4's to describe. MILESTONES/M4.5.md §6 carries it.
 
 `src/satellite_number/` exists and is **empty**, holding a name for work that has
 not started.
@@ -119,11 +141,13 @@ PLAN §8 and DESIGN §3 cite them by path rather than describing them in prose.
 | [example/thread_test.satl](example/thread_test.satl) | **M12**, and it cannot be M12's done-when yet. `.start()` `1 6 13 1` and `.join()` `1 6 13 2` **were numbered on 2026-08-28** and this row said otherwise until M2 transcribed them; what is still missing is that `satellite.thread.new(f(x))` needs the deferred call `1 6 16`, which no milestone owns. SCRATCH.md/THREADS.md. |
 | [example/super_advanced.satl](example/super_advanced.satl) | **M9.5**, and it is the float's *exact* half — `+` is DESIGN §8.6's class 1, which never rounds, so it runs before the rounding rule is chosen. |
 
-**None of them runs.** M2 landed on 2026-08-28, **M3, the lexer, on 2026-08-29**
-and **M4, the parser, on 2026-08-30**; `satl --tokens example/hello_world.satl`
-was the first command in this tree that read one of these files and answered
-about its contents, and `satl --unparse` is the first that answers *in
-satellite*. **Four of the six parse and round-trip; `class_test.satl` and
+**None of them runs.** M2 landed on 2026-08-28, **M3, the lexer, on 2026-08-29**,
+and **M4, the parser, and M4.5, the cache, both on 2026-08-30**;
+`satl --tokens example/hello_world.satl` was the first command in this tree that
+read one of these files and answered about its contents, `satl --unparse` is the
+first that answers *in satellite*, and `satl --satc` is the first that leaves
+anything behind it — a numbered copy of the program in `$HOME/.satl/cache`,
+which it reads back on the next run. **Four of the six parse and round-trip; `class_test.satl` and
 `gui_example.satl` do not**, and MILESTONES/M4.md §6 names the two constructs —
 neither is in DESIGN §6's grammar and both are the files' rather than the
 parser's. Nothing
@@ -162,6 +186,13 @@ had built — reporting PASS from stale objects.
 | [tests/parser_test/statements.cpp](tests/parser_test/statements.cpp) | **§6.1's collision, and it is the milestone's most important check**: `satellite.control.return my_time` must declare nothing, while `satellite.variable.time my_time` declares a variable. Same four tokens. |
 | [tests/parser_test/declarations.cpp](tests/parser_test/declarations.cpp) | The name allocator: a user capsule takes **1 14 3**, which is PLAN §8.1's worked example checked; a name the language owns is refused; and the limit M4 found in M2 is asserted rather than described. |
 | [tests/parser_test/roundtrip.cpp](tests/parser_test/roundtrip.cpp) | **The done-when**: the four acceptance programs parsed, printed, parsed and printed again, identical. Also the two files in `example/` that do **not** parse, checked as not parsing, with the reason pinned to a line. |
+| [tests/satc_test/satc_test.cpp](tests/satc_test/satc_test.cpp) · [.hpp](tests/satc_test/satc_test.hpp) | The harness, the same three-functions-and-a-counter shape, plus the helpers that make a check read as the form it is about — one statement in, the whole line out. |
+| [tests/satc_test/shapes.cpp](tests/satc_test/shapes.cpp) | SATC §5.1 steps 1, 3 and 4 — aliases collapsed, the reserved word absorbed, and a call slotted by arity. **`input()` against `input(prompt)` is the fixture that matters**, because both read back perfectly when they are wrong. |
+| [tests/satc_test/ownership.cpp](tests/satc_test/ownership.cpp) | §3 and §3.1 — what may **not** become a number. A user's capsule, a selector after a receiver, and a literal, each checked as still being itself. |
+| [tests/satc_test/examples.cpp](tests/satc_test/examples.cpp) | Every acceptance program written as a `.satc`, with **every path in the comment column checked back through the trie** — a comment that has drifted from its line is worse than none, because it is what a reader trusts instead of looking the number up. Also §5.2's source order. |
+| [tests/satc_test/header.cpp](tests/satc_test/header.cpp) | §2's three lines. The digest is checked against `words::digest_text()` and never against a literal, because a literal would be edited to keep the build quiet. |
+| [tests/satc_test/reading.cpp](tests/satc_test/reading.cpp) | **The milestone's done-when**: write a program, read the file back, write *that*, and the two files are identical — over both fixtures and all four acceptance programs. Plus §4's three misses and one refusal, each made by **bending one field of a file this build produced**, so that a header line somebody adds later is still checked here. |
+| [tests/satc_test/writing.cpp](tests/satc_test/writing.cpp) | §5's write, on a real disk in `/tmp`. The two failures the atomic rule exists to prevent are both invisible to a test that does not write: a truncated file, and a `.tmp` left behind per run. Also that the thread is **joined** — a detached one would be racing this read and would usually lose. |
 
 ## `make_support/` — the build
 

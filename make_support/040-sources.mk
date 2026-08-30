@@ -65,6 +65,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/opening.cpp \
             $(PROGRAMS)/window_handover.cpp \
             $(PROGRAMS)/source_file.cpp \
+            $(PROGRAMS)/cache_command.cpp \
             $(LEXER)/lexer.cpp \
             $(LEXER)/dump.cpp \
             $(PARSER)/parser.cpp \
@@ -73,6 +74,14 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PARSER)/parser_control_flow.cpp \
             $(PARSER)/parser_expressions.cpp \
             $(PARSER)/parser_types.cpp \
+            $(CACHE)/paths.cpp \
+            $(CACHE)/write.cpp \
+            $(CACHE)/write_declarations.cpp \
+            $(CACHE)/write_expressions.cpp \
+            $(CACHE)/read.cpp \
+            $(CACHE)/unnumber.cpp \
+            $(CACHE)/save.cpp \
+            $(CACHE)/file.cpp \
             $(STRING)/satellite_string.cpp \
             $(TREE)/ast.cpp \
             $(TREE)/unparse.cpp \
@@ -97,8 +106,12 @@ HDRS = $(SYSTEM)/version.hpp \
        $(LEXER)/dump.hpp \
        $(PARSER)/parser.hpp \
        $(PARSER)/parser_internal.hpp \
+       $(CACHE)/cache.hpp \
+       $(CACHE)/paths.hpp \
+       $(CACHE)/write_internal.hpp \
        $(TREE)/ast.hpp \
        $(TREE)/unparse.hpp \
+       $(PROGRAMS)/cache_command.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/source_file.hpp \
        $(PROGRAMS)/terminal.hpp \

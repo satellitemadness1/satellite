@@ -18,6 +18,7 @@
 #include "abstract_syntax_tree/unparse.hpp"
 #include "lexical_analyzer/dump.hpp"
 #include "parser/parser.hpp"
+#include "programs/cache_command.hpp"
 #include "programs/opening.hpp"
 #include "programs/source_file.hpp"
 #include "programs/window_handover.hpp"
@@ -104,7 +105,7 @@ bool only_prints_and_exits(const char *arg)
     const std::string flag(arg);
     return flag == "--no-window" || flag == "--version" || flag == "-V" ||
            flag == "--help" || flag == "-h" || flag == "--words" ||
-           flag == "--tokens" || flag == "--unparse";
+           flag == "--tokens" || flag == "--unparse" || flag == "--satc";
 }
 
 // A usage failure: the command line did not name something satl can do.
@@ -308,6 +309,22 @@ int main(int argc, char **argv)
         // second one to need the code that is missing, which is worth more to
         // M5 than one arm was.
         return parsed.ok() ? satellite::EXIT_FINE : satellite::EXIT_USAGE;
+    }
+
+    // THE CACHE'S CONSUMER, AND THE REASON M4.5 HAS ONE -- the same rule
+    // --words, --tokens and --unparse each record, one milestone on.
+    //
+    // THE ONLY ARM WITH A FILE OF ITS OWN, because it is the only one that is a
+    // LOOP rather than a print: look for a `.satc`, use it when its three
+    // header lines match, walk the source and write a fresh one when they do
+    // not. programs/cache_command.hpp is where that order lives, and it is
+    // there rather than here because the three arms above are each ten lines
+    // and this one is sixty -- which is what pushed this file past the 300
+    // FORMAT/CXX.md §1 asks it to be built toward.
+    if (first == "--satc") {
+        if (args.size() < 3)
+            return usage_error("--satc needs a file after it");
+        return satellite::satc_command(args[2]);
     }
 
     if (first == "--repl")

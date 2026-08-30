@@ -23,7 +23,10 @@ through two milestones, which is what a scratch file does when nobody is made to
 edit it.)* **M3 landed 2026-08-29 and M4 landed 2026-08-30, and the record of
 each is a permanent document rather than this one**:
 [MILESTONES/M3.md](../MILESTONES/M3.md) and
-[MILESTONES/M4.md](../MILESTONES/M4.md). **M4.5, the `.satc` cache, is next.**
+[MILESTONES/M4.md](../MILESTONES/M4.md). **M4.5, the `.satc` cache, LANDED
+2026-08-30** and its record is [MILESTONES/M4.5.md](../MILESTONES/M4.5.md);
+§4 below is what is left of the handover it was half built with. **M5, the error
+reporter, is next.**
 Everything below this line is M2's session and is read as history.
 
 M2 as PLAN §8 defined it was: `src/satellite_words/words.def`, the trie, the
@@ -239,41 +242,38 @@ own saved memory; both are corrected.
 
 ---
 
-## 4. In flight right now
+## 4. M4.5, landed — what is NOT in a permanent document
 
-**Nothing is running as of 2026-08-28.** No workflow, no background task, no
-uncommitted build. The tree has **uncommitted document changes in nine files** —
-see §5.14 — and `git status` is the list.
+**This section used to be a handover for a half-built milestone. It landed on
+2026-08-30 and everything in it moved into a permanent document**, so what is
+left here is only the part that has nowhere else to be.
 
-The entry below is from the 2026-08-27 session and is kept only for its script path.
+The milestone's own record is [MILESTONES/M4.5.md](../MILESTONES/M4.5.md): what
+it built, the three things SATC.md did not settle and how they were settled, what
+building it found, the measurements, six open items, and twelve mutations.
+SATC.md itself carries the three corrections (§1, §1.1.1, §5) and the one new
+section (§4.1). LAYOUT.md has a row per file. PLAN's M4.5 paragraph says LANDED.
 
-**Workflow `wf_c906ee56-f2d`** — designs `satellite_config.ini`, the thread pool and
-the MEMORY_MAX ceiling. Four phases: measure on this machine, three independent
-designs, an adversarial attack on each, then one synthesis. It was launched before
-the user's *"one line per thread"* clarification, so **its framing of where the
-threading goes is narrower than what was finally asked for** — read its measurements
-as sound and its design conclusions as needing that correction applied.
+**Committed as one commit** at the end of the session that built it, on the
+branch `milestones-install-and-no-console-handover` — the whole milestone,
+including the six documents it corrected, because splitting it would have put
+documents describing the cache into a commit labelled something else. The build
+is clean and `make test` passes four suites under both clang and g++. Nothing is
+running in the background.
+`git status` lists eighteen paths, of which five are new directories or files:
+`src/satellite_cache/`, `tests/satc_test/`, `src/programs/cache_command.{hpp,cpp}`
+and `MILESTONES/M4.5.md`. The build is clean and `make test` passes four suites
+under both clang and g++. Nothing is running in the background.
 
-    script  ~/.claude/projects/-home-madness-code-cxx-satellite/
-            5f56c04b-1617-4890-9065-0e86bf62d942/workflows/scripts/
-            satellite-threads-and-memory-wf_c906ee56-f2d.js
-    result  .../tasks/w0m5712po.output
+**Nothing else is left over.** Two things worth a human eye rather than a document:
 
-If that result is lost, the script is on disk and can be re-run.
-
-**MEASURED 2026-08-28 — §3.2's crossover is answered and is in PLAN §4.5.1.**
-It could not have been taken earlier: the thing it measures is `words::walk()`
-over a user's source, and that did not exist until M2. Run against the real code
-path with the machine quiet, best of 15: **24 fresh threads break even at ~2,650
-satellite-rooted lines** (creating them costs ~690 µs flat), **24 from a warm pool
-break even at ~170** (waking them costs ~47 µs). Below ~170 the walk must stay
-single-threaded — at 80 lines the pooled arm is 0.48×, i.e. twice as slow as just
-doing the work.
-
-**So the author's instruction splits in half.** *"Hand them each a line that
-begins with satellite"* is right; *"create that many threads"* to do it is a loss
-for anything under ~2,650 lines. The pool PLAN §4.5.1 already proposed is what
-makes the request pay, and it is now a requirement rather than a nicety.
+1. **`satl --satc` now writes to `$HOME/.satl/cache`**, where before it printed
+   and deliberately wrote nothing. That is the change that makes it the
+   milestone's consumer rather than a third of one, and it means running it
+   leaves a file behind. `rm -rf ~/.satl/cache` costs one walk per program.
+2. **The cache does not pay for itself until M6** — M4.5.md §5 and SATC §4.1 both
+   say so, with the numbers. A warm hit is not faster than `--unparse` on a
+   273-byte program, and that is expected rather than a defect.
 
 ---
 
@@ -317,7 +317,13 @@ makes the request pay, and it is now a requirement rather than a nicety.
 
 ---
 
-### 3.6 `.satc` — specified, not built
+### 3.6 ~~`.satc` — specified, not built~~ — BUILT 2026-08-30, at M4.5
+
+*(Struck 2026-08-30. Everything below is now in a permanent document —
+[SATC.md](../SATC.md) is the format and
+[MILESTONES/M4.5.md](../MILESTONES/M4.5.md) is the milestone — and it is kept
+here only because the two PLAN corrections it names were made in this session's
+lineage and nothing else records that they were.)*
 
 The author asked for a cached, human-readable form of a numbered program, written
 on its own thread and checked for before the conversion runs. It is specified in

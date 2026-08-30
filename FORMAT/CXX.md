@@ -221,8 +221,8 @@ Two things not to break:
 **Ported at M2 on 2026-08-28.** Until then this section opened *"there is no test
 infrastructure in this tree -- not a target, not a directory, not a harness"*, and
 that was literally true. There is now `make test`, `make_support/065-tests.mk`, and
-**three suites — `tests/words_test/` (M2), `tests/lexer_test/` (M3) and
-`tests/parser_test/` (M4)**. Everything
+**four suites — `tests/words_test/` (M2), `tests/lexer_test/` (M3),
+`tests/parser_test/` (M4) and `tests/satc_test/` (M4.5)**. Everything
 below is what was ported, and why.
 
 `old_versions/first_satellite/make_support/120-tests.mk` plus `TESTNAMES` in its
@@ -563,5 +563,5 @@ does not exist.
 *Companions: [DESIGN.md](../DESIGN.md) — what the language is.
 [PLAN.md](../PLAN.md) — §3 the line rule, §4 the build, §8 the milestones.
 [WORD_NUMBERS.md](../WORD_NUMBERS.md) — the authority over every number.
-[SATC.md](../SATC.md) — the cached form, and the digest §9 says is unchosen.
+[SATC.md](../SATC.md) — the cached form. **Built at M4.5**, and the digest §9 once called unchosen was settled at M2: over the numbering, not over `words.def`'s bytes.
 [LAYOUT.md](../LAYOUT.md) — every file in the tree.*

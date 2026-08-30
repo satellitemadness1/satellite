@@ -3,9 +3,12 @@
 **This file is permanent.** It specifies `.satc` — **sat**ellite **c**ompiled — the
 on-disk form of a program after its language-owned words have become numbers.
 
-Nothing here is built yet. The format is written down first because it **constrains
-the numbering** (§3) and because it changes something PLAN.md had ruled out (§7),
-and both are cheaper to settle now than after `words.def` lands.
+**Built at M4.5 on 2026-08-30** — [MILESTONES/M4.5.md](MILESTONES/M4.5.md) is the
+record and `src/satellite_cache/` is the module. The format was written down
+first because it **constrains the numbering** (§3) and because it changes
+something PLAN.md had ruled out (§7), and both were cheaper to settle before
+`words.def` landed than after. Three things below are marked as corrected by the
+build: §1's location, §1.1's spelling of a path, and the first bullet of §6.
 
 Companions: [WORD_NUMBERS.md](WORD_NUMBERS.md) holds the numbers this file writes
 down, [DESIGN.md](DESIGN.md) §4 explains them, [PLAN.md](PLAN.md) §2 says where the
@@ -15,10 +18,21 @@ work sits.
 
 ## 1. What it is
 
-A `.satc` sits beside its source — `hello_world.satl` produces
-`hello_world.satc` — and holds the same program with every language-owned path
+A `.satc` holds the same program as its source with every language-owned path
 replaced by its number. On the next run satl reads it instead of doing the walk
 again.
+
+**Every `.satc` on a machine lives in `$HOME/.satl/cache`.** *(Decided
+2026-08-30, when the writer was built; this paragraph used to say a `.satc` sits
+beside its source and §6's first bullet asked the question.)* It is named
+`<stem>.<16 hex digits of the source's absolute path>.satc`, so two programs
+called `hello_world.satl` in two directories are two files. One directory rather
+than two, because "beside the source" cannot be the only answer — a program run
+out of `/usr/share` or a read-only checkout would never get a cache at all — and
+because §6's own wording rules out doing both: *"two places to look and a rule
+about which wins."* What one directory costs is a name collision, and §2's
+`source` line is what makes one harmless rather than the digest making one
+unlikely. `src/satellite_cache/file.cpp` carries the argument in full.
 
 **It is a cache, not a build product.** No user ever runs a compiler, waits for
 one, or ships a `.satc` in place of source. Deleting every `.satc` on the machine
@@ -27,28 +41,48 @@ compile step the user ever runs"* true.
 
 ### 1.1 It is meant to be read
 
+This is `satl --satc example/hello_world.satl`, exactly:
+
 ```
 satc 1
-words 003.01 c4f9a1e2
-source hello_world.satl 1756304412 142
+words 003.01 5d2cb10461e38766
+source hello_world.satl 1787935778 273
 
-1.1.1                                    // satellite.include(satellite)
+#1.1.1                                   // satellite.include(satellite)
 
-1.2 1.3(1.4.2<1.6.1> arguments)          // satellite.capsule satellite.main(…)
+#1.2 #1.3(#1.4.2<#1.6.1> arguments)      // satellite.capsule satellite.main satellite.container.list satellite.variable.string
 {
-    1.5.1("Hello, World!")               // satellite.console.display
-    1.15.1                               // satellite.return(satellite)
+    #1.5.1("Hello, World!")              // satellite.console.display
+    #1.15.1                              // satellite.return(satellite)
 }
 ```
 
-Segments are joined with `.`, so a path is one token: `1.5.1` is
+Segments are joined with `.`, so a path is one token: `#1.5.1` is
 `satellite.console.display`. Everything after `//` is a comment written for a
 person, ignored on read, and **never trusted** — the numbers are the file.
+
+### 1.1.1 The `#` is part of the format
+
+*(Added 2026-08-30. This example used to write a path as bare digits, and
+writing the thing found that it could not.)*
+
+`satellite.console` is `1 5`, which closes up to `1.5`, which is also the float
+one-and-a-half. Both are legal tokens in the same file, and
+`example/super_advanced.satl` already puts a float and a path within three lines
+of each other. It happens to be decidable today, because all 24 two-segment paths
+are namespaces and a namespace is never a value — but that is a property of the
+numbering that nothing enforces, and WORD_NUMBERS §3 lets a numbering grow.
+
+`#` settles it in one character, and it is `#` rather than anything else because
+**no satellite program can contain one**: the lexer gives it back as `Punct(#)`
+and the parser has no rule that accepts it. So a `#` in a file is proof that the
+file is a `.satc` and not a source, which is the property worth having a marker
+for at all.
 
 Being readable is not decoration. A format nobody can read is a format nobody
 checks, and this one encodes the meaning of a program in integers whose only
 definition lives in another file. The comment column is how a person confirms that
-`1.5.1` still says what they think it says.
+`#1.5.1` still says what they think it says.
 
 ---
 
@@ -64,9 +98,11 @@ Three lines, and each answers a question that has exactly one wrong answer.
 
 **`words` is the load-bearing one.** A `.satc` is meaningless except against the
 numbering that produced it, and DESIGN §4.3's whole warning is that a changed
-numbering *silently changes what a program means*. The digest is over `words.def`,
-so a numbering that has changed at all produces a different digest and every stale
-`.satc` on the machine stops being read on the same instant.
+numbering *silently changes what a program means*. The digest is over **the
+numbering** — §6's second bullet is where that was settled and why it is not over
+`words.def`'s bytes — so a numbering that has changed at all produces a different
+digest and every stale `.satc` on the machine stops being read on the same
+instant.
 
 Appending is legal and does not invalidate anything semantically — but it still
 changes the digest, and that is the right trade: a `.satc` that is merely
@@ -89,11 +125,11 @@ is not the same in the next run. §3 already states the rule this file has to ob
 So in a `.satc`:
 
 ```
-1.2 fact(1.6.4 n)          // satellite.capsule fact(satellite.variable.number n)
-    ^^^ numbered            ^^^^ NOT numbered — a user name
+#1.2 fact(#1.6.4 n)        // satellite.capsule fact(satellite.variable.number n)
+ ^^^ numbered               ^^^^ NOT numbered — a user name
 ```
 
-`satellite.capsule` is `1.2` because the language owns it. `fact` stays `fact`
+`satellite.capsule` is `#1.2` because the language owns it. `fact` stays `fact`
 because the user owns it, and `n` stays `n` for the same reason. **This is DESIGN
 §1's generating rule falling straight out of the file format** — a dotted path
 rooted at `satellite` becomes numbers, a bare identifier does not.
@@ -109,7 +145,7 @@ second line running the other way, through words the **language** owns, and it
 decides more of the file than the first one does.
 
 A **path** is rooted at `satellite` and resolves with no context. Wherever
-`satellite.console.display` appears it is `1.5.1`. Substituting it is sound
+`satellite.console.display` appears it is `#1.5.1`. Substituting it is sound
 anywhere in the file, which is what makes the whole format a substitution.
 
 A **selector** is a bare word after a receiver — `sort` in `my_list.sort()`. It is
@@ -120,7 +156,7 @@ So a `.satc` keeps the sugar exactly as written:
 
 ```
 my_list.sort()                 // stays. `sort` is a selector.
-1.5.1("Hello, World!")         // becomes a number. `display` is in a path.
+#1.5.1("Hello, World!")        // becomes a number. `display` is in a path.
 ```
 
 **What it must never do is flip the sugar into its dispatch form.**
@@ -156,16 +192,55 @@ through the file.
 
 The order matters and is easy to get backwards:
 
-1. Look for `<source>.satc`.
+1. Look for this source's `.satc` in `$HOME/.satl/cache` (§1).
 2. If it exists, is well-formed, and all three header lines match — **use it, and
    do not walk the source.**
 3. Otherwise walk the source as normal, and write a fresh `.satc` afterwards.
+
+`src/satellite_cache/read.cpp` is steps 1 and 2, `save.cpp` is step 3, and
+`src/programs/cache_command.cpp` is the order — which is the whole of
+`satl --satc <file>`, the milestone's consumer.
+
+**The numbers become words again and the ordinary parser reads them.** A `.satc`
+already *is* a satellite program — one with its language-owned words spelled as
+numbers — so the reader substitutes `satellite.console.display` back in for
+`#1.5.1` and hands the text to the lexer and the parser a source goes through.
+The alternative was a second grammar for `.satc`, which would be a second place
+the language is defined and would drift from the first. What that buys is the
+strongest check the format can have, and it is what
+`tests/satc_test/reading.cpp` asserts on every acceptance program: write a
+program, read the file back, write *that*, and the two files are identical.
 
 A missing, stale or unreadable `.satc` is **never an error**. It is a cache miss,
 the program runs exactly as it would have, and the only cost is the walk that would
 have happened anyway. A *malformed* one is different: it says something went wrong
 that a person may want to know about, and DESIGN §9 asks for a plain-words note
-rather than silence.
+rather than silence. The note satl writes for one, in full:
+
+    satl: /home/x/.satl/cache/hello_world.4b3528cea7f4dcc8.satc names `#1.99.1`,
+    which this satl's numbering does not have. It was ignored and the source was
+    read instead, so nothing is wrong with your program; deleting the file is
+    safe, because a `.satc` is only a cache.
+
+**A stale file says nothing, and that is as much a requirement as the note is.**
+Appending a word to the language moves the digest, which invalidates every
+cached program on the machine at once (§2); a note on each would be a hundred
+lines of output about a cache doing exactly its job.
+
+### 4.1 What a cache hit saves, today, is the walk and not the numbering
+
+*(Written 2026-08-30, when the reader was built, because it is the kind of thing
+that is otherwise discovered by whoever wonders why the cache is not faster.)*
+
+§1 says satl "reads it instead of doing the walk again", and the reader does
+exactly that — but the tree it hands back has **nowhere to put the `PathId`s it
+just read**. `ast.hpp` reserves the side table indexed by node for M6 and
+forbids M4 to put a mutable field on a node, so the honest M4.5 reader produces
+the TREE and M6's resolve still numbers every path in it. That matches what PLAN
+asks M4.5 for — read, check, write and refuse, and no more — and it means the
+cache does not pay for itself until M6's resolve learns to skip a path the file
+has already numbered. **That is M6's sentence to add, and it is written here so
+that it is inherited rather than rediscovered.**
 
 ---
 
@@ -187,6 +262,14 @@ skipped:
   cache does not get written, nothing says anything, and the program runs. The one
   exception is §4's malformed file, which is a fact about the machine rather than a
   permission the user declined to give.
+
+**The thread is joined and not detached, which this section did not say and had
+to be decided when it was built.** "The run does not wait for the write" is about
+where the wait goes, not about whether there is one: `satl hello_world.satl`
+finishes in under a millisecond, so a *detached* writer is a thread the process
+exits out from under — the first run pays for the walk, writes nothing, and the
+second run pays for it again, forever. Joining puts the wait after the program
+instead of in front of it, which is what this section actually asks for.
 
 ### 5.1 The transformation order
 
@@ -237,10 +320,12 @@ number column is stable enough to diff, and satisfying it answers both.
 
 ## 6. Open
 
-- **Where does a `.satc` go when the source directory is not writable?** Beside the
-  source is the readable answer and the one that makes `--dry-run`-style inspection
-  obvious. A cache directory under `$HOME/.satl` always works and is invisible.
-  Doing both means two places to look and a rule about which wins.
+- ~~**Where does a `.satc` go when the source directory is not writable?**~~
+  **Answered 2026-08-30, when the writer was built.** `$HOME/.satl/cache`, and
+  only there. §1 above carries the answer and the argument; `src/satellite_cache/file.cpp`
+  carries the long form, including why the file name has a digest of the
+  source's absolute path in it and why the `source` header line is still checked
+  after that digest has already made a collision unlikely.
 - ~~**What is the digest over?**~~ **Answered 2026-08-28, when M2 was built.** It
   is over **the numbering** — every node's parent, number, kind and text in file
   order, then every alias — and not over `words.def`'s bytes. Three reasons, in

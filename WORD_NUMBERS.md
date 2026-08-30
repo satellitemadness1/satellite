@@ -185,7 +185,10 @@ naming a handler (SATC.md §7 forbids exactly that).
 
 A **path** is rooted at `satellite` and resolves with no context. Wherever
 `satellite.console.display` appears it is `1 5 1`, so a text substitution is sound
-and that is what a `.satc` writes.
+and that is what a `.satc` writes. *(How the file spells it is SATC.md's and not
+this document's: `#1.5.1`, the segments closed up with dots and a `#` in front,
+because `1 5` closes up to `1.5` and so does the float one-and-a-half. SATC
+§1.1.1.)*
 
 A **selector** is a bare word after a receiver — `sort` in `my_list.sort()`. It is
 language-owned and it has a number, but the number is only reachable *through the
