@@ -176,7 +176,7 @@ $(TESTS)/satc_test/satc_test: $(satc_test_SRCS) $(satc_test_HDRS) \
 # a Span, which is three integers, and the text those integers index -- it knows
 # nothing about a token or a tree. So this test builds diagnostics by hand and
 # renders them, which is the only way to reach the arms no pass produces yet:
-# a call stack (M7's), a note with no span, and a span past the end of its text.
+# a call stack (M9's), a note with no span, and a span past the end of its text.
 #
 # AND IT LINKS THE LEXER AND THE PARSER TOO, because half of what M5 is for is
 # that the two of them now report through this module -- a reporter that is only

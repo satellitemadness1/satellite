@@ -12,6 +12,40 @@ authority over every number in the language.
 
 ---
 
+## 0. READ THIS FIRST — the milestones were renumbered on 2026-08-30
+
+**Every milestone number below this section is the OLD numbering**, and this file
+is not rewritten to match because most of what it holds is dated observation.
+[PLAN.md](../PLAN.md) §8's opening carries the old-to-new table and is the key.
+
+**What happened.** PLAN §8 had run since 2026-08-28 on the rule *the numbers are
+names, not positions — never renumber* — so eleven milestones added that day took
+the names M14–M24 and were slotted into the middle of the build order. The result
+was a plan whose last finished milestone was M5 and whose next one was **M14**.
+The author called that, and §8 now runs the other way: **the numbers are positions,
+the list is build order, and they agree.**
+
+**The three things to carry across a `/clear`:**
+
+- **The next milestone is M6**, the machine limits — the file, the pool, the
+  watchdog, the three fact readers. It was M14.
+- **M1.5 is the window**, which was M11.A. It **landed on 2026-08-27** in
+  `9f7f71d` and had been counted as unlanded ever since, sitting twenty-third in
+  the build order with no note in `MILESTONES/`. It has one now.
+- **Three places keep the old numbers on purpose**: this directory,
+  [PLAN_ONE.md](../PLAN_ONE.md) — which has its *own* unrelated M1–M13 — and the
+  `prototype/M3`–`M11` directory names.
+
+The quick version of the table, which §8 has in full:
+
+    M14 -> M6    M6  -> M7    M6.5 -> M8    M7   -> M9    M8.A -> M10
+    M9  -> M11   M15 -> M12   M16  -> M13   M17  -> M14   M9.5 -> M15
+    M10 -> M16   M8.B-> M17   M8.5 -> M18   M18  -> M19   M19  -> M20
+    M20 -> M21   M11.A->M1.5  M11.B-> M22   M12  -> M23   M13  -> M24
+    M21 -> M25   M22 -> M26   M23  -> M27   M24  -> M28
+
+---
+
 ## 1. Where the work is
 
 **M1 landed 2026-08-26. M11.A landed 2026-08-27** — out of order, because the
@@ -1165,10 +1199,13 @@ a *declaration*, it predates today, and M5.md §6 item 8 has the fix and says
 whose it is. What changed is only that ten blocks with carets are harder to
 overlook than ten one-line messages.
 
-**What the next milestone inherits.** PLAN §8's order puts **M14 — the machine
-limits** next, and what it gets from today is a reporter to refuse a malformed
-`satellite_config.ini` through, which is the same argument M4.5 made about a bad
-`.satc`. M6's resolve gets the S05xx block reserved and empty, and
+**What the next milestone inherits.** PLAN §8's order puts **M6 — the machine
+limits** next *(written as M14 on the day; see §0)*, and what it gets from today is
+a reporter to refuse a malformed `satellite_config.ini` through, which is the same
+argument M4.5 made about a bad `.satc`. **`errors.def` owes M6 a block and says so
+in a comment** — the table there reserves S05xx through S07xx for resolve, numbers
+and the evaluator, and the machine limits were never in it because on 2026-08-28
+they were not next. Resolve gets the S05xx block reserved and empty, and
 `tests/reporter_test/parsing.cpp`'s shape to copy: **one assertion per row of
 `errors.def` the pass owns, through the real entry point**, because a site
 raising a neighbouring code renders perfectly and no assert can see it.

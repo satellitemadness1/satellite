@@ -170,16 +170,16 @@ SAT_NODE(SATELLITE, CAPSULE,   "capsule", SAT_NUMBERED)  // 1 2
 SAT_NODE(CAPSULE,   CAPSULE_0, "()",      SAT_BARE)  // 1 2 0
 
 // --- main -------------------------------------------------------------------
-// the capsule satl calls. Its parameter is M8.B's.
+// the capsule satl calls. Its parameter is M17's.
 //
 SAT_NODE(SATELLITE, MAIN,   "main", SAT_NUMBERED)  // 1 3
 SAT_NODE(MAIN,      MAIN_0, "()",   SAT_BARE)  // 1 3 0
 
 // --- container --------------------------------------------------------------
 // the map and the list, and their 34 methods -- the map's nine 1 4 1 1-1 4 1 9
-// and the list's twenty-five 1 4 2 1-1 4 2 25. PLAN M10.
+// and the list's twenty-five 1 4 2 1-1 4 2 25. PLAN M16.
 //
-// 34 AND NOT 29, which is the figure PLAN M10 and SCRATCH.md/MILESTONE.md both
+// 34 AND NOT 29, which is the figure PLAN M16 and SCRATCH.md/MILESTONE.md both
 // carried. It came from the ledger counting the list at twenty when §2.2 gives
 // it twenty-five, and PLAN inherited it into a sentence that names nine and
 // twenty-five two lines above. Corrected in all three on 2026-08-28.
@@ -228,7 +228,7 @@ SAT_NODE(CONTAINER,      CONTAINER_ARGUMENTS,           "arguments",       SAT_N
 SAT_NODE(CONTAINER,      CONTAINER_RESULT,              "result",          SAT_NUMBERED)  // 1 4 4
 
 // --- console ----------------------------------------------------------------
-// DESIGN §10.1. display is M8.A; input and typed() are the reader thread,
+// DESIGN §10.1. display is M10; input and typed() are the reader thread,
 // which reaches no milestone.
 //
 SAT_NODE(SATELLITE, CONSOLE,                     "console",               SAT_NUMBERED)  // 1 5
@@ -430,7 +430,7 @@ SAT_NODE(DIRECTORY, DIRECTORY_LIST_0,  "list()",    SAT_NUMBERED)  // 1 18 4
 SAT_NODE(DIRECTORY, DIRECTORY_LIST_D,  "list(d)",   SAT_NUMBERED)  // 1 18 5
 
 // --- help -------------------------------------------------------------------
-// PLAN M8.5, and the first row ever moved out of the ledger.
+// PLAN M18, and the first row ever moved out of the ledger.
 //
 SAT_NODE(SATELLITE, HELP,   "help", SAT_NUMBERED)  // 1 19
 SAT_NODE(HELP,      HELP_0, "()",   SAT_BARE)  // 1 19 0
@@ -494,14 +494,14 @@ SAT_NODE(SYSTEM,             SYSTEM_THRESHOLD_0,                "threshold()",  
 SAT_NODE(SYSTEM,             SYSTEM_THRESHOLD_N,                "threshold(n)",    SAT_NUMBERED)  // 1 22 6
 
 // --- thread -----------------------------------------------------------------
-// PLAN M12. new has one number for two shapes -- WORD_NUMBERS §4.
+// PLAN M23. new has one number for two shapes -- WORD_NUMBERS §4.
 //
 SAT_NODE(SATELLITE, THREAD,     "thread", SAT_NUMBERED)  // 1 23
 SAT_NODE(THREAD,    THREAD_0,   "()",     SAT_BARE)  // 1 23 0
 SAT_NODE(THREAD,    THREAD_NEW, "new",    SAT_NUMBERED)  // 1 23 1
 
 // --- window -----------------------------------------------------------------
-// PLAN M11.A built satl-term; M13 is the dlopen. console here is 1 24 2 and
+// PLAN M1.5 built satl-term; M24 is the dlopen. console here is 1 24 2 and
 // is NOT satellite.console 1 5 (DESIGN §4.4).
 //
 SAT_NODE(SATELLITE,      WINDOW,             "window",                    SAT_NUMBERED)  // 1 24

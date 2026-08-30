@@ -12,7 +12,7 @@
 // vocabularies for one idea.
 //
 // SO THIS FILE IS THE WHOLE OF WHAT SATL LOOKS LIKE WHEN SOMETHING IS WRONG.
-// Every producer -- the lexer, the parser, the `.satc` reader, and M6 and M7
+// Every producer -- the lexer, the parser, the `.satc` reader, and M7 and M9
 // after them -- hands over a Diagnostic and gets the same block.
 //
 // THE FORMAT IS `path:line:column:` BECAUSE THAT IS THE ONE EVERY EDITOR ALREADY
@@ -261,7 +261,7 @@ std::string render(const Diagnostic &problem, const Source &source)
 
     // The call stack, innermost first. Nothing produces one at M5; report.hpp
     // says why it is drawn anyway and tests/reporter_test is what keeps this
-    // arm working until M7 has a frame to put in it.
+    // arm working until M9 has a frame to put in it.
     for (const FrameRef &frame : problem.frames) {
         out += indent + "in " +
                (words::is_language_word(frame.capsule)

@@ -128,7 +128,7 @@ activations near six digits and printing them at two.
 
 **What is still open is the rounding rule** — truncate, half-up, or half-even. QUAD's
 invariant 8 is determinism, so its behaviour depends on the answer. PLAN §8 puts the
-float in **M9**, which cannot land until the rule is chosen.
+float in **M11**, which cannot land until the rule is chosen.
 
 **This puts DESIGN §8.1 under pressure and §8.1 now says so.** Its argument — no
 `double`, exact always, guarded at the C++ type level — is right for
@@ -271,8 +271,9 @@ storing a capsule identity rather than a closure is arguably the shape it wanted
 
 ## 4. What this changes about the plan
 
-**Nothing before M8.A.** *(Read as M8 until PLAN split it 2026-08-28; M8.A is the
-console and the first program that runs.)* The trie, the lexer, the arena, the parser, resolve and the
+**Nothing before M10.** *(Written as M8 before PLAN split that milestone on
+2026-08-28 and renumbered it on 2026-08-30; M10 is the console and the first
+program that runs.)* The trie, the lexer, the arena, the parser, resolve and the
 closure tree are all needed whatever QUAD turns out to require, and none of the holes
 above touches them.
 
@@ -285,7 +286,7 @@ console; `satellite.variable.capsule`; `satellite.time.sleep`; and
 `static_assert`s will: no duplicates, no holes, no orphans, no alias pointing at
 nothing.
 
-**M9 and M10 carry the rest.** PLAN §8's M9 is scalars and control flow, M10 is
+**M11 and M16 carry the rest.** PLAN §8's M11 is scalars and control flow, M16 is
 containers and the search power. What QUAD adds that is not currently in either:
 
 - `satellite.variable.float`, decided in DESIGN and built (§3.1) — **the only one
@@ -298,17 +299,17 @@ condition is *a piece of QUAD, running*. Not the whole program — one mechanism
 `mind.hpp`, chosen because it exercises floats, containers, sorting and persistence
 at once.
 
-***(2026-08-28: it exists. It is PLAN §8's **M20**, and its done-when is this
+***(2026-08-28: it exists. It is PLAN §8's **M21**, and its done-when is this
 paragraph's sentence with §5's candidate in it — `Sky::decay` plus `Rack::draw`.)***
-Two of the three items above have also moved out of "what M9 and M10 carry" and into
-milestones of their own: **the reader thread and `typed()` are M17**, eight paths
-`1 5 2`–`1 5 9`; the float is **M9.5**, not M9, and the stable descending sort is
-M10's, which now says `sort()` `1 4 2 3`–`sort_up(key)` `1 4 2 7` outright. **The
-dice did not survive the same treatment**: PLAN M16 records that
+Two of the three items above have also moved out of "what M11 and M16 carry" and into
+milestones of their own: **the reader thread and `typed()` are M14**, eight paths
+`1 5 2`–`1 5 9`; the float is **M15**, not M11, and the stable descending sort is
+M16's, which now says `sort()` `1 4 2 3`–`sort_up(key)` `1 4 2 7` outright. **The
+dice did not survive the same treatment**: PLAN M13 records that
 `satellite.random` cannot write `Rack::draw` at all — no float draw, no seed, and a
 50–100 ms floor per call against a 90 ms tick — so §2's filing of `random` under
 *"already decided in satellite, and fine"* is the one row of that table that is
-wrong, and M20 carries the gap.
+wrong, and M21 carries the gap.
 
 ---
 
@@ -336,12 +337,12 @@ The candidate mechanism is `Sky::decay` plus `Rack::draw` — between them they 
 floats, the map, a weighted pick, and the one `pow` that §3.1 says has no exact
 answer.
 
-***(2026-08-28.)* PLAN M20 is that milestone, and writing it found the split this
+***(2026-08-28.)* PLAN M21 is that milestone, and writing it found the split this
 paragraph does not have: `Sky::decay` uses no randomness at all — `sky.hpp`'s decay
-is float arithmetic over a live list — so it is M9.5 plus M10 and nothing else,
+is float arithmetic over a live list — so it is M15 plus M16 and nothing else,
 while `Rack::draw` needs a seeded fractional draw that `satellite.random` has no
-number for. `1 7 13` is free; PLAN M16 declines to assign it because minting a
-number is the numbering's, and M20 carries it as its one blocker. That is this
+number for. `1 7 13` is free; PLAN M13 declines to assign it because minting a
+number is the numbering's, and M21 carries it as its one blocker. That is this
 section's own prediction landing early: the gap between "the language has floats"
 and "this expression is writable" was found by reading `rack.hpp` against the
 numbering, and not by building either.

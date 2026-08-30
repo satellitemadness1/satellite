@@ -12,7 +12,7 @@
 //
 // AND PLAN M4 SETS THE POLICY FOR THE COLLISION: a name the language already
 // owns under that parent is REFUSED rather than renumbered. DESIGN §2's
-// reservation rule decides at M6 whether refusing is the right answer; what
+// reservation rule decides at M7 whether refusing is the right answer; what
 // this milestone must not do is quietly hand out a second number for a word
 // that already has one, which is what `intern()` alone would do.
 

@@ -10,7 +10,7 @@
 // has a printer. 065-tests.mk names those five sources.
 //
 // WHAT IS BEING PROVED, AND WHY A ROUND-TRIP IS THE FORM OF IT. Nothing in this
-// language runs until M8, so a tree cannot be checked by running it. It can be
+// language runs until M10, so a tree cannot be checked by running it. It can be
 // checked by printing it back: a parse that dropped an operand, a printer that
 // forgot a bracket, and two rules that are not each other's inverse all show up
 // as a program that comes back different. section_roundtrip() is that check

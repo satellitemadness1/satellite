@@ -44,7 +44,7 @@ int satc_command(const std::string &path)
     }
 
     // A RUN'S NAMES END WITH THE RUN, which is why this is a local and not a
-    // global: words_runtime.hpp makes the point that M11.B runs many programs
+    // global: words_runtime.hpp makes the point that M22 runs many programs
     // in one process and each needs its own numbering.
     words::Words words;
 
@@ -93,7 +93,7 @@ int satc_command(const std::string &path)
     const std::string text = cache::satc_text(parsed.ast, words, source_stamp);
 
     // §5: THE RUN DOES NOT WAIT FOR THE WRITE. The thread starts here and is
-    // joined when `writing` goes out of scope, which at M8 will be after the
+    // joined when `writing` goes out of scope, which at M10 will be after the
     // program has RUN rather than after one fputs -- so the write happens
     // beside the work instead of in front of it, which is the whole of §5's
     // "the first run of a program is never slower for having produced one".

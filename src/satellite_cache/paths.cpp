@@ -253,10 +253,10 @@ PathMatch language_path(const Ast &ast, NodeIndex node)
             } else {
                 // THE PATH DOES NOT RESOLVE, AND THAT IS NOT THIS MILESTONE'S
                 // ERROR TO REPORT. A misspelled word under `satellite` is a
-                // program M6 refuses with M5's "did you mean" over the node the
+                // program M7 refuses with M5's "did you mean" over the node the
                 // segment failed under; what a cache owes it is the program
                 // UNCHANGED, so the writer prints the chain as text and the
-                // reader hands M6 the same tree the source would have.
+                // reader hands M7 the same tree the source would have.
                 return {};
             }
         }

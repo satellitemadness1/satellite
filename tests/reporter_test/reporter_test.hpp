@@ -14,7 +14,7 @@
 // this module actually produce the codes they claim to.
 //
 // AND IT RENDERS DIAGNOSTICS NOTHING PRODUCES, deliberately. A call stack has
-// no producer until M7 and a note with no span is only reachable from the
+// no producer until M9 and a note with no span is only reachable from the
 // `.satc` reader, so those arms of the renderer would otherwise be written and
 // never run -- which is the same as not having written them. section_rendering
 // builds them by hand, which is possible only because the reporter takes three

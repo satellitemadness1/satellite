@@ -170,7 +170,7 @@ would make the file name a handler, which §7 is the sentence forbidding.
 §3.1 is not a readability preference. It is forced, and the proof is where the
 writer runs.
 
-PLAN §8 schedules `.satc` as **M4.5 — after M4's parser and before M6's resolve.**
+PLAN §8 schedules `.satc` as **M4.5 — after M4's parser and before M7's resolve.**
 DESIGN §6.3 keeps the parser resolution-free on purpose: it "emits a flat
 Member/Call/Index chain and resolves it afterwards, letting each object answer for
 its own members." So at the instant the file is written, nothing has yet decided
@@ -234,12 +234,12 @@ that is otherwise discovered by whoever wonders why the cache is not faster.)*
 
 §1 says satl "reads it instead of doing the walk again", and the reader does
 exactly that — but the tree it hands back has **nowhere to put the `PathId`s it
-just read**. `ast.hpp` reserves the side table indexed by node for M6 and
+just read**. `ast.hpp` reserves the side table indexed by node for M7 and
 forbids M4 to put a mutable field on a node, so the honest M4.5 reader produces
-the TREE and M6's resolve still numbers every path in it. That matches what PLAN
+the TREE and M7's resolve still numbers every path in it. That matches what PLAN
 asks M4.5 for — read, check, write and refuse, and no more — and it means the
-cache does not pay for itself until M6's resolve learns to skip a path the file
-has already numbered. **That is M6's sentence to add, and it is written here so
+cache does not pay for itself until M7's resolve learns to skip a path the file
+has already numbered. **That is M7's sentence to add, and it is written here so
 that it is inherited rather than rediscovered.**
 
 ---

@@ -11,7 +11,7 @@
 # FOUR BINARIES ON AN x86-64 DESKTOP AND ONE ON A MACHINE WITH NEITHER
 # gtk4 NOR x86-64. satl-term is the fourth and it is conditional on its
 # libraries rather than on the instruction set -- 047-window.mk is where that
-# question is asked and why. PLAN.md M11.A says this table becomes four and two
+# question is asked and why. PLAN.md M1.5 says this table becomes four and two
 # at that milestone; the window landed ahead of the prompt it will host.
 #
 # THREE BINARIES ON x86-64 AND ONE EVERYWHERE ELSE. satl.haswell and satl are

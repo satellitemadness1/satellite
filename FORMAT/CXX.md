@@ -341,7 +341,7 @@ stale-binary lesson again, arriving through a file nobody thought of as an input
 because the test wants it to fail.
 
 **And the round-trip is the form of the check, not a check among them.** Nothing
-in this language runs until M8, so a tree cannot be verified by running it; it can
+in this language runs until M10, so a tree cannot be verified by running it; it can
 be verified by printing it back and printing that back again. `unparse.hpp` states
 what that does and does not promise, and the short version is that **it is a
 fixpoint and not equality with the input** — comments are discarded, blank lines
@@ -355,7 +355,7 @@ against equality would have to be weakened every time the printer got better.
 while half of it has no producer: **build the input by hand and render it.**
 
 DESIGN §9's diagnostic has four fields and one of them, `vector<FrameRef>`, has
-no producer until M7's evaluator. Three more arms of the renderer are reachable
+no producer until M9's evaluator. Three more arms of the renderer are reachable
 only by mistake — a note with no span, a span past the end of its text, a hole
 with no argument. All four are drawn by `render()`, which §9 says must be the
 only place anything is drawn, so **a branch nothing exercises is a branch that

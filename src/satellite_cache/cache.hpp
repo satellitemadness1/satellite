@@ -18,7 +18,7 @@
 //
 // WHERE THE WRITER SITS IN THE PIPELINE IS WHAT DECIDES ITS CONTENTS, and
 // SATC.md §3.2 is the section that makes the argument: this runs after M4's
-// parser and before M6's resolve, so at the instant the file is written nothing
+// parser and before M7's resolve, so at the instant the file is written nothing
 // has yet decided that `my_list` is a list and the identity of `sort` is
 // UNAVAILABLE -- not awkward to record. That is why a path becomes a number and
 // a selector does not, and satellite_cache/paths.hpp is where the distinction
@@ -65,7 +65,7 @@ std::string header_text(const Source &source);
 // The program alone -- SATC.md §1.1's body, with its comment column.
 //
 // `words` IS THE RUN'S NUMBERING AND NOT A GLOBAL, for the reason
-// words_runtime.hpp gives about M11.B: a user's PathId is valid inside one run
+// words_runtime.hpp gives about M22: a user's PathId is valid inside one run
 // only, so the object that allocated the names has to be the object asked about
 // them. What gets WRITTEN is never that number -- SATC.md §3 -- but the parent
 // it hangs under is language-owned and is, and asking is how that is found.

@@ -29,7 +29,7 @@
 //
 // THIS MODULE KNOWS NOTHING ABOUT A TREE OR A TOKEN. It takes a Span, which is
 // three integers, and the text those integers index. That is what lets the
-// lexer, the parser, the `.satc` reader and M6's resolve all report through it
+// lexer, the parser, the `.satc` reader and M7's resolve all report through it
 // without this file learning what any of them is -- and what lets a test render
 // a diagnostic that no pass produced.
 
@@ -52,7 +52,7 @@ namespace satellite::errors {
 // be tidied away into a typedef. lexer.hpp keeps them because DESIGN §6.2's
 // same-line rule needs the line and unparse needs the text; this keeps them
 // because a caret needs to be drawn. A Token is a lexical fact and a Span is a
-// place, and M6's resolve will make spans for things that are not one token.
+// place, and M7's resolve will make spans for things that are not one token.
 //
 // LINE 0 MEANS NOWHERE. A file's first line is 1, so 0 cannot be a real place
 // and needs no separate flag -- which matters because a Diagnostic about a
@@ -94,7 +94,7 @@ struct Note {
 //
 // So the field is carried, the renderer draws it, and tests/reporter_test
 // renders a synthetic one -- because a branch nothing exercises is a branch
-// that does not work. Its first real producer is M7's evaluator, and M21's
+// that does not work. Its first real producer is M9's evaluator, and M25's
 // `satellite.include` is what makes the capsule's own path worth printing.
 struct FrameRef {
     words::PathId capsule = words::kNoPath;
@@ -179,13 +179,13 @@ Note note(Span at, Args &&...arguments)
 // worth quoting; a diagnostic rendered by a test has text and no path. Each
 // drops the part of the header it cannot fill instead of printing a placeholder.
 //
-// ONE SOURCE AND NOT A MAP, which is where M21 will have to change something.
+// ONE SOURCE AND NOT A MAP, which is where M25 will have to change something.
 // `satellite.include` makes a program more than one file, and then a Span needs
 // to say WHICH file -- the first satellite grew a SourceMap and a file id in a
 // span for exactly that. It is not built now because nothing can produce a
 // second file, and a field with no producer is a field whose meaning gets
 // settled by whoever first needs it. That is the call M4 made about a node's
-// extent, made again here for the same reason and recorded so M21 does not have
+// extent, made again here for the same reason and recorded so M25 does not have
 // to rediscover it.
 struct Source {
     std::string_view path;

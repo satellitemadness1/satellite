@@ -1,7 +1,7 @@
 // satl -- the interpreter.
 //
-// THIS BINARY LINKS NO GUI. The window lives in satl-term (M11.A, built), and
-// satellite.window.new() will reach a dlopen'd library (M13). The split is
+// THIS BINARY LINKS NO GUI. The window lives in satl-term (M1.5, built), and
+// satellite.window.new() will reach a dlopen'd library (M24). The split is
 // measured rather than tidy-minded: `ldd` on this satl lists 6 shared objects
 // and on the first satellite's satl-term lists 79, and the dynamic linker loads
 // every one of them before main() on every run. The first satellite measured
@@ -58,7 +58,7 @@ bool readable(const std::string &path)
 // The file is checked even though nothing will be run with it, because the two
 // failures a user is about to have are different and they should not have to
 // guess which one they are in. A misspelled path reported as "not built yet"
-// is a bug report waiting to be filed at M8.
+// is a bug report waiting to be filed at M10.
 int not_yet(const std::string &what, const std::string &file,
             const char *milestone)
 {
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
     // NOTHING TO DO IS NOT AN ERROR. satl started with no arguments shows the
     // opening information, which is what says how to run a file.
     //
-    // At M11.B this arm gains the prompt, and the banner it prints first is this
+    // At M22 this arm gains the prompt, and the banner it prints first is this
     // same opening_text() -- which is why that function returns a string rather
     // than printing one.
     if (args.size() == 1) {
@@ -271,7 +271,7 @@ int main(int argc, char **argv)
     // prints a SATELLITE PROGRAM, which satl can read back. PLAN M4 states the
     // milestone in this command -- "satl --unparse file.satl round-trips, which
     // is how we know the parser is right before anything can run" -- because
-    // nothing runs until M8 and a tree is otherwise only visible to whoever
+    // nothing runs until M10 and a tree is otherwise only visible to whoever
     // wrote the code that built it.
     //
     // WHAT COMES BACK IS NOT THE FILE. Comments are gone (DESIGN §5.6 discards
@@ -289,7 +289,7 @@ int main(int argc, char **argv)
             return satellite::EXIT_USAGE;
 
         // A RUN'S NAMES END WITH THE RUN, which is why this is a local and not
-        // a global: words_runtime.hpp makes the point that M11.B runs many
+        // a global: words_runtime.hpp makes the point that M22 runs many
         // programs in one process and each needs its own numbering.
         satellite::words::Words words;
         const satellite::Parse parsed = satellite::parse(source, words);
@@ -358,21 +358,21 @@ int main(int argc, char **argv)
     }
 
     if (first == "--repl")
-        return not_yet("the prompt", std::string(), "M11.B");
+        return not_yet("the prompt", std::string(), "M22");
 
     // --run takes an operand, so a missing one is a real usage error rather
     // than a milestone that has not landed: `satl --run` with nothing after it
-    // is wrong at M8 too.
+    // is wrong at M10 too.
     if (first == "--run") {
         if (args.size() < 3)
             return usage_error("--run needs a file after it");
-        return not_yet("running a file", args[2], "M8");
+        return not_yet("running a file", args[2], "M10");
     }
 
     // A bare word that is not a flag is a filename. Checked LAST of the arms
     // that can match a word, which is what the ordering above is for.
     if (!first.empty() && first[0] != '-')
-        return not_yet("running a file", first, "M8");
+        return not_yet("running a file", first, "M10");
 
     return usage_error("unknown option " + first);
 }

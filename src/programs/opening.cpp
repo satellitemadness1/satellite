@@ -20,7 +20,7 @@ namespace satellite {
 // a fresh prompt actually needs. The angle brackets belong in usage_text(),
 // where the reader has already decided to read a specification.
 //
-// The last paragraph is TEMPORARY and goes away at M8, when satl can run a
+// The last paragraph is TEMPORARY and goes away at M10, when satl can run a
 // file. It is here because a program that prints "satl filename.satl" and then
 // refuses to do it has told the user something false, and the fix is to say so
 // on the way in rather than only on the way out.
@@ -34,7 +34,7 @@ std::string opening_text()
            "\n"
            "This build does not interpret anything yet. It is milestone 1 of\n"
            "PLAN_ONE.md -- the binary, the build, and the way in. Running a\n"
-           "file lands at M8.\n";
+           "file lands at M10.\n";
 }
 
 // Every way to start satl.
@@ -51,9 +51,9 @@ std::string opening_text()
 std::string usage_text()
 {
     return "usage: satl                       this opening information\n"
-           "       satl <file> [args]         run a file            (M8)\n"
-           "       satl --run <file> [args]   the same, spelled out (M8)\n"
-           "       satl --repl                the prompt            (M11.B)\n"
+           "       satl <file> [args]         run a file            (M10)\n"
+           "       satl --run <file> [args]   the same, spelled out (M10)\n"
+           "       satl --repl                the prompt            (M22)\n"
            "       satl --words               every path the language has, and\n"
            "                                  the number it is\n"
            "       satl --words <path>        just that one, or why it is not\n"

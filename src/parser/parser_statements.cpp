@@ -28,7 +28,7 @@ namespace {
 // Whether a node names somewhere a value can be written.
 //
 // DESIGN §6's `assign := postfix "=" expression` is the whole rule, and the
-// point of checking it here rather than letting M6 find out is §6.4's: a
+// point of checking it here rather than letting M7 find out is §6.4's: a
 // mutating method needs a receiver that names a storage slot, and `foo() = x`
 // has nowhere to write back. A Binary or a Call on the left is a program that
 // cannot mean anything, and the earliest place it can be said so is here.
@@ -187,7 +187,7 @@ NodeIndex Parser::var_decl(NodeIndex declared_type)
     // A LOCAL'S NAME TAKES NO NUMBER, and that is not an omission. WORD_NUMBERS
     // §3 numbers user capsules and spacesuits, because those need identity
     // across a program; a local needs a FRAME SLOT, which DESIGN §7.2 resolves
-    // to an integer index in M6's pass and which is per call rather than per
+    // to an integer index in M7's pass and which is per call rather than per
     // program. Numbering locals here would put one slot per local per program
     // back -- which is §7.1's verified blocker, where a recursive `fact`
     // returns 1 for every input.

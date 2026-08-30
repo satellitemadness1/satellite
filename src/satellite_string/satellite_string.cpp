@@ -4,7 +4,7 @@
 // Ported at M3 from old_versions/first_satellite/src/satellite_string/
 // satellite_string.cpp (155 lines). Four changes, each with its reason:
 //
-// 1. THE LIVE-VALUE DECODE IS STUBBED, because its readers are M14's and this
+// 1. THE LIVE-VALUE DECODE IS STUBBED, because its readers are M6's and this
 //    module arrived four milestones early for the lexer's sake. The header says
 //    why nothing in the lexer can reach one.
 // 2. The escape table is constexpr and its ordering rule is now a
@@ -98,7 +98,7 @@ static_assert(no_name_shadows_a_later_one(),
               "kEscapes: an escape name is a prefix of a later one -- encode() "
               "takes the first match, so the later one can never be reached");
 
-// What decode() prints for a live value until M7/M14 port the readers.
+// What decode() prints for a live value until M9/M6 port the readers.
 //
 // LOOKED UP IN kEscapes RATHER THAN WRITTEN OUT, so the placeholder and the
 // escape that produces the code cannot drift: "\threads" round-trips to
@@ -191,9 +191,9 @@ std::string decode(const SatString &s)
             out += kPunct[c - SAT_PUNCT_BASE];
             continue;
         }
-        // THE LIVE VALUES (95-100), STUBBED UNTIL M7/M14. The readers are
+        // THE LIVE VALUES (95-100), STUBBED UNTIL M9/M6. The readers are
         // home_dir(), username(), hardware_threads(), mem_total_mb(),
-        // mem_used_mb() and cwd(), all in system_facts/, all ported by M14.
+        // mem_used_mb() and cwd(), all in system_facts/, all ported by M6.
         // Replacing these six lines with those six calls is the whole of the
         // change, and this module's own test is what will notice it has not
         // happened.

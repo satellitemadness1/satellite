@@ -7,8 +7,8 @@
 // "digit" and "punctuation" MEAN in satellite, and lexical_analyzer/ is written
 // against them rather than against C's ctype.
 //
-// PORTED AT M3 AND SCHEDULED AT M7, which is a pull-forward and is recorded
-// rather than left to be discovered. PLAN §6.1 surveys this module and PLAN M7
+// PORTED AT M3 AND SCHEDULED AT M9, which is a pull-forward and is recorded
+// rather than left to be discovered. PLAN §6.1 surveys this module and PLAN M9
 // owns it -- "`Str` is the port of `satellite_string`" -- but DESIGN §5's first
 // sentence makes it M3's dependency, and a milestone cannot lex without an
 // alphabet. What came forward is the CHARACTER half only; see the next
@@ -18,13 +18,13 @@
 // CODES 95-100 ARE LIVE VALUES AND THIS PORT STUBS THEM. They resolve at decode
 // time to the user's home directory, their name, the hardware thread count,
 // total and used memory, and the working directory -- readers that live in
-// system_facts/ and that PLAN M14 ports. Until then decode() emits "<threads>"
+// system_facts/ and that PLAN M6 ports. Until then decode() emits "<threads>"
 // and its five siblings. THE LEXER IS UNAFFECTED, and that is why the stub is
 // safe here rather than merely convenient: encode_raw() maps every source byte
 // to a letter, a digit, a punctuation code or the raw area, so no code in
 // 95..100 can occur in a program's text at all. They are reachable only through
 // encode()'s backslash names, inside a string literal body, which is a VALUE
-// and does not exist until M7 builds one.
+// and does not exist until M9 builds one.
 //
 // 16 BITS, NOT 32. The width is a property of the DATA, not of the code table:
 // the table needs 101 codes and the raw area needs 256, so 8 bits (357 > 256)
@@ -121,7 +121,7 @@ SatString encode_raw(const std::string &text);
 
 // Satellite codes -> displayable text.
 //
-// Codes 95-100 emit their placeholder until M7/M14; see the file-top comment
+// Codes 95-100 emit their placeholder until M9/M6; see the file-top comment
 // for why nothing in the lexer can reach one.
 std::string decode(const SatString &s);
 

@@ -18,7 +18,7 @@
 //   §6.3  THE PARSER RESOLVES NOTHING. It emits a flat Member/Call/Index chain
 //         and does not know that satellite.library.<fn>.<var> is four segments.
 //         The trie walk that turns a path into a PathId happens once, after
-//         parsing, in M6's resolve pass -- teaching it to the grammar is a new
+//         parsing, in M7's resolve pass -- teaching it to the grammar is a new
 //         parse rule per namespace.
 //
 // THE PARSER NEVER THROWS, which is the rule the lexer already keeps (DESIGN
@@ -73,7 +73,7 @@ struct Parse {
 //
 // `words` IS THE CALLER'S AND NOT A GLOBAL, which M2 decided for a reason this
 // milestone is the first to feel: the names a program defines end with that
-// program, and M11.B runs many programs in one process. A parse that reached
+// program, and M22 runs many programs in one process. A parse that reached
 // for a singleton would carry one program's capsules into the next one's
 // numbering.
 Parse parse(const std::string &source, words::Words &words);

@@ -65,13 +65,21 @@
 //     S02xx   the parser                    DESIGN §6      M4
 //     S03xx   the `.satc` cache             SATC.md        M4.5
 //     S04xx   the file satl was given                      M5
-//     S05xx   resolve -- names and slots    DESIGN §7      M6      reserved
-//     S06xx   numbers                       DESIGN §8.1    M6.5    reserved
-//     S07xx   the evaluator                                M7/M8   reserved
+//     S05xx   resolve -- names and slots    DESIGN §7      M7       reserved
+//     S06xx   numbers                       DESIGN §8.1    M8       reserved
+//     S07xx   the evaluator                                M9/M10   reserved
 //
 // The reserved blocks are written down and NOT populated. A block reserved in a
 // comment costs nothing and stops the thing this file exists to stop, which is
 // two milestones reaching for the same number on the same day.
+//
+// M6 HAS NO BLOCK HERE AND IS THE NEXT MILESTONE. (2026-08-30, at the renumber
+// that made it the next one -- it was M14.) Its done-when says a malformed
+// satellite_config.ini is refused with a code, a span and a caret, so it adds
+// codes and this table owes it a block. The number is not assigned here because
+// a block is taken by the milestone that adds it, in the order they are added,
+// and S08xx being the free one is the answer only until somebody checks whether
+// the machine limits belong beside S04xx -- the file satl was given -- instead.
 
 #ifndef SAT_CODE
 #define SAT_CODE(number, ident, severity, text)

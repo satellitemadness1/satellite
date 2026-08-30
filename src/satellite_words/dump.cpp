@@ -93,7 +93,7 @@ std::string dump_text()
     // WHAT IS NUMBERED IS NOT WHAT IS BUILT, and this line is here because
     // DESIGN §4.6 was wrong about exactly that until 2026-08-28. Everything
     // above exists as a number; almost none of it runs. satellite.help walks
-    // this same trie at M8.5 and must print a node only when handlers[path_id]
+    // this same trie at M18 and must print a node only when handlers[path_id]
     // is non-null -- there is no handler table yet, so a dump that did not say
     // so would advertise the whole language as working, which DESIGN §1.1 calls
     // doing something behind the user's back.

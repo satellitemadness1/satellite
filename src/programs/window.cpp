@@ -12,7 +12,7 @@
 // runtime, so it has nothing for -march to act on and is built once at the
 // baseline -- like satl-cpu-level and unlike satl, which is built twice. It
 // gets the haswell interpreter for free by spawning whichever `satl` the
-// installer chose. PLAN.md M11.A, and §4.2's table.
+// installer chose. PLAN.md M1.5, and §4.2's table.
 //
 // THIS IS THE SAME WINDOW THE LANGUAGE HANDS OUT. A satellite program asks for
 // one with
@@ -22,7 +22,7 @@
 //
 // -- a string and two numbers -- and that is why the title and the size below
 // are ARGUMENTS rather than literals. satl-term is the first caller of that
-// signature and must not be a special case of it; the day M13's dlopen'd
+// signature and must not be a special case of it; the day M24's dlopen'd
 // library calls the same three values in, nothing here should have to move.
 // `satellite.window.console` and its `new` are NOT YET NUMBERED -- see the note
 // in SCRATCH.md/SESSION.md; the author owns the numbering.

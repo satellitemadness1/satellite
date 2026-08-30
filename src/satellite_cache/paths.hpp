@@ -44,7 +44,7 @@ namespace satellite::cache {
 // a shape the numbering does not have. All three are written into the `.satc`
 // as they were written in the source -- the first two because SATC.md §3 says
 // a name stays a name, and the third because a program the numbering cannot
-// account for is M6's to refuse and this milestone's to preserve intact.
+// account for is M7's to refuse and this milestone's to preserve intact.
 struct PathMatch {
     words::PathId id = words::kNoPath;
 

@@ -54,8 +54,8 @@ void section_codes()
     check(block_of(Code::FILE_UNREADABLE) == 4, "the file satl was given is S04xx");
 
     // THE RESERVED BLOCKS ARE EMPTY, and this is the check that makes reserving
-    // them worth anything. errors.def keeps S05xx for M6's resolve, S06xx for
-    // M6.5's numbers and S07xx for the evaluator; a milestone that takes the
+    // them worth anything. errors.def keeps S05xx for M7's resolve, S06xx for
+    // M8's numbers and S07xx for the evaluator; a milestone that takes the
     // next free number instead of its own block would put a resolve error in
     // the parser's range and nothing else would notice.
     for (const Code code : kCodes)

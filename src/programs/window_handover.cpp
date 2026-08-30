@@ -139,7 +139,7 @@ void hand_over_to_the_window(char **argv)
         return;
 
     // --hold, and it is the difference between a window and a flash of one.
-    // satl-term closes on a clean exit and holds on a failure (PLAN M11.A), and
+    // satl-term closes on a clean exit and holds on a failure (PLAN M1.5), and
     // everything satl does today -- the opening text, --version, --words --
     // exits cleanly in milliseconds. Without --hold the person who clicked the
     // icon sees a window appear and vanish, which is a worse answer than the

@@ -50,9 +50,9 @@
 # The 2026-08-26 figures above are dynamic and are left as they were taken. They
 # are not comparable to these and are not restated as if they were.
 #
-# The window is a separate binary (M11.A, built 2026-08-27) and, for
+# The window is a separate binary (M1.5, built 2026-08-27) and, for
 # satellite.window.new(), a
-# dlopen'd library (M13) -- because the two-binary split cannot help a window
+# dlopen'd library (M24) -- because the two-binary split cannot help a window
 # opened from inside a user program, which runs in this one. PLAN_ONE.md sec 4.4.
 #
 # $(WORDS)/dump.cpp IS THE ONLY .cpp THE WORD REGISTRY HAS, and that is a
@@ -160,7 +160,7 @@ HDRS = $(SYSTEM)/version.hpp \
 # module has no consumer for a different reason: the thing that would call it is
 # `satellite.random.*`, which reaches no milestone at all (SCRATCH.md/MILESTONE.md
 # §0.1 counts its 16 paths), and the thing it would FEED -- drawing an N-digit
-# number -- needs the arbitrary-precision half that M6.5 has not ported yet.
+# number -- needs the arbitrary-precision half that M8 has not ported yet.
 #
 # Compiling it under `all` is the cheapest thing that stops it rotting: a header
 # change or a compiler upgrade breaks the build rather than breaking silently

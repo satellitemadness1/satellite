@@ -122,7 +122,7 @@ void section_literals()
     // alphabetises the escape table.
     check(one("\"\\threads\"").str.size() == 1, "§5.4: \\threads is one code, not \\t + hreads");
     check(satellite::decode(one("\"\\threads\"").str) == "<threads>",
-          "the live codes are stubbed until M7/M14 and say so");
+          "the live codes are stubbed until M9/M6 and say so");
 
     // §5.4's other half: an escape the table does not know passes through with
     // the backslash still attached. That is a decision, recorded in DESIGN §13,

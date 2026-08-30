@@ -12,13 +12,22 @@ This file is an **index and holds no fact of its own**, the same shape as
 | | landed | |
 | --- | --- | --- |
 | [M1.md](M1.md) | 2026-08-26 | `satl` exists and says how to use it. |
+| [M1.5.md](M1.5.md) | 2026-08-27 | The window — `satl-term`, and `satl` handing itself over. |
 | [M2.md](M2.md) | 2026-08-28 | The namespace trie, the path interner, and `satl --words`. |
 | [M3.md](M3.md) | 2026-08-29 | The lexer. Committed a day late, with M4. |
 | [M4.md](M4.md) | 2026-08-30 | The arena AST and the parser. `satl --unparse` round-trips. |
 | [M4.5.md](M4.5.md) | 2026-08-30 | The `.satc` cache. |
 | [M5.md](M5.md) | 2026-08-30 | The error reporter — codes, carets, notes, did-you-mean. |
-| [M9.md](M9.md) | **not in this tree** | A review of `prototype/M9`, which is a draft. |
-| [M10.md](M10.md) | **not in this tree** | A review of `prototype/M10`, likewise. |
+| [M11.md](M11.md) | **not in this tree** | A review of `prototype/M9`, which is a draft. |
+| [M16.md](M16.md) | **not in this tree** | A review of `prototype/M10`, likewise. |
+
+**The numbers in this table are PLAN §8's, and §8 renumbered on 2026-08-30.**
+M1 through M5 did not move, because a number written into the history is a fact
+rather than a label. The last two rows did: they were `M9.md` and `M10.md`, and
+they review the drafts in `prototype/M9` and `prototype/M10`, **whose directory
+names are frozen** — a draft is dated by construction. `M1.5.md` was `M11.A`.
+PLAN §8's opening carries the whole old-to-new table and it is the key to every
+document written before that day.
 
 **The last two rows are the reason this table has a column for it.** Both files
 opened `**Landed 2026-08-29**` flat until 2026-08-30, which every other note here
@@ -27,6 +36,15 @@ started. They review `prototype/`, which LAYOUT.md calls **"drafts, and never
 sources"** with receipts. **Writing the commit down is what found it**: a
 milestone with no commit is either unlanded or mis-labelled, and there is no
 third answer.
+
+**And M1.5 is the same finding upside down, which the rule as written does not
+catch.** It had no note here, no date in this table, and every clause of its
+done-when true since 2026-08-27 — it was sitting twenty-third in §8's build order
+being counted as work still to do. **A milestone with no commit is mis-labelled;
+a milestone with no note is invisible**, and looking for the first is what
+eventually found the second. The fix is the same one line in the same place: this
+table now has a row for every milestone that has landed, and the date column is
+what makes a missing one visible.
 
 ## The convention
 

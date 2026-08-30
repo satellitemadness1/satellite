@@ -8,7 +8,7 @@
 // answers the command line and decides WHAT TO SAY when a file will not open,
 // which is a program's business; getting the bytes off the disk unchanged is
 // this file's, and it is what M3's --tokens, M4's parser, M4.5's .satc reader
-// and M8's runner all need the same answer to.
+// and M10's runner all need the same answer to.
 //
 // The line count is what prompted the look -- main.cpp reached 396 against
 // PLAN §3's target of 300 -- and the seam is what justified the split. The .cpp

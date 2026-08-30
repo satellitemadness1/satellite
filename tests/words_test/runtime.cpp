@@ -66,7 +66,7 @@ void section_runtime()
 
     // A NAME THE LANGUAGE ALREADY OWNS IS REFUSED, IN PLAIN WORDS. Whether a
     // user MAY shadow satellite.library.main is DESIGN §2's reservation rule
-    // and is settled at M6's resolve; what M2 must not do is decide it by
+    // and is settled at M7's resolve; what M2 must not do is decide it by
     // accident by handing out a number that makes the language's own word
     // unreachable.
     check(words.define(library, "main") == kNoPath,

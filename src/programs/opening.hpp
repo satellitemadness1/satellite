@@ -46,7 +46,7 @@ enum ExitStatus {
 // The banner satl shows when it is started with nothing to do.
 //
 // RETURNS A STRING RATHER THAN PRINTING, because it has a second caller coming.
-// At M11.B this same text becomes the REPL's banner, and the first satellite's
+// At M22 this same text becomes the REPL's banner, and the first satellite's
 // mistake was to write that banner as a separate literal -- which then drifted,
 // and said 0.1 for months while --version said 002. One function, two callers,
 // no way to drift.

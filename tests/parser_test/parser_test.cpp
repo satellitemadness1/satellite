@@ -9,7 +9,7 @@
 // rediscovered. Every one of the three has a check here that names it.
 //
 // AND FOR THE ONE THING ONLY A ROUND-TRIP CAN SEE. A tree is not observable
-// until M8 runs one, so every check below that asserts a shape is asserting
+// until M10 runs one, so every check below that asserts a shape is asserting
 // what the parser was TOLD to build. section_roundtrip() asserts something
 // else: that what came out means the same program that went in, over the four
 // files LAYOUT.md calls the acceptance programs.

@@ -49,7 +49,7 @@ namespace detail {
 // walk of exactly those children rather than a scan of all 254.
 //
 // (This paragraph said "the map's twenty-nine methods" until 2026-08-28. The
-// map has nine; 29 was a figure PLAN M10 carried for the map and the list
+// map has nine; 29 was a figure PLAN M16 carried for the map and the list
 // TOGETHER, and that figure was itself wrong -- it is 34.)
 struct Children {
     std::array<PathId, kNodeCount + 1> first;

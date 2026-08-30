@@ -4,7 +4,7 @@
 // into a PTY and renders the bytes that come back, which is what makes the
 // two-binary split nearly free: the two-process shape was already there, and
 // the only question the split answers is which binary gets spawned. PLAN.md
-// M11.A, and DESIGN.md §10.3 for why the window's thread is not the user's
+// M1.5, and DESIGN.md §10.3 for why the window's thread is not the user's
 // problem.
 
 #include "programs/terminal.hpp"
@@ -90,20 +90,20 @@ void hold_open(VteTerminal *terminal, GtkWidget *window)
     gtk_widget_add_controller(window, keys);
 }
 
-// HOLD ON FAILURE ALWAYS. CLOSE ON SUCCESS ONLY UNTIL M11.B.
+// HOLD ON FAILURE ALWAYS. CLOSE ON SUCCESS ONLY UNTIL M22.
 //
 // The failure half is permanent: a terminal whose child FAILED is holding the
 // only copy of the reason, and destroying the window destroys the message. It
 // is what makes this binary demonstrable before the prompt exists -- `satl
-// --repl` today answers "the prompt is not built yet -- it lands at M11.B" and
+// --repl` today answers "the prompt is not built yet -- it lands at M22" and
 // exits EXIT_NOT_YET, so the window stays up with the explanation on it.
 //
-// THE CLEAN-EXIT ARM BELOW IS M11.A's AND M11.B DELETES IT, which is written
+// THE CLEAN-EXIT ARM BELOW IS M1.5's AND M22 DELETES IT, which is written
 // here rather than discovered there. Today the child runs for milliseconds and
 // a window outliving every one of them is a window nobody asked to keep. Once
 // there is a prompt the question reverses: a person who has been typing has a
 // screen full of what they did, the exit word ends a session rather than a
-// window, and the close button is how a window closes. PLAN.md M11.B.
+// window, and the close button is how a window closes. PLAN.md M22.
 void on_child_exited(VteTerminal *terminal, int status, gpointer user_data)
 {
     GtkWidget *window = GTK_WIDGET(user_data);

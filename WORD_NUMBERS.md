@@ -611,7 +611,7 @@ while `satellite.file.new(path)` at `1 8 1` is the module form. §6.4's own seco
 qualification says constructors live in the same table with a flag for whether the
 first parameter binds the receiver, so the two can coexist. But nothing yet says
 which one a program should write, and two spellings for one construction is the
-kind of thing that gets decided by accident at M10.
+kind of thing that gets decided by accident at M16.
 
 **`satellite.thread.new` has one number for two shapes.** `thread.new(f())` and
 `thread.new(f(x))` both hand `new` exactly one thing — a deferred call — so its own

@@ -4,7 +4,7 @@
 //
 // THIS IS HOW WE KNOW THE PARSER IS RIGHT BEFORE ANYTHING CAN RUN, which is the
 // clause PLAN M4 states the milestone in: `satl --unparse file.satl`
-// round-trips. Nothing executes until M8, so a tree is otherwise a thing that
+// round-trips. Nothing executes until M10, so a tree is otherwise a thing that
 // can only be inspected by whoever wrote the code that built it -- and the
 // first satellite's answer to that was a `--dump-ast` printing node names,
 // which can look perfect over a tree that has dropped an operand.

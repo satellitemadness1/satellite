@@ -49,7 +49,7 @@ namespace satellite::words {
 //
 // NOT A SINGLETON AND NOT A GLOBAL. A run's names end with the run, and an
 // object that can simply be destroyed says that better than a reset() somebody
-// has to remember to call -- which matters at M11.B, where the prompt runs many
+// has to remember to call -- which matters at M22, where the prompt runs many
 // programs in one process and each needs its own numbering.
 class Words {
 public:
@@ -71,7 +71,7 @@ public:
     // answered in place of a word the language owns. What happens when a user
     // WRITES such a name is a different question and not this milestone's:
     // define() below refuses it, which is a refusal in plain words rather than
-    // a guess, and DESIGN §2's reservation rule is decided at M6's resolve.
+    // a guess, and DESIGN §2's reservation rule is decided at M7's resolve.
     PathId find(NodeId parent, std::string_view name) const
     {
         // AN EMPTY NAME IS NOT A NAME. The bare rows are spelled "" on purpose,

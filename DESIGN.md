@@ -150,7 +150,7 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 }
 ```
 
-**That is `example/hello_world.satl`, byte for byte, comments included.** PLAN M8.B
+**That is `example/hello_world.satl`, byte for byte, comments included.** PLAN M17
 names the file rather than a paragraph as its done-when, so the two must not be
 able to drift; the way to guarantee that is for this section to be a copy rather
 than a description. The `//` comments are part of the program and are specified in
@@ -160,8 +160,8 @@ than a description. The `//` comments are part of the program and are specified 
 removal.)* This section spent a day showing `satellite.main()` with no parameter,
 on the argument that declaring
 `satellite.container.list<satellite.variable.string> arguments` made hello world
-**unreachable at the milestone that owns it** — M8 could not construct a `list` of
-`string` before M10 built the container and M9 the string. The removal was made in
+**unreachable at the milestone that owns it** — M17 could not construct a `list` of
+`string` before M16 built the container and M11 the string. The removal was made in
 good faith and it was wrong on the point it rested on.
 
 **Its load-bearing citation misread the numbering.** The removal argued that
@@ -194,14 +194,14 @@ still runs is worth more than one whose example has to be explained away.
 
 **What it costs, stated plainly rather than assumed away.** The program never
 reads `arguments`, so what it owes is an empty list bound to the slot and nothing
-else: no `satellite.variable.string` value is ever constructed, so M9 is not a
-dependency, and none of M10's twenty-five list methods is reached. What is left is
-one empty `satellite.container.list` value, and **that list is M10's.** *(Decided
+else: no `satellite.variable.string` value is ever constructed, so M11 is not a
+dependency, and none of M16's twenty-five list methods is reached. What is left is
+one empty `satellite.container.list` value, and **that list is M16's.** *(Decided
 2026-08-28.)* An empty list is still a list, and the milestone that constructs one
-has built the type — so **hello world is PLAN M8.B and runs after M10**, while the
-console it prints through stays at **M8.A**, before M9. PLAN §8's opening carries
+has built the type — so **hello world is PLAN M17 and runs after M16**, while the
+console it prints through stays at **M10**, before M11. PLAN §8's opening carries
 that split. The milestone is still the place that has to say what it hands over, or
-a program written between M8.B and the milestone that builds §7.7 gets an error for
+a program written between M17 and the milestone that builds §7.7 gets an error for
 `arguments.username` that no document predicts.
 
 Both shapes remain legal and §6's grammar already allows both: `capsule_decl` reads
@@ -431,7 +431,7 @@ this language does not want.
   unwritten paths as working and break §1.1's *never behind their back*. The walk
   therefore prints a node only when `handlers[path_id]` (§4.5) is non-null: **the
   trie is what exists, the handler table is what works**, and help reads both. PLAN
-  M8.5 is where this is built and carries the argument in full.
+  M18 is where this is built and carries the argument in full.
 - **The reservation rule becomes one interner lookup.**
 
 ---
@@ -597,7 +597,7 @@ corrected stops being a record of what it said.
 *(A section inside a section is expressible under this rule and means nothing.
 That is left rather than forbidden: a grammar that refuses it needs a second
 production for no gain, and `satellite.public` inside `satellite.protected` is a
-question for M22's resolve, where access actually decides something.)*
+question for M26's resolve, where access actually decides something.)*
 
 ### 6.1 Statement dispatch is on segment 1, not on shape
 
@@ -1289,7 +1289,7 @@ them plus `normalize`, and the only genuinely new code is the rounding step.
 choice of representation: `rack.hpp:59` computes `pow(urgency, exp)` with `exp` always
 fractional, and `x^y` at fractional `y` is irrational, so **no pair of exact numbers
 represents it** and `R` must be rounded to exist. QUAD's determinism invariant means a
-program's behaviour depends on which rule is chosen. PLAN §8 puts the float in **M9**,
+program's behaviour depends on which rule is chosen. PLAN §8 puts the float in **M11**,
 which cannot land until it is.
 
 ---
@@ -1660,7 +1660,7 @@ critical path.
   rather than a setting on it.
 
   **§8.6 is the specification** — the invariants, `normalize`, and the four
-  operations, of which addition and subtraction turn out to be **exact**. **M9 owns
+  operations, of which addition and subtraction turn out to be **exact**. **M11 owns
   this** (PLAN §8) and cannot land until the rounding rule is chosen.
 
   *(The two readings not taken, recorded so they are not re-proposed: **numerator and
@@ -1714,7 +1714,7 @@ critical path.
   `satellite.container.list<satellite.variable.string>`, and nothing says whether
   its first element is the program name, the current directory, or the first
   argument the user actually typed. The author's first note has it displaying the
-  current directory. Left undecided it will be settled by accident at M8.B, and
+  current directory. Left undecided it will be settled by accident at M17, and
   every program written before the accident will disagree with every program
   written after.
 - ~~**`satellite.thread.new` against `satellite.variable.thread`.**~~ **Settled

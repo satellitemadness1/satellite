@@ -239,7 +239,7 @@ NodeIndex Parser::primary()
         // back from precedence rather than from memory. Storing them would put
         // a piece of punctuation in a tree that is about meaning, and would
         // make two trees for one program -- which is the thing M4.5's `.satc`
-        // and M6's resolve both have to compare.
+        // and M7's resolve both have to compare.
         return inner;
     }
 

@@ -3,7 +3,7 @@
 //
 // EVERY DIAGNOSTIC HERE IS BUILT BY HAND, and that is possible only because the
 // reporter takes a Span -- three integers -- and the text those integers index.
-// It is also necessary: a call stack has no producer until M7, a span past the
+// It is also necessary: a call stack has no producer until M9, a span past the
 // end of its text is reachable only by a caller that rendered against the wrong
 // file, and a missing argument cannot come out of make() at all. Those are
 // three arms of the one function §9 says must be the only one, and a branch
@@ -189,7 +189,7 @@ void section_rendering()
     }
 
     // THE CALL STACK -- DESIGN §9's fourth field. NOTHING PRODUCES ONE UNTIL
-    // M7, which is exactly why it is rendered here: report.hpp argues that
+    // M9, which is exactly why it is rendered here: report.hpp argues that
     // building three of §9's four fields and adding the fourth later is the
     // retrofit this milestone exists to prevent, and a field that is carried
     // but never drawn is that retrofit with extra steps.

@@ -93,7 +93,7 @@ void section_spellings()
     // looking at one bare word can decide it -- and `range` is not a node
     // spelling either, so if this ever answers, the dot filter has gone.
     check(spelling_of_source("range") == words::kNoSpelling,
-          "§2.3: `range` is a path rewrite (M16), not a lexical spelling");
+          "§2.3: `range` is a path rewrite (M13), not a lexical spelling");
 
     // intern_word() is the function, and it agrees with what lex() produced.
     check(satellite::intern_word("argz") == spelling_of_source("argz"),

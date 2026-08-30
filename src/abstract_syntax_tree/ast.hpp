@@ -17,7 +17,7 @@
 // `shared_ptr<const Expr>` held off by a comment reading "resolve() must finish,
 // on one thread, before any evaluation begins", becomes a side table indexed by
 // node index -- so the race is structurally impossible instead of documented.
-// M6 builds that side table. M4 must not put a mutable field on a node.
+// M7 builds that side table. M4 must not put a mutable field on a node.
 //
 // NO STRING LIVES IN THIS TREE. Every node that has text -- a number, a string,
 // a name, an operator -- carries the INDEX OF ITS TOKEN instead, and the token

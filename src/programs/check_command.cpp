@@ -44,7 +44,7 @@ int check_command(const std::string &path)
         return EXIT_USAGE;
 
     // A RUN'S NAMES END WITH THE RUN, which is why this is a local and not a
-    // global: words_runtime.hpp makes the point that M11.B runs many programs
+    // global: words_runtime.hpp makes the point that M22 runs many programs
     // in one process and each needs its own numbering.
     words::Words words;
     const Parse parsed = parse(source, words);

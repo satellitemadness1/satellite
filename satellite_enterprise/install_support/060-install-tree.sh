@@ -51,7 +51,7 @@ icon_sizes='16x16 22x22 24x24 32x32 48x48 64x64 128x128 256x256 512x512'
 # now for a reason that has expired. It launches satl-term, and installing a
 # launcher for a missing binary puts an entry in the user's menu that does
 # nothing -- so it waited for the milestone that builds the binary it names.
-# M11.A built satl-term on 2026-08-27, PLAN.md sec 5.3 says the remaining step
+# M1.5 built satl-term on 2026-08-27, PLAN.md sec 5.3 says the remaining step
 # was naming it here, and this is that line. It is still conditional: the entry
 # and the binary arrive together or neither arrives, because the reason for
 # holding it back was never the date, it was the binary.

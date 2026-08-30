@@ -15,7 +15,7 @@
 //
 // IT ASSERTS ON RENDERED TEXT rather than on the matcher's return value, and
 // that is deliberate. paths.hpp's PathMatch is an implementation detail that
-// M6 may well take over; SATC.md §1.1's file is the thing that has to be
+// M7 may well take over; SATC.md §1.1's file is the thing that has to be
 // stable, because it is what a reader reads and what a later satl has to be
 // able to open. A test written against the struct would have passed while the
 // file said something else.

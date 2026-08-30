@@ -174,7 +174,7 @@ void section_declarations()
     check(run("satellite.include(satellite)\n").ok(), "satellite.include parses");
     check(count_of(run("satellite.include(satellite)\n").ast(), NodeKind::Include) == 1,
           "as one Include over an expression, which is what makes "
-          "satellite.include(spaceship) need no new rule at M21");
+          "satellite.include(spaceship) need no new rule at M25");
 
     {
         const Program program = run(

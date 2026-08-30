@@ -260,7 +260,7 @@ printf '\n'
 printf 'install.sh: this build is milestone 2 -- the trie and the path interner\n'
 printf '            landed 2026-08-28, so satl knows every word in the language\n'
 printf '            and can dump the numbering with --words. It still runs no\n'
-printf '            program: the lexer is M3 and the first program runs at M8.A.\n'
+printf '            program: the lexer is M3 and the first program runs at M10.\n'
 if [ "$have_term" = yes ]; then
     printf '            satl-term opens, spawns the satl beside it, and shows you\n'
     printf '            what that satl says -- which today is --repl declining.\n'

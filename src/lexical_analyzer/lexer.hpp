@@ -172,7 +172,7 @@ std::vector<errors::Diagnostic> diagnostics_of(const std::vector<Token> &tokens)
 //
 // THE THREE DOTTED ALIASES ARE NOT LEXICAL AND ARE SKIPPED HERE.
 // `fast.range(min, max)` is a rewrite of a two-segment PATH, so it cannot be
-// decided by looking at one bare word; PLAN M16 owns it. The filter is exactly
+// decided by looking at one bare word; PLAN M13 owns it. The filter is exactly
 // "an alias whose spelling has no dot in it", which is why this function can be
 // read as a spelling table and not as a path table.
 words::SpellingId intern_word(std::string_view word);

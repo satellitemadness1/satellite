@@ -8,12 +8,12 @@
 // output, and no tier here is described as secure. `ultra` is slower and better
 // distributed. It is not a CSPRNG.
 //
-// THIS LANDS AHEAD OF ITS MILESTONE, like M11.A did. `satellite.random` is in
+// THIS LANDS AHEAD OF ITS MILESTONE, like M1.5 did. `satellite.random` is in
 // PLAN §8's "Later" pile, which is not a milestone -- SCRATCH.md/MILESTONE.md
 // counts its 16 paths among the unscheduled. What is here is the half that can
 // be built and tested before `satellite_number` is ported: the generator, the
 // seam, and the spin policy. The half that cannot is drawing an N-digit number,
-// which needs the arbitrary-precision half (M6.5).
+// which needs the arbitrary-precision half (M8).
 
 #include <cstdint>
 #include <memory>
