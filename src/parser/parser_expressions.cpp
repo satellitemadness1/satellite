@@ -37,6 +37,7 @@
 #include "parser/parser_internal.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "lexical_analyzer/lexer.hpp"
 
 #include <cstdint>
@@ -130,6 +131,7 @@ NodeIndex Parser::postfix()
 
 ListId Parser::argument_list()
 {
+    const uint32_t opener = here();
     advance();
     open_bracket();
 
@@ -146,7 +148,7 @@ ListId Parser::argument_list()
     }
 
     close_bracket();
-    expect_punct(")", "to close the argument list");
+    expect_punct(")", "to close the argument list", opener);
     return ast_.add_list(args);
 }
 
@@ -181,7 +183,7 @@ NodeIndex Parser::subscript(NodeIndex target, uint32_t opener)
         }
         node = ast_.add(NodeKind::Slice, opener, target, low, high);
     } else if (low == kNoNode) {
-        error(here(), "expected a subscript, found " + describe(peek()));
+        error<errors::Code::PARSE_EXPECTED_SUBSCRIPT>(here(), describe(peek()));
         close_bracket();
         return kNoNode;
     } else {
@@ -189,7 +191,7 @@ NodeIndex Parser::subscript(NodeIndex target, uint32_t opener)
     }
 
     close_bracket();
-    if (!expect_punct("]", "to close the subscript"))
+    if (!expect_punct("]", "to close the subscript", opener))
         return kNoNode;
     return node;
 }
@@ -222,13 +224,14 @@ NodeIndex Parser::primary()
     }
 
     if (at_punct("(")) {
+        const uint32_t opener = here();
         advance();
         open_bracket();
         const NodeIndex inner = expression();
         close_bracket();
         if (inner == kNoNode)
             return kNoNode;
-        if (!expect_punct(")", "to close the expression"))
+        if (!expect_punct(")", "to close the expression", opener))
             return kNoNode;
         // NO NODE RECORDS THAT A PARENTHESIS WAS WRITTEN, and that is a
         // decision with a consequence the unparser has to carry: `(a + b) * c`
@@ -240,7 +243,7 @@ NodeIndex Parser::primary()
         return inner;
     }
 
-    error(here(), "expected an expression, found " + describe(peek()));
+    error<errors::Code::PARSE_EXPECTED_EXPRESSION>(here(), describe(peek()));
     return kNoNode;
 }
 

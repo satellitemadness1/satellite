@@ -86,12 +86,18 @@ bool Parser::take_punct(std::string_view text)
     return true;
 }
 
-bool Parser::expect_punct(std::string_view text, std::string_view what)
+bool Parser::expect_punct(std::string_view text, std::string_view what,
+                          uint32_t opener)
 {
     if (take_punct(text))
         return true;
-    error(here(), "expected '" + std::string(text) + "' " + std::string(what) +
-                      ", found " + describe(peek()));
+    error<errors::Code::PARSE_EXPECTED_PUNCT>(here(), text, what, describe(peek()));
+    // THE NOTE IS DRAWN HERE FOR ALL NINE CALLERS, and parser_internal.hpp says
+    // why it is one place: a site composing its own would have to ask first
+    // whether the error above was recorded at all.
+    if (opener != kNoOpener)
+        attach(errors::note<errors::Code::NOTE_OPENED_HERE>(span_of(opener),
+                                                            toks()[opener].text));
     return false;
 }
 
@@ -102,7 +108,7 @@ uint32_t Parser::expect_word(std::string_view what)
         advance();
         return at;
     }
-    error(here(), "expected " + std::string(what) + ", found " + describe(peek()));
+    error<errors::Code::PARSE_EXPECTED_WORD>(here(), what, describe(peek()));
     return 0;
 }
 
@@ -131,7 +137,7 @@ void Parser::end_of_statement()
     // a `for` header.
     if (at_end() || at_punct("}"))
         return;
-    error(here(), "expected the end of the statement, found " + describe(peek()));
+    error<errors::Code::PARSE_STATEMENT_ALREADY_ENDED>(here(), describe(peek()));
 }
 
 void Parser::open_bracket()
@@ -151,16 +157,34 @@ void Parser::close_bracket()
 // Errors
 // ---------------------------------------------------------------------------
 
-void Parser::error(uint32_t token, std::string reason)
+// ONE ERROR PER SYNCHRONISATION, and the rule lives in the template in
+// parser_internal.hpp. A parser that is already lost reports the wreckage
+// rather than the cause, and the first satellite's front end is the reason this
+// is a rule here: a user reading twelve messages about one missing brace fixes
+// the wrong thing first. synchronise() below clears it.
+
+errors::Span Parser::span_of(uint32_t token) const
 {
-    // ONE ERROR PER SYNCHRONISATION. A parser that is already lost reports the
-    // wreckage rather than the cause, and the first satellite's front end is
-    // the reason this is a rule here: a user reading twelve messages about one
-    // missing brace fixes the wrong thing first. synchronise() clears this.
-    if (panic_)
+    // THE WHOLE CONVERSION FROM M4's SHAPE TO M5's IS THESE THREE FIELDS, which
+    // is what M4's decision to store a token index rather than a message bought
+    // -- parser.hpp says so beside the type that used to be here.
+    const Token &at = toks()[token < toks().size() ? token : toks().size() - 1];
+    return errors::Span{at.start, at.end, at.line};
+}
+
+void Parser::attach(errors::Note remark)
+{
+    if (!fresh_)
         return;
-    panic_ = true;
-    errors_.push_back(ParseError{std::move(reason), token});
+    errors_.back().notes.push_back(std::move(remark));
+}
+
+void Parser::suggest(uint32_t token, words::PathId under)
+{
+    if (!fresh_)
+        return;
+    const std::string_view word = toks()[token].text;
+    errors_.back().suggestion = std::string(errors::suggest(under, word));
 }
 
 void Parser::synchronise()
@@ -203,7 +227,7 @@ void Parser::run()
         // consuming turns this loop into a hang, which is the one failure a
         // user cannot tell from a slow program.
         if (pos_ == before) {
-            error(here(), "expected a declaration, found " + describe(peek()));
+            error<errors::Code::PARSE_EXPECTED_DECLARATION>(here(), describe(peek()));
             advance();
         }
         if (panic_)
@@ -234,16 +258,34 @@ Parse parse(std::vector<Token> tokens, words::Words &words)
     // of the program -- it is the End the lexer appended. Parsing it would
     // produce a tree of everything before the error and no sign that the file
     // continued, which is worse than saying so.
-    for (size_t i = 0; i < result.ast.tokens().size(); i++)
-        if (result.ast.tokens()[i].kind == TokenKind::Error) {
-            result.errors.push_back(
-                ParseError{result.ast.tokens()[i].text, static_cast<uint32_t>(i)});
-            return result;
-        }
+    // AND THE LEXER IS WHAT SAYS WHAT ONE MEANS. diagnostics_of() is next door
+    // in the lexer for the reason lexer.hpp gives: which caret and which note an
+    // unterminated string wants is a fact about lexing, and a converter here
+    // would be a second module that has to know it.
+    result.errors = diagnostics_of(result.ast.tokens());
+    if (!result.errors.empty())
+        return result;
 
     Parser parser(result.ast, words);
     parser.run();
+
+    // ASKED BEFORE take_errors() AND NOT AFTER, which is a one-line ordering
+    // with a silent failure behind it: `gave_up()` answers by counting the
+    // errors, and take_errors() MOVES them out, so a parser asked afterwards
+    // has none and always says it finished. Found by the test that counts
+    // them -- thirty bad statements came back as twenty-one errors and no note.
+    const bool gave_up = parser.gave_up();
     result.errors = parser.take_errors();
+
+    // SAID, RATHER THAN SHOWN BY THE OUTPUT SIMPLY STOPPING. The parser reports
+    // at most kMaxErrors and then leaves the rest of the file unread, which
+    // MILESTONES/M4.md §6 item 8 recorded as a number in this file and in no
+    // document. It is still this file's number; what M5 adds is that the reader
+    // is told it was reached.
+    if (gave_up)
+        result.errors.push_back(
+            errors::make<errors::Code::PARSE_TOO_MANY_ERRORS>(
+                errors::kNowhere, result.errors.size()));
     return result;
 }
 

@@ -77,7 +77,15 @@ $(TESTS)/words_test/words_test: $(words_test_SRCS) $(words_test_HDRS) \
 # NOT $(SATL_OBJS), deliberately. Linking the interpreter's objects would drag
 # main.o and its window handover into a test binary, and a test that starts by
 # deciding whether to open a GUI is a test that hangs on a build machine.
-LEXER_TEST_SRCS = $(LEXER)/lexer.cpp $(STRING)/satellite_string.cpp
+#
+# AND THE REPORTER, FROM M5 ON. A Token carries an errors::Code and
+# diagnostics_of() turns an Error token into a rendered block, so the lexer no
+# longer links alone -- which is the same thing that happened to the parser when
+# it gained the tree. suggest.cpp is in the list because report.hpp includes it;
+# no lexical diagnostic offers a suggestion, and linking only what is called is
+# how a test starts failing on an unrelated edit.
+LEXER_TEST_SRCS = $(LEXER)/lexer.cpp $(STRING)/satellite_string.cpp \
+                  $(ERRORS)/report.cpp $(ERRORS)/suggest.cpp
 
 # AND ON example/hello_world.satl, which is the unusual prerequisite and is the
 # same argument words_test makes for WORD_NUMBERS.md one line up. LAYOUT.md
@@ -96,7 +104,9 @@ $(TESTS)/lexer_test/lexer_test: $(lexer_test_SRCS) $(lexer_test_HDRS) \
 # tree it builds has a printer. Named one by one for the reason the two rules
 # above give -- $(SATL_OBJS) would drag main.o and its window handover in, and a
 # test that starts by deciding whether to open a GUI hangs on a build machine.
-PARSER_TEST_SRCS = $(PARSER)/parser.cpp \
+PARSER_TEST_SRCS = $(ERRORS)/report.cpp \
+                   $(ERRORS)/suggest.cpp \
+                   $(PARSER)/parser.cpp \
                    $(PARSER)/parser_declarations.cpp \
                    $(PARSER)/parser_statements.cpp \
                    $(PARSER)/parser_control_flow.cpp \
@@ -130,7 +140,9 @@ $(TESTS)/parser_test/parser_test: $(parser_test_SRCS) $(parser_test_HDRS) \
 # interpreter's objects would drag main.o and its window handover into a test
 # binary, and a test that starts by deciding whether to open a GUI hangs on a
 # build machine.
-SATC_TEST_SRCS = $(CACHE)/paths.cpp \
+SATC_TEST_SRCS = $(ERRORS)/report.cpp \
+                 $(ERRORS)/suggest.cpp \
+                 $(CACHE)/paths.cpp \
                  $(CACHE)/write.cpp \
                  $(CACHE)/write_declarations.cpp \
                  $(CACHE)/write_expressions.cpp \
@@ -159,6 +171,42 @@ $(TESTS)/satc_test/satc_test: $(satc_test_SRCS) $(satc_test_HDRS) \
 	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/satc_test -o $@ \
 	    $(satc_test_SRCS) $(SATC_TEST_SRCS)
 
+# reporter_test LINKS THE THREE THINGS A MESSAGE IS MADE OF and nothing else,
+# and the short list is the subject showing through: DESIGN §9's reporter takes
+# a Span, which is three integers, and the text those integers index -- it knows
+# nothing about a token or a tree. So this test builds diagnostics by hand and
+# renders them, which is the only way to reach the arms no pass produces yet:
+# a call stack (M7's), a note with no span, and a span past the end of its text.
+#
+# AND IT LINKS THE LEXER AND THE PARSER TOO, because half of what M5 is for is
+# that the two of them now report through this module -- a reporter that is only
+# ever tested against diagnostics the test wrote itself is a reporter tested
+# against nobody's real output.
+REPORTER_TEST_SRCS = $(ERRORS)/report.cpp \
+                     $(ERRORS)/suggest.cpp \
+                     $(ERRORS)/dump.cpp \
+                     $(PARSER)/parser.cpp \
+                     $(PARSER)/parser_declarations.cpp \
+                     $(PARSER)/parser_statements.cpp \
+                     $(PARSER)/parser_control_flow.cpp \
+                     $(PARSER)/parser_expressions.cpp \
+                     $(PARSER)/parser_types.cpp \
+                     $(TREE)/ast.cpp \
+                     $(TREE)/unparse.cpp \
+                     $(LEXER)/lexer.cpp \
+                     $(STRING)/satellite_string.cpp
+
+# AND ON errors.def, which is the unusual prerequisite and is the same argument
+# words_test makes for WORD_NUMBERS.md. This test's subject is the message
+# registry, so the registry is an input to it in exactly the way a source file
+# is: adding a code must re-run the test that counts them.
+$(TESTS)/reporter_test/reporter_test: $(reporter_test_SRCS) $(reporter_test_HDRS) \
+                                      $(REPORTER_TEST_SRCS) $(ERRORS)/errors.def \
+                                      $(WORDS)/words.def $(HDRS) \
+                                      $(wildcard example/*.satl) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/reporter_test -o $@ \
+	    $(reporter_test_SRCS) $(REPORTER_TEST_SRCS)
+
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
 #
@@ -171,13 +219,15 @@ test: $(TESTBINS)
 	./$(TESTS)/lexer_test/lexer_test example/hello_world.satl
 	./$(TESTS)/parser_test/parser_test example
 	./$(TESTS)/satc_test/satc_test example
+	./$(TESTS)/reporter_test/reporter_test example
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
 lexer_test: $(TESTS)/lexer_test/lexer_test
 parser_test: $(TESTS)/parser_test/parser_test
 satc_test: $(TESTS)/satc_test/satc_test
+reporter_test: $(TESTS)/reporter_test/reporter_test
 
-TESTALIASES = words_test lexer_test parser_test satc_test
+TESTALIASES = words_test lexer_test parser_test satc_test reporter_test
 
 .PHONY: test $(TESTALIASES)

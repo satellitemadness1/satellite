@@ -15,6 +15,7 @@
 #include "parser/parser_internal.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "lexical_analyzer/lexer.hpp"
 #include "satellite_words/words.hpp"
 
@@ -33,6 +34,7 @@ uint32_t Parser::take_statement_keyword()
 
 NodeIndex Parser::condition(const char *after)
 {
+    const uint32_t opener = here();
     if (!expect_punct("(", after))
         return kNoNode;
     open_bracket();
@@ -40,7 +42,7 @@ NodeIndex Parser::condition(const char *after)
     close_bracket();
     if (node == kNoNode)
         return kNoNode;
-    if (!expect_punct(")", "to close the condition"))
+    if (!expect_punct(")", "to close the condition", opener))
         return kNoNode;
     return node;
 }
@@ -86,8 +88,7 @@ NodeIndex Parser::if_stmt()
     else if (opening() == Segment1::Statement)
         otherwise = statement();
     else {
-        error(here(), "expected a block or another satellite.statement.if after "
-                      "satellite.statement.else");
+        error<errors::Code::PARSE_ELSE_NEEDS_A_BLOCK>(here(), describe(peek()));
         return kNoNode;
     }
     if (otherwise == kNoNode)
@@ -114,6 +115,7 @@ NodeIndex Parser::for_stmt()
 {
     const uint32_t at = take_statement_keyword();
 
+    const uint32_t opener = here();
     if (!expect_punct("(", "after satellite.statement.for"))
         return kNoNode;
     open_bracket();
@@ -164,7 +166,7 @@ NodeIndex Parser::for_stmt()
     }
 
     close_bracket();
-    if (!expect_punct(")", "to close the for loop's head"))
+    if (!expect_punct(")", "to close the for loop's head", opener))
         return kNoNode;
 
     const NodeIndex body = block();

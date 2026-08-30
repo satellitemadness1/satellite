@@ -64,6 +64,11 @@ std::string usage_text()
            "       satl --satc <file>         the same file as a .satc: its\n"
            "                                  words as their numbers, read\n"
            "                                  from the cache or written to it\n"
+           "       satl --check <file>        say everything wrong with a file\n"
+           "                                  and print nothing else\n"
+           "       satl --errors              every code satl can report, and\n"
+           "                                  what each one says\n"
+           "       satl --errors <code>       just that one\n"
            "       satl --version, -V         what this build is, and what\n"
            "                                  built it\n"
            "       satl --help, -h            this list\n"
@@ -81,7 +86,12 @@ std::string usage_text()
            "turn it off outright.\n"
            "\n"
            "Milestones in brackets have not landed. satl says so when asked to\n"
-           "do one rather than failing as though the command were wrong.\n";
+           "do one rather than failing as though the command were wrong.\n"
+           "\n"
+           "satl exits 0 when what was asked for happened, 1 when the file it\n"
+           "was given is not a satellite program, 2 when this command line is\n"
+           "not one it has, and 3 when the request is right and the milestone\n"
+           "has not landed.\n";
 }
 
 } // namespace satellite

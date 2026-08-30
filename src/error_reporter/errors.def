@@ -1,0 +1,271 @@
+// Every message satl can say about a program, as data. DESIGN §9 is the
+// specification and this file is the half a compiler can check.
+//
+// THERE IS NO GENERATOR AND NO BUILD STEP. This is an X-macro list, the same
+// mechanism words.def uses and FORMAT/CXX.md §7 describes: a consumer defines
+// SAT_CODE, includes this file, and undefines it again. The enum, the sentence
+// table, the severity table, the arity table, the invariants and
+// `satl --errors` therefore all come from ONE list and cannot drift apart.
+//
+// WHAT THE FIRST SATELLITE DID INSTEAD IS THE REASON THIS FILE EXISTS. DESIGN
+// §9 counts it: 199 `fail()` call sites composing 224 distinct string literals
+// between them, with no codes, no stack and no suggestions. A message that
+// lives at its call site cannot be looked up, cannot be counted, and cannot be
+// found again when somebody wants to know whether two sites say the same thing
+// in two ways. Every row below is one sentence in one place.
+
+// --- how a row is read ------------------------------------------------------
+//
+//     SAT_CODE(number, ident, severity, text)
+//
+// THE NUMBER IS A COLUMN HERE AND IT IS A POSITION IN words.def, and the
+// difference is deliberate rather than an inconsistency between two registries.
+// A word's number is what a program MEANS -- DESIGN §4.3 freezes registration
+// order because inserting a row silently renumbers every sibling and every
+// already-written program with it. An error code is what a PERSON LOOKS UP: it
+// has to survive a row being deleted, has to leave gaps where a milestone
+// reserved a block, and has to be assignable out of order. Those are opposite
+// requirements and they get opposite encodings. What replaces "a number is a
+// position" as the safety net is words_invariants.hpp's trick pointed at this
+// table instead: the numbers must ASCEND, which catches an insertion, and the
+// switch in codes.hpp catches a duplicate as `error: duplicate case value`.
+//
+// `severity` is one of two things:
+//
+//     SAT_ERROR   something is wrong and satl did not do what was asked
+//     SAT_NOTE    a second place worth looking at, or a fact about the first
+//
+// A NOTE IS A ROW HERE AND NOT A STRING AT A CALL SITE, which is the whole
+// argument of this file applied to the half that is easiest to exempt from it.
+// DESIGN §9 asks for "notes carrying their own spans"; a note whose sentence
+// lived beside the error that raises it would be the 224 literals again, at
+// half the volume and with none of the visibility.
+//
+// `text` is the sentence, with `{1}`, `{2}`, `{3}` where the site fills a hole.
+// THE ARITY IS NOT A COLUMN -- it is the highest hole in the text, counted at
+// compile time, and codes.hpp asserts the holes run 1..N with none missing. A
+// column would be a second place the same fact lives, and the one that goes
+// stale is always the column.
+//
+// AND THE ARITY IS CHECKED AT THE CALL SITE, which is the property this whole
+// arrangement is for: errors::make<Code::X>(span, a, b) is a template, so a
+// site that passes two arguments to a three-hole sentence is a compile error
+// naming the code. The first satellite could not have had that check, because
+// the sentence was the argument.
+
+// --- the blocks -------------------------------------------------------------
+//
+// The first two digits say WHO IS COMPLAINING, which is what makes a code worth
+// four digits rather than two. A reader who has S0231 in front of them knows it
+// came from the parser before they look it up, and a milestone that adds codes
+// takes a block instead of taking the next free number and interleaving itself
+// with everybody else.
+//
+//     S01xx   the lexer                     DESIGN §5      M3
+//     S02xx   the parser                    DESIGN §6      M4
+//     S03xx   the `.satc` cache             SATC.md        M4.5
+//     S04xx   the file satl was given                      M5
+//     S05xx   resolve -- names and slots    DESIGN §7      M6      reserved
+//     S06xx   numbers                       DESIGN §8.1    M6.5    reserved
+//     S07xx   the evaluator                                M7/M8   reserved
+//
+// The reserved blocks are written down and NOT populated. A block reserved in a
+// comment costs nothing and stops the thing this file exists to stop, which is
+// two milestones reaching for the same number on the same day.
+
+#ifndef SAT_CODE
+#define SAT_CODE(number, ident, severity, text)
+#endif
+
+// The two severities, as values, so the numbers live here and only there --
+// read back as errors::kError and errors::kNote. NOT #undef'd at the bottom
+// with the macro above, for that reason.
+#ifndef SAT_ERROR
+#define SAT_ERROR 1
+#endif
+#ifndef SAT_NOTE
+#define SAT_NOTE 0
+#endif
+
+// --- S01xx -- the lexer -----------------------------------------------------
+//
+// ONE ERROR, AND THAT IS THE LEXER'S DESIGN RATHER THAN AN OMISSION. DESIGN
+// §5.6 says a byte the code table has no entry for becomes a Punct holding that
+// byte rather than an error, "because the lexer's job is to describe the file,
+// and deciding that a character is meaningless is the parser's". So the only
+// thing that can stop a lex is a string literal with no end.
+
+SAT_CODE(101, LEX_UNTERMINATED_STRING, SAT_ERROR,
+         "this `\"` opens a string literal and nothing closes it before the "
+         "end of the line -- put a `\"` where the text is meant to stop")
+
+SAT_CODE(102, LEX_LINE_ENDS_HERE, SAT_NOTE,
+         "the line ends here, and a string literal cannot carry on to the "
+         "next one")
+
+// --- S02xx -- the parser ----------------------------------------------------
+//
+// 200-209 is the cursor and the four loops, 210-219 statements, 220-229 types,
+// 230-239 expressions, 240-249 names. The gaps are on purpose; see the block
+// note above.
+
+SAT_CODE(201, PARSE_EXPECTED_PUNCT, SAT_ERROR,
+         "expected `{1}` {2}, and found {3} instead")
+
+SAT_CODE(202, PARSE_EXPECTED_WORD, SAT_ERROR,
+         "expected {1}, and found {2} instead")
+
+SAT_CODE(203, PARSE_STATEMENT_ALREADY_ENDED, SAT_ERROR,
+         "a statement ends at the end of its line, and {1} is a second one on "
+         "the same line -- put it on a line of its own")
+
+SAT_CODE(204, PARSE_EXPECTED_DECLARATION, SAT_ERROR,
+         "a file holds satellite.include, satellite.capsule, "
+         "satellite.spacesuit and satellite.library.<name>, and {1} is none of "
+         "them")
+
+SAT_CODE(205, PARSE_EXPECTED_STATEMENT, SAT_ERROR,
+         "a block holds statements, and {1} does not begin one")
+
+SAT_CODE(206, PARSE_EXPECTED_SUIT_ITEM, SAT_ERROR,
+         "a spacesuit holds fields, capsules, and satellite.protected or "
+         "satellite.public sections, and {1} is none of them")
+
+SAT_CODE(207, PARSE_EXPECTED_FIELD_OR_CAPSULE, SAT_ERROR,
+         "expected a field or a satellite.capsule, and found {1}")
+
+// SAID RATHER THAN SHOWN BY THE OUTPUT SIMPLY STOPPING. parser.cpp reports at
+// most 20 errors and then leaves the rest of the file unread; without this the
+// twenty-first problem is invisible and the file looks understood.
+SAT_CODE(208, PARSE_TOO_MANY_ERRORS, SAT_NOTE,
+         "{1} problems were reported and the rest of the file was not read -- "
+         "fix these and run it again")
+
+SAT_CODE(210, PARSE_STATEMENT_NEEDS_A_WORD, SAT_ERROR,
+         "satellite.statement is written with one of if, else, while or for "
+         "after it")
+
+// NAMED RATHER THAN LUMPED IN WITH "no such statement", because a stray `else`
+// is a real thing a person writes and the useful sentence is about the `if`
+// and not about the word.
+SAT_CODE(211, PARSE_ELSE_WITHOUT_IF, SAT_ERROR,
+         "this satellite.statement.else has no satellite.statement.if in front "
+         "of it to belong to")
+
+SAT_CODE(212, PARSE_NO_SUCH_STATEMENT, SAT_ERROR,
+         "no statement is spelled `{1}` -- satellite.statement has if, else, "
+         "while and for")
+
+SAT_CODE(213, PARSE_DECLARATION_IN_BLOCK, SAT_ERROR,
+         "satellite.{1} is a declaration and goes at the top of a file, not "
+         "inside a block")
+
+SAT_CODE(214, PARSE_ELSE_NEEDS_A_BLOCK, SAT_ERROR,
+         "satellite.statement.else is followed by a block or by another "
+         "satellite.statement.if, and found {1}")
+
+SAT_CODE(215, PARSE_ASSIGN_TARGET, SAT_ERROR,
+         "the left of an assignment has to name somewhere to write, and {1} "
+         "does not")
+
+SAT_CODE(220, PARSE_NOT_A_TYPE, SAT_ERROR,
+         "satellite.{1} is not a type -- a type path is "
+         "satellite.variable.<name> or satellite.container.<name>")
+
+SAT_CODE(221, PARSE_EXPECTED_TYPE, SAT_ERROR,
+         "a type is satellite.variable.<name>, satellite.container.<name>, "
+         "satellite itself, or the name of a spacesuit -- and {1} is none of "
+         "them")
+
+// `>=` IS ONE TOKEN AND DESIGN §5.5 IS WHY IT STAYS ONE. The lexer matches it
+// greedily and lexer.hpp's split_punct is deliberately never called, so the fix
+// belongs in the program: a space.
+SAT_CODE(222, PARSE_GENERIC_CLOSE_GE, SAT_ERROR,
+         "expected `>` to close the type's arguments and found `>=`, which is "
+         "one token -- write a space between the two characters")
+
+SAT_CODE(230, PARSE_EXPECTED_SUBSCRIPT, SAT_ERROR,
+         "expected an index or a slice inside the brackets, and found {1}")
+
+SAT_CODE(231, PARSE_EXPECTED_EXPRESSION, SAT_ERROR,
+         "expected an expression -- a number, a string, a name, a path, or one "
+         "in brackets -- and found {1}")
+
+SAT_CODE(240, PARSE_NOT_A_LANGUAGE_CAPSULE, SAT_ERROR,
+         "satellite.{1} is not a capsule the language owns -- the one reserved "
+         "capsule name is satellite.main")
+
+SAT_CODE(241, PARSE_NAME_IS_LANGUAGE_OWNED, SAT_ERROR,
+         "the language already owns the name {1} under {2}, so it cannot be a "
+         "{3}'s name")
+
+SAT_CODE(242, PARSE_NAME_ALREADY_DEFINED, SAT_ERROR,
+         "{1} is already the name of something in this program, and a name is "
+         "declared once")
+
+SAT_CODE(243, PARSE_NAME_UNNUMBERABLE, SAT_ERROR,
+         "{1} could not be given a number, which is satl's own limit and not "
+         "anything wrong with this program")
+
+// The parser's notes. 290-299, at the end of the block rather than beside the
+// errors that raise them, because a note is reused: 290 is attached by nine
+// call sites and belongs to none of them.
+SAT_CODE(290, NOTE_OPENED_HERE, SAT_NOTE,
+         "this `{1}` is the one that is not closed")
+
+SAT_CODE(291, NOTE_FIRST_DECLARED_HERE, SAT_NOTE,
+         "{1} was declared here")
+
+// --- S03xx -- the `.satc` cache ---------------------------------------------
+//
+// SATC.md §4's four ways a cache file can be wrong, plus the sentence all four
+// end with. M4.5 wrote these as string literals and said in its own header that
+// "codes are M5's to design with all of them in view"; this is that.
+//
+// NONE OF THEM CARRIES A SPAN, and the reason is worth stating because the
+// machinery is right here and unused. A `.satc` is not a file the user wrote --
+// read.cpp's own argument -- so what they can act on is the file as a whole,
+// which is exactly what the location line already names. A caret pointing at
+// byte 412 of a generated file tells somebody to read a file that the next
+// sentence tells them to delete.
+
+SAT_CODE(301, SATC_NOT_A_SATC, SAT_ERROR,
+         "this does not begin with a `satc` line, so it is not a `.satc` at all")
+
+SAT_CODE(302, SATC_WRONG_VERSION, SAT_ERROR,
+         "this is version {1} of the `.satc` format and this satl reads "
+         "version {2}, so it was written by a different satl")
+
+SAT_CODE(303, SATC_NO_BLANK_LINE, SAT_ERROR,
+         "this has no blank line after its three header lines, so where the "
+         "header ends cannot be told")
+
+SAT_CODE(304, SATC_DID_NOT_PARSE, SAT_ERROR,
+         "this did not parse: {1}")
+
+SAT_CODE(305, SATC_MARK_WITHOUT_A_NUMBER, SAT_ERROR,
+         "this has a `{1}` with no number after it, which is not something the "
+         "writer can produce")
+
+SAT_CODE(306, SATC_UNKNOWN_PATH, SAT_ERROR,
+         "this names `{1}`, which this satl's numbering does not have")
+
+SAT_CODE(390, NOTE_SATC_IGNORED, SAT_NOTE,
+         "it was ignored and the source was read instead, so nothing is wrong "
+         "with your program -- deleting the file is safe, because a `.satc` is "
+         "only a cache")
+
+// --- S04xx -- the file satl was given ---------------------------------------
+//
+// NOT THE COMMAND LINE, which is a different interface and keeps its own words
+// in programs/opening.cpp. A code and a span are for something INSIDE a file;
+// `satl --frobnicate` has no file and no place in one, and giving it a code
+// would be a lookup number for a sentence that already names its own fix.
+// This block is the seam between the two: the command line was well formed and
+// named a file, and the file is where it stopped.
+
+SAT_CODE(401, FILE_UNREADABLE, SAT_ERROR,
+         "this file could not be read -- check the path, and that this user is "
+         "allowed to open it")
+
+#undef SAT_CODE

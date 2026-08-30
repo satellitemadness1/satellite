@@ -19,6 +19,7 @@
 #include "parser/parser_internal.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "lexical_analyzer/lexer.hpp"
 #include "satellite_words/words.hpp"
 
@@ -45,9 +46,14 @@ NodeIndex Parser::top_level()
     // an unfinished feature, it is a program with no capsule to run -- so the
     // sentence names the four forms rather than describing the token that was
     // found.
-    error(here(), "a file holds satellite.include, satellite.capsule, "
-                  "satellite.spacesuit and satellite.library.<name> -- found " +
-                      describe(peek()));
+    error<errors::Code::PARSE_EXPECTED_DECLARATION>(here(), describe(peek()));
+    // `satellite.capsul` IS THE CASE THIS EXISTS FOR, and the guard is what
+    // keeps it from being noise: a suggestion is only offered when what was
+    // written IS a `satellite.` path, because DESIGN §4.6's edit distance is
+    // over one node's children and a bare word is not a segment under
+    // `satellite` at all.
+    if (is_reserved_word(peek()) && at_punct(".", 1) && at_word(2))
+        suggest(here() + 2, static_cast<words::PathId>(words::NodeId::SATELLITE));
     return kNoNode;
 }
 
@@ -58,6 +64,7 @@ NodeIndex Parser::include_decl()
     advance();  // .
     advance();  // include
 
+    const uint32_t opener = here();
     if (!expect_punct("(", "after satellite.include"))
         return kNoNode;
     open_bracket();
@@ -65,7 +72,7 @@ NodeIndex Parser::include_decl()
     close_bracket();
     if (what == kNoNode)
         return kNoNode;
-    if (!expect_punct(")", "to close satellite.include"))
+    if (!expect_punct(")", "to close satellite.include", opener))
         return kNoNode;
     return ast_.add(NodeKind::Include, at, what);
 }
@@ -89,9 +96,8 @@ NodeIndex Parser::capsule_decl(words::PathId owner)
         name = here();
         path = words_.find(words::NodeId::SATELLITE, peek().text);
         if (path == words::kNoPath || !words::is_language_word(path)) {
-            error(name, "satellite." + peek().text +
-                            " is not a capsule the language owns -- the reserved "
-                            "capsule name is satellite.main");
+            error<errors::Code::PARSE_NOT_A_LANGUAGE_CAPSULE>(name, peek().text);
+            suggest(name, static_cast<words::PathId>(words::NodeId::SATELLITE));
             return kNoNode;
         }
         advance();
@@ -141,13 +147,14 @@ NodeIndex Parser::spacesuit_decl()
     // leaving them out is.
     NodeIndex super = kNoNode;
     if (at_punct("(")) {
+        const uint32_t opener = here();
         advance();
         const uint32_t super_name = expect_word("the name of the spacesuit this "
                                                 "one extends");
         if (panic_)
             return kNoNode;
         super = ast_.add(NodeKind::Name, super_name);
-        if (!expect_punct(")", "to close the superclass"))
+        if (!expect_punct(")", "to close the superclass", opener))
             return kNoNode;
     }
 
@@ -180,6 +187,7 @@ ListId Parser::suit_body(words::PathId owner)
     // example/class_test.satl writes it that way. block() has the argument for
     // why crossing this newline cannot swallow anything.
     skip_newlines();
+    const uint32_t opener = here();
     if (!expect_punct("{", "to open the spacesuit"))
         return kNoList;
 
@@ -195,8 +203,7 @@ ListId Parser::suit_body(words::PathId owner)
         if (item != kNoNode)
             items.push_back(item);
         if (pos_ == before) {
-            error(here(), "expected a member or a satellite.protected or "
-                          "satellite.public section, found " + describe(peek()));
+            error<errors::Code::PARSE_EXPECTED_SUIT_ITEM>(here(), describe(peek()));
             advance();
         }
         if (panic_)
@@ -204,7 +211,7 @@ ListId Parser::suit_body(words::PathId owner)
         skip_newlines();
     }
 
-    if (!expect_punct("}", "to close the spacesuit"))
+    if (!expect_punct("}", "to close the spacesuit", opener))
         return kNoList;
     return ast_.add_list(items);
 }
@@ -240,8 +247,7 @@ NodeIndex Parser::suit_member(words::PathId owner)
         return var_decl(declared);
     }
 
-    error(here(), "expected a field or a satellite.capsule, found " +
-                      describe(peek()));
+    error<errors::Code::PARSE_EXPECTED_FIELD_OR_CAPSULE>(here(), describe(peek()));
     return kNoNode;
 }
 
@@ -292,19 +298,32 @@ words::PathId Parser::define_name(words::PathId owner, uint32_t token,
 
     if (const words::PathId taken = words_.find(parent, name);
         taken != words::kNoPath) {
-        if (words::is_language_word(taken))
-            error(token, "the language already owns the name " + std::string(name) +
-                             " under " + std::string(words::path_text(parent)) +
-                             ", so it cannot be a " + what + "'s name");
-        else
-            error(token, std::string(name) + " is already the name of something "
-                                             "in this program");
+        if (words::is_language_word(taken)) {
+            error<errors::Code::PARSE_NAME_IS_LANGUAGE_OWNED>(
+                token, name, words::path_text(parent), what);
+        } else {
+            error<errors::Code::PARSE_NAME_ALREADY_DEFINED>(token, name);
+            // THE NOTE THAT NEEDED A TABLE, and it is the reason `declared_at_`
+            // exists. "declared twice" is the one diagnostic in this parser
+            // where the useful second place is not a bracket a few tokens back
+            // but a line somewhere else in the file, which is exactly what
+            // DESIGN §9 means by "notes carrying their own spans".
+            for (const auto &[id, at] : declared_at_)
+                if (id == taken) {
+                    attach(errors::note<errors::Code::NOTE_FIRST_DECLARED_HERE>(
+                        span_of(at), name));
+                    break;
+                }
+        }
         return words::kNoPath;
     }
 
     const words::PathId defined = words_.define(parent, name);
-    if (defined == words::kNoPath)
-        error(token, std::string(name) + " could not be given a number");
+    if (defined == words::kNoPath) {
+        error<errors::Code::PARSE_NAME_UNNUMBERABLE>(token, name);
+        return words::kNoPath;
+    }
+    declared_at_.emplace_back(defined, token);
     return defined;
 }
 

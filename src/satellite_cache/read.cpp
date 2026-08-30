@@ -25,13 +25,20 @@
 // WHICH IS THE MILESTONE'S REASON TO EXIST AT THIS POINT IN THE PLAN. PLAN's
 // M4.5 paragraph puts the cache before M5 "because a malformed `.satc` is the
 // first thing in the language that has to say something to a user in plain
-// words", and Reading::note is that thing. It is written here as a full
-// sentence naming the fix, which is DESIGN §9's model, and it is not a code --
-// codes are M5's to design with all of them in view.
+// words", and Reading::note is that thing.
+//
+// M5 TOOK THE SENTENCES AND LEFT THE ORDER, which is exactly the split that
+// paragraph predicted. This file used to compose four string literals and an
+// `ignored()` helper that appended a fifth to each of them; they are now
+// errors.def's S03xx block, one row each, and the fifth is a NOTE that all four
+// attach rather than a suffix each of them remembers to add. What is still
+// here, and is what this file was always about, is WHICH CHECK RUNS FIRST and
+// which failures are allowed to say anything at all.
 
 #include "satellite_cache/cache.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "parser/parser.hpp"
 #include "satellite_words/words.hpp"
 
@@ -76,18 +83,21 @@ std::string next_line(const std::string &text, size_t &at)
     return line;
 }
 
-// The sentence every note ends with.
+// The note every one of these ends with.
 //
 // SAYING WHAT HAPPENS NEXT IS THE WHOLE POINT OF SAYING ANYTHING. A person told
 // only that a file is damaged has been given a job; a person told that it was
 // ignored, that the program ran anyway, and that deleting it is safe has been
 // given a fact. DESIGN §9's model is a full sentence that names the fix, and
 // for a cache the fix is almost always "nothing".
-std::string ignored()
+//
+// A NOTE AND NOT A SUFFIX, AS OF M5. It was a string this file appended to each
+// of the four sentences, which meant four places had to remember to append it;
+// it is one row in errors.def now, attached the way DESIGN §9's notes are, and
+// the renderer is what decides how it sits under the error.
+errors::Note ignored()
 {
-    return " It was ignored and the source was read instead, so nothing is "
-           "wrong with your program; deleting the file is safe, because a "
-           "`.satc` is only a cache.";
+    return errors::note<errors::Code::NOTE_SATC_IGNORED>(errors::kNowhere);
 }
 
 } // namespace
@@ -106,16 +116,16 @@ Reading read_text(const std::string &text, const Source &source,
     const std::string format = next_line(text, at);
     if (format.compare(0, 5, "satc ") != 0) {
         out.why = Miss::MALFORMED;
-        out.note = "does not begin with a `satc` line, so it is not a `.satc` "
-                   "at all." + ignored();
+        out.note = errors::make<errors::Code::SATC_NOT_A_SATC>(errors::kNowhere);
+        out.note.notes.push_back(ignored());
         return out;
     }
     const std::string version = format.substr(5);
     if (version != std::to_string(kFormatVersion)) {
         out.why = Miss::REFUSED;
-        out.note = "is version " + version + " of the `.satc` format and this "
-                   "satl reads version " + std::to_string(kFormatVersion) +
-                   ", so it was written by a different satl." + ignored();
+        out.note = errors::make<errors::Code::SATC_WRONG_VERSION>(
+            errors::kNowhere, version, kFormatVersion);
+        out.note.notes.push_back(ignored());
         return out;
     }
 
@@ -139,18 +149,18 @@ Reading read_text(const std::string &text, const Source &source,
 
     if (next_line(text, at) != std::string()) {
         out.why = Miss::MALFORMED;
-        out.note = "has no blank line after its three header lines, so where "
-                   "the header ends cannot be told." + ignored();
+        out.note = errors::make<errors::Code::SATC_NO_BLANK_LINE>(errors::kNowhere);
+        out.note.notes.push_back(ignored());
         return out;
     }
 
     std::string program;
     if (!unnumber(text.substr(at), program, out.note)) {
-        // THE CLAUSE COMES FROM unnumber() AND THE FRAME COMES FROM HERE, which
-        // is the split that keeps a text pass out of the business of talking to
-        // a person: it knows that `#1.99.1` names nothing, and this file knows
+        // THE CODE COMES FROM unnumber() AND THE NOTE COMES FROM HERE, which is
+        // the split that keeps a text pass out of the business of talking to a
+        // person: it knows that `#1.99.1` names nothing, and this file knows
         // what happens next and that the user has nothing to do about it.
-        out.note += ignored();
+        out.note.notes.push_back(ignored());
         out.why = Miss::MALFORMED;
         return out;
     }
@@ -172,8 +182,12 @@ Reading read_text(const std::string &text, const Source &source,
         // about the machine -- a truncated write, a damaged disk, an edit by
         // hand -- and never about the program the user wrote.
         out.why = Miss::MALFORMED;
-        out.note = "did not parse: " + out.program.errors.front().reason + "." +
-                   ignored();
+        // THE PARSER'S SENTENCE QUOTED AND NOT RENDERED, which is the one
+        // caller errors::sentence() exists for. A caret drawn into a `.satc`
+        // would point at a line of a file the next sentence says to delete.
+        out.note = errors::make<errors::Code::SATC_DID_NOT_PARSE>(
+            errors::kNowhere, errors::sentence(out.program.errors.front()));
+        out.note.notes.push_back(ignored());
         return out;
     }
 

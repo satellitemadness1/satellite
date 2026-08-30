@@ -11,6 +11,7 @@
 #include "satc_test.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "parser/parser.hpp"
 #include "satellite_cache/cache.hpp"
 #include "satellite_words/words.hpp"
@@ -41,7 +42,8 @@ std::string body(const std::string &source)
     // would let a mistyped fixture pass a check by accident -- an empty line
     // contains no wrong number.
     if (!parsed.ok()) {
-        check(false, "fixture did not parse: " + parsed.errors.front().reason);
+        check(false, "fixture did not parse: " +
+                         satellite::errors::sentence(parsed.errors.front()));
         return std::string();
     }
     return satellite::cache::body_text(parsed.ast, words);

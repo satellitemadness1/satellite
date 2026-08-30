@@ -25,6 +25,7 @@
 // is enforced rather than remembered.
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "parser/parser.hpp"
 #include "satellite_words/words.hpp"
 
@@ -105,11 +106,22 @@ struct Reading {
     // miss, because "there was nothing at this path" is the useful half of it.
     std::string file;
 
-    // Plain words, and empty unless `why` is REFUSED or MALFORMED -- DESIGN §9
-    // asks for "full sentences that name the fix" and §4 asks for a note rather
-    // than silence. Nothing else here ever produces one: a first run has
-    // nothing to say and a stale file is the cache working.
-    std::string note;
+    // Plain words, and Code::NONE unless `why` is REFUSED or MALFORMED -- §4
+    // asks for a note rather than silence, and nothing else here ever produces
+    // one: a first run has nothing to say and a stale file is the cache
+    // working.
+    //
+    // A DIAGNOSTIC AS OF M5, WHERE IT WAS A SENTENCE AT M4.5. read.cpp's own
+    // header said at the time that it wrote "a full sentence naming the fix,
+    // which is DESIGN §9's model, and it is NOT a code -- codes are M5's to
+    // design with all of them in view." They are designed; errors.def's S03xx
+    // block is where these four sentences live now, and rendering them is the
+    // reporter's.
+    //
+    // IT CARRIES NO SPAN, and errors.def says why beside the block: a `.satc`
+    // is not a file the user wrote, so what they can act on is the file and not
+    // a byte in it -- which is what the location line already names.
+    errors::Diagnostic note;
 
     // The program, valid only on a hit. It carries its own errors like any
     // other parse, but a `.satc` that does not parse never gets here -- it is
@@ -134,10 +146,11 @@ Reading read_text(const std::string &text, const Source &source,
 // number_text() run backwards over a whole body: every `#1.5.1` becomes
 // `satellite.console.display` and everything else is left exactly as it is.
 // False when the body holds a mark the numbering cannot account for, with `why`
-// set to a clause naming what was wrong -- read.cpp is what puts the frame
-// around it, because what happens next is the reading order's fact and not this
-// pass's.
-bool unnumber(const std::string &body, std::string &into, std::string &why);
+// set to the S03xx code for which of the two it was -- read.cpp is what adds
+// the note about what happens next, because that is the reading order's fact
+// and not this pass's.
+bool unnumber(const std::string &body, std::string &into,
+              errors::Diagnostic &why);
 
 // SATC.md §5: write `<name>.<pid>.tmp`, `fsync`, `rename`. False when it could
 // not be done, which is not an error and is not reported -- "a read-only

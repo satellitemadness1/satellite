@@ -221,9 +221,9 @@ Two things not to break:
 **Ported at M2 on 2026-08-28.** Until then this section opened *"there is no test
 infrastructure in this tree -- not a target, not a directory, not a harness"*, and
 that was literally true. There is now `make test`, `make_support/065-tests.mk`, and
-**four suites — `tests/words_test/` (M2), `tests/lexer_test/` (M3),
-`tests/parser_test/` (M4) and `tests/satc_test/` (M4.5)**. Everything
-below is what was ported, and why.
+**five suites — `tests/words_test/` (M2), `tests/lexer_test/` (M3),
+`tests/parser_test/` (M4), `tests/satc_test/` (M4.5) and `tests/reporter_test/`
+(M5)**. Everything below is what was ported, and why.
 
 `old_versions/first_satellite/make_support/120-tests.mk` plus `TESTNAMES` in its
 `070-directories.mk` is the original. The shape:
@@ -348,6 +348,30 @@ fixpoint and not equality with the input** — comments are discarded, blank lin
 were never tokens, and a redundant bracket does not survive. A test written
 against equality would have to be weakened every time the printer got better.
 
+### 6.3 A test that renders what nothing produces — what M5 added
+
+*(2026-08-30.)* Every rule above is about testing a pass against real input.
+`reporter_test` needs one more, and it is the rule that keeps a shape honest
+while half of it has no producer: **build the input by hand and render it.**
+
+DESIGN §9's diagnostic has four fields and one of them, `vector<FrameRef>`, has
+no producer until M7's evaluator. Three more arms of the renderer are reachable
+only by mistake — a note with no span, a span past the end of its text, a hole
+with no argument. All four are drawn by `render()`, which §9 says must be the
+only place anything is drawn, so **a branch nothing exercises is a branch that
+does not work** and will be discovered by whoever first raises a real one.
+
+What makes it possible is a module boundary rather than a testing trick: the
+reporter takes a `Span` — three integers — and the text those integers index, and
+knows nothing about a token or a tree. A test can therefore construct any
+diagnostic the type can hold. That is worth designing for on purpose.
+
+**And it is not a substitute for the other kind.** The same suite links the lexer
+and the parser and asserts one code per row of `errors.def` those two own,
+through `parse()`, because a registry adds a defect bespoke strings did not have:
+a site raising the *wrong row*, which renders perfectly and describes a different
+problem. `MILESTONES/M5.md` §5 is the argument.
+
 ## 7. The X-macro registry — the mechanism M2 ported
 
 `old_versions/first_satellite/src/bytecode_format/` is 1133 lines across five files
@@ -402,6 +426,27 @@ has to be unique — hence `TRUE_`, `AND_`.
 included in an order that compiles, with the include path and its meaning unchanged.
 `format.def` is **not** split — it is the permanent exception, and each part
 re-expands the lists it needs.
+
+**M5 IS THE SECOND USER AND IT ENCODES ITS NUMBERS THE OTHER WAY ROUND.**
+*(2026-08-30.)* `src/error_reporter/errors.def` is the same mechanism —
+`SAT_CODE(number, ident, severity, text)`, expanded five ways, no generator —
+with one deliberate difference: **the number is a column here and a position in
+`words.def`.** A word's number is what a program *means*, so DESIGN §4.3 freezes
+registration order and a duplicate becomes unrepresentable; an error code is what
+a person *looks up*, so it must survive a deletion, leave gaps for a reserved
+block, and be assignable out of order. Opposite requirements, opposite encodings.
+What replaces "unrepresentable" is a `static_assert` that the numbers **ascend**,
+plus the switch trick above, which catches a duplicate as `error: duplicate case
+value` naming both rows.
+
+**It also shows what a `.def` can check that a column cannot.** A sentence's
+arity is the highest `{n}` in its text, counted at compile time rather than
+declared beside it — so there is no column to go stale — and
+`errors::make<Code::X>` is a template on the code, which makes the arity a
+`static_assert` **at the call site**. `holes_are_dense()` is the one that earns
+its place: a sentence rewritten from `"{1} under {2}"` to `"{2}"` keeps arity 2
+and silently ignores the first argument, and no reader of either half alone can
+see it.
 
 **What not to carry over.** The `bytecode_format` name is wrong — it is a word-and-path
 registry, and its new home is `src/satellite_words/` (PLAN §7). The four-segment

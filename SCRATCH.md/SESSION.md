@@ -1106,6 +1106,77 @@ was measured and each was wrong for a reason worth not repeating.
 - Everything from M3 on. **M3, the lexer, is next**, and it owns
   `satellite.variable.binary` and `.hex`, whose literals the lexer decides.
 
+## 5.20 2026-08-30 — M5 LANDED, and what is left after it
+
+**Read this first if you are picking the work up cold.** The milestone's own
+record is [MILESTONES/M5.md](../MILESTONES/M5.md) — what it built, the four
+things no document had settled, what building it found, six open items and eight
+mutations. Everything below is only what has nowhere else to be.
+
+**Nothing is running. The build is clean and `make test` passes FIVE suites under
+both clang and g++.** `src/error_reporter/` is new (`errors.def` plus four
+files), `tests/reporter_test/` is new (five sections, 128 check sites),
+`src/programs/check_command.{hpp,cpp}` is new, and **nothing is committed yet** —
+this session left the working tree dirty on branch
+`milestones-install-and-no-console-handover`. The previous milestone was
+committed as one commit including the documents it corrected, and M5 should be
+too: `git status` lists the three new directories/files above plus edits to the
+lexer, the parser (six files), the cache (three), the programs (four),
+`satellite_words/dump.cpp`, three make fragments, five documents and four
+existing test files.
+
+**Two things worth a human eye rather than a document:**
+
+1. **`satl` gained two commands and one exit code.** `satl --check <file>` prints
+   nothing on success and exits 0, prints one block per problem on stderr and
+   exits **1** otherwise; `satl --errors` dumps all 35 codes and
+   `satl --errors S0212` explains one. **Exit 1 is new** — `--tokens`,
+   `--unparse` and `--satc` used to return 2 on a malformed program and now
+   return 1. Anything scripted against the old status changes meaning.
+2. **`satl --words satellite.consle.display` now says "did you mean
+   `console`?"** DESIGN §4.6 has promised that sentence since M2 and nothing
+   answered it until today.
+
+**What M5 deliberately did NOT do, so it is not looked for:**
+
+- **The command line has no codes.** `errors.def`'s S04xx block draws the line:
+  a code and a span are for something inside a *file*, and `satl --frobnicate`
+  has neither. `usage_error()` and `not_yet()` in `main.cpp` keep their own
+  words, and that is a boundary rather than an omission.
+- **`satl --words` does not render through the reporter.** A path typed on a
+  command line is not a place inside a file, so its `offset` is not a Span. The
+  two share the *suggester*, which is the part that is one fact.
+- **No `SourceMap`.** One file per render. M21's `satellite.include` is where a
+  Span has to say *which* file, and `report.hpp` names it.
+
+**The one open item that is nobody's milestone and is now the largest file in the
+tree**: `src/programs/main.cpp` is **378 lines**, past `unparse.cpp`'s 341. M5
+moved two helpers and an arm into `check_command.cpp` and still added net lines,
+because it added two commands. The seam is named in M5.md §6 item 7 and not
+taken: `main()` is a dispatch over fourteen arms, and the four that take a
+**file** are one subject.
+
+**One thing a reader will notice in the first minute and should not file as a
+regression.** `satl --check example/class_test.satl` prints **ten** blocks for
+one real error: the spacesuit head fails on line 4 and then every line of its
+body is met at the top level and answered with S0204. That is M4's
+`synchronise()` recovering to the end of a *line* when the thing that failed was
+a *declaration*, it predates today, and M5.md §6 item 8 has the fix and says
+whose it is. What changed is only that ten blocks with carets are harder to
+overlook than ten one-line messages.
+
+**What the next milestone inherits.** PLAN §8's order puts **M14 — the machine
+limits** next, and what it gets from today is a reporter to refuse a malformed
+`satellite_config.ini` through, which is the same argument M4.5 made about a bad
+`.satc`. M6's resolve gets the S05xx block reserved and empty, and
+`tests/reporter_test/parsing.cpp`'s shape to copy: **one assertion per row of
+`errors.def` the pass owns, through the real entry point**, because a site
+raising a neighbouring code renders perfectly and no assert can see it.
+
+**And M6 still has to learn to skip a path the `.satc` already numbered**, which
+is M4.5's §5 and is untouched by today — the cache still saves the walk and adds
+a substitution.
+
 ## 6. Jobs the user has asked for that are not started
 
 - **Convert `plans/madness/first_note.txt` into the permanent documents, then

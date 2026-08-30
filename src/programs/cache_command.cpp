@@ -17,9 +17,10 @@
 #include "programs/cache_command.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "parser/parser.hpp"
+#include "programs/check_command.hpp"
 #include "programs/opening.hpp"
-#include "programs/source_file.hpp"
 #include "satellite_cache/cache.hpp"
 #include "satellite_words/words.hpp"
 
@@ -37,7 +38,8 @@ int satc_command(const std::string &path)
     // rather than beside the write.
     cache::Source source_stamp;
     if (!cache::stamp(path, source_stamp)) {
-        fprintf(stderr, "satl: %s could not be read.\n", path.c_str());
+        std::string unused;
+        open_source(path, unused);
         return EXIT_USAGE;
     }
 
@@ -49,15 +51,21 @@ int satc_command(const std::string &path)
     // §4 STEPS 1 AND 2.
     const cache::Reading found = cache::read(path, source_stamp, words);
 
-    // §4's PLAIN-WORDS NOTE, AND IT IS EMPTY ON EVERY ORDINARY MISS. A first
-    // run has nothing to say and a stale file is the cache doing its job; what
-    // reaches here is a file that is a `.satc` and cannot be believed, which
-    // "says something went wrong that a person may want to know about".
-    // read.cpp writes the sentence, because the module that found the fact is
-    // the one that can describe it.
-    if (!found.note.empty())
-        fprintf(stderr, "satl: %s %s\n", found.file.c_str(),
-                found.note.c_str());
+    // §4's PLAIN-WORDS NOTE, AND IT IS Code::NONE ON EVERY ORDINARY MISS. A
+    // first run has nothing to say and a stale file is the cache doing its job;
+    // what reaches here is a file that is a `.satc` and cannot be believed,
+    // which "says something went wrong that a person may want to know about".
+    // read.cpp chooses the code, because the module that found the fact is the
+    // one that can say which fact it was.
+    //
+    // AND THE FILE IT IS ABOUT IS THE `.satc`, NOT THE SOURCE, which makes this
+    // the one place in the tree that renders against a path the user never
+    // typed. A `.satc` diagnostic carries no span -- errors.def's S03xx block
+    // argues that -- so what the header line has to name is the file itself,
+    // and that is also the file the note says it is safe to delete.
+    if (found.note.code != errors::Code::NONE)
+        fputs(errors::render(found.note, errors::Source{found.file, {}}).c_str(),
+              stderr);
 
     if (found.hit()) {
         fprintf(stderr, "satl: read %s\n", found.file.c_str());
@@ -76,17 +84,11 @@ int satc_command(const std::string &path)
     // §4 STEP 3: walk the source as normal, and write a fresh `.satc`
     // afterwards.
     std::string source;
-    if (!read_file(path, source)) {
-        fprintf(stderr, "satl: %s could not be read.\n", path.c_str());
+    if (!open_source(path, source))
         return EXIT_USAGE;
-    }
 
     const Parse parsed = parse(source, words);
-    for (const ParseError &problem : parsed.errors) {
-        const Token &at = parsed.ast.token(problem.token);
-        fprintf(stderr, "satl: %s:%u: %s\n", path.c_str(), at.line,
-                problem.reason.c_str());
-    }
+    report(path, source, parsed.errors);
 
     const std::string text = cache::satc_text(parsed.ast, words, source_stamp);
 
@@ -119,12 +121,10 @@ int satc_command(const std::string &path)
 
     fputs(text.c_str(), stdout);
 
-    // THE EXIT STATUS IS THE ONE M3 LEFT OPEN AND M5 STILL OWNS, and this is
-    // the third arm to need the code that is missing. EXIT_USAGE is the only
-    // non-zero code there is and its own definition is "the command line did
-    // not name something satl can do", which a malformed program is not.
-    // MILESTONES/M3.md §6 carries it.
-    return parsed.ok() ? EXIT_FINE : EXIT_USAGE;
+    // THE EXIT STATUS M3 LEFT OPEN AND THIS WAS THE THIRD ARM TO WANT. It is
+    // EXIT_MALFORMED now; programs/opening.hpp carries why it is 1 and why no
+    // arm was allowed to invent it.
+    return parsed.ok() ? EXIT_FINE : EXIT_MALFORMED;
 }
 
 } // namespace satellite

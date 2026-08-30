@@ -33,6 +33,7 @@
 // of words::Words::intern -- built at M2 and called by nothing until here.
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "lexical_analyzer/lexer.hpp"
 #include "satellite_words/words.hpp"
 
@@ -42,25 +43,30 @@
 
 namespace satellite {
 
-// One thing wrong, and the token it is wrong at.
+// WHAT COMES BACK WHEN A FILE DOES NOT PARSE IS A errors::Diagnostic, AS OF M5,
+// and the type this file used to declare is gone rather than wrapped.
 //
-// A REASON AND NO CODE, WHICH IS THE SHAPE M3 CHOSE FOR TokenKind::Error and
-// the same milestone changes both. M5 builds the reporter -- codes, a source
-// excerpt with a caret, notes with their own spans, and "did you mean" over the
-// trie level that failed -- and every one of those needs a decision this
-// milestone would have to guess at. What M5 must not have to do is go looking
-// for where the error was: `token` indexes the stream the Ast carries, so the
-// span, the line and the text are all one lookup away.
-struct ParseError {
-    std::string reason;
-    uint32_t token = 0;
-};
-
+// M4 SHIPPED `struct ParseError { std::string reason; uint32_t token; }` and
+// said in this space why: "M5 builds the reporter -- codes, a source excerpt
+// with a caret, notes with their own spans, and did-you-mean over the trie
+// level that failed -- and every one of those needs a decision this milestone
+// would have to guess at." All four are decided now, so the guess is not needed
+// and a second error type would be a second place a message can be composed.
+// error_reporter/report.hpp is the shape; DESIGN §9 is why there is only one.
+//
+// WHAT M4 LEFT THAT MADE THE CHANGE CHEAP is worth saying, because it is the
+// thing a milestone can do for its successor without building any of it: every
+// error already carried a TOKEN INDEX into the stream the tree keeps, so the
+// span, the line and the text were one lookup away and the conversion is
+// `span_of(token)` in one place.
 struct Parse {
     Ast ast;
-    std::vector<ParseError> errors;
+    std::vector<errors::Diagnostic> errors;
 
-    bool ok() const { return errors.empty(); }
+    // A NOTE IN THIS VECTOR IS NOT A FAILURE. PARSE_TOO_MANY_ERRORS is a note
+    // and rides here with the errors it is about, so `ok()` asks the reporter
+    // rather than counting.
+    bool ok() const { return !errors::any_error(errors); }
 };
 
 // Parse source text. Never throws.

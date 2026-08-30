@@ -160,8 +160,11 @@ void section_roundtrip()
                   "`satellite.spacesuit my_superclass():` -- DESIGN §6 writes the "
                   "superclass as `[ \"(\" IDENT \")\" ]`, so an empty pair is not "
                   "the form for 'no superclass' and the colon is in no rule at all");
-            check(program.parse.errors.front().token < program.ast().tokens().size() &&
-                      program.ast().token(program.parse.errors.front().token).line == 4,
+            // THE LINE COMES OFF THE SPAN NOW rather than off a token index --
+            // M5 replaced ParseError with errors::Diagnostic, and a span is
+            // what a caret is drawn from, so the line is a field rather than a
+            // lookup.
+            check(program.parse.errors.front().at.line == 4,
                   "and the first error is on line 4, which is that line");
         }
     }

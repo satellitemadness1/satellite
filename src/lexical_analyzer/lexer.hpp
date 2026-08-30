@@ -12,7 +12,16 @@
 // THE LEXER NEVER THROWS (DESIGN §5.6). It emits an Error token carrying a
 // position and always terminates the stream with End, so a consumer can inspect
 // what it produced without a try block and without checking a status first.
+//
+// AND WHAT IT CARRIES IS A CODE, NOT A REASON, AS OF M5. MILESTONES/M3.md §6
+// item 3 left that open in as many words -- "TokenKind::Error carries a reason
+// and no code ... that is the right shape for M3 and the wrong shape for M5,
+// and M5 is where it changes" -- and this is the change. `text` goes back to
+// meaning what it means for every other kind, the bytes as written, and
+// diagnostics_of() below is where a stopped lex becomes something a person
+// reads.
 
+#include "error_reporter/report.hpp"
 #include "satellite_string/satellite_string.hpp"
 #include "satellite_words/words.hpp"
 
@@ -32,7 +41,7 @@ enum class TokenKind : uint8_t {
     Punct,    // . = ( ) [ ] { } < > , : + - * / % == <= >= != ; &
     Newline,  // a statement terminator, which is why it is a token and not a skip
     End,      // always the last token
-    Error,    // lexing stopped; text holds the reason
+    Error,    // lexing stopped; `code` says why
 };
 
 struct Token {
@@ -45,7 +54,7 @@ struct Token {
     // Number: the digits     -- "3.14"
     // Bits:   the literal    -- "x00FF", case preserved
     // String: the body without its quotes and with escapes STILL IN IT
-    // Error:  a human-readable reason
+    // Error:  the bytes the lexer stopped in the middle of; `code` is why
     std::string text;
 
     // String literals only: the body with escapes expanded (DESIGN §5.3).
@@ -113,12 +122,23 @@ struct Token {
     // this field, read against §4.4: the identity a bare word HAS at lex time
     // is its spelling.
     words::SpellingId spelling = words::kNoSpelling;
+
+    // Error tokens only: WHY the lex stopped, as one of errors.def's S01xx
+    // rows. kNone for every other kind.
+    //
+    // A CODE AND NOT A SENTENCE, WHICH IS THE WHOLE OF WHAT M5 CHANGED HERE.
+    // The reason used to live in `text` as a string literal at the one site
+    // that produced it -- which is the shape DESIGN §9 counts 199 of in the
+    // first satellite, at the smallest possible scale. One row in errors.def
+    // instead, and diagnostic_of() is what turns it into the block a person
+    // sees, caret, note and all.
+    errors::Code code = errors::Code::NONE;
 };
 
 // Lex satellite source. Never throws.
 //
 // The result always ends with End. If lexing stopped early, an Error token
-// holding the reason sits immediately before it.
+// carrying the code for why sits immediately before it.
 std::vector<Token> lex(const std::string &source);
 
 // Same, for source already through encode_raw(). The std::string overload is
@@ -126,6 +146,19 @@ std::vector<Token> lex(const std::string &source);
 // reach for encode() by mistake -- DESIGN §5.3 is the rule it would break, and
 // the symptom is "C:\home" in a comment becoming somebody's home directory.
 std::vector<Token> lex(const SatString &source);
+
+// Everything wrong with a token stream, as diagnostics the reporter renders.
+//
+// IT IS THE LEXER'S AND NOT THE PARSER'S, even though the parser is what calls
+// it, and the reason is DESIGN §9's "rendering in exactly one place" applied
+// one level up: what an unterminated string literal MEANS -- that the caret
+// goes under the opening quote and the note goes where the line ran out -- is a
+// fact about lexing, and a converter living in the parser would be a second
+// module that has to know it. The parser has the same function next door and
+// neither knows the other's codes.
+//
+// EMPTY FOR A CLEAN STREAM, so a caller may run it unconditionally.
+std::vector<errors::Diagnostic> diagnostics_of(const std::vector<Token> &tokens);
 
 // A bare word's spelling id, aliases included -- THE LEXER'S HALF OF THE
 // SPELLING TABLE, which is what PLAN M3 owes M2's nine aliases.

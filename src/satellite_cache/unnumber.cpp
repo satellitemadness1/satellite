@@ -91,7 +91,8 @@ std::string path_source(words::NodeId id)
 
 } // namespace
 
-bool unnumber(const std::string &body, std::string &into, std::string &why)
+bool unnumber(const std::string &body, std::string &into,
+              errors::Diagnostic &why)
 {
     into.clear();
     into.reserve(body.size() * 2);
@@ -153,16 +154,15 @@ bool unnumber(const std::string &body, std::string &into, std::string &why)
         }
 
         if (segments.empty()) {
-            why = "has a `" + std::string(1, kPathMark) +
-                  "` with no number after it, which is not something the "
-                  "writer can produce.";
+            why = errors::make<errors::Code::SATC_MARK_WITHOUT_A_NUMBER>(
+                errors::kNowhere, kPathMark);
             return false;
         }
 
         const words::NodeId id = node_of(segments);
         if (id == words::NodeId::NONE) {
-            why = "names `" + body.substr(at, scan - at) +
-                  "`, which this satl's numbering does not have.";
+            why = errors::make<errors::Code::SATC_UNKNOWN_PATH>(
+                errors::kNowhere, body.substr(at, scan - at));
             return false;
         }
 

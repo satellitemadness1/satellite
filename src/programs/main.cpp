@@ -16,11 +16,13 @@
 // about the parts that have not been built. See PLAN_ONE.md, M1.
 
 #include "abstract_syntax_tree/unparse.hpp"
+#include "error_reporter/dump.hpp"
 #include "lexical_analyzer/dump.hpp"
+#include "lexical_analyzer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "programs/cache_command.hpp"
+#include "programs/check_command.hpp"
 #include "programs/opening.hpp"
-#include "programs/source_file.hpp"
 #include "programs/window_handover.hpp"
 #include "satellite_words/dump.hpp"
 #include "system_facts/version.hpp"
@@ -105,7 +107,8 @@ bool only_prints_and_exits(const char *arg)
     const std::string flag(arg);
     return flag == "--no-window" || flag == "--version" || flag == "-V" ||
            flag == "--help" || flag == "-h" || flag == "--words" ||
-           flag == "--tokens" || flag == "--unparse" || flag == "--satc";
+           flag == "--tokens" || flag == "--unparse" || flag == "--satc" ||
+           flag == "--check" || flag == "--errors";
 }
 
 // A usage failure: the command line did not name something satl can do.
@@ -222,13 +225,12 @@ int main(int argc, char **argv)
             return usage_error("--tokens needs a file after it");
 
         // A file that cannot be READ is a different failure from a file that
-        // cannot be LEXED, and they get different words and different streams.
-        // The first is the user's command line; the second is their program.
+        // cannot be LEXED, and they get different words, different codes and
+        // different streams. The first is the user's command line; the second
+        // is their program.
         std::string source;
-        if (!satellite::read_file(args[2], source)) {
-            fprintf(stderr, "satl: %s could not be read.\n", args[2].c_str());
+        if (!satellite::open_source(args[2], source))
             return satellite::EXIT_USAGE;
-        }
 
         // THE DUMP GOES TO STDOUT EVEN WHEN THE PROGRAM IS MALFORMED, and the
         // --words arm above is why that has to be said. There the operand IS
@@ -244,18 +246,23 @@ int main(int argc, char **argv)
         // `satl --tokens bad.satl > tokens.txt` produced an EMPTY tokens.txt
         // with the whole dump on stderr. Fixed 2026-08-30.
         //
-        // THE EXIT STATUS IS STILL WRONG AND IS M5'S TO FIX. Non-zero is right
-        // -- a script has to be able to tell -- but EXIT_USAGE is the only
-        // non-zero code that exists here and its own definition says "the
-        // command line did not name something satl can do", which this is not.
-        // What is missing is a code for "the program you gave me is malformed",
-        // and inventing one is the error reporter's decision to make with all
-        // its codes in view rather than this arm's to guess at. MILESTONES/M3.md
-        // §6 carries it as open.
+        // THE EXIT STATUS WAS WRONG UNTIL M5 AND IS THE ORIGINAL OF THE THREE.
+        // MILESTONES/M3.md §6 item 2 opened it: non-zero was right, and
+        // EXIT_USAGE was the only non-zero code there was, and its own
+        // definition is "the command line did not name something satl can do",
+        // which a bad program is not. EXIT_MALFORMED is the code, and
+        // programs/opening.hpp carries why it is 1.
+        //
+        // AND THE STREAM STILL GOES TO STDOUT, error token and all, which is
+        // the other half of that item. The question asked was what the lexer
+        // makes of this file; the answer includes the Error token, and a person
+        // who redirected the dump wants it in the file.
         bool clean = false;
-        const std::string report = satellite::tokens_text(source, clean);
-        fputs(report.c_str(), stdout);
-        return clean ? satellite::EXIT_FINE : satellite::EXIT_USAGE;
+        const std::string dump = satellite::tokens_text(source, clean);
+        fputs(dump.c_str(), stdout);
+        satellite::report(args[2], source,
+                          satellite::diagnostics_of(satellite::lex(source)));
+        return clean ? satellite::EXIT_FINE : satellite::EXIT_MALFORMED;
     }
 
     // THE PARSER'S CONSUMER, AND THE REASON M4 HAS ONE -- the same rule the two
@@ -278,10 +285,8 @@ int main(int argc, char **argv)
             return usage_error("--unparse needs a file after it");
 
         std::string source;
-        if (!satellite::read_file(args[2], source)) {
-            fprintf(stderr, "satl: %s could not be read.\n", args[2].c_str());
+        if (!satellite::open_source(args[2], source))
             return satellite::EXIT_USAGE;
-        }
 
         // A RUN'S NAMES END WITH THE RUN, which is why this is a local and not
         // a global: words_runtime.hpp makes the point that M11.B runs many
@@ -295,20 +300,13 @@ int main(int argc, char **argv)
         // person watching the terminal must still see what did not parse. Both
         // are printed for a partly-parsed file, because what was understood is
         // an answer even when the whole file was not.
-        for (const satellite::ParseError &problem : parsed.errors) {
-            const satellite::Token &at = parsed.ast.token(problem.token);
-            fprintf(stderr, "satl: %s:%u: %s\n", args[2].c_str(), at.line,
-                    problem.reason.c_str());
-        }
+        //
+        // AND THE COMPLAINTS ARE THE REPORTER'S NOW, which is what M5 changed
+        // here: this arm used to compose `satl: %s:%u: %s` itself, which was
+        // the fourth place in the tree that knew what an error looks like.
+        satellite::report(args[2], source, parsed.errors);
         fputs(satellite::unparse(parsed.ast).c_str(), stdout);
-
-        // THE EXIT STATUS IS THE ONE M3 LEFT OPEN AND M5 STILL OWNS. EXIT_USAGE
-        // is the only non-zero code that exists and its own definition is "the
-        // command line did not name something satl can do", which a malformed
-        // program is not. MILESTONES/M3.md §6 carries it; this arm is the
-        // second one to need the code that is missing, which is worth more to
-        // M5 than one arm was.
-        return parsed.ok() ? satellite::EXIT_FINE : satellite::EXIT_USAGE;
+        return parsed.ok() ? satellite::EXIT_FINE : satellite::EXIT_MALFORMED;
     }
 
     // THE CACHE'S CONSUMER, AND THE REASON M4.5 HAS ONE -- the same rule
@@ -325,6 +323,38 @@ int main(int argc, char **argv)
         if (args.size() < 3)
             return usage_error("--satc needs a file after it");
         return satellite::satc_command(args[2]);
+    }
+
+    // THE REPORTER'S CONSUMER, AND THE REASON M5 HAS ONE -- the same rule
+    // --words, --tokens, --unparse and --satc each record, one milestone on.
+    // The difference is that this arm's whole answer is the diagnostics: it
+    // prints nothing on stdout ever, and its exit status is what a script
+    // reads. programs/check_command.hpp says why that is not `--unparse` with
+    // the output discarded.
+    if (first == "--check") {
+        if (args.size() < 3)
+            return usage_error("--check needs a file after it");
+        return satellite::check_command(args[2]);
+    }
+
+    // THE CODE REGISTRY'S CONSUMER, and it is `--words` one registry later. A
+    // code exists so that somebody can look it up, so a code registry with no
+    // way to look a code up is not a smaller version of the feature -- it is
+    // none of it.
+    if (first == "--errors") {
+        if (args.size() < 3) {
+            fputs(satellite::errors::dump_text().c_str(), stdout);
+            return satellite::EXIT_FINE;
+        }
+        // A code that resolves is an answer and goes to stdout; a code satl
+        // does not have is a command line naming something satl cannot do, so
+        // it goes to stderr with the same status a bad option gets. That is
+        // exactly the split `satl --words <path>` makes, applied one registry
+        // on.
+        bool known = false;
+        const std::string report = satellite::errors::explain_text(args[2], known);
+        fputs(report.c_str(), known ? stdout : stderr);
+        return known ? satellite::EXIT_FINE : satellite::EXIT_USAGE;
     }
 
     if (first == "--repl")

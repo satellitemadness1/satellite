@@ -8,10 +8,13 @@
 
 #include "satellite_words/dump.hpp"
 
+#include "error_reporter/suggest.hpp"
 #include "satellite_words/words.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <string>
+#include <string_view>
 
 namespace satellite::words {
 
@@ -117,8 +120,17 @@ std::string walk_text(const std::string &path, bool &resolved)
     // A FAILURE NAMES THE SEGMENT AND THE NODE IT WAS LOOKED UP UNDER, because
     // those are the two things an answer needs and the first satellite's was
     // "no such module function: satellite.consle.display" -- a sentence that
-    // repeats the question. M5 turns this into the reporter with the caret and
-    // the "did you mean"; what M2 owes it is the information, now.
+    // repeats the question. M2 built the information and said M5 would turn it
+    // into the caret and the "did you mean"; M5 landed 2026-08-30, and the
+    // NO_SUCH_WORD arm below is the second half arriving.
+    //
+    // NOT THROUGH errors::render, AND THAT IS DELIBERATE. A path typed on a
+    // command line is not a place inside a file: there is no source to quote,
+    // no line and no column, and a Span whose offsets index an ARGUMENT rather
+    // than a program would be a span that means something different from every
+    // other one in the tree. What this shares with the reporter is the
+    // suggester, which is the part that is actually the same fact.
+    //
     // THE PATH IS INDENTED SO THE CARET CAN BE. `offset` is an index into the
     // path, so the caret line has to start where the path line starts -- and
     // printing the path flush left while indenting the caret by two put it two
@@ -132,10 +144,30 @@ std::string walk_text(const std::string &path, bool &resolved)
                "  at `satellite` names something the language owns, and a bare\n"
                "  identifier names something the user owns.\n";
         break;
-    case WalkError::NO_SUCH_WORD:
+    case WalkError::NO_SUCH_WORD: {
         out += "  no such word under " + path_text(static_cast<NodeId>(found.under)) +
                "\n";
+        // DESIGN §4.6's WORKED EXAMPLE, ANSWERED BY THE COMMAND IT IS WRITTEN
+        // ABOUT. `satl --words satellite.consle.display` is where somebody asks
+        // the question that section poses, and until M5 the answer stopped at
+        // "no such word under satellite" -- which is one sentence better than
+        // the first satellite's and still not the one §4.6 promises.
+        //
+        // THE SEGMENT IS SLICED OUT OF THE PATH RATHER THAN CARRIED IN THE
+        // Walk, because `offset` plus the delimiter set is the whole of what
+        // words_walk.hpp needs to say and adding a string_view to that struct
+        // would make it own a pointer into the caller's text.
+        const size_t end = path.find_first_of(".(", found.offset);
+        const std::string_view segment =
+            std::string_view(path).substr(found.offset,
+                                          end == std::string::npos
+                                              ? std::string::npos
+                                              : end - found.offset);
+        if (const std::string_view meant = errors::suggest(found.under, segment);
+            !meant.empty())
+            out += "  did you mean `" + std::string(meant) + "`?\n";
         break;
+    }
     case WalkError::NO_SUCH_SHAPE:
         out += "  " + path_text(static_cast<NodeId>(found.under)) +
                " has that word, but not with those arguments\n";

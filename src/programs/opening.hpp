@@ -19,8 +19,26 @@ namespace satellite {
 // zero, and so is a user who asked a program to explain itself. An exit status
 // says whether what was asked for happened, not whether the program did any
 // work.
+//
+// EXIT_MALFORMED IS M5's, AND THREE ARMS HAD BEEN WAITING FOR IT. MILESTONES
+// /M3.md §6 item 2 opened it, M4.md §6 item 3 added the second arm and M4.5.md
+// §6 item 5 the third: `satl --tokens`, `--unparse` and `--satc` all exited
+// EXIT_USAGE on a program that would not parse, and EXIT_USAGE's own definition
+// one line below is "the command line did not name something satl can do",
+// which a bad program is not. Each of the three declined to invent a code,
+// because this enum exists so that "two arms cannot disagree about what a given
+// failure is worth" and inventing one in an arm is exactly that disagreement
+// happening.
+//
+// IT IS 1 AND NOT 4, WHICH IS THE ONE PLACE THIS ENUM DEFERS TO CONVENTION
+// RATHER THAN TO ITS OWN ORDER. 1 is what every compiler in the world returns
+// for a source file it could not compile, and a `satl --check` in a Makefile or
+// a CI script is read by tools that already know that. The numbers here are
+// assigned by what a failure IS and not by the order they were invented in --
+// which is why 1 sits above 2 in this list and below it in the history.
 enum ExitStatus {
     EXIT_FINE = 0,       // what was asked for, happened
+    EXIT_MALFORMED = 1,  // the file is not a satellite program
     EXIT_USAGE = 2,      // the command line did not name something satl can do
     EXIT_NOT_YET = 3,    // a correct request this milestone cannot serve yet
 };

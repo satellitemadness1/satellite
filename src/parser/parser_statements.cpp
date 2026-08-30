@@ -13,6 +13,7 @@
 #include "parser/parser_internal.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "lexical_analyzer/lexer.hpp"
 #include "satellite_words/words.hpp"
 
@@ -55,8 +56,7 @@ NodeIndex Parser::statement()
         case Segment1::Statement:
             // `if`, `else`, `while`, `for` -- 1 13 1 to 1 13 4.
             if (!at_punct(".", 3) || !at_word(4)) {
-                error(here(), "satellite.statement must be followed by one of "
-                              "if, else, while or for");
+                error<errors::Code::PARSE_STATEMENT_NEEDS_A_WORD>(here());
                 return kNoNode;
             }
             switch (peek(4).spelling) {
@@ -70,13 +70,18 @@ NodeIndex Parser::statement()
                 // NAMED RATHER THAN LUMPED IN WITH "no such statement",
                 // because a stray `else` is a real thing a person writes and
                 // the useful sentence is about the `if` and not about the word.
-                error(here() + 4, "satellite.statement.else without an "
-                                  "if for it to belong to");
+                error<errors::Code::PARSE_ELSE_WITHOUT_IF>(here() + 4);
                 return kNoNode;
             default:
-                error(here() + 4,
-                      "no statement is spelled " + peek(4).text +
-                          " -- satellite.statement has if, else, while and for");
+                // DESIGN §4.6's OWN WORKED EXAMPLE, one node further down the
+                // trie than the one it uses. `satellite.statement.wihle` is not
+                // a statement; `satellite.statement`'s four children are the
+                // candidate list, and suggest.cpp's transposition arm is what
+                // makes the answer `while` rather than nothing.
+                error<errors::Code::PARSE_NO_SUCH_STATEMENT>(here() + 4,
+                                                             peek(4).text);
+                suggest(here() + 4,
+                        static_cast<words::PathId>(words::NodeId::STATEMENT));
                 return kNoNode;
             }
         case Segment1::Return:
@@ -91,8 +96,8 @@ NodeIndex Parser::statement()
             // never inside a `block`. Saying which one was written is what
             // makes this better than "unexpected token": the person wrote a
             // real word of the language in a place it does not go.
-            error(here() + 2, "satellite." + peek(2).text +
-                                  " is a declaration and does not go inside a block");
+            error<errors::Code::PARSE_DECLARATION_IN_BLOCK>(here() + 2,
+                                                            peek(2).text);
             return kNoNode;
         case Segment1::Library:
         case Segment1::None:
@@ -160,7 +165,7 @@ NodeIndex Parser::block()
         if (node != kNoNode)
             statements.push_back(node);
         if (pos_ == before) {
-            error(here(), "expected a statement, found " + describe(peek()));
+            error<errors::Code::PARSE_EXPECTED_STATEMENT>(here(), describe(peek()));
             advance();
         }
         if (panic_)
@@ -168,7 +173,7 @@ NodeIndex Parser::block()
         skip_newlines();
     }
 
-    if (!expect_punct("}", "to close the block"))
+    if (!expect_punct("}", "to close the block", opener))
         return kNoNode;
     return ast_.add(NodeKind::Block, opener, ast_.add_list(statements));
 }
@@ -202,6 +207,7 @@ NodeIndex Parser::return_stmt()
     advance();  // .
     advance();  // return
 
+    const uint32_t opener = here();
     if (!expect_punct("(", "after satellite.return"))
         return kNoNode;
     open_bracket();
@@ -216,7 +222,7 @@ NodeIndex Parser::return_stmt()
     }
 
     close_bracket();
-    if (!expect_punct(")", "to close satellite.return"))
+    if (!expect_punct(")", "to close satellite.return", opener))
         return kNoNode;
     return ast_.add(NodeKind::Return, at, value);
 }
@@ -232,8 +238,7 @@ NodeIndex Parser::assign_or_expression()
 
     const uint32_t op = here();
     if (!names_a_place(ast_[left].kind)) {
-        error(op, "the left of an assignment has to name somewhere to write, "
-                  "and " + std::string(kind_name(ast_[left].kind)) + " does not");
+        error<errors::Code::PARSE_ASSIGN_TARGET>(op, kind_name(ast_[left].kind));
         return kNoNode;
     }
     advance();

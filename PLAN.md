@@ -1287,11 +1287,48 @@ the `.satc` has already numbered**, and until it does, a cache hit saves the wal
 and nothing else. SATC §4.1 and M4.5.md §5 both carry it; it is written down
 rather than left for whoever wonders why the cache is not faster.
 
-**M5 — the error reporter.** Built **before** the evaluator, deliberately. Codes,
-spans, a source excerpt with a caret, notes with their own spans, and "did you mean"
-over the trie level that failed. Every milestone after this reports properly from its
-first commit. Retrofitting this is exactly how the first satellite ended up with 200
-bespoke message sites.
+**M5 — the error reporter. LANDED 2026-08-30**, and
+[MILESTONES/M5.md](MILESTONES/M5.md) is the review. Built **before** the
+evaluator, deliberately. Codes, spans, a source excerpt with a caret, notes with
+their own spans, and "did you mean" over the trie level that failed. Every
+milestone after this reports properly from its first commit. Retrofitting this is
+exactly how the first satellite ended up with 200 bespoke message sites.
+
+*`src/error_reporter/` is `errors.def` and four files over it, and
+`satl --check file.satl` is the consumer: nothing on stdout ever, one block per
+problem on stderr, and the exit status is the answer. `satl --errors` is the
+second one, and it is `--words` a registry later — a code exists to be looked up,
+so a code registry with no way to look a code up is not a smaller version of the
+feature.*
+
+**Three things it decided that no document had.** A code's number is a **column**
+where a word's number is a **position**, and the two registries encode
+oppositely on purpose: a word's number is what a program means and a code's is
+what a person searches for. The **arity is checked at the call site** —
+`errors::make<Code::X>` is a template, so a site handing two arguments to a
+three-hole sentence is a compile error naming the code, which is the one check
+199 bespoke sites could not have had because there the sentence was the argument.
+And the first two digits of a code say **who is complaining**, with `S05xx`,
+`S06xx` and `S07xx` reserved for M6, M6.5 and the evaluator rather than left to
+be taken by whoever appends first.
+
+**It closed the exit status three milestones had been carrying.** `EXIT_MALFORMED
+= 1` — MILESTONES/M3.md §6 item 2 opened it, M4.md §6 item 3 added the second arm
+and M4.5.md §6 item 5 the third, and each declined to invent it because
+`opening.hpp` exists so that two arms cannot disagree about what a failure is
+worth. It also closed `TokenKind::Error`'s missing code, `ParseError` (the type is
+gone, not wrapped), and **DESIGN §4.6's own worked example**, which had been
+written since M2 and answered by nothing: `satl --words satellite.consle.display`
+now says *did you mean `console`?*, and so do four sites in the parser.
+
+**The finding to carry forward is what a message registry makes possible.** It
+removes two sites saying one thing in two ways, and it creates a defect bespoke
+strings did not have — **a site raising the wrong row**, which renders perfectly,
+builds quietly, and describes a different problem. No assert can see it;
+`tests/reporter_test/parsing.cpp` catches it with one assertion per row the
+parser owns — nineteen of twenty-two, the other three named as unreachable from
+a program — all of them through `parse()`, and that is the check M6 and M7 have
+to extend when they take their blocks.
 
 **M14 — the machine limits: the file, the pool and the ceiling.** *(New
 2026-08-28. After M5, before M6.)* `satellite_config.ini` (§4.5), the thread pool

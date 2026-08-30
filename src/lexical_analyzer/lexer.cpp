@@ -204,7 +204,14 @@ std::vector<Token> lex(const SatString &src)
                 i += escaped ? 2 : 1;
             }
             if (!closed) {
-                add(TokenKind::Error, start, i).text = "unterminated string literal";
+                // THE SPAN IS THE OPENING QUOTE TO WHERE THE LINE RAN OUT, and
+                // both ends are load-bearing at M5. The caret goes under the
+                // `"` that opened it -- which is the character the person has
+                // to look at -- and `end` is where diagnostics_of() puts the
+                // note, so the two halves of the message come out of one token.
+                Token &stopped = add(TokenKind::Error, start, i);
+                stopped.code = errors::Code::LEX_UNTERMINATED_STRING;
+                stopped.text = decode(src.substr(start, i - start));
                 break;
             }
             Token &token = add(TokenKind::String, start, i + 1);
@@ -272,12 +279,55 @@ std::string describe(const Token &token)
         if (token.spelling != words::kNoSpelling)
             return "Word(" + token.text + " #" + std::to_string(token.spelling) + ")";
         return "Word(" + token.text + ")";
+    case TokenKind::Error:
+        // THE CODE AND NOT THE SENTENCE, because this is a token dump and the
+        // sentence is four lines long. `satl --errors S0101` is where the
+        // sentence is, and printing the code here is what makes that lookup
+        // possible from a `--tokens` listing.
+        return "Error(" + std::string(errors::code_text(token.code).view()) + ")";
     default:
         // AS WRITTEN, INCLUDING FOR A STRING, so one token stays one line. The
         // expanded body is in `str` and a real newline in it would break every
         // consumer of this that reads line by line, --tokens included.
         return std::string(kind_name(token.kind)) + "(" + token.text + ")";
     }
+}
+
+std::vector<errors::Diagnostic> diagnostics_of(const std::vector<Token> &tokens)
+{
+    std::vector<errors::Diagnostic> out;
+    for (const Token &token : tokens) {
+        if (token.kind != TokenKind::Error)
+            continue;
+        const errors::Span at{token.start, token.start + 1, token.line};
+        switch (token.code) {
+        case errors::Code::LEX_UNTERMINATED_STRING: {
+            errors::Diagnostic problem =
+                errors::make<errors::Code::LEX_UNTERMINATED_STRING>(at);
+            // THE NOTE'S SPAN IS THE TOKEN'S `end`, WHICH IS WHERE THE LINE RAN
+            // OUT. Both halves come out of one token because the string arm set
+            // both ends for exactly this -- see the comment beside it. The
+            // caret goes under the quote, and the note goes under the place the
+            // person has to look at second.
+            problem.notes.push_back(
+                errors::note<errors::Code::LEX_LINE_ENDS_HERE>(
+                    errors::Span{token.end, token.end + 1, token.line}));
+            out.push_back(std::move(problem));
+            break;
+        }
+        default:
+            // A CODE THIS FUNCTION DOES NOT KNOW STILL BECOMES A DIAGNOSTIC.
+            // There is one lexical error today and there may be two tomorrow;
+            // the failure to avoid is a token that carries a code and reaches
+            // the user as silence.
+            errors::Diagnostic problem;
+            problem.code = token.code;
+            problem.at = at;
+            out.push_back(std::move(problem));
+            break;
+        }
+    }
+    return out;
 }
 
 bool split_punct(std::vector<Token> &tokens, size_t index)

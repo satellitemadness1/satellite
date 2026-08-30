@@ -10,6 +10,7 @@
 // lines.
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "lexical_analyzer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "satellite_words/words.hpp"
@@ -18,6 +19,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace satellite {
@@ -86,7 +88,12 @@ public:
 
     void run();
 
-    std::vector<ParseError> take_errors() { return std::move(errors_); }
+    std::vector<errors::Diagnostic> take_errors() { return std::move(errors_); }
+
+    // Whether the run stopped short of the end of the file -- parse() turns
+    // this into PARSE_TOO_MANY_ERRORS rather than letting the output simply
+    // end.
+    bool gave_up() const { return stop(); }
 
 private:
     // --- the cursor ---------------------------------------------------------
@@ -100,7 +107,20 @@ private:
     bool at_punct(std::string_view text, size_t ahead = 0) const;
     bool at_word(size_t ahead = 0) const;
     bool take_punct(std::string_view text);
-    bool expect_punct(std::string_view text, std::string_view what);
+
+    // `opener` IS THE TOKEN THIS CLOSER WOULD CLOSE, or kNoOpener.
+    //
+    // ONE PARAMETER AND TEN CALL SITES, which is why the note is here rather
+    // than composed at each of them. DESIGN §9 asks for "notes carrying their
+    // own spans" and the commonest one in any parser is "the bracket you did
+    // not close is over there" -- so the site that already knows where the `(`
+    // was hands the index over and this function decides whether a note is
+    // wanted. Written the other way round, ten sites would each have to ask
+    // whether the error was actually recorded, because a parser already in
+    // panic records nothing and a note attached to nothing lands on the
+    // PREVIOUS error.
+    bool expect_punct(std::string_view text, std::string_view what,
+                      uint32_t opener = kNoOpener);
     uint32_t expect_word(std::string_view what);
 
     // A `satellite . WORD` opening, and which of §6.1's eleven it is.
@@ -116,7 +136,47 @@ private:
 
     // --- errors -------------------------------------------------------------
 
-    void error(uint32_t token, std::string reason);
+    // Token 0 is the first token of a file, so it cannot also mean "no token" --
+    // but the only rule that could report at token 0 is the one for an empty
+    // file, which has no bracket to be unclosed. kNoOpener is therefore 0 with
+    // that argument written down, rather than a second sentinel.
+    static constexpr uint32_t kNoOpener = 0;
+
+    // One thing wrong, at one token, in the words errors.def has for it.
+    //
+    // THE CODE IS A TEMPLATE PARAMETER AND THAT IS THE POINT. errors::make
+    // static_asserts that the arguments match the sentence's holes, so a site
+    // that hands two strings to a three-hole sentence is a compile error naming
+    // the code -- the check the first satellite's 199 sites could not have had,
+    // because there the sentence WAS the argument.
+    template <errors::Code C, typename... Args>
+    void error(uint32_t token, Args &&...arguments)
+    {
+        fresh_ = !panic_;
+        if (panic_)
+            return;
+        panic_ = true;
+        errors_.push_back(
+            errors::make<C>(span_of(token), std::forward<Args>(arguments)...));
+    }
+
+    // Attach a note, or a suggestion, to the error just reported.
+    //
+    // `fresh_` IS WHY THESE ARE FUNCTIONS AND NOT `errors_.back()`. error()
+    // above records NOTHING while the parser is already lost -- one error per
+    // synchronisation, which parser.cpp argues for -- so a caller that reached
+    // for the last diagnostic unconditionally would hang its note on whichever
+    // error came before, pointing a second caret at a line with nothing to do
+    // with it. Both of these are no-ops unless the error immediately before
+    // them was actually recorded.
+    void attach(errors::Note remark);
+
+    // DESIGN §4.6, at the four places in this parser where a word was looked up
+    // against the trie and was not there.
+    void suggest(uint32_t token, words::PathId under);
+
+    errors::Span span_of(uint32_t token) const;
+
     void synchronise();
     bool stop() const;
 
@@ -173,10 +233,23 @@ private:
 
     Ast &ast_;
     words::Words &words_;
-    std::vector<ParseError> errors_;
+    std::vector<errors::Diagnostic> errors_;
+
+    // Where each name this program declared was declared, so a second
+    // declaration can point at the first.
+    //
+    // HERE AND NOT IN words::Words, which is the choice worth recording. A
+    // PathId's number is the numbering's business and words_runtime.hpp is
+    // careful to hold nothing else -- it does not know what a token is and a
+    // `.satc` reader that includes it should not have to. Where a name was
+    // WRITTEN is a fact about one file, which is the parser's, and it dies with
+    // the parse the way a token index has to.
+    std::vector<std::pair<words::PathId, uint32_t>> declared_at_;
+
     size_t pos_ = 0;
     uint32_t brackets_ = 0;
     bool panic_ = false;
+    bool fresh_ = false;
 };
 
 } // namespace satellite

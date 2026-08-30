@@ -20,6 +20,7 @@
 #include "parser/parser_internal.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "lexical_analyzer/lexer.hpp"
 #include "satellite_words/words.hpp"
 
@@ -56,9 +57,15 @@ NodeIndex Parser::type()
         // type. Saying so here rather than letting the bare arm below take the
         // `satellite` and leave the rest is what makes the error point at the
         // word that was wrong.
-        error(here() + 2, "satellite." + peek(2).text +
-                              " is not a type -- a type path is satellite.variable."
-                              "<name> or satellite.container.<name>");
+        error<errors::Code::PARSE_NOT_A_TYPE>(here() + 2, peek(2).text);
+        // OVER `satellite`'s CHILDREN AND NOT OVER {variable, container}, which
+        // is a smaller candidate list and would be the wrong one. Somebody who
+        // wrote `satellite.varable` wants `variable`; somebody who wrote
+        // `satellite.console` in type position wants to be told it is not a
+        // type, and offering them `container` for it would be worse than
+        // offering nothing. The trie level that failed is segment 1, so that is
+        // the level the suggestion comes from.
+        suggest(here() + 2, static_cast<words::PathId>(words::NodeId::SATELLITE));
         return kNoNode;
     }
 
@@ -70,7 +77,7 @@ NodeIndex Parser::type()
         return ast_.add(NodeKind::Type, at, words::kNoSpelling, kNoList);
     }
 
-    error(here(), "expected a type, found " + describe(peek()));
+    error<errors::Code::PARSE_EXPECTED_TYPE>(here(), describe(peek()));
     return kNoNode;
 }
 
@@ -102,8 +109,7 @@ ListId Parser::generic_arguments()
     // it. If the grammar ever makes `>=` reachable here, the fix belongs at lex
     // time or in a separate record, not in a mid-parse mutation.
     if (at_punct(">=")) {
-        error(here(), "expected '>' to close the type's arguments, found '>=' "
-                      "-- write a space between them");
+        error<errors::Code::PARSE_GENERIC_CLOSE_GE>(here());
         return kNoList;
     }
     expect_punct(">", "to close the type's arguments");

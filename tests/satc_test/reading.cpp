@@ -21,6 +21,7 @@
 #include "satc_test.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
 #include "parser/parser.hpp"
 #include "satellite_cache/cache.hpp"
 #include "satellite_cache/paths.hpp"
@@ -47,7 +48,8 @@ std::string satc_of(const std::string &program, satellite::words::Words &words)
 {
     const satellite::Parse parsed = satellite::parse(program, words);
     if (!parsed.ok()) {
-        check(false, "fixture did not parse: " + parsed.errors.front().reason);
+        check(false, "fixture did not parse: " +
+                         satellite::errors::sentence(parsed.errors.front()));
         return std::string();
     }
     return satellite::cache::satc_text(parsed.ast, words, fixture_source());
@@ -98,7 +100,8 @@ void header_misses()
             satellite::cache::read_text(bent, fixture_source(), fresh);
         check(found.why == satellite::cache::Miss::REFUSED,
               "a format version this build does not have is refused");
-        check(!found.note.empty(), "and the refusal says so in plain words");
+        check(found.note.code == satellite::errors::Code::SATC_WRONG_VERSION,
+              "and the refusal says which version it was written by");
     }
 
     {
@@ -118,7 +121,8 @@ void header_misses()
         // This happens every time a word is appended to the language, on every
         // cached program on the machine at once; a note here would be a hundred
         // lines of output about a cache doing exactly its job.
-        check(found.note.empty(), "and a stale file is silent");
+        check(found.note.code == satellite::errors::Code::NONE,
+              "and a stale file is silent");
     }
 
     {
@@ -129,7 +133,8 @@ void header_misses()
             satellite::cache::read_text(good, other, fresh);
         check(found.why == satellite::cache::Miss::STALE,
               "a source that has been edited is a miss");
-        check(found.note.empty(), "and an edited source is silent too");
+        check(found.note.code == satellite::errors::Code::NONE,
+              "and an edited source is silent too");
     }
 
     {
@@ -138,7 +143,8 @@ void header_misses()
             "this is not a satc file at all\n", fixture_source(), fresh);
         check(found.why == satellite::cache::Miss::MALFORMED,
               "a file with no `satc` line is malformed");
-        check(!found.note.empty(), "and malformed says so in plain words");
+        check(found.note.code == satellite::errors::Code::SATC_NOT_A_SATC,
+              "and malformed says so in plain words");
     }
 
     {
@@ -177,8 +183,20 @@ void malformed_bodies()
             satellite::cache::read_text(bent, fixture_source(), fresh);
         check(found.why == satellite::cache::Miss::MALFORMED,
               "a number the numbering does not have is malformed");
-        check(found.note.find("#1.99.1") != std::string::npos,
-              "and the note names the number: " + found.note);
+        // THE CODE AND THE SENTENCE BOTH, because M5 made these two separable
+        // and each can now be wrong on its own: a site can raise a neighbouring
+        // row, and a row's holes can be filled in the wrong order.
+        const std::string said = satellite::errors::sentence(found.note);
+        check(found.note.code == satellite::errors::Code::SATC_UNKNOWN_PATH,
+              "and it is the number, rather than the file, that is refused");
+        check(said.find("#1.99.1") != std::string::npos,
+              "and the sentence names the number: " + said);
+        check(found.note.notes.size() == 1 &&
+                  found.note.notes.front().code ==
+                      satellite::errors::Code::NOTE_SATC_IGNORED,
+              "and every malformed `.satc` carries the note that says deleting "
+              "it is safe -- which was a suffix four sentences remembered to "
+              "append until M5 made it a note they attach");
     }
 
     {
@@ -237,9 +255,10 @@ void literals_are_not_scanned()
 {
     satellite::words::Words words;
     std::string back;
-    std::string why;
+    satellite::errors::Diagnostic why;
     check(satellite::cache::unnumber("#1.5.1(\"#1.5.1\")\n", back, why),
-          "a mark inside a string is not a number: " + why);
+          "a mark inside a string is not a number: " +
+              satellite::errors::sentence(why));
     check(back == "satellite.console.display(\"#1.5.1\")\n",
           "the string is copied and only the code is turned back: " + back);
 
@@ -247,7 +266,8 @@ void literals_are_not_scanned()
     // a `#` a person typed into one cannot make a good file malformed.
     check(satellite::cache::unnumber("#1.5.2 // a person wrote #here\n", back,
                                      why),
-          "a mark inside a comment is not a number: " + why);
+          "a mark inside a comment is not a number: " +
+              satellite::errors::sentence(why));
     check(back.find("satellite.console.input()") == 0,
           "and arity 0 keeps the parentheses the number already says: " + back);
 }

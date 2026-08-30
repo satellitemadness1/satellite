@@ -22,6 +22,7 @@
 
 #include "abstract_syntax_tree/ast.hpp"
 #include "abstract_syntax_tree/unparse.hpp"
+#include "error_reporter/report.hpp"
 #include "parser/parser.hpp"
 #include "satellite_cache/cache.hpp"
 #include "satellite_cache/paths.hpp"
@@ -130,7 +131,8 @@ void one_program(const std::string &name)
     satellite::words::Words words;
     const satellite::Parse parsed = satellite::parse(source, words);
     if (!parsed.ok()) {
-        check(false, name + " did not parse: " + parsed.errors.front().reason);
+        check(false, name + " did not parse: " +
+                         satellite::errors::sentence(parsed.errors.front()));
         return;
     }
 

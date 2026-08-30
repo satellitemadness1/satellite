@@ -19,6 +19,7 @@
 #include "abstract_syntax_tree/ast.hpp"
 #include "abstract_syntax_tree/unparse.hpp"
 #include "lexical_analyzer/lexer.hpp"
+#include "error_reporter/report.hpp"
 #include "parser/parser.hpp"
 
 #include <cstdio>
@@ -41,7 +42,11 @@ std::string Program::first_error() const
 {
     if (parse.errors.empty())
         return std::string();
-    return parse.errors.front().reason;
+    // THE SENTENCE AND NOT THE BLOCK, which is what a check that says "and the
+    // reason names the construct" wants. M5 turned a ParseError's `reason` into
+    // an errors::Diagnostic; errors::sentence is the same words with the holes
+    // filled and nothing around them.
+    return satellite::errors::sentence(parse.errors.front());
 }
 
 Program run(const std::string &source)

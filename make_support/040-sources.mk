@@ -66,6 +66,10 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/window_handover.cpp \
             $(PROGRAMS)/source_file.cpp \
             $(PROGRAMS)/cache_command.cpp \
+            $(PROGRAMS)/check_command.cpp \
+            $(ERRORS)/report.cpp \
+            $(ERRORS)/suggest.cpp \
+            $(ERRORS)/dump.cpp \
             $(LEXER)/lexer.cpp \
             $(LEXER)/dump.cpp \
             $(PARSER)/parser.cpp \
@@ -99,8 +103,15 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 # six of the seven headers below and it is the file that actually changes when
 # the language gains a word, so a build that did not depend on it would compile
 # a stale numbering into every object -- silently, since the header it was
-# expanded into would look untouched.
+# expanded into would look untouched. errors.def is here for the same reason and
+# is the second file of that kind: it is what changes when satl gains a message,
+# and codes.hpp expands it five ways.
 HDRS = $(SYSTEM)/version.hpp \
+       $(ERRORS)/errors.def \
+       $(ERRORS)/codes.hpp \
+       $(ERRORS)/report.hpp \
+       $(ERRORS)/suggest.hpp \
+       $(ERRORS)/dump.hpp \
        $(LEXER)/lexer.hpp \
        $(LEXER)/lexer_chars.hpp \
        $(LEXER)/dump.hpp \
@@ -112,6 +123,7 @@ HDRS = $(SYSTEM)/version.hpp \
        $(TREE)/ast.hpp \
        $(TREE)/unparse.hpp \
        $(PROGRAMS)/cache_command.hpp \
+       $(PROGRAMS)/check_command.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/source_file.hpp \
        $(PROGRAMS)/terminal.hpp \
