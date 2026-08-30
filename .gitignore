@@ -26,6 +26,22 @@
 !/tests/*/*.cpp
 !/tests/*/*.hpp
 
+# The prototype test binaries, which sit beside their sources exactly as the real
+# ones do -- so this is the rule above, applied to a second directory for the
+# same reason and written the same way round.
+#
+# THE SOURCES ARE TRACKED ON PURPOSE. MILESTONES/M3.md §3 and MILESTONES/M4.md §3
+# each cite a directory under here by path and say what it got wrong; a citation
+# to a file that is not in the repository is a citation to nothing. What is not
+# tracked is the binary each prototype builds -- and `*.o` at the top of this
+# file already covers the objects beside them.
+/prototype/*/*
+!/prototype/*/*.cpp
+!/prototype/*/*.hpp
+!/prototype/*/*.def
+!/prototype/*/*.md
+!/prototype/*/Makefile
+
 # The first satellite, kept beside this one to read and to pull from, and
 # DELIBERATELY NOT IN THIS REPOSITORY'S HISTORY. It is a whole second tree --
 # 371 tracked files, its own build, its own design/, plus built binaries and

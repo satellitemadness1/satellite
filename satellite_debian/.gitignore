@@ -1,0 +1,21 @@
+# Build output. Nothing here is source.
+#
+# A SECOND .gitignore RATHER THAN THREE LINES IN THE ROOT ONE, and the reason is
+# anchoring. The root file ignores the root build's binaries as /satl,
+# /satl.haswell and the rest -- with a leading slash, so that they are ignored
+# where the root build puts them and a satl somewhere deeper stays somebody's
+# decision. That is the right rule there and it means those lines do not reach
+# build/satl in this directory, which would otherwise show up as untracked.
+#
+# The alternative was to unanchor the root patterns, which would ignore a file
+# called satl ANYWHERE in the tree forever, to save one file here. This costs
+# less and says what it covers.
+#
+# ONE LINE AND NOT SIX. 070-clean.mk names its files one by one because it
+# DELETES them and a pattern deletes what it was not aimed at. Ignoring is the
+# opposite risk: the failure of a too-narrow ignore is a binary committed into
+# the history, and build/ is a directory this build owns outright -- 010-tree.mk
+# says every file it creates is under it. So the directory is the honest unit
+# here, and the trailing slash makes it a directory rather than a file that
+# happens to be called build.
+/build/

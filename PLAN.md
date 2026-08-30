@@ -42,17 +42,30 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 ## 1. Where things stand
 
-**Milestone 1 landed 2026-08-26. Milestone 2 landed 2026-08-28.** There is a
-`satl` that says what it is, says how a file will be run, refuses to pretend about
-the parts that do not exist, and now **holds the whole numbering and can be asked
-about it** — `satl --words`. There is still no interpreter behind it.
+**Milestone 1 landed 2026-08-26. M2 landed 2026-08-28, M3 on 2026-08-29 and M4
+on 2026-08-30.** There is a `satl` that says what it is, says how a file will be
+run, refuses to pretend about the parts that do not exist, **holds the whole
+numbering and can be asked about it** — `satl --words` — reads a file into tokens
+— `satl --tokens` — and now **parses one and prints it back**: `satl --unparse`,
+the first command in this tree that answers *in satellite*. There is still no
+interpreter behind it; running a program lands at M8.
 
 What exists: the `Makefile` as an index over ten fragments under `make_support/`,
-**twenty-five C++ files totalling 3,148 lines** plus `words.def` at 542, the tree's
-first `tests/` directory, and `satellite_enterprise/`, the Enterprise Linux
-installer and the artwork. *(Counted 2026-08-28.)* The largest C++ file is
-`tests/words_test/authority.cpp` at 261 and the largest under `src/` is
-`src/satellite_words/words_invariants.hpp` at 244. [LAYOUT.md](LAYOUT.md) lists all of it.
+**sixty-one C++ files totalling 9,053 lines** plus `words.def` at 548, three test
+suites under `tests/`, and `satellite_enterprise/`, the Enterprise Linux
+installer and the artwork. *(Recounted 2026-08-30, at M4.)* **The largest C++
+file is `src/abstract_syntax_tree/unparse.cpp` at 341**, which passes the 304 of
+`src/lexical_analyzer/lexer.cpp` — MILESTONES/M4.md §6 names the seam and says
+why it was not taken, which is the answer M3 gave for `lexer.cpp` and M2 for
+`authority.cpp` before it. `src/parser/parser_declarations.cpp` at 309 is second.
+[LAYOUT.md](LAYOUT.md) lists all of it.
+
+*(The figures this paragraph carried on 2026-08-28 — twenty-five files, 3,148
+lines, `words.def` at 542, `authority.cpp` at 261, `words_invariants.hpp` at 244
+— were **already wrong when M2 was reviewed**, and M2.md §6 item 4 recorded the
+drift rather than fixing it. Four of the five were stale by between 4 and 38.
+A count in prose goes stale the day after it is taken; what makes this one worth
+keeping is that it is dated, so a reader can tell how far to trust it.)*
 
 *(Recounted 2026-08-28. This paragraph said "five C++ files… the largest C++ file is
 137 lines", which was true of M1 alone and stopped being true the next day.)* M1's
@@ -85,7 +98,9 @@ result that cannot be true and was a different filesystem rather than a finding.
 Recorded because §9's rule is to measure on this machine, and a measurement whose
 setup differs between arms is not one.)*
 
-**Next: milestone 3**, the lexer (§8).
+**Next: milestone 4.5**, the `.satc` cache (§8) — which lands after M4 because
+it serialises a parsed program, and before M5 because a malformed `.satc` is the
+first thing in the language that has to say something to a user in plain words.
 
 ### 1.1 The finding this whole plan hangs off
 
@@ -814,9 +829,9 @@ Ported, adapted, or taken as-is:
 
 ### 6.1 `satellite_number` and `satellite_string` come across close to unchanged
 
-*(Surveyed 2026-08-27.)* `src/satellite_number/` and `src/satellite_string/` exist
-in this tree and are empty. What fills them is the first satellite's, and it very
-nearly ports as-is:
+*(Surveyed 2026-08-27. `satellite_string`'s character half **landed at M3 on
+2026-08-29**; `satellite_number` is still empty.)* What fills them is the first
+satellite's, and it very nearly ports as-is:
 
 | | files | lines | largest |
 |---|---:|---:|---:|
@@ -832,6 +847,27 @@ standard library — so it ports alone. `satellite_string` needs `system_facts/`
 because its code table is not only characters: **codes 95–100 are live values**
 resolved at decode time, and 97, 98 and 99 are `threads`, `mem_total_mb` and
 `mem_used_mb` — the same facts §4.5 and DESIGN §7.7 reach for by two other routes.
+
+**That dependency is what split the port in two, and M3 took the half that has
+none.** *(2026-08-29.)* DESIGN §5's first sentence makes the alphabet the lexer's
+dependency, so waiting for M7 was not available; dragging M14's three fact readers
+in four milestones early was the other way to pay for it, and it was refused. What
+landed is the character table, both encoders and a `decode()` whose six live codes
+emit `<threads>` and its siblings. **Nothing in the lexer can reach one**, which is
+what makes the stub safe rather than merely cheap: `encode_raw` maps every source
+byte to a letter, a digit, a punctuation code or the raw area, so no code in 95..100
+can occur in a program's text at all. They are reachable only through `encode()`'s
+backslash names inside a string literal body — a **value**, which does not exist
+until M7 builds one. **Finishing it is replacing six lines with six calls**, and
+`lexer_test`'s check that `"\threads"` decodes to `<threads>` is what fails when it
+has not happened.
+
+One thing the port gained rather than carried: **the escape table's ordering rule is
+now a `static_assert`.** §5.4 requires longest-first matching so a short name cannot
+shadow a longer one, and v1 held that by hand — `"t"` sits four rows below
+`"threads"` and nothing but care kept it there. An alphabetised edit would have made
+`\threads` lex as a tab followed by `hreads`, silently. FORMAT/CXX.md §1's third
+rule is the one that says a fact like that may not live only in prose.
 
 Four things to settle before copying, and `SCRATCH.md/PORTING.md` has the detail:
 
@@ -1109,8 +1145,32 @@ Three things follow, and each is a way to get this wrong:
   `src/satellite_words/words_runtime.hpp` is the record, as this asked.
   **Its caller arrives at M4**, which now says so.
 
-**M3 — the lexer.** ← next. Tokens, spans, the reservation rule. Known words carry their
-node identity out of the lexer; user-owned bare words carry their text. DESIGN §5.
+**M3 — the lexer.** **Landed 2026-08-29.** Tokens, spans, the reservation rule. A
+known word carries its **spelling** out of the lexer — DESIGN §4.4's interner id,
+not a `PathId`; a user-owned bare word carries its text. DESIGN §5. *(This sentence
+said "node identity" until 2026-08-30, which is the wording the paragraph below is
+about; DESIGN §5.6 now carries the correction and the account.)* `src/lexical_analyzer/`, and `satl --tokens <file>` is the consumer
+it gained in its own milestone. [MILESTONES/M3.md](MILESTONES/M3.md) is the review.
+
+**"Node identity" turned out to be a SPELLING and not a path, and the distinction is
+invisible to the compiler.** *(2026-08-29.)* `words_spellings.hpp` says
+`using SpellingId = PathId`, so the two are the same 32 bits and a lexer that hands
+the parser the wrong one compiles clean and dispatches on a number that means
+something else. DESIGN §4.4 settles which it is — the interner is *"deduplication,
+not identity"*, because `list` under `container` and `list` under `directory` are two
+nodes sharing one string — and §4.5 says a `PathId` comes from a **walk**, which
+happens once a whole path has been read and is therefore M4's. A lexer sees
+`display` and cannot know whose it is. **A first draft of the lexer got this wrong
+and built**; what catches it is a word the language spells twice, and `console` is
+the one the test uses.
+
+**It also pulls `satellite_string` forward from M7**, and that is recorded here
+because an unsaid hand-over is the failure this document names most often. DESIGN
+§5's opening sentence — *"the lexer walks `SatString`, so the code table in
+`satellite_string.hpp` **is** the language's alphabet"* — makes the port M3's
+dependency, and §6.1 has the survey. Only the **character half** came across; the
+live values are still M14's, and §6.1 says what was left behind and why nothing in
+the lexer can reach it.
 
 **It also owns `satellite.variable.binary` `1 6 5` and `.hex` `1 6 11`**, and that was
 unsaid until 2026-08-27. DESIGN §8.5 makes them real types **with literals** —
@@ -1120,7 +1180,7 @@ A literal is lexed, so the lexer decides them whether or not a milestone says so
 the lexer's spelling table has to know.
 
 **"One alias" was wrong and it was wrong in a way that hid work.** *(Corrected
-2026-08-28.)* §2.3 has **three rows**, not one: `hexadecimal`; the three
+2026-08-28; the six/three split below landed 2026-08-29.)* §2.3 has **three rows**, not one: `hexadecimal`; the three
 `satellite.random.<tier>.range(min, max)` spellings, which are the only duplicate
 numbers in the language and are M16's; and `arg` `args` `argz` `argument`
 `arguments` `argumentz` — *one node, six spellings* (DESIGN §7.7), which is M19's
@@ -1128,9 +1188,29 @@ headline demonstration and M6's to recognise at resolve. **M2's `words.def` land
 holding nine aliases**, so the mechanism exists and what this milestone owes it is
 the lexer's half of the spelling table.
 
-**M4 — the arena AST and the parser.** `uint32_t` node indices into a contiguous
+**Six of the nine are lexical and three are not, which that sentence could not have
+known.** *(2026-08-29.)* An alias is written relative to its node's parent and is
+**free to carry a dot**, and that is the line the lexer cuts on: `hexadecimal` and
+the five extra spellings of `arguments` are single bare words, so `intern_word()`
+resolves all six to the aliased node's own spelling id and *one node, six spellings*
+becomes true of the token stream rather than only of the registry. The three
+`satellite.random.<tier>.range(min, max)` rows rewrite a **two-segment path**, which
+no amount of looking at one bare word can decide — they stay M16's, and the filter
+that leaves them there is one `find('.')`. `range` is a node spelling nowhere in the
+language, so the test can assert the filter held by asking for it and getting
+nothing back.
+
+**M4 — the arena AST and the parser. LANDED 2026-08-30**, and
+[MILESTONES/M4.md](MILESTONES/M4.md) is the review: what it built, the three
+things DESIGN §6 did not settle and how they were settled, what being M2's first
+caller found, and the eight things left open. `uint32_t` node indices into a contiguous
 arena, no `shared_ptr` anywhere in the tree. `satl --unparse file.satl` round-trips,
 which is how we know the parser is right before anything can run.
+
+*A `Node` came out at **24 bytes** against the first satellite's 96, and both
+numbers are `static_assert`s rather than claims. `satl --unparse` round-trips the
+four acceptance programs in `example/`; the two sketches beside them do not parse
+and M4.md §6 item 1 says which construct in each and whose decision it is.*
 
 **It is also the first caller of M2's name allocator.** *(2026-08-28.)* §8.1
 requires every node to keep a live count of its children so a user's capsules and
@@ -1357,7 +1437,9 @@ consumed by later milestones that had each assumed somebody else built them.)*
   records that the code table is not only characters: **codes 95–100 are live values
   resolved at decode time**, and 97, 98 and 99 are `threads`, `mem_total_mb` and
   `mem_used_mb`. So this milestone calls `hardware_threads()`, `mem_total_mb()` and
-  `mem_used_mb()`, which M14 ports. **This closes the other half of
+  `mem_used_mb()`, which M14 ports. **The module itself arrived at M3** — the lexer
+  could not wait for an alphabet — so what is left here is the live half and `Str`
+  itself, not the file. §6.1 has the split and names the six lines. **This closes the other half of
   `SCRATCH.md/MILESTONE.md` §3's porting row**, whose whole complaint was that M7
   needs `Number` and does not say the port happens here.
 - **The recursion ceiling is derived, not fixed** — DESIGN §7.5 takes it from

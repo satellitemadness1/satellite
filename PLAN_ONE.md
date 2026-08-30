@@ -548,6 +548,14 @@ Tokens, spans, the reservation rule. Known words carry their node identity out o
 the lexer; user-owned bare words carry their text. (`WordId` was this draft's name
 for it, from the flat registry §6 throws away; the trie has no such global id.)
 
+> **Stale wording, kept as written.** *(2026-08-30.)* "Node identity" is the
+> phrasing that led a first implementation to store a spelling id in a `PathId`
+> field — see DESIGN §5.6 and MILESTONES/M3.md §3. This document is superseded and
+> is not the requirement; PLAN.md §8's M3 is, and it says **spelling**. Recorded
+> rather than edited, because a superseded draft that gets quietly corrected stops
+> being a record of what was thought at the time. Note the parenthesis was already
+> circling the right answer: the trie has no global id for a bare word.
+
 ### M4 — the arena AST and the parser
 
 `uint32_t` node indices into a contiguous arena. No `shared_ptr` anywhere in the

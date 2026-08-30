@@ -67,6 +67,59 @@ $(TESTS)/words_test/words_test: $(words_test_SRCS) $(words_test_HDRS) \
                                 .cxxflags-stamp
 	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/words_test -o $@ $(words_test_SRCS)
 
+# lexer_test LINKS TWO MODULE SOURCES, and that is the difference between this
+# test and words_test above. It is a property of the SUBJECT and not of the
+# test: the registry is constexpr data and pure functions, so its test compiles
+# the headers and links nothing, while a lexer is a function over a string and
+# has to actually run. The two named here are exactly the lexer and its
+# alphabet, which is the whole of what DESIGN §5 says a lexer depends on.
+#
+# NOT $(SATL_OBJS), deliberately. Linking the interpreter's objects would drag
+# main.o and its window handover into a test binary, and a test that starts by
+# deciding whether to open a GUI is a test that hangs on a build machine.
+LEXER_TEST_SRCS = $(LEXER)/lexer.cpp $(STRING)/satellite_string.cpp
+
+# AND ON example/hello_world.satl, which is the unusual prerequisite and is the
+# same argument words_test makes for WORD_NUMBERS.md one line up. LAYOUT.md
+# calls the files in example/ "not samples -- each of these is what a milestone
+# means by done", and section_spans() lexes this one. Editing the acceptance
+# program must re-run the test that reads it.
+$(TESTS)/lexer_test/lexer_test: $(lexer_test_SRCS) $(lexer_test_HDRS) \
+                                $(LEXER_TEST_SRCS) $(WORDS)/words.def $(HDRS) \
+                                example/hello_world.satl .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/lexer_test -o $@ \
+	    $(lexer_test_SRCS) $(LEXER_TEST_SRCS)
+
+# parser_test LINKS FIVE MODULE SOURCES, which is more than any test before it
+# and is a property of the subject rather than of the test: a parser runs over a
+# token stream, so it needs the lexer, the lexer needs the alphabet, and the
+# tree it builds has a printer. Named one by one for the reason the two rules
+# above give -- $(SATL_OBJS) would drag main.o and its window handover in, and a
+# test that starts by deciding whether to open a GUI hangs on a build machine.
+PARSER_TEST_SRCS = $(PARSER)/parser.cpp \
+                   $(PARSER)/parser_declarations.cpp \
+                   $(PARSER)/parser_statements.cpp \
+                   $(PARSER)/parser_control_flow.cpp \
+                   $(PARSER)/parser_expressions.cpp \
+                   $(PARSER)/parser_types.cpp \
+                   $(TREE)/ast.cpp \
+                   $(TREE)/unparse.cpp \
+                   $(LEXER)/lexer.cpp \
+                   $(STRING)/satellite_string.cpp
+
+# AND ON ALL SIX PROGRAMS IN example/, which is the same argument the two rules
+# above make for WORD_NUMBERS.md and hello_world.satl and is the strongest form
+# of it yet: section_roundtrip() reads four of them as the milestone's done-when
+# and the other two as files that must NOT parse, with the reason pinned to a
+# line number. Editing any of the six must re-run the test that reads it --
+# including the two that fail, because a file that starts parsing is a finding
+# and not a pass.
+$(TESTS)/parser_test/parser_test: $(parser_test_SRCS) $(parser_test_HDRS) \
+                                  $(PARSER_TEST_SRCS) $(WORDS)/words.def $(HDRS) \
+                                  $(wildcard example/*.satl) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/parser_test -o $@ \
+	    $(parser_test_SRCS) $(PARSER_TEST_SRCS)
+
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
 #
@@ -76,10 +129,14 @@ $(TESTS)/words_test/words_test: $(words_test_SRCS) $(words_test_HDRS) \
 # failing transcription is most likely to be looked at.
 test: $(TESTBINS)
 	./$(TESTS)/words_test/words_test WORD_NUMBERS.md
+	./$(TESTS)/lexer_test/lexer_test example/hello_world.satl
+	./$(TESTS)/parser_test/parser_test example
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
+lexer_test: $(TESTS)/lexer_test/lexer_test
+parser_test: $(TESTS)/parser_test/parser_test
 
-TESTALIASES = words_test
+TESTALIASES = words_test lexer_test parser_test
 
 .PHONY: test $(TESTALIASES)

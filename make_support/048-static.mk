@@ -36,6 +36,25 @@
 # /usr like the desktop it is drawing into. Silently different from the other
 # three, and said out loud here because a reader who checks with `ldd` will find
 # it and deserves to know it was meant.
+# WHAT A STATIC satl COSTS, AND THE ONE HEADER THAT ENDS IT. Measured
+# 2026-08-29 at M3, on this machine:
+#
+#     STATIC=full   satl   1,111,528 bytes
+#     STATIC=1      satl     367,568 bytes
+#
+# THAT NUMBER SURVIVES ONLY WHILE NOTHING TOUCHES <iostream>, <fstream> OR
+# <sstream>. satl prints with fputs and fprintf throughout, so the iostreams
+# machinery -- locales, facets, and the static initialisation behind them --
+# is absent from the link. M3 needed to read a source file and the obvious
+# ifstream-plus-ostringstream reader put it back: STATIC=full went to
+# 2,596,120 and STATIC=1 to 1,657,808, an increase of about 1.4 MB on every
+# installed copy, to read a file into a string. It was replaced with fread
+# (programs/main.cpp's read_file, which carries the same figures) and the
+# whole of M3 then cost 32,696 bytes. programs/source_file.cpp carries the
+# speed half of the same measurement, which pointed the other way.
+#
+# Said here rather than only there, because this is the file that decides satl
+# is shipped statically, and the cost of that decision belongs beside it.
 STATIC ?= 0
 
 # ASKED OF THE COMPILER, not looked for in a list of directories this file made

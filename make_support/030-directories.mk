@@ -11,7 +11,11 @@
 SRC      = src
 SYSTEM   = $(SRC)/system_facts
 PROGRAMS = $(SRC)/programs
+LEXER    = $(SRC)/lexical_analyzer
+PARSER   = $(SRC)/parser
 RANDOM   = $(SRC)/satellite_random
+STRING   = $(SRC)/satellite_string
+TREE     = $(SRC)/abstract_syntax_tree
 WORDS    = $(SRC)/satellite_words
 
 # The tests root, and TESTNAMES is THE SINGLE PLACE A TEST IS DECLARED TO EXIST.
@@ -25,4 +29,4 @@ WORDS    = $(SRC)/satellite_words
 # test. That is the worst failure a suite has: not a red line, a green one that
 # is out of date.
 TESTS     = tests
-TESTNAMES = words_test
+TESTNAMES = words_test lexer_test parser_test

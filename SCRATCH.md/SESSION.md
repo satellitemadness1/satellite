@@ -17,7 +17,14 @@ authority over every number in the language.
 **M1 landed 2026-08-26. M11.A landed 2026-08-27** — out of order, because the
 author asked for the window and it needed nothing that has not been built.
 **M2 LANDED 2026-08-28** — see §5.17, which is the section to read first.
-**M3, the lexer, is next.**
+
+*(Corrected 2026-08-30. This said "M3, the lexer, is next" and stayed saying it
+through two milestones, which is what a scratch file does when nobody is made to
+edit it.)* **M3 landed 2026-08-29 and M4 landed 2026-08-30, and the record of
+each is a permanent document rather than this one**:
+[MILESTONES/M3.md](../MILESTONES/M3.md) and
+[MILESTONES/M4.md](../MILESTONES/M4.md). **M4.5, the `.satc` cache, is next.**
+Everything below this line is M2's session and is read as history.
 
 M2 as PLAN §8 defined it was: `src/satellite_words/words.def`, the trie, the
 spelling interner, `PathId`, a digest over `words.def`, `satl --words` as its

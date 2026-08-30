@@ -127,11 +127,31 @@ constexpr PathId next_sibling(PathId id)
 
 // A bare word's spelling id, or kNoSpelling if the language does not use it.
 //
-// LINEAR, AND MEASURED WHEN IT MATTERS RATHER THAN NOW. 254 rows is a scan of a
-// few microseconds and M2 has no caller in a loop; PLAN §9's rule is to measure
-// on this machine rather than to quote, and there is nothing to measure until
-// M3 runs it over a real source. What the shape guarantees is that replacing
-// this with a hash changes one function and no caller.
+// LINEAR, AND NOW MEASURED. This comment used to end "there is nothing to
+// measure until M3 runs it over a real source", and M3 ran it over a 273-byte
+// program where the whole lex cost 0.06 ms and the question stayed open --
+// MILESTONES/M3.md §6 item 5 said the number to take was throughput on a large
+// generated source. M4 took it, because M4 is the milestone that first reads a
+// whole program.
+//
+// MEASURED HERE, 2026-08-30, clang -O3, best of 20 runs, on a generated
+// 321 KB / 11,001-line source lexing to 81,008 tokens:
+//
+//     lex                                32.088 ms
+//     lex with this scan removed         13.717 ms
+//     parse the same stream               6.131 ms
+//
+// SO THIS FUNCTION IS 18.4 ms OF A 32 ms LEX -- 57% of lexing, and nearly three
+// times what parsing the same stream costs. The scan is free at the 255 tokens
+// of the largest program in example/ and is the dominant cost of reading a real
+// one, which is exactly the shape M3 predicted and could not yet see.
+//
+// IT IS STILL NOT CHANGED HERE, and that is a scheduling decision rather than a
+// disagreement with the number: what the shape guarantees is that replacing
+// this with a hash changes one function and no caller, so it can be done by
+// whichever milestone first has a reason to care about a large file --
+// M4.5's `.satc` writer is reading one by definition. MILESTONES/M4.md §7
+// carries the measurement and §6 carries it as open.
 inline SpellingId intern(std::string_view word)
 {
     if (word.empty())

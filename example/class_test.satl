@@ -1,0 +1,64 @@
+
+satellite.include(satellite)
+
+satellite.spacesuit my_superclass():
+{
+    satellite.protected
+    {
+        satellite.variable.binary my_binary = b0111101010101011
+
+        satellite.capsule set_binary_data(satellite.variable.binary binary_input)
+        {
+            my_binary = binary_input
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_set_binary_data(satellite.variable.binary call_binary_input)
+        {
+            set_binary_data(call_binary_input)
+        }
+    }
+}
+
+satellite.spacesuit my_suit(my_superclass)
+{
+    satellite.protected
+    {
+        satellite.capsule erase_binary_data()
+        {
+            my_binary.clear()
+
+            satellite.console.display("CLEARED BINARY DATA: " + my_binary)
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_erase()
+        {
+            erase_binary_data()
+        }
+
+        satellite.capsule display_data()
+        {
+            satellite.console.display("BINARY CURRENTLY SET TO: " + my_binary)
+        }
+    }
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    my_suit local_object
+
+    local_object.call_set_binary_data(b0010111101011101010010101)
+
+    local_object.display_data()
+
+    local_object.call_erase()
+
+    local_object.display_data()
+
+    satellite.return(satellite)
+}

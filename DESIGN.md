@@ -383,6 +383,13 @@ indices, and rightly so.
 not §2's: §2 reserves whole *namespaces* inside a path, which is a question about
 position, not about a bare spelling.
 
+**And an interner id is what a token carries (§5.6).** *(2026-08-30.)* This is the
+section that decides it, so it is worth saying here rather than only there: because
+the table is deduplication, an id answers *"which of the language's spellings is
+this bare word"* and nothing more. It does **not** name a node — two nodes can share
+it — so it is not a §4.5 `PathId` and must never be stored as one. Reading that
+sentence the other way cost a working lexer once; §5.6 has the account.
+
 ### 4.5 PathId — one `uint32_t` for a whole path
 
 §4.1 is how a path is *structured*. This is what a path *is* at runtime.
@@ -398,6 +405,12 @@ handlers[path_id](frame, args)
 ```
 
 One array index. One indirect call. No allocation, no string, no ordered arms.
+
+**A `PathId` is produced by the walk and by nothing else** — which is why the lexer
+cannot hand one out (§4.4, §5.6): it has one bare word and a path is what is being
+identified. *(Said explicitly 2026-08-30, because the type does not say it:
+`SpellingId` and `PathId` are the same `uint32_t`, so the compiler accepts either
+wherever the other is meant.)*
 
 So the numbers are the *source of truth and the way a path is written down*, and
 the PathId is the *handle*. The first satellite's `SAT_PATH(ident, s1, s2, s3, s4,
@@ -499,8 +512,24 @@ type is only ever followed by IDENT, `)`, `,` or `>`.
 - Tokens carry `start`/`end` offsets **and a `line`**. All three are load-bearing —
   offsets for error spans, `line` for the same-line postfix rule in §6.2.
 - **The lexer never throws.** It emits an Error token carrying a position.
-- Known words carry their node identity out of the lexer; user-owned bare words
-  carry their text *(new — this is §4 reaching back into the lexer)*.
+- **A known word carries its SPELLING out of the lexer — §4.4's interner id, not a
+  `PathId`**; a user-owned bare word carries its text *(new — this is §4 reaching
+  back into the lexer)*. The two are different questions and only the first one
+  is answerable here: a lexer sees `display` and cannot know whether it belongs
+  to `satellite.console.display` or to a variable, because the answer is a
+  property of the path being built around it, and §6's parser is what builds one.
+  §4.5's walk is what turns a run of spellings into a `PathId`.
+
+  *(Corrected 2026-08-30. This bullet read "known words carry their node
+  identity out of the lexer", and **that sentence cost a working lexer.** Read
+  against §4.5 it says `PathId`, and a first implementation stored `intern()`'s
+  answer in a field of that type — which **compiles**, because the two are the
+  same `uint32_t`, and hands the parser a number meaning "the first node in the
+  registry spelled this" to dispatch on. §4.4 is what settles it and said so all
+  along: the interner is "deduplication, not identity", because `list` under
+  `container` and `list` under `directory` are two nodes sharing one string. The
+  word that has to appear in this bullet is therefore **spelling**, and the test
+  that catches the confusion needs a word the language spells twice.)*
 
 ---
 
@@ -528,7 +557,7 @@ type_space     := "variable" | "container"
 
 spacesuit_decl := "satellite" "." "spacesuit" IDENT [ "(" IDENT ")" ] suit_block
 suit_block     := "{" { suit_section | member } "}"
-suit_section   := "satellite" "." ( "protected" | "public" ) block
+suit_section   := "satellite" "." ( "protected" | "public" ) suit_block
 
 block          := "{" { statement } "}"
 statement      := var_decl | assign | expr_stmt | return_stmt | block
@@ -545,7 +574,7 @@ while_stmt     := stmt_kw "while" "(" expression ")" block
 for_stmt       := stmt_kw "for" "(" [ var_decl | assign ] ";" [ expression ] ";"
                   [ assign ] ")" block
 
-expression     := ... precedence climbing ...
+expression     := precedence climbing over the operators in §6.6
 postfix        := primary { "." IDENT | "(" [ args ] ")" | "[" subscript "]" }
 args           := expression { "," expression }
 subscript      := expression | [ expression ] ":" [ expression ]
@@ -554,6 +583,21 @@ primary        := NUMBER | STRING | "satellite" | IDENT | "(" expression ")"
 
 Statements are newline-terminated, which is why §6.2's same-line rule for a postfix
 opener is load-bearing rather than a nicety.
+
+***`suit_section` cited `block` until 2026-08-30, and as written the rule could not
+parse the program it was written for.*** A `block` is `"{" { statement } "}"`, and a
+capsule declaration is not a statement — while every section in
+`example/class_test.satl` holds capsule declarations and nothing else. **A section
+holds what a suit block holds**, so it cites `suit_block`, and one function reads
+both. Found by PLAN M4 when the parser was built against this table; the same
+correction M3 made to §5.6, and made the same way — the sentence stays visible
+rather than being quietly replaced, because a specification that gets silently
+corrected stops being a record of what it said.
+
+*(A section inside a section is expressible under this rule and means nothing.
+That is left rather than forbidden: a grammar that refuses it needs a second
+production for no gain, and `satellite.public` inside `satellite.protected` is a
+question for M22's resolve, where access actually decides something.)*
 
 ### 6.1 Statement dispatch is on segment 1, not on shape
 
@@ -619,8 +663,23 @@ no extra rules.
 line* as the thing it applies to. Statements are newline-terminated (§6), so without
 this the loop would reach across a line break and swallow the next statement: a line
 ending in `x` followed by a line opening `(f(y))` would parse as `x(f(y))` rather
-than as two statements. This is what `line` on every token is for (§5.6), and it
-covers both openers, not just `[`.
+than as two statements. It covers both openers, not just `[`.
+
+*(This paragraph ended "this is what `line` on every token is for (§5.6)" until
+2026-08-30, when M4 built the loop and found that is not what enforces it. §5.6
+leaves the **newline in the stream as a token**, so an opener on the next line is
+separated from its receiver by a token the loop never crosses — the terminator
+being a token is the mechanism, and `line` is the proof. Corrected rather than
+deleted because the field is still load-bearing: §9's reporter is built on it, and
+a rule that holds for a different reason than a specification claims is a rule
+somebody will re-derive.)*
+
+**A newline inside a bracket is not a terminator.** `f(` on one line and its
+arguments on the next is one call, because nothing in this section can be reached
+while a bracket is open. That is not a weakening of the rule above: the postfix
+loop runs at bracket depth zero, which is the only place the rule is asked.
+*(Decided at M4, 2026-08-30; §6 stated statements were newline-terminated and said
+nothing about an argument list that spans lines.)*
 
 The rule that distinguishes a call from a path is **one token**: after a dotted
 path, if the next token is `(`, it is a call — the last segment is the method name,
@@ -655,7 +714,9 @@ Three qualifications:
 
 1. The module path is **not derivable** from the type name — `satellite.container.list`
    has two segments, `satellite.time` has one. Use an explicit table, not string
-   derivation. *(new: under §4 this is a node identity, not a string at all.)*
+   derivation. *(new: under §4 this is a `PathId` and not a string at all — a
+   real node identity, which §5.6's spellings are not; the walk has happened by
+   the time anything reaches this table.)*
 2. Constructors live in the same table and must carry a "does the first parameter
    bind the receiver" tag, or `my_file.new()` degrades into a confusing arity error.
 3. `nil` has no module, and there are **two** non-dispatchable states needing
@@ -678,6 +739,45 @@ arguments to values *before* taking the lock.
 and equality run inside that lock, so they must be native and can never be satellite
 code. That is not a preference about extensibility; it is the deadlock above, one
 level down.
+
+### 6.6 The operators, and how tightly each binds
+
+*(Decided at M4, 2026-08-30. §6's expression rule read `... precedence climbing ...`
+and stopped, so this table did not exist and the parser could not be written
+without one.)*
+
+| | binds | |
+|---|---|---|
+| 4 | tightest | `*` `/` `%` |
+| 3 | | `+` `-` |
+| 2 | | `<` `>` `<=` `>=` |
+| 1 | loosest | `==` `!=` |
+
+**All four levels are left-associative**, so `a - b - c` is `(a - b) - c` and
+`a - (b - c)` is a different number that keeps its brackets.
+
+**Unary `-` and unary `!` bind tighter than all of them.** The minus is not a
+choice: §5.6 refuses to fold a sign into a Number so that `a-1` stays a
+subtraction, which makes unary minus an expression rule by construction.
+
+**These are C's levels with every operator satellite does not have removed**, and
+the reason is §1.1's tie-breaker rather than deference: this is the only table a
+reader of this language already knows, and surprise is a cost paid by the user.
+`<<` and `>>` are absent permanently (§5.5). **There is no bitwise and no logical
+row**, which is §13's open question and not an omission — until it is answered,
+`&` has no precedence, so it ends an expression and is reported rather than
+guessed at.
+
+**Assignment is not on this table because it is not an operator.** §6 makes
+`assign` a *statement*, so `a = b = c` is not an expression and `if (a = b)` is
+not writable — which is the C defect this language does not have to warn about.
+
+*The eleven rows live in `src/abstract_syntax_tree/ast.cpp`, which is what this
+document's opening rule requires of any number in it: the table above explains
+them and is not the only place they are written. They are in the tree rather than
+in the parser because they have **two** readers — the parser climbs them, and the
+printer reads them to decide whether a bracket a program wrote has to come back,
+since no node records that a parenthesis was there.*
 
 ---
 
@@ -1503,8 +1603,23 @@ critical path.
 - **Classes are `satellite.spacesuit`**, with `satellite.protected` / `.public`
   blocks and a bare-name type. Reference semantics.
 - **A unit of includable code is a spaceship.**
+- **Operator precedence** is §6.6's four levels, all left-associative, with unary
+  `-` and `!` above them. *(Decided at M4, 2026-08-30, because the parser could not
+  be written without it — §6's expression rule read `... precedence climbing ...`
+  and named no operators.)*
 
 ### Open
+
+- **What `&` means, and whether `!` is really the negation.** *(Opened at M4,
+  2026-08-30.)* The lexer will hand over a bare `&` as a Punct and nothing in this
+  document says what it is; §6.6 therefore gives it no precedence, so it ends an
+  expression and is reported. The question is one question and not two: satellite
+  has `==` and `!=` but **no `and`, no `or` and no `not`**, so a program that wants
+  to test two things has no way to write it, and whichever answer is chosen — words
+  in `words.def` under §1's generating rule, or the C symbols — decides `&`, `!`
+  and the missing pair together. **`!` is currently parsed as a unary and given no
+  meaning**, which is the smallest guess available and is still a guess.
+  M4 chose it; this is where it gets taken back or kept.
 
 - **`satellite.variable.float` — DECIDED 2026-08-27: a `satellite.variable.bool` and
   two `satellite_number`s.** A `positive` flag defaulting to `true`, then left of the

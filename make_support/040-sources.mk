@@ -24,6 +24,32 @@
 # of taking the measurement now: every later milestone has a floor to be
 # compared against, and a regression has somewhere to be attributed.
 #
+# RE-TAKEN AT M3, 2026-08-29, load 0.34, best of five runs of 200 -- the floor
+# above being used, which is what it was written for. satl gained three objects:
+# the lexer, its dump, and satellite_string.
+#
+# MEASURED AGAINST A STATIC BARE BINARY THIS TIME, and the first attempt got
+# that wrong in a way worth recording. satl is shipped STATIC (048-static.mk),
+# and a static binary skips the dynamic loader entirely -- so timing it against
+# the DYNAMIC `int main(){return 0;}` above made satl look 0.9 ms FASTER than an
+# empty program. That is a linking difference wearing a performance result's
+# clothes. Both sides static:
+#
+#     bare int main(){return 0;}          0.606 ms
+#     satl (opening information)          0.618 ms
+#     satl --version                      0.624 ms
+#     satl --words          (271 lines)   0.766 ms
+#     satl --tokens hello_world.satl      0.678 ms
+#     satl --tokens class_test.satl       0.840 ms   (255 tokens, the largest)
+#
+# So satl's own share of starting up is about 0.012 ms, which REPRODUCES M1's
+# 0.01 ms rather than merely resembling it -- three milestones and three objects
+# later. Reading and lexing a 273-byte program costs about 0.06 ms on top; the
+# largest example in the tree costs 0.22 ms.
+#
+# The 2026-08-26 figures above are dynamic and are left as they were taken. They
+# are not comparable to these and are not restated as if they were.
+#
 # The window is a separate binary (M11.A, built 2026-08-27) and, for
 # satellite.window.new(), a
 # dlopen'd library (M13) -- because the two-binary split cannot help a window
@@ -38,6 +64,18 @@
 SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/opening.cpp \
             $(PROGRAMS)/window_handover.cpp \
+            $(PROGRAMS)/source_file.cpp \
+            $(LEXER)/lexer.cpp \
+            $(LEXER)/dump.cpp \
+            $(PARSER)/parser.cpp \
+            $(PARSER)/parser_declarations.cpp \
+            $(PARSER)/parser_statements.cpp \
+            $(PARSER)/parser_control_flow.cpp \
+            $(PARSER)/parser_expressions.cpp \
+            $(PARSER)/parser_types.cpp \
+            $(STRING)/satellite_string.cpp \
+            $(TREE)/ast.cpp \
+            $(TREE)/unparse.cpp \
             $(WORDS)/dump.cpp
 
 SATL_OBJS = $(SATL_SRCS:.cpp=.o)
@@ -54,10 +92,19 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 # a stale numbering into every object -- silently, since the header it was
 # expanded into would look untouched.
 HDRS = $(SYSTEM)/version.hpp \
+       $(LEXER)/lexer.hpp \
+       $(LEXER)/lexer_chars.hpp \
+       $(LEXER)/dump.hpp \
+       $(PARSER)/parser.hpp \
+       $(PARSER)/parser_internal.hpp \
+       $(TREE)/ast.hpp \
+       $(TREE)/unparse.hpp \
        $(PROGRAMS)/opening.hpp \
+       $(PROGRAMS)/source_file.hpp \
        $(PROGRAMS)/terminal.hpp \
        $(PROGRAMS)/window_handover.hpp \
        $(RANDOM)/random.hpp \
+       $(STRING)/satellite_string.hpp \
        $(WORDS)/words.def \
        $(WORDS)/words.hpp \
        $(WORDS)/words_nodes.hpp \

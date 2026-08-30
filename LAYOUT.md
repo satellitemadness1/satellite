@@ -53,10 +53,11 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 
 | file | what it is |
 | --- | --- |
-| [src/programs/main.cpp](src/programs/main.cpp) | `satl` itself: reads the command line, answers `--version` / `--help`, and reports honestly that running a file lands at M8. |
+| [src/programs/main.cpp](src/programs/main.cpp) | `satl` itself: reads the command line, answers `--version` / `--help` / `--words` / `--tokens` / `--unparse`, and reports honestly that running a file lands at M8. *What to say* when a file will not open is this program's business; **getting the bytes is `source_file.cpp`'s**. |
 | [src/programs/opening.cpp](src/programs/opening.cpp) | The banner and the usage text — the words, kept in a `.cpp` because they change every milestone. |
 | [src/programs/window_handover.hpp](src/programs/window_handover.hpp) · [.cpp](src/programs/window_handover.cpp) | Started with no console, `satl` hands itself to `satl-term` (DESIGN §10.4). The test is a **controlling terminal**, not `isatty(stdout)` — the obvious version opens a window instead of feeding a pipe. Six named refusals. |
 | [src/programs/opening.hpp](src/programs/opening.hpp) | Declarations for the above, plus the exit-status enum so two arms cannot disagree about what a failure is worth. |
+| [src/programs/source_file.hpp](src/programs/source_file.hpp) · [.cpp](src/programs/source_file.cpp) | Getting a source file's bytes off the disk **unchanged** — DESIGN §5.3's rule, one layer down. Split from `main.cpp` by subject when that file reached 396 lines. **One function under a hundred lines of comment**, and the comment is the file: `<fstream>` costs 1.4 MB statically and buys nothing back, while its *good* idiom is 2.5× faster than a naive `fread` loop — for a reason that turns out not to be `fstream` at all. Both measurements are there, including the one that made the first answer look wrong. |
 | [src/programs/cpu_level.cpp](src/programs/cpu_level.cpp) | `satl-cpu-level`: prints `haswell` or `baseline`. Compiled at the baseline on purpose — it runs before anything is known about the machine. |
 | [src/programs/window.cpp](src/programs/window.cpp) | `satl-term`: the command line, the `GtkApplication`, and the window. Its title and size are the same string and two numbers `satellite.window.console.new` takes. |
 | [src/programs/terminal.cpp](src/programs/terminal.cpp) | The VTE widget and the `satl` it spawns into a PTY. Holds the exit policy — the clean-exit arm is M11.A's and M11.B deletes it. |
@@ -74,9 +75,32 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/satellite_words/words_digest.hpp](src/satellite_words/words_digest.hpp) | The numbering's identity as one 64-bit number, for a `.satc` header. Over the **numbering** and not the file's bytes — SATC §6 asked and this answers. |
 | [src/satellite_words/words_runtime.hpp](src/satellite_words/words_runtime.hpp) | The user's half: the live child counter, and names numbered as they are met. PLAN §8.1's second table, and the half no `static_assert` can reach. |
 | [src/satellite_words/dump.hpp](src/satellite_words/dump.hpp) · [dump.cpp](src/satellite_words/dump.cpp) | `satl --words`. The **registry's consumer, in the milestone that wrote it** — which the first satellite did not have for three commits, and four defects accumulated in that window. The only part of the module that prints. |
+| [src/satellite_string/satellite_string.hpp](src/satellite_string/satellite_string.hpp) | **The language's alphabet** (DESIGN §5): a 16-bit code table where letters, digits and punctuation are ranges, everything unassigned round-trips through a raw area, and codes 95–100 are *live values*. `encode_raw` is the one the lexer must use; `encode` expands escapes and would rewrite a program's text. |
+| [src/satellite_string/satellite_string.cpp](src/satellite_string/satellite_string.cpp) | The two directions, plus the `static_assert` that no escape name is a prefix of a later one — v1 held that by hand-ordering the table. **The live-value decode is stubbed**; see the note under this table. |
+| [src/lexical_analyzer/lexer.hpp](src/lexical_analyzer/lexer.hpp) | `Token` and `TokenKind`. The field to read first is `spelling`: it is a **`SpellingId` and not a `PathId`**, and the header carries the argument for why, because the two are the same 32 bits and an earlier draft got it wrong and compiled. |
+| [src/lexical_analyzer/lexer_chars.hpp](src/lexical_analyzer/lexer_chars.hpp) | What a character *is*, written against the code table and never against `ctype` — DESIGN §5.2, where the failure is one Error token per space. Underscore is where the table and the lexer disagree on purpose (§5.1). |
+| [src/lexical_analyzer/lexer.cpp](src/lexical_analyzer/lexer.cpp) | One pass, one character of lookahead, no backtracking — which DESIGN §5.5 buys by refusing `<<` and `>>`. Also `intern_word()`, **the lexer's half of the spelling table**: the six single-segment aliases, and the dot filter that leaves the three path rewrites to M16. |
+| [src/lexical_analyzer/dump.hpp](src/lexical_analyzer/dump.hpp) · [dump.cpp](src/lexical_analyzer/dump.cpp) | `satl --tokens`. **The lexer's consumer, in the milestone that wrote it** — the same rule M2 made for the registry, one milestone on. The only part of the module that prints. |
 
-Two directories exist and are **empty**, holding names for work that has not
-started: `src/satellite_number/` and `src/satellite_string/`.
+`src/satellite_number/` exists and is **empty**, holding a name for work that has
+not started.
+
+**`src/abstract_syntax_tree/` and `src/parser/` landed at M4 on 2026-08-30.** Two
+directories rather than one, because the arena is a data-layout decision that
+everything else rides on (PLAN §2.6) and the parser is a reader of DESIGN §6 —
+and because the tree outlives the parse: M4.5 serialises it, M6 resolves it and
+M7 compiles it, none of which need the parser linked in.
+
+**`src/satellite_string/` was filled at M3 and PLAN M7 owns it**, which is a
+pull-forward and is written here rather than left to be discovered. DESIGN §5's
+first sentence makes the alphabet the lexer's dependency, and a milestone cannot
+lex without one. What came across is the **character half**; codes 95–100 resolve
+to live system facts at decode time and those readers are `system_facts/`'s,
+which **M14** ports — so `decode()` emits `<threads>` and its five siblings until
+then. Nothing in the lexer can reach one: `encode_raw` maps every source byte to
+a letter, a digit, a punctuation code or the raw area, so no live code can occur
+in a program's text at all.
+
 `src/satellite_random/` is built and is the one module in the tree with **no
 consumer** — it landed ahead of any milestone that calls it, the way `satl-term`
 did. Everything under `satellite_words/` except `dump.cpp` is `constexpr` data and
@@ -95,9 +119,15 @@ PLAN §8 and DESIGN §3 cite them by path rather than describing them in prose.
 | [example/thread_test.satl](example/thread_test.satl) | **M12**, and it cannot be M12's done-when yet. `.start()` `1 6 13 1` and `.join()` `1 6 13 2` **were numbered on 2026-08-28** and this row said otherwise until M2 transcribed them; what is still missing is that `satellite.thread.new(f(x))` needs the deferred call `1 6 16`, which no milestone owns. SCRATCH.md/THREADS.md. |
 | [example/super_advanced.satl](example/super_advanced.satl) | **M9.5**, and it is the float's *exact* half — `+` is DESIGN §8.6's class 1, which never rounds, so it runs before the rounding rule is chosen. |
 
-**None of them runs.** M2 landed on 2026-08-28 and **M3, the lexer, is the
-milestone in progress**; nothing executes until **M8.A**, which is where a program
-first runs at all. These are written first on purpose, because a milestone whose
+**None of them runs.** M2 landed on 2026-08-28, **M3, the lexer, on 2026-08-29**
+and **M4, the parser, on 2026-08-30**; `satl --tokens example/hello_world.satl`
+was the first command in this tree that read one of these files and answered
+about its contents, and `satl --unparse` is the first that answers *in
+satellite*. **Four of the six parse and round-trip; `class_test.satl` and
+`gui_example.satl` do not**, and MILESTONES/M4.md §6 names the two constructs —
+neither is in DESIGN §6's grammar and both are the files' rather than the
+parser's. Nothing
+executes until **M8.A**, which is where a program first runs at all. These are written first on purpose, because a milestone whose
 done-when is a program somebody can read is one that cannot be argued about
 afterwards.
 
@@ -121,6 +151,17 @@ had built — reporting PASS from stale objects.
 | [tests/words_test/authority.cpp](tests/words_test/authority.cpp) | **Opens WORD_NUMBERS.md and walks all 222 rows of §2.2**, plus §2.3's nine spellings. The one check no `static_assert` can make: a row left out of `words.def` does not leave a hole, it silently renumbers every sibling after it, and both files stay internally consistent. |
 | [tests/words_test/walking.cpp](tests/words_test/walking.cpp) | PLAN M2's two worked examples by name, the interner in both directions, and what a failed walk says. |
 | [tests/words_test/runtime.cpp](tests/words_test/runtime.cpp) | The live child counter and user names — PLAN §8.1's half, and the only check it gets until M4 calls it. |
+| [tests/lexer_test/lexer_test.cpp](tests/lexer_test/lexer_test.cpp) · [.hpp](tests/lexer_test/lexer_test.hpp) | The harness and `main`, the same three-functions-and-a-counter shape. **Unlike `words_test` this binary links objects** — a registry is constexpr data, a lexer is a function that has to run. |
+| [tests/lexer_test/characters.cpp](tests/lexer_test/characters.cpp) | DESIGN §5.1, §5.2, §5.5 and the comment rule. §5.1's own worked example is checked as a **count**, because that is the form the design states it in: 6 tokens with the rule and 16 without. |
+| [tests/lexer_test/literals.cpp](tests/lexer_test/literals.cpp) | Numbers, strings, the five escapes in both directions, and §8.5's Bits — including **`x0009` is not `x9`**, which is the width being part of the value. |
+| [tests/lexer_test/spellings.cpp](tests/lexer_test/spellings.cpp) | The words half. **`console` is the load-bearing fixture**: the language spells it twice, so its one spelling id and its two path numbers are what prove a `SpellingId` is not a `PathId`. Also the six spellings of `arguments`. |
+| [tests/lexer_test/spans.cpp](tests/lexer_test/spans.cpp) | Every span sliced back out of the source, the line counter, and `example/hello_world.satl` lexed end to end. **Fails loudly if it cannot read that file**, never skips. |
+| [tests/parser_test/parser_test.cpp](tests/parser_test/parser_test.cpp) · [.hpp](tests/parser_test/parser_test.hpp) | The harness, and a `Program` that carries **the parse and the numbering together** — because only one of the two holds what a user name is spelled. |
+| [tests/parser_test/arena.cpp](tests/parser_test/arena.cpp) | What `static_assert`s cannot reach: that the arena is flat, that node 0 and list handle 0 are real sentinels, and that no node holds text. |
+| [tests/parser_test/expressions.cpp](tests/parser_test/expressions.cpp) | §6.2's postfix loop — `foo().bar()` is the defect it exists for — precedence, and **the same-line rule**, checked as `x` then `(f(y))` coming out as two statements. |
+| [tests/parser_test/statements.cpp](tests/parser_test/statements.cpp) | **§6.1's collision, and it is the milestone's most important check**: `satellite.control.return my_time` must declare nothing, while `satellite.variable.time my_time` declares a variable. Same four tokens. |
+| [tests/parser_test/declarations.cpp](tests/parser_test/declarations.cpp) | The name allocator: a user capsule takes **1 14 3**, which is PLAN §8.1's worked example checked; a name the language owns is refused; and the limit M4 found in M2 is asserted rather than described. |
+| [tests/parser_test/roundtrip.cpp](tests/parser_test/roundtrip.cpp) | **The done-when**: the four acceptance programs parsed, printed, parsed and printed again, identical. Also the two files in `example/` that do **not** parse, checked as not parsing, with the reason pinned to a line. |
 
 ## `make_support/` — the build
 
@@ -214,6 +255,42 @@ deleting each one, so this table does not repeat them. `plans/` used to hold the
 author's first note; that note has been converted into the permanent documents and
 the file deleted, and its conversion is recorded in
 [SCRATCH.md/FIRST_NOTE.md](SCRATCH.md/FIRST_NOTE.md) until nothing needs it.
+
+## `prototype/` — drafts, and not a source
+
+Nine directories, `M3` through `M11`, each a standalone sketch of a milestone
+with its own `Makefile`. **They are read as drafts and never as sources**, which
+is a rule two milestones have now had to state: [MILESTONES/M3.md](MILESTONES/M3.md)
+§3 records that `prototype/M3/` confused a `SpellingId` with a `PathId` — and
+compiled, because the two are the same 32 bits — and
+[MILESTONES/M4.md](MILESTONES/M4.md) §3 records that `prototype/M4/` decided every
+dispatch by comparing strings against `"satellite"`, which is PLAN §1.1's founding
+finding reproduced.
+
+They are **tracked** because those two reviews cite them by path, and a citation
+to a file that is not in the repository is a citation to nothing. Their objects
+and test binaries are not; `.gitignore` says why in the same terms it uses for
+`tests/`.
+
+## `satellite_debian/` — the Debian family build
+
+A second, self-contained build of the same `src/` for Debian and its
+derivatives: its own `Makefile` over its own `make_support/`, its own
+`install.sh` over its own `install_support/`, and a `build/` directory it owns
+outright and gitignores itself. Its [README.md](satellite_debian/README.md) is
+the authority on it; this table does not repeat what that file says.
+
+**It compiles the same sources and does NOT declare them a second time**, which
+is the one thing to know before editing either. `020-inherited.mk` *includes*
+six of the root's fragments — the six that declare no targets — and states only
+where they are rooted, so `SATL_SRCS` has exactly one home. Its own comment says
+what a copy would cost: the two lists would agree until the day the language
+gained a source file, and then this build would keep linking from a list that no
+longer describes the interpreter.
+
+**Verified on 2026-08-30**, when M4 added eight sources and four headers to the
+root's list and this build picked up all twelve with **no edit here at all** —
+`build/satl` and the root `satl` produce byte-identical `--unparse` output.
 
 ## `old_versions/`
 

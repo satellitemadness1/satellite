@@ -176,6 +176,15 @@ where `TESTS` and `TESTNAMES` were added beside it. The prediction held — addi
 module was the two edits below, plus the test fragment, which is a target and not a
 module.
 
+**M4 added TWO modules on 2026-08-30 and the count came out at exactly the two
+edits again** — `TREE = $(SRC)/abstract_syntax_tree` and `PARSER = $(SRC)/parser`
+in `030-directories.mk`, then eight sources and four headers in `040-sources.mk`.
+Nothing else. Both microarchitecture variants and both flag stamps came along
+through the pattern rules with no rule written for them, which is what those rules
+were put there in advance for. *The example this section has used since it was
+written — `abstract_syntax_tree` and not `ast` — stopped being hypothetical that
+day.*
+
 So adding a module under `src/` is exactly three edits:
 
 1. **`030-directories.mk`** — uncomment `WORDS = $(SRC)/satellite_words`.
@@ -211,9 +220,10 @@ Two things not to break:
 
 **Ported at M2 on 2026-08-28.** Until then this section opened *"there is no test
 infrastructure in this tree -- not a target, not a directory, not a harness"*, and
-that was literally true. There is now `make test`, `tests/words_test/` and
-`make_support/065-tests.mk`, which is the first satellite's fragment cut down to
-what one test needs. Everything below is what was ported, and why.
+that was literally true. There is now `make test`, `make_support/065-tests.mk`, and
+**three suites — `tests/words_test/` (M2), `tests/lexer_test/` (M3) and
+`tests/parser_test/` (M4)**. Everything
+below is what was ported, and why.
 
 `old_versions/first_satellite/make_support/120-tests.mk` plus `TESTNAMES` in its
 `070-directories.mk` is the original. The shape:
@@ -276,6 +286,67 @@ test whose subject is a document must fail loudly when it cannot read that
 document**, never skip; and **the counts are checked before the rows** — 222 rows,
 219 numbers, 3 aliases, 35 `(0)` markers — because a parser bug that silently read
 half the table would otherwise report PASS over the half it read.
+
+### 6.1 A test that links objects — what M3 added
+
+*(2026-08-29.)* `words_test` **links nothing**, and §6 above reads as if that were
+the shape of a test here. It is the shape of a test whose subject is `constexpr`
+data. `lexer_test` is the other kind, and adding one is two lines:
+
+```make
+LEXER_TEST_SRCS = $(LEXER)/lexer.cpp $(STRING)/satellite_string.cpp
+
+$(TESTS)/lexer_test/lexer_test: $(lexer_test_SRCS) $(lexer_test_HDRS) \
+                                $(LEXER_TEST_SRCS) $(WORDS)/words.def $(HDRS) \
+                                example/hello_world.satl .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/lexer_test -o $@ \
+	    $(lexer_test_SRCS) $(LEXER_TEST_SRCS)
+```
+
+Three things in that rule are the point:
+
+- **Name the module sources, never `$(SATL_OBJS)`.** Linking the interpreter's
+  objects would drag `main.o` and its window handover into a test binary, and a
+  test that begins by deciding whether to open a GUI is a test that hangs on a
+  build machine.
+- **A file the test READS is a prerequisite**, exactly as `WORD_NUMBERS.md` is for
+  `words_test`. `lexer_test` lexes `example/hello_world.satl`, so editing the
+  acceptance program re-runs the test that reads it.
+- **`.cxxflags-stamp` is not optional**, for the reason 065-tests.mk records at
+  length: without it `make OPT=-O0 test` re-runs the binary the previous build
+  left.
+
+And the rule from `words_test` carries over unchanged and is worth repeating
+because it is the one most easily broken: **a test whose subject is a file must
+fail loudly when it cannot read that file, never skip.** `lexer_test`'s span
+section calls `check(false, ...)` and returns rather than passing over a missing
+`example/`.
+
+### 6.2 A file that must NOT parse is also an input — what M4 added
+
+*(2026-08-30.)* `parser_test` names **all six** programs in `example/` as
+prerequisites, and four of them are the milestone's done-when while **two are
+checked as files that do not parse**, with the reason pinned to a line number.
+That is not a smaller claim than the four — it is the same claim from the other
+side, and it needs the same prerequisite line:
+
+```make
+$(TESTS)/parser_test/parser_test: ... $(wildcard example/*.satl) .cxxflags-stamp
+```
+
+**A file that starts parsing is a finding and not a pass.** Without the
+prerequisite, correcting `example/class_test.satl` would leave the test that
+asserts it is broken reporting `ok` from a binary built before the fix — the
+stale-binary lesson again, arriving through a file nobody thought of as an input
+because the test wants it to fail.
+
+**And the round-trip is the form of the check, not a check among them.** Nothing
+in this language runs until M8, so a tree cannot be verified by running it; it can
+be verified by printing it back and printing that back again. `unparse.hpp` states
+what that does and does not promise, and the short version is that **it is a
+fixpoint and not equality with the input** — comments are discarded, blank lines
+were never tokens, and a redundant bracket does not survive. A test written
+against equality would have to be weakened every time the printer got better.
 
 ## 7. The X-macro registry — the mechanism M2 ported
 
