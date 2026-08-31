@@ -33,22 +33,18 @@
 // out loud, because a pass that silently resolved nothing would be
 // indistinguishable from one that worked.
 //
-// THE BOUND BELOW IS WITHDRAWN AND HAS NOT BEEN REMOVED YET. The author's rule
-// as of 2026-08-31 is that the language has NO depth limit -- DESIGN §7.5 was
-// rewritten and PLAN §2.5 un-deferred the same day -- so `kMaxDepth`, `Depth`,
-// `too_deep()` and errors.def's S0501 all go when this pass keeps its own stack
-// on the heap instead of using the C++ one. `SCRATCH.md/NO_LIMITS.md` §5.1 is
-// the plan. Everything below is what the file said when the bound was the
-// decision, kept until the code catches up rather than edited into a claim the
-// code does not keep.
+// NOTHING BOUNDS THE DEPTH OF THIS WALK, WHICH IS THE RULE AND NOT AN OVERSIGHT.
+// DESIGN §7.5: the language has no depth limit. M7 shipped a fixed
+// `kMaxDepth = 2000` with errors.def's S0501 behind it; the author's answer was
+// that an interpreter which stops at a depth is broken rather than bounded, and
+// both were deleted on 2026-08-31. `SCRATCH.md/NO_LIMITS.md` is the record.
 //
-// AND THE RECURSION BOUND HERE IS NOT DESIGN §7.5's. §7.5 sits inside §7 and
-// reads as this milestone's; it is not. It bounds a program that is RUNNING,
-// its ceiling is derived from RLIMIT_STACK, and `system_facts/facts.hpp`
-// already says in its own words that M9's ceiling comes from there. What is
-// bounded below is the RESOLVER's own C++ stack, which a deeply nested
-// expression smashes while nothing is running at all. Two bounds, two
-// milestones, one section of DESIGN.
+// WHAT HOLDS IT UP TODAY IS THE STACK satl ASKS FOR. machine_limits/limits.hpp's
+// kWantedStackBytes raises RLIMIT_STACK to 8 GiB at startup, and M6's watchdog
+// refuses in words before that is reached whenever MEMORY_MAX is set below it,
+// because touched stack pages are resident memory. That is a very large number
+// and not the absence of one -- DESIGN §7.5.1 says so, and a walker keeping its
+// own stack on the heap is what finally makes the rule true.
 
 #include "abstract_syntax_tree/ast.hpp"
 #include "error_reporter/report.hpp"
@@ -172,16 +168,6 @@ struct Resolved {
 
     bool ok() const { return !errors::any_error(problems); }
 };
-
-// HOW DEEPLY A PROGRAM MAY BE WRITTEN, which is not how deeply it may recurse.
-//
-// 2000 is the M6 draft's `MAX_RESOLVE_DEPTH` and it is kept for the reason
-// DESIGN §7.5 arrives at the same number for the other bound: one activation of
-// this walk is a stack frame, and 2000 of them fit inside an ordinary 8 MiB
-// stack with room to spare. Nothing in this tree needs the two to agree and
-// nothing makes them: §7.5's is derived from RLIMIT_STACK at run time and is
-// M9's, and this one is a constant because a program is written once.
-inline constexpr int kMaxDepth = 2000;
 
 // Resolve a parsed program. Never throws, and reports every problem it finds
 // rather than the first -- the rule the lexer and the parser already keep.

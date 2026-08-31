@@ -18,27 +18,10 @@
 
 namespace satellite::resolve {
 
-bool Resolver::too_deep(NodeIndex node)
-{
-    if (depth_ < kMaxDepth)
-        return false;
-    // REPORTED ONCE AND NOT ONCE PER NODE. Everything below the limit is left
-    // unresolved, so a program that trips this would otherwise raise an
-    // unknown-name error for every name inside the part that was never read --
-    // which is the failure PARSE_TOO_MANY_ERRORS exists to stop one milestone
-    // earlier, arriving here in a form a cap cannot fix.
-    for (const errors::Diagnostic &already : out_.problems)
-        if (already.code == errors::Code::RESOLVE_TOO_DEEP)
-            return true;
-    problem<errors::Code::RESOLVE_TOO_DEEP>(node, kMaxDepth);
-    return true;
-}
-
 void Resolver::expression(NodeIndex node)
 {
-    if (node == kNoNode || too_deep(node))
+    if (node == kNoNode)
         return;
-    const Depth guard(depth_);
 
     const Node &n = ast_[node];
     switch (n.kind) {
@@ -93,9 +76,8 @@ void Resolver::expression(NodeIndex node)
 
 void Resolver::statement(NodeIndex node)
 {
-    if (node == kNoNode || too_deep(node))
+    if (node == kNoNode)
         return;
-    const Depth guard(depth_);
 
     const Node &n = ast_[node];
     switch (n.kind) {

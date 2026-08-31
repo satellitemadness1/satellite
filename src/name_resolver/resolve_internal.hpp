@@ -48,22 +48,6 @@ private:
     void expression(NodeIndex node);
     void body_of(NodeIndex capsule, Frame &frame);
 
-    // A DEPTH GUARD RATHER THAN A COUNTER AT EACH SITE, because the two walkers
-    // call each other and every early `return` in either of them would have to
-    // remember to put the counter back. See resolve.hpp for why this bound is
-    // not DESIGN §7.5's.
-    struct Depth {
-        explicit Depth(int &at) : at_(at) { at_++; }
-        ~Depth() { at_--; }
-        Depth(const Depth &) = delete;
-        Depth &operator=(const Depth &) = delete;
-
-    private:
-        int &at_;
-    };
-
-    bool too_deep(NodeIndex node);
-
     // --- names, paths and numbers (names.cpp) -------------------------------
 
     void name(NodeIndex node);
@@ -155,7 +139,6 @@ private:
     // `satellite.library` is shared and permanent, and a local is neither.
     Frame *frame_ = nullptr;
 
-    int depth_ = 0;
 };
 
 // The child of `parent` spelled `word`, or kNoPath. Aliases count, for the

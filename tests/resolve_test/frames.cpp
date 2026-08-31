@@ -207,32 +207,31 @@ satellite.capsule takes()
           "a local called `satellite` is S0513 -- DESIGN §2's reservation rule, "
           "which the parser cannot enforce here");
 
-    // S0501, AND IT IS NOT DESIGN §7.5's BOUND. §7.5 bounds a program that is
-    // RUNNING and derives its ceiling from RLIMIT_STACK; this one stops a
-    // deeply nested expression from smashing the resolver's own C++ stack while
-    // nothing is running at all.
+    // NO DEPTH BOUND AT ALL, WHICH IS DESIGN §7.5's RULE AND WAS THIS
+    // MILESTONE'S ONE REAL LIMIT UNTIL 2026-08-31. M7 shipped a fixed
+    // kMaxDepth = 2000 with S0501 behind it; the author's answer was that an
+    // interpreter which stops at a depth is broken rather than bounded, and
+    // both were deleted. What this asserted the day it landed -- that 2,200
+    // levels are REFUSED -- is now the failure it exists to catch.
+    //
+    // 20,000 AND NOT 2,200, so the fixture is an order of magnitude past the
+    // bound that used to be here. It costs about 60 MiB of the 8 GiB
+    // machine_limits/limits.hpp asks the kernel for at startup.
     std::string deep = "\nsatellite.capsule deep()\n{\n    satellite.variable.number n = ";
-    for (int i = 0; i < 2200; i++)
+    for (int i = 0; i < 20000; i++)
         deep += "(1 + ";
     deep += "1";
-    for (int i = 0; i < 2200; i++)
+    for (int i = 0; i < 20000; i++)
         deep += ")";
     deep += "\n    satellite.return(n)\n}\n";
 
     Run nested_deep;
     resolve_source(deep, nested_deep);
-    check(nested_deep.parsed_clean(),
-          "2200 levels of nesting PARSE, which is what makes S0501 reachable");
-    check(raised(nested_deep, satellite::errors::Code::RESOLVE_TOO_DEEP),
-          "and resolve refuses them rather than smashing its own stack: S0501");
-
-    size_t too_deep = 0;
-    for (const satellite::errors::Diagnostic &at : nested_deep.resolved.problems)
-        if (at.code == satellite::errors::Code::RESOLVE_TOO_DEEP)
-            too_deep++;
-    check(too_deep == 1,
-          "and it is said ONCE -- everything under the limit is unresolved, so "
-          "reporting per node would print a caret for every name below it");
+    check(nested_deep.parsed_clean(), "20,000 levels of nesting parse");
+    check(nested_deep.resolved.ok(),
+          "and RESOLVE, with nothing refused -- the language has no depth "
+          "limit, and a walk that stopped here would be the bound this "
+          "milestone shipped and the author rejected");
 }
 
 } // namespace resolve_test
