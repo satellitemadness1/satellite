@@ -30,7 +30,7 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and — after reading its source on 2026-08-27 — the one thing the language has not settled that it needs. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
-| [Makefile](Makefile) | An index. Includes the eleven fragments under `make_support/` in numbered order and does nothing else. |
+| [Makefile](Makefile) | An index. Includes the twelve fragments under `make_support/` in numbered order and does nothing else. |
 | [LICENSE](LICENSE) | MIT (Expat) for satellite's own source, plus a third-party section for `pcg/`, which is Apache-2.0. It also records that no built binary currently contains any of it. |
 | [pcg/](pcg/) | The only third-party code in the tree: three pcg-cpp 0.98 headers, its licence, and a README recording what was cut, why `-isystem`, and why a 512-bit variant was refused. |
 | [.gitignore](.gitignore) | Build output, and the deliberate exclusion of `old_versions/` from this repository's history. |
@@ -270,6 +270,13 @@ Numbered because the order is load-bearing in three places: 010 before 020, whic
 both fragments say at their own top, and 045 and 047 before 050, which each says at
 its own top.
 
+**Three files here are not `.mk` fragments and are not included by the `Makefile`**,
+which is new as of 2026-08-31: `startup.rows` is data and `startup.sh` is a program,
+both read by `067-startup.mk` at the moment its target runs. They live here rather
+than in a directory of their own because they are build machinery and this is where
+the build lives — the same argument `install_support/` makes for its numbered shell
+scripts.
+
 | file | what it is |
 | --- | --- |
 | [make_support/010-compiler.mk](make_support/010-compiler.mk) | Which compiler, and `OPT` as the one flag knob. Explains why `CXXFLAGS` is not one. |
@@ -278,9 +285,13 @@ its own top.
 | [make_support/040-sources.mk](make_support/040-sources.mk) | **What gets compiled and linked**, named one by one rather than wildcarded. Also holds the measured startup numbers. |
 | [make_support/045-microarchitecture.mk](make_support/045-microarchitecture.mk) | The two microarchitecture builds: the `-march=x86-64-v3` flags, the `-dumpmachine` test that decides whether there are two, and the object lists. |
 | [make_support/047-window.mk](make_support/047-window.mk) | Whether this machine can build `satl-term`: the `pkg-config vte-2.91-gtk4` probe, the flags it yields, and the window's two sources. |
+| [make_support/048-static.mk](make_support/048-static.mk) | `STATIC=0/1/full`, the `-print-file-name` probe that asks the compiler whether it *can* link statically, the `.ldflags-stamp`, and `env -u LD_RUN_PATH` so a static binary carries no RPATH into somebody else's home directory. **It had no row here until 2026-08-31**, which is the gap `make startup` found by needing to name it. |
 | [make_support/050-build.mk](make_support/050-build.mk) | The default goal and the four link rules. The first fragment that declares a target. |
 | [make_support/060-compile.mk](make_support/060-compile.mk) | How a `.cpp` becomes a `.o`, for both variants, plus the two flag stamps that catch a changed command line. |
 | [make_support/065-tests.mk](make_support/065-tests.mk) | **New at M2.** The `test` target and the per-test source wildcards, all derived from `TESTNAMES`. Read before 070 so `clean` can name `$(TESTBINS)`. |
+| [make_support/067-startup.mk](make_support/067-startup.mk) | **New at M7.** The `startup` target, and the empty-program floor it measures against — linked through the same variables 050 links `satl` through, so the two sides cannot drift apart. |
+| [make_support/startup.rows](make_support/startup.rows) | **New at M7.** The registry: which commands `make startup` times and what each cost last time. Adding a command to the measurement is one line here. Carries the argument for why a *share* is comparable across link modes and a raw row is not. |
+| [make_support/startup.sh](make_support/startup.sh) | **New at M7.** How a measurement is taken: best of five runs of 200, the floor subtracted, the baseline diffed. The only consumer of `startup.rows`. |
 | [make_support/070-clean.mk](make_support/070-clean.mk) | Removing what a build made, named one by one rather than by deleting a directory. |
 
 ## `satellite_enterprise/` — the Enterprise Linux install

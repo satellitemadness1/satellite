@@ -145,6 +145,37 @@
 # the difference between reporting a machine and reporting it from two different
 # instants.
 #
+# `make startup` TAKES THIS TABLE NOW, as of 2026-08-31, and every figure above
+# was taken by hand. The harness is 067-startup.mk, startup.rows and startup.sh,
+# and PLAN §9's rule -- "startup is re-measured every milestone" -- had no target
+# behind it until then, which is why the M6 block above covers four milestones.
+# The baseline it diffs against is the LAST table above, the one after the fix;
+# startup.rows says why it is that one and not the one before it. This block
+# stays here and stays prose, because §9's other rule is that a number goes
+# beside the decision it justifies and the decisions are in this file. What moved
+# into startup.rows is only the part a program has to read.
+#
+# AND BUILDING IT CORRECTED "BOTH SIDES STATIC", WHICH IS THIS BLOCK'S OWN
+# INSTRUCTION. That line is M3's, written after a static satl timed against a
+# dynamic empty program came out 0.9 ms FASTER than doing nothing. It is right,
+# and it is not the fact underneath it. Measured 2026-08-31:
+#
+#                        floor   satl --version   satl's own share
+#     dynamic            1.457        1.633             0.176
+#     static             0.568        0.755             0.187
+#     the table above    0.556        0.724             0.168
+#
+# The absolute columns are 0.9 ms apart. THE SHARE IS NOT. The loader is a
+# constant this build pays TWICE -- once in the floor and once in satl -- so
+# subtracting the floor removes it, and what is left is the number a milestone is
+# answerable for. The rule is BOTH SIDES LINKED THE SAME WAY, and 067-startup.mk
+# links its floor through the same $(CXX) $(CXXFLAGS) $(LDFLAGS)
+# $(STATIC_LDFLAGS) $(LINK_ENV) that 050-build.mk links satl through -- so at any
+# setting of STATIC, and not only at full, the two sides cannot drift apart. That
+# is stronger than an instruction: there is no second place left to get it wrong.
+# Run at STATIC=full the harness reproduces the table above row for row -- floor
+# 0.567, --version 0.764, --words 0.915, --tokens 0.843 and 1.144, --limits 1.481.
+#
 # The window is a separate binary (M1.5, built 2026-08-27) and, for
 # satellite.window.new(), a
 # dlopen'd library (M24) -- because the two-binary split cannot help a window

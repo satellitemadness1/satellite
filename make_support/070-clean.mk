@@ -15,6 +15,16 @@
 # reason 065-tests.mk derives the build list: a clean that names test binaries
 # by hand goes stale the first time one is added, and leaves a stale binary that
 # `make test` will happily run.
+#
+# $(STARTUP_FLOOR) IS THE ONE STALE FILE HERE THAT WOULD LIE RATHER THAN FAIL,
+# and it is named through 067-startup.mk's variable for the reason above. A left
+# behind test binary at least runs its own out-of-date assertions; a left behind
+# floor is an empty program linked the way the tree was linked SOME OTHER TIME,
+# and `make startup` would subtract it from a satl linked this way and print the
+# difference as a milestone's fault. 067 makes it depend on both stamps so that
+# a rebuild is triggered rather than needed -- this line is the second lock on
+# the same door, and 040-sources.mk records what it costs when neither is there.
 clean:
 	rm -f satl satl.haswell satl-cpu-level satl-term $(SRC)/*/*.o \
-	      $(TESTBINS) .cxxflags-stamp .cxxflags-stamp-haswell .ldflags-stamp
+	      $(TESTBINS) $(STARTUP_FLOOR) \
+	      .cxxflags-stamp .cxxflags-stamp-haswell .ldflags-stamp

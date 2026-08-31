@@ -1,0 +1,93 @@
+# satellite -- what `make startup` measures, and what it measured last time.
+#
+# THE REGISTRY, AND make_support/startup.sh IS ITS ONE CONSUMER. PLAN §9 has
+# said "startup is re-measured every milestone" since the plan was written and
+# nothing implemented it, so M4, M4.5 and M5 each landed without one and a 34x
+# regression sat undiscovered for three milestones (MILESTONES/M6.md §9.1). A
+# rule with no target behind it is a rule nobody runs. This file is the target's
+# data half: adding a command to the measurement is ONE LINE HERE and no edit
+# anywhere else, which is the same arrangement words.def has with the trie and
+# errors.def has with the reporter.
+#
+# ------------------------------------------------------------------------------
+# THE ONE THING TO UNDERSTAND BEFORE READING A NUMBER OUT OF THIS FILE
+# ------------------------------------------------------------------------------
+#
+# A ROW IS NOT COMPARABLE ACROSS LINK MODES. A SHARE IS.
+#
+# 040-sources.mk records the mistake that taught this: satl is shipped static,
+# and timing it against a DYNAMIC `int main(){return 0;}` made satl look 0.9 ms
+# FASTER than an empty program -- a linking difference wearing a performance
+# result's clothes. The rule written down at the time was "both sides static".
+# That is the right instruction and it is not the underlying fact, which was
+# measured on 2026-08-31 while this harness was being built:
+#
+#                     floor    satl --version    satl's own share
+#     dynamic         1.457         1.633              0.176
+#     static          0.568         0.755              0.187
+#     M6's record     0.556         0.724              0.168
+#
+# The two absolute columns differ by 0.9 ms between link modes. THE SHARE DOES
+# NOT -- 0.176 against 0.187, and against the 0.168 M6 recorded statically on a
+# different afternoon. The dynamic loader is a constant this build pays twice,
+# once in the floor and once in satl, so subtracting the floor removes it.
+#
+# So the real rule is BOTH SIDES LINKED THE SAME WAY, and then the share is the
+# number a milestone is answerable for. startup.sh links its floor binary
+# through the same $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) $(LINK_ENV)
+# that 050-build.mk links satl through, so the two sides CANNOT drift apart --
+# the mistake above is not one this harness can make. The ms column below is
+# still recorded, because a person wants to know what a command costs on a
+# machine; it is simply not the column a regression is read from.
+#
+# ------------------------------------------------------------------------------
+# THE FORMAT
+# ------------------------------------------------------------------------------
+#
+# Blank lines and lines beginning with # are ignored. Every other line is
+# fields separated by `|`, and the leading word says which kind:
+#
+#     FLOOR | <ms>              what `int main(){return 0;}` cost last time
+#     ROW   | <ms> | <args>     what `satl <args>` cost last time
+#     <KEY>   <value>           a condition the baseline was taken under
+#
+# `|` AND NOT WHITESPACE, so that the empty args field on the bare `satl` row
+# is visible rather than being a trailing space somebody's editor strips. A ms
+# of `-` means never measured, and startup.sh prints that row with no delta
+# rather than inventing one.
+#
+# ------------------------------------------------------------------------------
+# THE BASELINE
+# ------------------------------------------------------------------------------
+
+DATE    2026-08-31
+LINK    full
+LOAD    0.78
+NOTE    M6, re-measured after the physical_cores() fix -- MILESTONES/M6.md §9.4
+
+# THESE ARE THE `AND RE-TAKEN AGAIN THE SAME DAY, WITH THE FINDING FIXED` TABLE
+# in 040-sources.mk and not the one above it. That is deliberate and it is the
+# only honest choice: the earlier table is what satl cost with a defect in it,
+# so diffing against it would call the fix a regression every time it ran.
+#
+# THE ROWS ARE THE COMMANDS THAT COST SOMETHING DIFFERENT, not every command
+# satl has. --version is the row §9.1 says to read -- it does nothing but say
+# what it is, so its share is satl's startup and nothing else. The rest are here
+# because each adds one identifiable piece of work on top of that: the trie
+# walk, reading and lexing a small file, reading and lexing the largest file in
+# the tree, and the config reader.
+
+FLOOR | 0.556
+
+ROW | 0.735 |
+ROW | 0.724 | --version
+ROW | 0.887 | --words
+ROW | 0.818 | --tokens example/hello_world.satl
+ROW | 1.128 | --tokens example/class_test.satl
+ROW | 1.462 | --limits
+
+# NEVER MEASURED, AND SAID SO RATHER THAN LEFT OUT. This row was taken once, at
+# 1.931 ms, in the table that had the defect in it, and was not re-taken after
+# the fix. A `-` prints the measurement and no delta, which is what a reader
+# needs; a stale number copied across would print a delta that means nothing.
+ROW | - | --limits example/satellite_config.ini

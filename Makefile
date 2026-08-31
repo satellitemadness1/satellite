@@ -18,6 +18,7 @@
 #     a new target ........................ 050-build.mk
 #     how a .cpp becomes a .o ............. 060-compile.mk
 #     a test, or the test target .......... 065-tests.mk
+#     what `make startup` measures ........ 067-startup.mk
 #
 # ORDER IS LOAD-BEARING in two places, and each fragment says so at its top:
 # 010 before 020, because VERSION_DEFS bakes $(CXX) and $(CXXFLAGS) into the
@@ -54,4 +55,5 @@ include make_support/048-static.mk
 include make_support/050-build.mk
 include make_support/060-compile.mk
 include make_support/065-tests.mk
+include make_support/067-startup.mk
 include make_support/070-clean.mk

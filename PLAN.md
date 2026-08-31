@@ -466,6 +466,32 @@ at all** now — fifty before it — because `satellite_config.ini` can say
 resolved. satl's own share is **0.168 ms**, of which 0.14 is the pool builder and the
 watchdog: §4.5.1.2's decision costing what it decided to spend, and nothing else.
 
+**`make startup` takes this measurement, as of 2026-08-31, and until then nothing
+did.** §9's rule below has asked for it every milestone since this plan was written
+and had no target behind it, which is exactly why the paragraph above covers four
+milestones instead of one. The harness is `make_support/067-startup.mk`,
+`startup.rows` — the commands and what each cost last time — and `startup.sh`.
+
+**What building it found, and it sharpens this section's own method.** M3 corrected
+§4.3 to *"both sides static"* after timing a static satl against a dynamic empty
+program made satl look 0.9 ms **faster** than doing nothing. That instruction is
+right and it is not the underlying fact. Measured while the harness was written:
+
+| | floor | `satl --version` | satl's own share |
+|---|---|---|---|
+| dynamic | 1.457 ms | 1.633 ms | **0.176 ms** |
+| static | 0.568 ms | 0.755 ms | **0.187 ms** |
+| M6's record, static | 0.556 ms | 0.724 ms | **0.168 ms** |
+
+The two absolute columns are 0.9 ms apart. **The share is not** — 0.176 against 0.187,
+and against a figure taken on a different afternoon. The dynamic loader is a constant
+this build pays *twice*, once in the floor and once in satl, so subtracting the floor
+removes it. So the rule is **both sides linked the same way**, and then the share is
+the number a milestone is answerable for; `067-startup.mk` links its floor through the
+same variables `050-build.mk` links `satl` through, which makes that structural rather
+than an instruction somebody has to remember. The harness reproduces the M6 table row
+for row when run at `STATIC=full`.
+
 **This binary links no GUI, and that is measured rather than tidy-minded.** The first
 satellite's `satl-term` resolves 79 shared objects and maps 78 on this machine
 against `satl`'s 6, and the dynamic linker loads every one before `main()` on every
@@ -3032,8 +3058,24 @@ ioctl with its 80-column fallback, and the clear — 14 lines that **M14 builds*
 calls from two places. And **the emergency-exit hook**: M6 builds the watchdog's
 exit path and deliberately registers no hook, because until there is a prompt nothing
 has put the terminal into raw mode; **this milestone is the only registrar**, exactly
-as v1's is, and it is what makes a `_exit(2)` from the watchdog leave a usable
-terminal behind.
+as v1's is, and it is what makes a `_exit(EXIT_LIMIT)` from the watchdog leave a
+usable terminal behind. *(That said `_exit(2)` until 2026-08-31. The status is **4**
+— `EXIT_LIMIT`, `programs/opening.hpp` — and M6's own entry above carries the
+correction and the argument for it: 2 is `EXIT_USAGE` in this tree, so a script
+testing for it would report a memory ceiling as a typo. The number was fixed where
+M6 was described and not here, where it is also written, which is why an inherited
+line is worth re-reading when the thing it inherits changes.)*
+
+**And a third thing it inherits, which nothing said until 2026-08-31: there is no
+signal handler anywhere in this tree.** `satl --watchdog` holds the process open and
+its only clean way out is an interrupt, so the status a caller sees is the one the
+shell synthesises from the signal — measured on this machine: **SIGINT 130, SIGTERM
+143**, against 4 when the ceiling actually fires. That is *correct* and it is not
+nothing: 130 is 128 + SIGINT and is exactly what a program that dies by a signal
+should report, so there is no defect here to fix, only a milestone to attach it to.
+This is the one, because a handler is only worth writing where something must be
+undone before leaving — and raw mode, the only such thing, arrives here. MILESTONES/
+M6.md §6.5 is where it was found and §9.3 is what found it.
 
 **M1.5 closes the window when the interpreter exits cleanly, and M22 ends that.**
 Until there is a prompt, the child runs for milliseconds and a window that outlived
@@ -3438,7 +3480,12 @@ namespace, it is the path sitting under a parent some milestone happens to name.
   decision — not in a commit message, where nobody looks for it again.
 - **Say what was measured and when.** Every figure in this document carries the
   machine or the date or both.
-- **Startup is re-measured every milestone** against §4.3's floor.
+- **Startup is re-measured every milestone** against §4.3's floor. **`make startup`
+  is what does it**, as of 2026-08-31 — and for every milestone before that this line
+  was a rule with no target behind it, so M4, M4.5 and M5 landed with no measurement
+  at all and a 34× regression went three milestones before anybody looked
+  (MILESTONES/M6.md §9.1). That is the argument for the rule and it is also the
+  argument against writing one down without building the thing that runs it.
 - **Verify through the real code path.** If a check passes and the thing is still
   broken, the check is wrong. Running the *installed* binary is what proves an
   install, not comparing bytes.

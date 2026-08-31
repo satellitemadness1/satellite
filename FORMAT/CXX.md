@@ -166,9 +166,28 @@ Corollaries worth stating because they are easy to violate:
 
 ## 5. Adding a module to the build
 
-The build is eleven fragments under `make_support/`, included by name in numeric order
-from the `Makefile`. Order is load-bearing in four places and each fragment says so
-at its top — 065-tests.mk is read before 070-clean.mk so `clean` can name `$(TESTBINS)`.
+The build is twelve fragments under `make_support/`, included by name in numeric order
+from the `Makefile`, plus two files that are not fragments and are not included at all
+— `startup.rows` and `startup.sh`, which `067-startup.mk` reads when its target runs.
+
+**Order is load-bearing where a fragment is read by a CONDITIONAL, and nowhere else.**
+`make` evaluates an `ifeq` as it reads, so 045 and 047 must precede 050, which tests
+`MICROARCH_VARIANTS` and `HAVE_WINDOW`; and 010 must precede 020, which bakes `$(CXX)`
+and `$(CXXFLAGS)` into the binary as strings. Everywhere else these are recursively
+expanded variables that make resolves after the whole file is read, so a later fragment
+naming an earlier one's variable is fine and so is the reverse.
+
+*(Corrected 2026-08-31.)* This paragraph said "load-bearing in four places" and gave
+065-tests.mk before 070-clean.mk as the example, *"so `clean` can name `$(TESTBINS)`"*.
+**That one is convention and not a constraint, and 065-tests.mk's own header has said
+so since 2026-08-28** — it was swapped with 070 that day and nothing changed, because
+`clean` names `$(TESTBINS)` in a *recipe*, which make expands when the recipe runs.
+The correction was made there and not here, so this file went on teaching the version
+that had already been disproved. 065's header gives the reason it was corrected rather
+than deleted, and it is the reason this paragraph is rewritten rather than renumbered:
+*"a fragment claiming a constraint it does not have teaches the next person that the
+ones which ARE real can be ignored too."* 067-startup.mk is placed by the same
+convention and says at its top that it is a convention.
 
 **M2 used that line on 2026-08-28 and it is now live**: `WORDS = $(SRC)/satellite_words`
 sits with the other module variables at the top of `030-directories.mk`, which is

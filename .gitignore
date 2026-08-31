@@ -8,6 +8,11 @@
 .cxxflags-stamp-haswell
 .ldflags-stamp
 
+# The empty program `make startup` measures satl against. A build artefact like
+# the four above and not a source: 067-startup.mk generates `int main(){return
+# 0;}` on the compiler's stdin, so there is no .cpp for this to shadow.
+.startup-floor
+
 # The test binaries, which live BESIDE their sources rather than in a build
 # directory, so this cannot be a directory exclusion -- tests/words_test/ is
 # source and must stay tracked.

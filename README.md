@@ -49,6 +49,14 @@ newer, and `satl-cpu-level`, the small program that says which one this machine 
 execute. Everywhere else it produces one `satl`. [PLAN.md §4](PLAN.md) explains why
 there are two builds and why the detector is compiled at the baseline.
 
+`make test` runs the suites — one per module that has one, each a binary beside its
+own sources. `make startup` re-measures what `satl` costs to start against an empty
+program linked the same way, and diffs it against what it cost last time; PLAN §9
+asks for that every milestone, and `make_support/startup.rows` is the table it
+answers against. Neither is part of `make`, and `make_support/065-tests.mk` says
+why: a test binary is not something an install ships, and adding one to the default
+goal would change what "the build" means for a number compared across milestones.
+
 ## Installing
 
 ```sh
@@ -67,7 +75,7 @@ every path they do not already own.
 
 ## The documents
 
-Seven files, each with one job, and none of them repeats another:
+**Seven files at the root**, each with one job, and none of them repeats another:
 
 | | |
 | --- | --- |
@@ -78,6 +86,16 @@ Seven files, each with one job, and none of them repeats another:
 | [QUAD.md](QUAD.md) | **Why the language exists.** The program satellite has to be able to express, and what it is still missing to do it. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | **Every file in the tree**, and one line on what each is for. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan. **Superseded** — read it for history or not at all. |
+
+**And three directories that hold documents of their own**, which this index left
+out until 2026-08-31 — so a reader who wanted to know what a landed milestone
+actually did had no route to it from the front page:
+
+| | |
+| --- | --- |
+| [MILESTONES/](MILESTONES/) | **What each milestone did, and the commit that did it.** One file per milestone that has been built, written when it landed. These are *reviews and not plans*: PLAN §8 says what a milestone will be, and a file here says what it turned out to be — what was decided on the way, what building it found, what it left open, and which mutations prove its test. [MILESTONES/README.md](MILESTONES/README.md) is the index and the dates. |
+| [FORMAT/](FORMAT/) | **How the code is written.** [CXX.md](FORMAT/CXX.md) is the house style, the comment culture, how the build and a test are edited, and the X-macro registry mechanism. Permanent, and not a design document. |
+| [SCRATCH.md/](SCRATCH.md/) | **A folder, not a file**, and the `.md` in its name is deliberate — it sorts next to the documents it is the opposite of. Everything in it is temporary and meant to be deleted; nothing in it decides anything. [Its README](SCRATCH.md/README.md) says what is in there now and what deletes each one. |
 
 Cite DESIGN.md and PLAN.md **by section number, never by line.** Line numbers stop
 meaning anything the first time a file is edited; `§4.2` is the whole address.
