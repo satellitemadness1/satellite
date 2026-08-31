@@ -326,19 +326,41 @@ Eighteen files. The two basenames are the two names a desktop looks up, and neit
 may drift: `org.satellite.terminal` matches the GApplication id and the `.desktop`
 filename, and `application-x-satellite` is the mime type with `/` replaced by `-`.
 
+**The nine `apps/` files come from TWO sources since 2026-08-31 and that is worth
+knowing before editing any of them.** 128, 256 and 512 are
+`icon_artwork/satellite_icon_{128,256,512}.png`, byte-for-byte — the author
+re-exported those three that day with a soft fringe around the dish removed, and
+they were copied in unaltered. 16, 22, 24, 32, 48 and 64 are still the older
+`icon_artwork/satl-app-icon/satl-icon-*.png` line, also byte-for-byte at 64 and
+downscaled below it. **So the set is deliberately not one export**: the large
+sizes are the corrected artwork and the small ones are what they always were,
+which is the scope the author chose rather than have anything generated on their
+behalf. Bringing the small sizes over needs a de-blurred export at those sizes,
+and it is theirs to make.
+
+**The `mimetypes/` nine are untouched by that** and all nine still come from
+`icon_artwork/file_icon_final/` — a different image with its own history.
+
 ### `icon_artwork/` — source, never installed
 
 The user's own exported work, copied byte-for-byte from the first satellite.
 Nothing here is installed and nothing here should be re-encoded.
+
+**Byte-for-byte is a rule and not a description**, and it is the one thing about
+this directory a reader has to take literally: these are somebody's exports, and
+re-encoding one — scaling it, stripping a chunk, "cleaning it up" — replaces
+their work with a guess about their work. When the author updated three of them
+on 2026-08-31 the update was `cp`, and the sizes they did not update were left
+alone rather than derived from the ones they did.
 
 | file | what it is |
 | --- | --- |
 | `for_redo/satellite-icon.xcf` | The editable GIMP source for the satellite icon. |
 | `satellite-icon.avif` | The icon as exported to AVIF. |
 | `5829875.png` | The original photograph the satellite icon was cut from. |
-| `satellite_icon_{64,128,256,512}.png` | The satellite icon at four sizes. |
+| `satellite_icon_{64,128,256,512}.png` | The satellite icon at four sizes. **128, 256 and 512 were re-exported 2026-08-31** with the fringe around the dish removed, and are the installed `apps/` icons at those sizes. The 64 is the older export. |
 | `scaled/satellite-icon-{64,128,256,512}.png` | A scaled set of the same. |
-| `satl-app-icon/satl-icon-{64,128,256,512}.png` | The app-icon variant at four sizes. |
+| `satl-app-icon/satl-icon-{64,128,256,512}.png` | The app-icon variant at four sizes — the same image as `satellite_icon_*` with the older fringe, exported separately. **It is the installed `apps/` icon at 64 and below only**, since 2026-08-31; see the note above the `icon_artwork` heading. |
 | `file_icon/352-3528073_piece-paper-frames-illustrations-piece-of-paper-icon.jpg` | The stock sheet-of-paper image the file icon was built from. |
 | `file_icon/file-icon.png`, `file_icon/file-icon-512.png` | Intermediate file-icon work. |
 | `file_icon_final/final_file_icon_{64,128,256,512}.png` | The finished file icon at four sizes. |
