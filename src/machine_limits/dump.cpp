@@ -140,13 +140,21 @@ std::string limits_text()
              ? std::string("none -- beside the binary is where satl looks")
              : now.config_path);
 
-    // THE POOL'S COUNT IS A SAMPLE, AND A SMALL ONE IS THE MEASUREMENT RATHER
-    // THAN A FAULT. The pool takes ~590 us to finish building (§4.5.1.1) and
-    // this whole command runs in about 0.6 ms, so it is normally caught part
-    // built -- `satl --words` reproducibly finishes with 4 of 24 parked on this
-    // machine, 2026-08-30. That is §4.5.1.1's ramp seen from outside, and it is
-    // why the line says WHEN the number was taken instead of presenting it as a
-    // state.
+    // THE POOL'S COUNT IS A SAMPLE, AND A PART-BUILT ONE IS THE MEASUREMENT
+    // RATHER THAN A FAULT. The pool takes ~590 us to finish building
+    // (§4.5.1.1), so it is normally caught part way -- `satl --words`
+    // reproducibly finishes with 3 of 24 parked on this machine and this
+    // command with 14 to 19, measured 2026-08-31. That is §4.5.1.1's ramp seen
+    // from outside, and it is why the line says WHEN the number was taken
+    // instead of presenting it as a state.
+    //
+    // THE NUMBER WENT UP ON 2026-08-31 AND THE POOL DID NOT GET FASTER. This
+    // command reproducibly showed 0 parked until that day, because limits.cpp
+    // read the machine for every setting BEFORE calling pool::start() and
+    // physical_cores() alone is 0.42 ms of that. The pool starts first now, so
+    // it has the whole command to build in instead of the tail of it. A count
+    // that moves when nothing about the pool changed is the reason this line
+    // exists rather than a fault in it.
     const unsigned asked = pool::wanted();
     const unsigned waiting = pool::parked();
     said(out, "the pool",

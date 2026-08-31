@@ -11,10 +11,16 @@
 //
 // AND IT IS THE ONE SECTION THAT WAITS. The pool takes ~590 us to finish
 // building (PLAN §4.5.1.1) and every satl command finishes before it does --
-// `satl --words` reproducibly ends with 4 of 24 parked -- so a test that
+// `satl --words` reproducibly ends with 3 of 24 parked -- so a test that
 // asserted "24 parked" without waiting would be asserting a race. What it waits
 // for is a CONDITION and not a duration, which is what keeps it honest on a
 // slower machine.
+//
+// (3 and not the 4 this said until 2026-08-31, and the count went UP for
+// `satl --limits` rather than down: 14 to 19 where it was reproducibly 0. The
+// pool now starts EARLIER, because limits.cpp no longer spends 0.42 ms reading
+// the machine before it gets to pool::start(). None of it changes the reason
+// this section waits.)
 
 #include "limits_test.hpp"
 
