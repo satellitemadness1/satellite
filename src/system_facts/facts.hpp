@@ -140,4 +140,29 @@ inline constexpr unsigned long long kStackLimitUnknown = 0;
 // talk itself into partway through a run.
 unsigned long long stack_limit_bytes();
 
+// Ask the kernel for a bigger stack, and answer with what it gave.
+//
+// THE SOFT LIMIT IS A DEFAULT AND THE HARD LIMIT IS THE WALL, and on an
+// ordinary Linux the wall is not there: this machine reports 8 MiB soft and
+// UNLIMITED hard, so a process may raise its own stack without root and without
+// asking anybody. `ulimit -s` is the shell setting a default, not the kernel
+// setting a maximum -- which is the opposite of how it reads, and is why
+// `facts.hpp` had a paragraph calling it "deliberately outside the language"
+// until it was measured on 2026-08-31.
+//
+// IT RETURNS WHAT IS IN FORCE AFTERWARDS AND NEVER FAILS. A machine that
+// refuses -- a container with a hard limit, a distribution that pins it -- is
+// not an error and not something to report: satl runs exactly as it did before,
+// which is what it did for every milestone up to this one. Clamped to the hard
+// limit rather than attempted and failed, because asking for more than the wall
+// is a guaranteed EINVAL and the point is to take what is available.
+//
+// AND IT IS THE MAIN THREAD'S. glibc fixes the default stack size for NEW
+// threads at library init, before main() runs, so raising this afterwards does
+// not multiply across M6's 24 pool threads -- measured 2026-08-31: VmSize is
+// 230.3 MiB with and without, identical. The reservation itself costs nothing
+// either, because a stack is lazily committed: 8 GiB reserved moved VmSize by
+// 0.0 MiB and VmRSS by 0.2.
+unsigned long long widen_stack(unsigned long long want);
+
 } // namespace satellite::facts

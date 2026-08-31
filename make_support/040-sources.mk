@@ -210,6 +210,24 @@
 # than timed -- MILESTONES/M4.5.md §5's clause could never have been read off a
 # clock at this size, and MILESTONES/M7.md §5 is why.
 
+# AND THE STACK WAS WIDENED ON 2026-08-31, WHICH COST ONE SYSCALL. satl now asks
+# the kernel for an 8 GiB stack at startup (machine_limits/limits.hpp's
+# kWantedStackBytes) because `ulimit -s`'s 8 MiB is a shell's soft DEFAULT with
+# an unlimited hard limit behind it -- not a kernel wall, and raisable without
+# root. Measured the same way, STATIC=full:
+#
+#     satl --version      0.734 ms, share 0.186   (was 0.179)
+#
+# +0.007 ms, which is inside the run-to-run noise on a machine at load 1.5 and is
+# one setrlimit(2). What it buys: 500,000 nested brackets parse, unparse and
+# write a `.satc` where 19,000 used to segfault.
+#
+# IT COSTS NO MEMORY AND DOES NOT MULTIPLY ACROSS THE POOL, both measured. A
+# stack is lazily committed, so the reservation moved VmSize by 0.0 MiB; and
+# glibc fixes the default stack size for NEW threads at library init, before
+# main() runs, so M6's 24 pool threads still take 8 MiB each -- VmSize is 230.3
+# MiB with the raise and 230.3 without.
+
 # The window is a separate binary (M1.5, built 2026-08-27) and, for
 # satellite.window.new(), a
 # dlopen'd library (M24) -- because the two-binary split cannot help a window

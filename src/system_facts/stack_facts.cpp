@@ -59,4 +59,28 @@ unsigned long long stack_limit_bytes()
     return static_cast<unsigned long long>(limit.rlim_cur);
 }
 
+unsigned long long widen_stack(unsigned long long want)
+{
+    struct rlimit limit;
+    if (getrlimit(RLIMIT_STACK, &limit) != 0)
+        return kStackLimitUnknown;
+
+    const rlim_t have = limit.rlim_cur;
+    if (have == RLIM_INFINITY || (limit.rlim_max != RLIM_INFINITY &&
+                                  have >= limit.rlim_max))
+        return have == RLIM_INFINITY ? kStackLimitUnknown
+                                     : static_cast<unsigned long long>(have);
+
+    rlim_t ask = static_cast<rlim_t>(want);
+    if (limit.rlim_max != RLIM_INFINITY && ask > limit.rlim_max)
+        ask = limit.rlim_max;
+    if (ask <= have)
+        return static_cast<unsigned long long>(have);
+
+    limit.rlim_cur = ask;
+    if (setrlimit(RLIMIT_STACK, &limit) != 0)
+        return static_cast<unsigned long long>(have);
+    return static_cast<unsigned long long>(ask);
+}
+
 } // namespace satellite::facts

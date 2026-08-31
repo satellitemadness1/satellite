@@ -175,6 +175,21 @@ int begin(const std::string &named)
     // must not see the first one's file.
     into = Held{};
 
+    // FIRST, AND BEFORE THE POOL. satl asks the kernel for a bigger stack --
+    // limits.hpp says what for and what it does not buy. It is here rather than
+    // in main() because this file is the policy over what system_facts/ reports,
+    // which is the seam LAYOUT.md draws between the two directories; and it is
+    // FIRST because everything after it may recurse and because the pool starts
+    // at the end of this function.
+    //
+    // IT CANNOT FAIL AND IS NOT REPORTED. A machine that refuses leaves satl
+    // exactly as it ran for its first seven milestones, which is a working
+    // interpreter and not an error -- so there is nothing to say and no code to
+    // say it with. What there IS, is a row in `satl --limits`, because M6's rule
+    // is that every value satl holds to says where it came from.
+    into.stack_before = facts::stack_limit_bytes();
+    into.stack_now = facts::widen_stack(kWantedStackBytes);
+
     const std::string path = named.empty() ? found_config_path() : named;
     if (!path.empty()) {
         std::string text;

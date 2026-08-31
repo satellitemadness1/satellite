@@ -71,30 +71,70 @@ S0501.
 
 ---
 
-## 2. What actually happens today, measured
+## 2. What actually happens today — corrected twice, and the second time reversed it
 
-`ulimit -s 8192`, this machine, 2026-08-31. One expression nested N deep
-(`(1 + (1 + ... 1 ...))`):
+**THE FIRST VERSION OF THIS SECTION OVERSTATED THE PROBLEM AND THE AUTHOR CAUGHT
+IT.** It reported crash depths as though they bore on real work. They do not, and
+three measurements say why.
 
-| N | `--check` | `--unparse` | `--satc` | `--resolve` |
+### 2.1 A real program nests at depth 6
+
+`/home/madness/code/satl/view_forge/view_forge_main.satl` — 2,459 lines, 53
+capsules, the largest satellite program that exists:
+
+| | measured |
+|---|---|
+| max brace nesting | **6** |
+| max paren nesting | **3** |
+| `satellite.statement.while` loops | **103** |
+
+The crash figures below start at 19,000.
+
+### 2.2 Calls are not depth, which is why it runs forever
+
+The author's question was why the old satl runs `view_forge` infinitely, calling
+capsules millions of times, without dying. **Because a loop costs zero stack
+depth** — the frame is reused every iteration — and that program is 103 `while`
+loops. A million calls that each RETURN is depth 1. Depth only grows when calls
+have not returned yet.
+
+### 2.3 The old satl does not crash because it HAS the limit
+
+`old_versions/first_satellite/src/evaluator/helpers_limits.cpp:38`:
+
+```cpp
+constexpr int DEFAULT_MAX_DEPTH = 2000;
+```
+
+clamped by a ceiling derived from `RLIMIT_STACK`, reachable through
+`satellite.library.system.max_depth`, and `evaluator/expr.cpp` refuses with a
+satellite error rather than dying:
+
+> `expression nests deeper than satellite.library.system.max_depth (2000)`
+
+**So v1 has exactly the 2000 M7 reproduced** — M7 copied it out of DESIGN §7.5,
+which recorded it from v1. Nobody has ever seen it fire because nothing anybody
+writes goes near depth 2000.
+
+### 2.4 The crashes, before and after the stack was widened
+
+`ulimit -s 8192`, one expression nested N deep. **Before** is the tree as M7 left
+it; **after** is with `machine_limits`' `kWantedStackBytes` in place (§4.1).
+
+| N | `--check` | `--unparse` | `--satc` | after, all three |
 |---|---|---|---|---|
-| 2,100 | ok | ok | ok | **S0501 refused** |
-| 18,000 | ok | ok | ok | S0501 |
-| 19,000 | ok | **SEGFAULT** | ok | S0501 |
-| 20,000 | ok | SEGFAULT | **SEGFAULT** | S0501 |
-| 30,000 | ok | SEGFAULT | SEGFAULT | S0501 |
-| 32,000 | **SEGFAULT** | SEGFAULT | SEGFAULT | S0501 |
+| 19,000 | ok | **SEGFAULT** | ok | ok |
+| 20,000 | ok | SEGFAULT | **SEGFAULT** | ok |
+| 32,000 | **SEGFAULT** | SEGFAULT | SEGFAULT | **ok** |
+| 100,000 | — | — | — | **ok** |
+| 500,000 | — | — | — | **ok** |
 
-**And it is not only expressions.** 40,000 nested `satellite.statement.if`
-blocks segfault **every command including `--check`**. 12,000 nested blocks are
-fine. Nested generic types — `list<list<...<string>...>>` — survive 5,000 on
-both `--check` and `--resolve`; deeper is untested.
-
-So the honest summary is: **there is a depth at which every command in this tree
-dies, it is different per command, and none of them says anything on the way
-out.**
-
----
+Nested `satellite.statement.if` blocks: 40,000 killed every command before;
+200,000 now parses, and `--unparse` aborts on `bad_alloc` rather than
+segfaulting — **which is a different failure and an honest one.** The unparser
+indents four spaces per level, so its output is quadratic in nesting depth:
+200,000 levels is ~80 GB of spaces. That is the machine running out of memory to
+hold an answer, not a walker running off its stack.
 
 ## 3. Every recursive walker in the tree
 
@@ -145,6 +185,72 @@ pay in performance rather than in the user's attention, and a crash is the
 user's attention.
 
 ---
+
+## 4.1 What was BUILT: satl raises its own stack, 2026-08-31
+
+**The author's question was "why wouldn't we just multiply this 8 MiB by 1024 to
+get 8 GiB? What is the argument against doing that?"** Measured, and there is
+almost none.
+
+**The 8 MiB is a shell's soft default, not a kernel wall.** This machine reports
+`8192 KiB soft, unlimited hard`, and systemd's `DefaultLimitSTACK` is `infinity`.
+A process may raise its own soft limit up to the hard one **without root**.
+
+**And it works, which was the thing to check rather than assume.** A recursion
+that died before 100,000 frames at the default ran past **2,600,000** after
+`setrlimit` inside `main()` — so the folklore that a runtime raise is unreliable
+because of mmap placement is false on this kernel.
+
+**It costs nothing measurable:**
+
+| | VmSize | VmRSS |
+|---|---|---|
+| after `setrlimit` 8 GiB | 6.3 MiB — **unchanged** | 3.5 MiB |
+| after M6's 24 pool threads | 230.3 MiB — **identical with and without** | 3.6 MiB |
+
+A stack is lazily committed, so the reservation is address space and not memory.
+**And the pool does not multiply it**: glibc fixes the default stack size for new
+threads at library init, before `main()` runs, so raising it afterwards leaves
+the 24 pool threads at 8 MiB each. Startup cost is one syscall — `satl
+--version`'s share moved 0.179 → 0.186 ms, inside the noise.
+
+**Built as `facts::widen_stack()` (the mechanism, in `system_facts/`) called from
+`limits::begin()` with `kWantedStackBytes` (the policy, in `machine_limits/`)**,
+which is the seam LAYOUT.md draws between those two directories. `satl --limits`
+prints it, because M6's rule is that every value satl holds to says where it came
+from:
+
+```
+  the stack         8.0 GiB (RLIMIT_STACK), 3.8 KiB in use on this thread
+                    satl raised it from 8.0 MiB -- the soft limit is a default
+                    and the hard limit was not in the way
+```
+
+### 4.1.1 What it does NOT do, and this is why §5 still exists
+
+**It is a bigger number and not the absence of one.** 8 GiB is about 2.6 million
+frames — 1,300× what v1 refuses at, and still a number. DESIGN §7.5's rule is
+unchanged and unmet.
+
+**Three things it cannot give:**
+
+1. **A refusal in words.** Exhausting 8 GiB is still SIGSEGV with no code, no
+   span and no sentence — DESIGN §9's model cannot reach it, because the C++
+   stack is not something satl allocates and therefore not something it can
+   count. **A heap stack can be counted against `MEMORY_MAX` and refused
+   politely by the watchdog M6 already built.** This is the strongest remaining
+   argument for §5 and it is the one to keep in view.
+2. **Uniformity across threads.** The main thread gets 8 GiB and the pool's 24
+   get 8 MiB, so "how deep may I go" depends on which thread you are on. It does
+   not matter today, because everything runs on the main thread; it matters the
+   day evaluation moves off it (M23's threads, M24's window).
+3. **Portability.** `setrlimit` is POSIX. The Windows cross-build in
+   `SCRATCH.md/PORTING.md` sets a stack reserve in the PE header instead
+   (`/STACK:`), which is a link-time flag and a different mechanism.
+
+**So the urgency is gone and the work is not.** Every depth a person could
+plausibly reach now works; §5 is what makes the rule true rather than nearly
+true, and it is no longer something to drop everything for.
 
 ## 5. The plan, in order, and why this order
 

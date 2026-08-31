@@ -909,11 +909,26 @@ table and the plan; this is the part that belongs in the specification, because 
 reader has to be able to find out that the language does not yet keep its own
 rule.)*
 
-**Four walkers recurse on the C++ stack with no bound at all, and every command
-in the tree has a depth at which it dies with signal 11 and says nothing.** One
-expression nested N deep: `satl --unparse` segfaults at 19,000, `satl --satc` at
-20,000, and `satl --check` — the parser alone — at 32,000. Forty thousand nested
-`satellite.statement.if` blocks kill all of them, `--check` included.
+**Four walkers recurse on the C++ stack with no bound at all**, so each has a
+depth at which it dies with signal 11 and says nothing. At the 8 MiB a login
+shell hands out, one expression nested N deep killed `satl --unparse` at 19,000,
+`satl --satc` at 20,000 and the parser at 32,000.
+
+**satl now raises its own stack to 8 GiB at startup and those depths all work** —
+500,000 nested brackets pass every command. `machine_limits/limits.hpp`'s
+`kWantedStackBytes` is the number and `satl --limits` prints it. The 8 MiB was a
+shell's soft DEFAULT with an unlimited hard limit behind it, not a kernel wall,
+so a process may raise its own without root; measured 2026-08-31, it costs one
+syscall and no memory, because a stack is lazily committed.
+
+**That is a bigger number and not the absence of one, and the rule above is still
+unmet.** 8 GiB is about 2.6 million frames. What it cannot give is the thing
+DESIGN §9 asks for: exhausting the C++ stack is a segfault with no code, no span
+and no sentence, because that stack is not something satl allocates and therefore
+not something it can count. **A walker keeping its own stack on the heap can be
+counted against `MEMORY_MAX` and refused in words** by the watchdog §4.5.2
+already describes. That is the difference between a limit that is far away and no
+limit at all.
 
 **A crash is not a limit.** A limit refuses in words with a code, a span and a
 caret (§9); this leaves no exit status a script can read and no sentence a person

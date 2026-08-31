@@ -63,7 +63,7 @@
 DATE    2026-08-31
 LINK    full
 LOAD    1.50
-NOTE    M7, resolve -- MILESTONES/M7.md §8
+NOTE    M7 + the 8 GiB stack -- MILESTONES/M7.md §8, SCRATCH.md/NO_LIMITS.md §4.1
 
 # THE ROWS ARE THE COMMANDS THAT COST SOMETHING DIFFERENT, not every command
 # satl has. --version is the row §9.1 says to read -- it does nothing but say
@@ -78,10 +78,10 @@ NOTE    M7, resolve -- MILESTONES/M7.md §8
 # for it; what moved is the size of the image the loader maps. MILESTONES/M7.md
 # §8 has the attribution.
 
-FLOOR | 0.546
+FLOOR | 0.548
 
 ROW | 0.719 |
-ROW | 0.725 | --version
+ROW | 0.734 | --version
 ROW | 0.902 | --words
 ROW | 0.819 | --tokens example/hello_world.satl
 ROW | 1.121 | --tokens example/class_test.satl

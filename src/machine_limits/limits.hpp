@@ -207,11 +207,43 @@ struct Held {
 
     Dial dials[kDialCount];
 
+    // THE STACK, BEFORE AND AFTER satl ASKED FOR MORE. Both are kept because
+    // `satl --limits` prints every value satl is holding to AND where it came
+    // from, and "8.0 GiB" alone would hide the whole fact -- which is that the
+    // 8 MiB everybody assumes is a kernel wall is a shell's default with an
+    // unlimited hard limit behind it. kStackLimitUnknown in either means the
+    // machine would not say.
+    unsigned long long stack_before = 0;
+    unsigned long long stack_now = 0;
+
     const Dial &dial(DialId id) const
     {
         return dials[static_cast<size_t>(id)];
     }
 };
+
+// WHAT satl ASKS THE KERNEL FOR, IN BYTES. 8 GiB.
+//
+// A NUMBER AND NOT A CEILING, AND THE DIFFERENCE IS THE WHOLE ARGUMENT.
+// DESIGN §7.5's rule is that the language has no depth limit; this does not
+// deliver that and is not pretending to -- it is the same C++ stack with a
+// bigger default, and the thing that delivers the rule is a walker keeping its
+// own stack on the heap. What it buys is that every depth a person could
+// plausibly reach stops being reachable: measured 2026-08-31, a recursion that
+// died before 100,000 frames at the 8 MiB default ran past 2,600,000 at this
+// setting, which is 1,300x the depth the first satellite refused at.
+//
+// AND IT COSTS NOTHING UNTIL IT IS USED. A stack is lazily committed, so this
+// is address space and not memory: reserving 8 GiB moved VmSize by 0.0 MiB.
+// 040-sources.mk carries what it did to startup.
+//
+// 8 GiB RATHER THAN "unlimited" ON PURPOSE. RLIM_INFINITY makes the main
+// thread's stack grow until it collides with the next mapping, which is a wall
+// in a place nobody chose and reports itself as a segfault; a number is a number
+// the machine can honour and `satl --limits` can print. facts.hpp's
+// kStackLimitUnknown already refuses to read the word as unbounded and this is
+// the same care from the writing side.
+inline constexpr unsigned long long kWantedStackBytes = 8ULL * 1024 * 1024 * 1024;
 
 // --- the file ---------------------------------------------------------------
 

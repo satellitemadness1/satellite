@@ -176,15 +176,32 @@ std::string limits_text()
     said(out, "", human_bytes(facts::process_memory_bytes()) +
                       " resident -- what THIS run is using");
 
+    // THE STACK, AND WHETHER satl WIDENED IT. M6's rule is that every value
+    // satl holds to says where it came from, and this is the one row where
+    // "where it came from" is satl itself: `ulimit -s` is a shell's DEFAULT with
+    // an unlimited hard limit behind it on an ordinary Linux, so satl raises its
+    // own at startup (limits.hpp's kWantedStackBytes). Printing only the number
+    // in force would hide that -- and hiding it is how everybody comes to
+    // believe the 8 MiB is the kernel's, which is what this project believed
+    // until 2026-08-31.
     const unsigned long long limit = facts::stack_limit_bytes();
     unsigned long long standing = 0;
     const bool known = facts::thread_stack_bytes(&standing, nullptr);
+    const Held &holding = held();
     said(out, "the stack",
          (limit == facts::kStackLimitUnknown
               ? std::string("unlimited (RLIMIT_STACK)")
               : human_bytes(limit) + " (RLIMIT_STACK)") +
              (known ? ", " + human_bytes(standing) + " in use on this thread"
                     : std::string(", this thread's stack is not reportable")));
+    if (holding.stack_now > holding.stack_before && holding.stack_before != 0)
+        said(out, "", "satl raised it from " + human_bytes(holding.stack_before) +
+                          " -- the soft limit is a default and the hard limit "
+                          "was not in the way");
+    else if (now.stack_before != 0)
+        said(out, "", "satl asked for " + human_bytes(kWantedStackBytes) +
+                          " and this machine did not give it, which costs "
+                          "nothing but depth");
 
     out += "\n"
            "MEMORY_MAX is the only one of these that acts on its own: a run\n"
