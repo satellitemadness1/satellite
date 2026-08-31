@@ -234,12 +234,25 @@ unchanged and unmet.
 
 **Three things it cannot give:**
 
-1. **A refusal in words.** Exhausting 8 GiB is still SIGSEGV with no code, no
-   span and no sentence — DESIGN §9's model cannot reach it, because the C++
-   stack is not something satl allocates and therefore not something it can
-   count. **A heap stack can be counted against `MEMORY_MAX` and refused
-   politely by the watchdog M6 already built.** This is the strongest remaining
-   argument for §5 and it is the one to keep in view.
+1. ~~**A refusal in words.**~~ **WRONG, AND MEASURED WRONG THE SAME DAY.** This
+   said the C++ stack *"is not something satl allocates and therefore not
+   something it can count."* **Touched stack pages are resident memory**, so
+   `process_memory_bytes()` counts them and M6's watchdog was already watching.
+   A 2,000,000-deep parse reaches **1.36 GiB resident**, and under
+   `MEMORY_MAX=1GiB` satl prints
+   `stopping -- this run is using 1.0 GiB and MEMORY_MAX is 1.0 GiB (the file)`
+   and exits 4.
+
+   **What is actually left is two narrower things.** The DEFAULT case — with no
+   config `MEMORY_MAX` is the whole machine, so 8 GiB of stack goes first and
+   that run still segfaults — and the SENTENCE, which names memory rather than
+   recursion.
+
+   **And the cheap answer is not a heap stack.** `facts::thread_stack_bytes(used,
+   total)` already exists, M6 built it, and `satl --limits` prints it. A watchdog
+   that watched that ratio too would refuse a runaway recursion in its own words,
+   on the default configuration, with machinery already in the tree. **That is
+   the next thing to build here and it is far smaller than §5.**
 2. **Uniformity across threads.** The main thread gets 8 GiB and the pool's 24
    get 8 MiB, so "how deep may I go" depends on which thread you are on. It does
    not matter today, because everything runs on the main thread; it matters the
@@ -247,6 +260,27 @@ unchanged and unmet.
 3. **Portability.** `setrlimit` is POSIX. The Windows cross-build in
    `SCRATCH.md/PORTING.md` sets a stack reserve in the PE header instead
    (`/STACK:`), which is a link-time flag and a different mechanism.
+
+### 4.1.2 The number should be a share of the machine, not 8 GiB
+
+**The author's point, 2026-08-31: *"we will be totally geared towards the
+terabytes of ram that are coming out in the future."*** `kWantedStackBytes` is a
+constant, and satl reads `facts::mem_total_bytes()` a few lines later in the same
+startup. 8 GiB is a quarter of a 32 GiB laptop and a four-hundredth of a 4 TiB
+machine; a share would be right on both.
+
+**And asking for more is free.** The reservation is address space, not memory —
+measured above at 0.0 MiB of VmSize — so a terabyte machine can be handed a
+terabyte-shaped request at the same cost this one pays. There is no reason for
+the number to be small and no reason for it to be fixed.
+
+**Two decisions first, neither hard.** *What share of what*: total memory, or
+`MEMORY_MAX` — which is the number satl is actually allowed, and is read AFTER
+the raise today, so `begin()`'s order would have to change. And *what floor*, so
+that a share of a small machine never comes out below the 8 MiB it would have had
+anyway. `machine_limits/limits.hpp` carries it beside the constant.
+
+**This is the cheapest item in this file and probably the next one to do.**
 
 **So the urgency is gone and the work is not.** Every depth a person could
 plausibly reach now works; §5 is what makes the rule true rather than nearly

@@ -243,6 +243,20 @@ struct Held {
 // the machine can honour and `satl --limits` can print. facts.hpp's
 // kStackLimitUnknown already refuses to read the word as unbounded and this is
 // the same care from the writing side.
+// AND IT IS A CONSTANT ON A MACHINE THIS PROGRAM CAN MEASURE, WHICH IS THE NEXT
+// THING TO FIX HERE. `facts::mem_total_bytes()` is read a few lines further down
+// this same startup; 8 GiB is a quarter of a 32 GiB laptop and a four-hundredth
+// of a 4 TiB machine, and asking for a share rather than a number would be right
+// on both. **It costs nothing to ask for more** -- the reservation is address
+// space and a stack is lazily committed, so a terabyte machine could be handed a
+// terabyte-shaped request for the same zero bytes of RSS this one costs.
+//
+// TWO THINGS HAVE TO BE DECIDED FIRST AND NEITHER IS HARD. What the share is
+// (memory total, or `MEMORY_MAX` -- which is the number satl is actually allowed
+// and is read AFTER this, so the order would have to change); and what the floor
+// is, because a share of a small machine must not come out below the 8 MiB it
+// would have had. Recorded rather than done, because it is a policy with a
+// number in it and this file is where those get argued.
 inline constexpr unsigned long long kWantedStackBytes = 8ULL * 1024 * 1024 * 1024;
 
 // --- the file ---------------------------------------------------------------

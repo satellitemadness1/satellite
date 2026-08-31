@@ -17,6 +17,7 @@
 
 #include "limits_test.hpp"
 
+#include "machine_limits/limits.hpp"
 #include "system_facts/facts.hpp"
 
 #include <cstdio>
@@ -30,6 +31,47 @@ using namespace satellite::facts;
 
 void section_facts()
 {
+    // --- the stack, and the one reader that CHANGES the machine -------------
+
+    // WIDENING IS BEST-EFFORT AND THE ASSERTION HAS TO BE TOO. A container with
+    // a hard limit, or a distribution that pins RLIMIT_STACK, leaves satl
+    // exactly as it ran for its first seven milestones -- which is a working
+    // interpreter and not a failure. So what is checked is the CONTRACT and not
+    // the number: asking never shrinks the stack, and asking twice is idempotent.
+    const unsigned long long before = stack_limit_bytes();
+    const unsigned long long after = widen_stack(satellite::limits::kWantedStackBytes);
+    check(after >= before || before == kStackLimitUnknown,
+          "widen_stack() never leaves the stack smaller than it found it");
+    check(widen_stack(satellite::limits::kWantedStackBytes) == after,
+          "and asking a second time answers the same -- begin() is called twice "
+          "in this suite and a raise that drifted would be a limit that depends "
+          "on how many times satl started");
+
+    // AND ON A MACHINE THAT ALLOWS IT, IT MUST ACTUALLY HAPPEN. This is the one
+    // that catches the call being deleted from limits::begin(): the mechanism
+    // could keep working perfectly while nothing invoked it, which is exactly
+    // the failure PLAN M2's consumer rule exists for. Guarded on the hard limit
+    // rather than asserted flat, because a build machine may not permit it.
+    struct rlimit hard;
+    if (getrlimit(RLIMIT_STACK, &hard) == 0 &&
+        (hard.rlim_max == RLIM_INFINITY ||
+         hard.rlim_max >= satellite::limits::kWantedStackBytes)) {
+        check(after >= satellite::limits::kWantedStackBytes,
+              "this machine's hard limit allows 8 GiB, so satl has it -- and if "
+              "this fails after limits::begin() ran, the raise was removed and "
+              "500,000 nested brackets segfault again");
+        // GUARDED ON begin() HAVING RUN, because this section does not call it
+        // and the run list may put it first. `stack_now` is 0 until begin()
+        // fills it, which is the honest way to ask "has the policy run yet"
+        // without this section reaching into another one's order.
+        if (satellite::limits::held().stack_now != 0)
+            check(satellite::limits::held().stack_now >=
+                      satellite::limits::kWantedStackBytes,
+                  "and begin() recorded it, which is what `satl --limits` "
+                  "prints -- the check that catches the call being deleted "
+                  "from begin() while widen_stack() still works perfectly");
+    }
+
     // --- threads and cores ------------------------------------------------
 
     check(hardware_threads() >= 1,

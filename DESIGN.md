@@ -922,13 +922,34 @@ so a process may raise its own without root; measured 2026-08-31, it costs one
 syscall and no memory, because a stack is lazily committed.
 
 **That is a bigger number and not the absence of one, and the rule above is still
-unmet.** 8 GiB is about 2.6 million frames. What it cannot give is the thing
-DESIGN §9 asks for: exhausting the C++ stack is a segfault with no code, no span
-and no sentence, because that stack is not something satl allocates and therefore
-not something it can count. **A walker keeping its own stack on the heap can be
-counted against `MEMORY_MAX` and refused in words** by the watchdog §4.5.2
-already describes. That is the difference between a limit that is far away and no
-limit at all.
+unmet.** 8 GiB is about 2.6 million frames.
+
+**BUT THE WATCHDOG ALREADY REFUSES IT IN WORDS, WHICH THIS SECTION GOT WRONG ON
+ITS FIRST DAY.** It said exhausting the C++ stack is *"a segfault with no code,
+no span and no sentence, because that stack is not something satl allocates and
+therefore not something it can count."* **Touched stack pages are resident
+memory**, so `process_memory_bytes()` counts them like any other page, and PLAN
+§4.5.2's watchdog was already watching. Measured 2026-08-31: a 2,000,000-deep
+parse reaches 1.36 GiB resident, and under `MEMORY_MAX=1GiB` satl stops with
+
+    satl: stopping -- this run is using 1.0 GiB and MEMORY_MAX is 1.0 GiB (the file)
+
+and exit status 4. One line, a ceiling the user set, and a status a script reads.
+
+**So what is actually left is narrower than a whole rewrite, and it is two
+things.** First, the DEFAULT case: with no config, `MEMORY_MAX` is the whole
+machine — 61.9 GiB here — so 8 GiB of stack is exhausted long before the watchdog
+has anything to say, and that run still segfaults. Second, the SENTENCE: the
+watchdog names *memory*, which is true and is not what happened. A program that
+recursed away is better told about recursion.
+
+**And both have a cheap answer that is not a heap stack.** `system_facts/` already
+reports `thread_stack_bytes(used, total)` — M6 built it and `satl --limits` prints
+it. A watchdog that watched that ratio as well as the memory one would refuse a
+runaway recursion in its own words, on the default configuration, using machinery
+that already exists. §7.5's rule still asks for the heap stack; this is most of
+what the rule was FOR, at a fraction of the work, and it belongs to whoever
+touches the watchdog next.
 
 **A crash is not a limit.** A limit refuses in words with a code, a span and a
 caret (§9); this leaves no exit status a script can read and no sentence a person
