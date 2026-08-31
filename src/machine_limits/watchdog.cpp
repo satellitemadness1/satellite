@@ -52,10 +52,18 @@ void watch()
         // same call for its own check: a /proc that will not answer gives 0,
         // and killing a healthy process because a file could not be opened is
         // the worst thing a watchdog can do.
+        // THE CEILING IS ASKED FOR ONCE PER WAKE-UP AND NOT HELD, because
+        // Setting::value() is a read and the row it reads may be the machine's
+        // own total. That is one /proc/meminfo open a second on a thread whose
+        // whole job is to open /proc once a second, and it is the reading a
+        // watchdog should be doing: system_facts/facts.hpp's rule is that
+        // nothing is cached, "so a cached answer would be the wrong one by
+        // definition".
+        const unsigned long long ceiling = now.memory_max.value();
         const unsigned long long using_now = facts::process_memory_bytes();
-        if (using_now != 0 && using_now > now.memory_max.value)
+        if (using_now != 0 && using_now > ceiling)
             stop("this run is using " + human_bytes(using_now) +
-                 " and MEMORY_MAX is " + human_bytes(now.memory_max.value) +
+                 " and MEMORY_MAX is " + human_bytes(ceiling) +
                  " (" + std::string(origin_text(now.memory_max.origin)) + ")");
 
         const Dial &floor = now.dial(DialId::MinFreeMb);
@@ -80,7 +88,7 @@ int hold_for_the_watchdog()
 {
     const Held &now = held();
     std::printf("satl: watching. MEMORY_MAX is %s, from %s.\n",
-                human_bytes(now.memory_max.value).c_str(),
+                human_bytes(now.memory_max.value()).c_str(),
                 std::string(origin_text(now.memory_max.origin)).c_str());
     if (const Dial &floor = now.dial(DialId::MinFreeMb); floor.set)
         std::printf("      min_free_mb is %llu, from %s.\n", floor.value,

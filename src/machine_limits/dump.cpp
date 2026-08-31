@@ -97,13 +97,26 @@ std::string limits_text()
     const Held &now = held();
     std::string out = "satl is holding itself to these.\n\n";
 
-    row(out, "THREAD_COUNT", std::to_string(now.thread_count.value),
+    // EVERY MACHINE FACT THIS COMMAND NEEDS, READ ONCE, HERE. Two blocks below
+    // print the machine's own answers beside the settings, and three of the
+    // rows above may BE those answers -- so the obvious code asks the machine
+    // twice for each and `satl --limits` pays 0.42 ms twice over for
+    // physical_cores() alone. Read once and used twice is not an optimisation
+    // here, it is the difference between a command that reports the machine and
+    // one that reports it from two different instants.
+    const unsigned threads = facts::hardware_threads();
+    const unsigned cores = facts::physical_cores();
+    const unsigned long long total = facts::mem_total_bytes();
+    const unsigned long long ceiling = now.memory_max.value_given(total);
+
+    row(out, "THREAD_COUNT",
+        std::to_string(now.thread_count.value_given(threads)),
         where(now, now.thread_count.origin, now.thread_count.line));
-    row(out, "CORE_COUNT", std::to_string(now.core_count.value),
+    row(out, "CORE_COUNT", std::to_string(now.core_count.value_given(cores)),
         where(now, now.core_count.origin, now.core_count.line));
-    row(out, "MEMORY_MAX", human_bytes(now.memory_max.value),
+    row(out, "MEMORY_MAX", human_bytes(ceiling),
         where(now, now.memory_max.origin, now.memory_max.line));
-    out += "                    " + std::to_string(now.memory_max.value) +
+    out += "                    " + std::to_string(ceiling) +
            " bytes exactly\n";
 
     // THE FOUR DIALS, UNDER THEIR PATH RATHER THAN UNDER THEIR NAME, because
@@ -148,11 +161,9 @@ std::string limits_text()
     // "not cores x 2" stops being a rule in a document -- 24 and 12 are read
     // from two different places and neither is derived from the other.
     out += "\n";
-    said(out, "the machine", std::to_string(facts::hardware_threads()) +
-                                 " hardware threads, " +
-                                 std::to_string(facts::physical_cores()) +
-                                 " physical cores");
-    said(out, "", human_bytes(facts::mem_total_bytes()) + " total, " +
+    said(out, "the machine", std::to_string(threads) + " hardware threads, " +
+                                 std::to_string(cores) + " physical cores");
+    said(out, "", human_bytes(total) + " total, " +
                       human_bytes(facts::mem_available_bytes()) + " available");
     said(out, "", human_bytes(facts::process_memory_bytes()) +
                       " resident -- what THIS run is using");

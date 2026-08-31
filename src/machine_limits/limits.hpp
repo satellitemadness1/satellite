@@ -33,6 +33,31 @@
 // language owns, and it may set three settings the language does not, and only
 // the first kind is in the namespace at all.
 //
+// A MACHINE SETTING TAKES A NUMBER OR THE MACHINE'S OWN ANSWER, AND THE FILE
+// SAYS WHICH. `CORE_COUNT=12` holds satl to twelve; `CORE_COUNT=arguments.machine.cores`
+// says "whatever this machine has", in the spelling a satellite program uses for
+// the same fact. DESIGN §7.7 is where that pairing comes from and it is exact:
+// "arguments.machine.threads, arguments.machine.cores and arguments.memory.total
+// are the same numbers as THREAD_COUNT, CORE_COUNT and MEMORY_MAX in the
+// configuration ... Three ways to ask, one place that knows." So the three
+// shouted settings are the three facts, one each, and `Fact` below is that table
+// in an enum.
+//
+// THE DIALS DO NOT TAKE ONE, AND THE LINE IS THE SAME LINE AS ABOVE. A machine
+// setting is about the machine and has a fact behind it; a dial is the
+// language's and has none -- there is no fact called `division_digits` for a
+// file to name. Adding one would be inventing M8's meaning, which is the thing
+// PLAN M6 forbids in as many words.
+//
+// AND NOTHING IS READ FROM THE MACHINE UNTIL SOMEBODY ASKS FOR IT, which is why
+// `value()` is a function and not a member. Until 2026-08-31 this module filled
+// every setting in from the machine at startup and let the file overwrite what
+// it named -- "machine first, then file" -- and the cost of that order was
+// 0.42 ms on EVERY run of satl, because facts::physical_cores() reads two sysfs
+// files per CPU and the only thing that wants the answer is one row of
+// `satl --limits`. The order was there because the file had no way to say "the
+// machine"; now it has, and there is no order left to get wrong. See limits.cpp.
+//
 // ONLY min_free_mb HAS A MEANING AT M6, WHICH IS PLAN M6'S OWN RULE: "the node
 // and the storage land here; min_free_mb is the only one whose meaning is this
 // milestone's." So all four are stored, all four can be set from the file, all
@@ -57,9 +82,24 @@ namespace satellite::limits {
 // behaving unexpectedly. It is the same argument v1's LibraryPathSource makes
 // about --where.
 enum class Origin {
-    Default,   // nobody said, so the OS or a built-in answered
-    File,      // satellite_config.ini said so
+    Default,   // nobody said, so the machine answers
+    File,      // satellite_config.ini wrote a number
+    Machine,   // satellite_config.ini named the machine's own answer
     Clamped,   // the file asked for more than the machine has, and the machine won
+};
+
+// The machine's own answer behind each of the three shouted settings -- DESIGN
+// §7.7's "three surfaces, one set of facts", as three cases.
+//
+// NOT A POINTER TO A READER FUNCTION, which was the first shape and is worse
+// for one reason: this enum is stored in a Setting, and a Setting is compared,
+// copied and printed. An enum does all three and a function pointer does none
+// of them usefully -- and the switch that turns one into a call lives in
+// limits.cpp beside the argument for why it is called late.
+enum class Fact {
+    Threads,       // arguments.machine.threads  1 14 1 1 1 3
+    Cores,         // arguments.machine.cores    1 14 1 1 1 1
+    MemoryTotal,   // arguments.memory.total     1 14 1 1 2 1
 };
 
 std::string_view origin_text(Origin origin);
@@ -71,9 +111,39 @@ std::string_view origin_text(Origin origin);
 // it?" `satl --limits` prints it as `satellite_config.ini:7`, which is a place
 // an editor can jump to.
 struct Setting {
-    unsigned long long value = 0;
+    // WHICH MACHINE FACT IS BEHIND THIS SETTING, AND IT NEVER CHANGES. It is
+    // not read from the file: the file chooses whether the fact answers, not
+    // which fact it is. `Held` below sets all three once.
+    Fact fact = Fact::Threads;
+
+    // The number the file wrote, when it wrote one. Meaningless -- and
+    // deliberately not cleared -- when it did not: on a Clamped row it is still
+    // the over-large figure the file asked for, which is the only place that
+    // number survives at all.
+    unsigned long long written = 0;
+
     Origin origin = Origin::Default;
     unsigned line = 0;
+
+    // WHAT SATL IS ACTUALLY HOLDING TO, resolved when it is asked for and not
+    // when the file is read. Three of the four origins answer from the machine
+    // and one answers from the file, which is the whole of the rule --
+    // limits.cpp has it, and the header there has what reading it late is
+    // worth.
+    unsigned long long value() const;
+
+    // The same rule, for a caller that has ALREADY asked the machine.
+    //
+    // TWO ENTRY POINTS AND ONE RULE, which is the point of the pair rather than
+    // a convenience. `satl --limits` prints the machine's own answers beside the
+    // settings, so it reads every fact once and then needs to decide three rows
+    // against what it read -- and the version of that code which re-derived
+    // "file or machine" for itself was a second copy of this line, free to stop
+    // agreeing with it. dump.cpp calls this; everything else calls value().
+    unsigned long long value_given(unsigned long long machine_says) const
+    {
+        return origin == Origin::File ? written : machine_says;
+    }
 };
 
 // The four dials of `satellite.library.system`, in words.def order, so
@@ -103,6 +173,16 @@ inline constexpr words::NodeId kDialNodes[kDialCount] = {
 // unset dial prints as `unset` and the milestone that will read it decides what
 // no answer means -- v1's read_division_digits() is exactly that decision, made
 // where the division is.
+//
+// AND min_free_mb IS UNSET TOO, WHICH IS A CORRECTION TO v1 RATHER THAN A PORT
+// OF IT. v1 defaulted it to 4096 MB and compared the MACHINE's available memory
+// against it once a second -- so on any machine with less than 4 GB free, satl
+// kills itself one second after starting, every time, having done nothing
+// wrong. That is not a conservative default; it is a machine-sized assumption
+// written as a number, and this tree has 61.9 GiB so it would never have been
+// noticed here. Unset means the machine's free memory is not watched, MEMORY_MAX
+// carries the promise on its own, and somebody who wants v1's check writes one
+// line.
 struct Dial {
     unsigned long long value = 0;
     bool set = false;
@@ -117,9 +197,13 @@ struct Held {
     // from the machine.
     std::string config_path;
 
-    Setting thread_count;   // threads satl may use
-    Setting core_count;     // physical cores this run can see
-    Setting memory_max;     // BYTES satl may occupy before it stops itself
+    // THE FACT IS SET HERE AND NOWHERE ELSE, so a default-constructed Held is
+    // already a complete answer: every row reads from the machine, which is
+    // exactly what satl holds to when there is no file -- and no file is the
+    // ordinary case. Nothing has to be filled in before the file is opened.
+    Setting thread_count{Fact::Threads};       // threads satl may use
+    Setting core_count{Fact::Cores};           // physical cores this run can see
+    Setting memory_max{Fact::MemoryTotal};     // BYTES satl may occupy
 
     Dial dials[kDialCount];
 

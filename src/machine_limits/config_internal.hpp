@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace satellite::limits {
@@ -49,16 +50,29 @@ inline constexpr unsigned long long kMostThreads = 1024;
 struct Key {
     std::string_view name;
     Kind kind;
+    Fact fact;             // the machine's own answer for this setting
+    words::NodeId spells;  // and the path a file writes to ask for it
 };
 
 // The three SHOUTED settings, which are §4.5's own spelling and are in no
 // numbering. The four dials are not here: their names come out of words.def,
 // below, because a dial's spelling in this file IS its spelling in the language
 // and writing it twice is how the two drift.
+//
+// THE THIRD AND FOURTH COLUMNS ARE DESIGN §7.7's PAIRING, WRITTEN DOWN ONCE.
+// That section says it as plainly as it can be said: "arguments.machine.threads,
+// arguments.machine.cores and arguments.memory.total are the same numbers as
+// THREAD_COUNT, CORE_COUNT and MEMORY_MAX in the configuration ... Three ways to
+// ask, one place that knows." One fact each, and the path is a NodeId rather
+// than a string for the reason dial_name() gives one line down: words.def is
+// the spelling, and a second copy here is a place for the two to disagree.
 inline constexpr Key kSettings[] = {
-    {"THREAD_COUNT", Kind::Count},
-    {"CORE_COUNT", Kind::Count},
-    {"MEMORY_MAX", Kind::Size},
+    {"THREAD_COUNT", Kind::Count, Fact::Threads,
+     words::NodeId::LIBRARY_MAIN_ARGUMENTS_MACHINE_THREADS},
+    {"CORE_COUNT", Kind::Count, Fact::Cores,
+     words::NodeId::LIBRARY_MAIN_ARGUMENTS_MACHINE_CORES},
+    {"MEMORY_MAX", Kind::Size, Fact::MemoryTotal,
+     words::NodeId::LIBRARY_MAIN_ARGUMENTS_MEMORY_TOTAL},
 };
 
 inline constexpr size_t kSettingCount = sizeof kSettings / sizeof kSettings[0];
@@ -74,6 +88,50 @@ inline std::string_view dial_name(DialId id)
 {
     const words::NodeId node = kDialNodes[static_cast<size_t>(id)];
     return words::kNodes[static_cast<words::PathId>(node)].text;
+}
+
+// --- the machine's own answer, as a file writes it ---------------------------
+//
+// `arguments.machine.cores`, WHICH IS WHAT A PROGRAM WRITES AND SO IS WHAT THIS
+// FILE WRITES. DESIGN §7.7 is emphatic that `arguments` is "the one place a
+// bare identifier is language-owned" -- a program never spells
+// `satellite.library.main.arguments`, it writes the name it gave main's
+// parameter -- so a config that made you write the full path would be asking
+// for a spelling the language itself does not use.
+//
+// THE PREFIX IS TAKEN OFF THE REGISTRY RATHER THAN SPELLED HERE, which is the
+// same argument dial_name() makes: words.def already knows that this node's
+// full path is `satellite.library.main.arguments.machine.cores`, and a literal
+// `"arguments.machine.cores"` in this file would be a second copy free to
+// disagree with it after a rename.
+inline std::string fact_spelling(words::NodeId node)
+{
+    const std::string full = words::path_text(node);
+    const std::string under = words::path_text(words::NodeId::LIBRARY_MAIN) + ".";
+    return full.size() > under.size() && full.compare(0, under.size(), under) == 0
+               ? full.substr(under.size())
+               : full;
+}
+
+// The node a written value names, or kNoPath.
+//
+// WALKED THROUGH THE REAL TRIE AND NOT COMPARED AGAINST A STRING, which is what
+// makes all six spellings of `arguments` work here for free. DESIGN §7.7 gives
+// the special variable six names -- `arg`, `args`, `argz`, `argument`,
+// `arguments`, `argumentz` -- and words_walk.hpp already matches an alias at
+// every segment, so `args.machine.cores` resolves for exactly the reason it
+// resolves inside a program. A string comparison would have had to know about
+// the aliases, which is the drift this whole module is arranged to avoid.
+//
+// THE ROOT IS PUT BACK ON HERE. words::walk() takes a path rooted at
+// `satellite` -- §1's generating rule -- and what a file writes is the bare
+// form, so this is the one place the two spellings are bridged.
+inline words::PathId fact_named(std::string_view written)
+{
+    const std::string rooted =
+        words::path_text(words::NodeId::LIBRARY_MAIN) + "." + std::string(written);
+    const words::Walk found = words::walk(rooted);
+    return found.error == words::WalkError::NONE ? found.id : words::kNoPath;
 }
 
 // --- the units --------------------------------------------------------------

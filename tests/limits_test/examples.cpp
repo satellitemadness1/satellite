@@ -61,9 +61,17 @@ void section_examples()
     // 12 physical cores. Checking them here is the same claim words_test makes
     // about WORD_NUMBERS.md -- the document and the code must agree -- with the
     // example file standing in for the document.
-    check(into.thread_count.value == 24, "it asks for 24 threads");
-    check(into.core_count.value == 12, "and says the machine has 12 cores");
-    check(into.memory_max.value == 48ULL * 1024 * 1024 * 1024,
+    check(into.thread_count.value() == 24, "it asks for 24 threads");
+    check(into.thread_count.origin == Origin::File,
+          "as a number, which is what makes THREAD_COUNT the demonstration "
+          "that a setting and a fact are allowed to differ");
+    check(into.core_count.origin == Origin::Machine,
+          "and it names the machine's own answer for CORE_COUNT, which is the "
+          "other half of the same demonstration -- one file, both spellings");
+    check(into.core_count.value() == satellite::facts::physical_cores(),
+          "so the core count is whatever this machine has, and on the machine "
+          "PLAN §4.5 measured on 2026-08-27 that is 12");
+    check(into.memory_max.value() == 48ULL * 1024 * 1024 * 1024,
           "and holds satl to 48 GiB, which is 48 * 1024^3 bytes exactly and "
           "not 48 * 1000^3");
     check(into.dial(DialId::MinFreeMb).set &&
@@ -102,6 +110,12 @@ void section_examples()
     check(holds(raised, Code::CONFIG_TOO_LARGE), "`CORE_COUNT=99999` is S0808");
     check(holds(raised, Code::CONFIG_NEEDS_A_UNIT), "`MEMORY_MAX=48` is S0805");
     check(holds(raised, Code::CONFIG_NOT_A_NUMBER), "`max_depth=twelve` is S0804");
+    check(!holds(raised, Code::CONFIG_NOT_A_FACT),
+          "and S0810 is NOT in that file, which is a fact about the file rather "
+          "than about the reader: all three machine settings are spent there on "
+          "S0805, S0807 and S0808, and naming one a second time raises S0803. "
+          "reading.cpp raises it from a string, the way S0806, S0809 and S0891 "
+          "are raised");
     check(holds(raised, Code::CONFIG_SET_TWICE), "the second division_digits is S0803");
     check(holds(raised, Code::NOTE_CONFIG_SET_HERE), "and it carries the note S0890");
 
@@ -149,6 +163,24 @@ void section_examples()
         std::fputs("MEMORY_MAX=1024TiB\n", file);
         std::fclose(file);
 
+        // A ROW THAT ALREADY READS FROM THE MACHINE CANNOT BE CLAMPED, and
+        // begin() does not even open /proc/meminfo to find that out -- which is
+        // the whole reason the clamp tests the ORIGIN rather than the value.
+        // Checked before the clamp below, because both go through the one
+        // process-wide Held and the last call wins.
+        const std::string named = "/tmp/satl_limits_test_named.ini";
+        if (std::FILE *second = std::fopen(named.c_str(), "wb")) {
+            std::fputs("MEMORY_MAX=arguments.memory.total\n", second);
+            std::fclose(second);
+            check(satellite::limits::begin(named) == 0,
+                  "a config naming the machine's own memory reads");
+            check(satellite::limits::held().memory_max.origin == Origin::Machine,
+                  "and is NOT clamped, because a ceiling that IS the machine's "
+                  "total is not above it -- there is nothing to compare and "
+                  "nothing is read to compare it with");
+            std::remove(named.c_str());
+        }
+
         check(satellite::limits::begin(path) == 0,
               "a config asking for more memory than the machine has still READS "
               "-- it is not malformed, it is optimistic");
@@ -158,10 +190,14 @@ void section_examples()
               "and the row says so: `the machine, over the file`, which is what "
               "makes clamping a thing the user is told rather than a thing done "
               "behind their back");
-        check(now.memory_max.value ==
+        check(now.memory_max.value() ==
                   satellite::facts::mem_total_bytes(),
               "and the value is the machine's own total, because past that the "
               "run is not slow, it is over");
+        check(now.memory_max.written == 1024ULL * 1024 * 1024 * 1024 * 1024,
+              "while the file's own 1024TiB survives in `written`, which is the "
+              "only place it survives at all -- the clamp moves the ORIGIN and "
+              "does not overwrite what somebody asked for");
         check(now.config_path == path, "and the file it came from is named");
         std::remove(path.c_str());
     } else {

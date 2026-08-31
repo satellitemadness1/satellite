@@ -945,6 +945,17 @@ is a *setting* and the machine is a *fact*, and a program that asks
 `arguments.machine.threads` is asking what the machine has, not what the config was
 told. If the two ever need to differ, they need two different names.
 
+**And the configuration writes these three names, which it could not until
+2026-08-31.** `CORE_COUNT=arguments.machine.cores` is the machine's own answer, in
+the spelling above and in any of the six; `CORE_COUNT=12` is twelve. It is the bare
+form and not the rooted path, for the reason this section already gives — a program
+writes the name it gave `satellite.main`'s parameter, never
+`satellite.library.main.arguments`, and a configuration that demanded the rooted
+spelling would be asking for one the language does not use. PLAN §4.5.4 has what
+*not* having it cost: satl read all three facts on every run, because the file had
+no way to say "the machine" and something had to fill the values in before it was
+opened.
+
 #### Open
 
 - **Which spellings, exactly, and what happens to the seventh?** Declaring a

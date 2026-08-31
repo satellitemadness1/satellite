@@ -460,6 +460,12 @@ the two threads §4.5.1.2 starts. The table, the attribution and the method are 
 so this one covers four milestones — which is the case for §9's rule rather than an
 argument against it: the floor did its job the first time it was used in anger.
 
+**Fixed the same day, and the floor is 0.724 ms.** `satl --version` opens **no files
+at all** now — fifty before it — because `satellite_config.ini` can say
+`CORE_COUNT=arguments.machine.cores` (§4.5.4) and a setting nobody asks for is never
+resolved. satl's own share is **0.168 ms**, of which 0.14 is the pool builder and the
+watchdog: §4.5.1.2's decision costing what it decided to spend, and nothing else.
+
 **This binary links no GUI, and that is measured rather than tidy-minded.** The first
 satellite's `satl-term` resolves 79 shared objects and maps 78 on this machine
 against `satl`'s 6, and the dynamic linker loads every one before `main()` on every
@@ -691,6 +697,11 @@ arithmetic does not:** one thread in four still beats ~590 µs of blocked execut
 and the honest base is 0.55 ms rather than 1.75. `make_support/040-sources.mk`
 carries the thread-count table this comes from.
 
+**And since 2026-08-31 it is the whole of what M6 costs a run**, which is the number
+this section should be judged on: 0.14 ms of the 0.168 ms satl adds to starting up is
+these two threads. Everything else M6 put on the startup path was `physical_cores()`
+being read for a row nobody had asked for, and §4.5.4 is where that stopped.
+
 **Two facts the author should have in view, neither of which blocks the decision:**
 
 - **`parallel_for` does not exist.** It is in no numbering, no milestone and no
@@ -775,7 +786,7 @@ puts on it: the other three are stored, printed by `satl --limits` beside the
 milestone that will read them, and interpreted by nothing. A default for
 `division_digits` would have been M8 deciding what a division does.
 
-### 4.5.4 Answered at M6, 2026-08-30
+### 4.5.4 Answered at M6, 2026-08-30, and the second question again on 2026-08-31
 
 *(This section was three open questions and PLAN §8's M6 called them its three
 blockers. Each is restated as it stood, with what was decided.
@@ -812,6 +823,27 @@ blockers. Each is restated as it stood, with what was decided.
   derived from the other. The same answer settles `satellite_string`'s code 97
   (SCRATCH.md/PORTING.md §3): it is the fact. §4.5.1.2 above records the third
   reading this question did not have a name for.
+
+  **AND THE FILE MAY NOW NAME THE FACT, WHICH IS THE HALF THIS ANSWER MISSED,
+  added 2026-08-31.** `CORE_COUNT=arguments.machine.cores` says *"whatever this
+  machine has"*, in the spelling a program uses for the same fact — one path per
+  setting, exactly DESIGN §7.7's pairing, and all six spellings of `arguments`
+  because config.cpp walks the real trie. The other two are
+  `arguments.machine.threads` and `arguments.memory.total`. **The dials do not
+  take one and the line is the same line**: a machine setting is about the
+  machine and has a fact behind it, and there is no fact called
+  `division_digits` for a file to name.
+
+  **What it cost NOT to have was 0.42 ms on every run of satl** (§4.3). Without
+  a way for the file to say "the machine", `limits.cpp` had to fill all three
+  settings in from the machine *before* opening the file and let the file
+  overwrite what it named — "machine first, then file" — so
+  `facts::physical_cores()` read two sysfs files per CPU on every invocation to
+  produce a number only `satl --limits` prints. The order was a workaround for a
+  missing spelling; the spelling exists now and the order is gone with it.
+  **A setting is resolved when something asks for its value and not before**,
+  which is the shape this question should have had from the start: three ways to
+  ask, one place that knows, and nobody asking until they need it.
 
 - **The file does not exist yet.** Nothing reads it and nothing writes it. The
   installer (§5) is the natural author.

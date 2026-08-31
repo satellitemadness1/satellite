@@ -7,7 +7,9 @@ done, and each one is recorded where it belongs rather than here:
 in M6.md's first line. **Doing them found four things** — a 34× startup
 regression, a five-milestone-stale installer banner, a header that said
 `EXIT_FINE` where the process exits 130, and a comment heading inverted against
-its own code — all in M6.md §9 and in the files that said them. Kept only until
+its own code — all in M6.md §9 and in the files that said them. **The first of
+those four was then fixed** rather than carried, which is §9.4 and is the only
+part of this file's story that changed any code. Kept only until
 somebody has read it once, the standing [WORD_SURFACE.md](WORD_SURFACE.md) has.
 
 **A dated working record, not a review.** [MILESTONES/M6.md](../MILESTONES/M6.md)
@@ -49,8 +51,16 @@ finished in the code and unfinished in the ledger is exactly the failure
    print `12`; most of the rest is the two threads. The pool is **not** the ~20 µs
    PLAN §4.5.1.2 claims, and that is not a fault in the pool — ~20 µs is
    main-thread time and §4.3's floor is wall clock per invocation. Table in
-   `040-sources.mk`, account in M6.md §9.1, corrections in PLAN §4.3 and §4.5.1.2,
-   open item in M6.md §6.8.
+   `040-sources.mk`, account in M6.md §9.1, corrections in PLAN §4.3 and §4.5.1.2.
+
+   **AND THEN FIXED, the same day and on the author's reading of the finding.**
+   The open item this raised proposed a workaround; the author said the order was
+   the bug. `satellite_config.ini` can say `CORE_COUNT=arguments.machine.cores`
+   now — DESIGN §7.7's pairing, which had been written down since before M6 was
+   built and which the configuration was the one surface that could not spell —
+   so nothing is read from the machine until something asks for the value.
+   `satl --version` is 0.724 ms and opens **no files at all**, against 1.172 ms
+   and fifty. M6.md §9.4.
 3. **`satl --limits` and `satl --watchdog` have not been run from the INSTALLED
    binary.** PLAN §9's last rule — *"running the installed binary is what proves
    an install"* — and M6's done-when says §9 means the installed one. The install

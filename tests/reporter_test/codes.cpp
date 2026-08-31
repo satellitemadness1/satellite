@@ -40,8 +40,8 @@ void section_codes()
     // This one is a compile-time array so it cannot be half-read, but the
     // number is what says a row was DELETED -- which the ascending assert
     // cannot see, because a table with a row removed still ascends.
-    check(kCodeCount == 46,
-          "errors.def has 46 rows -- if that changed on purpose, change it here "
+    check(kCodeCount == 47,
+          "errors.def has 47 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

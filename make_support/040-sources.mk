@@ -110,6 +110,41 @@
 # invocation, and a thread the kernel must tear down before the parent's wait()
 # returns is on that clock whether or not the main thread waited for it.
 #
+# AND RE-TAKEN AGAIN THE SAME DAY, WITH THE FINDING FIXED. The table above
+# stands as it was measured; this is what satl costs once physical_cores() stops
+# being read on every run. Same method, load 0.78.
+#
+#     bare int main(){return 0;}          0.556 ms   (was 0.552)
+#     satl (opening information)          0.735 ms   (was 1.174)
+#     satl --version                      0.724 ms   (was 1.172)
+#     satl --words          (271 lines)   0.887 ms   (was 1.354)
+#     satl --tokens hello_world.satl      0.818 ms   (was 1.259)
+#     satl --tokens class_test.satl       1.128 ms   (was 1.560)
+#     satl --limits                       1.462 ms   (was 1.899)
+#
+# SATL'S OWN SHARE IS 0.168 ms, DOWN FROM 0.620, and `satl --version` now opens
+# NO FILES AT ALL -- strace counts zero openat against fifty before it, because
+# the config lookup is an access() and everything else was the machine being
+# read for a row nobody had asked for. What remains is 0.14 ms of pool builder
+# and watchdog, which is PLAN §4.5.1.2's decision costing what §4.5.1.2 decided
+# to spend, and about 0.03 ms of everything else. It is still 9x M3's 0.018 ms
+# and every microsecond of the difference is now a thread that was started on
+# purpose.
+#
+# WHAT CHANGED IS THE FILE FORMAT AND NOT A CACHE. satellite_config.ini can now
+# say `CORE_COUNT=arguments.machine.cores` -- DESIGN §7.7's own pairing of
+# the three settings with the three paths -- so a value is either a number
+# somebody wrote or the machine's own answer, resolved when something asks for
+# it. limits.cpp used to fill all three in from the machine BEFORE opening the
+# file, because the file had no way to say "the machine"; that order is gone and
+# with it the read. MILESTONES/M6.md §9.4.
+#
+# `satl --limits` KEPT 0.42 ms OF ITS OWN, separately: it was asking the machine
+# for the same three facts twice, once for the settings block and once for the
+# machine block. dump.cpp reads each once now, which is not a saving so much as
+# the difference between reporting a machine and reporting it from two different
+# instants.
+#
 # The window is a separate binary (M1.5, built 2026-08-27) and, for
 # satellite.window.new(), a
 # dlopen'd library (M24) -- because the two-binary split cannot help a window

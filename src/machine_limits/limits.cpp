@@ -2,11 +2,27 @@
 // there is none, and the one place the answer lives. See
 // machine_limits/limits.hpp.
 //
-// THE ORDER IS MACHINE FIRST, THEN FILE, AND THAT IS WHAT MAKES A ONE-LINE
-// CONFIG CHANGE ONE THING. Every value is filled in from the machine before the
-// file is opened, so a file that sets `THREAD_COUNT` and nothing else leaves
-// the memory ceiling and the core count exactly as the machine reported them --
-// and `satl --limits` can say, of every row, whether anybody chose it.
+// THERE IS NO ORDER ANY MORE, AND THAT IS THE CORRECTION THIS FILE CARRIES.
+// Until 2026-08-31 it read "the order is MACHINE FIRST, THEN FILE, and that is
+// what makes a one-line config change one thing": every value was filled in
+// from the machine before the file was opened, so a file naming only
+// `THREAD_COUNT` left the other two as the machine had reported them.
+//
+// THE ORDER EXISTED BECAUSE THE FILE COULD NOT SAY "THE MACHINE", and it cost
+// 0.42 ms on every run of satl to work around that -- `facts::physical_cores()`
+// reads two sysfs files per CPU, 48 of them here, and at M6 the only thing that
+// wants the answer is one row of `satl --limits`. It was paid by `satl
+// --version`, by `satl --help`, by every command in the program.
+// make_support/040-sources.mk has the measurement.
+//
+// SO THE FILE CAN SAY IT NOW. `CORE_COUNT=arguments.machine.cores` is the
+// machine's own answer, named the way a satellite program names it (DESIGN
+// §7.7), and `CORE_COUNT=12` is twelve. A row nobody wrote a line for reads
+// from the machine because that is what a `Setting` defaults to, not because
+// anything filled it in. One pass, no order, and nothing is read from the
+// machine until somebody asks for the value -- which is what `value()` below
+// is, and what a one-line config still changing exactly one thing now falls
+// out of rather than being arranged.
 
 #include "machine_limits/limits.hpp"
 
@@ -42,39 +58,52 @@ Held &store()
     return held;
 }
 
-// Fill in what the machine says. Everything the file does not mention keeps
-// these answers, and `satl --limits` prints them as coming from the machine.
-void from_the_machine(Held &into)
+// The machine's own answer to one of the three, asked NOW.
+//
+// NOTHING IS CACHED HERE AND system_facts/facts.hpp's HEADER IS THE ARGUMENT:
+// "the question is what this program is using NOW, while it runs, so a cached
+// answer would be the wrong one by definition." Two of these three could not
+// change during a run -- a machine does not grow cores -- and caching them
+// would still buy nothing, because the expensive one is asked for exactly once
+// per run by exactly one command. A cache that saves nothing is a second place
+// for the answer to live.
+//
+// §4.5.4 ASKED WHETHER THE SHIPPED DEFAULT FOR MEMORY_MAX IS THE WHOLE MACHINE
+// OR A FRACTION, and this is where it is answered: the whole machine. A
+// fraction would be a number satl invented about a program it has never seen --
+// 50% is generous for a parser and absurd for the thing QUAD.md exists to run
+// -- and DESIGN §1.1 refuses exactly that kind of quiet policy. The machine's
+// own total is the one bound that is true without knowing anything: past it the
+// run is not slow, it is over.
+unsigned long long from_the_machine(Fact fact)
 {
-    into.thread_count = Setting{facts::hardware_threads(), Origin::Default, 0};
-    into.core_count = Setting{facts::physical_cores(), Origin::Default, 0};
-
-    // §4.5.4 ASKED WHETHER THE SHIPPED DEFAULT IS THE WHOLE MACHINE OR A
-    // FRACTION. It is the whole machine. A fraction is a number satl would have
-    // invented about a program it has never seen -- 50% is generous for a
-    // parser and absurd for the thing QUAD.md exists to run -- and DESIGN §1.1
-    // refuses exactly that kind of quiet policy. The machine's own total is the
-    // one bound that is true without knowing anything: past it the run is not
-    // slow, it is over.
-    into.memory_max = Setting{facts::mem_total_bytes(), Origin::Default, 0};
-
-    // min_free_mb IS UNSET BY DEFAULT, AND THAT IS A CORRECTION TO v1 RATHER
-    // THAN A PORT OF IT. v1 defaulted it to 4096 MB and compared the MACHINE's
-    // available memory against it once a second -- which on any machine with
-    // less than 4 GB free means satl kills itself one second after starting,
-    // every time, having done nothing wrong. That is not a conservative default;
-    // it is a machine-sized assumption written as a number, and this tree has
-    // 61.9 GiB so it would never have been noticed here. Unset means the
-    // machine's free memory is not watched, MEMORY_MAX carries the promise on
-    // its own, and a person who wants v1's check writes one line.
-    //
-    // The other three dials arrive unset too, and PLAN M6 is why: "min_free_mb
-    // is the only one whose meaning is this milestone's." A default for
-    // division_digits would be M8 deciding what a division does, three
-    // milestones early.
+    switch (fact) {
+    case Fact::Threads:     return facts::hardware_threads();
+    case Fact::Cores:       return facts::physical_cores();
+    case Fact::MemoryTotal: return facts::mem_total_bytes();
+    }
+    return 0;
 }
 
 } // namespace
+
+// THREE OF THE FOUR ORIGINS ANSWER FROM THE MACHINE AND ONE ANSWERS FROM THE
+// FILE, which is the whole shape of this function and is worth reading as a
+// sentence: satl holds itself to the machine unless somebody wrote a number.
+//
+// Clamped IS ON THE MACHINE'S SIDE AND THAT IS NOT AN OPTIMISATION. A clamped
+// row is one where the file asked for more memory than exists, so the value IS
+// the machine's total -- and computing it from the fact rather than copying it
+// into `written` leaves the file's own over-large figure intact, which is the
+// only place that number survives at all.
+unsigned long long Setting::value() const
+{
+    // ASKED ONLY WHEN THE ANSWER IS THE MACHINE'S. A row the file wrote a
+    // number for never opens /sys or /proc at all, which is the ordinary case
+    // for a machine that HAS a config and the whole of why value_given() is
+    // separate for the one command that does not.
+    return origin == Origin::File ? written : value_given(from_the_machine(fact));
+}
 
 std::string human_bytes(unsigned long long bytes)
 {
@@ -138,7 +167,13 @@ std::string found_config_path()
 int begin(const std::string &named)
 {
     Held &into = store();
-    from_the_machine(into);
+
+    // A DEFAULT-CONSTRUCTED Held IS ALREADY A COMPLETE ANSWER -- every row
+    // reading from the machine, which is what satl holds to when there is no
+    // file, and no file is the ordinary case. Assigned rather than assumed
+    // because begin() is called twice in tests/limits_test and a second call
+    // must not see the first one's file.
+    into = Held{};
 
     const std::string path = named.empty() ? found_config_path() : named;
     if (!path.empty()) {
@@ -155,12 +190,12 @@ int begin(const std::string &named)
         std::vector<errors::Diagnostic> problems;
         if (!read_config(text, into, problems)) {
             report(path, text, problems);
-            // The machine's answers are restored before returning, so nothing
-            // downstream holds half a file's worth of settings. Nothing runs
+            // Everything the half-read file touched is put back, so nothing
+            // downstream holds half a config's worth of settings. Nothing runs
             // after this today -- main returns -- and a partly-applied config
             // is the kind of state that becomes a defect the moment something
             // does.
-            from_the_machine(into);
+            into = Held{};
             return EXIT_MALFORMED;
         }
         into.config_path = path;
@@ -173,10 +208,17 @@ int begin(const std::string &named)
     // nothing. It is CLAMPED AND SAID rather than clamped quietly, which is the
     // whole difference: `satl --limits` prints the row as coming from "the
     // machine, over the file", so the person who wrote 128 GiB finds out.
-    const unsigned long long total = facts::mem_total_bytes();
-    if (total != 0 && into.memory_max.value > total) {
-        into.memory_max.value = total;
-        into.memory_max.origin = Origin::Clamped;
+    //
+    // ONLY A NUMBER CAN BE CLAMPED, AND THAT IS WHAT MAKES THE READ CONDITIONAL
+    // RATHER THAN UNCONDITIONAL. A row that already reads from the machine
+    // cannot be above what the machine has, so there is nothing to compare and
+    // /proc/meminfo is not opened at all -- which is the ordinary case, because
+    // most runs have no file. `Origin::File` is the only origin this test can
+    // be true for.
+    if (into.memory_max.origin == Origin::File) {
+        const unsigned long long total = facts::mem_total_bytes();
+        if (total != 0 && into.memory_max.written > total)
+            into.memory_max.origin = Origin::Clamped;
     }
 
     // THREAD_COUNT IS NOT CLAMPED, AND THE ASYMMETRY IS THE POINT. Asking for
@@ -189,7 +231,7 @@ int begin(const std::string &named)
     // difference is visible either way, which is §4.5.4's third open question
     // answered: a setting MAY differ from a fact, and the fix is to show both
     // rather than to make one of them lie.
-    pool::start(static_cast<unsigned>(into.thread_count.value));
+    pool::start(static_cast<unsigned>(into.thread_count.value()));
     start_watchdog();
     return EXIT_FINE;
 }

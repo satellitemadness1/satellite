@@ -24,9 +24,11 @@
 #include "error_reporter/report.hpp"
 #include "machine_limits/limits.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace satellite::limits {
@@ -47,6 +49,7 @@ std::string_view origin_text(Origin origin)
     switch (origin) {
     case Origin::Default: return "the machine";
     case Origin::File:    return "the file";
+    case Origin::Machine: return "the machine, named by the file";
     case Origin::Clamped: return "the machine, over the file";
     }
     return "?";
@@ -74,17 +77,43 @@ struct Reading {
 // exactly DialId order, which is what makes this subtraction legal and is why
 // config_internal.hpp builds the key list in that order rather than
 // alphabetically.
-void store(Held &into, size_t key, unsigned long long value, unsigned line)
+//
+// A POINTER AND NOT A COPY, WHICH IS WHAT KEEPS `fact` OUT OF THE FILE'S REACH.
+// The old shape assigned a whole `Setting` over the top of the one in `Held`,
+// and that was fine while a Setting was three numbers; it is not fine now that
+// one of its members says which machine fact is behind the row. A file chooses
+// whether the fact answers, never which fact it is, so the reader writes the
+// three fields it owns and never the fourth.
+Setting *machine_setting(Held &into, size_t key)
 {
-    const Setting made{value, Origin::File, line};
     switch (key) {
-    case 0: into.thread_count = made; return;
-    case 1: into.core_count = made; return;
-    case 2: into.memory_max = made; return;
-    default: break;
+    case 0: return &into.thread_count;
+    case 1: return &into.core_count;
+    case 2: return &into.memory_max;
+    default: return nullptr;
+    }
+}
+
+void store_number(Held &into, size_t key, unsigned long long value, unsigned line)
+{
+    if (Setting *const at = machine_setting(into, key)) {
+        at->written = value;
+        at->origin = Origin::File;
+        at->line = line;
+        return;
     }
     Dial &dial = into.dials[key - kSettingCount];
     dial = Dial{value, true, Origin::File, line};
+}
+
+// `CORE_COUNT=arguments.machine.cores`: the machine answers, because the file
+// said to. No value is stored -- there is nothing to store, and reading one now
+// is the 0.42 ms limits.cpp exists to stop paying.
+void store_fact(Held &into, size_t key, unsigned line)
+{
+    Setting *const at = machine_setting(into, key);
+    at->origin = Origin::Machine;
+    at->line = line;
 }
 
 // A whole number, bounded. False having reported.
@@ -192,6 +221,62 @@ bool size_value(Reading &reading, std::string_view text, std::string_view name,
     return true;
 }
 
+// `arguments.machine.cores` -- the machine's own answer, named. False having
+// reported.
+//
+// ONE PATH PER SETTING AND NOT "ANY PATH OF THE RIGHT SHAPE", which is DESIGN
+// §7.7's pairing enforced rather than merely documented. `CORE_COUNT` takes
+// `arguments.machine.cores` and nothing else, so `CORE_COUNT=arguments.memory.total`
+// is refused with the right one named -- and it has to be, because both walk to
+// a real node and a shape check could not tell them apart.
+bool fact_value(Reading &reading, std::string_view text, std::string_view name,
+                size_t key, size_t at, size_t stop, unsigned line)
+{
+    const std::string_view written = text.substr(at, stop - at);
+    const words::NodeId wants = kSettings[key].spells;
+    if (fact_named(written) == static_cast<words::PathId>(wants))
+        return true;
+
+    const std::string wanted = fact_spelling(wants);
+    errors::Diagnostic wrong = errors::make<errors::Code::CONFIG_NOT_A_FACT>(
+        span(at, stop, line), name, wanted, written);
+
+    // THE FULL PATH IS A DIFFERENT MISTAKE FROM A TYPO AND IS ANSWERED FIRST.
+    // WORD_NUMBERS.md §2.2 writes this fact down as
+    // `satellite.library.main.arguments.machine.cores`, and `satl --words`
+    // answers to that spelling, so somebody who looked the name up in the
+    // authority will copy the rooted form -- which is correct everywhere except
+    // here. It walks, it walks to the RIGHT node, and it is still not what a
+    // program writes (DESIGN §7.7), so the answer is the short spelling rather
+    // than the sentence about what this setting takes.
+    const words::Walk rooted = words::walk(written);
+    if (rooted.error == words::WalkError::NONE &&
+        rooted.id == static_cast<words::PathId>(wants)) {
+        wrong.suggestion = wanted;
+    } else {
+        // Otherwise M5's distance, over one candidate rather than a list --
+        // `arguments.machine.core` is a typo and gets an answer, `twelve` is
+        // not close to anything and gets the sentence on its own.
+        //
+        // BOTH TESTS, AND close_enough() ALONE IS NOT ONE OF THEM. distance()
+        // is CAPPED: it returns kTooFar for anything at or past it rather than
+        // the real figure, "so the loop stops paying for a word it has already
+        // ruled out". close_enough(4, 23) is true -- one edit plus one per four
+        // characters -- so a candidate this long would accept the cap itself as
+        // a score and offer `arguments.machine.cores` for `twelve`, which is
+        // what the first version of this did. config_internal.hpp's
+        // nearest_key() has the same pair of tests one function up, where the
+        // `edits < closest` half hides it inside the search.
+        const size_t edits = errors::distance(written, wanted);
+        const size_t longest = std::max(written.size(), wanted.size());
+        if (edits < errors::kTooFar && errors::close_enough(edits, longest))
+            wrong.suggestion = wanted;
+    }
+
+    reading.problems.push_back(std::move(wrong));
+    return false;
+}
+
 // One `NAME=VALUE`, with `at`..`stop` already trimmed of blanks.
 void setting(Reading &reading, std::string_view text, const Line &at)
 {
@@ -238,13 +323,42 @@ void setting(Reading &reading, std::string_view text, const Line &at)
     size_t value_start = equals + 1;
     size_t value_stop = stop;
     trim(text, value_start, value_stop);
+
+    const Kind kind = key < kSettingCount ? kSettings[key].kind : Kind::Dial;
+
+    // NOTHING AFTER THE `=` IS ANSWERED BY WHICHEVER SENTENCE LISTS EVERYTHING
+    // THE VALUE COULD HAVE BEEN, which is why this is under the kind rather
+    // than above it. A dial takes a number and is told so; a machine setting
+    // takes a number OR the machine's own answer and is told both, because
+    // half an answer to `CORE_COUNT=` sends somebody looking up a core count
+    // they never needed to write down.
     if (value_start == value_stop) {
-        reading.problems.push_back(errors::make<errors::Code::CONFIG_NOT_A_NUMBER>(
-            span(equals, stop, at.number), name, ""));
+        if (kind != Kind::Dial)
+            fact_value(reading, text, name, key, value_start, value_stop,
+                       at.number);
+        else
+            reading.problems.push_back(
+                errors::make<errors::Code::CONFIG_NOT_A_NUMBER>(
+                    span(equals, stop, at.number), name, ""));
         return;
     }
 
-    const Kind kind = key < kSettingCount ? kSettings[key].kind : Kind::Dial;
+    // A MACHINE SETTING'S VALUE IS A NUMBER IF IT STARTS WITH A DIGIT AND THE
+    // MACHINE'S OWN ANSWER OTHERWISE, and that one rule is the whole of the
+    // dispatch. It is a leading digit and not a search for a `.`, because the
+    // three things a number can be wrong about all begin with one -- `48` with
+    // no unit is S0805, `61.9GiB` is S0809, `99999` is S0808 -- and each of
+    // those sentences is better than "is not a path". Nothing satl accepts as a
+    // fact begins with a digit: §1's generating rule makes every one of them a
+    // word.
+    if (kind != Kind::Dial &&
+        !(text[value_start] >= '0' && text[value_start] <= '9')) {
+        if (fact_value(reading, text, name, key, value_start, value_stop,
+                       at.number))
+            store_fact(reading.into, key, at.number);
+        return;
+    }
+
     unsigned long long value = 0;
     bool ok = false;
     switch (kind) {
@@ -271,7 +385,7 @@ void setting(Reading &reading, std::string_view text, const Line &at)
         break;
     }
     if (ok)
-        store(reading.into, key, value, at.number);
+        store_number(reading.into, key, value, at.number);
 }
 
 // The parser's own cap, one registry on. errors.def's S0891 says why.

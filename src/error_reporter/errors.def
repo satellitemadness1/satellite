@@ -356,6 +356,28 @@ SAT_CODE(809, CONFIG_NOT_A_WHOLE_AMOUNT, SAT_ERROR,
          "{1} is a whole number of units and `{2}` is not one -- write the "
          "next unit down, so that the byte count is exact instead of rounded")
 
+// THE THIRD THING A MACHINE SETTING'S VALUE MAY BE WRONG ABOUT, and it is a
+// different sentence from S0804 for the reason S0809 is: the sentence has to
+// name the fix, and here there are two fixes because there are two things the
+// value is allowed to be. `CORE_COUNT=twelve` could have meant a number or it
+// could have meant the machine, and a message saying only "is a whole number"
+// would send somebody to look up a core count they did not want to write down.
+//
+// {2} IS THE PATH THIS SETTING TAKES AND IT IS NOT A FIXED STRING. Each of the
+// three has exactly one -- DESIGN §7.7's pairing -- so the row is the same
+// sentence with a different answer in it, and config_internal.hpp's kSettings
+// is where the answer comes from. A file that names the WRONG one of the three
+// lands here too, which is right: `CORE_COUNT=arguments.memory.total` is not a
+// core count, and the message names the one that is.
+//
+// This row cannot be raised from example/broken_config.ini -- all three
+// settings are spent there on S0805, S0807 and S0808, and naming one twice
+// raises S0803 instead -- so tests/limits_test raises it from a string, which
+// is that file's own established answer for S0806, S0809 and S0891.
+SAT_CODE(810, CONFIG_NOT_A_FACT, SAT_ERROR,
+         "{1} is a whole number or `{2}`, which is what this machine says -- "
+         "and `{3}` is neither")
+
 SAT_CODE(890, NOTE_CONFIG_SET_HERE, SAT_NOTE,
          "{1} was set here first")
 
