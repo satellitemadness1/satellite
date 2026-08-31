@@ -860,41 +860,79 @@ type, so reusing the old slot would leave every handle already taken to the firs
 instance pointing at the second — and a list built by that idiom would read back as
 *n* copies of its last element **with no error anywhere.**
 
-### 7.5 Recursion is bounded, and the bound is derived
+### 7.5 Recursion is not bounded, and a walker keeps its own stack
+
+**REWRITTEN 2026-08-31 BY THE AUTHOR'S DECISION, AND THE OLD CONCLUSION IS
+WITHDRAWN.** This section said *"recursion is bounded, and the bound is
+derived"*, and the rule is now the opposite: **the language has no depth limit,
+and no walker in it may use the C++ stack for depth the user's program
+controls.** What the tree does today does not meet that; §7.5.1 says exactly
+what it does instead, because a section that claimed the property before the code
+had it would be worse than one that admits the gap.
+
+The measurements below are kept **as evidence and not as a specification.** They
+are the reason a fixed guess is the wrong shape, and they were paid for once.
 
 *(v1: measured, and the first guess was wrong.)* A default depth of ~10000 sat past
 both stack cliffs, so the guard could never fire and the segfault it existed to
-prevent was exactly what a runaway recursion got.
+prevent was exactly what a runaway recursion got. One activation costs 3 units and
+~3169 bytes at -O2, so a ceiling derived from `RLIMIT_STACK` is 3000 on an ordinary
+8 MB stack and ~24,000 on 64 MB.
 
-The default is **2000**. One activation costs 3 units and ~3169 bytes at -O2, and
-the ceiling is derived from `RLIMIT_STACK` rather than fixed: 3000 on an ordinary
-8 MB stack, ~24,000 on 64 MB. `ulimit -s` is therefore the knob for how deep a
-program may recurse, and it is **outside the language on purpose.**
+**That derivation is better than a constant and it is still a limit.** It makes
+`ulimit -s` decide how deep a program may go, and this section used to call that
+*"outside the language on purpose"* — which is true about where the number comes
+from and false about whose problem it is. A program that runs on one machine and
+dies on another, for a reason neither the language nor the user chose, is §1.1's
+*never do anything behind their back* with the shell's configuration standing in
+for a decision.
+
+**The answer is that a walker keeps its own stack on the heap**, so depth is
+bounded by memory the way a list's length is — and running out of memory is an
+event this language already has words and an exit status for (§9, and PLAN §4.5.2's
+watchdog). PLAN §2.5 has called that the *explicit control stack* and deferred it
+since the plan was written; the author un-deferred it on 2026-08-31.
+
+**Two things fall out that were listed as reasons to WANT it rather than
+consequences of having it.** PLAN §2.5's own first paragraph: execution becomes
+**pausable and resumable**, which is what green threads, generators, a stepping
+debugger, Ctrl-C at an arbitrary point (§10.2) and driving the interpreter from a
+GTK idle callback with no second thread (§10.3) all need. Under the old rule those
+were a future CEK machine's to buy. Under this one they arrive with the fix.
 
 The numbers live beside the code that uses them, never only here.
 
-**THIS SECTION IS M9's AND NOT M7's, AND IT SITS INSIDE M7's §7.** *(Separated
-2026-08-31, when M7 landed and had to decide which of the two bounds it owned.)*
-What is bounded above is a program that is **running**: the guard fires while a
-recursive capsule descends, the ceiling is derived from `RLIMIT_STACK` at run
-time, and `system_facts/facts.hpp` already says in its own words that *"M9's
-ceiling comes from here and DESIGN §7.5 is why."*
+#### 7.5.1 What the tree does today, which is worse than a bound
 
-**Resolve has a different bound and it is a different thing.** The resolver walks
-the tree recursively, so a deeply nested *expression* smashes the resolver's own
-C++ stack while nothing is running at all — and a program 19,000 brackets deep is
-one somebody generated rather than typed. `name_resolver/resolve.hpp` bounds that
-at 2000 written levels and refuses the file with **S0501**, whose sentence says
-in as many words that the limit is on how deeply a program may be WRITTEN and not
-on how deeply it may RECURSE. Two bounds, two milestones, one section — the
-second is a constant because a program is written once, and the first is derived
-because a stack is whatever the machine gives.
+*(Measured 2026-08-31, `ulimit -s 8192`. `SCRATCH.md/NO_LIMITS.md` is the full
+table and the plan; this is the part that belongs in the specification, because a
+reader has to be able to find out that the language does not yet keep its own
+rule.)*
 
-**And two other walkers in this tree have neither.** Measured 2026-08-31 on an
-8 MiB stack: `--check` survives 20,000 levels, `satl --unparse` segfaults at
-19,000 and `satl --satc` at 20,000. Those are M4's and M4.5's printers;
-MILESTONES/M7.md §4.5 has the table and §6 names the structural fix, which is a
-bound in the **parser** so that no consumer can be handed a tree it cannot walk.
+**Four walkers recurse on the C++ stack with no bound at all, and every command
+in the tree has a depth at which it dies with signal 11 and says nothing.** One
+expression nested N deep: `satl --unparse` segfaults at 19,000, `satl --satc` at
+20,000, and `satl --check` — the parser alone — at 32,000. Forty thousand nested
+`satellite.statement.if` blocks kill all of them, `--check` included.
+
+**A crash is not a limit.** A limit refuses in words with a code, a span and a
+caret (§9); this leaves no exit status a script can read and no sentence a person
+can act on. It is the failure this section's v1 note already describes — *"the
+segfault it existed to prevent was exactly what a runaway recursion got"* —
+arriving in the passes rather than in the evaluator.
+
+**And one real limit exists, added at M7 and now withdrawn.**
+`name_resolver/resolve.hpp` bounds the resolver at a **fixed** 2000 written
+levels and refuses with **S0501**. It is the only place in the tree that says
+anything at all at depth, and it is the wrong shape by this section's own
+argument — a constant, where even the rule it replaces asks for a derivation. It
+goes when the resolver keeps its own stack, and S0501 goes with it.
+
+**`satellite_cache/paths.cpp`'s `flatten()` is the one walker that cannot be made
+to crash**, and it is the model: it reads a postfix chain with a `for` loop up the
+tree into a flat vector. Its own comment gives a different reason for that shape —
+that the alternative is *"the same walk written twice"* — which is how a thing
+done right for one reason turns out to be right for another.
 
 ### 7.6 Capsules are not in the registry
 
@@ -1579,6 +1617,15 @@ critical path.
   handler packages its argument instead of performing the call.)
 - **Durations** — `time` is an absolute instant only; subtraction yields a number of
   nanoseconds.
+- ~~**The explicit control stack.**~~ **TAKEN 2026-08-31, and it was never on this
+  list — which is the failure this section's own opening sentence describes.** *"A
+  deferral list is only useful if the things missing from the language are on it."*
+  PLAN §2.5 has deferred it since the plan was written, under a heading that says
+  *deferred, not dropped*, and it was invisible here — so the one entry that turned
+  out to be load-bearing was the one a reader of this list could not find. It is
+  listed now, struck, because §7.5's rule cannot be kept without it: a walker that
+  keeps its own stack has no depth limit, and every other answer is a bigger
+  number.
 - **A JIT.** Not built and not planned. satellite is interpreted and there is no
   compile step the user ever runs; PLAN §2's closure compilation happens on the way
   to the first execution and emits callables, not machine code. This is the first

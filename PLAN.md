@@ -266,25 +266,87 @@ A `Call` node caches the resolved PathId and handler pointer on first execution,
 behind a guard. This is what permanently retires the seven-arm chain of §1.1: the
 second execution of a call site does no lookup at all.
 
-### 2.5 Why the explicit control stack is deferred, not dropped
+### 2.5 The explicit control stack, un-deferred
 
-A CEK machine would make execution **pausable and resumable**, which is what you
-want for green threads, generators, a stepping debugger, Ctrl-C at an arbitrary
-point, and driving the interpreter from a GTK idle callback with no second thread.
+**THIS SECTION WAS "Why the explicit control stack is deferred, not dropped" AND
+THE AUTHOR REVERSED IT ON 2026-08-31.** The old text is kept below the line,
+because the argument it makes is still the argument — what changed is the
+conclusion, and one of the two reasons for it turned out to be about a defect
+rather than about a cost.
 
-It also costs against direct recursion — the figure usually quoted for it is 2–3×,
-and **that one is borrowed rather than measured**, which by §9's own rule means it
-decides nothing here until this project measures it. It is genuinely hard to write.
-So: not now. But **bound the recursion depth from M9 onward** so deep recursion produces a
-clean `capsule call too deep` error rather than a segfault. DESIGN §7.5 has the
-numbers, and the first satellite's `system_facts/stack_facts.cpp` is half the
-machinery already.
+**The rule is that the language has no depth limit** (DESIGN §7.5, rewritten the
+same day), and a walker that recurses on the C++ stack cannot keep it. Not
+"cannot keep it cheaply" — cannot keep it at all: the depth at which it dies is
+`ulimit -s` divided by a frame, which is the shell's decision and nobody's
+design.
+
+**What the deferral was buying was not what it was spending.** The old text
+defers the CEK machine and then says to *bound the recursion depth from M9 onward
+so deep recursion produces a clean error rather than a segfault* — a bound
+INSTEAD of a stack, which reads as the cheap 90%. It is not, for two reasons this
+project found out by measuring on 2026-08-31:
+
+1. **The segfault it promises to prevent is already here, in four passes that
+   have nothing to do with M9.** `satl --unparse` dies at 19,000 nested brackets,
+   `--satc` at 20,000, and the parser at 32,000; forty thousand nested blocks kill
+   every command in the tree. A bound at M9 would have fixed none of them, because
+   none of them is the evaluator. `SCRATCH.md/NO_LIMITS.md` has the table.
+2. **A bound is not a cheaper version of a stack, it is a different product.** It
+   converts a crash into a refusal, which is worth doing and is not what was
+   asked for. DESIGN §1.1's tie-breaker is *do absolutely everything for the
+   user*; refusing a program because the machine's stack is 8 MiB is not doing
+   everything, it is doing 8 MiB.
+
+**The cost figure still has to be measured before it is quoted again**, and
+§2.5's own sentence is why: *the figure usually quoted is 2–3×, and that one is
+borrowed rather than measured, which by §9's own rule means it decides nothing
+here until this project measures it.* That rule did not stop applying when the
+conclusion flipped. It is now a thing to measure rather than a thing to defer
+behind, and §9 owns it.
+
+**And the static passes are not the hard part.** §2.5 called the CEK machine
+"genuinely hard to write" and that is true of the EVALUATOR — it has to pause
+mid-call and resume. A resolver, a printer and a `.satc` writer walk a finished
+tree for effect, and an explicit worklist over an arena of PODs is the shape
+`satellite_cache/paths.cpp` already uses for exactly one chain. Those four come
+first and M9 inherits a tree that cannot crash under it.
+
+---
+
+*The original section, 2026-08-27 to 2026-08-31, kept because its first paragraph
+is now a list of things the fix DELIVERS rather than things a deferred machine
+would have bought:*
+
+> A CEK machine would make execution **pausable and resumable**, which is what you
+> want for green threads, generators, a stepping debugger, Ctrl-C at an arbitrary
+> point, and driving the interpreter from a GTK idle callback with no second thread.
+>
+> It also costs against direct recursion — the figure usually quoted for it is 2–3×,
+> and **that one is borrowed rather than measured**, which by §9's own rule means it
+> decides nothing here until this project measures it. It is genuinely hard to write.
+> So: not now. But **bound the recursion depth from M9 onward** so deep recursion produces a
+> clean `capsule call too deep` error rather than a segfault. DESIGN §7.5 has the
+> numbers, and the first satellite's `system_facts/stack_facts.cpp` is half the
+> machinery already.
 
 ### 2.6 Order of adoption
 
 **Arena first** — it is a data-layout decision and everything else rides on it. Then
 closure compilation. Then inline caches. Doing them in the other order means doing
 the arena twice.
+
+**And the explicit control stack now sits between the arena and closure
+compilation** *(2026-08-31, when §2.5 was un-deferred)*, which is the same
+argument one adoption later. The four static passes — resolve, the unparser, the
+`.satc` writer and the parser — walk the arena and must stop using the C++ stack
+to do it; closure compilation then emits onto a stack that already exists rather
+than growing one afterwards. **Doing them in the other order means doing the
+evaluator twice**, which is the sentence above with a different noun in it.
+
+The arena is what makes this cheap and it is worth saying why: a node is a
+24-byte POD indexed by `uint32_t`, so a walker's own stack is a
+`std::vector<uint32_t>` and not a stack of visitor objects. That is a property
+§2.2 bought for cache locality and is being spent on something else.
 
 ---
 
@@ -1799,12 +1861,24 @@ declared type — and every path in the file beside the number it resolved to.
   a 273-byte program the walk is far under the clock's noise, and M4.5's own table
   is what says so.
 
-**The resolver's recursion bound is not §7.5's, and the two are one section
-apart.** §7.5 bounds a program that is *running* and is M9's — `system_facts/`
-already says so in its own words. This one stops a deeply nested *expression* from
-smashing the resolver's C++ stack while nothing is running at all. Both exist;
-only the second is built here, and a file that trips it is refused rather than
-dropped.
+**~~The resolver's recursion bound is not §7.5's~~ — WITHDRAWN 2026-08-31, THE
+SAME DAY IT LANDED.** This clause asked for a bound, M7 built one at a fixed 2000
+levels with **S0501** behind it, and the author's answer on reading the review was
+that *"if the recursion shuts the program off after 20,000 then that is not a
+working interpreter, that's a broken interpreter."* §2.5 was un-deferred and
+DESIGN §7.5 rewritten within the hour.
+
+**What the clause got right is that there were two bounds and one section.** What
+it got wrong is that the answer to either of them is a bound. The resolver keeps
+its own stack instead, `kMaxDepth` and S0501 both go, and
+`tests/resolve_test/frames.cpp`'s S0501 assertions become an assertion that a
+2,200-deep program **resolves**.
+
+**And it is not the only walker, which is what the review found and this clause
+could not have.** MILESTONES/M7.md §4.5 measured `satl --unparse` dying at 19,000
+nested brackets, `--satc` at 20,000 and the parser at 32,000 — three crashes that
+were in the tree before M7 and that a bound in the resolver does nothing about.
+`SCRATCH.md/NO_LIMITS.md` is the plan for all four.
 
 **Spacesuits are M26 and pass 2 is a named hole.** It exists in the order,
 resolves nothing, and **says so**: `satl --resolve` over a file with a spacesuit
@@ -1900,7 +1974,26 @@ static_assert comes too) and `Str`. `Number` arrives at M8 and this milestone is
 first consumer. The arena AST compiles to a closure tree.
 Module calls dispatch through `handlers[path_id]`, and the **inline caches of §2.4
 land here too** — third of the three adoptions §2.6 orders, and the milestone that
-owns them. Recursion depth is bounded here.
+owns them.
+
+**~~Recursion depth is bounded here.~~ IT IS NOT BOUNDED ANYWHERE, AS OF
+2026-08-31, AND THAT SENTENCE IS THE ONE THING ABOUT THIS MILESTONE THAT
+CHANGED.** §2.5 was un-deferred and DESIGN §7.5 was rewritten the same day: the
+language has no depth limit, so **M9 compiles onto an explicit control stack**
+rather than onto the C++ one, and a satellite program's recursion is bounded by
+memory the way a list's length is. What that buys beyond not crashing is §2.5's
+own first paragraph — pausable and resumable execution, which is what M13's
+`satellite.time`, M22's Ctrl-C (DESIGN §10.2), M23's threads and M24's GTK idle
+callback (§10.3) each need and none of which has a milestone that says so.
+
+**This is not extra work bolted on; it is the same work with the stack made
+explicit.** §2.3 already argues that closure compilation *"is not bytecode"* and
+that the tree stays the tree — a closure tree evaluated against a heap stack is
+still that. What it is not is `eval(node)` calling `eval(child)`.
+
+**And M9 will not be first to need it.** §2.6 puts the four static passes ahead
+of this milestone, so the tree M9 inherits already cannot crash under a walk;
+`SCRATCH.md/NO_LIMITS.md` is the plan and the order.
 
 **Five things it owns and had never written down.** *(2026-08-28. Four of them are
 consumed by later milestones that had each assumed somebody else built them.)*
@@ -1914,10 +2007,23 @@ consumed by later milestones that had each assumed somebody else built them.)*
   itself, not the file. §6.1 has the split and names the six lines. **This closes the other half of
   `SCRATCH.md/MILESTONE.md` §3's porting row**, whose whole complaint was that M9
   needs `Number` and does not say the port happens here.
-- **The recursion ceiling is derived, not fixed** — DESIGN §7.5 takes it from
-  `RLIMIT_STACK`, which is `system_facts/stack_facts.cpp`'s `stack_limit_bytes()`,
-  also M6's. *"Recursion depth is bounded here"* is what that sentence meant and
-  did not say.
+- ~~**The recursion ceiling is derived, not fixed**~~ — **THERE IS NO CEILING, AS
+  OF 2026-08-31.** §2.5 was un-deferred and DESIGN §7.5 rewritten: M9 compiles
+  onto an explicit control stack and a program's depth is bounded by memory. This
+  bullet used to say the ceiling came from `RLIMIT_STACK` via M6's
+  `stack_limit_bytes()`; **that reader now has one consumer fewer**, and M6's own
+  note already says `RLIM_INFINITY` answers *unknown* rather than *unbounded* —
+  which was the right care to take about a number nothing will read.
+- **And `satellite.library.system.max_depth` `1 14 2 2` needs a meaning, which is
+  the one thing that decision does not settle.** A numbered path cannot be deleted
+  — WORD_NUMBERS §1.2 is *never renumber, never reuse* — so the dial exists and
+  has to mean something. Three readings, and they are the author's to pick:
+  **a memory ceiling on the control stack** rather than a count of frames, which
+  keeps the name honest and makes it a sibling of `MEMORY_MAX`; **a diagnostic
+  aid** — say something when a program passes this depth, and carry on — which is
+  a debugging knob and not a limit; or **a runaway detector**, the only reading
+  under which an infinite recursion still terminates without exhausting memory
+  first. `SCRATCH.md/NO_LIMITS.md` §8 carries it as open.
 - **`satellite.library.system.max_depth` `1 14 2 2` is this milestone's dial**, and
   **M16's search walk is its second consumer** with a depth error of its own. Both
   entries now say so, because "M9 builds it and M16 reuses it" is fine and "neither
@@ -2552,6 +2658,15 @@ object answers to; `1 4 4` is §2.2's *"Satellite Orbit's answer"* and is M28's.
 for it, separate from the recursion ceiling's — and M9 is where the dial is built.
 Two consumers of one dial is fine; two milestones each building it is not, and
 neither entry said which until this pass.
+
+**And as of 2026-08-31 this milestone is the dial's ONLY certain consumer.** The
+recursion ceiling it was a sibling of is gone — §2.5 was un-deferred and DESIGN
+§7.5 rewritten, so M9 bounds nothing — while a **search** over a container is a
+different thing entirely: how loose a match may be is a policy about the search
+and not a limit on the machine, so it survives the rule that removed the other
+one. If M9's reading of `max_depth` ends up being *a diagnostic aid* or *nothing
+at all*, this milestone is where the path keeps its meaning, and its entry should
+stop calling the dial M9's.
 
 **The sort primitive is part of this milestone and is not the search power.**
 `sort()` `1 4 2 3` through `sort_up(key)` `1 4 2 7` are §1.1's *one primitive rather

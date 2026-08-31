@@ -33,6 +33,15 @@
 // out loud, because a pass that silently resolved nothing would be
 // indistinguishable from one that worked.
 //
+// THE BOUND BELOW IS WITHDRAWN AND HAS NOT BEEN REMOVED YET. The author's rule
+// as of 2026-08-31 is that the language has NO depth limit -- DESIGN §7.5 was
+// rewritten and PLAN §2.5 un-deferred the same day -- so `kMaxDepth`, `Depth`,
+// `too_deep()` and errors.def's S0501 all go when this pass keeps its own stack
+// on the heap instead of using the C++ one. `SCRATCH.md/NO_LIMITS.md` §5.1 is
+// the plan. Everything below is what the file said when the bound was the
+// decision, kept until the code catches up rather than edited into a claim the
+// code does not keep.
+//
 // AND THE RECURSION BOUND HERE IS NOT DESIGN §7.5's. §7.5 sits inside §7 and
 // reads as this milestone's; it is not. It bounds a program that is RUNNING,
 // its ceiling is derived from RLIMIT_STACK, and `system_facts/facts.hpp`

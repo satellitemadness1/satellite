@@ -124,7 +124,15 @@ inline constexpr unsigned long long kStackLimitUnknown = 0;
 
 // The stack this process may grow, in bytes -- RLIMIT_STACK's soft limit.
 //
-// M9's CEILING COMES FROM HERE AND DESIGN §7.5 IS WHY. A satellite capsule
+// M9 NO LONGER HAS A CEILING, AS OF 2026-08-31, SO THIS READER LOST A CONSUMER.
+// DESIGN §7.5 was rewritten and PLAN §2.5 un-deferred: the language has no depth
+// limit and M9 compiles onto an explicit control stack, so nothing derives a
+// frame count from this any more. The paragraph below is why it was built and is
+// kept -- the reader is still right about what the machine says, and the care it
+// takes over RLIM_INFINITY answering UNKNOWN rather than UNBOUNDED is the same
+// care either way. `SCRATCH.md/NO_LIMITS.md`.
+//
+// M9's CEILING CAME FROM HERE AND DESIGN §7.5 WAS WHY. A satellite capsule
 // activation is a real chain of C++ calls, so the depth a program may recurse to
 // is a property of `ulimit -s` rather than a number somebody picked -- and
 // `ulimit -s` is deliberately outside the language, because asking for a 64 GB

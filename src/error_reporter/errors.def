@@ -315,6 +315,14 @@ SAT_CODE(401, FILE_UNREADABLE, SAT_ERROR,
 // checked `satellite.variable.number x = "a string"` here would be answering a
 // question with a value model it does not have.
 
+// WITHDRAWN 2026-08-31, THE DAY AFTER IT WAS WRITTEN, AND NOT YET DELETED. The
+// author's rule is that the language has no depth limit -- DESIGN §7.5 was
+// rewritten and PLAN §2.5 un-deferred -- so this row goes when the resolver keeps
+// its own stack on the heap. It is left standing rather than removed early
+// because the code still raises it and a registry that does not list what satl
+// can say is the one failure this whole file exists to stop. When it goes, the
+// NUMBER is not reused: this block's own note says a code "has to survive a row
+// being deleted", and 501 is now a number that meant something once.
 SAT_CODE(501, RESOLVE_TOO_DEEP, SAT_ERROR,
          "this is written more than {1} levels deep and resolve reads no "
          "further -- the limit is on how deeply a program may be WRITTEN, and "

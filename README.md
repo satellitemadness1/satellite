@@ -25,6 +25,14 @@ tie-breaker at every fork is the same: **do absolutely everything for the user**
 and pay for it in performance rather than in their attention — but never do anything
 behind their back. A refusal in plain words beats a guess.
 
+**And there are no limits.** No depth a program may not reach, no ceiling on
+recursion, no constant in a header deciding how big a thing you are allowed to
+write — the bound is memory, the way a list's length is. *(Decided 2026-08-31.
+[DESIGN.md](DESIGN.md) §7.5 is the rule and [PLAN.md](PLAN.md) §2.5 is how it
+gets built. `SCRATCH.md/NO_LIMITS.md` is the honest half: four walkers in this
+tree do not keep it yet, and it says what each one does instead and at what
+depth.)*
+
 ---
 
 ## Where this is
