@@ -1,0 +1,99 @@
+#pragma once
+
+// The thread pool -- PLAN §4.5.1.2, which is the author's decision and is the
+// specification rather than advice.
+//
+//     "satl almost must start the THREAD_COUNT in satellite_config.ini because
+//      we almost have to assume the user will call parallel_for, so that
+//      requires a warm pool no matter what."
+//
+// SO IT STARTS AT STARTUP, ALWAYS, AND NOT ON A SIZE TRIGGER. §4.5.1.1 measured
+// a lazy pool and an eager one and proposed choosing between them by the size of
+// the source; §4.5.1.2 threw that away, and the reason is the one that matters:
+// a size trigger predicts PARSE cost, the pool's real tenant is the RUNNING
+// PROGRAM, and ten lines can run a million-iteration loop. It is also the kind of
+// hidden threshold DESIGN §1.1 refuses.
+//
+// WHAT IT COSTS A PROGRAM THAT NEVER THREADS, measured on this machine
+// 2026-08-28 and quoted from §4.5.1.2 because it is the argument for the
+// decision: +21 us at 100 satellite-rooted lines, +47 us at 500, +182 us at
+// 1,000 -- against satl's whole 1.75 ms startup, so 1-3% of it.
+//
+// TWO IMPLEMENTATION REQUIREMENTS, BOTH MEASURED, AND BOTH ARE BUILT HERE.
+//
+//   1. THE MAIN THREAD MUST NOT BUILD THE POOL ITSELF. start() spawns ONE
+//      thread and that thread builds the other THREAD_COUNT-1: ~20 us on the
+//      main thread instead of the ~590 us it costs to build 23 yourself.
+//
+//   2. BELOW ~170 UNITS THE WORK STAYS ON THE CALLER'S THREAD. §4.5.1.2 calls
+//      this "a rule the pool's owner has to enforce rather than a suggestion",
+//      and the number is the second-batch crossover from §4.5.1.1: waking 24
+//      parked threads costs ~47 us, so at 80 lines the pooled arm is still
+//      0.48x -- it takes twice as long as doing the work. would_thread() is
+//      that rule and run_over() obeys it.
+//
+// `parallel_for` DOES NOT EXIST, AND NAMING THAT IS THE HONEST FORM OF THE
+// DEPENDENCY. PLAN M6 says so in as many words: the decision above rests on a
+// construct that is in no numbering, no document and no milestone. The
+// language's whole parallelism surface today is `satellite.thread.new` `1 23 1`
+// and `satellite.variable.thread.start()` / `.join()` `1 6 13 1`-`1 6 13 2`.
+// The pool is still right without it for the reason §4.5.1 gives on its own
+// terms -- amortisation across a run, the second tenant onward -- and run_over()
+// is the C++ shape that construct will be built on rather than the construct.
+//
+// SO THE ONLY CALLER OF run_over() AT M6 IS tests/limits_test, and that is said
+// out loud rather than left to be noticed, the way 040-sources.mk had to say it
+// about satellite_random. The pool's tenants are M10's printer thread, M22's
+// prompt, M23's threads and whatever `parallel_for` becomes; none of them
+// exists. A batch runner nothing has ever run is a batch runner that does not
+// work, so the suite runs real batches through it.
+
+#include <cstddef>
+#include <functional>
+
+namespace satellite::limits::pool {
+
+// The floor, in units of work. §4.5.1.1's second-batch crossover.
+inline constexpr size_t kFloor = 170;
+
+// Spawn one thread, which builds the other `threads - 1`. Called once, from
+// limits::begin(). A second call does nothing.
+void start(unsigned threads);
+
+// How many threads the pool was asked for -- THREAD_COUNT, or the machine's
+// answer when no file said.
+unsigned wanted();
+
+// How many exist and are waiting for work RIGHT NOW.
+//
+// A SAMPLE AND NOT A GUARANTEE, and that is the interesting part rather than a
+// weakness in it. The pool takes ~590 us to finish building, and satl's whole
+// run of `--words` is ~766 us, so this answers a number that is still climbing
+// -- which is exactly §4.5.1.1's finding ("by the time the pool is ready, a
+// single thread has already walked ~2,150 lines") visible from the outside.
+// `satl --limits` and `satl --words` both print it and both say when it was
+// taken.
+unsigned parked();
+
+// Whether `units` of work is worth waking the pool for. Requirement 2 above.
+bool would_thread(size_t units);
+
+// Run `body(from, to)` over [0, units), split across the pool when that is
+// worth it and run on this thread when it is not. Returns how many threads
+// actually ran a piece of it, which is 1 when the floor refused the work.
+//
+// THE CALLER TAKES A SHARE AND KEEPS TAKING SHARES, which is what makes this
+// free of the deadlock the obvious version has: if the pool is still being
+// built and no worker is awake to answer, the caller does every chunk itself
+// and waits for nothing. There is no state in which run_over() can block on a
+// thread that does not exist yet.
+//
+// ONE BATCH AT A TIME. Two threads calling this at once are serialised. Nothing
+// nests batches today and nothing should: a body that called run_over() would
+// wait for a pool whose threads are all inside the body.
+//
+// `body` MUST NOT THROW. It is run on a detached thread with no handler above
+// it, so an escaping exception is std::terminate. Nothing in this tree throws.
+unsigned run_over(size_t units, const std::function<void(size_t, size_t)> &body);
+
+} // namespace satellite::limits::pool

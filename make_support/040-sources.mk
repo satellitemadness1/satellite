@@ -50,6 +50,66 @@
 # The 2026-08-26 figures above are dynamic and are left as they were taken. They
 # are not comparable to these and are not restated as if they were.
 #
+# RE-TAKEN AT M6, 2026-08-31, load 0.98, best of five runs of 200, both sides
+# static -- and this is the re-measurement that found something. It is also the
+# FIRST ONE SINCE M3: M4, M4.5 and M5 each landed on 2026-08-30 without one,
+# which PLAN §9 asks for every milestone and nobody did. So the table covers
+# four milestones, and the attribution below is what says which of them moved
+# the number.
+#
+#     bare int main(){return 0;}          0.552 ms   (M3: 0.606)
+#     satl (opening information)          1.174 ms   (M3: 0.618)
+#     satl --version                      1.172 ms   (M3: 0.624)
+#     satl --words          (271 lines)   1.354 ms   (M3: 0.766)
+#     satl --tokens hello_world.satl      1.259 ms   (M3: 0.678)
+#     satl --tokens class_test.satl       1.560 ms   (M3: 0.840)
+#     satl --limits                       1.899 ms   (new at M6)
+#     satl --limits example/satellite_config.ini
+#                                         1.931 ms   (new at M6)
+#
+# SATL'S OWN SHARE OF STARTING UP WENT FROM 0.018 ms TO 0.620 ms, WHICH IS 34
+# TIMES THE FIGURE M1 TOOK AND M3 REPRODUCED, and all of it is M6's: the bare
+# binary got 0.054 ms FASTER between the two dates, so the machine is not what
+# moved. `satl --version` is the row to read -- it does nothing but say what it
+# is, and it now takes twice as long as an empty program.
+#
+# WHERE IT GOES. Measured the same way, one process per piece and cumulative,
+# so that thread teardown lands on the clock a shell loop uses rather than the
+# one the main thread experiences:
+#
+#     bare int main(){return 0;}                    0.585 ms
+#     + the config lookup (readlink, access)        0.584 ms   +0.000
+#     + hardware_threads(), mem_total_bytes() x2    0.621 ms   +0.037
+#     + physical_cores()                            1.044 ms   +0.423
+#     + the pool builder and the watchdog           1.274 ms   +0.230
+#
+# TWO THIRDS OF IT IS physical_cores(), AND NOTHING AT M6 READS WHAT IT
+# ANSWERS. It walks /sys/devices/system/cpu/cpu*/topology/ at two files per
+# CPU -- 48 opens on this 24-thread machine, about 7.6 us each -- and the only
+# consumer of the count is the CORE_COUNT row `satl --limits` prints. That
+# command pays it TWICE, in limits.cpp's from_the_machine() and again in
+# dump.cpp's machine block; every other command in the program pays it once for
+# nothing. Timed directly against these same objects: hardware_threads() 1.5 us,
+# physical_cores() 367.7 us, mem_total_bytes() 11.4 us, mem_available_bytes()
+# 11.5 us, process_memory_bytes() 7.4 us, stack_limit_bytes() 0.5 us.
+#
+# AND THE POOL COSTS 0.14 ms WHERE PLAN §4.5.1.2 SAYS ~20 us, WHICH IS ONE
+# NUMBER READ AGAINST TWO CLOCKS RATHER THAN A WRONG ONE. That section is right
+# about the main thread: spawning one builder costs it ~20 us instead of ~590,
+# and strace confirms two clone3 calls and not twenty-four, because the process
+# is gone long before the builder has made the other 23. The PROCESS pays for
+# them anyway. N detached threads that park and never run, measured here:
+#
+#     0: 0.561 ms   1: 0.648   2: 0.702   4: 0.770
+#     8: 0.855      16: 1.053  24: 1.318
+#
+# -- the first thread costs 87 us and every one after it 28 us, which
+# reproduces config_internal.hpp's ~25.6 us as the MARGINAL cost and adds the
+# one-time price of a process becoming threaded at all. satl starts two, the
+# pool builder and the watchdog, for 0.14 ms. §4.3's floor is wall clock per
+# invocation, and a thread the kernel must tear down before the parent's wait()
+# returns is on that clock whether or not the main thread waited for it.
+#
 # The window is a separate binary (M1.5, built 2026-08-27) and, for
 # satellite.window.new(), a
 # dlopen'd library (M24) -- because the two-binary split cannot help a window
@@ -67,6 +127,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/source_file.cpp \
             $(PROGRAMS)/cache_command.cpp \
             $(PROGRAMS)/check_command.cpp \
+            $(PROGRAMS)/limits_command.cpp \
             $(ERRORS)/report.cpp \
             $(ERRORS)/suggest.cpp \
             $(ERRORS)/dump.cpp \
@@ -86,6 +147,14 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(CACHE)/unnumber.cpp \
             $(CACHE)/save.cpp \
             $(CACHE)/file.cpp \
+            $(LIMITS)/limits.cpp \
+            $(LIMITS)/config.cpp \
+            $(LIMITS)/pool.cpp \
+            $(LIMITS)/watchdog.cpp \
+            $(LIMITS)/dump.cpp \
+            $(SYSTEM)/memory_facts.cpp \
+            $(SYSTEM)/host_facts.cpp \
+            $(SYSTEM)/stack_facts.cpp \
             $(STRING)/satellite_string.cpp \
             $(TREE)/ast.cpp \
             $(TREE)/unparse.cpp \
@@ -107,6 +176,7 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 # is the second file of that kind: it is what changes when satl gains a message,
 # and codes.hpp expands it five ways.
 HDRS = $(SYSTEM)/version.hpp \
+       $(SYSTEM)/facts.hpp \
        $(ERRORS)/errors.def \
        $(ERRORS)/codes.hpp \
        $(ERRORS)/report.hpp \
@@ -120,10 +190,16 @@ HDRS = $(SYSTEM)/version.hpp \
        $(CACHE)/cache.hpp \
        $(CACHE)/paths.hpp \
        $(CACHE)/write_internal.hpp \
+       $(LIMITS)/limits.hpp \
+       $(LIMITS)/config_internal.hpp \
+       $(LIMITS)/pool.hpp \
+       $(LIMITS)/watchdog.hpp \
+       $(LIMITS)/dump.hpp \
        $(TREE)/ast.hpp \
        $(TREE)/unparse.hpp \
        $(PROGRAMS)/cache_command.hpp \
        $(PROGRAMS)/check_command.hpp \
+       $(PROGRAMS)/limits_command.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/source_file.hpp \
        $(PROGRAMS)/terminal.hpp \

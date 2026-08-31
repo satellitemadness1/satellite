@@ -69,6 +69,15 @@ std::string usage_text()
            "       satl --errors              every code satl can report, and\n"
            "                                  what each one says\n"
            "       satl --errors <code>       just that one\n"
+           "       satl --limits              every machine limit satl is\n"
+           "                                  holding to, and where each one\n"
+           "                                  came from\n"
+           "       satl --limits <file>       the same, from that\n"
+           "                                  satellite_config.ini instead of\n"
+           "                                  the one beside the binary\n"
+           "       satl --watchdog [file]     hold open and let the memory\n"
+           "                                  watchdog work -- it stops satl\n"
+           "                                  when MEMORY_MAX is crossed\n"
            "       satl --version, -V         what this build is, and what\n"
            "                                  built it\n"
            "       satl --help, -h            this list\n"
@@ -88,10 +97,15 @@ std::string usage_text()
            "Milestones in brackets have not landed. satl says so when asked to\n"
            "do one rather than failing as though the command were wrong.\n"
            "\n"
-           "satl exits 0 when what was asked for happened, 1 when the file it\n"
-           "was given is not a satellite program, 2 when this command line is\n"
-           "not one it has, and 3 when the request is right and the milestone\n"
-           "has not landed.\n";
+           "satl reads a satellite_config.ini beside its own binary, if there\n"
+           "is one, and holds itself to what it says. --limits prints what it\n"
+           "settled on. A malformed one is refused rather than ignored, which\n"
+           "is why it stops every command and not only these two.\n"
+           "\n"
+           "satl exits 0 when what was asked for happened, 1 when a file it was\n"
+           "given is not what it has to be, 2 when this command line is not one\n"
+           "it has, 3 when the request is right and the milestone has not\n"
+           "landed, and 4 when satl stopped itself at a machine limit.\n";
 }
 
 } // namespace satellite

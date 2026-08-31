@@ -43,7 +43,7 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 ## 1. Where things stand
 
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
-2026-08-29, and M4, M4.5 and M5 all on 2026-08-30.** *(M1.5 is the window, and it
+2026-08-29, and M4, M4.5, M5 and M6 all on 2026-08-30.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -51,24 +51,45 @@ the whole numbering and can be asked about it** — `satl --words` — reads a f
 into tokens — `satl --tokens` — **parses one and prints it back** — `satl
 --unparse`, the first command in this tree that answers *in satellite* — and now
 **caches one to the disk with its words as numbers and reads it back**:
-`satl --satc`, which is the first command that leaves anything behind it. There
+`satl --satc`, which is the first command that leaves anything behind it. **And
+since M6 it holds itself to a machine** — `satl --limits` says how many threads
+it may use, how much memory it may take, and where each of those answers came
+from, and a thread pool and a memory watchdog start on every run. There
 is still no interpreter behind any of it; running a program lands at M10.
 
-What exists: the `Makefile` as an index over ten fragments under `make_support/`,
-**eighty-two C++ files totalling 12,384 lines** plus `words.def` at 548, four
-test suites under `tests/`, and `satellite_enterprise/`, the Enterprise Linux
-installer and the artwork. *(Recounted 2026-08-30, at M4.5.)*
+What exists: the `Makefile` as an index over eleven fragments under
+`make_support/`, **120 C++ files totalling 18,031 lines** plus `words.def` at
+548, **six** test suites under `tests/`, and `satellite_enterprise/`, the
+Enterprise Linux installer and the artwork. *(Recounted 2026-08-30, at M6, over
+`src/` and `tests/` together — 81 files and 12,654 lines of it is `src/`.)*
 
-**The largest C++ file is `src/programs/main.cpp` at 348**, then
-`src/abstract_syntax_tree/unparse.cpp` at 341,
-`src/parser/parser_declarations.cpp` at 311 and
-`src/satellite_cache/paths.cpp` at 308. *(This paragraph named `unparse.cpp` as
+*(The figures here read "eighty-two C++ files totalling 12,384 lines … four test
+suites" until this recount, and they were taken at M4.5 — so they had already
+missed M5 as well as M6. The count immediately before M6 was **98 files and
+15,106 lines**, which is the number this paragraph should have carried. Left
+recorded rather than quietly replaced, for the same reason the 2026-08-28 figures
+below are: a count in prose goes stale the day after it is taken, and what makes
+one worth keeping is that it is dated.)*
+
+**The largest C++ file is `src/programs/main.cpp` at 427**, then
+`src/lexical_analyzer/lexer.cpp` at 354, `src/abstract_syntax_tree/unparse.cpp`
+at 341, `src/parser/parser_declarations.cpp` at 330 and
+`src/machine_limits/config.cpp` at 321. *(This paragraph named `unparse.cpp` as
 the largest at M4 and that was wrong on the day it was written — `main.cpp` was
 380 then, and a count that skips the one file everybody edits is the count most
 likely to go stale. M4.5 took sixty lines off it by giving `--satc` a file of its
-own, which is why it is 348 rather than 440.)* MILESTONES/M4.md §6 names
+own, which is why it was 348 rather than 440.)* MILESTONES/M4.md §6 names
 `unparse.cpp`'s seam and says why it was not taken, which is the answer M3 gave
 for `lexer.cpp` and M2 for `authority.cpp` before it.
+
+**`main.cpp` went from 348 to 427 at M6 and is now 127 over the target, which is
+the widest this tree has run.** M6 split `programs/limits_command.cpp` out of it
+on the seam M4.5 used for `--satc` and M5 for `--check` — the flags whose work is
+a module's — and that took the growth from +79 to +49 rather than removing it,
+because what remains is the two arms themselves and the `only_prints_and_exits`
+list they joined. MILESTONES/M6.md §6 names the seam that WOULD take it back
+under 300 and says why M6 did not take it: it is a reshaping of M2 through M5's
+arms and not of M6's.
 [LAYOUT.md](LAYOUT.md) lists all of it.
 
 *(The figures this paragraph carried on 2026-08-28 — twenty-five files, 3,148
@@ -109,15 +130,19 @@ result that cannot be true and was a different filesystem rather than a finding.
 Recorded because §9's rule is to measure on this machine, and a measurement whose
 setup differs between arms is not one.)*
 
-**Next: milestone 6**, the machine limits (§8) — `satellite_config.ini`, the
-thread pool that starts at startup, the memory watchdog, and the three fact
-readers underneath all of it. It lands **before resolve** because three later
+**Next: milestone 7**, resolve (§8) — names to integer frame slots, capsules,
+frames and the `SLOT_*` sentinels, in a side table indexed by arena node id.
+DESIGN §7.
+
+**M6 landed 2026-08-30** and it answered §4.5.4's three open questions rather
+than leaving them, because a milestone whose done-when needs an answer cannot
+land without giving one. It lands **before resolve** because three later
 milestones read something it builds and none of them said so until 2026-08-28: M8's
 `Number` reads `division_digits`, M9 derives its recursion ceiling from
 `RLIMIT_STACK` and its `Str` needs three live machine facts at decode time, and
 M10's printer thread is the pool's first tenant.
 
-*(This milestone was called **M14** until 2026-08-30, and it is the reason the
+*(That milestone was called **M14** until 2026-08-30, and it is the reason the
 numbers were put back into build order that day: it had been the next thing to
 build since 2026-08-28 while the last finished milestone was M5, and a plan whose
 next step is nine numbers past its last finished one needs a decoder to read.
@@ -424,6 +449,17 @@ shared objects.**
 The numbers live in `make_support/040-sources.mk`, beside the decision they justify
 — not in a commit message, where nobody looks for them again.
 
+**Re-measured at M6 on 2026-08-31, and the 0.01 ms above stopped being true.** Both
+sides static, which is M3's correction to this method: `satl --version` is **1.172 ms**
+against an empty static program's 0.552 ms, so satl's own share is **0.620 ms** — 34×
+what M1 took and M3 reproduced, and twice as long as starting a program that does
+nothing. Two thirds of it is `facts::physical_cores()`, which reads two sysfs files per
+CPU on every run to fill in a row only `satl --limits` ever prints; most of the rest is
+the two threads §4.5.1.2 starts. The table, the attribution and the method are in
+`make_support/040-sources.mk`. **M4, M4.5 and M5 landed with no re-measurement at all**,
+so this one covers four milestones — which is the case for §9's rule rather than an
+argument against it: the floor did its job the first time it was used in anger.
+
 **This binary links no GUI, and that is measured rather than tidy-minded.** The first
 satellite's `satl-term` resolves 79 shared objects and maps 78 on this machine
 against `satl`'s 6, and the dynamic linker loads every one before `main()` on every
@@ -455,7 +491,9 @@ never built; it gets built here.
 
 ## 4.5 The machine limits, and the file that holds them
 
-*(Asked for 2026-08-27. Specified here; not built.)*
+*(Asked for 2026-08-27. Specified here; **built at M6 on 2026-08-30** —
+[MILESTONES/M6.md](MILESTONES/M6.md) is the review, and §4.5.3 and §4.5.4 below
+are answered rather than open.)*
 
 satellite reads a **`satellite_config.ini`** and holds itself to what it says:
 
@@ -630,6 +668,29 @@ worth taking well before "most" — one program in four is enough.
   falls back to what the OS reports — 24 on this machine, and **not** cores × 2,
   which is this CPU's SMT ratio and not a rule.
 
+  *(M6 built both halves on 2026-08-30. The file is read first and the fallback
+  is `src/system_facts/host_facts.cpp`'s `hardware_threads()`, which asks
+  **`sched_getaffinity`** rather than `hardware_concurrency` — a third reading of
+  this number that §4.5.4's setting-versus-fact split did not name: not what the
+  machine has, and not what satl may use, but what the OS will let this process
+  run on. It matters because the pool starts on every run, so under `taskset -c
+  0-3` the old reader would have spawned 24 threads onto 4 CPUs. `satl --limits`
+  prints the setting and the machine's own answer side by side.)*
+
+**The ~20 µs is right about the main thread and is not what a run costs, measured
+2026-08-31 (§4.3).** `strace` confirms the shape this section asked for — two `clone3`
+calls on a `satl --version`, not twenty-four, because the process is gone long before
+the builder has made the other 23. The process still pays for the two that exist:
+detached threads that park and never run cost **87 µs for the first and 28 µs for each
+one after it**, wall clock per invocation, because the kernel tears them down before
+the parent's `wait()` returns. So the pool builder and the watchdog together are
+**0.14 ms** against a whole pre-M6 startup of 0.624 ms — **22%, not 1–3%**, and the
+1–3% row above is a ratio against §4.3's *dynamic* 1,750 µs, which M3 had already
+retired as not comparable to a static binary. **The decision stands and its
+arithmetic does not:** one thread in four still beats ~590 µs of blocked execution,
+and the honest base is 0.55 ms rather than 1.75. `make_support/040-sources.mk`
+carries the thread-count table this comes from.
+
 **Two facts the author should have in view, neither of which blocks the decision:**
 
 - **`parallel_for` does not exist.** It is in no numbering, no milestone and no
@@ -690,19 +751,80 @@ machine's settings live before a program starts**, and is what an installer writ
 and a person edits; **`satellite.library.system.*` is how a running program reads
 and changes them.** The obvious arrangement is that the file seeds the namespace at
 startup and the namespace is what everything reads afterwards — one authority at
-runtime, one place to edit at rest. Not yet decided.
+runtime, one place to edit at rest.
 
-### 4.5.4 Open
+**Decided at M6, 2026-08-30: it is that arrangement, and what this section was
+missing is that the file holds TWO KINDS OF LINE.** The file is read once, at
+startup, its values land in the dials, and nothing reads the file again.
+
+    THREAD_COUNT   CORE_COUNT   MEMORY_MAX        machine settings, SHOUTED
+    division_digits  max_depth  min_free_mb  float_digits     dials, lower case
+
+**The upper-case three are in no numbering at all** — no `satellite.` path names
+them, and a running program cannot read or retune them, because what they
+configure is the process rather than the language. The lower-case four *are*
+`satellite.library.system.*`, `1 14 2 1` to `1 14 2 4`, and they are the half
+this section was written about. The case difference is the rule: one line of the
+file tells you which kind you are looking at. `src/machine_limits/config.cpp`
+takes the four dial names **out of `words.def`** rather than writing them a
+second time, so the spelling in the file is the spelling in the language by
+construction.
+
+**And only `min_free_mb` has a MEANING at M6**, which is the constraint §8's M6
+puts on it: the other three are stored, printed by `satl --limits` beside the
+milestone that will read them, and interpreted by nothing. A default for
+`division_digits` would have been M8 deciding what a division does.
+
+### 4.5.4 Answered at M6, 2026-08-30
+
+*(This section was three open questions and PLAN §8's M6 called them its three
+blockers. Each is restated as it stood, with what was decided.
+[MILESTONES/M6.md](MILESTONES/M6.md) §3 carries the arguments.)*
 
 - **What unit is `MEMORY_MAX` in, and what is the default?** 61.9 GiB and 64.9 GB
   are the same memory. Should the shipped default be the whole machine or a
   fraction, and does a machine with less than the file claims win?
+
+  **The unit is written in the file and a bare number is REFUSED**, with a code
+  and a caret — because the question as posed has no answer a reader of the file
+  could check. Nine units: `B`, `KiB`, `MiB`, `GiB` and `TiB` are powers of 1024,
+  `KB`, `MB`, `GB` and `TB` are powers of 1000. Whole numbers of units only;
+  `61.9GiB` is refused with its own sentence naming the fix, because a ceiling
+  rounded to a whole byte behind the user's back is one nobody can predict.
+  **The default is the WHOLE MACHINE**, because a fraction is a number satl
+  would have invented about a program it has never seen — 50% is generous for a
+  parser and absurd for the thing QUAD.md exists to run. **And the machine
+  wins**: a file asking for more than `MemTotal` is clamped to it, and
+  `satl --limits` prints that row as coming from *"the machine, over the file"*,
+  because clamping quietly is the thing DESIGN §1.1 refuses.
+
 - **A setting is not a fact.** `arguments.machine.threads` (DESIGN §7.7) asks what
   the machine *has*; `THREAD_COUNT` says what satl may *use*. If they are ever
   allowed to differ they need two names, and a program asking the first must never
   get the second.
+
+  **They may differ, they already have two names, and M20 builds ONE reader.**
+  `THREAD_COUNT` is not in the numbering, so no program can reach it and no rule
+  is needed to stop one; `1 14 1 1 1 3` answers `facts::hardware_threads()` and
+  nothing else. `satl --limits` prints both side by side, which is the visible
+  form of the difference — and it is where **not cores × 2** stops being a rule
+  in a document: 24 and 12 are read from two different places and neither is
+  derived from the other. The same answer settles `satellite_string`'s code 97
+  (SCRATCH.md/PORTING.md §3): it is the fact. §4.5.1.2 above records the third
+  reading this question did not have a name for.
+
 - **The file does not exist yet.** Nothing reads it and nothing writes it. The
   installer (§5) is the natural author.
+
+  **M6 built the reader and did NOT make the installer write one**, and the
+  split is deliberate. satl works with no file at all — every value then comes
+  from the machine, and `satl --limits` says so — so an install that writes
+  nothing is a complete install. What the installer would be taking on is
+  ownership of a file the user then EDITS, which §5.1's `rmdir`-never-`rm -rf`
+  rule and `--uninstall` both have to answer for, and that is §5's decision
+  rather than the reader's. `example/satellite_config.ini` is the documented
+  format in the meantime, and `satl --limits <file>` checks one before it is
+  installed.
 
 ---
 
@@ -1429,13 +1551,21 @@ parser owns — nineteen of twenty-two, the other three named as unreachable fro
 a program — all of them through `parse()`, and that is the check M7 and M9 have
 to extend when they take their blocks.
 
-**M6 — the machine limits: the file, the pool and the ceiling.** *(New
+**M6 — the machine limits: the file, the pool and the ceiling. LANDED
+2026-08-30**, and [MILESTONES/M6.md](MILESTONES/M6.md) is the review. *(New
 2026-08-28. After M5, before M7.)* `satellite_config.ini` (§4.5), the thread pool
 §4.5.1.2 rules starts at startup **always**, the memory watchdog §4.5.2 describes,
 and the three fact readers all of it is built out of. It closes three of
 `SCRATCH.md/MILESTONE.md` §3's rows at once, and those three were the oldest
 un-milestoned work in this plan — specified in §4.5 on 2026-08-27 and never
 scheduled.
+
+*`src/machine_limits/` is five sources over two headers and `src/system_facts/`
+is the three readers; `satl --limits` is the consumer, and it is the whole
+visible surface of the milestone, because nothing in the language reads a limit
+until M8 and nothing runs until M10. `satl --watchdog` is the second one and it
+exists because the done-when below cannot be met without it — see the correction
+after it.*
 
 **Five numbered paths, and it owns one of them as behaviour**:
 `satellite.library.system` `1 14 2 (0)` and its four dials — `division_digits`
@@ -1488,16 +1618,28 @@ tenant onward), and **naming the missing construct is the honest form of the
 dependency.**
 
 **Blockers, all three of them §4.5's own and none of them this milestone's to
-take:**
+take — and all three were taken by it, 2026-08-30**, because a milestone whose
+done-when needs an answer cannot land without giving one. Each is restated with
+its answer; §4.5.3 and §4.5.4 carry them where the question was asked, and
+MILESTONES/M6.md §3 carries the arguments.
 
 - **What unit `MEMORY_MAX` is in, and what its default is** (§4.5.4). 61.9 GiB and
   64.9 GB are the same memory. The watchdog's headline check cannot be written
   until this is answered, which is why it is a blocker and not an open question.
+  → **The file writes the unit and a bare number is refused with a caret**; the
+  default is the whole machine, and a file claiming more than the machine has is
+  clamped to it and told so.
 - **Whether the file seeds the namespace** (§4.5.3, *"Not yet decided"*). It is the
   difference between one authority at runtime and a reconciliation rule.
+  → **It seeds them, and the namespace is the only authority afterwards.** What
+  §4.5.3 was missing is that the file holds two kinds of line: three machine
+  settings that are in no numbering, and four dials that are.
 - **Whether a setting may differ from a fact** (§4.5.4). `THREAD_COUNT` says what
   satl may *use*; `arguments.machine.threads` (DESIGN §7.7) says what the machine
   *has*. The answer decides whether M20 builds one reader or two.
+  → **They may differ, and M20 builds one reader.** `THREAD_COUNT` is in no
+  numbering, so nothing in the language can reach it by accident; `satl --limits`
+  prints both side by side.
 
 **Done when** `satl --limits` prints every value it is holding to and where each one
 came from — the file, or the OS fallback §4.5.1.2 specifies, which is what the OS
@@ -1509,6 +1651,30 @@ status 2, one line in plain words on stderr, and the process gone within a secon
 of the threshold being crossed. A watchdog that never fires is indistinguishable
 from no watchdog, so the demonstration is the one that kills the process, and §9
 means the *installed* binary.
+
+**Every clause of that was met on 2026-08-30 and two of them were met
+differently from how they are written, so both are corrected here rather than in
+the review alone.**
+
+- **The exit status is 4 and not 2.** 2 is v1's `_exit(2)` carried forward, and
+  in this tree `programs/opening.hpp` has said since M1 that 2 means *"the
+  command line did not name something satl can do"*. A watchdog kill is the
+  opposite: the command line was right and the machine ran out, and a script
+  testing for 2 would report a memory ceiling as a typo. That enum exists so
+  that two arms cannot disagree about what a failure is worth, and its own rule
+  — *"assigned by what a failure IS"* — decides it. `EXIT_LIMIT = 4`.
+- **The walk is single-threaded, and NOT because 254 is under 170.** It is over
+  it. The ~170 figure is §4.5.1.1's crossover in **satellite-rooted source lines
+  being interned**, and `satl --words` interns nothing — it prints a `constexpr`
+  table, which §4.5.1 settles separately and more strongly: *"threading the table
+  at startup is a guaranteed loss ... the table is `constexpr` and lands in
+  rodata."* Both halves of the clause hold and only the reason moves.
+- **And `satl --watchdog` is a flag this milestone had to add to meet the last
+  clause at all.** Nothing satl does today lasts a second — the longest command
+  in the tree is `satl --words` at ~0.8 ms — so there is no run for a
+  once-a-second thread to fire during. It holds the process open, and it is
+  named in the usage list rather than hidden, because a demonstration harness
+  nobody can find is one that stops being run.
 
 **The terminal-restoring hook is not here, and that is a correction to the draft
 this milestone comes from.** v1 leaves through `run_emergency_exit_hook()`, whose

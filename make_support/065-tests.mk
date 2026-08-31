@@ -207,6 +207,60 @@ $(TESTS)/reporter_test/reporter_test: $(reporter_test_SRCS) $(reporter_test_HDRS
 	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/reporter_test -o $@ \
 	    $(reporter_test_SRCS) $(REPORTER_TEST_SRCS)
 
+# limits_test LINKS TWO MODULES AND NO PARSER, which is the shortest link list
+# since words_test and is the subject showing through again: PLAN M6's seam is
+# "the readers are here, and satellite.system's twenty-eight paths are M20", so
+# nothing under machine_limits/ or system_facts/ knows what a satellite program
+# is. The reporter is here because a malformed config is refused through M5's
+# codes, and satellite_words/ arrives as headers alone -- the four dial names
+# come out of the constexpr node table, which is the property 040-sources.mk
+# keeps that module for.
+#
+# $(PROGRAMS)/check_command.cpp IS THE ONE THAT LOOKS WRONG AND IS NOT.
+# limits.cpp calls open_source() to read a config, because "what to say when a
+# file will not open" is one fact and S0401 is where it lives; check_command.cpp
+# is where that function is defined. It drags the parser in behind it, which is
+# why THIS list has a parser in it while the paragraph above says the subject
+# does not -- a seam in the code that the linker does not see. Named rather than
+# tidied, because the alternative is a second sentence about an unreadable file.
+LIMITS_TEST_SRCS = $(LIMITS)/limits.cpp \
+                   $(LIMITS)/config.cpp \
+                   $(LIMITS)/pool.cpp \
+                   $(LIMITS)/watchdog.cpp \
+                   $(LIMITS)/dump.cpp \
+                   $(SYSTEM)/memory_facts.cpp \
+                   $(SYSTEM)/host_facts.cpp \
+                   $(SYSTEM)/stack_facts.cpp \
+                   $(ERRORS)/report.cpp \
+                   $(ERRORS)/suggest.cpp \
+                   $(PROGRAMS)/check_command.cpp \
+                   $(PROGRAMS)/source_file.cpp \
+                   $(PARSER)/parser.cpp \
+                   $(PARSER)/parser_declarations.cpp \
+                   $(PARSER)/parser_statements.cpp \
+                   $(PARSER)/parser_control_flow.cpp \
+                   $(PARSER)/parser_expressions.cpp \
+                   $(PARSER)/parser_types.cpp \
+                   $(TREE)/ast.cpp \
+                   $(TREE)/unparse.cpp \
+                   $(LEXER)/lexer.cpp \
+                   $(STRING)/satellite_string.cpp
+
+# AND ON errors.def AND ON BOTH CONFIG FILES IN example/, which is the same
+# argument words_test makes for WORD_NUMBERS.md and parser_test for its six
+# programs -- and the second of the two is the strong one. section_examples
+# reads example/satellite_config.ini as the milestone's done-when and
+# example/broken_config.ini as a file that must NOT read, with one assertion per
+# line of it. Editing either must re-run the test, INCLUDING the one that fails,
+# because a file that starts reading is a finding and not a pass.
+$(TESTS)/limits_test/limits_test: $(limits_test_SRCS) $(limits_test_HDRS) \
+                                  $(LIMITS_TEST_SRCS) $(ERRORS)/errors.def \
+                                  $(WORDS)/words.def $(HDRS) \
+                                  example/satellite_config.ini \
+                                  example/broken_config.ini .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/limits_test -o $@ \
+	    $(limits_test_SRCS) $(LIMITS_TEST_SRCS)
+
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
 #
@@ -220,6 +274,7 @@ test: $(TESTBINS)
 	./$(TESTS)/parser_test/parser_test example
 	./$(TESTS)/satc_test/satc_test example
 	./$(TESTS)/reporter_test/reporter_test example
+	./$(TESTS)/limits_test/limits_test example
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
@@ -227,7 +282,9 @@ lexer_test: $(TESTS)/lexer_test/lexer_test
 parser_test: $(TESTS)/parser_test/parser_test
 satc_test: $(TESTS)/satc_test/satc_test
 reporter_test: $(TESTS)/reporter_test/reporter_test
+limits_test: $(TESTS)/limits_test/limits_test
 
-TESTALIASES = words_test lexer_test parser_test satc_test reporter_test
+TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
+              limits_test
 
 .PHONY: test $(TESTALIASES)

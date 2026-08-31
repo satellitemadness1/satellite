@@ -166,7 +166,7 @@ Corollaries worth stating because they are easy to violate:
 
 ## 5. Adding a module to the build
 
-The build is ten fragments under `make_support/`, included by name in numeric order
+The build is eleven fragments under `make_support/`, included by name in numeric order
 from the `Makefile`. Order is load-bearing in four places and each fragment says so
 at its top — 065-tests.mk is read before 070-clean.mk so `clean` can name `$(TESTBINS)`.
 

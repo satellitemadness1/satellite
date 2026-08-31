@@ -256,11 +256,23 @@ fi
 # Said last, because it is the thing a reader of the banner will want next and
 # because it is still the honest headline: there are binaries, and none of them
 # interprets anything yet.
+#
+# THIS PARAGRAPH WENT FOUR MILESTONES STALE AND NOTHING CAUGHT IT. It said
+# "milestone 2 ... the lexer is M3" from 2026-08-28 until 2026-08-31, through
+# M3, M4, M4.5, M5 and M6 -- so the installer's closing word about what it had
+# just installed named a build three days and five milestones behind the files
+# it had copied. It was found by doing what PLAN.md sec 9 asks and nothing else
+# does: running the installed binary. Whoever lands a milestone edits this.
 printf '\n'
-printf 'install.sh: this build is milestone 2 -- the trie and the path interner\n'
-printf '            landed 2026-08-28, so satl knows every word in the language\n'
-printf '            and can dump the numbering with --words. It still runs no\n'
-printf '            program: the lexer is M3 and the first program runs at M10.\n'
+printf 'install.sh: this build is milestone 6 -- satl knows every word in the\n'
+printf '            language and dumps the numbering with --words, lexes a file\n'
+printf '            with --tokens, parses one and prints it back with --unparse,\n'
+printf '            caches it as its numbers with --satc, says everything wrong\n'
+printf '            with it with --check, lists its own error codes with\n'
+printf '            --errors, and holds itself to a satellite_config.ini beside\n'
+printf '            this binary -- --limits prints what it settled on and where\n'
+printf '            each value came from. It still runs no program: the first\n'
+printf '            one runs at M10.\n'
 if [ "$have_term" = yes ]; then
     printf '            satl-term opens, spawns the satl beside it, and shows you\n'
     printf '            what that satl says -- which today is --repl declining.\n'

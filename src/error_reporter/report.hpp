@@ -129,6 +129,16 @@ inline std::string as_text(long value) { return std::to_string(value); }
 inline std::string as_text(unsigned value) { return std::to_string(value); }
 inline std::string as_text(int value) { return std::to_string(value); }
 
+// THE LONG LONGS ARE A DISTINCT TYPE FROM THE LONGS EVEN WHERE THEY ARE THE SAME
+// WIDTH, and leaving them out was a hole M6 walked into on its first build:
+// `unsigned long long` is what a byte count is here (system_facts/facts.hpp),
+// and with no overload for it every conversion is ambiguous against the five
+// above rather than picking the obvious one. Added 2026-08-30, with the pair
+// completed rather than only the half that was needed, because the next site to
+// hand this a signed 64-bit value should not have to come back here.
+inline std::string as_text(unsigned long long value) { return std::to_string(value); }
+inline std::string as_text(long long value) { return std::to_string(value); }
+
 } // namespace detail
 
 // A diagnostic, with its holes filled.

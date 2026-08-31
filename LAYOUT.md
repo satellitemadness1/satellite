@@ -30,7 +30,7 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and — after reading its source on 2026-08-27 — the one thing the language has not settled that it needs. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
-| [Makefile](Makefile) | An index. Includes the ten fragments under `make_support/` in numbered order and does nothing else. |
+| [Makefile](Makefile) | An index. Includes the eleven fragments under `make_support/` in numbered order and does nothing else. |
 | [LICENSE](LICENSE) | MIT (Expat) for satellite's own source, plus a third-party section for `pcg/`, which is Apache-2.0. It also records that no built binary currently contains any of it. |
 | [pcg/](pcg/) | The only third-party code in the tree: three pcg-cpp 0.98 headers, its licence, and a README recording what was cut, why `-isystem`, and why a 512-bit variant was refused. |
 | [.gitignore](.gitignore) | Build output, and the deliberate exclusion of `old_versions/` from this repository's history. |
@@ -56,7 +56,8 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/programs/main.cpp](src/programs/main.cpp) | `satl` itself: reads the command line, answers `--version` / `--help` / `--words` / `--tokens` / `--unparse` / `--errors`, hands `--satc` to `cache_command.cpp` and `--check` to `check_command.cpp`, and reports honestly that running a file lands at M10. *What to say* when a file will not open is this program's business; **getting the bytes is `source_file.cpp`'s**. |
 | [src/programs/opening.cpp](src/programs/opening.cpp) | The banner and the usage text — the words, kept in a `.cpp` because they change every milestone. |
 | [src/programs/window_handover.hpp](src/programs/window_handover.hpp) · [.cpp](src/programs/window_handover.cpp) | Started with no console, `satl` hands itself to `satl-term` (DESIGN §10.4). The test is a **controlling terminal**, not `isatty(stdout)` — the obvious version opens a window instead of feeding a pipe. Six named refusals. |
-| [src/programs/opening.hpp](src/programs/opening.hpp) | Declarations for the above, plus the exit-status enum so two arms cannot disagree about what a failure is worth. |
+| [src/programs/opening.hpp](src/programs/opening.hpp) | Declarations for the above, plus the exit-status enum so two arms cannot disagree about what a failure is worth. **M6 added `EXIT_LIMIT = 4`** and widened `EXIT_MALFORMED` from "not a satellite program" to "a file satl was given is not what it has to be", because a `satellite_config.ini` is now the second kind. |
+| [src/programs/limits_command.hpp](src/programs/limits_command.hpp) · [.cpp](src/programs/limits_command.cpp) | **M6.** The command line's half of the machine limits: which flags may name a `satellite_config.ini`, and starting the limits, the pool and the watchdog before any arm runs. The same seam `cache_command` and `check_command` are on — `machine_limits/` takes a path and knows nothing about `argv`. |
 | [src/programs/source_file.hpp](src/programs/source_file.hpp) · [.cpp](src/programs/source_file.cpp) | Getting a source file's bytes off the disk **unchanged** — DESIGN §5.3's rule, one layer down. Split from `main.cpp` by subject when that file reached 396 lines. **One function under a hundred lines of comment**, and the comment is the file: `<fstream>` costs 1.4 MB statically and buys nothing back, while its *good* idiom is 2.5× faster than a naive `fread` loop — for a reason that turns out not to be `fstream` at all. Both measurements are there, including the one that made the first answer look wrong. |
 | [src/programs/cpu_level.cpp](src/programs/cpu_level.cpp) | `satl-cpu-level`: prints `haswell` or `baseline`. Compiled at the baseline on purpose — it runs before anything is known about the machine. |
 | [src/programs/window.cpp](src/programs/window.cpp) | `satl-term`: the command line, the `GtkApplication`, and the window. Its title and size are the same string and two numbers `satellite.window.console.new` takes. |
@@ -101,6 +102,17 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/satellite_cache/save.cpp](src/satellite_cache/save.cpp) | SATC §5: tmp, `fsync`, `rename`, and the thread it happens on. **Joined and not detached** — a detached writer is a thread the process exits out from under, so the cache would never actually be there. A failed write is silent, which is the section's own rule. |
 | [src/satellite_cache/file.cpp](src/satellite_cache/file.cpp) | Where a `.satc` lives — `$HOME/.satl/cache`, named with a digest of the source's **absolute** path — and a source's identity for the header. The mtime is whole seconds on purpose; the comment says which filesystems that is for. |
 | [src/programs/cache_command.hpp](src/programs/cache_command.hpp) · [.cpp](src/programs/cache_command.cpp) | `satl --satc`. **The only flag with a file of its own**, because it is the only one that is a loop rather than a print: read the cache if it hits, walk and write if it misses, print the `.satc` either way and say on stderr which happened. |
+| [src/machine_limits/limits.hpp](src/machine_limits/limits.hpp) | **M6**, and the one door over the module. What satl is holding to, where each value came from, and the split that PLAN §4.5.3 left open: the SHOUTED three (`THREAD_COUNT`, `CORE_COUNT`, `MEMORY_MAX`) are machine settings in no numbering, and the quiet four are `satellite.library.system.*` `1 14 2 1`–`1 14 2 4`. The file seeds the dials at startup and the dials are the authority afterwards. |
+| [src/machine_limits/limits.cpp](src/machine_limits/limits.cpp) | Where the file is — beside the binary, **never** the working directory — the machine's answers first so a one-line config changes one thing, and the clamp that answers §4.5.4's "does a machine with less than the file claims win?" It does, and it is **said** rather than done quietly. |
+| [src/machine_limits/config_internal.hpp](src/machine_limits/config_internal.hpp) | What a `satellite_config.ini` may *contain*: the seven keys, the nine units, the bounds, and the text helpers. The four dial names come **out of `words.def`** rather than being written again, so the spelling in the file is the spelling in the language by construction. |
+| [src/machine_limits/config.cpp](src/machine_limits/config.cpp) | What happens when it contains something else: ten codes, every one with a real span and a caret. A malformed config is **refused whole** — unlike a bad `.satc`, which is ignored, and errors.def's S08xx note carries the difference. |
+| [src/machine_limits/pool.hpp](src/machine_limits/pool.hpp) · [.cpp](src/machine_limits/pool.cpp) | PLAN §4.5.1.2's pool, with its two measured requirements as the specification: the main thread spawns **one** thread which builds the rest (~20 µs rather than ~590), and below ~170 units the work stays on the caller. Deliberately leaked and its threads detached — a destructor that joined would put that cost on every `satl --version`. `parallel_for` does not exist, and the header says so. |
+| [src/machine_limits/watchdog.hpp](src/machine_limits/watchdog.hpp) · [.cpp](src/machine_limits/watchdog.cpp) | §4.5.2's thread, with **both** checks: `MEMORY_MAX` against this run's resident set, and `min_free_mb` against the machine's. `_exit` and not `exit`. No terminal hook — **M22 owns that**, because nothing has put a terminal into raw mode yet. `satl --watchdog` is the flag that holds the process open, and it exists because the done-when cannot be met without one. |
+| [src/machine_limits/dump.hpp](src/machine_limits/dump.hpp) · [.cpp](src/machine_limits/dump.cpp) | `satl --limits`, M6's consumer, and the line `satl --words` ends with. A value and, beside it, **who decided it**. |
+| [src/system_facts/facts.hpp](src/system_facts/facts.hpp) | **M6.** The public surface of the three readers ported from the first satellite. Nothing here knows what a satellite program is; `machine_limits/` is the policy over it and `satellite.system`'s twenty-eight paths are M20. |
+| [src/system_facts/memory_facts.cpp](src/system_facts/memory_facts.cpp) | `/proc/meminfo` and `/proc/self/statm`. Six of v1's eleven questions; swap and the root-only DMI read stayed behind because neither is a *limit*. Used is total minus **available**, in one place — v1 had that subtraction twice and rounded differently in each. |
+| [src/system_facts/host_facts.cpp](src/system_facts/host_facts.cpp) | Threads and cores. Ported **changed**: `sched_getaffinity` rather than `hardware_concurrency`, because the pool starts on every run and `taskset -c 0-3` would otherwise spawn 24 threads onto 4 CPUs. Cores are counted from `/sys` topology and **never** threads ÷ 2. |
+| [src/system_facts/stack_facts.cpp](src/system_facts/stack_facts.cpp) | `RLIMIT_STACK` and this thread's own stack, ported whole. `RLIM_INFINITY` answers **unknown** and not unbounded — M9's depth ceiling is derived from this (DESIGN §7.5) and must not believe the word. |
 
 **`src/error_reporter/` landed at M5 on 2026-08-30**, and it is the one module
 built **before** anything needs it rather than when something does — DESIGN §9's
@@ -119,6 +131,14 @@ inherits and generalises.
 `src/abstract_syntax_tree/` and `src/parser/` have a paragraph above and **no
 rows in this table**, which is a gap M4 left and M4.5 did not close because the
 files are M4's to describe. MILESTONES/M4.5.md §6 carries it.
+
+**`src/machine_limits/` and the rest of `src/system_facts/` landed at M6 on
+2026-08-30**, between the error reporter and resolve, because three later
+milestones read something M6 builds and none of them said so until 2026-08-28:
+M8's `Number` reads `division_digits`, M9 derives its recursion ceiling from
+`RLIMIT_STACK`, and M10's printer thread is the pool's first tenant. The seam
+between the two directories is that `system_facts/` reports what the machine
+says and `machine_limits/` decides what satl does about it.
 
 `src/satellite_number/` exists and is **empty**, holding a name for work that has
 not started.
@@ -177,6 +197,8 @@ PLAN §8 and DESIGN §3 cite them by path rather than describing them in prose.
 | [example/advanced.satl](example/advanced.satl) | The console milestone that **does not exist** — `input(prompt)` `1 5 3` and `input(prompt, target)` `1 5 4`. Also uses `+` on strings, specified nowhere. |
 | [example/thread_test.satl](example/thread_test.satl) | **M23**, and it cannot be M23's done-when yet. `.start()` `1 6 13 1` and `.join()` `1 6 13 2` **were numbered on 2026-08-28** and this row said otherwise until M2 transcribed them; what is still missing is that `satellite.thread.new(f(x))` needs the deferred call `1 6 16`, which no milestone owns. SCRATCH.md/THREADS.md. |
 | [example/super_advanced.satl](example/super_advanced.satl) | **M15**, and it is the float's *exact* half — `+` is DESIGN §8.6's class 1, which never rounds, so it runs before the rounding rule is chosen. |
+| [example/satellite_config.ini](example/satellite_config.ini) | **M6**, and the only file here that is not a satellite program — `satl --limits example/satellite_config.ini` is the milestone's done-when. It carries this machine's measured numbers (24 threads, 12 cores) and documents the format in its own comments, including which of the four dials nothing reads yet. |
+| [example/broken_config.ini](example/broken_config.ini) | **M6**, and a file that must **not** read — the same standing `class_test.satl` and `gui_example.satl` have, and FORMAT/CXX.md §6.2's rule. Seven of the ten rows of `errors.def`'s S08xx block, one per line, with the reason written above each; the file says which three it cannot reach and why. |
 
 **None of them runs.** M2 landed on 2026-08-28, **M3, the lexer, on 2026-08-29**,
 and **M4, the parser, and M4.5, the cache, both on 2026-08-30**;
@@ -236,6 +258,11 @@ had built — reporting PASS from stale objects.
 | [tests/reporter_test/suggesting.cpp](tests/reporter_test/suggesting.cpp) | DESIGN §4.6 by name — `consle` → `console` — and **`wihle` → `while`, which is the transposition**. Also the check a mutation asked for: a bare row's empty spelling must not displace a real child, and losing that loses the suggestion rather than making it wrong. |
 | [tests/reporter_test/lexing.cpp](tests/reporter_test/lexing.cpp) | The one lexical error: its code, its caret **under the opening quote**, and the note where the line ran out — both spans out of one token, because the string arm sets both ends for exactly that. |
 | [tests/reporter_test/parsing.cpp](tests/reporter_test/parsing.cpp) | **The section that catches what a registry makes possible**: one assertion per row of `errors.def` the parser owns — nineteen of twenty-two, with the other three named as unreachable and why — all through `parse()`, because a site raising a neighbouring code renders perfectly and describes a different problem. Also the four did-you-mean sites and the three notes. |
+| [tests/limits_test/limits_test.cpp](tests/limits_test/limits_test.cpp) · [.hpp](tests/limits_test/limits_test.hpp) | The harness, and the header that says what each of M6's four halves is checkable *by* — including the one that is not: the watchdog's proof is a process that dies, which lives in MILESTONES/M6.md rather than in a suite. |
+| [tests/limits_test/reading.cpp](tests/limits_test/reading.cpp) | The config format, and **one assertion per row of the S08xx block** — the check MILESTONES/M5.md §5 says a message registry needs, one registry on. Both units families with their real values, and `1 GiB ≠ 1 GB` as the assertion that justifies requiring a unit at all. |
+| [tests/limits_test/examples.cpp](tests/limits_test/examples.cpp) | The two files in `example/`, off the disk: one that must read, with this machine's numbers, and one that must **not**, with one assertion per line of it and a count so a ninth code is a finding. |
+| [tests/limits_test/facts.cpp](tests/limits_test/facts.cpp) | The machine readers, and the section that **says what cannot be asserted**: the authority is `/proc` and so is the code under test, so what is checked is the relationships — cores never exceed threads, used plus available is total exactly, a resident set is not a virtual one, and `RLIM_INFINITY` answers *unknown*. |
+| [tests/limits_test/pool.cpp](tests/limits_test/pool.cpp) | **The pool's only caller in the tree**, which is `parallel_for` not existing said as a test. The floor at its boundary, a 100,000-unit batch with every unit marked so a doubled one and a missed one cannot cancel out, and a wait on a *condition* rather than a duration. |
 
 ## `make_support/` — the build
 
@@ -325,7 +352,12 @@ here rather than in DESIGN, PLAN, LAYOUT or WORD_NUMBERS is whether it *stops be
 true when the work it describes is finished.*
 
 Its own [README.md](SCRATCH.md/README.md) lists what is in it and the condition for
-deleting each one, so this table does not repeat them. `plans/` used to hold the
+deleting each one, so this table does not repeat them. **M6 added
+[SCRATCH.md/M6_STATE.md](SCRATCH.md/M6_STATE.md)**, which is where that milestone
+got to when the session building it was stopped, and it is deletable the day its
+three unfinished items are finished — **which was 2026-08-31**, so it is deletable
+now and is kept only until somebody has read it, the standing `WORD_SURFACE.md`
+already has. `plans/` used to hold the
 author's first note; that note has been converted into the permanent documents and
 the file deleted, and its conversion is recorded in
 [SCRATCH.md/FIRST_NOTE.md](SCRATCH.md/FIRST_NOTE.md) until nothing needs it.

@@ -68,18 +68,33 @@
 //     S05xx   resolve -- names and slots    DESIGN §7      M7       reserved
 //     S06xx   numbers                       DESIGN §8.1    M8       reserved
 //     S07xx   the evaluator                                M9/M10   reserved
+//     S08xx   the machine limits            PLAN §4.5      M6
 //
 // The reserved blocks are written down and NOT populated. A block reserved in a
 // comment costs nothing and stops the thing this file exists to stop, which is
 // two milestones reaching for the same number on the same day.
 //
-// M6 HAS NO BLOCK HERE AND IS THE NEXT MILESTONE. (2026-08-30, at the renumber
-// that made it the next one -- it was M14.) Its done-when says a malformed
-// satellite_config.ini is refused with a code, a span and a caret, so it adds
-// codes and this table owes it a block. The number is not assigned here because
-// a block is taken by the milestone that adds it, in the order they are added,
-// and S08xx being the free one is the answer only until somebody checks whether
-// the machine limits belong beside S04xx -- the file satl was given -- instead.
+// M6 TOOK S08xx AND NOT S04xx, AND THE PARAGRAPH THAT STOOD HERE ASKED FOR THAT
+// CHECK BY NAME. It said "S08xx being the free one is the answer only until
+// somebody checks whether the machine limits belong beside S04xx -- the file
+// satl was given -- instead." Checked, 2026-08-30, and they do not. S04xx's own
+// block note says what it is: "the command line was well formed and named a
+// file, and the file is where it stopped" -- a file the USER GAVE satl, holding
+// a program the user wrote. A satellite_config.ini is a file satl WENT LOOKING
+// FOR, beside its own binary, holding settings an installer wrote; the ordinary
+// run never names it and never sees it. The first two digits say who is
+// complaining, and the complainer here is the limits reader rather than the arm
+// that opens what it was handed.
+//
+// IT IS OUT OF ORDER WITH THE RESERVATIONS ABOVE, DELIBERATELY. S05, S06 and S07
+// are M7's, M8's and M9's, and M6 lands before all three -- so the block numbers
+// no longer run in the order the milestones do. That is what a reserved block IS
+// for: this file's whole argument is that a block is taken and written down so
+// that "two milestones reaching for the same number on the same day" cannot
+// happen, and honouring three reservations by taking the fourth number is that
+// working, not a defect in it. A code is a column and not a position (see the
+// paragraph on how a row is read), so nothing about the numbering says the
+// blocks are in build order, and nothing should be inferred from it.
 
 #ifndef SAT_CODE
 #define SAT_CODE(number, ident, severity, text)
@@ -275,5 +290,82 @@ SAT_CODE(390, NOTE_SATC_IGNORED, SAT_NOTE,
 SAT_CODE(401, FILE_UNREADABLE, SAT_ERROR,
          "this file could not be read -- check the path, and that this user is "
          "allowed to open it")
+
+// --- S08xx -- the machine limits --------------------------------------------
+//
+// PLAN §4.5's satellite_config.ini, refused rather than ignored. M6's done-when
+// asks for "a malformed file refused with a code, a span and a caret", and the
+// whole file is refused on the first problem it holds -- unlike a bad `.satc`,
+// which S0390 says is ignored while the source is read instead. The difference
+// is what the two files ARE: a `.satc` is a cache and deleting it costs nothing,
+// while a config is the only statement of how much of this machine satl may
+// take, and guessing at that would be DESIGN §1.1's "behind their back" with the
+// machine's memory as the stake.
+//
+// EVERY ONE OF THESE CARRIES A REAL SPAN, which is the difference from S03xx one
+// block up. A `.satc` is generated and its span would point a person at a file
+// the next sentence tells them to delete; a satellite_config.ini is TYPED, by an
+// installer or by hand, and the caret lands under the character that is wrong.
+//
+// THE WATCHDOG HAS NO CODE HERE AND THAT IS DELIBERATE. When MEMORY_MAX is
+// crossed satl prints one line of plain words on stderr and goes, which is what
+// M6's done-when asks for. A code is for looking up and a span is for something
+// inside a file; a process that has run out of the memory it was allowed has
+// neither, and rendering `satl: error S08xx:` over it would dress a shutdown up
+// as a diagnostic about a file. programs/opening.cpp already keeps the words for
+// everything that is about the RUN rather than about a file, and this is that.
+
+SAT_CODE(801, CONFIG_NOT_A_SETTING, SAT_ERROR,
+         "a line in this file is `NAME=VALUE`, a `#` comment or blank -- there "
+         "are no [sections] -- and {1} is none of them")
+
+SAT_CODE(802, CONFIG_NO_SUCH_SETTING, SAT_ERROR,
+         "this file has no setting called `{1}` -- `satl --limits` lists every "
+         "one it has")
+
+SAT_CODE(803, CONFIG_SET_TWICE, SAT_ERROR,
+         "{1} is set twice in this file, and a setting is set once")
+
+SAT_CODE(804, CONFIG_NOT_A_NUMBER, SAT_ERROR,
+         "{1} is a whole number and `{2}` is not one")
+
+SAT_CODE(805, CONFIG_NEEDS_A_UNIT, SAT_ERROR,
+         "{1} is an amount of memory and `{2}` says how much without saying of "
+         "what -- write `{2}GiB` for powers of 1024 or `{2}GB` for powers of "
+         "1000, because 61.9 GiB and 64.9 GB are the same memory and a bare "
+         "number cannot say which was meant")
+
+SAT_CODE(806, CONFIG_NO_SUCH_UNIT, SAT_ERROR,
+         "`{1}` is not a unit -- B, KiB, MiB, GiB and TiB are powers of 1024, "
+         "and KB, MB, GB and TB are powers of 1000")
+
+SAT_CODE(807, CONFIG_TOO_SMALL, SAT_ERROR,
+         "{1} is {2} and the smallest it may be is {3}")
+
+SAT_CODE(808, CONFIG_TOO_LARGE, SAT_ERROR,
+         "{1} is {2} and the largest it may be is {3}")
+
+// SEPARATE FROM S0804 BECAUSE THE FIX IS DIFFERENT AND A SENTENCE HAS TO NAME
+// THE FIX. `CORE_COUNT=twelve` is answered by writing a number; `MEMORY_MAX=
+// 61.9GiB` is a number, and what is wrong with it is that a ceiling rounded to
+// a whole byte behind the user's back is one nobody can predict -- so the fix
+// is the next unit down, where the amount they mean is exact. Answering both
+// with "is a whole number" would have been one row saying two things, which is
+// the failure this file exists to make visible rather than one it may commit.
+SAT_CODE(809, CONFIG_NOT_A_WHOLE_AMOUNT, SAT_ERROR,
+         "{1} is a whole number of units and `{2}` is not one -- write the "
+         "next unit down, so that the byte count is exact instead of rounded")
+
+SAT_CODE(890, NOTE_CONFIG_SET_HERE, SAT_NOTE,
+         "{1} was set here first")
+
+// The parser's S0208 one registry on, and the same argument: a reader stops
+// after twenty problems, and without this the twenty-first is invisible and the
+// rest of the file looks understood. A config file is a dozen lines and will
+// almost never reach it -- which is exactly when a cap goes unnoticed, so it is
+// said out loud rather than left to a reader who pointed satl at the wrong file.
+SAT_CODE(891, NOTE_CONFIG_TOO_MANY, SAT_NOTE,
+         "{1} problems were reported and the rest of this file was not read -- "
+         "fix these and run it again")
 
 #undef SAT_CODE

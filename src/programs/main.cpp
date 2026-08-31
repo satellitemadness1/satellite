@@ -19,12 +19,16 @@
 #include "error_reporter/dump.hpp"
 #include "lexical_analyzer/dump.hpp"
 #include "lexical_analyzer/lexer.hpp"
+#include "machine_limits/dump.hpp"
+#include "machine_limits/watchdog.hpp"
 #include "parser/parser.hpp"
 #include "programs/cache_command.hpp"
 #include "programs/check_command.hpp"
+#include "programs/limits_command.hpp"
 #include "programs/opening.hpp"
 #include "programs/window_handover.hpp"
 #include "satellite_words/dump.hpp"
+#include "satellite_words/words.hpp"
 #include "system_facts/version.hpp"
 
 #include <cstddef>
@@ -95,20 +99,29 @@ int not_yet(const std::string &what, const std::string &file,
 // The handover's own comment says it runs "BEFORE ANY ARGUMENT IS READ, AND
 // THAT IS THE POINT", and that is still right for everything that RUNS
 // something: those can fail, and their diagnosis has to be somewhere a person
-// launching from a menu can see it. But these five produce an answer on stdout
-// and stop. Nobody double-clicks an icon to be told a version number, and the
-// answer has to reach a pipe, a file and a variable, which a window cannot do.
+// launching from a menu can see it. But the ones below produce an answer on
+// stdout and stop. Nobody double-clicks an icon to be told a version number,
+// and the answer has to reach a pipe, a file and a variable, which a window
+// cannot do.
 // 080-report.sh in the installer already states the rule for the other binary
 // -- "window.cpp answers --version before it touches GTK, on purpose ... so
 // this check runs on a headless box and in a container" -- and this is that
 // same rule, arriving late on the side that needed it more.
+//
+// --watchdog IS THE ONE MEMBER THAT DOES NOT ONLY PRINT, AND IT BELONGS HERE
+// ANYWAY. What the class is really about is where an answer has to ARRIVE: every
+// flag below produces something for a shell, and a window that opens and closes
+// with the process delivers none of it. `satl --watchdog cfg.ini > run.log` in a
+// CI job is the installer failure above exactly -- no controlling terminal,
+// output redirected to a file nothing is reading, refusal THREE silent.
 bool only_prints_and_exits(const char *arg)
 {
     const std::string flag(arg);
     return flag == "--no-window" || flag == "--version" || flag == "-V" ||
            flag == "--help" || flag == "-h" || flag == "--words" ||
            flag == "--tokens" || flag == "--unparse" || flag == "--satc" ||
-           flag == "--check" || flag == "--errors";
+           flag == "--check" || flag == "--errors" || flag == "--limits" ||
+           flag == "--watchdog";
 }
 
 // A usage failure: the command line did not name something satl can do.
@@ -160,6 +173,16 @@ int main(int argc, char **argv)
         args.emplace_back(argv[i]);
     }
 
+    // THE LIMITS, THE POOL AND THE WATCHDOG, BEFORE ANY ARM RUNS AND AFTER THE
+    // ARGUMENTS ARE ASSEMBLED -- because a config file can be named on the
+    // command line and the pool is a property of the process rather than of
+    // what the process was asked to do. programs/limits_command.hpp carries
+    // both halves of that, including why a malformed config stops even
+    // `satl --version`.
+    if (const int status = satellite::start_limits(args);
+        status != satellite::EXIT_FINE)
+        return status;
+
     // NOTHING TO DO IS NOT AN ERROR. satl started with no arguments shows the
     // opening information, which is what says how to run a file.
     //
@@ -201,6 +224,15 @@ int main(int argc, char **argv)
     if (first == "--words") {
         if (args.size() < 3) {
             fputs(satellite::words::dump_text().c_str(), stdout);
+            // M6's DONE-WHEN, PRINTED HERE RATHER THAN IN
+            // satellite_words/dump.cpp. 040-sources.mk keeps that module cheap
+            // to link -- "a future .satc reader or disassembler can read the
+            // numbering without linking anything" -- and making the registry's
+            // printer depend on a thread pool would spend that property on a
+            // sentence.
+            fputs(satellite::limits::walk_note_text(satellite::words::kNodeCount)
+                      .c_str(),
+                  stdout);
             return satellite::EXIT_FINE;
         }
         // A path that resolves is an answer and goes to stdout; a path the
@@ -356,6 +388,23 @@ int main(int argc, char **argv)
         fputs(report.c_str(), known ? stdout : stderr);
         return known ? satellite::EXIT_FINE : satellite::EXIT_USAGE;
     }
+
+    // M6's CONSUMER, AND THE ONLY WAY TO SEE THAT MILESTONE AT ALL -- nothing
+    // in the language reads a limit until M8 and nothing runs until M10, so
+    // without this §4.5 is a pool nobody can observe and a watchdog that has
+    // not fired. The file it was given, if it was given one, was already read
+    // by start_limits() above.
+    if (first == "--limits") {
+        fputs(satellite::limits::limits_text().c_str(), stdout);
+        return satellite::EXIT_FINE;
+    }
+
+    // THE ONE ARM THAT DOES NOT FINISH. machine_limits/watchdog.hpp argues why
+    // a flag exists for this: M6's done-when asks for a demonstration in which
+    // the watchdog kills the process, nothing satl does today lasts a second,
+    // and a watchdog that never fires is indistinguishable from no watchdog.
+    if (first == "--watchdog")
+        return satellite::limits::hold_for_the_watchdog();
 
     if (first == "--repl")
         return not_yet("the prompt", std::string(), "M22");

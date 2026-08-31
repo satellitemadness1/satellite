@@ -14,6 +14,7 @@ PROGRAMS = $(SRC)/programs
 ERRORS   = $(SRC)/error_reporter
 LEXER    = $(SRC)/lexical_analyzer
 CACHE    = $(SRC)/satellite_cache
+LIMITS   = $(SRC)/machine_limits
 PARSER   = $(SRC)/parser
 RANDOM   = $(SRC)/satellite_random
 STRING   = $(SRC)/satellite_string
@@ -31,4 +32,5 @@ WORDS    = $(SRC)/satellite_words
 # test. That is the worst failure a suite has: not a red line, a green one that
 # is out of date.
 TESTS     = tests
-TESTNAMES = words_test lexer_test parser_test satc_test reporter_test
+TESTNAMES = words_test lexer_test parser_test satc_test reporter_test \
+            limits_test

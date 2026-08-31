@@ -42,8 +42,22 @@ endif
 # -march=native is deliberately NOT a default: it bakes in this machine's
 # instruction set, and this same Makefile has to be able to build something that
 # runs on machines that are not this one.
+#
+# -pthread ARRIVED WITH M6 AND IS ON BOTH THE COMPILES AND THE LINKS, which is
+# what putting it in CXXFLAGS buys: 050-build.mk's four link lines all start
+# with $(CXXFLAGS), so one edit here reaches every object and every binary.
+# PLAN §4.5.1.2 makes satl start a thread pool at startup on every run, and
+# 048-static.mk ships it -static -- a combination that is only safe because
+# glibc 2.34 merged libpthread into libc, so a static link needs no
+# --whole-archive dance. On an older glibc this same line would need one, and
+# that is written down here rather than left to whoever first builds on RHEL 8.
+#
+# It is in CXXFLAGS and not in LDFLAGS on purpose: LDFLAGS is deliberately unset
+# by this build so a distribution's hardening flags can arrive through it, and a
+# flag satl cannot link without is not one an override may silently drop -- the
+# same argument 060-compile.mk makes about -I$(SRC).
 OPT ?= -O3
-CXXFLAGS = -std=c++20 -Wall -Wextra $(OPT)
+CXXFLAGS = -std=c++20 -Wall -Wextra -pthread $(OPT)
 
 # Set nowhere in this build on purpose, so that a distribution's link-time
 # hardening -- -Wl,-z,relro,-z,now and whatever the next one adds -- arrives
