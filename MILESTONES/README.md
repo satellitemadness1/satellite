@@ -64,11 +64,16 @@ leaving it out. Leaving it out is what happened to M3, M4, M4.5 and M5, and it
 was invisible until somebody asked which commit landed which — so the follow-up
 is the shape, and it is one line in one file.
 
-**M6.md opens `**Landed 2026-08-30** (`PENDING`)` and that word is deliberate.**
+**M6.md opened `**Landed 2026-08-30** (`PENDING`)` and that word was deliberate.**
 It is the first note written knowing this rule, so rather than omitting the hash
-— which is what made the other four invisible — it names the hole. A grep for
-`PENDING` in this directory lists every note still owed its follow-up, which
-"leaving it out" could never do.
+— which is what made the other four invisible — it named the hole. `grep PENDING
+MILESTONES/M*.md` lists every note still owed its follow-up, which "leaving it
+out" could never do — **over the notes and not over this directory**, because
+this file has to spell the word in order to describe it and would otherwise be a
+permanent false positive in its own check. **That grep now answers nothing.** The
+follow-up landed on 2026-08-31, one line in one file, and the convention has been
+used once end to end: a note that named its own hole, and a commit that filled
+it.
 
 **A tag would need no follow-up and is deliberately not the answer.** `git tag
 M5` records the same fact where nobody reading the tree can see it, and this
