@@ -102,6 +102,17 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/satellite_cache/save.cpp](src/satellite_cache/save.cpp) | SATC §5: tmp, `fsync`, `rename`, and the thread it happens on. **Joined and not detached** — a detached writer is a thread the process exits out from under, so the cache would never actually be there. A failed write is silent, which is the section's own rule. |
 | [src/satellite_cache/file.cpp](src/satellite_cache/file.cpp) | Where a `.satc` lives — `$HOME/.satl/cache`, named with a digest of the source's **absolute** path — and a source's identity for the header. The mtime is whole seconds on purpose; the comment says which filesystems that is for. |
 | [src/programs/cache_command.hpp](src/programs/cache_command.hpp) · [.cpp](src/programs/cache_command.cpp) | `satl --satc`. **The only flag with a file of its own**, because it is the only one that is a loop rather than a print: read the cache if it hits, walk and write if it misses, print the `.satc` either way and say on stderr which happened. |
+| [src/programs/dump_commands.hpp](src/programs/dump_commands.hpp) · [.cpp](src/programs/dump_commands.cpp) | **M7**, and the half of `main.cpp`'s seam MILESTONES/M6.md §6.1 named and declined. `--words` and `--errors`: a registry dump takes **no operand or a key into itself**, answers out of tables compiled into the binary, opens nothing, and cannot fail about the user's program. The header says what the two subjects are, once. |
+| [src/programs/file_commands.hpp](src/programs/file_commands.hpp) · [.cpp](src/programs/file_commands.cpp) | **M7**, the other half. `--tokens` and `--unparse`: a file arm takes a **path** and has a status about what was in it. The rule they share is the one that cost a day once — the dump goes to **stdout even when the program is malformed**, because the operand is a file and a bad token is not a bad command line. |
+| [src/programs/resolve_command.hpp](src/programs/resolve_command.hpp) · [.cpp](src/programs/resolve_command.cpp) | `satl --resolve`. The one arm with a decision no other has: a `.satc` is written from a tree that PARSED, and resolve is the first pass that can find something wrong in one — so a warm run whose program does not resolve is **thrown away and taken again from the source**, because the tree's spans index into the cache's words and a caret from them lands on the wrong line. |
+| [src/name_resolver/resolve.hpp](src/name_resolver/resolve.hpp) | **M7**, and the one door over the module. DESIGN §7's frames and slots: three sentinels and not six, `Info`'s side table indexed by node, `Origin` — walked, cached, bound or parsed — and why the depth bound here is **not** DESIGN §7.5's, which is M9's and derived from `RLIMIT_STACK`. |
+| [src/name_resolver/resolve_internal.hpp](src/name_resolver/resolve_internal.hpp) | The `Resolver`, split the way `parser_internal.hpp` is: the passes, the scopes, the walk, the numbers. |
+| [src/name_resolver/resolve.cpp](src/name_resolver/resolve.cpp) | §7.3's four passes **in order** — every capsule name, every spacesuit name (M26's, and a named hole), the top level, then each body. The order is why resolve is not in the parser: mutual recursion is unresolvable in single-pass recursive descent. Also the `stable_sort` that puts problems back in source order, which four passes do not produce. |
+| [src/name_resolver/scopes.cpp](src/name_resolver/scopes.cpp) | §7.2's slots and §7.4's **fresh** one — a redeclaration rebinds rather than overwriting, because reusing the slot would leave every handle to the first instance pointing at the second. DESIGN §4.6 over the names in scope, which `errors::suggest()` cannot search: those names were met four milestones after the trie was written. |
+| [src/name_resolver/walk.cpp](src/name_resolver/walk.cpp) | The two walkers and the depth guard. The initialiser is resolved **before** the name enters scope, which decides `number x = x`. |
+| [src/name_resolver/names.cpp](src/name_resolver/names.cpp) | What a name reaches, in the order it is looked for — and that order is the language's shadowing rule, written down once. DESIGN §7.7's object, recognised for `satellite.main`'s parameter and **nowhere else**. |
+| [src/name_resolver/numbers.cpp](src/name_resolver/numbers.cpp) | The `.satc` skip, the type check, and WORD_NUMBERS §1.5's fold. **The trie walk is READ and not written again** — `satellite_cache/paths.cpp` already had it, and a second copy would be a second place a path's identity is decided. |
+| [src/name_resolver/dump.hpp](src/name_resolver/dump.hpp) · [dump.cpp](src/name_resolver/dump.cpp) | `satl --resolve`. **The pass's consumer, in the milestone that wrote it** — and the strongest case of that rule yet, because a frame produces no text at all until M9 puts values in it. The only part of the module that prints. |
 | [src/machine_limits/limits.hpp](src/machine_limits/limits.hpp) | **M6**, and the one door over the module. What satl is holding to, where each value came from, and the split that PLAN §4.5.3 left open: the SHOUTED three (`THREAD_COUNT`, `CORE_COUNT`, `MEMORY_MAX`) are machine settings in no numbering, and the quiet four are `satellite.library.system.*` `1 14 2 1`–`1 14 2 4`. The file seeds the dials at startup and the dials are the authority afterwards. |
 | [src/machine_limits/limits.cpp](src/machine_limits/limits.cpp) | Where the file is — beside the binary, **never** the working directory — the machine's answers first so a one-line config changes one thing, and the clamp that answers §4.5.4's "does a machine with less than the file claims win?" It does, and it is **said** rather than done quietly. |
 | [src/machine_limits/config_internal.hpp](src/machine_limits/config_internal.hpp) | What a `satellite_config.ini` may *contain*: the seven keys, the nine units, the bounds, and the text helpers. The four dial names come **out of `words.def`** rather than being written again, so the spelling in the file is the spelling in the language by construction. |
@@ -129,8 +140,17 @@ language that has to say something to a user in plain words, which is the job M5
 inherits and generalises.
 
 `src/abstract_syntax_tree/` and `src/parser/` have a paragraph above and **no
-rows in this table**, which is a gap M4 left and M4.5 did not close because the
-files are M4's to describe. MILESTONES/M4.5.md §6 carries it.
+rows in this table**, which is a gap M4 left and neither M4.5 nor M7 closed
+because the files are M4's to describe. MILESTONES/M4.5.md §6 carries it.
+
+**`src/name_resolver/` landed at M7 on 2026-08-31**, after the machine limits and
+before the value model, and it is the module with the **most dependencies and the
+fewest of its own decisions**: it reads the parser's tree, the reporter's codes,
+the registry's numbering and — the one that looks backwards and is not —
+`satellite_cache/`'s trie walk. DESIGN §6.3 says that walk is M7's, and M4.5 had
+already written it to decide what a `.satc` may substitute, so the milestone that
+owns it reads the file that had it rather than writing a second one.
+`numbers.cpp` opens with the argument.
 
 **`src/machine_limits/` and the rest of `src/system_facts/` landed at M6 on
 2026-08-30**, between the error reporter and resolve, because three later
@@ -197,6 +217,7 @@ PLAN §8 and DESIGN §3 cite them by path rather than describing them in prose.
 | [example/advanced.satl](example/advanced.satl) | The console milestone that **does not exist** — `input(prompt)` `1 5 3` and `input(prompt, target)` `1 5 4`. Also uses `+` on strings, specified nowhere. |
 | [example/thread_test.satl](example/thread_test.satl) | **M23**, and it cannot be M23's done-when yet. `.start()` `1 6 13 1` and `.join()` `1 6 13 2` **were numbered on 2026-08-28** and this row said otherwise until M2 transcribed them; what is still missing is that `satellite.thread.new(f(x))` needs the deferred call `1 6 16`, which no milestone owns. SCRATCH.md/THREADS.md. |
 | [example/super_advanced.satl](example/super_advanced.satl) | **M15**, and it is the float's *exact* half — `+` is DESIGN §8.6's class 1, which never rounds, so it runs before the rounding rule is chosen. |
+| [example/frames.satl](example/frames.satl) | **M7**, and the only file here written for the milestone that owns it. Every clause of DESIGN §7 in one program: a recursive `factorial` (§7.1's failure, which returned 1 for every input under one shared slot), a capsule called **before** it is declared (§7.3's four passes), `counter` declared twice for the fresh slot (§7.4), `arguments.machine.cores` six numbers deep (§7.7), and `sort("down")` folding to `1 4 2 5` while the `.satc` keeps the literal (WORD_NUMBERS §1.5). |
 | [example/satellite_config.ini](example/satellite_config.ini) | **M6**, and the only file here that is not a satellite program — `satl --limits example/satellite_config.ini` is the milestone's done-when. It carries this machine's measured numbers (24 threads, 12 cores) and documents the format in its own comments, including which of the four dials nothing reads yet. |
 | [example/broken_config.ini](example/broken_config.ini) | **M6**, and a file that must **not** read — the same standing `class_test.satl` and `gui_example.satl` have, and FORMAT/CXX.md §6.2's rule. Seven of the ten rows of `errors.def`'s S08xx block, one per line, with the reason written above each; the file says which three it cannot reach and why. |
 
@@ -206,7 +227,7 @@ and **M4, the parser, and M4.5, the cache, both on 2026-08-30**;
 read one of these files and answered about its contents, `satl --unparse` is the
 first that answers *in satellite*, and `satl --satc` is the first that leaves
 anything behind it — a numbered copy of the program in `$HOME/.satl/cache`,
-which it reads back on the next run. **Four of the six parse and round-trip; `class_test.satl` and
+which it reads back on the next run. **Five of the seven parse and round-trip; `class_test.satl` and
 `gui_example.satl` do not**, and MILESTONES/M4.md §6 names the two constructs —
 neither is in DESIGN §6's grammar and both are the files' rather than the
 parser's. Nothing
@@ -263,6 +284,13 @@ had built — reporting PASS from stale objects.
 | [tests/limits_test/examples.cpp](tests/limits_test/examples.cpp) | The two files in `example/`, off the disk: one that must read, with this machine's numbers, and one that must **not**, with one assertion per line of it and a count so a ninth code is a finding. |
 | [tests/limits_test/facts.cpp](tests/limits_test/facts.cpp) | The machine readers, and the section that **says what cannot be asserted**: the authority is `/proc` and so is the code under test, so what is checked is the relationships — cores never exceed threads, used plus available is total exactly, a resident set is not a virtual one, and `RLIM_INFINITY` answers *unknown*. |
 | [tests/limits_test/pool.cpp](tests/limits_test/pool.cpp) | **The pool's only caller in the tree**, which is `parallel_for` not existing said as a test. The floor at its boundary, a 100,000-unit batch with every unit marked so a doubled one and a missed one cannot cancel out, and a wait on a *condition* rather than a duration. |
+| [tests/resolve_test/resolve_test.cpp](tests/resolve_test/resolve_test.cpp) · [.hpp](tests/resolve_test/resolve_test.hpp) | **M7.** The harness, plus `Run` — a parse, its resolve and **its numbering**, kept together because a user's `PathId` is valid inside one run and a test that let the `Words` object die would be asking about numbers that no longer mean anything. |
+| [tests/resolve_test/frames.cpp](tests/resolve_test/frames.cpp) | DESIGN §7.2 and §7.4. The slot numbering is **per capsule** and starts again at 0, which is what makes §7.1's 1585-wrong-results-out-of-1600 impossible; a redeclaration holds **two** rows; and §7.3's order, proved by two capsules that call each other. |
+| [tests/resolve_test/names.cpp](tests/resolve_test/names.cpp) | The lookup order — a local shadows a capsule — DESIGN §4.6 over the scope stack, and `number x = x` naming the outer x. |
+| [tests/resolve_test/paths.cpp](tests/resolve_test/paths.cpp) | Every number **written out** rather than derived, the way `words_test` does it: a test that computed what it expected would compute it the way the code does and agree with a wrong answer. Also WORD_NUMBERS §1.5's fold, and the two S052x refusals from **both** the Member arm and the Call arm — which a mutation found were two sites and not one. |
+| [tests/resolve_test/arguments.cpp](tests/resolve_test/arguments.cpp) | All six spellings, the seventh refused, a name that was never trying to be one left alone, and `arguments.machine.threads` at `1 14 1 1 1 3` — six numbers deep. |
+| [tests/resolve_test/cache.cpp](tests/resolve_test/cache.cpp) | MILESTONES/M4.5.md §5's clause, **counted**. The answers first — both runs must reach the same numbers, or the skip is a cache that changes what a program means — and then the counts, **per path**: one chain, one type, one call shape. Asserting the totals alone let half the skip be deleted with no failure, and finding that found an inverted ternary in `unnumber()`. |
+| [tests/resolve_test/examples.cpp](tests/resolve_test/examples.cpp) | All five acceptance programs that parse, resolved through the real entry point — three of them written for milestones that have not landed, so nothing about them was chosen to suit this pass. `example/frames.satl` clause by clause. |
 
 ## `make_support/` — the build
 
@@ -385,12 +413,18 @@ here rather than in DESIGN, PLAN, LAYOUT or WORD_NUMBERS is whether it *stops be
 true when the work it describes is finished.*
 
 Its own [README.md](SCRATCH.md/README.md) lists what is in it and the condition for
-deleting each one, so this table does not repeat them. **M6 added
-[SCRATCH.md/M6_STATE.md](SCRATCH.md/M6_STATE.md)**, which is where that milestone
-got to when the session building it was stopped, and it is deletable the day its
-three unfinished items are finished — **which was 2026-08-31**, so it is deletable
-now and is kept only until somebody has read it, the standing `WORD_SURFACE.md`
-already has. `plans/` used to hold the
+deleting each one, so this table does not repeat them.
+
+**Three files were deleted from it on 2026-08-31, which is the only thing this
+folder can do that proves it is working.** `WORD_SURFACE.md` and `M6_STATE.md`
+had both carried **CONDITION MET — deletable now** in that README since the day
+their conditions were met, and M7's own `M7_START.md` — the reading-in that found
+M7 had no done-when, that the draft in `prototype/M6/` over-reaches into M26's
+spacesuits, and that DESIGN §7.5 reads as one recursion bound where there are two
+— had the condition *"M7 lands and MILESTONES/M7.md carries whatever of it turned
+out to be true."* It does. **A row that says "deletable now" and stays is this
+folder failing at its one job**, because a temporary record nothing maintains is
+how a decision gets made twice. `plans/` used to hold the
 author's first note; that note has been converted into the permanent documents and
 the file deleted, and its conversion is recorded in
 [SCRATCH.md/FIRST_NOTE.md](SCRATCH.md/FIRST_NOTE.md) until nothing needs it.

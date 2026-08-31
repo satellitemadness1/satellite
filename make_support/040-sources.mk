@@ -176,10 +176,53 @@
 # Run at STATIC=full the harness reproduces the table above row for row -- floor
 # 0.567, --version 0.764, --words 0.915, --tokens 0.843 and 1.144, --limits 1.481.
 #
+# RE-TAKEN AT M7, 2026-08-31, load 1.50, STATIC=full -- and this is the first
+# re-measurement `make startup` took rather than a person. 067-startup.mk is the
+# target and startup.rows is the baseline it diffed against, which is the table
+# immediately above this paragraph.
+#
+#     bare int main(){return 0;}          0.546 ms   (M6: 0.556)
+#     satl (opening information)          0.719 ms   (M6: 0.735)
+#     satl --version                      0.725 ms   (M6: 0.724)
+#     satl --words                        0.902 ms   (M6: 0.887)
+#     satl --tokens hello_world.satl      0.819 ms   (M6: 0.818)
+#     satl --tokens class_test.satl       1.121 ms   (M6: 1.128)
+#     satl --limits                       1.457 ms   (M6: 1.462)
+#     satl --limits example/satellite_config.ini
+#                                         1.490 ms   (never measured before)
+#     satl --resolve hello_world.satl     0.856 ms   (new at M7)
+#     satl --resolve frames.satl          1.113 ms   (new at M7)
+#
+# SATL'S OWN SHARE IS 0.179 ms AGAINST M6's 0.168, WHICH IS 0.011 ms AND IS SIX
+# OBJECTS. The resolver does not run unless `--resolve` asks for it, so
+# `--version` cannot be paying for the pass; what moved is the size of the image
+# the loader maps -- name_resolver/ is six translation units and programs/ gained
+# three more when main.cpp's arms were split out. Nothing else changed, and every
+# other row is inside the noise of a machine at load 1.50 against M6's 0.78.
+#
+# `satl --resolve` COSTS 0.13 ms MORE THAN `--tokens` ON THE SAME FILE, which is
+# the parse, the resolve and SATC.md §4's reading order together. It is the first
+# row in this table that is a whole pipeline rather than one pass.
+#
+# AND IT IS A WARM NUMBER. startup.sh runs 200 invocations per batch and the
+# first of them writes the `.satc` the other 199 read, so a cold run is averaged
+# in at one part in two hundred. What the cache actually saves is counted rather
+# than timed -- MILESTONES/M4.5.md §5's clause could never have been read off a
+# clock at this size, and MILESTONES/M7.md §5 is why.
+
 # The window is a separate binary (M1.5, built 2026-08-27) and, for
 # satellite.window.new(), a
 # dlopen'd library (M24) -- because the two-binary split cannot help a window
 # opened from inside a user program, which runs in this one. PLAN_ONE.md sec 4.4.
+#
+# $(RESOLVE) IS SIX TRANSLATION UNITS AND READS $(CACHE), which is the one
+# dependency in this list that looks backwards and is not. M4.5's
+# satellite_cache/paths.cpp walks a postfix chain against the numbering, and
+# DESIGN §6.3 says that walk is M7's -- so the milestone that owns the walk reads
+# the file that already had it rather than writing a second one.
+# name_resolver/numbers.cpp opens with the argument; paths.hpp's "THIS IS NOT
+# RESOLVE AND MUST NOT BECOME IT" is about growing a receiver argument, which
+# reading it is not.
 #
 # $(WORDS)/dump.cpp IS THE ONLY .cpp THE WORD REGISTRY HAS, and that is a
 # property of the module rather than an omission. Everything else under
@@ -193,7 +236,10 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/source_file.cpp \
             $(PROGRAMS)/cache_command.cpp \
             $(PROGRAMS)/check_command.cpp \
+            $(PROGRAMS)/dump_commands.cpp \
+            $(PROGRAMS)/file_commands.cpp \
             $(PROGRAMS)/limits_command.cpp \
+            $(PROGRAMS)/resolve_command.cpp \
             $(ERRORS)/report.cpp \
             $(ERRORS)/suggest.cpp \
             $(ERRORS)/dump.cpp \
@@ -205,6 +251,12 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PARSER)/parser_control_flow.cpp \
             $(PARSER)/parser_expressions.cpp \
             $(PARSER)/parser_types.cpp \
+            $(RESOLVE)/resolve.cpp \
+            $(RESOLVE)/scopes.cpp \
+            $(RESOLVE)/walk.cpp \
+            $(RESOLVE)/names.cpp \
+            $(RESOLVE)/numbers.cpp \
+            $(RESOLVE)/dump.cpp \
             $(CACHE)/paths.cpp \
             $(CACHE)/write.cpp \
             $(CACHE)/write_declarations.cpp \
@@ -253,6 +305,9 @@ HDRS = $(SYSTEM)/version.hpp \
        $(LEXER)/dump.hpp \
        $(PARSER)/parser.hpp \
        $(PARSER)/parser_internal.hpp \
+       $(RESOLVE)/resolve.hpp \
+       $(RESOLVE)/resolve_internal.hpp \
+       $(RESOLVE)/dump.hpp \
        $(CACHE)/cache.hpp \
        $(CACHE)/paths.hpp \
        $(CACHE)/write_internal.hpp \
@@ -265,7 +320,10 @@ HDRS = $(SYSTEM)/version.hpp \
        $(TREE)/unparse.hpp \
        $(PROGRAMS)/cache_command.hpp \
        $(PROGRAMS)/check_command.hpp \
+       $(PROGRAMS)/dump_commands.hpp \
+       $(PROGRAMS)/file_commands.hpp \
        $(PROGRAMS)/limits_command.hpp \
+       $(PROGRAMS)/resolve_command.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/source_file.hpp \
        $(PROGRAMS)/terminal.hpp \

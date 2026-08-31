@@ -225,6 +225,25 @@ SATC.md §3 says literals stay literal. The file keeps `"down"`; the runtime kee
 the number. This is the one place where the numbering deliberately says more than
 the file does.
 
+**BUILT AT M7, 2026-08-31, AND IT READS THIS TABLE RATHER THAN A LIST OF SPECIAL
+CASES.** A word takes options when the rows beside it are spelled
+`<word>_<something>` — `sort` has `sort_down` and `sort_up`, so a **literal**
+first argument to it names one of them, and `contains` has no such sibling so
+`contains("ok")` is an ordinary call with a string in it. PLAN's M7 entry says
+*"M19 is waiting on this: whether `satellite.file.open`'s four mode words fold
+decides whether its bad-mode message is M5's suggester or a runtime check"*, and
+the answer is **the suggester, with no edit to any source file** on the day
+`open_read_append` is written into `words.def`.
+
+**AND THIS TABLE HAS NO `sort_up()`, WHICH BUILDING THE FOLD FOUND.** §2.2
+assigns `sort()` `1 4 2 3` as *"ascending, no key"* and `sort_up(key)` `1 4 2 7`,
+so `my_list.sort("up")` names an option that exists at a shape that does not, and
+M7 answers it with **S0523** naming `sort_up(key)`. That is accurate and it is
+not what somebody wanted. Two fixes exist and both are §1.2's freeze applied to a
+decision only the author can take: an **alias** row spelling `sort_up()` onto
+`1 4 2 3`, or a rule that a fold may land on the bare word it was spelled from.
+MILESTONES/M7.md §6 item 1.
+
 ---
 
 ---

@@ -32,6 +32,7 @@
 #include <cstdint>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace satellite::cache {
 
@@ -81,6 +82,37 @@ std::string body_text(const Ast &ast, const words::Words &words);
 // exactly one reader. A second grammar for `.satc` would be a second place the
 // language is defined, and it would drift.
 
+// WHERE THE FILE ALREADY SAID A NUMBER -- one entry per substitution, in the
+// order they were made, so the list ascends and a reader may bisect it.
+//
+// THIS IS THE HALF MILESTONES/M4.5.md §5 SAYS THE CACHE WAS MISSING. That note
+// is written in three places on purpose, and what it says is that "the tree a
+// reader hands back has NOWHERE TO PUT the `PathId`s the file already carries",
+// so M7's resolve numbers every path again and a warm hit does strictly more
+// work than reading the source. This is the somewhere. It is not on the tree --
+// ast.hpp forbids that and PLAN §2.2 says why -- and it is not a second tree
+// either: it is where the substituted WORDS end in the text the parser is about
+// to read, which is a fact about the text and dies with it.
+//
+// `ends` AND NOT `starts`, and the difference is the whole reason this works.
+// A chain's root is the same token for `satellite.time.now()` and for the
+// `.some_function()` wrapped around it, so keying on where the substitution
+// BEGAN would hand the outer node the inner one's number. Every node that names
+// a path is anchored at the path's LAST segment -- ast.hpp: "the token that
+// NAMES the node" -- so the end of the substituted words belongs to exactly one
+// node, whichever node that turns out to be.
+//
+// THE ARGUMENT LIST IS NOT COUNTED IN IT. A row may keep its parentheses when
+// the words are written back -- `input()` is `1 5 2` and the number says its
+// own brackets -- and those characters are not part of any node's anchor, so
+// `ends` stops at the last word either way.
+struct Mark {
+    uint32_t ends = 0;
+    words::PathId id = words::kNoPath;
+};
+
+using Marks = std::vector<Mark>;
+
 // Why a `.satc` was not used. SATC.md §4's three misses and its one error.
 //
 // FOUR ANSWERS AND NOT TWO, because §4 draws a line inside "did not work": a
@@ -128,6 +160,20 @@ struct Reading {
     // MALFORMED, because the writer produced it and the source did not.
     Parse program;
 
+    // What the file had already numbered, for M7's resolve. Empty on a miss,
+    // for the reason `program` is not filled on one: the text those offsets are
+    // into was never handed to a parser.
+    Marks marks;
+
+    // THE TEXT THE TREE'S SPANS INDEX INTO, WHICH IS NOT THE SOURCE FILE. It is
+    // the `.satc` body with its numbers turned back into words -- no comments,
+    // and blank lines where the writer put them -- so line 6 of this is not
+    // line 6 of the program the user wrote. Carried because a caller that wants
+    // to RENDER anything about this tree has to render against it, and M7 is
+    // the first pass that can find something wrong in a tree that parsed.
+    // programs/resolve_command.cpp is what does something about that.
+    std::string text;
+
     bool hit() const { return why == Miss::NONE; }
 };
 
@@ -149,8 +195,12 @@ Reading read_text(const std::string &text, const Source &source,
 // set to the S03xx code for which of the two it was -- read.cpp is what adds
 // the note about what happens next, because that is the reading order's fact
 // and not this pass's.
+//
+// `marks` IS OPTIONAL AND IS NULL FOR EVERY CALLER BUT ONE. A test that wants
+// the text does not want the record, and a substitution pass that always built
+// one would be paying for M7 in the two places that only need M4.5.
 bool unnumber(const std::string &body, std::string &into,
-              errors::Diagnostic &why);
+              errors::Diagnostic &why, Marks *marks = nullptr);
 
 // SATC.md §5: write `<name>.<pid>.tmp`, `fsync`, `rename`. False when it could
 // not be done, which is not an error and is not reported -- "a read-only

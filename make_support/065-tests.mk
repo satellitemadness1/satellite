@@ -261,6 +261,64 @@ $(TESTS)/limits_test/limits_test: $(limits_test_SRCS) $(limits_test_HDRS) \
 	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/limits_test -o $@ \
 	    $(limits_test_SRCS) $(LIMITS_TEST_SRCS)
 
+# resolve_test LINKS THE MOST OF ANY TEST, and every one of the additions is a
+# property of the subject rather than of the test. Resolve runs over a parse
+# tree, so it needs the parser, the parser needs the lexer, the lexer needs the
+# alphabet -- that much satc_test already had. What it adds is the `.satc`
+# module and the reporter's suggester, and the two are there for the same
+# reason: this pass READS what M4.5 wrote.
+#
+# THE CACHE IS LINKED BECAUSE THE SKIP IS THE MILESTONE'S MEASURED CLAUSE.
+# MILESTONES/M4.5.md §5 says "M7's resolve has to learn to skip a path the
+# `.satc` has already numbered", and tests/resolve_test/cache.cpp proves it by
+# writing a `.satc` from a tree, reading it back, and counting the walks the
+# marks saved -- which cannot be done without the writer and the reader in the
+# same binary. satellite_cache/paths.cpp is linked for a second reason besides:
+# it is the trie walk itself, which resolve reads rather than writing again.
+#
+# NOT $(SATL_OBJS), for the fifth time and for the same reason: linking the
+# interpreter's objects would drag main.o and its window handover into a test
+# binary, and a test that starts by deciding whether to open a GUI hangs on a
+# build machine.
+RESOLVE_TEST_SRCS = $(RESOLVE)/resolve.cpp \
+                    $(RESOLVE)/scopes.cpp \
+                    $(RESOLVE)/walk.cpp \
+                    $(RESOLVE)/names.cpp \
+                    $(RESOLVE)/numbers.cpp \
+                    $(RESOLVE)/dump.cpp \
+                    $(ERRORS)/report.cpp \
+                    $(ERRORS)/suggest.cpp \
+                    $(CACHE)/paths.cpp \
+                    $(CACHE)/write.cpp \
+                    $(CACHE)/write_declarations.cpp \
+                    $(CACHE)/write_expressions.cpp \
+                    $(CACHE)/read.cpp \
+                    $(CACHE)/unnumber.cpp \
+                    $(CACHE)/save.cpp \
+                    $(CACHE)/file.cpp \
+                    $(PARSER)/parser.cpp \
+                    $(PARSER)/parser_declarations.cpp \
+                    $(PARSER)/parser_statements.cpp \
+                    $(PARSER)/parser_control_flow.cpp \
+                    $(PARSER)/parser_expressions.cpp \
+                    $(PARSER)/parser_types.cpp \
+                    $(TREE)/ast.cpp \
+                    $(TREE)/unparse.cpp \
+                    $(LEXER)/lexer.cpp \
+                    $(STRING)/satellite_string.cpp
+
+# AND ON errors.def AND ON THE PROGRAMS IN example/, which is the same argument
+# the five rules above make and the sixth place it is made. section_examples()
+# resolves all five acceptance programs and reads example/frames.satl clause by
+# clause as this milestone's done-when; section_frames() and the rest assert one
+# code per row of errors.def's S05xx block. Editing either must re-run the test.
+$(TESTS)/resolve_test/resolve_test: $(resolve_test_SRCS) $(resolve_test_HDRS) \
+                                    $(RESOLVE_TEST_SRCS) $(ERRORS)/errors.def \
+                                    $(WORDS)/words.def $(HDRS) \
+                                    $(wildcard example/*.satl) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/resolve_test -o $@ \
+	    $(resolve_test_SRCS) $(RESOLVE_TEST_SRCS)
+
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
 #
@@ -275,6 +333,7 @@ test: $(TESTBINS)
 	./$(TESTS)/satc_test/satc_test example
 	./$(TESTS)/reporter_test/reporter_test example
 	./$(TESTS)/limits_test/limits_test example
+	./$(TESTS)/resolve_test/resolve_test example
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
@@ -283,8 +342,9 @@ parser_test: $(TESTS)/parser_test/parser_test
 satc_test: $(TESTS)/satc_test/satc_test
 reporter_test: $(TESTS)/reporter_test/reporter_test
 limits_test: $(TESTS)/limits_test/limits_test
+resolve_test: $(TESTS)/resolve_test/resolve_test
 
 TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
-              limits_test
+              limits_test resolve_test
 
 .PHONY: test $(TESTALIASES)

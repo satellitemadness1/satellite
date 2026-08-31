@@ -1742,9 +1742,11 @@ to undo, so a done-when clause asserting *the terminal is still usable* would be
 test that cannot fail. This milestone registers no hook; **M22 inherits the exit
 path and adds the registration**, and its line says so.
 
-**M7 — resolve.** Names to integer frame slots. Capsules, frames, the `SLOT_*`
+**M7 — resolve. LANDED 2026-08-31**, and [MILESTONES/M7.md](MILESTONES/M7.md) is
+the review. Names to integer frame slots. Capsules, frames, the `SLOT_*`
 sentinels. Resolved data in a side table indexed by arena node id, not `mutable` on
-the node. DESIGN §7.
+the node. DESIGN §7. `src/name_resolver/` is six sources over three headers and
+`satl --resolve` is the consumer.
 
 **Three things it owns that its own line did not say.** *(2026-08-28.)*
 
@@ -1765,6 +1767,82 @@ the node. DESIGN §7.
   table that says so, and **resolve is where a parameter named `argz` is recognised
   as §7.7's object rather than as a user's name.** M20's demonstration rests on it,
   and until this pass no milestone claimed it.
+
+**Done when** `satl --resolve <file>` prints every capsule with its frame —
+parameter slots first, then locals, each with its slot number, its name and its
+declared type — and every path in the file beside the number it resolved to.
+
+- **A name that resolves to nothing is refused** with an S05xx code, a span and a
+  caret, and DESIGN §4.6's *did you mean* over the names that are actually in
+  scope. A **path** whose segment the numbering does not have is refused the same
+  way, over the node that segment failed under — which is the error
+  `satellite_cache/paths.cpp` names in its own comment and declines to raise,
+  because it is this milestone's.
+- **A redeclaration in one scope takes a fresh slot and the dump shows both**
+  (§7.4). Two parameters of one capsule with one name is an error, because a call
+  has one value for each.
+- **`sort("down")` folds to `1 4 2 5`** at resolve and the `.satc` still reads
+  `"down"` — WORD_NUMBERS §1.5's *"the file keeps the literal, the runtime keeps
+  the number"*, asserted from both ends.
+- **A parameter of `satellite.main` named any of §7.7's six spellings becomes the
+  special variable**, and a seventh is **refused** when the suggester answers with
+  one of the six — `argv` is told to write `arg` — and is an ordinary list
+  otherwise. That is DESIGN §7.7's own open question answered: the silence it
+  calls wrong is broken where somebody has plainly *meant* the object, and a
+  parameter that was never trying to be one is left alone.
+- **A capsule called before it is declared resolves**, because pass 1 runs before
+  pass 4 — which is the whole reason §7.3 has four passes and not one.
+- **Resolve skips a path the `.satc` already numbered**, which is what
+  MILESTONES/M4.5.md §5 says has to happen before the cache pays for itself.
+  `satl --resolve` **counts** the paths it walked against the paths it took from
+  the file, and a warm run's walked count is lower. **Counted and not timed**: on
+  a 273-byte program the walk is far under the clock's noise, and M4.5's own table
+  is what says so.
+
+**The resolver's recursion bound is not §7.5's, and the two are one section
+apart.** §7.5 bounds a program that is *running* and is M9's — `system_facts/`
+already says so in its own words. This one stops a deeply nested *expression* from
+smashing the resolver's C++ stack while nothing is running at all. Both exist;
+only the second is built here, and a file that trips it is refused rather than
+dropped.
+
+**Spacesuits are M26 and pass 2 is a named hole.** It exists in the order,
+resolves nothing, and **says so**: `satl --resolve` over a file with a spacesuit
+in it names the milestone rather than printing an empty frame and letting somebody
+believe it.
+
+**Every clause of that was met on 2026-08-31, and three of them turned out to be
+narrower or wider than they are written. All three are corrected here rather than
+in the review alone.**
+
+- **"Every path in the file" is every path a NAME OR A TYPE names.** A `.satc`
+  numbers more than resolve does — `#1.2` for `satellite.capsule`, `#1.13.1` for
+  `satellite.statement.if` — because the writer is a text substitution over words
+  and those are words. Nothing dispatches on them: DESIGN §6.1 puts that decision
+  at **parse time**, on segment 1, and the parser has already made it. A number
+  recorded here that no consumer reads is the thing the `SLOT_*` sentinels were
+  cut from six to three to avoid.
+- **The skip is COUNTED and the draft asked for it TIMED.**
+  `SCRATCH.md/M7_START.md` offered "a warm hit beats `--unparse` on
+  hello_world", which is a comparison neither command can win: `--unparse` does
+  not resolve, so it is not doing the work the skip saves, and
+  MILESTONES/M4.5.md §5's own table says the difference is under the clock's
+  noise at this size. `satl --resolve` prints the two counts instead, and they
+  are exact — 28 walked cold against 14 walked and 14 taken warm on
+  `example/frames.satl`. MILESTONES/M7.md §5, and §7 records that a count is also
+  the only thing that could catch the skip disappearing.
+- **And it gained a clause the done-when did not ask for: S0514.** A file may
+  declare `satellite.main` **twice** and parse clean, because `capsule_decl`'s
+  reserved arm looks the name up rather than defining it and the numbering has
+  nothing to say about a name it did not allocate. Pass 1 is the only place that
+  can see it. M7.md §3.2.
+
+**And it took `main.cpp`'s seam, which M6 named and declined.** MILESTONES/M6.md
+§6.1 called it "a reshaping of M2 through M5's arms rather than of this
+milestone's" and was right to leave it; that file was 427 lines with a fourteenth
+arm about to be added. `programs/dump_commands.cpp` and
+`programs/file_commands.cpp` are the two subjects, every comment moved unchanged,
+and `main.cpp` is **297 lines**.
 
 **M8 — `satellite.variable.number`.** *(Its own milestone as of 2026-08-27; it was
 a bullet inside M9.)* The port of the first satellite's `satellite_number` — 10 files,

@@ -21,6 +21,7 @@
 #include "satellite_cache/paths.hpp"
 #include "satellite_words/words.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -89,13 +90,39 @@ std::string path_source(words::NodeId id)
     return out;
 }
 
+// How much of what path_source() writes is WORDS, which is what a node's anchor
+// token can end at. cache.hpp's Mark is what this is for.
+//
+// THE ARGUMENT LIST IS NEVER PART OF IT, WHICHEVER WAY path_source() WENT.
+// Above, an arity-0 row and an absorber KEEP their parentheses and every other
+// shape has them stripped -- but the characters that differ are parentheses in
+// both cases, and no node is anchored at one. So the words end at the same
+// offset either way and this needs no branch at all.
+//
+// IT HAD ONE, AND IT WAS INVERTED. Written as `arity > 0 && !absorber ? whole :
+// whole - args.size()` it returned the FULL length for exactly the rows
+// path_source() shortens, so every call shape's mark landed 16 characters past
+// the word it belonged to and matched no node. The effect was silent and
+// one-sided: `satellite.console.display` skipped and
+// `satellite.console.input(prompt, target)` did not, and every number was still
+// correct because the walk is the fallback. Found on 2026-08-31 by a mutation
+// that asked which HALF of the skip a test was covering --
+// tests/resolve_test/cache.cpp carries that, and MILESTONES/M7.md §7 carries
+// why the totals could not have caught it.
+size_t word_length(words::NodeId id)
+{
+    return words::path_text(id).size() - words::arguments_of(id).size();
+}
+
 } // namespace
 
 bool unnumber(const std::string &body, std::string &into,
-              errors::Diagnostic &why)
+              errors::Diagnostic &why, Marks *marks)
 {
     into.clear();
     into.reserve(body.size() * 2);
+    if (marks != nullptr)
+        marks->clear();
 
     for (size_t at = 0; at < body.size();) {
         const char c = body[at];
@@ -166,6 +193,16 @@ bool unnumber(const std::string &body, std::string &into,
             return false;
         }
 
+        // THE RECORD M7 READS, AND IT IS TAKEN HERE BECAUSE HERE IS THE ONLY
+        // PLACE THAT KNOWS. A moment later this is a satellite program with no
+        // numbers in it at all -- which is the whole point of the pass, and is
+        // exactly why MILESTONES/M4.5.md §5 says a warm hit does strictly more
+        // work than reading the source until resolve is given somewhere to
+        // learn it from. cache.hpp's Mark is why the offset is the END of the
+        // words rather than their start.
+        if (marks != nullptr)
+            marks->push_back({static_cast<uint32_t>(into.size() + word_length(id)),
+                              static_cast<words::PathId>(id)});
         into += path_source(id);
         at = scan;
     }

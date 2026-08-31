@@ -843,6 +843,15 @@ wrong value somewhere inside the walk.
 a `mutable` field on the node. See PLAN.md §2.2 — this turns a documented data race
 into a structural impossibility.
 
+**PASS 3 IS "top-level statements" AND THIS GRAMMAR HAS NONE.** *(Found at M7,
+2026-08-31.)* §6's `top_level` is include, capsule, spacesuit and global, and the
+parser's S0204 says so in the words a user reads: *"a statement at the top of a
+file is not an unfinished feature, it is a program with no capsule to run."* So
+what that pass resolves is the two forms that can carry an expression outside a
+body — a global's initialiser and an include's argument. **It keeps its place,
+because the ORDER is what this section is about**: a global read by a capsule
+body has to be numbered before pass 4.
+
 ### 7.4 A slot is never reused across scopes
 
 A redeclaration in one scope **rebinds the name to a fresh slot** rather than being
@@ -863,6 +872,29 @@ the ceiling is derived from `RLIMIT_STACK` rather than fixed: 3000 on an ordinar
 program may recurse, and it is **outside the language on purpose.**
 
 The numbers live beside the code that uses them, never only here.
+
+**THIS SECTION IS M9's AND NOT M7's, AND IT SITS INSIDE M7's §7.** *(Separated
+2026-08-31, when M7 landed and had to decide which of the two bounds it owned.)*
+What is bounded above is a program that is **running**: the guard fires while a
+recursive capsule descends, the ceiling is derived from `RLIMIT_STACK` at run
+time, and `system_facts/facts.hpp` already says in its own words that *"M9's
+ceiling comes from here and DESIGN §7.5 is why."*
+
+**Resolve has a different bound and it is a different thing.** The resolver walks
+the tree recursively, so a deeply nested *expression* smashes the resolver's own
+C++ stack while nothing is running at all — and a program 19,000 brackets deep is
+one somebody generated rather than typed. `name_resolver/resolve.hpp` bounds that
+at 2000 written levels and refuses the file with **S0501**, whose sentence says
+in as many words that the limit is on how deeply a program may be WRITTEN and not
+on how deeply it may RECURSE. Two bounds, two milestones, one section — the
+second is a constant because a program is written once, and the first is derived
+because a stack is whatever the machine gives.
+
+**And two other walkers in this tree have neither.** Measured 2026-08-31 on an
+8 MiB stack: `--check` survives 20,000 levels, `satl --unparse` segfaults at
+19,000 and `satl --satc` at 20,000. Those are M4's and M4.5's printers;
+MILESTONES/M7.md §4.5 has the table and §6 names the structural fix, which is a
+bound in the **parser** so that no consumer can be handed a tree it cannot walk.
 
 ### 7.6 Capsules are not in the registry
 
@@ -958,9 +990,28 @@ opened.
 
 #### Open
 
-- **Which spellings, exactly, and what happens to the seventh?** Declaring a
-  parameter named `argv` gets a plain list with no properties, silently. Under §9
-  that silence is wrong — the language should say so.
+- ~~**Which spellings, exactly, and what happens to the seventh?**~~ **ANSWERED
+  AT M7, 2026-08-31.** The six are the ones above and they come out of
+  `words.def`'s alias rows rather than a list in any source file. **The seventh
+  is refused rather than silently plain** — but only where somebody plainly
+  *meant* the object: the condition is that DESIGN §4.6's suggester, run over
+  `satellite.library.main`'s children and aliases, comes back with one of the
+  six. `argv` is one edit from `arg` and gets **S0531** telling it so;
+  `input_lines` is nowhere near any of them and is an ordinary list, which is
+  what this section already says the language does — *it does not introduce
+  `arguments`, it recognises the name the user chose.*
+
+  **A rule and not a seventh spelling.** Adding `argv` to `words.def` would make
+  it work and is an edit to the numbering, which WORD_NUMBERS.md is the authority
+  over and which is the author's to make rather than a milestone's to take in
+  passing.
+
+  **And the object is `satellite.main`'s parameter and no other capsule's.**
+  *(Decided at M7.)* A capsule of the user's own with a parameter called `args`
+  holds whatever its **caller** passed; giving it the machine's answers instead
+  would be §1.1's *behind their back* with the wrong value in the variable. The
+  M6 draft in `prototype/` recognises the six spellings everywhere, which is
+  where that was found.
 - **What is `arguments[0]`?** It is a list as well as an object, and nothing yet
   says whether index 0 is the program name, the current directory, or the first
   thing the user typed. (§13.)

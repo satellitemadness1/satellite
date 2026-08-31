@@ -29,27 +29,25 @@
 
 namespace satellite {
 
-int satc_command(const std::string &path)
+Reading read_program(const std::string &path, words::Words &words,
+                     cache::Save &writing)
 {
+    Reading out;
+
     // THE HEADER NEEDS THE FILE AND NOT ITS TEXT, which is why the source is
     // stat'd before anything is read. §2's third line asks "which file was it
     // and when", and stat is the only thing that knows. It is also half of what
     // a cache LOOKUP compares against, so it has to happen before the lookup
     // rather than beside the write.
-    cache::Source source_stamp;
-    if (!cache::stamp(path, source_stamp)) {
+    if (!cache::stamp(path, out.stamp)) {
         std::string unused;
         open_source(path, unused);
-        return EXIT_USAGE;
+        return out;
     }
 
-    // A RUN'S NAMES END WITH THE RUN, which is why this is a local and not a
-    // global: words_runtime.hpp makes the point that M22 runs many programs
-    // in one process and each needs its own numbering.
-    words::Words words;
-
     // §4 STEPS 1 AND 2.
-    const cache::Reading found = cache::read(path, source_stamp, words);
+    const cache::Reading found = cache::read(path, out.stamp, words);
+    out.cache_file = found.file;
 
     // §4's PLAIN-WORDS NOTE, AND IT IS Code::NONE ON EVERY ORDINARY MISS. A
     // first run has nothing to say and a stale file is the cache doing its job;
@@ -69,62 +67,79 @@ int satc_command(const std::string &path)
 
     if (found.hit()) {
         fprintf(stderr, "satl: read %s\n", found.file.c_str());
-
-        // PRINTED FROM THE TREE AND NOT COPIED FROM THE FILE, which makes this
-        // command a check rather than a `cat`. What comes back out is what the
-        // writer makes of the tree the READER built, so a reader that lost
-        // something prints a file that differs from the one on disk -- and two
-        // runs of --satc are then two different answers. Copying the bytes
-        // through would have shown nothing at all.
-        fputs(cache::satc_text(found.program.ast, words, source_stamp).c_str(),
-              stdout);
-        return EXIT_FINE;
+        out.parsed = found.program;
+        out.marks = found.marks;
+        out.text = found.text;
+        out.from_cache = true;
+        out.ok = true;
+        out.satc = cache::satc_text(out.parsed.ast, words, out.stamp);
+        return out;
     }
 
     // §4 STEP 3: walk the source as normal, and write a fresh `.satc`
     // afterwards.
     std::string source;
     if (!open_source(path, source))
-        return EXIT_USAGE;
+        return out;
 
-    const Parse parsed = parse(source, words);
-    report(path, source, parsed.errors);
-
-    const std::string text = cache::satc_text(parsed.ast, words, source_stamp);
+    out.parsed = parse(source, words);
+    out.text = source;
+    report(path, source, out.parsed.errors);
+    out.satc = cache::satc_text(out.parsed.ast, words, out.stamp);
+    out.ok = true;
 
     // §5: THE RUN DOES NOT WAIT FOR THE WRITE. The thread starts here and is
-    // joined when `writing` goes out of scope, which at M10 will be after the
-    // program has RUN rather than after one fputs -- so the write happens
-    // beside the work instead of in front of it, which is the whole of §5's
-    // "the first run of a program is never slower for having produced one".
-    // The thread is handed its own copy of the text rather than a reference to
-    // this one, because a writer that outlived its caller's locals would be a
-    // cache that corrupts a machine in a second way.
+    // joined when the caller's `writing` goes out of scope, which at M10 will
+    // be after the program has RUN rather than after one fputs -- so the write
+    // happens beside the work instead of in front of it, which is the whole of
+    // §5's "the first run of a program is never slower for having produced
+    // one". The thread is handed its own copy of the text rather than a
+    // reference to this one, because a writer that outlived its caller's
+    // locals would be a cache that corrupts a machine in a second way.
     //
     // A PROGRAM THAT DID NOT PARSE IS NOT CACHED. What the writer made of a
     // partial tree is worth printing -- what was understood is an answer, which
     // is the rule --unparse already keeps -- but a `.satc` is read back INSTEAD
     // of its source, so caching half a program would hide the errors above on
     // every later run.
-    const std::string file = cache::cache_path(path);
-    cache::Save writing;
-    if (parsed.ok()) {
-        writing.start(file, text);
+    out.cache_file = cache::cache_path(path);
+    if (out.parsed.ok()) {
+        writing.start(out.cache_file, out.satc);
         // "writing" AND NOT "wrote", because it has not happened yet and may
         // not: §5 says a failed write is silent, so the only honest thing to
         // report here is that one was started. The proof that it finished is
         // the NEXT run saying "read".
         fprintf(stderr, "satl: writing %s\n",
-                file.empty() ? "nothing -- this process has no HOME"
-                             : file.c_str());
+                out.cache_file.empty() ? "nothing -- this process has no HOME"
+                                       : out.cache_file.c_str());
     }
+    return out;
+}
 
-    fputs(text.c_str(), stdout);
+int satc_command(const std::string &path)
+{
+    // A RUN'S NAMES END WITH THE RUN, which is why this is a local and not a
+    // global: words_runtime.hpp makes the point that M22 runs many programs
+    // in one process and each needs its own numbering.
+    words::Words words;
+    cache::Save writing;
+
+    const Reading read = read_program(path, words, writing);
+    if (!read.ok)
+        return EXIT_USAGE;
+
+    // PRINTED FROM THE TREE AND NOT COPIED FROM THE FILE, which makes this
+    // command a check rather than a `cat`. What comes back out is what the
+    // writer makes of the tree the READER built, so a reader that lost
+    // something prints a file that differs from the one on disk -- and two
+    // runs of --satc are then two different answers. Copying the bytes
+    // through would have shown nothing at all.
+    fputs(read.satc.c_str(), stdout);
 
     // THE EXIT STATUS M3 LEFT OPEN AND THIS WAS THE THIRD ARM TO WANT. It is
     // EXIT_MALFORMED now; programs/opening.hpp carries why it is 1 and why no
     // arm was allowed to invent it.
-    return parsed.ok() ? EXIT_FINE : EXIT_MALFORMED;
+    return read.parsed.ok() ? EXIT_FINE : EXIT_MALFORMED;
 }
 
 } // namespace satellite

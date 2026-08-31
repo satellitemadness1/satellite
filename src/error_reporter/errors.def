@@ -65,7 +65,7 @@
 //     S02xx   the parser                    DESIGN §6      M4
 //     S03xx   the `.satc` cache             SATC.md        M4.5
 //     S04xx   the file satl was given                      M5
-//     S05xx   resolve -- names and slots    DESIGN §7      M7       reserved
+//     S05xx   resolve -- names and slots    DESIGN §7      M7
 //     S06xx   numbers                       DESIGN §8.1    M8       reserved
 //     S07xx   the evaluator                                M9/M10   reserved
 //     S08xx   the machine limits            PLAN §4.5      M6
@@ -88,7 +88,10 @@
 //
 // IT IS OUT OF ORDER WITH THE RESERVATIONS ABOVE, DELIBERATELY. S05, S06 and S07
 // are M7's, M8's and M9's, and M6 lands before all three -- so the block numbers
-// no longer run in the order the milestones do. That is what a reserved block IS
+// no longer run in the order the milestones do. **S05xx was taken on 2026-08-31
+// and nothing moved to make room for it**, which is the whole of what a
+// reservation buys and is the first time this file has been able to say it
+// happened rather than that it would. That is what a reserved block IS
 // for: this file's whole argument is that a block is taken and written down so
 // that "two milestones reaching for the same number on the same day" cannot
 // happen, and honouring three reservations by taking the fourth number is that
@@ -290,6 +293,106 @@ SAT_CODE(390, NOTE_SATC_IGNORED, SAT_NOTE,
 SAT_CODE(401, FILE_UNREADABLE, SAT_ERROR,
          "this file could not be read -- check the path, and that this user is "
          "allowed to open it")
+
+// --- S05xx -- resolve: names and slots ---------------------------------------
+//
+// DESIGN §7 is the specification and PLAN M7 is the milestone. RESERVED SINCE
+// M5 AND POPULATED HERE, which is the reservation mechanism working end to end:
+// M6 landed in between and took S08xx rather than the next free number, so
+// nothing had to move for this block to be taken.
+//
+// 500-509 the pass itself, 510-519 names, 520-529 paths and types, 530-539
+// DESIGN §7.7's arguments object. The gaps are on purpose; see the block note
+// at the top of this file.
+//
+// EVERY ONE OF THESE CARRIES A REAL SPAN, like S02xx and unlike S03xx. Resolve
+// runs over the tree the user's own file produced, so every complaint has a
+// token behind it and the caret lands under the word that is wrong.
+//
+// WHAT IS NOT HERE IS A TYPE ERROR, and the absence is a decision. This pass
+// asks whether a name has somewhere to live and whether a path is a path; what
+// a value IS -- DESIGN §8's model -- arrives at M9, and a milestone that
+// checked `satellite.variable.number x = "a string"` here would be answering a
+// question with a value model it does not have.
+
+SAT_CODE(501, RESOLVE_TOO_DEEP, SAT_ERROR,
+         "this is written more than {1} levels deep and resolve reads no "
+         "further -- the limit is on how deeply a program may be WRITTEN, and "
+         "is not DESIGN §7.5's bound on how deeply one may RECURSE")
+
+SAT_CODE(511, RESOLVE_NO_SUCH_NAME, SAT_ERROR,
+         "nothing called `{1}` is in scope here -- it is not a parameter, not "
+         "a local declared above this line, and not a capsule this file "
+         "declares")
+
+SAT_CODE(512, RESOLVE_PARAMETER_TWICE, SAT_ERROR,
+         "`{1}` names two parameters of this capsule, and a call gives one "
+         "value to each")
+
+// A NAME AND NOT A PATH, which is what makes this the resolver's rather than
+// the parser's. `satellite` alone is a legal expression -- DESIGN §6's
+// `primary` has it, and `satellite.return(satellite)` is the whole reason --
+// so the parser accepts the word in every position a name may take and this is
+// where declaring one is refused.
+SAT_CODE(513, RESOLVE_NAME_IS_RESERVED, SAT_ERROR,
+         "`satellite` is the language's own name and every word in it hangs "
+         "under that one -- so it cannot also be the name of a {1}")
+
+// THE ONE DUPLICATE THE PARSER CANNOT SEE, and it is worth a row of its own for
+// that reason. `define_name()` reports S0242 for a second capsule of the user's
+// own, because the numbering refuses to allocate the name twice -- but
+// `satellite.main` is LOOKED UP rather than defined, so a file with two of them
+// parses clean and has two entry points. Resolve's first pass is the only place
+// that can notice.
+SAT_CODE(514, RESOLVE_CAPSULE_TWICE, SAT_ERROR,
+         "this file declares {1} twice, and a call has to name one of them")
+
+// THE ERROR satellite_cache/paths.cpp NAMES AND DECLINES TO RAISE. Its own
+// comment says a path the numbering cannot account for is "M7's to refuse with
+// M5's did-you-mean over the node the segment failed under", and the cache's
+// job in the meantime is to hand the tree over unchanged. This is that refusal.
+SAT_CODE(521, RESOLVE_NO_SUCH_WORD, SAT_ERROR,
+         "`{1}` is not a word the language has under {2}")
+
+SAT_CODE(522, RESOLVE_NO_SUCH_TYPE, SAT_ERROR,
+         "`{1}` is not a type the language has under {2}")
+
+// SEPARATE FROM S0521 BECAUSE THE FIX IS DIFFERENT, which is the argument
+// S0809 already makes one block down. A misspelled segment is answered by
+// spelling it right; a shape mismatch is answered by counting the arguments,
+// and the sentence has to say which of the two happened or the reader checks
+// the wrong thing first.
+SAT_CODE(523, RESOLVE_NO_SUCH_SHAPE, SAT_ERROR,
+         "{1} is not written with {2} -- the language has it in {3}")
+
+// WORD_NUMBERS §1.5's FOLD, REFUSED RATHER THAN LEFT TO THE RUNTIME. The legal
+// options are not a table in this file: they are the sibling rows spelled
+// `<word>_<option>`, so this sentence is filled from the numbering and a new
+// option added to words.def is offered here with no edit at all.
+SAT_CODE(524, RESOLVE_NO_SUCH_OPTION, SAT_ERROR,
+         "`{1}` is not an option {2} has -- it has {3}")
+
+// DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named `argv`
+// gets a plain list with no properties, silently. Under §9 that silence is
+// wrong -- the language should say so." It is said here, and only where
+// somebody has plainly meant the object: the suggester has to answer with one
+// of the six before this is raised, so a parameter that was never trying to be
+// `arguments` is left alone and is an ordinary list.
+SAT_CODE(531, RESOLVE_ALMOST_ARGUMENTS, SAT_ERROR,
+         "satellite.main's parameter is the arguments object when it is named "
+         "{1}, and `{2}` is none of them -- it would be an ordinary list with "
+         "none of the machine's answers on it")
+
+SAT_CODE(532, RESOLVE_NO_SUCH_ARGUMENT_FIELD, SAT_ERROR,
+         "the arguments object has no `{1}` on it -- DESIGN §7.7 lists what it "
+         "holds, and {2} is what this build has")
+
+// Resolve's notes. 590-599, at the end of the block rather than beside the
+// errors that raise them -- the arrangement S02xx and S08xx already have, and
+// for the reason errors.def's header gives: a note is reused and belongs to
+// none of the sites that attach it.
+SAT_CODE(590, NOTE_DECLARED_FIRST_HERE, SAT_NOTE,
+         "`{1}` is the one that came first")
 
 // --- S08xx -- the machine limits --------------------------------------------
 //

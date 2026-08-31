@@ -65,6 +65,22 @@ struct PathMatch {
     // is printed exactly as written, empty parentheses included.
     int shape_arity = -1;
 
+    // WHERE THE WALK STOPPED, WHICH IS THE HALF THIS FILE USED TO THROW AWAY.
+    // The comment below in language_path() has said since M4.5 that a path the
+    // numbering cannot account for is "M7's to refuse with M5's did-you-mean
+    // over the node the segment failed under" -- and it could not say which
+    // node that was, so M7 would have had to walk the chain a second time to
+    // find out. `under` is the trie node the failing segment was looked for
+    // under and `at` is the Member node that named it; both stay empty when the
+    // chain was never a language path at all, which is every selector and every
+    // user name and is the majority answer.
+    //
+    // THE CACHE IGNORES BOTH, and that is the point of adding them here rather
+    // than writing a second walk next door. One function decides what a path
+    // is; two would disagree the day a row grows an argument list.
+    words::PathId under = words::kNoPath;
+    NodeIndex at = kNoNode;
+
     bool found() const { return id != words::kNoPath; }
 };
 

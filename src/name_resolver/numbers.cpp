@@ -1,0 +1,295 @@
+// What a number is -- a path taken from the trie or from the `.satc`, a type
+// checked against the numbering, and WORD_NUMBERS §1.5's literal option fold.
+//
+// THE WALK IS NOT WRITTEN TWICE, WHICH IS THE FINDING THIS FILE IS SHORT FOR.
+// DESIGN §6.3 says "the trie walk that turns a path into a PathId happens once,
+// after parsing, in M7's resolve pass", and this milestone set out to write it
+// -- and it already existed. `satellite_cache/paths.cpp` walks a chain against
+// the numbering, flattens Member and Call into one list because §6.2 makes them
+// peers, collapses aliases first, and slots a call by ARITY rather than by the
+// spelling of its argument list. M4.5 wrote it to decide what a `.satc` may
+// substitute; that header opens "THIS IS NOT RESOLVE AND MUST NOT BECOME IT",
+// and it is right about what it warns against -- a version taking a receiver
+// argument would be resolve, and the `.satc` it wrote would name a handler,
+// which SATC §7 forbids. Reading it is not that. A second copy would be a
+// second place a path's identity is decided, and the two would disagree the day
+// a row grew an argument list.
+//
+// WHAT THIS MILESTONE ADDED TO IT IS ONE THING: where the walk STOPPED. That
+// function's own comment says a path the numbering cannot account for is "M7's
+// to refuse with M5's did-you-mean over the node the segment failed under", and
+// it could not say which node that was. It can now, and the cache ignores the
+// two new fields.
+
+#include "name_resolver/resolve_internal.hpp"
+
+#include "abstract_syntax_tree/ast.hpp"
+#include "satellite_cache/paths.hpp"
+#include "satellite_words/words.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <string_view>
+
+namespace satellite::resolve {
+
+namespace {
+
+// Whether the row at `id` names a CALL SHAPE rather than a bare word, which is
+// what decides whether the node holding it is a Call or a Member.
+//
+// arity_of("") IS -1 AND THAT IS THE WHOLE OF THE TEST. satellite_cache/
+// paths.hpp spends a paragraph on why "()" and "" are different answers, and
+// this is the one place resolve needs the difference: `display` is a word and
+// the call after it is the program's, while `input(prompt, target)` IS the
+// call and the number covers it.
+bool names_a_call(words::PathId id)
+{
+    return cache::arity_of(words::arguments_of(static_cast<words::NodeId>(id))) >= 0;
+}
+
+// The mark whose word ends exactly here, or null. The marks come out of
+// unnumber() in the order it wrote them, so they ascend and this is a binary
+// search over a vector that is empty for every program read from source.
+const cache::Mark *mark_ending_at(const cache::Marks &marks, uint32_t ends)
+{
+    size_t low = 0;
+    size_t high = marks.size();
+    while (low < high) {
+        const size_t middle = low + (high - low) / 2;
+        if (marks[middle].ends < ends)
+            low = middle + 1;
+        else
+            high = middle;
+    }
+    return low < marks.size() && marks[low].ends == ends ? &marks[low] : nullptr;
+}
+
+} // namespace
+
+words::PathId child_named(words::NodeId parent, std::string_view word)
+{
+    if (word.empty())
+        return words::kNoPath;
+
+    // A ROW WITH AN ARGUMENT LIST IS A SHAPE AND NOT A WORD, which is the rule
+    // paths.cpp's `word_node` keeps and the defect it records is what happens
+    // without it: `satellite.console` with no call matched the first child
+    // whose argument list was empty, that was `display`, and the whole of
+    // `input(">>>", target)` was written as `1.5.1` -- a different program that
+    // still parses. Shapes are found by arity, through cache::shape_path().
+    for (words::PathId c = words::first_child(parent); c != words::kNoPath;
+         c = words::next_sibling(c)) {
+        const words::NodeId child = static_cast<words::NodeId>(c);
+        if (words::arguments_of(child).empty() &&
+            words::spelling_of(child) == word)
+            return c;
+    }
+
+    // THE ALIASES, FOR THE REASON words_runtime.hpp's find() GIVES. Leaving
+    // them out there let `args` take a USER number while walk() answered the
+    // language's for the same spelling under the same parent -- two numbers for
+    // one word, and the half that was wrong was the half a parser called. The
+    // dotted ones cannot be one segment and are skipped, which is the same
+    // filter the suggester and the lexer's spelling table both apply.
+    for (size_t i = 0; i < words::kAliasCount; i++) {
+        const std::string_view text = words::kAliases[i].text;
+        if (words::parent_of(words::kAliases[i].of) == parent &&
+            words::arguments_of(text).empty() &&
+            words::spelling_of(text) == word)
+            return static_cast<words::PathId>(words::kAliases[i].of);
+    }
+    return words::kNoPath;
+}
+
+cache::PathMatch Resolver::path_of(NodeIndex node, bool wants_call)
+{
+    took_ = false;
+
+    // WHERE THE WORD ENDS, AND NOT WHERE THE CHAIN BEGINS. Both would identify
+    // the substitution; only one lines up with a node. A chain's ROOT is the
+    // same token for `satellite.time.now()` and for the `.some_function()`
+    // around it, so keying on it would hand the outer node the inner one's
+    // number. The last segment is where the anchor token is -- ast.hpp's
+    // "the token that NAMES the node" -- so the end of the substituted words is
+    // the end of exactly one node's anchor, whichever node that turns out to be.
+    const NodeIndex anchored = wants_call ? ast_[node].a : node;
+    if (anchored != kNoNode && !marks_.empty()) {
+        const uint32_t ends = ast_.token_of(anchored).end;
+        if (const cache::Mark *mark = mark_ending_at(marks_, ends);
+            mark != nullptr && names_a_call(mark->id) == wants_call) {
+            const std::string_view args =
+                words::arguments_of(static_cast<words::NodeId>(mark->id));
+            const bool absorbs =
+                cache::is_absorber(args) && wants_call &&
+                ast_.list_size(ast_[node].b) == 1 &&
+                ast_[ast_.list_at(ast_[node].b, 0)].kind == NodeKind::Satellite;
+            out_.from_cache++;
+            took_ = true;
+            return cache::PathMatch{mark->id, wants_call, absorbs,
+                                    cache::arity_of(args)};
+        }
+    }
+
+    cache::PathMatch found = cache::language_path(ast_, node);
+    // COUNTED ONLY WHEN THERE WAS A PATH TO WALK. Every selector call in a
+    // program reaches this function and comes back with nothing -- the chain is
+    // not rooted at the reserved word, which paths.cpp refuses in one line --
+    // and counting those would make the number a count of expressions rather
+    // than of walks the `.satc` could have saved.
+    if (found.found() || found.under != words::kNoPath)
+        out_.walked++;
+    return found;
+}
+
+words::PathId Resolver::type_of(NodeIndex node)
+{
+    if (node == kNoNode || ast_[node].kind != NodeKind::Type)
+        return words::kNoPath;
+
+    const Node &n = ast_[node];
+
+    // NO TYPE SPACE MEANS ONE OF TWO FORMS AND NEITHER IS THIS MILESTONE'S.
+    // parser_types.cpp: `satellite` alone is the singleton runtime type, and a
+    // bare IDENT is a spacesuit named by hand -- "is_reserved_word on the node's
+    // own token tells them apart in one integer compare". A spacesuit's
+    // contents are M26's, so there is nothing here to check the name against
+    // that would not be M26 deciding what a spacesuit is.
+    if (n.a == words::kNoSpelling)
+        return words::kNoPath;
+
+    const words::NodeId space =
+        n.a == words::spelling_id(words::NodeId::CONTAINER) ? words::NodeId::CONTAINER
+                                                            : words::NodeId::VARIABLE;
+    const std::string_view word = ast_.text_of(node);
+
+    words::PathId id = words::kNoPath;
+    if (const cache::Mark *mark =
+            marks_.empty() ? nullptr
+                           : mark_ending_at(marks_, ast_.token_of(node).end);
+        mark != nullptr && !names_a_call(mark->id)) {
+        id = mark->id;
+        info(node).origin = Origin::Cached;
+        out_.from_cache++;
+    } else {
+        id = child_named(space, word);
+        info(node).origin = Origin::Walked;
+        out_.walked++;
+    }
+
+    if (id == words::kNoPath) {
+        problem<errors::Code::RESOLVE_NO_SUCH_TYPE>(node, word,
+                                                    words::path_text(space));
+        if (const std::string_view near =
+                errors::suggest(static_cast<words::PathId>(space), word);
+            !near.empty())
+            suggest(near);
+        return words::kNoPath;
+    }
+
+    info(node).path = id;
+    info(node).type = id;
+
+    // THE GENERIC ARGUMENTS ARE TYPES AND ARE CHECKED, AND THEIR COUNT IS NOT.
+    // `satellite.container.map<x>` with one argument where two are meant is a
+    // TYPE rule, and DESIGN §8 is the value model -- M9's. The M6 draft checks
+    // the counts here and had to invent the rules to do it, including which
+    // types may be a map's key; this milestone asks only whether every name is
+    // a name the language has, which is what a resolve is for.
+    for (uint32_t i = 0; i < ast_.list_size(n.b); i++)
+        type_of(ast_.list_at(n.b, i));
+    return id;
+}
+
+bool Resolver::fold_option(NodeIndex call_node, NodeIndex target,
+                           words::PathId under)
+{
+    const Node &n = ast_[call_node];
+    if (ast_.list_size(n.b) == 0)
+        return false;
+    const NodeIndex first = ast_.list_at(n.b, 0);
+    if (ast_[first].kind != NodeKind::String)
+        return false;
+
+    const std::string_view word = ast_.text_of(target);
+    const std::string_view option = ast_.text_of(first);
+    const words::NodeId parent = static_cast<words::NodeId>(under);
+
+    // IS THIS A WORD THAT TAKES AN OPTION AT ALL? Asked of the numbering and
+    // not of a table: a word takes options when the rows beside it are spelled
+    // `<word>_<something>`. `sort` has `sort_down` and `sort_up`, so a literal
+    // first argument to it names one of them; `contains` has no such sibling,
+    // so `contains("x")` is an ordinary call with a string in it and nothing
+    // here happens. That rule is what makes this general -- PLAN's M7 bullet
+    // says M19 is waiting on this fold to decide whether
+    // `satellite.file.open`'s four mode words are M5's suggester or a runtime
+    // check, and the answer is that they fold with no edit to this file, on the
+    // day words.def gains `open_read_append`.
+    const std::string prefix = std::string(word) + "_";
+    bool takes_options = false;
+    std::string options;
+    for (words::PathId c = words::first_child(parent); c != words::kNoPath;
+         c = words::next_sibling(c)) {
+        const std::string_view spelling =
+            words::spelling_of(static_cast<words::NodeId>(c));
+        if (spelling.size() <= prefix.size() ||
+            spelling.compare(0, prefix.size(), prefix) != 0)
+            continue;
+        takes_options = true;
+        const std::string_view named = spelling.substr(prefix.size());
+        if (options.find(std::string(named)) == std::string::npos) {
+            if (!options.empty())
+                options += ", ";
+            options += named;
+        }
+    }
+    if (!takes_options)
+        return false;
+
+    const std::string folded = prefix + std::string(option);
+    const int argc = static_cast<int>(ast_.list_size(n.b)) - 1;
+
+    out_.walked++;
+    const cache::PathMatch shape = cache::shape_path(parent, folded, argc, false);
+    if (shape.found()) {
+        info(target).path = shape.id;
+        info(target).origin = Origin::Walked;
+        return true;
+    }
+
+    // THE OPTION EXISTS AND THE SHAPE DOES NOT, WHICH IS A DIFFERENT SENTENCE
+    // AND A DIFFERENT FIX -- the argument S0809 makes one block down in
+    // errors.def. `my_list.sort("up")` lands here: `sort_up(key)` is `1 4 2 7`
+    // and there is no `sort_up()`, because WORD_NUMBERS §2.2 assigns
+    // `sort()` `1 4 2 3` as "ascending, no key" and that IS sorting up. Naming
+    // the row that exists is the honest answer; folding to `sort()` would be
+    // this milestone deciding that a fold may land on a word other than the one
+    // it was spelled from, which is a numbering decision and the author's.
+    bool named_at_all = false;
+    std::string shapes;
+    for (words::PathId c = words::first_child(parent); c != words::kNoPath;
+         c = words::next_sibling(c)) {
+        const words::NodeId child = static_cast<words::NodeId>(c);
+        if (words::spelling_of(child) != folded)
+            continue;
+        named_at_all = true;
+        if (!shapes.empty())
+            shapes += " and ";
+        shapes += words::text_of(child);
+    }
+
+    if (named_at_all) {
+        const std::string written =
+            argc == 0 ? std::string("nothing after it")
+                      : (argc == 1 ? std::string("1 argument after it")
+                                   : std::to_string(argc) + " arguments after it");
+        problem<errors::Code::RESOLVE_NO_SUCH_SHAPE>(first, folded, written,
+                                                     shapes);
+    }
+    else
+        problem<errors::Code::RESOLVE_NO_SUCH_OPTION>(first, option, word, options);
+    return true;
+}
+
+} // namespace satellite::resolve

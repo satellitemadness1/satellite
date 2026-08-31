@@ -155,7 +155,7 @@ Reading read_text(const std::string &text, const Source &source,
     }
 
     std::string program;
-    if (!unnumber(text.substr(at), program, out.note)) {
+    if (!unnumber(text.substr(at), program, out.note, &out.marks)) {
         // THE CODE COMES FROM unnumber() AND THE NOTE COMES FROM HERE, which is
         // the split that keeps a text pass out of the business of talking to a
         // person: it knows that `#1.99.1` names nothing, and this file knows
@@ -192,6 +192,7 @@ Reading read_text(const std::string &text, const Source &source,
     }
 
     words = std::move(fresh);
+    out.text = std::move(program);
     out.why = Miss::NONE;
     return out;
 }

@@ -24,12 +24,24 @@ true. A measured startup floor does not.
 | --- | --- | --- |
 | [SESSION.md](SESSION.md) | where the work stands, what is decided, what is in flight, and what only the user can answer | its "not yet in a permanent document" and "questions" lists are both empty |
 | [MILESTONE.md](MILESTONE.md) | every piece of specified work that belongs to **no milestone** in PLAN §8 — **121 of the 222** numbered paths among them *(the "50 of the 215" this row used to say was two audits and one renumbering out of date)* | every row has a milestone in PLAN §8, moved there rather than copied |
-| [WORD_SURFACE.md](WORD_SURFACE.md) | every `satellite.*` path that exists in the first satellite or is promised by this one, and which of five sources each was found in | **CONDITION MET 2026-08-28 — deletable now.** `words.def` is written and was checked against it by walking all 95 paths; 85 resolve and the other ten are each correctly absent, which the file's own header lists one by one |
 | [PORTING.md](PORTING.md) | what `satellite_number` and `satellite_string` actually are in the first satellite, and what has to be decided before copying them | the port lands and PLAN §6 records what changed |
-| [M6_STATE.md](M6_STATE.md) | where M6 got to when the session that built it was stopped: what is done and green, the three things that are not, and every file it added or changed | **CONDITION MET 2026-08-31 — deletable now.** All three are done and each is recorded where it belongs: the hash is in MILESTONES/M6.md's first line, the startup table is in `make_support/040-sources.mk`, and the installed binary has answered `--limits` and been killed by its own watchdog. What doing them found is M6.md §9, and what the startup measurement found was then fixed — §9.4 |
-| [M7_START.md](M7_START.md) | what reading in for **M7** found before any of it was built: that M7 has no done-when and seven other milestones do not either, that the draft is `prototype/M6/` and over-reaches into M26's spacesuits, what the parser already owns and what is stale beside it, and the two different recursion bounds DESIGN §7.5 reads as one | M7 lands and `MILESTONES/M7.md` carries whatever of it turned out to be true |
 | [FIRST_NOTE.md](FIRST_NOTE.md) | the ledger for converting `plans/madness/first_note.txt` into the permanent documents, with the original preserved verbatim | done — kept only until someone has read it once |
 | [WORD_NUMBERS_ORIGINAL.md](WORD_NUMBERS_ORIGINAL.md) | **the account of the numbering** — the author's 36 hand-written lines preserved verbatim, what each became, the two `?`s resolved, and where the numbering stands in code. Handed over 2026-08-28; §1 is theirs and uneditable, the rest is mine | the history in it stops being useful — **not** when the rewrite is accepted, which already happened |
+
+**Three rows were deleted on 2026-08-31 and the files with them**, which is the
+only thing this folder can do that proves it is working. `WORD_SURFACE.md` and
+`M6_STATE.md` had both said **CONDITION MET — deletable now** in this table since
+the day their conditions were met, and `M7_START.md`'s condition was *"M7 lands
+and `MILESTONES/M7.md` carries whatever of it turned out to be true"* — which it
+does: the draft done-when it offered is in PLAN §8 with two of its clauses
+corrected, the reading of `prototype/M6/` is M7.md §3.6 and §4.3, the stale
+comment it found in `words_runtime.hpp` is fixed, and the two recursion bounds it
+separated are separated in DESIGN §7.5 itself.
+
+**A row that says "deletable now" and stays is this folder failing at its one
+job.** The condition is the whole mechanism; leaving the file behind after it is
+met turns a temporary record into a permanent one that nothing maintains, which
+is what §"Why this folder exists" says the cost of is a decision made twice.
 
 ## Why this folder exists
 

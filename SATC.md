@@ -242,6 +242,31 @@ cache does not pay for itself until M7's resolve learns to skip a path the file
 has already numbered. **That is M7's sentence to add, and it is written here so
 that it is inherited rather than rediscovered.**
 
+**M7 ADDED IT ON 2026-08-31, AND THE SOMEWHERE IS NOT THE TREE.** `ast.hpp` still
+forbids a mutable field on a node and PLAN §2.2 still says why, so what
+`unnumber()` records is a list of `cache::Mark` — **where each substitution's
+words END in the text the parser is about to read**, and the `PathId` they stood
+for. It is a fact about that text and it dies with it, which is the only place
+this could go without the tree carrying it.
+
+**`ends` AND NOT `starts`, AND THAT IS THE WHOLE OF WHY IT WORKS.** A chain's
+root is the same token for `satellite.time.now()` and for the `.some_function()`
+wrapped around it, so keying on where a substitution BEGAN would hand the outer
+node the inner one's number. Every node that names a path is anchored at the
+path's **last segment** — `ast.hpp`'s *"the token that NAMES the node"* — so the
+end of the substituted words belongs to exactly one node, whichever node that
+turns out to be. The argument list is never counted in it: a row may keep its
+parentheses when the words are written back (`input()` is `1 5 2` and the number
+says its own brackets) and those characters belong to no node's anchor.
+
+**AND WHAT IT SAVES IS COUNTED RATHER THAN TIMED.** §4.1's table above is what
+says why: on a 273-byte program the walk is far under what a shell loop can see.
+`satl --resolve` prints the two counts and they are exact — **28 walked cold
+against 14 walked and 14 taken warm** on `example/frames.satl`. MILESTONES/M7.md
+§5, and §7 records that a count is also the only thing that could catch the skip
+being deleted, because every number stays right without it: the walk is the
+fallback and the fallback works.
+
 ---
 
 ## 5. Writing happens on its own thread

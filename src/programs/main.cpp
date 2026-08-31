@@ -15,20 +15,16 @@
 // binary that says what it is, says how to run a file, and refuses to pretend
 // about the parts that have not been built. See PLAN_ONE.md, M1.
 
-#include "abstract_syntax_tree/unparse.hpp"
-#include "error_reporter/dump.hpp"
-#include "lexical_analyzer/dump.hpp"
-#include "lexical_analyzer/lexer.hpp"
 #include "machine_limits/dump.hpp"
 #include "machine_limits/watchdog.hpp"
-#include "parser/parser.hpp"
 #include "programs/cache_command.hpp"
 #include "programs/check_command.hpp"
+#include "programs/dump_commands.hpp"
+#include "programs/file_commands.hpp"
 #include "programs/limits_command.hpp"
 #include "programs/opening.hpp"
+#include "programs/resolve_command.hpp"
 #include "programs/window_handover.hpp"
-#include "satellite_words/dump.hpp"
-#include "satellite_words/words.hpp"
 #include "system_facts/version.hpp"
 
 #include <cstddef>
@@ -121,7 +117,7 @@ bool only_prints_and_exits(const char *arg)
            flag == "--help" || flag == "-h" || flag == "--words" ||
            flag == "--tokens" || flag == "--unparse" || flag == "--satc" ||
            flag == "--check" || flag == "--errors" || flag == "--limits" ||
-           flag == "--watchdog";
+           flag == "--resolve" || flag == "--watchdog";
 }
 
 // A usage failure: the command line did not name something satl can do.
@@ -212,181 +208,55 @@ int main(int argc, char **argv)
         return satellite::EXIT_FINE;
     }
 
-    // THE REGISTRY'S CONSUMER, AND THE REASON M2 HAS ONE. PLAN M2 asks for
-    // this by name because the first satellite shipped three commits where its
-    // word registry had no reader at all, and four defects accumulated behind a
-    // guarantee nothing was checking.
+    // THE ARMS ARE IN TWO FILES AND THIS IS THE SWITCH, which is the seam
+    // MILESTONES/M6.md §6.1 named and declined and M7 had to take: "the arms
+    // that DUMP a registry and the arms that read a FILE are two subjects", and
+    // this file was 427 lines with a fourteenth arm about to be added to it.
+    // programs/dump_commands.hpp says what the two subjects actually are.
     //
-    // NOT AN ARM THAT SAYS "not built yet", which every other unfinished thing
-    // here does. The numbering IS built, so this answers -- and what it prints
-    // ends by saying that almost nothing it lists runs yet, because a dump of
-    // 254 paths with no such line would read as a feature list.
-    if (first == "--words") {
-        if (args.size() < 3) {
-            fputs(satellite::words::dump_text().c_str(), stdout);
-            // M6's DONE-WHEN, PRINTED HERE RATHER THAN IN
-            // satellite_words/dump.cpp. 040-sources.mk keeps that module cheap
-            // to link -- "a future .satc reader or disassembler can read the
-            // numbering without linking anything" -- and making the registry's
-            // printer depend on a thread pool would spend that property on a
-            // sentence.
-            fputs(satellite::limits::walk_note_text(satellite::words::kNodeCount)
-                      .c_str(),
-                  stdout);
-            return satellite::EXIT_FINE;
-        }
-        // A path that resolves is an answer and goes to stdout; a path the
-        // language does not have is a command line that named something satl
-        // cannot do, so it goes to stderr with the same status a bad option
-        // gets. That is the split the --help arm already makes, applied to an
-        // operand instead of to a flag.
-        bool resolved = false;
-        const std::string report = satellite::words::walk_text(args[2], resolved);
-        fputs(report.c_str(), resolved ? stdout : stderr);
-        return resolved ? satellite::EXIT_FINE : satellite::EXIT_USAGE;
-    }
+    // EVERY ONE OF THEM IS A CONSUMER OF THE MILESTONE THAT BUILT IT, which is
+    // PLAN M2's rule and the reason this switch keeps growing: --words is M2's,
+    // --tokens M3's, --unparse M4's, --satc M4.5's, --check M5's, --limits and
+    // --watchdog M6's, and --resolve is M7's. The first satellite shipped three
+    // commits where its registry had no reader at all and four defects
+    // accumulated in that window.
+    if (first == "--words")
+        return satellite::words_command(args.size() < 3 ? satellite::kNoKey : args[2]);
 
-    // THE LEXER'S CONSUMER, AND THE REASON M3 HAS ONE -- the same rule the
-    // --words arm above records, applied one milestone on. M3 produces a token
-    // stream that no parser reads until M4, so this is the only way to see what
-    // it decided.
-    //
-    // NOT AN ARM THAT SAYS "not built yet". The lexer IS built, so it answers.
+    if (first == "--errors")
+        return satellite::errors_command(args.size() < 3 ? satellite::kNoKey : args[2]);
+
+    // AND EVERY FILE ARM NEEDS AN OPERAND, so a missing one is a real usage
+    // error rather than a milestone that has not landed. `satl --unparse` with
+    // nothing after it is wrong at M10 too.
     if (first == "--tokens") {
         if (args.size() < 3)
             return usage_error("--tokens needs a file after it");
-
-        // A file that cannot be READ is a different failure from a file that
-        // cannot be LEXED, and they get different words, different codes and
-        // different streams. The first is the user's command line; the second
-        // is their program.
-        std::string source;
-        if (!satellite::open_source(args[2], source))
-            return satellite::EXIT_USAGE;
-
-        // THE DUMP GOES TO STDOUT EVEN WHEN THE PROGRAM IS MALFORMED, and the
-        // --words arm above is why that has to be said. There the operand IS
-        // the command line, so a path the language does not have is a usage
-        // failure and belongs on stderr. Here the operand is a FILE, and a
-        // program with a bad token in it is not a bad command line -- the
-        // question asked was "what does the lexer make of this", the answer is
-        // the stream including its Error token, and that answer is what the
-        // person asked for.
-        //
-        // Copying the split from --words was the first version of this arm and
-        // it was wrong in a way a person would not notice and a script would:
-        // `satl --tokens bad.satl > tokens.txt` produced an EMPTY tokens.txt
-        // with the whole dump on stderr. Fixed 2026-08-30.
-        //
-        // THE EXIT STATUS WAS WRONG UNTIL M5 AND IS THE ORIGINAL OF THE THREE.
-        // MILESTONES/M3.md §6 item 2 opened it: non-zero was right, and
-        // EXIT_USAGE was the only non-zero code there was, and its own
-        // definition is "the command line did not name something satl can do",
-        // which a bad program is not. EXIT_MALFORMED is the code, and
-        // programs/opening.hpp carries why it is 1.
-        //
-        // AND THE STREAM STILL GOES TO STDOUT, error token and all, which is
-        // the other half of that item. The question asked was what the lexer
-        // makes of this file; the answer includes the Error token, and a person
-        // who redirected the dump wants it in the file.
-        bool clean = false;
-        const std::string dump = satellite::tokens_text(source, clean);
-        fputs(dump.c_str(), stdout);
-        satellite::report(args[2], source,
-                          satellite::diagnostics_of(satellite::lex(source)));
-        return clean ? satellite::EXIT_FINE : satellite::EXIT_MALFORMED;
+        return satellite::tokens_command(args[2]);
     }
 
-    // THE PARSER'S CONSUMER, AND THE REASON M4 HAS ONE -- the same rule the two
-    // arms above record, one milestone on. And it is the strongest of the
-    // three: --words prints a table and --tokens prints a list, while this
-    // prints a SATELLITE PROGRAM, which satl can read back. PLAN M4 states the
-    // milestone in this command -- "satl --unparse file.satl round-trips, which
-    // is how we know the parser is right before anything can run" -- because
-    // nothing runs until M10 and a tree is otherwise only visible to whoever
-    // wrote the code that built it.
-    //
-    // WHAT COMES BACK IS NOT THE FILE. Comments are gone (DESIGN §5.6 discards
-    // them), blank lines were never tokens, and brackets a program wrote around
-    // a single value are gone too. What is guaranteed is that printing this
-    // output and parsing it again gives the same text -- a fixpoint, which
-    // abstract_syntax_tree/unparse.hpp argues is the strongest statement
-    // available and a real one.
     if (first == "--unparse") {
         if (args.size() < 3)
             return usage_error("--unparse needs a file after it");
-
-        std::string source;
-        if (!satellite::open_source(args[2], source))
-            return satellite::EXIT_USAGE;
-
-        // A RUN'S NAMES END WITH THE RUN, which is why this is a local and not
-        // a global: words_runtime.hpp makes the point that M22 runs many
-        // programs in one process and each needs its own numbering.
-        satellite::words::Words words;
-        const satellite::Parse parsed = satellite::parse(source, words);
-
-        // THE ANSWER GOES TO STDOUT AND THE COMPLAINTS TO STDERR, which is the
-        // split --tokens got wrong on its first day and had to be corrected:
-        // `satl --unparse f.satl > out.satl` must write the program, and a
-        // person watching the terminal must still see what did not parse. Both
-        // are printed for a partly-parsed file, because what was understood is
-        // an answer even when the whole file was not.
-        //
-        // AND THE COMPLAINTS ARE THE REPORTER'S NOW, which is what M5 changed
-        // here: this arm used to compose `satl: %s:%u: %s` itself, which was
-        // the fourth place in the tree that knew what an error looks like.
-        satellite::report(args[2], source, parsed.errors);
-        fputs(satellite::unparse(parsed.ast).c_str(), stdout);
-        return parsed.ok() ? satellite::EXIT_FINE : satellite::EXIT_MALFORMED;
+        return satellite::unparse_command(args[2]);
     }
 
-    // THE CACHE'S CONSUMER, AND THE REASON M4.5 HAS ONE -- the same rule
-    // --words, --tokens and --unparse each record, one milestone on.
-    //
-    // THE ONLY ARM WITH A FILE OF ITS OWN, because it is the only one that is a
-    // LOOP rather than a print: look for a `.satc`, use it when its three
-    // header lines match, walk the source and write a fresh one when they do
-    // not. programs/cache_command.hpp is where that order lives, and it is
-    // there rather than here because the three arms above are each ten lines
-    // and this one is sixty -- which is what pushed this file past the 300
-    // FORMAT/CXX.md §1 asks it to be built toward.
     if (first == "--satc") {
         if (args.size() < 3)
             return usage_error("--satc needs a file after it");
         return satellite::satc_command(args[2]);
     }
 
-    // THE REPORTER'S CONSUMER, AND THE REASON M5 HAS ONE -- the same rule
-    // --words, --tokens, --unparse and --satc each record, one milestone on.
-    // The difference is that this arm's whole answer is the diagnostics: it
-    // prints nothing on stdout ever, and its exit status is what a script
-    // reads. programs/check_command.hpp says why that is not `--unparse` with
-    // the output discarded.
     if (first == "--check") {
         if (args.size() < 3)
             return usage_error("--check needs a file after it");
         return satellite::check_command(args[2]);
     }
 
-    // THE CODE REGISTRY'S CONSUMER, and it is `--words` one registry later. A
-    // code exists so that somebody can look it up, so a code registry with no
-    // way to look a code up is not a smaller version of the feature -- it is
-    // none of it.
-    if (first == "--errors") {
-        if (args.size() < 3) {
-            fputs(satellite::errors::dump_text().c_str(), stdout);
-            return satellite::EXIT_FINE;
-        }
-        // A code that resolves is an answer and goes to stdout; a code satl
-        // does not have is a command line naming something satl cannot do, so
-        // it goes to stderr with the same status a bad option gets. That is
-        // exactly the split `satl --words <path>` makes, applied one registry
-        // on.
-        bool known = false;
-        const std::string report = satellite::errors::explain_text(args[2], known);
-        fputs(report.c_str(), known ? stdout : stderr);
-        return known ? satellite::EXIT_FINE : satellite::EXIT_USAGE;
+    if (first == "--resolve") {
+        if (args.size() < 3)
+            return usage_error("--resolve needs a file after it");
+        return satellite::resolve_command(args[2]);
     }
 
     // M6's CONSUMER, AND THE ONLY WAY TO SEE THAT MILESTONE AT ALL -- nothing

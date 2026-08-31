@@ -30,6 +30,7 @@ struct Link {
     std::string_view word;            // a Member's name
     uint32_t argc = 0;                // a Call's argument count
     bool argument_is_satellite = false;
+    NodeIndex node = kNoNode;         // the node this link came off
 };
 
 // Whether a dotted spelling's segments are the next words of the chain, and how
@@ -202,12 +203,13 @@ bool flatten(const Ast &ast, NodeIndex node, std::vector<Link> &links)
         if (n.kind == NodeKind::Satellite)
             break;
         if (n.kind == NodeKind::Member) {
-            links.push_back({false, ast.text_of(at), 0, false});
+            links.push_back({false, ast.text_of(at), 0, false, at});
         } else if (n.kind == NodeKind::Call) {
             const uint32_t argc = ast.list_size(n.b);
             links.push_back({true, {}, argc,
                              argc == 1 && ast[ast.list_at(n.b, 0)].kind ==
-                                              NodeKind::Satellite});
+                                              NodeKind::Satellite,
+                             at});
         } else {
             // An Index, a Slice, a Name or a literal. None of them can appear
             // inside a path -- the numbering has no subscripted rows -- so the
@@ -257,7 +259,15 @@ PathMatch language_path(const Ast &ast, NodeIndex node)
                 // segment failed under; what a cache owes it is the program
                 // UNCHANGED, so the writer prints the chain as text and the
                 // reader hands M7 the same tree the source would have.
-                return {};
+                //
+                // WHERE IT STOPPED IS CARRIED OUT AS OF M7 and this arm is the
+                // only one that fills it. Every caller here still reads
+                // `found()` and nothing else; PathMatch says why the two fields
+                // are on this struct rather than in a walk of resolve's own.
+                PathMatch stopped;
+                stopped.under = static_cast<words::PathId>(at);
+                stopped.at = links[i].node;
+                return stopped;
             }
         }
 

@@ -19,6 +19,7 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M4.5.md](M4.5.md) | 2026-08-30 | The `.satc` cache. |
 | [M5.md](M5.md) | 2026-08-30 | The error reporter — codes, carets, notes, did-you-mean. |
 | [M6.md](M6.md) | 2026-08-30 | The machine limits — `satellite_config.ini`, the pool, the watchdog, the three fact readers. |
+| [M7.md](M7.md) | 2026-08-31 | Resolve — names to frame slots, the paths to their numbers, and `satl --resolve`. |
 | [M11.md](M11.md) | **not in this tree** | A review of `prototype/M9`, which is a draft. |
 | [M16.md](M16.md) | **not in this tree** | A review of `prototype/M10`, likewise. |
 
@@ -63,6 +64,10 @@ work and only one is honest: writing the hash in a **follow-up** commit, or
 leaving it out. Leaving it out is what happened to M3, M4, M4.5 and M5, and it
 was invisible until somebody asked which commit landed which — so the follow-up
 is the shape, and it is one line in one file.
+
+**M7.md opens with the same `PENDING` and for the same reason** — it is the
+second note written under this convention, and `grep PENDING MILESTONES/M*.md`
+answers it and nothing else until the follow-up lands.
 
 **M6.md opened `**Landed 2026-08-30** (`PENDING`)` and that word was deliberate.**
 It is the first note written knowing this rule, so rather than omitting the hash

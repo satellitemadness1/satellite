@@ -62,32 +62,49 @@
 
 DATE    2026-08-31
 LINK    full
-LOAD    0.78
-NOTE    M6, re-measured after the physical_cores() fix -- MILESTONES/M6.md §9.4
+LOAD    1.50
+NOTE    M7, resolve -- MILESTONES/M7.md §8
 
-# THESE ARE THE `AND RE-TAKEN AGAIN THE SAME DAY, WITH THE FINDING FIXED` TABLE
-# in 040-sources.mk and not the one above it. That is deliberate and it is the
-# only honest choice: the earlier table is what satl cost with a defect in it,
-# so diffing against it would call the fix a regression every time it ran.
-#
 # THE ROWS ARE THE COMMANDS THAT COST SOMETHING DIFFERENT, not every command
 # satl has. --version is the row §9.1 says to read -- it does nothing but say
 # what it is, so its share is satl's startup and nothing else. The rest are here
 # because each adds one identifiable piece of work on top of that: the trie
 # walk, reading and lexing a small file, reading and lexing the largest file in
-# the tree, and the config reader.
+# the tree, the config reader, and now the whole pipeline.
+#
+# M7 ADDED 0.011 ms TO satl'S OWN SHARE -- 0.179 against M6's 0.168 -- and that
+# is six objects' worth of a larger binary and nothing else. The pass itself
+# does not run unless `--resolve` is asked for, so `--version` cannot be paying
+# for it; what moved is the size of the image the loader maps. MILESTONES/M7.md
+# §8 has the attribution.
 
-FLOOR | 0.556
+FLOOR | 0.546
 
-ROW | 0.735 |
-ROW | 0.724 | --version
-ROW | 0.887 | --words
-ROW | 0.818 | --tokens example/hello_world.satl
-ROW | 1.128 | --tokens example/class_test.satl
-ROW | 1.462 | --limits
+ROW | 0.719 |
+ROW | 0.725 | --version
+ROW | 0.902 | --words
+ROW | 0.819 | --tokens example/hello_world.satl
+ROW | 1.121 | --tokens example/class_test.satl
+ROW | 1.457 | --limits
+ROW | 1.490 | --limits example/satellite_config.ini
 
-# NEVER MEASURED, AND SAID SO RATHER THAN LEFT OUT. This row was taken once, at
-# 1.931 ms, in the table that had the defect in it, and was not re-taken after
-# the fix. A `-` prints the measurement and no delta, which is what a reader
-# needs; a stale number copied across would print a delta that means nothing.
-ROW | - | --limits example/satellite_config.ini
+# M7's ROWS. `--resolve` is the milestone's consumer and it is the first row here
+# that is a WHOLE PIPELINE -- lex, parse, resolve, and SATC.md §4's reading order
+# around all three -- so it is not comparable to `--tokens`, which stops after
+# the first of them.
+#
+# THEY ARE WARM AND NOT COLD, WHICH IS A PROPERTY OF THE HARNESS AND HAS TO BE
+# KNOWN TO READ THEM. startup.sh runs each command 200 times per batch; the
+# FIRST of those writes a `.satc` and the other 199 read it, so what these two
+# rows measure is a warm run with one cold run's cost averaged into it.
+#
+# AND MILESTONES/M4.5.md §5's CLAUSE IS NOT READ OUT OF THEM. What the skip
+# saves is a trie walk per path, and on a 273-byte program that is far under
+# what a shell loop can see -- §5's own table is what says so, and this file's
+# baseline note says a row is worth recording because a person wants to know
+# what a command costs, not because it proves anything. `satl --resolve` COUNTS
+# the walks instead, exactly, and tests/resolve_test/cache.cpp asserts the
+# count. On example/frames.satl it is 28 walked cold against 14 walked and 14
+# taken warm.
+ROW | 0.856 | --resolve example/hello_world.satl
+ROW | 1.113 | --resolve example/frames.satl

@@ -40,8 +40,8 @@ void section_codes()
     // This one is a compile-time array so it cannot be half-read, but the
     // number is what says a row was DELETED -- which the ascending assert
     // cannot see, because a table with a row removed still ascends.
-    check(kCodeCount == 47,
-          "errors.def has 47 rows -- if that changed on purpose, change it here "
+    check(kCodeCount == 59,
+          "errors.def has 59 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 
@@ -52,26 +52,35 @@ void section_codes()
     check(block_of(Code::PARSE_EXPECTED_PUNCT) == 2, "the parser is S02xx");
     check(block_of(Code::SATC_NOT_A_SATC) == 3, "the cache is S03xx");
     check(block_of(Code::FILE_UNREADABLE) == 4, "the file satl was given is S04xx");
+    check(block_of(Code::RESOLVE_NO_SUCH_NAME) == 5, "resolve is S05xx");
     check(block_of(Code::CONFIG_NOT_A_SETTING) == 8, "the machine limits are S08xx");
 
     // THE RESERVED BLOCKS ARE EMPTY, and this is the check that makes reserving
-    // them worth anything. errors.def keeps S05xx for M7's resolve, S06xx for
-    // M8's numbers and S07xx for the evaluator; a milestone that takes the
-    // next free number instead of its own block would put a resolve error in
-    // the parser's range and nothing else would notice.
+    // them worth anything. errors.def keeps S06xx for M8's numbers and S07xx
+    // for the evaluator; a milestone that took the next free number instead of
+    // its own block would put a number error in the parser's range and nothing
+    // else would notice.
     //
     // THE TEST THAT PROVED THIS WORKS IS M6 ARRIVING. It landed BEFORE all
-    // three of those milestones and took S08xx rather than S05xx, so the block
-    // numbers no longer run in build order -- which is a reservation being
-    // honoured and is exactly what this loop asks for. The check therefore
-    // names the three empty blocks instead of counting up to the highest one
-    // taken: `<= 4` was the same claim only while nothing had jumped the gap,
-    // and it would have failed on a correct edit.
+    // three of the reserved blocks and took S08xx rather than S05xx, so the
+    // block numbers no longer run in build order -- which is a reservation
+    // being honoured and is exactly what this loop asks for. The check
+    // therefore names the EMPTY blocks instead of counting up to the highest
+    // one taken: `<= 4` was the same claim only while nothing had jumped the
+    // gap, and it would have failed on a correct edit.
+    //
+    // S05xx CAME OUT OF THIS LIST ON 2026-08-31, WHICH IS THE MECHANISM
+    // WORKING END TO END. M7 took the block that had been held for it since M5
+    // reserved it, and nothing moved to make room: no row was renumbered, no
+    // block was split, and the edit to this loop is the deletion of one number
+    // from it. That is the whole of what a reservation buys, and it is the
+    // first time this suite has been able to record it happening rather than
+    // being promised.
     for (const Code code : kCodes)
-        check(block_of(code) < 5 || block_of(code) > 7,
-              "no code is in a block reserved for a later milestone -- S05xx is "
-              "M7's, S06xx is M8's, S07xx is the evaluator's; take your own "
-              "block, do not append");
+        check(block_of(code) < 6 || block_of(code) > 7,
+              "no code is in a block reserved for a later milestone -- S06xx is "
+              "M8's and S07xx is the evaluator's; take your own block, do not "
+              "append");
 
     // A code out and back again. `satl --errors S0231` is the only reason
     // code_text and code_of both exist, and a round trip is the whole contract

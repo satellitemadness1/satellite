@@ -69,9 +69,16 @@ public:
     //
     // THE LANGUAGE'S CHILDREN ARE SEARCHED FIRST, so a user name can never be
     // answered in place of a word the language owns. What happens when a user
-    // WRITES such a name is a different question and not this milestone's:
-    // define() below refuses it, which is a refusal in plain words rather than
-    // a guess, and DESIGN §2's reservation rule is decided at M7's resolve.
+    // WRITES such a name is a different question, and M4 answered it: define()
+    // below refuses, and parser_declarations.cpp turns that refusal into
+    // S0241 with the node the name would have hung under.
+    //
+    // THIS SAID "DESIGN §2's reservation rule is decided at M7's resolve" UNTIL
+    // 2026-08-31 and it was two milestones stale. M4 decided it, in the
+    // function above. What M7 actually decides is the one case a bare name can
+    // still shadow the language -- a LOCAL called `satellite`, which the parser
+    // accepts because `satellite` is a legal `primary` (DESIGN §6) and only a
+    // scope can refuse. errors.def's S0513 is that.
     PathId find(NodeId parent, std::string_view name) const
     {
         // AN EMPTY NAME IS NOT A NAME. The bare rows are spelled "" on purpose,

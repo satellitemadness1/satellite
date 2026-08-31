@@ -16,6 +16,7 @@ LEXER    = $(SRC)/lexical_analyzer
 CACHE    = $(SRC)/satellite_cache
 LIMITS   = $(SRC)/machine_limits
 PARSER   = $(SRC)/parser
+RESOLVE  = $(SRC)/name_resolver
 RANDOM   = $(SRC)/satellite_random
 STRING   = $(SRC)/satellite_string
 TREE     = $(SRC)/abstract_syntax_tree
@@ -33,4 +34,4 @@ WORDS    = $(SRC)/satellite_words
 # is out of date.
 TESTS     = tests
 TESTNAMES = words_test lexer_test parser_test satc_test reporter_test \
-            limits_test
+            limits_test resolve_test
