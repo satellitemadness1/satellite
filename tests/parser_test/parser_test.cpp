@@ -95,6 +95,7 @@ int main(int argc, char **argv)
     parser_test::section_statements();
     parser_test::section_declarations();
     parser_test::section_roundtrip();
+    parser_test::section_depth();
 
     if (parser_test::failures) {
         printf("parser_test: %d failure(s)\n", parser_test::failures);

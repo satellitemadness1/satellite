@@ -214,25 +214,49 @@ satellite.capsule takes()
     // both were deleted. What this asserted the day it landed -- that 2,200
     // levels are REFUSED -- is now the failure it exists to catch.
     //
-    // 20,000 AND NOT 2,200, so the fixture is an order of magnitude past the
-    // bound that used to be here. It costs about 60 MiB of the stack
-    // machine_limits/limits.hpp asks the kernel for at startup -- a share of
-    // the machine's memory, which is 1.9 GiB here and never under 128 MiB.
+    // 100,000 AND NOT 2,200, which is `SCRATCH.md/NO_LIMITS.md` §7's number and
+    // fifty times the bound that used to be here.
+    //
+    // ~~IT COSTS 60 MiB OF THE STACK satl RAISES AT STARTUP~~ -- WRONG TWICE,
+    // AND CORRECTED AT M8.5. This binary links no machine_limits, so it never
+    // had that stack: 065-tests.mk names resolve_test's sources and the raise is
+    // not among them, so this check has always run on the 8 MiB a login shell
+    // hands out. And the walk keeps its own stack on the heap now (DESIGN §7.5,
+    // name_resolver/walk.cpp), so what a level costs is a twelve-byte entry in a
+    // vector rather than a C++ frame. Both halves of that sentence were true
+    // when it was written and neither was checked.
     std::string deep = "\nsatellite.capsule deep()\n{\n    satellite.variable.number n = ";
-    for (int i = 0; i < 20000; i++)
+    for (int i = 0; i < 100000; i++)
         deep += "(1 + ";
     deep += "1";
-    for (int i = 0; i < 20000; i++)
+    for (int i = 0; i < 100000; i++)
         deep += ")";
     deep += "\n    satellite.return(n)\n}\n";
 
     Run nested_deep;
     resolve_source(deep, nested_deep);
-    check(nested_deep.parsed_clean(), "20,000 levels of nesting parse");
+    check(nested_deep.parsed_clean(), "100,000 levels of nesting parse");
     check(nested_deep.resolved.ok(),
           "and RESOLVE, with nothing refused -- the language has no depth "
-          "limit, and a walk that stopped here would be the bound this "
-          "milestone shipped and the author rejected");
+          "limit, and a walk that stopped here would be the bound M7 shipped "
+          "and the author rejected");
+
+    // AND A TYPE IS A WALK OF ITS OWN, which numbers.cpp's type_of() keeps a
+    // second stack for -- 10,000 rather than 100,000 because the SOURCE is
+    // twenty-four characters a level and not five.
+    std::string nested_type = "\nsatellite.capsule deep_type()\n{\n    ";
+    for (int i = 0; i < 10000; i++)
+        nested_type += "satellite.container.list<";
+    nested_type += "satellite.variable.number";
+    for (int i = 0; i < 10000; i++)
+        nested_type += ">";
+    nested_type += " n\n    satellite.return()\n}\n";
+
+    Run deep_type;
+    resolve_source(nested_type, deep_type);
+    check(deep_type.parsed_clean(), "10,000 nested generic arguments parse");
+    check(deep_type.resolved.ok(),
+          "and every one of them is checked against the numbering");
 }
 
 } // namespace resolve_test

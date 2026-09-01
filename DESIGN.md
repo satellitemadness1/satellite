@@ -933,14 +933,39 @@ debugger, Ctrl-C at an arbitrary point (§10.2) and driving the interpreter from
 GTK idle callback with no second thread (§10.3) all need. Under the old rule those
 were a future CEK machine's to buy. Under this one they arrive with the fix.
 
+**A CEILING THE USER SETS IS NOT A LIMIT THE LANGUAGE HAS**, and the distinction
+matters here because one exists. `satellite.library.system.max_depth` `1 14 2 2`
+is a numbered path that predates this section's rewrite and could not be deleted
+— WORD_NUMBERS §1.2 is *never renumber, never reuse* — so on 2026-09-01 the
+author gave it the one reading that keeps its name honest: **a memory ceiling on
+the control stack, in bytes, and unset means the machine.** It bounds nothing by
+default, it is a number the user chose rather than one satl invented, and what it
+buys is a sentence — a control stack that has its own ceiling knows it is a
+control stack, so a runaway recursion can be told about recursion instead of
+about memory. This is the same distinction §8.1's `division_digits` draws: a
+bound on what a configuration file may ask for is not a bound on the language.
+PLAN §8's M9 entry is where it gets built.
+
 The numbers live beside the code that uses them, never only here.
 
-#### 7.5.1 What the tree does today, which is worse than a bound
+#### 7.5.1 What the tree does today — CLOSED AT M8.5, and kept as the record of the gap
+
+**EVERY WALKER IN THE TREE NOW KEEPS ITS OWN STACK, AS OF 2026-09-01.** M8.5
+rewrote the parser, the resolver, the printer and the `.satc` writer onto stacks
+on the heap — seven walkers over four cycles — and 100,000 nested brackets now
+answer from all four commands at the 8 MiB a login shell hands out, where 19,000
+used to end `--unparse` with signal 11. `MILESTONES/M8.5.md` is the review and
+`PLAN.md` §8's M8.5 entry is the milestone. **§7.5's rule is met by the static
+passes and is not yet met by an evaluator, because there is not one**; M9 builds
+it onto the same shape, which is what `PLAN.md` §2.6 puts this milestone ahead of
+it for.
+
+*The rest of this section is the measurement that made the case, kept because a
+specification that only states its rule cannot show why the rule is worth what it
+costs. Everything below was true on 2026-08-31 and the depths are now history.*
 
 *(Measured 2026-08-31, `ulimit -s 8192`. `SCRATCH.md/NO_LIMITS.md` is the full
-table and the plan; this is the part that belongs in the specification, because a
-reader has to be able to find out that the language does not yet keep its own
-rule.)*
+table and the plan.)*
 
 **Four walkers recurse on the C++ stack with no bound at all**, so each has a
 depth at which it dies with signal 11 and says nothing. At the 8 MiB a login
@@ -993,12 +1018,14 @@ can act on. It is the failure this section's v1 note already describes — *"the
 segfault it existed to prevent was exactly what a runaway recursion got"* —
 arriving in the passes rather than in the evaluator.
 
-**And one real limit exists, added at M7 and now withdrawn.**
-`name_resolver/resolve.hpp` bounds the resolver at a **fixed** 2000 written
-levels and refuses with **S0501**. It is the only place in the tree that says
-anything at all at depth, and it is the wrong shape by this section's own
-argument — a constant, where even the rule it replaces asks for a derivation. It
-goes when the resolver keeps its own stack, and S0501 goes with it.
+**And one real limit existed, added at M7 and withdrawn the next day.**
+`name_resolver/resolve.hpp` bounded the resolver at a **fixed** 2000 written
+levels and refused with **S0501**. It was the only place in the tree that said
+anything at all at depth, and it was the wrong shape by this section's own
+argument — a constant, where even the rule it replaces asks for a derivation.
+**Both are gone**: the constant and its error row were deleted on 2026-08-31 and
+the resolver's walk stopped recursing at M8.5, which is the other half of the
+same sentence. `errors.def` has 61 rows where it had 63.
 
 **`satellite_cache/paths.cpp`'s `flatten()` is the one walker that cannot be made
 to crash**, and it is the model: it reads a postfix chain with a `for` loop up the

@@ -30,11 +30,46 @@
 
 namespace satellite {
 
+// A type, and every type written inside its `<...>`.
+//
+// THE `<...>` NESTING IS A VECTOR AND NOT THE C++ STACK -- M8.5, DESIGN §7.5.
+// generic_arguments() used to call this function back, so `list<list<list<...>>>`
+// was a depth the program chose. `open` below is one entry per argument list
+// still waiting for its `>`, and the loop closes as many of them as the type it
+// just read finished.
 NodeIndex Parser::type()
 {
-    if (is_reserved_word(peek()) && at_punct(".", 1) && at_word(2)) {
-        const Segment1 space = segment1_of(peek(2).spelling);
-        if (space == Segment1::Variable || space == Segment1::Container) {
+    struct Open {
+        uint32_t name = 0;
+        words::SpellingId space = words::kNoSpelling;
+        std::vector<NodeIndex> arguments;
+    };
+    std::vector<Open> open;
+
+    for (;;) {
+        NodeIndex node = kNoNode;
+
+        if (is_reserved_word(peek()) && at_punct(".", 1) && at_word(2)) {
+            const Segment1 space = segment1_of(peek(2).spelling);
+            if (space != Segment1::Variable && space != Segment1::Container) {
+                // A `satellite.` path whose segment 1 is not a type space is not
+                // a type. Saying so here rather than letting the bare arm below
+                // take the `satellite` and leave the rest is what makes the
+                // error point at the word that was wrong.
+                error<errors::Code::PARSE_NOT_A_TYPE>(here() + 2, peek(2).text);
+                // OVER `satellite`'s CHILDREN AND NOT OVER {variable,
+                // container}, which is a smaller candidate list and would be the
+                // wrong one. Somebody who wrote `satellite.varable` wants
+                // `variable`; somebody who wrote `satellite.console` in type
+                // position wants to be told it is not a type, and offering them
+                // `container` for it would be worse than offering nothing. The
+                // trie level that failed is segment 1, so that is the level the
+                // suggestion comes from.
+                suggest(here() + 2,
+                        static_cast<words::PathId>(words::NodeId::SATELLITE));
+                return kNoNode;
+            }
+
             const words::SpellingId space_id = peek(2).spelling;
             advance();  // satellite
             advance();  // .
@@ -45,75 +80,62 @@ NodeIndex Parser::type()
             if (panic_)
                 return kNoNode;
 
-            ListId arguments = kNoList;
             if (at_punct("<")) {
-                arguments = generic_arguments();
-                if (panic_)
-                    return kNoNode;
+                advance();  // '<'
+                open.push_back({name, space_id, {}});
+                continue;   // the first argument is a type, read the same way
             }
-            return ast_.add(NodeKind::Type, name, space_id, arguments);
+            node = ast_.add(NodeKind::Type, name, space_id, kNoList);
+        } else if (at_word()) {
+            // `satellite` alone -- the singleton runtime type -- or a spacesuit
+            // named bare (DESIGN §13). One node either way.
+            const uint32_t at = here();
+            advance();
+            node = ast_.add(NodeKind::Type, at, words::kNoSpelling, kNoList);
+        } else {
+            error<errors::Code::PARSE_EXPECTED_TYPE>(here(), describe(peek()));
+            return kNoNode;
         }
-        // A `satellite.` path whose segment 1 is not a type space is not a
-        // type. Saying so here rather than letting the bare arm below take the
-        // `satellite` and leave the rest is what makes the error point at the
-        // word that was wrong.
-        error<errors::Code::PARSE_NOT_A_TYPE>(here() + 2, peek(2).text);
-        // OVER `satellite`'s CHILDREN AND NOT OVER {variable, container}, which
-        // is a smaller candidate list and would be the wrong one. Somebody who
-        // wrote `satellite.varable` wants `variable`; somebody who wrote
-        // `satellite.console` in type position wants to be told it is not a
-        // type, and offering them `container` for it would be worse than
-        // offering nothing. The trie level that failed is segment 1, so that is
-        // the level the suggestion comes from.
-        suggest(here() + 2, static_cast<words::PathId>(words::NodeId::SATELLITE));
-        return kNoNode;
+
+        // What that type finished: nothing, one argument list, or several at
+        // once -- `map<string, list<list<number>>>` closes two on its last `>`.
+        for (;;) {
+            if (open.empty())
+                return node;
+            open.back().arguments.push_back(node);
+            if (take_punct(","))
+                break;
+
+            // `list<list<string>>` CLOSES AS TWO INDEPENDENT '>' TOKENS, which
+            // is what DESIGN §5.5 buys by refusing `<<` and `>>` permanently:
+            // there is no maximal munch to undo, so nested generics need no
+            // special case and this loop needs no lookahead.
+            //
+            // THE ONE COLLISION LEFT IS `>=`, AND M4 CONFIRMS IT IS UNREACHABLE.
+            // MILESTONES/M3.md §6 left `split_punct` uncalled and asked M4 to
+            // say whether it stays that way. It does: a complete type is only
+            // ever followed by IDENT, `)`, `,` or `>` in §6's grammar, and none
+            // of those can begin with `=`. There is a second reason not to reach
+            // for it even if that changes -- split_punct INSERTS into the token
+            // vector, and this parser stores token INDICES in every node it has
+            // already built, so a split partway through a parse renumbers the
+            // anchors of the whole tree behind it. If the grammar ever makes
+            // `>=` reachable here, the fix belongs at lex time or in a separate
+            // record, not in a mid-parse mutation.
+            if (at_punct(">=")) {
+                error<errors::Code::PARSE_GENERIC_CLOSE_GE>(here());
+                return kNoNode;
+            }
+            expect_punct(">", "to close the type's arguments");
+            if (panic_)
+                return kNoNode;
+
+            const Open done = std::move(open.back());
+            open.pop_back();
+            node = ast_.add(NodeKind::Type, done.name, done.space,
+                            ast_.add_list(done.arguments));
+        }
     }
-
-    if (at_word()) {
-        // `satellite` alone -- the singleton runtime type -- or a spacesuit
-        // named bare (DESIGN §13). One node either way.
-        const uint32_t at = here();
-        advance();
-        return ast_.add(NodeKind::Type, at, words::kNoSpelling, kNoList);
-    }
-
-    error<errors::Code::PARSE_EXPECTED_TYPE>(here(), describe(peek()));
-    return kNoNode;
-}
-
-ListId Parser::generic_arguments()
-{
-    advance();  // '<'
-
-    std::vector<NodeIndex> arguments;
-    do {
-        const NodeIndex argument = type();
-        if (argument == kNoNode)
-            return kNoList;
-        arguments.push_back(argument);
-    } while (take_punct(","));
-
-    // `list<list<string>>` CLOSES AS TWO INDEPENDENT '>' TOKENS, which is what
-    // DESIGN §5.5 buys by refusing `<<` and `>>` permanently: there is no
-    // maximal munch to undo, so nested generics need no special case and this
-    // loop needs no lookahead.
-    //
-    // THE ONE COLLISION LEFT IS `>=`, AND M4 CONFIRMS IT IS UNREACHABLE.
-    // MILESTONES/M3.md §6 left `split_punct` uncalled and asked this milestone
-    // to say whether it stays that way. It does: a complete type is only ever
-    // followed by IDENT, `)`, `,` or `>` in §6's grammar, and none of those can
-    // begin with `=`. There is a second reason not to reach for it even if that
-    // changes -- split_punct INSERTS into the token vector, and this parser
-    // stores token INDICES in every node it has already built, so a split
-    // partway through a parse renumbers the anchors of the whole tree behind
-    // it. If the grammar ever makes `>=` reachable here, the fix belongs at lex
-    // time or in a separate record, not in a mid-parse mutation.
-    if (at_punct(">=")) {
-        error<errors::Code::PARSE_GENERIC_CLOSE_GE>(here());
-        return kNoList;
-    }
-    expect_punct(">", "to close the type's arguments");
-    return ast_.add_list(arguments);
 }
 
 ListId Parser::param_list()

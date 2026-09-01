@@ -43,8 +43,8 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 ## 1. Where things stand
 
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
-2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, and M7 and M8 on
-2026-08-31.** *(M1.5 is the window, and it
+2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, M7 and M8 on 2026-08-31, and
+M8.5 on 2026-09-01.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -58,17 +58,21 @@ it may use, how much memory it may take, and where each of those answers came
 from, and a thread pool and a memory watchdog start on every run. **M7 gave
 every name a slot and every path a number** — `satl --resolve` — and **M8 gave
 the language a number type**: `satl --number 0.1 + 0.2` answers `0.3`, and
-`satl --number 1 / 3` answers thirty-four digits and says it rounded them. There
+`satl --number 1 / 3` answers thirty-four digits and says it rounded them. **And since M8.5 no walker in the tree has a depth of its own** — the parser, the
+resolver, the printer and the `.satc` writer each keep their stack on the heap, so
+100,000 nested brackets answer where 19,000 used to segfault. There
 is still no interpreter behind any of it; running a program lands at M10.
 
 What exists: the `Makefile` as an index over eleven fragments under
-`make_support/`, **164 C++ files totalling 25,830 lines** plus `words.def` at
-551 and `errors.def` at 548, **eight** test suites under `tests/`, and
+`make_support/`, **169 C++ files totalling 27,403 lines** plus `words.def` at
+551 and `errors.def` at 553, **eight** test suites under `tests/`, and
 `satellite_enterprise/`, the Enterprise Linux installer and the artwork.
-*(Recounted 2026-08-31, at M8, over `src/` and `tests/` together — 108 files and
-17,592 lines of it is `src/`. Re-taken after M8's follow-up pass the same day,
-which added `tests/number_test/exact.cpp` and nothing under `src/`; the figures
-immediately before it were 163 files and 25,421 lines, with `src/` at 17,412.)*
+*(Recounted 2026-09-01, at M8.5, over `src/` and `tests/` together — 111 files
+and 18,766 lines of it is `src/`. The five new files are the printer's split into
+three, its internal header, and the two `depth.cpp` suites M8.5's done-when asks
+for; the growth in lines is mostly the four machines that replaced the recursion.
+The figures at M8 were 164 files and 25,830 lines, with `src/` at 108 and
+17,592.)*
 
 *(The figures here read "120 C++ files totalling 18,031 lines … six test suites"
 until this recount and were taken at M6, so they had already missed M7. Left
@@ -82,10 +86,15 @@ recorded rather than quietly replaced, for the same reason the 2026-08-28 figure
 below are: a count in prose goes stale the day after it is taken, and what makes
 one worth keeping is that it is dated.)*
 
-**The largest C++ file is `src/machine_limits/config.cpp` at 470**, then
-`src/machine_limits/limits.hpp` at 399, `src/lexical_analyzer/lexer.cpp` at 354,
-`src/abstract_syntax_tree/unparse.cpp` at 341, `src/machine_limits/limits.cpp`
-at 332 and `src/parser/parser_declarations.cpp` at 330. *(The two
+**The largest C++ file is `src/machine_limits/config.cpp` at 476**, then
+`src/parser/parser_statements.cpp` at 416, `src/machine_limits/limits.hpp` at
+399, `src/parser/parser_expressions.cpp` at 396,
+`src/parser/parser_declarations.cpp` at 377 and
+`src/lexical_analyzer/lexer.cpp` at 354. *(Recounted at M8.5. The three parser
+files grew because a machine says out loud what a recursion said by where a call
+sat — in CODE they are 296, 252 and 245, which is at the target; §3's rule is
+about the shape a file comes out in. `unparse.cpp` left this list by being split
+three ways, which MILESTONES/M8.5.md §3.6 argues.)* *(The two
 `machine_limits` files at the top grew again in M8's follow-up pass — 435 to 470
 and 383 to 399 — which is where `division_digits` got the range that let its
 silent clamp be deleted.)* *(Recounted at M8. `main.cpp` is no longer on this
@@ -156,9 +165,10 @@ result that cannot be true and was a different filesystem rather than a finding.
 Recorded because §9's rule is to measure on this machine, and a measurement whose
 setup differs between arms is not one.)*
 
-**Next: milestone 7**, resolve (§8) — names to integer frame slots, capsules,
-frames and the `SLOT_*` sentinels, in a side table indexed by arena node id.
-DESIGN §7.
+**Next: milestone 9**, the value model and closure compilation (§8) — `Value`,
+`Str`, the arena AST compiled to a closure tree, and the inline caches. **Its
+precondition landed at M8.5**: §2.6 puts the explicit control stack between the
+arena and closure compilation, so M9 emits onto a stack that already exists.
 
 **M6 landed 2026-08-30** and it answered §4.5.4's three open questions rather
 than leaving them, because a milestone whose done-when needs an answer cannot
@@ -1747,9 +1757,10 @@ after it.*
 `1 14 2 1`, `max_depth` `1 14 2 2`, `min_free_mb` `1 14 2 3`, `float_digits`
 `1 14 2 4`. The node and the storage land here; **`min_free_mb` is the only one
 whose meaning is this milestone's.** `division_digits` is M8's, because `Number`
-reads it (§6.1, open question 1); `max_depth` is M9's by DESIGN §7.5, with M16's
-search walk as a second consumer that must say it reads the dial M9 built rather
-than inventing one; `float_digits` is M15's, and DESIGN §13 has already redefined
+reads it (§6.1, open question 1); `max_depth` is M9's by DESIGN §7.5, and as of
+2026-09-01 it is a memory ceiling on the control stack in bytes — which is what
+took M16's search walk off it as a second consumer, because a ceiling in bytes is
+not a count of levels a search can compare itself against; `float_digits` is M15's, and DESIGN §13 has already redefined
 it from "the dial" into **the default length of a float's right half**. A milestone
 that quietly built all four would be building three other milestones' decisions.
 
@@ -2139,6 +2150,64 @@ draws and asserts the shape.
 **This closes half of `SCRATCH.md/MILESTONE.md` §3's porting row**; M9 closes the
 other half with `satellite_string`.
 
+**M8.5 — the walkers keep their own stacks. LANDED 2026-09-01**, and
+[MILESTONES/M8.5.md](MILESTONES/M8.5.md) is the review. *(Its own milestone as of
+2026-09-01, on the author's decision, and a decimal for the reason M1.5 and M4.5
+are: a milestone that lands between two others. The alternative was a dense
+integer here and M9 through M28 each moving by one, which is a second old-to-new
+table over this section for no gain — no work moved and nothing was renumbered.)*
+`SCRATCH.md/NO_LIMITS.md` §5 is the plan and this is all four of its steps.
+
+**DESIGN §7.5 says the language has no depth limit and until this milestone four
+walkers broke it.** `satl --unparse` died with signal 11 at 19,000 nested
+brackets, `--satc` and `--resolve` at 20,000, and the parser at 32,000 — measured
+2026-08-31 at the 8 MiB a login shell hands out, and every one of them a CRASH
+rather than a refusal. §2.5 was un-deferred the same day and §2.6 put the fix
+ahead of M9: **the four static passes must stop using the C++ stack before the
+evaluator is written, or the evaluator gets written twice.**
+
+**The rewrite is four machines and the count is the finding.** The grammar has
+four cycles, not one: expressions (`expression → unary → postfix → primary → '('
+expression`, plus an argument list and a subscript), statements (`statement →
+block → statement`, plus the three compound forms), types (`type →
+generic_arguments → type`) and **suit bodies** (`suit_body → section →
+suit_body`, which no document had named as recursion at all). The resolver's walk
+and both printers are three more. **And the cycles are not nested in each other**
+— every edge between them runs one way — so the deepest a program can drive the
+C++ stack is one frame per machine, whatever it is nested in.
+
+Done when: `--check`, `--unparse`, `--satc` and `--resolve` answer at 100,000
+nested brackets AND 100,000 nested blocks, at the default `ulimit -s`, with the
+acceptance fixtures in the test binaries rather than in a scratch file. **All
+met**, and the fixtures are `tests/parser_test/depth.cpp`,
+`tests/satc_test/depth.cpp` and `tests/resolve_test/frames.cpp` — none of those
+binaries links `machine_limits`, so every one of them runs against 8 MiB and a
+walker that still recursed would fail rather than pass.
+
+**§2.5's 2–3× IS NOW MEASURED RATHER THAN BORROWED, AND IT IS TRUE OF THE
+PRINTERS AND NOT OF THE PARSER.** §9's rule is that a figure decides nothing here
+until this project measures it. Measured 2026-09-01 over 32,000 lines of ordinary
+satellite, best of nine runs of ten: **parsing is unchanged** — 147.4 ms before,
+145.4 ms after — **the unparser's own step went 6.7 ms → 16.6 ms (2.5×)** and the
+`.satc` writer's 48.0 ms → 60.1 ms (1.25×). As a share of the command each
+printer costs about 5%. The evaluator's figure is still unmeasured and is M9's,
+which is the half §2.5 was actually arguing about.
+
+**What it cost in lines, and one file was split.** Making the printer keep its own
+stack took `abstract_syntax_tree/unparse.cpp` from 341 lines to 565 — 452 of code,
+the widest in the tree — so it is now three files on the seam
+`satellite_cache/write_*.cpp` already uses, which is DESIGN §6's own three levels.
+**The two printers are twins by construction and now have the same shape as well
+as the same walk**, which is what write.cpp's header has claimed since M4.5.
+
+**The `.satc` writer lost a rule rather than gaining one.** Its header carried a
+paragraph requiring every subexpression to go into a named local before being
+joined, because `note()` appends to the comment column as a side effect and C++17
+leaves the operands of `a + b` indeterminately sequenced. A piece is expanded when
+its output position is reached, so the order of the comment column is now the
+order of the output by construction — a discipline every future line had to
+remember, deleted.
+
 **M9 — the value model and closure compilation.** `Value` (40 bytes, the
 static_assert comes too) and `Str`. `Number` arrives at M8 and this milestone is its
 first consumer. The arena AST compiles to a closure tree.
@@ -2184,20 +2253,45 @@ consumed by later milestones that had each assumed somebody else built them.)*
   `stack_limit_bytes()`; **that reader now has one consumer fewer**, and M6's own
   note already says `RLIM_INFINITY` answers *unknown* rather than *unbounded* —
   which was the right care to take about a number nothing will read.
-- **And `satellite.library.system.max_depth` `1 14 2 2` needs a meaning, which is
-  the one thing that decision does not settle.** A numbered path cannot be deleted
-  — WORD_NUMBERS §1.2 is *never renumber, never reuse* — so the dial exists and
-  has to mean something. Three readings, and they are the author's to pick:
-  **a memory ceiling on the control stack** rather than a count of frames, which
-  keeps the name honest and makes it a sibling of `MEMORY_MAX`; **a diagnostic
-  aid** — say something when a program passes this depth, and carry on — which is
-  a debugging knob and not a limit; or **a runaway detector**, the only reading
-  under which an infinite recursion still terminates without exhausting memory
-  first. `SCRATCH.md/NO_LIMITS.md` §8 carries it as open.
+- **`satellite.library.system.max_depth` `1 14 2 2` IS A MEMORY CEILING ON THE
+  CONTROL STACK, IN BYTES, AND UNSET MEANS THE MACHINE.** *(The author's decision,
+  2026-09-01, from three readings `SCRATCH.md/NO_LIMITS.md` §8 carried as open —
+  which now carries the argument instead.)* A numbered path cannot be deleted —
+  WORD_NUMBERS §1.2 is *never renumber, never reuse* — so the dial had to mean
+  something, and the reading picked is the one that keeps its NAME honest: a depth
+  measured in what depth actually costs.
+
+  **Three things follow and M9 builds all three.** The check happens when the
+  stack GROWS rather than on every push, so it costs nothing in the walk. The
+  refusal is a sentence about RECURSION — which is what M6's watchdog cannot give,
+  since it can only say the run is using N and `MEMORY_MAX` is M, and
+  `SCRATCH.md/NO_LIMITS.md` §8's first question is what that gap was. And the
+  default is the machine, which is not a new rule: §4.5.4 settled it for
+  `MEMORY_MAX` in the same words, *"a fraction is a number satl would have
+  invented about a program it has never seen"*.
+
+  **A number large enough never to fire was considered and refused.** It is
+  §4.1.1's *"a bigger number and not the absence of one"* one level up, and DESIGN
+  §7.5's kept measurement is the second refusal: v1's ~10000 sat past both stack
+  cliffs, so *"the guard could never fire and the segfault it existed to prevent
+  was exactly what a runaway recursion got."*
+
+  **THE RANGE AND THE READER LAND TOGETHER, AT M9, WHICH IS M8's FINDING APPLIED
+  BEFORE IT HAPPENS AGAIN.** `config_internal.hpp`'s `kDialRanges` still reads
+  `{false, 0, 0}` for this dial and must keep reading it until there is something
+  that consumes the value — M8 §6.1 is what a dial with a bound and a silent
+  policy costs, and a range checked for a reader that does not exist is the same
+  shape of mistake pointing the other way. **DESIGN §7.5 is untouched by any of
+  this**: a ceiling the USER sets on their own program is not a limit the language
+  has, which is the distinction M8 drew for `division_digits` in the same words.
 - **`satellite.library.system.max_depth` `1 14 2 2` is this milestone's dial**, and
-  **M16's search walk is its second consumer** with a depth error of its own. Both
-  entries now say so, because "M9 builds it and M16 reuses it" is fine and "neither
-  milestone ever says it" is how this gets built twice.
+  **M16's search walk was named as its second consumer** with a depth error of its
+  own. Both entries said so, because "M9 builds it and M16 reuses it" is fine and
+  "neither milestone ever says it" is how this gets built twice. **The 2026-09-01
+  reading changes what M16 inherits rather than whether it does** — a ceiling in
+  BYTES is not a count of levels a search can compare itself against, so M16 reads
+  no dial: it is covered if its walk runs on this milestone's control stack, and
+  owes its own answer if it does not. M16's entry carries that.
 - **The variant is append-only, and three appends are already known.** v1 appended
   `ArgsRef` and `ResultRef` and `sizeof(Value)` stayed at 40 with the static_assert
   holding. The three are: **`Value`'s reference-type handle arm, which M19 appends**
@@ -2872,14 +2966,24 @@ for it, separate from the recursion ceiling's — and M9 is where the dial is bu
 Two consumers of one dial is fine; two milestones each building it is not, and
 neither entry said which until this pass.
 
-**And as of 2026-08-31 this milestone is the dial's ONLY certain consumer.** The
-recursion ceiling it was a sibling of is gone — §2.5 was un-deferred and DESIGN
-§7.5 rewritten, so M9 bounds nothing — while a **search** over a container is a
-different thing entirely: how loose a match may be is a policy about the search
-and not a limit on the machine, so it survives the rule that removed the other
-one. If M9's reading of `max_depth` ends up being *a diagnostic aid* or *nothing
-at all*, this milestone is where the path keeps its meaning, and its entry should
-stop calling the dial M9's.
+~~**And as of 2026-08-31 this milestone is the dial's ONLY certain consumer.**~~
+**AND AS OF 2026-09-01 IT IS NOT A CONSUMER OF IT AT ALL, WHICH IS THE DECISION
+ARRIVING HERE.** That paragraph asked what M9's reading of `max_depth` would turn
+out to be and said this milestone should take the path over if the answer were
+*"a diagnostic aid"* or *"nothing at all"*. **The answer is neither: it is a
+memory ceiling on the control stack, in bytes** (M9's entry has the argument), and
+a count of levels is exactly what it is not — so there is nothing here for a
+search walk to compare itself against.
+
+**What this milestone owes instead is one sentence about its own walk.** DESIGN
+§7.5 binds it either way: a search over nested containers is a depth the user's
+program chooses, so it may not use the C++ stack for it. **If the walk runs on
+M9's control stack it inherits M9's ceiling and M9's sentence and needs nothing**;
+if it is a walker of its own, it keeps its own stack the way M8.5's four do and is
+bounded by memory like everything else. Which of those it is, is this milestone's
+design and not a dial. **Its search-tolerance knobs are unaffected and were never
+this path**: `satellite.system.threshold()` `1 22 5` and `(n)` `1 22 6` are how
+loose a match may be, and they are still M16's.
 
 **The sort primitive is part of this milestone and is not the search power.**
 `sort()` `1 4 2 3` through `sort_up(key)` `1 4 2 7` are §1.1's *one primitive rather

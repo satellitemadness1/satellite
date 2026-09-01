@@ -398,9 +398,15 @@ void setting(Reading &reading, std::string_view text, const Line &at)
         break;
     // A DIAL IS BOUNDED ONLY ONCE ITS MEANING EXISTS, which is PLAN M6's rule
     // about the dials whose meaning belongs to M8, M9 and M15: a range check is
-    // a claim about what the value MEANS, and `max_depth` has no meaning here to
-    // check against. Whether 0 is a legal depth is M9's question, asked where
-    // the recursion is.
+    // a claim about what the value MEANS.
+    //
+    // `max_depth` HAS A MEANING SINCE 2026-09-01 AND STILL HAS NO RANGE HERE,
+    // and the gap is deliberate. The author's reading is a memory ceiling on the
+    // control stack, in BYTES, with unset meaning the machine (PLAN §8's M9
+    // entry, DESIGN §7.5) -- but nothing reads the value until M9 builds that
+    // stack, and a range checked on behalf of a reader that does not exist is
+    // M8 §6.1's finding pointing the other way. The row and the reader land
+    // together, which is the same rule the paragraph below records.
     //
     // M8 IS THE FIRST MILESTONE TO ANSWER ONE, so `division_digits` is the first
     // dial this arm can say anything about -- as a row of config_internal.hpp's

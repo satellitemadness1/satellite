@@ -115,7 +115,13 @@ void Resolver::globals()
             if (node.b != kNoNode)
                 expression(node.b);
         } else if (node.kind == NodeKind::Include) {
+            // THE ONE PLACE THAT PUSHES WITHOUT DRAINING, so it drains here.
+            // statement_form() is written to be reached from inside the walk --
+            // `satellite.return(x)` is the other caller and the stack is
+            // already turning when it arrives -- and an include is met before
+            // any walk has started.
             statement_form(item, words::NodeId::SATELLITE, "include");
+            run_work();
         }
     }
 }

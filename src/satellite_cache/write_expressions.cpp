@@ -26,39 +26,48 @@
 
 namespace satellite::cache {
 
-std::string Writer::expression(NodeIndex node)
+void Writer::expand_expression(NodeIndex node)
 {
     const Node &n = ast_[node];
     switch (n.kind) {
     case NodeKind::Number:
     case NodeKind::Bits:
     case NodeKind::Name:
-        return text(node);
+        say(text(node));
+        return;
     case NodeKind::String:
         // SATC.md §3: literals stay literal. Numbering one "would buy
         // nothing and cost the readability §1.1 exists for", and the body
         // is printed from the token's `text` for the reason unparse.cpp
         // gives at length -- expansion is not reversible.
-        return "\"" + text(node) + "\"";
+        say("\"" + text(node) + "\"");
+        return;
     case NodeKind::Satellite:
-        return "satellite";
+        say("satellite");
+        return;
     case NodeKind::Member:
     case NodeKind::Call:
     case NodeKind::Index:
     case NodeKind::Slice:
-        return postfix(node);
+        postfix(node);
+        return;
     case NodeKind::Unary:
-        return text(node) + bracketed(n.a, kBindsTighterThanAny, false);
+        say(text(node));
+        bracketed(n.a, kBindsTighterThanAny, false);
+        return;
     case NodeKind::Binary: {
         const int level = precedence_of(text(node));
-        const std::string left = bracketed(n.a, level, false);
-        const std::string right = bracketed(n.b, level, true);
-        return left + " " + text(node) + " " + right;
+        bracketed(n.a, level, false);
+        say(" " + text(node) + " ");
+        bracketed(n.b, level, true);
+        return;
     }
     case NodeKind::Type:
-        return type(node);
+        type_of(node);
+        return;
     default:
-        return "<" + std::string(kind_name(n.kind)) + " is not an expression>";
+        say("<" + std::string(kind_name(n.kind)) + " is not an expression>");
+        return;
     }
 }
 
@@ -67,32 +76,41 @@ std::string Writer::expression(NodeIndex node)
 // accounts for becomes a number; anything else is printed as written, which
 // covers a user's capsule call, a selector after a receiver, and a path in
 // a shape the language does not have.
-std::string Writer::postfix(NodeIndex node)
+void Writer::postfix(NodeIndex node)
 {
     const Node &n = ast_[node];
-    if (const PathMatch match = language_path(ast_, node); match.found())
-        return numbered_chain(match, n.kind == NodeKind::Call, n.b);
+    if (const PathMatch match = language_path(ast_, node); match.found()) {
+        chain(match, n.kind == NodeKind::Call, n.b);
+        return;
+    }
 
     switch (n.kind) {
-    case NodeKind::Member: {
-        const std::string receiver = expression(n.a);
-        return receiver + "." + text(node);
-    }
-    case NodeKind::Call: {
-        const std::string target = expression(n.a);
-        return target + "(" + arguments(n.b) + ")";
-    }
-    case NodeKind::Index: {
-        const std::string target = expression(n.a);
-        const std::string subscript = expression(n.b);
-        return target + "[" + subscript + "]";
-    }
-    default: {
-        const std::string target = expression(n.a);
-        const std::string low = n.b != kNoNode ? expression(n.b) : std::string();
-        const std::string high = n.c != kNoNode ? expression(n.c) : std::string();
-        return target + "[" + low + ":" + high + "]";
-    }
+    case NodeKind::Member:
+        expr(n.a);
+        say("." + text(node));
+        return;
+    case NodeKind::Call:
+        expr(n.a);
+        say("(");
+        arguments(n.b);
+        say(")");
+        return;
+    case NodeKind::Index:
+        expr(n.a);
+        say("[");
+        expr(n.b);
+        say("]");
+        return;
+    default:
+        expr(n.a);
+        say("[");
+        if (n.b != kNoNode)
+            expr(n.b);
+        say(":");
+        if (n.c != kNoNode)
+            expr(n.c);
+        say("]");
+        return;
     }
 }
 
@@ -105,49 +123,53 @@ std::string Writer::postfix(NodeIndex node)
 // and the name, so the path is already text and the trie's own walk is the
 // function that reads text. It is also what resolves `hexadecimal` onto
 // `hex`'s node, which is §5.1 step 1 arriving here for free.
-std::string Writer::type(NodeIndex node)
+void Writer::expand_type(NodeIndex node)
 {
     if (node == kNoNode)
-        return std::string();
+        return;
     const Node &n = ast_[node];
-    if (n.a == words::kNoSpelling)
-        return text(node);
+    if (n.a == words::kNoSpelling) {
+        say(text(node));
+        return;
+    }
 
-    std::string out = fixed("satellite." +
-                            std::string(words::spelling_of(
-                                static_cast<words::NodeId>(n.a))) +
-                            "." + text(node));
+    fixed("satellite." +
+          std::string(words::spelling_of(static_cast<words::NodeId>(n.a))) +
+          "." + text(node));
     if (n.b == kNoList)
-        return out;
-    out += "<";
+        return;
+    say("<");
     for (uint32_t i = 0; i < ast_.list_size(n.b); i++) {
         if (i > 0)
-            out += ", ";
-        out += type(ast_.list_at(n.b, i));
+            say(", ");
+        type_of(ast_.list_at(n.b, i));
     }
-    return out + ">";
+    say(">");
 }
 
-std::string Writer::arguments(ListId list)
+void Writer::arguments(ListId list)
 {
-    std::string out;
     for (uint32_t i = 0; i < ast_.list_size(list); i++) {
         if (i > 0)
-            out += ", ";
-        out += expression(ast_.list_at(list, i));
+            say(", ");
+        expr(ast_.list_at(list, i));
     }
-    return out;
 }
 
-std::string Writer::bracketed(NodeIndex node, int level, bool on_the_right)
+void Writer::bracketed(NodeIndex node, int level, bool on_the_right)
 {
     const Node &n = ast_[node];
     const int child =
         n.kind == NodeKind::Binary ? precedence_of(text(node)) : 0;
     const bool needs = n.kind == NodeKind::Binary &&
                        (child < level || (on_the_right && child == level));
-    const std::string inner = expression(node);
-    return needs ? "(" + inner + ")" : inner;
+    if (!needs) {
+        expr(node);
+        return;
+    }
+    say("(");
+    expr(node);
+    say(")");
 }
 
 } // namespace satellite::cache

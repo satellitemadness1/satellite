@@ -7,6 +7,11 @@
 // node -- so none of these reaches the chain matcher and each has to find its
 // number by naming the path it always is. fixed() is that lookup and it is in
 // write.cpp, with everything else that spells a number.
+//
+// A CASE NAMES ITS PIECES IN SOURCE ORDER -- line_starts(), the pieces of the
+// line, line_ends() -- and write.cpp's flush() is the only place that order is
+// reversed. So a case still reads the way its output does, which is the
+// property the recursive version had for free and the one worth paying for.
 
 #include "satellite_cache/write_internal.hpp"
 
@@ -24,12 +29,13 @@ void Writer::program(NodeIndex node)
     const ListId items = ast_[node].a;
     for (uint32_t i = 0; i < ast_.list_size(items); i++) {
         if (i > 0)
-            out_ += "\n";
-        declaration(ast_.list_at(items, i));
+            newline();
+        decl(ast_.list_at(items, i));
     }
+    run();
 }
 
-void Writer::declaration(NodeIndex node)
+void Writer::expand_declaration(NodeIndex node)
 {
     const Node &n = ast_[node];
     switch (n.kind) {
@@ -42,14 +48,20 @@ void Writer::declaration(NodeIndex node)
             n.a != kNoNode && ast_[n.a].kind == NodeKind::Satellite;
         const PathMatch shape =
             shape_path(words::NodeId::SATELLITE, "include", 1, reserved);
-        line(numbered_form(shape, n.a));
+        line_starts();
+        form(shape, n.a);
+        line_ends();
         return;
     }
-    case NodeKind::Global: {
-        const std::string head = global_name(node);
-        line(n.b != kNoNode ? head + " = " + expression(n.b) : head);
+    case NodeKind::Global:
+        line_starts();
+        global_name(node);
+        if (n.b != kNoNode) {
+            say(" = ");
+            expr(n.b);
+        }
+        line_ends();
         return;
-    }
     case NodeKind::Capsule:
         capsule(node);
         return;
@@ -57,7 +69,7 @@ void Writer::declaration(NodeIndex node)
         spacesuit(node);
         return;
     default:
-        statement(node);
+        stmt(node);
         return;
     }
 }
@@ -65,81 +77,107 @@ void Writer::declaration(NodeIndex node)
 void Writer::capsule(NodeIndex node)
 {
     const Node &n = ast_[node];
-    std::string head = fixed("satellite.capsule") + " " + capsule_name(node) + "(";
+    line_starts();
+    fixed("satellite.capsule");
+    say(" ");
+    capsule_name(node);
+    say("(");
     for (uint32_t i = 0; i < ast_.list_size(n.b); i++) {
         if (i > 0)
-            head += ", ";
+            say(", ");
         const NodeIndex param = ast_.list_at(n.b, i);
-        const std::string declared = type(ast_[param].a);
-        head += declared + " " + text(param);
+        type_of(ast_[param].a);
+        say(" " + text(param));
     }
-    head += ")";
+    say(")");
     if (n.c != kNoNode) {
-        const std::string returns = fixed("satellite.returns");
-        head += " " + returns + "(" + type(n.c) + ")";
+        say(" ");
+        fixed("satellite.returns");
+        say("(");
+        type_of(n.c);
+        say(")");
     }
-    line(head);
-    block(n.d);
+    line_ends();
+    block_of(n.d);
 }
 
 void Writer::spacesuit(NodeIndex node)
 {
     const Node &n = ast_[node];
-    std::string head = fixed("satellite.spacesuit") + " " + text(node);
+    line_starts();
+    fixed("satellite.spacesuit");
+    say(" " + text(node));
     if (n.c != kNoNode)
-        head += "(" + text(n.c) + ")";
-    line(head);
-    members(n.b);
+        say("(" + text(n.c) + ")");
+    line_ends();
+    members_of(n.b);
 }
 
-void Writer::members(ListId items)
+void Writer::expand_members(ListId items)
 {
-    line("{");
-    indent_++;
+    line_starts();
+    say("{");
+    line_ends();
+    indent();
     for (uint32_t i = 0; i < ast_.list_size(items); i++) {
         if (i > 0)
-            out_ += "\n";
+            newline();
         const NodeIndex item = ast_.list_at(items, i);
         if (ast_[item].kind == NodeKind::Section) {
-            line(fixed("satellite." + text(item)));
-            members(ast_[item].a);
+            line_starts();
+            fixed("satellite." + text(item));
+            line_ends();
+            members_of(ast_[item].a);
         } else {
-            declaration(item);
+            decl(item);
         }
     }
-    indent_--;
-    line("}");
+    dedent();
+    line_starts();
+    say("}");
+    line_ends();
 }
 
-void Writer::block(NodeIndex node)
+void Writer::expand_block(NodeIndex node)
 {
-    line("{");
-    indent_++;
+    line_starts();
+    say("{");
+    line_ends();
+    indent();
     const ListId statements = ast_[node].a;
     for (uint32_t i = 0; i < ast_.list_size(statements); i++)
-        declaration(ast_.list_at(statements, i));
-    indent_--;
-    line("}");
+        decl(ast_.list_at(statements, i));
+    dedent();
+    line_starts();
+    say("}");
+    line_ends();
 }
 
-void Writer::statement(NodeIndex node)
+void Writer::expand_statement(NodeIndex node)
 {
     const Node &n = ast_[node];
     switch (n.kind) {
-    case NodeKind::VarDecl: {
-        const std::string declared = type(n.a);
-        const std::string head = declared + " " + text(node);
-        line(n.b != kNoNode ? head + " = " + expression(n.b) : head);
+    case NodeKind::VarDecl:
+        line_starts();
+        type_of(n.a);
+        say(" " + text(node));
+        if (n.b != kNoNode) {
+            say(" = ");
+            expr(n.b);
+        }
+        line_ends();
         return;
-    }
-    case NodeKind::Assign: {
-        const std::string target = expression(n.a);
-        const std::string value = expression(n.b);
-        line(target + " = " + value);
+    case NodeKind::Assign:
+        line_starts();
+        expr(n.a);
+        say(" = ");
+        expr(n.b);
+        line_ends();
         return;
-    }
     case NodeKind::ExprStmt:
-        line(expression(n.a));
+        line_starts();
+        expr(n.a);
+        line_ends();
         return;
     case NodeKind::Return: {
         // §5.1 STEP 3 IN ITS SECOND AND LAST PLACE. `satellite.return()` is
@@ -152,63 +190,85 @@ void Writer::statement(NodeIndex node)
             n.a != kNoNode && ast_[n.a].kind == NodeKind::Satellite;
         const PathMatch shape = shape_path(words::NodeId::SATELLITE, "return",
                                            n.a == kNoNode ? 0 : 1, reserved);
-        line(numbered_form(shape, n.a));
+        line_starts();
+        form(shape, n.a);
+        line_ends();
         return;
     }
     case NodeKind::Block:
-        block(node);
+        block_of(node);
         return;
-    case NodeKind::If: {
-        const std::string head = fixed("satellite.statement.if");
-        line(head + " (" + expression(n.a) + ")");
-        block(n.b);
+    case NodeKind::If:
+        line_starts();
+        fixed("satellite.statement.if");
+        say(" (");
+        expr(n.a);
+        say(")");
+        line_ends();
+        block_of(n.b);
         if (n.c != kNoNode) {
-            line(fixed("satellite.statement.else"));
-            statement(n.c);
+            line_starts();
+            fixed("satellite.statement.else");
+            line_ends();
+            stmt(n.c);
         }
         return;
-    }
-    case NodeKind::While: {
-        const std::string head = fixed("satellite.statement.while");
-        line(head + " (" + expression(n.a) + ")");
-        block(n.b);
+    case NodeKind::While:
+        line_starts();
+        fixed("satellite.statement.while");
+        say(" (");
+        expr(n.a);
+        say(")");
+        line_ends();
+        block_of(n.b);
         return;
-    }
-    case NodeKind::For: {
-        const std::string head = fixed("satellite.statement.for");
-        const std::string init = one(n.a);
-        const std::string test = n.b != kNoNode ? expression(n.b) : std::string();
-        const std::string step = one(n.c);
-        line(head + " (" + init + "; " + test + "; " + step + ")");
-        block(n.d);
+    case NodeKind::For:
+        line_starts();
+        fixed("satellite.statement.for");
+        say(" (");
+        inline_of(n.a);
+        say("; ");
+        if (n.b != kNoNode)
+            expr(n.b);
+        say("; ");
+        inline_of(n.c);
+        say(")");
+        line_ends();
+        block_of(n.d);
         return;
-    }
     default:
-        line(expression(node));
+        line_starts();
+        expr(node);
+        line_ends();
         return;
     }
 }
 
-std::string Writer::one(NodeIndex node)
+void Writer::expand_inline(NodeIndex node)
 {
     if (node == kNoNode)
-        return std::string();
+        return;
     const Node &n = ast_[node];
     switch (n.kind) {
-    case NodeKind::VarDecl: {
-        const std::string declared = type(n.a);
-        const std::string head = declared + " " + text(node);
-        return n.b != kNoNode ? head + " = " + expression(n.b) : head;
-    }
-    case NodeKind::Assign: {
-        const std::string target = expression(n.a);
-        const std::string value = expression(n.b);
-        return target + " = " + value;
-    }
+    case NodeKind::VarDecl:
+        type_of(n.a);
+        say(" " + text(node));
+        if (n.b != kNoNode) {
+            say(" = ");
+            expr(n.b);
+        }
+        return;
+    case NodeKind::Assign:
+        expr(n.a);
+        say(" = ");
+        expr(n.b);
+        return;
     case NodeKind::ExprStmt:
-        return expression(n.a);
+        expr(n.a);
+        return;
     default:
-        return expression(node);
+        expr(node);
+        return;
     }
 }
 

@@ -71,5 +71,6 @@ void section_expressions();   // §6.2's postfix loop, precedence, the same-line
 void section_statements();    // §6.1's dispatch, and the collision it exists for
 void section_declarations();  // the four top-level forms, and M2's name allocator
 void section_roundtrip();     // the acceptance programs, printed back
+void section_depth();         // M8.5: the depths a program may choose
 
 } // namespace parser_test

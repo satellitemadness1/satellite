@@ -1,6 +1,7 @@
-// The `.satc` a program comes out as: the entry points, and everything that
-// turns a path id into digits. See satellite_cache/cache.hpp for what a `.satc`
-// is and satellite_cache/write_internal.hpp for why the writer is three files.
+// The `.satc` a program comes out as: the entry points, the stack the printer
+// keeps, and everything that turns a path id into digits. See
+// satellite_cache/cache.hpp for what a `.satc` is and
+// satellite_cache/write_internal.hpp for why the writer is three files.
 //
 // THIS IS abstract_syntax_tree/unparse.cpp WITH THE PATHS SUBSTITUTED, and
 // saying so is the whole safety argument for having written it twice. The two
@@ -15,14 +16,23 @@
 // a number instead of a keyword -- so the shared version would have been two
 // printers wearing one name, with the equality nobody checked.
 //
-// SUBEXPRESSIONS GO INTO NAMED LOCALS BEFORE THEY ARE JOINED, in all three
-// files, and that is not style. note() appends to the line's comment as a side
-// effect, and C++17 leaves the operands of `a + b` INDETERMINATELY SEQUENCED --
+// THAT SENTENCE IS WHY THIS FILE STOPPED RECURSING WHEN unparse.cpp DID.
+// M8.5, DESIGN §7.5: a walker may not use the C++ stack for a depth the user's
+// program chooses, and `--satc` died at 20,000 nested brackets. The rewrite is
+// the one next door -- pieces named in source order, reversed once by flush(),
+// drained left to right -- because "the same printer twice" is a property worth
+// keeping through a change of shape.
+//
+// ~~SUBEXPRESSIONS GO INTO NAMED LOCALS BEFORE THEY ARE JOINED~~ -- AND THAT
+// RULE IS GONE WITH THE RECURSION, which is the one thing the rewrite deleted
+// rather than moved. It read: note() appends to the line's comment as a side
+// effect, and C++17 leaves the operands of `a + b` INDETERMINATELY SEQUENCED,
 // so `expression(n.a) + " = " + expression(n.b)` may run the right side first
 // and emit a comment column whose paths are in the wrong order, on one compiler
-// and not another. SATC.md §5.2 asks for byte-identical output so that a
-// `.satc` is something a test can compare; a printer whose output depends on
-// the compiler's argument order cannot promise that.
+// and not another. A piece is expanded when its output position is reached, so
+// the order of the comment column is now the order of the output by
+// construction. SATC.md §5.2's byte-identical promise is kept by the machine
+// instead of by a discipline every future line had to remember.
 
 #include "satellite_cache/cache.hpp"
 
@@ -35,8 +45,83 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 
 namespace satellite::cache {
+
+// The printer, one piece at a time. Four of the steps are the shape of the
+// output rather than a part of the tree -- the indent a line opens with, the
+// two ends of a line, and the moves between them -- and those are exactly the
+// things the recursive version held in the C++ stack's own shape.
+void Writer::run()
+{
+    flush();
+    while (!work_.empty()) {
+        const Piece piece = std::move(work_.back());
+        work_.pop_back();
+
+        switch (piece.step) {
+        case Step::Text:
+            out_ += piece.text;
+            continue;
+        case Step::Newline:
+            out_ += "\n";
+            continue;
+        case Step::LineStart:
+            line_start_ = out_.size();
+            out_.append(static_cast<size_t>(indent_) * 4, ' ');
+            continue;
+        case Step::LineEnd:
+            line_end();
+            continue;
+        case Step::Indent:
+            indent_++;
+            continue;
+        case Step::Dedent:
+            indent_--;
+            continue;
+
+        case Step::Declaration:
+            expand_declaration(piece.node);
+            break;
+        case Step::Statement:
+            expand_statement(piece.node);
+            break;
+        case Step::Block:
+            expand_block(piece.node);
+            break;
+        case Step::Members:
+            expand_members(piece.node);
+            break;
+        case Step::Expression:
+            expand_expression(piece.node);
+            break;
+        case Step::Type:
+            expand_type(piece.node);
+            break;
+        case Step::Inline:
+            expand_inline(piece.node);
+            break;
+        case Step::Fixed:
+            write_fixed(piece.text);
+            break;
+        case Step::GlobalName:
+            write_global_name(piece.node);
+            break;
+        case Step::CapsuleName:
+            write_capsule_name(piece.node);
+            break;
+        }
+        flush();
+    }
+}
+
+void Writer::flush()
+{
+    for (size_t i = pieces_.size(); i-- > 0;)
+        work_.push_back(std::move(pieces_[i]));
+    pieces_.clear();
+}
 
 // A matched row, with whatever of the call still has to be written.
 //
@@ -47,13 +132,15 @@ namespace satellite::cache {
 // programs and a cache may not merge them. At 0 the row IS the empty call and
 // 1.5.2 already says `input()`. Above 0 the row names the shape and the
 // arguments carry the values.
-std::string Writer::numbered_chain(const PathMatch &match, bool is_call, ListId args)
+void Writer::chain(const PathMatch &match, bool is_call, ListId args)
 {
     note(match.id);
-    std::string out = number_text(match.id);
+    say(number_text(match.id));
     if (!is_call || match.absorbs_argument || match.shape_arity == 0)
-        return out;
-    return out + "(" + arguments(args) + ")";
+        return;
+    say("(");
+    arguments(args);
+    say(")");
 }
 
 // The Include and Return forms, whose one argument is a node and not a list.
@@ -61,39 +148,44 @@ std::string Writer::numbered_chain(const PathMatch &match, bool is_call, ListId 
 // parser gives those two statements a child instead of an argument list, and
 // two functions whose signatures differ only by a trailing default were
 // ambiguous at every call site -- found on this file's first compile.
-std::string Writer::numbered_form(const PathMatch &match, NodeIndex argument)
+void Writer::form(const PathMatch &match, NodeIndex argument)
 {
     if (!match.found())
-        return std::string();
+        return;
     note(match.id);
-    std::string out = number_text(match.id);
+    say(number_text(match.id));
     if (match.absorbs_argument || match.shape_arity <= 0)
-        return out;
-    return out + "(" + expression(argument) + ")";
+        return;
+    say("(");
+    expr(argument);
+    say(")");
 }
 
 // A path the parser gave a node of its own, looked up as the text it always is.
 // Falls back to the text on a walk that fails, which a tree the parser built
 // cannot produce -- said rather than asserted, because the fallback is what
 // keeps a hand-built tree printable instead of silently empty.
-std::string Writer::fixed(const std::string &path)
+void Writer::write_fixed(const std::string &path)
 {
     const words::Walk found = words::walk(path);
-    if (found.error != words::WalkError::NONE)
-        return path;
+    if (found.error != words::WalkError::NONE) {
+        out_ += path;
+        return;
+    }
     note(found.id);
-    return number_text(found.id);
+    out_ += number_text(found.id);
 }
 
 // `satellite.library.<name>`: the language-owned prefix numbered, the user's
 // segment left as a name. SATC.md §3's rule, and §3's own example --
 // `1.2 fact(1.6.4 n)` -- is the same shape one level up.
-std::string Writer::global_name(NodeIndex node)
+void Writer::write_global_name(NodeIndex node)
 {
     const words::PathId id = ast_[node].a;
     if (words::is_language_word(id)) {
         note(id);
-        return number_text(id);
+        out_ += number_text(id);
+        return;
     }
 
     // THE PARENT IS ASKED FOR RATHER THAN SPELLED OUT, which is what the run's
@@ -102,21 +194,26 @@ std::string Writer::global_name(NodeIndex node)
     // thing that can say what it hangs under -- and that answer is
     // language-owned, which is what makes it legal to write down.
     const words::NodeId parent = words_.parent_of(id);
-    if (parent == words::NodeId::NONE)
-        return fixed("satellite.library") + "." + text(node);
+    if (parent == words::NodeId::NONE) {
+        write_fixed("satellite.library");
+        out_ += "." + text(node);
+        return;
+    }
     note(static_cast<words::PathId>(parent));
-    return number_text(static_cast<words::PathId>(parent)) + "." + text(node);
+    out_ += number_text(static_cast<words::PathId>(parent)) + "." + text(node);
 }
 
 // A capsule's name: `satellite.main` is the one the language owns a number for,
 // and every other is the user's and stays a name.
-std::string Writer::capsule_name(NodeIndex node)
+void Writer::write_capsule_name(NodeIndex node)
 {
     const words::PathId id = ast_[node].a;
-    if (!words::is_language_word(id))
-        return text(node);
+    if (!words::is_language_word(id)) {
+        out_ += text(node);
+        return;
+    }
     note(id);
-    return number_text(id);
+    out_ += number_text(id);
 }
 
 // A path this line used, remembered for the comment column.
@@ -135,13 +232,13 @@ void Writer::note(words::PathId id)
     comment_ += words::path_text(static_cast<words::NodeId>(id));
 }
 
-void Writer::line(const std::string &text)
+// The end of a line: what this line noted, padded to the column, then the
+// newline. The width is measured off `out_` rather than off a string that was
+// built first, which is the one thing this had to learn to do streaming.
+void Writer::line_end()
 {
-    const size_t indent = static_cast<size_t>(indent_) * 4;
-    out_.append(indent, ' ');
-    out_ += text;
     if (!comment_.empty()) {
-        const size_t width = indent + text.size();
+        const size_t width = out_.size() - line_start_;
         out_.append(width < kCommentColumn ? kCommentColumn - width : 1, ' ');
         out_ += "// ";
         out_ += comment_;

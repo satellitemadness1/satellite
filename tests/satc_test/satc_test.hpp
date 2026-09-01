@@ -74,5 +74,6 @@ void section_examples();    // every acceptance program, and §5.2's stability
 void section_header();      // §2's three lines
 void section_reading();     // §4's reading order, and the fixpoint
 void section_writing();     // §5's write: tmp, fsync, rename, and the thread
+void section_depth();       // M8.5: the depths a program may be written at
 
 } // namespace satc_test

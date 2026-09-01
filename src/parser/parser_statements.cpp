@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace satellite {
@@ -40,100 +41,6 @@ bool names_a_place(NodeKind kind)
 
 } // namespace
 
-NodeIndex Parser::statement()
-{
-    const NodeIndex node = [&]() -> NodeIndex {
-        switch (opening()) {
-        case Segment1::Variable:
-        case Segment1::Container: {
-            // A TYPE PATH, SO A FOLLOWING BARE WORD IS A DECLARATION -- and
-            // nothing else in this switch may reach that conclusion.
-            const NodeIndex declared = type();
-            if (declared == kNoNode)
-                return kNoNode;
-            return var_decl(declared);
-        }
-        case Segment1::Statement:
-            // `if`, `else`, `while`, `for` -- 1 13 1 to 1 13 4.
-            if (!at_punct(".", 3) || !at_word(4)) {
-                error<errors::Code::PARSE_STATEMENT_NEEDS_A_WORD>(here());
-                return kNoNode;
-            }
-            switch (peek(4).spelling) {
-            case words::spelling_id(words::NodeId::STATEMENT_IF):
-                return if_stmt();
-            case words::spelling_id(words::NodeId::STATEMENT_WHILE):
-                return while_stmt();
-            case words::spelling_id(words::NodeId::STATEMENT_FOR):
-                return for_stmt();
-            case words::spelling_id(words::NodeId::STATEMENT_ELSE):
-                // NAMED RATHER THAN LUMPED IN WITH "no such statement",
-                // because a stray `else` is a real thing a person writes and
-                // the useful sentence is about the `if` and not about the word.
-                error<errors::Code::PARSE_ELSE_WITHOUT_IF>(here() + 4);
-                return kNoNode;
-            default:
-                // DESIGN §4.6's OWN WORKED EXAMPLE, one node further down the
-                // trie than the one it uses. `satellite.statement.wihle` is not
-                // a statement; `satellite.statement`'s four children are the
-                // candidate list, and suggest.cpp's transposition arm is what
-                // makes the answer `while` rather than nothing.
-                error<errors::Code::PARSE_NO_SUCH_STATEMENT>(here() + 4,
-                                                             peek(4).text);
-                suggest(here() + 4,
-                        static_cast<words::PathId>(words::NodeId::STATEMENT));
-                return kNoNode;
-            }
-        case Segment1::Return:
-            return return_stmt();
-        case Segment1::Include:
-        case Segment1::Capsule:
-        case Segment1::Spacesuit:
-        case Segment1::Returns:
-        case Segment1::Protected:
-        case Segment1::Public:
-            // DESIGN §6 puts all six under `top_level` or inside a suit block,
-            // never inside a `block`. Saying which one was written is what
-            // makes this better than "unexpected token": the person wrote a
-            // real word of the language in a place it does not go.
-            error<errors::Code::PARSE_DECLARATION_IN_BLOCK>(here() + 2,
-                                                            peek(2).text);
-            return kNoNode;
-        case Segment1::Library:
-        case Segment1::None:
-            // A value path or a module path. Both are expressions, and DESIGN
-            // §6.3 says the parser does not resolve either.
-            break;
-        }
-
-        if (at_punct("{"))
-            return block();
-
-        if (at_declaration()) {
-            const NodeIndex declared = type();
-            if (declared == kNoNode)
-                return kNoNode;
-            return var_decl(declared);
-        }
-
-        return assign_or_expression();
-    }();
-
-    // THE FOUR COMPOUND FORMS END WITH A BRACE AND NOT WITH A NEWLINE, so they
-    // are the ones this must not ask a terminator of. Written as one test over
-    // the node that came back rather than as a call at the end of each simple
-    // rule, because the rule that forgets it is the one nobody notices: a
-    // missing terminator check does not fail, it silently lets two statements
-    // share a line.
-    if (node != kNoNode) {
-        const NodeKind kind = ast_[node].kind;
-        if (kind != NodeKind::If && kind != NodeKind::While &&
-            kind != NodeKind::For && kind != NodeKind::Block)
-            end_of_statement();
-    }
-    return node;
-}
-
 // TWO ADJACENT WORD TOKENS WITH NOTHING BETWEEN THEM -- DESIGN §6.1's own
 // words, and "nothing between them" is doing more work here than it looks.
 // A newline is a token in this stream (DESIGN §5.6), so two words on two lines
@@ -145,7 +52,7 @@ bool Parser::at_declaration() const
     return at_word(0) && at_word(1);
 }
 
-NodeIndex Parser::block()
+bool Parser::open_block()
 {
     // THE BRACE MAY BE ON ITS OWN LINE, and every program in example/ writes it
     // that way -- `satellite.capsule satellite.main(...)` then `{` on the next
@@ -155,27 +62,284 @@ NodeIndex Parser::block()
     skip_newlines();
     const uint32_t opener = here();
     if (!expect_punct("{", "to open a block"))
+        return false;
+    Open frame;
+    frame.kind = Open::Kind::Block;
+    frame.at = opener;
+    open_.push_back(std::move(frame));
+    return true;
+}
+
+// A block, every statement in it, and everything nested inside those -- one
+// loop over `open_` where M4 wrote block() and statement() calling each other.
+//
+// THREE STEPS, AND THEY ARE THE THREE PLACES THE RECURSION USED TO BE:
+//
+//   Item      the innermost block decides -- another statement, or its `}`
+//   Statement one statement's dispatch. It either finishes, or pushes the
+//             frames of a compound form and leaves the body to Item
+//   Deliver   a finished node handed to the frame that was waiting for it,
+//             which is a block collecting statements or one of the three
+//             compound forms collecting the block it opened
+//
+// `floor` IS WHY A CAPSULE INSIDE A SPACESUIT PARSES. `open_` is a member, so a
+// block that runs while some outer parse is part way through must not read the
+// frames underneath it -- and the only such parse today is a suit body, which
+// holds a capsule, which holds this.
+NodeIndex Parser::block()
+{
+    const size_t floor = open_.size();
+    if (!open_block())
         return kNoNode;
 
-    std::vector<NodeIndex> statements;
-    skip_newlines();
-    while (!at_end() && !at_punct("}") && !stop()) {
-        const size_t before = pos_;
-        const NodeIndex node = statement();
-        if (node != kNoNode)
-            statements.push_back(node);
-        if (pos_ == before) {
-            error<errors::Code::PARSE_EXPECTED_STATEMENT>(here(), describe(peek()));
-            advance();
+    enum class Step : uint8_t { Item, Statement, Deliver };
+    Step step = Step::Item;
+    NodeIndex value = kNoNode;
+
+    for (;;) {
+        switch (step) {
+
+        case Step::Item: {
+            skip_newlines();
+            if (!at_end() && !at_punct("}") && !stop()) {
+                // NO RULE MAY LEAVE THE CURSOR WHERE IT FOUND IT, and each
+                // block keeps its own mark because each has its own loop.
+                open_.back().before = pos_;
+                step = Step::Statement;
+                break;
+            }
+            const Open done = std::move(open_.back());
+            open_.pop_back();
+            value = expect_punct("}", "to close the block", done.at)
+                        ? ast_.add(NodeKind::Block, done.at,
+                                   ast_.add_list(done.items))
+                        : kNoNode;
+            step = Step::Deliver;
+            break;
         }
-        if (panic_)
-            synchronise();
-        skip_newlines();
-    }
 
-    if (!expect_punct("}", "to close the block", opener))
-        return kNoNode;
-    return ast_.add(NodeKind::Block, opener, ast_.add_list(statements));
+        case Step::Statement: {
+            value = kNoNode;
+            step = Step::Deliver;
+
+            switch (opening()) {
+            case Segment1::Variable:
+            case Segment1::Container: {
+                // A TYPE PATH, SO A FOLLOWING BARE WORD IS A DECLARATION -- and
+                // nothing else in this switch may reach that conclusion.
+                const NodeIndex declared = type();
+                if (declared == kNoNode)
+                    break;
+                value = var_decl(declared);
+                if (value != kNoNode)
+                    end_of_statement();
+                break;
+            }
+            case Segment1::Statement:
+                // `if`, `else`, `while`, `for` -- 1 13 1 to 1 13 4.
+                if (!at_punct(".", 3) || !at_word(4)) {
+                    error<errors::Code::PARSE_STATEMENT_NEEDS_A_WORD>(here());
+                    break;
+                }
+                switch (peek(4).spelling) {
+                case words::spelling_id(words::NodeId::STATEMENT_IF):
+                    // THE HEAD PUSHES A FRAME AND THE BODY IS THE NEXT BLOCK,
+                    // which is what replaces `then_block = block()` inside a
+                    // rule that had already been entered. A block that will not
+                    // open takes the frame with it, exactly as if_stmt()
+                    // returning kNoNode did.
+                    if (!if_head())
+                        break;
+                    if (!open_block()) {
+                        open_.pop_back();
+                        break;
+                    }
+                    step = Step::Item;
+                    break;
+                case words::spelling_id(words::NodeId::STATEMENT_WHILE):
+                    if (!while_head())
+                        break;
+                    if (!open_block()) {
+                        open_.pop_back();
+                        break;
+                    }
+                    step = Step::Item;
+                    break;
+                case words::spelling_id(words::NodeId::STATEMENT_FOR):
+                    if (!for_head())
+                        break;
+                    if (!open_block()) {
+                        open_.pop_back();
+                        break;
+                    }
+                    step = Step::Item;
+                    break;
+                case words::spelling_id(words::NodeId::STATEMENT_ELSE):
+                    // NAMED RATHER THAN LUMPED IN WITH "no such statement",
+                    // because a stray `else` is a real thing a person writes and
+                    // the useful sentence is about the `if` and not about the
+                    // word.
+                    error<errors::Code::PARSE_ELSE_WITHOUT_IF>(here() + 4);
+                    break;
+                default:
+                    // DESIGN §4.6's OWN WORKED EXAMPLE, one node further down
+                    // the trie than the one it uses. `satellite.statement.wihle`
+                    // is not a statement; `satellite.statement`'s four children
+                    // are the candidate list, and suggest.cpp's transposition
+                    // arm is what makes the answer `while` rather than nothing.
+                    error<errors::Code::PARSE_NO_SUCH_STATEMENT>(here() + 4,
+                                                                 peek(4).text);
+                    suggest(here() + 4,
+                            static_cast<words::PathId>(words::NodeId::STATEMENT));
+                    break;
+                }
+                break;
+            case Segment1::Return:
+                value = return_stmt();
+                if (value != kNoNode)
+                    end_of_statement();
+                break;
+            case Segment1::Include:
+            case Segment1::Capsule:
+            case Segment1::Spacesuit:
+            case Segment1::Returns:
+            case Segment1::Protected:
+            case Segment1::Public:
+                // DESIGN §6 puts all six under `top_level` or inside a suit
+                // block, never inside a `block`. Saying which one was written is
+                // what makes this better than "unexpected token": the person
+                // wrote a real word of the language in a place it does not go.
+                error<errors::Code::PARSE_DECLARATION_IN_BLOCK>(here() + 2,
+                                                                peek(2).text);
+                break;
+            case Segment1::Library:
+            case Segment1::None:
+                // A value path or a module path. Both are expressions, and
+                // DESIGN §6.3 says the parser does not resolve either.
+                if (at_punct("{")) {
+                    if (open_block())
+                        step = Step::Item;
+                    break;
+                }
+                if (at_declaration()) {
+                    const NodeIndex declared = type();
+                    if (declared == kNoNode)
+                        break;
+                    value = var_decl(declared);
+                    if (value != kNoNode)
+                        end_of_statement();
+                    break;
+                }
+                value = assign_or_expression();
+                if (value != kNoNode)
+                    end_of_statement();
+                break;
+            }
+            break;
+        }
+
+        case Step::Deliver: {
+            if (open_.size() == floor)
+                return value;
+
+            switch (open_.back().kind) {
+            case Open::Kind::Block:
+                if (value != kNoNode)
+                    open_.back().items.push_back(value);
+                if (pos_ == open_.back().before) {
+                    error<errors::Code::PARSE_EXPECTED_STATEMENT>(
+                        here(), describe(peek()));
+                    advance();
+                }
+                if (panic_)
+                    synchronise();
+                step = Step::Item;
+                break;
+
+            case Open::Kind::If:
+                if (!open_.back().otherwise) {
+                    if (value == kNoNode) {
+                        open_.pop_back();
+                        break;
+                    }
+                    open_.back().b = value;
+
+                    // THE ELSE MAY BE ON ITS OWN LINE, so the newlines after the
+                    // closing brace are crossed to look for it -- and the cursor
+                    // is put back when there is no else, because those newlines
+                    // belong to whatever comes next. Crossing them without a way
+                    // back is how an `if` at the end of a block eats the brace
+                    // that closes it.
+                    const size_t before = pos_;
+                    skip_newlines();
+                    if (!at_else()) {
+                        pos_ = before;
+                        const Open done = open_.back();
+                        open_.pop_back();
+                        value = ast_.add(NodeKind::If, done.at, done.a, done.b,
+                                         kNoNode);
+                        break;
+                    }
+                    take_statement_keyword();
+                    skip_newlines();
+                    open_.back().otherwise = true;
+
+                    // `( block | if_stmt )`, which is what keeps `else if` from
+                    // being a form of its own: the second arm is a statement
+                    // again, and the tree that comes out of `else if` is an If
+                    // in an If.
+                    if (at_punct("{")) {
+                        if (open_block()) {
+                            step = Step::Item;
+                            break;
+                        }
+                        open_.pop_back();
+                        value = kNoNode;
+                        break;
+                    }
+                    if (opening() == Segment1::Statement) {
+                        step = Step::Statement;
+                        break;
+                    }
+                    error<errors::Code::PARSE_ELSE_NEEDS_A_BLOCK>(here(),
+                                                                  describe(peek()));
+                    open_.pop_back();
+                    value = kNoNode;
+                    break;
+                }
+                {
+                    const Open done = open_.back();
+                    open_.pop_back();
+                    value = value == kNoNode
+                                ? kNoNode
+                                : ast_.add(NodeKind::If, done.at, done.a, done.b,
+                                           value);
+                }
+                break;
+
+            case Open::Kind::While: {
+                const Open done = open_.back();
+                open_.pop_back();
+                value = value == kNoNode
+                            ? kNoNode
+                            : ast_.add(NodeKind::While, done.at, done.a, value);
+                break;
+            }
+
+            case Open::Kind::For: {
+                const Open done = open_.back();
+                open_.pop_back();
+                value = value == kNoNode
+                            ? kNoNode
+                            : ast_.add(NodeKind::For, done.at, done.a, done.b,
+                                       done.c, value);
+                break;
+            }
+            }
+            break;
+        }
+        }
+    }
 }
 
 NodeIndex Parser::var_decl(NodeIndex declared_type)

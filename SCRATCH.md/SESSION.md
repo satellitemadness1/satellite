@@ -1,5 +1,20 @@
 # Session state — 2026-08-28
 
+> **STALE AS OF 2026-09-01 AND KEPT ONLY AS DATED RECORD. DO NOT READ THIS FILE
+> FOR WHERE THE WORK IS.** It stopped being maintained after M5 and its §0 still
+> says the next milestone is M6; since then M6, M7, M8 and M8.5 have all landed.
+> **What is current lives in the permanent documents**, which is where this file
+> says everything is supposed to end up:
+>
+> - [PLAN.md](../PLAN.md) §1 — where things stand, and what is next
+> - [PLAN.md](../PLAN.md) §8 — every milestone, in build order
+> - [MILESTONES/](../MILESTONES/) — what each one turned out to be, with its commit
+> - [NO_LIMITS.md](NO_LIMITS.md) §8 — the two questions still open, both the author's
+> - [PORTING.md](PORTING.md) §3 — the last porting row, which is M9's
+>
+> Everything below is the session of 2026-08-28 as it was written, and its
+> milestone numbers are the OLD ones — §0 has the key.
+
 **This file is scratch and is meant to be deleted.** It exists so that a `/clear`
 costs nothing. Everything in here is either (a) waiting to be moved into a
 permanent document, or (b) a question only the user can answer. When both lists

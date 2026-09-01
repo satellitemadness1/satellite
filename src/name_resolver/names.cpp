@@ -97,7 +97,17 @@ void Resolver::member(NodeIndex node)
         return;
     }
 
-    expression(n.a);
+    // THE RECEIVER, AND THEN THE REST OF THIS FUNCTION. What follows reads the
+    // receiver's `Info` back, so it cannot run until the whole subtree under it
+    // has -- which recursion expressed by sitting after the call and an
+    // explicit stack expresses as an action pushed under it.
+    work_.push_back({Act::MemberDone, node, words::kNoPath});
+    visit_expression(n.a);
+}
+
+void Resolver::member_done(NodeIndex node)
+{
+    const Node &n = ast_[node];
     const Info receiver = out_.at(n.a);
     const std::string_view word = ast_.text_of(node);
 
@@ -144,8 +154,7 @@ void Resolver::call(NodeIndex node)
         // SATC §5.1 step 3: `include(satellite)` is 1 1 1 and the reserved word
         // is what the number NAMES, so there is nothing left to resolve.
         if (!whole.absorbs_argument)
-            for (uint32_t i = 0; i < ast_.list_size(n.b); i++)
-                expression(ast_.list_at(n.b, i));
+            visit_arguments(node);
         return;
     }
 
@@ -158,10 +167,19 @@ void Resolver::call(NodeIndex node)
     // `satellite.console.display("x")` is 1 5 1 and the argument is the
     // program's own -- paths.hpp's own example of the distinction, and the
     // reason the two questions are asked separately rather than once.
-    expression(n.a);
+    //
+    // The answer is read off the target's `Info`, so the rest of the call waits
+    // under it the way member()'s does.
+    work_.push_back({Act::CallTargetDone, node, words::kNoPath});
+    visit_expression(n.a);
+}
+
+void Resolver::call_target_done(NodeIndex node)
+{
+    const Node &n = ast_[node];
+
     if (out_.at(n.a).path != words::kNoPath) {
-        for (uint32_t i = 0; i < ast_.list_size(n.b); i++)
-            expression(ast_.list_at(n.b, i));
+        visit_arguments(node);
         return;
     }
 
@@ -184,8 +202,7 @@ void Resolver::call(NodeIndex node)
         }
     }
 
-    for (uint32_t i = 0; i < ast_.list_size(n.b); i++)
-        expression(ast_.list_at(n.b, i));
+    visit_arguments(node);
 }
 
 // The refusal satellite_cache/paths.cpp names and declines to raise, written
@@ -228,7 +245,7 @@ void Resolver::statement_form(NodeIndex node, words::NodeId under,
     }
 
     if (!found.absorbs_argument)
-        expression(n.a);
+        visit_expression(n.a);
 }
 
 void Resolver::main_parameter(NodeIndex decl, std::string_view spelling,

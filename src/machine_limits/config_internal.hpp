@@ -81,12 +81,16 @@ inline constexpr size_t kSettingCount = sizeof kSettings / sizeof kSettings[0];
 // every dial whose meaning has not been decided yet.
 //
 // A RANGE IS A CLAIM ABOUT WHAT A VALUE MEANS, WHICH IS WHY THIS TABLE IS
-// MOSTLY EMPTY. config.cpp's Dial arm has said since M6 that `max_depth` has no
-// meaning here to check against -- whether 0 is a legal depth is M9's question,
-// asked where the recursion is -- and `float_digits` waits on M15 the same way.
-// `min_free_mb` is M6's own and has a meaning, and no bound was ever claimed for
-// it: any number of megabytes is a number of megabytes, and unset means the
-// machine's free memory is not watched at all.
+// MOSTLY EMPTY. `float_digits` waits on M15, and `min_free_mb` is M6's own and
+// has a meaning with no bound ever claimed for it: any number of megabytes is a
+// number of megabytes, and unset means the machine's free memory is not watched
+// at all.
+//
+// `max_depth`'s ROW IS UNCHECKED AND ITS MEANING IS DECIDED, WHICH IS NOT A
+// CONTRADICTION. Since 2026-09-01 it is a memory ceiling on the control stack,
+// in bytes, unset meaning the machine -- but M9 builds the stack that reads it,
+// so the row stays `{false, 0, 0}` until there is a consumer to bound the value
+// FOR. config.cpp's Dial arm carries the argument.
 //
 // What changed on 2026-08-31 is that `division_digits` HAS a meaning -- M8 gave
 // it one -- so the two things a count of digits cannot be are now known, and
@@ -106,7 +110,7 @@ struct DialRange {
 
 inline constexpr DialRange kDialRanges[kDialCount] = {
     {true, kDivisionDigitsLeast, kDivisionDigitsMost},   // division_digits, M8
-    {false, 0, 0},                                       // max_depth, M9
+    {false, 0, 0},                                       // max_depth, M9 -- bytes
     {false, 0, 0},                                       // min_free_mb
     {false, 0, 0},                                       // float_digits, M15
 };

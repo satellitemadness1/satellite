@@ -44,15 +44,57 @@ private:
 
     // --- the walk (walk.cpp) ------------------------------------------------
 
+    // WHAT THE WALK'S OWN STACK IS MADE OF. DESIGN §7.5: the language has no
+    // depth limit, so no walker may use the C++ stack for a depth the user's
+    // program chooses. Four of these six actions are things recursion did for
+    // free and an explicit stack has to say out loud -- close a scope after its
+    // children, declare a name after its initialiser, and finish member() and
+    // call() after the one child each of them reads back.
+    enum class Act : uint8_t {
+        Expression,      // visit an expression node
+        Statement,       // visit a statement node
+        CloseScope,      // a Block's or a For's scope, after its children
+        Declare,         // a VarDecl's name, after its initialiser
+        MemberDone,      // member(), after its receiver
+        CallTargetDone,  // call(), after its target
+    };
+
+    // Twelve bytes, and `type` is read by Declare alone -- a VarDecl's type is
+    // known when the statement is met and wanted when the name is bound, which
+    // is after the initialiser and after everything inside it.
+    struct Work {
+        Act act = Act::Expression;
+        NodeIndex node = kNoNode;
+        words::PathId type = words::kNoPath;
+    };
+
+    // The two that seed the stack and drain it. Everything else pushes.
     void statement(NodeIndex node);
     void expression(NodeIndex node);
     void body_of(NodeIndex capsule, Frame &frame);
+
+    void run_work();
+    void expression_at(NodeIndex node);
+    void statement_at(NodeIndex node);
+    void visit_arguments(NodeIndex call);
+
+    void visit_expression(NodeIndex node)
+    {
+        work_.push_back({Act::Expression, node, words::kNoPath});
+    }
+
+    void visit_statement(NodeIndex node)
+    {
+        work_.push_back({Act::Statement, node, words::kNoPath});
+    }
 
     // --- names, paths and numbers (names.cpp) -------------------------------
 
     void name(NodeIndex node);
     void member(NodeIndex node);
+    void member_done(NodeIndex node);
     void call(NodeIndex node);
+    void call_target_done(NodeIndex node);
     void statement_form(NodeIndex node, words::NodeId under, const char *word);
     void no_such_word(const cache::PathMatch &stopped);
 
@@ -65,7 +107,10 @@ private:
     // A type, checked against the numbering and recorded on the node. Returns
     // the node the type path ends at, or kNoPath for `satellite` itself and for
     // a spacesuit named bare -- both of which this milestone cannot check.
+    // type_of() is the type and everything inside it and keeps its own stack;
+    // type_at() is one node of it and descends into nothing.
     words::PathId type_of(NodeIndex node);
+    words::PathId type_at(NodeIndex node);
 
     // WORD_NUMBERS §1.5's fold, over the numbering rather than over a table.
     bool fold_option(NodeIndex call_node, NodeIndex target, words::PathId under);
@@ -133,6 +178,12 @@ private:
     std::vector<Capsule> suits_;
     std::vector<Binding> bindings_;
     std::vector<size_t> scopes_;
+
+    // THE DEPTH OF THE WALK LIVES HERE AND NOWHERE ELSE. It is a vector on the
+    // heap, so what bounds a nested expression is memory -- and running out of
+    // memory is a thing this language already has words and an exit status for
+    // (PLAN §4.5.2's watchdog), where running off the C++ stack is signal 11.
+    std::vector<Work> work_;
 
     // The frame being filled, or null at the top level. §7.2's whole point is
     // that these two cases are DIFFERENT storage and not one with a flag:

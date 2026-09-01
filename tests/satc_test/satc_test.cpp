@@ -137,6 +137,7 @@ int main(int argc, char **argv)
     satc_test::section_header();
     satc_test::section_reading();
     satc_test::section_writing();
+    satc_test::section_depth();
 
     if (satc_test::failures != 0) {
         printf("satc_test: %d failed\n", satc_test::failures);

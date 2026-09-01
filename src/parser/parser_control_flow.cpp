@@ -53,71 +53,51 @@ bool Parser::at_else() const
            peek(4).spelling == words::spelling_id(words::NodeId::STATEMENT_ELSE);
 }
 
-NodeIndex Parser::if_stmt()
+// THE HEAD ONLY, AND THE BODY IS THE BLOCK THE MACHINE OPENS NEXT -- M8.5.
+// Each of these was a whole statement that called block() in the middle of
+// itself, which is the statement cycle DESIGN §7.5 does not allow on the C++
+// stack. What is left is the part that reads tokens; parser_statements.cpp's
+// loop pushes the block after it and builds the node when that block closes.
+// `false` means nothing was pushed and the statement is kNoNode.
+bool Parser::if_head()
 {
     const uint32_t at = take_statement_keyword();
 
     const NodeIndex test = condition("after satellite.statement.if");
     if (test == kNoNode)
-        return kNoNode;
+        return false;
 
-    const NodeIndex then_block = block();
-    if (then_block == kNoNode)
-        return kNoNode;
-
-    // THE ELSE MAY BE ON ITS OWN LINE, so the newlines after the closing brace
-    // are crossed to look for it -- and the cursor is put back when there is no
-    // else, because those newlines belong to whatever comes next. Crossing them
-    // without a way back is how an `if` at the end of a block eats the brace
-    // that closes it.
-    const size_t before = pos_;
-    skip_newlines();
-    if (!at_else()) {
-        pos_ = before;
-        return ast_.add(NodeKind::If, at, test, then_block, kNoNode);
-    }
-    take_statement_keyword();
-    skip_newlines();
-
-    // `( block | if_stmt )`, which is what keeps `else if` from being a form of
-    // its own: the second arm is this rule again, and the tree that comes out
-    // of `else if` is an If in an If.
-    NodeIndex otherwise = kNoNode;
-    if (at_punct("{"))
-        otherwise = block();
-    else if (opening() == Segment1::Statement)
-        otherwise = statement();
-    else {
-        error<errors::Code::PARSE_ELSE_NEEDS_A_BLOCK>(here(), describe(peek()));
-        return kNoNode;
-    }
-    if (otherwise == kNoNode)
-        return kNoNode;
-
-    return ast_.add(NodeKind::If, at, test, then_block, otherwise);
+    Open frame;
+    frame.kind = Open::Kind::If;
+    frame.at = at;
+    frame.a = test;
+    open_.push_back(std::move(frame));
+    return true;
 }
 
-NodeIndex Parser::while_stmt()
+bool Parser::while_head()
 {
     const uint32_t at = take_statement_keyword();
 
     const NodeIndex test = condition("after satellite.statement.while");
     if (test == kNoNode)
-        return kNoNode;
+        return false;
 
-    const NodeIndex body = block();
-    if (body == kNoNode)
-        return kNoNode;
-    return ast_.add(NodeKind::While, at, test, body);
+    Open frame;
+    frame.kind = Open::Kind::While;
+    frame.at = at;
+    frame.a = test;
+    open_.push_back(std::move(frame));
+    return true;
 }
 
-NodeIndex Parser::for_stmt()
+bool Parser::for_head()
 {
     const uint32_t at = take_statement_keyword();
 
     const uint32_t opener = here();
     if (!expect_punct("(", "after satellite.statement.for"))
-        return kNoNode;
+        return false;
     open_bracket();
 
     // ALL THREE PARTS ARE OPTIONAL AND THE TWO SEMICOLONS ARE NOT. `for (;;)`
@@ -135,12 +115,12 @@ NodeIndex Parser::for_stmt()
         }
         if (init == kNoNode) {
             close_bracket();
-            return kNoNode;
+            return false;
         }
     }
     if (!expect_punct(";", "after the for loop's first part")) {
         close_bracket();
-        return kNoNode;
+        return false;
     }
 
     NodeIndex test = kNoNode;
@@ -148,12 +128,12 @@ NodeIndex Parser::for_stmt()
         test = expression();
         if (test == kNoNode) {
             close_bracket();
-            return kNoNode;
+            return false;
         }
     }
     if (!expect_punct(";", "after the for loop's condition")) {
         close_bracket();
-        return kNoNode;
+        return false;
     }
 
     NodeIndex step = kNoNode;
@@ -161,18 +141,22 @@ NodeIndex Parser::for_stmt()
         step = assign_or_expression();
         if (step == kNoNode) {
             close_bracket();
-            return kNoNode;
+            return false;
         }
     }
 
     close_bracket();
     if (!expect_punct(")", "to close the for loop's head", opener))
-        return kNoNode;
+        return false;
 
-    const NodeIndex body = block();
-    if (body == kNoNode)
-        return kNoNode;
-    return ast_.add(NodeKind::For, at, init, test, step, body);
+    Open frame;
+    frame.kind = Open::Kind::For;
+    frame.at = at;
+    frame.a = init;
+    frame.b = test;
+    frame.c = step;
+    open_.push_back(std::move(frame));
+    return true;
 }
 
 } // namespace satellite

@@ -31,6 +31,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace satellite::resolve {
 
@@ -143,7 +144,12 @@ cache::PathMatch Resolver::path_of(NodeIndex node, bool wants_call)
     return found;
 }
 
-words::PathId Resolver::type_of(NodeIndex node)
+// ONE TYPE NODE AND NOT ITS ARGUMENTS, which is the split that lets type_of()
+// below keep its own stack. It answers kNoPath for every form there is nothing
+// to descend into -- an absent node, a form this milestone does not check, and
+// a name the numbering does not have -- so "walk the generic arguments" and
+// "this came back with a path" are the same test rather than two.
+words::PathId Resolver::type_at(NodeIndex node)
 {
     if (node == kNoNode || ast_[node].kind != NodeKind::Type)
         return words::kNoPath;
@@ -190,15 +196,40 @@ words::PathId Resolver::type_of(NodeIndex node)
 
     info(node).path = id;
     info(node).type = id;
+    return id;
+}
 
-    // THE GENERIC ARGUMENTS ARE TYPES AND ARE CHECKED, AND THEIR COUNT IS NOT.
-    // `satellite.container.map<x>` with one argument where two are meant is a
-    // TYPE rule, and DESIGN §8 is the value model -- M9's. The M6 draft checks
-    // the counts here and had to invent the rules to do it, including which
-    // types may be a map's key; this milestone asks only whether every name is
-    // a name the language has, which is what a resolve is for.
-    for (uint32_t i = 0; i < ast_.list_size(n.b); i++)
-        type_of(ast_.list_at(n.b, i));
+// A type and everything inside it. THE GENERIC ARGUMENTS ARE TYPES AND ARE
+// CHECKED, AND THEIR COUNT IS NOT: `satellite.container.map<x>` with one
+// argument where two are meant is a TYPE rule, and DESIGN §8 is the value model
+// -- M9's. The M6 draft checks the counts here and had to invent the rules to
+// do it, including which types may be a map's key; this milestone asks only
+// whether every name is a name the language has, which is what a resolve is for.
+//
+// AND `list<list<list<...>>>` IS A DEPTH THE PROGRAM CHOOSES, so this walk
+// keeps its own stack too -- DESIGN §7.5, and NO_LIMITS §3 lists this function
+// beside the four bigger ones. Pushed in reverse, so the arguments are checked
+// left to right and the diagnostics come out in the order they are written.
+words::PathId Resolver::type_of(NodeIndex node)
+{
+    const words::PathId id = type_at(node);
+    if (id == words::kNoPath)
+        return id;
+
+    std::vector<NodeIndex> pending;
+    const auto descend = [&](NodeIndex type) {
+        const ListId arguments = ast_[type].b;
+        for (uint32_t i = ast_.list_size(arguments); i-- > 0;)
+            pending.push_back(ast_.list_at(arguments, i));
+    };
+
+    descend(node);
+    while (!pending.empty()) {
+        const NodeIndex argument = pending.back();
+        pending.pop_back();
+        if (type_at(argument) != words::kNoPath)
+            descend(argument);
+    }
     return id;
 }
 

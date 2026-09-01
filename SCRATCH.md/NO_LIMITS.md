@@ -1,12 +1,20 @@
 # No limits — the interpreter must not stop at a depth, and today it does
 
 **Written 2026-08-31, immediately after M7 landed (`e76443b`, `3dca061`), on the
-author's instruction.** Nothing here is built yet. This file is the record of a
-decision the author took and the plan for carrying it out, so that neither has to
-be arrived at twice.
+author's instruction.** This file is the record of a decision the author took and
+the plan for carrying it out, so that neither has to be arrived at twice.
 
-**Delete it when the work lands** and the permanent documents carry it —
-DESIGN §7.5, PLAN §2.5 and PLAN §8's M9 entry are the three that change.
+**§5 IS BUILT, AS OF 2026-09-01, AND IT IS M8.5.** All four steps landed together
+— the resolver's walk, the printer, the `.satc` writer and the parser — and the
+permanent documents carry it: DESIGN §7.5.1, PLAN §2.5, §2.6 and §8's M8.5 entry,
+and `MILESTONES/M8.5.md` is the review. The acceptance test in §7 below is met and
+its fixtures are in `tests/parser_test/depth.cpp`, `tests/satc_test/depth.cpp` and
+`tests/resolve_test/frames.cpp`.
+
+**WHAT IS LEFT IN THIS FILE IS §8, WHICH IS FOUR QUESTIONS ONLY THE AUTHOR CAN
+ANSWER** — one of which, the 2–3× cost, is now measured for the static passes and
+open only for the evaluator. **Delete this file when §8 is empty**, which is the
+condition `SCRATCH.md/README.md` carries.
 
 ---
 
@@ -318,7 +326,13 @@ recursion refuse itself *in words about recursion* on a default config.
 plausibly reach now works; §5 is what makes the rule true rather than nearly
 true, and it is no longer something to drop everything for.
 
-## 5. The plan, in order, and why this order
+## 5. The plan, in order, and why this order — ALL FOUR BUILT 2026-09-01 (M8.5)
+
+**Every step below landed, in this order, and each left the tree green.** What
+each one turned out to cost, and the two things the plan did not know — that the
+grammar has FOUR cycles rather than one, and that `section() -> suit_body()` is a
+recursion no document had named — are in `MILESTONES/M8.5.md` §3 and §4. The text
+below is the plan as it was written, kept as the record of what was predicted.
 
 Each step leaves the tree green. **The order is by how easy it is to be sure the
 rewrite is correct**, not by how bad the crash is — the printers crash sooner
@@ -464,18 +478,53 @@ the interpreter's answer does not depend on who generated the file, which is wha
    process at `MEMORY_MAX` with one line and exit 4. A walker that has filled the
    heap with its own stack is the same event arriving from a different direction,
    and it is worth deciding whether it is the same sentence. §7 assumes it is.
+
+   **NARROWED BY QUESTION 3's ANSWER, 2026-09-01.** A control stack that has its
+   own ceiling in bytes answers this for the case that prompted it — a runaway
+   recursion is caught where the growing thing has a name, and gets a sentence
+   about recursion. What is left of this question is everything else that can
+   fill a heap: a list a program keeps appending to, a division to fifty million
+   digits, a `.satc` the printer is building. Those still meet the watchdog and
+   still get MEMORY_MAX's sentence, **and M8.5 measured a third answer nobody
+   chose** — with no `MEMORY_MAX` set the allocator throws first and the process
+   aborts with exit 134, which is neither of the above. That is the part still
+   open.
 2. **Is the 2–3× real, and is it paid everywhere or only where it is needed?**
    PLAN §2.5's figure is borrowed. It has to be measured on this tree (PLAN §9),
    and the answer might be that the static passes take an explicit stack — they
    run once per program and nobody will see it — while the evaluator's shape is
    decided on a number rather than on a principle. The author chose *everything*;
    this records what "everything" costs before it is spent.
-3. **What does `satellite.library.system.max_depth` `1 14 2 2` mean now?** It is a
-   **numbered path**, so WORD_NUMBERS §1.2 — *never renumber, never reuse* —
-   means it cannot be deleted and has to mean something. PLAN §8 promised it as
-   M9's recursion ceiling with M16's search walk as a second consumer; the
-   ceiling is gone and the search walk is not, so the dial has one certain reader
-   and an unclear job. Three readings and they are the author's to pick:
+3. ~~**What does `satellite.library.system.max_depth` `1 14 2 2` mean now?**~~
+   **ANSWERED 2026-09-01, ON THE AUTHOR'S DECISION: IT IS THE FIRST READING —
+   A MEMORY CEILING ON THE CONTROL STACK, IN BYTES.** The reasoning is below,
+   and what it commits M9 to is in PLAN §8's M9 entry.
+
+   **The alternative considered first was to set it outrageously large** — five
+   hundred trillion — and let it never fire. That is refused for the reason §4.1.1
+   already refuses it one level down about the 8 MiB: *"it is a bigger number and
+   not the absence of one."* And it is refused a second time by DESIGN §7.5's own
+   kept evidence — v1's default of ~10000 *"sat past both stack cliffs, so the
+   guard could never fire and the segfault it existed to prevent was exactly what
+   a runaway recursion got."* A guard that cannot fire costs a compare on every
+   frame and buys nothing while looking like protection.
+
+   **What the bytes reading buys is the SENTENCE, which is what question 1 above
+   is about.** A ceiling on the control stack knows it is the control stack, so a
+   runaway recursion can be told about recursion; the watchdog can only say the
+   run is using N and MEMORY_MAX is M. It is also cheaper than a frame count: the
+   check happens when the stack GROWS, not on every push.
+
+   **And unset means the machine, which is not a new rule.** PLAN §4.5.4 settled
+   the same question for `MEMORY_MAX` — *"the default is the WHOLE MACHINE,
+   because a fraction is a number satl would have invented about a program it has
+   never seen"* — so this dial defaults the way its sibling already does and no
+   number is written into a header. DESIGN §7.5 is untouched by that: a ceiling
+   the USER sets on their own program is not a limit the language has, which is
+   the distinction M8 drew for `division_digits` in the same words.
+
+   *The three readings, kept because the argument above is only readable against
+   them:*
 
    - **a memory ceiling on the control stack** — a count of bytes rather than of
      frames, which keeps the name honest and makes it a sibling of `MEMORY_MAX`
@@ -485,13 +534,19 @@ the interpreter's answer does not depend on who generated the file, which is wha
    - **a runaway detector** — the only reading under which an infinite recursion
      still terminates before it exhausts memory.
 
-   **The third one is the question hiding inside this decision.** `fact(n)` with
+   **The third one was the question hiding inside this decision**, and the first
+   reading answers it in the only way that keeps the name honest. `fact(n)` with
    no base case used to hit a ceiling and stop; with no ceiling it fills the heap
    and then meets M6's watchdog, which kills the process at `MEMORY_MAX` with one
-   line and exit 4. That is a working answer and it is a *worse sentence* than
-   the one a depth error could have given, because it names memory rather than
-   recursion. Whether that trade is acceptable is a decision and not an
-   implementation detail.
+   line and exit 4 — a working answer and a *worse sentence*, because it names
+   memory rather than recursion. A control-stack ceiling is the same event caught
+   one layer in, where the thing that is growing has a name.
+
+   **What it does NOT do is make an infinite recursion terminate early**, which
+   is the third reading's whole point and is deliberately not taken: with the
+   ceiling defaulted to the machine, `fact(n)` still runs until the machine is
+   full. It then says so about RECURSION, and a user who wants it stopped sooner
+   sets the dial — which is one number they chose rather than one satl invented.
 
 4. **Does the parser rewrite become its own milestone?** It is the largest piece
    here by a distance, and PLAN §8's numbers are positions rather than names

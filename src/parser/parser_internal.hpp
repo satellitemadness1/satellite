@@ -8,6 +8,28 @@
 // at exactly those three seams -- `top_level`, `statement`, `expression` -- so
 // the files are the grammar's own sections rather than an arithmetic over 300
 // lines.
+//
+// NO RULE HERE RECURSES ON A DEPTH THE PROGRAM CHOOSES -- M8.5, DESIGN §7.5,
+// and it is the largest of the four rewrites `SCRATCH.md/NO_LIMITS.md` §5 asks
+// for. Recursive descent is recursion by name, so what changed is where the
+// depth is kept: THE GRAMMAR HAS FOUR CYCLES and each one now keeps its own
+// stack on the heap.
+//
+//   expressions   expression -> unary -> postfix -> primary -> '(' expression
+//                 and through an argument list and a subscript -- one machine
+//                 with an operand stack, an operator stack and a frame per
+//                 open bracket (parser_expressions.cpp)
+//   statements    statement -> block -> statement, and the three compound
+//                 forms whose body is a block -- one machine over `open_`
+//                 (parser_statements.cpp, with the heads next door)
+//   types         type -> generic_arguments -> type (parser_types.cpp)
+//   suit bodies   suit_body -> section -> suit_body (parser_declarations.cpp)
+//
+// AND THE CYCLES ARE NOT NESTED IN EACH OTHER, which is what makes four
+// machines enough. Every edge between them runs one way -- a suit body holds a
+// capsule, a capsule holds a block, a statement holds an expression, an
+// expression holds no statement -- so the deepest a satellite program can drive
+// this parser's C++ stack is one frame per machine, whatever it is nested in.
 
 #include "abstract_syntax_tree/ast.hpp"
 #include "error_reporter/report.hpp"
@@ -187,7 +209,6 @@ private:
     NodeIndex capsule_decl(words::PathId owner);
     NodeIndex spacesuit_decl();
     NodeIndex global_decl();
-    NodeIndex section(words::PathId owner);
     ListId suit_body(words::PathId owner);
     NodeIndex suit_member(words::PathId owner);
 
@@ -199,15 +220,35 @@ private:
 
     // --- types (parser_types.cpp) -------------------------------------------
 
+    // A type and every type inside it -- the `<...>` nesting is kept on a
+    // vector in the function rather than on the C++ stack, so
+    // `list<list<list<...>>>` has no depth of its own. generic_arguments() is
+    // gone with the recursion: it was one half of the cycle.
     NodeIndex type();
-    ListId generic_arguments();
     ListId param_list();
     NodeIndex returns_clause();
 
     // --- statements (parser_statements.cpp) ---------------------------------
 
-    NodeIndex statement();
+    // WHAT A HALF-BUILT STATEMENT LOOKS LIKE, and it is the whole of what the
+    // C++ stack used to hold for one. A Block is collecting its statements; the
+    // three compound forms have their head and are waiting for the block that
+    // is above them on this stack. `before` is the block loop's guard against a
+    // rule that consumes nothing, kept per frame because each block has its own.
+    struct Open {
+        enum class Kind : uint8_t { Block, If, While, For };
+        Kind kind = Kind::Block;
+        uint32_t at = 0;              // the '{', or the statement's keyword
+        size_t before = 0;            // Block: where the current statement began
+        NodeIndex a = kNoNode;        // If/While: the test.  For: the init
+        NodeIndex b = kNoNode;        // If: the then block.  For: the test
+        NodeIndex c = kNoNode;        // For: the step
+        bool otherwise = false;       // If: the then block is done, this is the else
+        std::vector<NodeIndex> items; // Block
+    };
+
     NodeIndex block();
+    bool open_block();
     NodeIndex var_decl(NodeIndex declared_type);
     NodeIndex return_stmt();
     NodeIndex assign_or_expression();
@@ -215,21 +256,24 @@ private:
 
     // --- if, while, for (parser_control_flow.cpp) ---------------------------
 
-    NodeIndex if_stmt();
-    NodeIndex while_stmt();
-    NodeIndex for_stmt();
+    // A HEAD AND NOT A STATEMENT, which is what the machine next door needs:
+    // each reads its keyword and its parenthesised part, pushes the frame that
+    // remembers them, and leaves the body to the block the machine opens after
+    // it. `false` means nothing was pushed and the statement is kNoNode.
+    bool if_head();
+    bool while_head();
+    bool for_head();
     uint32_t take_statement_keyword();
     NodeIndex condition(const char *after);
     bool at_else() const;
 
     // --- expressions (parser_expressions.cpp) -------------------------------
 
-    NodeIndex expression(int min_precedence = 1);
-    NodeIndex unary();
-    NodeIndex postfix();
-    NodeIndex primary();
-    ListId argument_list();
-    NodeIndex subscript(NodeIndex target, uint32_t opener);
+    // ONE FUNCTION WHERE THERE WERE SIX. unary(), postfix(), primary(),
+    // argument_list() and subscript() were the cycle, and a machine cannot be
+    // half of one -- the operand it is part way through building has to be
+    // reachable from wherever the next token is read.
+    NodeIndex expression();
 
     Ast &ast_;
     words::Words &words_;
@@ -245,6 +289,12 @@ private:
     // WRITTEN is a fact about one file, which is the parser's, and it dies with
     // the parse the way a token index has to.
     std::vector<std::pair<words::PathId, uint32_t>> declared_at_;
+
+    // The statement machine's frames. A MEMBER AND NOT A LOCAL, because the
+    // three heads that push one live next door -- and block() takes the size it
+    // found as its floor, so a capsule declared inside a spacesuit parses its
+    // body without seeing the frames of whatever is around it.
+    std::vector<Open> open_;
 
     size_t pos_ = 0;
     uint32_t brackets_ = 0;

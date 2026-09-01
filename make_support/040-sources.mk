@@ -344,6 +344,8 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(STRING)/satellite_string.cpp \
             $(TREE)/ast.cpp \
             $(TREE)/unparse.cpp \
+            $(TREE)/unparse_declarations.cpp \
+            $(TREE)/unparse_expressions.cpp \
             $(WORDS)/dump.cpp
 
 SATL_OBJS = $(SATL_SRCS:.cpp=.o)

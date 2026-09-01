@@ -181,56 +181,103 @@ NodeIndex Parser::spacesuit_decl()
 // DESIGN §6 WAS CORRECTED ON 2026-08-30 and `suit_section` now cites
 // `suit_block`, with the old line kept visible beside it. What a section holds
 // is what a suit block holds, which is why this is one function.
+// A spacesuit's body, and every section inside it -- ONE LOOP OVER `open`,
+// because section() called this function back and a section may hold a section.
+// M8.5, DESIGN §7.5: the fourth of this parser's four cycles, and the smallest.
+//
+// EVERY LEVEL USES THE SAME TWO SENTENCES -- "to open the spacesuit" and "to
+// close the spacesuit" -- which is what the recursive version said for a
+// section's braces too, because a section's body WAS a suit_body. The wording is
+// left exactly as it was rather than improved here: a rewrite that changes what
+// a program is told is two changes wearing one commit.
 ListId Parser::suit_body(words::PathId owner)
 {
+    struct Open {
+        uint32_t opener = 0;
+        uint32_t access = 0;   // the section's word, unread at the outermost
+        std::vector<NodeIndex> items;
+    };
+    std::vector<Open> open;
+
     // THE BRACE MAY BE ON ITS OWN LINE, exactly as it may for a block, and
     // example/class_test.satl writes it that way. block() has the argument for
     // why crossing this newline cannot swallow anything.
     skip_newlines();
-    const uint32_t opener = here();
-    if (!expect_punct("{", "to open the spacesuit"))
-        return kNoList;
-
-    std::vector<NodeIndex> items;
-    skip_newlines();
-    while (!at_end() && !at_punct("}") && !stop()) {
-        const size_t before = pos_;
-        const Segment1 word = opening();
-        const NodeIndex item =
-            (word == Segment1::Protected || word == Segment1::Public)
-                ? section(owner)
-                : suit_member(owner);
-        if (item != kNoNode)
-            items.push_back(item);
-        if (pos_ == before) {
-            error<errors::Code::PARSE_EXPECTED_SUIT_ITEM>(here(), describe(peek()));
-            advance();
-        }
-        if (panic_)
-            synchronise();
-        skip_newlines();
+    {
+        const uint32_t opener = here();
+        if (!expect_punct("{", "to open the spacesuit"))
+            return kNoList;
+        open.push_back({opener, 0, {}});
     }
 
-    if (!expect_punct("}", "to close the spacesuit", opener))
-        return kNoList;
-    return ast_.add_list(items);
-}
+    for (;;) {
+        skip_newlines();
 
-NodeIndex Parser::section(words::PathId owner)
-{
-    advance();  // satellite
-    advance();  // .
-    const uint32_t access = here();
-    advance();  // protected | public
+        if (!at_end() && !at_punct("}") && !stop()) {
+            if (const Segment1 word = opening();
+                word == Segment1::Protected || word == Segment1::Public) {
+                advance();  // satellite
+                advance();  // .
+                const uint32_t access = here();
+                advance();  // protected | public
 
-    const ListId body = suit_body(owner);
-    if (panic_)
-        return kNoNode;
+                // THE SECTION'S OWN BRACE, opened here rather than by a second
+                // call. A section that will not open is the same failure the
+                // recursive version reported from inside suit_body().
+                skip_newlines();
+                const uint32_t opener = here();
+                if (!expect_punct("{", "to open the spacesuit"))
+                    return kNoList;
+                open.push_back({opener, access, {}});
+                continue;
+            }
 
-    // WHICH ACCESS IT IS, IS THE TOKEN'S SPELLING AND NOT A FIELD. Both words
-    // are in words.def, so the token already carries an integer that answers
-    // it, and a second copy in the node is a second thing to keep in step.
-    return ast_.add(NodeKind::Section, access, body);
+            // A SECTION NEEDS NO "did this rule consume anything" GUARD and a
+            // member does, which is why the check is here rather than around
+            // both: a section has already taken three tokens by the time it can
+            // fail, so the case the guard exists for cannot arise for one.
+            const size_t before = pos_;
+            const NodeIndex item = suit_member(owner);
+            if (item != kNoNode)
+                open.back().items.push_back(item);
+            if (pos_ == before) {
+                error<errors::Code::PARSE_EXPECTED_SUIT_ITEM>(here(),
+                                                              describe(peek()));
+                advance();
+            }
+            if (panic_)
+                synchronise();
+            continue;
+        }
+
+        const bool closed =
+            expect_punct("}", "to close the spacesuit", open.back().opener);
+        const Open done = std::move(open.back());
+        open.pop_back();
+
+        if (!closed) {
+            if (open.empty())
+                return kNoList;
+            // The section did not close, so it contributes no node -- which is
+            // section() coming back kNoNode after `if (panic_)`, and the body
+            // around it carrying on the way its loop always did.
+            if (panic_)
+                synchronise();
+            continue;
+        }
+
+        const ListId items = ast_.add_list(done.items);
+        if (open.empty())
+            return items;
+
+        // WHICH ACCESS IT IS, IS THE TOKEN'S SPELLING AND NOT A FIELD. Both
+        // words are in words.def, so the token already carries an integer that
+        // answers it, and a second copy in the node is a second thing to keep in
+        // step.
+        open.back().items.push_back(ast_.add(NodeKind::Section, done.access, items));
+        if (panic_)
+            synchronise();
+    }
 }
 
 NodeIndex Parser::suit_member(words::PathId owner)

@@ -114,6 +114,8 @@ PARSER_TEST_SRCS = $(ERRORS)/report.cpp \
                    $(PARSER)/parser_types.cpp \
                    $(TREE)/ast.cpp \
                    $(TREE)/unparse.cpp \
+                   $(TREE)/unparse_declarations.cpp \
+                   $(TREE)/unparse_expressions.cpp \
                    $(LEXER)/lexer.cpp \
                    $(STRING)/satellite_string.cpp
 
@@ -158,6 +160,8 @@ SATC_TEST_SRCS = $(ERRORS)/report.cpp \
                  $(PARSER)/parser_types.cpp \
                  $(TREE)/ast.cpp \
                  $(TREE)/unparse.cpp \
+                 $(TREE)/unparse_declarations.cpp \
+                 $(TREE)/unparse_expressions.cpp \
                  $(LEXER)/lexer.cpp \
                  $(STRING)/satellite_string.cpp
 
@@ -193,6 +197,8 @@ REPORTER_TEST_SRCS = $(ERRORS)/report.cpp \
                      $(PARSER)/parser_types.cpp \
                      $(TREE)/ast.cpp \
                      $(TREE)/unparse.cpp \
+                     $(TREE)/unparse_declarations.cpp \
+                     $(TREE)/unparse_expressions.cpp \
                      $(LEXER)/lexer.cpp \
                      $(STRING)/satellite_string.cpp
 
@@ -243,6 +249,8 @@ LIMITS_TEST_SRCS = $(LIMITS)/limits.cpp \
                    $(PARSER)/parser_types.cpp \
                    $(TREE)/ast.cpp \
                    $(TREE)/unparse.cpp \
+                   $(TREE)/unparse_declarations.cpp \
+                   $(TREE)/unparse_expressions.cpp \
                    $(LEXER)/lexer.cpp \
                    $(STRING)/satellite_string.cpp
 
@@ -304,6 +312,8 @@ RESOLVE_TEST_SRCS = $(RESOLVE)/resolve.cpp \
                     $(PARSER)/parser_types.cpp \
                     $(TREE)/ast.cpp \
                     $(TREE)/unparse.cpp \
+                    $(TREE)/unparse_declarations.cpp \
+                    $(TREE)/unparse_expressions.cpp \
                     $(LEXER)/lexer.cpp \
                     $(STRING)/satellite_string.cpp
 
@@ -395,6 +405,8 @@ NUMBER_TEST_SRCS = $(NUMBER)/limbs.cpp \
                    $(PARSER)/parser_types.cpp \
                    $(TREE)/ast.cpp \
                    $(TREE)/unparse.cpp \
+                   $(TREE)/unparse_declarations.cpp \
+                   $(TREE)/unparse_expressions.cpp \
                    $(CACHE)/paths.cpp
 
 $(TESTS)/number_test/number_test: $(number_test_SRCS) $(number_test_HDRS) \
