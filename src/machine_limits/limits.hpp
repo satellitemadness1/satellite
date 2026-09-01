@@ -58,6 +58,12 @@
 // `satl --limits`. The order was there because the file had no way to say "the
 // machine"; now it has, and there is no order left to get wrong. See limits.cpp.
 //
+// ONE THING ASKS ANYWAY, AND IT IS NOT A SETTING. The stack satl raises itself
+// to is a share of total memory as of 2026-08-31, so begin() reads
+// /proc/meminfo once on every run before it looks at anything else. That is one
+// small file against physical_cores()' 48, and it is the exception rather than
+// the order coming back: no SETTING is read early, and begin() has the cost.
+//
 // ONLY min_free_mb HAS A MEANING AT M6, WHICH IS PLAN M6'S OWN RULE: "the node
 // and the storage land here; min_free_mb is the only one whose meaning is this
 // milestone's." So all four are stored, all four can be set from the file, all
@@ -222,42 +228,64 @@ struct Held {
     }
 };
 
-// WHAT satl ASKS THE KERNEL FOR, IN BYTES. 8 GiB.
+// WHAT satl ASKS THE KERNEL FOR: 32 KiB OF STACK FOR EVERY 1 MiB OF MEMORY THE
+// MACHINE HAS, never less than 128 MiB, and with no ceiling over it. That is
+// 1.9 GiB on this 61.9 GiB machine, 32 GiB on a terabyte one and 128 GiB on a
+// four -- a thirty-second of the machine, written in the author's own units
+// because a rate is a sum a reader can check without a calculator, and "3.125%
+// of memory, floored" is not.
+//
+// A SHARE AND NOT A CONSTANT, DECIDED 2026-08-31, and it is the whole of what
+// SCRATCH.md/NO_LIMITS.md §4.1.2 asked for. This shipped that morning as a flat
+// 8 GiB: a quarter of a 32 GiB laptop and a four-hundredth of a 4 TiB machine,
+// and no one number is right on both. "We will be totally geared towards the
+// terabytes of ram that are coming out in the future." limits.cpp carries the
+// two decisions the share needed and why each went the way it did.
+//
+// SO IT ASKS FOR LESS THAN 8 GiB ON ANY MACHINE UNDER 256 GiB, WHICH IS THE
+// TRADE AND WAS MADE WITH THE NUMBERS IN FRONT OF IT. Here that is 1.9 GiB
+// where the morning's constant asked for 8.0 -- and 500,000 nested brackets
+// still check and unparse at it, measured 2026-08-31, on a machine whose
+// largest real satellite program nests at brace depth SIX (MILESTONES/M7.md).
+// A rate generous enough to beat a constant chosen for a laptop would have to
+// be absurd on the machine this rate is aimed at, and the constant is the thing
+// being replaced.
 //
 // A NUMBER AND NOT A CEILING, AND THE DIFFERENCE IS THE WHOLE ARGUMENT.
 // DESIGN §7.5's rule is that the language has no depth limit; this does not
 // deliver that and is not pretending to -- it is the same C++ stack with a
 // bigger default, and the thing that delivers the rule is a walker keeping its
-// own stack on the heap. What it buys is that every depth a person could
-// plausibly reach stops being reachable: measured 2026-08-31, a recursion that
-// died before 100,000 frames at the 8 MiB default ran past 2,600,000 at this
-// setting, which is 1,300x the depth the first satellite refused at.
+// own stack on the heap.
 //
 // AND IT COSTS NOTHING UNTIL IT IS USED. A stack is lazily committed, so this
-// is address space and not memory: reserving 8 GiB moved VmSize by 0.0 MiB.
-// 040-sources.mk carries what it did to startup.
+// is address space and not memory: the 8 GiB reservation moved VmSize by
+// 0.0 MiB and a terabyte machine's 32 GiB costs the same nothing.
+// 040-sources.mk carries what it did to startup, including the one
+// /proc/meminfo read the share adds to every run of satl.
 //
-// 8 GiB RATHER THAN "unlimited" ON PURPOSE. RLIM_INFINITY makes the main
+// A NUMBER RATHER THAN "unlimited" ON PURPOSE. RLIM_INFINITY makes the main
 // thread's stack grow until it collides with the next mapping, which is a wall
-// in a place nobody chose and reports itself as a segfault; a number is a number
-// the machine can honour and `satl --limits` can print. facts.hpp's
+// in a place nobody chose and reports itself as a segfault; a number is one the
+// machine can honour and `satl --limits` can print. facts.hpp's
 // kStackLimitUnknown already refuses to read the word as unbounded and this is
 // the same care from the writing side.
-// AND IT IS A CONSTANT ON A MACHINE THIS PROGRAM CAN MEASURE, WHICH IS THE NEXT
-// THING TO FIX HERE. `facts::mem_total_bytes()` is read a few lines further down
-// this same startup; 8 GiB is a quarter of a 32 GiB laptop and a four-hundredth
-// of a 4 TiB machine, and asking for a share rather than a number would be right
-// on both. **It costs nothing to ask for more** -- the reservation is address
-// space and a stack is lazily committed, so a terabyte machine could be handed a
-// terabyte-shaped request for the same zero bytes of RSS this one costs.
-//
-// TWO THINGS HAVE TO BE DECIDED FIRST AND NEITHER IS HARD. What the share is
-// (memory total, or `MEMORY_MAX` -- which is the number satl is actually allowed
-// and is read AFTER this, so the order would have to change); and what the floor
-// is, because a share of a small machine must not come out below the 8 MiB it
-// would have had. Recorded rather than done, because it is a policy with a
-// number in it and this file is where those get argued.
-inline constexpr unsigned long long kWantedStackBytes = 8ULL * 1024 * 1024 * 1024;
+inline constexpr unsigned long long kStackPerMegabyte = 32ULL * 1024;
+
+// AND THE FLOOR, WHICH IS THE ONE PLACE A NUMBER STILL DECIDES ANYTHING HERE.
+// 128 MiB, reached at 4 GiB of memory, so it is the answer for a small
+// container and for a machine that would not say what it has -- and it is
+// sixteen times the 8 MiB a login shell hands out, because a machine being
+// small is not a reason for its programs to be shallow.
+inline constexpr unsigned long long kStackFloorBytes = 128ULL * 1024 * 1024;
+
+// The share, taken from the machine's own total -- and the same rule for a
+// caller that has ALREADY read it. TWO ENTRY POINTS AND ONE RULE, which is the
+// pair Setting::value_given() above is the other half of and is here for the
+// same reason: `satl --limits` reads every machine fact once, and a second
+// /proc/meminfo read to print a number it can already compute would be this
+// command reporting the machine from two different instants.
+unsigned long long wanted_stack_bytes();
+unsigned long long wanted_stack_bytes_given(unsigned long long memory_total);
 
 // --- the file ---------------------------------------------------------------
 

@@ -33,16 +33,59 @@ void section_facts()
 {
     // --- the stack, and the one reader that CHANGES the machine -------------
 
+    // WHAT satl ASKS FOR IS ARITHMETIC ON A NUMBER THE MACHINE GAVE IT, AND
+    // THAT HALF IS CHECKABLE FLAT. Everything else in this section is a
+    // relationship, because a reader and its assertion would otherwise be two
+    // readings of one /proc file agreeing with each other -- but
+    // wanted_stack_bytes_given() takes the machine's answer as an argument, so
+    // it can be handed machines this suite is not running on. Each line below
+    // is a machine somebody will one day run satl on.
+    using satellite::limits::kStackFloorBytes;
+    using satellite::limits::wanted_stack_bytes;
+    using satellite::limits::wanted_stack_bytes_given;
+    constexpr unsigned long long kMiB = 1024ULL * 1024;
+    constexpr unsigned long long kGiB = 1024 * kMiB;
+
+    check(wanted_stack_bytes_given(64 * kGiB) == 2 * kGiB,
+          "32 KiB of stack for every MiB of memory: a 64 GiB machine asks for "
+          "2 GiB, which is the rate a reader can check by hand");
+    check(wanted_stack_bytes_given(1024 * kGiB) == 32 * kGiB,
+          "and a terabyte machine asks for 32 GiB -- the point of a share, "
+          "which is the machine this rate was chosen for");
+    check(wanted_stack_bytes_given(1024 * 1024 * kGiB) == 32 * 1024 * kGiB,
+          "and a pebibyte machine asks for 32 TiB rather than overflowing to "
+          "something small, which is what dividing before scaling is for");
+
+    check(wanted_stack_bytes_given(2 * kGiB) == kStackFloorBytes,
+          "under the floor the floor answers: a 2 GiB machine's share is 64 "
+          "MiB and it gets 128 MiB, because a machine being small is not a "
+          "reason for its programs to be shallow");
+    check(wanted_stack_bytes_given(4 * kGiB) == kStackFloorBytes &&
+              wanted_stack_bytes_given(4 * kGiB + kMiB) > kStackFloorBytes,
+          "and the floor is reached at exactly 4 GiB, which is the one number "
+          "in limits.hpp's floor paragraph that could quietly stop being true");
+    check(wanted_stack_bytes_given(0) == kStackFloorBytes,
+          "a machine that would not say what it has lands on the floor by the "
+          "same line -- mem_total_bytes() answers 0 when there is no /proc to "
+          "read, and asking for a 0-byte stack is the failure this catches");
+
+    check(wanted_stack_bytes() == wanted_stack_bytes_given(mem_total_bytes()),
+          "and the two entry points agree, which is the whole reason there are "
+          "two: begin() asks the kernel for one of them and `satl --limits` "
+          "prints the other, and a floor applied on one side only is how those "
+          "come to disagree");
+
     // WIDENING IS BEST-EFFORT AND THE ASSERTION HAS TO BE TOO. A container with
     // a hard limit, or a distribution that pins RLIMIT_STACK, leaves satl
     // exactly as it ran for its first seven milestones -- which is a working
     // interpreter and not a failure. So what is checked is the CONTRACT and not
     // the number: asking never shrinks the stack, and asking twice is idempotent.
+    const unsigned long long want = wanted_stack_bytes();
     const unsigned long long before = stack_limit_bytes();
-    const unsigned long long after = widen_stack(satellite::limits::kWantedStackBytes);
+    const unsigned long long after = widen_stack(want);
     check(after >= before || before == kStackLimitUnknown,
           "widen_stack() never leaves the stack smaller than it found it");
-    check(widen_stack(satellite::limits::kWantedStackBytes) == after,
+    check(widen_stack(want) == after,
           "and asking a second time answers the same -- begin() is called twice "
           "in this suite and a raise that drifted would be a limit that depends "
           "on how many times satl started");
@@ -55,18 +98,17 @@ void section_facts()
     struct rlimit hard;
     if (getrlimit(RLIMIT_STACK, &hard) == 0 &&
         (hard.rlim_max == RLIM_INFINITY ||
-         hard.rlim_max >= satellite::limits::kWantedStackBytes)) {
-        check(after >= satellite::limits::kWantedStackBytes,
-              "this machine's hard limit allows 8 GiB, so satl has it -- and if "
-              "this fails after limits::begin() ran, the raise was removed and "
-              "500,000 nested brackets segfault again");
+         hard.rlim_max >= want)) {
+        check(after >= want,
+              "this machine's hard limit allows the share, so satl has it -- "
+              "and if this fails after limits::begin() ran, the raise was "
+              "removed and 500,000 nested brackets segfault again");
         // GUARDED ON begin() HAVING RUN, because this section does not call it
         // and the run list may put it first. `stack_now` is 0 until begin()
         // fills it, which is the honest way to ask "has the policy run yet"
         // without this section reaching into another one's order.
         if (satellite::limits::held().stack_now != 0)
-            check(satellite::limits::held().stack_now >=
-                      satellite::limits::kWantedStackBytes,
+            check(satellite::limits::held().stack_now >= want,
                   "and begin() recorded it, which is what `satl --limits` "
                   "prints -- the check that catches the call being deleted "
                   "from begin() while widen_stack() still works perfectly");

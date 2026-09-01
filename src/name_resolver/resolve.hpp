@@ -39,12 +39,13 @@
 // that an interpreter which stops at a depth is broken rather than bounded, and
 // both were deleted on 2026-08-31. `SCRATCH.md/NO_LIMITS.md` is the record.
 //
-// WHAT HOLDS IT UP TODAY IS THE STACK satl ASKS FOR. machine_limits/limits.hpp's
-// kWantedStackBytes raises RLIMIT_STACK to 8 GiB at startup, and M6's watchdog
-// refuses in words before that is reached whenever MEMORY_MAX is set below it,
-// because touched stack pages are resident memory. That is a very large number
-// and not the absence of one -- DESIGN §7.5.1 says so, and a walker keeping its
-// own stack on the heap is what finally makes the rule true.
+// WHAT HOLDS IT UP TODAY IS THE STACK satl ASKS FOR. machine_limits/limits.hpp
+// raises RLIMIT_STACK at startup to a share of what the machine has -- 32 KiB
+// for every MiB, which is 1.9 GiB here -- and M6's watchdog refuses in words
+// before that is reached whenever MEMORY_MAX is set below it, because touched
+// stack pages are resident memory. That is a very large number and not the
+// absence of one -- DESIGN §7.5.1 says so, and a walker keeping its own stack
+// on the heap is what finally makes the rule true.
 
 #include "abstract_syntax_tree/ast.hpp"
 #include "error_reporter/report.hpp"

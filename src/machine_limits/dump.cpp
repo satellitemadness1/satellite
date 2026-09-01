@@ -180,7 +180,7 @@ std::string limits_text()
     // satl holds to says where it came from, and this is the one row where
     // "where it came from" is satl itself: `ulimit -s` is a shell's DEFAULT with
     // an unlimited hard limit behind it on an ordinary Linux, so satl raises its
-    // own at startup (limits.hpp's kWantedStackBytes). Printing only the number
+    // own at startup (limits.hpp's share of memory). Printing only the number
     // in force would hide that -- and hiding it is how everybody comes to
     // believe the 8 MiB is the kernel's, which is what this project believed
     // until 2026-08-31.
@@ -194,12 +194,31 @@ std::string limits_text()
               : human_bytes(limit) + " (RLIMIT_STACK)") +
              (known ? ", " + human_bytes(standing) + " in use on this thread"
                     : std::string(", this thread's stack is not reportable")));
+    //
+    // AND THE ROW ABOVE HAS AN ORIGIN NOW, WHICH IS WHY THIS LINE IS NEW ON
+    // 2026-08-31. The number satl asks for stopped being a constant that day
+    // and became a share of what the machine has, so "where did 1.9 GiB come
+    // from" has an answer that is not "somebody typed it into a header" -- and
+    // M6's rule is that a value satl holds to says where it came from. It is
+    // computed from `total`, which was read at the top of this function, rather
+    // than by calling wanted_stack_bytes(): limits.hpp's pair exists so that
+    // this command does not open /proc/meminfo a second time.
+    said(out, "",
+         total != 0
+             ? std::to_string(kStackPerMegabyte / 1024) +
+                   " KiB of stack for every MiB of the machine's " +
+                   human_bytes(total) + ", never under " +
+                   human_bytes(kStackFloorBytes)
+             : std::string("the machine would not say what it has, so satl "
+                           "asked for the floor of ") +
+                   human_bytes(kStackFloorBytes));
     if (holding.stack_now > holding.stack_before && holding.stack_before != 0)
         said(out, "", "satl raised it from " + human_bytes(holding.stack_before) +
                           " -- the soft limit is a default and the hard limit "
                           "was not in the way");
     else if (now.stack_before != 0)
-        said(out, "", "satl asked for " + human_bytes(kWantedStackBytes) +
+        said(out, "", "satl asked for " +
+                          human_bytes(wanted_stack_bytes_given(total)) +
                           " and this machine did not give it, which costs "
                           "nothing but depth");
 

@@ -29,7 +29,8 @@ behind their back. A refusal in plain words beats a guess.
 recursion, no constant in a header deciding how big a thing you are allowed to
 write — the bound is memory, the way a list's length is. *(Decided 2026-08-31.
 [DESIGN.md](DESIGN.md) §7.5 is the rule and [PLAN.md](PLAN.md) §2.5 is how it
-gets built. satl raises its own stack to 8 GiB at startup, which is not the same
+gets built. satl raises its own stack to a share of the machine's memory at
+startup -- 32 KiB for every MiB, 1.9 GiB here -- which is not the same
 thing as having no limit and puts every depth a person could reach out of reach;
 `SCRATCH.md/NO_LIMITS.md` is the honest half — what was measured, what was built,
 and what is still owed.)*

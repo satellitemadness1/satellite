@@ -215,8 +215,9 @@ satellite.capsule takes()
     // levels are REFUSED -- is now the failure it exists to catch.
     //
     // 20,000 AND NOT 2,200, so the fixture is an order of magnitude past the
-    // bound that used to be here. It costs about 60 MiB of the 8 GiB
-    // machine_limits/limits.hpp asks the kernel for at startup.
+    // bound that used to be here. It costs about 60 MiB of the stack
+    // machine_limits/limits.hpp asks the kernel for at startup -- a share of
+    // the machine's memory, which is 1.9 GiB here and never under 128 MiB.
     std::string deep = "\nsatellite.capsule deep()\n{\n    satellite.variable.number n = ";
     for (int i = 0; i < 20000; i++)
         deep += "(1 + ";

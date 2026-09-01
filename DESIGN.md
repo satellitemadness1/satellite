@@ -914,15 +914,18 @@ depth at which it dies with signal 11 and says nothing. At the 8 MiB a login
 shell hands out, one expression nested N deep killed `satl --unparse` at 19,000,
 `satl --satc` at 20,000 and the parser at 32,000.
 
-**satl now raises its own stack to 8 GiB at startup and those depths all work** —
-500,000 nested brackets pass every command. `machine_limits/limits.hpp`'s
-`kWantedStackBytes` is the number and `satl --limits` prints it. The 8 MiB was a
+**satl now raises its own stack to a share of the machine at startup and those
+depths all work** — 500,000 nested brackets pass. `machine_limits/limits.hpp` is
+the policy — **32 KiB of stack for every MiB of memory, never under 128 MiB**,
+which is 1.9 GiB on this 61.9 GiB machine and 32 GiB on a terabyte one — and
+`satl --limits` prints both the number and where it came from. The 8 MiB was a
 shell's soft DEFAULT with an unlimited hard limit behind it, not a kernel wall,
 so a process may raise its own without root; measured 2026-08-31, it costs one
 syscall and no memory, because a stack is lazily committed.
 
 **That is a bigger number and not the absence of one, and the rule above is still
-unmet.** 8 GiB is about 2.6 million frames.
+unmet.** A share of the machine is still a number the machine chose: 1.9 GiB
+here, and every machine has one.
 
 **BUT THE WATCHDOG ALREADY REFUSES IT IN WORDS, WHICH THIS SECTION GOT WRONG ON
 ITS FIRST DAY.** It said exhausting the C++ stack is *"a segfault with no code,
@@ -938,7 +941,7 @@ and exit status 4. One line, a ceiling the user set, and a status a script reads
 
 **So what is actually left is narrower than a whole rewrite, and it is two
 things.** First, the DEFAULT case: with no config, `MEMORY_MAX` is the whole
-machine — 61.9 GiB here — so 8 GiB of stack is exhausted long before the watchdog
+machine — 61.9 GiB here — so 1.9 GiB of stack is exhausted long before the watchdog
 has anything to say, and that run still segfaults. Second, the SENTENCE: the
 watchdog names *memory*, which is true and is not what happened. A program that
 recursed away is better told about recursion.

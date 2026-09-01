@@ -23,6 +23,11 @@
 // machine until somebody asks for the value -- which is what `value()` below
 // is, and what a one-line config still changing exactly one thing now falls
 // out of rather than being arranged.
+//
+// WITH ONE EXCEPTION, WHICH IS THE STACK AND NOT A SETTING. begin() raises
+// RLIMIT_STACK to a share of total memory, so it reads /proc/meminfo before it
+// does anything else -- the argument for why that is a different thing from
+// what this paragraph refuses is beside the call.
 
 #include "machine_limits/limits.hpp"
 
@@ -103,6 +108,43 @@ unsigned long long Setting::value() const
     // for a machine that HAS a config and the whole of why value_given() is
     // separate for the one command that does not.
     return origin == Origin::File ? written : value_given(from_the_machine(fact));
+}
+
+// THE SHARE OF THE MACHINE satl ASKS FOR AS A STACK. limits.hpp is the policy
+// and what it is worth; this is the arithmetic, and the two decisions
+// SCRATCH.md/NO_LIMITS.md §4.1.2 left open.
+//
+// OF TOTAL MEMORY AND NOT OF MEMORY_MAX, which was the first of them. DESIGN
+// §7.7 pairs the two, and they are not the same kind of thing:
+// `arguments.memory.total` is a fact about the machine and MEMORY_MAX is a
+// setting somebody may write a number for -- one that is read at the BOTTOM of
+// begin(), after the raise, so a share of it would mean reordering startup so
+// that how deep a program may go depends on a line in a file. And it would be
+// the wrong quantity anyway: this is address space, MEMORY_MAX is a promise
+// about resident memory, and the watchdog is already counting the pages a deep
+// recursion actually touches.
+//
+// THE FLOOR IS APPLIED HERE AND NOT AT THE CALL, so that every caller gets one
+// answer -- begin() asks the kernel for this number and dump.cpp prints it, and
+// a floor on one side only is how those two come to disagree. A total of 0 is a
+// machine that would not say what it has, and it lands on the floor by the same
+// line rather than by a case of its own.
+//
+// AND THE DIVISION COMES BEFORE THE MULTIPLICATION, which is what keeps this
+// exact at any size a machine can have: a byte count that is divided before it
+// is scaled cannot overflow 64 bits, where 512 TiB scaled first would. What
+// the truncation costs is whatever the machine has past a whole megabyte --
+// under 32 KiB of stack, which is not a number anybody has to think about.
+unsigned long long wanted_stack_bytes_given(unsigned long long memory_total)
+{
+    const unsigned long long megabytes = memory_total / (1024 * 1024);
+    const unsigned long long share = megabytes * kStackPerMegabyte;
+    return share < kStackFloorBytes ? kStackFloorBytes : share;
+}
+
+unsigned long long wanted_stack_bytes()
+{
+    return wanted_stack_bytes_given(facts::mem_total_bytes());
 }
 
 std::string human_bytes(unsigned long long bytes)
@@ -187,8 +229,18 @@ int begin(const std::string &named)
     // interpreter and not an error -- so there is nothing to say and no code to
     // say it with. What there IS, is a row in `satl --limits`, because M6's rule
     // is that every value satl holds to says where it came from.
+    //
+    // AND THIS IS THE ONE THING THAT DOES ASK THE MACHINE AT STARTUP, WHICH IS
+    // AN EXCEPTION TO THIS FILE'S HEADER AND IS SAID THERE TOO. The stack is a
+    // share of memory now, so wanted_stack_bytes() opens /proc/meminfo on every
+    // run of satl -- including `satl --help`, which needs nothing else from the
+    // machine at all. Measured 2026-08-31: 0.05 ms for the one cold read a run
+    // makes, 0.013 ms warm. What the header refuses is physical_cores()'s
+    // 0.42 ms of walking 48 CPUs' worth of sysfs to answer a question ONE
+    // command asks -- this is a tenth of that for a number every run needs, and
+    // `make startup` cannot pick it out of the noise.
     into.stack_before = facts::stack_limit_bytes();
-    into.stack_now = facts::widen_stack(kWantedStackBytes);
+    into.stack_now = facts::widen_stack(wanted_stack_bytes());
 
     const std::string path = named.empty() ? found_config_path() : named;
     if (!path.empty()) {

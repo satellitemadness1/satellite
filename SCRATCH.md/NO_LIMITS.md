@@ -119,7 +119,7 @@ writes goes near depth 2000.
 ### 2.4 The crashes, before and after the stack was widened
 
 `ulimit -s 8192`, one expression nested N deep. **Before** is the tree as M7 left
-it; **after** is with `machine_limits`' `kWantedStackBytes` in place (§4.1).
+it; **after** is with the stack `machine_limits` asks for in place (§4.1).
 
 | N | `--check` | `--unparse` | `--satc` | after, all three |
 |---|---|---|---|---|
@@ -215,7 +215,7 @@ the 24 pool threads at 8 MiB each. Startup cost is one syscall — `satl
 --version`'s share moved 0.179 → 0.186 ms, inside the noise.
 
 **Built as `facts::widen_stack()` (the mechanism, in `system_facts/`) called from
-`limits::begin()` with `kWantedStackBytes` (the policy, in `machine_limits/`)**,
+`limits::begin()` with `wanted_stack_bytes()` (the policy, in `machine_limits/`)**,
 which is the seam LAYOUT.md draws between those two directories. `satl --limits`
 prints it, because M6's rule is that every value satl holds to says where it came
 from:
@@ -244,7 +244,7 @@ unchanged and unmet.
    and exits 4.
 
    **What is actually left is two narrower things.** The DEFAULT case — with no
-   config `MEMORY_MAX` is the whole machine, so 8 GiB of stack goes first and
+   config `MEMORY_MAX` is the whole machine, so the stack goes first and
    that run still segfaults — and the SENTENCE, which names memory rather than
    recursion.
 
@@ -253,34 +253,66 @@ unchanged and unmet.
    that watched that ratio too would refuse a runaway recursion in its own words,
    on the default configuration, with machinery already in the tree. **That is
    the next thing to build here and it is far smaller than §5.**
-2. **Uniformity across threads.** The main thread gets 8 GiB and the pool's 24
-   get 8 MiB, so "how deep may I go" depends on which thread you are on. It does
+2. **Uniformity across threads.** The main thread gets the share -- 1.9 GiB
+   here -- and the pool's 24 get 8 MiB, so "how deep may I go" depends on which thread you are on. It does
    not matter today, because everything runs on the main thread; it matters the
    day evaluation moves off it (M23's threads, M24's window).
 3. **Portability.** `setrlimit` is POSIX. The Windows cross-build in
    `SCRATCH.md/PORTING.md` sets a stack reserve in the PE header instead
    (`/STACK:`), which is a link-time flag and a different mechanism.
 
-### 4.1.2 The number should be a share of the machine, not 8 GiB
+### 4.1.2 BUILT: the number is a share of the machine, 2026-08-31 evening
 
-**The author's point, 2026-08-31: *"we will be totally geared towards the
-terabytes of ram that are coming out in the future."*** `kWantedStackBytes` is a
-constant, and satl reads `facts::mem_total_bytes()` a few lines later in the same
-startup. 8 GiB is a quarter of a 32 GiB laptop and a four-hundredth of a 4 TiB
-machine; a share would be right on both.
+**The author's point: *"we will be totally geared towards the terabytes of ram
+that are coming out in the future."*** The morning's `kWantedStackBytes` was a
+constant — 8 GiB, a quarter of a 32 GiB laptop and a four-hundredth of a 4 TiB
+machine — and satl reads `facts::mem_total_bytes()` in the same startup anyway.
 
-**And asking for more is free.** The reservation is address space, not memory —
-measured above at 0.0 MiB of VmSize — so a terabyte machine can be handed a
-terabyte-shaped request at the same cost this one pays. There is no reason for
-the number to be small and no reason for it to be fixed.
+**The rate is 32 KiB of stack for every 1 MiB of memory**, which is a
+thirty-second of the machine, with **a floor of 128 MiB and no ceiling at all**.
 
-**Two decisions first, neither hard.** *What share of what*: total memory, or
-`MEMORY_MAX` — which is the number satl is actually allowed, and is read AFTER
-the raise today, so `begin()`'s order would have to change. And *what floor*, so
-that a share of a small machine never comes out below the 8 MiB it would have had
-anyway. `machine_limits/limits.hpp` carries it beside the constant.
+| the machine | what satl asks the kernel for |
+|---|---|
+| 2 GiB | 128 MiB *(the floor)* |
+| 4 GiB | 128 MiB — where the share overtakes the floor, exactly |
+| 61.9 GiB *(this one)* | **1.9 GiB** *(was 8 GiB this morning)* |
+| 256 GiB | 8 GiB — where the share overtakes the constant it replaced |
+| 1 TiB | 32 GiB |
+| 4 TiB | 128 GiB |
 
-**This is the cheapest item in this file and probably the next one to do.**
+**The two open decisions went this way.** *What share of what*: **total memory**,
+not `MEMORY_MAX` — `arguments.memory.total` is a fact about the machine where
+`MEMORY_MAX` is a setting somebody may type, it is read at the BOTTOM of
+`begin()` so a share of it would have meant reordering startup, and it is the
+wrong quantity anyway (this is address space; `MEMORY_MAX` is a promise about
+resident pages, which the watchdog already counts). *What floor*: **128 MiB**,
+the author's number — sixteen times what a login shell hands out, reached at
+4 GiB of memory, and it is also what a machine that will not say what it has
+gets.
+
+**It asks for less than the constant did on any machine under 256 GiB, and that
+was decided with the numbers in front of it.** 1.9 GiB here rather than 8 GiB;
+500,000 nested brackets still check and unparse, measured. A rate generous
+enough to beat a laptop-shaped constant would be absurd on the machine the rate
+is for.
+
+**What it cost:** one `/proc/meminfo` read on every run of satl, `satl --help`
+included — **0.05 ms cold, 0.013 ms warm**, timed directly because `make
+startup` cannot pick it out of the noise. That is a tenth of the 0.42 ms
+`physical_cores()` costs, which `limits.cpp` refuses to pay on every run and
+still does.
+
+**`satl --limits` says where the number came from**, which is M6's rule:
+
+```
+  the stack         1.9 GiB (RLIMIT_STACK), 1.5 KiB in use on this thread
+                    32 KiB of stack for every MiB of the machine's 61.9 GiB, never under 128.0 MiB
+                    satl raised it from 8.0 MiB -- the soft limit is a default
+                    and the hard limit was not in the way
+```
+
+**§4.1.1 is now the next item here**, and it is the one that makes a runaway
+recursion refuse itself *in words about recursion* on a default config.
 
 **So the urgency is gone and the work is not.** Every depth a person could
 plausibly reach now works; §5 is what makes the rule true rather than nearly
