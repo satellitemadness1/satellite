@@ -15,6 +15,7 @@ ERRORS   = $(SRC)/error_reporter
 LEXER    = $(SRC)/lexical_analyzer
 CACHE    = $(SRC)/satellite_cache
 LIMITS   = $(SRC)/machine_limits
+NUMBER   = $(SRC)/satellite_number
 PARSER   = $(SRC)/parser
 RESOLVE  = $(SRC)/name_resolver
 RANDOM   = $(SRC)/satellite_random
@@ -34,4 +35,4 @@ WORDS    = $(SRC)/satellite_words
 # is out of date.
 TESTS     = tests
 TESTNAMES = words_test lexer_test parser_test satc_test reporter_test \
-            limits_test resolve_test
+            limits_test resolve_test number_test

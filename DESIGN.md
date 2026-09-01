@@ -482,11 +482,44 @@ satellite has no `<<` or `>>` operator, ever, and that is written policy rather
 than an accident of the operator list. This is why nested generics need no special
 handling: `list<list<string>>` lexes as two independent `>` tokens and
 `parse_type`'s recursion consumes one per level. **The C++98 maximal-munch bug
-cannot occur.** Bit shifts, if ever needed, are
-`satellite.variable.number.shift_left(n)`, consistent with §1 — under
+cannot occur.** Bit shifts are `satellite.variable.number.shift_left(n)` `1 6 4 1`
+and `.shift_right(n)` `1 6 4 11`, consistent with §1 — under
 `satellite.variable.number`, where every other number operation lives, and not
 under a top-level `satellite.number`, which does not exist. *(Corrected
 2026-08-27; this was the only place in either document that implied one.)*
+
+#### What a shift means, which this section did not say until 2026-08-31
+
+**`a.shift_left(n)` is `a × 2ⁿ` and `a.shift_right(n)` is `a ÷ 2ⁿ`. Both are
+exact, neither ever rounds, and a fractional receiver is not a special case.**
+
+That sentence is the whole rule, and the paragraph above is why it had to be
+written: this section introduced the spelling as an aside about *where a path
+hangs* — "bit shifts, if ever needed" — and an aside is not a specification.
+M8 went to build the two paths, found the first satellite has neither and no
+document defining either, and the milestone stopped rather than guessing.
+`MILESTONES/M8.md` §4.1 is that finding.
+
+**It terminates in both directions, and that is the fact the decision rests on.**
+2 divides 10, so `2⁻ⁿ` has an exact decimal expansion of exactly *n* places —
+`1 ÷ 2¹⁰` is `0.0009765625` and not a rounded approximation of it. So
+`shift_right` belongs in §8.6's first class with `shift_left`: **exact and
+bounded, never rounds**, and neither reads `division_digits` nor waits on the
+rounding rule §8.6 leaves open. The implementation does not divide at all —
+`a ÷ 2ⁿ` is `a × 5ⁿ ÷ 10ⁿ`, and dividing by a power of ten is an adjustment to
+the exponent.
+
+**The fractional receiver needed no rule because a multiplication does not care.**
+`7.5.shift_left(1)` is exactly `15` and `7.5.shift_right(1)` is exactly `3.75`.
+The two alternatives were `×10ⁿ`, which is one line and makes the name a lie
+about what a shift is, and refusing a receiver with a fraction, which invents a
+refusal the arithmetic does not need.
+
+**On an integer this is the C meaning and nothing is surprising** — `1 << 10` is
+1024 either way — which is the property that makes the name honest. What it does
+NOT inherit from C is C's undefined behaviour: there is no width to shift out of,
+so no shift count is too large and no bit is ever lost. §7.5 is why that has to
+be true, and it is the same sentence as everywhere else — the bound is memory.
 
 The greedy two-character operators are exactly `== <= >= !=`, and those are the only
 places `<` or `>` is not a single-character token. `>=` is the one that could in
@@ -1172,6 +1205,18 @@ close to unchanged, and where its sign currently lives has to be checked against
 before the copy — `SCRATCH.md/PORTING.md` has the other four things to settle and this
 is a fifth.
 
+**Done at M8 on 2026-08-31, and it is the only part of that port that is not a
+port.** The first satellite packed the sign into the significand, so a boxed
+magnitude stored `1` or `-1` where a value should be. `Number` now carries a
+`bool positive_` and an unsigned magnitude, and **there is no negative zero
+because there is no path that can build one** — construction answers a zero
+magnitude with a default-constructed value, whose flag is `true`. That is
+stronger than §8.6's *"normalise it away on construction"* and it is worth
+knowing that the float will not inherit it: §8.6's warning about a
+zero-initialised struct reading as `-0` is true there and false here, because a
+float's two halves can be zero independently and a number's magnitude cannot.
+[MILESTONES/M8.md](MILESTONES/M8.md) is what it cost and what it paid for.
+
 **The small case never allocates.** A null bignum pointer is the fast path, so a
 loop counter, an index and every small literal live entirely in a `long long`, and
 `i = i + 1` is an add and an overflow check with no allocation and no atomic.
@@ -1380,9 +1425,19 @@ Every operation on a float falls in one of three groups, and the group says exac
 where the rounding rule bites.
 
 **1 — Exact and bounded. Never rounds, never grows.**
-`+` `−` negate `abs` `trunc` `floor` `ceil` `%` comparison `min` `max` `is_integer`
-(which is just `R == 0`). These are safe in a loop forever. Addition and subtraction
-being here is the property `double` does not have.
+`+` `−` negate `abs` `trunc` `floor` `ceil` `%` `shift_left` `shift_right`
+comparison `min` `max` `is_integer` (which is just `R == 0`). These are safe in a
+loop forever. Addition and subtraction being here is the property `double` does
+not have.
+
+**The two shifts joined this class on 2026-08-31**, when §5.5 was given the
+meaning it had been carrying only a spelling for: a shift is multiplication and
+division by a power of two, and 2 divides 10, so both directions terminate. **And
+this class is a list of which operations M15 does NOT block**, which is what M8
+found by reading it: `%` is here, it was scheduled for M15 anyway on the grounds
+that it could not be finished before the rounding rule was chosen, and this
+section says in as many words that it never rounds. `%` and both shifts landed at
+M8 instead. `MILESTONES/M8.md` §6 is the correction.
 
 **2 — Exact but growing. Rounding is a policy, not a necessity.**
 `×`, and power at a non-negative integer exponent. The exact answer exists and is
@@ -1430,6 +1485,22 @@ fractional, and `x^y` at fractional `y` is irrational, so **no pair of exact num
 represents it** and `R` must be rounded to exist. QUAD's determinism invariant means a
 program's behaviour depends on which rule is chosen. PLAN §8 puts the float in **M11**,
 which cannot land until it is.
+
+**It blocks three operations and not six, which is narrower than PLAN read it.**
+*(2026-08-31.)* The classification above is the list: `power` at a fractional or
+negative exponent and `sqrt` are class 3, and `truncate` on a float is its left
+half and therefore waits on the float rather than on the rule. `modulus`,
+`shift_left` and `shift_right` are class 1 and were never waiting on anything —
+PLAN §8 had all six under one sentence, and M8 built the three that class 1
+already answered.
+
+**And one operation already rounds one way.** `Number::divide` keeps a guard
+digit and rounds **half-up**, which is the first satellite's behaviour ported
+unchanged at M8 rather than a rule chosen here. The question this section leaves
+open is what the FLOAT does and whether the number's division should agree; the
+honest position is that a default arrived by porting, and
+`tests/number_test/arithmetic.cpp` asserts it so that changing it is a visible
+edit.
 
 ---
 

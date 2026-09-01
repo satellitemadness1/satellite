@@ -30,7 +30,7 @@
 // parent's children IS its number." The `// 1 5 1` ending every row is a
 // comment and nothing reads it; it is there so this file can be read against
 // WORD_NUMBERS §2.2 by eye. What actually checks the transcription is
-// tests/words_test, which opens that section of the markdown and walks all 222
+// tests/words_test, which opens that section of the markdown and walks all 223
 // of its paths -- because a number that only a human compares is not checked.
 //
 // So ORDER IS MEANING here, everywhere, and DESIGN §4.3 is the whole of the
@@ -95,7 +95,7 @@
 //   property 2, no duplicates among non-aliases. The numbering cannot express a
 //     duplicate at all, because a number IS a position. §2.2's only three
 //     duplicate numbers are the three `.range` rows below, and each is one node
-//     here, which is exactly why that section is 222 rows carrying 219 numbers.
+//     here, which is exactly why that section is 223 rows carrying 220 numbers.
 //   property 4, no alias points at a number that does not exist. An alias names
 //     an IDENTIFIER, so the compiler rejects one that does not.
 //
@@ -118,17 +118,19 @@
 
 // --- what is in here --------------------------------------------------------
 //
-// Transcribed 2026-08-28 from WORD_NUMBERS §2.2 at 222 rows / 219 numbers:
+// Transcribed 2026-08-28 from WORD_NUMBERS §2.2 at 222 rows / 219 numbers, and
+// 223 / 220 since 2026-08-31, when M8 appended `digits` at `1 6 4 15`:
 //
-//     216   SAT_NUMBERED   222 rows, less 3 written as bare shapes and 3 aliases
+//     217   SAT_NUMBERED   223 rows, less 3 written as bare shapes and 3 aliases
 //      38   SAT_BARE       35 `(0)` markers plus those 3 rows
 //     ---
-//     254   nodes, each with a PathId
+//     255   nodes, each with a PathId
 //       9   SAT_ALIAS      3 `.range`, `hexadecimal`, 5 spellings of `arguments`
 //
-// 254 is a count nobody had written down, because §2.2's 219 does not include
-// the bare shape a `(0)` marker names -- the marker rides on the row of the node
-// it belongs to, so it is a number that section carries without counting.
+// The node total is a count nobody had written down, because §2.2's 220 does not
+// include the bare shape a `(0)` marker names -- the marker rides on the row of
+// the node it belongs to, so it is a number that section carries without
+// counting.
 
 #ifndef SAT_NODE
 #define SAT_NODE(parent, ident, text, kind)
@@ -279,7 +281,7 @@ SAT_NODE(VARIABLE,        VARIABLE_TIME,               "time",                  
 SAT_NODE(VARIABLE_TIME,   VARIABLE_TIME_0,             "()",                    SAT_BARE)  // 1 6 3 0
 SAT_NODE(VARIABLE,        VARIABLE_NUMBER,             "number",                SAT_NUMBERED)  // 1 6 4
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_0,           "()",                    SAT_BARE)  // 1 6 4 0
-SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_SHIFT_LEFT,  "shift_left",            SAT_NUMBERED)  // 1 6 4 1
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_SHIFT_LEFT,  "shift_left(n)",         SAT_NUMBERED)  // 1 6 4 1
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_MAX,         "max(a, b)",             SAT_NUMBERED)  // 1 6 4 2
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_MIN,         "min(a, b)",             SAT_NUMBERED)  // 1 6 4 3
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_ABS,         "abs(a)",                SAT_NUMBERED)  // 1 6 4 4
@@ -293,6 +295,7 @@ SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_SHIFT_RIGHT, "shift_right(n)",        
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_MODULUS,     "modulus(a, b)",         SAT_NUMBERED)  // 1 6 4 12
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_TRUNCATE,    "truncate(a)",           SAT_NUMBERED)  // 1 6 4 13
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_SQRT,        "sqrt(a)",               SAT_NUMBERED)  // 1 6 4 14
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_DIGITS,      "digits",                SAT_NUMBERED)  // 1 6 4 15
 SAT_NODE(VARIABLE,        VARIABLE_BINARY,             "binary",                SAT_NUMBERED)  // 1 6 5
 SAT_NODE(VARIABLE,        VARIABLE_BOOL,               "bool",                  SAT_NUMBERED)  // 1 6 6
 SAT_NODE(VARIABLE,        VARIABLE_DATE,               "date",                  SAT_NUMBERED)  // 1 6 7
@@ -513,7 +516,7 @@ SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_NEW, "new(title, width, height)", SAT_NU
 
 // --- the aliases ------------------------------------------------------------
 // WORD_NUMBERS §2.3, in full. Nine spellings over five nodes, and the whole of
-// the language's aliasing: every one of the 218-versus-215 and 222-versus-219
+// the language's aliasing: every one of the 218-versus-215 and 223-versus-220
 // disagreements across these documents is the first three rows and nothing else.
 //
 // The `.range` three are the reason an alias cannot be a node. Each is a FOUR

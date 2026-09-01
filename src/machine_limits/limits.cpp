@@ -38,6 +38,7 @@
 #include "programs/opening.hpp"
 #include "system_facts/facts.hpp"
 
+#include <climits>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -306,6 +307,26 @@ int begin(const std::string &named)
 const Held &held()
 {
     return store();
+}
+
+unsigned division_digits()
+{
+    // THE DIAL IS THE AUTHORITY AT RUN TIME AND THE FILE IS NEVER RE-READ, per
+    // this module's own header: the config seeds the dials once at startup and
+    // everything reads them afterwards. So this is a lookup and not a decision
+    // about where to look.
+    const Dial &dial = held().dial(DialId::DivisionDigits);
+    if (!dial.set)
+        return kDivisionDigitsDefault;
+
+    // AND WHAT IS SET IS WHAT IS RETURNED, WHICH IT WAS NOT UNTIL 2026-08-31.
+    // Two branches stood here: a zero became 34 and anything past UINT_MAX
+    // became UINT_MAX, both silently, and both were this function deciding
+    // something about a file it cannot point at. config.cpp refuses each of them
+    // now, on the line that wrote it and with a caret under the value --
+    // kDivisionDigitsLeast and kDivisionDigitsMost in the header are the pair,
+    // and that is why this is a lookup with nothing left in it.
+    return static_cast<unsigned>(dial.value);
 }
 
 } // namespace satellite::limits

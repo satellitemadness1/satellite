@@ -22,6 +22,7 @@
 #include "programs/dump_commands.hpp"
 #include "programs/file_commands.hpp"
 #include "programs/limits_command.hpp"
+#include "programs/number_command.hpp"
 #include "programs/opening.hpp"
 #include "programs/resolve_command.hpp"
 #include "programs/window_handover.hpp"
@@ -117,7 +118,8 @@ bool only_prints_and_exits(const char *arg)
            flag == "--help" || flag == "-h" || flag == "--words" ||
            flag == "--tokens" || flag == "--unparse" || flag == "--satc" ||
            flag == "--check" || flag == "--errors" || flag == "--limits" ||
-           flag == "--resolve" || flag == "--watchdog";
+           flag == "--resolve" || flag == "--number" ||
+           flag == "--watchdog";
 }
 
 // A usage failure: the command line did not name something satl can do.
@@ -275,6 +277,17 @@ int main(int argc, char **argv)
     // and a watchdog that never fires is indistinguishable from no watchdog.
     if (first == "--watchdog")
         return satellite::limits::hold_for_the_watchdog();
+
+    // M8's CONSUMER. Three operands and not an expression -- number_command.hpp
+    // says why that is the design rather than a shortcut, and the short version
+    // is that DESIGN §6 is already the grammar and a second one here would be a
+    // second place expression syntax is decided.
+    if (first == "--number") {
+        if (args.size() < 5)
+            return usage_error("--number needs three things after it: a number, "
+                               "one of + - * / %, and another number");
+        return satellite::number_command(args);
+    }
 
     if (first == "--repl")
         return not_yet("the prompt", std::string(), "M22");

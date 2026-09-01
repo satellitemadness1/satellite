@@ -43,7 +43,8 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 ## 1. Where things stand
 
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
-2026-08-29, and M4, M4.5, M5 and M6 all on 2026-08-30.** *(M1.5 is the window, and it
+2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, and M7 and M8 on
+2026-08-31.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -54,14 +55,24 @@ into tokens — `satl --tokens` — **parses one and prints it back** — `satl
 `satl --satc`, which is the first command that leaves anything behind it. **And
 since M6 it holds itself to a machine** — `satl --limits` says how many threads
 it may use, how much memory it may take, and where each of those answers came
-from, and a thread pool and a memory watchdog start on every run. There
+from, and a thread pool and a memory watchdog start on every run. **M7 gave
+every name a slot and every path a number** — `satl --resolve` — and **M8 gave
+the language a number type**: `satl --number 0.1 + 0.2` answers `0.3`, and
+`satl --number 1 / 3` answers thirty-four digits and says it rounded them. There
 is still no interpreter behind any of it; running a program lands at M10.
 
 What exists: the `Makefile` as an index over eleven fragments under
-`make_support/`, **120 C++ files totalling 18,031 lines** plus `words.def` at
-548, **six** test suites under `tests/`, and `satellite_enterprise/`, the
-Enterprise Linux installer and the artwork. *(Recounted 2026-08-30, at M6, over
-`src/` and `tests/` together — 81 files and 12,654 lines of it is `src/`.)*
+`make_support/`, **164 C++ files totalling 25,830 lines** plus `words.def` at
+551 and `errors.def` at 548, **eight** test suites under `tests/`, and
+`satellite_enterprise/`, the Enterprise Linux installer and the artwork.
+*(Recounted 2026-08-31, at M8, over `src/` and `tests/` together — 108 files and
+17,592 lines of it is `src/`. Re-taken after M8's follow-up pass the same day,
+which added `tests/number_test/exact.cpp` and nothing under `src/`; the figures
+immediately before it were 163 files and 25,421 lines, with `src/` at 17,412.)*
+
+*(The figures here read "120 C++ files totalling 18,031 lines … six test suites"
+until this recount and were taken at M6, so they had already missed M7. Left
+recorded rather than quietly replaced, for the reason the paragraph below gives.)*
 
 *(The figures here read "eighty-two C++ files totalling 12,384 lines … four test
 suites" until this recount, and they were taken at M4.5 — so they had already
@@ -71,10 +82,25 @@ recorded rather than quietly replaced, for the same reason the 2026-08-28 figure
 below are: a count in prose goes stale the day after it is taken, and what makes
 one worth keeping is that it is dated.)*
 
-**The largest C++ file is `src/programs/main.cpp` at 427**, then
-`src/lexical_analyzer/lexer.cpp` at 354, `src/abstract_syntax_tree/unparse.cpp`
-at 341, `src/parser/parser_declarations.cpp` at 330 and
-`src/machine_limits/config.cpp` at 321. *(This paragraph named `unparse.cpp` as
+**The largest C++ file is `src/machine_limits/config.cpp` at 470**, then
+`src/machine_limits/limits.hpp` at 399, `src/lexical_analyzer/lexer.cpp` at 354,
+`src/abstract_syntax_tree/unparse.cpp` at 341, `src/machine_limits/limits.cpp`
+at 332 and `src/parser/parser_declarations.cpp` at 330. *(The two
+`machine_limits` files at the top grew again in M8's follow-up pass — 435 to 470
+and 383 to 399 — which is where `division_digits` got the range that let its
+silent clamp be deleted.)* *(Recounted at M8. `main.cpp` is no longer on this
+list at all — it is 310, down from the 427 the paragraph below is about, because
+M7 split three more arms out of it on the same seam. The two `machine_limits`
+files at the top are where M8 added `division_digits()`, and the module has been
+the widest in the tree since M6.)*
+
+**M8's own widest file is `src/satellite_number/bignum_number.hpp` at 328**,
+which is twenty-eight lines over §3's target and is named here rather than left
+to a future audit — 306 when the milestone landed, and the follow-up pass added
+the two shift declarations and the note where the division ceiling used to be. It is a header whose comment mass IS the milestone — DESIGN §8.1's
+sign, what it cost, what it paid for and the `static_assert` that holds the
+layout — and §3's rule is a target to write toward rather than a ceiling that
+fails a build. The other nine ported files are between 48 and 301. *(This paragraph named `unparse.cpp` as
 the largest at M4 and that was wrong on the day it was written — `main.cpp` was
 380 then, and a count that skips the one file everybody edits is the count most
 likely to go stale. M4.5 took sixty lines off it by giving `--satc` a file of its
@@ -1093,8 +1119,9 @@ Ported, adapted, or taken as-is:
 ### 6.1 `satellite_number` and `satellite_string` come across close to unchanged
 
 *(Surveyed 2026-08-27. `satellite_string`'s character half **landed at M3 on
-2026-08-29**; `satellite_number` is still empty.)* What fills them is the first
-satellite's, and it very nearly ports as-is:
+2026-08-29**; `satellite_number` **landed whole at M8 on 2026-08-31**, and its
+four open questions are answered at the end of this section.)* What fills them is
+the first satellite's, and it very nearly ports as-is:
 
 | | files | lines | largest |
 |---|---:|---:|---:|
@@ -1132,19 +1159,47 @@ shadow a longer one, and v1 held that by hand — `"t"` sits four rows below
 `\threads` lex as a tab followed by `hreads`, silently. FORMAT/CXX.md §1's third
 rule is the one that says a fact like that may not live only in prose.
 
-Four things to settle before copying, and `SCRATCH.md/PORTING.md` has the detail:
+Four things to settle before copying, and `SCRATCH.md/PORTING.md` has the detail.
+**All four are answered as of 2026-08-31, and three of them came out differently
+from what this list expected.**
 
-1. **Does `Number` keep its reach into `satellite.library`?** It reads
-   `division_digits` from there, which would drag the library registry in at M2,
-   years before §8 schedules it. A compile-time default now and the lookup restored
-   later is the alternative.
-2. **Does the code table stay 16-bit?** The header argues it well and nothing in
-   this design contradicts it. Port as-is unless something does.
-3. **Where does `satellite.random` live?** It is `satellite_number/random.cpp` in
-   v1; DESIGN §11 gives it a section of its own here.
-4. **`sizeof(Number)` on arrival.** DESIGN §8.2 budgets a `Value` at 40 bytes with
-   a static_assert to come. That is the one number that could make this port not
-   fit, and it is cheap to check first.
+1. ~~**Does `Number` keep its reach into `satellite.library`?**~~ **It does, and
+   the alternative this row offered is not what happened.** The row proposed *"a
+   compile-time default now and the lookup restored later"* because the fear was
+   dragging the library registry in years early. M6 built the registry AND the
+   storage — `machine_limits/limits.hpp`'s `Dial` — and left `division_digits`
+   deliberately unset, saying *"the milestone that will read it decides what no
+   answer means."* So M8 reads the real dial through `limits::division_digits()`
+   and there is no compile-time default to restore later. **The 34 lives beside
+   the dial and not in `Number`**, which is the seam turned the other way up from
+   v1: `Number::divide` takes a count and never invents one.
+2. **Does the code table stay 16-bit?** *(Settled at M3 with the character half.)*
+   Yes, ported as-is. Nothing in this design contradicted the header's argument.
+3. ~~**Where does `satellite.random` live?**~~ **Settled by the tree rather than
+   by a decision, and the port then had to give something back.**
+   `src/satellite_random/` landed at M2 ahead of any milestone that calls it. So
+   v1's `random.cpp` came across into `satellite_number/` — it is bignum work —
+   but v1's `Bits32` and `MAX_RANDOM_DIGITS` did **not**, because this tree
+   already has both. **That makes the "internally closed, so it ports alone"
+   sentence above wrong by one include**, and the trade was taken on FORMAT §1's
+   second rule: one `Bits32` in the tree beats two that agree until somebody edits
+   one. `satellite_random/random.hpp` names no PCG type, which is what makes the
+   include cost nothing.
+4. **`sizeof(Number)` on arrival.** **Checked first, and it fits — but only in one
+   layout, which is the part this row did not anticipate.** Measured 2026-08-31
+   before a line was written: v1's shape is 32 bytes, an explicit `bool positive_`
+   laid flat beside `int exp_` is still 32, and cutting the magnitude out as its
+   own type is 40 — because a nested struct's tail padding is not reusable by the
+   type holding it, which would put a `Value` at 48. **So the one number that
+   could have made this port not fit instead decided its shape.**
+
+**And the sign was the fifth thing, which this list did not have and DESIGN §8.1
+added on 2026-08-27.** It is the only part of the port that is not a port: v1
+packed the sign into the significand, §8.1 requires an explicit `positive` bool
+with the magnitude carrying none, and every operation that decides a sign was
+rewritten around it. `MILESTONES/M8.md` §3 is what it cost and what it paid for,
+and the short version is that the module came out **shorter** than v1's — three
+blocks of code existed only so that `-LLONG_MIN` had somewhere to land.
 
 ---
 
@@ -1421,7 +1476,7 @@ conditions under which it declines.
   the authority.** A row left out of `words.def` does not leave a hole; it
   silently renumbers every sibling after it, and *both files stay internally
   consistent.* `tests/words_test` therefore opens WORD_NUMBERS.md, parses §2.2
-  and walks all 222 paths. **Verified by mutation on 2026-08-28**: deleting one
+  and walks all 223 paths. **Verified by mutation on 2026-08-28**: deleting one
   row — `satellite.console.typed()` `1 5 5` — compiles clean with every assert
   passing, and the test names the missing row and the four siblings it shifted.
 
@@ -1918,8 +1973,9 @@ arm about to be added. `programs/dump_commands.cpp` and
 `programs/file_commands.cpp` are the two subjects, every comment moved unchanged,
 and `main.cpp` is **297 lines**.
 
-**M8 — `satellite.variable.number`.** *(Its own milestone as of 2026-08-27; it was
-a bullet inside M9.)* The port of the first satellite's `satellite_number` — 10 files,
+**M8 — `satellite.variable.number`. LANDED 2026-08-31**, and
+[MILESTONES/M8.md](MILESTONES/M8.md) is the review. *(Its own milestone as of
+2026-08-27; it was a bullet inside M9.)* The port of the first satellite's `satellite_number` — 10 files,
 1509 lines, internally closed, every file already under §3's ceiling (§6.1) — plus the
 one thing the port does not bring with it.
 
@@ -1935,11 +1991,18 @@ be milestones apart instead of one large one.
 Done when: exact arbitrary-precision arithmetic runs, negation and `abs` and ordering
 of negatives are right, there is no negative zero, and `sizeof` is inside DESIGN
 §8.2's 40-byte `Value` budget — which §6.1 names as the one number that could make
-this port not fit, and which is cheap to check first.
+this port not fit, and which is cheap to check first. **All four met**, and
+`sizeof` was checked before a line was written, which is what §6.1 asked for and
+what decided the layout: 32 bytes flat, 40 with the magnitude cut out as its own
+type. **A fifth clause was added when the consumer was chosen** — `satl --number
+<a> <op> <b>`, because M6 and M7 each shipped one and §8's opening rule is that a
+milestone is a thing that can be demonstrated.
 
 Four things to settle before copying, in `SCRATCH.md/PORTING.md`, and **the sign is a
 fifth**: where v1 currently keeps it has to be checked against DESIGN §8.1 before the
-copy rather than after.
+copy rather than after. *(All five answered; §6.1 carries the four and §6.1's
+closing paragraph carries the sign. Three of the four came out differently from
+what the list expected.)*
 
 **Eleven numbered paths, and the four it does not take.** *(2026-08-28.)*
 `satellite.variable.number` `1 6 4 (0)` and ten of its fourteen methods land here —
@@ -1952,10 +2015,92 @@ rounding rule is chosen: `sqrt` is irrational in general, `modulus` cites DESIGN
 of M11"* answered the cheaper way — **four methods move, and no milestone is
 reordered.**
 
+**THE TWO SHIFTS MOVED TO M15 AND CAME BACK THE SAME DAY, AND THE ROUND TRIP IS
+THE FINDING.** *(2026-08-31, both moves on the author's decision.)* The paragraph
+above says `shift_left` `1 6 4 1` and `shift_right(n)` `1 6 4 11` land here.
+**The first satellite has neither**, and no document defined what either means:
+they enter the language through DESIGN §5.5, as an aside that bit shifts *"if ever
+needed"* would be spelled this way — an argument about where a path hangs, not a
+specification of an operation. So they were moved out, on the grounds that "what
+does a bit shift mean on an exact base-10⁹ decimal" is the same shape of
+undecided question as the rounding rule.
+
+**Then the question was answered, and the answer took ten minutes rather than a
+milestone.** DESIGN §5.5 now says it: a shift is `× 2ⁿ` and `÷ 2ⁿ`. **2 divides
+10, so both directions terminate** — `1 ÷ 2¹⁰` is exactly `0.0009765625` — which
+puts both in DESIGN §8.6's first class, *exact and bounded, never rounds*, and
+means neither was ever blocked by the rounding rule. A fractional receiver needs
+no rule of its own because a multiplication does not care: `7.5` shifted left once
+is exactly `15`. The rejected readings are recorded in §5.5 — `×10ⁿ` makes the
+name a lie, and refusing a fractional receiver invents a refusal the arithmetic
+does not need.
+
+**AND `modulus(a, b)` `1 6 4 12` WAS NEVER M15'S EITHER**, which is the same
+finding one method over and the one that says this entry's sentence was too
+broad. "None of them can be finished before the rounding rule is chosen" is true
+of `power` and `sqrt` and is not true of `modulus`: DESIGN §8.6 specifies it in
+full — `a − b × trunc(a/b)`, truncated, taking the sign of the dividend, with
+`7.5 % 2.1 = 1.2` worked out in the text — and files it under **class 1, exact
+and bounded, never rounds**, in the same section this entry cites as its reason
+for deferring it. The quotient is only ever wanted as an integer, so the inexact
+tail of a division is discarded before it can matter. `Number::modulo` was ported,
+worked, and had an error row apologising for a gap that was not there.
+
+**SO M8 LANDED THIRTEEN PATHS WHERE THIS ENTRY NAMED ELEVEN.** All eleven —
+`1 6 4 (0)`, `shift_left(n)`, `max`, `min`, `abs`, `clamp`, `to_string`, `floor`,
+`ceil`, `round`, `shift_right(n)` — plus `modulus(a, b)` `1 6 4 12`, taken back
+from M15, plus `digits` `1 6 4 15`, appended to the numbering below. **M15 keeps
+three of the number's methods** — `power(a, b)`, `truncate(a)` and `sqrt(a)` —
+and its own `satellite.variable.float` `1 6 10`, so §8.2's table reads **13 for
+M8 and 4 for M15** where it read 9 and 7. The total moves from 222 to 223, and
+the one row is `digits`.
+
+**Three of those nine were written rather than ported, and this entry did not say
+so either.** v1's number method surface is `abs`, `ceil`, `floor`, `round`,
+`to_string`, `digits` and `negate` plus the arithmetic; it has no `max`, `min` or
+`clamp` at all. They are one comparison each over `compare()`, so the cost is
+nothing — what matters is that "ten of its fourteen methods land here" read as ten
+things being carried across, and five were.
+
+**And `digits` had no number, which is the mirror image.** v1 exposes
+`.digits()`, and its implementation carries a whole paragraph on why it is not
+`.length()` — *"one word means one thing"*. WORD_NUMBERS §2.2 had no row for it
+under `1 6 4`, so `Number::digit_count()` was a C++ method the language could not
+call — the mirror image of the two shifts, which had numbers and no meaning.
+**`1 6 4 15` was appended on the author's decision, 2026-08-31.** §1.2 is *never
+renumber, never reuse*, and appending is neither: nothing moved, and no
+already-written program changed meaning. §2.2 goes from 222 rows to 223 and from
+219 distinct numbers to 220, which is the only count in this document that this
+change touches.
+
 **It reads `satellite.library.system.division_digits` `1 14 2 1` and M6 built the
 node it lives on.** §6.1's open question 1 is what makes the dial `Number`'s; M6
 owns the file, the storage and `min_free_mb`, and this is the first milestone to give
-one of the four dials a meaning.
+one of the four dials a meaning. **The meaning is one function** —
+`limits::division_digits()`, beside the dial rather than inside `Number` — and it
+is *unset means 34*, decimal128's precision. `satl --number` prints the count and
+where it came from on every run, which is the only way a person can see a
+`satellite_config.ini` having done anything at all before M10.
+
+**What it left open was the clamp, and the fix was to delete it rather than to
+announce it.** *(2026-08-31.)* `Number::divide` capped a count at 10,000, so a
+file setting `division_digits=50000` got 10,000 and nothing said so. The first
+reading of that was a missing sentence — DESIGN §1.1 forbids doing things behind
+a program's back — and it is really a missing sentence about a constant DESIGN
+§7.5 does not allow to exist: *"no constant in a header deciding how big a thing
+the user may write."* **`kMaxDivisionDigits` is gone.** `division_digits=50000`
+is fifty thousand digits and satl computes them; what ends a runaway is M6's
+watchdog at `MEMORY_MAX`, which is the same answer `errors.def`'s S06xx block
+already gives for why there is no overflow row.
+
+**What the file may say is bounded, and that is a different claim.** A count
+below 1 keeps nothing and a count satl cannot hold in a machine word cannot be
+acted on, so both are refused **at the line of the `satellite_config.ini` that
+wrote them, with a caret** — S0807 and S0808, rows M6 already had. That also
+removed two silent substitutions nobody had noticed: `limits::division_digits()`
+turned a zero into 34 and anything past `UINT_MAX` into `UINT_MAX`, both without
+a word. **M11 is still where a program can retune the dial at run time**, and it
+inherits a function with nothing left in it to explain.
 
 **It also owns the uniform draw, and its own line did not say so.** *(2026-08-28,
 and this is the fourth instance of that failure after M3/M4's eleven words, M16's
@@ -1965,6 +2110,31 @@ bare `%` would skew 2:1, and `MAX_RANDOM_DIGITS = 100000` — is one of the ten 
 this port brings across. `SCRATCH.md/PORTING.md` has the row; this milestone had it
 and never repeated it, and **M13 needs to be able to say it is inheriting the bignum
 half of the dice rather than writing one.**
+
+**`MAX_RANDOM_DIGITS` DID NOT COME ACROSS, AND NEITHER DID `Bits32`.** *(2026-08-31.)*
+Both already exist in this tree, in `satellite_random/random.hpp`, with the same
+100,000 and the same argument — the module landed at M2 ahead of any milestone
+that calls it. Copying v1's would be two facts in two places each, against
+FORMAT §1's second rule. So `satellite_number` includes that header, which is the
+one include that makes §6.1's *"internally closed"* wrong by one line, and the
+trade is written down in `bignum_bigint.hpp` rather than left to be found.
+
+**And this is what gives `satellite_random` a consumer**, which LAYOUT.md has
+called *"the one module in the tree with no consumer"* since M2 and 040-sources.mk
+explained by naming this milestone: the half that could not be built then was
+*"drawing an N-digit number, which needs the arbitrary-precision half (M8)."*
+`tests/number_test/draw.cpp` links both modules. **`satl` still does not** — nothing
+in the interpreter draws a number, because `satellite.random.*` reaches no
+milestone — so the sentence narrows rather than disappearing.
+
+**The 2:1 skew was re-measured rather than quoted, and it is one level in from
+where v1's comment points.** §9's rule is to measure on this machine. The
+rejection in `draw_below` is against a raw 32-bit `%`, and for a bound of 3 that
+bias is one extra preimage in 4.29 billion — nothing a test can see. The visible
+2:1 is the **second** rejection, in `BigInt::random_below`: the top limb is drawn
+over `[0, top+1)`, and folding that back with `%` instead of redrawing is what
+skews the low residue. `tests/number_test/draw.cpp` runs both over three million
+draws and asserts the shape.
 
 **This closes half of `SCRATCH.md/MILESTONE.md` §3's porting row**; M9 closes the
 other half with `satellite_string`.
@@ -2185,8 +2355,8 @@ this whole pass exists to end:
 spelling of the two-argument shape, not a fourth segment and not a path
 (WORD_NUMBERS §2.3): `fast.range(min, max)` **is** `1 7 5`, `normal.range` **is**
 `1 7 8`, `ultra.range` **is** `1 7 11`. **Those three are the only duplicate
-numbers in the language**, and they are the whole of the difference between the 222
-rows §2.2 holds and the 219 distinct numbers it carries. That reconciliation was
+numbers in the language**, and they are the whole of the difference between the 223
+rows §2.2 holds and the 220 distinct numbers it carries. That reconciliation was
 written down only in `SCRATCH.md/MILESTONE.md` §5, which is scratch; it lives here
 now.
 
@@ -2592,18 +2762,51 @@ cannot.
 **It costs no new arithmetic.** M8 brought `satellite_number` across and built the
 sign; a float is composition over two of them plus rounding.
 
+**AND THE SIGN IS BUILT AND IS INHERITED RATHER THAN REDEFINED**, which is the
+whole reason these two are milestones apart. `Number` carries a `bool positive_`
+with the magnitude carrying none; negation, `abs`, the sign of a product and the
+ordering of negatives are written once in `satellite_number/` and are true of
+both types. **One thing about the layout does not carry over and is worth knowing
+before the C++ is written**: a `Number` is 32 bytes only because the bool sits in
+the padding after `int exp_`, and `bignum.hpp` measured that a float built by
+wrapping two of them cannot repeat the trick. §8.6's own note about a
+zero-initialised float reading as negative zero is the same fact from the other
+side, and it is a difference between the two types rather than something M8 left
+undone: a zero-initialised `Number` is the number 0, because `positive_` defaults
+to true.
+
 Two documents used to disagree about whether this was urgent — PLAN filed it under
 "Later" while DESIGN §13 and QUAD.md §3.1 called it the critical path. It is the
 critical path: QUAD is 164 `double`s and cannot be written without it.
 
-**Five numbered paths, and four of them are M8's type rather than this one's.**
-*(2026-08-28.)* `satellite.variable.float` `1 6 10`, plus
-`satellite.variable.number.power(a, b)` `1 6 4 10`, `modulus(a, b)` `1 6 4 12`,
-`truncate(a)` `1 6 4 13` and `sqrt(a)` `1 6 4 14` — the four of the number's fourteen
-methods that **cannot be finished before the rounding rule is chosen**, which is this
-milestone's blocker and not M8's. `SCRATCH.md/MILESTONE.md` §0.4 named the choice —
-*"either those four move to M15 or M15 moves ahead of M11"* — and moving four
-methods is the smaller move. **`satellite.library.system.float_digits` `1 14 2 4` is
+**Four numbered paths, and three of them are M8's type rather than this one's.**
+*(2026-08-28; seven on 2026-08-31, and four by the end of the same day.)*
+`satellite.variable.float` `1 6 10`, plus `satellite.variable.number.power(a, b)`
+`1 6 4 10`, `truncate(a)` `1 6 4 13` and `sqrt(a)` `1 6 4 14` — the three of the
+number's fifteen methods that **cannot be finished before the rounding rule is
+chosen**, which is this milestone's blocker and not M8's. `power` at a fractional
+or negative exponent and `sqrt` are irrational in general; truncating a float is
+its left half and so waits on the float itself.
+
+**IT READ SEVEN FOR ONE DAY, AND THE THREE THAT LEFT AGAIN ARE WORTH KEEPING IN
+THE RECORD.** `shift_left` `1 6 4 1` and `shift_right(n)` `1 6 4 11` arrived here
+on 2026-08-31 because building M8 found that the first satellite has neither and
+that no document said what a bit shift means on an exact base-10⁹ decimal — an
+undecided question of the same kind as the rounding rule, so it went to the same
+place. **The question was then answered rather than scheduled**: DESIGN §5.5 says
+a shift is `× 2ⁿ` and `÷ 2ⁿ`, both terminate because 2 divides 10, and §8.6's
+first class is where that puts them. `modulus(a, b)` `1 6 4 12` went the other
+way without ever having belonged here at all — §8.6 specifies it in full and
+files it under *exact and bounded, never rounds*.
+
+**THE LESSON IS ABOUT THE SENTENCE THAT MOVED THEM.** *"None of them can be
+finished before the rounding rule is chosen"* was written over four methods at
+once, and it was true of two. A blocker named over a GROUP cannot be checked
+against any one member, which is the same failure `MILESTONES/M7.md` §7.1 records
+about a claim asserted over a whole behaviour. `SCRATCH.md/MILESTONE.md` §0.4
+named the trade — *"either those four move to M15 or M15 moves ahead of M11"* —
+and the answer turned out to be that only three of the four had to move
+anywhere. **`satellite.library.system.float_digits` `1 14 2 4` is
 this milestone's dial**, on the node M6 builds, and DESIGN §13 has already redefined
 it from *the* dial into **the default length of a float's right half** for a value
 that does not state one.
@@ -2612,6 +2815,16 @@ that does not state one.
 Truncate, half-up, or half-even. No representation escapes it: `pow` at a fractional
 exponent is irrational, so the fractional half must be rounded to exist. QUAD's
 determinism invariant means a program's behaviour depends on the answer.
+
+**Half of that decision is already made in code and nobody decided it.**
+*(2026-08-31.)* `Number::divide` rounds **half-up** — it keeps one guard digit and
+bumps when it is `5` or more — which is v1's behaviour, ported unchanged, and is
+why `satl --number 2 / 3` ends in a `7`. So the language already rounds one way at
+one operation. That is not the same as the rule being chosen: this milestone's
+question is what rule the FLOAT uses and whether the number's division should
+agree with it, and the honest position is that a default arrived by porting rather
+than by decision. **`tests/number_test/arithmetic.cpp` asserts the current
+behaviour**, so changing it is a visible edit and not a silent drift.
 
 **M16 — containers and the search power.** `satellite.container.list`,
 `satellite.container.map`, **and their methods** — the map's nine `1 4 1 1`–`1 4 1 9`
@@ -3015,7 +3228,7 @@ the 2026-08-27 draft. After M19.)* **Thirty-seven numbered paths** — the
 type name an error message needs. It is the second-largest single milestone in
 this list by paths, behind M16's thirty-nine once `threshold` moves there — **the
 two are within two of each other, and the comparison is over behaviour rather than
-over `words.def`, since M2 names all 222.**
+over `words.def`, since M2 names all of them.**
 
 - **`satellite.system` `1 22 (0)` and twenty-six below it**: `.environment`
   `1 22 2`, `.home` `1 22 3`, and all of `.memory` `1 22 4 (0)` — `.bit` `1 22 4 1`
@@ -3590,10 +3803,17 @@ list, with working and tested v1 code behind nine of its rows.
 ### 8.2 Every numbered path is named, and here is exactly what that claims
 
 *(2026-08-28, at the end of the pass that added eleven milestones; renumbered
-2026-08-30 and re-sorted, and the totals are unchanged because no path moved.)*
+2026-08-30 and re-sorted, and the totals were unchanged because no path moved.
+**Three paths moved on 2026-08-31 and one was added** — `shift_left` `1 6 4 1`,
+`shift_right(n)` `1 6 4 11` and `modulus(a, b)` `1 6 4 12` are M8's rather than
+M15's, so M8 reads 13 and M15 reads 4, and `digits` `1 6 4 15` is a new row. **The
+total moved for the first time**, from 222 to 223, and that is the distinction
+this table is for: paths moving between milestones must leave it alone, and a row
+appended to WORD_NUMBERS §2.2 must change it by exactly one. M8's entry has both
+reasons.)*
 WORD_NUMBERS.md §2.2
-holds **222 rows and 219 distinct numbers** — the three duplicates are §2.3's
-`.range` aliases and nothing else. **All 222 rows are named by exactly one milestone
+holds **223 rows and 220 distinct numbers** — the three duplicates are §2.3's
+`.range` aliases and nothing else. **All 223 rows are named by exactly one milestone
 above**, counted mechanically against §2.2 rather than read off the prose:
 
 | | paths | | | paths |
@@ -3603,16 +3823,16 @@ above**, counted mechanically against §2.2 rather than read off the prose:
 | M4 | 3 | | M18 | 3 |
 | M6 | 5 | | M19 | 20 |
 | M7 | 1 | | M20 | 37 |
-| M8 | 11 | | M23 | 6 |
+| M8 | 13 | | M23 | 6 |
 | M10 | 7 | | M24 | 3 |
 | M11 | 26 | | M25 | 2 |
 | M12 | 2 | | M26 | 3 |
 | M13 | 23 | | M27 | 9 |
 | M14 | 8 | | M28 | 1 |
-| M15 | 5 | | **total** | **222** |
+| M15 | 4 | | **total** | **223** |
 
 **M1, M2, M4.5, M5, M9, M21 and M22 hold none, and that is right rather than a
-gap.** M2 registers all 222 and owns no behaviour; M5 and M9 build the machinery
+gap.** M2 registers all 223 and owns no behaviour; M5 and M9 build the machinery
 every other row dispatches through; M21's whole content is a program. **The table
 counts the milestone that makes a path answer, not the one that parses it** — M4
 parses DESIGN §6.1's eleven segment-1 words and appears here with three, and M11's

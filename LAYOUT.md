@@ -64,8 +64,18 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/programs/terminal.cpp](src/programs/terminal.cpp) | The VTE widget and the `satl` it spawns into a PTY. Holds the exit policy — the clean-exit arm is M1.5's and M22 deletes it. |
 | [src/programs/terminal.hpp](src/programs/terminal.hpp) | One door to the above. Split from `window.cpp` by subject, not by line count. |
 | [src/system_facts/version.hpp](src/system_facts/version.hpp) | The two version numbers and what a build records about itself, including both the compiler make invoked and the one that answered. |
+| [src/satellite_number/bignum.hpp](src/satellite_number/bignum.hpp) | **M8.** The umbrella header and the only door a consumer opens. Carries the `sizeof` measurement PLAN §6.1 called *"the one number that could make this port not fit"* — 32 bytes with the sign flat, 40 with the magnitude cut out as its own type, and the second would put a `Value` at 48. |
+| [src/satellite_number/bignum_bigint.hpp](src/satellite_number/bignum_bigint.hpp) | `BigInt` — arbitrary-precision **unsigned**, base 10⁹, little-endian limbs. **The one place `satellite_number` reaches outside itself**: it includes `satellite_random/random.hpp` for `Bits32` and `MAX_RANDOM_DIGITS` rather than carrying v1's copies, which is a correction to PLAN §6.1's *"ports alone"*. |
+| [src/satellite_number/bignum_number.hpp](src/satellite_number/bignum_number.hpp) | `class Number`, and **where M8's argument lives**: DESIGN §8.1's explicit `bool positive_`, what it cost (a compare in `add`), what it paid for (no `LLONG_MIN` case, an opposite-sign add that cannot overflow, one more row of powers of ten), and the `static_assert` that keeps it at 32 bytes. |
+| [src/satellite_number/bignum_internal.hpp](src/satellite_number/bignum_internal.hpp) | Private to the module. `POW10` to 10¹⁹ — nineteen rows and not v1's eighteen, because an unsigned significand reaches one power further — and `scale_u64`. |
+| [src/satellite_number/limbs.cpp](src/satellite_number/limbs.cpp) | The base-10⁹ core. Came across **unchanged apart from two things**, both named in the file: `scale_ll` became `scale_u64`, and `fits_ll`/`to_ll` became `fits_u64`/`to_u64` — the one signedness opinion an unsigned magnitude class ever had. |
+| [src/satellite_number/number_core.cpp](src/satellite_number/number_core.cpp) | Construction, the small form, parsing, normalisation. **Where "there is no negative zero" is enforced** — `make()` answers a zero magnitude with a default `Number`, so `-0` is a state the representation cannot reach rather than one a comparison repairs. |
+| [src/satellite_number/number_query.cpp](src/satellite_number/number_query.cpp) | Sign and integrality questions, rounding, comparison, and the three M8 **added**: `max` `1 6 4 2`, `min` `1 6 4 3` and `clamp` `1 6 4 5`, which the first satellite had none of. By value and not by reference, because a reference-returning `max` is the standard library's oldest dangling temporary. |
+| [src/satellite_number/number_arith.cpp](src/satellite_number/number_arith.cpp) | add, sub, mul, divide, modulo. Every one of them decides a sign, so every one changed shape at M8 without changing what it computes. Carries v1's recorded division bug — *"a non-zero remainder does not mean the division fails to terminate"* — and its two fixtures. |
+| [src/satellite_number/render.cpp](src/satellite_number/render.cpp) | Print the **value**, never N significant digits. The notation boundary restated as *padding outnumbering information*, which is why 30! prints whole and 1e308 does not. |
+| [src/satellite_number/random.cpp](src/satellite_number/random.cpp) | The uniform draw at arbitrary precision — the bignum half of DESIGN §11, and **what gives `satellite_random` a consumer**. Rejection and never a fold; `tests/number_test/draw.cpp` measures what the fold would cost. |
 | [src/satellite_random/random.hpp](src/satellite_random/random.hpp) | `satellite.random`: the three tiers, the `Bits32` seam, `MAX_RANDOM_DIGITS`, and the spin. Names no PCG type, so nothing above it includes an Apache-2.0 header. |
-| [src/satellite_random/random.cpp](src/satellite_random/random.cpp) | The only translation unit that names a PCG entity. Compiled by `make` and **linked into nothing** — 040-sources.mk says why. |
+| [src/satellite_random/random.cpp](src/satellite_random/random.cpp) | The only translation unit that names a PCG entity. Compiled by `make` and **linked into no binary `make` produces** — `satl` still does not draw a number, because `satellite.random.*` has no milestone. `tests/number_test` links it, which is new at M8; 040-sources.mk says what changed and what did not. |
 | [src/satellite_words/words.def](src/satellite_words/words.def) | **The numbering, as data** — 254 nodes and 9 aliases, a transcription of WORD_NUMBERS §2.2 and nothing else. A node's number is its **position** among its parent's children and is not a column. The one file exempt from PLAN §3's line ceiling. |
 | [src/satellite_words/words.hpp](src/satellite_words/words.hpp) | The umbrella: one door over the seven parts below, in an order that compiles. Include this and you get everything. |
 | [src/satellite_words/words_nodes.hpp](src/satellite_words/words_nodes.hpp) | `NodeId`, `PathId`, the node table, the aliases, and how a row's text splits into a word and a call shape. |
@@ -104,6 +114,7 @@ abbreviation its files use. Every unit spells its includes from the top of `src/
 | [src/programs/cache_command.hpp](src/programs/cache_command.hpp) · [.cpp](src/programs/cache_command.cpp) | `satl --satc`. **The only flag with a file of its own**, because it is the only one that is a loop rather than a print: read the cache if it hits, walk and write if it misses, print the `.satc` either way and say on stderr which happened. |
 | [src/programs/dump_commands.hpp](src/programs/dump_commands.hpp) · [.cpp](src/programs/dump_commands.cpp) | **M7**, and the half of `main.cpp`'s seam MILESTONES/M6.md §6.1 named and declined. `--words` and `--errors`: a registry dump takes **no operand or a key into itself**, answers out of tables compiled into the binary, opens nothing, and cannot fail about the user's program. The header says what the two subjects are, once. |
 | [src/programs/file_commands.hpp](src/programs/file_commands.hpp) · [.cpp](src/programs/file_commands.cpp) | **M7**, the other half. `--tokens` and `--unparse`: a file arm takes a **path** and has a status about what was in it. The rule they share is the one that cost a day once — the dump goes to **stdout even when the program is malformed**, because the operand is a file and a bad token is not a bad command line. |
+| [src/programs/number_command.hpp](src/programs/number_command.hpp) · [.cpp](src/programs/number_command.cpp) | **M8.** `satl --number <a> <op> <b>`. **Three operands and not an expression**, because DESIGN §6 is already the grammar and a second one here would be a second place expression syntax is decided. Turns its own arguments into a one-line source so M5's carets work over a command line. |
 | [src/programs/resolve_command.hpp](src/programs/resolve_command.hpp) · [.cpp](src/programs/resolve_command.cpp) | `satl --resolve`. The one arm with a decision no other has: a `.satc` is written from a tree that PARSED, and resolve is the first pass that can find something wrong in one — so a warm run whose program does not resolve is **thrown away and taken again from the source**, because the tree's spans index into the cache's words and a caret from them lands on the wrong line. |
 | [src/name_resolver/resolve.hpp](src/name_resolver/resolve.hpp) | **M7**, and the one door over the module. DESIGN §7's frames and slots: three sentinels and not six, `Info`'s side table indexed by node, and `Origin` — walked, cached, bound or parsed. **Its depth bound was withdrawn on 2026-08-31, the day after it landed**, and is still in the file: the language has no depth limit (DESIGN §7.5, rewritten), so `kMaxDepth` and S0501 go when the pass keeps its own stack. `SCRATCH.md/NO_LIMITS.md`. |
 | [src/name_resolver/resolve_internal.hpp](src/name_resolver/resolve_internal.hpp) | The `Resolver`, split the way `parser_internal.hpp` is: the passes, the scopes, the walk, the numbers. |
@@ -160,8 +171,16 @@ M8's `Number` reads `division_digits`, M9 derives its recursion ceiling from
 between the two directories is that `system_facts/` reports what the machine
 says and `machine_limits/` decides what satl does about it.
 
-`src/satellite_number/` exists and is **empty**, holding a name for work that has
-not started.
+**`src/satellite_number/` was filled at M8 on 2026-08-31**, and until that
+morning this paragraph read *"exists and is empty, holding a name for work that
+has not started."* Ten files and about 1,300 lines, ported from the first
+satellite, which PLAN §6.1 had surveyed at 10 files and 1509 and called
+*"internally closed, so it ports alone."* **Both halves of that sentence needed
+one correction each**: the module now includes `satellite_random/random.hpp`,
+because this tree already had the `Bits32` seam and the draw ceiling and a
+second copy would be two facts in two places each; and the port came out
+shorter, because DESIGN §8.1's explicit sign deleted three blocks of code that
+existed only so that `-LLONG_MIN` had somewhere to land.
 
 **`src/abstract_syntax_tree/` and `src/parser/` landed at M4 on 2026-08-30.** Two
 directories rather than one, because the arena is a data-layout decision that
@@ -179,9 +198,13 @@ then. Nothing in the lexer can reach one: `encode_raw` maps every source byte to
 a letter, a digit, a punctuation code or the raw area, so no live code can occur
 in a program's text at all.
 
-`src/satellite_random/` is built and is the one module in the tree with **no
-consumer** — it landed ahead of any milestone that calls it, the way `satl-term`
-did. Everything under `satellite_words/` except `dump.cpp` is `constexpr` data and
+`src/satellite_random/` is built and **`satl` still does not link it** — it
+landed ahead of any milestone that calls it, the way `satl-term` did, and
+nothing in the interpreter draws a number because `satellite.random.*` has no
+milestone. What changed at M8 is that it has a consumer at all:
+`tests/number_test/draw.cpp` drives the `Bits32` seam with a splitmix32 stub,
+which is the shape `random.hpp` itself names as the proof the seam is
+generator-agnostic. Everything under `satellite_words/` except `dump.cpp` is `constexpr` data and
 pure functions over it, so a future `.satc` reader or disassembler can read the
 numbering without linking anything.
 
@@ -291,6 +314,14 @@ had built — reporting PASS from stale objects.
 | [tests/resolve_test/arguments.cpp](tests/resolve_test/arguments.cpp) | All six spellings, the seventh refused, a name that was never trying to be one left alone, and `arguments.machine.threads` at `1 14 1 1 1 3` — six numbers deep. |
 | [tests/resolve_test/cache.cpp](tests/resolve_test/cache.cpp) | MILESTONES/M4.5.md §5's clause, **counted**. The answers first — both runs must reach the same numbers, or the skip is a cache that changes what a program means — and then the counts, **per path**: one chain, one type, one call shape. Asserting the totals alone let half the skip be deleted with no failure, and finding that found an inverted ternary in `unnumber()`. |
 | [tests/resolve_test/examples.cpp](tests/resolve_test/examples.cpp) | All five acceptance programs that parse, resolved through the real entry point — three of them written for milestones that have not landed, so nothing about them was chosen to suit this pass. `example/frames.satl` clause by clause. |
+| [tests/number_test/number_test.cpp](tests/number_test/number_test.cpp) · [.hpp](tests/number_test/number_test.hpp) | **M8.** The harness, and the header that says what a suite is *for* when its subject is a port: re-proving the first satellite's arithmetic would be checking a transcription, so the weight is on the sign — which is the only thing that is new. **Every assertion compares text**, because `operator==` is `compare()` and half these sections are about `compare()`. |
+| [tests/number_test/sign.cpp](tests/number_test/sign.cpp) | DESIGN §8.1's own subject, and the largest section. The flag defaults to true; **twenty-two enumerated ways to reach a zero**, each checked for a positive sign, rather than three sampled ones; the ordering of negatives, which is where a missing reversal hides; and the round trip of `LLONG_MIN`, **which v1 refused** — measured against v1's objects before the claim was written. |
+| [tests/number_test/arithmetic.cpp](tests/number_test/arithmetic.cpp) | Exact where DESIGN §8.1 promises exact. `0.1 + 0.2`, `1e20 + 1`, a sixty-digit product; both halves of v1's recorded division bug; and the two things the unsigned significand paid for, **one of which a failing fixture found** — `9e18 + 9e18` now stays inline where a signed significand would have boxed it. |
+| [tests/number_test/limbs.cpp](tests/number_test/limbs.cpp) | `BigInt` reached through `Number`, because its constructor takes limbs nobody outside the module builds. The limb boundary, `digit_count` being about the value and not the storage, and **`payload_bytes()` as the check on DESIGN §8.2's "the small case never allocates"** — a claim about allocation, so asserted by counting bytes. |
+| [tests/number_test/rounding.cpp](tests/number_test/rounding.cpp) | floor, ceil and round — **every claim made twice, once each side of zero**, because the three share one body and the mode reads the sign flag, so a mode consulting the wrong side gets every positive fixture right. |
+| [tests/number_test/text.cpp](tests/number_test/text.cpp) | parse and `to_string`. What parse refuses, one per shape, because that list **is** S0610's sentence; trailing zeros as spelling; and the notation boundary both sides, including 30! printing whole — the case the restated rule exists for. |
+| [tests/number_test/exact.cpp](tests/number_test/exact.cpp) | **The three operations that never round** — modulus `1 6 4 12` and the two shifts `1 6 4 1` and `1 6 4 11`, all three added on 2026-08-31 after DESIGN §8.6's classification turned out to say they were never M15's. Every fixture is chosen so a ROUNDING implementation gives a different answer: a quotient that does not terminate, a shift whose exact value is 70 digits, and §8.6's own `7.5 % 2.1 = 1.2`, which is the one a `double` gets wrong. |
+| [tests/number_test/draw.cpp](tests/number_test/draw.cpp) | The uniform draw, and **`satellite_random`'s first consumer**. Driven by a splitmix32 stub rather than PCG, so the uniformity measured is the sampler's. Re-measures the skew rather than quoting v1's figures — and finds it one level in from where the comment points: the visible 2:1 is the *second* rejection, the one that redraws instead of folding `[0, top+1)` back with `%`. |
 
 ## `make_support/` — the build
 

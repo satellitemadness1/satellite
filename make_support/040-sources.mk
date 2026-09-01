@@ -222,6 +222,40 @@
 # one setrlimit(2). What it buys: 500,000 nested brackets parse and unparse where
 # 19,000 used to segfault.
 #
+# RE-TAKEN AT M8, 2026-08-31, load 0.88, STATIC=full, `make startup` against
+# startup.rows' M7 baseline. Two new rows, and the two of them are the point.
+#
+#     bare int main(){return 0;}          0.555 ms   (M7: 0.546)
+#     satl (opening information)          0.754 ms   share 0.199  (M7: 0.171)
+#     satl --version                      0.759 ms   share 0.204  (M7: 0.186)
+#     satl --words                        0.945 ms   share 0.390  (M7: 0.354)
+#     satl --tokens hello_world.satl      0.856 ms   share 0.301  (M7: 0.271)
+#     satl --tokens class_test.satl       1.154 ms   share 0.599  (M7: 0.573)
+#     satl --limits                       1.493 ms   share 0.938  (M7: 0.909)
+#     satl --resolve hello_world.satl     0.893 ms   share 0.338  (M7: 0.308)
+#     satl --resolve frames.satl          1.147 ms   share 0.592  (M7: 0.565)
+#     satl --number 1 + 1                 0.769 ms   share 0.214  (new at M8)
+#     satl --number 1 / 3                 0.786 ms   share 0.231  (new at M8)
+#
+# SATL'S OWN SHARE IS 0.204 ms AGAINST M7's 0.186, AND IT IS THE IMAGE AGAIN --
+# WITH ONE PIECE OF EVIDENCE M7's ATTRIBUTION DID NOT HAVE. Every row moved by
+# about the same amount, and the row that moved is the BARE `satl`, which prints
+# its opening information and never reaches an arm. A cost paid before a command
+# is chosen cannot be that command's arithmetic. What changed is the size of the
+# image: satl at STATIC=full went from 1,828,776 bytes to 1,887,016, which is
+# +58,240 for the six satellite_number objects and number_command.o.
+#
+# AND M8's ARITHMETIC IS UNDER THE RUN-TO-RUN NOISE, WHICH THE TWO NEW ROWS ARE
+# THERE TO SAY. `--number 1 + 1` is 0.010 ms over `--version`: reading two
+# operands, one add with an overflow check, and five printed lines. `1 / 3` is
+# 0.017 ms over that, which is long division to 34 significant digits plus the
+# one allocation the answer boxes into. The harness was run three times on this
+# build and the spread between runs was 0.027 ms -- LARGER than either figure --
+# so what these rows establish is a bound and not a measurement, and they are
+# recorded as one. DESIGN §8.2's claim that the small case never allocates is
+# checked where it can be checked exactly, by counting bytes:
+# tests/number_test/limbs.cpp and arithmetic.cpp both assert payload_bytes().
+#
 # AND IT BECAME A SHARE OF THE MACHINE THAT EVENING, WHICH COST ONE READ OF
 # /proc/meminfo. The number stopped being 8 GiB and became 32 KiB of stack for
 # every MiB of memory -- so every run of satl now calls mem_total_bytes() before
@@ -266,6 +300,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/dump_commands.cpp \
             $(PROGRAMS)/file_commands.cpp \
             $(PROGRAMS)/limits_command.cpp \
+            $(PROGRAMS)/number_command.cpp \
             $(PROGRAMS)/resolve_command.cpp \
             $(ERRORS)/report.cpp \
             $(ERRORS)/suggest.cpp \
@@ -300,6 +335,12 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SYSTEM)/memory_facts.cpp \
             $(SYSTEM)/host_facts.cpp \
             $(SYSTEM)/stack_facts.cpp \
+            $(NUMBER)/limbs.cpp \
+            $(NUMBER)/number_core.cpp \
+            $(NUMBER)/number_query.cpp \
+            $(NUMBER)/number_arith.cpp \
+            $(NUMBER)/render.cpp \
+            $(NUMBER)/random.cpp \
             $(STRING)/satellite_string.cpp \
             $(TREE)/ast.cpp \
             $(TREE)/unparse.cpp \
@@ -350,11 +391,16 @@ HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/dump_commands.hpp \
        $(PROGRAMS)/file_commands.hpp \
        $(PROGRAMS)/limits_command.hpp \
+       $(PROGRAMS)/number_command.hpp \
        $(PROGRAMS)/resolve_command.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/source_file.hpp \
        $(PROGRAMS)/terminal.hpp \
        $(PROGRAMS)/window_handover.hpp \
+       $(NUMBER)/bignum.hpp \
+       $(NUMBER)/bignum_bigint.hpp \
+       $(NUMBER)/bignum_internal.hpp \
+       $(NUMBER)/bignum_number.hpp \
        $(RANDOM)/random.hpp \
        $(STRING)/satellite_string.hpp \
        $(WORDS)/words.def \
@@ -380,26 +426,29 @@ HDRS = $(SYSTEM)/version.hpp \
 # what keeps this line honest there rather than naming objects nothing builds.
 # satellite.random -- DESIGN §11's three tiers, the 32-bit seam, and the spin.
 #
-# COMPILED BY `all` AND LINKED INTO NOTHING, which is a deliberate exception to
-# this project's own rule and is written here rather than left to be discovered.
-# PLAN M2 says the registry gets a consumer in the milestone that writes it,
-# because the first satellite shipped three commits where it had none. This
-# module has no consumer for a different reason: the thing that would call it is
-# `satellite.random.*`, which reaches no milestone at all (SCRATCH.md/MILESTONE.md
-# §0.1 counts its 16 paths), and the thing it would FEED -- drawing an N-digit
-# number -- needs the arbitrary-precision half that M8 has not ported yet.
+# COMPILED BY `all` AND LINKED INTO NO BINARY `all` PRODUCES, which is a
+# deliberate exception to this project's own rule and is written here rather
+# than left to be discovered. PLAN M2 says the registry gets a consumer in the
+# milestone that writes it, because the first satellite shipped three commits
+# where it had none. This module had none for a different reason: the thing that
+# would call it is `satellite.random.*`, which reaches no milestone at all
+# (SCRATCH.md/MILESTONE.md §0.1 counts its 16 paths), and the thing it would
+# FEED -- drawing an N-digit number -- needed the arbitrary-precision half.
 #
-# Compiling it under `all` is the cheapest thing that stops it rotting: a header
-# change or a compiler upgrade breaks the build rather than breaking silently
-# months later.
+# HALF OF THAT ENDED AT M8, AND THE SENTENCE IS NARROWER NOW THAN IT WAS.
+# satellite_number/random.cpp is the bignum half of the draw and it is ported,
+# so `tests/number_test/draw.cpp` LINKS THIS MODULE and exercises the Bits32
+# seam against a splitmix32 stub -- which is the shape random.hpp itself names
+# as the proof that the seam is generator-agnostic. 065-tests.mk's number_test
+# rule is where the two meet, and it carries the -isystem pcg/include this
+# file's own explicit rule in 060-compile.mk carries for the same reason.
 #
-# THE HARNESS LANDED AT M2 AND THIS MODULE STILL HAS NO TEST. This paragraph
-# used to end "there is no test target in this tree, and porting the first
-# satellite's harness is the job that would give this module a genuine
-# consumer" -- 065-tests.mk is that harness and TESTNAMES is three fragments
-# away, so the reason is now simply that nobody has written a random_test.
-# Said plainly, because the old sentence deferred the work behind a blocker
-# that no longer exists and a reader would have believed it.
+# WHAT IS STILL TRUE IS THAT `satl` DOES NOT LINK IT. Nothing in the interpreter
+# draws a number, because `satellite.random.*` has no milestone; a test binary
+# is a consumer for rot, which is what this paragraph was ever about, and it is
+# not a consumer in the language. Compiling it under `all` stays for the same
+# reason it was written: a header change or a compiler upgrade breaks the build
+# rather than breaking silently months later.
 RANDOM_SRCS = $(RANDOM)/random.cpp
 
 RANDOM_OBJS = $(RANDOM_SRCS:.cpp=.o)

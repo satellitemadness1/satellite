@@ -179,6 +179,32 @@ void section_reading()
           "including the three nothing reads yet -- storage is what M6 owes "
           "them, and PLAN M6 says so");
 
+    // A DIAL IS BOUNDED ONLY ONCE ITS MEANING EXISTS, and on 2026-08-31 exactly
+    // one of the four had one. M8 gave `division_digits` a meaning, so the two
+    // things a count of digits cannot be became knowable and are now refused
+    // where a caret can land under them -- which is the whole of what
+    // MILESTONES/M8.md §6 left open, arriving at the file rather than at M11.
+    check(reading_of("division_digits=50000\n")
+                  .dial(DialId::DivisionDigits)
+                  .value == 50000,
+          "a wide division_digits is ACCEPTED -- there is no ceiling on what a "
+          "division may spend, and satl computes all 50,000 digits");
+    check(raises("division_digits=0\n", Code::CONFIG_TOO_SMALL),
+          "S0807: keeping no digits is not an answer, and it used to become 34 "
+          "inside limits::division_digits() with nothing said");
+    check(raises("division_digits=99999999999\n", Code::CONFIG_TOO_LARGE),
+          "S0808: and a count too wide to hold used to become UINT_MAX the "
+          "same silent way");
+
+    // THE OTHER THREE ARE STILL UNBOUNDED, WHICH IS THE HALF THAT WOULD ROT
+    // FIRST. If a later milestone gives `max_depth` a range and forgets the
+    // table in config_internal.hpp, nothing else in this suite notices.
+    check(!raises("max_depth=0\n", Code::CONFIG_TOO_SMALL) &&
+              !raises("float_digits=99999999999\n", Code::CONFIG_TOO_LARGE),
+          "a dial whose meaning has not been decided takes any whole number -- "
+          "whether 0 is a legal depth is M9's question, asked where the "
+          "recursion is");
+
     // --- every row of the S08xx block -------------------------------------
 
     check(raises("[machine]\n", Code::CONFIG_NOT_A_SETTING),

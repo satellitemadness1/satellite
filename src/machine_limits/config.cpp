@@ -138,6 +138,32 @@ bool count_value(Reading &reading, std::string_view text, std::string_view name,
     return true;
 }
 
+// A dial's value against the range its meaning implies, when it has one. False
+// having reported.
+//
+// THE SPAN IS HANDED IN RATHER THAN REBUILT, because this runs after
+// `whole_number` has already succeeded over exactly those offsets -- one span,
+// two possible sentences about it -- where every other check in this file is
+// still deciding where the caret goes.
+bool dial_in_range(Reading &reading, std::string_view name, size_t dial,
+                   unsigned long long value, errors::Span where)
+{
+    const DialRange &range = kDialRanges[dial];
+    if (!range.checked)
+        return true;
+    if (value < range.least) {
+        reading.problems.push_back(errors::make<errors::Code::CONFIG_TOO_SMALL>(
+            where, name, value, range.least));
+        return false;
+    }
+    if (value > range.most) {
+        reading.problems.push_back(errors::make<errors::Code::CONFIG_TOO_LARGE>(
+            where, name, value, range.most));
+        return false;
+    }
+    return true;
+}
+
 // A whole number of units, with the unit written down. False having reported.
 //
 // THE AMOUNT AND THE SUFFIX GET DIFFERENT CARETS, which is the whole reason
@@ -370,11 +396,17 @@ void setting(Reading &reading, std::string_view text, const Line &at)
         ok = size_value(reading, text, name, value_start, value_stop,
                         at.number, value);
         break;
-    // A DIAL IS STORED AND NOT BOUNDED, which is PLAN M6's rule about the three
-    // dials whose meaning belongs to M8, M9 and M15: a range check is a claim
-    // about what the value MEANS, and `max_depth` has no meaning here to check
-    // against. Whether 0 is a legal depth is M9's question, asked where the
-    // recursion is.
+    // A DIAL IS BOUNDED ONLY ONCE ITS MEANING EXISTS, which is PLAN M6's rule
+    // about the dials whose meaning belongs to M8, M9 and M15: a range check is
+    // a claim about what the value MEANS, and `max_depth` has no meaning here to
+    // check against. Whether 0 is a legal depth is M9's question, asked where
+    // the recursion is.
+    //
+    // M8 IS THE FIRST MILESTONE TO ANSWER ONE, so `division_digits` is the first
+    // dial this arm can say anything about -- as a row of config_internal.hpp's
+    // kDialRanges rather than a branch here, so the second dial to get a meaning
+    // is a line in a table. The bound is on what the FILE may say and never on
+    // what a division may spend: Number::divide has no ceiling at all.
     case Kind::Dial:
         ok = whole_number(text, value_start, value_stop, value);
         if (!ok)
@@ -382,6 +414,9 @@ void setting(Reading &reading, std::string_view text, const Line &at)
                 errors::make<errors::Code::CONFIG_NOT_A_NUMBER>(
                     span(value_start, value_stop, at.number), name,
                     text.substr(value_start, value_stop - value_start)));
+        else
+            ok = dial_in_range(reading, name, key - kSettingCount, value,
+                               span(value_start, value_stop, at.number));
         break;
     }
     if (ok)

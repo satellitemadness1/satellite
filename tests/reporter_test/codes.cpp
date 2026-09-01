@@ -40,8 +40,19 @@ void section_codes()
     // This one is a compile-time array so it cannot be half-read, but the
     // number is what says a row was DELETED -- which the ascending assert
     // cannot see, because a table with a row removed still ascends.
-    check(kCodeCount == 58,
-          "errors.def has 58 rows -- if that changed on purpose, change it here "
+    // THIS NUMBER CAME DOWN TWICE ON 2026-08-31 AND THAT IS WHY THE ASSERTION
+    // EXISTS. It was 63; S0501 RESOLVE_TOO_DEEP went when DESIGN §7.5 said the
+    // language has no depth limit, and S0612 NUMBER_OPERATOR_NOT_YET went when
+    // DESIGN §8.6 turned out to specify modulus in full -- both rows deleted for
+    // disagreeing with a document written before them.
+    //
+    // NOTHING ELSE IN THE BUILD COULD HAVE NOTICED EITHER OF THEM. The table
+    // still ascends, the switch still compiles, and every static_assert in
+    // codes.hpp passes over a shorter list. MILESTONES/M8.md §3.8 and §6 are
+    // where the second one is said out loud, which is what this message asks
+    // for.
+    check(kCodeCount == 61,
+          "errors.def has 61 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 
@@ -53,13 +64,13 @@ void section_codes()
     check(block_of(Code::SATC_NOT_A_SATC) == 3, "the cache is S03xx");
     check(block_of(Code::FILE_UNREADABLE) == 4, "the file satl was given is S04xx");
     check(block_of(Code::RESOLVE_NO_SUCH_NAME) == 5, "resolve is S05xx");
+    check(block_of(Code::NUMBER_DIVIDE_BY_ZERO) == 6, "numbers are S06xx");
     check(block_of(Code::CONFIG_NOT_A_SETTING) == 8, "the machine limits are S08xx");
 
-    // THE RESERVED BLOCKS ARE EMPTY, and this is the check that makes reserving
-    // them worth anything. errors.def keeps S06xx for M8's numbers and S07xx
-    // for the evaluator; a milestone that took the next free number instead of
-    // its own block would put a number error in the parser's range and nothing
-    // else would notice.
+    // THE RESERVED BLOCK IS EMPTY, and this is the check that makes reserving
+    // it worth anything. errors.def keeps S07xx for the evaluator; a milestone
+    // that took the next free number instead of its own block would put an
+    // evaluator error in the parser's range and nothing else would notice.
     //
     // THE TEST THAT PROVED THIS WORKS IS M6 ARRIVING. It landed BEFORE all
     // three of the reserved blocks and took S08xx rather than S05xx, so the
@@ -76,11 +87,16 @@ void section_codes()
     // from it. That is the whole of what a reservation buys, and it is the
     // first time this suite has been able to record it happening rather than
     // being promised.
+    //
+    // S06xx CAME OUT THE SAME WAY AT M8, WHICH MAKES IT TWICE. Two blocks have
+    // now been claimed by the milestone they were reserved for, out of build
+    // order both times, and this loop has shrunk by one number on each -- the
+    // mechanism is no longer being recorded as a thing that happened once.
+    // S07xx is the last one held, and it is the evaluator's.
     for (const Code code : kCodes)
-        check(block_of(code) < 6 || block_of(code) > 7,
-              "no code is in a block reserved for a later milestone -- S06xx is "
-              "M8's and S07xx is the evaluator's; take your own block, do not "
-              "append");
+        check(block_of(code) != 7,
+              "no code is in a block reserved for a later milestone -- S07xx is "
+              "the evaluator's; take your own block, do not append");
 
     // A code out and back again. `satl --errors S0231` is the only reason
     // code_text and code_of both exist, and a round trip is the whole contract

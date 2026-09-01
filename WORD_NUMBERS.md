@@ -366,7 +366,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.file.exists` | `1 6 2 7` | assigned |
 | `satellite.variable.time` | `1 6 3 (0)` |  |
 | `satellite.variable.number` | `1 6 4 (0)` |  |
-| `satellite.variable.number.shift_left` | `1 6 4 1` | assigned — relocated from the corrected §5.5 |
+| `satellite.variable.number.shift_left(n)` | `1 6 4 1` | assigned — relocated from the corrected §5.5; `(n)` written on 2026-08-31, matching §5.5 and its `shift_right` twin |
 | `satellite.variable.number.max(a, b)` | `1 6 4 2` | assigned |
 | `satellite.variable.number.min(a, b)` | `1 6 4 3` | assigned |
 | `satellite.variable.number.abs(a)` | `1 6 4 4` | assigned |
@@ -380,6 +380,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.number.modulus(a, b)` | `1 6 4 12` | assigned — exact; DESIGN §8.6 |
 | `satellite.variable.number.truncate(a)` | `1 6 4 13` | assigned — on a float this is just its left half |
 | `satellite.variable.number.sqrt(a)` | `1 6 4 14` | assigned — irrational in general, so it rounds |
+| `satellite.variable.number.digits` | `1 6 4 15` | appended 2026-08-31 — v1 exposes `.digits()` and this section had no row for it |
 | `satellite.variable.binary` | `1 6 5` | assigned |
 | `satellite.variable.bool` | `1 6 6` | assigned |
 | `satellite.variable.date` | `1 6 7` | assigned |
@@ -557,8 +558,15 @@ rows and is defined nowhere. The two were kept consistent here by copying what t
 table already does; **the sentence that says what `(0)` means is still unwritten**,
 and it is the author's.
 
-**§2.2 is now 222 rows and 219 distinct numbers.** Counted mechanically after the
+**§2.2 is now 223 rows and 220 distinct numbers.** Counted mechanically after each
 edit; the only duplicates are still §2.3's three aliases below.
+
+**It was 222 and 219 until 2026-08-31, when M8 appended `digits` `1 6 4 15`.**
+That milestone found `Number::digit_count()` ported, tested and printed by
+`satl --number`, with nothing in §2.2 for the language to call it by — the mirror
+image of `shift_left` and `shift_right`, which had numbers and no meaning.
+**Appending is what §1.2 permits**: nothing moved, one thing went on the end of
+`1 6 4`, and no already-written program changed meaning.
 
 ## 3. User-defined names take the next free number
 
@@ -653,9 +661,10 @@ in an error-message example.
 And there is deliberately no `satellite.number`. A candidate came from DESIGN §5.5's
 aside that bit shifts *"if ever needed"* would be `satellite.number.shift_left(n)` —
 the only place in either document that implied a top-level `number`, against every
-other number operation living under `satellite.variable.number`, which now holds ten
-more of them at `1 6 4 2` through `1 6 4 11`. **It was a slip and §5.5 is
-corrected.** *(2026-08-27.)*
+other number operation living under `satellite.variable.number`, which holds fourteen
+more of them at `1 6 4 2` through `1 6 4 15`. **It was a slip and §5.5 is
+corrected**, and §5.5 says what a shift MEANS as of 2026-08-31 rather than only
+where its path hangs. *(2026-08-27.)*
 
 ---
 

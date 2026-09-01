@@ -334,6 +334,7 @@ test: $(TESTBINS)
 	./$(TESTS)/reporter_test/reporter_test example
 	./$(TESTS)/limits_test/limits_test example
 	./$(TESTS)/resolve_test/resolve_test example
+	./$(TESTS)/number_test/number_test
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
@@ -344,7 +345,68 @@ reporter_test: $(TESTS)/reporter_test/reporter_test
 limits_test: $(TESTS)/limits_test/limits_test
 resolve_test: $(TESTS)/resolve_test/resolve_test
 
+# number_test -- PLAN M8. DESIGN §8.1's exact decimal, and the sign the port
+# did not bring with it.
+#
+# IT LINKS $(RANDOM)/random.cpp AND IT IS THE FIRST THING IN THE TREE TO. That
+# module has been "the one module with no consumer" in LAYOUT.md since it landed
+# at M2 -- compiled by `all`, linked into nothing -- because the thing that would
+# call it needed the arbitrary-precision half M8 has now ported. This rule is
+# what closes that sentence, and tests/number_test/draw.cpp is the section.
+#
+# -isystem pcg/include COMES WITH IT, and it is the same one 060-compile.mk puts
+# on that file's own explicit rule. pcg_extras.hpp warns under this build's
+# -Wall -Wextra and the headers are somebody else's; -isystem is what stops a
+# vendored warning failing a build nobody can fix. The path is on THIS rule and
+# not on CXXFLAGS for the same reason -I$(SRC) is not: it belongs to the one
+# translation unit that needs it.
+#
+# WHY random.cpp AT ALL WHEN THE TEST DRIVES THE SEAM WITH ITS OWN STUB.
+# Bits32's destructor is out of line -- random.cpp's own comment says why, "so
+# the vtable has one home rather than one per translation unit" -- so a binary
+# holding any Bits32 needs that object even when no PCG is ever constructed.
+NUMBER_TEST_SRCS = $(NUMBER)/limbs.cpp \
+                   $(NUMBER)/number_core.cpp \
+                   $(NUMBER)/number_query.cpp \
+                   $(NUMBER)/number_arith.cpp \
+                   $(NUMBER)/render.cpp \
+                   $(NUMBER)/random.cpp \
+                   $(RANDOM)/random.cpp \
+                   $(LIMITS)/limits.cpp \
+                   $(LIMITS)/config.cpp \
+                   $(LIMITS)/pool.cpp \
+                   $(LIMITS)/watchdog.cpp \
+                   $(LIMITS)/dump.cpp \
+                   $(ERRORS)/report.cpp \
+                   $(ERRORS)/suggest.cpp \
+                   $(SYSTEM)/memory_facts.cpp \
+                   $(SYSTEM)/host_facts.cpp \
+                   $(SYSTEM)/stack_facts.cpp \
+                   $(PROGRAMS)/check_command.cpp \
+                   $(PROGRAMS)/source_file.cpp \
+                   $(PROGRAMS)/opening.cpp \
+                   $(LEXER)/lexer.cpp \
+                   $(STRING)/satellite_string.cpp \
+                   $(PARSER)/parser.cpp \
+                   $(PARSER)/parser_declarations.cpp \
+                   $(PARSER)/parser_statements.cpp \
+                   $(PARSER)/parser_control_flow.cpp \
+                   $(PARSER)/parser_expressions.cpp \
+                   $(PARSER)/parser_types.cpp \
+                   $(TREE)/ast.cpp \
+                   $(TREE)/unparse.cpp \
+                   $(CACHE)/paths.cpp
+
+$(TESTS)/number_test/number_test: $(number_test_SRCS) $(number_test_HDRS) \
+                                  $(NUMBER_TEST_SRCS) $(ERRORS)/errors.def \
+                                  $(WORDS)/words.def $(HDRS) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include \
+	    -I$(TESTS)/number_test -o $@ \
+	    $(number_test_SRCS) $(NUMBER_TEST_SRCS)
+
+number_test: $(TESTS)/number_test/number_test
+
 TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
-              limits_test resolve_test
+              limits_test resolve_test number_test
 
 .PHONY: test $(TESTALIASES)

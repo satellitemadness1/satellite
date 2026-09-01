@@ -62,8 +62,8 @@
 
 DATE    2026-08-31
 LINK    full
-LOAD    1.50
-NOTE    M7 + the 8 GiB stack -- MILESTONES/M7.md §8, SCRATCH.md/NO_LIMITS.md §4.1
+LOAD    0.88
+NOTE    M8 -- satellite.variable.number. MILESTONES/M8.md §7
 
 # THE ROWS ARE THE COMMANDS THAT COST SOMETHING DIFFERENT, not every command
 # satl has. --version is the row §9.1 says to read -- it does nothing but say
@@ -77,16 +77,33 @@ NOTE    M7 + the 8 GiB stack -- MILESTONES/M7.md §8, SCRATCH.md/NO_LIMITS.md §
 # does not run unless `--resolve` is asked for, so `--version` cannot be paying
 # for it; what moved is the size of the image the loader maps. MILESTONES/M7.md
 # §8 has the attribution.
+#
+# M8 ADDED 0.018 ms AND IT IS THE SAME FINDING AGAIN, WITH ONE MORE PIECE OF
+# EVIDENCE THAN M7 HAD. Every row moved by about the same amount -- +0.018 to
+# +0.036 -- and the row that moved is the BARE `satl`, which prints its opening
+# and runs no arm at all. So the cost is paid before any command is chosen and
+# cannot be M8's arithmetic. What changed is the image: satl at STATIC=full went
+# from 1,828,776 bytes to 1,887,016, which is +58,240 for six number objects and
+# the command arm.
+#
+# AND THE ARITHMETIC ITSELF IS UNDER THE NOISE, WHICH IS THE ROW PAIR BELOW
+# SAYING SO. `--number 1 + 1` costs 0.214 against `--version`'s 0.204 -- 0.010
+# ms for reading two operands, adding them and printing five lines -- and
+# `1 / 3` costs 0.017 more than that for long division to 34 digits and the one
+# allocation it boxes into. Measured across three runs of the harness on the
+# same build; the spread between runs was 0.027 ms, which is larger than either
+# figure and is why the claim above is about the SHAPE of the table rather than
+# about one row.
 
-FLOOR | 0.548
+FLOOR | 0.555
 
-ROW | 0.719 |
-ROW | 0.734 | --version
-ROW | 0.902 | --words
-ROW | 0.819 | --tokens example/hello_world.satl
-ROW | 1.121 | --tokens example/class_test.satl
-ROW | 1.457 | --limits
-ROW | 1.490 | --limits example/satellite_config.ini
+ROW | 0.754 |
+ROW | 0.759 | --version
+ROW | 0.945 | --words
+ROW | 0.856 | --tokens example/hello_world.satl
+ROW | 1.154 | --tokens example/class_test.satl
+ROW | 1.493 | --limits
+ROW | 1.512 | --limits example/satellite_config.ini
 
 # M7's ROWS. `--resolve` is the milestone's consumer and it is the first row here
 # that is a WHOLE PIPELINE -- lex, parse, resolve, and SATC.md §4's reading order
@@ -106,5 +123,17 @@ ROW | 1.490 | --limits example/satellite_config.ini
 # the walks instead, exactly, and tests/resolve_test/cache.cpp asserts the
 # count. On example/frames.satl it is 28 walked cold against 14 walked and 14
 # taken warm.
-ROW | 0.856 | --resolve example/hello_world.satl
-ROW | 1.113 | --resolve example/frames.satl
+ROW | 0.893 | --resolve example/hello_world.satl
+ROW | 1.147 | --resolve example/frames.satl
+
+# M8's ROWS. `--number` is the milestone's consumer and it is the one command
+# here that reads nothing from disk -- no file, no `.satc`, no config beyond the
+# lookup every run makes -- so its share over `--version` is arithmetic and the
+# six new objects and nothing else.
+#
+# TWO ROWS BECAUSE THE TWO ANSWERS COST DIFFERENT THINGS. `1 + 1` never leaves
+# DESIGN §8.2's small form: an add and an overflow check, no allocation. `1 / 3`
+# runs long division to division_digits and boxes the result. A single row would
+# average the two and hide which half moved.
+ROW | 0.769 | --number 1 + 1
+ROW | 0.786 | --number 1 / 3

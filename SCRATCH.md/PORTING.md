@@ -4,6 +4,24 @@
 (what was kept and what changed, §6 and §7) and LAYOUT.md (the files), and this
 file gets deleted.
 
+---
+
+**THE NUMBER HALF LANDED AT M8 ON 2026-08-31 AND ITS CONCLUSIONS ARE OUT OF THIS
+FILE.** PLAN §6.1 carries the four questions with their answers, PLAN §8's M8
+entry carries what the port turned out to be, LAYOUT.md carries the ten files,
+and MILESTONES/M8.md is the review. **Three of the four answers came out
+differently from what §6 below predicted**, and §6's rows are struck through
+rather than edited, because a prediction that was wrong is worth more as a record
+than as a corrected sentence.
+
+**§4 AND §5 LANDED AT M6** — the watchdog's policy was changed the way §4 asked,
+and §5's "the file seeds the namespace" is what `machine_limits/limits.hpp`
+built and says so in its own header.
+
+**WHAT IS STILL LIVE IS §3, AND IT IS M9's.** `satellite_string`'s live codes
+95–100 still decode to `<threads>` and its siblings; M3 took the character half
+and M9 finishes it. That is the only reason this file is still here.
+
 The user's instruction: *"you can build our number in ./src/satellite_number/ and
 you can also build our string in ./satellite_string … I think we are keeping almost
 all of the satellite_string and satellite_number code that you have written, so
@@ -130,7 +148,18 @@ WORD_NUMBERS.md (it does, if a program can name it).
 
 ## 6. What still has to be decided before copying
 
-1. **Does `Number` keep its dependency on `satellite.library`?** Two constants —
+**ALL FOUR ANSWERED 2026-08-31, AND ONLY ROW 2 CAME OUT THE WAY THIS SECTION
+EXPECTED.** PLAN §6.1 is where the answers live; what follows is what was
+predicted, kept as written.
+
+1. ~~**Does `Number` keep its dependency on `satellite.library`?**~~ **It does,
+   and the "compile-time default" this row settled on never happened.** M6 built
+   the dial's storage and deliberately left it unset for the milestone that would
+   read it, so M8 reads the real thing through `limits::division_digits()`. The
+   row's own reasoning was right and its conclusion was one milestone out of
+   date by the time it was acted on. *Original:*
+
+   **Does `Number` keep its dependency on `satellite.library`?** Two constants —
    `division_digits` and `min_free_mb` — reach into the library namespace.
 
    **Half of this dissolved when M2 landed, 2026-08-28, and the half that is left
@@ -149,7 +178,8 @@ WORD_NUMBERS.md (it does, if a program can name it).
    library lookup restored at the milestone that gives the namespace values.** PLAN
    §4.5.3 is the same question one level up, and says the same thing — the file
    seeds the namespace and the namespace is what everything reads afterwards.
-2. **Does the code table stay 16-bit?** The header argues it well — 101 codes plus
+2. **Does the code table stay 16-bit?** **Yes, and this is the one row that came
+   out as written** — settled at M3 with the character half. *Original:* The header argues it well — 101 codes plus
    a 256-entry raw area does not fit in 8 bits, and 16 bits halves what a corpus
    costs against 32. Nothing in the second satellite's design contradicts it. Port
    as-is unless something does.
@@ -158,8 +188,21 @@ WORD_NUMBERS.md (it does, if a program can name it).
    `src/satellite_random/`, landed 2026-08-27 ahead of any milestone that calls it,
    with `random.hpp` naming no PCG type so nothing above it includes an Apache-2.0
    header. This row was written before that happened and outlived it.
-4. **The arena.** PLAN §2.2 replaces the AST with an arena of PODs. `Number` and
+4. ~~**The arena.**~~ **CHECKED FIRST, AS ASKED, AND IT FITS — AND THE
+   MEASUREMENT DID MORE THAN ANSWER THE QUESTION.** 32 bytes as v1 had it, still
+   32 with DESIGN §8.1's explicit `bool positive_` laid flat beside `int exp_`,
+   and **40** if the magnitude is cut out as its own type — a nested struct's
+   tail padding is not reusable by the type holding it, which would put a `Value`
+   at 48. So the number this row called "the one that could make this port not
+   fit" instead decided the port's SHAPE, and the tempting refactor is the one it
+   ruled out. *Original:* PLAN §2.2 replaces the AST with an arena of PODs. `Number` and
    `SatString` are *values*, not AST nodes, so the arena does not touch them — but
    DESIGN §8.2 says a `Value` is 40 bytes with the static_assert to come, and a
    ported `Number` has to fit that budget. **Check `sizeof(Number)` on arrival**;
    it is the one number that could make this port not fit.
+
+**AND THERE WAS A FIFTH, WHICH THIS LIST NEVER HAD.** DESIGN §8.1 added the sign
+on 2026-08-27, a day after this file was written: an explicit `positive` bool with
+the magnitude carrying none, where v1 packed the sign into the significand. It is
+the only part of the port that is not a port, and it is what MILESTONES/M8.md is
+mostly about.

@@ -77,6 +77,40 @@ inline constexpr Key kSettings[] = {
 
 inline constexpr size_t kSettingCount = sizeof kSettings / sizeof kSettings[0];
 
+// What a dial's value may be, in DialId order -- and `checked` is false for
+// every dial whose meaning has not been decided yet.
+//
+// A RANGE IS A CLAIM ABOUT WHAT A VALUE MEANS, WHICH IS WHY THIS TABLE IS
+// MOSTLY EMPTY. config.cpp's Dial arm has said since M6 that `max_depth` has no
+// meaning here to check against -- whether 0 is a legal depth is M9's question,
+// asked where the recursion is -- and `float_digits` waits on M15 the same way.
+// `min_free_mb` is M6's own and has a meaning, and no bound was ever claimed for
+// it: any number of megabytes is a number of megabytes, and unset means the
+// machine's free memory is not watched at all.
+//
+// What changed on 2026-08-31 is that `division_digits` HAS a meaning -- M8 gave
+// it one -- so the two things a count of digits cannot be are now known, and
+// knowing them is what lets them be refused with a caret instead of quietly
+// replaced inside limits::division_digits(). The bounds themselves live beside
+// the meaning in limits.hpp; this table only says which dial has one.
+//
+// IT IS NOT A BOUND ON THE LANGUAGE AND DESIGN §7.5 IS NOT WHAT IT BREAKS.
+// The division itself has no ceiling: `division_digits=5000000` is five million
+// digits and satl computes them. These two are the values that are not counts
+// of digits at all -- nothing kept, and a number too wide to hold the count in.
+struct DialRange {
+    bool checked;
+    unsigned long long least;
+    unsigned long long most;
+};
+
+inline constexpr DialRange kDialRanges[kDialCount] = {
+    {true, kDivisionDigitsLeast, kDivisionDigitsMost},   // division_digits, M8
+    {false, 0, 0},                                       // max_depth, M9
+    {false, 0, 0},                                       // min_free_mb
+    {false, 0, 0},                                       // float_digits, M15
+};
+
 // A dial's own segment -- `min_free_mb`, not the whole path -- straight out of
 // the node table.
 //

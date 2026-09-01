@@ -1,6 +1,6 @@
 // Every row of WORD_NUMBERS.md §2.2, walked. See words_test.hpp.
 //
-// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 222 rows, 219 distinct numbers,
+// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 223 rows, 220 distinct numbers,
 // exactly 3 aliases, 35 `(0)` markers -- if the reader below finds a different
 // number of rows than the documents claim, every per-row result after it is
 // answering a question nobody asked, and a suite that reports PASS over half a
@@ -169,8 +169,12 @@ void section_authority()
     const std::vector<Row> rows = read_table(section(lines, "### 2.2 Every number"));
 
     // The counts the documents claim, checked before anything is walked.
-    check(rows.size() == 222,
-          "§2.2 should hold 222 rows, found " + std::to_string(rows.size()));
+    // 222 UNTIL 2026-08-31, WHEN M8 APPENDED `digits` `1 6 4 15`. That is the
+    // only kind of edit §1.2 allows to this section -- nothing renumbered and
+    // nothing reused -- and it is the only kind these three counts can tell
+    // apart from a transcription that dropped a row.
+    check(rows.size() == 223,
+          "§2.2 should hold 223 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -179,8 +183,8 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 219,
-          "§2.2 should carry 219 distinct numbers, found " +
+    check(numbers.size() == 220,
+          "§2.2 should carry 220 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 3, "§2.2 should declare exactly 3 aliases, found " +
                             std::to_string(aliases));

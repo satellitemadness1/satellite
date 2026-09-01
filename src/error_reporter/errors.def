@@ -66,7 +66,7 @@
 //     S03xx   the `.satc` cache             SATC.md        M4.5
 //     S04xx   the file satl was given                      M5
 //     S05xx   resolve -- names and slots    DESIGN §7      M7
-//     S06xx   numbers                       DESIGN §8.1    M8       reserved
+//     S06xx   numbers                       DESIGN §8.1    M8
 //     S07xx   the evaluator                                M9/M10   reserved
 //     S08xx   the machine limits            PLAN §4.5      M6
 //
@@ -396,6 +396,60 @@ SAT_CODE(532, RESOLVE_NO_SUCH_ARGUMENT_FIELD, SAT_ERROR,
 // none of the sites that attach it.
 SAT_CODE(590, NOTE_DECLARED_FIRST_HERE, SAT_NOTE,
          "`{1}` is the one that came first")
+
+// --- S06xx -- numbers --------------------------------------------------------
+//
+// DESIGN §8.1 is the specification and PLAN M8 is the milestone. RESERVED SINCE
+// M5 AND POPULATED HERE, which is the second time this file has been able to say
+// a reservation was honoured end to end: M6 took S08xx rather than the next free
+// number, M7 took S05xx and nothing moved, and this block was waiting where it
+// was written down.
+//
+// 600-609 the arithmetic itself, 610-619 what a number can be written as. The
+// gaps are on purpose; see the block note at the top of this file.
+//
+// THREE ROWS AND NOT THIRTY, AND THE SMALLNESS IS THE MILESTONE. Nothing
+// EXECUTES until M10, so the only site that can raise one of these today is
+// `satl --number`, which is M8's consumer. The evaluator's own arithmetic
+// errors are S07xx and are M9's -- a row added here for a message no site can
+// send would be this file's own argument turned inside out.
+//
+// AND THERE IS NO OVERFLOW ROW, WHICH IS DESIGN §7.5 RATHER THAN AN OMISSION.
+// The language has no limits: a number's size is bounded by memory the way a
+// list's length is, so there is no width at which addition refuses. What ends a
+// runaway is M6's watchdog at MEMORY_MAX, in words and with exit 4, and that is
+// the same sentence a walker filling the heap gets.
+
+SAT_CODE(601, NUMBER_DIVIDE_BY_ZERO, SAT_ERROR,
+         "`{1}` cannot be divided by zero -- every other number has an answer "
+         "and this one has none, so satellite will not invent one")
+
+SAT_CODE(610, NUMBER_NOT_A_NUMBER, SAT_ERROR,
+         "`{1}` is not a number -- digits, optionally a `.` with more digits, "
+         "and optionally an `e` and an exponent")
+
+SAT_CODE(611, NUMBER_UNKNOWN_OPERATOR, SAT_ERROR,
+         "`{1}` is not an operator satellite has -- the five are `+`, `-`, `*`, "
+         "`/` and `%`")
+
+// 612 IS SPENT AND WILL NOT BE REUSED. It was S0612 NUMBER_OPERATOR_NOT_YET --
+// "`%` is not built yet ... PLAN.md §8 puts it at M15 with the rounding rule it
+// needs" -- and it was written on 2026-08-31 for a claim that turned out to be
+// wrong the same day. DESIGN §8.6 specifies modulus completely and puts it in
+// the class it calls "exact and bounded, never rounds", so `%` was never
+// waiting on M15's rounding rule; `satl --number 7 % 2` answers 1 and the row
+// has no site left to be raised from. Deleted and not repurposed: this file's
+// header says an error code "is what a PERSON LOOKS UP" and "has to survive a
+// row being deleted", and a number that meant two things at two dates is the
+// one thing that property does not survive.
+//
+// So the gap is the mechanism working, and it is the SECOND one this file has
+// left by retiring a row rather than by reserving a block -- S0501 above is the
+// first, deleted the same day and for the neighbouring reason. That one went
+// because DESIGN §7.5 says the language has no depth limit; this one goes
+// because DESIGN §8.6 had already specified the operation the row apologised
+// for. Two gaps in one day is worth noticing: a registry that never loses a row
+// is one whose rows were never checked against the documents they cite.
 
 // --- S08xx -- the machine limits --------------------------------------------
 //

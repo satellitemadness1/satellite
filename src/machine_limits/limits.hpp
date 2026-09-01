@@ -75,6 +75,7 @@
 #include "error_reporter/report.hpp"
 #include "satellite_words/words.hpp"
 
+#include <climits>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -341,6 +342,49 @@ int begin(const std::string &named);
 // What satl is holding itself to. Valid after begin(); before it, the machine's
 // answers with nothing from any file.
 const Held &held();
+
+// --- the dials that have a meaning -----------------------------------------
+
+// WHAT A NON-TERMINATING DIVISION KEEPS, in significant digits.
+//
+// THE FIRST DIAL TO BE GIVEN A MEANING, AND M6 LEFT THE HOLE FOR IT ON PURPOSE.
+// The Dial note above says an unset dial exists because "three of the four have
+// no reader at M6 and inventing a default for them would be inventing their
+// meaning ... the milestone that will read it decides what no answer means".
+// M8 is that milestone for `satellite.library.system.division_digits`
+// `1 14 2 1`, and this function is the whole of the decision: unset means 34.
+//
+// 34 IS decimal128's PRECISION, and the first satellite chose it with the
+// argument that still holds -- wide enough that ordinary arithmetic never
+// notices, narrow enough that 1/3 is readable. It lives HERE, beside the dial,
+// rather than in Number: v1 kept a DEFAULT_DIVISION_DIGITS in its bignum header
+// because its evaluator read the library namespace itself, and in this tree the
+// namespace is this module. Number::divide takes a count and never invents one.
+//
+// THERE IS NO CEILING ANY MORE AND THAT IS THE CORRECTION THIS BLOCK CARRIES.
+// Until 2026-08-31 Number::kMaxDivisionDigits capped a division at 10,000
+// significant digits, so a file setting `division_digits=50000` was clamped
+// inside divide() and nothing told the program. DESIGN §7.5 does not allow the
+// cap and DESIGN §1.1 does not allow the silence, and the second was only ever
+// a symptom of the first: with the cap gone there is nothing to say, because
+// 50,000 digits is 50,000 digits. What ends a runaway is M6's watchdog at
+// MEMORY_MAX -- the same answer errors.def's S06xx block gives for why there is
+// no overflow row.
+//
+// WHAT IS BOUNDED IS WHAT THE FILE MAY SAY, AND THAT IS A DIFFERENT CLAIM.
+// A count of digits below one keeps nothing, and a count satl cannot hold in a
+// machine word is a count it cannot act on. Both are refused where a caret can
+// land under them -- S0807 and S0808, in machine_limits/config.cpp, on the line
+// of the satellite_config.ini that wrote them -- rather than substituted for
+// here, which is what this function did to a zero until 2026-08-31. That is the
+// whole difference between a bound on the LANGUAGE, which §7.5 forbids, and a
+// bound on what a configuration FILE is allowed to contain, which every other
+// setting in this module has had since M6.
+inline constexpr unsigned kDivisionDigitsDefault = 34;
+inline constexpr unsigned long long kDivisionDigitsLeast = 1;
+inline constexpr unsigned long long kDivisionDigitsMost = UINT_MAX;
+
+unsigned division_digits();
 
 // A byte count as a person would write it -- `61.9 GiB`, `4.0 MiB`, `512 B`.
 //
