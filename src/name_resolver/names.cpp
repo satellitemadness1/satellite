@@ -93,6 +93,35 @@ void Resolver::member(NodeIndex node)
     // receiver -- every segment inside a broken path would fail the same way
     // and one bad word would print four carets.
     if (found.under != words::kNoPath) {
+        // A NAME THIS PROGRAM DECLARED UNDER A LANGUAGE NODE, WHICH M9 FOUND
+        // WAS UNREACHABLE. DESIGN §7.2 reserves `satellite.library` for shared
+        // and global state and the parser numbers a global when it meets the
+        // declaration -- parser_declarations.cpp hands `NodeId::LIBRARY` in as
+        // the owner. Nothing could READ one back: `language_path` walks the
+        // FROZEN table, so `satellite.library.total` stopped at `total` and got
+        // S0521, "not a word the language has under satellite.library". True of
+        // the language and false of the program.
+        //
+        // IT WAS INVISIBLE UNTIL SOMETHING COULD HOLD A VALUE. M7 numbered the
+        // declaration and `satl --resolve` printed the number; a global that
+        // can be declared and not read is a global nothing can tell apart from
+        // a working one until there is an evaluator, and M9 is that. The op
+        // that reads one is evaluator/operations.cpp's op_global.
+        //
+        // `found.at == node` IS WHAT KEEPS THIS NARROW. The walk reports which
+        // Member node named the segment it failed on, so this only answers when
+        // the failing segment is THIS node's own name -- `satellite.library
+        // .total.foo` still stops at `total` and is still refused, because the
+        // outer node is not where the walk gave up.
+        if (found.at == node) {
+            const words::PathId declared = words_.find(
+                static_cast<words::NodeId>(found.under), ast_.text_of(node));
+            if (declared != words::kNoPath && !words::is_language_word(declared)) {
+                info(node).path = declared;
+                info(node).origin = Origin::Bound;
+                return;
+            }
+        }
         no_such_word(found);
         return;
     }

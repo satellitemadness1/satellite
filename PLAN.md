@@ -44,7 +44,7 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
 2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, M7 and M8 on 2026-08-31, and
-M8.5 on 2026-09-01.** *(M1.5 is the window, and it
+M8.5 and M9 on 2026-09-01.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -60,19 +60,26 @@ every name a slot and every path a number** — `satl --resolve` — and **M8 ga
 the language a number type**: `satl --number 0.1 + 0.2` answers `0.3`, and
 `satl --number 1 / 3` answers thirty-four digits and says it rounded them. **And since M8.5 no walker in the tree has a depth of its own** — the parser, the
 resolver, the printer and the `.satc` writer each keep their stack on the heap, so
-100,000 nested brackets answer where 19,000 used to segfault. There
-is still no interpreter behind any of it; running a program lands at M10.
+100,000 nested brackets answer where 19,000 used to segfault. **And since M9
+there is an interpreter**: the arena AST compiles to a closure tree, the machine
+that walks it keeps its stack on the heap, and `satl --call
+example/frames.satl factorial 10` answers 3628800 — a capsule 1,000,000 frames
+deep answers too, at the 8 MiB a login shell hands out, and a runaway one is
+refused in words about recursion with exit 4. `satl --compile` prints the closure
+tree and says which parts of DESIGN §6's grammar do not run yet, naming the
+milestone for each. **Running a PROGRAM still lands at M10** — the console,
+`satellite.main` and `satellite.return` — and `satl --run` says so.
 
 What exists: the `Makefile` as an index over eleven fragments under
-`make_support/`, **169 C++ files totalling 27,403 lines** plus `words.def` at
-551 and `errors.def` at 553, **eight** test suites under `tests/`, and
+`make_support/`, **199 C++ files totalling 32,121 lines** plus `words.def` at
+551 and `errors.def` at 605, **nine** test suites under `tests/`, and
 `satellite_enterprise/`, the Enterprise Linux installer and the artwork.
-*(Recounted 2026-09-01, at M8.5, over `src/` and `tests/` together — 111 files
-and 18,766 lines of it is `src/`. The five new files are the printer's split into
-three, its internal header, and the two `depth.cpp` suites M8.5's done-when asks
-for; the growth in lines is mostly the four machines that replaced the recursion.
-The figures at M8 were 164 files and 25,830 lines, with `src/` at 108 and
-17,592.)*
+*(Recounted 2026-09-01, at M9, over `src/` and `tests/` together — 133 files and
+22,328 lines of it is `src/`. The thirty new files are two whole modules:
+`satellite_value/` and `evaluator/`, plus `system_facts/user_facts.cpp`,
+`programs/evaluate_commands.*` and the eight of `tests/eval_test/`. The figures
+at M8.5 were 169 files and 27,403 lines, with `src/` at 111 and 18,766; at M8,
+164 and 25,830 with `src/` at 108 and 17,592.)*
 
 *(The figures here read "120 C++ files totalling 18,031 lines … six test suites"
 until this recount and were taken at M6, so they had already missed M7. Left
@@ -165,10 +172,19 @@ result that cannot be true and was a different filesystem rather than a finding.
 Recorded because §9's rule is to measure on this machine, and a measurement whose
 setup differs between arms is not one.)*
 
-**Next: milestone 9**, the value model and closure compilation (§8) — `Value`,
-`Str`, the arena AST compiled to a closure tree, and the inline caches. **Its
-precondition landed at M8.5**: §2.6 puts the explicit control stack between the
-arena and closure compilation, so M9 emits onto a stack that already exists.
+**Next: milestone 10**, the console and the first program that runs (§8) — the
+printer thread, `satellite.main`, `satellite.return` and `satellite.console
+.display`. **Everything it dispatches through landed at M9**: `Value`, the
+closure tree, `handlers[path_id]` and the inline caches, so what M10 adds is the
+first rows in a table that is built and empty.
+
+*(M9 landed 2026-09-01 and [MILESTONES/M9.md](MILESTONES/M9.md) is the review.
+Its precondition was M8.5 — §2.6 puts the explicit control stack between the
+arena and closure compilation, so M9 emitted onto a stack that already existed.
+That held, and what it did not predict is that the COMPILER would be a fifth walk
+needing the same treatment: M9.md §4.1 has it, and the general form, which is
+that no walk over user-controlled depth may use the C++ stack from its first
+commit.)*
 
 **M6 landed 2026-08-30** and it answered §4.5.4's three open questions rather
 than leaving them, because a milestone whose done-when needs an answer cannot
@@ -296,11 +312,32 @@ slot. Which PathId. Which handler. How many arguments, already checked. At runti
 node is one indirect call with no tag test and no re-resolution. 2–5× over a naive
 walk is the usual figure — **to be measured here, not quoted.**
 
+**BUILT AT M9, AND THE 2–5× IS STILL NOT MEASURED — WHICH IS WORTH SAYING RATHER
+THAN LETTING IT LOOK LIKE IT WAS.** What M9 measured is §2.5's figure, the cost of
+the explicit control stack, because that is the one a decision was waiting on.
+This one is a different comparison: a closure tree against a naive walk over the
+AST, and there is no naive walk in this tree to compare against — M9 never built
+one, because building a second evaluator to be slower is only worth it when the
+number decides something. Nothing is waiting on this one. It stays quoted and
+unmeasured, and is marked so, which is §9's rule applied to a figure that has not
+earned its measurement rather than to one that has.
+
+**One thing §2.3 predicted exactly.** "An op is one indirect call with no tag
+test" is what `evaluator/closure.hpp` keeps: an `Op` is a function pointer and
+four payload words in 24 bytes, which is `ast.hpp`'s `Node` with the kind
+replaced by the address it would have jumped to. MILESTONES/M9.md §3.1.
+
 ### 2.4 Inline caches
 
 A `Call` node caches the resolved PathId and handler pointer on first execution,
 behind a guard. This is what permanently retires the seven-arm chain of §1.1: the
 second execution of a call site does no lookup at all.
+
+**BUILT AT M9, WITH ONE THING SHARPENED.** The CELL is allocated when the op is
+emitted rather than on first execution, and it lives in a side table indexed by
+call site. That keeps the op arena immutable and shareable, which is what DESIGN
+§10.5's threads need: one arena, one cache vector per run. Filling it is still
+first execution and the guard is still a guard.
 
 ### 2.5 The explicit control stack, un-deferred
 
@@ -333,12 +370,35 @@ project found out by measuring on 2026-08-31:
    user*; refusing a program because the machine's stack is 8 MiB is not doing
    everything, it is doing 8 MiB.
 
-**The cost figure still has to be measured before it is quoted again**, and
-§2.5's own sentence is why: *the figure usually quoted is 2–3×, and that one is
-borrowed rather than measured, which by §9's own rule means it decides nothing
-here until this project measures it.* That rule did not stop applying when the
-conclusion flipped. It is now a thing to measure rather than a thing to defer
-behind, and §9 owns it.
+~~**The cost figure still has to be measured before it is quoted again**~~
+**— MEASURED AT M8.5 FOR THE STATIC PASSES AND AT M9 FOR THE EVALUATOR, WHICH IS
+THE HALF THIS SECTION WAS ACTUALLY ARGUING ABOUT.** §2.5's own sentence was why:
+*the figure usually quoted is 2–3×, and that one is borrowed rather than
+measured, which by §9's own rule means it decides nothing here until this project
+measures it.*
+
+**IT IS A RANGE AND NOT A NUMBER, AND WHAT DECIDES IT IS HOW MUCH WORK SITS
+BETWEEN TWO PUSHES.** Measured 2026-09-01 with two evaluators over the same
+closure arena, the same values, the same arithmetic and the same dispatch, so the
+only difference is where the intermediate state lives:
+
+| workload | control stack | C++ stack | |
+|---|---:|---:|---|
+| a tight arithmetic loop, no calls | 107.0 ms | 30.0 ms | **3.5×** |
+| long expression chains | 107.3 ms | 36.5 ms | **2.9×** |
+| 200,000 calls that each return | 120.1 ms | 45.6 ms | **2.6×** |
+| **a program shaped like a program** | 343.1 ms | 258.3 ms | **1.3×** |
+| 20,000 frames deep | **answers** | **SEGFAULT** | — |
+
+So 2–3× was a fair thing to have borrowed and it is wrong at both ends. **The
+last row is why it is paid everywhere rather than only where it is needed**: the
+recursive arm dies between 15,000 and 20,000 frames at the default `ulimit -s`,
+and where a program will need depth is not knowable before it runs. A hybrid that
+recursed until depth N would be two evaluators that must agree forever, with N a
+number satl invented — which §4.5.4 refuses about `MEMORY_MAX` and
+`SCRATCH.md/NO_LIMITS.md` §4.1.1 refuses about the 8 MiB, in the same words.
+MILESTONES/M9.md §6 has the method and the fifth of it that came off when it was
+looked at.
 
 **And the static passes are not the hard part.** §2.5 called the CEK machine
 "genuinely hard to write" and that is true of the EVALUATOR — it has to pause
@@ -372,8 +432,9 @@ closure compilation. Then inline caches. Doing them in the other order means doi
 the arena twice.
 
 **And the explicit control stack now sits between the arena and closure
-compilation** *(2026-08-31, when §2.5 was un-deferred)*, which is the same
-argument one adoption later. The four static passes — resolve, the unparser, the
+compilation** *(2026-08-31, when §2.5 was un-deferred; all three adopted by
+2026-09-01, the arena at M4, the stack at M8.5 and closure compilation with the
+caches at M9)*, which is the same argument one adoption later. The four static passes — resolve, the unparser, the
 `.satc` writer and the parser — walk the arena and must stop using the C++ stack
 to do it; closure compilation then emits onto a stack that already exists rather
 than growing one afterwards. **Doing them in the other order means doing the
@@ -1183,8 +1244,12 @@ from what this list expected.**
    and there is no compile-time default to restore later. **The 34 lives beside
    the dial and not in `Number`**, which is the seam turned the other way up from
    v1: `Number::divide` takes a count and never invents one.
-2. **Does the code table stay 16-bit?** *(Settled at M3 with the character half.)*
-   Yes, ported as-is. Nothing in this design contradicted the header's argument.
+2. **Does the code table stay 16-bit?** *(Settled at M3 with the character half,
+   and the LIVE half landed at M9.)* Yes, ported as-is. Nothing in this design
+   contradicted the header's argument. **What the live half found is that the six
+   calls do not go in this module** — the lexer decodes every token's text and
+   `--unparse` prints it back, so a live `decode()` here would rewrite a
+   program's source. PLAN §8's M9 entry has it.
 3. ~~**Where does `satellite.random` live?**~~ **Settled by the tree rather than
    by a decision, and the port then had to give something back.**
    `src/satellite_random/` landed at M2 ahead of any milestone that calls it. So
@@ -2208,9 +2273,34 @@ its output position is reached, so the order of the comment column is now the
 order of the output by construction — a discipline every future line had to
 remember, deleted.
 
-**M9 — the value model and closure compilation.** `Value` (40 bytes, the
+**M9 — the value model and closure compilation. LANDED 2026-09-01**, and
+[MILESTONES/M9.md](MILESTONES/M9.md) is the review. `Value` (40 bytes, the
 static_assert comes too) and `Str`. `Number` arrives at M8 and this milestone is its
 first consumer. The arena AST compiles to a closure tree.
+
+**Done when — WRITTEN AT M9, BECAUSE THIS ENTRY DID NOT HAVE ONE.** It is the
+first milestone entry since M2 with no done-when at all, which M9.md §2 records
+rather than quietly fixing: §8's opening calls a done-when in prose "the weaker
+kind" and this had neither. The clauses are what this entry and
+`SCRATCH.md/NO_LIMITS.md` §5.5 between them already asked for — `Value` is 40
+bytes and the small case never allocates; `Str` answers DESIGN §5's six live
+codes from the machine; the arena AST compiles to a closure tree and `satl
+--compile` prints it; module calls dispatch through `handlers[path_id]` with
+DESIGN §6.4 q2's receiver tag; a call site caches what it resolved to;
+`satellite.library.system.max_depth` is read, in bytes, unset meaning the
+machine; a capsule 100,000 frames deep answers at the default `ulimit -s`; a
+runaway one is refused **in words about recursion** with a status a script can
+read; and the evaluator's 2–3× is measured rather than quoted. **All met**, and
+the depth fixture went to 1,000,000 rather than 100,000 because 100,000 could
+still have been a large fixed number somewhere.
+
+**Its two consumers are `satl --compile` and `satl --call`**, which is M2's rule
+that a thing built gets a reader in the milestone that writes it. `--compile`
+prints the closure tree the way `--resolve` prints frames — and prints the
+REFUSALS, which is the part a user reads: every piece of DESIGN §6's grammar this
+evaluator does not run yet, with the milestone that will build it. `--call` names
+one capsule and prints what it answered, with no console behind it and no `main`
+in front of it, which is `satl --number`'s shape one milestone on.
 Module calls dispatch through `handlers[path_id]`, and the **inline caches of §2.4
 land here too** — third of the three adoptions §2.6 orders, and the milestone that
 owns them.
@@ -2246,6 +2336,27 @@ consumed by later milestones that had each assumed somebody else built them.)*
   itself, not the file. §6.1 has the split and names the six lines. **This closes the other half of
   `SCRATCH.md/MILESTONE.md` §3's porting row**, whose whole complaint was that M9
   needs `Number` and does not say the port happens here.
+
+  **BUILT, AND THE SIX CALLS ARE NOT WHERE THIS PARAGRAPH PUT THEM.** §6.1
+  predicted "replacing six lines with six calls" inside `satellite_string/`. They
+  are in `satellite_value/render.cpp` instead, one module up, and the reason only
+  became visible once there was something to move: **the lexer calls `decode()`
+  on every token's text**, a string literal's body included, and `Token::text` is
+  what `--unparse` prints back. A live decode inside the alphabet would write this
+  machine's thread count into the source of any program containing a `\threads`
+  escape, silently, and round-tripping would stop being a fixpoint. So `decode()`
+  gained a second entry point taking a table of the six, the alphabet fills none
+  of them and the value module fills all of them — which is exactly the split
+  `lexer.hpp` already draws between a token's two halves: `text` is what the file
+  SAYS and `str` is what the program MEANS.
+
+  **AND THREE OF THE SIX READERS DID NOT EXIST.** M6 ported `hardware_threads()`,
+  `mem_total_mb()` and `mem_used_mb()` and left `username()`, `home_dir()` and
+  `cwd()` behind, saying in `facts.hpp` that "they are forty lines and they come
+  with M9". They came, in `system_facts/user_facts.cpp`, at seventy-five — and the
+  difference is `cwd()` losing v1's fixed `char buf[4096]`, which is a constant in
+  a header deciding how long a path the user may have and is what DESIGN §7.5
+  forbids in as many words.
 - ~~**The recursion ceiling is derived, not fixed**~~ — **THERE IS NO CEILING, AS
   OF 2026-08-31.** §2.5 was un-deferred and DESIGN §7.5 rewritten: M9 compiles
   onto an explicit control stack and a program's depth is bounded by memory. This
@@ -2276,14 +2387,26 @@ consumed by later milestones that had each assumed somebody else built them.)*
   cliffs, so *"the guard could never fire and the segfault it existed to prevent
   was exactly what a runaway recursion got."*
 
-  **THE RANGE AND THE READER LAND TOGETHER, AT M9, WHICH IS M8's FINDING APPLIED
-  BEFORE IT HAPPENS AGAIN.** `config_internal.hpp`'s `kDialRanges` still reads
-  `{false, 0, 0}` for this dial and must keep reading it until there is something
-  that consumes the value — M8 §6.1 is what a dial with a bound and a silent
-  policy costs, and a range checked for a reader that does not exist is the same
-  shape of mistake pointing the other way. **DESIGN §7.5 is untouched by any of
-  this**: a ceiling the USER sets on their own program is not a limit the language
-  has, which is the distinction M8 drew for `division_digits` in the same words.
+  ~~**THE RANGE AND THE READER LAND TOGETHER, AT M9**~~ — **THE READER LANDED AND
+  THERE IS NO RANGE.** `kDialRanges` still reads `{false, 0, 0}` for this dial and
+  **the reason under it changed**: it was `float_digits`'s reason, which is "no
+  consumer yet", and it is now `min_free_mb`'s, which
+  `config_internal.hpp` already spelled two rows away as *"a meaning with no bound
+  ever claimed for it"*. Any number of bytes is a number of bytes — zero refuses
+  the first push and says so with a caret, and a number wider than any machine
+  means the machine — so neither end is a value satl cannot act on, which is the
+  only thing S0807 and S0808 are for. **DESIGN §7.5 is untouched by any of this**:
+  a ceiling the USER sets on their own program is not a limit the language has,
+  which is the distinction M8 drew for `division_digits` in the same words.
+
+  **WHAT THE DIAL DID NEED WAS A KIND, AND M9 FOUND THAT BY TYPING IT.**
+  `max_depth=64MiB` was answered with "max_depth is a whole number and `64MiB` is
+  not one". Every dial was a bare integer, which was right while no dial meant a
+  quantity of memory; this one is a sibling of MEMORY_MAX now and is written the
+  way MEMORY_MAX is. §4.5.4's argument for units is the same here as there.
+  `kDialKinds` is the table, and it forced apart a test that had been doing two
+  jobs — "is this a size" and "may this be a fact" were one comparison, and
+  DESIGN §7.7 pairs three settings with three paths, not four.
 - **`satellite.library.system.max_depth` `1 14 2 2` is this milestone's dial**, and
   **M16's search walk was named as its second consumer** with a depth error of its
   own. Both entries said so, because "M9 builds it and M16 reuses it" is fine and
@@ -2306,7 +2429,20 @@ consumed by later milestones that had each assumed somebody else built them.)*
   It is the only reason `satellite.file.new(path)` `1 8 1` and
   `satellite.variable.file.new` `1 6 2 1` can coexist — WORD_NUMBERS §4 calls that
   pair *"the kind of thing that gets decided by accident at M16"* — and M19 needs it
-  built rather than legislated from three milestones later.
+  built rather than legislated from three milestones later. **Built, and the table
+  is empty in `satl`**, which is this section's own ledger being kept: M9 holds
+  none of the 223 numbered paths, so the first rows are M10's console and
+  `tests/eval_test/dispatch.cpp` is the reader that proves the mechanism before
+  anything owns one.
+
+- **AND ONE THING THIS ENTRY DID NOT LIST: the compiler is a walk, so it keeps its
+  own stack too.** §2.6 put the four static passes ahead of this milestone and the
+  compiler is a fifth — it did not exist when M8.5 rewrote them, and DESIGN §7.5
+  has no exception for a pass that runs once. A program that parses at 100,000
+  deep and then segfaults being COMPILED would have moved M8.5's crash rather than
+  removed it. **The general form, which is what every milestone after this one
+  inherits: no walk over user-controlled depth uses the C++ stack, from its first
+  commit.** M16's search walk is the next one it applies to.
 
 **M10 — the console, and the first program that runs.** *(Split on 2026-08-28
 from a milestone then called M8, as its first half; it was M8.A until the

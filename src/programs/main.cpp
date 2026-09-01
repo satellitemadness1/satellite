@@ -20,6 +20,7 @@
 #include "programs/cache_command.hpp"
 #include "programs/check_command.hpp"
 #include "programs/dump_commands.hpp"
+#include "programs/evaluate_commands.hpp"
 #include "programs/file_commands.hpp"
 #include "programs/limits_command.hpp"
 #include "programs/number_command.hpp"
@@ -119,6 +120,7 @@ bool only_prints_and_exits(const char *arg)
            flag == "--tokens" || flag == "--unparse" || flag == "--satc" ||
            flag == "--check" || flag == "--errors" || flag == "--limits" ||
            flag == "--resolve" || flag == "--number" ||
+           flag == "--compile" || flag == "--call" ||
            flag == "--watchdog";
 }
 
@@ -277,6 +279,23 @@ int main(int argc, char **argv)
     // and a watchdog that never fires is indistinguishable from no watchdog.
     if (first == "--watchdog")
         return satellite::limits::hold_for_the_watchdog();
+
+    // M9's TWO CONSUMERS. `--compile` prints the closure tree the way
+    // `--resolve` prints frames; `--call` runs one capsule and prints its
+    // answer. Neither runs a PROGRAM -- M10 brings the console,
+    // `satellite.main` and `satellite.return`, and `--run` below still says so.
+    if (first == "--compile") {
+        if (args.size() < 3)
+            return usage_error("--compile needs a file after it");
+        return satellite::compile_command(args[2]);
+    }
+
+    if (first == "--call") {
+        if (args.size() < 4)
+            return usage_error("--call needs a file and the name of a capsule "
+                               "in it, and then one number per parameter");
+        return satellite::call_command(args);
+    }
 
     // M8's CONSUMER. Three operands and not an expression -- number_command.hpp
     // says why that is the design rather than a shortcut, and the short version

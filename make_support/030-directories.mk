@@ -12,6 +12,7 @@ SRC      = src
 SYSTEM   = $(SRC)/system_facts
 PROGRAMS = $(SRC)/programs
 ERRORS   = $(SRC)/error_reporter
+EVAL     = $(SRC)/evaluator
 LEXER    = $(SRC)/lexical_analyzer
 CACHE    = $(SRC)/satellite_cache
 LIMITS   = $(SRC)/machine_limits
@@ -20,6 +21,7 @@ PARSER   = $(SRC)/parser
 RESOLVE  = $(SRC)/name_resolver
 RANDOM   = $(SRC)/satellite_random
 STRING   = $(SRC)/satellite_string
+VALUE    = $(SRC)/satellite_value
 TREE     = $(SRC)/abstract_syntax_tree
 WORDS    = $(SRC)/satellite_words
 
@@ -35,4 +37,4 @@ WORDS    = $(SRC)/satellite_words
 # is out of date.
 TESTS     = tests
 TESTNAMES = words_test lexer_test parser_test satc_test reporter_test \
-            limits_test resolve_test number_test
+            limits_test resolve_test number_test eval_test

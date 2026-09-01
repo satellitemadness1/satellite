@@ -350,7 +350,16 @@ void setting(Reading &reading, std::string_view text, const Line &at)
     size_t value_stop = stop;
     trim(text, value_start, value_stop);
 
-    const Kind kind = key < kSettingCount ? kSettings[key].kind : Kind::Dial;
+    // A DIAL HAS A KIND OF ITS OWN NOW, and config_internal.hpp's kDialKinds
+    // says why: `max_depth` is bytes and every other dial is a bare count.
+    const Kind kind = key < kSettingCount ? kSettings[key].kind
+                                          : kDialKinds[key - kSettingCount];
+
+    // WHETHER A FACT MAY BE WRITTEN IS A SEPARATE QUESTION FROM THE SYNTAX, and
+    // the two used to be one test. `arguments.memory.total` is legal for
+    // MEMORY_MAX because DESIGN §7.7 pairs that setting with that path; no dial
+    // has such a pairing, whatever its kind.
+    const bool takes_a_fact = key < kSettingCount;
 
     // NOTHING AFTER THE `=` IS ANSWERED BY WHICHEVER SENTENCE LISTS EVERYTHING
     // THE VALUE COULD HAVE BEEN, which is why this is under the kind rather
@@ -359,7 +368,7 @@ void setting(Reading &reading, std::string_view text, const Line &at)
     // half an answer to `CORE_COUNT=` sends somebody looking up a core count
     // they never needed to write down.
     if (value_start == value_stop) {
-        if (kind != Kind::Dial)
+        if (takes_a_fact)
             fact_value(reading, text, name, key, value_start, value_stop,
                        at.number);
         else
@@ -377,7 +386,7 @@ void setting(Reading &reading, std::string_view text, const Line &at)
     // those sentences is better than "is not a path". Nothing satl accepts as a
     // fact begins with a digit: §1's generating rule makes every one of them a
     // word.
-    if (kind != Kind::Dial &&
+    if (takes_a_fact &&
         !(text[value_start] >= '0' && text[value_start] <= '9')) {
         if (fact_value(reading, text, name, key, value_start, value_stop,
                        at.number))
@@ -400,13 +409,15 @@ void setting(Reading &reading, std::string_view text, const Line &at)
     // about the dials whose meaning belongs to M8, M9 and M15: a range check is
     // a claim about what the value MEANS.
     //
-    // `max_depth` HAS A MEANING SINCE 2026-09-01 AND STILL HAS NO RANGE HERE,
-    // and the gap is deliberate. The author's reading is a memory ceiling on the
-    // control stack, in BYTES, with unset meaning the machine (PLAN §8's M9
-    // entry, DESIGN §7.5) -- but nothing reads the value until M9 builds that
-    // stack, and a range checked on behalf of a reader that does not exist is
-    // M8 §6.1's finding pointing the other way. The row and the reader land
-    // together, which is the same rule the paragraph below records.
+    // `max_depth` HAS A MEANING AND A READER SINCE M9, AND STILL HAS NO RANGE --
+    // WHICH IS NOT THE SAME GAP THIS PARAGRAPH USED TO DESCRIBE. It said the
+    // range was waiting on the reader ("the row and the reader land together"),
+    // which is what PLAN §8's M9 entry asked for. The reader landed;
+    // limits::max_depth_bytes() is it, and there is nothing to bound. A ceiling
+    // in bytes on the control stack can be any number of bytes: zero refuses the
+    // first push and says so, and a number wider than any machine means the
+    // machine. `min_free_mb` is the row that was already in that position, and
+    // config_internal.hpp says so beside both.
     //
     // M8 IS THE FIRST MILESTONE TO ANSWER ONE, so `division_digits` is the first
     // dial this arm can say anything about -- as a row of config_internal.hpp's

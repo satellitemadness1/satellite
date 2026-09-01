@@ -1,0 +1,279 @@
+#pragma once
+
+// The evaluator's control stack -- PLAN M9. DESIGN §7.5 is the rule and PLAN
+// §2.5 is the decision that made this milestone build it rather than bound it.
+//
+// THE POINT OF THIS FILE IS THAT A SATELLITE PROGRAM'S RECURSION DEPTH IS
+// BOUNDED BY MEMORY. Not by `ulimit -s`, not by a constant in a header, not by
+// a ceiling derived from either. PLAN §2.5: "a walker that keeps its own stack
+// ON THE HEAP has no depth at all -- the bound becomes memory, the same way a
+// list's bound is memory. That is what 'no limits' means concretely, and it is
+// the only thing that means it; every other answer is a bigger number."
+//
+// SO THERE IS NO eval(node) THAT CALLS eval(child). Four vectors carry what a
+// recursive evaluator would have put in C++ frames:
+//
+//   work_    what is left to do, as {op, step} pairs. `step` is the return
+//            address: an op that needs its children's answers pushes them and
+//            asks to be resumed one step further on.
+//   value_   the answers. An EXPRESSION op leaves exactly one value here; a
+//            STATEMENT op leaves none. That contract is the whole type system
+//            of this machine and it is checked by tests/eval_test.
+//   slots_   every live frame's storage, end to end. DESIGN §7.2's
+//            `std::vector<Value> slots`, one region per activation.
+//   frames_  where each activation's regions start, and where a
+//            `satellite.return` unwinds to.
+//
+// A CALL OWNS ITS FRAME FROM BOTH ENDS AND THERE IS NO SENTINEL OP. The
+// obvious design pushes an "end of frame" marker under the body so that falling
+// off the end of a capsule has something to pop the frame; this does not,
+// because the CALL op is already sitting on the work stack underneath and can
+// be resumed. Its step 2 is the implicit `satellite.return()`. A real return
+// truncates the work stack to below that op, so the two paths leave identical
+// state and there is one place the frame is popped -- unwind().
+//
+// WHAT THE CEILING IS, AND IT IS NOT A DEPTH. `satellite.library.system
+// .max_depth` `1 14 2 2` is a MEMORY ceiling on this stack, in bytes, and unset
+// means the machine -- the author's decision of 2026-09-01, and PLAN §8's M9
+// entry carries the argument. Three things follow and this file is where all
+// three land:
+//
+//   1. The check happens when the stack GROWS, not on every push. A push is a
+//      size-against-capacity compare, which is what a vector does anyway; the
+//      byte arithmetic runs once per doubling.
+//   2. The refusal is a sentence about RECURSION. That is what M6's watchdog
+//      cannot give -- it can only say the run is using N and MEMORY_MAX is M --
+//      and SCRATCH.md/NO_LIMITS.md §8's first question is exactly that gap.
+//   3. Unset means the machine, which is not a new rule: PLAN §4.5.4 settled it
+//      for MEMORY_MAX in the same words, "a fraction is a number satl would
+//      have invented about a program it has never seen".
+//
+// AND IT IS NOT A LIMIT THE LANGUAGE HAS. DESIGN §7.5 is untouched by it: a
+// ceiling the USER sets on their own program is not a limit the language has,
+// which is the distinction M8 drew for `division_digits` in the same words.
+// With the dial unset a runaway recursion runs until the machine is full and
+// then says so ABOUT RECURSION, which is a working answer and a better sentence
+// than the one the watchdog was giving.
+
+#include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
+#include "evaluator/closure.hpp"
+#include "satellite_value/value.hpp"
+#include "satellite_words/words.hpp"
+
+#include <cstdint>
+#include <vector>
+
+namespace satellite::eval {
+
+struct Handler;
+
+// THE TWO NUMBERS THE EVALUATOR OBEYS AND DOES NOT CHOOSE.
+//
+// HANDED IN RATHER THAN READ, which is the seam LAYOUT.md draws between
+// machine_limits/ -- the policy -- and everything that lives under one. `satl`
+// fills this from limits::max_depth_bytes() and limits::division_digits();
+// tests/eval_test fills it itself, and that is what lets the depth fixtures
+// link no machine_limits at all. M8.5 §4.1 is why that matters: a 20,000-deep
+// resolve fixture spent a day passing against a raised stack it had never been
+// given, because the test binary did not link the module that raises one.
+//
+// M15's `float_digits` is the third and it joins this struct rather than a
+// second constructor argument -- which is the shape M8 wished for when
+// `division_digits` arrived alone.
+struct Policy {
+    // A CEILING IN BYTES ON THE CONTROL STACK, not a count of frames.
+    // `satellite.library.system.max_depth` `1 14 2 2`, the author's reading of
+    // 2026-09-01. Unset means the machine.
+    unsigned long long max_depth = 0;
+
+    // DESIGN §8.1's significant digits for a division that does not terminate.
+    // `satellite.library.system.division_digits`, M8's dial.
+    unsigned division_digits = 34;
+};
+
+// One thing left to do. Eight bytes, which is what makes a million-deep
+// recursion eight megabytes of work stack rather than a segfault.
+struct Work {
+    OpIndex op = kNoOp;
+    uint32_t step = 0;
+};
+
+// One activation. DESIGN §7.2's frame, plus the three heights a
+// `satellite.return` rewinds to.
+struct Frame {
+    uint32_t slots = 0;       // where this frame's storage starts in slots_
+    uint32_t work_floor = 0;  // where its call op sits in work_
+    uint32_t value_floor = 0; // value_'s height when its body began
+    words::PathId capsule = words::kNoPath;
+    NodeIndex call = kNoNode; // the call SITE, which is what a FrameRef prints
+};
+
+// What a run ended as.
+//
+// REFUSED AND STOPPED ARE TWO DIFFERENT THINGS AND THEY GET TWO EXIT STATUSES.
+// A program that divided by zero or compared a string to a bool is WRONG, and
+// programs/opening.hpp calls that EXIT_MALFORMED -- "a file satl was given is
+// not what it has to be". A program that filled the control stack may be
+// perfectly correct and simply asked for more than it was allowed, which is
+// EXIT_LIMIT: "satl stopped itself: a machine limit was reached". M6 built that
+// status for the watchdog and this is its second producer, which is the shape
+// SCRATCH.md/NO_LIMITS.md §7 asks for -- the same event caught one layer in,
+// with a better sentence and the same number for a script to read.
+enum class Ending : uint8_t {
+    Finished,  // ran to the end
+    Refused,   // the program was wrong -- `problems` is not empty
+    Stopped,   // a ceiling was reached; the program may be right
+};
+
+class Machine {
+public:
+    // THE CEILING IS HANDED IN AND NOT READ, which is the seam LAYOUT.md
+    // draws between machine_limits/ (the policy) and everything that obeys one.
+    // `satl`'s arms pass limits::max_depth_bytes(); tests/eval_test passes its
+    // own, and that is what lets the depth fixtures link no machine_limits at
+    // all -- M8.5 §4.1 found the alternative the hard way, where a 20,000-deep
+    // fixture was passing against a raised stack it had never been given.
+    Machine(const Compiled &program, const Ast &ast, const Policy &policy);
+
+    // Run one capsule to completion and answer what it returned. Everything a
+    // caller can ask for is here, because there is no console until M10.
+    Value call(uint32_t capsule, const std::vector<Value> &arguments);
+
+    // Every global's initialiser, in order. Must run before any capsule that
+    // reads one -- DESIGN §7.2 reserves `satellite.library` for shared state.
+    void run_top_level();
+
+    Ending ending() const { return ending_; }
+    const std::vector<errors::Diagnostic> &problems() const { return problems_; }
+    bool ok() const { return ending_ == Ending::Finished; }
+    bool at_the_ceiling() const { return ending_ == Ending::Stopped; }
+
+    // --- what an op function may do ----------------------------------------
+    //
+    // PUBLIC BECAUSE THE OP FUNCTIONS ARE FREE FUNCTIONS AND NOT METHODS, which
+    // is what an OpFn being a plain function pointer requires. They are all in
+    // evaluator/operations.cpp and this is the interface they are written
+    // against; nothing outside that file and machine.cpp calls any of them.
+
+    // WHICH OP IS RUNNING. An op function is handed its Op by reference and
+    // not its index, because the index is four bytes it does not need on the
+    // hot path; a diagnostic needs it, and this is where it comes from.
+    OpIndex here() const { return work_.back().op; }
+
+    // Resume this op one step further on, once its children have run.
+    void again(uint32_t step) { work_.back().step = step; }
+
+    // This op is finished. Its own work item goes.
+    void done() { work_.pop_back(); }
+
+    void push(OpIndex op);
+    void push_value(Value value);
+
+    Value pop_value()
+    {
+        Value out = std::move(value_.back());
+        value_.pop_back();
+        return out;
+    }
+
+    // The value `back` from the top, without taking it off. 0 is the top.
+    const Value &value_from_top(size_t back) const
+    {
+        return value_[value_.size() - 1 - back];
+    }
+
+    // TWO VALUES BECOME ONE, IN PLACE. Every binary operator and every
+    // comparison ends this way, and the obvious spelling -- pop, pop, push --
+    // is three vector operations where this is one assignment and a pop. The
+    // push is the expensive one of the three: it is the only one that has to
+    // ask room() whether the ceiling has been reached, and a Value is a
+    // 40-byte variant whose destructor is not trivial.
+    //
+    // MEASURED, NOT ASSUMED. MILESTONES/M9.md §6 has the before and after; the
+    // reason it is worth a named function rather than three lines in each arm
+    // is that the arms must not be able to disagree about which slot survives.
+    void fold(Value answer)
+    {
+        value_.pop_back();
+        value_.back() = std::move(answer);
+    }
+
+    // One value becomes another, in place -- fold's unary sibling.
+    void set_top(Value answer) { value_.back() = std::move(answer); }
+
+    const Value &local(uint32_t slot) const { return slots_[frames_.back().slots + slot]; }
+    void set_local(uint32_t slot, Value value)
+    {
+        slots_[frames_.back().slots + slot] = std::move(value);
+    }
+
+    const Value &global(uint32_t index) const { return globals_[index]; }
+    void set_global(uint32_t index, Value value) { globals_[index] = std::move(value); }
+
+    // Enter a capsule. The arguments are the top `count` values on the value
+    // stack, in order, and they become slots [0, count).
+    void enter(uint32_t capsule, uint32_t count, NodeIndex call);
+
+    // Leave the innermost capsule with this answer. Both `satellite.return` and
+    // falling off the end of a body come here.
+    void unwind(Value answer);
+
+    // Run a module handler over the top `count` values, and take them off.
+    //
+    // THE HANDLER MUST NOT TOUCH THE VALUE STACK, which is why it is handed a
+    // pointer and a count rather than the machine's vector: `arguments` points
+    // INTO value_, so a handler that pushed would reallocate under its own
+    // feet. Everything a handler needs to say goes through refuse().
+    bool call_handler(const Handler *handler, uint32_t count, Value *answer);
+
+    // Stop, with a sentence. Nothing runs after this.
+    void refuse(errors::Diagnostic problem);
+
+    // The span an op's node covers, for a diagnostic raised inside it.
+    errors::Span span_of(OpIndex op) const;
+
+    // The call stack, innermost first, as DESIGN §9's fourth field.
+    std::vector<errors::FrameRef> call_stack() const;
+
+    const Compiled &program() const { return program_; }
+    Cache &cache(uint32_t index) { return caches_[index]; }
+
+    // What the control stack is holding, in bytes. `satl --compile` prints the
+    // high-water mark and MILESTONES/M9.md measures it.
+    unsigned long long control_bytes() const;
+    unsigned long long peak_bytes() const { return peak_; }
+    unsigned long long ceiling() const { return ceiling_; }
+    const Policy &policy() const { return policy_; }
+
+private:
+    // ROOM TO GROW ONE MORE ELEMENT, and this is the whole of the ceiling's
+    // machinery. A vector with room left answers true after one compare; a
+    // vector at capacity is about to double, so this is where the bytes are
+    // counted and where a program that has asked for too much is refused.
+    template <typename T>
+    bool room(std::vector<T> &v);
+
+    void refuse_depth();
+
+    const Compiled &program_;
+    const Ast &ast_;
+
+    std::vector<Work> work_;
+    std::vector<Value> value_;
+    std::vector<Value> slots_;
+    std::vector<Frame> frames_;
+    std::vector<Value> globals_;
+    std::vector<Cache> caches_;
+
+    std::vector<errors::Diagnostic> problems_;
+    Ending ending_ = Ending::Finished;
+
+    Policy policy_;
+    unsigned long long ceiling_ = 0;
+    unsigned long long peak_ = 0;
+
+    void run();
+};
+
+} // namespace satellite::eval

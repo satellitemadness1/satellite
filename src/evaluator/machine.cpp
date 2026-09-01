@@ -1,0 +1,289 @@
+// The evaluator's control stack, and the ceiling on it. See
+// evaluator/machine.hpp for what this shape is for and what it refuses to be.
+//
+// THE LOOP IS SIX LINES AND EVERYTHING ELSE HERE SERVES IT. run() pops nothing
+// -- it reads the top of the work stack and calls the op's function, and the
+// function decides whether that item stays. That is what makes `step` a return
+// address rather than a state machine: an op that needs its children pushes
+// them ON TOP of itself and asks to be resumed, exactly the way a C++ frame
+// would have sat underneath its callee's.
+//
+// AND IT IS ONE INDIRECT CALL WITH NO TAG TEST, which is PLAN §2.3's promise
+// about closure compilation. There is no switch over a kind in this file.
+
+#include "evaluator/machine.hpp"
+
+#include "error_reporter/codes.hpp"
+#include "evaluator/dispatch.hpp"
+#include "system_facts/facts.hpp"
+#include "satellite_value/render.hpp"
+
+#include <utility>
+
+namespace satellite::eval {
+
+namespace {
+
+// How many frames of a call stack a diagnostic prints before it stops.
+//
+// A RENDERING BOUND AND NOT A LIMIT ON THE LANGUAGE, which is a distinction
+// this tree has had to make twice already -- M8.5 §4.3 about a printer running
+// out of room for its own answer, and NO_LIMITS §1.2 about a crash being called
+// a limit. A recursion refused at two million frames has two million FrameRefs
+// and nobody wants them; the note S0790 attaches says how many were dropped, so
+// the number is in the output rather than in this header alone.
+constexpr size_t kFramesPrinted = 8;
+
+} // namespace
+
+Machine::Machine(const Compiled &program, const Ast &ast, const Policy &policy)
+    : program_(program), ast_(ast), policy_(policy), ceiling_(policy.max_depth)
+{
+    globals_.resize(program_.globals());
+    caches_.resize(program_.caches());
+}
+
+unsigned long long Machine::control_bytes() const
+{
+    // WHAT THE STACK COSTS, COUNTED AS CAPACITY AND NOT AS SIZE. A vector that
+    // has doubled to a million entries is holding a million entries' worth of
+    // memory whether or not it is using them, and `max_depth` is a promise
+    // about memory. Counting size() would let a program sit at 90% of its
+    // ceiling with twice that much actually resident.
+    return static_cast<unsigned long long>(work_.capacity()) * sizeof(Work) +
+           static_cast<unsigned long long>(value_.capacity()) * sizeof(Value) +
+           static_cast<unsigned long long>(slots_.capacity()) * sizeof(Value) +
+           static_cast<unsigned long long>(frames_.capacity()) * sizeof(Frame);
+}
+
+template <typename T>
+bool Machine::room(std::vector<T> &v)
+{
+    // THE COMMON CASE IS ONE COMPARE, and that is the whole of what PLAN §8's
+    // M9 entry means by "the check happens when the stack GROWS rather than on
+    // every push, so it costs nothing in the walk". A push_back does this same
+    // compare internally; the arithmetic below runs once per doubling, which
+    // over a million pushes is about twenty times.
+    if (v.size() < v.capacity())
+        return true;
+
+    const size_t have = v.capacity();
+    const size_t want = have ? have * 2 : 64;
+    const unsigned long long after =
+        control_bytes() + static_cast<unsigned long long>(want - have) * sizeof(T);
+
+    if (after > ceiling_) {
+        refuse_depth();
+        return false;
+    }
+
+    v.reserve(want);
+    if (after > peak_)
+        peak_ = after;
+    return true;
+}
+
+void Machine::push(OpIndex op)
+{
+    if (!room(work_))
+        return;
+    work_.push_back({op, 0});
+}
+
+void Machine::push_value(Value value)
+{
+    if (!room(value_))
+        return;
+    value_.push_back(std::move(value));
+}
+
+void Machine::enter(uint32_t capsule, uint32_t count, NodeIndex call)
+{
+    const Capsule &target = program_.capsules()[capsule];
+
+    if (!room(frames_))
+        return;
+
+    // THE ARGUMENTS ARE ALREADY ON THE VALUE STACK, in order, and they are
+    // MOVED into the frame rather than copied. A number that has promoted to a
+    // bignum is a shared_ptr; a string always is; moving means a recursive
+    // capsule passing a large value down does not touch a refcount per level.
+    const uint32_t base = static_cast<uint32_t>(slots_.size());
+    for (uint32_t i = 0; i < target.slots; i++) {
+        if (!room(slots_))
+            return;
+        slots_.emplace_back();
+    }
+    for (uint32_t i = 0; i < count; i++)
+        slots_[base + i] = std::move(value_[value_.size() - count + i]);
+    value_.resize(value_.size() - count);
+
+    frames_.push_back({base, static_cast<uint32_t>(work_.size() - 1),
+                       static_cast<uint32_t>(value_.size()), target.path, call});
+    push(target.body);
+}
+
+void Machine::unwind(Value answer)
+{
+    // ONE PLACE THE FRAME IS POPPED, and both ways out come here: an explicit
+    // `satellite.return` and falling off the end of a body. machine.hpp's note
+    // is why there is no end-of-frame sentinel op -- the CALL op is still on the
+    // work stack underneath and truncating to it removes it.
+    if (frames_.empty()) {
+        // A `satellite.return` outside any capsule. Nothing is left to return
+        // TO, so the run ends with that value as its answer.
+        work_.clear();
+        push_value(std::move(answer));
+        return;
+    }
+
+    const Frame frame = frames_.back();
+    frames_.pop_back();
+    work_.resize(frame.work_floor);
+    value_.resize(frame.value_floor);
+    slots_.resize(frame.slots);
+    value_.push_back(std::move(answer));
+}
+
+errors::Span Machine::span_of(OpIndex op) const
+{
+    const NodeIndex node = program_.node_of(op);
+    if (node == kNoNode)
+        return errors::kNowhere;
+    const Token &at = ast_.token_of(node);
+    return errors::Span{at.start, at.end, at.line};
+}
+
+std::vector<errors::FrameRef> Machine::call_stack() const
+{
+    // INNERMOST FIRST, which is the order a person reads a stack trace in and
+    // the order DESIGN §9's example prints. Only the innermost few, for the
+    // reason kFramesPrinted carries.
+    std::vector<errors::FrameRef> out;
+    const size_t show = frames_.size() < kFramesPrinted ? frames_.size() : kFramesPrinted;
+    for (size_t i = 0; i < show; i++) {
+        const Frame &frame = frames_[frames_.size() - 1 - i];
+        out.push_back({frame.capsule, frame.call == kNoNode
+                                          ? errors::kNowhere
+                                          : errors::Span{ast_.token_of(frame.call).start,
+                                                         ast_.token_of(frame.call).end,
+                                                         ast_.token_of(frame.call).line}});
+    }
+    return out;
+}
+
+bool Machine::call_handler(const Handler *handler, uint32_t count, Value *answer)
+{
+    const Value *arguments = value_.data() + value_.size() - count;
+    if (!handler->fn(*this, arguments, count, answer))
+        return false;
+    value_.resize(value_.size() - count);
+    return true;
+}
+
+void Machine::refuse(errors::Diagnostic problem)
+{
+    // THE FIRST SENTENCE IS THE ONE, and this guard is what makes the loop's
+    // stopping rule safe rather than nearly safe. An arm that has just been
+    // refused returns immediately, but it may already have pushed one of two
+    // children before the second push hit the ceiling -- so refuse() can be
+    // reached twice for one event. Reporting both would print the same
+    // recursion twice with different numbers in it.
+    if (ending_ != Ending::Finished)
+        return;
+
+    problem.frames = call_stack();
+    problems_.push_back(std::move(problem));
+    ending_ = Ending::Refused;
+}
+
+void Machine::refuse_depth()
+{
+    // THE SENTENCE NAMES RECURSION, WHICH IS THE WHOLE REASON THIS CEILING
+    // EXISTS RATHER THAN BEING LEFT TO THE WATCHDOG. M6's watchdog would stop
+    // this run too -- touched pages are resident memory and it counts them --
+    // but it can only say the run is using N and MEMORY_MAX is M.
+    // SCRATCH.md/NO_LIMITS.md §8's first question is that gap, and PLAN §8's M9
+    // entry is the decision that closes it: caught one layer in, where the thing
+    // that is growing has a name.
+    // THE BYTES ARE PRINTED AS A PERSON WRITES THEM, which is the same pairing
+    // M6's watchdog uses one layer out -- "this run is using 1.0 GiB and
+    // MEMORY_MAX is 1.0 GiB". facts::human_bytes moved out of machine_limits at
+    // this milestone so that this sentence could have it without the evaluator
+    // including the module it obeys; facts.hpp carries the argument.
+    errors::Diagnostic problem = errors::make<errors::Code::EVAL_TOO_DEEP>(
+        work_.empty() ? errors::kNowhere : span_of(work_.back().op),
+        static_cast<unsigned long long>(frames_.size()),
+        facts::human_bytes(control_bytes()), facts::human_bytes(ceiling_));
+
+    if (frames_.size() > kFramesPrinted)
+        problem.notes.push_back(errors::note<errors::Code::NOTE_EVAL_DEEPEST_CALL>(
+            problem.at, static_cast<unsigned long long>(frames_.size() - kFramesPrinted)));
+
+    refuse(std::move(problem));
+
+    // AFTER refuse(), WHICH SET IT TO Refused. The order is the one thing to
+    // get right here: refuse() is the one place a run stops, and this is the
+    // one case where stopping is not the program's fault.
+    ending_ = Ending::Stopped;
+}
+
+void Machine::run()
+{
+    // THE STOPPING TEST IS IN THE LOOP AND NOT AT EVERY PUSH, which is a
+    // correctness fix that turned out to be the cheaper shape as well.
+    //
+    // refuse() used to clear the work stack, on the reasoning that an empty
+    // stack ends the loop. It does -- but an arm is not finished when it
+    // refuses: `a + b` pushes two children, and if the FIRST push reaches the
+    // ceiling the second one still runs, onto a stack that was just emptied.
+    // Guarding every push against `ending_` would have fixed it and put a load
+    // and a compare on the hottest path in the interpreter. This puts the same
+    // compare in the loop, which already has one.
+    while (!work_.empty() && ending_ == Ending::Finished) {
+        const Work top = work_.back();
+        const Op &op = program_[top.op];
+        op.fn(*this, op, top.step);
+    }
+}
+
+void Machine::run_top_level()
+{
+    if (program_.top() == kNoOp)
+        return;
+    push(program_.top());
+    run();
+}
+
+Value Machine::call(uint32_t capsule, const std::vector<Value> &arguments)
+{
+    const Capsule &target = program_.capsules()[capsule];
+    if (arguments.size() != target.parameters) {
+        refuse(errors::make<errors::Code::EVAL_ARGUMENT_COUNT>(
+            target.node == kNoNode ? errors::kNowhere
+                                   : errors::Span{ast_.token_of(target.node).start,
+                                                  ast_.token_of(target.node).end,
+                                                  ast_.token_of(target.node).line},
+            std::string(ast_.text_of(target.node)),
+            std::to_string(target.parameters) + " arguments",
+            std::to_string(arguments.size())));
+        return Value::nothing();
+    }
+
+    // A CALL FROM OUTSIDE LOOKS LIKE A CALL FROM INSIDE, which is what keeps
+    // there being one entry(). The op arena has an entry op for every capsule
+    // precisely so that this path and op_call's path share every line of
+    // enter() and unwind() -- a second way in is a second place a frame can be
+    // got wrong, and DESIGN §7.1 is what that costs.
+    for (const Value &argument : arguments)
+        push_value(argument);
+
+    push(program_.capsules()[capsule].entry);
+    run();
+
+    if (!ok() || value_.empty())
+        return Value::nothing();
+    return pop_value();
+}
+
+} // namespace satellite::eval

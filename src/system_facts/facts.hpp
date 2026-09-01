@@ -25,16 +25,20 @@
 // calls process_memory_bytes() once a second forever, so a cache here would be
 // the one thing that stops it working.
 //
-// WHAT DID NOT COME, AND WHY IT IS SAID RATHER THAN LEFT TO BE NOTICED.
-// v1's host_facts.cpp also holds username(), home_dir() and cwd(). They are
-// satellite_string's codes 95, 96 and 100 -- live values resolved at decode
-// time, which SCRATCH.md/PORTING.md §3 counts -- and their milestone is M9, not
-// this one. Bringing them now would put three functions in this tree that
+// WHAT DID NOT COME AT M6 AND ARRIVED AT M9, WHICH IS WHERE THIS PARAGRAPH SAID
+// IT WOULD. v1's host_facts.cpp also holds username(), home_dir() and cwd().
+// They are satellite_string's codes 95, 96 and 100 -- live values resolved at
+// decode time, which SCRATCH.md/PORTING.md §3 counts -- and M6 refused them
+// because "bringing them now would put three functions in this tree that
 // nothing calls, which is exactly the exception 040-sources.mk had to write out
 // for satellite_random; one deliberate exception is a decision and two is a
-// habit. They are forty lines and they come with M9.
+// habit." The caller is satellite_value/render.cpp and it lands with M9, so the
+// three land with it, in system_facts/user_facts.cpp. The prediction was forty
+// lines; it came out at seventy-five, and the difference is cwd() losing v1's
+// fixed 4096-byte buffer.
 
 #include <cstddef>
+#include <string>
 
 namespace satellite::facts {
 
@@ -164,5 +168,64 @@ unsigned long long stack_limit_bytes();
 // either, because a stack is lazily committed: 8 GiB reserved moved VmSize by
 // 0.0 MiB and VmRSS by 0.2.
 unsigned long long widen_stack(unsigned long long want);
+
+// --- who is running this, and where -----------------------------------------
+//
+// satellite_string's live codes 95, 96 and 100 (DESIGN §5). Read fresh on every
+// call, like everything else here -- see the note at the top of this file, and
+// note that cwd() is the one where that is load-bearing rather than tidy.
+std::string username();
+std::string home_dir();
+std::string cwd();
+
+// --- a byte count as a person would write it --------------------------------
+
+// `61.9 GiB`, `4.0 MiB`, `512 B`.
+//
+// BINARY UNITS AND ONE DECIMAL PLACE, and the exact byte count is printed
+// BESIDE it everywhere this is used rather than instead of it. PLAN §4.5.4's
+// whole question was that 61.9 GiB and 64.9 GB are the same memory, so a report
+// that gave only the rounded form would reintroduce the ambiguity the
+// configuration file was made to remove. This is the readable half of a pair
+// and never the whole answer.
+//
+// IT LIVED IN machine_limits/limits.hpp UNTIL M9 AND MOVED WHEN IT GOT A SECOND
+// CONSUMER. Every caller was inside that one module, so that was the right
+// home while it lasted. The evaluator's S0701 says how many bytes a runaway
+// recursion is holding and what `max_depth` allowed it, and it must not include
+// machine_limits at all -- evaluator/machine.hpp's Policy note is why, and
+// MILESTONES/M8.5.md §4.1 is the receipt for what a test binary linking the
+// module that raises RLIMIT_STACK costs. A byte count is this module's currency:
+// every function above answers in bytes, so the readable form of one belongs
+// beside them rather than beside a single consumer. PLAN §6.1 item 3 made the
+// same move with `Bits32` and gave the same reason -- one in the tree beats two
+// that agree until somebody edits one.
+//
+// INLINE, SO NOTHING NEW IS LINKED. It reads no file and asks the machine
+// nothing, which is what lets it sit in a header the whole tree already
+// includes.
+inline std::string human_bytes(unsigned long long bytes)
+{
+    static const char *const kNames[] = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
+    constexpr size_t kNameCount = sizeof kNames / sizeof kNames[0];
+
+    size_t name = 0;
+    unsigned long long whole = bytes;
+    unsigned long long remainder = 0;
+    while (whole >= 1024 && name + 1 < kNameCount) {
+        remainder = whole % 1024;
+        whole /= 1024;
+        name++;
+    }
+    if (name == 0)
+        return std::to_string(whole) + " B";
+
+    // One decimal place, rounded down, computed from the remainder rather than
+    // through a double -- the exact figure is printed beside this everywhere it
+    // is used, so what this owes the reader is a number that never rounds UP
+    // past a ceiling it is describing.
+    const unsigned long long tenth = remainder * 10 / 1024;
+    return std::to_string(whole) + "." + std::to_string(tenth) + " " + kNames[name];
+}
 
 } // namespace satellite::facts

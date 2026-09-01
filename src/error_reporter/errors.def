@@ -451,6 +451,64 @@ SAT_CODE(611, NUMBER_UNKNOWN_OPERATOR, SAT_ERROR,
 // for. Two gaps in one day is worth noticing: a registry that never loses a row
 // is one whose rows were never checked against the documents they cite.
 
+// --- S07xx -- the evaluator --------------------------------------------------
+//
+// PLAN M9 is the milestone and this is the block reserved for it since M5. THE
+// THIRD RESERVATION HONOURED END TO END, and tests/reporter_test/codes.cpp has
+// been counting: S05xx was claimed by M7 on 2026-08-31, S06xx by M8 the same
+// day, and this is the last one that was being held. Nothing moved to make room
+// for any of the three, which is the whole of what a reservation buys.
+//
+// 700-709 the control stack, 710-719 what a value can be used as, 720-729 what
+// a program named that does not run yet. The gaps are on purpose; see the block
+// note at the top of this file.
+//
+// THE "NOT BUILT YET" ROW IS THE UNUSUAL ONE AND IT IS DELIBERATE. Every other
+// code in this file is about a program that is wrong. S0720 is about a program
+// that is RIGHT and arrived early: DESIGN §6's grammar parses a list literal, a
+// spacesuit and a `satellite.include` today, and M16, M26 and M25 are what make
+// them run. PLAN §8's opening rule is that a milestone is "a thing that works
+// and can be demonstrated", which means every milestone between now and M28
+// ships a language whose grammar is wider than its evaluator. Saying so with a
+// code, a caret and the milestone's number is DESIGN §1.1 -- never do anything
+// behind the user's back -- applied to the gap itself. The first satellite's
+// answer to the same situation was a segfault or a silently wrong value.
+//
+// AND THERE IS NO ROW FOR ARITHMETIC OVERFLOW OR FOR A NUMBER GETTING TOO BIG,
+// which is DESIGN §7.5 for the second time in this file. S06xx's block note
+// already says it about `satellite_number`; it is true here for the same reason
+// and about the same thing. What ends a runaway is memory, and S0701 is the one
+// row in this block that says so -- it is a ceiling on a stack the user set,
+// not a depth the language chose.
+
+SAT_CODE(701, EVAL_TOO_DEEP, SAT_ERROR,
+         "this recursion has filled the control stack -- {1} calls deep, "
+         "holding {2}, and `satellite.library.system.max_depth` is {3}")
+
+SAT_CODE(710, EVAL_NOT_A_CONDITION, SAT_ERROR,
+         "a condition is a `satellite.variable.bool` and this one is {1} -- "
+         "satellite has no truthiness, so a number cannot stand in for a test")
+
+SAT_CODE(711, EVAL_NOT_A_NUMBER, SAT_ERROR,
+         "`{1}` works on two numbers and this one is {2}")
+
+SAT_CODE(712, EVAL_NOT_COMPARABLE, SAT_ERROR,
+         "`{1}` orders numbers, and {2} has no order -- `==` and `!=` work on "
+         "anything, and nothing else does")
+
+SAT_CODE(720, EVAL_NOT_BUILT, SAT_ERROR,
+         "{1} parses and does not run yet -- {2}")
+
+SAT_CODE(721, EVAL_NO_HANDLER, SAT_ERROR,
+         "`{1}` is a path satellite has a number for and nothing behind yet -- "
+         "{2}")
+
+SAT_CODE(722, EVAL_ARGUMENT_COUNT, SAT_ERROR,
+         "`{1}` takes {2} and was given {3}")
+
+SAT_CODE(790, NOTE_EVAL_DEEPEST_CALL, SAT_NOTE,
+         "the deepest call is here, and the {1} frames under it are not printed")
+
 // --- S08xx -- the machine limits --------------------------------------------
 //
 // PLAN §4.5's satellite_config.ini, refused rather than ignored. M6's done-when

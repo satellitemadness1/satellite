@@ -11,10 +11,19 @@ and `MILESTONES/M8.5.md` is the review. The acceptance test in §7 below is met 
 its fixtures are in `tests/parser_test/depth.cpp`, `tests/satc_test/depth.cpp` and
 `tests/resolve_test/frames.cpp`.
 
-**WHAT IS LEFT IN THIS FILE IS §8, WHICH IS FOUR QUESTIONS ONLY THE AUTHOR CAN
-ANSWER** — one of which, the 2–3× cost, is now measured for the static passes and
-open only for the evaluator. **Delete this file when §8 is empty**, which is the
-condition `SCRATCH.md/README.md` carries.
+**§5.5 IS BUILT, AS OF 2026-09-01, AND IT IS M9.** The evaluator compiles onto
+an explicit control stack, so a satellite program's recursion is bounded by
+memory and by nothing else: a capsule 1,000,000 frames deep answers at the 8 MiB
+a login shell hands out, and a runaway one is refused **in words about
+recursion**, with a caret, a call stack and exit 4. `MILESTONES/M9.md` is the
+review.
+
+**WHAT IS LEFT IN THIS FILE IS ONE QUESTION.** §8 had four. Question 3 was
+answered on 2026-09-01 by the author; question 2 — the 2–3× — **is measured
+below and answered**, which is what M9 was for; question 4 answered itself when
+the parser rewrite landed as M8.5. Question 1 is narrowed twice and is the
+author's. **Delete this file when §8 is empty**, which is the condition
+`SCRATCH.md/README.md` carries.
 
 ---
 
@@ -406,10 +415,23 @@ say the rewrite kept the parser's manners.
 **And `brackets_` already exists.** The parser counts open brackets today; what
 it does not do is stop using the C++ stack for them.
 
-### 5.5 The evaluator — M9, and this is what changes about it
+### 5.5 The evaluator — M9. BUILT 2026-09-01
 
-M9 has not started, so this is not a rewrite: it is a **constraint on what M9 may
-be**. PLAN §8's M9 entry says *"Recursion depth is bounded here"* and PLAN §2.5
+**All of it, and `MILESTONES/M9.md` is the review.** The arena AST compiles to a
+closure tree of 24-byte PODs and a machine walks it with four heap vectors --
+work, values, slots and frames -- so `eval(node)` never calls `eval(child)`.
+Measured at the 8 MiB a login shell hands out: a capsule **1,000,000 frames
+deep** answers, where the same closure tree walked with C++ recursion segfaults
+between 15,000 and 20,000. That band is the one §2.4's table already recorded for
+the printers, reproduced by an evaluator that did not exist when it was written.
+
+**What §7.5's rule cost, measured rather than quoted, is §8 question 2 below**,
+and the short version is 1.3x on a program shaped like a program and 3.5x on the
+tightest arithmetic loop that can be written.
+
+*The text below is the constraint as it was written, kept as the record of what
+was predicted.* M9 had not started, so this was not a rewrite: it is a
+**constraint on what M9 may be**. PLAN §8's M9 entry says *"Recursion depth is bounded here"* and PLAN §2.5
 says to *"bound the recursion depth from M9 onward so deep recursion produces a
 clean `capsule call too deep` error rather than a segfault."* Both sentences are
 now wrong in the same way — the answer is not a cleaner refusal, it is not
@@ -444,6 +466,14 @@ the tree does not have is worse than one that admits the gap.
 | **errors.def** | S0501 deleted. Its block note says a code *"has to survive a row being deleted"*, so the number is not reused. |
 | **`tests/reporter_test/codes.cpp`** | 59 → 58, which that check exists to make visible. |
 
+**AND AT M9, ONE MORE ROW THIS TABLE DID NOT ANTICIPATE.** `errors.def`'s S07xx
+block — reserved for the evaluator since M5 and the last one being held — is
+populated, and **S0701 is the row this whole file is about**: the sentence a
+runaway recursion gets, in words about recursion rather than about memory. The
+count went 61 → 69 and `tests/reporter_test/codes.cpp`'s reserved-block loop is
+now empty, which is the third and last time it could record a reservation being
+honoured.
+
 ---
 
 ## 7. What "done" means
@@ -470,9 +500,34 @@ expression is machine-generated and no person will write one; the point is that
 the interpreter's answer does not depend on who generated the file, which is what
 "no limits" means.
 
+### 7.1 The same test for the evaluator, met at M9
+
+The four commands above are static passes and none of them RUNS anything. What
+the same rule asks of an evaluator is that **a satellite program's own recursion
+has no depth in it either**, and the fixtures are in `tests/eval_test/depth.cpp`
+— which links no `machine_limits`, so all of it runs against the 8 MiB a login
+shell hands out:
+
+- a capsule that calls itself **1,000,000 times** answers, and finishes rather
+  than being refused;
+- a `while` loop of 100,000 rounds costs **exactly the same control stack** as
+  one of 10 rounds, which is §2.2's "a loop costs zero stack depth" turned from a
+  sentence about the first satellite into an assertion about this one;
+- a 100,000-term expression evaluates, and the compiler that built it kept its
+  own stack too — the fifth walk in this tree to do so and the first born that
+  way rather than rewritten;
+- a runaway recursion is refused **in words about recursion**, with a caret, a
+  call stack and exit 4, at every configuration of `max_depth` and `MEMORY_MAX`
+  including neither being set. §8 question 1 has the table.
+
 ---
 
 ## 8. Open, and only the author can answer
+
+**ONE LEFT OF FOUR, AS OF 2026-09-01.** Question 3 was answered by the author the
+day it was asked. Question 4 answered itself. Question 2 needed the interpreter to
+exist and is answered below, by measurement. Question 1 has been narrowed twice
+and is the one still standing.
 
 1. **What happens when memory really does run out?** M6's watchdog stops the
    process at `MEMORY_MAX` with one line and exit 4. A walker that has filled the
@@ -487,18 +542,115 @@ the interpreter's answer does not depend on who generated the file, which is wha
    digits, a `.satc` the printer is building. Those still meet the watchdog and
    still get MEMORY_MAX's sentence, **and M8.5 measured a third answer nobody
    chose** — with no `MEMORY_MAX` set the allocator throws first and the process
-   aborts with exit 134, which is neither of the above. That is the part still
-   open.
-2. **Is the 2–3× real, and is it paid everywhere or only where it is needed?**
-   PLAN §2.5's figure is borrowed. It has to be measured on this tree (PLAN §9),
-   and the answer might be that the static passes take an explicit stack — they
-   run once per program and nobody will see it — while the evaluator's shape is
-   decided on a number rather than on a principle. The author chose *everything*;
-   this records what "everything" costs before it is spent.
+   aborts with exit 134, which is neither of the above.
+
+   **NARROWED AGAIN BY M9, AND THE RECURSION HALF IS NOW CLOSED AT EVERY
+   SETTING.** The worry above was that the third answer — exit 134, no sentence —
+   is what a DEFAULT configuration gets, since with nothing set `MEMORY_MAX` is
+   the whole machine and the allocator would fail before any ceiling was reached.
+   Measured on 2026-09-01 against the built evaluator, it does not:
+
+   | configuration | what a runaway recursion gets |
+   |---|---|
+   | `max_depth=32MiB` | S0701, a caret, a call stack, **exit 4** |
+   | `MEMORY_MAX=2GiB`, no `max_depth` | S0701 at 1.7 GiB and 16,777,216 frames, **exit 4** |
+   | neither set | S0701 at 56.0 GiB and 536,870,912 frames, **exit 4** *(measured once, on a 61.9 GiB machine)* |
+
+   **What made the third row work is one decision inside M9 and it is recorded
+   here because it is a decision and not an implementation.** PLAN §8's M9 entry
+   says an unset `max_depth` "means the machine". It could have been read as
+   `mem_total_bytes()` and it is instead read as **`MEMORY_MAX`, whose own
+   default is the whole machine** — so the two are the same number whenever
+   nobody has set either, and where somebody HAS said how much memory satl may
+   take, the control stack is held to that instead. Without it, a user who sets
+   `MEMORY_MAX=1GiB` would get the watchdog's sentence about memory rather than
+   this one about recursion, which is the exact gap this question is about.
+   `machine_limits/limits.hpp` carries the argument beside the function.
+
+   **SO WHAT IS STILL OPEN IS NARROWER AND SHARPER THAN IT WAS.** Not "what
+   happens when memory runs out" — for recursion it is settled, in words, with a
+   status. What is left is whether the SHAPE M9 used should be copied: **a
+   ceiling on the thing that is growing, checked where it grows, beats a watchdog
+   watching the total, because only the first one knows what to call the thing.**
+   M16's list, M8's division and a printer's output are the three that would
+   want it, and each would need a dial and a sentence of its own. The alternative
+   is that the watchdog stays the single answer for everything that is not a
+   stack, and a program that fills the heap with a list is told about memory.
+   **That is the author's call and nothing about it is urgent** — every one of
+   those still ends the run, and none of them ends it with signal 11.
+
+2. ~~**Is the 2–3× real, and is it paid everywhere or only where it is needed?**~~
+   **MEASURED AND ANSWERED, 2026-09-01, AT M9 — WHICH IS WHAT M9 WAS FOR.**
+   PLAN §2.5 has carried the figure since the plan was written with its own
+   sentence saying it "is borrowed rather than measured, which by §9's own rule
+   means it decides nothing here until this project measures it." M8.5 measured
+   the static passes. This is the evaluator's half and it is the half §2.5 was
+   actually arguing about.
+
+   **HOW IT WAS MEASURED, because the answer is only worth what the method is.**
+   Two evaluators over the SAME closure arena, built by the same compiler,
+   holding the same `Value`s, doing the same arithmetic through the same
+   `satellite_number`, and both dispatching through one function pointer per op.
+   The only difference is where the intermediate state lives: four heap vectors
+   against the C++ stack. The recursive arm is a scratch file and not part of the
+   tree — it exists to be a measurement and nothing else.
+
+   **THE ANSWER IS THAT THE FIGURE IS A RANGE AND NOT A NUMBER, AND WHAT DECIDES
+   IT IS HOW MUCH WORK SITS BETWEEN TWO PUSHES.** Best of nine, three runs,
+   2026-09-01, load 0.8:
+
+   | workload | control stack | C++ stack | |
+   |---|---:|---:|---|
+   | a tight arithmetic loop, no calls | 107.0 ms | 30.0 ms | **3.5×** |
+   | long expression chains | 107.3 ms | 36.5 ms | **2.9×** |
+   | 200,000 calls that each return | 120.1 ms | 45.6 ms | **2.6×** |
+   | **a program shaped like a program** | 343.1 ms | 258.3 ms | **1.3×** |
+   | 15,000 frames deep | 4.5 ms | 2.9 ms | **1.6×** |
+   | 20,000 frames deep | answers | **SEGFAULT** | — |
+
+   **So 2–3× was a fair thing to have borrowed.** It is the middle of this range
+   and it is wrong at both ends: a loop doing nothing but arithmetic pays 3.5×,
+   and a program that does real work per node pays 1.3×, because the walk is a
+   smaller share of it. That is the same shape M8.5 found one layer up, where the
+   `.satc` writer paid 1.25× against the printer's 2.5× "because it does more
+   work per node".
+
+   **AND ONE FIFTH OF IT CAME OFF WHEN IT WAS LOOKED AT.** The first measurement
+   was 4.2× on the tight loop. Every binary operator ended pop, pop, push — three
+   vector operations — where two values becoming one in place is an assignment
+   and a pop, and the push is the expensive one because it is the only one that
+   has to ask whether the ceiling has been reached. `Machine::fold()`. That is
+   4.2× → 3.5×, and it is recorded because a figure taken before the obvious
+   thing was tried is not the cost of the design, it is the cost of the first
+   draft.
+
+   **THE SECOND HALF — "paid everywhere or only where it is needed" — IS ANSWERED
+   BY THE LAST ROW OF THAT TABLE.** It has to be paid everywhere, and not on
+   principle: the C++-stack arm dies between 15,000 and 20,000 frames at the
+   default `ulimit -s`, which is the same band §2.4 already recorded for the
+   printers. **Where it is needed is not knowable before the program runs.** One
+   deep call anywhere in a program needs the whole evaluator to be on the heap,
+   because there is no point at which a recursive evaluator can hand over to a
+   heap one — it is already holding the frames it would have to hand over.
+
+   **A HYBRID WAS CONSIDERED AND IS REFUSED BY THIS FILE'S OWN ARGUMENT.** Recurse
+   until depth N and switch: it would be two evaluators that must agree about
+   everything forever, and N would be a number satl invented about a program it
+   has never seen. §4.1.1 refuses exactly that one level down, about the 8 MiB —
+   *"it is a bigger number and not the absence of one"* — and PLAN §4.5.4 refuses
+   it about `MEMORY_MAX`. The 1.3× is what DESIGN §1.1 says to spend:
+   **pay in performance rather than in the user's attention.**
+
 3. ~~**What does `satellite.library.system.max_depth` `1 14 2 2` mean now?**~~
    **ANSWERED 2026-09-01, ON THE AUTHOR'S DECISION: IT IS THE FIRST READING —
    A MEMORY CEILING ON THE CONTROL STACK, IN BYTES.** The reasoning is below,
-   and what it commits M9 to is in PLAN §8's M9 entry.
+   and what it commits M9 to is in PLAN §8's M9 entry. **BUILT AT M9**, and two
+   things about it came out differently from what that entry expected: PLAN said
+   "THE RANGE AND THE READER LAND TOGETHER" and the reader landed with **no
+   range**, because any number of bytes is a number of bytes (`min_free_mb` was
+   already in that position); and the dial had to stop being a bare integer,
+   because a quantity of memory is written `64MiB` the way its sibling
+   `MEMORY_MAX` is.
 
    **The alternative considered first was to set it outrageously large** — five
    hundred trillion — and let it never fire. That is refused for the reason §4.1.1
@@ -548,7 +700,18 @@ the interpreter's answer does not depend on who generated the file, which is wha
    full. It then says so about RECURSION, and a user who wants it stopped sooner
    sets the dial — which is one number they chose rather than one satl invented.
 
-4. **Does the parser rewrite become its own milestone?** It is the largest piece
-   here by a distance, and PLAN §8's numbers are positions rather than names
-   since 2026-08-30, so inserting one is cheap. The alternative is that it lands
-   inside M8 or M9 and those milestones stop being about what they say.
+4. ~~**Does the parser rewrite become its own milestone?**~~ **ANSWERED BY
+   HAPPENING, 2026-09-01: IT IS M8.5.** This asked whether the parser rewrite
+   should be its own milestone, on the grounds that it is "the largest piece here
+   by a distance" and that PLAN §8's numbers are positions rather than names so
+   inserting one is cheap. It became M8.5 on the author's decision, with all four
+   of §5's steps in it rather than the parser alone — a decimal for the reason
+   M1.5 and M4.5 are, a milestone that lands between two others. PLAN §8's M8.5
+   entry carries the argument for the decimal over a dense integer: the
+   alternative was M9 through M28 each moving by one, which is a second
+   old-to-new table over that section for no gain.
+
+   The alternative this row worried about — that it "lands inside M8 or M9 and
+   those milestones stop being about what they say" — is what would have
+   happened, and it is worth noticing that M9 turned out to be a whole milestone
+   on its own without it.

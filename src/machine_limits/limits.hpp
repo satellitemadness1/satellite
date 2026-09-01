@@ -74,6 +74,7 @@
 
 #include "error_reporter/report.hpp"
 #include "satellite_words/words.hpp"
+#include "system_facts/facts.hpp"
 
 #include <climits>
 #include <cstddef>
@@ -386,14 +387,52 @@ inline constexpr unsigned long long kDivisionDigitsMost = UINT_MAX;
 
 unsigned division_digits();
 
-// A byte count as a person would write it -- `61.9 GiB`, `4.0 MiB`, `512 B`.
+// A MEMORY CEILING ON THE EVALUATOR'S CONTROL STACK, IN BYTES.
 //
-// BINARY UNITS AND ONE DECIMAL PLACE, and the exact byte count is printed BESIDE
-// it everywhere this is used rather than instead of it. §4.5.4's whole question
-// was that 61.9 GiB and 64.9 GB are the same memory, so a report that gave only
-// the rounded form would have reintroduced the ambiguity the config file was
-// made to remove. This is the readable half of a pair and never the whole
-// answer.
-std::string human_bytes(unsigned long long bytes);
+// `satellite.library.system.max_depth` `1 14 2 2`, the author's decision of
+// 2026-09-01, and PLAN §8's M9 entry carries the whole argument. A numbered path
+// cannot be deleted -- WORD_NUMBERS §1.2 is "never renumber, never reuse" -- so
+// the dial had to mean something, and of the three readings on the table this is
+// the one that keeps its NAME honest: a depth measured in what depth actually
+// costs. It is a sibling of MEMORY_MAX rather than of `ulimit -s`.
+//
+// WHAT IT BUYS IS THE SENTENCE. M6's watchdog already stops a runaway recursion
+// -- touched stack pages are resident memory and it counts them -- but it can
+// only say the run is using N and MEMORY_MAX is M.
+// SCRATCH.md/NO_LIMITS.md §8's first question is exactly that gap, and a ceiling
+// on the control stack knows it IS the control stack, so evaluator/machine.cpp
+// can tell a runaway recursion about recursion. It is also cheaper than a frame
+// count: the check happens when the stack GROWS, not on every push.
+//
+// UNSET MEANS MEMORY_MAX, WHICH IS THE MACHINE, AND THAT IS ONE DECISION AND
+// NOT TWO. PLAN §8's M9 entry says "the default is the machine", citing §4.5.4's
+// answer for MEMORY_MAX -- "the default is the WHOLE MACHINE, because a fraction
+// is a number satl would have invented about a program it has never seen". This
+// reads that number off the sibling that already holds it rather than opening
+// /proc/meminfo a second time, and the two are the same value whenever
+// MEMORY_MAX is unset.
+//
+// WHERE THEY DIFFER, READING THE SIBLING IS THE ANSWER THAT WORKS. A user who
+// sets MEMORY_MAX=1GiB has said satl may have a gigabyte; a control-stack
+// ceiling above that could never be reached, because the watchdog would stop the
+// run first -- with the sentence this dial exists to improve on. So the ceiling
+// follows what satl was actually given, and the recursion is caught one layer in
+// where the growing thing has a name.
+//
+// AND IT HAS NO RANGE, WHICH IS THE ONE THING PLAN §8 EXPECTED AND DID NOT GET.
+// That entry says "THE RANGE AND THE READER LAND TOGETHER, AT M9". The reader
+// landed; there is no range, for the reason config_internal.hpp already writes
+// out two rows away about `min_free_mb` -- "a meaning with no bound ever claimed
+// for it". Any number of bytes is a number of bytes: zero refuses the first push
+// and says so, and a number wider than any machine means the machine. Neither is
+// a value satl cannot act on, and S0807 and S0808 exist for the ones that are.
+unsigned long long max_depth_bytes();
+
+// human_bytes() MOVED TO system_facts/facts.hpp AT M9, and this note is here
+// because eleven call sites in this module still read it. It was declared here
+// while every caller was in this module; the evaluator's S0701 is the second
+// consumer and must not include this header -- evaluator/machine.hpp's Policy
+// note says why. facts.hpp carries the argument and the function.
+using facts::human_bytes;
 
 } // namespace satellite::limits

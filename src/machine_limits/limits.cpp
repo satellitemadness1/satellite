@@ -148,31 +148,6 @@ unsigned long long wanted_stack_bytes()
     return wanted_stack_bytes_given(facts::mem_total_bytes());
 }
 
-std::string human_bytes(unsigned long long bytes)
-{
-    static const char *const kNames[] = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
-    constexpr size_t kNameCount = sizeof kNames / sizeof kNames[0];
-
-    size_t name = 0;
-    unsigned long long whole = bytes;
-    unsigned long long remainder = 0;
-    while (whole >= 1024 && name + 1 < kNameCount) {
-        remainder = whole % 1024;
-        whole /= 1024;
-        name++;
-    }
-    if (name == 0)
-        return std::to_string(whole) + " B";
-
-    // One decimal place, rounded down, computed from the remainder rather than
-    // through a double -- the exact figure is printed beside this everywhere it
-    // is used, so what this owes the reader is a number that never rounds UP
-    // past a ceiling it is describing.
-    const unsigned long long tenth = remainder * 10 / 1024;
-    return std::to_string(whole) + "." + std::to_string(tenth) + " " +
-           kNames[name];
-}
-
 std::string found_config_path()
 {
     // dirname(/proc/self/exe), which IS the install: PLAN §5 puts the binary
@@ -327,6 +302,19 @@ unsigned division_digits()
     // kDivisionDigitsLeast and kDivisionDigitsMost in the header are the pair,
     // and that is why this is a lookup with nothing left in it.
     return static_cast<unsigned>(dial.value);
+}
+
+unsigned long long max_depth_bytes()
+{
+    const Dial &dial = held().dial(DialId::MaxDepth);
+    if (dial.set)
+        return dial.value;
+
+    // THE SIBLING AND NOT THE MACHINE DIRECTLY. limits.hpp has the argument:
+    // MEMORY_MAX is the whole machine when nobody has set it, so this is "the
+    // machine" in the ordinary case and is the smaller, correct number in the
+    // case where somebody has said how much of it satl may have.
+    return held().memory_max.value();
 }
 
 } // namespace satellite::limits

@@ -98,7 +98,7 @@ static_assert(no_name_shadows_a_later_one(),
               "kEscapes: an escape name is a prefix of a later one -- encode() "
               "takes the first match, so the later one can never be reached");
 
-// What decode() prints for a live value until M9/M6 port the readers.
+// What decode() prints for a live value the caller did not answer.
 //
 // LOOKED UP IN kEscapes RATHER THAN WRITTEN OUT, so the placeholder and the
 // escape that produces the code cannot drift: "\threads" round-trips to
@@ -169,6 +169,12 @@ SatString encode_raw(const std::string &text)
 
 std::string decode(const SatString &s)
 {
+    static const Live nothing_live;
+    return decode(s, nothing_live);
+}
+
+std::string decode(const SatString &s, const Live &live)
+{
     std::string out;
     out.reserve(s.size());
 
@@ -191,14 +197,15 @@ std::string decode(const SatString &s)
             out += kPunct[c - SAT_PUNCT_BASE];
             continue;
         }
-        // THE LIVE VALUES (95-100), STUBBED UNTIL M9/M6. The readers are
-        // home_dir(), username(), hardware_threads(), mem_total_mb(),
-        // mem_used_mb() and cwd(), all in system_facts/, all ported by M6.
-        // Replacing these six lines with those six calls is the whole of the
-        // change, and this module's own test is what will notice it has not
-        // happened.
+        // THE LIVE VALUES (95-100). What the caller handed in, or the
+        // placeholder if it handed in nothing -- which is what the lexer gets
+        // and what makes "\threads" still round-trip to "<threads>" in a
+        // token's text. satellite_value/render.cpp is the caller that fills the
+        // table from system_facts/; the header says why the calls are there and
+        // not here.
         if (c >= SAT_LINUX_HOME && c <= SAT_CWD) {
-            out += placeholder_for(c);
+            const std::string &value = live[size_t(c - SAT_LINUX_HOME)];
+            out += value.empty() ? placeholder_for(c) : value;
             continue;
         }
         if (c >= SAT_RAW_BASE && c < SAT_RAW_BASE + 256) {

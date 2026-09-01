@@ -200,6 +200,27 @@ Note note(Span at, Args &&...arguments)
 struct Source {
     std::string_view path;
     std::string_view text;
+
+    // THE RUN'S NUMBERING, FOR THE ONE FIELD THAT NEEDS IT, AND M9 IS THE
+    // MILESTONE THAT FOUND OUT. FrameRef below is DESIGN §9's fourth field and
+    // has been carried since M5 with no producer; its first real producer is
+    // the evaluator's call stack, and the renderer could print every frame of a
+    // recursion as "a capsule this program declared" -- which is useless
+    // exactly when a stack trace is wanted, because every line reads the same.
+    //
+    // A USER'S CAPSULE HAS A NUMBER AND NOT A SPELLING ANYWHERE ELSE. A
+    // language path can be named from constexpr data (words::path_text), which
+    // is why the other half of that branch needs nothing; a name the parser
+    // interned lives only in the `words::Words` that interned it, and
+    // words_runtime.hpp is emphatic that it is "valid inside one run only".
+    // So the renderer is handed the run alongside the file, which is what a
+    // diagnostic is rendered against anyway.
+    //
+    // NULL IS A REAL CASE AND NOT A DEFENCE. tests/reporter_test renders
+    // synthetic diagnostics with no run behind them at all, and every producer
+    // before M9 has no capsule to name. The renderer falls back to the sentence
+    // it used to always print.
+    const words::Words *words = nullptr;
 };
 
 // The one place a diagnostic becomes characters. DESIGN §9.

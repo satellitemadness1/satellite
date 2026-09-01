@@ -70,19 +70,22 @@ std::string where(const Held &now, Origin origin, unsigned line)
     return out;
 }
 
-// What reads a dial, for the three that nothing reads yet.
+// What reads a dial, for the one that nothing reads yet.
 //
 // NAMED PER DIAL RATHER THAN "not read yet", because the useful sentence is
-// which milestone owns the decision. PLAN M6 assigns all three: division_digits
-// is M8's by §6.1, max_depth is M9's by DESIGN §7.5, float_digits is M15's, and
-// DESIGN §13 has already redefined that last one from "the dial" into the
-// default length of a float's right half. A reader who sets one of these today
-// is entitled to know that satl will store it and nothing will look at it.
+// what will look at the number. PLAN M6 wrote this list when three of the four
+// had no reader at all; two of the three have landed since -- M8's division and
+// M9's control stack -- and each row changed from a milestone number into the
+// thing that actually reads it, which is what the other two rows always said.
+// A reader who sets `float_digits` today is still entitled to know that satl
+// will store it and nothing will look at it, and DESIGN §13 has already
+// redefined that one from "the dial" into the default length of a float's
+// right half.
 std::string reader_of(DialId id)
 {
     switch (id) {
-    case DialId::DivisionDigits: return "stored; M8 reads it";
-    case DialId::MaxDepth:       return "stored; M9 reads it";
+    case DialId::DivisionDigits: return "a division that does not end reads it";
+    case DialId::MaxDepth:       return "the evaluator's control stack reads it";
     case DialId::MinFreeMb:      return "the watchdog reads it";
     case DialId::FloatDigits:    return "stored; M15 reads it";
     case DialId::Count_:         break;
@@ -129,9 +132,27 @@ std::string limits_text()
     for (size_t i = 0; i < kDialCount; i++) {
         const DialId id = static_cast<DialId>(i);
         const Dial &dial = now.dial(id);
+
+        // A SIZE IS PRINTED THE WAY IT WAS WRITTEN, WHICH IS M9's ADDITION.
+        // `max_depth` is the only dial that is a quantity of memory rather than
+        // a count, and config_internal.hpp's kDialKinds is what says so -- a
+        // row reading `67108864` where the file said `64MiB` is this command
+        // failing its own rule, which M6 states as: every value satl holds to
+        // says where it came from, in the terms it came in.
+        const bool a_size = dial.set && kDialKinds[i] == Kind::Size;
+
         row(out, std::string(dial_name(id)),
-            dial.set ? std::to_string(dial.value) : std::string("unset"),
+            dial.set ? (a_size ? human_bytes(dial.value)
+                               : std::to_string(dial.value))
+                     : std::string("unset"),
             dial.set ? where(now, dial.origin, dial.line) : reader_of(id));
+
+        // THE EXACT COUNT ON ITS OWN LINE, which is what MEMORY_MAX does eight
+        // rows up and for §4.5.4's reason: the rounded form is the readable
+        // half of a pair and never the whole answer.
+        if (a_size)
+            out += "                    " + std::to_string(dial.value) +
+                   " bytes exactly\n";
     }
 
     out += "\n";

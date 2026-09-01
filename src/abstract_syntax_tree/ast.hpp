@@ -266,4 +266,48 @@ const char *kind_name(NodeKind kind);
 // check. tests/parser_test/expressions.cpp is what keeps them equal.
 int precedence_of(std::string_view op);
 
+// WHICH binary operator this is, and DESIGN §6.6's table answers both questions
+// from one set of rows.
+//
+// A THIRD READER ARRIVED AT M9 AND IT WANTS THE OTHER HALF OF THE ROW. The
+// table above this declaration in ast.cpp has had two readers since M4 -- the
+// parser climbs the precedence and the printer compares it to decide a bracket
+// -- and both read the NUMBER. An evaluator reads the same eleven rows for the
+// IDENTITY: which arithmetic to do. The note above says why the table is here
+// rather than in the parser, and it is the same argument: "a second copy in the
+// printer is a copy that can disagree, and the way it would show up is a
+// program that changes meaning when it is round-tripped." A second copy in the
+// evaluator is worse, because the way THAT shows up is a program that changes
+// meaning when it is RUN.
+//
+// SO THE ENUM IS A COLUMN OF THE SAME TABLE and not a switch over strings
+// somewhere else. ast.cpp asserts that the table has exactly one row per
+// enumerator, which is what stops an operator being added to DESIGN §6.6 and
+// reaching the parser without reaching the evaluator.
+enum class BinaryOp : uint8_t {
+    Equal, NotEqual,
+    Less, Greater, LessEqual, GreaterEqual,
+    Add, Subtract,
+    Multiply, Divide, Modulo,
+    NotAnOperator,
+};
+
+// DESIGN §6.6: "Unary `-` and unary `!` bind tighter than all of them." Two,
+// and the minus is not a choice -- §5.6 refuses to fold a sign into a Number so
+// that `a-1` stays a subtraction, which makes unary minus an expression rule by
+// construction.
+enum class UnaryOp : uint8_t {
+    Negate,
+    Not,
+    NotAnOperator,
+};
+
+BinaryOp binary_op_of(std::string_view op);
+UnaryOp unary_op_of(std::string_view op);
+
+// The operator as it is written, which is what a diagnostic quotes. The inverse
+// of the two functions above, over the same table.
+std::string_view text_of(BinaryOp op);
+std::string_view text_of(UnaryOp op);
+
 } // namespace satellite

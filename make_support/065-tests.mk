@@ -329,6 +329,75 @@ $(TESTS)/resolve_test/resolve_test: $(resolve_test_SRCS) $(resolve_test_HDRS) \
 	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/resolve_test -o $@ \
 	    $(resolve_test_SRCS) $(RESOLVE_TEST_SRCS)
 
+# eval_test LINKS THE MOST OF ANY SUITE, AND ONE MODULE IT DELIBERATELY DOES
+# NOT. An evaluator runs over a compiled tree, which needs the parser, which
+# needs the lexer and the alphabet, which needs resolve for the slots and the
+# numbers -- so the list below is resolve_test's plus satellite_value/,
+# satellite_number/ and evaluator/. That is a property of the SUBJECT, the same
+# way words_test linking nothing is a property of the registry.
+#
+# WHAT IS MISSING IS machine_limits, AND IT IS THE MOST IMPORTANT LINE IN THIS
+# RULE. MILESTONES/M8.5.md §4.1 is the receipt: a 20,000-deep resolve fixture
+# passed for a day against a raised RLIMIT_STACK it had never been given,
+# because resolve_test does not link the module that raises one, and the note on
+# the fixture claimed otherwise. tests/eval_test/depth.cpp recurses 1,000,000
+# frames deep and that number is worth nothing unless the C++ stack is the 8 MiB
+# a login shell hands out. evaluator/machine.hpp's Policy is what makes the
+# omission possible: the ceiling and the division digits are HANDED IN, so the
+# evaluator never reads machine_limits and a test can pass its own.
+#
+# IT ALSO LINKS NO satellite_cache, AND THAT IS THE OTHER HALF OF THE SAME CARE.
+# programs/evaluate_commands.cpp explains why a command that reports at RUN time
+# parses the source rather than reading a `.satc`: a cached tree's spans index
+# the cache, where line 11 of hello_world.satl is line 10. A test that fed the
+# evaluator a cached tree would be checking carets against the wrong file.
+EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
+                 $(EVAL)/compile.cpp \
+                 $(EVAL)/compile_expressions.cpp \
+                 $(EVAL)/compile_statements.cpp \
+                 $(EVAL)/machine.cpp \
+                 $(EVAL)/operations.cpp \
+                 $(EVAL)/operations_control.cpp \
+                 $(EVAL)/dispatch.cpp \
+                 $(EVAL)/dump.cpp \
+                 $(VALUE)/value.cpp \
+                 $(VALUE)/render.cpp \
+                 $(NUMBER)/limbs.cpp \
+                 $(NUMBER)/number_core.cpp \
+                 $(NUMBER)/number_query.cpp \
+                 $(NUMBER)/number_arith.cpp \
+                 $(NUMBER)/render.cpp \
+                 $(NUMBER)/random.cpp \
+                 $(SYSTEM)/host_facts.cpp \
+                 $(SYSTEM)/memory_facts.cpp \
+                 $(SYSTEM)/user_facts.cpp \
+                 $(RESOLVE)/resolve.cpp \
+                 $(RESOLVE)/scopes.cpp \
+                 $(RESOLVE)/walk.cpp \
+                 $(RESOLVE)/names.cpp \
+                 $(RESOLVE)/numbers.cpp \
+                 $(ERRORS)/report.cpp \
+                 $(ERRORS)/suggest.cpp \
+                 $(CACHE)/paths.cpp \
+                 $(PARSER)/parser.cpp \
+                 $(PARSER)/parser_declarations.cpp \
+                 $(PARSER)/parser_statements.cpp \
+                 $(PARSER)/parser_control_flow.cpp \
+                 $(PARSER)/parser_expressions.cpp \
+                 $(PARSER)/parser_types.cpp \
+                 $(TREE)/ast.cpp \
+                 $(LEXER)/lexer.cpp \
+                 $(STRING)/satellite_string.cpp
+
+# AND ON errors.def, which is the seventh place this argument is made:
+# tests/eval_test asserts one program per row of the S07xx block this milestone
+# populated, so editing a sentence must re-run the test that raises it.
+$(TESTS)/eval_test/eval_test: $(eval_test_SRCS) $(eval_test_HDRS) \
+                              $(EVAL_TEST_SRCS) $(ERRORS)/errors.def \
+                              $(WORDS)/words.def $(HDRS) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/eval_test -o $@ \
+	    $(eval_test_SRCS) $(EVAL_TEST_SRCS)
+
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
 #
@@ -345,6 +414,7 @@ test: $(TESTBINS)
 	./$(TESTS)/limits_test/limits_test example
 	./$(TESTS)/resolve_test/resolve_test example
 	./$(TESTS)/number_test/number_test
+	./$(TESTS)/eval_test/eval_test example
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
@@ -419,6 +489,6 @@ $(TESTS)/number_test/number_test: $(number_test_SRCS) $(number_test_HDRS) \
 number_test: $(TESTS)/number_test/number_test
 
 TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
-              limits_test resolve_test number_test
+              limits_test resolve_test number_test eval_test
 
 .PHONY: test $(TESTALIASES)

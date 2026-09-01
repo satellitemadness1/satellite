@@ -86,11 +86,20 @@ inline constexpr size_t kSettingCount = sizeof kSettings / sizeof kSettings[0];
 // number of megabytes, and unset means the machine's free memory is not watched
 // at all.
 //
-// `max_depth`'s ROW IS UNCHECKED AND ITS MEANING IS DECIDED, WHICH IS NOT A
-// CONTRADICTION. Since 2026-09-01 it is a memory ceiling on the control stack,
-// in bytes, unset meaning the machine -- but M9 builds the stack that reads it,
-// so the row stays `{false, 0, 0}` until there is a consumer to bound the value
-// FOR. config.cpp's Dial arm carries the argument.
+// `max_depth`'s ROW IS UNCHECKED, ITS MEANING IS DECIDED, AND IT HAS A READER --
+// WHICH IS THE STATE THIS PARAGRAPH SAID WAS A CONTRADICTION AND IS NOT.
+// Since 2026-09-01 it is a memory ceiling on the control stack, in bytes; M9
+// built the stack that reads it and limits::max_depth_bytes() is the reader.
+// The row stayed `{false, 0, 0}` and the REASON changed under it.
+//
+// It used to be "no consumer yet", which is `float_digits`'s reason. It is now
+// `min_free_mb`'s, one row down: a meaning with no bound ever claimed for it.
+// PLAN §8's M9 entry expected the other outcome -- "THE RANGE AND THE READER
+// LAND TOGETHER, AT M9" -- and the range turned out not to exist. Any number of
+// bytes is a number of bytes: 0 refuses the first push and says so with a caret,
+// and a number wider than any machine means the machine. Neither is a value satl
+// cannot act on, which is the only thing S0807 and S0808 are for. limits.hpp
+// carries it beside the meaning.
 //
 // What changed on 2026-08-31 is that `division_digits` HAS a meaning -- M8 gave
 // it one -- so the two things a count of digits cannot be are now known, and
@@ -108,9 +117,39 @@ struct DialRange {
     unsigned long long most;
 };
 
+// HOW A DIAL'S VALUE IS WRITTEN, in DialId order -- and only one of the four is
+// not a bare number.
+//
+// A SECOND TABLE AND NOT A COLUMN OF THE ONE BELOW, because the two answer
+// different questions about a value: this one is its SYNTAX and kDialRanges is
+// its RANGE. `division_digits` has a range and no syntax of its own;
+// `max_depth` is the other way round.
+//
+// `max_depth` IS Kind::Size BECAUSE IT IS BYTES, AND M9 FOUND THAT OUT BY
+// TYPING IT. Every dial was Kind::Dial -- a bare whole number -- while none of
+// them meant a quantity of memory. The 2026-09-01 reading makes `max_depth` a
+// memory ceiling, which puts it beside MEMORY_MAX rather than beside a count of
+// digits, and `max_depth=64MiB` was answered with "is a whole number and
+// `64MiB` is not one" until this table existed. PLAN §4.5.4's argument for
+// units is the same one here as there: 61.9 GiB and 64.9 GB are the same
+// memory, so a bare number is an ambiguity and a unit is what removes it.
+//
+// KIND IS NOT WHAT DECIDES WHETHER A FACT MAY BE WRITTEN. config.cpp used to
+// test `kind != Kind::Dial` to mean "this is a machine setting, so
+// `arguments.memory.total` is a legal value"; that test is `key <
+// kSettingCount` now, because the two claims came apart the moment a dial took
+// a size. DESIGN §7.7 pairs three settings with three paths and a fourth
+// pairing is not something this table gets to invent.
+inline constexpr Kind kDialKinds[kDialCount] = {
+    Kind::Dial,   // division_digits -- a count of digits
+    Kind::Size,   // max_depth -- BYTES, so `64MiB`
+    Kind::Dial,   // min_free_mb -- a count of megabytes, the unit is in the name
+    Kind::Dial,   // float_digits -- a count of digits
+};
+
 inline constexpr DialRange kDialRanges[kDialCount] = {
     {true, kDivisionDigitsLeast, kDivisionDigitsMost},   // division_digits, M8
-    {false, 0, 0},                                       // max_depth, M9 -- bytes
+    {false, 0, 0},                                       // max_depth -- bytes, no bound
     {false, 0, 0},                                       // min_free_mb
     {false, 0, 0},                                       // float_digits, M15
 };

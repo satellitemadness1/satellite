@@ -263,11 +263,19 @@ std::string render(const Diagnostic &problem, const Source &source)
     // says why it is drawn anyway and tests/reporter_test is what keeps this
     // arm working until M9 has a frame to put in it.
     for (const FrameRef &frame : problem.frames) {
-        out += indent + "in " +
-               (words::is_language_word(frame.capsule)
-                    ? std::string(words::path_text(
-                          static_cast<words::NodeId>(frame.capsule)))
-                    : std::string("a capsule this program declared"));
+        // THE RUN'S NUMBERING NAMES A USER'S CAPSULE, AND WITHOUT IT EVERY
+        // FRAME OF A RECURSION READS THE SAME. See Source::words in report.hpp
+        // -- M9 is the first milestone to produce a FrameRef and the first to
+        // need this.
+        std::string named = "a capsule this program declared";
+        if (words::is_language_word(frame.capsule))
+            named = std::string(
+                words::path_text(static_cast<words::NodeId>(frame.capsule)));
+        else if (source.words != nullptr &&
+                 !source.words->name_of(frame.capsule).empty())
+            named = std::string(source.words->name_of(frame.capsule));
+
+        out += indent + "in " + named;
         if (frame.at.somewhere())
             out += ", called at line " + digits_of(frame.at.line);
         out += "\n";

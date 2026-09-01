@@ -14,6 +14,7 @@
 #include "error_reporter/codes.hpp"
 #include "error_reporter/dump.hpp"
 
+#include <array>
 #include <string>
 
 namespace reporter_test {
@@ -28,6 +29,16 @@ unsigned block_of(Code code)
 {
     return static_cast<unsigned>(code) / 100;
 }
+
+// The blocks errors.def's header has written down and no row has taken yet.
+//
+// EMPTY AS OF M9, and the loop below says why it is kept that way rather than
+// deleted. S05xx, S06xx and S07xx were each in here until the milestone they
+// were held for arrived.
+// A std::array AND NOT A C ARRAY, because `unsigned kReservedBlocks[0]` is
+// ill-formed -- there is no zero-length array in C++ and the empty case is
+// exactly the one this list is in.
+constexpr std::array<unsigned, 0> kReservedBlocks = {};
 
 } // namespace
 
@@ -51,8 +62,11 @@ void section_codes()
     // codes.hpp passes over a shorter list. MILESTONES/M8.md §3.8 and §6 are
     // where the second one is said out loud, which is what this message asks
     // for.
-    check(kCodeCount == 61,
-          "errors.def has 61 rows -- if that changed on purpose, change it here "
+    // AND IT WENT UP BY EIGHT AT M9, which is the other direction and is the
+    // easy one: an added row cannot hide, because the site that raises it has
+    // to name the code. The number is here so that a row REMOVED still cannot.
+    check(kCodeCount == 69,
+          "errors.def has 69 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 
@@ -65,6 +79,7 @@ void section_codes()
     check(block_of(Code::FILE_UNREADABLE) == 4, "the file satl was given is S04xx");
     check(block_of(Code::RESOLVE_NO_SUCH_NAME) == 5, "resolve is S05xx");
     check(block_of(Code::NUMBER_DIVIDE_BY_ZERO) == 6, "numbers are S06xx");
+    check(block_of(Code::EVAL_TOO_DEEP) == 7, "the evaluator is S07xx");
     check(block_of(Code::CONFIG_NOT_A_SETTING) == 8, "the machine limits are S08xx");
 
     // THE RESERVED BLOCK IS EMPTY, and this is the check that makes reserving
@@ -88,15 +103,24 @@ void section_codes()
     // first time this suite has been able to record it happening rather than
     // being promised.
     //
-    // S06xx CAME OUT THE SAME WAY AT M8, WHICH MAKES IT TWICE. Two blocks have
-    // now been claimed by the milestone they were reserved for, out of build
-    // order both times, and this loop has shrunk by one number on each -- the
-    // mechanism is no longer being recorded as a thing that happened once.
-    // S07xx is the last one held, and it is the evaluator's.
+    // S06xx CAME OUT THE SAME WAY AT M8, WHICH MADE IT TWICE, AND S07xx CAME
+    // OUT AT M9, WHICH EMPTIES THIS LOOP. Three blocks were claimed by the
+    // milestone each was reserved for, out of build order every time, and this
+    // check shrank by one number on each -- so the mechanism is recorded three
+    // times over and there is nothing left for it to hold.
+    //
+    // THE LOOP IS KEPT WITH AN EMPTY LIST RATHER THAN DELETED, and that is not
+    // sentiment. errors.def's header says a milestone "takes a block instead of
+    // taking the next free number and interleaving itself with everybody else",
+    // and the next milestone to add codes -- M10's console, M11's scalars --
+    // reserves S09xx or S10xx in that header and adds it here in one edit. A
+    // deleted check is one somebody has to think of writing again; an empty one
+    // is a line with a hole in it.
     for (const Code code : kCodes)
-        check(block_of(code) != 7,
-              "no code is in a block reserved for a later milestone -- S07xx is "
-              "the evaluator's; take your own block, do not append");
+        for (const unsigned reserved : kReservedBlocks)
+            check(block_of(code) != reserved,
+                  "no code is in a block reserved for a later milestone -- "
+                  "take your own block, do not append");
 
     // A code out and back again. `satl --errors S0231` is the only reason
     // code_text and code_of both exist, and a round trip is the whole contract

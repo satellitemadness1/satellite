@@ -899,9 +899,22 @@ instance pointing at the second — and a list built by that idiom would read ba
 WITHDRAWN.** This section said *"recursion is bounded, and the bound is
 derived"*, and the rule is now the opposite: **the language has no depth limit,
 and no walker in it may use the C++ stack for depth the user's program
-controls.** What the tree does today does not meet that; §7.5.1 says exactly
-what it does instead, because a section that claimed the property before the code
-had it would be worse than one that admits the gap.
+controls.** §7.5.1 was written the same day to say that the tree did not meet it.
+
+**THE TREE MEETS IT AS OF 2026-09-01.** M8.5 rewrote the four static passes and
+M9 built the evaluator onto the same shape, so the rule holds end to end: a
+program 1,000,000 capsule frames deep answers at the 8 MiB a login shell hands
+out, and a runaway one is refused **in words about recursion**, with a caret, a
+call stack and exit 4. §7.5.1 is kept as the record of the gap and of what
+measuring it cost.
+
+**A WALK OVER USER-CONTROLLED DEPTH KEEPS ITS OWN STACK FROM ITS FIRST COMMIT,
+AND THAT IS THE FORM THIS RULE TAKES FOR EVERYTHING STILL TO BE BUILT.** M9 found
+it by building one: the closure COMPILER is a walk too, it did not exist when
+M8.5 rewrote the others, and there is no exception here for a pass that runs
+once. A program that parses at 100,000 deep and then dies being compiled would
+have moved the crash rather than removed it. The same applies to M16's search
+walk and to every reader of a tree after it.
 
 The measurements below are kept **as evidence and not as a specification.** They
 are the reason a fixed guess is the wrong shape, and they were paid for once.
@@ -944,11 +957,17 @@ buys is a sentence — a control stack that has its own ceiling knows it is a
 control stack, so a runaway recursion can be told about recursion instead of
 about memory. This is the same distinction §8.1's `division_digits` draws: a
 bound on what a configuration file may ask for is not a bound on the language.
-PLAN §8's M9 entry is where it gets built.
+PLAN §8's M9 entry is where it gets built, **and M9 built it on 2026-09-01**:
+`limits::max_depth_bytes()` is the reader, the check happens when the control
+stack GROWS rather than on every push, and unset reads `MEMORY_MAX` — which is
+the whole machine by default and is the smaller, correct number where somebody
+has said how much memory satl may take. **It has no range**, because any number
+of bytes is a number of bytes; `MILESTONES/M9.md` §4.5 is why the one PLAN
+expected does not exist.
 
 The numbers live beside the code that uses them, never only here.
 
-#### 7.5.1 What the tree does today — CLOSED AT M8.5, and kept as the record of the gap
+#### 7.5.1 What the tree does today — CLOSED AT M8.5 AND M9, and kept as the record of the gap
 
 **EVERY WALKER IN THE TREE NOW KEEPS ITS OWN STACK, AS OF 2026-09-01.** M8.5
 rewrote the parser, the resolver, the printer and the `.satc` writer onto stacks
@@ -959,6 +978,17 @@ used to end `--unparse` with signal 11. `MILESTONES/M8.5.md` is the review and
 passes and is not yet met by an evaluator, because there is not one**; M9 builds
 it onto the same shape, which is what `PLAN.md` §2.6 puts this milestone ahead of
 it for.
+
+**AND M9 BUILT IT, ON 2026-09-01.** The evaluator compiles onto an explicit
+control stack — four heap vectors carrying what a recursive one would have put in
+C++ frames — so `eval(node)` never calls `eval(child)`. Measured at the same
+8 MiB: a capsule 1,000,000 frames deep answers, where the same closure tree walked
+with C++ recursion segfaults between 15,000 and 20,000, which is the band the
+printers were dying in above. **What the rule costs is measured rather than
+quoted**: 1.3× on a program shaped like a program and 3.5× on the tightest
+arithmetic loop that can be written, against a recursive evaluator over the same
+arena. `MILESTONES/M9.md` §6 has the method, and §1.1's tie-breaker is why it is
+spent — pay in performance rather than in the user's attention.
 
 *The rest of this section is the measurement that made the case, kept because a
 specification that only states its rule cannot show why the rule is worth what it
@@ -1268,6 +1298,25 @@ two answers.
 Order matters. Fixing dispatch while leaving this alone removes the large win and
 keeps the small one, and then reads as evidence that the dispatch work was oversold.
 
+**BUILT AT M9, AND THE FORTY BYTES IS AN ASSERT.** `sizeof(Number)` is 32 and a
+variant's discriminator is 8, so a `Value` is 40 with nothing to spare — PLAN
+§6.1 called that "the one number that could make this port not fit" and measured
+it before a line of M8 was written. `satellite_value/value.hpp` carries the
+`static_assert`, and the variant is **append-only**: every arm a later milestone
+adds re-runs it.
+
+**FOUR ARMS AT M9, WHICH IS THE ONES A PROGRAM CAN PRODUCE.** Nothing, a bool, a
+number and a string. The table above has thirteen rows and an arm with no producer
+is a case every later reader has to rule out, so the rest arrive with the
+milestone that can build one.
+
+**AND A FLOAT CANNOT BE ONE OF THEM, WHICH M15 DOES NOT GET TO DECIDE.** §8.6
+makes a float a bool and **two** `satellite_number`s — 72 bytes laid flat, against
+a budget the number alone fills. So a float arrives behind a handle the way a list
+and a map do, and that is a consequence of §8.1's exactness rather than a choice.
+It is said here because the place it would otherwise be found is a failing
+`static_assert` with no explanation attached.
+
 ### 8.3 Strings
 
 `SatString` over a 16-bit code table, which *is* the language's alphabet (§5). A
@@ -1283,6 +1332,14 @@ preference about extensibility — it is §6.5's deadlock one level down.
 `x00FF` and `b1010` are real types with literals, and **the width is part of the
 value**: `x0009` is not `x9`. That is the whole reason they are not number literals
 in another base. `hexadecimal` is the language's one alias, for `hex`.
+
+**THEY HAVE A LEXER AND NO MILESTONE, WHICH M9 FOUND AND IS RECORDED HERE RATHER
+THAN LEFT TO AN AUDIT.** M3 lexes both, this section specifies both, and PLAN §8
+gives `satellite.variable.binary` `1 6 5` and `.hex` `1 6 11` to the lexer's
+milestone and to no evaluator's — M11 is scalars and names bool, number and
+string; M16 is containers. Neither claims these two. `satl --compile` on a program
+holding a hex literal says so in those words, which is the most useful form the
+answer can take until somebody assigns it.
 
 ### 8.6 Floats — two numbers, and the four operations
 
@@ -1746,6 +1803,17 @@ not.
 So §2 stays shut and the first entry below stands. What QUAD did move is
 `satellite.variable.float`, which is in §13 rather than here, and which is on the
 critical path.
+
+**AND ONE ENTRY THAT WAS NEVER ON THIS LIST AND SHOULD HAVE BEEN, RECORDED AS
+TAKEN RATHER THAN AS DEFERRED.** PLAN §2.5 deferred the **explicit control stack**
+from the day the plan was written until 2026-08-31, and this list never carried
+it — which is the failure the opening sentence names, one direction round: a thing
+missing from the language was not on it. It is not missing any more. M8.5 built it
+for the four static passes and M9 for the evaluator, so §7.5's rule is met end to
+end. It is written here because a deferral list that only ever grows cannot be
+read against the language, and because the argument that released it is worth
+finding from this end: a bound is not a cheaper version of a stack, it is a
+different product.
 
 - **User-defined generics** — a bare name can be a value, which reopens §2.
   *(Still deferred, 2026-08-27.* The deferred-call form

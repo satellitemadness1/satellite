@@ -300,6 +300,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/dump_commands.cpp \
             $(PROGRAMS)/file_commands.cpp \
             $(PROGRAMS)/limits_command.cpp \
+            $(PROGRAMS)/evaluate_commands.cpp \
             $(PROGRAMS)/number_command.cpp \
             $(PROGRAMS)/resolve_command.cpp \
             $(ERRORS)/report.cpp \
@@ -335,6 +336,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SYSTEM)/memory_facts.cpp \
             $(SYSTEM)/host_facts.cpp \
             $(SYSTEM)/stack_facts.cpp \
+            $(SYSTEM)/user_facts.cpp \
             $(NUMBER)/limbs.cpp \
             $(NUMBER)/number_core.cpp \
             $(NUMBER)/number_query.cpp \
@@ -342,6 +344,17 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(NUMBER)/render.cpp \
             $(NUMBER)/random.cpp \
             $(STRING)/satellite_string.cpp \
+            $(VALUE)/value.cpp \
+            $(VALUE)/render.cpp \
+            $(EVAL)/evaluate.cpp \
+            $(EVAL)/compile.cpp \
+            $(EVAL)/compile_expressions.cpp \
+            $(EVAL)/compile_statements.cpp \
+            $(EVAL)/machine.cpp \
+            $(EVAL)/operations.cpp \
+            $(EVAL)/operations_control.cpp \
+            $(EVAL)/dispatch.cpp \
+            $(EVAL)/dump.cpp \
             $(TREE)/ast.cpp \
             $(TREE)/unparse.cpp \
             $(TREE)/unparse_declarations.cpp \
@@ -393,6 +406,7 @@ HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/dump_commands.hpp \
        $(PROGRAMS)/file_commands.hpp \
        $(PROGRAMS)/limits_command.hpp \
+       $(PROGRAMS)/evaluate_commands.hpp \
        $(PROGRAMS)/number_command.hpp \
        $(PROGRAMS)/resolve_command.hpp \
        $(PROGRAMS)/opening.hpp \
@@ -405,6 +419,14 @@ HDRS = $(SYSTEM)/version.hpp \
        $(NUMBER)/bignum_number.hpp \
        $(RANDOM)/random.hpp \
        $(STRING)/satellite_string.hpp \
+       $(VALUE)/value.hpp \
+       $(VALUE)/render.hpp \
+       $(EVAL)/closure.hpp \
+       $(EVAL)/machine.hpp \
+       $(EVAL)/dispatch.hpp \
+       $(EVAL)/evaluate.hpp \
+       $(EVAL)/evaluator_internal.hpp \
+       $(EVAL)/dump.hpp \
        $(WORDS)/words.def \
        $(WORDS)/words.hpp \
        $(WORDS)/words_nodes.hpp \

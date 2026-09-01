@@ -49,6 +49,7 @@ namespace {
 struct Operator {
     const char *text;
     int precedence;
+    BinaryOp op;
 };
 
 // THE ONE PLACE IN THE CODE THE OPERATOR SET LIVES -- DESIGN §6.6 is the
@@ -67,11 +68,36 @@ struct Operator {
 // the lexer hands a `&` over as a Punct, this table gives it 0, and it ends an
 // expression and is reported rather than guessed at.
 constexpr Operator kBinaryOperators[] = {
-    {"==", 1}, {"!=", 1},
-    {"<",  2}, {">",  2}, {"<=", 2}, {">=", 2},
-    {"+",  3}, {"-",  3},
-    {"*",  4}, {"/",  4}, {"%",  4},
+    {"==", 1, BinaryOp::Equal},        {"!=", 1, BinaryOp::NotEqual},
+    {"<",  2, BinaryOp::Less},         {">",  2, BinaryOp::Greater},
+    {"<=", 2, BinaryOp::LessEqual},    {">=", 2, BinaryOp::GreaterEqual},
+    {"+",  3, BinaryOp::Add},          {"-",  3, BinaryOp::Subtract},
+    {"*",  4, BinaryOp::Multiply},     {"/",  4, BinaryOp::Divide},
+    {"%",  4, BinaryOp::Modulo},
 };
+
+// ONE ROW PER ENUMERATOR, WHICH IS WHAT MAKES THE ENUM A COLUMN OF THIS TABLE
+// RATHER THAN A SECOND LIST OF THE SAME OPERATORS. ast.hpp's note is the
+// argument; this is the half a build can check. An operator added to DESIGN
+// §6.6 and to the enum but not to the rows fails here, at compile time, rather
+// than at the first program that writes it.
+static_assert(sizeof(kBinaryOperators) / sizeof(kBinaryOperators[0]) ==
+                  static_cast<size_t>(BinaryOp::NotAnOperator),
+              "ast.cpp: DESIGN §6.6 has one row per BinaryOp. NotAnOperator is "
+              "the count because it is last and is not one of them");
+
+constexpr struct {
+    std::string_view text;
+    UnaryOp op;
+} kUnaryOperators[] = {
+    {"-", UnaryOp::Negate},
+    {"!", UnaryOp::Not},
+};
+
+static_assert(sizeof(kUnaryOperators) / sizeof(kUnaryOperators[0]) ==
+                  static_cast<size_t>(UnaryOp::NotAnOperator),
+              "ast.cpp: DESIGN §6.6 has two unary operators and UnaryOp has two "
+              "before NotAnOperator");
 
 } // namespace
 
@@ -81,6 +107,38 @@ int precedence_of(std::string_view op)
         if (op == row.text)
             return row.precedence;
     return 0;
+}
+
+BinaryOp binary_op_of(std::string_view op)
+{
+    for (const Operator &row : kBinaryOperators)
+        if (op == row.text)
+            return row.op;
+    return BinaryOp::NotAnOperator;
+}
+
+UnaryOp unary_op_of(std::string_view op)
+{
+    for (const auto &row : kUnaryOperators)
+        if (op == row.text)
+            return row.op;
+    return UnaryOp::NotAnOperator;
+}
+
+std::string_view text_of(BinaryOp op)
+{
+    for (const Operator &row : kBinaryOperators)
+        if (row.op == op)
+            return row.text;
+    return "?";
+}
+
+std::string_view text_of(UnaryOp op)
+{
+    for (const auto &row : kUnaryOperators)
+        if (row.op == op)
+            return row.text;
+    return "?";
 }
 
 const char *kind_name(NodeKind kind)

@@ -1,0 +1,55 @@
+#pragma once
+
+// The evaluator -- PLAN M9, and the one door over this module.
+//
+// TWO STEPS AND THEY ARE DELIBERATELY SEPARATE. compile() turns a resolved tree
+// into a closure tree and can fail with diagnostics; a Machine runs one. PLAN
+// §2.3 says the compile is "the same pass as resolve, measured in microseconds"
+// and that "from outside, `satl file.satl` is as interpreted as it ever was" --
+// so the split is not a compile step a user waits for, it is the seam that lets
+// `satl --compile` print a program without running it and lets one compiled
+// program be run twice.
+//
+// WHAT THIS MILESTONE DOES NOT DO IS RUN A PROGRAM, and the boundary is PLAN
+// §8's. M10 is "the milestone at which satellite executes anything at all" --
+// the console with its printer thread, `satellite.main` and `satellite.return`
+// -- and this one builds the machinery all of that dispatches through. So the
+// consumers here are `satl --compile`, which prints the closure tree the way
+// `--resolve` prints frames, and `satl --call`, which runs one capsule by name
+// and prints the value it answered. The second is `satl --number`'s shape one
+// milestone on: a way to see the thing that was built, with no console behind
+// it and no `satellite.main` in front of it.
+
+#include "abstract_syntax_tree/ast.hpp"
+#include "error_reporter/report.hpp"
+#include "evaluator/closure.hpp"
+#include "evaluator/machine.hpp"
+#include "name_resolver/resolve.hpp"
+#include "satellite_words/words.hpp"
+
+#include <vector>
+
+namespace satellite::eval {
+
+// A compiled program and everything the compile could not do.
+struct Program {
+    Compiled closures;
+    std::vector<errors::Diagnostic> problems;
+
+    bool ok() const { return !errors::any_error(problems); }
+
+    // Which compiled capsule this path is, or -1. `satl --call` needs it and so
+    // does anything that runs a named capsule.
+    int find(words::PathId path) const;
+};
+
+// Compile a resolved program. Never throws, and reports every problem it finds
+// rather than the first -- the rule the lexer, the parser and resolve keep.
+//
+// NOTHING IS COMPILED FROM A TREE THAT DID NOT RESOLVE, which is the caller's
+// job and is the same rule resolve_command.cpp states for a tree that did not
+// parse: half a program's names were never bound, so every call in it would be
+// refused and the carets would bury the one thing that is actually wrong.
+Program compile(const Ast &ast, const resolve::Resolved &resolved, words::Words &words);
+
+} // namespace satellite::eval

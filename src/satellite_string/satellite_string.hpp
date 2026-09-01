@@ -15,16 +15,26 @@
 // paragraph for the half that did not, and PLAN M3 for the same note from the
 // milestone's side.
 //
-// CODES 95-100 ARE LIVE VALUES AND THIS PORT STUBS THEM. They resolve at decode
-// time to the user's home directory, their name, the hardware thread count,
-// total and used memory, and the working directory -- readers that live in
-// system_facts/ and that PLAN M6 ports. Until then decode() emits "<threads>"
-// and its five siblings. THE LEXER IS UNAFFECTED, and that is why the stub is
-// safe here rather than merely convenient: encode_raw() maps every source byte
-// to a letter, a digit, a punctuation code or the raw area, so no code in
-// 95..100 can occur in a program's text at all. They are reachable only through
-// encode()'s backslash names, inside a string literal body, which is a VALUE
-// and does not exist until M9 builds one.
+// CODES 95-100 ARE LIVE VALUES AND M9 ANSWERED THEM, FROM ONE MODULE UP. They
+// resolve at decode time to the user's home directory, their name, the hardware
+// thread count, total and used memory, and the working directory -- readers
+// that live in system_facts/. This port stubbed all six, and what unstubbed
+// them is the second decode() below: the caller hands in a `Live` table, and
+// satellite_value/render.cpp is the caller that fills it from the machine.
+//
+// THE READERS ARE NOT CALLED HERE, AND THE REASON IS THE LEXER. It calls
+// decode() on the text of every token, a string literal's body included, and
+// `Token::text` is what `--unparse` prints back -- so a live decode in this
+// module would write this machine's thread count into the source of any program
+// containing "\threads". The one-argument decode() below is therefore the
+// SAME function it always was, and nothing about the lexer changed at M9.
+//
+// The stub was safe here for a stronger reason than that while it lasted, and
+// it is still why nothing in the lexer can reach a live code: encode_raw() maps
+// every source byte to a letter, a digit, a punctuation code or the raw area,
+// so no code in 95..100 can occur in a program's text at all. They are
+// reachable only through encode()'s backslash names, inside a string literal
+// body, which is a VALUE and did not exist until M9 built one.
 //
 // 16 BITS, NOT 32. The width is a property of the DATA, not of the code table:
 // the table needs 101 codes and the raw area needs 256, so 8 bits (357 > 256)
@@ -48,6 +58,8 @@
 // Codes not yet assigned by the language (space, ...) round-trip through a raw
 // area at SAT_RAW_BASE + byte until the table grows.
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -119,10 +131,42 @@ SatString encode(const std::string &text);
 // a different width after a chdir.
 SatString encode_raw(const std::string &text);
 
+// THE SIX LIVE VALUES, IN CODE ORDER 95..100 -- home, username, threads,
+// mem_total_mb, mem_used_mb, cwd. An entry left empty decodes to its
+// placeholder, which is what a caller with no machine to ask gets.
+//
+// A TABLE THE CALLER FILLS RATHER THAN SIX CALLS THIS MODULE MAKES, and PLAN
+// §6.1 predicted the other shape: "finishing it is replacing six lines with six
+// calls". The calls are real and they are in satellite_value/render.cpp, one
+// module up. They cannot be here, for a reason that only became visible once
+// there was something to move: THE LEXER CALLS decode(), on the text of every
+// token including a string literal's body, and `Token::text` is what
+// `--unparse` prints back. A live decode inside this module would put this
+// machine's thread count into the source of any program that wrote
+// `"\threads"`, silently, and round-tripping would stop being a fixpoint.
+//
+// So the split is the one lexer.hpp already draws between a token's two halves:
+// `text` is what the file SAYS and gets the placeholder, `str` is what the
+// program MEANS and gets the machine. DESIGN §5's table calls these codes live,
+// and live means read when the value is used rather than when it is lexed.
+using Live = std::array<std::string, 6>;
+
+inline constexpr size_t kLiveCount = 6;
+
+static_assert(SAT_CWD - SAT_LINUX_HOME + 1 == kLiveCount,
+              "satellite_string.hpp: Live has one entry per live code, indexed "
+              "by code - SAT_LINUX_HOME. Adding a live code to the table above "
+              "without widening this array walks off the end of it");
+
 // Satellite codes -> displayable text.
 //
-// Codes 95-100 emit their placeholder until M9/M6; see the file-top comment
-// for why nothing in the lexer can reach one.
+// Codes 95-100 emit their placeholder; see the file-top comment for why
+// nothing in the lexer can reach one.
 std::string decode(const SatString &s);
+
+// The same walk, with the six live codes answered from `live`. One decoder and
+// not two -- an entry `live` leaves empty falls back to the placeholder, so the
+// two entry points cannot disagree about anything except the six.
+std::string decode(const SatString &s, const Live &live);
 
 } // namespace satellite
