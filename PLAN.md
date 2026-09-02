@@ -192,7 +192,10 @@ land without giving one. It lands **before resolve** because three later
 milestones read something it builds and none of them said so until 2026-08-28: M8's
 `Number` reads `division_digits`, M9 derives its recursion ceiling from
 `RLIMIT_STACK` and its `Str` needs three live machine facts at decode time, and
-M10's printer thread is the pool's first tenant.
+M10's printer thread is the pool's first tenant. *(The third reason is wrong and
+was wrong the day it was written — corrected 2026-09-02, §4.5.1. M6 still lands
+before resolve on the first two, which are the two that were checked against code
+rather than against a sentence.)*
 
 *(That milestone was called **M14** until 2026-08-30, and it is the reason the
 numbers were put back into build order that day: it had been the next thing to
@@ -723,6 +726,46 @@ threads — the console's printer thread (DESIGN §10.1), parse-time interning, 
 `satellite.variable.thread` at M23. One pool with three tenants amortises a cost
 that none of them could justify alone, and a program that never threads never pays.
 
+**NEITHER OF THE CONSOLE'S THREADS IS A TENANT, AND THE RULE THAT SAYS SO IS ONE
+LINE: THIS POOL TAKES WORK THAT FINISHES.** *(Corrected 2026-09-02, on the
+author's word — **the plan was always that the printer would create its own
+thread.** The sentence above is left standing because four other places in this
+document and one in LAYOUT.md were written from it, and a reader who met one of
+those needs to find the correction rather than a silence.)* `run_over(units,
+body)` is a range, a split and a join: it returns when the last chunk lands. **The
+console's two threads exist precisely because they do not finish.** The printer
+waits on a queue for the life of the run; DESIGN §10.1's reader *"blocks on
+stdin"*, and that one is not a mis-count but a deadlock — a worker sitting in
+`read()` never comes back for a chunk and `run_over()` waits for it forever. A
+thread that outlives every batch cannot be lent by something that counts what it
+has lent out: `wanted()` and `parked()` would go on counting it and `satl
+--limits` would go on reporting it, which is §4.5.2's whole job done wrong.
+
+**THE READER WAS NEVER AN OPEN QUESTION, AND DESIGN SETTLED IT FIRST.** §8's M14
+entry has said *"the dedicated thread blocks on stdin"* since it was written, and
+the invariant under both directions is §10.1's *"the program's own thread never
+blocks on the terminal."* So `satellite.console.typed()` `1 5 5` at M14 and the
+prompt at M22 inherit a decision rather than taking one. **The sentence corrected
+here cites `(DESIGN §10.1)` as its authority and DESIGN §10.1 is where the
+contradiction was**, which is the part worth keeping: this was not a fact nobody
+had established, it was a fact established in the document the claim pointed at.
+**The test to apply to the next candidate is not "does it want a thread" but
+"does the work end".**
+
+**So the pool has two named tenants and not three**, and neither has been built.
+The honest list is **parse-time interning**, which is real work this tree does on
+one thread today and which belongs to no milestone, and
+**`satellite.variable.thread` at M23**. `parallel_for` would be the third and it
+is in no numbering, no document and no milestone; §4.5.1.2 is the decision that
+rests on it and says so out loud. `satellite.include` of a second file is **M25**
+and is the first thing that collects the ~170 figure below rather than the ~2,650
+one, which is a different claim from being a tenant.
+
+**The one real question in this neighbourhood is M27's**, and it is downstream of
+the invariant rather than of the pool: *"what `receive` `1 20 5` blocks on, and on
+whose thread"* asks whether §10.1's rule generalises past the terminal to a
+socket. That one is open and is listed where it belongs.
+
 **Measured 2026-08-28, and the pool is not an optimisation — it is the thing that
 makes the request worth honouring at all.** M2 built the walk, so the crossover
 this section had been holding open since 2026-08-27 could finally be taken against
@@ -773,9 +816,12 @@ the run, so it pays the creation itself and crosses at ~2,650 like everything el
 this section already made from first principles and can now put a number on:
 *"one pool with three tenants amortises a cost that none of them could justify
 alone."* The tenants that collect the ~170 figure are the ones that are not first —
-the console's printer thread if it started earlier, `satellite.include` of another
-file, M22's prompt parsing repeatedly, and M23. **The lazy pool is right and the
-reason is amortisation across a run, not a cheaper parse.**
+`satellite.include` of another file at M25, M22's prompt parsing repeatedly, and
+M23. *(This list opened with "the console's printer thread if it started earlier"
+until 2026-09-02; see the correction above. Removing it takes the figure's
+collectors from four to three and moves the first of them from M10 to M25, which
+is fifteen milestones later and is the real cost of the correction.)* **The lazy
+pool is right and the reason is amortisation across a run, not a cheaper parse.**
 
 ### 4.5.1.1 Warming the pool at startup — measured, and it beats the lazy rule
 
@@ -1853,7 +1899,9 @@ recursion, and DESIGN §7.5 derives that ceiling from `RLIMIT_STACK` rather than
 fixing it — which is `stack_facts.cpp`'s `stack_limit_bytes()`; M9's `Str` needs
 `mem_total_mb()`, `mem_used_mb()` and `hardware_threads()` besides, because §6.1
 records that `satellite_string`'s codes 97, 98 and 99 are **live values resolved at
-decode time**. M10's printer thread is the pool's first tenant. That is the
+decode time**. ~~M10's printer thread is the pool's first tenant.~~ *(Struck
+2026-09-02 — §4.5.1. It was never a reason for anything: the two that are left are
+both real, and this milestone's ordering never rested on the third.)* That is the
 machine draft in `SCRATCH.md/MILESTONE_DRAFTS.md` turned inside out: it claimed
 these three files for a milestone after M16, and its own lens found every one of
 them consumed at M8 or M9. **The seam is between the readers and the language
@@ -2475,13 +2523,116 @@ why the middle one means success. The other eight children of `console` are
 un-newlined form**, which lives under `1 5 1`, and **the `drain()` barrier**, which
 §6 keeps in as many words — *"the Console with its own printer thread, and the
 `drain()` barrier before reading input"* — and which DESIGN §10.1 justifies by *"a
-prompt written with no trailing newline."* **Both exist for input**, three milestones
-before anything reads any, and M14 consumes them rather than rebuilding them.
+prompt written with no trailing newline."* ~~**Both exist for input**~~, three
+milestones before anything reads any, and M14 consumes them rather than rebuilding
+them. *(Corrected 2026-09-02. The un-newlined form does; `drain()` does not —
+it is the first step of the shutdown every program that prints takes, and the
+paragraph below is why that makes it this milestone's rather than a piece of M14
+built early.)*
 
-**The printer thread is the pool's first tenant and takes a thread from M6** rather
-than spawning one of its own. §4.5.1's whole argument for a pool is *"one pool with
-three tenants amortises a cost that none of them could justify alone"*, and this is
-the tenant that arrives first in build order.
+**THE PRINTER CREATES ITS OWN THREAD, AND IT DOES NOT TAKE ONE FROM M6.**
+*(The author, 2026-09-02: "the plan was always that the printer would create its
+own thread." This paragraph said the opposite — "the printer thread is the pool's
+first tenant and takes a thread from M6 rather than spawning one of its own" —
+from 2026-08-28 until that day, and §4.5.1 carries what it changes and why the
+error was a category one: M6's pool is a batch runner and a printer is a resident
+thread.)* So the console owns a thread for the life of the run, starts it when the
+console starts and joins it at exit, and `machine_limits/pool.hpp` is not in its
+include list.
+
+**M6's pool therefore still has no tenant after this milestone, and that is a
+finding rather than a gap.** MILESTONES/M6.md §8 carried the question forward in
+these words: *"M10 is the first milestone that can test that justification, and
+its printer thread is the first tenant; if the pool is still doing nothing after
+M10, §4.5.1.2 is a decision that should be re-taken with a number rather than
+defended."* **The premise was false, so the test does not happen here** — the
+first real batch is `satellite.include` of a second file at M25. The question M6
+asked is not answered by M10 and is not failed by it either; what M10 owes it is
+this sentence, so that nobody reads the pool's silence after M10 as the evidence
+M6 was asking for.
+
+**THE BARRIER IS A PREFIX OF SHUTDOWN AND NOT A SECOND MECHANISM.** *(The
+author, 2026-09-02: "the block is similar to a shutdown -- combine shutdown with
+the block.")* The console stops in four steps, and `drain()` is the first one
+rather than a thing built beside them:
+
+    drain    wait until the printer's queue is empty
+    flush    fflush the fd -- DESIGN §10.1, because glibc buffers fully to a
+             pipe or a file and line-buffers only to a tty
+    stop     close the queue to new work
+    join     the printer thread ends
+
+`satellite.console.input` takes step 1 and carries on; `satellite.return` from
+`satellite.main` takes all four. **So this milestone builds a console that knows
+how to stop, and the input barrier falls out of it** — which is also why the
+barrier can be built three milestones before anything reads input without being
+speculative: the same wait is on the exit path of every program that prints.
+
+**WHAT "BLOCKING" IS IN THIS MACHINE, AND IT IS ALREADY BUILT.** A handler that
+blocks is a handler that takes a while to return. `evaluator/dispatch.hpp`'s
+`HandlerFn` returns a `bool`, so the machine's work stack — `machine.hpp`'s
+`work_`, the `{op, step}` pairs that ARE the currently running series of
+instructions — simply does not advance while one is in progress. No queue, no
+new op, no `Ending` state, nothing added to §2.3's list of what closure
+compilation is. **This milestone is the first of six sites that block the walk**,
+and the list is here rather than in six milestone entries because what they share
+is a rule and not a mechanism — they block on six different things and every one
+of them has to be interruptible in the same way:
+
+| | site | blocks on |
+| --- | --- | --- |
+| **M10** | `drain()`, and the shutdown it is the first step of | the printer's queue emptying |
+| M14 | `satellite.console.input` `1 5 2`–`1 5 4` — DESIGN §10.1's *"ask, and wait"*, beside `typed()` `1 5 5`, which does not | stdin |
+| M19 | `satellite.variable.file.read_line` `1 6 2 3` | a disk |
+| M22 | the prompt | a key |
+| M23 | `satellite.variable.thread.join()` `1 6 13 2` | another thread |
+| M27 | `satellite.network.receive` `1 20 5` | a socket |
+
+**AND THE TWO FAMILIES SPLIT BY MILESTONE, WHICH IS WHY M10 DOES NOT BUILD A
+GENERAL WRAPPER.** Both of this milestone's waits are on a condition variable,
+so **there is no `EINTR` case here at all**: `pthread_cond_wait` does not return
+one, and the flag it would test does not exist until M11. The other five block in
+a syscall, and they inherit a rule this milestone cannot write and must not
+pretend to — SIGINT is installed **without `SA_RESTART`** (§6, *hard-won; do not
+rediscover*), so `EINTR` is not merely how an interrupt is reported, **it is the
+only thing that returns control to the walk** so that M11's *"stop itself at the
+next statement"* can run at all. A blocked handler is INSIDE a statement. The
+retry loop every C programmer writes from memory — `while (read(...) < 0 &&
+errno == EINTR)` — silently removes Ctrl-C from one site and no other, and M14 is
+where that rule gets written down with its first consumer in front of it.
+
+**`display` NEVER BLOCKS, AND THE QUEUE IS UNBOUNDED ON PURPOSE.** A bounded
+queue makes a producer wait when it fills, which is a threshold nobody chose
+appearing in the most-called path in the language — the hidden constant DESIGN
+§1.1 refuses and §7.5 rules out in general. The bound is memory, the way a
+list's is, and the watchdog is what notices.
+
+**THE ONE PLACE THE TWO MUST NOT BE COMBINED IS THE WATCHDOG, AND THIS MILESTONE
+OPENS A HOLE ABOVE A LEVEL M6 ALREADY CLOSED.** `machine_limits/watchdog.cpp`
+gets the stdio half right and says why in capitals — *"fflush BEFORE `_exit`,
+BECAUSE `_exit` FLUSHES NOTHING"* — but `fflush` reaches what the printer has
+**already written**, and this milestone puts a queue ABOVE stdio that it cannot
+reach. **Draining there is not the fix.** The watchdog is a detached thread
+killing a process for taking too much memory; waiting on the printer is exactly
+what it must never do, because a stuck printer would hang the one thing whose job
+is to not hang. That is `_exit` over `exit` again, which the same file argues from
+the same direction.
+
+**So the shutdown drains and the emergency exit does not, and what that costs is
+stated here rather than discovered later: lines queued but not yet written are
+LOST when the watchdog fires.** M22 is the milestone that revisits it, because it
+is already the emergency path's only registrar (§8's M22 entry, and M6's argument
+for registering nothing yet).
+
+**Ctrl-C has no ending to be reported as, and that is M11's to settle.**
+`evaluator/machine.hpp` has three — `Finished`, `Refused`, `Stopped` — and
+`Stopped` means a ceiling was reached and carries `EXIT_LIMIT` (4). **An
+interrupt is not a ceiling**, so without a fourth, a person pressing Ctrl-C is
+reported as a machine limit and a script testing for 4 reads it as a memory
+ceiling. That is the mistake M6's entry above already corrected once, in the
+`_exit(2)`-versus-`_exit(4)` argument. **Named here and decided there**: M10 has
+no interrupt to end, M11 builds the SIGINT half, and the fourth `Ending` is
+cheaper to add before five sites depend on the third one meaning two things.
 
 **M11 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
 `.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);

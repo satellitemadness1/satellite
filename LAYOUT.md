@@ -181,8 +181,10 @@ owns it reads the file that had it rather than writing a second one.
 2026-08-30**, between the error reporter and resolve, because three later
 milestones read something M6 builds and none of them said so until 2026-08-28:
 M8's `Number` reads `division_digits`, M9 derives its recursion ceiling from
-`RLIMIT_STACK`, and M10's printer thread is the pool's first tenant. The seam
-between the two directories is that `system_facts/` reports what the machine
+`RLIMIT_STACK`, and ~~M10's printer thread is the pool's first tenant~~. *(Struck
+2026-09-02: the printer creates its own thread and always was going to — PLAN
+§4.5.1. The two that are left are the two that were checked against code.)* The
+seam between the two directories is that `system_facts/` reports what the machine
 says and `machine_limits/` decides what satl does about it.
 
 **`src/satellite_number/` was filled at M8 on 2026-08-31**, and until that

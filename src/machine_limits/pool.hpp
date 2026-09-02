@@ -43,10 +43,28 @@
 //
 // SO THE ONLY CALLER OF run_over() AT M6 IS tests/limits_test, and that is said
 // out loud rather than left to be noticed, the way 040-sources.mk had to say it
-// about satellite_random. The pool's tenants are M10's printer thread, M22's
-// prompt, M23's threads and whatever `parallel_for` becomes; none of them
-// exists. A batch runner nothing has ever run is a batch runner that does not
-// work, so the suite runs real batches through it.
+// about satellite_random. The pool's tenants are M25's second file, M22's prompt
+// parsed repeatedly, M23's threads and whatever `parallel_for` becomes; none of
+// them exists. A batch runner nothing has ever run is a batch runner that does
+// not work, so the suite runs real batches through it.
+//
+// THIS LIST NAMED "M10's PRINTER THREAD" FIRST UNTIL 2026-09-02, AND THE RULE
+// THAT REPLACES IT IS ONE LINE: THIS POOL TAKES WORK THAT FINISHES.
+//
+// run_over() is a range, a split and a join -- it returns when the last chunk
+// lands. The console's two threads exist precisely because they do NOT finish.
+// The printer waits on a queue for the life of the run (the author, 2026-09-02:
+// the plan was always that the printer would create its own thread), and DESIGN
+// §10.1's reader "blocks on stdin", which is worse than a mis-count: a worker
+// sitting in read() never comes back for a chunk, so run_over() waits forever.
+// Neither was ever a scheduling question and neither is a tenant.
+//
+// THE TEST TO APPLY TO THE NEXT CANDIDATE is not "does it want a thread" but
+// "does the work end". A thread that outlives every batch cannot be lent by
+// something that counts what it has lent out -- wanted() and parked() would go
+// on counting it and `satl --limits` would go on reporting it, which is §4.5.2's
+// whole job done wrong. PLAN §4.5.1 has the correction and MILESTONES/M6.md §8
+// has what it costs the argument for building this at all.
 
 #include <cstddef>
 #include <functional>
