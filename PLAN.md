@@ -2280,7 +2280,12 @@ wrote them, with a caret** — S0807 and S0808, rows M6 already had. That also
 removed two silent substitutions nobody had noticed: `limits::division_digits()`
 turned a zero into 34 and anything past `UINT_MAX` into `UINT_MAX`, both without
 a word. **M11 is still where a program can retune the dial at run time**, and it
-inherits a function with nothing left in it to explain.
+inherits a function with nothing left in it to explain. *(Overtaken 2026-09-03:
+M11 landed without it — no document said what assigning to a language path
+MEANS, and inventing that mid-milestone was worse than saying so — and the
+author moved the retune to **M15**, whose entry now carries it; the clean
+`limits::division_digits()` waits there instead. MILESTONES/M11.md §6 is the
+record.)*
 
 **It also owns the uniform draw, and its own line did not say so.** *(2026-08-28,
 and this is the fourth instance of that failure after M3/M4's eleven words, M16's
@@ -2743,8 +2748,10 @@ sixteen QUAD-sourced string methods were given (0-based positions, refusals
 where another language hands back sentinels, the mutating rows' write-back
 contract), the two-count selector fold that building the number methods
 found, and the one thing this entry expected that did NOT land: M8's
-"retune the dial at run time" sentence, carried as M11.md §6's first open
-item because no document says what assigning to a language path means.
+"retune the dial at run time" sentence — no document says what assigning to
+a language path means, and on 2026-09-03 the author moved it to **M15**,
+where the third dial lands and the mechanism is decided once in front of
+all four `1 14 2` rows.
 `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
 `.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);
 what lands here is running them. `satellite.variable.bool`, `.number`, `.string` and
@@ -3303,7 +3310,22 @@ this milestone's dial**, on the node M6 builds, and DESIGN §13 has already rede
 it from *the* dial into **the default length of a float's right half** for a value
 that does not state one.
 
-**Done when the four operations run and — the blocker — the rounding rule is chosen.**
+**And since 2026-09-03 this milestone owns the RUN-TIME RETUNE** — the author's
+direction at M11's landing. §4.5.3's arrangement, *"the file seeds the namespace
+at startup and the namespace is what everything reads afterwards"*, has had no
+run-time half: no dial has a handler row, and the evaluator's Assign arm knows
+frame slots and declared globals, not language paths. M8's entry expected the
+retune at M11 and M11 landed without it, because what an assignment to
+`satellite.library.system.division_digits` MEANS is undecided — a store the
+machine's Policy reads back, or a handler-shaped write — and deciding it beside
+ONE dial risks deciding it three times. It lands here because the third dial is
+this milestone's own: one mechanism, decided once, in front of `1 14 2 1`
+through `1 14 2 4` together — the reads are module-constant-shaped and M11
+built that road, the write is the decision. MILESTONES/M11.md §6 carries the
+hand-off, and the done-when below gains its clause.
+
+**Done when the four operations run, `satellite.library.system.division_digits
+= 40` retunes a running program's division, and — the blocker — the rounding rule is chosen.**
 Truncate, half-up, or half-even. No representation escapes it: `pow` at a fractional
 exponent is irrational, so the fractional half must be rounded to exist. QUAD's
 determinism invariant means a program's behaviour depends on the answer.

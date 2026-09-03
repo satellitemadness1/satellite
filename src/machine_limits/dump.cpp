@@ -125,8 +125,11 @@ std::string limits_text()
     // THE FOUR DIALS, UNDER THEIR PATH RATHER THAN UNDER THEIR NAME, because
     // the name alone would look like three more machine settings and they are
     // not: these are in the language, `satl --words satellite.library.system`
-    // finds them, and from M8 a running program reads and retunes them. The
-    // upper-case three above are in no numbering at all.
+    // finds them, and M15 is where a running program gains the read and the
+    // retune -- this comment claimed "from M8" until M11's landing found that
+    // nothing of the kind had been built, and the author moved the mechanism
+    // to the milestone that owns the fourth dial. The upper-case three above
+    // are in no numbering at all.
     out += "\n  " + words::path_text(words::NodeId::LIBRARY_SYSTEM) + "  (" +
            words::number_text(words::NodeId::LIBRARY_SYSTEM) + ")\n";
     for (size_t i = 0; i < kDialCount; i++) {
