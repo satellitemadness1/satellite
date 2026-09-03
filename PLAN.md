@@ -44,7 +44,7 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
 2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, M7 and M8 on 2026-08-31,
-M8.5 and M9 on 2026-09-01, and M10 on 2026-09-02.** *(M1.5 is the window, and it
+M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, and M11 on 2026-09-03.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -90,10 +90,36 @@ boundary rather than a shortfall.** All five of the older ones declare
 under the word `arguments`, the milestone that will bind it, and exit 3. Hello
 world is M17.
 
+**And since M11 the language has scalars and control flow.** `if`, `else`,
+`while` and `for` run — their machinery landed with M9's machine, and what M11
+added inside them is the statement boundary Ctrl-C lands on: v1's SIGINT
+handler ported whole (no `SA_RESTART`, §6's hard-won note), a fourth `Ending`
+that is neither a wrong program nor a machine limit, exit 130 with S0730's
+caret under the statement that did not run. `satellite.bool.true` and
+`.false` answer as DESIGN §6.1's module constants; the string's sixteen
+methods and the number's fifteen sit behind `handlers[path_id]` with the
+receiver as argument 0 (`power`, `truncate` and `sqrt` refuse naming M15's
+rounding rule, `split` naming M16's list); `append` and `clear` write back to
+the slot the method was called on, which is DESIGN §6.4's storage-slot rule
+enforced by the op. **Its acceptance file is `example/scalars.satl`** —
+fourteen lines, every statement form, a method from each family — and
+[MILESTONES/M11.md](MILESTONES/M11.md) carries the decisions (positions count
+from 0; where another language hands back a sentinel, satellite refuses, and
+the argument is that a refusal can loosen at M12 while a `-1` is forever) and
+the two findings worth reading before touching words.def: the paren
+annotations count two ways between the string and number families, and the
+selector fold now tries both counts.
+
 What exists: the `Makefile` as an index over eleven fragments under
-`make_support/`, **211 C++ files totalling 33,622 lines** plus `words.def` at
-551 and `errors.def` at 630, **ten** test suites under `tests/`, and
+`make_support/`, **221 C++ files totalling 35,501 lines** plus `words.def` at
+551 and `errors.def` at 688, **ten** test suites under `tests/`, and
 `satellite_enterprise/`, the Enterprise Linux installer and the artwork.
+*(Recounted 2026-09-03, at M11, over `src/` and `tests/` together — 149 files
+and 24,651 lines of it is `src/`. The ten new files are one whole module,
+`satellite_scalars/`, plus `system_facts/interrupt.*`,
+`evaluator/operations_dispatch.cpp` and two new sections of `tests/eval_test/`.
+The figures at M10 were 211 files and 33,622 lines, with `src/` at 141 and
+23,210, and `errors.def` at 630.)*
 *(Recounted 2026-09-02, at M10, over `src/` and `tests/` together — 141 files
 and 23,210 lines of it is `src/`. The twelve new files are one whole module,
 `satellite_console/`, plus `programs/run_command.*`, `programs/built_program.*`
@@ -2711,7 +2737,15 @@ ceiling. That is the mistake M6's entry above already corrected once, in the
 no interrupt to end, M11 builds the SIGINT half, and the fourth `Ending` is
 cheaper to add before five sites depend on the third one meaning two things.
 
-**M11 — scalars and control flow.** `satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
+**M11 — scalars and control flow. LANDED 2026-09-03**, and
+[MILESTONES/M11.md](MILESTONES/M11.md) is the review — the semantics the
+sixteen QUAD-sourced string methods were given (0-based positions, refusals
+where another language hands back sentinels, the mutating rows' write-back
+contract), the two-count selector fold that building the number methods
+found, and the one thing this entry expected that did NOT land: M8's
+"retune the dial at run time" sentence, carried as M11.md §6's first open
+item because no document says what assigning to a language path means.
+`satellite.statement.if` `1 13 1`, `.for` `1 13 2`,
 `.while` `1 13 3` and `.else` `1 13 4` — **their parse rules land at M4** (above);
 what lands here is running them. `satellite.variable.bool`, `.number`, `.string` and
 their methods.

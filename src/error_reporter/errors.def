@@ -479,8 +479,10 @@ SAT_CODE(611, NUMBER_UNKNOWN_OPERATOR, SAT_ERROR,
 // for any of the three, which is the whole of what a reservation buys.
 //
 // 700-709 the control stack, 710-719 what a value can be used as, 720-729 what
-// a program named that does not run yet. The gaps are on purpose; see the block
-// note at the top of this file.
+// a program named that does not run yet, 730-739 the run stopped from OUTSIDE
+// the program -- M11's decade, and the one whose rows are about nobody's
+// mistake. The gaps are on purpose; see the block note at the top of this
+// file.
 //
 // THE "NOT BUILT YET" ROW IS THE UNUSUAL ONE AND IT IS DELIBERATE. Every other
 // code in this file is about a program that is wrong. S0720 is about a program
@@ -515,6 +517,51 @@ SAT_CODE(712, EVAL_NOT_COMPARABLE, SAT_ERROR,
          "`{1}` orders numbers, and {2} has no order -- `==` and `!=` work on "
          "anything, and nothing else does")
 
+// THE NEXT FOUR ARE M11's, THE METHODS' ROWS, and 714 is the one DESIGN asked
+// for by name: §6.4 qualification 3 wants "an undeclared variable" and "a
+// declared variable holding nothing" to read differently, resolve owns the
+// first at compile time, and this block owns the second at run time.
+//
+// 715 AND 716 REFUSE WHERE ANOTHER LANGUAGE WOULD HAND BACK A SENTINEL, and
+// that is a decision, taken at M11 and overrulable in one row each:
+// `"abc".at(9)` could answer something and `"abc".find("z")` could answer -1,
+// and both would be a value quietly meaning "not a value" -- the thing DESIGN
+// §1.1 exists to refuse. A refusal can LOOSEN into an answer later without
+// changing any working program's meaning (M12 is where "nothing" becomes a
+// thing a program can ask about); a sentinel, once a program is written
+// against it, is forever.
+
+SAT_CODE(713, EVAL_WRONG_TYPE, SAT_ERROR,
+         "`{1}` wants {2} and this one is {3}")
+
+SAT_CODE(714, EVAL_HOLDING_NOTHING, SAT_ERROR,
+         "`{1}` was asked of a variable that holds nothing -- a declared "
+         "variable holds nothing until a value is assigned to it")
+
+SAT_CODE(715, EVAL_PAST_THE_END, SAT_ERROR,
+         "`{1}` was asked about position {2} and this string has {3} "
+         "characters -- the first is at 0, the last at one less than the "
+         "count")
+
+SAT_CODE(716, EVAL_NOT_FOUND, SAT_ERROR,
+         "`{1}` does not appear in this string, so `find` has no position to "
+         "answer -- `contains(x)` is the question that answers false instead "
+         "of stopping")
+
+SAT_CODE(717, EVAL_NOWHERE_TO_WRITE, SAT_ERROR,
+         "`{1}` changes its receiver, and this receiver names no place the "
+         "change could be written back to -- DESIGN.md §6.4: a mutating "
+         "method needs a receiver that names a storage slot")
+
+SAT_CODE(718, EVAL_NEEDS_RECEIVER, SAT_ERROR,
+         "`{1}` is a method and is asked on a value -- `my_variable.{1}` -- "
+         "not written out as a path; DESIGN.md §6.4 keeps the long spelling "
+         "off the surface on purpose")
+
+SAT_CODE(719, EVAL_BACKWARDS, SAT_ERROR,
+         "`substring` was asked from {1} to {2}, and a substring runs "
+         "forwards -- the start is never past the end")
+
 SAT_CODE(720, EVAL_NOT_BUILT, SAT_ERROR,
          "{1} parses and does not run yet -- {2}")
 
@@ -524,6 +571,17 @@ SAT_CODE(721, EVAL_NO_HANDLER, SAT_ERROR,
 
 SAT_CODE(722, EVAL_ARGUMENT_COUNT, SAT_ERROR,
          "`{1}` takes {2} and was given {3}")
+
+// AN INTERRUPT IS NOBODY'S MISTAKE AND ITS ROW SAYS WHAT IS TRUE INSTEAD OF
+// WHAT IS WRONG. Everything above the caret's line ran and was drained through
+// the console before this printed; nothing at or after it did. The exit is
+// 130 rather than 1 or 4 -- system_facts/interrupt.hpp owns the number and
+// machine.hpp's Ending note owns the argument that a Ctrl-C is neither a
+// malformed program nor a machine limit.
+SAT_CODE(730, EVAL_INTERRUPTED, SAT_ERROR,
+         "the run stopped here, at the first statement boundary after Ctrl-C "
+         "arrived -- everything before this line ran and nothing at or after "
+         "it did")
 
 SAT_CODE(790, NOTE_EVAL_DEEPEST_CALL, SAT_NOTE,
          "the deepest call is here, and the {1} frames under it are not printed")

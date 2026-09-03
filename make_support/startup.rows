@@ -60,10 +60,10 @@
 # THE BASELINE
 # ------------------------------------------------------------------------------
 
-DATE    2026-09-02
+DATE    2026-09-03
 LINK    full
-LOAD    0.67
-NOTE    M10 -- the console, and the first program that runs. MILESTONES/M10.md §7
+LOAD    0.93
+NOTE    M11 -- scalars and control flow. MILESTONES/M11.md §7
 
 # THE ROWS ARE THE COMMANDS THAT COST SOMETHING DIFFERENT, not every command
 # satl has. --version is the row §9.1 says to read -- it does nothing but say
@@ -95,15 +95,15 @@ NOTE    M10 -- the console, and the first program that runs. MILESTONES/M10.md �
 # figure and is why the claim above is about the SHAPE of the table rather than
 # about one row.
 
-FLOOR | 0.557
+FLOOR | 0.541
 
-ROW | 0.779 |
-ROW | 0.784 | --version
-ROW | 0.958 | --words
-ROW | 0.874 | --tokens example/hello_world.satl
-ROW | 1.169 | --tokens example/class_test.satl
-ROW | 1.508 | --limits
-ROW | 1.519 | --limits example/satellite_config.ini
+ROW | 0.770 |
+ROW | 0.764 | --version
+ROW | 0.952 | --words
+ROW | 0.857 | --tokens example/hello_world.satl
+ROW | 1.146 | --tokens example/class_test.satl
+ROW | 1.469 | --limits
+ROW | 1.498 | --limits example/satellite_config.ini
 
 # M7's ROWS. `--resolve` is the milestone's consumer and it is the first row here
 # that is a WHOLE PIPELINE -- lex, parse, resolve, and SATC.md §4's reading order
@@ -123,8 +123,8 @@ ROW | 1.519 | --limits example/satellite_config.ini
 # the walks instead, exactly, and tests/resolve_test/cache.cpp asserts the
 # count. On example/frames.satl it is 28 walked cold against 14 walked and 14
 # taken warm.
-ROW | 0.923 | --resolve example/hello_world.satl
-ROW | 1.191 | --resolve example/frames.satl
+ROW | 0.906 | --resolve example/hello_world.satl
+ROW | 1.166 | --resolve example/frames.satl
 
 # M8's ROWS. `--number` is the milestone's consumer and it is the one command
 # here that reads nothing from disk -- no file, no `.satc`, no config beyond the
@@ -135,8 +135,8 @@ ROW | 1.191 | --resolve example/frames.satl
 # DESIGN §8.2's small form: an add and an overflow check, no allocation. `1 / 3`
 # runs long division to division_digits and boxes the result. A single row would
 # average the two and hide which half moved.
-ROW | 0.792 | --number 1 + 1
-ROW | 0.812 | --number 1 / 3
+ROW | 0.774 | --number 1 + 1
+ROW | 0.783 | --number 1 / 3
 
 # M9's ROWS. `--compile` and `--call` are the milestone's consumers, and they
 # are the first rows here that go all the way down the pipeline -- lex, parse,
@@ -165,42 +165,39 @@ ROW | 0.812 | --number 1 / 3
 # globals, call one capsule, print what it answered -- and it is CHEAPER than
 # `--compile`, because printing one number is less than printing a listing of
 # every op.
-ROW | 1.106 | --compile example/frames.satl
-ROW | 1.107 | --call example/frames.satl factorial 10
+ROW | 1.088 | --compile example/frames.satl
+ROW | 1.105 | --call example/frames.satl factorial 10
 
-# A ROW FOR RUNNING A PROGRAM IS OWED AND NOT YET TAKEN, and it is a measurement
-# missing rather than a file missing. When the table above was recorded,
-# `example/` held nothing `satl <file>` could run -- DESIGN §3's hello world
-# declares the parameter that lands at M16 and the other four programs declare it
-# too, so all five answer S0720 and exit 3. **The author wrote
-# `example/console.satl` and `example/bare_main.satl` the same day**, so the file
-# exists and the row does not: it needs a run of the harness on a tree nobody
-# else is building in, and two makes colliding on 2026-09-02 is why it was not
-# taken then.
+# M11's ROWS, AND THE FIRST OF THEM PAYS M10's DEBT. The row for running a
+# program was owed and not taken at M10 -- the acceptance files arrived the same
+# day as the milestone, and two makes colliding on 2026-09-02 is why the harness
+# did not run then. M10's entry predicted where it would land before it was
+# measured: `--call example/frames.satl factorial 10` "does everything a run
+# does EXCEPT start a printer thread and shut it down", so a row near that share
+# would mean the console costs about what making and joining one std::thread
+# costs, and a row well above it would mean the four-step shutdown waits when it
+# should not.
 #
-# WHAT IT WILL COST IS WORTH PREDICTING BEFORE IT IS MEASURED, because a
-# prediction that turns out wrong is the only kind of row this table teaches
-# anything with. `--call example/frames.satl factorial 10` is a share of 0.550
-# and does everything a run does EXCEPT start a printer thread and shut it down,
-# and `console.satl` is a far smaller program than `frames.satl` -- so if the new
-# row lands near that share, the console costs about what making and joining one
-# std::thread costs. If it lands well above, something in the four-step shutdown
-# is waiting when it should not be, which is exactly what this file exists to
-# catch.
+# MEASURED AT M11: 0.461 AGAINST `--call`'s 0.564, and the prediction holds with
+# room to spare -- `console.satl` is one display and a return where
+# `frames.satl` is a recursion demo, so the smaller program UNDERRUNS the
+# console-less row even while starting a printer thread, draining it and joining
+# it. Nothing in the shutdown waits. That is the claim M10 could not take
+# without this row, taken.
 #
-# AND THE DELTAS ABOVE ARE THREE MILESTONES' WORTH, NOT ONE. The baseline they
-# replace was M8's: M8.5 and M9 both landed without running this target, which
-# is §9's rule going unrun again -- the same way M4, M4.5 and M5 did before the
-# target existed, and the thing this file was built to make visible. Every delta
-# is negative or inside the noise: satl's own share is 0.222 ms against M8's
-# 0.239, after an explicit control stack, a value model, an evaluator and a
-# console were added to the binary.
+# `scalars.satl` IS M11's OWN CONSUMER: fourteen displays, three loops, both
+# module constants and a method from each family, over 25 cached dispatch sites.
+# Its 0.811 share is the largest of any row that runs a program, and it sits
+# between `--resolve frames.satl` and `--limits`, which is the right
+# neighbourhood for the biggest program in `example/` that runs.
 #
-# WHAT THAT MEASURES IS THAT NONE OF THE THREE PUT WORK BEFORE AN ARM IS CHOSEN,
-# which is the only thing this number can see, and M10's console is the case
-# worth naming. `Console::the()` is a function-local static and the printer
-# thread is made inside start_held(), reached only from run_command.cpp and from
-# the queue -- so `satl --version` constructs no console and starts no thread.
-# The BARE `satl` row is what would have shown it if it did: that row runs no
-# arm at all, and M8's own entry above is the worked example of a cost paid
-# before a command is chosen turning up in exactly that place.
+# THE M10 PARAGRAPHS THIS SECTION REPLACES carried two more findings, kept in
+# one sentence each rather than lost: the deltas M10 recorded were THREE
+# milestones' worth because M8.5 and M9 landed without running this target
+# (§9's rule going unrun again), and the console's thread provably starts only
+# inside a run -- `Console::the()` is a function-local static reached from
+# run_command.cpp, so the BARE `satl` row, which runs no arm at all, is where a
+# cost paid before a command is chosen would show, and it never has.
+
+ROW | 1.002 | example/console.satl
+ROW | 1.352 | example/scalars.satl

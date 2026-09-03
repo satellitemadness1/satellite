@@ -106,5 +106,7 @@ void section_control();     // if, while, for, and what a condition may be
 void section_calls();       // frames, arguments, returns, and DESIGN §7.1's bug
 void section_depth();       // the milestone: no depth, and a ceiling in words
 void section_dispatch();    // handlers[path_id], the receiver tag, the cache
+void section_scalars();     // M11's rows: constants, string and number methods
+void section_interrupted(); // M11's fourth Ending, without a signal
 
 } // namespace eval_test

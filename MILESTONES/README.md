@@ -24,7 +24,7 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M8.5.md](M8.5.md) | 2026-09-01 | The walkers keep their own stacks — four cycles, seven walkers, no depth. |
 | [M9.md](M9.md) | 2026-09-01 | The value model and closure compilation — and an evaluator with no depth in it. |
 | [M10.md](M10.md) | 2026-09-02 | The console with its own printer thread, `satellite.main`, and the first program that runs. |
-| [M11.md](M11.md) | **not in this tree** | A review of `prototype/M9`, which is a draft. |
+| [M11.md](M11.md) | 2026-09-03 | Scalars and control flow — the string's sixteen methods, the module constants, and the Ctrl-C that stops a loop. |
 | [M16.md](M16.md) | **not in this tree** | A review of `prototype/M10`, likewise. |
 
 **The numbers in this table are PLAN §8's, and §8 renumbered on 2026-08-30.**
@@ -34,13 +34,16 @@ rather than a label. The last two rows did: they were `M9.md` and `M10.md` —
 and M10 on 2026-09-02, which is the renumbering finishing the job of reusing an
 old name for a new thing. That is safe here and would not be in `words.def`: a note is looked up by
 what it says, not by its position, which is the same distinction `errors.def`
-draws between a code and a word number. The two rows below are `prototype/`'s and
-they review the drafts in `prototype/M9` and `prototype/M10`, **whose directory
-names are frozen** — a draft is dated by construction. `M1.5.md` was `M11.A`.
+draws between a code and a word number. **`M11.md` went round the same loop
+twice**: renamed from the old `M9.md` at the renumber to hold the review of
+`prototype/M9`, and taken back by the real M11 on 2026-09-03 — its §9 keeps
+what the review concluded, and the full text is in its history. The remaining
+review row is `prototype/`'s, over the draft in `prototype/M10`, **whose
+directory name is frozen** — a draft is dated by construction. `M1.5.md` was `M11.A`.
 PLAN §8's opening carries the whole old-to-new table and it is the key to every
 document written before that day.
 
-**The last two rows are the reason this table has a column for it.** Both files
+**The review rows are the reason this table has a column for it.** Both files
 opened `**Landed 2026-08-29**` flat until 2026-08-30, which every other note here
 means as *landed in `src/`* — and PLAN §8 lists both as milestones that have not
 started. They review `prototype/`, which LAYOUT.md calls **"drafts, and never
@@ -74,12 +77,13 @@ leaving it out. Leaving it out is what happened to M3, M4, M4.5 and M5, and it
 was invisible until somebody asked which commit landed which — so the follow-up
 is the shape, and it is one line in one file.
 
-**M10.md opens with the same `PENDING` and for the same reason** — it is the
-fifth note written under this convention, and `grep PENDING MILESTONES/M*.md`
-answers it and nothing else until the follow-up lands. *(M9.md's said the same
-until its follow-up landed on 2026-09-01 in `16aa46a`; M8.md's and M7.md's on
-2026-08-31 in `1f70002` and `3dca061` — one line in one file each, which is the
-convention used end to end for the fourth time.)*
+**M11.md opens with the same `PENDING` and for the same reason** — it is the
+sixth note written under this convention, and `grep PENDING MILESTONES/M*.md`
+answers it and nothing else until the follow-up lands. *(M10.md's said the same
+until its follow-up landed on 2026-09-03 in `636ab00`; M9.md's on 2026-09-01 in
+`16aa46a`; M8.md's and M7.md's on 2026-08-31 in `1f70002` and `3dca061` — one
+line in one file each, which is the convention used end to end for the fifth
+time.)*
 
 **M6.md opened `**Landed 2026-08-30** (`PENDING`)` and that word was deliberate.**
 It is the first note written knowing this rule, so rather than omitting the hash
@@ -87,11 +91,12 @@ It is the first note written knowing this rule, so rather than omitting the hash
 MILESTONES/M*.md` lists every note still owed its follow-up, which "leaving it
 out" could never do — **over the notes and not over this directory**, because
 this file has to spell the word in order to describe it and would otherwise be a
-permanent false positive in its own check. **That grep answers M10.md and nothing
+permanent false positive in its own check. **That grep answers M11.md and nothing
 else**, which is the shape it is meant to have: one note owed a follow-up at any
-time. M6's follow-up landed on 2026-08-31, M7's and M8's the same day and M9's on
-2026-09-01, one line in one file each, so the convention has now been used end to
-end **four times** — a note that named its own hole, and a commit that filled it.
+time. M6's follow-up landed on 2026-08-31, M7's and M8's the same day, M9's on
+2026-09-01 and M10's on 2026-09-03, one line in one file each, so the convention
+has now been used end to end **five times** — a note that named its own hole, and
+a commit that filled it.
 
 **A tag would need no follow-up and is deliberately not the answer.** `git tag
 M5` records the same fact where nobody reading the tree can see it, and this

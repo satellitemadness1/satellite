@@ -16,8 +16,10 @@
 #include "evaluator/machine.hpp"
 #include "programs/built_program.hpp"
 #include "programs/opening.hpp"
+#include "satellite_scalars/handlers.hpp"
 #include "satellite_value/render.hpp"
 #include "satellite_words/words.hpp"
+#include "system_facts/interrupt.hpp"
 
 #include <cstdio>
 #include <string>
@@ -76,6 +78,17 @@ int call_command(const std::vector<std::string> &args)
         arguments.push_back(Value::number(std::move(value)));
     }
 
+    // THE SCALARS AND NOT THE CONSOLE, which is still M9's boundary for this
+    // arm: `--call` runs one capsule with no `satellite.main` in front of it
+    // and no printer behind it, so `display` under it answers S0721 -- but a
+    // capsule that trims a string or rounds a number is squarely what the arm
+    // is FOR. Ctrl-C is installed for the same reason it is in run_command:
+    // this is an entry point that runs user code, and a loop under `--call`
+    // is as interruptible as one under `satl file.satl`.
+    scalars::install_handlers();
+    install_interrupt_handler();
+    clear_interrupt();
+
     eval::Machine machine(built.program.closures, built.parsed.ast,
                           policy_from_the_limits());
 
@@ -94,8 +107,12 @@ int call_command(const std::vector<std::string> &args)
                              errors::Source{path, built.text, &built.words})
                   .c_str(),
               stderr);
-        // A CEILING IS NOT A MALFORMED FILE. machine.hpp's Ending note is the
-        // argument, and M6's watchdog is the other producer of this status.
+        // A CEILING IS NOT A MALFORMED FILE, AND NEITHER IS A CTRL-C.
+        // machine.hpp's Ending note is the argument for both: M6's watchdog is
+        // the other producer of 4, and run_command answers the same 130 --
+        // interrupt.hpp's number -- for the same key.
+        if (machine.ending() == eval::Ending::Interrupted)
+            return INTERRUPT_EXIT_STATUS;
         return machine.at_the_ceiling() ? EXIT_LIMIT : EXIT_MALFORMED;
     }
 

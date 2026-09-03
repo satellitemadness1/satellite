@@ -323,6 +323,32 @@
 # `example/bare_main.satl` the same day, so what is missing now is a run of the
 # harness rather than a file. startup.rows says what that row is expected to
 # cost, and why writing the prediction down first is the point.
+# *(The row was taken at M11, one milestone late and with the prediction
+# upheld -- startup.rows' M11 section is the account.)*
+
+# RE-TAKEN AT M11, 2026-09-03, load 0.93, STATIC=full, against the M10 baseline
+# above -- ONE MILESTONE THIS TIME, which is §9's rule actually being kept.
+# Every delta is inside the noise in both directions: satl's own share is 0.229
+# against M10's 0.222, `--version` 0.223 against 0.227, and the widest move in
+# the table is `--limits` at -0.023. What M11 added to the binary is a new
+# module (satellite_scalars/, three translation units), the interrupt handler,
+# and two evaluator arms -- and none of it runs before an arm is chosen, so the
+# bare `satl` row stayed where it was, which is the M8 finding holding for the
+# third milestone running.
+#
+#     bare int main(){return 0;}          0.541 ms   (M10: 0.557)
+#     satl (opening information)          0.770 ms   share 0.229  (M10: 0.222)
+#     satl --version                      0.764 ms   share 0.223  (M10: 0.227)
+#     satl example/console.satl           1.002 ms   share 0.461  (M10: owed)
+#     satl example/scalars.satl           1.352 ms   share 0.811  (M10: --)
+#
+# THE TWO NEW ROWS ARE THE MILESTONE'S. `example/console.satl` pays M10's debt
+# and answers its prediction -- a whole run, printer thread and four-step
+# shutdown included, UNDERRUNS `--call frames.satl`'s 0.564 because the program
+# is smaller and the console costs about what one std::thread costs.
+# `example/scalars.satl` is M11's consumer: fourteen displays, three loops,
+# both module constants and a method from each family over 25 cached dispatch
+# sites, at 0.811. The full table and both accounts are startup.rows'.
 
 # The window is a separate binary (M1.5, built 2026-08-27) and, for
 # satellite.window.new(), a
@@ -392,6 +418,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SYSTEM)/host_facts.cpp \
             $(SYSTEM)/stack_facts.cpp \
             $(SYSTEM)/user_facts.cpp \
+            $(SYSTEM)/interrupt.cpp \
             $(NUMBER)/limbs.cpp \
             $(NUMBER)/number_core.cpp \
             $(NUMBER)/number_query.cpp \
@@ -403,6 +430,9 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(VALUE)/render.cpp \
             $(CONSOLE)/console.cpp \
             $(CONSOLE)/handlers.cpp \
+            $(SCALARS)/handlers.cpp \
+            $(SCALARS)/string_methods.cpp \
+            $(SCALARS)/number_methods.cpp \
             $(EVAL)/evaluate.cpp \
             $(EVAL)/compile.cpp \
             $(EVAL)/compile_expressions.cpp \
@@ -410,6 +440,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(EVAL)/machine.cpp \
             $(EVAL)/operations.cpp \
             $(EVAL)/operations_control.cpp \
+            $(EVAL)/operations_dispatch.cpp \
             $(EVAL)/dispatch.cpp \
             $(EVAL)/dump.cpp \
             $(TREE)/ast.cpp \
@@ -435,6 +466,7 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 # and codes.hpp expands it five ways.
 HDRS = $(SYSTEM)/version.hpp \
        $(SYSTEM)/facts.hpp \
+       $(SYSTEM)/interrupt.hpp \
        $(ERRORS)/errors.def \
        $(ERRORS)/codes.hpp \
        $(ERRORS)/report.hpp \
@@ -482,6 +514,8 @@ HDRS = $(SYSTEM)/version.hpp \
        $(VALUE)/render.hpp \
        $(CONSOLE)/console.hpp \
        $(CONSOLE)/handlers.hpp \
+       $(SCALARS)/handlers.hpp \
+       $(SCALARS)/methods_internal.hpp \
        $(EVAL)/closure.hpp \
        $(EVAL)/machine.hpp \
        $(EVAL)/dispatch.hpp \

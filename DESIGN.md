@@ -1328,6 +1328,21 @@ It is said here because the place it would otherwise be found is a failing
 `SatString` over a 16-bit code table, which *is* the language's alphabet (§5). A
 string interner is separate and serves §4.4.
 
+**The sixteen methods' semantics were decided at M11** *(2026-09-03 — they came
+to the numbering from QUAD with signatures and no meanings, so the milestone
+that built them chose, and MILESTONES/M11.md §2 carries every decision with its
+overrule point)*: **positions count from 0** and `substring(start, end)` is
+end-exclusive; **where another language hands back a sentinel, satellite
+refuses** — `find` on a missing needle, `at` past the end, `to_number` on a
+word — because a refusal can loosen into an answer once §8's nil is askable
+(M12) while a `-1` written into programs is forever, and `contains`, `size`
+and `empty` exist so the question can be asked first; **`append` and `clear`
+mutate their receiver in place** under §6.4's storage-slot rule, and a
+mutating method's answer is its receiver's new value; `at(n)` answers a
+one-character string, there being no character type; and a method sees the
+STORED codes — a live code counts as one and resolves at display, per §5's
+render/store boundary.
+
 ### 8.4 Maps
 
 Insertion-ordered. Key types are restricted, and the restriction is not a
@@ -1701,6 +1716,14 @@ interrupted by the signal.
 
 Ctrl-C at the prompt cancels the line being typed. Ctrl-C in a running program stops
 it at its next statement boundary. Neither is the same as taking the session.
+
+*(The running-program half was built at M11, 2026-09-03, as v1's handler ported
+whole: the first press sets a lock-free flag the machine reads at every
+statement boundary — S0730 puts the caret under the statement that did not run,
+the console drains first so everything the program said is above it, and the
+exit is 130 — and a second press leaves at once through `_exit(130)`, the same
+number. The prompt half stays M22's, arriving as the byte `0x03` because raw
+mode turns ISIG off.)*
 
 ### 10.3 GTK is not thread-safe, and there is no threadable alternative
 

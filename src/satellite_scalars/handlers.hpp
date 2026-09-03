@@ -1,0 +1,31 @@
+#pragma once
+
+// The scalars, behind the table -- PLAN M11. The join between the value
+// types and the evaluator, on satellite_console/handlers.hpp's model exactly:
+// the evaluator must not know what `upper` does and satellite_string must not
+// know what a Machine is, so the rows that connect them live in a module
+// whose whole job is being the join.
+//
+// WHAT INSTALLS HERE: `satellite.bool.true` `1 17 2` and `.false` `1 17 1` --
+// DESIGN §6.1's module constants, each a path that evaluates without a call,
+// each costing "a handlers[path_id] entry and nothing else" (PLAN §8's M11
+// entry, in those words) -- the sixteen `satellite.variable.string` methods
+// at `1 6 1 1`+, and the fifteen `satellite.variable.number` methods at
+// `1 6 4 1`+. The number rows are M8's in PLAN §8's ledger, because M8 built
+// everything they answer WITH; what M11 adds is the row itself, which could
+// not exist before M9's table did.
+//
+// THREE ROWS REFUSE ON PURPOSE, NAMING A MILESTONE. `split` `1 6 1 10`
+// answers a `satellite.container.list` and there is no list until M16;
+// `power` `1 6 4 10`, `truncate` `1 6 4 13` and `sqrt` `1 6 4 14` cannot be
+// finished before M15 chooses the rounding rule. A row that says so beats an
+// empty row's S0721, because the empty row can only say "a later milestone"
+// and these four know exactly which.
+
+namespace satellite::scalars {
+
+// Install every scalar row into eval::Handlers::table(). Idempotent the way
+// table().install is: installing twice writes the same rows twice.
+void install_handlers();
+
+} // namespace satellite::scalars

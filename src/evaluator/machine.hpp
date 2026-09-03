@@ -91,6 +91,15 @@ struct Policy {
     // DESIGN §8.1's significant digits for a division that does not terminate.
     // `satellite.library.system.division_digits`, M8's dial.
     unsigned division_digits = 34;
+
+    // WHETHER CTRL-C HAS ARRIVED -- system_facts/interrupt.hpp's flag, M11,
+    // HANDED IN AS A FUNCTION AND NOT READ, for the same reason the ceiling
+    // is: the seam. `satl`'s arms pass interrupt_requested; tests/eval_test
+    // passes a function of its own and can interrupt a run without a signal
+    // ever being raised, which is what makes the statement-boundary contract
+    // testable at all. Null means no one is listening, which is what a test
+    // that is not about interruption wants.
+    bool (*interrupted)() = nullptr;
 };
 
 // "1 argument" or "3 arguments" -- the {2} hole in S0722, from the three sites
@@ -133,10 +142,20 @@ struct Frame {
 // status for the watchdog and this is its second producer, which is the shape
 // SCRATCH.md/NO_LIMITS.md §7 asks for -- the same event caught one layer in,
 // with a better sentence and the same number for a script to read.
+//
+// AND AN INTERRUPT IS NEITHER, WHICH IS WHY THERE ARE FOUR AND NOT THREE.
+// PLAN §8's M10 entry named the trap and left the arm to M11: without a
+// fourth, a person pressing Ctrl-C is reported as a machine limit and a script
+// testing for 4 reads it as a memory ceiling. An interrupted program may be
+// perfectly right AND under every ceiling -- somebody outside it changed
+// their mind, which no other Ending can say. programs/run_command.cpp answers
+// it with 130, which is 128 + SIGINT and what a shell reports for a program
+// killed this way; system_facts/interrupt.hpp is where that number lives.
 enum class Ending : uint8_t {
-    Finished,  // ran to the end
-    Refused,   // the program was wrong -- `problems` is not empty
-    Stopped,   // a ceiling was reached; the program may be right
+    Finished,    // ran to the end
+    Refused,     // the program was wrong -- `problems` is not empty
+    Stopped,     // a ceiling was reached; the program may be right
+    Interrupted, // Ctrl-C -- the program stopped at a statement boundary
 };
 
 class Machine {
@@ -243,8 +262,25 @@ public:
     // Stop, with a sentence. Nothing runs after this.
     void refuse(errors::Diagnostic problem);
 
+    // Ctrl-C, checked at a statement boundary -- M11's half of DESIGN §10.2.
+    // True means the run just ended: the caller returns without pushing
+    // anything, and `at` is the op whose line S0730's caret reports, which is
+    // the statement that was ABOUT to run. Three arms call this -- op_block
+    // between statements, op_while and op_for once per iteration -- because
+    // those are the boundaries v1's handler comment promises: "the first
+    // SIGINT sets the flag and lets the walk stop itself at the next
+    // statement". The common case is one indirect call and one relaxed load.
+    bool interrupted(OpIndex at);
+
     // The span an op's node covers, for a diagnostic raised inside it.
     errors::Span span_of(OpIndex op) const;
+
+    // The source text under an op's node -- the selector a method sentence
+    // quotes. op_dispatch carries its callee's spelling as a compiled text;
+    // the method ops spend that operand on the write-back slot instead, and
+    // this is where their sentences get a name from. Empty for an op with no
+    // node, which no method op is.
+    std::string_view text_of(OpIndex op) const;
 
     // The call stack, innermost first, as DESIGN §9's fourth field.
     std::vector<errors::FrameRef> call_stack() const;

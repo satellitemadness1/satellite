@@ -358,7 +358,11 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(EVAL)/machine.cpp \
                  $(EVAL)/operations.cpp \
                  $(EVAL)/operations_control.cpp \
+                 $(EVAL)/operations_dispatch.cpp \
                  $(EVAL)/dispatch.cpp \
+                 $(SCALARS)/handlers.cpp \
+                 $(SCALARS)/string_methods.cpp \
+                 $(SCALARS)/number_methods.cpp \
                  $(EVAL)/dump.cpp \
                  $(VALUE)/value.cpp \
                  $(VALUE)/render.cpp \

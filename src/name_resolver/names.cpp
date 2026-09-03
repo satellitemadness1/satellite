@@ -221,9 +221,24 @@ void Resolver::call_target_done(NodeIndex node)
         const words::PathId under = out_.at(ast_[n.a].a).type;
         if (under != words::kNoPath && !fold_option(node, n.a, under)) {
             out_.walked++;
-            const cache::PathMatch shape = cache::shape_path(
+            const int written = static_cast<int>(ast_.list_size(n.b));
+            cache::PathMatch shape = cache::shape_path(
                 static_cast<words::NodeId>(under), ast_.text_of(n.a),
-                static_cast<int>(ast_.list_size(n.b)), false);
+                written, false);
+            // TWO COUNTS, BECAUSE THE ROWS COUNT TWO WAYS -- found at M11,
+            // the first milestone to fold both families. A string row names
+            // its WRITTEN arguments -- `find(x)` is `s.find(needle)` -- and a
+            // number row names DESIGN §6.4's written-out form, receiver
+            // included: `abs(a)` is `n.abs()` with `a` the receiver, which is
+            // exactly what "my_list.append(x) === satellite.container.list
+            // .append(my_list, x)" makes it. So a selector call matches its
+            // written count first -- the surface-true reading -- and the
+            // written-out count second. No type names one word at both
+            // counts today, and the day one does, the first reading wins and
+            // this comment is where to look.
+            if (!shape.found())
+                shape = cache::shape_path(static_cast<words::NodeId>(under),
+                                          ast_.text_of(n.a), written + 1, false);
             if (shape.found()) {
                 info(n.a).path = shape.id;
                 info(n.a).origin = Origin::Walked;

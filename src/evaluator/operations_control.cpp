@@ -54,8 +54,18 @@ void op_block(Machine &m, const Op &op, uint32_t step)
         m.done();
         return;
     }
+
+    // THE STATEMENT BOUNDARY, WHICH IS WHERE CTRL-C LANDS -- M11, and v1's
+    // promise ported with its handler: "the first SIGINT sets the flag and
+    // lets the walk stop itself at the next statement, which is what makes an
+    // interrupted program report the line it was on." The caret goes under the
+    // statement that did NOT run.
+    const OpIndex next = m.program().list_at(op.a, step);
+    if (m.interrupted(next))
+        return;
+
     m.again(step + 1);
-    m.push(m.program().list_at(op.a, step));
+    m.push(next);
 }
 
 void op_expression(Machine &m, const Op &op, uint32_t step)
@@ -156,6 +166,15 @@ void op_if(Machine &m, const Op &op, uint32_t step)
 void op_while(Machine &m, const Op &op, uint32_t step)
 {
     if (step == 0) {
+        // ONCE PER ITERATION, BECAUSE STEP 0 COMES ROUND ONCE PER ITERATION --
+        // the loop below resumes itself at 0, so this line is the boundary
+        // that stops `while` bodies whose statements are too quick to catch,
+        // and the first walk in this tree long enough to be stopped at all
+        // (PLAN §8's M11 entry). An empty body loops through here too, which
+        // is what makes `while` with nothing in it interruptible rather than
+        // immortal.
+        if (m.interrupted(m.here()))
+            return;
         m.again(1);
         m.push(op.a);
         return;
@@ -185,10 +204,16 @@ void op_for(Machine &m, const Op &op, uint32_t step)
         return;
 
     case 1:
+        // THE ITERATION BOUNDARY, THE SAME LINE op_while HAS AND FOR THE SAME
+        // REASON -- every iteration passes through case 1 whether or not the
+        // loop has a condition, so this is the one place that catches both.
+        if (m.interrupted(m.here()))
+            return;
         // A `for` WITH NO CONDITION RUNS FOREVER, which is the language's
         // answer rather than a hole: DESIGN §6's grammar makes every one of the
         // three parts optional, so `for (;;)` is writable and means what it
-        // says. What ends it is a `satellite.return`, or M11's Ctrl-C.
+        // says. What ends it is a `satellite.return`, or Ctrl-C -- built at
+        // M11, on this line.
         if (op.b == kNoOp) {
             m.again(3);
             m.push(op.d);
@@ -283,6 +308,8 @@ const char *op_name(OpFn fn)
     if (fn == op_call)         return "call";
     if (fn == op_enter)        return "enter";
     if (fn == op_dispatch)     return "dispatch";
+    if (fn == op_method)       return "method";
+    if (fn == op_method_global) return "method_global";
     if (fn == op_refuse)       return "refuse";
     if (fn == op_block)        return "block";
     if (fn == op_expression)   return "expression";

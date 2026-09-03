@@ -69,8 +69,14 @@ void section_codes()
     // that declares no `satellite.main`. MILESTONES/M10.md §3 says why it is in
     // S04xx -- the file satl was given -- rather than in the evaluator's block,
     // and why it carries no span.
-    check(kCodeCount == 70,
-          "errors.def has 70 rows -- if that changed on purpose, change it here "
+    // AND BY EIGHT AT M11, all in the evaluator's block: S0713-S0719, the
+    // methods' rows -- wrong type, holding nothing, past the end, not found,
+    // nowhere to write back, needs a receiver, backwards substring -- and
+    // S0730 EVAL_INTERRUPTED, which opens the block's fourth decade because a
+    // Ctrl-C is raised at the run from OUTSIDE it. MILESTONES/M11.md §3 is
+    // the record.
+    check(kCodeCount == 78,
+          "errors.def has 78 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

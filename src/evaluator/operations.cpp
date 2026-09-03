@@ -226,59 +226,11 @@ void op_refuse(Machine &m, const Op &op, uint32_t)
         m.span_of(m.here()), m.program().text(op.a), m.program().text(op.b)));
 }
 
-void op_dispatch(Machine &m, const Op &op, uint32_t step)
-{
-    if (step == 0) {
-        m.again(1);
-        const OpListId args = op.b;
-        for (uint32_t i = m.program().list_size(args); i > 0; i--)
-            m.push(m.program().list_at(args, i - 1));
-        return;
-    }
-
-    const uint32_t count = m.program().list_size(op.b);
-    const words::PathId path = op.a;
-
-    // THE INLINE CACHE -- PLAN §2.4. The guard is the receiver's type tag, or 0
-    // when nothing is bound, because a method's answer depends on what it was
-    // called ON and nothing else at this milestone. The second execution of a
-    // call site does no lookup at all, which is what "permanently retires the
-    // seven-arm chain of §1.1" means.
-    Cache &cache = m.cache(op.c);
-    const uint32_t guard = 0;
-
-    const Handler *handler = nullptr;
-    if (cache.filled && cache.guard == guard) {
-        handler = static_cast<const Handler *>(cache.handler);
-    } else {
-        handler = Handlers::table().find(path);
-        if (handler != nullptr) {
-            cache.handler = handler;
-            cache.guard = guard;
-            cache.filled = true;
-        }
-    }
-
-    if (handler == nullptr) {
-        m.refuse(errors::make<errors::Code::EVAL_NO_HANDLER>(
-            m.span_of(m.here()), m.program().text(op.d), "a later milestone"));
-        return;
-    }
-
-    if (handler->arity != kAnyArity && handler->arity != count) {
-        m.refuse(errors::make<errors::Code::EVAL_ARGUMENT_COUNT>(
-            m.span_of(m.here()), m.program().text(op.d),
-            arity_text(handler->arity), std::to_string(count)));
-        return;
-    }
-
-    Value answer;
-    if (!m.call_handler(handler, count, &answer))
-        return;
-
-    m.done();
-    m.push_value(std::move(answer));
-}
+// op_dispatch LIVED HERE FROM M9 TO M11 AND MOVED WHEN IT STOPPED BEING ALONE.
+// M11's method ops share its whole body except where a changed receiver goes,
+// so the three arms and their one core are operations_dispatch.cpp -- the same
+// split this file already has with operations_control.cpp, made on the same
+// grounds: arms that share a contract live where the contract is written once.
 
 } // namespace eval
 } // namespace satellite

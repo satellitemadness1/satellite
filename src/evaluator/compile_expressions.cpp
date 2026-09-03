@@ -132,10 +132,23 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
         }
 
         // A LANGUAGE PATH READ WITHOUT BEING CALLED is a module constant --
-        // `satellite.bool.true` is DESIGN §6.1's example and it is M11's.
-        finish(emit(op_refuse, node,
-                    out_.add_text("`" + std::string(ast_.text_of(node)) + "`"),
-                    out_.add_text("PLAN.md §8 builds the module constants at M11")));
+        // `satellite.bool.true` is DESIGN §6.1's example, and M11 is what
+        // turned this arm from a refusal naming itself into a dispatch: a
+        // module constant is a path that evaluates without a call, so it costs
+        // a handlers[path_id] entry and nothing else. A constant nobody has
+        // built yet -- `satellite.console.width` until M14 -- answers S0721 at
+        // RUN time, for op_refuse's reason exactly: a read in a branch that
+        // never runs is a program that runs.
+        //
+        // THE SPELLING IS THE CANONICAL ONE, path_text and not this file's
+        // text, because the sentence S0721 builds quotes the path as the
+        // LANGUAGE writes it -- the file's own spelling is under the caret
+        // already.
+        finish(emit(op_dispatch, node, about.path, kNoOpList, out_.add_cache(),
+                    out_.add_text("`" +
+                                  std::string(words::path_text(
+                                      static_cast<words::NodeId>(about.path))) +
+                                  "`")));
         return true;
     }
 
@@ -170,6 +183,15 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
         if (step_number == 0) {
             again(1);
             visit_reversed(n.b);
+            // THE RECEIVER COMPILES FIRST AND BECOMES ARGUMENT 0 -- M11.
+            // Pushed after the written arguments, so the task stack hands it
+            // to call() at the bottom of take_many's answer, which is where
+            // DESIGN §6.4's written-out form puts it.
+            {
+                const NodeIndex receiver = method_receiver(node);
+                if (receiver != kNoNode)
+                    visit(receiver);
+            }
             return true;
         }
         finish(call(node));
@@ -186,10 +208,70 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
     }
 }
 
+NodeIndex Compiler::method_receiver(NodeIndex call_node) const
+{
+    const NodeIndex target = ast_[call_node].a;
+    if (target == kNoNode || ast_[target].kind != NodeKind::Member)
+        return kNoNode;
+
+    // THE SELECTOR RESOLVED TO A LANGUAGE PATH, or this is no method. names.cpp
+    // folds `s.upper` to `1 6 1 9` through the receiver's DECLARED type and
+    // through nothing else, so a selector with a path and a receiver that is
+    // not a language word is exactly the folded case and nothing but it.
+    const resolve::Info &selector = info(target);
+    if (selector.path == words::kNoPath || !words::is_language_word(selector.path))
+        return kNoNode;
+
+    // AND THE RECEIVER NAMES A STORAGE LOCATION, which is the positive test
+    // and not a negative one. The first cut of this function asked "is the
+    // receiver NOT a language word" -- and an intermediate segment like the
+    // `satellite.console` under `display` carries no path of its own, so a
+    // plain module call read as a method call and the module road was never
+    // taken. What makes a method call is a receiver that IS somewhere: a
+    // frame slot, or a global this program declared. Everything else is the
+    // module road's.
+    const NodeIndex receiver = ast_[target].a;
+    if (receiver == kNoNode)
+        return kNoNode;
+    const resolve::Info &holder = info(receiver);
+    if (resolve::in_a_frame(holder.slot))
+        return receiver;
+    if (holder.path != words::kNoPath && !words::is_language_word(holder.path) &&
+        globals_.find(holder.path) != globals_.end())
+        return receiver;
+    return kNoNode;
+}
+
 OpIndex Compiler::call(NodeIndex node)
 {
     const Node &n = ast_[node];
     const uint32_t count = ast_.list_size(n.b);
+
+    // A METHOD ON A VALUE -- DESIGN §6.4's sugar, compiled down. The receiver
+    // was visited by the Call case and sits under the written arguments, so
+    // taking one extra result hands back the argument list with the receiver
+    // at 0. WHICH SLOT IT WRITES BACK TO IS DECIDED HERE, not at run time: a
+    // folded receiver is a declared name, a declared name is a frame slot or a
+    // global, and the op carries the answer so a mutating row costs the walk
+    // nothing it can feel. The last arm is unreachable while names.cpp folds
+    // only declared names, and it is a refusal rather than an assumption for
+    // when that boundary moves.
+    if (const NodeIndex receiver = method_receiver(node); receiver != kNoNode) {
+        const OpListId with_receiver = out_.add_list(take_many(count + 1));
+        const resolve::Info &about = info(n.a);
+        const resolve::Info &holder = info(receiver);
+        if (resolve::in_a_frame(holder.slot))
+            return emit(op_method, node, about.path, with_receiver,
+                        out_.add_cache(), static_cast<uint32_t>(holder.slot));
+        if (const auto found = globals_.find(holder.path); found != globals_.end())
+            return emit(op_method_global, node, about.path, with_receiver,
+                        out_.add_cache(), found->second);
+        return not_built(node, "a method on this receiver",
+                         "resolve folded a selector through a receiver that "
+                         "names no slot, which names.cpp's one-hop boundary "
+                         "is supposed to make impossible");
+    }
+
     const OpListId arguments = out_.add_list(take_many(count));
 
     const NodeIndex target = n.a;
@@ -212,6 +294,18 @@ OpIndex Compiler::call(NodeIndex node)
     if (about.path != words::kNoPath && words::is_language_word(about.path))
         return emit(op_dispatch, node, about.path, arguments, out_.add_cache(),
                     out_.add_text(std::string(ast_.text_of(target))));
+
+    // A SELECTOR THAT NEVER FOLDED is its own sentence, because the person
+    // who wrote `f().trim()` did nothing wrong by the grammar and needs the
+    // boundary named: names.cpp folds a method only through a DECLARED name,
+    // WORD_NUMBERS §1.5's one hop, so a method on a call's answer waits for
+    // the type rules that would see through it. The fix a person can make
+    // today is a named variable in between.
+    if (ast_[target].kind == NodeKind::Member)
+        return not_built(node, "a method on this expression",
+                         "a selector folds only through a declared name -- "
+                         "WORD_NUMBERS.md §1.5's one hop -- so name the "
+                         "receiver first");
 
     return not_built(node, "this call", "resolve found nothing to call");
 }

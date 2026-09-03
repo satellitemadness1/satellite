@@ -83,7 +83,9 @@ using OpFn = void (*)(Machine &machine, const Op &op, uint32_t step);
 //   op_unary        operand          operator index  -              -
 //   op_binary       left             right           operator index -
 //   op_call         capsule index    argument list   -              -
-//   op_dispatch     PathId           argument list   cache index    -
+//   op_dispatch     PathId           argument list   cache index    text index
+//   op_method       PathId           argument list   cache index    frame slot
+//   op_method_global PathId          argument list   cache index    global index
 //   op_refuse       errors::Code     text index      -              -
 //   op_block        statement list   -               -              -
 //   op_expression   expression       -               -              -

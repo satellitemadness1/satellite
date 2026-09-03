@@ -5,6 +5,7 @@
 #include "error_reporter/report.hpp"
 #include "machine_limits/limits.hpp"
 #include "programs/check_command.hpp"
+#include "system_facts/interrupt.hpp"
 
 #include <cstdio>
 
@@ -42,6 +43,13 @@ eval::Policy policy_from_the_limits()
     eval::Policy policy;
     policy.max_depth = limits::max_depth_bytes();
     policy.division_digits = limits::division_digits();
+
+    // THE THIRD HAND-IN IS A FUNCTION AND NOT A NUMBER -- M11. The machine
+    // asks it at every statement boundary, and wiring it here rather than
+    // inside the evaluator is the same seam the two numbers above keep:
+    // `satl`'s runs listen for Ctrl-C, tests/eval_test listens to whatever
+    // its fixture hands in, and the evaluator includes neither module.
+    policy.interrupted = interrupt_requested;
     return policy;
 }
 

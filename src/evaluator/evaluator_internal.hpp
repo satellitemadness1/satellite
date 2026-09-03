@@ -41,6 +41,8 @@ void op_binary(Machine &m, const Op &op, uint32_t step);
 void op_call(Machine &m, const Op &op, uint32_t step);
 void op_enter(Machine &m, const Op &op, uint32_t step);
 void op_dispatch(Machine &m, const Op &op, uint32_t step);
+void op_method(Machine &m, const Op &op, uint32_t step);
+void op_method_global(Machine &m, const Op &op, uint32_t step);
 void op_refuse(Machine &m, const Op &op, uint32_t step);
 
 void op_block(Machine &m, const Op &op, uint32_t step);
@@ -120,10 +122,21 @@ private:
     void visit_reversed(ListId list);
 
     // The `Call` case's second half. It is a function of its own because it
-    // chooses between three shapes -- a capsule this program declared, a
-    // language path through handlers[path_id], and a refusal -- and that choice
-    // is DESIGN §6.4's dispatch question rather than a step of the walk.
+    // chooses between four shapes -- a method on a value, a capsule this
+    // program declared, a language path through handlers[path_id], and a
+    // refusal -- and that choice is DESIGN §6.4's dispatch question rather
+    // than a step of the walk.
     OpIndex call(NodeIndex node);
+
+    // The receiver a call is a METHOD on, or kNoNode when it is not one.
+    // DESIGN §6.4: `s.upper()` is `satellite.variable.string.upper(s)` in the
+    // table, so the receiver is an argument the user did not write -- the Call
+    // case visits it, and call() prepends it. A call is a method call when its
+    // target's selector folded to a language path THROUGH a receiver that is
+    // not itself a language word: resolve's names.cpp did the folding, and the
+    // one receiver it folds through is a declared name, which is what makes
+    // every method receiver a slot or a global at this milestone.
+    NodeIndex method_receiver(NodeIndex call_node) const;
 
     void capsule(NodeIndex node);
     void global(NodeIndex node);

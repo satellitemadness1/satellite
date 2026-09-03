@@ -159,6 +159,14 @@ errors::Span Machine::span_of(OpIndex op) const
     return errors::Span{at.start, at.end, at.line};
 }
 
+std::string_view Machine::text_of(OpIndex op) const
+{
+    const NodeIndex node = program_.node_of(op);
+    if (node == kNoNode)
+        return {};
+    return ast_.text_of(node);
+}
+
 std::vector<errors::FrameRef> Machine::call_stack() const
 {
     // INNERMOST FIRST, which is the order a person reads a stack trace in and
@@ -231,6 +239,30 @@ void Machine::refuse_depth()
     // get right here: refuse() is the one place a run stops, and this is the
     // one case where stopping is not the program's fault.
     ending_ = Ending::Stopped;
+}
+
+bool Machine::interrupted(OpIndex at)
+{
+    if (policy_.interrupted == nullptr || !policy_.interrupted())
+        return false;
+
+    // THE CARET GOES UNDER WHAT DID NOT RUN. Everything above the reported
+    // line has happened; nothing at it or after it has -- which is the one
+    // fact a person interrupting a long run wants, and it is the same fact
+    // whether the boundary was a block's next statement or a loop's next
+    // iteration. The console's queue is drained by the caller's shutdown
+    // before this sentence prints, so the output above the caret really is
+    // everything the program said.
+    errors::Diagnostic problem = errors::make<errors::Code::EVAL_INTERRUPTED>(
+        at == kNoOp ? errors::kNowhere : span_of(at));
+    refuse(std::move(problem));
+
+    // AFTER refuse(), WHICH SET IT TO Refused -- refuse_depth() below is the
+    // same two steps in the same order and carries the argument: refuse() is
+    // the one place a run stops, and this is the second of the two cases where
+    // stopping is not the program's fault.
+    ending_ = Ending::Interrupted;
+    return true;
 }
 
 void Machine::run()

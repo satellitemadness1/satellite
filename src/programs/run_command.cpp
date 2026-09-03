@@ -9,8 +9,10 @@
 #include "programs/opening.hpp"
 #include "satellite_console/console.hpp"
 #include "satellite_console/handlers.hpp"
+#include "satellite_scalars/handlers.hpp"
 #include "satellite_value/value.hpp"
 #include "satellite_words/words.hpp"
+#include "system_facts/interrupt.hpp"
 
 #include <cstdio>
 #include <string>
@@ -91,10 +93,18 @@ errors::Span span_of_parameter(const Built &built, NodeIndex capsule)
 // was wrong. THE AUTHOR CAN OVERRULE THIS IN ONE LINE and MILESTONES/M10.md
 // carries it as an open item, which is the shape M6's `_exit(2)`-versus-
 // `_exit(4)` argument took and is why that one was settled rather than assumed.
+//
+// AND 130 WHEN A PERSON STOPPED IT -- M11's fourth Ending, and the number is
+// the shell's own: 128 + SIGINT, the same status the escalation path inside
+// the handler exits with, so a script reads one number however hard Ctrl-C
+// had to be pressed. machine.hpp's Ending note carries the argument that an
+// interrupt is neither a malformed program nor a machine limit.
 int status_of(const eval::Machine &machine)
 {
     if (machine.ok())
         return EXIT_FINE;
+    if (machine.ending() == eval::Ending::Interrupted)
+        return INTERRUPT_EXIT_STATUS;
     return machine.at_the_ceiling() ? EXIT_LIMIT : EXIT_MALFORMED;
 }
 
@@ -170,6 +180,16 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
                 args.size() - file_at - 1);
 
     console::install_handlers();
+    scalars::install_handlers();
+
+    // CTRL-C, BEFORE ANYTHING RUNS. Installed here because this is an entry
+    // point that runs a program -- interrupt.hpp's rule -- and CLEARED here
+    // because a signal that arrived while satl was still compiling belongs to
+    // this run, not to a walk that has not started; without the clear, a
+    // Ctrl-C during a slow build would stop the program at its first
+    // statement and look like a bug in the program.
+    install_interrupt_handler();
+    clear_interrupt();
 
     // THE PRINTER STARTS HERE, WHERE THE COST CAN BE ATTRIBUTED. The console
     // starts it for itself on the first line queued -- console.cpp's push() --

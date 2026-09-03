@@ -72,12 +72,13 @@ struct Built {
 bool build_program(const std::string &path, Built &out);
 
 // The two numbers the evaluator obeys and does not choose, from the file beside
-// the binary.
+// the binary -- and, since M11, the Ctrl-C flag it watches and does not own.
 //
 // READ HERE AND NOWHERE INSIDE THE EVALUATOR, which is the seam
 // evaluator/machine.hpp's Policy note draws: `satl` obeys machine_limits and
-// tests/eval_test obeys itself, and that is what lets the depth fixtures link
-// no machine_limits at all.
+// listens to system_facts, tests/eval_test obeys itself, and that is what lets
+// the depth fixtures link no machine_limits at all and the interrupt fixtures
+// raise no signal.
 eval::Policy policy_from_the_limits();
 
 } // namespace satellite

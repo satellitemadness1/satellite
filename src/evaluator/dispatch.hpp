@@ -74,6 +74,19 @@ struct Handler {
     // Which milestone owns this row, for `satl --compile` to print. A table
     // whose rows cannot say where they came from is the shape PLAN §1.1 counts.
     const char *milestone = nullptr;
+
+    // DESIGN §6.4's LAST LINE, AS A COLUMN: "a mutating method needs a
+    // receiver that names a storage slot". When set, the handler's ANSWER is
+    // the receiver's new value and the machine writes it back to the slot the
+    // method was called on -- op_method and op_method_global carry the slot,
+    // and plain op_dispatch refuses (S0717), which is `foo().append(x)`'s
+    // "there is nowhere to write back" enforced by the op rather than by a
+    // rule someone has to remember. M11's two rows are `append` `1 6 1 14`
+    // and `clear` `1 6 1 15`; M16's list brings the next ones.
+    //
+    // LAST IN THE STRUCT ON PURPOSE: every non-mutating install site stays a
+    // four-field initialiser and the default answers for it.
+    bool mutates = false;
 };
 
 // The table. One row per language PathId, indexed directly.
