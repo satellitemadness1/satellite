@@ -223,7 +223,13 @@ first program in a language should show the shape every other program will use.
 - **`arguments`** is one of §7.7's six accepted spellings, and §7.7 is where the
   special variable it becomes is specified.
 
-This program is the target of milestone 8 (PLAN.md §8).
+**This program is the target of PLAN.md §8's M17**, which is where it runs end to
+end. *(It said "milestone 8" until 2026-09-02, which is the number it had before
+the 2026-08-30 renumber — §8's opening carries the whole old-to-new table. The
+split is the point: the console it prints through landed at **M10** on
+2026-09-02 and this program still does not run, because its parameter is an empty
+`satellite.container.list` and that is **M16's**. `satl example/hello_world.satl`
+answers with a caret under the word `arguments` and says which milestone.)*
 
 ---
 
@@ -1639,10 +1645,34 @@ return type that **cannot be silently dropped**. "Record the error and return
 
 ### 10.1 The console owns a printer thread
 
+*(The output half is built — PLAN.md §8's M10, 2026-09-02, in
+`src/satellite_console/`: `display`, the queue, the printer thread and the
+barrier. The reader thread and `typed()` are M14's — "the same shape, reversed"
+below is the half that is not built.)*
+
 Producer threads push whole strings into a locked queue; one printer thread
 consumes. **A line stays atomic because the unit queued is a whole string.** There
 is a `drain()` barrier before reading input, so a prompt cannot appear before the
 output that explains it.
+
+**The barrier is the first step of the shutdown and not a second mechanism.**
+*(The author, 2026-09-02.)* The console stops in four steps — **drain** until the
+queue is empty, **flush** the fd, **stop** the queue to new work, **join** the
+printer. `satellite.console.input` takes the first and carries on;
+`satellite.return` from `satellite.main` takes all four. So the same wait is on
+the exit path of every program that prints, which is what makes the barrier
+buildable in the milestone that has no input yet.
+
+**And the printer creates its own thread**, rather than taking one from PLAN
+§4.5's pool. *(The author, 2026-09-02; six places in the plan said the opposite
+until that day.)* That pool takes work that FINISHES — a range, a split and a
+join — and a printer waits on a queue for the life of the run, so a resident
+tenant would hold a worker forever and be counted as available.
+
+**The queue is unbounded, and that is a decision.** A bounded one makes a
+producer wait when it fills, which is a threshold nobody chose appearing in the
+most-called path in the language — the hidden constant §1.1 refuses and §7.5
+rules out in general. The bound is memory, the way a list's is.
 
 **The same shape, reversed, is what non-blocking input is.** *(new, 2026-08-27.)*
 §10.3 observes that a GTK main loop is "the shape §10.1 already has, with the

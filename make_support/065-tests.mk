@@ -398,6 +398,33 @@ $(TESTS)/eval_test/eval_test: $(eval_test_SRCS) $(eval_test_HDRS) \
 	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/eval_test -o $@ \
 	    $(eval_test_SRCS) $(EVAL_TEST_SRCS)
 
+# console_test LINKS eval_test's LIST PLUS THE CONSOLE, AND ONE THING THAT SUITE
+# LEAVES OUT. M10's row in `handlers[path_id]` is reached the way a program
+# reaches it -- parse, resolve, compile, dispatch -- so everything the evaluator
+# needs is here too; what is added is satellite_console/, which is the subject.
+#
+# IT LINKS NO machine_limits EITHER, and for once that is not the reason
+# eval_test has. Nothing here is about depth, so M8.5 §4.1's receipt does not
+# apply; the console module simply does not obey a limit -- DESIGN §10.1's queue
+# is unbounded on purpose and "the bound is memory, the way a list's is". A
+# console that had to be told a ceiling would be the hidden constant PLAN §8's
+# M10 entry refuses.
+#
+# AND IT REDIRECTS ITS OWN STDOUT, which is why this suite exists rather than
+# six more sections in eval_test. A test binary that starts a printer thread and
+# writes to descriptor 1 has to take that descriptor away and give it back
+# around every fixture; mixing that with a suite whose other sections print
+# nothing is how one failing section makes another look broken.
+CONSOLE_TEST_SRCS = $(CONSOLE)/console.cpp \
+                    $(CONSOLE)/handlers.cpp \
+                    $(EVAL_TEST_SRCS)
+
+$(TESTS)/console_test/console_test: $(console_test_SRCS) $(console_test_HDRS) \
+                                    $(CONSOLE_TEST_SRCS) $(ERRORS)/errors.def \
+                                    $(WORDS)/words.def $(HDRS) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/console_test -o $@ \
+	    $(console_test_SRCS) $(CONSOLE_TEST_SRCS)
+
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
 #
@@ -415,6 +442,7 @@ test: $(TESTBINS)
 	./$(TESTS)/resolve_test/resolve_test example
 	./$(TESTS)/number_test/number_test
 	./$(TESTS)/eval_test/eval_test example
+	./$(TESTS)/console_test/console_test
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test

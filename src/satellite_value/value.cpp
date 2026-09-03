@@ -25,6 +25,14 @@ const char *type_name(const Value &value)
         return "number";
     if (value.is_string())
         return "string";
+    // THE RUNTIME READS AS A THING AND NOT AS A TYPE PATH, because every
+    // sentence that uses this word already names the type it wanted. "a
+    // condition is a `satellite.variable.bool` and this one is the satellite
+    // runtime" is a sentence; "and this one is satellite" is a word the reader
+    // has to reconstruct a meaning for. DESIGN §8's table calls it "the runtime
+    // singleton" and that is the phrase this is short for.
+    if (value.is_runtime())
+        return "the satellite runtime";
     return "nothing";
 }
 
@@ -66,7 +74,12 @@ bool same(const Value &left, const Value &right)
         return *text && other && **text == *other;
     }
 
-    return true; // both are Nothing
+    // BOTH ARE Nothing OR BOTH ARE Runtime, and in either case they are equal
+    // because neither arm holds anything to differ about. There is exactly one
+    // runtime -- value.hpp's Runtime note is why the arm carries no payload --
+    // so `satellite == satellite` is true for the same reason nothing equals
+    // nothing, and the index check above already separated the two.
+    return true;
 }
 
 } // namespace satellite

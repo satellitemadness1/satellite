@@ -271,6 +271,59 @@
 # main() runs, so M6's 24 pool threads still take 8 MiB each -- VmSize is 230.3
 # MiB with the raise and 230.3 without.
 
+# RE-TAKEN AT M10, 2026-09-02, load 0.67, STATIC=full, `make startup` against
+# startup.rows' M8 baseline -- AND THAT BASELINE IS THREE MILESTONES OLD, WHICH
+# IS THE FIRST THING TO SAY ABOUT THE TABLE. M8.5 and M9 both landed without
+# running this target, which is §9's rule going unrun again exactly the way M4,
+# M4.5 and M5 did before the target existed. So every delta below covers M8.5,
+# M9 AND M10 together.
+#
+#     bare int main(){return 0;}          0.557 ms   (M8: 0.565)
+#     satl (opening information)          0.779 ms   share 0.222  (M8: 0.239)
+#     satl --version                      0.784 ms   share 0.227  (M8: 0.234)
+#     satl --words                        0.958 ms   share 0.401  (M8: 0.418)
+#     satl --tokens hello_world.satl      0.874 ms   share 0.317  (M8: 0.327)
+#     satl --tokens class_test.satl       1.169 ms   share 0.612  (M8: 0.618)
+#     satl --limits                       1.508 ms   share 0.951  (M8: 0.965)
+#     satl --limits example/...ini        1.519 ms   share 0.962  (M8: 0.971)
+#     satl --resolve hello_world.satl     0.923 ms   share 0.366  (M8: 0.374)
+#     satl --resolve frames.satl          1.191 ms   share 0.634  (M8: 0.635)
+#     satl --number 1 + 1                 0.792 ms   share 0.235  (M8: 0.237)
+#     satl --number 1 / 3                 0.812 ms   share 0.255  (M8: 0.259)
+#     satl --compile frames.satl          1.106 ms   share 0.549  (M8: 0.546)
+#     satl --call frames.satl factorial 10
+#                                         1.107 ms   share 0.550  (M8: 0.521)
+#
+# SATL'S OWN SHARE IS 0.222 ms AGAINST M8's 0.239, AND IT WENT DOWN ACROSS THREE
+# MILESTONES THAT ADDED AN EVALUATOR, A VALUE MODEL AND A CONSOLE. Every earlier
+# re-measurement in this file found the share going UP by the size of the image
+# -- M7 by 0.011 for six objects, M8 by 0.018 for seven -- and the attribution
+# was always the same: a cost paid before a command is chosen turns up in the
+# BARE `satl` row, which runs no arm at all. That row is what moved this time,
+# in the other direction, by about the same amount every other row moved. The
+# honest reading is that this is a quieter machine (load 0.67 against 0.88) and
+# not that M8.5, M9 and M10 made satl faster; what the table establishes is a
+# BOUND -- three milestones and 12 new translation units cost nothing this
+# measurement can see -- and it is recorded as one, the same way M8's own two
+# arithmetic rows were.
+#
+# THE ONE CLAIM IT DOES MAKE IS ABOUT THE CONSOLE, and it is a negative. M10
+# adds a module that starts a THREAD, which is the kind of thing §4.5.1.2's 0.14
+# ms of pool builder is already on this table for. It does not appear, because
+# `Console::the()` is a function-local static and the printer is made inside
+# start_held() -- reached from programs/run_command.cpp and from the queue, and
+# from nowhere a `satl --version` can get to. If a console were being built
+# before an arm was chosen, the bare `satl` row is precisely where it would
+# show, and that row is the one that came DOWN.
+#
+# AND THE ROW FOR RUNNING A PROGRAM IS OWED RATHER THAN IMPOSSIBLE. When this
+# table was taken, M10's own command had no file in `example/` it could run --
+# all five programs there declare `satellite.main`'s parameter, which is M16's,
+# so they answer S0720 and exit 3. The author wrote `example/console.satl` and
+# `example/bare_main.satl` the same day, so what is missing now is a run of the
+# harness rather than a file. startup.rows says what that row is expected to
+# cost, and why writing the prediction down first is the point.
+
 # The window is a separate binary (M1.5, built 2026-08-27) and, for
 # satellite.window.new(), a
 # dlopen'd library (M24) -- because the two-binary split cannot help a window
@@ -300,7 +353,9 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/dump_commands.cpp \
             $(PROGRAMS)/file_commands.cpp \
             $(PROGRAMS)/limits_command.cpp \
+            $(PROGRAMS)/built_program.cpp \
             $(PROGRAMS)/evaluate_commands.cpp \
+            $(PROGRAMS)/run_command.cpp \
             $(PROGRAMS)/number_command.cpp \
             $(PROGRAMS)/resolve_command.cpp \
             $(ERRORS)/report.cpp \
@@ -346,6 +401,8 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(STRING)/satellite_string.cpp \
             $(VALUE)/value.cpp \
             $(VALUE)/render.cpp \
+            $(CONSOLE)/console.cpp \
+            $(CONSOLE)/handlers.cpp \
             $(EVAL)/evaluate.cpp \
             $(EVAL)/compile.cpp \
             $(EVAL)/compile_expressions.cpp \
@@ -408,6 +465,8 @@ HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/limits_command.hpp \
        $(PROGRAMS)/evaluate_commands.hpp \
        $(PROGRAMS)/number_command.hpp \
+       $(PROGRAMS)/built_program.hpp \
+       $(PROGRAMS)/run_command.hpp \
        $(PROGRAMS)/resolve_command.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/source_file.hpp \
@@ -421,6 +480,8 @@ HDRS = $(SYSTEM)/version.hpp \
        $(STRING)/satellite_string.hpp \
        $(VALUE)/value.hpp \
        $(VALUE)/render.hpp \
+       $(CONSOLE)/console.hpp \
+       $(CONSOLE)/handlers.hpp \
        $(EVAL)/closure.hpp \
        $(EVAL)/machine.hpp \
        $(EVAL)/dispatch.hpp \

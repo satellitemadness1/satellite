@@ -26,6 +26,7 @@
 #include "programs/number_command.hpp"
 #include "programs/opening.hpp"
 #include "programs/resolve_command.hpp"
+#include "programs/run_command.hpp"
 #include "programs/window_handover.hpp"
 #include "system_facts/version.hpp"
 
@@ -60,7 +61,14 @@ bool readable(const std::string &path)
 // The file is checked even though nothing will be run with it, because the two
 // failures a user is about to have are different and they should not have to
 // guess which one they are in. A misspelled path reported as "not built yet"
-// is a bug report waiting to be filed at M10.
+// is a bug report waiting to be filed.
+//
+// ONE CALLER LEFT AFTER M10, AND IT PASSES NO FILE. `--repl` is M22's and names
+// no path, so the block below is unreached today -- kept because the next arm
+// to arrive with a file behind it will want it, and because deleting the half
+// of a function that states a rule is how the rule gets rediscovered. Running a
+// file was this function's reason for existing from M1 to M10 and is now
+// programs/run_command.cpp's.
 int not_yet(const std::string &what, const std::string &file,
             const char *milestone)
 {
@@ -282,8 +290,9 @@ int main(int argc, char **argv)
 
     // M9's TWO CONSUMERS. `--compile` prints the closure tree the way
     // `--resolve` prints frames; `--call` runs one capsule and prints its
-    // answer. Neither runs a PROGRAM -- M10 brings the console,
-    // `satellite.main` and `satellite.return`, and `--run` below still says so.
+    // answer. Neither runs a PROGRAM: `--call` has no console behind it and no
+    // `satellite.main` in front of it, which is still the difference between
+    // them and the two arms at the bottom of this switch.
     if (first == "--compile") {
         if (args.size() < 3)
             return usage_error("--compile needs a file after it");
@@ -311,19 +320,24 @@ int main(int argc, char **argv)
     if (first == "--repl")
         return not_yet("the prompt", std::string(), "M22");
 
-    // --run takes an operand, so a missing one is a real usage error rather
-    // than a milestone that has not landed: `satl --run` with nothing after it
-    // is wrong at M10 too.
+    // M10's CONSUMER, AND THE ONE THIS BINARY HAS BEEN POINTING AT SINCE M1.
+    // `--run` takes an operand, so a missing one is a usage error rather than a
+    // milestone that has not landed.
+    //
+    // TWO SPELLINGS AND ONE ARM. `satl file.satl` is what a person types and
+    // `satl --run file.satl` is what a script types when the filename might
+    // begin with a dash; they differ only in where the path sits, which is why
+    // run_command takes an index rather than a path and a vector.
     if (first == "--run") {
         if (args.size() < 3)
             return usage_error("--run needs a file after it");
-        return not_yet("running a file", args[2], "M10");
+        return satellite::run_command(args, 2);
     }
 
     // A bare word that is not a flag is a filename. Checked LAST of the arms
     // that can match a word, which is what the ordering above is for.
     if (!first.empty() && first[0] != '-')
-        return not_yet("running a file", first, "M10");
+        return satellite::run_command(args, 1);
 
     return usage_error("unknown option " + first);
 }

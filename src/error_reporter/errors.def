@@ -64,10 +64,10 @@
 //     S01xx   the lexer                     DESIGN §5      M3
 //     S02xx   the parser                    DESIGN §6      M4
 //     S03xx   the `.satc` cache             SATC.md        M4.5
-//     S04xx   the file satl was given                      M5
+//     S04xx   the file satl was given                      M5/M10
 //     S05xx   resolve -- names and slots    DESIGN §7      M7
 //     S06xx   numbers                       DESIGN §8.1    M8
-//     S07xx   the evaluator                                M9/M10   reserved
+//     S07xx   the evaluator                                M9/M10
 //     S08xx   the machine limits            PLAN §4.5      M6
 //
 // The reserved blocks are written down and NOT populated. A block reserved in a
@@ -293,6 +293,25 @@ SAT_CODE(390, NOTE_SATC_IGNORED, SAT_NOTE,
 SAT_CODE(401, FILE_UNREADABLE, SAT_ERROR,
          "this file could not be read -- check the path, and that this user is "
          "allowed to open it")
+
+// M10's ROW, AND IT IS IN THIS BLOCK RATHER THAN IN S07xx FOR THE REASON THE
+// BLOCK NOTE ABOVE GIVES. The evaluator is not complaining: a file with no
+// `satellite.main` parses, resolves and compiles perfectly, and every capsule
+// in it can be run by `satl --call`. What has gone wrong is one level out --
+// satl was handed a file to RUN and the file is not a program -- which is
+// exactly "the command line was well formed and named a file, and the file is
+// where it stopped".
+//
+// IT CARRIES NO SPAN, WHICH IS THE SECOND ROW IN THIS TREE TO DO SO AND THE
+// FIRST WHERE IT IS THE INTERESTING PART. S0401 has none because the file never
+// opened; this one has none because what is wrong with the file is something
+// that is NOT IN IT, and there is no honest character to put a caret under.
+// Pointing at line 1, or at the last capsule, would be the reporter inventing a
+// place -- and DESIGN §9's carets are worth what they are because they have
+// never done that.
+SAT_CODE(402, FILE_NO_MAIN, SAT_ERROR,
+         "this file declares no `satellite.main`, which is where a program "
+         "starts -- `satl --call` runs one capsule by name instead")
 
 // --- S05xx -- resolve: names and slots ---------------------------------------
 //

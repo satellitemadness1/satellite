@@ -71,8 +71,19 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
         return true;
 
     case NodeKind::Satellite:
-        finish(not_built(node, "`satellite` used as a value",
-                         "PLAN.md §8 builds it at M10, with `satellite.return`"));
+        // THE RUNTIME SINGLETON, AND IT IS A CONSTANT LIKE ANY OTHER -- M10.
+        // DESIGN §8's table gives `satellite` a row and §3 says what it means:
+        // "the singleton runtime object, not a zero sentinel ... include the
+        // runtime, return the runtime (that is, success)."
+        //
+        // WHICH IS WHY `satellite.return(satellite)` NEEDS NO CASE OF ITS OWN.
+        // The three return shapes are resolve's numbering -- `return()` `1 15 0`,
+        // `return(satellite)` `1 15 1`, `return(value)` `1 15 2` -- and what
+        // separates them is what the argument IS, which is decided here. A
+        // compiler that special-cased the middle shape would be deciding a
+        // path's meaning in two places, and WORD_NUMBERS §1.2 is what that
+        // costs.
+        finish(emit(op_constant, node, out_.add_constant(Value::runtime())));
         return true;
 
     case NodeKind::Name: {

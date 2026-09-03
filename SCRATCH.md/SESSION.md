@@ -2,7 +2,9 @@
 
 > **STALE AS OF 2026-09-01 AND KEPT ONLY AS DATED RECORD. DO NOT READ THIS FILE
 > FOR WHERE THE WORK IS.** It stopped being maintained after M5 and its §0 still
-> says the next milestone is M6; since then M6, M7, M8 and M8.5 have all landed.
+> says the next milestone is M6; since then M6, M7, M8, M8.5, M9 and M10 have all
+> landed, and **satellite runs a program** — which this file, written before any
+> of it, cannot tell you.
 > **What is current lives in the permanent documents**, which is where this file
 > says everything is supposed to end up:
 >
@@ -10,7 +12,7 @@
 > - [PLAN.md](../PLAN.md) §8 — every milestone, in build order
 > - [MILESTONES/](../MILESTONES/) — what each one turned out to be, with its commit
 > - [NO_LIMITS.md](NO_LIMITS.md) §8 — the two questions still open, both the author's
-> - [PORTING.md](PORTING.md) §3 — the last porting row, which is M9's
+> - [PORTING.md](PORTING.md) §3 — struck at M10, so that file is spent
 >
 > Everything below is the session of 2026-08-28 as it was written, and its
 > milestone numbers are the OLD ones — §0 has the key.

@@ -36,6 +36,11 @@ constexpr size_t kFramesPrinted = 8;
 
 } // namespace
 
+std::string arity_text(uint32_t count)
+{
+    return std::to_string(count) + (count == 1 ? " argument" : " arguments");
+}
+
 Machine::Machine(const Compiled &program, const Ast &ast, const Policy &policy)
     : program_(program), ast_(ast), policy_(policy), ceiling_(policy.max_depth)
 {
@@ -265,7 +270,7 @@ Value Machine::call(uint32_t capsule, const std::vector<Value> &arguments)
                                                   ast_.token_of(target.node).end,
                                                   ast_.token_of(target.node).line},
             std::string(ast_.text_of(target.node)),
-            std::to_string(target.parameters) + " arguments",
+            arity_text(target.parameters),
             std::to_string(arguments.size())));
         return Value::nothing();
     }

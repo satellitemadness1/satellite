@@ -240,7 +240,7 @@ void op_call(Machine &m, const Op &op, uint32_t step)
         if (count != target.parameters) {
             m.refuse(errors::make<errors::Code::EVAL_ARGUMENT_COUNT>(
                 m.span_of(m.here()), m.program().text(op.c),
-                std::to_string(target.parameters) + " arguments",
+                arity_text(target.parameters),
                 std::to_string(count)));
             return;
         }

@@ -34,6 +34,20 @@ constexpr std::chrono::seconds kEverySecond{1};
 //
 // fflush BEFORE _exit, BECAUSE _exit FLUSHES NOTHING. That is the price of not
 // running static destructors from a detached thread, and it is one call.
+//
+// AND FROM M10 IT DOES NOT REACH EVERYTHING, WHICH IS STATED HERE RATHER THAN
+// DISCOVERED. `satellite_console/console.hpp` puts a QUEUE above stdio: a line
+// a program displayed is a string waiting for the printer thread, and `fflush`
+// reaches only what the printer has already written. So LINES QUEUED AND NOT
+// YET WRITTEN ARE LOST WHEN THIS FIRES.
+//
+// DRAINING HERE IS NOT THE FIX AND MUST NOT BE ADDED. This is a detached thread
+// killing a process for taking too much memory; waiting on the printer is
+// exactly what it may never do, because a stuck printer would hang the one
+// thing whose job is to not hang. It is `_exit` over `exit` again -- the same
+// argument, one layer up, and reached from the same direction. PLAN §8's M22
+// entry is where the cost is revisited, because M22 is already the emergency
+// path's only registrar.
 [[noreturn]] void stop(const std::string &because)
 {
     std::fprintf(stderr, "\nsatl: stopping -- %s\n", because.c_str());

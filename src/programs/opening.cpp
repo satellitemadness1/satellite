@@ -20,10 +20,14 @@ namespace satellite {
 // a fresh prompt actually needs. The angle brackets belong in usage_text(),
 // where the reader has already decided to read a specification.
 //
-// The last paragraph is TEMPORARY and goes away at M10, when satl can run a
-// file. It is here because a program that prints "satl filename.satl" and then
-// refuses to do it has told the user something false, and the fix is to say so
-// on the way in rather than only on the way out.
+// THE LAST PARAGRAPH WENT AWAY AT M10, WHICH IS WHAT IT WAS THERE FOR. From M1
+// to M10 it said "This build does not interpret anything yet ... Running a file
+// lands at M10", because a program that prints "satl filename.satl" and then
+// refuses to do it has told the user something false. satl runs a file now, so
+// the honest thing to say is what it can and cannot do with one -- and that
+// sentence is a different sentence every milestone until M28, which is why it
+// names the two commands that answer the question rather than trying to hold a
+// list.
 std::string opening_text()
 {
     return "satellite " + version_line() + "\n"
@@ -32,9 +36,11 @@ std::string opening_text()
            "    satl --help            every way to start it\n"
            "    satl --version         what this build is, and what built it\n"
            "\n"
-           "This build does not interpret anything yet. It is milestone 1 of\n"
-           "PLAN_ONE.md -- the binary, the build, and the way in. Running a\n"
-           "file lands at M10.\n";
+           "A program starts at satellite.main() and prints through\n"
+           "satellite.console.display. Much of the language does not run yet:\n"
+           "satl --compile filename.satl lists every part of a file it cannot\n"
+           "do and names the milestone that will, and satl --errors explains\n"
+           "any code it reports.\n";
 }
 
 // Every way to start satl.
@@ -51,8 +57,8 @@ std::string opening_text()
 std::string usage_text()
 {
     return "usage: satl                       this opening information\n"
-           "       satl <file> [args]         run a file            (M10)\n"
-           "       satl --run <file> [args]   the same, spelled out (M10)\n"
+           "       satl <file> [args]         run a file: satellite.main()\n"
+           "       satl --run <file> [args]   the same, spelled out\n"
            "       satl --repl                the prompt            (M22)\n"
            "       satl --words               every path the language has, and\n"
            "                                  the number it is\n"
@@ -117,7 +123,12 @@ std::string usage_text()
            "satl exits 0 when what was asked for happened, 1 when a file it was\n"
            "given is not what it has to be, 2 when this command line is not one\n"
            "it has, 3 when the request is right and the milestone has not\n"
-           "landed, and 4 when satl stopped itself at a machine limit.\n";
+           "landed, and 4 when satl stopped itself at a machine limit.\n"
+           "\n"
+           "A program's own exit status is one of those five and not something\n"
+           "it returns: satellite.return(satellite) says it succeeded, and satl\n"
+           "exits 0 because the run finished rather than because of the value.\n"
+           "[args] after the file are not readable from a program until M20.\n";
 }
 
 } // namespace satellite

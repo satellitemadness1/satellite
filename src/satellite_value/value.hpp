@@ -1,7 +1,8 @@
 #pragma once
 
-// What a satellite expression evaluates to -- PLAN M9. DESIGN §8 is the table
-// of types and §8.2 is the one sentence this file is built around.
+// What a satellite expression evaluates to -- PLAN M9, and M10's fifth arm.
+// DESIGN §8 is the table of types and §8.2 is the one sentence this file is
+// built around.
 //
 // FORTY BYTES, AND THE NUMBER IS A BUDGET RATHER THAN A RESULT. DESIGN §8.2
 // asks that "small exact integers, `bool` and nil must never allocate", and
@@ -20,14 +21,21 @@
 // append-only rule survives it, because `.satc` files, dumps and the inline
 // caches in evaluator/dispatch.hpp all key on the type tag.
 //
-// FOUR ARMS AT M9, AND THE EMPTINESS IS DELIBERATE. DESIGN §8's table has
-// thirteen rows and this holds the four a program can PRODUCE today: nothing, a
-// bool, a number and a string. An arm with no producer is a case every later
-// reader has to rule out -- name_resolver/resolve.hpp refuses six sentinels for
-// three on exactly that argument -- so the rest arrive with the milestone that
-// can build one. PLAN §8's M9 entry names three of the known appends: the file
-// handle (M19), the arguments object (M20) and whatever Orbit's result becomes
-// (M28). Each re-runs the assert.
+// FIVE ARMS AT M10, AND THE EMPTINESS IS DELIBERATE. DESIGN §8's table has
+// thirteen rows and this holds the five a program can PRODUCE today: nothing, a
+// bool, a number, a string and the runtime singleton. An arm with no producer
+// is a case every later reader has to rule out -- name_resolver/resolve.hpp
+// refuses six sentinels for three on exactly that argument -- so the rest
+// arrive with the milestone that can build one. PLAN §8's M9 entry names three
+// of the known appends: the file handle (M19), the arguments object (M20) and
+// whatever Orbit's result becomes (M28). Each re-runs the assert.
+//
+// `Runtime` IS THE FIRST APPEND AND IT COST NO BYTES, which is the append-only
+// rule working rather than being obeyed. M10 gave `satellite` a producer --
+// DESIGN §3's "the singleton runtime object, not a zero sentinel" -- so the arm
+// arrived with the milestone that can build one, at the END of the list, and
+// the assert below did not move: an empty struct in a variant whose widest arm
+// is 32 bytes is free.
 //
 // AND `satellite.variable.float` CANNOT BE ONE OF THEM, which is worth knowing
 // four milestones before M15 tries. DESIGN §8.6 makes a float a bool and TWO
@@ -64,10 +72,27 @@ struct Nothing {
     bool operator==(const Nothing &) const = default;
 };
 
-// APPEND ONLY. A new arm goes at the END of this list, never in the middle.
-using ValueBase = std::variant<Nothing, bool, Number, Str>;
+// THE RUNTIME SINGLETON. DESIGN §8's table calls it "the runtime singleton" and
+// §3 says what it is for: "`satellite` as a value is the singleton runtime
+// object, NOT A ZERO SENTINEL. That is why `satellite.include(satellite)` and
+// `satellite.return(satellite)` use the same word to mean sensible things:
+// include the runtime, return the runtime (that is, success)."
+//
+// IT CARRIES NOTHING AND THAT IS THE WHOLE TYPE. There is one runtime and a
+// program cannot have a second, so a value of this arm says which arm it is and
+// has nothing left to say. `Nothing` is the same shape one row up and they are
+// two arms rather than one, because a capsule that answered `satellite` and a
+// capsule that answered nothing gave two different answers -- which is the
+// distinction §6.4 q3 draws between an undeclared variable and a declared one
+// holding nothing, one layer along.
+struct Runtime {
+    bool operator==(const Runtime &) const = default;
+};
 
-// One value. DESIGN §8's table, four rows of it.
+// APPEND ONLY. A new arm goes at the END of this list, never in the middle.
+using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime>;
+
+// One value. DESIGN §8's table, five rows of it.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -84,11 +109,13 @@ struct Value : ValueBase {
     {
         return Value(std::make_shared<const SatString>(std::move(s)));
     }
+    static Value runtime() { return Value(Runtime{}); }
 
     bool is_nothing() const { return std::holds_alternative<Nothing>(*this); }
     bool is_bool() const { return std::holds_alternative<bool>(*this); }
     bool is_number() const { return std::holds_alternative<Number>(*this); }
     bool is_string() const { return std::holds_alternative<Str>(*this); }
+    bool is_runtime() const { return std::holds_alternative<Runtime>(*this); }
 };
 
 // 40 BYTES. See the header note -- this is DESIGN §8.2's budget, and the arm

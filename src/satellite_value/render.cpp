@@ -85,6 +85,14 @@ std::string text_of(const Value &value)
     if (const Str *text = std::get_if<Str>(&value))
         return *text ? live_text(**text) : std::string();
 
+    // THE RUNTIME PRINTS AS THE WORD THE PROGRAM WROTE. DESIGN §8's table gives
+    // `satellite` a row of its own and §3 calls it "the singleton runtime
+    // object, not a zero sentinel"; a value that printed as blank or as
+    // `nothing` would be that sentinel arriving through the renderer, which is
+    // the one thing the row exists to deny.
+    if (value.is_runtime())
+        return "satellite";
+
     // NOTHING PRINTS AS A WORD RATHER THAN AS AN EMPTY LINE, which is DESIGN
     // §1.1's rule about never doing anything behind the user's back applied to
     // the smallest possible case: a capsule that returned nothing and a capsule

@@ -2,15 +2,22 @@
 //
 // THIS IS THE SECTION THAT KEEPS THE MILESTONE HONEST ABOUT ITS OWN EDGES. The
 // grammar is wider than this evaluator and will be until M28: a subscript, a
-// spacesuit, an include and `satellite` used as a value all parse today.
+// spacesuit and an include of a spaceship all parse today.
+//
 // errors.def's S0720 block note is the argument for saying so with a code, a
 // caret and a milestone number -- "between now and M28 every milestone ships a
 // language whose grammar is wider than its evaluator", and DESIGN §1.1 says
 // never to do anything behind the user's back, the gap included.
 //
-// SO EVERY REFUSAL BELOW IS AN ASSERTION THAT M9 ADMITS WHAT IT CANNOT DO. The
-// first satellite's answer to the same situation was a segfault or a silently
-// wrong value.
+// SO EVERY REFUSAL BELOW IS AN ASSERTION THAT THIS EVALUATOR ADMITS WHAT IT
+// CANNOT DO. The first satellite's answer to the same situation was a segfault
+// or a silently wrong value.
+//
+// AND ONE OF THEM STOPPED BEING ONE AT M10, WHICH IS WHAT THE LIST IS FOR.
+// `satellite` used as a value was in the sentence above and in a fixture below,
+// refusing with M10's number in it; M10 gave it a producer, so that fixture now
+// asserts the ANSWER instead. A refusal naming a milestone is a test that
+// milestone deletes -- which is the only thing that keeps the list honest.
 
 #include "eval_test.hpp"
 
@@ -84,10 +91,41 @@ void section_compile()
           "an Op is five words -- the same shape as the ast.hpp Node it came "
           "from, with a function pointer where the kind was");
 
+    // --- `satellite` IS A VALUE, WHICH IS M10's FIRST HALF --------------------
+    //
+    // DESIGN §8's type table has always had a row for it -- "`satellite` | the
+    // runtime singleton | `satellite.return(satellite)`" -- and §3 says what it
+    // means: "the singleton runtime object, NOT A ZERO SENTINEL ... return the
+    // runtime (that is, success)". Until M10 this compiled to a refusal naming
+    // M10, and the whole of the change is a fifth arm on the variant with a
+    // producer in compile_expressions.cpp.
+    {
+        Run run;
+        build(body("satellite.return(satellite)"), run);
+        check(run.built, "a capsule returning `satellite` compiles");
+        check(answer_of(run, "it", {}) == "satellite",
+              "and answers the runtime singleton, which renders as the word the "
+              "program wrote rather than as blank or as `nothing`");
+    }
+
+    // AND IT IS NOT `nothing`, WHICH IS THE ARM IT WOULD HAVE COLLAPSED INTO.
+    // Two empty structs in one variant look like waste until a program can tell
+    // them apart: a capsule that answered `satellite` said it succeeded and a
+    // capsule that answered nothing said nothing, and M12 is where the language
+    // gains a way to ASK. value.hpp's Runtime note is the argument.
+    {
+        Run run;
+        build("satellite.capsule ran()\n{\n    satellite.return(satellite)\n}\n"
+              "satellite.capsule quiet()\n{\n    satellite.return()\n}\n",
+              run);
+        check(run.built, "both return shapes compile");
+        check(answer_of(run, "ran", {}) == "satellite" &&
+                  answer_of(run, "quiet", {}) == "nothing",
+              "`satellite.return(satellite)` `1 15 1` and `satellite.return()` "
+              "`1 15 0` are two answers and not one");
+    }
+
     // --- what parses and does not run yet ------------------------------------
-    check(holds(refusal_in(body("satellite.return(satellite)"), "it"), "M10"),
-          "S0720: `satellite` as a value names M10, which brings the singleton "
-          "and `satellite.return(satellite)`");
 
     check(holds(refusal_in("satellite.capsule it()\n{\n"
                            "    satellite.variable.number n = 1\n"
@@ -108,10 +146,21 @@ void section_compile()
         build(body("satellite.console.display(\"x\")"), run);
         check(run.built, "a console call compiles");
         call(run, "it", {});
+        // A PATH WITH A NUMBER AND NOTHING BEHIND IT, AND AT M10 THIS BINARY
+        // IS WHY RATHER THAN THE MILESTONE. `satellite.console.display` `1 5 1`
+        // has a real handler in `satl` now -- satellite_console/handlers.cpp,
+        // the first row the table has ever held. This suite does not link that
+        // module, deliberately: it links no machine_limits either, so the depth
+        // fixtures run against the 8 MiB a login shell hands out (M8.5 §4.1),
+        // and a console started by a test binary would print into the test's
+        // own output. tests/console_test is where the row is checked.
+        //
+        // WHICH LEAVES THIS FIXTURE CHECKING THE SHAPE OF THE GAP, and that is
+        // still worth an assertion: every milestone from here to M28 ships
+        // paths the table has no row for, and S0721 is what one of them says.
         check(ran_into(errors::Code::EVAL_NO_HANDLER),
-              "S0721: `satellite.console.display` has a NUMBER and no handler "
-              "-- PLAN §8's ledger gives M9 none of the 223 paths, because this "
-              "milestone builds the table every other row dispatches through");
+              "S0721: a path with a number and no handler in THIS binary is "
+              "refused in words rather than crashing or answering nothing");
     }
 
     // --- a global, which is the one thing at the top level that runs ---------

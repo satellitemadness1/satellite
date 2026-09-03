@@ -65,8 +65,12 @@ void section_codes()
     // AND IT WENT UP BY EIGHT AT M9, which is the other direction and is the
     // easy one: an added row cannot hide, because the site that raises it has
     // to name the code. The number is here so that a row REMOVED still cannot.
-    check(kCodeCount == 69,
-          "errors.def has 69 rows -- if that changed on purpose, change it here "
+    // AND BY ONE AT M10: S0402 FILE_NO_MAIN, for a file handed to `satl` to run
+    // that declares no `satellite.main`. MILESTONES/M10.md §3 says why it is in
+    // S04xx -- the file satl was given -- rather than in the evaluator's block,
+    // and why it carries no span.
+    check(kCodeCount == 70,
+          "errors.def has 70 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

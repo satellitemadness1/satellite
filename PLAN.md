@@ -43,8 +43,8 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 ## 1. Where things stand
 
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
-2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, M7 and M8 on 2026-08-31, and
-M8.5 and M9 on 2026-09-01.** *(M1.5 is the window, and it
+2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, M7 and M8 on 2026-08-31,
+M8.5 and M9 on 2026-09-01, and M10 on 2026-09-02.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -67,13 +67,38 @@ example/frames.satl factorial 10` answers 3628800 — a capsule 1,000,000 frames
 deep answers too, at the 8 MiB a login shell hands out, and a runaway one is
 refused in words about recursion with exit 4. `satl --compile` prints the closure
 tree and says which parts of DESIGN §6's grammar do not run yet, naming the
-milestone for each. **Running a PROGRAM still lands at M10** — the console,
-`satellite.main` and `satellite.return` — and `satl --run` says so.
+milestone for each. **And since M10 satellite runs**: `satl file.satl` starts a
+program at `satellite.main()`, prints through `satellite.console.display` — a
+console with a printer thread of its own, joined in four steps at the end of the
+run — and ends at `satellite.return(satellite)`. That is the milestone at which
+this language executes anything at all, and everything from M11 on depends on it
+for the reason every milestone after M1 depends on there being a binary: without
+it there is nothing to print through.
+
+**Its acceptance files are `example/console.satl` and `example/bare_main.satl`,
+written by the author on 2026-09-02**, and they are the first two programs in
+this tree that run. `console.satl` prints `hello!` and returns the runtime;
+`bare_main.satl` prints nothing and returns the runtime, which is not a lesser
+copy of the first — a program that prints nothing still takes the shutdown path,
+and a barrier that waited on a printer nobody started would hang every one of
+them.
+
+**What M10 will NOT run is any program written before it, and that is the
+boundary rather than a shortfall.** All five of the older ones declare
+`satellite.main`'s parameter, which DESIGN §3 settles as an empty
+`satellite.container.list` and therefore **M16's**; each is answered with a caret
+under the word `arguments`, the milestone that will bind it, and exit 3. Hello
+world is M17.
 
 What exists: the `Makefile` as an index over eleven fragments under
-`make_support/`, **199 C++ files totalling 32,121 lines** plus `words.def` at
-551 and `errors.def` at 605, **nine** test suites under `tests/`, and
+`make_support/`, **211 C++ files totalling 33,622 lines** plus `words.def` at
+551 and `errors.def` at 630, **ten** test suites under `tests/`, and
 `satellite_enterprise/`, the Enterprise Linux installer and the artwork.
+*(Recounted 2026-09-02, at M10, over `src/` and `tests/` together — 141 files
+and 23,210 lines of it is `src/`. The twelve new files are one whole module,
+`satellite_console/`, plus `programs/run_command.*`, `programs/built_program.*`
+and the four of `tests/console_test/`. The figures at M9 were 199 files and
+32,121 lines, with `src/` at 133 and 22,328.)*
 *(Recounted 2026-09-01, at M9, over `src/` and `tests/` together — 133 files and
 22,328 lines of it is `src/`. The thirty new files are two whole modules:
 `satellite_value/` and `evaluator/`, plus `system_facts/user_facts.cpp`,
@@ -93,11 +118,16 @@ recorded rather than quietly replaced, for the same reason the 2026-08-28 figure
 below are: a count in prose goes stale the day after it is taken, and what makes
 one worth keeping is that it is dated.)*
 
-**The largest C++ file is `src/machine_limits/config.cpp` at 476**, then
-`src/parser/parser_statements.cpp` at 416, `src/machine_limits/limits.hpp` at
-399, `src/parser/parser_expressions.cpp` at 396,
+**The largest C++ file is `src/machine_limits/config.cpp` at 487**, then
+`src/machine_limits/limits.hpp` at 438, `src/parser/parser_statements.cpp` at
+416, `src/parser/parser_expressions.cpp` at 396,
 `src/parser/parser_declarations.cpp` at 377 and
-`src/lexical_analyzer/lexer.cpp` at 354. *(Recounted at M8.5. The three parser
+`src/name_resolver/names.cpp` at 367. *(Recounted at M10. The list did not
+change hands: `machine_limits` has been the widest module in the tree since M6
+and the two files at the top grew again. **M10's own widest file is
+`src/programs/run_command.cpp` at 208** and its next is
+`src/satellite_console/console.cpp` at 195, both well under §3's target, which
+is what a milestone that adds a module rather than a pass looks like.)* *(Recounted at M8.5. The three parser
 files grew because a machine says out loud what a recursion said by where a call
 sat — in CODE they are 296, 252 and 245, which is at the target; §3's rule is
 about the shape a file comes out in. `unparse.cpp` left this list by being split
@@ -2492,7 +2522,8 @@ consumed by later milestones that had each assumed somebody else built them.)*
   inherits: no walk over user-controlled depth uses the C++ stack, from its first
   commit.** M16's search walk is the next one it applies to.
 
-**M10 — the console, and the first program that runs.** *(Split on 2026-08-28
+**M10 — the console, and the first program that runs. LANDED 2026-09-02**, and
+[MILESTONES/M10.md](MILESTONES/M10.md) is the review. *(Split on 2026-08-28
 from a milestone then called M8, as its first half; it was M8.A until the
 2026-08-30 renumber.)* Console with its printer thread, `satellite.main`, `satellite.return`.
 **This is the milestone at which satellite executes anything at all**, and
@@ -2509,10 +2540,12 @@ parameter is the only part that ever needed a list.** So the console, `main` and
 **Its done-when cannot be DESIGN §3**, which is the thing worth saying out loud:
 §3's hello world declares the parameter, and the parameter is M17's. What runs here
 is the **bare `satellite.main()` form**, which is still legal and always was — §6's
-grammar reads `"(" [ param_list ] ")"` and DESIGN §3 keeps both shapes. **`example/`
-holds no bare-main program**, so this milestone has no acceptance file yet; writing
-one is the author's, and until then its done-when is prose, which §8's opening calls
-the weaker kind.
+grammar reads `"(" [ param_list ] ")"` and DESIGN §3 keeps both shapes. ~~`example/`
+holds no bare-main program, so this milestone has no acceptance file yet; writing
+one is the author's, and until then its done-when is prose.~~ **The author wrote
+two on 2026-09-02, the day it was built**: `example/console.satl` prints and
+`example/bare_main.satl` does not, and both return the runtime. So this
+milestone's done-when is a pair of files somebody can read after all.
 
 **Its seven paths, and the two unnumbered mechanisms M14 consumes.**
 *(2026-08-28.)* `satellite.main` `1 3 (0)`; `satellite.console` `1 5 (0)` and
@@ -2623,6 +2656,50 @@ stated here rather than discovered later: lines queued but not yet written are
 LOST when the watchdog fires.** M22 is the milestone that revisits it, because it
 is already the emergency path's only registrar (§8's M22 entry, and M6's argument
 for registering nothing yet).
+
+**DONE WHEN — WRITTEN AT M10, AND IT HAS TWO ACCEPTANCE FILES AFTER ALL.**
+`satl example/console.satl` prints `hello!` and exits 0, and `satl
+example/bare_main.satl` prints nothing and exits 0 — the author wrote both on the
+day this was built, which is what the struck sentence above was waiting for. What
+neither can show is inside the console, so `tests/console_test` takes the four
+claims a file cannot make: that a line stays atomic across eight threads, that
+nothing queued is lost, that `drain()` means the bytes reached the descriptor,
+and that the row is found by its number. The clauses, as they turned out: `satl file.satl` and `satl --run file.satl` run
+a program that starts at `satellite.main` and prints through
+`satellite.console.display` `1 5 1`, which is the first row `handlers[path_id]`
+has ever held; the console owns a printer thread it made itself and joins it in
+four steps — drain, flush, stop, join — so a line printed before a diagnostic
+appears above it and not under it; `drain()` returns only when the bytes have
+reached the descriptor, which is what M14's prompt needs; a line stays atomic
+across eight threads; `satellite` is a value and `satellite.return`'s three
+shapes `1 15 0`, `1 15 1` and `1 15 2` all run; a file with no `satellite.main`
+is refused with **S0402** and a `main` that declares DESIGN §3's parameter with
+**S0720** naming M16, exit 3; and `satl --version` constructs no console and
+starts no thread, which the startup share says by not moving.
+
+**AND WHAT A PROGRAM ANSWERS IS NOT ITS EXIT STATUS, WHICH THIS MILESTONE HAD TO
+DECIDE AND NOBODY HAD WRITTEN DOWN.** The C shape — `main` returns a number, the
+process exits with it — is wrong here for three reasons and the first is
+sufficient: `programs/opening.hpp`'s four statuses "are assigned by what a
+failure IS", so a program answering 2 would be reported as "the command line did
+not name something satl can do". DESIGN §3 already gives the language a success
+signal and it is not numeric — `satellite.return(satellite)` is "return the
+runtime (that is, success)" — and a satellite number is exact and unbounded
+while an exit status is eight bits, so the conversion would be the silent kind
+§1.1 refuses. So the ENDING decides it: 0 finished, 4 a ceiling, 1 the program
+was wrong. **The author can overrule this in one line** and MILESTONES/M10.md §6
+carries it as an open item, which is the shape M6's `_exit(2)`-versus-`_exit(4)`
+argument took.
+
+**AND THE UN-NEWLINED FORM HAS NO SPELLING, WHICH BUILDING IT FOUND.** This
+entry gives M10 "`display`'s un-newlined form, which lives under `1 5 1`", and
+the M14 entry below names v1's `display(text, end="")` and `named_arg_misuse()`.
+**DESIGN §6's grammar has no named arguments** — `args := expression { ","
+expression }` — so that spelling is not writable in this language and no
+positional one is specified anywhere. The capability is therefore built on the
+console, where the queue is, and reached only from C++; `tests/console_test` is
+its only caller until M14's `satellite.console.input(prompt)` `1 5 3` becomes
+the real one, and whoever gives it a language surface decides the spelling.
 
 **Ctrl-C has no ending to be reported as, and that is M11's to settle.**
 `evaluator/machine.hpp` has three — `Finished`, `Refused`, `Stopped` — and

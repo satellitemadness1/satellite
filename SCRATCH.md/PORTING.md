@@ -88,10 +88,34 @@ the include convention exist.
     100  cwd             current working directory
 
 **97, 98 and 99 are three of the numbers `satellite_config.ini` is supposed to
-carry.** The string type already reaches them, through `system_facts`. That is
+carry.** The string type already reaches them, through `system_facts`. ~~That is
 either a gift or a duplication depending on a decision nobody has made yet: if the
 config file is the authority on THREAD_COUNT, then code 97 and the config can
-disagree, and something has to say which one a program sees.
+disagree, and something has to say which one a program sees.~~
+
+**ANSWERED, AND THE ANSWER WAS WRITTEN BEFORE THE QUESTION WAS DEMONSTRATED.**
+DESIGN §7.7's "three surfaces, one set of facts" settles it in two sentences:
+*"They must not be allowed to disagree. Whatever the configuration finally says,
+it is a SETTING and the machine is a FACT, and a program that asks
+`arguments.machine.threads` is asking what the machine has, not what the config
+was told. If the two ever need to differ, they need two different names."* So
+code 97 reports the machine, always, and `THREAD_COUNT` is how much of it satl
+may use. They are two facts with two names, not one fact with two readings.
+
+**M10 is where it can be SEEN, which is why this is struck now rather than on
+2026-08-31.** A program had no way to print a live code until there was a
+console. Measured 2026-09-02, with a `satellite_config.ini` saying
+`THREAD_COUNT=4` beside the binary:
+
+    $ satl --limits
+      THREAD_COUNT      4           the file, .../satellite_config.ini:1
+    $ satl live.satl
+      threads=24 ...
+
+**That is the specified behaviour and not a defect**, and it is worth having the
+transcript because the two numbers side by side look exactly like a bug. `satl
+--limits` says where each of its own answers came from, which is the other half
+of what keeps them from being confused.
 
 ## 4. The bigger finding: the memory ceiling already exists, with a different policy
 

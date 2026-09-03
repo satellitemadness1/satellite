@@ -268,7 +268,7 @@ void op_dispatch(Machine &m, const Op &op, uint32_t step)
     if (handler->arity != kAnyArity && handler->arity != count) {
         m.refuse(errors::make<errors::Code::EVAL_ARGUMENT_COUNT>(
             m.span_of(m.here()), m.program().text(op.d),
-            std::to_string(handler->arity) + " arguments", std::to_string(count)));
+            arity_text(handler->arity), std::to_string(count)));
         return;
     }
 

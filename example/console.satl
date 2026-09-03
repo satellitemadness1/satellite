@@ -1,0 +1,9 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("hello!")
+
+    satellite.return(satellite)
+}

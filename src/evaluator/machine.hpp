@@ -62,6 +62,7 @@
 #include "satellite_words/words.hpp"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace satellite::eval {
@@ -91,6 +92,18 @@ struct Policy {
     // `satellite.library.system.division_digits`, M8's dial.
     unsigned division_digits = 34;
 };
+
+// "1 argument" or "3 arguments" -- the {2} hole in S0722, from the three sites
+// that raise it.
+//
+// A SENTENCE FRAGMENT GETS A FUNCTION BECAUSE THREE PLACES BUILT IT BY HAND AND
+// ALL THREE SAID "1 arguments". That was invisible while nothing in the
+// language had a handler to get wrong: M9's producers are a capsule call and a
+// test's own row. M10 installs `satellite.console.display` with an arity of
+// ONE, so the first person to write `display("a", "b")` is the first person to
+// read the sentence, and errors.def's whole argument is that a message is a row
+// somebody maintains rather than a literal at a call site.
+std::string arity_text(uint32_t count);
 
 // One thing left to do. Eight bytes, which is what makes a million-deep
 // recursion eight megabytes of work stack rather than a segfault.
