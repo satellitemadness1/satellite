@@ -96,8 +96,8 @@ std::string text_of(const Value &value)
     // NOTHING PRINTS AS A WORD RATHER THAN AS AN EMPTY LINE, which is DESIGN
     // §1.1's rule about never doing anything behind the user's back applied to
     // the smallest possible case: a capsule that returned nothing and a capsule
-    // that returned the empty string must not print the same thing. M12 is
-    // where a program gains a way to ASK which it has.
+    // that returned the empty string must not print the same thing. Since M12
+    // a program can ASK which it has -- the variant's `holding`, DESIGN §8.7.
     return "nothing";
 }
 

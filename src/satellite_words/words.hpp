@@ -15,7 +15,7 @@
 //
 // DESIGN §4 is why the numbering has this shape and WORD_NUMBERS.md is the
 // authority over every number in it. This module reads neither at run time
-// except in the test, which opens WORD_NUMBERS.md §2.2 and walks all 223 of its
+// except in the test, which opens WORD_NUMBERS.md §2.2 and walks all 227 of its
 // paths -- because the transcription is the one thing no static_assert can see.
 //
 // WHAT THIS IS FOR. The numbering is satellite's bytecode (DESIGN §4): the job a

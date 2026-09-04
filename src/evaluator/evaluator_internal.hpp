@@ -44,6 +44,7 @@ void op_dispatch(Machine &m, const Op &op, uint32_t step);
 void op_method(Machine &m, const Op &op, uint32_t step);
 void op_method_global(Machine &m, const Op &op, uint32_t step);
 void op_refuse(Machine &m, const Op &op, uint32_t step);
+void op_no_question(Machine &m, const Op &op, uint32_t step);
 
 void op_block(Machine &m, const Op &op, uint32_t step);
 void op_expression(Machine &m, const Op &op, uint32_t step);

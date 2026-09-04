@@ -111,8 +111,9 @@ void section_compile()
     // AND IT IS NOT `nothing`, WHICH IS THE ARM IT WOULD HAVE COLLAPSED INTO.
     // Two empty structs in one variant look like waste until a program can tell
     // them apart: a capsule that answered `satellite` said it succeeded and a
-    // capsule that answered nothing said nothing, and M12 is where the language
-    // gains a way to ASK. value.hpp's Runtime note is the argument.
+    // capsule that answered nothing said nothing, and since M12 the language
+    // can ASK -- `holding` answers "satellite" or "nothing". value.hpp's
+    // Runtime note is the argument.
     {
         Run run;
         build("satellite.capsule ran()\n{\n    satellite.return(satellite)\n}\n"

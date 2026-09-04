@@ -527,8 +527,8 @@ SAT_CODE(712, EVAL_NOT_COMPARABLE, SAT_ERROR,
 // `"abc".at(9)` could answer something and `"abc".find("z")` could answer -1,
 // and both would be a value quietly meaning "not a value" -- the thing DESIGN
 // §1.1 exists to refuse. A refusal can LOOSEN into an answer later without
-// changing any working program's meaning (M12 is where "nothing" becomes a
-// thing a program can ask about); a sentinel, once a program is written
+// changing any working program's meaning (M12 made "nothing" a thing a
+// program can ask about, DESIGN §8.7); a sentinel, once a program is written
 // against it, is forever.
 
 SAT_CODE(713, EVAL_WRONG_TYPE, SAT_ERROR,
@@ -571,6 +571,20 @@ SAT_CODE(721, EVAL_NO_HANDLER, SAT_ERROR,
 
 SAT_CODE(722, EVAL_ARGUMENT_COUNT, SAT_ERROR,
          "`{1}` takes {2} and was given {3}")
+
+// 723 REPLACES A SENTENCE THAT GAVE WRONG ADVICE, WHICH IS WORSE THAN NO
+// SENTENCE. Until M12, a method a declared type does not have -- `box.upper()`
+// on a `variant`, `s.holding()` on a string -- fell into S0720's "name the
+// receiver first", advice that cannot help a receiver that IS a name. The
+// compiler knows the declared type at that arm (resolve's one hop already
+// carried it), so the refusal can say what is true: the type, the word it does
+// not have, and per-type advice in {3} -- the variant's row names its four
+// words and `held()`, because M12 is where a wrong selector became an easy
+// mistake to make. It stays a RUN-time refusal like S0720, for S0720's own
+// reason: a wrong question in a branch that never runs is a program that runs.
+
+SAT_CODE(723, EVAL_NO_SUCH_QUESTION, SAT_ERROR,
+         "`{1}` is not a question a `{2}` answers -- {3}")
 
 // AN INTERRUPT IS NOBODY'S MISTAKE AND ITS ROW SAYS WHAT IS TRUE INSTEAD OF
 // WHAT IS WRONG. Everything above the caret's line ran and was drained through

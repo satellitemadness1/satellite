@@ -22,7 +22,7 @@ void check(bool ok, const std::string &what);
 // from somewhere other than the tree root.
 extern std::string authority_path;
 
-void section_authority();   // all 223 rows of §2.2, and §2.3's aliases
+void section_authority();   // all 227 rows of §2.2, and §2.3's aliases
 void section_walking();     // the worked examples, PathIds, and failure reports
 void section_runtime();     // the live child counter and user names
 

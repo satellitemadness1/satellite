@@ -433,6 +433,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SCALARS)/handlers.cpp \
             $(SCALARS)/string_methods.cpp \
             $(SCALARS)/number_methods.cpp \
+            $(SCALARS)/variant_methods.cpp \
             $(EVAL)/evaluate.cpp \
             $(EVAL)/compile.cpp \
             $(EVAL)/compile_expressions.cpp \

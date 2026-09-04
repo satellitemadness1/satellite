@@ -278,8 +278,10 @@ public:
     // The source text under an op's node -- the selector a method sentence
     // quotes. op_dispatch carries its callee's spelling as a compiled text;
     // the method ops spend that operand on the write-back slot instead, and
-    // this is where their sentences get a name from. Empty for an op with no
-    // node, which no method op is.
+    // this is where their sentences get a name from. A call op answers its
+    // TARGET's text rather than its own anchor token, which is the `(` --
+    // machine.cpp says when that was found and why every caller wants it so.
+    // Empty for an op with no node, which no method op is.
     std::string_view text_of(OpIndex op) const;
 
     // The call stack, innermost first, as DESIGN §9's fourth field.

@@ -164,7 +164,19 @@ std::string_view Machine::text_of(OpIndex op) const
     const NodeIndex node = program_.node_of(op);
     if (node == kNoNode)
         return {};
-    return ast_.text_of(node);
+    // A CALL'S ANCHOR TOKEN IS ITS `(` (ast.hpp's table), AND NO SENTENCE
+    // WANTS THAT WORD. Every caller here is building a refusal that quotes
+    // what was ASKED -- `held`, `size`, a capsule's name -- so a call answers
+    // its target's text instead: the Member or Name the postfix chain hangs
+    // off. Until M12 this returned the paren, and S0713/S0714 printed
+    // "`(` was asked of a variable that holds nothing" -- found by M12's
+    // done-when, which demands the refusal be BY NAME, and fixed here so
+    // M11's sentences heal with it. The loop is for `f()()`, where the
+    // target is itself a call.
+    NodeIndex named = node;
+    while (ast_[named].kind == NodeKind::Call && ast_[named].a != kNoNode)
+        named = ast_[named].a;
+    return ast_.text_of(named);
 }
 
 std::vector<errors::FrameRef> Machine::call_stack() const

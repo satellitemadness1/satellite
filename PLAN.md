@@ -44,7 +44,8 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
 2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, M7 and M8 on 2026-08-31,
-M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, and M11 on 2026-09-03.** *(M1.5 is the window, and it
+M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, and M11 and M12 both on
+2026-09-03.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -110,10 +111,32 @@ the two findings worth reading before touching words.def: the paren
 annotations count two ways between the string and number families, and the
 selector fold now tries both counts.
 
+**And since M12 "nothing" is a thing a program can ask about.** The blocker
+only the author could take — *is "nothing" a state every type has, or a value
+only a `variant` can hold?* — was delegated whole on the day it landed and
+answered: **a state every type has**, with `satellite.variable.variant` as the
+type whose vocabulary can name it. DESIGN §8.7 is the language's statement,
+[MILESTONES/M12.md](MILESTONES/M12.md) §2 the argument. The variant's
+representation is the `Value` itself — no arm, no handle, §8.2's forty bytes
+untouched — and its four methods are the numbering's first appended CHILDREN,
+`holding` `1 6 14 1`, `holds(x)` `1 6 14 2`, `held` `1 6 14 3` and `clear`
+`1 6 14 4`, assigned by the walk of **its acceptance file
+`example/variant.satl`** — nine lines, one box, three states, a different true
+answer at each. `satellite.variable.expression` `1 6 9` stays numbered and
+unbuilt, and saying so was the work. And every method refusal in the language
+now names its method: the machine's `text_of` answered a call's `(` token
+until M12's done-when demanded the refusal be BY NAME, so M11's sentences
+healed with it.
+
 What exists: the `Makefile` as an index over eleven fragments under
-`make_support/`, **221 C++ files totalling 35,501 lines** plus `words.def` at
-551 and `errors.def` at 688, **ten** test suites under `tests/`, and
+`make_support/`, **223 C++ files totalling 35,948 lines** plus `words.def` at
+558 and `errors.def` at 702, **ten** test suites under `tests/`, and
 `satellite_enterprise/`, the Enterprise Linux installer and the artwork.
+*(Recounted 2026-09-03 again, at M12, over `src/` and `tests/` together — 150
+files and 24,888 lines of it is `src/`. The two new files are
+`satellite_scalars/variant_methods.cpp` and `tests/eval_test/variant.cpp`; the
+figures at M11 were 221 files and 35,501 lines, with `src/` at 149 and 24,651,
+`words.def` at 551 and `errors.def` at 688.)*
 *(Recounted 2026-09-03, at M11, over `src/` and `tests/` together — 149 files
 and 24,651 lines of it is `src/`. The ten new files are one whole module,
 `satellite_scalars/`, plus `system_facts/interrupt.*`,
@@ -1653,7 +1676,7 @@ conditions under which it declines.
   the authority.** A row left out of `words.def` does not leave a hole; it
   silently renumbers every sibling after it, and *both files stay internally
   consistent.* `tests/words_test` therefore opens WORD_NUMBERS.md, parses §2.2
-  and walks all 223 paths. **Verified by mutation on 2026-08-28**: deleting one
+  and walks all 227 paths. **Verified by mutation on 2026-08-28**: deleting one
   row — `satellite.console.typed()` `1 5 5` — compiles clean with every assert
   passing, and the test names the missing row and the four siblings it shifted.
 
@@ -2540,7 +2563,7 @@ consumed by later milestones that had each assumed somebody else built them.)*
   pair *"the kind of thing that gets decided by accident at M16"* — and M19 needs it
   built rather than legislated from three milestones later. **Built, and the table
   is empty in `satl`**, which is this section's own ledger being kept: M9 holds
-  none of the 223 numbered paths, so the first rows are M10's console and
+  none of the 227 numbered paths, so the first rows are M10's console and
   `tests/eval_test/dispatch.cpp` is the reader that proves the mechanism before
   anything owns one.
 
@@ -2820,6 +2843,22 @@ reads as the first** and DESIGN §8's deferral of `variant` reads as the second,
 nothing reconciles them. M14 and M19 both inherit whichever answer is given, so the
 answer is worth more than either milestone.
 
+**Taken 2026-09-03, by delegation, and the milestone landed the same day.** The
+author handed the blocker over whole — "I don't have a vote on this one" — and
+the answer is the first reading: **nothing is a state every type has**, and the
+`variant` is the type whose vocabulary can name it. DESIGN §8.7 is the
+language's statement, with the declined reading kept beside it;
+[MILESTONES/M12.md](MILESTONES/M12.md) §2 is the full argument from the code —
+op_store already writes the state into every declared type's slot, S0714's
+sentence already reads as the first reading verbatim, and the second reading
+requires an assignment type-check the language has nowhere. **The
+representation row is the `Value` itself** — no arm, no handle, no bytes — and
+the vocabulary is four appended children, `holding` `1 6 14 1`, `holds(x)`
+`1 6 14 2`, `held` `1 6 14 3` and `clear` `1 6 14 4`, assigned by
+`example/variant.satl`'s walk and recorded in WORD_NUMBERS §2.5. What reading
+two offered — a refusal at the moment nothing arrives somewhere unexpected —
+survives as `held`, opt-in and by name.
+
 **`satellite.variable.expression` `1 6 9` stays numbered and unbuilt, and saying so
 is the work.** Its entire provenance is one row in `SCRATCH.md/WORD_SURFACE.md`
 sourced to `v1docs` — no representation, no method, no v1 code, no sentence in
@@ -2834,7 +2873,11 @@ step through `satellite.console.display` — and when a `variant` that holds not
 is refused by name if a method is called on it, which is §6.4 q3's second message
 becoming something a person can read. Nothing here needs a float, a container, a
 thread or a file; **it needs M9's `Value`, M10's console and M11's scalars, and
-that is the whole of its dependency list.**
+that is the whole of its dependency list.** *(Done 2026-09-03:
+`example/variant.satl` is the program and `held` is the refusal — and "by name"
+turned out to be a fix in the machine, not the row: `text_of` answered a call's
+`(` token, so every S0713/S0714 sentence in the language said "`(` was asked"
+until this clause caught it. MILESTONES/M12.md §3.)*
 
 **M13 — the clock and the dice, the two sources of nondeterminism.** *(New
 2026-08-28, corrected from the 2026-08-27 draft. After M12.)* **Twenty numbers on
@@ -2854,8 +2897,8 @@ this whole pass exists to end:
 spelling of the two-argument shape, not a fourth segment and not a path
 (WORD_NUMBERS §2.3): `fast.range(min, max)` **is** `1 7 5`, `normal.range` **is**
 `1 7 8`, `ultra.range` **is** `1 7 11`. **Those three are the only duplicate
-numbers in the language**, and they are the whole of the difference between the 223
-rows §2.2 holds and the 220 distinct numbers it carries. That reconciliation was
+numbers in the language**, and they are the whole of the difference between the 227
+rows §2.2 holds and the 224 distinct numbers it carries. That reconciliation was
 written down only in `SCRATCH.md/MILESTONE.md` §5, which is scratch; it lives here
 now.
 
@@ -4334,10 +4377,13 @@ M15's, so M8 reads 13 and M15 reads 4, and `digits` `1 6 4 15` is a new row. **T
 total moved for the first time**, from 222 to 223, and that is the distinction
 this table is for: paths moving between milestones must leave it alone, and a row
 appended to WORD_NUMBERS §2.2 must change it by exactly one. M8's entry has both
-reasons.)*
+reasons. **And it moved again on 2026-09-03, by four at once**: M12 appended the
+variant's `holding`, `holds(x)`, `held` and `clear` at `1 6 14 1` through
+`1 6 14 4` — WORD_NUMBERS §2.5 says who assigned them and by what walk — so M12
+reads 6 and the total reads 227.)*
 WORD_NUMBERS.md §2.2
-holds **223 rows and 220 distinct numbers** — the three duplicates are §2.3's
-`.range` aliases and nothing else. **All 223 rows are named by exactly one milestone
+holds **227 rows and 224 distinct numbers** — the three duplicates are §2.3's
+`.range` aliases and nothing else. **All 227 rows are named by exactly one milestone
 above**, counted mechanically against §2.2 rather than read off the prose:
 
 | | paths | | | paths |
@@ -4350,13 +4396,13 @@ above**, counted mechanically against §2.2 rather than read off the prose:
 | M8 | 13 | | M23 | 6 |
 | M10 | 7 | | M24 | 3 |
 | M11 | 26 | | M25 | 2 |
-| M12 | 2 | | M26 | 3 |
+| M12 | 6 | | M26 | 3 |
 | M13 | 23 | | M27 | 9 |
 | M14 | 8 | | M28 | 1 |
-| M15 | 4 | | **total** | **223** |
+| M15 | 4 | | **total** | **227** |
 
 **M1, M2, M4.5, M5, M9, M21 and M22 hold none, and that is right rather than a
-gap.** M2 registers all 223 and owns no behaviour; M5 and M9 build the machinery
+gap.** M2 registers all 227 and owns no behaviour; M5 and M9 build the machinery
 every other row dispatches through; M21's whole content is a program. **The table
 counts the milestone that makes a path answer, not the one that parses it** — M4
 parses DESIGN §6.1's eleven segment-1 words and appears here with three, and M11's
@@ -4386,7 +4432,9 @@ finished:**
 - **Ten milestones state something only the author can clear**, six of them under a
   heading that says *Blocker* and four inside an open list that stands in front of a
   demonstration: M15 (the rounding rule), M6 (three, all §4.5's), M12 (whether
-  "nothing" is a state or a value), M13 (the clock, and what `1 7 1`–`1 7 3` name),
+  "nothing" is a state or a value — **cleared 2026-09-03 by delegation, the day
+  it landed: a state every type has, DESIGN §8.7**), M13 (the clock, and what
+  `1 7 1`–`1 7 3` name),
   M19 (the mode-word fold, and the failed-open contract's missing numbers), M20
   (DESIGN §7.7's live-code mapping, and the 33), M21 (a seeded draw with no number),
   M26 (cycles), M27 (four, starting with what a `satellite.variable.network` is),

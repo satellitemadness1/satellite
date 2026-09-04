@@ -311,6 +311,7 @@ const char *op_name(OpFn fn)
     if (fn == op_method)       return "method";
     if (fn == op_method_global) return "method_global";
     if (fn == op_refuse)       return "refuse";
+    if (fn == op_no_question)  return "no_question";
     if (fn == op_block)        return "block";
     if (fn == op_expression)   return "expression";
     if (fn == op_store)        return "store";

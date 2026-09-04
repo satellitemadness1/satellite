@@ -64,7 +64,7 @@ namespace detail {
 inline PathId match_shape(NodeId node, std::string_view word, std::string_view args)
 {
     // AN EMPTY WORD MATCHES NOTHING, and this guard is load-bearing rather than
-    // defensive. The 38 bare rows and the 6 argument rows have an EMPTY
+    // defensive. The 39 bare rows and the 6 argument rows have an EMPTY
     // spelling by design -- words.def says such a row "has no spelling of its
     // own and is never walked to by name" -- so without this, an empty `word`
     // compares equal to every one of them and the first `if (args.empty())`

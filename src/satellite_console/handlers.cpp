@@ -32,8 +32,8 @@ namespace {
 //
 // IT ANSWERS `nothing`, WHICH IS A VALUE AND NOT A GAP. Every expression op
 // leaves exactly one value (evaluator/machine.hpp's contract), and a statement
-// that prints has nothing to say afterwards; `op_expression` drops it. M12 is
-// where a program gains a way to ask what it got.
+// that prints has nothing to say afterwards; `op_expression` drops it. Since
+// M12 a program can ask what it got (DESIGN §8.7).
 bool display(eval::Machine &, const Value *arguments, uint32_t, Value *answer)
 {
     Console::the().display(text_of(arguments[0]));

@@ -75,8 +75,12 @@ void section_codes()
     // S0730 EVAL_INTERRUPTED, which opens the block's fourth decade because a
     // Ctrl-C is raised at the run from OUTSIDE it. MILESTONES/M11.md §3 is
     // the record.
-    check(kCodeCount == 78,
-          "errors.def has 78 rows -- if that changed on purpose, change it here "
+    // AND BY ONE AT M12: S0723 EVAL_NO_SUCH_QUESTION, for a method a declared
+    // type does not have -- a case that used to fall into S0720's "name the
+    // receiver first", advice that cannot help a receiver that IS a name.
+    // MILESTONES/M12.md §3 is the record.
+    check(kCodeCount == 79,
+          "errors.def has 79 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

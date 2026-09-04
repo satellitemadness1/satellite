@@ -226,6 +226,17 @@ void op_refuse(Machine &m, const Op &op, uint32_t)
         m.span_of(m.here()), m.program().text(op.a), m.program().text(op.b)));
 }
 
+void op_no_question(Machine &m, const Op &op, uint32_t)
+{
+    // op_refuse's twin for a method a declared type does not have -- S0723's
+    // block note in errors.def says why it exists and why it is raised at run
+    // time. `a` is the selector, `b` the receiver's declared type as a path,
+    // `c` the advice the compiler chose for that type.
+    m.refuse(errors::make<errors::Code::EVAL_NO_SUCH_QUESTION>(
+        m.span_of(m.here()), m.program().text(op.a), m.program().text(op.b),
+        m.program().text(op.c)));
+}
+
 // op_dispatch LIVED HERE FROM M9 TO M11 AND MOVED WHEN IT STOPPED BEING ALONE.
 // M11's method ops share its whole body except where a changed receiver goes,
 // so the three arms and their one core are operations_dispatch.cpp -- the same

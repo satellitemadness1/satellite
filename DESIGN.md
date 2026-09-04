@@ -1210,7 +1210,7 @@ opened.
 | `satellite.variable.file` | handle | reference type |
 | `satellite.variable.thread` | handle | reference type |
 | `satellite.variable.capsule` | `(capsule number, argument values)` | a deferred call; §13, and `1 6 16` |
-| `satellite.variable.variant` | — | deferred; PLAN.md §8, "Later" |
+| `satellite.variable.variant` | the `Value` itself | §8.7 — no arm of its own, no handle, no bytes; holds any arm, the nothing state included |
 | `satellite` | the runtime singleton | `satellite.return(satellite)` |
 
 ### 8.1 Numbers — one type, exact, arbitrary precision
@@ -1606,6 +1606,65 @@ open is what the FLOAT does and whether the number's division should agree; the
 honest position is that a default arrived by porting, and
 `tests/number_test/arithmetic.cpp` asserts it so that changing it is a visible
 edit.
+
+### 8.7 The variant, and what "nothing" is
+
+*(New 2026-09-03, at M12. PLAN §8's M12 entry held the blocker — "is 'nothing'
+a state every type has, or a value only a `variant` can hold?" — and the author
+delegated the answer on the day it landed. MILESTONES/M12.md §2 carries the
+full argument; this section is the language's statement of it, and M14 and M19
+read it here.)*
+
+**Nothing is a state every type has.** A declared variable of any type holds
+nothing until a value is assigned to it — §6.4 qualification 3's second
+non-dispatchable state, S0714's exact sentence — and nothing may be handed
+around: assigned, passed, returned, put into a `variant`. A capsule that falls
+off its end answers it. What nothing is NOT is dispatchable or convertible:
+methods asked of it refuse by name at the line it happened (S0714), only a bool
+is a condition, and equality against a different arm answers false without
+error. The state is universal; the *vocabulary about it* belongs to one type.
+
+**`satellite.variable.variant` is represented as the `Value` itself.** M9's
+discriminated union is the representation — no arm of its own, no handle, no
+allocation, and §8.2's forty-byte assert does not move. A slot declared
+`variant` holds whatever `Value` it holds, and the declared type does the one
+thing a declared type does anywhere in this language: it numbers the selectors
+(§6.4, WORD_NUMBERS §1.5). What it numbers is the asking vocabulary, the only
+method family for which the nothing state is an answer rather than a refusal:
+
+- **`holding`** `1 6 14 1` — the word for what it holds: `"nothing"`,
+  `"bool"`, `"number"`, `"string"` or `"satellite"`, one word per arm of
+  §8.2's variant, growing as arms are appended. Never refuses.
+- **`holds(x)`** `1 6 14 2` — the same question as yes or no. `x` off the
+  word list is refused (S0713), never answered false: a typo'd word answered
+  false forever is a condition no program can satisfy, and the refusal can
+  loosen the day a new arm makes the word real.
+- **`held`** `1 6 14 3` — the value itself, or S0714 by name. Plain
+  assignment out of a variant already copies whatever it holds, nothing
+  included; `held` is for the program that means *"there is something in
+  here, and stop me at this line if not."*
+- **`clear`** `1 6 14 4` — the receiver becomes nothing, under §6.4's
+  storage-slot rule and §8.3's mutating contract: the answer is the
+  receiver's new value. Clearing an empty variant answers nothing — the
+  method promises a state, not a transition.
+
+**The other reading was declined, and the losing argument is worth keeping.**
+Under reading two — nothing as a value only a `variant` can hold —
+`satellite.variable.string line = my_file.read_line()` is a type error at end
+of file. That reading requires an assignment type-check this language has
+nowhere (op_store is checkless; the declared type is a dispatch key, not an
+enforced invariant), splits "nothing" into an unassignable state and an
+assignable value that are byte-identical in the slot, and forces every
+end-of-file loop through extraction ceremony §1.1 exists to abolish. What it
+offered — a refusal at the assignment — survives in opt-in form as `held`.
+
+**What M14 and M19 inherit:** `satellite.console.typed()` and
+`satellite.variable.file.read_line` answer *a line, or nothing*, assignable
+anywhere. The caller who handles the nothing case declares a `variant` and
+asks; the caller who declares a `string` has written a legal program that, at
+end of file, refuses by name at the line of first use. An empty line and
+nothing are two different values — §8.2's arms, told apart by `holding` — and
+never one empty string.
 
 ---
 

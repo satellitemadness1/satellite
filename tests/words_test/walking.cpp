@@ -4,7 +4,7 @@
 // PLAN M2's done-when is "a test proving satellite.console.display walks to
 // 1 5 1, satellite.random.normal to 1 7 2, and that both intern to stable
 // PathIds." Those two are checked here BY NAME as well as by authority.cpp's
-// sweep of all 223, because a milestone's own acceptance condition should be
+// sweep of all 227, because a milestone's own acceptance condition should be
 // findable by grepping for it rather than by trusting that a loop covered it.
 
 #include "words_test.hpp"
@@ -106,7 +106,7 @@ void section_walking()
           "and it failed under `console`, where `display` lives");
 
     // AN EMPTY SEGMENT MUST MATCH NOTHING. Found by review 2026-08-28 and it
-    // was reachable from the command line: the 38 bare rows and the 6 argument
+    // was reachable from the command line: the 39 bare rows and the 6 argument
     // rows are spelled "" by design, so an empty `word` compared equal to every
     // one of them and the walk handed back the bare shape.
     // `satl --words satellite.console.` answered `1 5 0` and exited 0.

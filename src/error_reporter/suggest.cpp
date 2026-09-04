@@ -88,7 +88,7 @@ std::string_view suggest(words::PathId under, std::string_view word)
          c = words::next_sibling(c)) {
         const std::string_view spelling =
             words::spelling_of(static_cast<words::NodeId>(c));
-        // The 38 bare rows and the 6 argument rows have an empty spelling by
+        // The 39 bare rows and the 6 argument rows have an empty spelling by
         // design (words.def) and are never walked to by name, so they are never
         // what somebody meant to type.
         if (spelling.empty())

@@ -363,6 +363,7 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(SCALARS)/handlers.cpp \
                  $(SCALARS)/string_methods.cpp \
                  $(SCALARS)/number_methods.cpp \
+                 $(SCALARS)/variant_methods.cpp \
                  $(EVAL)/dump.cpp \
                  $(VALUE)/value.cpp \
                  $(VALUE)/render.cpp \

@@ -81,7 +81,7 @@ void section_suggesting()
           "and under the right node it is found");
 
     // A BARE ROW IS NOT A CANDIDATE, AND THE CHECK EXISTS BECAUSE A MUTATION
-    // FOUND NOTHING WITHOUT IT. words.def's 38 bare shapes and 6 argument rows
+    // FOUND NOTHING WITHOUT IT. words.def's 39 bare shapes and 6 argument rows
     // have an EMPTY spelling by design -- "such a row has no spelling of its
     // own and is never walked to by name" -- and `satellite.container`'s empty
     // child is declared BEFORE `list`. Drop the guard in suggest() and `ls`

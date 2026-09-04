@@ -42,10 +42,11 @@ bool number_at(eval::Machine &m, const Value *arguments, uint32_t who,
 bool position_at(eval::Machine &m, const Value *arguments, uint32_t who,
                  unsigned long long *out);
 
-// The two install halves handlers.cpp sums. Each row is a words.def path, so
+// The install halves handlers.cpp sums. Each row is a words.def path, so
 // the table stays a property of the build -- dispatch.hpp's warning about
 // user PathIds is why nothing here may ever take one.
 void install_string_methods();
 void install_number_methods();
+void install_variant_methods();
 
 } // namespace satellite::scalars

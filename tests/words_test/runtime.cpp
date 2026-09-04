@@ -96,7 +96,7 @@ void section_runtime()
                      "hexadecimal") == walk("satellite.variable.hex").id,
           "§2.3: `hexadecimal` is the language's second spelling of `hex`");
 
-    // AN EMPTY NAME IS NOT A NAME. The 38 bare rows are spelled "" by design,
+    // AN EMPTY NAME IS NOT A NAME. The 39 bare rows are spelled "" by design,
     // so an unguarded compare answered one of them -- `find(console, "")`
     // returned satellite.console(), a language word, which define() had always
     // refused and intern() reached find() before ever getting to that refusal.

@@ -295,17 +295,49 @@ OpIndex Compiler::call(NodeIndex node)
         return emit(op_dispatch, node, about.path, arguments, out_.add_cache(),
                     out_.add_text(std::string(ast_.text_of(target))));
 
-    // A SELECTOR THAT NEVER FOLDED is its own sentence, because the person
-    // who wrote `f().trim()` did nothing wrong by the grammar and needs the
-    // boundary named: names.cpp folds a method only through a DECLARED name,
-    // WORD_NUMBERS §1.5's one hop, so a method on a call's answer waits for
-    // the type rules that would see through it. The fix a person can make
-    // today is a named variable in between.
-    if (ast_[target].kind == NodeKind::Member)
+    // A SELECTOR THAT NEVER FOLDED is two sentences, told apart by whether
+    // the receiver IS a declared name. When it is one and carries a type, the
+    // fold failed because the TYPE HAS NO SUCH WORD -- `box.upper()` on a
+    // `variant`, `s.holding()` on a string -- and until M12 that case fell
+    // into the other sentence's "name the receiver first", advice that cannot
+    // help a receiver that already is a name. S0723's errors.def note is the
+    // account; the advice text is chosen here because this is the one place
+    // that knows the type, and the variant gets its own because M12 made a
+    // wrong selector on one an easy mistake to make.
+    if (ast_[target].kind == NodeKind::Member) {
+        const NodeIndex who = ast_[target].a;
+        if (who != kNoNode) {
+            const resolve::Info &holder = info(who);
+            const bool named = resolve::in_a_frame(holder.slot) ||
+                               globals_.find(holder.path) != globals_.end();
+            if (named && holder.type != words::kNoPath) {
+                const bool variant =
+                    holder.type ==
+                    static_cast<words::PathId>(words::NodeId::VARIABLE_VARIANT);
+                return emit(
+                    op_no_question, node,
+                    out_.add_text(std::string(ast_.text_of(target))),
+                    out_.add_text(words::path_text(
+                        static_cast<words::NodeId>(holder.type))),
+                    out_.add_text(
+                        variant ? "a variant answers `holding`, `holds(x)`, "
+                                  "`held` and `clear`; to use what it holds, "
+                                  "copy it to a typed name, or take it with "
+                                  "`held()`"
+                                : "its methods are the words numbered under "
+                                  "that path, and this is not one of them"));
+            }
+        }
+        // The person who wrote `f().trim()` did nothing wrong by the grammar
+        // and needs the boundary named: names.cpp folds a method only through
+        // a DECLARED name, WORD_NUMBERS §1.5's one hop, so a method on a
+        // call's answer waits for the type rules that would see through it.
+        // The fix a person can make today is a named variable in between.
         return not_built(node, "a method on this expression",
                          "a selector folds only through a declared name -- "
                          "WORD_NUMBERS.md §1.5's one hop -- so name the "
                          "receiver first");
+    }
 
     return not_built(node, "this call", "resolve found nothing to call");
 }

@@ -130,6 +130,7 @@ void install_handlers()
 
     install_string_methods();
     install_number_methods();
+    install_variant_methods();
 }
 
 } // namespace satellite::scalars

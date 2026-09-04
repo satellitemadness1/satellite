@@ -1,7 +1,7 @@
 // Every row of WORD_NUMBERS.md §2.2, walked. See words_test.hpp.
 //
-// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 223 rows, 220 distinct numbers,
-// exactly 3 aliases, 35 `(0)` markers -- if the reader below finds a different
+// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 227 rows, 224 distinct numbers,
+// exactly 3 aliases, 36 `(0)` markers -- if the reader below finds a different
 // number of rows than the documents claim, every per-row result after it is
 // answering a question nobody asked, and a suite that reports PASS over half a
 // table is the green line FORMAT/CXX.md §6 warns about.
@@ -169,12 +169,13 @@ void section_authority()
     const std::vector<Row> rows = read_table(section(lines, "### 2.2 Every number"));
 
     // The counts the documents claim, checked before anything is walked.
-    // 222 UNTIL 2026-08-31, WHEN M8 APPENDED `digits` `1 6 4 15`. That is the
+    // 222 UNTIL 2026-08-31, WHEN M8 APPENDED `digits` `1 6 4 15`, and 223
+    // until 2026-09-03, when M12 appended the variant's four. That is the
     // only kind of edit §1.2 allows to this section -- nothing renumbered and
     // nothing reused -- and it is the only kind these three counts can tell
     // apart from a transcription that dropped a row.
-    check(rows.size() == 223,
-          "§2.2 should hold 223 rows, found " + std::to_string(rows.size()));
+    check(rows.size() == 227,
+          "§2.2 should hold 227 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -183,12 +184,12 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 220,
-          "§2.2 should carry 220 distinct numbers, found " +
+    check(numbers.size() == 224,
+          "§2.2 should carry 224 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 3, "§2.2 should declare exactly 3 aliases, found " +
                             std::to_string(aliases));
-    check(markers == 35, "§2.2 should carry 35 `(0)` markers, found " +
+    check(markers == 36, "§2.2 should carry 36 `(0)` markers, found " +
                              std::to_string(markers));
 
     // AND NOW THE CONVERSE, WHICH IS THE HALF THIS FUNCTION DID NOT CHECK.

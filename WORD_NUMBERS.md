@@ -392,7 +392,11 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.thread` | `1 6 13 (0)` | assigned — the `(0)` is new with its children below |
 | `satellite.variable.thread.start()` | `1 6 13 1` | assigned 2026-08-28 |
 | `satellite.variable.thread.join()` | `1 6 13 2` | assigned 2026-08-28 |
-| `satellite.variable.variant` | `1 6 14` | assigned |
+| `satellite.variable.variant` | `1 6 14 (0)` | assigned — the `(0)` is new with its children below |
+| `satellite.variable.variant.holding` | `1 6 14 1` | assigned 2026-09-03 |
+| `satellite.variable.variant.holds(x)` | `1 6 14 2` | assigned 2026-09-03 |
+| `satellite.variable.variant.held` | `1 6 14 3` | assigned 2026-09-03 |
+| `satellite.variable.variant.clear` | `1 6 14 4` | assigned 2026-09-03 |
 | `satellite.variable.window` | `1 6 15` | assigned |
 | `satellite.variable.capsule` | `1 6 16` | assigned — the type of a deferred call; `satellite.capsule` `1 2` is the keyword |
 | `satellite.random` | `1 7 (0)` |  |
@@ -558,7 +562,7 @@ rows and is defined nowhere. The two were kept consistent here by copying what t
 table already does; **the sentence that says what `(0)` means is still unwritten**,
 and it is the author's.
 
-**§2.2 is now 223 rows and 220 distinct numbers.** Counted mechanically after each
+**§2.2 is now 227 rows and 224 distinct numbers.** Counted mechanically after each
 edit; the only duplicates are still §2.3's three aliases below.
 
 **It was 222 and 219 until 2026-08-31, when M8 appended `digits` `1 6 4 15`.**
@@ -567,6 +571,37 @@ That milestone found `Number::digit_count()` ported, tested and printed by
 image of `shift_left` and `shift_right`, which had numbers and no meaning.
 **Appending is what §1.2 permits**: nothing moved, one thing went on the end of
 `1 6 4`, and no already-written program changed meaning.
+
+**And it was 223 and 220 until 2026-09-03, when M12 appended the variant's four**
+— `holding`, `holds(x)`, `held` and `clear`, `1 6 14 1` through `1 6 14 4`, and
+§2.5 below says who assigned them and by what walk. The same sentence holds:
+nothing moved, four things went on the end of `1 6 14`, and no already-written
+program changed meaning.
+
+### 2.5 Four numbers assigned 2026-09-03, and by whom
+
+**The table below repeats numbers that already appear in §2.2 and is NOT a
+source** — §2.4's warning, standing for the same reason.
+
+**The author delegated M12 whole on 2026-09-03** — the blocker PLAN §8 reserves
+for them (*is "nothing" a state every type has, or a value only a `variant` can
+hold?*) and, with its answer, the variant's vocabulary — in the words "I don't
+have a vote on this one." MILESTONES/M12.md §2 carries the answer and the
+argument; DESIGN §8.7 is where the language states it. The numbers follow §1.1
+exactly as §2.4's did: `example/variant.satl` is the walk, and the order its
+lines first ask is the order below.
+
+| path | number | what decided it |
+|---|---|---|
+| `satellite.variable.variant.holding` | `1 6 14 1` | §1.1 — the acceptance walk asks *what are you holding* before it asks anything else, so the word-answer is first |
+| `satellite.variable.variant.holds(x)` | `1 6 14 2` | the same walk, three lines later — the yes/no form, one written argument, `box.holds("string")` |
+| `satellite.variable.variant.held` | `1 6 14 3` | the walk takes the value out third — the checked extraction, S0714 by name when there is nothing to hand over |
+| `satellite.variable.variant.clear` | `1 6 14 4` | met last — the one mutating row, the same word and the same write-back contract as `1 6 1 15` |
+
+**`1 6 14` gained a `(0)` and did not change number** — the notation edit §2.4
+records for `1 6 13`, made again for the same reason: every node in §2.2 with
+children carries the marker. Nothing moved; five things were appended, four of
+them numbered.
 
 ## 3. User-defined names take the next free number
 

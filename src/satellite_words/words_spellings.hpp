@@ -46,7 +46,7 @@ namespace detail {
 // depth-first: satellite.container's children are 1 4 1 and 1 4 2, and TEN rows
 // sit between them -- the map's bare shape and its nine methods. A first/next
 // pair costs two words per node and turns "the children of this node" into a
-// walk of exactly those children rather than a scan of all 254.
+// walk of exactly those children rather than a scan of all 260.
 //
 // (This paragraph said "the map's twenty-nine methods" until 2026-08-28. The
 // map has nine; 29 was a figure PLAN M16 carried for the map and the list

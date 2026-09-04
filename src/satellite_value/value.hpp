@@ -65,9 +65,10 @@ namespace satellite {
 using Str = std::shared_ptr<const SatString>;
 
 // Nothing. DESIGN §6.4 qualification 3 names it -- "a declared variable holding
-// nothing" -- and M12 is where a program gains a way to ASK. Until then this is
-// the state a capsule with no `satellite.return` answers with, and the state a
-// declared-but-uninitialised slot holds.
+// nothing" -- and DESIGN §8.7, M12's, says what it IS: a state every type has,
+// askable through the variant's rows. It is the state a capsule with no
+// `satellite.return` answers with, and the state a declared-but-uninitialised
+// slot holds.
 struct Nothing {
     bool operator==(const Nothing &) const = default;
 };

@@ -27,10 +27,10 @@
 // tests/words_test, which is deliberate rather than an oversight.
 //
 // WHY THE FROZEN TABLE IS NOT COPIED. Seeding a mutable trie from the constexpr
-// one at startup would cost a walk of 255 rows on every run, including the ones
+// one at startup would cost a walk of 260 rows on every run, including the ones
 // that never define a name, against PLAN §4.3's measured 0.01 ms budget for the
 // whole of satl's own startup. What is copied is the counters -- one array of
-// 256 uint32_t, about a kilobyte -- and user rows are appended in a vector that
+// 261 uint32_t, about a kilobyte -- and user rows are appended in a vector that
 // stays empty until something is defined.
 
 #include <cstdint>

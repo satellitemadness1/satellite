@@ -62,8 +62,8 @@
 
 DATE    2026-09-03
 LINK    full
-LOAD    0.93
-NOTE    M11 -- scalars and control flow. MILESTONES/M11.md §7
+LOAD    1.00
+NOTE    M12 -- the variant, and what "nothing" is. MILESTONES/M12.md §7
 
 # THE ROWS ARE THE COMMANDS THAT COST SOMETHING DIFFERENT, not every command
 # satl has. --version is the row §9.1 says to read -- it does nothing but say
@@ -95,15 +95,15 @@ NOTE    M11 -- scalars and control flow. MILESTONES/M11.md §7
 # figure and is why the claim above is about the SHAPE of the table rather than
 # about one row.
 
-FLOOR | 0.541
+FLOOR | 0.543
 
-ROW | 0.770 |
-ROW | 0.764 | --version
-ROW | 0.952 | --words
-ROW | 0.857 | --tokens example/hello_world.satl
-ROW | 1.146 | --tokens example/class_test.satl
-ROW | 1.469 | --limits
-ROW | 1.498 | --limits example/satellite_config.ini
+ROW | 0.777 |
+ROW | 0.775 | --version
+ROW | 0.955 | --words
+ROW | 0.864 | --tokens example/hello_world.satl
+ROW | 1.169 | --tokens example/class_test.satl
+ROW | 1.474 | --limits
+ROW | 1.486 | --limits example/satellite_config.ini
 
 # M7's ROWS. `--resolve` is the milestone's consumer and it is the first row here
 # that is a WHOLE PIPELINE -- lex, parse, resolve, and SATC.md §4's reading order
@@ -123,8 +123,8 @@ ROW | 1.498 | --limits example/satellite_config.ini
 # the walks instead, exactly, and tests/resolve_test/cache.cpp asserts the
 # count. On example/frames.satl it is 28 walked cold against 14 walked and 14
 # taken warm.
-ROW | 0.906 | --resolve example/hello_world.satl
-ROW | 1.166 | --resolve example/frames.satl
+ROW | 0.910 | --resolve example/hello_world.satl
+ROW | 1.180 | --resolve example/frames.satl
 
 # M8's ROWS. `--number` is the milestone's consumer and it is the one command
 # here that reads nothing from disk -- no file, no `.satc`, no config beyond the
@@ -135,8 +135,8 @@ ROW | 1.166 | --resolve example/frames.satl
 # DESIGN §8.2's small form: an add and an overflow check, no allocation. `1 / 3`
 # runs long division to division_digits and boxes the result. A single row would
 # average the two and hide which half moved.
-ROW | 0.774 | --number 1 + 1
-ROW | 0.783 | --number 1 / 3
+ROW | 0.775 | --number 1 + 1
+ROW | 0.788 | --number 1 / 3
 
 # M9's ROWS. `--compile` and `--call` are the milestone's consumers, and they
 # are the first rows here that go all the way down the pipeline -- lex, parse,
@@ -165,7 +165,7 @@ ROW | 0.783 | --number 1 / 3
 # globals, call one capsule, print what it answered -- and it is CHEAPER than
 # `--compile`, because printing one number is less than printing a listing of
 # every op.
-ROW | 1.088 | --compile example/frames.satl
+ROW | 1.093 | --compile example/frames.satl
 ROW | 1.105 | --call example/frames.satl factorial 10
 
 # M11's ROWS, AND THE FIRST OF THEM PAYS M10's DEBT. The row for running a
@@ -199,5 +199,16 @@ ROW | 1.105 | --call example/frames.satl factorial 10
 # run_command.cpp, so the BARE `satl` row, which runs no arm at all, is where a
 # cost paid before a command is chosen would show, and it never has.
 
-ROW | 1.002 | example/console.satl
-ROW | 1.352 | example/scalars.satl
+ROW | 1.016 | example/console.satl
+ROW | 1.353 | example/scalars.satl
+
+# M12's ROW, AND WHERE IT LANDED IS THE HONEST HALF. `variant.satl` is the
+# milestone's consumer: nine displays, one box through three states, all four
+# `1 6 14` rows and a string method on the way. The guess before measuring was
+# "near console.satl -- one capsule, no loops"; the measurement (2026-09-03,
+# load 1.00) put it at share 0.612, ABOVE `--call factorial`'s 0.562 and well
+# above console.satl's 0.473 -- nine lines through the printer's queue against
+# console.satl's one is most of the difference, and scalars.satl's 0.810 with
+# its three loops stays the biggest program-run row. The shape held; the
+# neighbourhood was misjudged, and the number is what goes in the table.
+ROW | 1.155 | example/variant.satl
