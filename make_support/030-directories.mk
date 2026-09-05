@@ -23,6 +23,7 @@ PARSER   = $(SRC)/parser
 RESOLVE  = $(SRC)/name_resolver
 RANDOM   = $(SRC)/satellite_random
 STRING   = $(SRC)/satellite_string
+TIME     = $(SRC)/satellite_time
 VALUE    = $(SRC)/satellite_value
 TREE     = $(SRC)/abstract_syntax_tree
 WORDS    = $(SRC)/satellite_words

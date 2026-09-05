@@ -9,7 +9,9 @@
 #include "programs/opening.hpp"
 #include "satellite_console/console.hpp"
 #include "satellite_console/handlers.hpp"
+#include "satellite_random/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
+#include "satellite_time/handlers.hpp"
 #include "satellite_value/value.hpp"
 #include "satellite_words/words.hpp"
 #include "system_facts/interrupt.hpp"
@@ -181,6 +183,8 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
 
     console::install_handlers();
     scalars::install_handlers();
+    random::install_handlers();
+    time::install_handlers();
 
     // CTRL-C, BEFORE ANYTHING RUNS. Installed here because this is an entry
     // point that runs a program -- interrupt.hpp's rule -- and CLEARED here

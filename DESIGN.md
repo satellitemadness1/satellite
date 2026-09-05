@@ -291,6 +291,12 @@ Note what `satellite.console.input` and `satellite.random.normal` have in common
 both end in 2, and **the 2's are unrelated.** One means "console's second child",
 the other "random's second child". That is the scheme working, not a collision.
 
+*(2026-09-04. The three tier rows above are written bare and §2.2 writes them
+`fast()`, `normal()` and `ultra()` — the same numbers, and the parens are the
+truth: `1 7 1`–`1 7 3` name the zero-argument call shape, which §11 refuses by
+design. A bare tier spelling folds to the same number, and a path is not a
+value.)*
+
 **So there are a lot of 1's and a lot of 2's, and that is correct.** A number on its
 own means nothing; a number means something *at a position, under a parent*.
 
@@ -1206,7 +1212,7 @@ opened.
 | `satellite.variable.float` | a `bool` and **two `satellite_number`s** — `positive`, left of the point, right of it | §8.6. Left exact and unbounded; right bounded, and its length is the precision |
 | `satellite.container.list<T>` | vector of values | children shared |
 | `satellite.container.map<K,V>` | body behind a handle | insertion-ordered; keys restricted (§6.5) |
-| `satellite.variable.time` | absolute instant, UTC | §13, open: one clock, one epoch |
+| `satellite.variable.time` | absolute instant, UTC — int64 nanoseconds on the Unix epoch, `system_clock`'s reading | §13, settled 2026-09-04; built at M13, and display-only until M29 numbers its methods |
 | `satellite.variable.file` | handle | reference type |
 | `satellite.variable.thread` | handle | reference type |
 | `satellite.variable.capsule` | `(capsule number, argument values)` | a deferred call; §13, and `1 6 16` |
@@ -1719,10 +1725,12 @@ return type that **cannot be silently dropped**. "Record the error and return
 
 ### 10.1 The console owns a printer thread
 
-*(The output half is built — PLAN.md §8's M10, 2026-09-02, in
+*(Both halves are built. The output half at M10, 2026-09-02, in
 `src/satellite_console/`: `display`, the queue, the printer thread and the
-barrier. The reader thread and `typed()` are M14's — "the same shape, reversed"
-below is the half that is not built.)*
+barrier. The input half at M14, 2026-09-04 — the reader thread in `reader.cpp`,
+`input` `1 5 2`–`1 5 4`, `typed()` `1 5 5`, the terminal's facts and the two
+queued escapes — which finished the `console` namespace: §2.2 has no tenth
+child. [MILESTONES/M14.md](MILESTONES/M14.md) is the review.)*
 
 Producer threads push whole strings into a locked queue; one printer thread
 consumes. **A line stays atomic because the unit queued is a whole string.** There
@@ -1760,6 +1768,17 @@ happens on a thread that is not the program's, which is strictly better than the
 poll loop the obvious alternative produces. `satellite.console.input` keeps its
 existing meaning: ask, and wait.
 
+**STDIN HAS EXACTLY ONE CONSUMER AT ANY INSTANT, AND IT IS THE READER.**
+*(The author, 2026-09-04, with M14's other answers.)* `input` rides the same
+queue — the invariant above already decided that, since a `getline` on the
+walking thread would be the program's own thread blocking on the terminal —
+and nothing else in the process reads descriptor 0. The reader never sits bare
+in `read(2)` either: it parks in `poll()` on stdin and a control pipe, which
+is how a Ctrl-C wakes it no matter which thread the kernel chose (§10.2), how
+the shutdown joins it cleanly, and how M22's raw-mode prompt — the language's
+other reader, never live at the same time — will park it before taking the
+terminal: whoever owns stdin next tells the pipe first.
+
 `satellite.console.display` is ordinary stdout, and the flush is required for the
 cases line buffering does not cover. glibc line-buffers stdout only when it is a
 tty, and that case needs no help — the newline flushes it. The flush is for the
@@ -1783,6 +1802,16 @@ the console drains first so everything the program said is above it, and the
 exit is 130 — and a second press leaves at once through `_exit(130)`, the same
 number. The prompt half stays M22's, arriving as the byte `0x03` because raw
 mode turns ISIG off.)*
+
+*(And M14 gave the flag its reach into blocked waits, 2026-09-04: the handler
+also writes one byte into the reader's control pipe — `write(2)`, its one
+verb — so a program parked at `satellite.console.input` wakes at once whatever
+thread took the signal, answers nothing, and stops at the boundary exactly as
+above; `satellite.time.sleep` wakes through plain `EINTR` the same turn. What
+`eof()` used to discriminate — a closed stdin against an interrupted read — the
+reader's queue now answers structurally: the end and the interrupt arrive as
+two different answers and cannot be confused, which retires §6's hard-won
+regression by construction rather than by care.)*
 
 ### 10.3 GTK is not thread-safe, and there is no threadable alternative
 
@@ -1840,6 +1869,12 @@ than merely safe.
 
 ## 11. `satellite.random`
 
+*(Built at M13, 2026-09-04 — the twelve numbered shapes in
+`src/satellite_random/handlers.cpp`, the shapes' arithmetic in `tiers.cpp`,
+and the seam and the spin that landed ahead of their milestone at M2 and M8
+finally consumed by the language. [MILESTONES/M13.md](MILESTONES/M13.md) is
+the review.)*
+
 Three tiers, differing in nothing a program can see except how long they take:
 
 | tier | throwaway window |
@@ -1862,11 +1897,38 @@ first generator's state through 32 bits, and v1's own source says so at
 `random_numbers/random.cpp:112` and recommends answering from the first generator
 instead. This is that recommendation, taken.
 
-Two shapes on each:
+**Four numbered shapes on each tier, and WORD_NUMBERS §2.2 is the roster.**
+*(2026-09-04. This read "two shapes on each" from the section's first commit —
+one commit older than the numbering, and true of the first satellite's surface —
+and neither numbering commit touched it. What follows says which numbers are
+specified, so the next drift has a date to look wrong against.)*
+
+- `<tier>(digits)` — `1 7 4`, `1 7 7`, `1 7 10`. Specified here, built and
+  tested in v1.
+- `<tier>(min, max)` — `1 7 5`, `1 7 8`, `1 7 11` — with `.range(min, max)` a
+  second spelling of the same number, not a fourth segment (WORD_NUMBERS §2.3).
+  The same.
+- `<tier>(min, max, step)` — `1 7 6`, `1 7 9`, `1 7 12`. *Specified 2026-09-04:*
+  uniform over `min, min + step, ..., max`, and the call is valid **only when
+  `step` divides `max - min` exactly** — otherwise it is refused, and the
+  refusal names the last value the step reaches: `fast(1, 10, 4)` is refused
+  naming 9, and `fast(1, 9, 4)` is what the program meant or the program is
+  wrong. That keeps this section's promise — inclusive at both ends — true of
+  every range call that answers; a refusal can loosen later, and a draw that
+  silently never says `max` is forever.
+- `<tier>()` — `1 7 1`, `1 7 2`, `1 7 3`. **A refusal by design** *(the author,
+  2026-09-04)*: **"you must supply a digit_count, min and max, or min max and
+  step."** A bare tier spelling folds to the same number, and a path is not a
+  value. *(The answer not taken, recorded so it is not re-proposed: inferring
+  the digit count from the assignment's destination — `n` holding 1000000
+  making `n = fast()` a seven-digit draw — was taken far enough on 2026-09-04
+  to know M11's slot channel could carry it, and declined the same day: one
+  spelling would draw differently depending on the statement around it.)*
 
 ```satellite
 satellite.variable.number n = satellite.random.ultra(40)
 satellite.variable.number m = satellite.random.ultra.range(1, 100)
+satellite.variable.number s = satellite.random.fast(1, 10, 3)
 ```
 
 `ultra(40)` is **uniform over [0, 10⁴⁰)** — zero through forty nines. `.range(low,
@@ -2126,12 +2188,27 @@ different product.
   **This also puts §8.1 under pressure and that needs saying where §8.1 is.** Its
   argument — no `double`, exact always, guarded at the C++ type level — is right for
   `satellite.variable.number` and is not available to `satellite.variable.float`.
-- **Time.** `satellite.variable.time`, `.date` and `satellite.time.now()` must agree
-  on **one clock and one epoch** before any of them is built. The author's stated
-  leaning is a high-precision clock, which settles the resolution question but not
-  the epoch — and not the harder one underneath it, that a high-resolution
-  monotonic clock and a wall-clock date are not the same clock and cannot both be
-  the one.
+- ~~**Time.**~~ **Settled 2026-09-04 by the author, three decisions at once.**
+  The question was that `satellite.variable.time`, `.date` and
+  `satellite.time.now()` must agree on **one clock and one epoch**, and that a
+  high-resolution monotonic clock and a wall-clock date are not the same clock
+  and cannot both be the one. **They need not both be the one, because only one
+  of the two is ever a satellite value.** v1's split is adopted whole: the
+  *value* — what `satellite.time.now` answers and a `satellite.variable.time`
+  holds — is `system_clock` on the Unix epoch, int64 nanoseconds, because a
+  value has to mean something outside the process that read it; the *timer* —
+  §11's spin deadlines and `satellite.time.sleep` — is `steady_clock`, because
+  NTP can step a wall clock backwards under a running deadline and
+  `steady_clock`'s epoch means nothing anyway. *"One clock, one epoch"* is a
+  rule about the type, and it holds with nothing competing. The other two
+  decisions cannot be read out of the type and are recorded beside it:
+  **`satellite.time.sleep(n)` takes seconds** — whole or fractional, so QUAD's
+  90 ms tick is `sleep(0.09)`, and `0.09` is an exact `Number` (§8.1), so no
+  float and no M15; and **`satellite.time.new` `1 9 2` is designed beside
+  `satellite.variable.date` `1 6 7` at M29, the calendar** — an instant
+  constructor cannot be designed apart from the date it constructs from, and
+  neither can §2.2's zero children under `satellite.variable.time` `1 6 3`,
+  which M29 numbers.
 - **Error codes: numbered or named?** Numbered is testable and translatable, named
   is readable. Probably both, the way words have an id and a spelling (§4.4).
 - **Unknown string escapes** (§5.4) — pass through, reject, or warn. The first
@@ -2146,7 +2223,10 @@ different product.
 - ~~**`satellite.thread.new` against `satellite.variable.thread`.**~~ **Settled
   2026-08-27.** Both exist and they are the established two-part shape — the type
   under `variable`, the constructor under a sibling namespace, exactly as
-  `satellite.file.new` and `satellite.time.new` already do. `satellite.thread` is
+  `satellite.file.new` and `satellite.time.new` already do. *(Corrected
+  2026-09-04: `satellite.time.new` has never existed — `1 9 2` is reserved and is
+  designed at M29 beside `date` — so the precedent stands on `satellite.file.new`
+  alone, which carries it.)* `satellite.thread` is
   `1 23` and `satellite.thread.new` is `1 23 1`.
 
   What the settling exposed is bigger than the numbering. The form is

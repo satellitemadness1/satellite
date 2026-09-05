@@ -44,8 +44,10 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
 2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, M7 and M8 on 2026-08-31,
-M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, and M11 and M12 both on
-2026-09-03.** *(M1.5 is the window, and it
+M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, M11 and M12 both on
+2026-09-03, and M13 and M14 both on 2026-09-04 — M13 the day its blockers
+cleared, which no earlier milestone can say, and M14 behind it the same
+sitting, the day the author took its six open answers.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -2864,8 +2866,8 @@ is the work.** Its entire provenance is one row in `SCRATCH.md/WORD_SURFACE.md`
 sourced to `v1docs` — no representation, no method, no v1 code, no sentence in
 DESIGN. WORD_NUMBERS §1.2 means it cannot be withdrawn without leaving a hole, and
 M2's density check refuses holes, so it keeps its number whatever happens to it.
-This is `satellite.variable.duration` `1 6 8`'s shape exactly (M13), and both are
-here rather than in a future audit's table.
+This is `satellite.variable.duration` `1 6 8`'s shape exactly (M13 then, M29
+since 2026-09-04), and both are here rather than in a future audit's table.
 
 **Done when** one program declares a `satellite.variable.variant`, puts a number in
 it, then a string, then nothing, and prints a different and correct answer at each
@@ -2879,19 +2881,25 @@ turned out to be a fix in the machine, not the row: `text_of` answered a call's
 `(` token, so every S0713/S0714 sentence in the language said "`(` was asked"
 until this clause caught it. MILESTONES/M12.md §3.)*
 
-**M13 — the clock and the dice, the two sources of nondeterminism.** *(New
+**M13 — the clock and the dice, the two sources of nondeterminism. LANDED
+2026-09-04**, and [MILESTONES/M13.md](MILESTONES/M13.md) is the review. *(New
 2026-08-28, corrected from the 2026-08-27 draft. After M12.)* **Twenty numbers on
-twenty-three rows**, named individually here because a milestone that says only
+twenty-three rows** *(seventeen on twenty since 2026-09-04 — `1 9 2`, `1 6 7`
+and `1 6 8` are M29's, moved the day the blockers cleared, and each keeps its
+line below with the move marked)*, named individually here because a milestone that says only
 `satellite.random` leaves twelve children owned by nothing, which is the failure
 this whole pass exists to end:
 
 - `satellite.random` `1 7 (0)` and `1 7 1` through `1 7 12`.
 - `satellite.time` `1 9 (0)`, `.now` `1 9 1`, `.new` `1 9 2`, `.sleep(n)` `1 9 3`.
+  *(`.new` to M29, 2026-09-04.)*
 - `satellite.variable.time` `1 6 3 (0)`, `satellite.variable.date` `1 6 7` and
   `satellite.variable.duration` `1 6 8` — **three siblings under
   `satellite.variable`**, not a subtree. A child of `1 6 3` would be `1 6 3 n`, and
   §1's per-parent rule is the reason that sentence has to be written out rather
-  than abbreviated with leading dots.
+  than abbreviated with leading dots. *(`date` and `duration` to M29,
+  2026-09-04; `1 6 3` stays — `now` must answer a value of some type — with its
+  methods M29's to number.)*
 
 **`satellite.random` is thirteen numbers on sixteen rows.** `.range` is a second
 spelling of the two-argument shape, not a fourth segment and not a path
@@ -2928,8 +2936,12 @@ which §11 carries neither of and is how it went stale without ever looking wron
 - `1 7 4`, `1 7 7`, `1 7 10` — `<tier>(digits)`. Specified, built in v1, tested.
 - `1 7 5`, `1 7 8`, `1 7 11` — `<tier>(min, max)`, spelled `.range` in v1. The same.
 - `1 7 6`, `1 7 9`, `1 7 12` — `<tier>(min, max, step)`. Specified in no document.
+  *(Specified 2026-09-04 — DESIGN §11 — and built here rather than reserved: the
+  zero-argument refusal text names the shape, and a refusal that advertises a
+  shape nobody built would be the language lying.)*
 - `1 7 1`, `1 7 2`, `1 7 3` — blocked below, and the answer decides whether the
-  call surface is nine shapes or twelve.
+  call surface is nine shapes or twelve. *(Answered 2026-09-04: twelve, three of
+  them refusals by design — the blocker carries it.)*
 
 **Nine of the sixteen rows are code v1 built and tested; seven are not.** v1's
 registry carries exactly six random paths — its own `format.def` says *"Five words
@@ -2976,7 +2988,17 @@ header-only so `ldd` does not change. It is reached through `-isystem` for a
 load-bearing reason rather than a stylistic one: `pcg_extras.hpp` warns under this
 project's `-Wall -Wextra`, and §4's silent from-scratch rebuild depends on that
 warning not being ours. **This milestone writes LAYOUT.md's first vendored row**,
-and the Apache notice travels with it.
+and the Apache notice travels with it. *(2026-09-04, the author asked again for
+the extended family's extreme member widened to 512 bits of output, as an
+in-tree typedef over `pcg_engines::ext_*` — and the ask stands refused by the
+tree's own dated investigation, `pcg/README.md`'s "A 512-bit variant was
+investigated on 2026-08-27 and is NOT a conversion": no such typedef exists to
+write — the family's widest output is 64 bits — the `uint_x4` composition
+compiles and multiplies WRONG, and a fork means unpublished LCG constants and
+1 MiB of state per generator. Width is a property of the SAMPLER, which already
+answers at any digit count from 32-bit words, so the engine is v1's
+`pcg32_k16384` exactly as it stands, and the seam is one file to satisfy the
+day the author overrules this with constants in hand.)*
 
 **The tier windows are a design choice and stand; the watchdog is a measurement and
 does not.** §9 says measure on this machine and do not quote. v1's figures are a
@@ -3002,7 +3024,8 @@ nineteen more times. The shape of an answer is a fourth thing under
 this milestone does not assign it, because minting a number is the numbering's and
 the author's. M21 is where that debt comes due.
 
-**Blockers — the milestone is not finishable around these:**
+**Blockers — all cleared by the author on 2026-09-04.** Each keeps its
+argument, with the answer written where the question was:
 
 - **One clock, or two.** DESIGN §13 requires `satellite.variable.time`, `.date` and
   `satellite.time.now` to agree on **one clock and one epoch**, and says a monotonic
@@ -3016,7 +3039,9 @@ the author's. M21 is where that debt comes due.
   running deadline. Only one of the two is ever a satellite *value*, so *"one clock,
   one epoch"* is a rule about the type and not about the implementation. **That
   reading measured the author's stated leaning and rejected it, so it is put to the
-  author rather than taken here.**
+  author rather than taken here.** **Put, and taken: the author confirmed v1's
+  split on 2026-09-04**, and DESIGN §13's Time entry now carries it as the
+  language's statement.
 - **What `1 7 1`, `1 7 2` and `1 7 3` name** — the tier node, or a zero-argument
   call. DESIGN §4's example writes all three tiers bare, and M2's acceptance test
   writes `satellite.random.normal` bare at `1 7 2`; the author's note writes the
@@ -3027,12 +3052,22 @@ the author's. M21 is where that debt comes due.
   no number left for the node the spelling `ultra` lands on; under the node reading,
   the tier is a path that is not a value, which v1 also tests. **The answer is a
   precondition of this milestone's own number list**, which is why the draft could
-  count `1 7 2` as covered on one page and reserved on another.
+  count `1 7 2` as covered on one page and reserved on another. **Answered
+  2026-09-04: the zero-argument shape, and it is a refusal by design** — *"you
+  must supply a digit_count, min and max, or min max and step"*, the author's
+  text verbatim, one text for all three tiers. A bare tier folds to the same
+  number and a path is not a value, so both spellings refuse and no number is
+  left owning nothing. The inference not taken — the digit count read from the
+  assignment's destination — is recorded in DESIGN §11 so it is not re-proposed.
 - **The step forms `1 7 6`, `1 7 9`, `1 7 12`.** Assigned by rule, specified
   nowhere, built nowhere, and they collide with the one promise §11 makes: `.range`
   is inclusive at both ends, and `(min, max, step)` reaches `max` only when
   `max - min` is a multiple of `step`. Whether `(1, 10, 3)` can answer 10 is exactly
-  what DESIGN §13 warns gets settled by accident.
+  what DESIGN §13 warns gets settled by accident. **Answered 2026-09-04 by rule
+  rather than by accident: `step` must divide `max - min` exactly, or the call
+  is refused naming the last value the step reaches** (DESIGN §11). *Inclusive
+  at both ends* stays true of every call that answers, and the three rows move
+  from reserved to built — done-when clause 11 is theirs.
 - **What `satellite.time.new` `1 9 2` takes.** Its only specification anywhere is
   nine words in a deleted note — *"set the arguments for a point in time"* — which
   reads as a component constructor and contradicts v1's rule that an instant is read
@@ -3040,23 +3075,35 @@ the author's. M21 is where that debt comes due.
   from `satellite.variable.date` `1 6 7`. **DESIGN §13 cites it as an established
   precedent** — *"exactly as `satellite.file.new` and `satellite.time.new` already
   do"* — when it has never existed; the argument still holds on `file.new` alone,
-  and §13 should say so.
+  and §13 should say so. **Answered 2026-09-04: moved.** Designed beside `date`
+  at M29, and §13 now says both — the settled Time entry and the corrected cite.
 - **The unit of `satellite.time.sleep(n)`.** QUAD's call is
   `sleep_for(milliseconds(90))` at `quad_main.cpp:260`. The one unit v1 spells is
   `100ms`, a lexed literal converted at parse time, and §7 throws away the special
   case that consumed it but not the literal. A bare number makes the unit invisible
   at the call site, which is the readability failure DESIGN §1.1 exists to prevent.
+  **Answered 2026-09-04: the unit is seconds, whole or fractional** — one unit
+  always, so there is nothing at a call site to misread, and `0.09` is an exact
+  `Number`, so the fraction costs no float and no M15. The done-when below paces
+  with `sleep(0.09)`, and §7's discard stands: v1's `100ms` literal dies with
+  the special case that consumed it.
 - **`satellite.variable.date` `1 6 7` has a number and nothing else** — no row in
   DESIGN §8's types table, no representation, no constructor, no method, no v1 code.
   Either the specification work is carried here or the number stays reserved and
-  this milestone says which.
+  this milestone says which. **Answered 2026-09-04: reserved here, designed at
+  M29** beside `time.new` and the instant's methods — the calendar, one
+  milestone for everything a time value can be beyond *now* and *sleep*.
 - **The two-or-more time methods v1 ships are unnumbered.** `.minus(t)`,
   `.nanoseconds()` and `.to_string()` are all handled on a `Time` in v1, and help
   advertises `.size()` on the next line. `satellite.variable.time` `1 6 3 (0)` has
   **zero** children in §2.2 while its three hand-written siblings have 16, 7 and 14.
   **WORD_NUMBERS has to number them and this milestone must not**; until it does, a
   program can obtain an instant and do nothing whatever with one — which also means
-  this milestone cannot time its own tier floors in satellite.
+  this milestone cannot time its own tier floors in satellite. **Answered
+  2026-09-04: they are M29's.** WORD_NUMBERS numbers them there; the tier floors
+  are timed in C++ where this tree's timing tests already live, and what M13
+  owes an instant is a rendering through `display` — which is display's, not a
+  method's.
 
 **`satellite.variable.duration` `1 6 8` stays numbered and unbuilt, and saying so is
 the work.** The sweep sourced it from v1's documents; the v1 source that uses the
@@ -3065,6 +3112,8 @@ defers durations today. It cannot simply be struck either: §1.2 leaves a hole w
 a child is removed and M2's density check refuses holes. So it keeps its number
 whatever is decided about it, and it is listed here rather than left to an audit —
 the same treatment `satellite.variable.expression` `1 6 9` gets at M12.
+*(2026-09-04: the number is M29's now, decided beside `date` — moved rather than
+re-argued, and this paragraph travels as the argument it was moved with.)*
 
 **Done when** this runs inside `satellite.main` and every clause below holds:
 
@@ -3079,7 +3128,7 @@ satellite.variable.number i = 0
 satellite.statement.while (i < 10)
 {
     satellite.console.display(satellite.time.now)
-    satellite.time.sleep(90)
+    satellite.time.sleep(0.09)
     i = i + 1
 }
 ```
@@ -3107,7 +3156,8 @@ satellite.statement.while (i < 10)
 6. `satellite.time.now` twice in succession returns two different values — the
    one-line proof that int64 nanoseconds is the representation and a `double` is
    not, since 61 bits of epoch against a 53-bit mantissa is 198 ns of resolution.
-7. The loop paces at 90 ms, which is QUAD's main loop shape and the whole of what
+7. The loop paces at 90 ms — `sleep(0.09)`, the unit being seconds — which is
+   QUAD's main loop shape and the whole of what
    QUAD.md §2 asked `sleep` for, naming `quad_main.cpp:260`. *(90 ms is QUAD's
    number, not this machine's; §9 means it is re-measured here or sourced there.)*
 8. **No tier is described as secure, anywhere** — not in a header, not in
@@ -3118,11 +3168,20 @@ satellite.statement.while (i < 10)
    microsecond and no new dependency, travels with it too.
 9. The seed comes from the kernel and cannot abort, or the refusal to change it is
    written down beside the measurement that condemns it.
+10. The zero-argument call on each tier is refused with the author's text — *you
+    must supply a digit_count, min and max, or min max and step* — and a bare
+    tier used as a value is refused as a path that is not a value. One text,
+    three tiers, both spellings. *(Both decided 2026-09-04.)*
+11. `fast(1, 10, 3)` answers 1, 4, 7 and 10 and nothing else across a hundred
+    runs, all four seen — clause 2's both-ends proof carried to the step shape —
+    and `fast(1, 10, 4)` is refused, and the refusal names 9.
 
-**Nine of the twenty numbers stay reserved and unbuilt, and are listed rather than
-left to a later audit**: `1 7 1`, `1 7 2`, `1 7 3`, `1 7 6`, `1 7 9`, `1 7 12`,
-`1 9 2`, `1 6 7` and `1 6 8`. **A milestone that quietly leaves numbers behind it
-is how this document came to have a 121-path ledger.**
+**No number stays reserved behind this milestone, and this sentence was written
+on 2026-09-04 over one that reserved nine.** `1 7 1`–`1 7 3` are built as
+refusals by design, `1 7 6`, `1 7 9` and `1 7 12` are built as the step shape,
+and `1 9 2`, `1 6 7` and `1 6 8` are M29's, listed there. **A milestone that
+quietly leaves numbers behind it is how this document came to have a 121-path
+ledger** — this one leaves none.
 
 **It does not depend on M15 and must not be placed behind it.** The draft put
 itself after the float *"because this one has to report that the dice cannot use
@@ -3133,8 +3192,10 @@ milestone in this list that cannot land until an undecided rule is chosen. Its r
 dependencies are M8 for the bignum, M10 for `display` and `satellite.main`, and
 M11 for `while`.
 
-**M14 — the console's other half: the reader thread and the terminal's facts.**
-*(New 2026-08-28, corrected from the 2026-08-27 draft. After M13.)* **Eight paths —
+**M14 — the console's other half: the reader thread and the terminal's facts.
+LANDED 2026-09-04**, the same day as M13 and behind it, and
+[MILESTONES/M14.md](MILESTONES/M14.md) is the review. *(New 2026-08-28,
+corrected from the 2026-08-27 draft. After M13.)* **Eight paths —
 `1 5 2` through `1 5 9`, every child of `console` except `display` `1 5 1`**, which
 is M10's. §2.2 has no tenth child, so with M10 this namespace is finished:
 
@@ -3226,35 +3287,69 @@ condition variables (`arrived_`, `emptied_`, and `pace_woken_` on a mutex of its
 own) so that a waiting drain and a sleeping printer are never woken for each other's
 reason.
 
-**Open, and each of these shapes the milestone rather than decorates it:**
+**Open until 2026-09-04, when the author took every answer in one sitting —
+each keeps its argument, with the answer written where the question was:**
 
 - **One reader of stdin, or two?** A reader thread parked in `read()` and an
   `input()` calling `getline` on the walking thread are two consumers racing one fd.
   Routing `input()` through the same queue is almost certainly right, and it changes
   code §6 marks *do not rediscover*, so it is a decision and not a detail.
+  **Answered: one consumer, and §10.1's own invariant had already decided it** —
+  *"the program's own thread never blocks on the terminal"*, and `getline` on the
+  walking thread IS that thread blocking on the terminal. `input` asks the queue
+  and waits; `typed()` asks and does not; nothing else in the process reads
+  descriptor 0. ("Two readers, one language" stands untouched — M22's raw-mode
+  prompt is the other reader, never live at the same time.)
 - **Ctrl-C across a thread boundary.** §10.2's mechanism was designed for a read on
   the walking thread. Move the read and the signal lands on an arbitrary thread,
   `EINTR` surfaces where there is no error to report, and the
-  interrupted-versus-EOF answer has to travel back through the queue.
-- **How the thread stops.** The pool starts at startup from M6, so *when it starts*
-  is no longer this milestone's question — but a thread blocked in `read()` cannot
-  be joined at exit the way `~Console()` joins the printer. A self-pipe wakeup or a
-  detach-and-leak differ in whether `satl` exits cleanly. **This is the pool's
-  fourth tenant and §4.5.1 names three.**
+  interrupted-versus-EOF answer has to travel back through the queue. **Answered
+  by the self-pipe, and the fragility predicted here never arises**: the reader
+  parks in `poll()` on stdin AND a pipe, the SIGINT handler writes one byte into
+  it (`write(2)`, already the handler's one verb), and the wake is deterministic
+  no matter which thread the kernel picked — `EINTR` stops being load-bearing
+  across threads entirely. The three answers travel back through the queue as
+  *different* answers — a line, the end, interrupted — so `eof()`'s old
+  discrimination is done by construction and cannot be gotten backwards.
+- **How the thread stops.** ~~The pool's fourth tenant~~ *(stale when written:
+  §4.5.1 was corrected 2026-09-02 — that pool takes work that FINISHES, neither
+  console thread is a tenant, and the reader creates its own thread exactly as
+  the printer does)*. A thread blocked in `read()` cannot
+  be joined at exit the way `~Console()` joins the printer. **Answered by the
+  same pipe**: the reader never sits bare in `read()` — it parks in `poll()`
+  where a byte can always reach it — so the shutdown writes one byte and joins,
+  the printer's four steps gain a fifth, and `satl` exits cleanly with no
+  detach and no leak. One mechanism, both questions.
 - **How the registry declares that a parameter is a place.** §7 condemns v1's route
   to `1 5 4` — its first bullet, *"the joined path built per call"*, covers
   `expr_call.cpp:113–114` flattening the path and comparing it against a string
   literal before evaluating arguments, the same hack as the `100ms` case forty lines
   above it. The replacement is a declaration on the word, the way `display` will
   *declare* that it accepts a pace argument. **§6.4 qualification 2's
-  receiver-binding tag is the nearest precedent and nothing extends it to a
-  non-receiver parameter.**
+  receiver-binding tag is the nearest precedent — and now something extends it:
+  words.def grew a third list**, `SAT_PLACE`, one row long, naming the written
+  argument that receives the answer. The mechanism is a real column any word
+  could take; the POLICY is that it never does again — *"deliberately not the
+  start of a general facility"* is a sentence beside the list, which is exactly
+  where a policy can be enforced by review. The compiler is the consumer: the
+  place compiles as a slot and never as an expression, a non-name refuses
+  (S1002) and a position that could read the result refuses (S1003), both
+  before the prompt prints, and v1's flatten-and-strcmp has no descendant.
 - **Does `clear()` imply `home()`?** v1 emits both as one sequence. If `1 5 8`
   homes, `1 5 9` is only ever useful alone; if it does not, QUAD's frame draw is two
-  calls where `view.hpp` had one. Small, and it is a promise.
+  calls where `view.hpp` had one. Small, and it is a promise. **Answered: it
+  homes** — v1's byte sequence kept whole, terminfo's own meaning for `clear`,
+  and `home()` alone stays independently useful as the flicker-free repaint
+  QUAD's frame wants: home and overdraw, no erase, one call either way.
 - **What the reader does during M22's prompt**, which puts the terminal in raw
   mode and thinks it owns stdin. Whichever of the two lands second decides it, and
-  saying so now is cheaper than finding it at M22.
+  saying so now is cheaper than finding it at M22. **Said now, as an invariant
+  and a mechanism rather than as M22's design**: stdin has exactly one consumer
+  at any instant, and whoever takes the terminal parks the reader first. The
+  control pipe is already the verb — a byte means stop today, and pause/resume
+  are two more bytes M22 builds beside their only caller, because a verb built
+  three milestones before anything calls it is the registry-without-a-consumer
+  failure M2 exists to refuse.
 
 **Done when** one program run under `pty.fork()` — assert on the screen, not on the
 bytes — proves all eight paths, each clause a separate assertion:
@@ -4304,7 +4399,8 @@ one milestone in the list where demonstrating first would *be* the specification
 which inverts what every other section of this plan does.
 
 **M28 — Satellite Orbit and the wire format.** *(New 2026-08-28. Last in build
-order.)* **One numbered path, `satellite.container.result` `1 4 4`** — §2.2's own
+order until 2026-09-04, when M29 was appended behind it.)* **One numbered
+path, `satellite.container.result` `1 4 4`** — §2.2's own
 gloss for it is *"Satellite Orbit's answer"* — and one rule that three documents
 already impose on a thing that does not exist.
 
@@ -4350,13 +4446,60 @@ know is proved to have **different numbers in each**, and to work anyway. That
 second clause is the whole milestone: it is §8.1's rule turned into a test, and it
 is the only test in this list that can fail for a reason no single process can see.
 
+**M29 — the calendar: what a time value can be beyond *now* and *sleep*.** *(New
+2026-09-04. After M28 — appended rather than slotted, because a mid-list
+insertion renumbers every milestone behind it, nothing anywhere depends on this
+one, and the author can pull it forward the day something does.)* **Three
+numbers arrive with it — `satellite.time.new` `1 9 2`, `satellite.variable.date`
+`1 6 7` and `satellite.variable.duration` `1 6 8`, moved from M13 the day M13's
+blockers cleared** — plus a debt that is not a number yet:
+`satellite.variable.time` `1 6 3` has **zero children in WORD_NUMBERS §2.2**
+while its three hand-written siblings have 16, 7 and 14, and v1 handles
+`.minus(t)`, `.nanoseconds()` and `.to_string()` on a `Time` today.
+**WORD_NUMBERS numbers them here and nowhere earlier** — until then a satellite
+program can obtain an instant and do nothing with one but display it, which is
+M13's stated boundary.
+
+**The reason these four things are one milestone is that none can be designed
+apart from the others.** `time.new`'s entire specification is nine words in a
+deleted note — *"set the arguments for a point in time"* — which reads as a
+component constructor and contradicts v1's rule that an instant is read off the
+clock and never written down as a literal; whether it takes a year and a month
+or a count of seconds **is** the design of `date`, and what `now.minus(then)`
+answers — a number of seconds, or the `duration` DESIGN §12 still defers —
+**is** the fate of `1 6 8`. Settling any one of the three alone settles the
+other two by accident, which is DESIGN §13's own warning applied to itself.
+
+**What is already fixed, and this milestone inherits rather than reopens** (§13,
+settled 2026-09-04): the value is `system_clock` on the Unix epoch, int64
+nanoseconds; a `date` is therefore a *reading* of that value and never a second
+clock; and no instant is ever a literal in source.
+
+**Blockers — the kind M15 carries, decisions before code:**
+
+- **What `date` is** — representation, constructor, methods. It has a number, no
+  row in DESIGN §8's types table and no v1 code; the specification is written
+  here or the number stays reserved another milestone, said out loud either way.
+- **What `time.new` takes**, which is the same question from the other side.
+- **Whether `duration` exists.** The v1 source that uses the word says there is
+  no such type and gives four reasons; DESIGN §12 defers it; WORD_NUMBERS §1.2
+  means the number cannot be struck without a hole. Decide it, or write the
+  refusal down where the number is.
+
+**Done when** the designs exist in DESIGN with dates, WORD_NUMBERS carries
+`1 6 3`'s children with §2.5-style attribution, and one program takes `now`,
+sleeps, takes it again, and displays the difference through whatever `.minus`
+answers — the ten-line proof that an instant stopped being display-only.
+
 **"Later, in no fixed order" is empty, and this is where it used to be.** It held
 eight entries — `satellite.variable.file`, `.time`, `.date`; `satellite.random.*`;
 `satellite.variable.variant`; spacesuits; `satellite.include` of other files;
 Satellite Orbit and the wire format — and every one of them now has a milestone that
 names it: M19, M13, M13, M13, M12, M26, M25 and M28 in that order.
 *(`satellite.variable.float` left it on 2026-08-27 and is M15, not M11, which this
-sentence said until 2026-08-28.)*
+sentence said until 2026-08-28. And `.date` moved on again on 2026-09-04, M13 to
+M29 — the sentence above keeps the count of the day of the emptying, and §8.2's
+table is where ownership is current.)*
 
 **The list is not a milestone and things hid in it**, which is the only thing that
 was ever wrong with it. `SCRATCH.md/MILESTONE.md` is the audit that proved it: run
@@ -4380,7 +4523,10 @@ appended to WORD_NUMBERS §2.2 must change it by exactly one. M8's entry has bot
 reasons. **And it moved again on 2026-09-03, by four at once**: M12 appended the
 variant's `holding`, `holds(x)`, `held` and `clear` at `1 6 14 1` through
 `1 6 14 4` — WORD_NUMBERS §2.5 says who assigned them and by what walk — so M12
-reads 6 and the total reads 227.)*
+reads 6 and the total reads 227. **And three moved on 2026-09-04 without the
+total moving**: `1 9 2`, `1 6 7` and `1 6 8` left M13 for M29 — new that day,
+the first milestone appended since the renumber — so M13 reads 20, M29 reads 3,
+and the total stays 227.)*
 WORD_NUMBERS.md §2.2
 holds **227 rows and 224 distinct numbers** — the three duplicates are §2.3's
 `.range` aliases and nothing else. **All 227 rows are named by exactly one milestone
@@ -4397,9 +4543,10 @@ above**, counted mechanically against §2.2 rather than read off the prose:
 | M10 | 7 | | M24 | 3 |
 | M11 | 26 | | M25 | 2 |
 | M12 | 6 | | M26 | 3 |
-| M13 | 23 | | M27 | 9 |
+| M13 | 20 | | M27 | 9 |
 | M14 | 8 | | M28 | 1 |
-| M15 | 4 | | **total** | **227** |
+| M15 | 4 | | M29 | 3 |
+| | | | **total** | **227** |
 
 **M1, M2, M4.5, M5, M9, M21 and M22 hold none, and that is right rather than a
 gap.** M2 registers all 227 and owns no behaviour; M5 and M9 build the machinery
@@ -4415,10 +4562,11 @@ finished:**
   words in a first-satellite document, and its own entry says the first job is
   writing the DESIGN section that does not exist. M28 has one numbered path and no
   specification anywhere.
-- **Eleven numbers are reserved and unbuilt on purpose**, listed by the milestone
-  that owns them rather than left to a later audit: `1 7 1`, `1 7 2`, `1 7 3`,
-  `1 7 6`, `1 7 9`, `1 7 12`, `1 9 2`, `1 6 7`, `1 6 8` (M13); `1 6 9` (M12);
-  `1 22 2` (M20, the one `satellite.system` path with no v1 code behind it). A
+- **Five numbers are reserved and unbuilt on purpose**, listed by the milestone
+  that owns them rather than left to a later audit: `1 9 2`, `1 6 7`, `1 6 8`
+  (M29); `1 6 9` (M12); `1 22 2` (M20, the one `satellite.system` path with no
+  v1 code behind it). *(Eleven until 2026-09-04, when M13's blockers cleared and
+  its nine left the list — six into its build, three to M29.)* A
   milestone that quietly leaves numbers behind it is how this document came to have
   a 121-path ledger.
 - **Some numbers do not exist yet and are owed.** The failure contract's `.ok()`,
@@ -4434,7 +4582,8 @@ finished:**
   demonstration: M15 (the rounding rule), M6 (three, all §4.5's), M12 (whether
   "nothing" is a state or a value — **cleared 2026-09-03 by delegation, the day
   it landed: a state every type has, DESIGN §8.7**), M13 (the clock, and what
-  `1 7 1`–`1 7 3` name),
+  `1 7 1`–`1 7 3` name — **cleared 2026-09-04 by the author: v1's clock split
+  stands, and the zero-argument shape is a refusal by design**),
   M19 (the mode-word fold, and the failed-open contract's missing numbers), M20
   (DESIGN §7.7's live-code mapping, and the 33), M21 (a seeded draw with no number),
   M26 (cycles), M27 (four, starting with what a `satellite.variable.network` is),

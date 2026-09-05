@@ -81,6 +81,15 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
 
     case NodeKind::ExprStmt:
         if (step_number == 0) {
+            // THE ONE PLACE A CALL LEARNS IT IS A STATEMENT. M14's
+            // `input(prompt, target)` `1 5 4` is legal HERE and nowhere else
+            // -- "writes a place and yields nothing", so a position that
+            // could read its result is refused (S1003) -- and the compiler's
+            // call() answers that question by comparing its node against
+            // this marker. Set per expression-statement and read only while
+            // this statement's subtree is being compiled, so nesting cannot
+            // confuse it: a call INSIDE the root expression is not the root.
+            statement_root_ = n.a;
             again(1);
             visit(n.a);
             return true;

@@ -31,13 +31,17 @@ namespace eval {
 
 namespace {
 
-// Where a changed receiver would be written, which is the whole difference
-// between the three arms below.
-enum class Target : uint8_t { None, Local, Global };
+// Where a changed receiver would be written -- or, for the two Place arms,
+// where the ANSWER goes: M14's `input(prompt, target)` `1 5 4` writes the
+// line it read into a slot the compiler already resolved, and the expression
+// yields nothing. words.def's place list is the declaration; the compiler is
+// what keeps a non-name out of the slot operand, so by the time either Place
+// arm runs, `op.d` names storage the way a method's receiver does.
+enum class Target : uint8_t { None, Local, Global, PlaceLocal, PlaceGlobal };
 
 // What the refusal sentences call the callee. op_dispatch compiled its
-// spelling into the text table; the method ops read the selector off their own
-// node, because their fourth operand is spent on the slot.
+// spelling into the text table; the method and place ops read the selector
+// off their own node, because their fourth operand is spent on the slot.
 std::string callee(Machine &m, const Op &op, Target target)
 {
     if (target == Target::None)
@@ -124,6 +128,26 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
         return;
 
     m.done();
+
+    if (target == Target::PlaceLocal || target == Target::PlaceGlobal) {
+        // THE WRITE IS SKIPPED WHEN THE ANSWER IS NOTHING, and that is the
+        // interrupt contract rather than a convenience: a Ctrl-C at the
+        // prompt answers nothing and the walk stops at the next boundary --
+        // overwriting the place on the way out would destroy a value the
+        // person cancelled INTO. A real empty line is an empty string, not
+        // nothing, so return-pressed still writes. And the expression yields
+        // nothing always -- "writes a place and returns nothing" -- with
+        // S1003 refusing at compile every position that could read it.
+        if (!answer.is_nothing()) {
+            if (target == Target::PlaceLocal)
+                m.set_local(op.d, std::move(answer));
+            else
+                m.set_global(op.d, std::move(answer));
+        }
+        m.push_value(Value::nothing());
+        return;
+    }
+
     if (handler->mutates) {
         if (target == Target::Local)
             m.set_local(op.d, answer);
@@ -148,6 +172,16 @@ void op_method(Machine &m, const Op &op, uint32_t step)
 void op_method_global(Machine &m, const Op &op, uint32_t step)
 {
     dispatch(m, op, step, Target::Global);
+}
+
+void op_place(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::PlaceLocal);
+}
+
+void op_place_global(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::PlaceGlobal);
 }
 
 } // namespace eval

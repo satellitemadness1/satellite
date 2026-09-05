@@ -364,6 +364,11 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(SCALARS)/string_methods.cpp \
                  $(SCALARS)/number_methods.cpp \
                  $(SCALARS)/variant_methods.cpp \
+                 $(RANDOM)/random.cpp \
+                 $(RANDOM)/tiers.cpp \
+                 $(RANDOM)/handlers.cpp \
+                 $(TIME)/time.cpp \
+                 $(TIME)/handlers.cpp \
                  $(EVAL)/dump.cpp \
                  $(VALUE)/value.cpp \
                  $(VALUE)/render.cpp \
@@ -397,10 +402,15 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
 # AND ON errors.def, which is the seventh place this argument is made:
 # tests/eval_test asserts one program per row of the S07xx block this milestone
 # populated, so editing a sentence must re-run the test that raises it.
+#
+# -isystem pcg/include ARRIVED AT M13 with satellite_random in the list above:
+# one command compiles every source here, random.cpp is the one that names a
+# PCG entity, and 060-compile.mk's explicit rule carries the same flag for the
+# same reason -- the vendored header's warning must not read as ours.
 $(TESTS)/eval_test/eval_test: $(eval_test_SRCS) $(eval_test_HDRS) \
                               $(EVAL_TEST_SRCS) $(ERRORS)/errors.def \
                               $(WORDS)/words.def $(HDRS) .cxxflags-stamp
-	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/eval_test -o $@ \
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -I$(TESTS)/eval_test -o $@ \
 	    $(eval_test_SRCS) $(EVAL_TEST_SRCS)
 
 # console_test LINKS eval_test's LIST PLUS THE CONSOLE, AND ONE THING THAT SUITE
@@ -421,13 +431,19 @@ $(TESTS)/eval_test/eval_test: $(eval_test_SRCS) $(eval_test_HDRS) \
 # around every fixture; mixing that with a suite whose other sections print
 # nothing is how one failing section makes another look broken.
 CONSOLE_TEST_SRCS = $(CONSOLE)/console.cpp \
+                    $(CONSOLE)/reader.cpp \
                     $(CONSOLE)/handlers.cpp \
+                    $(SYSTEM)/interrupt.cpp \
                     $(EVAL_TEST_SRCS)
 
+# AND ON `satl` ITSELF SINCE M14, which no other test binary asks for: the
+# terminal section forkpty(3)s the real interpreter and asserts on the screen,
+# so an edit to satl must re-run the suite that watches it type.
 $(TESTS)/console_test/console_test: $(console_test_SRCS) $(console_test_HDRS) \
                                     $(CONSOLE_TEST_SRCS) $(ERRORS)/errors.def \
-                                    $(WORDS)/words.def $(HDRS) .cxxflags-stamp
-	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/console_test -o $@ \
+                                    $(WORDS)/words.def $(HDRS) .cxxflags-stamp \
+                                    satl
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -I$(TESTS)/console_test -o $@ \
 	    $(console_test_SRCS) $(CONSOLE_TEST_SRCS)
 
 # The run list is written out rather than derived, because it is an ORDER and

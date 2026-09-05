@@ -162,4 +162,26 @@ constexpr bool is_language_word(PathId id)
     return id != kNoPath && id <= kNodeCount;
 }
 
+// ---------------------------------------------------------------------------
+// The place parameters
+// ---------------------------------------------------------------------------
+
+// No argument of this word is a place -- the answer for every row but one.
+inline constexpr uint32_t kNoPlaceParameter = 0xFFFFFFFFu;
+
+// Which written argument (0-based) receives the word's answer, or
+// kNoPlaceParameter. words.def's third list is the declaration and carries
+// the policy -- one row, deliberately not the start of a general facility --
+// and the evaluator's compiler is the consumer: it compiles a place as a
+// slot, never as an expression, and refuses before any prompt could print.
+constexpr uint32_t place_parameter_of(NodeId id)
+{
+    uint32_t out = kNoPlaceParameter;
+#define SAT_PLACE(ident, index)                                                \
+    if (id == NodeId::ident)                                                   \
+        out = index;
+#include "satellite_words/words.def"
+    return out;
+}
+
 } // namespace satellite::words

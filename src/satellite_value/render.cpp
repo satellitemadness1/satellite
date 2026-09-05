@@ -14,6 +14,8 @@
 #include "satellite_string/satellite_string.hpp"
 #include "system_facts/facts.hpp"
 
+#include <cstdio>
+#include <ctime>
 #include <string>
 
 namespace satellite {
@@ -84,6 +86,42 @@ std::string text_of(const Value &value)
 
     if (const Str *text = std::get_if<Str>(&value))
         return *text ? live_text(**text) : std::string();
+
+    // AN INSTANT READS AS ISO-8601 IN UTC, ALL NINE FRACTIONAL DIGITS, ALWAYS.
+    // v1's printer, ported whole with its two reasons: trimming zeros would
+    // make printed instants change width, and a timestamp that cannot be
+    // sorted as text has lost most of what ISO-8601 is for; the 'Z' is a fact
+    // about the type -- the value is the Unix epoch's clock, DESIGN §13 -- and
+    // never a guess about a timezone. This rendering is the WHOLE of what M13
+    // gives an instant; the methods are M29's.
+    if (const Time *when = std::get_if<Time>(&value)) {
+        // Floor division, not truncation: C++ integer division rounds toward
+        // zero, so a pre-epoch instant would otherwise land one second late
+        // with a negative fraction. Instants before 1970 are rare and being
+        // quietly wrong about them is not better than being right.
+        long long seconds = when->ns / 1000000000;
+        long long fraction = when->ns % 1000000000;
+        if (fraction < 0) {
+            fraction += 1000000000;
+            seconds -= 1;
+        }
+
+        const std::time_t as_time = static_cast<std::time_t>(seconds);
+        std::tm broken{};
+        if (!gmtime_r(&as_time, &broken)) {
+            // Outside what the C library can break down. The raw count is
+            // still the value, so say it rather than nothing.
+            char raw[40];
+            snprintf(raw, sizeof raw, "%lldns", when->ns);
+            return raw;
+        }
+
+        char buffer[64];
+        snprintf(buffer, sizeof buffer, "%04d-%02d-%02dT%02d:%02d:%02d.%09lldZ",
+                 broken.tm_year + 1900, broken.tm_mon + 1, broken.tm_mday,
+                 broken.tm_hour, broken.tm_min, broken.tm_sec, fraction);
+        return buffer;
+    }
 
     // THE RUNTIME PRINTS AS THE WORD THE PROGRAM WROTE. DESIGN §8's table gives
     // `satellite` a row of its own and §3 calls it "the singleton runtime

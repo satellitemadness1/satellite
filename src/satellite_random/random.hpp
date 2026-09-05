@@ -60,9 +60,12 @@ inline constexpr long long MAX_RANDOM_DIGITS = 100000;
 // A PCG-backed source of 32-bit words.
 //
 // pcg32_k16384 -- ext_setseq_xsh_rr_64_32<14,16,true>, a 16384-word extension
-// array. Seeded from std::random_device through pcg-cpp's seed_seq_from, which
-// fills the whole table: about half a million bits of kernel entropy, and about
-// 1.6 ms to do it. See pcg/README.md for why this exact type and what it costs.
+// array. Seeded from the kernel through getrandom(2) -- never through
+// std::random_device, whose default token is RDRAND and whose failure mode is
+// a throw with no catch under src/ (random.cpp carries the receipt, M13's
+// done-when clause 9 is the requirement) -- and the seed fills the whole
+// table: about half a million bits of kernel entropy. See pcg/README.md for
+// why this exact type and what it costs.
 //
 // The pcg type is not named in this header on purpose, so that nothing above
 // this line includes an Apache-2.0 header. pcg/README.md §"The licence problem"

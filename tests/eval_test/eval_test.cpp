@@ -127,6 +127,7 @@ int main(int argc, char **argv)
     eval_test::section_scalars();
     eval_test::section_variant();
     eval_test::section_interrupted();
+    eval_test::section_clock_and_dice();
 
     if (eval_test::failures != 0) {
         printf("eval_test: %d failed\n", eval_test::failures);

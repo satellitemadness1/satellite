@@ -554,5 +554,30 @@ SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argz")
 SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argument")
 SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argumentz")
 
+// --- the place parameters ----------------------------------------------------
+//
+// A THIRD LIST, ONE ROW LONG, AND THE POLICY IS THAT IT STAYS ONE ROW. PLAN
+// M14: `input(prompt, target)` `1 5 4` "writes a place and returns nothing --
+// the only out parameter in the language, and deliberately not the start of a
+// general facility". DESIGN §6.4 qualification 2's receiver-binding tag is
+// the precedent -- a fact about a word that dispatch needs, declared on the
+// word -- and this is that mechanism extended to a non-receiver parameter:
+// the index (0-based, among the WRITTEN arguments) that names a variable the
+// answer is written into. The evaluator's compiler is the consumer: it
+// refuses a non-name in the place (S1002) and the whole call anywhere but
+// statement position (S1003), both before any prompt could print, and it
+// compiles the place as a SLOT rather than as an expression -- so v1's
+// `expr_call.cpp:113` flatten-and-strcmp hack has no descendant here.
+//
+// SELF-DEFAULTING, unlike its two siblings: a consumer that cares defines
+// SAT_PLACE before including; the many that do not get a no-op and never
+// learn the list exists. The undef below covers both.
+#ifndef SAT_PLACE
+#define SAT_PLACE(ident, index)
+#endif
+
+SAT_PLACE(CONSOLE_INPUT_PROMPT_TARGET, 1)  // 1 5 4 -- `target` receives the line
+
 #undef SAT_NODE
 #undef SAT_ALIAS
+#undef SAT_PLACE

@@ -164,6 +164,38 @@ void section_compile()
               "refused in words rather than crashing or answering nothing");
     }
 
+    // --- the place parameter's two misuses, caught at compile ---------------
+    //
+    // M14's `input(prompt, target)` `1 5 4` -- words.def's one place row.
+    // BOTH REFUSALS FIRE IN THIS BINARY, WHICH LINKS NO CONSOLE: op_misuse is
+    // the compiler's op, raised before any dispatch could happen, and that is
+    // done-when clause 5's "fails BEFORE the prompt prints" as a link-time
+    // fact -- there is no prompt machinery here to have printed.
+    {
+        Run run;
+        build(body("satellite.console.input(\"q? \", 3)"), run);
+        check(run.built, "a non-place target still compiles -- a mistake in a "
+                         "branch that never runs is a program that runs");
+        call(run, "it", {});
+        check(ran_into(errors::Code::CONSOLE_TARGET_NOT_A_PLACE),
+              "S1002: the place must name a variable, refused with no console "
+              "anywhere in this binary");
+    }
+    {
+        Run run;
+        build("satellite.capsule it()\n{\n"
+              "    satellite.variable.string s = \"\"\n"
+              "    satellite.variable.string t = "
+              "satellite.console.input(\"q? \", s)\n"
+              "    satellite.return(t)\n}\n",
+              run);
+        check(run.built, "an assigned place call still compiles");
+        call(run, "it", {});
+        check(ran_into(errors::Code::CONSOLE_ANSWER_IS_THE_PLACE),
+              "S1003: `1 5 4` writes a place and yields nothing, so a "
+              "position that could read its answer is refused");
+    }
+
     // --- a global, which is the one thing at the top level that runs ---------
     {
         Run run;

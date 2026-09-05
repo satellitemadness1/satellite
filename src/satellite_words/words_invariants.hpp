@@ -225,6 +225,12 @@ static_assert(detail::aliases_do_not_shadow(),
               "words.def: a SAT_ALIAS repeats a sibling's text or another "
               "alias -- an alias is tried first, so it would answer for a node "
               "that has its own number");
+static_assert(place_parameter_of(NodeId::CONSOLE_INPUT_PROMPT_TARGET) == 1 &&
+                  place_parameter_of(NodeId::CONSOLE_INPUT_PROMPT) ==
+                      kNoPlaceParameter,
+              "words.def: the place list (M14) names `input(prompt, target)`'s "
+              "second written argument and nothing else -- one row by policy, "
+              "and the compiler's slot road depends on the index");
 
 // WHAT THESE DO NOT COVER, said here rather than left to be assumed.
 //

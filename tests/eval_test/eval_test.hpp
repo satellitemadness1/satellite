@@ -109,5 +109,6 @@ void section_dispatch();    // handlers[path_id], the receiver tag, the cache
 void section_scalars();     // M11's rows: constants, string and number methods
 void section_variant();     // M12's rows: the variant, and what "nothing" is
 void section_interrupted(); // M11's fourth Ending, without a signal
+void section_clock_and_dice(); // M13's rows: the tiers' shapes, now and sleep
 
 } // namespace eval_test

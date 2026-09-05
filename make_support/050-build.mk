@@ -31,9 +31,11 @@ ifeq ($(HAVE_WINDOW),yes)
   ALL_TARGETS += satl-term
 endif
 
-# $(RANDOM_OBJS) is an object and not a binary, and it is in `all` so that the
-# module cannot rot unnoticed. 040-sources.mk says why it links into nothing.
-all: $(ALL_TARGETS) $(RANDOM_OBJS)
+# $(RANDOM_OBJS) rode here from M2 to M12 so the one module no binary linked
+# could not rot unnoticed; M13 moved satellite_random into SATL_SRCS -- the
+# consumer is the language now -- and `all` builds it through satl like every
+# other module. 040-sources.mk carries the history.
+all: $(ALL_TARGETS)
 ifneq ($(HAVE_WINDOW),yes)
 	@echo "note: satl-term not built -- no $(WINDOW_PKGS). The interpreter is unaffected."
 endif

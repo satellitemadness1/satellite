@@ -54,6 +54,14 @@ $(PROGRAMS)/terminal.o: $(PROGRAMS)/terminal.cpp .cxxflags-stamp
 $(RANDOM)/random.o: $(RANDOM)/random.cpp .cxxflags-stamp $(RANDOM)/random.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -c -o $@ $(RANDOM)/random.cpp
 
+# The haswell twin, needed since M13 put random.cpp in SATL_SRCS: without it
+# the generic %.haswell.o pattern below would compile the one PCG-naming
+# object with -I semantics and the vendored header's warning would become
+# ours -- exactly what -isystem exists to prevent, in the one variant nobody
+# rebuilds by hand.
+$(RANDOM)/random.haswell.o: $(RANDOM)/random.cpp .cxxflags-stamp-haswell $(RANDOM)/random.hpp
+	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) -isystem pcg/include -c -o $@ $(RANDOM)/random.cpp
+
 # The haswell half of the tree. A separate suffix rather than a separate
 # directory, so that `clean` keeps naming what it removes and this rule stays
 # one line like the baseline one above it.

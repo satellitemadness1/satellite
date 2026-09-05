@@ -19,6 +19,7 @@
 
 #include "evaluator/evaluator_internal.hpp"
 
+#include "satellite_cache/paths.hpp"
 #include "satellite_number/bignum.hpp"
 
 #include <string>
@@ -143,12 +144,14 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
         // THE SPELLING IS THE CANONICAL ONE, path_text and not this file's
         // text, because the sentence S0721 builds quotes the path as the
         // LANGUAGE writes it -- the file's own spelling is under the caret
-        // already.
+        // already. BARE, with no backticks of its own: the sentences that
+        // quote a callee carry their own (S0721's row is "`{1}` is a path
+        // ..."), so baking a pair in here rendered every unbuilt module
+        // constant as ``satellite.time.new`` -- found at M13 by asking after
+        // the one reserved row this milestone left pointing at M29.
         finish(emit(op_dispatch, node, about.path, kNoOpList, out_.add_cache(),
-                    out_.add_text("`" +
-                                  std::string(words::path_text(
-                                      static_cast<words::NodeId>(about.path))) +
-                                  "`")));
+                    out_.add_text(std::string(words::path_text(
+                        static_cast<words::NodeId>(about.path))))));
         return true;
     }
 
@@ -276,6 +279,70 @@ OpIndex Compiler::call(NodeIndex node)
 
     const NodeIndex target = n.a;
     const resolve::Info &about = info(target);
+
+    // A WHOLE CALL THAT IS A ROW OF THE NUMBERING -- resolve's question ONE,
+    // answered onto the CALL node and not its target, because the parentheses
+    // are part of what the number says: `satellite.random.fast(2)` is `1 7 4`
+    // and `fast` alone under `random` is no word at all. This road was
+    // unreachable until M13 -- M10's `display` and M11's methods all carry
+    // their number on the word, so the first shape-numbered call in the
+    // language (names.cpp's `input()` example was still M14's future) is what
+    // found the compiler reading `info(target)` alone and refusing its own
+    // resolved program as "a method on this expression". An absorbed argument
+    // is part of the number, not an expression -- resolve never visited it --
+    // so an absorber row is left to the statement arms that own those forms.
+    if (const resolve::Info &self = info(node);
+        self.path != words::kNoPath && words::is_language_word(self.path) &&
+        !cache::is_absorber(
+            words::arguments_of(static_cast<words::NodeId>(self.path)))) {
+        // A ROW THAT DECLARES A PLACE -- words.def's third list, one row long
+        // by policy: `input(prompt, target)` `1 5 4`. The place compiles as a
+        // SLOT and never as an expression, the misuses are caught HERE --
+        // before any prompt could print, which is done-when clause 5 -- and
+        // v1's flatten-and-strcmp route to the same number (expr_call.cpp:113,
+        // PLAN §7's first bullet) has no descendant anywhere in this arm.
+        if (const uint32_t place = words::place_parameter_of(
+                static_cast<words::NodeId>(self.path));
+            place != words::kNoPlaceParameter) {
+            const NodeIndex where = ast_.list_at(n.b, place);
+            const resolve::Info &held = info(where);
+            const bool local = resolve::in_a_frame(held.slot);
+            const auto global = globals_.find(held.path);
+
+            // "Writes a place and yields nothing" -- anywhere its answer
+            // could be read is refused, and "a non-variable second argument
+            // fails before the prompt prints". Both misuses still compile to
+            // an op (op_refuse's argument: a mistake in a branch that never
+            // runs is a program that runs), and the compiled argument ops are
+            // simply left unreferenced in the arena.
+            if (node != statement_root_)
+                return emit(op_misuse, node,
+                            static_cast<uint32_t>(
+                                errors::Code::CONSOLE_ANSWER_IS_THE_PLACE),
+                            out_.add_text(std::string(ast_.text_of(target))));
+            if (!local && global == globals_.end())
+                return emit(op_misuse, node,
+                            static_cast<uint32_t>(
+                                errors::Code::CONSOLE_TARGET_NOT_A_PLACE),
+                            out_.add_text(std::string(ast_.text_of(target))));
+
+            // The handler sees every argument BUT the place -- its arity is
+            // the written count less one -- and the op spends its fourth
+            // operand on the slot, exactly as the method ops do.
+            std::vector<OpIndex> kept;
+            for (uint32_t i = 0; i < count; i++)
+                if (i != place)
+                    kept.push_back(out_.list_at(arguments, i));
+            const OpListId given = out_.add_list(kept);
+            return local ? emit(op_place, node, self.path, given,
+                                out_.add_cache(),
+                                static_cast<uint32_t>(held.slot))
+                         : emit(op_place_global, node, self.path, given,
+                                out_.add_cache(), global->second);
+        }
+        return emit(op_dispatch, node, self.path, arguments, out_.add_cache(),
+                    out_.add_text(std::string(ast_.text_of(target))));
+    }
 
     // A CAPSULE THIS PROGRAM DECLARED. The index was decided in pass 1, before
     // any body was compiled, which is what makes a call to a capsule further

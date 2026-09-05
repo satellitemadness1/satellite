@@ -13,7 +13,11 @@
 
 #include "satellite_console/console.hpp"
 
+#include "satellite_console/reader.hpp"
+
 #include <cstdio>
+#include <sys/ioctl.h>
+#include <unistd.h>
 #include <utility>
 
 namespace satellite::console {
@@ -124,15 +128,48 @@ void Console::shutdown()
     if (printer_.joinable())
         printer_.join();
 
-    std::lock_guard<std::mutex> lock(mutex_);
-    started_ = false;
-    closed_ = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        started_ = false;
+        closed_ = false;
+    }
+
+    // STEP 5, SINCE M14 -- THE READER. After the printer, so anything the
+    // program said is on the terminal before the thread that listens goes;
+    // through the pipe, because a thread parked in poll() can always be
+    // handed a byte where one parked bare in read() could only be leaked.
+    // Idempotent like everything above it, and free when no input was ever
+    // asked for -- the common case, and the reason the reader is not started
+    // here-and-joined but only joined.
+    Reader::the().stop();
 }
 
 size_t Console::waiting() const
 {
     std::lock_guard<std::mutex> lock(mutex_);
     return queue_.size();
+}
+
+int Console::width() const
+{
+    // Asked of the fd the printer writes, fresh on every ask -- console.hpp
+    // carries the argument. The fallback is v1's 80, taken when stdout is a
+    // pipe or a file and there is no terminal to have a width: a number
+    // rather than a refusal, because the one program that asks in a pipeline
+    // wants to wrap something, and 80 is the answer every terminal-shaped
+    // tool has given that case since before this language.
+    winsize size{};
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_col > 0)
+        return size.ws_col;
+    return 80;
+}
+
+int Console::height() const
+{
+    winsize size{};
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_row > 0)
+        return size.ws_row;
+    return 24;
 }
 
 bool Console::printing() const

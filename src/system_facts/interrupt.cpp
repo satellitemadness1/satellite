@@ -35,6 +35,19 @@ std::atomic<void (*)()> emergency_hook{nullptr};
 static_assert(std::atomic<void (*)()>::is_always_lock_free,
               "the SIGINT handler reads this; it must not take a lock");
 
+// A PIPE THE HANDLER POKES, SO THE WAKE DOES NOT DEPEND ON WHICH THREAD THE
+// KERNEL PICKED -- M14's half of DESIGN §10.2, decided with the reader. A
+// process-directed SIGINT lands on an arbitrary thread that has not blocked
+// it; the reader parks in poll() on stdin and this pipe, and a thread waiting
+// on the reader's queue is not in a syscall at all, so EINTR alone reaches
+// the right waiter only by luck. One write(2) here -- async-signal-safe, the
+// same call say() already makes -- and the reader wakes deterministically,
+// reads the byte, and notifies whoever was asking. -1 means nobody is
+// listening, which is every run until the reader starts.
+std::atomic<int> wake_pipe{-1};
+static_assert(std::atomic<int>::is_always_lock_free,
+              "the SIGINT handler reads this; it must not take a lock");
+
 // Saying so out loud is the point, and it goes to STDERR rather than stdout
 // for a reason worth stating: a run whose stdout is redirected -- piped, or
 // sent to a file, or read by a program in another terminal -- would otherwise
@@ -69,6 +82,18 @@ void handler(int)
     }
 
     say("\nSATELLITE: CTRL+C RECEIVED: QUITTING\n");
+
+    // Wake the reader, if one is parked. The byte's value does not matter --
+    // the flag above is the message, the pipe is only the alarm clock -- and
+    // the return value is ignored for say()'s reason: there is nothing useful
+    // to do in a handler about a failed write, and a pipe closed by a racing
+    // shutdown answers EBADF/EPIPE harmlessly with SIGPIPE... not delivered,
+    // because nothing here writes a pipe whose read end is closed while the
+    // fd is still registered -- the reader deregisters before it closes.
+    if (const int fd = wake_pipe.load(std::memory_order_relaxed); fd >= 0) {
+        const char poke = 'w';
+        (void)!write(fd, &poke, 1);
+    }
 }
 
 } // namespace
@@ -113,6 +138,11 @@ void clear_interrupt()
 void set_emergency_exit_hook(void (*hook)())
 {
     emergency_hook.store(hook, std::memory_order_relaxed);
+}
+
+void set_interrupt_wake_fd(int fd)
+{
+    wake_pipe.store(fd, std::memory_order_relaxed);
 }
 
 void run_emergency_exit_hook()

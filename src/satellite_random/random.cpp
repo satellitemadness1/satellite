@@ -10,8 +10,11 @@
 #include <pcg_extras.hpp>
 #include <pcg_random.hpp>
 
+#include <cerrno>
 #include <chrono>
-#include <random>
+#include <fcntl.h>
+#include <sys/random.h>
+#include <unistd.h>
 
 namespace satellite {
 
@@ -42,26 +45,102 @@ Window window_for(Tier tier)
     return kWindows[static_cast<int>(tier)];
 }
 
+// THE SEED COMES FROM THE KERNEL AND CANNOT ABORT -- PLAN M13's done-when
+// clause 9, and the first satellite is why it is a clause and not a habit.
+// v1 seeded through libstdc++'s std::random_device, whose default token is
+// RDRAND: under strace its 65,568 seed bytes never touched the kernel while
+// three comments said otherwise, and when RDRAND fails a hundred retries
+// libstdc++ THROWS -- with no catch anywhere under src/, the failure mode of
+// a language builtin was SIGABRT. v1's own spec measured the replacement:
+// getrandom(2) with flags 0, 12.4x faster, an errno instead of an exception,
+// and `ldd` unchanged.
+//
+// getrandom(0) blocks only until the pool is initialised once, and for reads
+// this size can return short or be interrupted -- so it loops. ENOSYS (a
+// pre-3.17 kernel) falls back to /dev/urandom; if even that cannot be opened
+// the loop retries with a pause rather than inventing entropy from the clock,
+// because a weak seed taken silently is DESIGN §1.1's "behind their back" and
+// a wait on a machine with no kernel RNG at all -- no such machine builds this
+// tree -- is at least a true statement about it.
+struct KernelSeed {
+    // BATCHED, BECAUSE THE TABLE IS 65,568 BYTES AND A SYSCALL IS NOT FREE: a
+    // word at a time would be 16,392 round trips into the kernel where whole
+    // batches are a handful -- the bulk read is where v1's spec measured its
+    // 12.4x. The buffer is local and copied out through the iterators because
+    // pcg_extras hands this function whatever iterator generate_to built, and
+    // a syscall needs contiguous bytes.
+    template <typename It>
+    void generate(It begin, It end)
+    {
+        std::uint32_t buffer[1024];
+        while (begin != end) {
+            size_t want = 0;
+            for (It probe = begin; probe != end && want < 1024; ++probe)
+                want++;
+
+            size_t have = 0;
+            while (have < want * sizeof(std::uint32_t)) {
+                const ssize_t got =
+                    getrandom(reinterpret_cast<char *>(buffer) + have,
+                              want * sizeof(std::uint32_t) - have, 0);
+                if (got > 0) {
+                    have += static_cast<size_t>(got);
+                    continue;
+                }
+                if (got < 0 && errno == EINTR)
+                    continue;
+                if (got < 0 && errno == ENOSYS) {
+                    urandom_bytes(reinterpret_cast<char *>(buffer) + have,
+                                  want * sizeof(std::uint32_t) - have);
+                    have = want * sizeof(std::uint32_t);
+                    continue;
+                }
+                usleep(1000);
+            }
+
+            for (size_t i = 0; i < want; i++)
+                *begin++ = buffer[i];
+        }
+    }
+
+private:
+    // The pre-3.17-kernel road, and the wait-rather-than-invent rule from the
+    // note above applies here whole: a machine where /dev/urandom cannot be
+    // opened is a machine this loop is entitled to wait on.
+    void urandom_bytes(char *into, size_t count)
+    {
+        size_t have = 0;
+        for (;;) {
+            const int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+            if (fd < 0) {
+                usleep(1000);
+                continue;
+            }
+            while (have < count) {
+                const ssize_t got = read(fd, into + have, count - have);
+                if (got > 0)
+                    have += static_cast<size_t>(got);
+                else if (got < 0 && errno != EINTR)
+                    break; // reopen and carry on from where this stopped
+            }
+            close(fd);
+            if (have == count)
+                return;
+        }
+    }
+};
+
 // The generator, hidden behind a pointer so no header above this file has to
 // include an Apache-2.0 one.
 struct Source::State {
     pcg32_k16384 rng;
 
-    // seed_seq_from fills the WHOLE 16384-word extension table -- about half a
-    // million bits of kernel entropy, and about 1.6 ms. That cost is why a
-    // Source is constructed once and kept, never made per draw.
-    State() : rng(*seed_source()) {}
+    // The seed sequence fills the WHOLE 16384-word extension table -- about
+    // half a million bits of kernel entropy. That cost is why a Source is
+    // constructed once and kept, never made per draw; 040-sources.mk is where
+    // it is measured on this machine rather than quoted.
+    State() : rng(KernelSeed{}) {}
     explicit State(std::uint64_t seed) : rng(seed) {}
-
-private:
-    // A function rather than a member, because seed_seq_from is consumed by the
-    // constructor and keeping one alive afterwards would hold a random_device
-    // open for the life of the generator.
-    static pcg_extras::seed_seq_from<std::random_device> *seed_source()
-    {
-        static thread_local pcg_extras::seed_seq_from<std::random_device> source;
-        return &source;
-    }
 };
 
 Source::Source() : state_(std::make_unique<State>()) {}

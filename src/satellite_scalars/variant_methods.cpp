@@ -20,19 +20,21 @@
 // second non-dispatchable state, asked for by name at the line it happened.
 //
 // THE WORDS ARE THE ARMS, AND THE LIST GROWS WITH THE VARIANT ITSELF. `holding`
-// answers one of five words today -- "nothing", "bool", "number", "string",
-// "satellite" -- because value.hpp's variant has five arms today; the day a
-// later milestone appends an arm (the file handle at M19, the float behind its
-// handle at M15), word_of() below is the ONE place the vocabulary widens, and
-// `holds` loosens with it. That is errors.def's block-note argument run
-// forwards: `holds("float")` refuses today and can loosen into an answer the
-// day a variant can actually hold one, while a false answered today would be a
-// sentence the language could never take back.
+// answers one of six words today -- "nothing", "bool", "number", "string",
+// "time", "satellite" -- because value.hpp's variant has six arms today; M13
+// appended "time" the day `satellite.time.now` gave a variant an instant to
+// hold, and it was the first proof of this paragraph's promise. The day a
+// later milestone appends the next arm (the file handle at M19, the float
+// behind its handle at M15), word_of() below is the ONE place the vocabulary
+// widens, and `holds` loosens with it. That is errors.def's block-note
+// argument run forwards: `holds("float")` refuses today and can loosen into
+// an answer the day a variant can actually hold one, while a false answered
+// today would be a sentence the language could never take back.
 //
 // AND `holds` REFUSES A WORD OFF THE LIST RATHER THAN ANSWERING false, which
 // is DESIGN §1.1 at its cheapest possible site. `box.holds("strng")` answering
 // false forever is a condition no program can ever satisfy wearing a working
-// test's clothes; the refusal names the five words and the caret names the
+// test's clothes; the refusal names the six words and the caret names the
 // line. `box.holding() == "strng"` still answers false -- equality is not a
 // question about the vocabulary -- and `holds` existing is what makes writing
 // that unnecessary.
@@ -64,20 +66,24 @@ const char *word_of(const Value &value)
         return "number";
     if (value.is_string())
         return "string";
+    if (value.is_time())
+        return "time";
     return "satellite";
 }
 
 // The legal words of `holds(x)`, which are exactly the words word_of() can
-// answer -- one vocabulary, held in one place, per the file note.
+// answer -- one vocabulary, held in one place, per the file note. "time"
+// joined at M13, the day `satellite.time.now` gave a variant an instant to
+// hold.
 bool a_word_an_arm_answers(const std::string &word)
 {
     return word == "nothing" || word == "bool" || word == "number" ||
-           word == "string" || word == "satellite";
+           word == "string" || word == "time" || word == "satellite";
 }
 
 const char *kWantedWord =
     "a word the variant could be holding -- \"nothing\", \"bool\", "
-    "\"number\", \"string\" or \"satellite\"";
+    "\"number\", \"string\", \"time\" or \"satellite\"";
 
 // --- the four, in numbering order -------------------------------------------
 

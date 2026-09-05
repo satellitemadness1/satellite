@@ -429,11 +429,17 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(VALUE)/value.cpp \
             $(VALUE)/render.cpp \
             $(CONSOLE)/console.cpp \
+            $(CONSOLE)/reader.cpp \
             $(CONSOLE)/handlers.cpp \
             $(SCALARS)/handlers.cpp \
             $(SCALARS)/string_methods.cpp \
             $(SCALARS)/number_methods.cpp \
             $(SCALARS)/variant_methods.cpp \
+            $(RANDOM)/random.cpp \
+            $(RANDOM)/tiers.cpp \
+            $(RANDOM)/handlers.cpp \
+            $(TIME)/time.cpp \
+            $(TIME)/handlers.cpp \
             $(EVAL)/evaluate.cpp \
             $(EVAL)/compile.cpp \
             $(EVAL)/compile_expressions.cpp \
@@ -510,10 +516,15 @@ HDRS = $(SYSTEM)/version.hpp \
        $(NUMBER)/bignum_internal.hpp \
        $(NUMBER)/bignum_number.hpp \
        $(RANDOM)/random.hpp \
+       $(RANDOM)/tiers.hpp \
+       $(RANDOM)/handlers.hpp \
+       $(TIME)/time.hpp \
+       $(TIME)/handlers.hpp \
        $(STRING)/satellite_string.hpp \
        $(VALUE)/value.hpp \
        $(VALUE)/render.hpp \
        $(CONSOLE)/console.hpp \
+       $(CONSOLE)/reader.hpp \
        $(CONSOLE)/handlers.hpp \
        $(SCALARS)/handlers.hpp \
        $(SCALARS)/methods_internal.hpp \
@@ -546,31 +557,20 @@ HDRS = $(SYSTEM)/version.hpp \
 # what keeps this line honest there rather than naming objects nothing builds.
 # satellite.random -- DESIGN §11's three tiers, the 32-bit seam, and the spin.
 #
-# COMPILED BY `all` AND LINKED INTO NO BINARY `all` PRODUCES, which is a
-# deliberate exception to this project's own rule and is written here rather
-# than left to be discovered. PLAN M2 says the registry gets a consumer in the
-# milestone that writes it, because the first satellite shipped three commits
-# where it had none. This module had none for a different reason: the thing that
-# would call it is `satellite.random.*`, which reaches no milestone at all
-# (SCRATCH.md/MILESTONE.md §0.1 counts its 16 paths), and the thing it would
-# FEED -- drawing an N-digit number -- needed the arbitrary-precision half.
+# LINKED INTO `satl` SINCE M13, WHICH ENDS THE EXCEPTION THAT USED TO BE
+# DOCUMENTED HERE. From M2 to M12 this paragraph said "compiled by `all` and
+# linked into no binary `all` produces" -- the module landed ahead of any
+# milestone that called it, `satellite.random.*` reached no milestone at all,
+# and tests/number_test/draw.cpp was its only consumer, kept so a compiler
+# upgrade would break the build rather than break silently months later. M13
+# is the milestone the old sentence was waiting on: random.cpp's entry moved
+# into SATL_SRCS above, tiers.cpp and handlers.cpp arrived beside it, and the
+# consumer is the language now -- twelve rows in `handlers[path_id]`.
 #
-# HALF OF THAT ENDED AT M8, AND THE SENTENCE IS NARROWER NOW THAN IT WAS.
-# satellite_number/random.cpp is the bignum half of the draw and it is ported,
-# so `tests/number_test/draw.cpp` LINKS THIS MODULE and exercises the Bits32
-# seam against a splitmix32 stub -- which is the shape random.hpp itself names
-# as the proof that the seam is generator-agnostic. 065-tests.mk's number_test
-# rule is where the two meet, and it carries the -isystem pcg/include this
-# file's own explicit rule in 060-compile.mk carries for the same reason.
-#
-# WHAT IS STILL TRUE IS THAT `satl` DOES NOT LINK IT. Nothing in the interpreter
-# draws a number, because `satellite.random.*` has no milestone; a test binary
-# is a consumer for rot, which is what this paragraph was ever about, and it is
-# not a consumer in the language. Compiling it under `all` stays for the same
-# reason it was written: a header change or a compiler upgrade breaks the build
-# rather than breaking silently months later.
-RANDOM_SRCS = $(RANDOM)/random.cpp
+# What did NOT move: the bignum half of the draw is still
+# satellite_number/random.cpp (M8's port), number_test still drives the Bits32
+# seam with a splitmix32 stub, and random.o is still the ONE object that sees
+# a third-party header -- 060-compile.mk's explicit -isystem rules, baseline
+# and haswell, are where that is enforced.
 
-RANDOM_OBJS = $(RANDOM_SRCS:.cpp=.o)
-
-OBJS = $(SATL_OBJS) $(SATL_HASWELL_OBJS) $(CPU_LEVEL_OBJ) $(TERM_OBJS) $(RANDOM_OBJS)
+OBJS = $(SATL_OBJS) $(SATL_HASWELL_OBJS) $(CPU_LEVEL_OBJ) $(TERM_OBJS)

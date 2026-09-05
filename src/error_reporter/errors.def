@@ -69,6 +69,8 @@
 //     S06xx   numbers                       DESIGN §8.1    M8
 //     S07xx   the evaluator                                M9/M10
 //     S08xx   the machine limits            PLAN §4.5      M6
+//     S09xx   the clock and the dice        DESIGN §11/§13 M13
+//     S10xx   the console's input           DESIGN §10.1   M14
 //
 // The reserved blocks are written down and NOT populated. A block reserved in a
 // comment costs nothing and stops the thing this file exists to stop, which is
@@ -698,5 +700,110 @@ SAT_CODE(890, NOTE_CONFIG_SET_HERE, SAT_NOTE,
 SAT_CODE(891, NOTE_CONFIG_TOO_MANY, SAT_NOTE,
          "{1} problems were reported and the rest of this file was not read -- "
          "fix these and run it again")
+
+// --- S09xx -- the clock and the dice -----------------------------------------
+//
+// M13's block, taken 2026-09-04. 901-910 are `satellite.random`'s, 920-929
+// `satellite.time`'s; the gap is the same deliberate one every block keeps.
+//
+// SIX OF THESE SENTENCES ARE v1's, PORTED AS ROWS. PLAN M13: "what survives is
+// the argument checking and v1's nine failure texts, reached through
+// handlers[path_id] and reported through M5" -- v1 composed them at its call
+// sites (902 through 908 below, near verbatim), and this file is where they
+// stop being literals somebody has to find twice. 901, 909 and 910 have no v1
+// ancestor because the shapes they refuse were specified 2026-09-04.
+//
+// AN UNKNOWN TIER IS NOT HERE AND MUST NEVER BE. `satellite.random.quick(5)`
+// is M5's did-you-mean over the failing trie level -- S0521/S0523 -- not a
+// tenth row in this block; v1 answered it from one generic "no such module
+// function" and PLAN §7 throws that dispatch away.
+
+// THE AUTHOR'S TEXT, VERBATIM AFTER THE DASH, one text for all three tiers and
+// both spellings (2026-09-04): the zero-argument call `fast()` `1 7 1` and the
+// bare path `satellite.random.fast` fold to the same number, a path is not a
+// value, and the refusal says what to do instead. The answer not taken --
+// inferring the digit count from the assignment's destination -- is recorded
+// in DESIGN §11 so it is not re-proposed.
+SAT_CODE(901, RANDOM_NEEDS_A_SHAPE, SAT_ERROR,
+         "`{1}` draws nothing on its own -- you must supply a digit_count, "
+         "min and max, or min max and step")
+
+SAT_CODE(902, RANDOM_NOT_A_DIGIT_COUNT, SAT_ERROR,
+         "`{1}` wants a whole number of digits, got {2}")
+
+SAT_CODE(903, RANDOM_DIGITS_OUT_OF_RANGE, SAT_ERROR,
+         "`{1}` draws between 0 and {2} digits, not {3}")
+
+SAT_CODE(904, RANDOM_WANTS_NUMBERS, SAT_ERROR,
+         "`{1}` wants {2} `satellite.variable.number` arguments")
+
+// Whole numbers, because the answer is one: there is no uniform draw over the
+// reals between 1 and 100, and quietly rounding the bounds would answer a
+// question nobody asked. v1's argument, travelling with v1's sentence.
+SAT_CODE(905, RANDOM_WANTS_WHOLE_NUMBERS, SAT_ERROR,
+         "`{1}` wants whole numbers, got {2}")
+
+SAT_CODE(906, RANDOM_RANGE_EMPTY, SAT_ERROR,
+         "`{1}` is inclusive at both ends, so {2} to {3} is empty")
+
+SAT_CODE(907, RANDOM_RANGE_TOO_WIDE, SAT_ERROR,
+         "`{1}` spans more than {2} digits")
+
+SAT_CODE(908, RANDOM_COULD_NOT_DRAW, SAT_ERROR,
+         "`{1}` could not draw {2} digits")
+
+SAT_CODE(909, RANDOM_STEP_NOT_A_STEP, SAT_ERROR,
+         "`{1}` steps forward by a whole number of one or more, not {2}")
+
+// THE REFUSAL NAMES THE LAST VALUE THE STEP REACHES -- the author's rule,
+// 2026-09-04, DESIGN §11: `step` must divide `max - min` exactly, so
+// `fast(1, 10, 4)` is refused naming 9, and `fast(1, 9, 4)` is what the
+// program meant or the program is wrong. "Inclusive at both ends" stays true
+// of every range call that answers; a refusal can loosen later, and a draw
+// that silently never says `max` is forever.
+SAT_CODE(910, RANDOM_STEP_MISSES, SAT_ERROR,
+         "`{1}` is inclusive at both ends, and stepping by {2} from {3} lands "
+         "last on {4}, never {5} -- refused rather than quietly never "
+         "answering {5}")
+
+// THE UNIT IS SECONDS, WHOLE OR FRACTIONAL -- the author, 2026-09-04. One
+// unit always, so there is nothing at a call site to misread, and 0.09 is an
+// exact Number (DESIGN §8.1), so the fraction costs no float. What this row
+// refuses is a LENGTH no wait can be: negative, or wider than the int64
+// nanosecond count the timer runs on. A wrong TYPE is S0713's sentence, not
+// this one's.
+SAT_CODE(920, TIME_NOT_A_LENGTH, SAT_ERROR,
+         "`satellite.time.sleep` waits a number of seconds, and {1} is not a "
+         "length of time it can wait")
+
+// --- S10xx -- the console's input --------------------------------------------
+//
+// M14's block, taken 2026-09-04. Three rows, and the interrupted case is
+// DELIBERATELY NOT A FOURTH: a Ctrl-C at the prompt answers nothing and the
+// walk stops itself at the next statement boundary with S0730's own caret --
+// the same shape sleep takes, one mechanism for every blocked wait.
+//
+// 1002 AND 1003 ARE RAISED AT COMPILE TIME, BEFORE THE PROMPT PRINTS, which
+// is PLAN M14's done-when clause 5: a target that cannot receive the line
+// must fail before anybody types an answer that is then thrown away.
+
+// v1's sentence, a row now: "satellite.console.input reached the end of
+// input". End of input is a REAL condition and not a failure of the asking --
+// a program run with its stdin closed reaches it immediately -- and the
+// refusal is what stops that program from looping on empty answers forever,
+// which is M14's clause 6 and §6's do-not-rediscover regression the other
+// way round.
+SAT_CODE(1001, CONSOLE_END_OF_INPUT, SAT_ERROR,
+         "`{1}` reached the end of input -- there is nobody left to answer, "
+         "and a program run with its stdin closed reaches this at once")
+
+SAT_CODE(1002, CONSOLE_TARGET_NOT_A_PLACE, SAT_ERROR,
+         "`{1}` writes its answer into its second argument, so that argument "
+         "has to be a variable -- the only out parameter in the language, and "
+         "deliberately not the start of a general facility")
+
+SAT_CODE(1003, CONSOLE_ANSWER_IS_THE_PLACE, SAT_ERROR,
+         "`{1}` writes a place and yields nothing -- it is a statement of its "
+         "own, and what it read is in the variable it wrote")
 
 #undef SAT_CODE

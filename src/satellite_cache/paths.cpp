@@ -252,6 +252,33 @@ PathMatch language_path(const Ast &ast, NodeIndex node)
                 step = {shape, 2, true, is_absorber(args) && sat, arity_of(args)};
             } else if (word_node != words::kNoPath) {
                 step = {word_node, 1, false, false, -1};
+            } else if (words::PathId ignored = words::kNoPath,
+                       zero = i + 1 == links.size() && argc == -1
+                                  ? shape_of(at, links[i].word, 0, false,
+                                             ignored)
+                                  : words::kNoPath;
+                       zero != words::kNoPath) {
+                // A BARE SPELLING FOLDS TO ITS ZERO-ARGUMENT SHAPE -- the
+                // author, 2026-09-04, taken for the random tiers and stated
+                // as a rule about spelling: `satellite.random.fast` and
+                // `fast()` are the same number (`1 7 1`), because WORD_NUMBERS
+                // §2.2's parentheses NAME the zero-argument call shape and a
+                // word with no bare node has no other number the spelling
+                // could mean. Only the FINAL segment folds -- an interior one
+                // still has to be a word something can hang under, and the
+                // alias step above has already taken `fast.range(...)` whole
+                // -- so `satellite.random.fast.foo` still stops under
+                // `random` and is reported over the level that failed.
+                //
+                // What the fold hands the evaluator is a zero-argument
+                // dispatch, exactly what compile_expressions' module-constant
+                // arm makes of any language path read without being called;
+                // for the tiers that row is S0901's refusal by design, so
+                // both spellings refuse through one text. M14 inherits this
+                // rule for `satellite.console.input` -- a bare `input` will
+                // mean `input()` `1 5 2` -- and its entry is where to look if
+                // that is ever to read differently.
+                step = {zero, 1, true, false, 0};
             } else {
                 // THE PATH DOES NOT RESOLVE, AND THAT IS NOT THIS MILESTONE'S
                 // ERROR TO REPORT. A misspelled word under `satellite` is a

@@ -43,8 +43,11 @@ void op_enter(Machine &m, const Op &op, uint32_t step);
 void op_dispatch(Machine &m, const Op &op, uint32_t step);
 void op_method(Machine &m, const Op &op, uint32_t step);
 void op_method_global(Machine &m, const Op &op, uint32_t step);
+void op_place(Machine &m, const Op &op, uint32_t step);
+void op_place_global(Machine &m, const Op &op, uint32_t step);
 void op_refuse(Machine &m, const Op &op, uint32_t step);
 void op_no_question(Machine &m, const Op &op, uint32_t step);
+void op_misuse(Machine &m, const Op &op, uint32_t step);
 
 void op_block(Machine &m, const Op &op, uint32_t step);
 void op_expression(Machine &m, const Op &op, uint32_t step);
@@ -181,6 +184,12 @@ private:
 
     // Which global slot a `satellite.library.NAME` PathId is.
     std::unordered_map<words::PathId, uint32_t> globals_;
+
+    // The root expression of the statement being compiled, so call() can
+    // tell statement position from every other -- the whole of how M14's
+    // place-writing call is confined to "a statement of its own".
+    // compile_statements' ExprStmt arm is the writer and the only one.
+    NodeIndex statement_root_ = kNoNode;
 };
 
 } // namespace satellite::eval

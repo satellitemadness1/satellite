@@ -33,6 +33,8 @@ const char *type_name(const Value &value)
     // singleton" and that is the phrase this is short for.
     if (value.is_runtime())
         return "the satellite runtime";
+    if (value.is_time())
+        return "time";
     return "nothing";
 }
 
@@ -62,6 +64,13 @@ bool same(const Value &left, const Value &right)
 
     if (const Number *number = std::get_if<Number>(&left))
         return *number == std::get<Number>(right);
+
+    // TWO INSTANTS ARE THE SAME INSTANT WHEN THE COUNTS MATCH, and the arm has
+    // to be written out: the both-empty tail below answers true, so leaving
+    // `Time` to fall through would make every instant equal every other --
+    // exactly the silent fallthrough the file note promises the arms refuse.
+    if (const Time *when = std::get_if<Time>(&left))
+        return when->ns == std::get<Time>(right).ns;
 
     if (const Str *text = std::get_if<Str>(&left)) {
         const Str &other = std::get<Str>(right);

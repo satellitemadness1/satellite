@@ -79,8 +79,18 @@ void section_codes()
     // type does not have -- a case that used to fall into S0720's "name the
     // receiver first", advice that cannot help a receiver that IS a name.
     // MILESTONES/M12.md §3 is the record.
-    check(kCodeCount == 79,
-          "errors.def has 79 rows -- if that changed on purpose, change it here "
+    // AND BY ELEVEN AT M13, all in a NEW block: S09xx, the clock and the
+    // dice. S0901-S0910 are `satellite.random`'s -- seven of them v1's
+    // failure texts become rows, S0901/S0909/S0910 the refusals whose shapes
+    // were specified 2026-09-04 -- and S0920 is `satellite.time.sleep`'s "not
+    // a length of time". MILESTONES/M13.md §3 is the record.
+    // AND BY THREE AT M14, in S10xx, the console's input: S1001 is v1's "end
+    // of input" sentence become a row, and S1002/S1003 are the place
+    // parameter's two misuses, raised at compile before any prompt could
+    // print. The interrupted case is deliberately NOT a fourth -- it answers
+    // nothing and the boundary's S0730 is the report. MILESTONES/M14.md §3.
+    check(kCodeCount == 93,
+          "errors.def has 93 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 
@@ -95,6 +105,8 @@ void section_codes()
     check(block_of(Code::NUMBER_DIVIDE_BY_ZERO) == 6, "numbers are S06xx");
     check(block_of(Code::EVAL_TOO_DEEP) == 7, "the evaluator is S07xx");
     check(block_of(Code::CONFIG_NOT_A_SETTING) == 8, "the machine limits are S08xx");
+    check(block_of(Code::RANDOM_NEEDS_A_SHAPE) == 9, "the clock and the dice are S09xx");
+    check(block_of(Code::CONSOLE_END_OF_INPUT) == 10, "the console's input is S10xx");
 
     // THE RESERVED BLOCK IS EMPTY, and this is the check that makes reserving
     // it worth anything. errors.def keeps S07xx for the evaluator; a milestone

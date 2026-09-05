@@ -107,6 +107,7 @@ int main()
 {
     console_test::section_printing();
     console_test::section_dispatching();
+    console_test::section_terminal();
 
     if (console_test::failures != 0) {
         printf("console_test: %d failed\n", console_test::failures);

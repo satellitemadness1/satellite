@@ -105,4 +105,12 @@ void set_emergency_exit_hook(void (*hook)());
 // from a signal handler.
 void run_emergency_exit_hook();
 
+// A pipe's WRITE end the SIGINT handler pokes one byte into, so a thread
+// parked in poll() learns a Ctrl-C arrived no matter which thread the kernel
+// delivered it to -- M14's reader is the registrar and interrupt.cpp says why
+// the wake cannot ride on EINTR alone. -1 deregisters, and the registrar must
+// deregister BEFORE closing the fd. system_facts deliberately does not learn
+// what the pipe wakes -- the same seam the emergency hook draws one note up.
+void set_interrupt_wake_fd(int fd);
+
 } // namespace satellite

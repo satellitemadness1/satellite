@@ -90,10 +90,26 @@ struct Runtime {
     bool operator==(const Runtime &) const = default;
 };
 
-// APPEND ONLY. A new arm goes at the END of this list, never in the middle.
-using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime>;
+// AN INSTANT: int64 nanoseconds on the Unix epoch, `system_clock`'s reading.
+// DESIGN §13's Time entry, settled 2026-09-04 -- the VALUE is the wall clock,
+// because a value has to mean something outside the process that read it; the
+// timer under `satellite.time.sleep` is `steady_clock` and never appears here.
+// 61 bits of epoch against a 53-bit mantissa is why this is an integer and not
+// a `double`: 198 ns of resolution at the current epoch would make two
+// back-to-back readings identical, which is useless for the one thing a clock
+// is for. M13 gives an instant exactly one ability -- being displayed -- and
+// M29 is where its methods arrive; the arm carries everything they will need.
+struct Time {
+    long long ns = 0;
+    bool operator==(const Time &) const = default;
+};
 
-// One value. DESIGN §8's table, five rows of it.
+// APPEND ONLY. A new arm goes at the END of this list, never in the middle.
+// `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
+// widest arm, the same accounting `Runtime`'s note above runs.
+using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time>;
+
+// One value. DESIGN §8's table, six rows of it since M13.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -111,12 +127,14 @@ struct Value : ValueBase {
         return Value(std::make_shared<const SatString>(std::move(s)));
     }
     static Value runtime() { return Value(Runtime{}); }
+    static Value instant(long long ns) { return Value(Time{ns}); }
 
     bool is_nothing() const { return std::holds_alternative<Nothing>(*this); }
     bool is_bool() const { return std::holds_alternative<bool>(*this); }
     bool is_number() const { return std::holds_alternative<Number>(*this); }
     bool is_string() const { return std::holds_alternative<Str>(*this); }
     bool is_runtime() const { return std::holds_alternative<Runtime>(*this); }
+    bool is_time() const { return std::holds_alternative<Time>(*this); }
 };
 
 // 40 BYTES. See the header note -- this is DESIGN §8.2's budget, and the arm

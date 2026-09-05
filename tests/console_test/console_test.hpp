@@ -55,5 +55,7 @@ bool every_line_is(const std::string &text, const std::string &line,
 
 void section_printing();    // atomicity, order, the barrier, the shutdown
 void section_dispatching(); // `1 5 1` through a compiled program
+void section_terminal();    // M14's done-when: the real satl under a pty --
+                            // asserted on the screen, not on the bytes
 
 } // namespace console_test

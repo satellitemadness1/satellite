@@ -105,9 +105,23 @@ public:
     // true rather than nearly true.
     void drain();
 
-    // ALL FOUR STEPS. Safe to call twice, because an error path and a success
-    // path both take it and neither should have to know which ran first.
+    // ALL FOUR STEPS -- AND A FIFTH SINCE M14: the reader is woken through
+    // its pipe and joined, so a thread parked on stdin never outlives the
+    // run. Safe to call twice, because an error path and a success path both
+    // take it and neither should have to know which ran first.
     void shutdown();
+
+    // THE TERMINAL'S FACTS -- `satellite.console.width` `1 5 6` and `.height`
+    // `1 5 7`, and the 14 lines of v1's 1,449 that come across (M14):
+    // `terminal_columns()`'s ioctl with its 80-column fallback, plus the
+    // height v1 never had (`ws_row` appears zero times in it), falling back
+    // to 24. ASKED FRESH EVERY TIME, never sampled -- a terminal resizes
+    // during a run, which is what makes these facts and not configuration
+    // (PLAN M14's argument against `arguments.machine.*`), and M14's
+    // done-when clause 7 resizes a pty between two asks to prove it. M22's
+    // prompt consumes these from here rather than reimplementing them.
+    int width() const;
+    int height() const;
 
     // What is waiting, for a test to assert on. Not for the language.
     size_t waiting() const;

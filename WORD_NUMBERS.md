@@ -400,9 +400,9 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.window` | `1 6 15` | assigned |
 | `satellite.variable.capsule` | `1 6 16` | assigned — the type of a deferred call; `satellite.capsule` `1 2` is the keyword |
 | `satellite.random` | `1 7 (0)` |  |
-| `satellite.random.fast()` | `1 7 1` |  |
-| `satellite.random.normal()` | `1 7 2` |  |
-| `satellite.random.ultra()` | `1 7 3` |  |
+| `satellite.random.fast()` | `1 7 1` | the zero-argument shape — a refusal by design (DESIGN §11, 2026-09-04) |
+| `satellite.random.normal()` | `1 7 2` | the same — a refusal by design (DESIGN §11) |
+| `satellite.random.ultra()` | `1 7 3` | the same — a refusal by design (DESIGN §11) |
 | `satellite.random.fast(digits)` | `1 7 4` | assigned |
 | `satellite.random.fast(min, max)` | `1 7 5` | assigned |
 | `satellite.random.fast.range(min, max)` | `1 7 5` | ALIAS of the line above |

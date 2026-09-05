@@ -237,6 +237,26 @@ void op_no_question(Machine &m, const Op &op, uint32_t)
         m.program().text(op.c)));
 }
 
+void op_misuse(Machine &m, const Op &op, uint32_t)
+{
+    // THE THIRD TWIN, AND THE FIRST WHOSE CODE IS AN OPERAND -- M14's two
+    // place-parameter refusals (S1002, S1003) share one shape, one hole, and
+    // one op. errors::make's template checks the hole count against the code
+    // at compile time and cannot here, where the code is data; what stands in
+    // for the static_assert is the contract that EVERY code this op carries
+    // has exactly one {1}, and tests/eval_test raises each row so a sentence
+    // grown a second hole fails a fixture rather than printing a hole.
+    //
+    // RAISED AT RUN TIME for op_refuse's reason, told from the other side:
+    // the misuse was DETECTED at compile, but `input(">", 3)` in a branch
+    // that never runs is a program that runs.
+    errors::Diagnostic problem;
+    problem.code = static_cast<errors::Code>(op.a);
+    problem.at = m.span_of(m.here());
+    problem.arguments = {std::string(m.program().text(op.b))};
+    m.refuse(std::move(problem));
+}
+
 // op_dispatch LIVED HERE FROM M9 TO M11 AND MOVED WHEN IT STOPPED BEING ALONE.
 // M11's method ops share its whole body except where a changed receiver goes,
 // so the three arms and their one core are operations_dispatch.cpp -- the same

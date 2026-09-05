@@ -16,7 +16,9 @@
 #include "evaluator/machine.hpp"
 #include "programs/built_program.hpp"
 #include "programs/opening.hpp"
+#include "satellite_random/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
+#include "satellite_time/handlers.hpp"
 #include "satellite_value/render.hpp"
 #include "satellite_words/words.hpp"
 #include "system_facts/interrupt.hpp"
@@ -82,10 +84,14 @@ int call_command(const std::vector<std::string> &args)
     // arm: `--call` runs one capsule with no `satellite.main` in front of it
     // and no printer behind it, so `display` under it answers S0721 -- but a
     // capsule that trims a string or rounds a number is squarely what the arm
-    // is FOR. Ctrl-C is installed for the same reason it is in run_command:
+    // is FOR. The clock and the dice joined at M13 by the same test: a
+    // capsule that draws a die or paces itself needs no printer either.
+    // Ctrl-C is installed for the same reason it is in run_command:
     // this is an entry point that runs user code, and a loop under `--call`
     // is as interruptible as one under `satl file.satl`.
     scalars::install_handlers();
+    random::install_handlers();
+    time::install_handlers();
     install_interrupt_handler();
     clear_interrupt();
 
