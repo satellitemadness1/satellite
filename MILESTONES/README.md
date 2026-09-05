@@ -81,9 +81,11 @@ leaving it out. Leaving it out is what happened to M3, M4, M4.5 and M5, and it
 was invisible until somebody asked which commit landed which — so the follow-up
 is the shape, and it is one line in one file.
 
-**M15.md opens with the same `PENDING` and for the same reason** — it is the
+**M15.md opened with the same `PENDING` and for the same reason** — it is the
 tenth note written under this convention, and `grep PENDING MILESTONES/M*.md`
-answers it and nothing else until the follow-up lands. *(M11.md's said the same
+answered it and nothing else until its follow-up landed the same sitting —
+which is the one hash this file cannot name, being IN it: the rule at the top
+of this section, demonstrated by the file that states it. *(M11.md's said the same
 until its follow-up landed on 2026-09-03 in `e435c96`; M12.md's on 2026-09-04
 in `89f081a`; M13.md's and M14.md's the same day in `db510bf` — one commit
 naming two notes, M3-and-M4's precedent one layer up; M10.md's on 2026-09-03 in
@@ -96,12 +98,13 @@ It is the first note written knowing this rule, so rather than omitting the hash
 MILESTONES/M*.md` lists every note still owed its follow-up, which "leaving it
 out" could never do — **over the notes and not over this directory**, because
 this file has to spell the word in order to describe it and would otherwise be a
-permanent false positive in its own check. **That grep answers M15.md and nothing
-else**, which is the shape it is meant to have: one note owed a follow-up at any
-time. M6's follow-up landed on 2026-08-31, M7's and M8's the same day, M9's on
-2026-09-01, M10's and M11's on 2026-09-03, and M12's, M13's and M14's on
-2026-09-04, so the convention has now been used end to end **nine times** — a
-note that named its own hole, and a commit that filled it.
+permanent false positive in its own check. **That grep answers nothing today**,
+which is the shape it is meant to have: at most one note owed a follow-up at
+any time, and none once the sitting ends. M6's follow-up landed on 2026-08-31,
+M7's and M8's the same day, M9's on 2026-09-01, M10's and M11's on 2026-09-03,
+and M12's through M15's on 2026-09-04, so the convention has now been used end
+to end **ten times** — a note that named its own hole, and a commit that
+filled it.
 
 **A tag would need no follow-up and is deliberately not the answer.** `git tag
 M5` records the same fact where nobody reading the tree can see it, and this
