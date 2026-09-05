@@ -84,6 +84,12 @@ std::string text_of(const Value &value)
     if (const Number *number = std::get_if<Number>(&value))
         return number->to_string();
 
+    // A FLOAT PRINTS WITH ITS POINT, ALWAYS -- "4.0", never "4" -- so the
+    // reader is told which type answered. satellite_float owns the shape;
+    // this arm only forwards, the way the number arm above does.
+    if (const Flo *held = std::get_if<Flo>(&value))
+        return *held ? (*held)->to_string() : std::string("0.0");
+
     if (const Str *text = std::get_if<Str>(&value))
         return *text ? live_text(**text) : std::string();
 

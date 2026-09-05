@@ -6,15 +6,20 @@
 // answer; the row itself could not exist before M9's table did, and M11 is
 // ".number and their methods" running.
 //
-// THREE ROWS REFUSE NAMING M15, AND WHICH THREE IS A DECISION WITH A RECORD.
-// `power`, `truncate` and `sqrt` "cannot be finished before the rounding rule
-// is chosen" -- PLAN §8's M15 entry, which also records the two shifts moving
-// there and COMING BACK when DESIGN §5.5 answered what a shift means (× 2ⁿ
-// and ÷ 2ⁿ, both exact because 2 divides 10), and `modulus` never having
-// belonged there at all (§8.6 files it under "exact and bounded, never
-// rounds"). So twelve run and three wait, and the three say why.
+// THREE ROWS WAITED ON M15 AND ANSWER SINCE IT LANDED. `power`, `truncate`
+// and `sqrt` "cannot be finished before the rounding rule is chosen" -- PLAN
+// §8's M15 entry, which also records the two shifts moving there and COMING
+// BACK when DESIGN §5.5 answered what a shift means (× 2ⁿ and ÷ 2ⁿ, both
+// exact because 2 divides 10), and `modulus` never having belonged there at
+// all (§8.6 files it under "exact and bounded, never rounds"). The rule was
+// chosen at M15 -- half away from zero, MILESTONES/M15.md §2 -- and the
+// three rows below now answer, two of them with a FLOAT: §8.6's argument
+// that a result type must not depend on an argument's value. Their
+// `milestone` column says M15 and means it, where the other twelve mean M11.
 
 #include "satellite_scalars/methods_internal.hpp"
+
+#include "satellite_float/satellite_float.hpp"
 
 #include "error_reporter/report.hpp"
 #include "satellite_words/words.hpp"
@@ -174,34 +179,74 @@ bool number_modulus(eval::Machine &m, const Value *a, uint32_t, Value *answer)
     return true;
 }
 
-// The three that wait on M15's rounding rule, each saying so with the
-// milestone's name rather than leaving S0721 to guess.
+// The three that waited on M15's rounding rule. The outcomes-to-rows mapping
+// is written once, because power and sqrt share it and two spellings of one
+// refusal is errors.def's oldest complaint.
 
-bool number_power(eval::Machine &m, const Value *, uint32_t, Value *)
+// Answered and DividedByZero read the same at both class-3 sites; which
+// NO-REAL-ANSWER fact applies -- S0602's root or S0603's exponent -- is the
+// one thing the sites know and this function does not, so each raises its
+// own before handing the rest here.
+bool class_three_outcome(eval::Machine &m, PowerOutcome outcome,
+                         Value *answer, Float made)
 {
-    m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
-        m.span_of(m.here()), "`power`",
-        "a fractional or negative exponent is irrational in general, so it "
-        "cannot run before PLAN.md §8's M15 chooses the rounding rule"));
+    if (outcome == PowerOutcome::Answered) {
+        *answer = Value::floating(std::move(made));
+        return true;
+    }
+    // 0 to a negative exponent is 1 over 0^|e| -- S0601's own sentence, and
+    // the `1` under the backticks is exactly the dividend it names.
+    m.refuse(errors::make<errors::Code::NUMBER_DIVIDE_BY_ZERO>(
+        m.span_of(m.here()), "1"));
     return false;
 }
 
-bool number_truncate(eval::Machine &m, const Value *, uint32_t, Value *)
+bool number_power(eval::Machine &m, const Value *a, uint32_t, Value *answer)
 {
-    m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
-        m.span_of(m.here()), "`truncate`",
-        "truncating is taking a float's left half, so it waits for the float "
-        "itself -- PLAN.md §8 builds it at M15"));
-    return false;
+    const Number *self = nullptr;
+    const Number *exponent = nullptr;
+    if (!number_at(m, a, 0, &self) || !number_at(m, a, 1, &exponent))
+        return false;
+    Float made;
+    const PowerOutcome outcome =
+        power_of(*self, *exponent, m.policy().float_digits, made);
+    if (outcome == PowerOutcome::NoRealAnswer) {
+        m.refuse(errors::make<errors::Code::NUMBER_NEGATIVE_FRACTIONAL_POWER>(
+            m.span_of(m.here())));
+        return false;
+    }
+    return class_three_outcome(m, outcome, answer, std::move(made));
 }
 
-bool number_sqrt(eval::Machine &m, const Value *, uint32_t, Value *)
+bool number_truncate(eval::Machine &m, const Value *a, uint32_t, Value *answer)
 {
-    m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
-        m.span_of(m.here()), "`sqrt`",
-        "a square root is irrational in general, so it cannot run before "
-        "PLAN.md §8's M15 chooses the rounding rule"));
-    return false;
+    const Number *self = nullptr;
+    if (!number_at(m, a, 0, &self))
+        return false;
+    // TOWARD ZERO, WHICH IS FLOOR OR CEIL BY SIGN -- "truncating a float is
+    // its left half", §8.6, and on a number the left half of its float
+    // reading. It waited on the float for exactly that sentence; the answer
+    // stays a NUMBER because truncation is §8.6's class 1, exact and named,
+    // one of the four spellings a float-to-number conversion must come
+    // through.
+    *answer = Value::number(self->positive() ? self->floor() : self->ceil());
+    return true;
+}
+
+bool number_sqrt(eval::Machine &m, const Value *a, uint32_t, Value *answer)
+{
+    const Number *self = nullptr;
+    if (!number_at(m, a, 0, &self))
+        return false;
+    Float made;
+    const PowerOutcome outcome =
+        sqrt_of(*self, m.policy().float_digits, made);
+    if (outcome == PowerOutcome::NoRealAnswer) {
+        m.refuse(errors::make<errors::Code::NUMBER_NO_REAL_ROOT>(
+            m.span_of(m.here())));
+        return false;
+    }
+    return class_three_outcome(m, outcome, answer, std::move(made));
 }
 
 bool number_digits(eval::Machine &m, const Value *a, uint32_t, Value *answer)

@@ -90,6 +90,8 @@ using OpFn = void (*)(Machine &machine, const Op &op, uint32_t step);
 //   op_block        statement list   -               -              -
 //   op_expression   expression       -               -              -
 //   op_store        frame slot       value or none   -              -
+//   op_to_float     value            -               -              -
+//   op_retune       PathId           value           text index     -
 //   op_store_global global index     value or none   -              -
 //   op_return       value or none    -               -              -
 //   op_if           condition        then block      else or none   -

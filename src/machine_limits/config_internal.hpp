@@ -81,7 +81,9 @@ inline constexpr size_t kSettingCount = sizeof kSettings / sizeof kSettings[0];
 // every dial whose meaning has not been decided yet.
 //
 // A RANGE IS A CLAIM ABOUT WHAT A VALUE MEANS, WHICH IS WHY THIS TABLE IS
-// MOSTLY EMPTY. `float_digits` waits on M15, and `min_free_mb` is M6's own and
+// MOSTLY EMPTY -- UNTIL M15 GAVE `float_digits` ITS ROW: a count of digits
+// with division_digits' floor and its own ceiling, and limits.hpp carries why
+// the ceiling is INT_MAX there rather than UINT_MAX here. `min_free_mb` is M6's own and
 // has a meaning with no bound ever claimed for it: any number of megabytes is a
 // number of megabytes, and unset means the machine's free memory is not watched
 // at all.
@@ -151,7 +153,7 @@ inline constexpr DialRange kDialRanges[kDialCount] = {
     {true, kDivisionDigitsLeast, kDivisionDigitsMost},   // division_digits, M8
     {false, 0, 0},                                       // max_depth -- bytes, no bound
     {false, 0, 0},                                       // min_free_mb
-    {false, 0, 0},                                       // float_digits, M15
+    {true, kFloatDigitsLeast, kFloatDigitsMost},         // float_digits, M15
 };
 
 // A dial's own segment -- `min_free_mb`, not the whole path -- straight out of

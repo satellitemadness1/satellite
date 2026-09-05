@@ -425,6 +425,9 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(NUMBER)/number_arith.cpp \
             $(NUMBER)/render.cpp \
             $(NUMBER)/random.cpp \
+            $(FLOAT)/float_value.cpp \
+            $(FLOAT)/float_arith.cpp \
+            $(FLOAT)/float_power.cpp \
             $(STRING)/satellite_string.cpp \
             $(VALUE)/value.cpp \
             $(VALUE)/render.cpp \
@@ -435,6 +438,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SCALARS)/string_methods.cpp \
             $(SCALARS)/number_methods.cpp \
             $(SCALARS)/variant_methods.cpp \
+            $(SYSLIB)/handlers.cpp \
             $(RANDOM)/random.cpp \
             $(RANDOM)/tiers.cpp \
             $(RANDOM)/handlers.cpp \

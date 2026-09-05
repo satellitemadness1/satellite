@@ -197,16 +197,33 @@ void section_scalars()
               "`split` refuses naming M16 -- it answers a list and there is "
               "no list yet");
     }
-    {
-        Run run;
-        build(capsule("    satellite.variable.number n = 2\n"
-                      "    satellite.return(n.sqrt())\n"),
-              run);
-        call(run, "it", {});
-        check(ran_into(errors::Code::EVAL_NOT_BUILT),
-              "`sqrt` refuses naming M15's rounding rule, with `power` and "
-              "`truncate` beside it");
-    }
+
+    // --- the three that waited on M15, answering -----------------------------
+    // The digits are float_test's to prove; what this suite owns is the
+    // DISPATCH -- the fold through the declared type, the float coming back
+    // as a value, and the S06xx refusals arriving with the right rows.
+    check(answers("    satellite.variable.number n = 2\n"
+                  "    satellite.return(n.power(10))\n") == "1024.0",
+          "`power` answers, and answers a FLOAT even at an exact row -- "
+          "DESIGN §8.6's result-type argument");
+    check(answers("    satellite.variable.number n = 6.25\n"
+                  "    satellite.return(n.sqrt())\n") == "2.5",
+          "`sqrt` answers, exactly where the root is exact");
+    check(answers("    satellite.variable.number n = 0 - 2.7\n"
+                  "    satellite.return(n.truncate())\n") == "-2",
+          "`truncate` is toward zero -- a float's left half, kept a NUMBER");
+    check(refused_with("    satellite.variable.number n = 0 - 4\n"
+                       "    satellite.return(n.sqrt())\n",
+                       errors::Code::NUMBER_NO_REAL_ROOT),
+          "S0602: sqrt of a negative");
+    check(refused_with("    satellite.variable.number n = 0 - 4\n"
+                       "    satellite.return(n.power(0.5))\n",
+                       errors::Code::NUMBER_NEGATIVE_FRACTIONAL_POWER),
+          "S0603: a negative base under a fractional exponent");
+    check(refused_with("    satellite.variable.number n = 0\n"
+                       "    satellite.return(n.power(0 - 1))\n",
+                       errors::Code::NUMBER_DIVIDE_BY_ZERO),
+          "S0601: zero to a negative power is one over zero");
 
     // --- the number methods --------------------------------------------------
     check(answers("    satellite.variable.number n = 0 - 7\n"

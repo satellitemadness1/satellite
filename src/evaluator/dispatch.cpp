@@ -36,4 +36,26 @@ void Handlers::clear()
     installed_ = 0;
 }
 
+Assigners &Assigners::table()
+{
+    // Function-local for Handlers::table()'s startup reason, one screen up.
+    static Assigners one;
+    return one;
+}
+
+void Assigners::install(words::PathId path, Assigner assigner)
+{
+    if (path >= rows_.size())
+        rows_.resize(path + 1);
+    if (rows_[path].fn == nullptr)
+        installed_++;
+    rows_[path] = assigner;
+}
+
+void Assigners::clear()
+{
+    rows_.clear();
+    installed_ = 0;
+}
+
 } // namespace satellite::eval

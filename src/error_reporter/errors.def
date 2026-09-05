@@ -445,6 +445,25 @@ SAT_CODE(601, NUMBER_DIVIDE_BY_ZERO, SAT_ERROR,
          "`{1}` cannot be divided by zero -- every other number has an answer "
          "and this one has none, so satellite will not invent one")
 
+// 602 AND 603 ARRIVED AT M15 WITH THE OPERATIONS THAT CAN RAISE THEM -- sqrt
+// and power, the class-3 rows DESIGN §8.6 held behind the rounding rule --
+// which is this block's own note working as written: "a row added here for a
+// message no site can send would be this file's argument turned inside out",
+// and now the sites exist. NEITHER PRINTS THE VALUE, which is S0711's rule
+// rather than S0601's: a number in a sentence can be fifty thousand digits,
+// and what a person needs is the fact, not the digits.
+
+SAT_CODE(602, NUMBER_NO_REAL_ROOT, SAT_ERROR,
+         "a square root was asked of a negative number, and no real number "
+         "squares to a negative -- satellite has no imaginary type and will "
+         "not invent one")
+
+SAT_CODE(603, NUMBER_NEGATIVE_FRACTIONAL_POWER, SAT_ERROR,
+         "a negative number was raised to a fractional power -- a real "
+         "answer exists only for some written exponents ((-32)^0.2 is -2, "
+         "(-32)^0.5 is not real), and an answer that comes and goes with the "
+         "spelling of the exponent is not one satellite will stand behind")
+
 SAT_CODE(610, NUMBER_NOT_A_NUMBER, SAT_ERROR,
          "`{1}` is not a number -- digits, optionally a `.` with more digits, "
          "and optionally an `e` and an exponent")
@@ -587,6 +606,18 @@ SAT_CODE(722, EVAL_ARGUMENT_COUNT, SAT_ERROR,
 
 SAT_CODE(723, EVAL_NO_SUCH_QUESTION, SAT_ERROR,
          "`{1}` is not a question a `{2}` answers -- {3}")
+
+// 724 IS THE WRITE-SIDE TWIN OF 721, M15's, and it lives in this decade for
+// the decade's own reason: it is about a program being EARLY rather than
+// wrong. The retune made assignment to a language path mean something
+// (dispatch.hpp's Assigners), four dials accept one today, and a path
+// outside those four gets this sentence -- which can LOOSEN row by row the
+// day a later milestone installs more write rows, exactly as S0721 answers
+// thin out as milestones land handlers.
+SAT_CODE(724, EVAL_NOT_RETUNABLE, SAT_ERROR,
+         "`{1}` is not a place a program can write -- what an assignment to "
+         "a language path can retune are the dials under "
+         "`satellite.library.system`")
 
 // AN INTERRUPT IS NOBODY'S MISTAKE AND ITS ROW SAYS WHAT IS TRUE INSTEAD OF
 // WHAT IS WRONG. Everything above the caret's line ran and was drained through

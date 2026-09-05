@@ -18,6 +18,7 @@
 #include "programs/opening.hpp"
 #include "satellite_random/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
+#include "satellite_system/handlers.hpp"
 #include "satellite_time/handlers.hpp"
 #include "satellite_value/render.hpp"
 #include "satellite_words/words.hpp"
@@ -92,6 +93,7 @@ int call_command(const std::vector<std::string> &args)
     scalars::install_handlers();
     random::install_handlers();
     time::install_handlers();
+    system::install_handlers();
     install_interrupt_handler();
     clear_interrupt();
 

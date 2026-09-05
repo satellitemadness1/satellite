@@ -1,0 +1,59 @@
+// M15 -- satellite.variable.float, and the retune. The four operations, the
+// rounding rule at work, the three number methods that waited, and the
+// done-when's own line: division_digits retuned mid-run, observed by the
+// very next division. `satl example/floats.satl` prints fifteen lines and
+// exits 0, and MILESTONES/M15.md §5 is the transcript.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.float x = 3.14
+    satellite.console.display(x)
+
+    // Addition is EXACT -- 0.1 + 0.2 is 0.3, the property double does not
+    // have -- and a whole float still shows its point.
+    satellite.variable.float tenth = 0.1
+    satellite.console.display(tenth + 0.2)
+    satellite.console.display(x + 0.86)
+
+    // Multiplication and division round the right half; the default width
+    // is float_digits, and precision travels with the value.
+    satellite.console.display(x * x)
+    satellite.variable.float third = 1
+    third = third / 3
+    satellite.console.display(third)
+
+    // QUAD's own shape: a decayed activation stays bounded below the point.
+    satellite.variable.float activation = 1
+    satellite.variable.float keep = 0.85
+    satellite.statement.for (satellite.variable.number i = 0; i < 3; i = i + 1)
+    {
+        activation = activation * keep
+    }
+    satellite.console.display(activation)
+
+    // The three that waited on the rounding rule.
+    satellite.variable.number n = 2
+    satellite.console.display(n.power(10))
+    satellite.console.display(n.sqrt())
+    satellite.variable.number down = 0 - 2.7
+    satellite.console.display(down.truncate())
+
+    // The dials read as module constants...
+    satellite.console.display(satellite.library.system.division_digits)
+    satellite.console.display(satellite.library.system.float_digits)
+
+    // ...and the RETUNE: the file seeded the namespace at startup, the
+    // namespace is what everything reads afterwards, and an assignment is
+    // now the run-time half of that sentence. The next division observes it.
+    satellite.console.display(1 / 3)
+    satellite.library.system.division_digits = 40
+    satellite.console.display(1 / 3)
+    satellite.library.system.float_digits = 5
+    satellite.variable.float narrow = 1
+    satellite.console.display(narrow / 3)
+    satellite.console.display(satellite.library.system.division_digits)
+
+    satellite.return(satellite)
+}

@@ -16,6 +16,8 @@
 
 #include "evaluator/evaluator_internal.hpp"
 
+#include "evaluator/dispatch.hpp"
+
 #include "satellite_value/render.hpp"
 
 #include <utility>
@@ -120,6 +122,41 @@ void op_store_global(Machine &m, const Op &op, uint32_t step)
     }
     m.done();
     m.set_global(op.a, m.pop_value());
+}
+
+void op_retune(Machine &m, const Op &op, uint32_t step)
+{
+    // M15's RETUNE -- an assignment whose target is a numbered language path.
+    // `a` is the PathId, `b` the value's op, `c` the canonical spelling for
+    // the sentence below (compile_expressions' op_dispatch takes the same
+    // care and says why the spelling is the registry's).
+    //
+    // THE LOOKUP HAPPENS AT RUN TIME, op_refuse's argument yet again: a
+    // retune in a branch that never runs is a program that runs. A path with
+    // no write row answers S0724, which is S0721's write-side twin and can
+    // loosen the same way -- dispatch.hpp's Assigners note carries the
+    // mechanism's whole argument.
+    if (step == 0) {
+        m.again(1);
+        m.push(op.b);
+        return;
+    }
+
+    const Assigner *row =
+        Assigners::table().find(static_cast<words::PathId>(op.a));
+    if (row == nullptr) {
+        m.refuse(errors::make<errors::Code::EVAL_NOT_RETUNABLE>(
+            m.span_of(m.here()), m.program().text(op.c)));
+        return;
+    }
+
+    const Value &value = m.value_from_top(0);
+    Value unused;
+    if (!row->fn(m, &value, 1, &unused))
+        return; // the row refused and said why, with this op's span
+
+    m.done();
+    m.pop_value();
 }
 
 void op_return(Machine &m, const Op &op, uint32_t step)
@@ -319,6 +356,8 @@ const char *op_name(OpFn fn)
     if (fn == op_expression)   return "expression";
     if (fn == op_store)        return "store";
     if (fn == op_store_global) return "store_global";
+    if (fn == op_to_float)     return "to_float";
+    if (fn == op_retune)       return "retune";
     if (fn == op_return)       return "return";
     if (fn == op_if)           return "if";
     if (fn == op_while)        return "while";

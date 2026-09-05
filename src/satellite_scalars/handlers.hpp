@@ -18,12 +18,13 @@
 // vocabulary, and variant_methods.cpp says why they are the only rows with no
 // receiver check.
 //
-// THREE ROWS REFUSE ON PURPOSE, NAMING A MILESTONE. `split` `1 6 1 10`
-// answers a `satellite.container.list` and there is no list until M16;
-// `power` `1 6 4 10`, `truncate` `1 6 4 13` and `sqrt` `1 6 4 14` cannot be
-// finished before M15 chooses the rounding rule. A row that says so beats an
-// empty row's S0721, because the empty row can only say "a later milestone"
-// and these four know exactly which.
+// ONE ROW REFUSES ON PURPOSE, NAMING A MILESTONE. `split` `1 6 1 10`
+// answers a `satellite.container.list` and there is no list until M16. A row
+// that says so beats an empty row's S0721, because the empty row can only
+// say "a later milestone" and this one knows exactly which. Three more --
+// `power` `1 6 4 10`, `truncate` `1 6 4 13`, `sqrt` `1 6 4 14` -- refused
+// this way until M15 chose the rounding rule, and answer since it landed;
+// number_methods.cpp's own note carries what they answer with.
 
 namespace satellite::scalars {
 

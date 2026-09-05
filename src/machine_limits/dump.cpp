@@ -77,17 +77,16 @@ std::string where(const Held &now, Origin origin, unsigned line)
 // had no reader at all; two of the three have landed since -- M8's division and
 // M9's control stack -- and each row changed from a milestone number into the
 // thing that actually reads it, which is what the other two rows always said.
-// A reader who sets `float_digits` today is still entitled to know that satl
-// will store it and nothing will look at it, and DESIGN §13 has already
-// redefined that one from "the dial" into the default length of a float's
-// right half.
+// The fourth landed at M15 -- DESIGN §13 had already redefined it from "the
+// dial" into the default length of a float's right half, and that is now the
+// thing the row says reads it.
 std::string reader_of(DialId id)
 {
     switch (id) {
     case DialId::DivisionDigits: return "a division that does not end reads it";
     case DialId::MaxDepth:       return "the evaluator's control stack reads it";
     case DialId::MinFreeMb:      return "the watchdog reads it";
-    case DialId::FloatDigits:    return "stored; M15 reads it";
+    case DialId::FloatDigits:    return "a result that rounds reads it";
     case DialId::Count_:         break;
     }
     return "?";
@@ -125,11 +124,11 @@ std::string limits_text()
     // THE FOUR DIALS, UNDER THEIR PATH RATHER THAN UNDER THEIR NAME, because
     // the name alone would look like three more machine settings and they are
     // not: these are in the language, `satl --words satellite.library.system`
-    // finds them, and M15 is where a running program gains the read and the
-    // retune -- this comment claimed "from M8" until M11's landing found that
-    // nothing of the kind had been built, and the author moved the mechanism
-    // to the milestone that owns the fourth dial. The upper-case three above
-    // are in no numbering at all.
+    // finds them, and since M15 a running program has the read and the retune
+    // -- this comment claimed "from M8" until M11's landing found that
+    // nothing of the kind had been built; the author moved the mechanism to
+    // the milestone that owns the fourth dial, and it landed there. The
+    // upper-case three above are in no numbering at all.
     out += "\n  " + words::path_text(words::NodeId::LIBRARY_SYSTEM) + "  (" +
            words::number_text(words::NodeId::LIBRARY_SYSTEM) + ")\n";
     for (size_t i = 0; i < kDialCount; i++) {
@@ -249,8 +248,9 @@ std::string limits_text()
     out += "\n"
            "MEMORY_MAX is the only one of these that acts on its own: a run\n"
            "that crosses it is stopped within a second, with a line on stderr\n"
-           "and exit status 4. Nothing else here is read by a program yet --\n"
-           "PLAN.md §8 says which milestone reads which.\n";
+           "and exit status 4. The four dials read back from inside a program\n"
+           "as the paths above, and since M15 an assignment to one is the\n"
+           "retune -- min_free_mb excepted, and its refusal says why.\n";
     return out;
 }
 

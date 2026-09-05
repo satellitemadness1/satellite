@@ -43,6 +43,7 @@ eval::Policy policy_from_the_limits()
     eval::Policy policy;
     policy.max_depth = limits::max_depth_bytes();
     policy.division_digits = limits::division_digits();
+    policy.float_digits = limits::float_digits();
 
     // THE THIRD HAND-IN IS A FUNCTION AND NOT A NUMBER -- M11. The machine
     // asks it at every statement boundary, and wiring it here rather than

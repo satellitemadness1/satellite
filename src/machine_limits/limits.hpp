@@ -387,6 +387,25 @@ inline constexpr unsigned long long kDivisionDigitsMost = UINT_MAX;
 
 unsigned division_digits();
 
+// DESIGN §8.6's DEFAULT length of a float's right half, for a value that does
+// not state one -- §13 redefined the dial into that default on 2026-08-27,
+// and M15 is the milestone that gave it a reader. 34 BESIDE division_digits'
+// 34 DELIBERATELY: both are "the default width of an inexact result", and two
+// different arbitrary constants would be two facts where the language has one
+// (evaluator/machine.hpp's Policy row is the other half of this note).
+//
+// THE CEILING IS INT_MAX AND NOT UINT_MAX, AND IT IS A REPRESENTATION FACT
+// RATHER THAN A BOUND ON THE LANGUAGE. A fractional place lives in a Number's
+// base-10 exponent, which is an int (bignum_number.hpp's small form); a right
+// half longer than INT_MAX places has no Number to be rounded IN, so a file
+// asking for one is refused at its own line -- S0808's job -- instead of
+// wrapping into a wrong answer somewhere under float_arith.cpp.
+inline constexpr unsigned kFloatDigitsDefault = 34;
+inline constexpr unsigned long long kFloatDigitsLeast = 1;
+inline constexpr unsigned long long kFloatDigitsMost = INT_MAX;
+
+unsigned float_digits();
+
 // A MEMORY CEILING ON THE EVALUATOR'S CONTROL STACK, IN BYTES.
 //
 // `satellite.library.system.max_depth` `1 14 2 2`, the author's decision of

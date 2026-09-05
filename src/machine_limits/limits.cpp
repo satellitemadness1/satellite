@@ -304,6 +304,18 @@ unsigned division_digits()
     return static_cast<unsigned>(dial.value);
 }
 
+unsigned float_digits()
+{
+    // division_digits()'s twin, with the same nothing left in it: the range
+    // was checked at the file's own line (config_internal.hpp's row gained
+    // its bounds at M15, when the dial gained this reader), so this is a
+    // lookup and the default beside the dial.
+    const Dial &dial = held().dial(DialId::FloatDigits);
+    if (!dial.set)
+        return kFloatDigitsDefault;
+    return static_cast<unsigned>(dial.value);
+}
+
 unsigned long long max_depth_bytes()
 {
     const Dial &dial = held().dial(DialId::MaxDepth);

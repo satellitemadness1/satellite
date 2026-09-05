@@ -216,6 +216,15 @@ Number Number::divide(const Number &a, const Number &b, unsigned digits)
     // Exact divisions -- every division by a power of ten, which is every
     // nanoseconds-to-seconds conversion -- leave a zero remainder and keep every
     // digit. Only a non-terminating one is cut.
+    //
+    // AND THE CUT ROUNDS HALF AWAY FROM ZERO, WHICH IS THE LANGUAGE'S ONE
+    // RULE SINCE M15 AND WAS ONLY AN INHERITANCE BEFORE IT. The `>= '5'` bump
+    // below is v1's behaviour ported at M8, and DESIGN §8.6 spent two
+    // milestones calling it "a default arrived by porting rather than by
+    // decision"; M15 chose the float's rule and RATIFIED this site rather
+    // than overruling it, so the number's division and the float's agree by
+    // construction. This runs on a magnitude -- the sign came off with abs()
+    // above -- which is why half-up here IS half away from zero.
     if (!remainder.is_zero() && qd.size() > static_cast<size_t>(digits)) {
         const size_t keep = static_cast<size_t>(digits);
         const bool up = qd[keep] >= '5';

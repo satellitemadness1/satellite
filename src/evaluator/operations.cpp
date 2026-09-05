@@ -48,13 +48,36 @@ Pair operands(Machine &m)
     return {m.value_from_top(1), m.value_from_top(0)};
 }
 
-// Both operands are numbers, or the arm refuses naming the one that is not.
-bool both_numbers(Machine &m, BinaryOp op, const Pair &pair, errors::Code code)
+// NUMERIC MEANS THE TWO NUMERIC ARMS, number and float, and since M15 every
+// arithmetic and ordering arm below accepts either on either side. Mixing is
+// not a truthiness ladder sneaking in: DESIGN §8.6's conversion paragraph is
+// the licence -- "a number becomes a float as (n, 0), which is exact and
+// always succeeds" -- so nothing is invented on the way across, and the
+// program wrote the float into the expression somewhere for the mix to occur
+// at all (there is no float literal; only a declaration or a class-3 method
+// produces one).
+bool is_numeric(const Value &value)
+{
+    return value.is_number() || value.is_float();
+}
+
+// The exact promotion. A float answers itself; a number splits at the point,
+// losing nothing. (A null float handle has no producer -- Value::floating
+// always allocates -- and reads as zero here rather than as undefined.)
+Float as_float(const Value &value)
+{
+    if (const Flo *held = std::get_if<Flo>(&value))
+        return *held ? **held : Float();
+    return Float::from_number(std::get<Number>(value));
+}
+
+// Both operands are numeric, or the arm refuses naming the one that is not.
+bool both_numeric(Machine &m, BinaryOp op, const Pair &pair, errors::Code code)
 {
     const Value *wrong = nullptr;
-    if (!pair.left.is_number())
+    if (!is_numeric(pair.left))
         wrong = &pair.left;
-    else if (!pair.right.is_number())
+    else if (!is_numeric(pair.right))
         wrong = &pair.right;
     if (wrong == nullptr)
         return true;
@@ -118,6 +141,15 @@ void op_unary(Machine &m, const Op &op, uint32_t step)
     const Value &value = m.value_from_top(0);
 
     if (which == UnaryOp::Negate) {
+        if (const Flo *held = std::get_if<Flo>(&value)) {
+            // One bool, and invariant 3 keeps zero positive -- §8.6's
+            // "negate: flip `positive`, unless the value is zero".
+            Value negated = Value::floating(*held ? (*held)->negated()
+                                                  : Float());
+            m.done();
+            m.set_top(std::move(negated));
+            return;
+        }
         if (!value.is_number()) {
             m.refuse(errors::make<errors::Code::EVAL_NOT_A_NUMBER>(
                 m.span_of(m.here()), text_of(which), type_name(value)));
@@ -168,10 +200,18 @@ void op_binary(Machine &m, const Op &op, uint32_t step)
 
     if (which == BinaryOp::Less || which == BinaryOp::Greater ||
         which == BinaryOp::LessEqual || which == BinaryOp::GreaterEqual) {
-        if (!both_numbers(m, which, pair, errors::Code::EVAL_NOT_COMPARABLE))
+        if (!both_numeric(m, which, pair, errors::Code::EVAL_NOT_COMPARABLE))
             return;
-        const int order = Number::compare(std::get<Number>(pair.left),
-                                          std::get<Number>(pair.right));
+        // The all-number path stays on Number::compare untouched; a float on
+        // either side promotes the other exactly and compares totally --
+        // equality (same(), above) and this ordering MUST agree across the
+        // two arms, or QUAD.md §3.3's `if (a != b) return a > b` comparators
+        // stop being a strict weak order. value.cpp says it from its side.
+        const int order =
+            pair.left.is_number() && pair.right.is_number()
+                ? Number::compare(std::get<Number>(pair.left),
+                                  std::get<Number>(pair.right))
+                : Float::compare(as_float(pair.left), as_float(pair.right));
         bool answer = false;
         switch (which) {
         case BinaryOp::Less:         answer = order < 0; break;
@@ -184,36 +224,112 @@ void op_binary(Machine &m, const Op &op, uint32_t step)
         return;
     }
 
-    if (!both_numbers(m, which, pair, errors::Code::EVAL_NOT_A_NUMBER))
+    if (!both_numeric(m, which, pair, errors::Code::EVAL_NOT_A_NUMBER))
         return;
 
-    const Number &left = std::get<Number>(pair.left);
-    const Number &right = std::get<Number>(pair.right);
+    if (pair.left.is_number() && pair.right.is_number()) {
+        const Number &left = std::get<Number>(pair.left);
+        const Number &right = std::get<Number>(pair.right);
 
-    // DIVISION BY ZERO IS S0601 AND NOT A ROW OF ITS OWN, which is
-    // FORMAT/CXX.md §1's second rule about the one place a fact lives.
-    // `satl --number 1 / 0` already says this sentence and programs/
-    // number_command.cpp already checks this way; a second row would be a
-    // second sentence about one thing.
-    if ((which == BinaryOp::Divide || which == BinaryOp::Modulo) && right.is_zero()) {
+        // DIVISION BY ZERO IS S0601 AND NOT A ROW OF ITS OWN, which is
+        // FORMAT/CXX.md §1's second rule about the one place a fact lives.
+        // `satl --number 1 / 0` already says this sentence and programs/
+        // number_command.cpp already checks this way; a second row would be a
+        // second sentence about one thing.
+        if ((which == BinaryOp::Divide || which == BinaryOp::Modulo) &&
+            right.is_zero()) {
+            m.refuse(errors::make<errors::Code::NUMBER_DIVIDE_BY_ZERO>(
+                m.span_of(m.here()), left.to_string()));
+            return;
+        }
+
+        Number answer;
+        switch (which) {
+        case BinaryOp::Add:      answer = Number::add(left, right); break;
+        case BinaryOp::Subtract: answer = Number::sub(left, right); break;
+        case BinaryOp::Multiply: answer = Number::mul(left, right); break;
+        case BinaryOp::Divide:
+            answer = Number::divide(left, right, m.policy().division_digits);
+            break;
+        default:                 answer = Number::modulo(left, right); break;
+        }
+
+        m.done();
+        m.fold(Value::number(std::move(answer)));
+        return;
+    }
+
+    // A FLOAT ON EITHER SIDE MAKES THE OPERATION A FLOAT OPERATION, and the
+    // answer is a float: the type that carries a precision wins, because the
+    // program asked for it by putting a float in the expression. DESIGN
+    // §8.6's classes place each operator -- `+` and `-` exact, `%` exact by
+    // composition, `*` and `/` rounding the right half to the result's
+    // precision, which is where policy().float_digits earns its Policy row.
+    const Float left = as_float(pair.left);
+    const Float right = as_float(pair.right);
+
+    if ((which == BinaryOp::Divide || which == BinaryOp::Modulo) &&
+        right.is_zero()) {
         m.refuse(errors::make<errors::Code::NUMBER_DIVIDE_BY_ZERO>(
             m.span_of(m.here()), left.to_string()));
         return;
     }
 
-    Number answer;
+    Float answer;
     switch (which) {
-    case BinaryOp::Add:      answer = Number::add(left, right); break;
-    case BinaryOp::Subtract: answer = Number::sub(left, right); break;
-    case BinaryOp::Multiply: answer = Number::mul(left, right); break;
-    case BinaryOp::Divide:
-        answer = Number::divide(left, right, m.policy().division_digits);
+    case BinaryOp::Add:
+        answer = Float::add(left, right);
         break;
-    default:                 answer = Number::modulo(left, right); break;
+    case BinaryOp::Subtract:
+        answer = Float::sub(left, right);
+        break;
+    case BinaryOp::Multiply:
+        answer = Float::mul(left, right, m.policy().float_digits);
+        break;
+    case BinaryOp::Divide:
+        answer = Float::divide(left, right, m.policy().float_digits);
+        break;
+    default:
+        // `a % b` is `a - b x trunc(a/b)` and NEVER ROUNDS -- §8.6 files it
+        // in class 1, M8 built it on Number, and the exact join reaches it.
+        answer = Float::from_number(
+            Number::modulo(left.to_number(), right.to_number()));
+        break;
     }
 
     m.done();
-    m.fold(Value::number(std::move(answer)));
+    m.fold(Value::floating(std::move(answer)));
+}
+
+void op_to_float(Machine &m, const Op &op, uint32_t step)
+{
+    // THE ONE NAMED CONVERSION RUNNING. DESIGN §8.6: "A number becomes a
+    // float as (n, 0), which is exact and always succeeds" -- and the NAME is
+    // the declared type at the target, which is why the compiler emits this
+    // only under `satellite.variable.float` declarations and assignments.
+    // §1.1 forbids a silent conversion; a store into a float-declared name is
+    // not silent, the program wrote the type. The other direction stays
+    // named too -- trunc, floor, ceil or round, never this op backwards.
+    if (step == 0) {
+        m.again(1);
+        m.push(op.a);
+        return;
+    }
+
+    const Value &value = m.value_from_top(0);
+    if (value.is_float()) {
+        m.done();
+        return;
+    }
+    if (const Number *number = std::get_if<Number>(&value)) {
+        Value converted = Value::floating(Float::from_number(*number));
+        m.done();
+        m.set_top(std::move(converted));
+        return;
+    }
+    m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+        m.span_of(m.here()), "satellite.variable.float",
+        "a number or a float", type_name(value)));
 }
 
 void op_refuse(Machine &m, const Op &op, uint32_t)

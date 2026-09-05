@@ -126,6 +126,7 @@ int main(int argc, char **argv)
     eval_test::section_dispatch();
     eval_test::section_scalars();
     eval_test::section_variant();
+    eval_test::section_floats();
     eval_test::section_interrupted();
     eval_test::section_clock_and_dice();
 

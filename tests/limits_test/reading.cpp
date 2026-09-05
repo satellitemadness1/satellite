@@ -196,14 +196,24 @@ void section_reading()
           "S0808: and a count too wide to hold used to become UINT_MAX the "
           "same silent way");
 
-    // THE OTHER THREE ARE STILL UNBOUNDED, WHICH IS THE HALF THAT WOULD ROT
-    // FIRST. If a later milestone gives `max_depth` a range and forgets the
-    // table in config_internal.hpp, nothing else in this suite notices.
+    // TWO DIALS ARE STILL UNBOUNDED AND TWO NOW HAVE RANGES -- this check
+    // said "the other three are unbounded" until M15 gave `float_digits` its
+    // reader, its floor, and its INT_MAX ceiling (limits.hpp carries why the
+    // ceiling is a representation fact, not a bound on the language), and
+    // this suite noticed on the day, which is exactly the rot it was written
+    // to catch. `max_depth` and `min_free_mb` keep their no-range reasons:
+    // any number of bytes is a number of bytes.
+    check(raises("float_digits=0\n", Code::CONFIG_TOO_SMALL),
+          "S0807: keeping no fractional places is not an answer, "
+          "division_digits' argument at the fourth dial");
+    check(raises("float_digits=99999999999\n", Code::CONFIG_TOO_LARGE),
+          "S0808: a right half longer than a Number's exponent can place has "
+          "no Number to be rounded in");
     check(!raises("max_depth=0\n", Code::CONFIG_TOO_SMALL) &&
-              !raises("float_digits=99999999999\n", Code::CONFIG_TOO_LARGE),
-          "a dial whose meaning has not been decided takes any whole number -- "
-          "whether 0 is a legal depth is M9's question, asked where the "
-          "recursion is");
+              !raises("min_free_mb=0\n", Code::CONFIG_TOO_SMALL),
+          "a dial with a meaning and no bound takes any whole number -- zero "
+          "bytes of stack refuses the first push and says so, which is a "
+          "working answer");
 
     // --- every row of the S08xx block -------------------------------------
 

@@ -1588,30 +1588,47 @@ comparators are all `if (a != b) return a > b` over floats (QUAD.md §3.3).
 internally closed, porting as-is. Every operation above is composition over two of
 them plus `normalize`, and the only genuinely new code is the rounding step.
 
-#### Still open
+#### The rounding rule — chosen at M15
 
-**The rounding rule** — truncate, half-up, or half-even. It cannot be avoided by any
-choice of representation: `rack.hpp:59` computes `pow(urgency, exp)` with `exp` always
-fractional, and `x^y` at fractional `y` is irrational, so **no pair of exact numbers
-represents it** and `R` must be rounded to exist. QUAD's determinism invariant means a
-program's behaviour depends on which rule is chosen. PLAN §8 puts the float in **M11**,
-which cannot land until it is.
+**ROUND HALF AWAY FROM ZERO.** *(2026-09-04, at M15, delegated — this section
+read "Still open" from 2026-08-27 to that day.)* Wherever the language rounds
+— a float's right half, `Number::divide`'s guard digit, `round()` — a tie
+leaves zero. Because every rounding here runs on a MAGNITUDE, with the sign
+decided before any arithmetic and never revisited, half away from zero and
+half up are one motion; the rule is stated in the away-from-zero form because
+that form needs no footnote about negative values.
 
-**It blocks three operations and not six, which is narrower than PLAN read it.**
-*(2026-08-31.)* The classification above is the list: `power` at a fractional or
-negative exponent and `sqrt` are class 3, and `truncate` on a float is its left
-half and therefore waits on the float rather than on the rule. `modulus`,
-`shift_left` and `shift_right` are class 1 and were never waiting on anything —
-PLAN §8 had all six under one sentence, and M8 built the three that class 1
-already answered.
+It could not be avoided by any choice of representation: `rack.hpp:59`
+computes `pow(urgency, exp)` with `exp` always fractional, and `x^y` at
+fractional `y` is irrational, so **no pair of exact numbers represents it**
+and `R` must be rounded to exist. QUAD's determinism invariant means a
+program's behaviour depends on which rule is chosen — it demands A rule, not
+any particular one, which is what made the choice delegable.
 
-**And one operation already rounds one way.** `Number::divide` keeps a guard
-digit and rounds **half-up**, which is the first satellite's behaviour ported
-unchanged at M8 rather than a rule chosen here. The question this section leaves
-open is what the FLOAT does and whether the number's division should agree; the
-honest position is that a default arrived by porting, and
-`tests/number_test/arithmetic.cpp` asserts it so that changing it is a visible
-edit.
+**The decision is a ratification, and that is the argument rather than an
+apology.** MILESTONES/M15.md §2 carries it in M12 §2.1's shape — the tree had
+already taken the decision three times and the milestone's job was to notice:
+`Number::divide` bumps its guard digit at `5` (v1's behaviour, ported at M8,
+asserted by `tests/number_test/arithmetic.cpp`); `Number::round()` documents
+"half away from zero"; and sign-magnitude rounds magnitudes, so any rule
+chosen here had to agree with itself across the sign. **Truncate** would
+contradict `divide` at every call `satl --number 2 / 3` has ever answered;
+**half-even** would contradict both sites, and its virtue — bias cancellation
+over long accumulations — defends against a failure this type does not have,
+because addition and subtraction are exact and the classic accumulation cases
+never round at all. The number's division therefore AGREES with the float by
+construction, and that test file is the tripwire that makes any future change
+of rule a visible edit.
+
+**It blocked three operations and not six, which is narrower than PLAN read
+it.** *(2026-08-31.)* The classification above is the list: `power` at a
+fractional or negative exponent and `sqrt` are class 3, and `truncate` on a
+float is its left half and therefore waited on the float rather than on the
+rule. `modulus`, `shift_left` and `shift_right` are class 1 and were never
+waiting on anything — PLAN §8 had all six under one sentence, and M8 built
+the three that class 1 already answered. All three waiters answer since M15,
+each returning a float per this section's result-type argument, except
+`truncate`, which stays a number because its answer is one by definition.
 
 ### 8.7 The variant, and what "nothing" is
 
@@ -2138,18 +2155,24 @@ different product.
   10 files and 1509 lines, internally closed, porting as-is. A float is composition
   over two of them.
 
-  **What is still open is the rounding rule, and it is not a detail.** Truncate,
-  round-half-up, or round-half-even — and whichever it is, it must be stated, because
-  the answers genuinely differ and QUAD's determinism invariant means a program's
-  behaviour depends on it. It cannot be avoided by any choice of representation:
-  `rack.hpp:59` computes `pow(urgency, exp)` with `exp` always fractional, and `x^y`
-  at fractional `y` is irrational — **no pair of exact numbers represents it.** The
-  right half has to be *rounded to exist*, which is why the rule is part of the type
-  rather than a setting on it.
+  **~~What is still open is the rounding rule~~ Settled 2026-09-04, at M15,
+  by delegation: ROUND HALF AWAY FROM ZERO.** It had to be stated, because the
+  answers genuinely differ and QUAD's determinism invariant means a program's
+  behaviour depends on it; it could not be avoided by any representation:
+  `rack.hpp:59` computes `pow(urgency, exp)` with `exp` always fractional, and
+  `x^y` at fractional `y` is irrational — **no pair of exact numbers
+  represents it.** The right half has to be *rounded to exist*, which is why
+  the rule is part of the type rather than a setting on it. §8.6's rounding
+  section carries the rule and the ratification argument — the tree had
+  already taken the decision three times, and the two declined rules are
+  recorded beside the taken one, M12's shape.
 
   **§8.6 is the specification** — the invariants, `normalize`, and the four
-  operations, of which addition and subtraction turn out to be **exact**. **M11 owns
-  this** (PLAN §8) and cannot land until the rounding rule is chosen.
+  operations, of which addition and subtraction turn out to be **exact**.
+  **M15 owned this** (PLAN §8; this sentence said M11 until the renumber) and
+  landed it on 2026-09-04 — MILESTONES/M15.md is the review, and the retune
+  landed beside it: assignment to a `1 14 2` dial is a handler-shaped write
+  into the running machine's Policy, evaluator/dispatch.hpp's Assigners.
 
   *(The two readings not taken, recorded so they are not re-proposed: **numerator and
   denominator** is the rational §8.1 already refuses — denominators grow without

@@ -79,9 +79,16 @@ struct Handler;
 // resolve fixture spent a day passing against a raised stack it had never been
 // given, because the test binary did not link the module that raises one.
 //
-// M15's `float_digits` is the third and it joins this struct rather than a
+// M15's `float_digits` was the third and it joined this struct rather than a
 // second constructor argument -- which is the shape M8 wished for when
 // `division_digits` arrived alone.
+//
+// AND SINCE M15 THIS STRUCT IS THE NAMESPACE'S RUN-TIME HALF. PLAN §4.5.3:
+// the file seeds these at startup, and what a running program reads OR
+// RETUNES through the `1 14 2` dials is this struct on this machine --
+// satellite_system/handlers.cpp's rows answer from it and store into it, so
+// a retune is one store and the next division observes it. Nothing here is
+// process-wide, which is what keeps M22's many-programs future honest.
 struct Policy {
     // A CEILING IN BYTES ON THE CONTROL STACK, not a count of frames.
     // `satellite.library.system.max_depth` `1 14 2 2`, the author's reading of
@@ -91,6 +98,16 @@ struct Policy {
     // DESIGN §8.1's significant digits for a division that does not terminate.
     // `satellite.library.system.division_digits`, M8's dial.
     unsigned division_digits = 34;
+
+    // DESIGN §8.6: the DEFAULT length of a float's right half, for a result
+    // that would otherwise have less -- not a global bound, because precision
+    // travels with the value (`R`'s digit count IS the precision).
+    // `satellite.library.system.float_digits` `1 14 2 4`, M15's own dial.
+    // 34 BESIDE division_digits' 34 DELIBERATELY: both are "the default
+    // width of an inexact result", and two different arbitrary constants
+    // would be two facts where the language has one. Overrulable here and in
+    // machine_limits/limits.hpp together, and nowhere else.
+    unsigned float_digits = 34;
 
     // WHETHER CTRL-C HAS ARRIVED -- system_facts/interrupt.hpp's flag, M11,
     // HANDED IN AS A FUNCTION AND NOT READ, for the same reason the ceiling
@@ -296,6 +313,26 @@ public:
     unsigned long long peak_bytes() const { return peak_; }
     unsigned long long ceiling() const { return ceiling_; }
     const Policy &policy() const { return policy_; }
+
+    // THE RETUNE'S WRITE HALF -- M15. satellite_system's assigners store
+    // through these three and every read reads policy(), so a retuned dial is
+    // observed by the very next operation that consults it. Named methods
+    // rather than a mutable policy(), because max_depth is the one dial the
+    // machine caches (ceiling_, the hot compare in room()) and a bare field
+    // write would quietly leave the cache stale.
+    void retune_division_digits(unsigned digits)
+    {
+        policy_.division_digits = digits;
+    }
+    void retune_float_digits(unsigned digits)
+    {
+        policy_.float_digits = digits;
+    }
+    void retune_max_depth(unsigned long long bytes)
+    {
+        policy_.max_depth = bytes;
+        ceiling_ = bytes;
+    }
 
 private:
     // ROOM TO GROW ONE MORE ELEMENT, and this is the whole of the ceiling's

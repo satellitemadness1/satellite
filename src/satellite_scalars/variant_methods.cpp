@@ -68,22 +68,27 @@ const char *word_of(const Value &value)
         return "string";
     if (value.is_time())
         return "time";
+    if (value.is_float())
+        return "float";
     return "satellite";
 }
 
 // The legal words of `holds(x)`, which are exactly the words word_of() can
 // answer -- one vocabulary, held in one place, per the file note. "time"
 // joined at M13, the day `satellite.time.now` gave a variant an instant to
-// hold.
+// hold; "float" at M15, the day the arm behind its handle arrived -- the
+// file note's promise kept a second time, and `holds("float")` loosening
+// from a refusal into an answer exactly as written.
 bool a_word_an_arm_answers(const std::string &word)
 {
     return word == "nothing" || word == "bool" || word == "number" ||
-           word == "string" || word == "time" || word == "satellite";
+           word == "string" || word == "time" || word == "float" ||
+           word == "satellite";
 }
 
 const char *kWantedWord =
     "a word the variant could be holding -- \"nothing\", \"bool\", "
-    "\"number\", \"string\", \"time\" or \"satellite\"";
+    "\"number\", \"string\", \"time\", \"float\" or \"satellite\"";
 
 // --- the four, in numbering order -------------------------------------------
 

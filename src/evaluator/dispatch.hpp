@@ -118,4 +118,53 @@ private:
     size_t installed_ = 0;
 };
 
+// THE WRITE HALF OF THE NAMESPACE -- M15's retune, and the decision M11
+// declined to invent mid-milestone (MILESTONES/M11.md §6). PLAN §4.5.3's
+// arrangement -- "the file seeds the namespace at startup and the namespace
+// is what everything reads afterwards" -- had no run-time half: no document
+// said what `satellite.library.system.division_digits = 40` MEANS. It means
+// this: AN ASSIGNMENT TO A NUMBERED LANGUAGE PATH IS A HANDLER-SHAPED WRITE.
+// The same signature a read dispatches through, handed the one value to the
+// right of the `=`, answering into nothing -- and the dial rows store into
+// the running machine's Policy, which is what every read already reads, so
+// the next division simply observes the new count. One mechanism, decided
+// once, in front of `1 14 2 1` through `1 14 2 4` together; the rows
+// themselves are satellite_system/handlers.cpp's.
+//
+// A SECOND TABLE AND NOT A COLUMN OF Handler, config_internal.hpp's own
+// argument about kDialKinds: reads and writes answer different questions
+// about a path, almost no path is writable, and a column would widen every
+// row of the hot table for four entries. A path with a read and no write row
+// refuses with S0724, which names the boundary instead of guessing at it.
+struct Assigner {
+    HandlerFn fn = nullptr;
+
+    // Which milestone owns the row, Handler's column for Handler's reason.
+    const char *milestone = nullptr;
+};
+
+class Assigners {
+public:
+    static Assigners &table();
+
+    void install(words::PathId path, Assigner assigner);
+
+    const Assigner *find(words::PathId path) const
+    {
+        if (path >= rows_.size())
+            return nullptr;
+        return rows_[path].fn != nullptr ? &rows_[path] : nullptr;
+    }
+
+    size_t installed() const { return installed_; }
+
+    void clear();
+
+private:
+    Assigners() = default;
+
+    std::vector<Assigner> rows_;
+    size_t installed_ = 0;
+};
+
 } // namespace satellite::eval

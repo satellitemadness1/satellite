@@ -89,8 +89,13 @@ void section_codes()
     // parameter's two misuses, raised at compile before any prompt could
     // print. The interrupted case is deliberately NOT a fourth -- it answers
     // nothing and the boundary's S0730 is the report. MILESTONES/M14.md §3.
-    check(kCodeCount == 93,
-          "errors.def has 93 rows -- if that changed on purpose, change it here "
+    // AND BY THREE AT M15: S0602/S0603 in the numbers' block -- sqrt of a
+    // negative, and a negative base under a fractional exponent, the two
+    // facts the class-3 operations can hit -- and S0724, the retune's
+    // write-side twin of S0721, for an assignment to a language path with no
+    // write row. MILESTONES/M15.md §3 is the record.
+    check(kCodeCount == 96,
+          "errors.def has 96 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

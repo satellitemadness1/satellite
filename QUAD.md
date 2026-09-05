@@ -126,9 +126,14 @@ the precision, so `satellite.library.system.float_digits` (`1 14 2 4`) becomes t
 **default** length rather than a global dial — which is what QUAD needs, holding
 activations near six digits and printing them at two.
 
-**What is still open is the rounding rule** — truncate, half-up, or half-even. QUAD's
-invariant 8 is determinism, so its behaviour depends on the answer. PLAN §8 puts the
-float in **M11**, which cannot land until the rule is chosen.
+**~~What is still open is the rounding rule~~ Chosen at M15, 2026-09-04, delegated:
+ROUND HALF AWAY FROM ZERO.** QUAD's invariant 8 is determinism, so its behaviour
+depends on the answer, and the answer is now one rule stated once — DESIGN §8.6
+carries it, MILESTONES/M15.md §2 carries the argument (the tree had already taken
+it three times), and `tests/float_test/arithmetic.cpp` is its written form. The
+float landed at M15 (the sentence above said M11 until the renumber), so this
+section's `activation *= keep` and its `pow(urgency, exp)` are both writable —
+`example/floats.satl` runs the decay shape and `n.power(4.65)` answers.
 
 **This puts DESIGN §8.1 under pressure and §8.1 now says so.** Its argument — no
 `double`, exact always, guarded at the C++ type level — is right for

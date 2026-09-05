@@ -37,14 +37,17 @@
 // the assert below did not move: an empty struct in a variant whose widest arm
 // is 32 bytes is free.
 //
-// AND `satellite.variable.float` CANNOT BE ONE OF THEM, which is worth knowing
-// four milestones before M15 tries. DESIGN §8.6 makes a float a bool and TWO
+// AND `satellite.variable.float` CANNOT BE ONE OF THEM, which was known four
+// milestones before M15 tried. DESIGN §8.6 makes a float a bool and TWO
 // `satellite_number`s -- 72 bytes laid flat, against a 40-byte budget the
 // number alone fills to the brim. So a float arrives behind a handle the way a
-// list and a map do, and that is a consequence of §8.1's exactness rather than
-// a decision M15 gets to take. Recorded here because the place it would be
-// discovered is a failing static_assert with no explanation attached.
+// list and a map will, and that is a consequence of §8.1's exactness rather
+// than a decision M15 got to take. M15 landed it exactly there -- `Flo` below,
+// the THIRD append, sixteen shared_ptr bytes against the 32-byte widest arm --
+// and the assert did not move, which is this paragraph doing the job it was
+// written for.
 
+#include "satellite_float/satellite_float.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
 
@@ -104,12 +107,20 @@ struct Time {
     bool operator==(const Time &) const = default;
 };
 
+// A FLOAT VALUE, BEHIND ITS HANDLE. DESIGN §8.6's type is 72 bytes laid
+// flat, so what the arm holds is what `Str` holds one row up: sixteen bytes of
+// shared const handle, copied by refcount. SHARED AND CONST for Str's reason
+// exactly -- a float assigned or passed is a pointer copy, and nothing can
+// mutate a value two slots see.
+using Flo = std::shared_ptr<const Float>;
+
 // APPEND ONLY. A new arm goes at the END of this list, never in the middle.
 // `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
-// widest arm, the same accounting `Runtime`'s note above runs.
-using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time>;
+// widest arm, the same accounting `Runtime`'s note above runs. `Flo` is the
+// third, M15's, sixteen bytes by the same account.
+using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo>;
 
-// One value. DESIGN §8's table, six rows of it since M13.
+// One value. DESIGN §8's table, seven rows of it since M15.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -128,6 +139,10 @@ struct Value : ValueBase {
     }
     static Value runtime() { return Value(Runtime{}); }
     static Value instant(long long ns) { return Value(Time{ns}); }
+    static Value floating(Float f)
+    {
+        return Value(std::make_shared<const Float>(std::move(f)));
+    }
 
     bool is_nothing() const { return std::holds_alternative<Nothing>(*this); }
     bool is_bool() const { return std::holds_alternative<bool>(*this); }
@@ -135,6 +150,7 @@ struct Value : ValueBase {
     bool is_string() const { return std::holds_alternative<Str>(*this); }
     bool is_runtime() const { return std::holds_alternative<Runtime>(*this); }
     bool is_time() const { return std::holds_alternative<Time>(*this); }
+    bool is_float() const { return std::holds_alternative<Flo>(*this); }
 };
 
 // 40 BYTES. See the header note -- this is DESIGN §8.2's budget, and the arm

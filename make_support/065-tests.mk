@@ -372,6 +372,9 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(EVAL)/dump.cpp \
                  $(VALUE)/value.cpp \
                  $(VALUE)/render.cpp \
+                 $(FLOAT)/float_value.cpp \
+                 $(FLOAT)/float_arith.cpp \
+                 $(FLOAT)/float_power.cpp \
                  $(NUMBER)/limbs.cpp \
                  $(NUMBER)/number_core.cpp \
                  $(NUMBER)/number_query.cpp \
@@ -462,6 +465,7 @@ test: $(TESTBINS)
 	./$(TESTS)/limits_test/limits_test example
 	./$(TESTS)/resolve_test/resolve_test example
 	./$(TESTS)/number_test/number_test
+	./$(TESTS)/float_test/float_test
 	./$(TESTS)/eval_test/eval_test example
 	./$(TESTS)/console_test/console_test
 
@@ -537,7 +541,33 @@ $(TESTS)/number_test/number_test: $(number_test_SRCS) $(number_test_HDRS) \
 
 number_test: $(TESTS)/number_test/number_test
 
+# float_test -- PLAN M15. DESIGN §8.6's two-number float, the rounding rule
+# chosen there, and the class-3 operations. IT LINKS THE FLOAT MODULE AND THE
+# NUMBER MODULE AND NOTHING ELSE OF THE LANGUAGE -- satellite_float works
+# through Number's public surface (float_internal.hpp's note), so the link
+# list is the dependency claim, checked by the linker on every build: a float
+# that grew an opinion about limbs or limits would fail right here.
+# $(RANDOM)/random.cpp rides along for number_test's vtable reason exactly.
+FLOAT_TEST_SRCS = $(FLOAT)/float_value.cpp \
+                  $(FLOAT)/float_arith.cpp \
+                  $(FLOAT)/float_power.cpp \
+                  $(NUMBER)/limbs.cpp \
+                  $(NUMBER)/number_core.cpp \
+                  $(NUMBER)/number_query.cpp \
+                  $(NUMBER)/number_arith.cpp \
+                  $(NUMBER)/render.cpp \
+                  $(NUMBER)/random.cpp \
+                  $(RANDOM)/random.cpp
+
+$(TESTS)/float_test/float_test: $(float_test_SRCS) $(float_test_HDRS) \
+                                $(FLOAT_TEST_SRCS) $(HDRS) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include \
+	    -I$(TESTS)/float_test -o $@ \
+	    $(float_test_SRCS) $(FLOAT_TEST_SRCS)
+
+float_test: $(TESTS)/float_test/float_test
+
 TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
-              limits_test resolve_test number_test eval_test
+              limits_test resolve_test number_test float_test eval_test
 
 .PHONY: test $(TESTALIASES)

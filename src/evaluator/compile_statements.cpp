@@ -20,6 +20,25 @@
 namespace satellite {
 namespace eval {
 
+// A value crossing into a float-declared name converts on the way in --
+// op_to_float, DESIGN §8.6's exact and always-successful direction -- and
+// EVERY OTHER DECLARED TYPE STORES CHECKLESS, exactly as before. M12 §2.1's
+// argument against a test on the hottest store in the machine stands: this
+// is not a check, it is one extra op compiled only where the program wrote
+// `satellite.variable.float`, and a non-numeric value stopping there is
+// S0713 with a caret rather than a slot quietly holding the wrong arm.
+// Declarations and both assignment arms share it so the three cannot drift.
+OpIndex Compiler::into_declared(const resolve::Info &about, NodeIndex node,
+                                OpIndex value)
+{
+    if (value == kNoOp)
+        return value; // declared without an initialiser: nothing, any type
+    if (about.type !=
+        static_cast<words::PathId>(words::NodeId::VARIABLE_FLOAT))
+        return value;
+    return emit(op_to_float, node, value);
+}
+
 bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
 {
     const Node &n = ast_[node];
@@ -43,7 +62,8 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
                              "statement"));
             return true;
         }
-        finish(emit(op_store, node, static_cast<uint32_t>(about.slot), value));
+        finish(emit(op_store, node, static_cast<uint32_t>(about.slot),
+                    into_declared(about, node, value)));
         return true;
     }
 
@@ -57,13 +77,32 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
         const resolve::Info &about = info(n.a);
 
         if (resolve::in_a_frame(about.slot)) {
-            finish(emit(op_store, node, static_cast<uint32_t>(about.slot), value));
+            finish(emit(op_store, node, static_cast<uint32_t>(about.slot),
+                        into_declared(about, node, value)));
             return true;
         }
 
         const auto found = globals_.find(about.path);
         if (found != globals_.end()) {
-            finish(emit(op_store_global, node, found->second, value));
+            finish(emit(op_store_global, node, found->second,
+                        into_declared(about, node, value)));
+            return true;
+        }
+
+        // ASSIGNING TO A NUMBERED LANGUAGE PATH IS THE RETUNE -- M15's, the
+        // meaning M11 declined to invent mid-milestone (its §6 carries the
+        // hand-off). Which paths accept one is the Assigners table's question
+        // and is asked at RUN time, so the answer can widen without this arm
+        // moving. The spelling handed along is the registry's, for the same
+        // reason op_dispatch's is: S0724's sentence quotes the path as the
+        // language writes it, and the file's own spelling is already under
+        // the caret.
+        if (about.path != words::kNoPath &&
+            words::is_language_word(about.path) &&
+            ast_[n.a].kind == NodeKind::Member) {
+            finish(emit(op_retune, node, about.path, value,
+                        out_.add_text(std::string(words::path_text(
+                            static_cast<words::NodeId>(about.path))))));
             return true;
         }
 

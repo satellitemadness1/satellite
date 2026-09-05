@@ -102,7 +102,7 @@ caret under the statement that did not run. `satellite.bool.true` and
 `.false` answer as DESIGN §6.1's module constants; the string's sixteen
 methods and the number's fifteen sit behind `handlers[path_id]` with the
 receiver as argument 0 (`power`, `truncate` and `sqrt` refuse naming M15's
-rounding rule, `split` naming M16's list); `append` and `clear` write back to
+rounding rule — and answer since M15 landed — `split` naming M16's list); `append` and `clear` write back to
 the slot the method was called on, which is DESIGN §6.4's storage-slot rule
 enforced by the op. **Its acceptance file is `example/scalars.satl`** —
 fourteen lines, every statement form, a method from each family — and
@@ -3386,9 +3386,16 @@ bytes — proves all eight paths, each clause a separate assertion:
 demonstrated by the eight paths one at a time**, which is §8's own argument that
 this is one milestone rather than a bullet added to two.
 
-**M15 — `satellite.variable.float`.** *(Its own milestone as of 2026-08-27. It spent
-the morning in "Later, in no fixed order", was moved into M11, and is separated out
-here because it is a type with a specification of its own and one undecided rule.)*
+**M15 — `satellite.variable.float`. LANDED 2026-09-04**, and
+[MILESTONES/M15.md](MILESTONES/M15.md) is the review — the rounding rule
+chosen by delegation (half away from zero, ratifying what the code had taken
+three times), the retune given its meaning (a handler-shaped write into the
+running machine's Policy, `evaluator/dispatch.hpp`'s Assigners, in front of
+all four `1 14 2` rows), the three waiting methods answering, and the float
+itself behind its handle as the value model's seventh arm. *(Its own
+milestone as of 2026-08-27. It spent the morning in "Later, in no fixed
+order", was moved into M11, and was separated out here because it is a type
+with a specification of its own and one undecided rule.)*
 
 A `satellite.variable.bool` and **two `satellite_number`s** — `positive`, then the
 integer part and the fractional part, each an exact base-10⁹ magnitude. **DESIGN §8.6
@@ -3467,6 +3474,9 @@ hand-off, and the done-when below gains its clause.
 Truncate, half-up, or half-even. No representation escapes it: `pow` at a fractional
 exponent is irrational, so the fractional half must be rounded to exist. QUAD's
 determinism invariant means a program's behaviour depends on the answer.
+*(All three clauses held on 2026-09-04: `example/floats.satl` runs the four
+operations and the retune's own line, and the rule is DESIGN §8.6's — half
+away from zero, with the two declined rules recorded beside it.)*
 
 **Half of that decision is already made in code and nobody decided it.**
 *(2026-08-31.)* `Number::divide` rounds **half-up** — it keeps one guard digit and
@@ -4579,7 +4589,9 @@ finished:**
   that produced the 122 in the first place, and the reason they are enumerated here.
 - **Ten milestones state something only the author can clear**, six of them under a
   heading that says *Blocker* and four inside an open list that stands in front of a
-  demonstration: M15 (the rounding rule), M6 (three, all §4.5's), M12 (whether
+  demonstration: M15 (the rounding rule — **cleared 2026-09-04 by delegation,
+  the day it landed: half away from zero, ratifying what the code had taken
+  three times; DESIGN §8.6 and MILESTONES/M15.md §2**), M6 (three, all §4.5's), M12 (whether
   "nothing" is a state or a value — **cleared 2026-09-03 by delegation, the day
   it landed: a state every type has, DESIGN §8.7**), M13 (the clock, and what
   `1 7 1`–`1 7 3` name — **cleared 2026-09-04 by the author: v1's clock split

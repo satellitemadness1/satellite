@@ -35,6 +35,8 @@ const char *type_name(const Value &value)
         return "the satellite runtime";
     if (value.is_time())
         return "time";
+    if (value.is_float())
+        return "float";
     return "nothing";
 }
 
@@ -49,13 +51,28 @@ bool truth_of(const Value &value, bool *out)
 
 bool same(const Value &left, const Value &right)
 {
-    // DIFFERENT ARMS ARE NEVER EQUAL AND THAT IS NOT A SHORTCUT. There is no
-    // conversion anywhere in this language -- DESIGN §8.1 refuses `double` at
-    // the C++ type level for the same reason one level down -- so `1` and a
-    // string holding "1" are two values and the answer is false rather than an
-    // error. A comparison that refused would make `==` a thing a program can
-    // fail at, which is what a variant type is for (M12) and not what equality
-    // is.
+    // THE TWO NUMERIC ARMS COMPARE AS VALUES, AND THAT IS M15's DECISION WITH
+    // A RECORD (MILESTONES/M15.md §2). Arithmetic promotes a number into a
+    // float exactly -- §8.6's conversion, "exact and always succeeds" -- so
+    // `x * 0.85` mixes the arms and `x == 0.85` asked afterwards must not be
+    // a condition no program can satisfy. And QUAD.md §3.3's comparators are
+    // all `if (a != b) return a > b`: equality and ordering disagreeing
+    // across these two arms would quietly break strict weak ordering, which
+    // is how a deterministic program stops being one.
+    if (const Number *n = std::get_if<Number>(&left))
+        if (const Flo *f = std::get_if<Flo>(&right))
+            return *f && Number::compare(*n, (*f)->to_number()) == 0;
+    if (const Flo *f = std::get_if<Flo>(&left))
+        if (const Number *n = std::get_if<Number>(&right))
+            return *f && Number::compare((*f)->to_number(), *n) == 0;
+
+    // EVERY OTHER PAIR OF DIFFERENT ARMS IS NEVER EQUAL AND THAT IS NOT A
+    // SHORTCUT. There is no conversion anywhere else in this language --
+    // DESIGN §8.1 refuses `double` at the C++ type level for the same reason
+    // one level down -- so `1` and a string holding "1" are two values and
+    // the answer is false rather than an error. A comparison that refused
+    // would make `==` a thing a program can fail at, which is what a variant
+    // type is for (M12) and not what equality is.
     if (left.index() != right.index())
         return false;
 
@@ -71,6 +88,15 @@ bool same(const Value &left, const Value &right)
     // exactly the silent fallthrough the file note promises the arms refuse.
     if (const Time *when = std::get_if<Time>(&left))
         return when->ns == std::get<Time>(right).ns;
+
+    if (const Flo *value = std::get_if<Flo>(&left)) {
+        const Flo &other = std::get<Flo>(right);
+        // BY VALUE AND NOT BY HANDLE, the string arm's rule one row down: two
+        // computations landing on 2.5 are two allocations and one value.
+        if (value->get() == other.get())
+            return true;
+        return *value && other && Float::compare(**value, *other) == 0;
+    }
 
     if (const Str *text = std::get_if<Str>(&left)) {
         const Str &other = std::get<Str>(right);

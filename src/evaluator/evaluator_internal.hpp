@@ -38,6 +38,7 @@ void op_local(Machine &m, const Op &op, uint32_t step);
 void op_global(Machine &m, const Op &op, uint32_t step);
 void op_unary(Machine &m, const Op &op, uint32_t step);
 void op_binary(Machine &m, const Op &op, uint32_t step);
+void op_to_float(Machine &m, const Op &op, uint32_t step);
 void op_call(Machine &m, const Op &op, uint32_t step);
 void op_enter(Machine &m, const Op &op, uint32_t step);
 void op_dispatch(Machine &m, const Op &op, uint32_t step);
@@ -53,6 +54,7 @@ void op_block(Machine &m, const Op &op, uint32_t step);
 void op_expression(Machine &m, const Op &op, uint32_t step);
 void op_store(Machine &m, const Op &op, uint32_t step);
 void op_store_global(Machine &m, const Op &op, uint32_t step);
+void op_retune(Machine &m, const Op &op, uint32_t step);
 void op_return(Machine &m, const Op &op, uint32_t step);
 void op_if(Machine &m, const Op &op, uint32_t step);
 void op_while(Machine &m, const Op &op, uint32_t step);
@@ -151,6 +153,11 @@ private:
     // wider than its evaluator, and saying so with a code, a caret and a
     // milestone number is DESIGN §1.1 applied to the gap itself.
     OpIndex not_built(NodeIndex node, const std::string &what, const char *milestone);
+
+    // The float declaration's conversion, shared by VarDecl and both Assign
+    // arms -- compile_statements.cpp says why it is an op and not a check.
+    OpIndex into_declared(const resolve::Info &about, NodeIndex node,
+                          OpIndex value);
 
     OpIndex emit(OpFn fn, NodeIndex node, uint32_t a = 0, uint32_t b = 0,
                  uint32_t c = 0, uint32_t d = 0);
