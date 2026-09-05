@@ -26,6 +26,8 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M10.md](M10.md) | 2026-09-02 | The console with its own printer thread, `satellite.main`, and the first program that runs. |
 | [M11.md](M11.md) | 2026-09-03 | Scalars and control flow — the string's sixteen methods, the module constants, and the Ctrl-C that stops a loop. |
 | [M12.md](M12.md) | 2026-09-03 | The variant, and what "nothing" is — a state every type has, askable at last, and every refusal now names its method. |
+| [M13.md](M13.md) | 2026-09-04 | The clock and the dice — twelve tier rows, `now` and `sleep`, the sixth value arm, and the whole-call road the compiler turned out not to have. |
+| [M14.md](M14.md) | 2026-09-04 | The console's other half — the reader thread on its two-descriptor park, `input` in three shapes, `typed()`, the live facts, and the queue's escapes. The namespace is finished. |
 | [M16.md](M16.md) | **not in this tree** | A review of `prototype/M10`, likewise. |
 
 **The numbers in this table are PLAN §8's, and §8 renumbered on 2026-08-30.**
