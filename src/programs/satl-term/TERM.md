@@ -129,7 +129,7 @@ needed nothing.
 ## Known defect, in `satl` rather than here
 
 `install_interrupt_handler()` is at `src/programs/run_command.cpp:167`, but
-`build_program()` runs at `:95`. **A Ctrl-C during compilation hits the default
+`build_program()` runs at `:96` (line numbers as of `1fb1df7`). **A Ctrl-C during compilation hits the default
 disposition**: measured on a 2M-line program (7s to compile), pressing Ctrl-C at
 1.5s gives `killed by signal 2` — no `SATELLITE: CTRL+C RECEIVED` line, no exit
 130. In this window that reads *"the interpreter was killed by a signal."*
