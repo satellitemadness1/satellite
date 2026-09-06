@@ -513,7 +513,8 @@ HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/resolve_command.hpp \
        $(PROGRAMS)/opening.hpp \
        $(PROGRAMS)/source_file.hpp \
-       $(PROGRAMS)/terminal.hpp \
+       $(TERM_DIR)/terminal.hpp \
+       $(TERM_DIR)/keys.hpp \
        $(PROGRAMS)/window_handover.hpp \
        $(NUMBER)/bignum.hpp \
        $(NUMBER)/bignum_bigint.hpp \

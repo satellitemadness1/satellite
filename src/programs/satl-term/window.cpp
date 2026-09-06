@@ -28,7 +28,7 @@
 // in SCRATCH.md/SESSION.md; the author owns the numbering.
 
 #include "programs/opening.hpp"
-#include "programs/terminal.hpp"
+#include "programs/satl-term/terminal.hpp"
 #include "system_facts/version.hpp"
 
 #include <cstdio>

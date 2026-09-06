@@ -37,8 +37,14 @@ WINDOW_LIBS   := $(shell pkg-config --libs $(WINDOW_PKGS) 2>/dev/null)
 # satl-term -- the window, and NOTHING of the runtime. The only file it shares
 # with satl is version.hpp, which is a header. When that stops being true the
 # split has been broken and this list is where it shows.
-TERM_SRCS = $(PROGRAMS)/window.cpp \
-            $(PROGRAMS)/terminal.cpp
+#
+# THE SOURCES SIT IN THEIR OWN DIRECTORY, src/programs/satl-term/, which is what
+# $(TERM_DIR) names in 030-directories.mk. The split above was already true of
+# the code; since 2026-09-06 it is true of the tree as well, so this program can
+# be worked on without src/programs/ having to be read past.
+TERM_SRCS = $(TERM_DIR)/window.cpp \
+            $(TERM_DIR)/terminal.cpp \
+            $(TERM_DIR)/keys.cpp
 
 TERM_OBJS = $(TERM_SRCS:.cpp=.o)
 

@@ -7,10 +7,24 @@
 # module does rather than for the abbreviation its files use: abstract_syntax_tree
 # and not ast, lexical_analyzer and not lex. Spell it out, or put satellite_ in
 # front of it. FILE names inside a module are free to stay short.
+#
+# TERM_DIR IS THE ONE DIRECTORY INSIDE ANOTHER, and it is a program rather
+# than a module: src/programs/satl-term/ holds the satl-term binary and nothing
+# else -- the command line and the GtkApplication, the VTE widget and its child,
+# and what the keyboard means. It is NAMED FOR THE BINARY IT BUILDS, which is
+# the rule above applied to a program: `satl-term` and not `term`, so that the
+# folder and the thing it produces cannot be told apart. Spelled through
+# $(PROGRAMS) rather than $(SRC), so moving programs/ moves it too.
+#
+# TERM_DIR AND NOT TERM. Every login shell exports TERM, and a makefile
+# assignment beats the environment -- except under `make -e`, where it does not,
+# and this directory would quietly become `xterm-256color`. A build variable
+# does not get to share a name with one the terminal already owns.
 
 SRC      = src
 SYSTEM   = $(SRC)/system_facts
 PROGRAMS = $(SRC)/programs
+TERM_DIR = $(PROGRAMS)/satl-term
 ERRORS   = $(SRC)/error_reporter
 EVAL     = $(SRC)/evaluator
 LEXER    = $(SRC)/lexical_analyzer

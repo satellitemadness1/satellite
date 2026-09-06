@@ -18,6 +18,12 @@
 $(SRC)/%.o: $(SRC)/%.cpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) -c -o $@ $<
 
+# THE STEM MAY CONTAIN A SLASH, which is why the rule above still covers
+# src/programs/satl-term/ without an edit: make matches % against any part of the
+# path, separators included. 070-clean.mk is the place that does NOT get this
+# for free -- a shell glob is not a stem, and `src/*/*.o` never reaches a
+# directory deeper.
+
 # main.o is the object that learns what this build IS. An explicit rule, so that
 # a change to the version invalidates one object rather than the whole tree.
 $(PROGRAMS)/main.o: $(PROGRAMS)/main.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
@@ -38,11 +44,17 @@ $(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version
 # window.o also takes $(VERSION_DEFS), because `satl-term --version` prints the
 # same version_text() satl does. terminal.o does not -- it names no version, and
 # giving it the defines would rebuild it on every version bump for nothing.
-$(PROGRAMS)/window.o: $(PROGRAMS)/window.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
-	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/window.cpp
+$(TERM_DIR)/window.o: $(TERM_DIR)/window.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) $(VERSION_DEFS) -c -o $@ $(TERM_DIR)/window.cpp
 
-$(PROGRAMS)/terminal.o: $(PROGRAMS)/terminal.cpp .cxxflags-stamp
-	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(PROGRAMS)/terminal.cpp
+$(TERM_DIR)/terminal.o: $(TERM_DIR)/terminal.cpp .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(TERM_DIR)/terminal.cpp
+
+# The third, and it takes no $(VERSION_DEFS) for terminal.o's reason: the
+# keyboard names no version. It needs $(WINDOW_CFLAGS) because it asks VTE what
+# is selected and GDK what a keyval is.
+$(TERM_DIR)/keys.o: $(TERM_DIR)/keys.cpp .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(TERM_DIR)/keys.cpp
 
 # satellite.random, which is the ONE object that sees a third-party header.
 #

@@ -7,8 +7,9 @@
 // M1.5, and DESIGN.md §10.3 for why the window's thread is not the user's
 // problem.
 
-#include "programs/terminal.hpp"
+#include "programs/satl-term/terminal.hpp"
 #include "programs/opening.hpp"
+#include "programs/satl-term/keys.hpp"
 
 #include <vte/vte.h>
 
@@ -23,6 +24,28 @@ namespace {
 // regardless; see on_child_exited. A file static because the VTE callbacks
 // carry one gpointer and it is already spoken for by the window.
 bool hold_clean_exit = false;
+
+// Whether there is still an interpreter on the other side of the pty. keys.cpp
+// asks this at the moment a key arrives, because it is the whole of what
+// Ctrl-C means -- a live child owns the key and a dead one does not.
+//
+// SET OPTIMISTICALLY, BEFORE THE SPAWN IS KNOWN TO HAVE WORKED, and cleared by
+// on_spawn_done if it did not. The honest-looking version -- set it in the
+// spawn callback -- leaves a window of a few milliseconds where the child is
+// starting and this answers `false`, and a Ctrl-C landing in that window would
+// be read as "nothing is running" and close the window out from under a
+// program that was about to run. Wrong in this direction costs a keystroke
+// passed harmlessly to a pty; wrong in the other costs the run.
+bool child_alive = false;
+
+// The question keys.cpp holds a pointer to. A function rather than the bool
+// itself, so that what the window may know about the child stays one door
+// wide: the day a child is tracked by pid rather than by flag, this is the
+// only line that learns it.
+bool interpreter_is_running()
+{
+    return child_alive;
+}
 
 // The window's palette. Black is the default foreground, so everything that
 // arrives without an escape sequence -- what the user types, program output,
@@ -66,28 +89,29 @@ void say(VteTerminal *terminal, const std::string &line)
     vte_terminal_feed(terminal, text.c_str(), (gssize)text.size());
 }
 
-gboolean on_key(GtkEventControllerKey *, guint, guint, GdkModifierType,
-                gpointer window)
-{
-    gtk_window_destroy(GTK_WINDOW(window));
-    return TRUE;
-}
-
 // Any key closes a window that is being held.
 //
-// ON THE WINDOW AND IN THE CAPTURE PHASE, not on the terminal. The terminal
-// keeps keyboard focus after its child is gone and would otherwise swallow the
-// keystroke; capture runs before the focused widget sees it. A held window
-// still has its close button, so this is a convenience -- but a message that
-// says "press any key" and then ignores one is worse than no message.
-void hold_open(VteTerminal *terminal, GtkWidget *window)
+// THE CONTROLLER IS keys.cpp's AND NOT THIS FILE'S, which is a change from how
+// this read at M1.5. It used to add a capture phase controller of its own here,
+// and that was correct while "any key closes" was the only thing this window
+// thought about a keystroke. It is now one of three rules -- Ctrl-C copies a
+// selection when no interpreter is running, which is EXACTLY this state -- and
+// two capture phase controllers on one widget answer the same press in whatever
+// order GTK holds them in. One controller, one decision, one file that can be
+// read to find out what a key does.
+//
+// The message stays here because it is the exit policy talking, and the policy
+// is this file's. keys.cpp is what makes it true.
+//
+// A held window still has its close button, so this is a convenience -- but a
+// message that says "press any key" and then ignores one is worse than no
+// message.
+void hold_open(VteTerminal *terminal)
 {
-    say(terminal, "[satl-term] press any key to close this window.");
+    say(terminal, "[satl-term] press any key to close this window, or "
+                  "ctrl+c to copy what you have highlighted.");
 
-    GtkEventController *keys = gtk_event_controller_key_new();
-    gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
-    g_signal_connect(keys, "key-pressed", G_CALLBACK(on_key), window);
-    gtk_widget_add_controller(window, keys);
+    close_on_any_key();
 }
 
 // HOLD ON FAILURE ALWAYS. CLOSE ON SUCCESS ONLY UNTIL M22.
@@ -108,6 +132,10 @@ void on_child_exited(VteTerminal *terminal, int status, gpointer user_data)
 {
     GtkWidget *window = GTK_WIDGET(user_data);
 
+    // BEFORE ANYTHING ELSE IN THIS FUNCTION, because hold_open below hands the
+    // keyboard its second meaning and that meaning is "there is no interpreter".
+    child_alive = false;
+
     const bool exited = WIFEXITED(status);
     const int code = exited ? WEXITSTATUS(status) : -1;
 
@@ -122,25 +150,28 @@ void on_child_exited(VteTerminal *terminal, int status, gpointer user_data)
         say(terminal, "[satl-term] the interpreter exited " +
                           std::to_string(code) + ".");
 
-    hold_open(terminal, window);
+    hold_open(terminal);
 }
 
 // NOT a silent destroy. A window that closes the instant it opens tells the
 // user nothing, and the thing that just failed is the one thing this binary
 // exists to do. It goes to stderr as well, because the person who typed
 // `satl-term` in a shell is looking there.
-void on_spawn_done(VteTerminal *terminal, GPid, GError *error, gpointer user_data)
+void on_spawn_done(VteTerminal *terminal, GPid, GError *error, gpointer)
 {
     if (!error)
         return;
 
-    GtkWidget *window = GTK_WIDGET(user_data);
+    // The optimism above is corrected here, and this is the only place that
+    // can: a spawn that fails never produces a child, so "child-exited" never
+    // fires and nothing else would ever clear the flag.
+    child_alive = false;
 
     fprintf(stderr, "satl-term: failed to spawn the interpreter: %s\n",
             error->message);
     say(terminal, std::string("[satl-term] could not start the interpreter: ") +
                       error->message);
-    hold_open(terminal, window);
+    hold_open(terminal);
 }
 
 // The `satl` sitting NEXT TO this binary -- not this binary again, and not
@@ -178,6 +209,13 @@ GtkWidget *terminal_new(GtkWidget *window,
     apply_colors(terminal);
     apply_font(terminal);
 
+    // THE KEYBOARD IS INSTALLED BEFORE ANYTHING CAN FAIL, and the order is
+    // load-bearing rather than tidy: both failure paths below reach hold_open,
+    // hold_open now calls keys.cpp's close_on_any_key(), and a flag set on a
+    // controller that has not been added yet is a window that says "press any
+    // key" and answers none of them.
+    install_key_bindings(window, widget, interpreter_is_running);
+
     g_signal_connect(terminal, "child-exited",
                      G_CALLBACK(on_child_exited), window);
 
@@ -186,7 +224,7 @@ GtkWidget *terminal_new(GtkWidget *window,
         fprintf(stderr, "satl-term: cannot find myself on disk, so I cannot "
                         "find satl beside me\n");
         say(terminal, "[satl-term] cannot find satl beside me.");
-        hold_open(terminal, window);
+        hold_open(terminal);
         return widget;
     }
 
@@ -214,6 +252,11 @@ GtkWidget *terminal_new(GtkWidget *window,
     // The environment is COPIED rather than replaced, so the child still
     // inherits everything else it had -- PATH, HOME, TERM and the rest.
     gchar **child_env = g_environ_setenv(g_get_environ(), "SATL_TERM", "1", TRUE);
+
+    // See child_alive's note: true from the moment the spawn is ASKED FOR, so
+    // that a Ctrl-C arriving while the interpreter is still starting is the
+    // child's key and not the window's.
+    child_alive = true;
 
     vte_terminal_spawn_async(terminal,
                              VTE_PTY_DEFAULT,

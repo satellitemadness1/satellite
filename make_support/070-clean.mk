@@ -7,6 +7,15 @@
 # $(SRC)/*/*.o covers the .haswell.o objects as well, since they differ from
 # the baseline ones by a suffix and not by a directory -- which is one of the
 # reasons 045-microarchitecture.mk chose a suffix.
+#
+# $(SRC)/*/*/*.o IS THE SECOND LEVEL AND IT IS NOT REDUNDANT. A shell glob does
+# not descend: `src/*/*.o` matches src/programs/window.o and cannot match
+# src/programs/satl-term/window.o, so when satl-term's two sources moved into their
+# own directory on 2026-09-06 their objects left the reach of this line. The
+# pattern rule in 060-compile.mk keeps compiling them, which is the failure this
+# guards against -- a clean that misses an object does not fail, it leaves one
+# behind, and the next link takes it. A THIRD level would need a third glob;
+# there is no third level today.
 # satl-term is named unconditionally even though it is built conditionally: a
 # clean on a machine that has since lost its gtk4 must still remove the binary
 # an earlier build left behind, and `rm -f` on a name that is not there is
@@ -25,6 +34,6 @@
 # a rebuild is triggered rather than needed -- this line is the second lock on
 # the same door, and 040-sources.mk records what it costs when neither is there.
 clean:
-	rm -f satl satl.haswell satl-cpu-level satl-term $(SRC)/*/*.o \
+	rm -f satl satl.haswell satl-cpu-level satl-term $(SRC)/*/*.o $(SRC)/*/*/*.o \
 	      $(TESTBINS) $(STARTUP_FLOOR) \
 	      .cxxflags-stamp .cxxflags-stamp-haswell .ldflags-stamp

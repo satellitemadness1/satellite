@@ -55,11 +55,19 @@ $(OBJ)/programs/opening.o: $(SRC)/programs/opening.cpp $(CXXFLAGS_STAMP) $(SYSTE
 # window.o also takes $(VERSION_DEFS), because `satl-term --version` prints the
 # same version_text() satl does. terminal.o does not -- it names no version, and
 # giving it the defines would rebuild it on every version bump for nothing.
-$(OBJ)/programs/window.o: $(SRC)/programs/window.cpp $(CXXFLAGS_STAMP) $(SYSTEM)/version.hpp
-	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) $(VERSION_DEFS) -c -o $@ $(SRC)/programs/window.cpp
+# THE PATHS ARE THE PARENT'S, one directory deeper since satl-term's sources
+# moved into src/programs/satl-term/ on 2026-09-06. $(TERM_DIR) is inherited and
+# resolves through $(SRC), so the source side needs no spelling here; the target
+# side is $(OBJ)/programs/satl-term/, which 030-output.mk's $(OBJ_DIRS) already
+# creates because it derives the directory set from $(OBJS).
+$(OBJ)/programs/satl-term/window.o: $(TERM_DIR)/window.cpp $(CXXFLAGS_STAMP) $(SYSTEM)/version.hpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) $(VERSION_DEFS) -c -o $@ $(TERM_DIR)/window.cpp
 
-$(OBJ)/programs/terminal.o: $(SRC)/programs/terminal.cpp $(CXXFLAGS_STAMP)
-	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(SRC)/programs/terminal.cpp
+$(OBJ)/programs/satl-term/terminal.o: $(TERM_DIR)/terminal.cpp $(CXXFLAGS_STAMP)
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(TERM_DIR)/terminal.cpp
+
+$(OBJ)/programs/satl-term/keys.o: $(TERM_DIR)/keys.cpp $(CXXFLAGS_STAMP)
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(TERM_DIR)/keys.cpp
 
 # satellite.random, which is the ONE object that sees a third-party header.
 #
