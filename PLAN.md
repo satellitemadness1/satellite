@@ -3609,7 +3609,7 @@ than comparators*; the search power is v1's comparator ladder, ported. Two diffe
 things that happen to land together, and saying so is what stops the next reader
 assuming "the search power" covered sorting.
 
-**M17 — hello world. LANDED 2026-09-06**, and
+**M17 — hello world. LANDED 2026-09-06** (`264a9c8`), and
 [MILESTONES/M17.md](MILESTONES/M17.md) is the review. *(Split on 2026-08-28 from a
 milestone then called M8, as
 its second half; it was M8.B until the 2026-08-30 renumber. M10 is the other half,
