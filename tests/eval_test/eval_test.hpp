@@ -111,5 +111,6 @@ void section_variant();     // M12's rows: the variant, and what "nothing" is
 void section_floats();      // M15's rows: the float, the promotion, the retune
 void section_interrupted(); // M11's fourth Ending, without a signal
 void section_clock_and_dice(); // M13's rows: the tiers' shapes, now and sleep
+void section_containers();  // M16's rows: the containers, subscripts, search
 
 } // namespace eval_test

@@ -68,12 +68,23 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
     }
 
     case NodeKind::Assign: {
+        // AN INDEX TARGET HAS A SUBSCRIPT TO COMPILE AND EVERY OTHER TARGET
+        // HAS NOTHING, which is why the shape is decided once here rather
+        // than asked twice below.
+        const bool into_subscript = ast_[n.a].kind == NodeKind::Index;
         if (step_number == 0) {
             again(1);
             visit(n.b);
+            // The subscript is written before the `=`, so it compiles first
+            // and is therefore pushed last -- the Index case's inversion,
+            // arriving here because an index assignment is one expression
+            // split across a statement.
+            if (into_subscript)
+                visit(ast_[n.a].b);
             return true;
         }
         const OpIndex value = take();
+        const OpIndex subscript = into_subscript ? take() : kNoOp;
         const resolve::Info &about = info(n.a);
 
         if (resolve::in_a_frame(about.slot)) {
@@ -106,14 +117,46 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
             return true;
         }
 
-        // ASSIGNING TO A SUBSCRIPT OR A FIELD. DESIGN §6.5 is the reason this
-        // is a refusal with a milestone rather than a silent discard: "no
-        // satellite code runs inside a mutation", and getting that rule right
-        // is M16's work and M26's, not something to approximate here.
+        // ASSIGNING TO A SUBSCRIPT -- M16, and DESIGN §6.5 is what shapes it:
+        // "no satellite code runs inside a mutation", so both operands are
+        // fully reduced to values BEFORE the container is touched. The op
+        // carries the receiver's SLOT, decided here exactly as a mutating
+        // method's is, because an index assignment writes the whole container
+        // back and a temporary names nowhere to write it -- `foo()[0] = 1` is
+        // refused for the same reason `foo().append(x)` is.
+        //
+        // ONE LEVEL, AND SAYING SO IS THE WORK. `l[0][1] = x` has an Index as
+        // its own target, which names no slot, so it lands in the refusal
+        // below with a sentence about naming the inner container first. That
+        // is the same one-hop boundary names.cpp draws for selectors, and it
+        // moves when a later milestone gives assignment a general place
+        // expression rather than by being approximated here.
+        if (into_subscript) {
+            const resolve::Info &holder = info(ast_[n.a].a);
+            if (resolve::in_a_frame(holder.slot)) {
+                finish(emit(op_index_store, node,
+                            static_cast<uint32_t>(holder.slot), subscript,
+                            value));
+                return true;
+            }
+            if (const auto place = globals_.find(holder.path);
+                place != globals_.end()) {
+                finish(emit(op_index_store_global, node, place->second,
+                            subscript, value));
+                return true;
+            }
+            finish(not_built(node, "assigning to this subscript",
+                             "an index assignment writes the whole container "
+                             "back, so what is indexed has to be a name -- "
+                             "DESIGN.md §6.4's storage-slot rule"));
+            return true;
+        }
+
         finish(not_built(node, "assigning to this",
-                         ast_[n.a].kind == NodeKind::Index ||
-                                 ast_[n.a].kind == NodeKind::Slice
-                             ? "PLAN.md §8 builds the containers at M16"
+                         ast_[n.a].kind == NodeKind::Slice
+                             ? "a slice names a run of elements and not one "
+                               "place, so there is nothing for a single value "
+                               "to be written into"
                              : "PLAN.md §8 builds the spacesuits at M26"));
         return true;
     }

@@ -52,7 +52,11 @@ void op_misuse(Machine &m, const Op &op, uint32_t step);
 
 void op_block(Machine &m, const Op &op, uint32_t step);
 void op_expression(Machine &m, const Op &op, uint32_t step);
+void op_index(Machine &m, const Op &op, uint32_t step);
+void op_slice(Machine &m, const Op &op, uint32_t step);
 void op_store(Machine &m, const Op &op, uint32_t step);
+void op_index_store(Machine &m, const Op &op, uint32_t step);
+void op_index_store_global(Machine &m, const Op &op, uint32_t step);
 void op_store_global(Machine &m, const Op &op, uint32_t step);
 void op_retune(Machine &m, const Op &op, uint32_t step);
 void op_return(Machine &m, const Op &op, uint32_t step);

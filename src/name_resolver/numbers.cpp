@@ -286,6 +286,7 @@ bool Resolver::fold_option(NodeIndex call_node, NodeIndex target,
     if (shape.found()) {
         info(target).path = shape.id;
         info(target).origin = Origin::Walked;
+        info(target).folded_option = true;
         return true;
     }
 
@@ -308,6 +309,39 @@ bool Resolver::fold_option(NodeIndex call_node, NodeIndex target,
         if (!shapes.empty())
             shapes += " and ";
         shapes += words::text_of(child);
+    }
+
+    // THE AUTHOR'S DECISION OF 2026-09-05, AT M16: A FOLD MAY LAND ON THE
+    // BARE WORD IT WAS SPELLED FROM, which closes MILESTONES/M7.md §6 item 1.
+    // `my_list.sort("up")` retries `sort` at the written count, finds
+    // `sort()` `1 4 2 3`, and is that row -- no alias was minted, and this is
+    // where the rule lives. WORD_NUMBERS §1.5 carries it.
+    //
+    // AFTER `named_at_all` AND NOT BEFORE IT, WHICH IS THE WHOLE OF WHAT
+    // KEEPS IT NARROW -- and getting that order wrong was caught by
+    // resolve_test rather than by reading. `takes_options` says only that
+    // SOME sibling is spelled `<word>_<something>`; it does not say that
+    // THIS option is one of them. Run ahead of the loop above, the fallback
+    // swallowed `sort("sideways")` into `sort()` -- an option the numbering
+    // has never heard of, silently becoming a sort. So the condition is that
+    // the folded word NAMES A ROW and only its SHAPE is missing: `sort_up`
+    // is a row (`sort_up(key)`), `sort_sideways` is not, and the second is
+    // still S0524.
+    //
+    // The risk the rule takes on is written down in WORD_NUMBERS §1.5: this
+    // is only correct while a `<word>_<option>` row whose shape is missing
+    // MEANS the bare word, which is true of `sort_up` because §2.2 says
+    // `sort()` already is it. A future option that CHANGES the meaning must
+    // get its own shape row rather than lean on this.
+    if (named_at_all) {
+        const cache::PathMatch bare =
+            cache::shape_path(parent, word, argc, false);
+        if (bare.found()) {
+            info(target).path = bare.id;
+            info(target).origin = Origin::Walked;
+            info(target).folded_option = true;
+            return true;
+        }
     }
 
     if (named_at_all) {

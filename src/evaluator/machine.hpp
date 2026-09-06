@@ -334,6 +334,18 @@ public:
         ceiling_ = bytes;
     }
 
+    // THE SEARCH DIAL -- M16. `satellite.system.threshold()` `1 22 5` reads
+    // it, `(n)` `1 22 6` sets it, and every subscript search and `.search()`
+    // reads it here. It starts at 1 -- the exact match every program written
+    // before the power existed already assumed -- and it is the MACHINE's
+    // rather than v1's thread_local, for the reason search.hpp records: until
+    // M23 there are no threads to separate, and nothing on this machine is
+    // process-wide. Not in Policy, because the config file does not seed it:
+    // it is a knob a program moves mid-run, spelled as a call and not as a
+    // retunable `1 14 2` dial.
+    int search_threshold() const { return search_threshold_; }
+    void set_search_threshold(int level) { search_threshold_ = level; }
+
 private:
     // ROOM TO GROW ONE MORE ELEMENT, and this is the whole of the ceiling's
     // machinery. A vector with room left answers true after one compare; a
@@ -360,6 +372,7 @@ private:
     Policy policy_;
     unsigned long long ceiling_ = 0;
     unsigned long long peak_ = 0;
+    int search_threshold_ = 1; // SEARCH_EXACT; the accessor above says why
 
     void run();
 };

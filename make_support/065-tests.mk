@@ -359,11 +359,19 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(EVAL)/operations.cpp \
                  $(EVAL)/operations_control.cpp \
                  $(EVAL)/operations_dispatch.cpp \
+                 $(EVAL)/operations_subscript.cpp \
                  $(EVAL)/dispatch.cpp \
                  $(SCALARS)/handlers.cpp \
                  $(SCALARS)/string_methods.cpp \
                  $(SCALARS)/number_methods.cpp \
                  $(SCALARS)/variant_methods.cpp \
+                 $(CONTAIN)/bodies.cpp \
+                 $(CONTAIN)/search_score.cpp \
+                 $(CONTAIN)/search_walk.cpp \
+                 $(CONTAIN)/handlers.cpp \
+                 $(CONTAIN)/list_methods.cpp \
+                 $(CONTAIN)/list_sorting.cpp \
+                 $(CONTAIN)/map_methods.cpp \
                  $(RANDOM)/random.cpp \
                  $(RANDOM)/tiers.cpp \
                  $(RANDOM)/handlers.cpp \

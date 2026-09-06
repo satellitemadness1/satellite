@@ -10,6 +10,7 @@
 #include "satellite_console/console.hpp"
 #include "satellite_console/handlers.hpp"
 #include "satellite_random/handlers.hpp"
+#include "satellite_containers/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
 #include "satellite_system/handlers.hpp"
 #include "satellite_time/handlers.hpp"
@@ -38,32 +39,6 @@ int find_main(const Built &built)
     const words::PathId path =
         static_cast<words::PathId>(words::NodeId::MAIN);
     return built.program.find(path);
-}
-
-errors::Span span_of(const Built &built, NodeIndex node)
-{
-    if (node == kNoNode)
-        return errors::kNowhere;
-    const Token &at = built.parsed.ast.token_of(node);
-    return errors::Span{at.start, at.end, at.line};
-}
-
-// Where `satellite.main`'s first parameter is written.
-//
-// THE CARET GOES UNDER THE PARAMETER AND NOT UNDER `main`, because the
-// parameter is what has not been built. ast.hpp's table gives a Capsule node
-// its parameter list in `b` and a parameter is a VarDecl whose token is the
-// declared name, so this lands on `arguments` in DESIGN §3's hello world --
-// which is the word a person has to delete to make the program run today.
-errors::Span span_of_parameter(const Built &built, NodeIndex capsule)
-{
-    if (capsule == kNoNode)
-        return errors::kNowhere;
-    const Ast &ast = built.parsed.ast;
-    const ListId parameters = ast[capsule].b;
-    if (ast.list_size(parameters) == 0)
-        return span_of(built, capsule);
-    return span_of(built, ast.list_at(parameters, 0));
 }
 
 // What a finished run exits with.
@@ -140,35 +115,29 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     }
 
     const eval::Capsule &main = built.program.closures.capsules()[which];
-    if (main.parameters != 0) {
-        // THE PARAMETER IS M16's AND THE MILESTONE BOUNDARY IS HERE. DESIGN §3
-        // declares `satellite.container.list<satellite.variable.string>
-        // arguments` and §3 itself settles what it costs: "an empty list is
-        // still a list, and the milestone that constructs one has built the
-        // type -- so hello world is PLAN M17 and runs after M16, while the
-        // console it prints through stays at M10".
-        //
-        // A CARET AND A MILESTONE, NOT AN ARGUMENT COUNT. Calling main with no
-        // arguments would raise S0722 -- "`satellite.main` takes 1 argument
-        // and was given 0" -- which is true, useless, and names nobody: a
-        // person reading it would go looking for the caller. S0720 is the row
-        // for a program that is RIGHT and arrived early, and this is that.
-        //
-        // EXIT 3 AND NOT 1, for the same reason. The file is not malformed;
-        // the request is correct and the milestone has not landed, which is
-        // what programs/opening.hpp's EXIT_NOT_YET means.
-        fputs(errors::render(
-                  errors::make<errors::Code::EVAL_NOT_BUILT>(
-                      span_of_parameter(built, main.node),
-                      "`satellite.main`'s parameter",
-                      "PLAN.md §8 builds the containers at M16 and hello world "
-                      "at M17, and DESIGN §3 is why an empty list is still a "
-                      "list"),
-                  against)
-                  .c_str(),
-              stderr);
-        return EXIT_NOT_YET;
-    }
+
+    // THE PARAMETER IS BOUND AT M16, WHICH IS WHAT THIS MILESTONE OWED IT.
+    // DESIGN §3 declares `satellite.container.list<satellite.variable.string>
+    // arguments` and settles what it costs: "an empty list is still a list,
+    // and the milestone that constructs one has built the type -- so hello
+    // world is PLAN M17 and runs after M16, while the console it prints
+    // through stays at M10". Until 2026-09-05 this arm was S0720 and exit 3;
+    // the type exists now, so what stood in front of hello world is one empty
+    // `satellite.container.list` handed to slot 0.
+    //
+    // AND WHAT THE SLOT HOLDS IS NOT WHAT THE NAME REACHES, which is the M17
+    // handover PLAN asks this milestone to write down rather than leave to be
+    // discovered. The VALUE here is an ordinary empty list. The NAME
+    // `arguments` is DESIGN §7.7's object as far as resolve is concerned --
+    // names.cpp routes any of its six spellings there -- so `arguments.size()`
+    // is S0532 naming what §7.7 holds, and not a list method, today and after
+    // M20 alike. A program that wants the list itself passes `arguments` on;
+    // a program that wants the machine's answers waits for M20. Both halves
+    // are true at once and neither is a stopgap: the empty list is what M16
+    // owed the slot, and the object is what M20 owes the name.
+    std::vector<Value> arguments;
+    if (main.parameters != 0)
+        arguments.push_back(Value::list(List{}));
 
     // ARGUMENTS ARE ACCEPTED AND NOTHING READS THEM YET, AND SAYING SO IS THE
     // POINT. `satl <file> [args]` is in the usage text, so refusing them would
@@ -184,6 +153,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
 
     console::install_handlers();
     scalars::install_handlers();
+    containers::install_handlers();
     random::install_handlers();
     time::install_handlers();
     system::install_handlers();
@@ -215,7 +185,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     // resolve numbers them in a pass before the bodies.
     machine.run_top_level();
     if (machine.ok())
-        machine.call(static_cast<uint32_t>(which), {});
+        machine.call(static_cast<uint32_t>(which), arguments);
 
     // THE FOUR STEPS, AND THEY COME BEFORE THE DIAGNOSTICS. drain, flush, stop,
     // join -- see satellite_console/console.hpp. A program that printed three

@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <ctime>
 #include <string>
+#include <vector>
 
 namespace satellite {
 
@@ -42,6 +43,58 @@ Live live_values()
     live[SAT_MEM_USED_MB - SAT_LINUX_HOME] = std::to_string(facts::mem_used_mb());
     live[SAT_CWD - SAT_LINUX_HOME] = facts::cwd();
     return live;
+}
+
+// A container as one line -- `[1, 2, 3]`, `{bolt: 7, nut: 9}` -- v1's
+// printer, ported onto a work stack. Rendering nests as deep as the value
+// does and the value nests as deep as the program chose, so DESIGN §7.5
+// applies to a printer exactly as it does to a search: no C++ recursion over
+// user-controlled depth. Each item is either a value still to render or a
+// piece of punctuation ready to emit, pushed in reverse so the text comes out
+// forwards.
+std::string container_text(const Value &root)
+{
+    struct Piece {
+        const Value *value;
+        const char *text;
+    };
+
+    std::string out;
+    std::vector<Piece> pending{{&root, nullptr}};
+    while (!pending.empty()) {
+        const Piece piece = pending.back();
+        pending.pop_back();
+        if (piece.text) {
+            out += piece.text;
+            continue;
+        }
+        const Value &value = *piece.value;
+        if (const List *list = as_list(value)) {
+            out += "[";
+            pending.push_back({nullptr, "]"});
+            for (size_t i = list->size(); i-- > 0;) {
+                pending.push_back({&(*list)[i], nullptr});
+                if (i)
+                    pending.push_back({nullptr, ", "});
+            }
+            continue;
+        }
+        if (const MapBody *map = as_map(value)) {
+            out += "{";
+            pending.push_back({nullptr, "}"});
+            for (size_t i = map->entries.size(); i-- > 0;) {
+                pending.push_back({&map->entries[i].value, nullptr});
+                pending.push_back({nullptr, ": "});
+                pending.push_back({&map->entries[i].key, nullptr});
+                if (i)
+                    pending.push_back({nullptr, ", "});
+            }
+            continue;
+        }
+        // A leaf. One bounded call -- text_of routes only containers here.
+        out += text_of(value);
+    }
+    return out;
 }
 
 // Whether this string has a live code in it at all.
@@ -128,6 +181,12 @@ std::string text_of(const Value &value)
                  broken.tm_hour, broken.tm_min, broken.tm_sec, fraction);
         return buffer;
     }
+
+    // A CONTAINER PRINTS AS ONE LINE, WHOLE -- `[1, 2, 3]`, `{bolt: 7}` --
+    // and container_text above is the walk, kept off the C++ stack for DESIGN
+    // §7.5's reason.
+    if (value.is_list() || value.is_map())
+        return container_text(value);
 
     // THE RUNTIME PRINTS AS THE WORD THE PROGRAM WROTE. DESIGN §8's table gives
     // `satellite` a row of its own and §3 calls it "the singleton runtime

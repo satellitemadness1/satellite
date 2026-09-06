@@ -619,6 +619,39 @@ SAT_CODE(724, EVAL_NOT_RETUNABLE, SAT_ERROR,
          "a language path can retune are the dials under "
          "`satellite.library.system`")
 
+// 725 THROUGH 729 ARE M16's, THE CONTAINERS' ROWS, and they are S0715 and
+// S0716's shapes retold for a list and a map: refuse by name where another
+// language would hand back a sentinel, and beside every refusal name the
+// question that answers instead of stopping. 726's second clause is the map's
+// own argument, v1's, kept because it is the reason a miss cannot be nil:
+// `nothing` is a value an entry can legitimately hold (DESIGN §8.7), so
+// "absent" and "present but holding nothing" must never be one answer.
+
+SAT_CODE(725, EVAL_OUTSIDE_THE_LIST, SAT_ERROR,
+         "`{1}` was asked about position {2} and this list has {3} elements "
+         "-- the first is at 0, the last at one less than the count")
+
+SAT_CODE(726, EVAL_NO_SUCH_KEY, SAT_ERROR,
+         "this map holds nothing under {1} -- a missing key is an error "
+         "because `nothing` is a value an entry can legitimately hold, and "
+         "`has(k)` is the question that answers false instead of stopping")
+
+SAT_CODE(727, EVAL_NOT_A_KEY, SAT_ERROR,
+         "a map key is a `satellite.variable.string` or a "
+         "`satellite.variable.number`, and this one is {1} -- DESIGN.md "
+         "§8.4: a key's hash and equality run inside a mutation, so the key "
+         "types are native and closed")
+
+SAT_CODE(728, EVAL_NOT_IN_THE_LIST, SAT_ERROR,
+         "{1} does not appear in this list, so `{2}` has no position to "
+         "answer -- `contains(x)` is the question that answers false instead "
+         "of stopping")
+
+SAT_CODE(729, EVAL_EMPTY_LIST, SAT_ERROR,
+         "`{1}` was asked of an empty list, which has no element to answer "
+         "with -- `empty()` and `size()` are the questions that answer "
+         "instead of stopping")
+
 // AN INTERRUPT IS NOBODY'S MISTAKE AND ITS ROW SAYS WHAT IS TRUE INSTEAD OF
 // WHAT IS WRONG. Everything above the caret's line ran and was drained through
 // the console before this printed; nothing at or after it did. The exit is

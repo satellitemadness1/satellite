@@ -3488,10 +3488,34 @@ agree with it, and the honest position is that a default arrived by porting rath
 than by decision. **`tests/number_test/arithmetic.cpp` asserts the current
 behaviour**, so changing it is a visible edit and not a silent drift.
 
-**M16 — containers and the search power.** `satellite.container.list`,
+**M16 — containers and the search power. LANDED 2026-09-06**, and
+[MILESTONES/M16.md](MILESTONES/M16.md) is the review. `satellite.container.list`,
 `satellite.container.map`, **and their methods** — the map's nine `1 4 1 1`–`1 4 1 9`
 and the list's twenty-five `1 4 2 1`–`1 4 2 25` — plus the search power ported close
 to unchanged.
+
+**Forty-one paths as built, not thirty-nine, and the two extra were minted by the
+author on 2026-09-05**: `search(pattern)` under the map at `1 4 1 10` and under the
+list at `1 4 2 26`. v1 gives both containers the rich spelling — a map per hit with
+the value, the key, the path and the score — and the 2026-08-28 transcription
+carried no row for it, so the milestone that ports the power is the one that minted
+the number. WORD_NUMBERS §2.6 records it.
+
+**Three things it decided that no document had settled.** A declaration does NOT
+construct a container — DESIGN §8.7's "a declared variable of any type holds
+nothing" stands as written, and the bare call shapes `1 4 2 0` / `1 4 1 0` are what
+build one, which is where v1 and this tree part company. A fold may land on the bare
+word it was spelled from, which closes MILESTONES/M7.md §6 item 1 without minting an
+alias. And `m[k] = v` is built, overruling v1's refusal, because DESIGN §12 lists it
+and `l[i] = v` as ONE deferred entry that says "fixing one fixes both".
+
+**And it found that WORD_NUMBERS §1.5's literal-option fold had never once run.**
+M7 built it at `1 4 2 5`'s expense and nothing in the language could reach it — `sort`
+is the only word with `<word>_<option>` siblings and there were no lists — so the
+first folded call ever compiled was this milestone's, and it died on arity because
+the compiler was still passing the absorbed literal. **That is PLAN §2's rule about a
+registry needing a consumer, arriving four milestones late**, and it is the argument
+for the rule rather than a lapse in it.
 
 **That clause is a fix, not an addition.** *(2026-08-27.)* M11 writes "`.bool`,
 `.number`, `.string` **and their methods**" and this milestone did not, so

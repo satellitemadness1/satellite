@@ -188,12 +188,18 @@ satellite.capsule sorts()
           "and the message lists the options the NUMBERING has, so a row added "
           "to words.def is offered here with no edit to any source file");
 
-    // S0523 -- AND THE NUMBERING'S OWN ASYMMETRY, FOUND BY BUILDING THIS.
-    // WORD_NUMBERS §2.2 has sort() 1 4 2 3 as "ascending, no key" and
-    // sort_up(key) 1 4 2 7, and NO sort_up() -- because sort() already is it.
-    // So the option `up` exists and the shape does not, which is a different
-    // sentence and a different fix.
-    Run wrong_shape;
+    // THE NUMBERING'S OWN ASYMMETRY, FOUND BY BUILDING THIS AND SETTLED AT
+    // M16. WORD_NUMBERS §2.2 has sort() 1 4 2 3 as "ascending, no key" and
+    // sort_up(key) 1 4 2 7, and NO sort_up() -- because sort() already is
+    // it. So the option `up` exists and the shape does not, and this was
+    // S0523 from M7 until 2026-09-05, when the author ruled that A FOLD MAY
+    // LAND ON THE BARE WORD IT WAS SPELLED FROM. `xs.sort("up")` is now
+    // sort() 1 4 2 3, with no alias minted and no row moved.
+    //
+    // THE FIXTURE ABOVE IS WHAT KEEPS THAT NARROW, and the two must be read
+    // together: `sort("sideways")` is still S0524, because the fallback runs
+    // only when the folded word NAMES A ROW and only its shape is missing.
+    Run bare_fold;
     resolve_source(R"(
 satellite.capsule sorts()
 {
@@ -202,11 +208,10 @@ satellite.capsule sorts()
     satellite.return()
 }
 )",
-                   wrong_shape);
-    check(only_problem(wrong_shape, satellite::errors::Code::RESOLVE_NO_SUCH_SHAPE),
-          "sort(\"up\") with no key is S0523 and names sort_up(key) -- there is "
-          "no sort_up(), because WORD_NUMBERS §2.2 makes sort() the ascending "
-          "form. MILESTONES/M7.md §6 carries what that leaves open");
+                   bare_fold);
+    check(bare_fold.resolved.problems.empty(),
+          "sort(\"up\") folds onto the bare sort() 1 4 2 3 -- the author's "
+          "decision of 2026-09-05, which closes MILESTONES/M7.md §6 item 1");
 
     // AND A WORD WITH NO `<word>_` SIBLINGS TAKES NO OPTIONS AT ALL, so a
     // string argument to it is an ordinary string.

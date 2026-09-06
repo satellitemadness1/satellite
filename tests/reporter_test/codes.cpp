@@ -94,8 +94,14 @@ void section_codes()
     // facts the class-3 operations can hit -- and S0724, the retune's
     // write-side twin of S0721, for an assignment to a language path with no
     // write row. MILESTONES/M15.md §3 is the record.
-    check(kCodeCount == 96,
-          "errors.def has 96 rows -- if that changed on purpose, change it here "
+    // AND BY FIVE AT M16: S0725 through S0729, the containers' block -- a
+    // position outside a list, a key a map does not hold, a value that
+    // cannot be a key at all, a value not in a list, and a question asked of
+    // an empty one. Each names the question that answers instead of
+    // stopping, which is S0715 and S0716's shape retold for the two
+    // containers. MILESTONES/M16.md is the record.
+    check(kCodeCount == 101,
+          "errors.def has 101 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

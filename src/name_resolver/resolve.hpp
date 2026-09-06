@@ -122,6 +122,25 @@ struct Info {
     // DESIGN §7.7's object: `satellite.main`'s parameter, under any of its six
     // spellings, and the members read off it.
     bool arguments = false;
+
+    // WORD_NUMBERS §1.5's LITERAL OPTION, FOLDED INTO THE NUMBER -- set on
+    // the selector of `my_list.sort("down")`, which is `sort_down()`
+    // `1 4 2 5` and takes no written argument at all.
+    //
+    // IT IS THE ABSORBED ARGUMENT ONE FORM ALONG, and it needs its own flag
+    // for the reason the fold's own rule creates: `satellite.include`'s
+    // absorber is recognisable from the numbering alone (the row's argument
+    // list names a reserved word), while a fold is recognisable only from
+    // the fact that the fold RAN -- `sort("up")` lands on `sort()`, whose
+    // spelling is the word the source already wrote, so nothing about the
+    // resolved path can tell the compiler that a string was consumed.
+    //
+    // BUILT AT M16, WHICH IS THE FOLD'S FIRST CONSUMER. M7 built the fold
+    // and nothing could reach it: the only word in the numbering with
+    // options is `sort`, and there were no lists until this milestone. So a
+    // folded call had never once been compiled, and the argument it absorbs
+    // had never once had to be dropped.
+    bool folded_option = false;
 };
 
 // One capsule's frame -- §7.2's `std::vector<Value> slots`, decided statically.

@@ -24,6 +24,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace satellite {
 namespace eval {
@@ -201,9 +202,49 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
         return true;
 
     case NodeKind::Index:
+        if (step_number == 0) {
+            again(1);
+            // TARGET FIRST, WHICH MEANS IT IS PUSHED LAST -- op_binary's
+            // inversion, and this case reads forwards for the same reason:
+            // `l[i]` is written target-then-subscript, so that is the order
+            // its two diagnostics have to come out in.
+            visit(n.b);
+            visit(n.a);
+            return true;
+        }
+        {
+            const OpIndex subscript = take();
+            const OpIndex target = take();
+            finish(emit(op_index, node, target, subscript));
+        }
+        return true;
+
     case NodeKind::Slice:
-        finish(not_built(node, "a subscript",
-                         "PLAN.md §8 builds the containers at M16"));
+        if (step_number == 0) {
+            again(1);
+            // Pushed backwards so they compile forwards -- target, low,
+            // high. AN ABSENT BOUND IS NOT VISITED, so `l[:]` compiles two
+            // fewer ops than `l[0:n]` rather than two constants somebody has
+            // to recognise later as a default.
+            if (n.c != kNoNode)
+                visit(n.c);
+            if (n.b != kNoNode)
+                visit(n.b);
+            visit(n.a);
+            return true;
+        }
+        {
+            const OpIndex high = n.c == kNoNode ? kNoOp : take();
+            const OpIndex low = n.b == kNoNode ? kNoOp : take();
+            const OpIndex target = take();
+            // `d` IS HOW MANY BOUNDS ARE ON THE VALUE STACK, decided here
+            // because the arm would otherwise count the same thing again --
+            // and the two counts are exactly what has to agree for the arm to
+            // find its target under them.
+            const uint32_t bounds = (n.b != kNoNode ? 1u : 0u) +
+                                    (n.c != kNoNode ? 1u : 0u);
+            finish(emit(op_slice, node, target, low, high, bounds));
+        }
         return true;
 
     default:
@@ -260,8 +301,24 @@ OpIndex Compiler::call(NodeIndex node)
     // only declared names, and it is a refusal rather than an assumption for
     // when that boundary moves.
     if (const NodeIndex receiver = method_receiver(node); receiver != kNoNode) {
-        const OpListId with_receiver = out_.add_list(take_many(count + 1));
         const resolve::Info &about = info(n.a);
+        std::vector<OpIndex> given = take_many(count + 1);
+        // A FOLDED LITERAL IS PART OF THE NUMBER AND NOT AN ARGUMENT -- M16,
+        // and resolve.hpp's `folded_option` says why the flag exists rather
+        // than being derived. `my_list.sort("down")` IS `sort_down()`
+        // `1 4 2 5`, whose whole argument list is the receiver, so the
+        // compiled op must hand the handler one value and not two. The
+        // string is dropped HERE and not at run time, which is what keeps
+        // the fold a resolve-time decision the walk never pays for; its
+        // compiled op is simply left unreferenced in the arena, exactly as
+        // M14's misused place arguments are.
+        //
+        // WHICH ONE IS DROPPED IS THE FIRST WRITTEN ARGUMENT, at index 1 --
+        // index 0 is the receiver, which DESIGN §6.4's written-out form puts
+        // there and which no fold ever touches.
+        if (about.folded_option && given.size() > 1)
+            given.erase(given.begin() + 1);
+        const OpListId with_receiver = out_.add_list(given);
         const resolve::Info &holder = info(receiver);
         if (resolve::in_a_frame(holder.slot))
             return emit(op_method, node, about.path, with_receiver,

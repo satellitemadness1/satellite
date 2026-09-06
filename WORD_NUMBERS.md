@@ -244,6 +244,18 @@ decision only the author can take: an **alias** row spelling `sort_up()` onto
 `1 4 2 3`, or a rule that a fold may land on the bare word it was spelled from.
 MILESTONES/M7.md §6 item 1.
 
+**DECIDED 2026-09-05, AT M16, BY THE AUTHOR: a fold may land on the bare word
+it was spelled from.** When the option is legal — some sibling spells
+`<word>_<option>` — and the folded shape does not exist at the written count,
+the fold retries the BARE word at that count before refusing, so
+`my_list.sort("up")` is `sort()` `1 4 2 3` and no alias row was minted. The
+rule is general and the generality is the risk worth writing down: it is only
+correct while every `<word>_<option>` row whose shape is missing MEANS the bare
+word — true of `sort_up`, whose §2.2 note says `sort()` already is it — and a
+future word where the option changes the meaning must get its shape row rather
+than lean on this fallback. src/name_resolver/numbers.cpp is where the rule
+runs; MILESTONES/M16.md §2 carries the decision.
+
 ---
 
 ---
@@ -300,6 +312,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.container.map.remove(k)` | `1 4 1 7` | assigned |
 | `satellite.container.map.keys` | `1 4 1 8` | assigned |
 | `satellite.container.map.values` | `1 4 1 9` | assigned |
+| `satellite.container.map.search(pattern)` | `1 4 1 10` | assigned — appended 2026-09-05, §2.6 |
 | `satellite.container.list` | `1 4 2 (0)` |  |
 | `satellite.container.list.append` | `1 4 2 1` | assigned |
 | `satellite.container.list.size` | `1 4 2 2` | assigned |
@@ -326,6 +339,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.container.list.sum` | `1 4 2 23` | assigned |
 | `satellite.container.list.max` | `1 4 2 24` | assigned |
 | `satellite.container.list.min` | `1 4 2 25` | assigned |
+| `satellite.container.list.search(pattern)` | `1 4 2 26` | assigned — appended 2026-09-05, §2.6 |
 | `satellite.container.arguments` | `1 4 3` | assigned — the type of the arguments object |
 | `satellite.container.result` | `1 4 4` | assigned — Satellite Orbit's answer |
 | `satellite.console` | `1 5 (0)` |  |
@@ -562,7 +576,7 @@ rows and is defined nowhere. The two were kept consistent here by copying what t
 table already does; **the sentence that says what `(0)` means is still unwritten**,
 and it is the author's.
 
-**§2.2 is now 227 rows and 224 distinct numbers.** Counted mechanically after each
+**§2.2 is now 229 rows and 226 distinct numbers.** Counted mechanically after each
 edit; the only duplicates are still §2.3's three aliases below.
 
 **It was 222 and 219 until 2026-08-31, when M8 appended `digits` `1 6 4 15`.**
@@ -577,6 +591,12 @@ image of `shift_left` and `shift_right`, which had numbers and no meaning.
 §2.5 below says who assigned them and by what walk. The same sentence holds:
 nothing moved, four things went on the end of `1 6 14`, and no already-written
 program changed meaning.
+
+**And it was 227 and 224 until 2026-09-05, when M16 appended `search(pattern)`
+twice** — under the map at `1 4 1 10` and under the list at `1 4 2 26`. §2.6
+below says who assigned them and why one word is two rows. The same sentence a
+third time: nothing moved, one thing went on the end of each container, and no
+already-written program changed meaning.
 
 ### 2.5 Four numbers assigned 2026-09-03, and by whom
 
@@ -602,6 +622,24 @@ lines first ask is the order below.
 records for `1 6 13`, made again for the same reason: every node in §2.2 with
 children carries the marker. Nothing moved; five things were appended, four of
 them numbered.
+
+### 2.6 Two numbers assigned 2026-09-05, and by whom
+
+**The author, directly, at M16.** v1 gives both containers a rich `.search(p)`
+— one arm for both in `methods_containers.cpp`, a map per hit carrying the
+value, the key, the path and the score — and the 2026-08-28 transcription
+carried no row for it, so the search power's rich spelling was unreachable in a
+language whose subscripts already searched. Asked whether M16 ships the
+subscript form alone or mints the number, the author answered that the first
+satellite is the base and had already answered this: *"Let's add another number
+to our list of numbers."*
+
+**One word, two rows, and that is §1.5 and not a duplication.** A selector's
+number is reachable only through the receiver's type, so a word both containers
+answer appears once under each — exactly as `size`, `empty` and `clear` already
+do. `1 4 1 10` is the map's next free child and `1 4 2 26` the list's;
+MILESTONES/M16.md carries what `.search(pattern)` answers and why the subscript
+form is the short spelling of the same walk.
 
 ## 3. User-defined names take the next free number
 

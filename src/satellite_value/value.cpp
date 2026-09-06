@@ -10,6 +10,10 @@
 
 #include "satellite_value/value.hpp"
 
+#include <string>
+#include <utility>
+#include <vector>
+
 namespace satellite {
 
 const char *type_name(const Value &value)
@@ -37,7 +41,41 @@ const char *type_name(const Value &value)
         return "time";
     if (value.is_float())
         return "float";
+    if (value.is_list())
+        return "list";
+    if (value.is_map())
+        return "map";
     return "nothing";
+}
+
+bool map_key_of(const Value &value, std::string &out)
+{
+    // A NUMBER CANONICALISES THROUGH to_string(). That is exact rather than
+    // convenient -- v1's finding, kept whole: to_string() renders only from
+    // the normalized form, so a.to_string() == b.to_string() exactly when
+    // a == b, and 1 and 1.0 are ONE key -- the only answer consistent with
+    // `1 == 1.0` being true in the language.
+    if (const Number *number = std::get_if<Number>(&value)) {
+        out = "n";
+        out += number->to_string();
+        return true;
+    }
+    // A STRING CANONICALISES THROUGH ITS RAW CODES AND NEVER THROUGH decode().
+    // v1 called this "the sharpest trap in the whole feature": DESIGN §5's
+    // live codes expand at decode time, so hashing decoded text would make a
+    // key's identity depend on the machine, the user and the current
+    // directory -- a key inserted before a directory change would stop being
+    // findable after it. Two strings that decode alike are different keys,
+    // and that is correct. The one-byte tag is what stops the number 12 and
+    // the string "12" being the same key.
+    if (const Str *text = std::get_if<Str>(&value)) {
+        out = "s";
+        if (*text)
+            out.append(reinterpret_cast<const char *>((*text)->data()),
+                       (*text)->size() * sizeof(SatChar));
+        return true;
+    }
+    return false;
 }
 
 bool truth_of(const Value &value, bool *out)
@@ -51,69 +89,152 @@ bool truth_of(const Value &value, bool *out)
 
 bool same(const Value &left, const Value &right)
 {
-    // THE TWO NUMERIC ARMS COMPARE AS VALUES, AND THAT IS M15's DECISION WITH
-    // A RECORD (MILESTONES/M15.md §2). Arithmetic promotes a number into a
-    // float exactly -- §8.6's conversion, "exact and always succeeds" -- so
-    // `x * 0.85` mixes the arms and `x == 0.85` asked afterwards must not be
-    // a condition no program can satisfy. And QUAD.md §3.3's comparators are
-    // all `if (a != b) return a > b`: equality and ordering disagreeing
-    // across these two arms would quietly break strict weak ordering, which
-    // is how a deterministic program stops being one.
-    if (const Number *n = std::get_if<Number>(&left))
-        if (const Flo *f = std::get_if<Flo>(&right))
-            return *f && Number::compare(*n, (*f)->to_number()) == 0;
-    if (const Flo *f = std::get_if<Flo>(&left))
-        if (const Number *n = std::get_if<Number>(&right))
-            return *f && Number::compare((*f)->to_number(), *n) == 0;
+    // A PAIR STACK AND NOT A RECURSION, SINCE M16. Two lists are equal when
+    // their elements are, which makes equality a walk over depth the user's
+    // program chose -- `l == l` a hundred thousand levels deep is a legal
+    // question -- and DESIGN §7.5 says no such walk may use the C++ stack.
+    // Every pair below either answers false, or settles as equal, or pushes
+    // the pairs its answer depends on.
+    std::vector<std::pair<const Value *, const Value *>> pending;
+    pending.push_back({&left, &right});
 
-    // EVERY OTHER PAIR OF DIFFERENT ARMS IS NEVER EQUAL AND THAT IS NOT A
-    // SHORTCUT. There is no conversion anywhere else in this language --
-    // DESIGN §8.1 refuses `double` at the C++ type level for the same reason
-    // one level down -- so `1` and a string holding "1" are two values and
-    // the answer is false rather than an error. A comparison that refused
-    // would make `==` a thing a program can fail at, which is what a variant
-    // type is for (M12) and not what equality is.
-    if (left.index() != right.index())
-        return false;
+    while (!pending.empty()) {
+        const auto [at, other] = pending.back();
+        pending.pop_back();
+        const Value &a = *at;
+        const Value &b = *other;
 
-    if (const bool *flag = std::get_if<bool>(&left))
-        return *flag == std::get<bool>(right);
+        // THE TWO NUMERIC ARMS COMPARE AS VALUES, AND THAT IS M15's DECISION
+        // WITH A RECORD (MILESTONES/M15.md §2). Arithmetic promotes a number
+        // into a float exactly -- §8.6's conversion, "exact and always
+        // succeeds" -- so `x * 0.85` mixes the arms and `x == 0.85` asked
+        // afterwards must not be a condition no program can satisfy. And
+        // QUAD.md §3.3's comparators are all `if (a != b) return a > b`:
+        // equality and ordering disagreeing across these two arms would
+        // quietly break strict weak ordering, which is how a deterministic
+        // program stops being one.
+        if (const Number *n = std::get_if<Number>(&a)) {
+            if (const Flo *f = std::get_if<Flo>(&b)) {
+                if (*f && Number::compare(*n, (*f)->to_number()) == 0)
+                    continue;
+                return false;
+            }
+        }
+        if (const Flo *f = std::get_if<Flo>(&a)) {
+            if (const Number *n = std::get_if<Number>(&b)) {
+                if (*f && Number::compare((*f)->to_number(), *n) == 0)
+                    continue;
+                return false;
+            }
+        }
 
-    if (const Number *number = std::get_if<Number>(&left))
-        return *number == std::get<Number>(right);
+        // EVERY OTHER PAIR OF DIFFERENT ARMS IS NEVER EQUAL AND THAT IS NOT A
+        // SHORTCUT. There is no conversion anywhere else in this language --
+        // DESIGN §8.1 refuses `double` at the C++ type level for the same
+        // reason one level down -- so `1` and a string holding "1" are two
+        // values and the answer is false rather than an error. A comparison
+        // that refused would make `==` a thing a program can fail at, which is
+        // what a variant type is for (M12) and not what equality is.
+        if (a.index() != b.index())
+            return false;
 
-    // TWO INSTANTS ARE THE SAME INSTANT WHEN THE COUNTS MATCH, and the arm has
-    // to be written out: the both-empty tail below answers true, so leaving
-    // `Time` to fall through would make every instant equal every other --
-    // exactly the silent fallthrough the file note promises the arms refuse.
-    if (const Time *when = std::get_if<Time>(&left))
-        return when->ns == std::get<Time>(right).ns;
+        if (const bool *flag = std::get_if<bool>(&a)) {
+            if (*flag != std::get<bool>(b))
+                return false;
+            continue;
+        }
 
-    if (const Flo *value = std::get_if<Flo>(&left)) {
-        const Flo &other = std::get<Flo>(right);
-        // BY VALUE AND NOT BY HANDLE, the string arm's rule one row down: two
-        // computations landing on 2.5 are two allocations and one value.
-        if (value->get() == other.get())
-            return true;
-        return *value && other && Float::compare(**value, *other) == 0;
+        if (const Number *number = std::get_if<Number>(&a)) {
+            if (!(*number == std::get<Number>(b)))
+                return false;
+            continue;
+        }
+
+        // TWO INSTANTS ARE THE SAME INSTANT WHEN THE COUNTS MATCH, and the arm
+        // has to be written out: the both-empty tail below answers true, so
+        // leaving `Time` to fall through would make every instant equal every
+        // other -- exactly the silent fallthrough the file note promises the
+        // arms refuse.
+        if (const Time *when = std::get_if<Time>(&a)) {
+            if (when->ns != std::get<Time>(b).ns)
+                return false;
+            continue;
+        }
+
+        if (const Flo *value = std::get_if<Flo>(&a)) {
+            const Flo &twin = std::get<Flo>(b);
+            // BY VALUE AND NOT BY HANDLE, the string arm's rule one row down:
+            // two computations landing on 2.5 are two allocations and one
+            // value.
+            if (value->get() == twin.get())
+                continue;
+            if (*value && twin && Float::compare(**value, *twin) == 0)
+                continue;
+            return false;
+        }
+
+        if (const Str *text = std::get_if<Str>(&a)) {
+            const Str &twin = std::get<Str>(b);
+            // A STRING IS COMPARED BY ITS CODES AND NOT BY ITS HANDLE. Two
+            // literals with the same body are two allocations, and a language
+            // where that made them unequal would be one where equality
+            // depended on how the compiler happened to share.
+            if (text->get() == twin.get())
+                continue;
+            if (*text && twin && **text == *twin)
+                continue;
+            return false;
+        }
+
+        // TWO LISTS ARE EQUAL ELEMENTWISE, IN ORDER -- a list IS its order.
+        // The handle fast path first: a list handed around is one body seen
+        // from two slots, and comparing it against itself must not walk it.
+        if (const Lst *handle = std::get_if<Lst>(&a)) {
+            if (handle->get() == std::get<Lst>(b).get())
+                continue;
+            const List *la = as_list(a);
+            const List *lb = as_list(b);
+            if (la->size() != lb->size())
+                return false;
+            for (size_t i = 0; i < la->size(); i++)
+                pending.push_back({&(*la)[i], &(*lb)[i]});
+            continue;
+        }
+
+        // TWO MAPS ARE EQUAL ORDER-INSENSITIVELY, which is deliberate and is
+        // the one place a map's insertion order does not count -- v1's rule,
+        // kept with its reason: order is how a map is PRINTED and WALKED,
+        // because those need to be deterministic; it is not part of what a map
+        // IS. Two symbol tables that disagree only about which name was seen
+        // first hold the same symbols. Looked up through b's index, so this is
+        // O(n) rather than O(n^2).
+        if (const Map *handle = std::get_if<Map>(&a)) {
+            if (handle->get() == std::get<Map>(b).get())
+                continue;
+            const MapBody *ma = as_map(a);
+            const MapBody *mb = as_map(b);
+            if (ma->entries.size() != mb->entries.size())
+                return false;
+            for (const MapEntry &entry : ma->entries) {
+                std::string key;
+                if (!map_key_of(entry.key, key))
+                    return false;
+                const auto found = mb->index.find(key);
+                if (found == mb->index.end())
+                    return false;
+                pending.push_back(
+                    {&entry.value, &mb->entries[found->second].value});
+            }
+            continue;
+        }
+
+        // BOTH ARE Nothing OR BOTH ARE Runtime, and in either case they are
+        // equal because neither arm holds anything to differ about. There is
+        // exactly one runtime -- value.hpp's Runtime note is why the arm
+        // carries no payload -- so `satellite == satellite` is true for the
+        // same reason nothing equals nothing, and the index check above
+        // already separated the two.
     }
-
-    if (const Str *text = std::get_if<Str>(&left)) {
-        const Str &other = std::get<Str>(right);
-        // A STRING IS COMPARED BY ITS CODES AND NOT BY ITS HANDLE. Two
-        // literals with the same body are two allocations, and a language where
-        // that made them unequal would be one where equality depended on how
-        // the compiler happened to share.
-        if (text->get() == other.get())
-            return true;
-        return *text && other && **text == *other;
-    }
-
-    // BOTH ARE Nothing OR BOTH ARE Runtime, and in either case they are equal
-    // because neither arm holds anything to differ about. There is exactly one
-    // runtime -- value.hpp's Runtime note is why the arm carries no payload --
-    // so `satellite == satellite` is true for the same reason nothing equals
-    // nothing, and the index check above already separated the two.
     return true;
 }
 

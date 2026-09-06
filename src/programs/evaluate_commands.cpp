@@ -17,6 +17,7 @@
 #include "programs/built_program.hpp"
 #include "programs/opening.hpp"
 #include "satellite_random/handlers.hpp"
+#include "satellite_containers/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
 #include "satellite_system/handlers.hpp"
 #include "satellite_time/handlers.hpp"
@@ -91,6 +92,7 @@ int call_command(const std::vector<std::string> &args)
     // this is an entry point that runs user code, and a loop under `--call`
     // is as interruptible as one under `satl file.satl`.
     scalars::install_handlers();
+    containers::install_handlers();
     random::install_handlers();
     time::install_handlers();
     system::install_handlers();

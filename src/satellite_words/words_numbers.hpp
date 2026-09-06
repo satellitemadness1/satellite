@@ -11,7 +11,7 @@
 // the failure; one place plus a derivation is not.
 //
 // So the numbers below are COMPUTED AT COMPILE TIME from file order, and
-// tests/words_test compares all 227 of them against the markdown that is the
+// tests/words_test compares all 229 of them against the markdown that is the
 // authority. The `// 1 5 1` comments in words.def are read by people only.
 //
 // The whole table is one forward pass, which is legal only because a parent is

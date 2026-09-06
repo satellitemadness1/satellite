@@ -128,12 +128,17 @@ void section_compile()
 
     // --- what parses and does not run yet ------------------------------------
 
+    // A SUBSCRIPT NAMED M16 HERE UNTIL 2026-09-06 and now compiles, so what
+    // this fixture asks has moved one step along: `n[0]` on a NUMBER is a
+    // wrong question rather than an unbuilt one, and the sentence says which
+    // three things a `[` can ask about instead of naming a milestone.
     check(holds(refusal_in("satellite.capsule it()\n{\n"
                            "    satellite.variable.number n = 1\n"
                            "    satellite.return(n[0])\n}\n",
                            "it"),
-                "M16"),
-          "S0720: a subscript names M16, which brings the containers");
+                "the three things a `[` can ask about"),
+          "S0713: a subscript on a number names what CAN be indexed, now that "
+          "M16 has built the two containers");
 
     check(holds(refusal_in(body("satellite.return(x00FF)"), "it"),
                 "no milestone"),

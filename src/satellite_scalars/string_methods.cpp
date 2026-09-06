@@ -184,16 +184,44 @@ bool string_upper(eval::Machine &m, const Value *a, uint32_t, Value *answer)
     return true;
 }
 
-bool string_split(eval::Machine &m, const Value *, uint32_t, Value *)
+bool string_split(eval::Machine &m, const Value *a, uint32_t, Value *answer)
 {
-    // A ROW THAT KNOWS ITS MILESTONE BEATS AN EMPTY ROW'S "a later
-    // milestone". The answer is a `satellite.container.list` and there is no
-    // list to answer with until M16 builds the type.
-    m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
-        m.span_of(m.here()), "`split`",
-        "it answers a `satellite.container.list`, and PLAN.md §8 builds the "
-        "containers at M16"));
-    return false;
+    // THE ROW THAT WAS WAITING FOR M16, ANSWERED. Until 2026-09-05 this
+    // refused by name because "it answers a `satellite.container.list`, and
+    // PLAN.md §8 builds the containers at M16" -- the containers exist now,
+    // so the sentence has become the implementation.
+    const SatString *self = nullptr;
+    const SatString *separator = nullptr;
+    if (!string_at(m, a, 0, &self) || !string_at(m, a, 1, &separator))
+        return false;
+
+    List out;
+    // AN EMPTY SEPARATOR SPLITS INTO CHARACTERS rather than looping forever,
+    // which is the one edge this needs a rule for. It is also the useful
+    // answer: `s.split("")` is how a program asks for the characters, and
+    // the alternative -- a refusal -- would send it to `at(n)` and a `for`.
+    if (separator->empty()) {
+        for (SatChar c : *self)
+            out.push_back(Value::string(SatString(1, c)));
+        *answer = Value::list(std::move(out));
+        return true;
+    }
+
+    // EVERY PIECE, INCLUDING THE EMPTY ONES AT THE ENDS. "a,,b" split on ","
+    // is three pieces and ",a" is two, because a split that quietly dropped
+    // them would lose a column in every CSV line that has a blank field --
+    // and the count of pieces is what a program checks.
+    size_t at = 0;
+    for (;;) {
+        const size_t next = self->find(*separator, at);
+        if (next == SatString::npos)
+            break;
+        out.push_back(Value::string(self->substr(at, next - at)));
+        at = next + separator->size();
+    }
+    out.push_back(Value::string(self->substr(at)));
+    *answer = Value::list(std::move(out));
+    return true;
 }
 
 bool string_trim(eval::Machine &m, const Value *a, uint32_t, Value *answer)

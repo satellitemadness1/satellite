@@ -54,7 +54,9 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <variant>
+#include <vector>
 
 namespace satellite {
 
@@ -114,13 +116,28 @@ struct Time {
 // mutate a value two slots see.
 using Flo = std::shared_ptr<const Float>;
 
+// THE TWO CONTAINERS, BEHIND THE SAME KIND OF HANDLE -- M16. DESIGN §8's
+// table: a list is "vector of values, children shared" and a map is "body
+// behind a handle; insertion-ordered". Both bodies are BUILT, THEN FROZEN --
+// v1's rule, kept for v1's reason: every mutation is a copy published whole
+// through the receiver's storage slot (DESIGN §6.4), so a value two slots see
+// can never change under either of them. The types are defined below Value
+// because a List holds Values by value; a shared_ptr to an incomplete type is
+// all the variant needs here.
+struct List;
+struct MapBody;
+using Lst = std::shared_ptr<const List>;
+using Map = std::shared_ptr<const MapBody>;
+
 // APPEND ONLY. A new arm goes at the END of this list, never in the middle.
 // `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
 // widest arm, the same accounting `Runtime`'s note above runs. `Flo` is the
-// third, M15's, sixteen bytes by the same account.
-using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo>;
+// third, M15's, sixteen bytes by the same account; `Lst` and `Map` are the
+// fourth and fifth, M16's, sixteen each by the same account again.
+using ValueBase =
+    std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo, Lst, Map>;
 
-// One value. DESIGN §8's table, seven rows of it since M15.
+// One value. DESIGN §8's table, nine rows of it since M16.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -143,6 +160,9 @@ struct Value : ValueBase {
     {
         return Value(std::make_shared<const Float>(std::move(f)));
     }
+    // Defined below List and MapBody, which need Value complete first.
+    static Value list(List items);
+    static Value map(MapBody body);
 
     bool is_nothing() const { return std::holds_alternative<Nothing>(*this); }
     bool is_bool() const { return std::holds_alternative<bool>(*this); }
@@ -151,7 +171,73 @@ struct Value : ValueBase {
     bool is_runtime() const { return std::holds_alternative<Runtime>(*this); }
     bool is_time() const { return std::holds_alternative<Time>(*this); }
     bool is_float() const { return std::holds_alternative<Flo>(*this); }
+    bool is_list() const { return std::holds_alternative<Lst>(*this); }
+    bool is_map() const { return std::holds_alternative<Map>(*this); }
 };
+
+// `satellite.container.list<T>` -- a vector of values with a name a forward
+// declaration can carry, which an alias cannot. NOT polymorphic and never
+// deleted through the base; the inheritance is spelling, not design.
+struct List : std::vector<Value> {
+    using std::vector<Value>::vector;
+};
+
+// One `satellite.container.map` entry, in insertion order. The stored KEY
+// VALUE rides beside the value so `.keys` can answer what the program wrote;
+// the canonical form lives only in the body's index.
+struct MapEntry {
+    Value key;
+    Value value;
+};
+
+// `satellite.container.map<K, V>`. INSERTION-ORDERED (DESIGN §8.4), with a
+// side index for O(1) lookup by canonical key -- `.keys()` is how a map is
+// walked, since §6's only loop is the C-shaped `for`, and an unordered map
+// would make every program that walks one non-deterministic. The key of
+// `index` is map_key_of's canonical byte string, never decoded text --
+// map_key_of's note in value.cpp is the argument.
+struct MapBody {
+    std::vector<MapEntry> entries;
+    std::unordered_map<std::string, size_t> index;
+};
+
+inline Value Value::list(List items)
+{
+    return Value(std::make_shared<const List>(std::move(items)));
+}
+
+inline Value Value::map(MapBody body)
+{
+    return Value(std::make_shared<const MapBody>(std::move(body)));
+}
+
+// The body behind a container arm, or nullptr when the value is not that
+// container. A NULL HANDLE ANSWERS AN EMPTY BODY, defensively -- the factories
+// above never build one, and a reader that crashed on it would be a crash
+// waiting on a producer this module cannot see (string_at's rule, one module
+// over).
+inline const List *as_list(const Value &value)
+{
+    static const List empty;
+    if (const Lst *handle = std::get_if<Lst>(&value))
+        return *handle ? handle->get() : &empty;
+    return nullptr;
+}
+
+inline const MapBody *as_map(const Value &value)
+{
+    static const MapBody empty;
+    if (const Map *handle = std::get_if<Map>(&value))
+        return *handle ? handle->get() : &empty;
+    return nullptr;
+}
+
+// A key's canonical bytes, or false when this value cannot be a key. DESIGN
+// §8.4 restricts key types because a map's hash and equality run inside a
+// mutation and must be native (§6.5); WHICH types is decided here, beside the
+// body whose index it feeds: a number or a string, exactly v1's answer.
+// value.cpp carries the two traps the canonical form steps around.
+bool map_key_of(const Value &value, std::string &out);
 
 // 40 BYTES. See the header note -- this is DESIGN §8.2's budget, and the arm
 // that fills it is `Number` at 32.

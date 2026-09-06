@@ -30,6 +30,7 @@ EVAL     = $(SRC)/evaluator
 LEXER    = $(SRC)/lexical_analyzer
 CACHE    = $(SRC)/satellite_cache
 CONSOLE  = $(SRC)/satellite_console
+CONTAIN  = $(SRC)/satellite_containers
 FLOAT    = $(SRC)/satellite_float
 SCALARS  = $(SRC)/satellite_scalars
 LIMITS   = $(SRC)/machine_limits

@@ -438,6 +438,13 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SCALARS)/string_methods.cpp \
             $(SCALARS)/number_methods.cpp \
             $(SCALARS)/variant_methods.cpp \
+            $(CONTAIN)/bodies.cpp \
+            $(CONTAIN)/search_score.cpp \
+            $(CONTAIN)/search_walk.cpp \
+            $(CONTAIN)/handlers.cpp \
+            $(CONTAIN)/list_methods.cpp \
+            $(CONTAIN)/list_sorting.cpp \
+            $(CONTAIN)/map_methods.cpp \
             $(SYSLIB)/handlers.cpp \
             $(RANDOM)/random.cpp \
             $(RANDOM)/tiers.cpp \
@@ -452,6 +459,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(EVAL)/operations.cpp \
             $(EVAL)/operations_control.cpp \
             $(EVAL)/operations_dispatch.cpp \
+            $(EVAL)/operations_subscript.cpp \
             $(EVAL)/dispatch.cpp \
             $(EVAL)/dump.cpp \
             $(TREE)/ast.cpp \
@@ -533,6 +541,10 @@ HDRS = $(SYSTEM)/version.hpp \
        $(CONSOLE)/handlers.hpp \
        $(SCALARS)/handlers.hpp \
        $(SCALARS)/methods_internal.hpp \
+       $(CONTAIN)/containers.hpp \
+       $(CONTAIN)/search.hpp \
+       $(CONTAIN)/handlers.hpp \
+       $(CONTAIN)/methods_internal.hpp \
        $(EVAL)/closure.hpp \
        $(EVAL)/machine.hpp \
        $(EVAL)/dispatch.hpp \

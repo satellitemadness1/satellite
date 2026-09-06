@@ -173,8 +173,16 @@ std::string_view Machine::text_of(OpIndex op) const
     // done-when, which demands the refusal be BY NAME, and fixed here so
     // M11's sentences heal with it. The loop is for `f()()`, where the
     // target is itself a call.
+    //
+    // AND M16 ADDED Index AND Slice FOR THE SAME REASON ONE FORM ALONG. A
+    // subscript's anchor token is its `[`, so without this every containers
+    // refusal would open "`[` was asked about position 9" -- M12's exact
+    // finding, arriving at the second bracketing form the grammar has.
     NodeIndex named = node;
-    while (ast_[named].kind == NodeKind::Call && ast_[named].a != kNoNode)
+    while ((ast_[named].kind == NodeKind::Call ||
+            ast_[named].kind == NodeKind::Index ||
+            ast_[named].kind == NodeKind::Slice) &&
+           ast_[named].a != kNoNode)
         named = ast_[named].a;
     return ast_.text_of(named);
 }

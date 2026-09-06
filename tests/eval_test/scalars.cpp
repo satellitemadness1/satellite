@@ -186,17 +186,16 @@ void section_scalars()
           "S0718: the written-out spelling is not surface syntax -- DESIGN "
           "§6.4 -- and the row itself is what refuses it");
 
-    // --- the two rows that know their milestone ------------------------------
-    {
-        Run run;
-        build(capsule("    satellite.variable.string s = \"a b\"\n"
-                      "    satellite.return(s.split(\" \"))\n"),
-              run);
-        call(run, "it", {});
-        check(ran_into(errors::Code::EVAL_NOT_BUILT),
-              "`split` refuses naming M16 -- it answers a list and there is "
-              "no list yet");
-    }
+    // --- the row that knew its milestone, and now answers ---------------------
+    //
+    // `split` REFUSED WITH S0720 NAMING M16 FROM M11 UNTIL 2026-09-06, on the
+    // grounds that "it answers a `satellite.container.list`, and PLAN.md §8
+    // builds the containers at M16". The containers landed, so the refusal
+    // became the implementation and this fixture flipped with it -- which is
+    // the shape a row that knows its milestone is supposed to have.
+    check(answers("    satellite.variable.string s = \"a b\"\n"
+                  "    satellite.return(s.split(\" \"))\n") == "[a, b]",
+          "`split` `1 6 1 10` answers a list, since M16");
 
     // --- the three that waited on M15, answering -----------------------------
     // The digits are float_test's to prove; what this suite owns is the
