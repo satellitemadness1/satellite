@@ -66,6 +66,19 @@ void absorbing()
     check(code_of(line_with(included, "#1.1")) == "#1.1.1",
           "include(satellite) is #1.1.1 alone: " + code_of(line_with(included, "#1.1")));
 
+    // AND THE BARE SHAPE, WHICH IS `return()`'S SIBLING AND ARRIVED FIVE
+    // MILESTONES LATER. unnumber.cpp names THIS form as the reason a `0`
+    // segment may not be skipped on the way back in -- "a reader that skipped
+    // zero, or treated it as a terminator, would refuse a form the writer
+    // emits" -- and until M17 the writer could not emit one, because the
+    // parser answered S0231. The arity in write_declarations.cpp was the
+    // constant 1 for the same span of time, so the first tree that could be
+    // built would have been written out as #1.1.2, the SPACESHIP row: wrong
+    // rather than unreachable, the moment it became reachable.
+    const std::string nothing_at_all = body("satellite.include()\n");
+    check(code_of(line_with(nothing_at_all, "#1.1")) == "#1.1.0",
+          "include() is #1.1.0 alone: " + code_of(line_with(nothing_at_all, "#1.1")));
+
     // A SPACESHIP'S NAME IS A USER NAME AND SURVIVES, at the row of the same
     // arity next door. This is the pair that makes the absorber a decision
     // rather than a rule: 1 1 1 and 1 1 2 are both `include` with one argument.

@@ -48,13 +48,13 @@ $(OBJ)/programs/main.o: $(SRC)/programs/main.cpp $(CXXFLAGS_STAMP) $(SYSTEM)/ver
 $(OBJ)/programs/opening.o: $(SRC)/programs/opening.cpp $(CXXFLAGS_STAMP) $(SYSTEM)/version.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(SRC)/programs/opening.cpp
 
-# THE TWO WINDOW OBJECTS, which need $(WINDOW_CFLAGS) and are therefore the one
+# THE WINDOW OBJECTS, which need $(WINDOW_CFLAGS) and are therefore the one
 # part of the tree the pattern rule above cannot compile: gtk4's headers are not
 # under src/ and no -I this build knows about reaches them.
 #
 # window.o also takes $(VERSION_DEFS), because `satl-term --version` prints the
-# same version_text() satl does. terminal.o does not -- it names no version, and
-# giving it the defines would rebuild it on every version bump for nothing.
+# same version_text() satl does. The others do not -- they name no version, and
+# giving them the defines would rebuild them on every version bump for nothing.
 # THE PATHS ARE THE PARENT'S, one directory deeper since satl-term's sources
 # moved into src/programs/satl-term/ on 2026-09-06. $(TERM_DIR) is inherited and
 # resolves through $(SRC), so the source side needs no spelling here; the target
@@ -63,11 +63,14 @@ $(OBJ)/programs/opening.o: $(SRC)/programs/opening.cpp $(CXXFLAGS_STAMP) $(SYSTE
 $(OBJ)/programs/satl-term/window.o: $(TERM_DIR)/window.cpp $(CXXFLAGS_STAMP) $(SYSTEM)/version.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) $(VERSION_DEFS) -c -o $@ $(TERM_DIR)/window.cpp
 
-$(OBJ)/programs/satl-term/terminal.o: $(TERM_DIR)/terminal.cpp $(CXXFLAGS_STAMP)
-	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(TERM_DIR)/terminal.cpp
-
-$(OBJ)/programs/satl-term/keys.o: $(TERM_DIR)/keys.cpp $(CXXFLAGS_STAMP)
-	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(TERM_DIR)/keys.cpp
+# The parent's pattern rule for the rest of them, with the output moved -- and
+# it beats the generic $(OBJ)/%.o above for the parent's reason: both match
+# $(OBJ)/programs/satl-term/keys.o and make takes the shorter stem, which is
+# this rule's `keys` against that rule's `programs/satl-term/keys`. Checking it
+# here is `make -n build/objects/programs/satl-term/keys.o` from
+# satellite_debian/, and what must appear in the answer is $(WINDOW_CFLAGS).
+$(OBJ)/programs/satl-term/%.o: $(TERM_DIR)/%.cpp $(CXXFLAGS_STAMP)
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $<
 
 # satellite.random, which is the ONE object that sees a third-party header.
 #

@@ -17,8 +17,16 @@
 // the other side of the pty, the key is the CHILD'S, and this file's only job
 // is to get out of its way. Every branch that consumes the key first
 // establishes that there is no child left to consume it.
+//
+// THE FILE MENU TAKES NO KEY AT ALL, and that is this paragraph's rule applied
+// to the newest way of asking for something. Every item in it is reachable by
+// mouse only -- there is no Ctrl-O, no Ctrl-S, no Ctrl-N -- so nothing the menu
+// can do is spelled with a chord some program on the other side of a pty might
+// have wanted. It is the one design here that cannot go wrong later, because
+// there is nothing to go wrong.
 
 #include "programs/satl-term/keys.hpp"
+#include "programs/satl-term/terminal.hpp"
 
 #include <gdk/gdkkeysyms.h>
 #include <vte/vte.h>
@@ -26,23 +34,23 @@
 namespace satellite {
 namespace {
 
-// The three things a keystroke has to know, as file statics for the reason
-// terminal.cpp gives about its own: a GTK callback carries one gpointer and
-// there are three of these.
+// The one thing a keystroke has to know: how to find the terminal it was meant
+// for.
 //
 // A STATIC IS NOT A LIMIT OF ONE WINDOW HERE, which is the objection it would
 // otherwise deserve. window.cpp registers the application G_APPLICATION_NON_UNIQUE
 // and argues why: a second `satl-term` is a second PROCESS, not a second window
-// in this one. The day M24's library opens two windows in one process this
-// becomes per-window state, and that is a change to this file rather than to
-// its callers.
-GtkWidget *the_window = nullptr;
-VteTerminal *the_terminal = nullptr;
-bool (*interpreter_running)() = nullptr;
-
-// Whether the window is being held open with its child gone. Never cleared,
-// because nothing brings a child back.
-bool any_key_closes = false;
+// in this one -- which is also what File > New window does, deliberately. The
+// day M24's library opens two windows in one process this becomes per-window
+// state, and that is a change to this file rather than to its callers.
+//
+// WHAT IS NO LONGER HERE is the state of the terminal itself, and the window
+// pointer with it. A window now holds as many terminals as somebody has opened
+// tabs, so "is it running" and "is it being held" moved to the terminal that
+// can answer them for itself; and closing goes out through terminal_finish
+// rather than through gtk_window_destroy, so this file no longer needs to know
+// which window it is in to end what is in front of it.
+GtkWidget *(*in_front)() = nullptr;
 
 // Control held, and nothing stranger than Shift with it.
 //
@@ -91,8 +99,8 @@ bool is_only_a_modifier(guint keyval)
     }
 }
 
-// Ctrl-C, and it means three different things because the window is in three
-// different states. In the order they are asked:
+// Ctrl-C, and it means three different things because the terminal in front is
+// in three different states. In the order they are asked:
 //
 // 1. A RUNNING INTERPRETER IS NOT THIS WINDOW'S TO STOP, so the key is passed
 //    through untouched and the kernel does the work. VTE writes 0x03 to the
@@ -117,25 +125,27 @@ bool is_only_a_modifier(guint keyval)
 //    copy of an error report that cannot be copied out of is a terminal that
 //    wastes the reason it was held open for.
 //
-// 3. NOTHING RUNNING AND NOTHING HIGHLIGHTED -- close the window. Ctrl-C keeps
-//    one promise across all three: it stops what is in front of you. With no
-//    run to stop and no selection to lift, what is in front of you is the
-//    window.
-gboolean control_c()
+// 3. NOTHING RUNNING AND NOTHING HIGHLIGHTED -- close it. Ctrl-C keeps one
+//    promise across all three: it stops what is in front of you. With no run to
+//    stop and no selection to lift, what is in front of you is this terminal --
+//    which is the window when there is one tab, and the tab when there are more.
+//    It goes out through terminal_finish so that a tab closes by the same road
+//    whether its child ended or somebody dismissed it.
+gboolean control_c(GtkWidget *terminal)
 {
-    if (interpreter_running && interpreter_running())
+    if (terminal_is_running(terminal))
         return GDK_EVENT_PROPAGATE;
 
-    if (vte_terminal_get_has_selection(the_terminal)) {
+    if (vte_terminal_get_has_selection(VTE_TERMINAL(terminal))) {
         // _format AND NOT vte_terminal_copy_clipboard(), which still exists in
         // this header and is marked deprecated in it. VTE_FORMAT_TEXT is what
         // the selection looks like to every other program; VTE_FORMAT_HTML
         // would paste this window's colours into whatever received it.
-        vte_terminal_copy_clipboard_format(the_terminal, VTE_FORMAT_TEXT);
+        vte_terminal_copy_clipboard_format(VTE_TERMINAL(terminal), VTE_FORMAT_TEXT);
         return GDK_EVENT_STOP;
     }
 
-    gtk_window_destroy(GTK_WINDOW(the_window));
+    terminal_finish(terminal);
     return GDK_EVENT_STOP;
 }
 
@@ -154,27 +164,35 @@ gboolean control_c()
 // vte_terminal_paste_clipboard writes the clipboard's text to the child
 // exactly as if it had been typed, which is what makes it work at a cooked
 // prompt and at M22's raw one without either of them learning about clipboards.
-gboolean control_v()
+gboolean control_v(GtkWidget *terminal)
 {
-    vte_terminal_paste_clipboard(the_terminal);
+    vte_terminal_paste_clipboard(VTE_TERMINAL(terminal));
     return GDK_EVENT_STOP;
 }
 
 gboolean on_key_pressed(GtkEventControllerKey *, guint keyval, guint,
                         GdkModifierType state, gpointer)
 {
+    // WHICH TERMINAL, ASKED FIRST AND ASKED EVERY TIME. The tab in front is
+    // whatever the notebook says it is at this instant, and a key that arrives
+    // when there is none -- the last tab closing, the window going away -- is
+    // nobody's to answer.
+    GtkWidget *terminal = in_front ? in_front() : nullptr;
+    if (!terminal)
+        return GDK_EVENT_PROPAGATE;
+
     if (is_control_chord(state)) {
         if (keyval == GDK_KEY_c || keyval == GDK_KEY_C)
-            return control_c();
+            return control_c(terminal);
         if (keyval == GDK_KEY_v || keyval == GDK_KEY_V)
-            return control_v();
+            return control_v(terminal);
     }
 
-    // The held window's "press any key", asked LAST so that the two bindings
-    // above keep their meaning in the state where the window has already said
+    // The held terminal's "press any key", asked LAST so that the two bindings
+    // above keep their meaning in the state where the screen has already said
     // any key will close it.
-    if (any_key_closes && !is_only_a_modifier(keyval)) {
-        gtk_window_destroy(GTK_WINDOW(the_window));
+    if (terminal_is_held(terminal) && !is_only_a_modifier(keyval)) {
+        terminal_finish(terminal);
         return GDK_EVENT_STOP;
     }
 
@@ -183,28 +201,24 @@ gboolean on_key_pressed(GtkEventControllerKey *, guint keyval, guint,
 
 } // namespace
 
-void install_key_bindings(GtkWidget *window,
-                          GtkWidget *terminal,
-                          bool (*interpreter_is_running)())
+void install_key_bindings(GtkWidget *window, GtkWidget *(*terminal_in_front)())
 {
-    the_window = window;
-    the_terminal = VTE_TERMINAL(terminal);
-    interpreter_running = interpreter_is_running;
+    in_front = terminal_in_front;
 
     // ON THE WINDOW AND IN THE CAPTURE PHASE. The terminal has keyboard focus
     // whenever there is anything to type at, and it keeps it after its child is
     // gone; a controller on the terminal in the bubble phase would be asked
     // only about keys VTE had already decided it did not want -- which is every
     // key except the ones this file exists to answer.
+    //
+    // ON THE WINDOW ALSO MEANS ONCE, WHICH IS WHY TABS COST THIS FILE NOTHING:
+    // a controller per terminal would be a second controller for the same
+    // press the moment there were two tabs, which is the thing the header
+    // refuses.
     GtkEventController *keys = gtk_event_controller_key_new();
     gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
     g_signal_connect(keys, "key-pressed", G_CALLBACK(on_key_pressed), nullptr);
     gtk_widget_add_controller(window, keys);
-}
-
-void close_on_any_key()
-{
-    any_key_closes = true;
 }
 
 } // namespace satellite

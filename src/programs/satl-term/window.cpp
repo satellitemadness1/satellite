@@ -28,7 +28,8 @@
 // in SCRATCH.md/SESSION.md; the author owns the numbering.
 
 #include "programs/opening.hpp"
-#include "programs/satl-term/terminal.hpp"
+#include "programs/satl-term/menu.hpp"
+#include "programs/satl-term/tabs.hpp"
 #include "system_facts/version.hpp"
 
 #include <cstdio>
@@ -83,12 +84,25 @@ void activate(GtkApplication *app, gpointer)
     gtk_window_set_default_size(GTK_WINDOW(window),
                                 requested.width, requested.height);
 
-    GtkWidget *terminal = satellite::terminal_new(window, child_file,
-                                                  child_args, hold_always);
+    // The menu above and the terminals below. A plain box and not a header bar:
+    // the title bar belongs to the desktop, which draws it with the buttons
+    // this machine's user has chosen and puts requested.title in it -- and a
+    // window that draws its own to hold four menu items has taken that over to
+    // save a row of pixels.
+    GtkWidget *stack = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_box_append(GTK_BOX(stack), satellite::menu_bar_new(window));
 
-    GtkWidget *scrolled = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled), terminal);
-    gtk_window_set_child(GTK_WINDOW(window), scrolled);
+    GtkWidget *tabs = satellite::tabs_new(window, hold_always);
+    gtk_widget_set_vexpand(tabs, TRUE);
+    gtk_box_append(GTK_BOX(stack), tabs);
+
+    gtk_window_set_child(GTK_WINDOW(window), stack);
+
+    // THE FIRST TAB IS THE COMMAND LINE'S, and it is opened by the same call
+    // File > New tab makes. A window started with a program and a window that
+    // was handed one an hour later hold the same kind of tab, which is what
+    // stops the menu from being a second way of doing this with its own bugs.
+    satellite::tabs_open_tab(child_file, child_args);
 
     gtk_window_present(GTK_WINDOW(window));
 }

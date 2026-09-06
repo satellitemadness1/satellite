@@ -201,6 +201,56 @@ void section_compile()
               "position that could read its answer is refused");
     }
 
+    // --- the three includes, and only one of them is a refusal --------------
+    //
+    // M17 OWNS TWO OF THESE ROWS AND M25 OWNS THE THIRD, which is the whole of
+    // why they are checked together: the boundary is invisible from inside any
+    // one of them. `include(satellite)` "is the one include form that does
+    // nothing" (DESIGN §3) and `include()` does nothing for WORD_NUMBERS
+    // §1.3's reason -- "0 means nothing in that position" -- so a program that
+    // asked for nothing to be included got exactly what it asked for. Only
+    // `include(spaceship)` names something this evaluator cannot load.
+    {
+        Run run;
+        build("satellite.include()\n"
+              "satellite.capsule it()\n{\n    satellite.return(7)\n}\n",
+              run);
+        check(run.built, "satellite.include() compiles");
+        check(answer_of(run, "it", {}) == "7",
+              "and it compiles to NO OP AT ALL -- the capsule beside it runs, "
+              "which is the only way to see that nothing was emitted");
+    }
+
+    {
+        Run run;
+        build("satellite.include(satellite)\n"
+              "satellite.capsule it()\n{\n    satellite.return(7)\n}\n",
+              run);
+        check(run.built, "satellite.include(satellite) compiles");
+        check(answer_of(run, "it", {}) == "7", "and it too is no op at all");
+    }
+
+    // A SPACESHIP IS THE ONE THAT REFUSES, IN ALL THREE OF ITS SPELLINGS. The
+    // bare identifier is the spelling both DESIGN §3 and WORD_NUMBERS §2.2
+    // use, and it was the one that did NOT reach this refusal until M17 -- it
+    // was diverted into scope lookup at resolve and came back as S0511,
+    // "nothing called `cargo` is in scope here". Checking all three is what
+    // says the boundary is drawn round the FORM and not round the way it
+    // happens to be written.
+    for (const char *const spelling :
+         {"cargo", "\"cargo\"", "satellite.console"}) {
+        Run run;
+        build(std::string("satellite.include(") + spelling + ")\n" +
+                  "satellite.capsule it()\n{\n    satellite.return(7)\n}\n",
+              run);
+        check(run.built,
+              std::string("satellite.include(") + spelling + ") compiles");
+        call(run, "it", {});
+        check(ran_into(errors::Code::EVAL_NOT_BUILT),
+              std::string("and S0720 refuses it naming M25, for `") + spelling +
+                  "` as for the other two");
+    }
+
     // --- a global, which is the one thing at the top level that runs ---------
     {
         Run run;

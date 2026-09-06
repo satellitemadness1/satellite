@@ -29,7 +29,22 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M13.md](M13.md) | 2026-09-04 | The clock and the dice — twelve tier rows, `now` and `sleep`, the sixth value arm, and the whole-call road the compiler turned out not to have. |
 | [M14.md](M14.md) | 2026-09-04 | The console's other half — the reader thread on its two-descriptor park, `input` in three shapes, `typed()`, the live facts, and the queue's escapes. The namespace is finished. |
 | [M15.md](M15.md) | 2026-09-04 | The float, the rounding rule — half away from zero, delegated and ratified — and the retune: assignment to a dial is a write the next division observes. |
-| [M16.md](M16.md) | **not in this tree** | A review of `prototype/M10`, likewise. |
+| [M16.md](M16.md) | 2026-09-06 | The containers and the search power — `list`, `map`, their thirty-four methods, and the empty list `satellite.main`'s parameter needed. |
+| [M17.md](M17.md) | 2026-09-06 | Hello world — DESIGN §3 runs, held to the file by a test; the include's bare shape parses at last, and a spaceship's name stops being a variable. |
+
+***The M16 row said "not in this tree — a review of `prototype/M10`" until
+2026-09-06, and it was stale for the length of a milestone.*** The file it
+points at was replaced that morning by the review of the real M16 —
+`1fb1df7`, the containers — and its own first paragraph says so. **The row was
+not**, so this table went on telling a reader that the tree's most recent
+milestone was a draft review, while the note beside it said the opposite.
+**That is this file's own rule failing in the one direction it was not written
+to catch**: the rule below is *a milestone with no commit is unlanded or
+mis-labelled, a milestone with no note is invisible*, and this was a milestone
+with both whose INDEX ROW had not moved. An index holds no fact of its own and
+therefore has nothing to check it — so what catches it is the same discipline
+that catches everything else here, which is writing the row in the commit that
+lands the work. *(Found at M17, on the way to adding the row below it.)*
 
 **The numbers in this table are PLAN §8's, and §8 renumbered on 2026-08-30.**
 M1 through M5 did not move, because a number written into the history is a fact
@@ -105,6 +120,14 @@ M7's and M8's the same day, M9's on 2026-09-01, M10's and M11's on 2026-09-03,
 and M12's through M15's on 2026-09-04, so the convention has now been used end
 to end **ten times** — a note that named its own hole, and a commit that
 filled it.
+
+*(**M17.md briefly carried the word twice**, on the afternoon it was written:
+once here in the opening, and once in its §5 for a `make startup` that had not
+been run yet because the tree was being edited in parallel. The measurement was
+taken the same sitting, so §5 no longer says it and this grep means one thing
+again. Recorded because it is the first time the check could have answered two
+questions at once, and the fix was to take the measurement rather than to
+qualify the word.)*
 
 **A tag would need no follow-up and is deliberately not the answer.** `git tag
 M5` records the same fact where nobody reading the tree can see it, and this

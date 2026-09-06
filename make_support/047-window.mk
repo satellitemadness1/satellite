@@ -42,8 +42,14 @@ WINDOW_LIBS   := $(shell pkg-config --libs $(WINDOW_PKGS) 2>/dev/null)
 # $(TERM_DIR) names in 030-directories.mk. The split above was already true of
 # the code; since 2026-09-06 it is true of the tree as well, so this program can
 # be worked on without src/programs/ having to be read past.
+# LISTED FROM THE OUTSIDE IN, which is also the order they are worth reading:
+# the command line, the menu it puts on the window, the tabs under that, one
+# terminal, the interpreter inside it, and what a keystroke means to any of them.
 TERM_SRCS = $(TERM_DIR)/window.cpp \
+            $(TERM_DIR)/menu.cpp \
+            $(TERM_DIR)/tabs.cpp \
             $(TERM_DIR)/terminal.cpp \
+            $(TERM_DIR)/child.cpp \
             $(TERM_DIR)/keys.cpp
 
 TERM_OBJS = $(TERM_SRCS:.cpp=.o)

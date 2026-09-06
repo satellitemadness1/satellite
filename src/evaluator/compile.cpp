@@ -202,8 +202,20 @@ Compiled Compiler::compile()
             // over. It is worth recording that the acceptance files caught it:
             // the fixtures in tests/eval_test are written and did not, because
             // a fixture opens with the capsule it is about.
+            //
+            // AND `satellite.include()` `1 1 0` DOES NOTHING FOR THE SAME
+            // REASON AND NOT AS A COURTESY. WORD_NUMBERS §1.3: "0 means
+            // nothing in that position." A program that asks for nothing to be
+            // included has asked for exactly what it got, so there is no
+            // spaceship here to refuse and nothing to load -- the two forms
+            // this milestone owns both compile to no op, and the third refuses
+            // naming M25. Testing against the two rather than against the one
+            // is why this reads as a list: adding `1 1 2` to it later would be
+            // the mistake, and it is the only row left.
             if (info(item).path !=
-                static_cast<words::PathId>(words::NodeId::INCLUDE_SATELLITE))
+                    static_cast<words::PathId>(words::NodeId::INCLUDE_SATELLITE) &&
+                info(item).path !=
+                    static_cast<words::PathId>(words::NodeId::INCLUDE_0))
                 top.push_back(not_built(
                     item, "`satellite.include` of a spaceship",
                     "PLAN.md §8 builds the spaceships at M25"));

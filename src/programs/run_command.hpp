@@ -22,9 +22,16 @@
 // arguments`, and an empty list is still a list -- so the parameter is M16's
 // and hello world is M17's. What runs here is the BARE `satellite.main()` form,
 // which is equally legal and always was: §6's grammar reads `"(" [ param_list ]
-// ")"`. A `main` that declares the parameter is met with a caret under it and
+// ")"`. ~~A `main` that declares the parameter is met with a caret under it and
 // the milestone that will bind it, rather than with an argument-count refusal
-// that names no milestone at all.
+// that names no milestone at all.~~
+//
+// AND SINCE M16 IT IS MET WITH THE LIST. The caret sentence above was true from
+// M10 until 2026-09-05 and is kept because it is what the split between these
+// two milestones was for; the arm that raised it is gone, and the .cpp's note
+// over the binding says what replaced it. M17 is where DESIGN §3 runs end to
+// end, and this file is still M10's -- the milestone that RUNS a program did
+// not change when the program it could run did.
 //
 // AND WHAT A PROGRAM ANSWERS IS NOT AN EXIT STATUS. See the note on
 // status_of() in the .cpp: the four statuses in programs/opening.hpp are

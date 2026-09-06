@@ -338,13 +338,40 @@ run.** "Nothing executes until M10, which is where a program first runs at all"
 stood here until that day; `console.satl` and `bare_main.satl` are what it was
 waiting for, and the author wrote both on the day the milestone was built.
 
-**None of the five older ones runs, and that is the boundary rather than a
-shortfall.** Every one of them declares `satellite.main`'s parameter — DESIGN
-§3's `satellite.container.list<satellite.variable.string> arguments`, an empty
-list and therefore **M16's** — so each answers S0720 with a caret under the word
-`arguments` and exits 3. That is the milestone boundary landing exactly where
-PLAN §8's M10 entry says it will: *"its done-when cannot be DESIGN §3."* Hello
-world is M17, after M16 builds the list its parameter needs.
+~~**None of the five older ones runs, and that is the boundary rather than a
+shortfall.**~~ **`hello_world.satl` runs, and has since M16 bound the list on
+2026-09-05.** Every one of the five declares `satellite.main`'s parameter —
+DESIGN §3's `satellite.container.list<satellite.variable.string> arguments`, an
+empty list and therefore **M16's** — so until then each answered S0720 with a
+caret under the word `arguments` and exited 3. That was the milestone boundary
+landing exactly where PLAN §8's M10 entry said it would: *"its done-when cannot
+be DESIGN §3."* **M17 is where DESIGN §3 became the done-when it is.** The
+sentence is struck rather than deleted, because the boundary it describes is what
+the split between M10 and M17 was *for*, and a paragraph that quietly stops
+saying so takes the reason with it.
+
+**The other four now stop somewhere further in, and where is worth recording
+because the parameter is no longer the answer for any of them.** *(Measured
+2026-09-06, each run with empty lines on stdin.)* `frames.satl` reaches line 25
+and `arguments.machine.cores`, which is **M20** and is DESIGN §7.7's object
+rather than the slot M16 filled — the two halves of the handover M17 writes
+down, seen in one program. `thread_test.satl` reaches line 8 and
+`satellite.thread.new`, **M23**. `advanced.satl` gets furthest of the four: it
+reads a line from the console and stops at line 10 on **S0711**, `"YOU ENTERED:
+" + local_user_input`, because `+` is arithmetic and DESIGN §6.6's table gives
+no operator a string reading — that is a question §13 has not been asked yet
+rather than a milestone anybody is waiting for, and naming it here is what
+stops it being rediscovered. `super_advanced.satl` stops at line 14 on
+**S0903**, a range refusal from `satellite.random.fast`. `class_test.satl`
+still does not parse, which is M26 and is what `parser_test` asserts about it.
+
+**And `hello_world.satl` is now an input to `parser_test` twice over.** *(M17,
+2026-09-06.)* It was already the file `section_roundtrip()` prints back; it is
+also the file DESIGN §3 is compared against, byte for byte, with DESIGN.md
+itself a prerequisite in `make_support/065-tests.mk` — the arrangement
+`WORD_NUMBERS.md` has with `words_test`. LAYOUT's own line about `example/`
+holds: these are **not samples**, and a file that a document claims to be a copy
+of is the strongest form of that claim this tree has.
 
 ## `tests/` — the suite
 

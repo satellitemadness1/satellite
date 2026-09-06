@@ -13,6 +13,7 @@
 #include "parser_test.hpp"
 
 #include "abstract_syntax_tree/ast.hpp"
+#include "abstract_syntax_tree/unparse.hpp"
 #include "satellite_words/words.hpp"
 
 #include <string>
@@ -175,6 +176,31 @@ void section_declarations()
     check(count_of(run("satellite.include(satellite)\n").ast(), NodeKind::Include) == 1,
           "as one Include over an expression, which is what makes "
           "satellite.include(spaceship) need no new rule at M25");
+
+    {
+        // `satellite.include()` `1 1 0` -- M17, and the form WORD_NUMBERS §1.3
+        // teaches the numbering with. Until then this was S0231, "expected an
+        // expression", against a §1.3 that says "a trailing 0 is written only
+        // where a program can actually write the bare form". DESIGN §6's
+        // `include_decl` now reads `"(" [ expression ] ")"`, which is the
+        // grammar bending to the authority over the numbering rather than the
+        // other way round.
+        const Program program = run("satellite.include()\n");
+        check(program.ok(),
+              "satellite.include() parses: " + program.first_error());
+        const satellite::NodeIndex node =
+            first_of(program.ast(), NodeKind::Include);
+        check(node != satellite::kNoNode, "as an Include node of its own");
+        check(program.ast()[node].a == satellite::kNoNode,
+              "with NO argument, which is how the tree spells §1.3's \"0 means "
+              "nothing in that position\" -- an include's argument is a node "
+              "and not a list, so an empty one is kNoNode");
+        check(satellite::unparse(program.ast()) == "satellite.include()\n",
+              "and it prints back as itself rather than as brackets round "
+              "nothing -- unparse(ast) and not unparse(ast, node), because the "
+              "second is unparse.cpp's INLINE form and a declaration is not "
+              "one");
+    }
 
     {
         const Program program = run(

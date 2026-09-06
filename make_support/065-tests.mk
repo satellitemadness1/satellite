@@ -126,9 +126,18 @@ PARSER_TEST_SRCS = $(ERRORS)/report.cpp \
 # line number. Editing any of the six must re-run the test that reads it --
 # including the two that fail, because a file that starts parsing is a finding
 # and not a pass.
+#
+# AND ON DESIGN.md, ADDED AT M17. section_roundtrip() reads §3's fenced block
+# and asserts it IS example/hello_world.satl byte for byte -- the guarantee §3
+# claims for itself in the words "the two must not be able to drift". So the
+# document is an input to this test exactly the way WORD_NUMBERS.md is an input
+# to words_test, and editing either side must re-run the check that compares
+# them. It is passed as argv[2] below rather than found, for the reason the run
+# list gives: a test binary must be runnable from anywhere.
 $(TESTS)/parser_test/parser_test: $(parser_test_SRCS) $(parser_test_HDRS) \
                                   $(PARSER_TEST_SRCS) $(WORDS)/words.def $(HDRS) \
-                                  $(wildcard example/*.satl) .cxxflags-stamp
+                                  $(wildcard example/*.satl) DESIGN.md \
+                                  .cxxflags-stamp
 	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/parser_test -o $@ \
 	    $(parser_test_SRCS) $(PARSER_TEST_SRCS)
 
@@ -467,7 +476,7 @@ $(TESTS)/console_test/console_test: $(console_test_SRCS) $(console_test_HDRS) \
 test: $(TESTBINS)
 	./$(TESTS)/words_test/words_test WORD_NUMBERS.md
 	./$(TESTS)/lexer_test/lexer_test example/hello_world.satl
-	./$(TESTS)/parser_test/parser_test example
+	./$(TESTS)/parser_test/parser_test example DESIGN.md
 	./$(TESTS)/satc_test/satc_test example
 	./$(TESTS)/reporter_test/reporter_test example
 	./$(TESTS)/limits_test/limits_test example

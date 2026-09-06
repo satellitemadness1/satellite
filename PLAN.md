@@ -45,9 +45,10 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 **Milestone 1 landed 2026-08-26, M1.5 on 2026-08-27, M2 on 2026-08-28, M3 on
 2026-08-29, M4, M4.5, M5 and M6 all on 2026-08-30, M7 and M8 on 2026-08-31,
 M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, M11 and M12 both on
-2026-09-03, and M13 and M14 both on 2026-09-04 — M13 the day its blockers
+2026-09-03, M13, M14 and M15 all on 2026-09-04 — M13 the day its blockers
 cleared, which no earlier milestone can say, and M14 behind it the same
-sitting, the day the author took its six open answers.** *(M1.5 is the window, and it
+sitting, the day the author took its six open answers — and M16 and M17 both
+on 2026-09-06.** *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
@@ -129,6 +130,31 @@ unbuilt, and saying so was the work. And every method refusal in the language
 now names its method: the machine's `text_of` answered a call's `(` token
 until M12's done-when demanded the refusal be BY NAME, so M11's sentences
 healed with it.
+
+**And since M17 DESIGN §3 runs, which is the program this language was described
+with.** `satl example/hello_world.satl` prints `Hello, World!` and exits 0 —
+the console is M10's, the empty `satellite.container.list` its parameter binds
+to is M16's, and what was left for this milestone was **saying what the
+parameter hands over, and the two of its own four paths that had never
+answered.** `satellite.include()` `1 1 0` did not parse, against a WORD_NUMBERS
+§1.3 that uses that exact form to teach what a trailing zero is; and
+`satellite.include(cargo)` — the bare identifier, which is the spelling both
+DESIGN §3 and WORD_NUMBERS §2.2 use for a spaceship — answered **S0511,
+"nothing called `cargo` is in scope here"**, while the same include written
+with a string or a path answered correctly with M25. **Neither was a hard
+problem and both were invisible**, because the only program anybody ran through
+them was hello world, which writes the third spelling. `example/hello_world.satl`
+is the done-when, and **DESIGN §3 is now held to it by a test** rather than by
+the intention to keep a copy — [MILESTONES/M17.md](MILESTONES/M17.md) §2 is
+that argument and §3 is what building it found.
+
+*(§1's running account below stops at M12, and this paragraph is the first
+since. M13, M14, M15 and M16 landed without one — the notes in
+[MILESTONES/](MILESTONES/) are what they have instead, and the table there is
+the index. Said rather than backfilled: four milestones of narrative written
+after the fact by somebody who did not build them would read like a record and
+be a reconstruction, and this file's own recount paragraphs already argue that
+a stale figure is worth more dated than quietly replaced.)*
 
 What exists: the `Makefile` as an index over eleven fragments under
 `make_support/`, **223 C++ files totalling 35,948 lines** plus `words.def` at
@@ -3583,7 +3609,9 @@ than comparators*; the search power is v1's comparator ladder, ported. Two diffe
 things that happen to land together, and saying so is what stops the next reader
 assuming "the search power" covered sorting.
 
-**M17 — hello world.** *(Split on 2026-08-28 from a milestone then called M8, as
+**M17 — hello world. LANDED 2026-09-06**, and
+[MILESTONES/M17.md](MILESTONES/M17.md) is the review. *(Split on 2026-08-28 from a
+milestone then called M8, as
 its second half; it was M8.B until the 2026-08-30 renumber. M10 is the other half,
 the console, seven positions above — and two numbers say that where one number and
 a letter hid it.)* DESIGN §3 runs, byte for byte. What is left once M10 has built
@@ -4581,6 +4609,22 @@ above**, counted mechanically against §2.2 rather than read off the prose:
 | M14 | 8 | | M28 | 1 |
 | M15 | 4 | | M29 | 3 |
 | | | | **total** | **227** |
+
+***And one of the 227 is named by no sentence above, which M17 found by trying
+to write its own four down.*** *(2026-09-06.)* `satellite` `1` — the root, and
+the runtime singleton — appears in WORD_NUMBERS §2.2's first row and in no
+milestone entry here. **M17 holds it**, by elimination over DESIGN §3: every
+other path hello world writes is named — `capsule` `1 2` at M7, `main` `1 3`,
+`console.display` `1 5 1` and `return`'s three shapes at M10, `container.list`
+`1 4 2` at M16, `variable.string` `1 6 1` at M11 — and the seven milestones
+below hold none. **The count was always 4 and nothing renumbers**; what was
+wrong is the sentence above it, which now says 226 rather than 227 unless this
+paragraph is read as part of it. **A table counted mechanically and a prose
+that names things one at a time agree on the total long after they stop
+agreeing on which**, and the total is the half that cannot show the drift.
+*(M17's three named rows are named in **M25's** entry rather than in M17's,
+while it explains which shape it is not taking — so a reader looking for M17's
+paths under M17 finds none of the four.)*
 
 **M1, M2, M4.5, M5, M9, M21 and M22 hold none, and that is right rather than a
 gap.** M2 registers all 227 and owns no behaviour; M5 and M9 build the machinery

@@ -224,12 +224,27 @@ first program in a language should show the shape every other program will use.
   special variable it becomes is specified.
 
 **This program is the target of PLAN.md §8's M17**, which is where it runs end to
-end. *(It said "milestone 8" until 2026-09-02, which is the number it had before
-the 2026-08-30 renumber — §8's opening carries the whole old-to-new table. The
-split is the point: the console it prints through landed at **M10** on
-2026-09-02 and this program still does not run, because its parameter is an empty
-`satellite.container.list` and that is **M16's**. `satl example/hello_world.satl`
-answers with a caret under the word `arguments` and says which milestone.)*
+end — **and since 2026-09-06 it does.** *(It said "milestone 8" until 2026-09-02,
+which is the number it had before the 2026-08-30 renumber — §8's opening carries
+the whole old-to-new table. The split is the point: the console it prints through
+landed at **M10** on 2026-09-02 and the program still did not run, because its
+parameter is an empty `satellite.container.list` and that is **M16's**; until M16
+landed, `satl example/hello_world.satl` answered with a caret under the word
+`arguments` and said which milestone. M16 bound the empty list on 2026-09-05 and
+M17 is where this section became a claim something checks.)*
+
+**And the byte-for-byte claim at the top of this section is now enforced rather
+than intended.** *(2026-09-06, M17.)* `tests/parser_test/roundtrip.cpp` reads
+this document, cuts the fenced block out from under this heading, and asserts it
+IS `example/hello_world.satl` — so an edit to either side that the other does
+not get fails `make test`. The sentence "the way to guarantee that is for this
+section to be a copy rather than a description" was true about the intent and
+could not be true about the outcome: **a copy is an intention until something
+compares them.** DESIGN.md is a prerequisite of that test in
+`make_support/065-tests.mk`, the same arrangement `WORD_NUMBERS.md` has with
+`words_test`. **The heading is load-bearing** — the test finds the block by
+`## 3. Hello world` — and it says so rather than failing silently if the
+heading is retitled.
 
 ---
 
@@ -585,7 +600,7 @@ program        := { top_level }
 top_level      := include_decl | capsule_decl | spacesuit_decl | global_decl
 global_decl    := "satellite" "." "library" "." IDENT [ "=" expression ]
 
-include_decl   := "satellite" "." "include" "(" expression ")"
+include_decl   := "satellite" "." "include" "(" [ expression ] ")"
 
 capsule_decl   := "satellite" "." "capsule" capsule_name
                   "(" [ param_list ] ")" [ returns_clause ] block
@@ -643,6 +658,29 @@ corrected stops being a record of what it said.
 That is left rather than forbidden: a grammar that refuses it needs a second
 production for no gain, and `satellite.public` inside `satellite.protected` is a
 question for M26's resolve, where access actually decides something.)*
+
+***`include_decl` read `"(" expression ")"` until 2026-09-06, and the numbering
+had said otherwise since the numbering was written.*** WORD_NUMBERS.md §2.2 gives
+`satellite.include()` the number **`1 1 0`**, and §1.3 uses that exact form to
+teach what a trailing zero is — *"`0` means nothing in that position. It is a real
+number in the sequence and not a piece of notation, which is why `include()` and
+`include(satellite)` are two different sequences rather than one path called two
+ways"* — under a rule that settles which document wins: **"a trailing `0` is
+written only where a program can actually write the bare form."** A program could
+not. `satellite.include()` was answered with **S0231, "expected an expression"**,
+which is this grammar refusing a call shape the numbering had assigned.
+
+**WORD_NUMBERS.md is the authority over the numbering by its own opening rule, so
+the grammar is what moved** — the same resolution §3 reached on 2026-08-28 when
+the parameter came back, and reached the same way. The brackets are now optional,
+`include()` means *include nothing* and does exactly that, and PLAN M17 owns the
+row. **Every other layer was already built for it**: `words.def` carried the row,
+`shape_of()` matched it at arity 0, the resolver already read a missing argument
+as zero arguments, the `.satc` writer already printed a zero-arity row without
+brackets, and `satellite_cache/unnumber.cpp` names *this form* as the reason a `0`
+segment may not be skipped when a cache is read back. **One production was the
+whole of the disagreement**, and the sentence stays visible for `suit_section`'s
+reason above.
 
 ### 6.1 Statement dispatch is on segment 1, not on shape
 

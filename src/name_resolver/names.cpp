@@ -288,7 +288,28 @@ void Resolver::statement_form(NodeIndex node, words::NodeId under,
         info(node).origin = Origin::Walked;
     }
 
-    if (!found.absorbs_argument)
+    // A SPACESHIP'S NAME IS THE SPACESHIP'S AND NOT A VARIABLE ANYBODY FORGOT
+    // TO DECLARE. `satellite.include(cargo)` is `1 1 2`, which WORD_NUMBERS
+    // §2.2 spells "a user-named spaceship" -- so walking into it as an
+    // expression met S0511, "nothing called `cargo` is in scope here -- it is
+    // not a parameter, not a local declared above this line, and not a capsule
+    // this file declares." Every clause of that sentence is true and the
+    // sentence is wrong: `cargo` was never going to be any of those three, and
+    // no edit to the program could make it one.
+    //
+    // THE OTHER TWO SPELLINGS ALREADY ANSWERED CORRECTLY, WHICH IS HOW IT WAS
+    // FOUND. `include("cargo")` and `include(satellite.console)` reach the
+    // compiler and get S0720 naming M25; only the bare identifier -- the one
+    // spelling both DESIGN §3 and WORD_NUMBERS use -- was diverted into scope
+    // lookup on the way. Leaving the name alone puts all three on the same
+    // sentence, and it stays right after M25 lands: a spaceship is looked up
+    // among spaceships, never among locals.
+    const bool names_a_spaceship =
+        found.found() &&
+        found.id == static_cast<words::PathId>(words::NodeId::INCLUDE_SPACESHIP) &&
+        has_argument && ast_[n.a].kind == NodeKind::Name;
+
+    if (!found.absorbs_argument && !names_a_spaceship)
         visit_expression(n.a);
 }
 

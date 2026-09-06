@@ -68,9 +68,33 @@ NodeIndex Parser::include_decl()
     if (!expect_punct("(", "after satellite.include"))
         return kNoNode;
     open_bracket();
-    const NodeIndex what = expression();
+
+    // `satellite.include()` IS A FORM AND NOT AN OMISSION, and it is the form
+    // WORD_NUMBERS §1.3 teaches the whole numbering with: `1 1 0`, where "0
+    // means nothing in that position -- a real number in the sequence and not
+    // a piece of notation, which is why `include()` and `include(satellite)`
+    // are two different sequences rather than one path called two ways." §1.3
+    // then states the rule this parse answers: "a trailing 0 is written only
+    // where a program can actually write the bare form."
+    //
+    // UNTIL M17 NOTHING HERE COULD, AND EVERY OTHER LAYER WAS ALREADY BUILT
+    // FOR IT -- which is what makes this one line rather than a feature.
+    // words.def carries INCLUDE_0 at `1 1 0`; shape_of() matches it at arity
+    // 0; statement_form() already reads `n.a == kNoNode` as argc 0;
+    // satellite_cache/write.cpp's form() already prints a zero-arity row with
+    // no parentheses; and unnumber.cpp names THIS form as the reason a `0`
+    // segment may not be skipped -- "so a reader that skipped zero, or treated
+    // it as a terminator, would refuse a form the writer emits." The writer
+    // could not emit one, because the parser answered S0231 and asked for an
+    // expression. DESIGN §6's `include_decl` said `"(" expression ")"` and
+    // WORD_NUMBERS is the authority over the numbering, so the grammar is what
+    // moved: `"(" [ expression ] ")"`.
+    NodeIndex what = kNoNode;
+    const bool nothing_there = at_punct(")");
+    if (!nothing_there)
+        what = expression();
     close_bracket();
-    if (what == kNoNode)
+    if (!nothing_there && what == kNoNode)
         return kNoNode;
     if (!expect_punct(")", "to close satellite.include", opener))
         return kNoNode;

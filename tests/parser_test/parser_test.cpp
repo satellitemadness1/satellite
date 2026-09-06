@@ -29,6 +29,7 @@ namespace parser_test {
 
 int failures = 0;
 std::string example_directory = "example";
+std::string design_document = "DESIGN.md";
 
 void check(bool ok, const std::string &what)
 {
@@ -89,6 +90,8 @@ int main(int argc, char **argv)
 {
     if (argc > 1)
         parser_test::example_directory = argv[1];
+    if (argc > 2)
+        parser_test::design_document = argv[2];
 
     parser_test::section_arena();
     parser_test::section_expressions();

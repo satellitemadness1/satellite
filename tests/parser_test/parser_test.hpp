@@ -34,6 +34,18 @@ void check(bool ok, const std::string &what);
 // same argument words_test takes for WORD_NUMBERS.md and for the same reason.
 extern std::string example_directory;
 
+// Where DESIGN.md is, taken from argv[2] and defaulting to the tree root.
+//
+// A DOCUMENT AS AN INPUT TO A TEST, WHICH IS words_test'S ARRANGEMENT AND NOT A
+// NEW ONE. That test reads WORD_NUMBERS.md because the numbering is a document
+// with a registry beside it; this one reads DESIGN.md because §3 is a PROGRAM
+// with an acceptance file beside it, and §3 states the property in its own
+// words -- "that is example/hello_world.satl, byte for byte, comments included
+// ... so the two must not be able to drift; the way to guarantee that is for
+// this section to be a copy rather than a description." A copy is an
+// intention. section_roundtrip() is the guarantee.
+extern std::string design_document;
+
 // A parse and the numbering it defined names into.
 //
 // THE TWO TRAVEL TOGETHER BECAUSE ONLY ONE OF THEM HOLDS THE NAMES. A user

@@ -44,6 +44,48 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
           "because the NUMBER is what names it (SATC §5.1 step 3)");
     check(resolved_to(run, "1 15 1"), "satellite.return(satellite) is 1 15 1");
 
+    // THE INCLUDE'S OTHER TWO ROWS, AND M17 IS WHERE BOTH BEGAN TO ANSWER.
+    {
+        // `satellite.include()` `1 1 0`. statement_form() has read
+        // `n.a == kNoNode` as argc 0 since it was written and shape_of() has
+        // matched INCLUDE_0 at arity 0 since words.def carried the row -- so
+        // this check would have passed on the day it was written, if a parser
+        // existed that could hand it a tree. Until M17 none did.
+        Run nothing_at_all;
+        resolve_source("satellite.include()\n"
+                       "satellite.capsule it()\n{\n}\n",
+                       nothing_at_all);
+        check(nothing_at_all.parsed_clean() && nothing_at_all.resolved.ok(),
+              "satellite.include() resolves clean");
+        check(resolved_to(nothing_at_all, "1 1 0"),
+              "and it is 1 1 0 and not 1 1 2 -- WORD_NUMBERS §1.3's \"0 means "
+              "nothing in that position\", slotted by arity like every other "
+              "shape");
+    }
+
+    {
+        // `satellite.include(cargo)` `1 1 2`, AND THE NAME IS NOT LOOKED UP.
+        // This raised S0511 -- "nothing called `cargo` is in scope here" --
+        // until M17, because the walk went on into the argument as an
+        // ordinary expression. Every clause of that sentence was true and the
+        // sentence was wrong: a spaceship is never a parameter, a local or a
+        // capsule, and no edit to the program could make it one. The other two
+        // spellings, `include("cargo")` and `include(satellite.console)`, were
+        // always clean here, which is how the odd one out was found.
+        Run ship;
+        resolve_source("satellite.include(cargo)\n"
+                       "satellite.capsule it()\n{\n}\n",
+                       ship);
+        check(ship.parsed_clean() && ship.resolved.ok(),
+              "satellite.include(cargo) resolves clean -- a spaceship's name "
+              "is the spaceship's and not a variable anybody forgot to "
+              "declare");
+        check(resolved_to(ship, "1 1 2"),
+              "and it is 1 1 2, which is the row M25 builds -- the refusal a "
+              "program gets today comes from the compiler and names that "
+              "milestone");
+    }
+
     // THE STATEMENT FORMS THE PARSER DOES NOT BUILD AS A CHAIN, and there are
     // exactly two. `satellite.return(x)` is a Return node and
     // `satellite.include(satellite)` is an Include node, so neither reaches the

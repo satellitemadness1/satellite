@@ -36,25 +36,38 @@ $(PROGRAMS)/main.o: $(PROGRAMS)/main.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 $(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/opening.cpp
 
-# THE TWO WINDOW OBJECTS, which need $(WINDOW_CFLAGS) and are therefore the one
+# THE WINDOW OBJECTS, which need $(WINDOW_CFLAGS) and are therefore the one
 # part of the tree the pattern rule above cannot compile: gtk4's headers are not
 # under src/ and no -I this build knows about reaches them. 047-window.mk is
 # where those flags come from and where the module name is argued.
 #
 # window.o also takes $(VERSION_DEFS), because `satl-term --version` prints the
-# same version_text() satl does. terminal.o does not -- it names no version, and
-# giving it the defines would rebuild it on every version bump for nothing.
+# same version_text() satl does. The others do not -- they name no version, and
+# giving them the defines would rebuild them on every version bump for nothing.
 $(TERM_DIR)/window.o: $(TERM_DIR)/window.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) $(VERSION_DEFS) -c -o $@ $(TERM_DIR)/window.cpp
 
-$(TERM_DIR)/terminal.o: $(TERM_DIR)/terminal.cpp .cxxflags-stamp
-	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(TERM_DIR)/terminal.cpp
-
-# The third, and it takes no $(VERSION_DEFS) for terminal.o's reason: the
-# keyboard names no version. It needs $(WINDOW_CFLAGS) because it asks VTE what
-# is selected and GDK what a keyval is.
-$(TERM_DIR)/keys.o: $(TERM_DIR)/keys.cpp .cxxflags-stamp
-	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $(TERM_DIR)/keys.cpp
+# AND ONE PATTERN RULE FOR ALL THE REST OF THEM, which is a change from the
+# three explicit rules this held until File > New tab made them six. Six copies
+# of one command line is a list somebody adds a file to and forgets, and what
+# they get for forgetting is a gtk header not found, forty lines from the file
+# they added.
+#
+# THE SHORTEST STEM WINS, and that is what makes this beat the generic
+# $(SRC)/%.o above rather than tying with it: both patterns match
+# src/programs/satl-term/keys.o, the generic one with a stem of
+# `programs/satl-term/keys` and this one with `keys`, and make considers
+# matching pattern rules in order of stem length, shortest first. Checked with
+# `make -n $(TERM_DIR)/keys.o`, which must print a command carrying
+# $(WINDOW_CFLAGS); if it ever does not, this rule has stopped being reached and
+# every object here is being compiled without gtk on its include path. That
+# failure is LOUD -- a header that cannot be found -- which is why the subtlety
+# is affordable.
+#
+# window.o is above and not here because an explicit rule outranks any pattern,
+# which is how it keeps its $(VERSION_DEFS) without opting out of anything.
+$(TERM_DIR)/%.o: $(TERM_DIR)/%.cpp .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) -c -o $@ $<
 
 # satellite.random, which is the ONE object that sees a third-party header.
 #

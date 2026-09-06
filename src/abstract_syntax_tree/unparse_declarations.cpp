@@ -38,8 +38,15 @@ void Printer::expand_declaration(NodeIndex node)
     switch (n.kind) {
     case NodeKind::Include:
         pad();
+        // AND `satellite.include()` `1 1 0` PRINTS BACK AS ITSELF. An
+        // include's argument is a node and not a list -- ast.hpp's table says
+        // so -- so "nothing there" is kNoNode, and expand_expression() has no
+        // reading for one. The guard is what keeps the round-trip
+        // tests/parser_test/roundtrip.cpp asserts true for a form that only
+        // began to parse at M17.
         say("satellite.include(");
-        expr(n.a);
+        if (n.a != kNoNode)
+            expr(n.a);
         say(")");
         newline();
         return;

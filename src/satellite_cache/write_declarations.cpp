@@ -46,8 +46,17 @@ void Writer::expand_declaration(NodeIndex node)
         // name is a user name and stays one, at 1.1.2.
         const bool reserved =
             n.a != kNoNode && ast_[n.a].kind == NodeKind::Satellite;
+        // THE ARITY IS COUNTED AND NOT ASSUMED, which it was until M17: this
+        // read `1` flat, so `satellite.include()` would have been written out
+        // as `#1.1.2` -- the SPACESHIP row -- had the parser been able to
+        // build one. It could not, so the wrong constant was unreachable
+        // rather than wrong, and it became reachable the moment `1 1 0`
+        // parsed. form() then prints a zero-arity row with no parentheses of
+        // its own, and unnumber.cpp reads `#1.1.0` back as the same three
+        // words.
+        const int argc = n.a != kNoNode ? 1 : 0;
         const PathMatch shape =
-            shape_path(words::NodeId::SATELLITE, "include", 1, reserved);
+            shape_path(words::NodeId::SATELLITE, "include", argc, reserved);
         line_starts();
         form(shape, n.a);
         line_ends();

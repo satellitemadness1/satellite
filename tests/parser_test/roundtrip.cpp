@@ -79,6 +79,36 @@ void round_trips(const std::string &path)
           path + " defines the same names the second time round");
 }
 
+// DESIGN §3's fenced block, or the empty string.
+//
+// A TEXT PASS OVER THE DOCUMENT AND NOT A MARKDOWN PARSER. What it looks for
+// is the heading DESIGN.md's own table of sections gives -- `## 3. Hello
+// world` -- and then the first ```satellite fence under it, which is how every
+// program in that file is written. Anything looser would find a different
+// block on the day §3 grows a second one; anything stricter would fail on a
+// heading somebody retitled, and a test that breaks when prose is edited is a
+// test that gets deleted.
+std::string design_section_three(const std::string &document)
+{
+    const std::string heading = "\n## 3. Hello world\n";
+    const size_t at = document.find(heading);
+    if (at == std::string::npos)
+        return std::string();
+
+    const std::string opener = "```satellite\n";
+    const size_t opens = document.find(opener, at);
+    if (opens == std::string::npos)
+        return std::string();
+    const size_t body = opens + opener.size();
+
+    const size_t closes = document.find("\n```", body);
+    if (closes == std::string::npos)
+        return std::string();
+    // The newline the closing fence sits on is the program's last, so it is
+    // kept -- a .satl file ends with one and the comparison is byte for byte.
+    return document.substr(body, closes + 1 - body);
+}
+
 } // namespace
 
 void section_roundtrip()
@@ -116,6 +146,43 @@ void section_roundtrip()
                   "}\n",
               "hello world prints back as DESIGN §3 writes it, less the two "
               "comments and the blank lines the lexer does not keep");
+    }
+
+    // -- and DESIGN §3 IS the file, byte for byte ----------------------------
+
+    {
+        // THE CHECK ABOVE CANNOT MAKE THIS CLAIM, WHICH IS WHY BOTH ARE HERE.
+        // It compares the file against §3 TRANSCRIBED INTO A STRING LITERAL
+        // twenty lines up -- so the parser and the printer are held to §3, and
+        // §3 itself is free to drift from the program it says it is a copy of.
+        // Three things would then disagree with each other in two directions,
+        // and the tree's rule is that "prose may explain a number; it may never
+        // be the only place the number lives."
+        //
+        // PLAN M17 IS WHY IT IS THIS FILE AND NOT ANOTHER. Its done-when is
+        // "example/hello_world.satl, rather than a paragraph describing one",
+        // and DESIGN §3 answers that by BEING the file: "the two must not be
+        // able to drift; the way to guarantee that is for this section to be a
+        // copy rather than a description." A copy is an intention until
+        // something compares them, and until M17 nothing did.
+        std::string document;
+        std::string source;
+        if (!read_file(design_document, document)) {
+            check(false, "cannot read " + design_document +
+                             " -- DESIGN §3 is an INPUT to this test");
+        } else if (!read_file(example_directory + "/hello_world.satl", source)) {
+            check(false, "cannot read hello_world.satl");
+        } else {
+            const std::string section = design_section_three(document);
+            check(!section.empty(),
+                  "DESIGN §3 has a ```satellite block under `## 3. Hello "
+                  "world` -- if this fails the heading moved, and the check "
+                  "below is not being made at all");
+            check(section == source,
+                  "DESIGN §3's program IS example/hello_world.satl, byte for "
+                  "byte, comments included -- §3 says so about itself and PLAN "
+                  "M17 rests its done-when on it");
+        }
     }
 
     // -- A string literal survives its escapes -------------------------------
