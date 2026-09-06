@@ -3488,7 +3488,7 @@ agree with it, and the honest position is that a default arrived by porting rath
 than by decision. **`tests/number_test/arithmetic.cpp` asserts the current
 behaviour**, so changing it is a visible edit and not a silent drift.
 
-**M16 — containers and the search power. LANDED 2026-09-06**, and
+**M16 — containers and the search power. LANDED 2026-09-06** (`1fb1df7`), and
 [MILESTONES/M16.md](MILESTONES/M16.md) is the review. `satellite.container.list`,
 `satellite.container.map`, **and their methods** — the map's nine `1 4 1 1`–`1 4 1 9`
 and the list's twenty-five `1 4 2 1`–`1 4 2 25` — plus the search power ported close
