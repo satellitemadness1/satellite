@@ -141,8 +141,14 @@ not the window's, and that file was being edited in another session.
 
 ## State
 
-The keyboard work and the folder move are committed. What is **not** done, and
-was left rather than missed:
+The keyboard work and the folder move are commit `a719430`, on branch
+`milestones-install-and-no-console-handover`. It was staged hunk by hunk: the
+M16 containers work was live in another session inside `030-directories.mk` and
+`040-sources.mk`, and landing it half-finished under this message would have
+left a commit whose `SATL_SRCS` named source files the repository did not carry.
+The committed tree was extracted and built on its own to prove it.
+
+What is **not** done, and was left rather than missed:
 
 - `LAYOUT.md` still lists `src/programs/window.cpp` and `terminal.cpp` at their
   old paths and has no rows for `keys.*`. Path citations in `PLAN.md`,
