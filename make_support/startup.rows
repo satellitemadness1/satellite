@@ -95,6 +95,16 @@ NOTE    M17 -- hello world. MILESTONES/M17.md §5
 # figure and is why the claim above is about the SHAPE of the table rather than
 # about one row.
 
+# AND SINCE 2026-09-06 A BARE `make startup` IS IN THE BASELINE'S LINK MODE.
+# 048-static.mk's default moved from STATIC=0 to STATIC=full that day, which
+# closes a trap this file could describe and not prevent: the LINK line below
+# has said `full` since M6, while `make startup` inherited STATIC and therefore
+# measured a DYNAMIC build unless somebody thought to pass STATIC=full. The
+# harness caught it every time -- it prints "THE ms COLUMN IS NOT COMPARABLE"
+# and refuses to pretend -- but catching it is not the same as not doing it, and
+# M17 did it first and read a whole dynamic table before noticing. `make startup
+# STATIC=0` is still legal and still says so in its own output.
+
 FLOOR | 0.570
 
 ROW | 0.908 |

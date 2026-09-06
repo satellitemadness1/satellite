@@ -16,15 +16,15 @@
 # directory it was being loaded out of. STATIC=full is the answer to that, and
 # it is the reason the installer has a --static.
 #
-#     STATIC=0     (default) link as before. The right choice for a build you
-#                  are going to run yourself out of your own home directory.
+#     STATIC=0     link as before. What a bare `make` did until 2026-09-06.
 #     STATIC=1     -static-libstdc++ -static-libgcc. Drops the two libraries
 #                  that were coming out of a home directory; libc and libm stay
 #                  dynamic, which is what every distribution wants and what
 #                  every machine already has in /lib64.
-#     STATIC=full  -static. No dynamic dependencies at all: `ldd` answers "not
-#                  a dynamic executable" and the file runs on a machine with no
-#                  toolchain, no gcc and a different libc version.
+#     STATIC=full  (default) -static. No dynamic dependencies at all: `ldd`
+#                  answers "not a dynamic executable" and the file runs on a
+#                  machine with no toolchain, no gcc and a different libc
+#                  version.
 #
 # satl-term IS NEVER FULLY STATIC and STATIC=full does not make it one. It links
 # gtk4 and vte, which pull in a long tail of shared libraries that dlopen their
@@ -55,7 +55,56 @@
 #
 # Said here rather than only there, because this is the file that decides satl
 # is shipped statically, and the cost of that decision belongs beside it.
-STATIC ?= 0
+
+# ------------------------------------------------------------------------------
+# THE DEFAULT WAS 0 UNTIL 2026-09-06 AND IS NOW full. The author's decision, in
+# their own words: "Why build something without everything needed to run it
+# included in it?"
+# ------------------------------------------------------------------------------
+#
+# WHAT THE OLD DEFAULT SAID FOR ITSELF, kept because it was not wrong: "the
+# right choice for a build you are going to run yourself out of your own home
+# directory." A dynamic link is quicker, and a binary you only ever start from
+# the directory it was built in has no portability problem to solve.
+#
+# WHAT DECIDED IT THE OTHER WAY, measured at M17 on this machine:
+#
+#                            static      dynamic
+#     shared objects to map       0            4
+#     peak resident memory  3,016 KB     4,368 KB
+#     startup, absolute      0.908 ms     1.687 ms
+#
+# THE STATIC BUILD IS THE BIGGER FILE AND THE SMALLER PROCESS, which is the
+# result that settles it. A dynamic satl maps the whole of libstdc++ to use a
+# fraction of it; a static one carries only what the linker kept. It also starts
+# 0.78 ms sooner, because there is no loader to run, nothing to relocate and no
+# PLT to indirect through. Reproduce it with `/usr/bin/time -f %M` over the two
+# builds -- the numbers above are best-of-five.
+#
+# AND IT REMOVES A TRAP IN THE MEASUREMENT ITSELF. make_support/startup.rows
+# takes its baseline at STATIC=full, while `make startup` inherited this
+# variable -- so the obvious command measured a build that was NOT comparable to
+# the table it printed itself against, and the harness said so in a paragraph
+# nobody reads until they have already been caught by it. M17 was caught by it.
+# With the default at full the two agree, and the paragraph becomes a note about
+# `make startup STATIC=0` rather than about the normal case.
+#
+# WHAT IT COSTS, STATED RATHER THAN DISCOVERED: `make` now REFUSES on a machine
+# without glibc-static and libstdc++-static, with the error below naming the
+# package. That is a real regression for a first checkout on a bare box and it
+# was raised before the change was made. `make STATIC=0` is the one-word answer,
+# and BOTH errors were edited to say so on the day the default moved -- they
+# named the package and not the escape hatch, which is the wrong half to omit
+# from a message that now greets a first build rather than a deliberate one. `make -s static-available` reports what a machine can
+# do without attempting a link.
+#
+# THE INSTALLER IS UNAFFECTED AND ALWAYS WAS. install_support/050-building.sh
+# resolves its own STATIC= and passes it explicitly, asking `make -s
+# static-available` when it is set to auto -- so an install has been static
+# since 2026-08-28 and this change does not touch it. What changed is only what
+# a developer's bare `make` produces, which is now the same thing an install
+# ships. Two things that were different for no reason a reader could see.
+STATIC ?= full
 
 # ASKED OF THE COMPILER, not looked for in a list of directories this file made
 # up. -print-file-name answers with an absolute path when the library is there
@@ -75,14 +124,16 @@ ifneq ($(STATIC),0)
 ifeq ($(STATIC_LIBSTDCXX),)
 $(error STATIC=$(STATIC) needs a static libstdc++ and $(CXX) cannot find one. \
 On AlmaLinux/RHEL: dnf --enablerepo=crb install libstdc++-static. \
-On Debian/Ubuntu it is part of the g++ package and should already be there)
+On Debian/Ubuntu it is part of the g++ package and should already be there. \
+Or build `make STATIC=0` for a dynamic satl that runs fine on this machine)
 endif
 
 # THE FLAGS THE THREE PLAIN BINARIES GET.
 ifeq ($(STATIC),full)
 ifeq ($(STATIC_LIBC),)
 $(error STATIC=full needs a static libc and $(CXX) cannot find one. \
-On AlmaLinux/RHEL: dnf install glibc-static. Or use STATIC=1, which links \
+On AlmaLinux/RHEL: dnf install glibc-static. Or `make STATIC=0` for a \
+dynamic build, or STATIC=1, which links \
 the C++ runtime statically and leaves libc dynamic)
 endif
 STATIC_LDFLAGS = -static
