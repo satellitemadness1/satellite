@@ -36,6 +36,7 @@ SCALARS  = $(SRC)/satellite_scalars
 LIMITS   = $(SRC)/machine_limits
 NUMBER   = $(SRC)/satellite_number
 PARSER   = $(SRC)/parser
+PROMPT   = $(SRC)/satellite_prompt
 RESOLVE  = $(SRC)/name_resolver
 RANDOM   = $(SRC)/satellite_random
 STRING   = $(SRC)/satellite_string

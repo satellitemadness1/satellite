@@ -466,7 +466,16 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(TREE)/unparse.cpp \
             $(TREE)/unparse_declarations.cpp \
             $(TREE)/unparse_expressions.cpp \
-            $(WORDS)/dump.cpp
+            $(WORDS)/dump.cpp \
+            $(PROMPT)/raw_mode.cpp \
+            $(PROMPT)/keys.cpp \
+            $(PROMPT)/history.cpp \
+            $(PROMPT)/editor.cpp \
+            $(PROMPT)/render.cpp \
+            $(PROMPT)/line_reader.cpp \
+            $(PROMPT)/block.cpp \
+            $(PROMPT)/session.cpp \
+            $(PROMPT)/prompt.cpp
 
 SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 
@@ -563,7 +572,16 @@ HDRS = $(SYSTEM)/version.hpp \
        $(WORDS)/words_invariants.hpp \
        $(WORDS)/words_digest.hpp \
        $(WORDS)/words_runtime.hpp \
-       $(WORDS)/dump.hpp
+       $(WORDS)/dump.hpp \
+       $(PROMPT)/raw_mode.hpp \
+       $(PROMPT)/keys.hpp \
+       $(PROMPT)/history.hpp \
+       $(PROMPT)/editor.hpp \
+       $(PROMPT)/render.hpp \
+       $(PROMPT)/line_reader.hpp \
+       $(PROMPT)/block.hpp \
+       $(PROMPT)/session.hpp \
+       $(PROMPT)/prompt.hpp
 
 # Every object in the tree, which is what 060-compile.mk hangs the header
 # dependency on. The haswell objects and the detector are named here rather than

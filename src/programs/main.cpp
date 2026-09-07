@@ -28,6 +28,7 @@
 #include "programs/resolve_command.hpp"
 #include "programs/run_command.hpp"
 #include "programs/window_handover.hpp"
+#include "satellite_prompt/prompt.hpp"
 #include "system_facts/version.hpp"
 
 #include <cstddef>
@@ -63,14 +64,25 @@ bool readable(const std::string &path)
 // guess which one they are in. A misspelled path reported as "not built yet"
 // is a bug report waiting to be filed.
 //
-// ONE CALLER LEFT AFTER M10, AND IT PASSES NO FILE. `--repl` is M22's and names
-// no path, so the block below is unreached today -- kept because the next arm
-// to arrive with a file behind it will want it, and because deleting the half
-// of a function that states a rule is how the rule gets rediscovered. Running a
-// file was this function's reason for existing from M1 to M10 and is now
+// ONE CALLER LEFT AFTER M10, AND IT PASSES NO FILE. `--repl` was M22's and named
+// no path, so the block below was unreached -- kept because the next arm to
+// arrive with a file behind it will want it, and because deleting the half of a
+// function that states a rule is how the rule gets rediscovered. Running a file
+// was this function's reason for existing from M1 to M10 and is now
 // programs/run_command.cpp's.
-int not_yet(const std::string &what, const std::string &file,
-            const char *milestone)
+//
+// AND M22 TOOK THE LAST CALLER, ON 2026-09-07. The prompt landed, `--repl`
+// dispatches to it, and this function now has none at all -- which -Wall says
+// out loud, so the attribute is here to keep the build clean rather than to
+// hide anything. THE AUTHOR'S CALL IS WHETHER IT GOES: the sentence above is an
+// argument for keeping it and it is still true (M24's windows and M25's second
+// file are both arms with a file behind them), and the counter-argument is this
+// tree's own rule about code nothing reaches -- satellite_console/console.cpp
+// removed a guard "against an impossible state" for exactly that reason.
+// MILESTONES/M22.md §6 carries it as open rather than settling it here, because
+// deleting an argument somebody wrote down is not a warning fix.
+[[maybe_unused]] int not_yet(const std::string &what, const std::string &file,
+                             const char *milestone)
 {
     fprintf(stderr, "satl: %s is not built yet -- it lands at %s.\n",
             what.c_str(), milestone);
@@ -317,8 +329,13 @@ int main(int argc, char **argv)
         return satellite::number_command(args);
     }
 
+    // M22's CONSUMER. This arm answered `not_yet` from M1 until the prompt
+    // landed, which is what let M1.5 be demonstrated before there was anything
+    // to demonstrate it with -- PLAN M22: "`satl --repl` answers 'not built
+    // yet' and exits EXIT_NOT_YET, so the window stays up with the explanation
+    // on it."
     if (first == "--repl")
-        return not_yet("the prompt", std::string(), "M22");
+        return satellite::prompt::run_prompt();
 
     // M10's CONSUMER, AND THE ONE THIS BINARY HAS BEEN POINTING AT SINCE M1.
     // `--run` takes an operand, so a missing one is a usage error rather than a

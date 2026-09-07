@@ -71,6 +71,14 @@ struct Built {
 // the one renderer as it is found; the answer is whether there is a program.
 bool build_program(const std::string &path, Built &out);
 
+// The same, over text already in `out.text` -- M22's prompt, which builds a
+// program out of what somebody typed and never writes it anywhere. `name` heads
+// each diagnostic in place of a path.
+// `report` false hands the diagnostics back in `out` instead of printing them,
+// which is what M22's prompt needs in order to rebase their line numbers onto
+// the line the person actually typed.
+bool build_source(const std::string &name, Built &out, bool report = true);
+
 // The two numbers the evaluator obeys and does not choose, from the file beside
 // the binary -- and, since M11, the Ctrl-C flag it watches and does not own.
 //
