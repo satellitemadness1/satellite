@@ -52,7 +52,18 @@ struct Session {
 
     // Whether to keep this terminal up after a CLEAN exit. A failing child
     // holds it regardless; see on_child_exited.
+    //
+    // NOT CONSTANT FOR THE LIFE OF A TAB, SINCE M22. It follows what the tab is
+    // RUNNING -- set for the prompt, clear for a file -- and terminal_run
+    // recomputes it, because Open... starts a file in a tab that may well have
+    // been a prompt a moment ago.
     bool hold_clean_exit = false;
+
+    // `--hold`, which outranks the above and does not change. Kept separately
+    // for exactly that reason: recomputing hold_clean_exit from the file would
+    // otherwise silently throw the flag the user passed on the command line
+    // away the first time they opened something.
+    bool hold_forced = false;
 
     TerminalFinished finished = nullptr;
 };
@@ -142,20 +153,21 @@ void hold_open(Session *session)
     session->held = true;
 }
 
-// HOLD ON FAILURE ALWAYS. CLOSE ON SUCCESS ONLY UNTIL M22.
+// HOLD ON FAILURE ALWAYS. CLOSE ON SUCCESS ONLY WHEN A FILE WAS RUN.
 //
 // The failure half is permanent: a terminal whose child FAILED is holding the
-// only copy of the reason, and closing it destroys the message. It is what
-// makes this binary demonstrable before the prompt exists -- `satl --repl`
-// today answers "the prompt is not built yet -- it lands at M22" and exits
-// EXIT_NOT_YET, so the window stays up with the explanation on it.
+// only copy of the reason, and closing it destroys the message. It is what made
+// this binary demonstrable before the prompt existed -- `satl --repl` answered
+// "the prompt is not built yet -- it lands at M22" and exited EXIT_NOT_YET, so
+// the window stayed up with the explanation on it.
 //
-// THE CLEAN-EXIT ARM BELOW IS M1.5's AND M22 DELETES IT, which is written
-// here rather than discovered there. Today the child runs for milliseconds and
-// a window outliving every one of them is a window nobody asked to keep. Once
-// there is a prompt the question reverses: a person who has been typing has a
-// screen full of what they did, the exit word ends a session rather than a
-// window, and the close button is how a window closes. PLAN.md M22.
+// THE CLEAN-EXIT ARM BELOW WAS M1.5's, AND M22 NARROWED IT RATHER THAN
+// DELETING IT -- terminal_new below carries the argument, and the short version
+// is that tabs arrived between PLAN writing that sentence and this milestone
+// reaching it. A tab running the prompt now sets hold_clean_exit for itself, so
+// the exit word ends a session and leaves the screen; a tab running a file
+// still closes when the file is done, which is what TERM.md's "a tab closes
+// when its interpreter is finished with" means and what Open... relies on.
 void on_child_exited(VteTerminal *terminal, int status, gpointer user_data)
 {
     Session *session = (Session *)user_data;
@@ -238,7 +250,28 @@ GtkWidget *terminal_new(const std::string &file,
 
     Session *session = new Session();
     session->widget = widget;
-    session->hold_clean_exit = hold_always;
+
+    // M22, AND IT IS THE MILESTONE'S SECOND HALF. `|| file.empty()` is the
+    // whole change: a tab with no file runs the PROMPT (child.cpp adds
+    // `--repl` in exactly that case), and a prompt that exits cleanly must
+    // leave its screen behind. PLAN M22: "A person who has been typing at a
+    // prompt has a screen full of what they did, and the exit word is the end
+    // of a session rather than the end of a window."
+    //
+    // AND A TAB RUNNING A FILE STILL CLOSES, which is where this departs from
+    // PLAN's letter and keeps its argument. §8 says the clean-exit arm "is
+    // marked as M1.5's and this milestone removes it" -- written before tabs
+    // existed, when the only child was the window's own and removing the arm
+    // and holding the prompt were the same act. They are not any more: TERM.md
+    // has "a tab closes when its interpreter is finished with", Open... runs a
+    // file in a tab, and deleting the arm would leave every finished program
+    // sitting in a tab the user has to dismiss by hand. The reason PLAN gives
+    // for closing -- "the child runs for milliseconds and a window that
+    // outlived every one of them would only ever be a window nobody asked to
+    // keep" -- is still exactly true of a file, and no longer true of a prompt.
+    // So the arm stays and the prompt opts out of it.
+    session->hold_forced = hold_always;
+    session->hold_clean_exit = hold_always || file.empty();
     session->finished = finished;
     g_object_set_data_full(G_OBJECT(widget), SESSION, session, forget_session);
 
@@ -269,6 +302,12 @@ void terminal_run(GtkWidget *terminal,
     // and a tab still answering "any key closes me" would close itself under the
     // first character somebody typed at the program they had just opened.
     session->held = false;
+
+    // THE POLICY FOLLOWS THE CHILD, and this line is why hold_forced exists.
+    // A tab that was a prompt holds on a clean exit; the moment a FILE is run
+    // in it that stops being true, or every program opened from the File menu
+    // would leave a tab behind for the user to dismiss.
+    session->hold_clean_exit = session->hold_forced || file.empty();
 
     say(VTE_TERMINAL(terminal), "[satl-term] running " + file);
     start_child(session, file, args);
