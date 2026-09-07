@@ -32,18 +32,46 @@
 // PLAN M22's scope drawn where the language already draws it, and
 // MILESTONES/M22.md says what it costs.
 //
+// WHAT A LINE DECLARES SURVIVES IT, AND THE ROUTE IS THE WRAPPER'S PARAMETER
+// LIST. A variable the session is holding is written into the capsule's
+// signature and its value handed to `Machine::call` -- so nothing is re-run to
+// get it back, which is the whole point: replaying `satellite.variable.string s
+// = satellite.console.input("name? ")` to restore `s` would ask the question
+// again every line. A value is carried as a VALUE.
+//
+// AND IT COMES BACK OUT OF THE FRAME. `Machine::last_frame()` is the outermost
+// capsule's slots kept past its return -- six lines in machine.cpp, added for
+// this -- and `resolve::Frame` beside it says which name each slot is. So the
+// round trip is: names and types from resolve, values from the machine, and the
+// next line's signature built out of both.
+//
+// A REDECLARATION IS STILL A REDECLARATION. Once the session holds `n`, typing
+// `satellite.variable.number n = 9` is declaring a name that exists and says so,
+// exactly as it would inside a capsule; `n = 9` is the assignment. That falls
+// out of the parameter list rather than being a rule anybody wrote, which is the
+// reason to build it this way round.
+//
 // THE LINE NUMBERS ARE REBASED BEFORE ANYTHING IS PRINTED. The wrapper puts
 // three lines above what the user typed, so a mistake on their line 1 is on the
 // text's line 4. Every diagnostic carries its own line (`Span::line`), so the
 // session subtracts the prologue from each one and renders afterwards -- which
 // is why build_source() is asked not to report.
 
+#include "evaluator/machine.hpp"
 #include "programs/built_program.hpp"
+#include "satellite_value/value.hpp"
 
 #include <string>
 #include <vector>
 
 namespace satellite::prompt {
+
+// One variable the session is holding between lines.
+struct Kept {
+    std::string name;
+    std::string type;  // the canonical path text, e.g. satellite.variable.string
+    Value value;
+};
 
 class Session {
 public:
@@ -61,8 +89,21 @@ public:
     // The top-level forms typed so far, oldest first.
     const std::vector<std::string> &top_level() const { return top_level_; }
 
+    // What the session is holding. M18's help store is this list plus a walk --
+    // every name here already carries the node its type ends at.
+    const std::vector<Kept> &kept() const { return kept_; }
+
 private:
     std::string wrap(const std::string &body) const;
+
+    // The capsule's parameter list, built from `kept_`, and the values to hand
+    // Machine::call in the same order.
+    std::string parameters() const;
+    std::vector<Value> arguments() const;
+
+    // Read the finished run's variables back out and replace `kept_` with them.
+    void keep_what_ran(const Built &built, const eval::Machine &machine,
+                       int capsule);
     void report(Built &built, const std::string &name, int above) const;
 
     std::vector<std::string> top_level_;
@@ -72,6 +113,8 @@ private:
     // one is an assignment and goes inside main, which is the only way a global
     // made at the prompt can ever be changed. See block.hpp's `library_name`.
     std::vector<std::string> globals_;
+
+    std::vector<Kept> kept_;
 };
 
 // How many lines the wrapper writes above the typed body. Public because

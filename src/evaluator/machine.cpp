@@ -144,6 +144,26 @@ void Machine::unwind(Value answer)
 
     const Frame frame = frames_.back();
     frames_.pop_back();
+
+    // THE OUTERMOST FRAME IS KEPT, AND ONLY THAT ONE -- M22's prompt, which
+    // needs a finished program's variables to still exist afterwards. The
+    // resize below destroys them, and it has to: DESIGN §7.2's slots are one
+    // vector end to end and a frame that did not give its storage back would
+    // leak a capsule's locals per call, which is exactly the shape a recursion
+    // makes unaffordable.
+    //
+    // SO THE COPY IS TAKEN ONCE PER RUN AND NOT ONCE PER CALL. `frames_.empty()`
+    // is true only for the call that came in through Machine::call(), so a
+    // program of a million frames copies nothing until the last of them returns.
+    // What it costs is one vector of the outermost capsule's slots, which is
+    // the thing a caller was about to ask for anyway.
+    //
+    // WHY A COPY AND NOT A PROMISE NOT TO RESIZE: the Machine outlives the call
+    // and `satl --call` runs a second capsule through the same one, so a view
+    // into slots_ would be a view into whatever ran next.
+    if (frames_.empty())
+        last_frame_.assign(slots_.begin() + frame.slots, slots_.end());
+
     work_.resize(frame.work_floor);
     value_.resize(frame.value_floor);
     slots_.resize(frame.slots);

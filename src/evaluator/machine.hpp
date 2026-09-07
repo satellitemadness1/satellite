@@ -193,6 +193,17 @@ public:
     // reads one -- DESIGN §7.2 reserves `satellite.library` for shared state.
     void run_top_level();
 
+    // THE OUTERMOST CAPSULE'S SLOTS, AFTER IT HAS RETURNED -- M22's prompt.
+    // Empty until a call has finished, and replaced by the next one. Read it
+    // beside resolve's Frame for that capsule: slot i here is `names[i]` there,
+    // which is what turns a vector of values back into named variables.
+    //
+    // IT IS THE ONE THING A FINISHED RUN LEAVES BEHIND, and that is deliberate
+    // rather than convenient: everything else about a run is gone by design, so
+    // a caller that wants a program's variables has to say so by asking here
+    // rather than by holding on to something it was lent.
+    const std::vector<Value> &last_frame() const { return last_frame_; }
+
     Ending ending() const { return ending_; }
     const std::vector<errors::Diagnostic> &problems() const { return problems_; }
     bool ok() const { return ending_ == Ending::Finished; }
@@ -364,6 +375,10 @@ private:
     std::vector<Value> slots_;
     std::vector<Frame> frames_;
     std::vector<Value> globals_;
+
+    // The outermost frame's storage, copied out of slots_ before it is given
+    // back. See last_frame() above.
+    std::vector<Value> last_frame_;
     std::vector<Cache> caches_;
 
     std::vector<errors::Diagnostic> problems_;

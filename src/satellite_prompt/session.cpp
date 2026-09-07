@@ -6,6 +6,7 @@
 #include "evaluator/machine.hpp"
 #include "satellite_console/console.hpp"
 #include "satellite_prompt/block.hpp"
+#include "name_resolver/resolve.hpp"
 #include "satellite_words/words.hpp"
 #include "system_facts/interrupt.hpp"
 
@@ -80,7 +81,7 @@ std::string Session::wrap(const std::string &body) const
         out += form;
         out += '\n';
     }
-    out += "satellite.capsule satellite.main()\n{\n";
+    out += "satellite.capsule satellite.main(" + parameters() + ")\n{\n";
     out += body;
     out += "\n}\n";
 
@@ -106,6 +107,82 @@ void Session::report(Built &built, const std::string &name, int above) const
         fputs(errors::render(built.resolved.problems, against).c_str(), stderr);
     else if (!built.program.problems.empty())
         fputs(errors::render(built.program.problems, against).c_str(), stderr);
+}
+
+std::string Session::parameters() const
+{
+    std::string out;
+    for (const Kept &one : kept_) {
+        if (!out.empty())
+            out += ", ";
+        out += one.type;
+        out += ' ';
+        out += one.name;
+    }
+    return out;
+}
+
+std::vector<Value> Session::arguments() const
+{
+    std::vector<Value> out;
+    out.reserve(kept_.size());
+    for (const Kept &one : kept_)
+        out.push_back(one.value);
+    return out;
+}
+
+void Session::keep_what_ran(const Built &built, const eval::Machine &machine,
+                            int capsule)
+{
+    const std::vector<Value> &slots = machine.last_frame();
+    if (slots.empty()) {
+        // A CAPSULE WITH NO SLOTS AT ALL leaves nothing to keep and must not
+        // clear what the session already had -- `satellite.console.display("x")`
+        // on its own declares nothing, and forgetting every variable because a
+        // line happened not to declare one would be the worst of both.
+        return;
+    }
+
+    // The Frame that belongs to the capsule that ran. Found by its node rather
+    // than by position, because resolve numbers frames in the order it MEETS
+    // capsules and the wrapper is not always the first.
+    const eval::Capsule &ran = built.program.closures.capsules()[capsule];
+    const resolve::Frame *frame = nullptr;
+    for (const resolve::Frame &one : built.resolved.frames) {
+        if (one.node == ran.node) {
+            frame = &one;
+            break;
+        }
+    }
+    if (frame == nullptr)
+        return;
+
+    std::vector<Kept> next;
+    for (size_t slot = 0; slot < frame->names.size() && slot < slots.size();
+         slot++) {
+        // DESIGN §7.7's OBJECT IS NOT A VARIABLE AND IS SKIPPED. `arguments` is
+        // the machine's answer rather than the program's storage, and writing
+        // it into the next line's parameter list would declare a name the
+        // resolver already routes somewhere else.
+        if (frame->arguments == static_cast<resolve::Slot>(slot))
+            continue;
+
+        const words::PathId type =
+            built.resolved.at(frame->types[slot]).path;
+        // A SLOT WHOSE TYPE DID NOT RESOLVE CANNOT BE RE-DECLARED, so it is
+        // dropped rather than guessed at -- there is no text to write in a
+        // parameter list for it.
+        if (type == words::kNoPath)
+            continue;
+
+        Kept one;
+        one.name = std::string(frame->names[slot]);
+        one.type = std::string(
+            words::path_text(static_cast<words::NodeId>(type)));
+        one.value = slots[slot];
+        next.push_back(std::move(one));
+    }
+    kept_ = std::move(next);
 }
 
 bool Session::run(const std::string &entry)
@@ -175,7 +252,14 @@ bool Session::run(const std::string &entry)
                           policy_from_the_limits());
     machine.run_top_level();
     if (machine.ok())
-        machine.call(static_cast<uint32_t>(which), std::vector<Value>{});
+        machine.call(static_cast<uint32_t>(which), arguments());
+
+    // WHAT THE LINE LEFT BEHIND, TAKEN BEFORE ANYTHING ELSE CAN DISTURB IT.
+    // Only from a run that finished: a line that refused halfway has a frame
+    // whose later slots were never assigned, and keeping those would hand the
+    // next line variables holding nothing under a type that says otherwise.
+    if (machine.ok())
+        keep_what_ran(built, machine, which);
 
     // DRAIN AND NOT SHUTDOWN, WHICH IS THE WHOLE DIFFERENCE BETWEEN A RUN AND A
     // SESSION. `satl file.satl` shuts the console down because the process is
@@ -230,6 +314,14 @@ bool Session::run_file(const std::string &path)
     machine.run_top_level();
     if (machine.ok())
         machine.call(static_cast<uint32_t>(which), arguments);
+
+    // THE FILE'S OWN VARIABLES BECOME THE SESSION'S, which is the whole of
+    // `satl -i` and of `run <file>` at the prompt: the program finishes and
+    // what it was holding is still there to be asked about. Nothing in the
+    // user's file is rewritten to make this work -- the machine kept its
+    // outermost frame and resolve already knew the names.
+    if (machine.ok())
+        keep_what_ran(built, machine, which);
 
     console::Console::the().drain();
 
