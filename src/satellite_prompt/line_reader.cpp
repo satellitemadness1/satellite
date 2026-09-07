@@ -40,18 +40,23 @@ LineStatus LineReader::read_cooked(const std::string &prompt, std::string &line)
 
 LineStatus LineReader::read(const std::string &prompt, std::string &line)
 {
+    return read([&prompt](const std::string &) { return prompt; }, line);
+}
+
+LineStatus LineReader::read(const PromptFor &prompt, std::string &line)
+{
     if (!is_interactive())
-        return read_cooked(prompt, line);
+        return read_cooked(prompt(std::string()), line);
 
     RawMode raw;
     if (!raw.active())
-        return read_cooked(prompt, line);
+        return read_cooked(prompt(std::string()), line);
 
     Editor editor(&history_);
     KeyDecoder decoder;
     Renderer renderer;
 
-    renderer.draw(prompt, editor.line(), editor.cursor());
+    renderer.draw(prompt(editor.line()), editor.line(), editor.cursor());
 
     for (;;) {
         unsigned char byte = 0;
@@ -75,7 +80,7 @@ LineStatus LineReader::read(const std::string &prompt, std::string &line)
 
         switch (editor.apply(event)) {
         case Editor::Outcome::Continue:
-            renderer.draw(prompt, editor.line(), editor.cursor());
+            renderer.draw(prompt(editor.line()), editor.line(), editor.cursor());
             break;
 
         // THE NEWLINE IS OURS TO PRINT, because ECHO is off -- the terminal
@@ -107,7 +112,7 @@ LineStatus LineReader::read(const std::string &prompt, std::string &line)
 
         case Editor::Outcome::ClearScreen:
             renderer.clear_screen();
-            renderer.draw(prompt, editor.line(), editor.cursor());
+            renderer.draw(prompt(editor.line()), editor.line(), editor.cursor());
             break;
         }
     }

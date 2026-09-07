@@ -85,14 +85,34 @@ bool run_file_command(const std::string &line, Session &session)
     return true;
 }
 
-std::string prompt_text(int depth)
+// FOUR SPACES, WHICH IS WHAT THIS TREE'S OWN PROGRAMS ARE WRITTEN IN --
+// example/hello_world.satl and every other file under example/. A prompt that
+// indented by a different amount would produce, from the user's own typing,
+// source that does not look like the source they have been reading.
+constexpr size_t kIndent = 4;
+
+// The prompt for a line being typed at `depth`, given what is on it so far.
+//
+// A CONTINUATION PROMPT IS INDENTATION AND NOT A SIGIL, so what the user sees
+// while typing a block is the shape the block will have in a file. A `...`
+// marker would be characters that are not in the program.
+//
+// AND A LINE THAT STARTS WITH `}` IS DRAWN ONE LEVEL OUT, live, as the brace is
+// typed. The closing brace belongs to the block it ends rather than to the body
+// inside it, so it sits where the head sat -- which is what every one of these
+// programs does and what a person expects to see. It has to be recomputed per
+// keystroke because the prompt is printed BEFORE the character that decides it.
+std::string prompt_text(int depth, const std::string &so_far)
 {
-    // A CONTINUATION PROMPT IS INDENTATION AND NOT A SIGIL, so that what the
-    // user sees while typing a block is the shape the block will have in a
-    // file. A `...` marker would be characters that are not in the program.
-    if (depth > 0)
-        return std::string(static_cast<size_t>(depth) * 4, ' ');
-    return facts::username() + ", " + facts::cwd() + ": ";
+    if (depth <= 0)
+        return facts::username() + ", " + facts::cwd() + ": ";
+
+    int level = depth;
+    if (!trimmed(so_far).empty() && trimmed(so_far)[0] == '}')
+        level--;
+    if (level < 0)
+        level = 0;
+    return std::string(static_cast<size_t>(level) * kIndent, ' ');
 }
 
 void install_every_handler()
@@ -147,11 +167,11 @@ int run_prompt()
     std::string line;
     int depth = 0;
 
-    // THE ENTRY IS STILL OWED A BODY -- a head line was typed and the `{` that
-    // belongs to it has not arrived. Separate from `depth` because they mean
-    // different things: depth counts braces that ARE there, and this remembers
-    // one that is not there YET. Cleared the moment any brace is seen.
-    bool owed_body = false;
+    // THE PROMPT JUST WROTE A `{` OF ITS OWN, so a `{` on the very next line is
+    // the user's habit meeting the prompt's help and is dropped rather than
+    // opening a second block. One line's grace and no more -- a `{` anywhere
+    // else is a real brace and counts.
+    bool auto_braced = false;
 
     for (;;) {
         // EVERYTHING PRINTED IS ON THE TERMINAL BEFORE THE PROMPT IS DRAWN.
@@ -161,14 +181,18 @@ int run_prompt()
         out.drain();
         std::fflush(stdout);
 
-        const LineStatus status = reader.read(prompt_text(depth), line);
+        const LineStatus status = reader.read(
+            [&depth](const std::string &so_far) {
+                return prompt_text(depth, so_far);
+            },
+            line);
 
         if (status == LineStatus::EndOfFile) {
-            if (depth > 0 || owed_body) {
+            if (depth > 0) {
                 std::fputs("satellite: the block was not finished.\n", stderr);
                 entry.clear();
                 depth = 0;
-                owed_body = false;
+                auto_braced = false;
                 continue;
             }
             break;
@@ -179,13 +203,13 @@ int run_prompt()
         if (status == LineStatus::Interrupted) {
             entry.clear();
             depth = 0;
-            owed_body = false;
+            auto_braced = false;
             continue;
         }
 
         const std::string one = trimmed(line);
 
-        if (depth == 0 && !owed_body) {
+        if (depth == 0) {
             if (one.empty())
                 continue;
             reader.remember(line);
@@ -199,6 +223,12 @@ int run_prompt()
             reader.remember(line);
         }
 
+        if (auto_braced && one == "{") {
+            auto_braced = false;
+            continue;
+        }
+        auto_braced = false;
+
         const Scan scanned = scan(line);
 
         // A LINE THAT DID NOT LEX IS RUN AT ONCE so the real reporter answers
@@ -206,35 +236,62 @@ int run_prompt()
         // with a caret under it, rather than the prompt inventing a sentence.
         //
         // ONLY WHEN NOTHING IS IN HAND, and the first version of this was wrong
-        // in a way worth writing down: it fired whenever `depth == 0`, which is
-        // also true of a head line that owes a body -- so an unterminated string
-        // on the line after `satellite.statement.if (x)` ran alone AND left the
-        // head sitting in `entry`, where the next line joined it. The entry must
-        // either be empty or be abandoned; running one line out of the middle of
-        // a block is neither.
-        if (scanned.lex_error && entry.empty() && depth == 0 && !owed_body) {
+        // in a way worth writing down: it fired whenever `depth == 0`, which was
+        // also true of a head line whose body had not arrived -- so an
+        // unterminated string on the line after `satellite.statement.if (x)`
+        // ran alone AND left the head sitting in `entry`, where the next line
+        // joined it. Running one line out of the middle of a block is neither
+        // finishing the entry nor abandoning it.
+        if (scanned.lex_error && entry.empty() && depth == 0) {
             session.run(line);
             continue;
         }
 
+        // STORED AT THE INDENT IT WAS SHOWN AT, so the program the session
+        // builds looks like the program the user was looking at -- and so a
+        // capsule kept across lines reads like one when it is re-emitted. The
+        // typed text is TRIMMED first: the indent belongs to the prompt, and
+        // keeping both would double it.
+        int level = depth;
+        if (!one.empty() && one[0] == '}')
+            level--;
+        if (level < 0)
+            level = 0;
+
         if (!entry.empty())
             entry += '\n';
-        entry += line;
+        entry.append(static_cast<size_t>(level) * kIndent, ' ');
+        entry += one;
         depth += scanned.depth;
 
-        if (scanned.opens_body)
-            owed_body = true;
-        else if (scanned.depth != 0)
-            owed_body = false;
+        // THE PROMPT WRITES THE `{` AND THE USER NEVER DOES. This language puts
+        // the brace on its own line, so a head line leaves one owed -- and
+        // asking a person to type a character the prompt already knows is
+        // coming is asking them to do the prompt's work. It goes into the entry
+        // at the head's own level AND onto the screen, because a brace that is
+        // in the program but not on the terminal is a program the user cannot
+        // read back.
+        if (scanned.opens_body) {
+            entry += '\n';
+            entry.append(static_cast<size_t>(level) * kIndent, ' ');
+            entry += '{';
 
-        if (depth > 0 || owed_body)
+            std::string shown(static_cast<size_t>(level) * kIndent, ' ');
+            shown += "{\n";
+            std::fputs(shown.c_str(), stdout);
+            std::fflush(stdout);
+
+            depth++;
+            auto_braced = true;
+        }
+
+        if (depth > 0)
             continue;
 
         // A `}` TOO MANY LEAVES THE DEPTH NEGATIVE, and the entry is run anyway
         // so the parser is what says so -- with a caret, on the right line --
         // rather than the prompt inventing a sentence of its own.
         depth = 0;
-        owed_body = false;
         session.run(entry);
         entry.clear();
     }

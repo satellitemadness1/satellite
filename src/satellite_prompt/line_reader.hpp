@@ -25,6 +25,7 @@
 
 #include "satellite_prompt/history.hpp"
 
+#include <functional>
 #include <string>
 
 namespace satellite::prompt {
@@ -42,6 +43,19 @@ public:
     LineReader(const LineReader &) = delete;
     LineReader &operator=(const LineReader &) = delete;
 
+    // THE PROMPT IS A FUNCTION OF WHAT HAS BEEN TYPED, and that is what lets
+    // the indent change UNDER the cursor. A `}` closes a block, so the line it
+    // is on belongs one level out -- and the user types it as the first
+    // character of an already-indented line. Recomputing the prompt on every
+    // redraw is what moves that line left the instant the brace appears, which
+    // is the whole of "the right bracket goes on a line tabbed only as far as
+    // it needs to be". A fixed string cannot do it: the prompt is printed
+    // before the character that changes it exists.
+    using PromptFor = std::function<std::string(const std::string &line)>;
+
+    LineStatus read(const PromptFor &prompt, std::string &line);
+
+    // The fixed-prompt case, which is every caller that has no block open.
     LineStatus read(const std::string &prompt, std::string &line);
 
     // Add an accepted line to the history. SEPARATE FROM read() ON PURPOSE:
