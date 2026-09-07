@@ -38,6 +38,24 @@ void section_session()
         p.finish();
     }
 
+    // 2b -- AND A RUN-TIME DIAGNOSTIC IS REBASED TOO, which clause 2 does not
+    // cover: it reports a RESOLVE-time mistake, and those arrive through the
+    // four passes. S0721 -- a path the language numbers and nothing implements
+    // -- is raised by op_dispatch while the program is RUNNING, so it comes
+    // back on the Machine instead and went out with the wrapper's line number
+    // on it until this was noticed. `satellite.help` is the shortest way to
+    // reach it and will stay reachable until M18 builds help.
+    {
+        Prompt p = start_a_prompt();
+        p.wait_for("Type `exit`", 4000);
+        p.line("satellite.help");
+        check(p.wait_for("S0721", 4000), "an unbuilt path refuses at run time");
+        check(holds(p.screen, "<prompt>:1:"),
+              "and the refusal is on the line the person typed");
+        p.line("exit");
+        p.finish();
+    }
+
     // 3 -- CTRL-C IS THE BYTE 0x03 AND ABANDONS THE LINE, NOT THE SESSION.
     // DESIGN §10.2's two meanings: with ISIG off no signal is raised at all,
     // so what is being proved here is that the prompt saw a KEY.

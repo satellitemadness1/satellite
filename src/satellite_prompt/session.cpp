@@ -185,12 +185,20 @@ bool Session::run(const std::string &entry)
     // before the next prompt is drawn -- at no cost.
     console::Console::the().drain();
 
-    if (!machine.ok())
-        fputs(errors::render(machine.problems(),
-                             errors::Source{kPromptName, built.text,
-                                            &built.words})
+    // A RUN-TIME DIAGNOSTIC NEEDS REBASING TOO, AND THIS WAS MISSED THE FIRST
+    // TIME. `report()` above covers what the four passes found; S0721 -- a path
+    // the language has a number for and nothing behind yet -- is raised by
+    // op_dispatch while the program RUNS, so it arrives here instead and went
+    // out with the wrapper's line number on it. `satellite.help` at the prompt
+    // said "line 4". Found by typing it, which is the only way this one shows.
+    if (!machine.ok()) {
+        std::vector<errors::Diagnostic> problems = machine.problems();
+        rebase_all(problems, above);
+        fputs(errors::render(problems, errors::Source{kPromptName, built.text,
+                                                      &built.words})
                   .c_str(),
               stderr);
+    }
     return true;
 }
 
