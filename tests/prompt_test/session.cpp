@@ -165,7 +165,50 @@ void section_session()
         p.finish();
     }
 
-    // 9 -- CTRL-D ON AN EMPTY LINE ENDS THE SESSION, exit status 0.
+    // 9 -- A DECLARATION SURVIVES ITS LINE, which is the session state M22
+    // ended with and the thing a person hits first.
+    {
+        Prompt p = start_a_prompt();
+        p.wait_for("Type `exit`", 4000);
+        p.line("satellite.variable.number n = 6");
+        p.line("satellite.console.display(n * 7)");
+        check(p.wait_for("42", 4000), "a local declared on one line is there on the next");
+        p.line("satellite.variable.string s = \"hello\"");
+        p.line("satellite.console.display(n + s.size())");
+        check(p.wait_for("11", 4000), "and so is a second one, of another type");
+        p.line("n = 100");
+        p.line("satellite.console.display(n + s.size())");
+        check(p.wait_for("105", 4000), "an assignment to a kept variable sticks");
+        p.line("exit");
+        p.finish();
+    }
+
+    // 10 -- `satellite.system.persist` TURNS IT OFF -- `1 22 8`, WORD_NUMBERS
+    // §2.7, and the first child of `satellite.system` anything implements.
+    //
+    // THE SPELLING IS `satellite.bool.false` AND NOT `false`, which is the
+    // clause's second job: a bare `false` is a name the user owns and answers
+    // S0511, so a banner or a document that showed the short form would be
+    // teaching a command that does not run.
+    {
+        Prompt p = start_a_prompt();
+        p.wait_for("Type `exit`", 4000);
+        check(holds(p.screen, "satellite.system.persist(satellite.bool.true)"),
+              "the banner says what persist is set to, in a spelling that runs");
+        p.line("satellite.variable.number kept = 5");
+        p.line("satellite.system.persist(satellite.bool.false)");
+        p.line("satellite.variable.number dropped = 9");
+        p.line("satellite.console.display(kept + 700)");
+        check(p.wait_for("705", 4000),
+              "what was already held survives persist being turned off");
+        p.line("satellite.console.display(dropped)");
+        check(p.wait_for("S0511", 4000),
+              "and what was declared after it is not kept");
+        p.line("exit");
+        p.finish();
+    }
+
+    // 11 -- CTRL-D ON AN EMPTY LINE ENDS THE SESSION, exit status 0.
     {
         Prompt p = start_a_prompt();
         p.wait_for("Type `exit`", 4000);

@@ -1,6 +1,6 @@
 // Every row of WORD_NUMBERS.md §2.2, walked. See words_test.hpp.
 //
-// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 229 rows, 226 distinct numbers,
+// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 231 rows, 228 distinct numbers,
 // exactly 3 aliases, 36 `(0)` markers -- if the reader below finds a different
 // number of rows than the documents claim, every per-row result after it is
 // answering a question nobody asked, and a suite that reports PASS over half a
@@ -175,8 +175,8 @@ void section_authority()
     // That is the only kind of edit §1.2 allows to this section -- nothing
     // renumbered and nothing reused -- and it is the only kind these three
     // counts can tell apart from a transcription that dropped a row.
-    check(rows.size() == 229,
-          "§2.2 should hold 229 rows, found " + std::to_string(rows.size()));
+    check(rows.size() == 231,
+          "§2.2 should hold 231 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -185,8 +185,8 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 226,
-          "§2.2 should carry 226 distinct numbers, found " +
+    check(numbers.size() == 228,
+          "§2.2 should carry 228 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 3, "§2.2 should declare exactly 3 aliases, found " +
                             std::to_string(aliases));

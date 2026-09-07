@@ -115,6 +115,49 @@ std::string prompt_text(int depth, const std::string &so_far)
     return std::string(static_cast<size_t>(level) * kIndent, ' ');
 }
 
+// WHAT THE SESSION IS SET TO, printed under the banner.
+//
+// THE FIRST LINE IS A PATH A PROGRAM CAN TYPE, and that is why it is written as
+// a call rather than as prose: what is on the screen is exactly what a person
+// types to set it, so reading the banner teaches the command. WORD_NUMBERS §2.7
+// assigned it `1 22 7` and `1 22 8` for this.
+//
+// AND THAT IS WHY IT SAYS `satellite.bool.true` AND NOT `true`. The author drew
+// this line as `satellite.system.persist(true)`, and `true` is not a word in
+// this language: DESIGN §6.1's module constants are `satellite.bool.true`
+// `1 17 2` and `satellite.bool.false` `1 17 1`, and a bare `true` is a name the
+// USER owns (§1) -- typing the short form answers S0511, `nothing called
+// `true` is in scope here`, which is measured and correct. So the banner would
+// have been teaching a command that does not run. A line that shows a path is
+// making a claim about that path, and this is the one file whose whole job this
+// week has been not to make claims like that.
+//
+// THE SECOND LINE HAS NO VALUE AFTER THE `=` AND THAT IS DELIBERATE, at the
+// author's instruction: *"if it's not built yet just put a line there that says
+// `arguments.memory.available = ` and leave it blank for now, so that we
+// remember to put it there later."* It is a reminder in the product rather than
+// a note in a file nobody opens.
+//
+// TWO THINGS ABOUT IT ARE WORTH KNOWING BEFORE ANYBODY FILLS IT IN. The NUMBER
+// exists today -- `system_facts::mem_available_bytes()` is built and M6 reads
+// it -- so what is missing is not the fact but the path: DESIGN §7.7's
+// `arguments` object lands at M20. And §7.7 spells free memory
+// `arguments.memory`, with `arguments.memory.total` beside it; there is no
+// `.available` in that table. So this line reserves a spelling §7.7 has not
+// agreed to, and M20 has to settle which of the two names it is before the
+// value goes in. It is marked the way every unbuilt thing in this binary is
+// marked -- programs/opening.hpp's rule, "lines that describe a milestone that
+// has not landed are MARKED, rather than omitted".
+std::string status_text()
+{
+    std::string out = "\n";
+    out += "satellite.system.persist(satellite.bool.";
+    out += system::persisting() ? "true" : "false";
+    out += ")\n";
+    out += "arguments.memory.available =                                (M20)\n";
+    return out;
+}
+
 void install_every_handler()
 {
     // THE SAME SIX run_command INSTALLS, AND THE CONSOLE AMONG THEM. `--call`
@@ -141,6 +184,7 @@ bool is_exit_word(const std::string &line)
 int run_prompt()
 {
     std::fputs(opening_text().c_str(), stdout);
+    std::fputs(status_text().c_str(), stdout);
     std::fputs("\nType `exit` to leave. Ctrl-C abandons a line; Ctrl-D ends "
                "the session.\n\n",
                stdout);

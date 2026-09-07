@@ -16,6 +16,8 @@
 #include "evaluator/dispatch.hpp"
 #include "evaluator/machine.hpp"
 #include "machine_limits/limits.hpp"
+
+#include <atomic>
 #include "satellite_value/value.hpp"
 #include "satellite_words/words.hpp"
 
@@ -153,6 +155,50 @@ bool retune_min_free_mb(eval::Machine &m, const Value *, uint32_t, Value *)
 
 } // namespace
 
+// --- satellite.system.persist -------------------------------------------------
+
+// THE ONE PROCESS-WIDE THING IN THIS FILE, and the note at the top says nothing
+// here is process-wide -- so this is a departure and it is worth the sentence.
+// The four dials belong to a Machine because a program obeys them; this belongs
+// to the PROMPT, which outlives every Machine it makes, and a per-run home for
+// it would be forgotten between the run that set it and the run that reads it.
+// That is the same argument evaluator/dispatch.hpp makes for the handler table
+// being a property of the build rather than of a run, one layer up.
+std::atomic<bool> keeping{true};
+
+// `satellite.system.persist()` `1 22 7` -- what the setting is.
+bool read_persist(eval::Machine &, const Value *, uint32_t, Value *answer)
+{
+    *answer = Value::boolean(persisting());
+    return true;
+}
+
+// `satellite.system.persist(x)` `1 22 8` -- set it, and answer what it now is.
+//
+// IT ANSWERS THE NEW SETTING RATHER THAN `nothing`, which is a small decision
+// with a reason: `satellite.console.display(satellite.system.persist(false))`
+// then says `false`, so the one call can be read as well as written and the
+// prompt's banner has something to print without asking twice.
+bool write_persist(eval::Machine &machine, const Value *arguments,
+                   uint32_t count, Value *answer)
+{
+    // A REFUSAL AND NOT A COERCION. `persist(1)` is not `persist(true)` here
+    // for the reason DESIGN §1.1 gives everywhere else: the language has no
+    // conversions, so a number where a bool was asked for is a mistake to name
+    // rather than a thing to guess the meaning of.
+    if (count != 1 || !arguments[0].is_bool()) {
+        machine.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+            machine.span_of(machine.here()),
+            std::string(machine.text_of(machine.here())),
+            "a `satellite.variable.bool`",
+            count == 1 ? type_name(arguments[0]) : "nothing"));
+        return false;
+    }
+    set_persisting(std::get<bool>(arguments[0]));
+    *answer = Value::boolean(persisting());
+    return true;
+}
+
 void install_handlers()
 {
     using words::NodeId;
@@ -179,6 +225,26 @@ void install_handlers()
         eval::Assigners::table().install(
             static_cast<words::PathId>(row.path), {row.write, "M15"});
     }
+
+    // `satellite.system`'s FIRST BUILT CHILD, and WORD_NUMBERS §2.7 says so:
+    // that node has carried thirty numbered paths since the 2026-08-28
+    // transcription and no milestone had reached any of them.
+    eval::Handlers::table().install(
+        static_cast<words::PathId>(words::NodeId::SYSTEM_PERSIST_0),
+        {read_persist, false, 0, "M22"});
+    eval::Handlers::table().install(
+        static_cast<words::PathId>(words::NodeId::SYSTEM_PERSIST_X),
+        {write_persist, false, 1, "M22"});
+}
+
+bool persisting()
+{
+    return keeping.load(std::memory_order_relaxed);
+}
+
+void set_persisting(bool on)
+{
+    keeping.store(on, std::memory_order_relaxed);
 }
 
 } // namespace satellite::system

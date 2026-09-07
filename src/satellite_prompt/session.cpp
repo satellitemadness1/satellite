@@ -5,6 +5,7 @@
 #include "error_reporter/report.hpp"
 #include "evaluator/machine.hpp"
 #include "satellite_console/console.hpp"
+#include "satellite_system/handlers.hpp"
 #include "satellite_prompt/block.hpp"
 #include "name_resolver/resolve.hpp"
 #include "satellite_words/words.hpp"
@@ -258,7 +259,12 @@ bool Session::run(const std::string &entry)
     // Only from a run that finished: a line that refused halfway has a frame
     // whose later slots were never assigned, and keeping those would hand the
     // next line variables holding nothing under a type that says otherwise.
-    if (machine.ok())
+    //
+    // AND ONLY WHEN `satellite.system.persist` IS ON -- `1 22 7` / `1 22 8`,
+    // WORD_NUMBERS §2.7. Turning it off does not throw away what is already
+    // held, it stops the NEXT line adding to it, which is the reading that lets
+    // a program turn it off around one line and back on afterwards.
+    if (machine.ok() && system::persisting())
         keep_what_ran(built, machine, which);
 
     // DRAIN AND NOT SHUTDOWN, WHICH IS THE WHOLE DIFFERENCE BETWEEN A RUN AND A
@@ -320,7 +326,7 @@ bool Session::run_file(const std::string &path)
     // what it was holding is still there to be asked about. Nothing in the
     // user's file is rewritten to make this work -- the machine kept its
     // outermost frame and resolve already knew the names.
-    if (machine.ok())
+    if (machine.ok() && system::persisting())
         keep_what_ran(built, machine, which);
 
     console::Console::the().drain();

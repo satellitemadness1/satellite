@@ -517,6 +517,8 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.system.memory.used(unit)` | `1 22 4 12` | assigned |
 | `satellite.system.threshold()` | `1 22 5` | assigned — read |
 | `satellite.system.threshold(n)` | `1 22 6` | assigned — set |
+| `satellite.system.persist()` | `1 22 7` | assigned 2026-09-07 — read, §2.7 |
+| `satellite.system.persist(x)` | `1 22 8` | assigned 2026-09-07 — set, §2.7 |
 | `satellite.thread` | `1 23 (0)` | assigned |
 | `satellite.thread.new` | `1 23 1` | assigned |
 | `satellite.window` | `1 24 (0)` | assigned |
@@ -640,6 +642,38 @@ answer appears once under each — exactly as `size`, `empty` and `clear` alread
 do. `1 4 1 10` is the map's next free child and `1 4 2 26` the list's;
 MILESTONES/M16.md carries what `.search(pattern)` answers and why the subscript
 form is the short spelling of the same walk.
+
+### 2.7 Two numbers assigned 2026-09-07, and by whom
+
+**The author, directly, during M22.** The prompt keeps a finished program's
+variables so they can be used afterwards, and the author asked for that to be
+something a program can turn off and something the terminal can display:
+*"let's make a `satellite.system.persist(true)` `satellite.system.persist(false)`
+and we can even display what it is set to in the terminal... leave it on by
+default."*
+
+**Asked which node should own it, the answer was "just set it to the next
+available number under `satellite.system`, whatever that number is."** That node's
+children run 1 through 6, so the next is **7**.
+
+**Two rows and not one, and §1.3 is why.** *The arity is the identity*: a call
+that reads and a call that sets are different shapes and therefore different
+numbers. That is not a reading imposed on the author's request — **the same
+parent already carries the same pair**, `threshold()` `1 22 5` and `threshold(n)`
+`1 22 6`, assigned in the 2026-08-28 transcription. `persist()` `1 22 7` answers
+what the setting is; `persist(x)` `1 22 8` sets it. A single row would have had
+to mean both, which is the one thing §1.3 says a number cannot do.
+
+**It is the first child of `satellite.system` that anything implements.** §2.2 has
+carried that node's thirty paths since the transcription and PLAN §8 reached none
+of them; `delete` `1 22 1` waits for M19 and the whole `memory` subtree for M20.
+So this is a namespace whose first working row is not its first numbered one,
+which is ordinary — `handlers[path_id]` is a table with holes by construction —
+and worth saying once, because a reader who sees `persist` answer may reasonably
+expect `home` to.
+
+**Where the setting lives is not a numbering question and §2.2 takes no view.**
+MILESTONES/M22.md records what it is stored in and what happens when it is off.
 
 ## 3. User-defined names take the next free number
 

@@ -3790,7 +3790,19 @@ only source.
 anywhere, and the topic *pages* as prose. Adding a node's one-line description to
 `words.def` is this milestone; writing seven essays is not.
 
-**AND THE STORE IS THIS MILESTONE'S, WHICH M22 LANDED EARLY TO GIVE A READER.**
+***AND THE STORE IS BUILT. M22 BUILT IT ON 2026-09-07, THE SAME DAY.*** The
+author asked for the prompt's variables to persist, and the mechanism that does
+it IS the store: `satellite::prompt::Session::kept()` answers a vector of
+`{name, type, value}` for everything the session is holding — a typed line's
+locals and a file's alike, because `run <file>` and `satl -i` keep a program's
+variables the same way. **The type is already the node its declared type ends
+at**, which is exactly what `satellite.help(x)` needs to walk, so help reads a
+list rather than building one. `satellite.system.persist` `1 22 7` / `1 22 8` is
+what turns it off. **So this milestone inherits a filled store with a reader
+waiting**, which is the shape M2's rule asks for arriving from the other
+direction. MILESTONES/M22.md §2.9.
+
+**WHAT REMAINS OF THE PARAGRAPH BELOW IS THE READING, NOT THE KEEPING.**
 *(2026-09-07.)* The author's account of help includes asking about a **variable**
 — `satellite.help(my_name)` answering with the node its declared type ends at,
 which `resolve::Info::type` already knows statically, so no value is ever
