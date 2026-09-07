@@ -50,6 +50,7 @@ Scan scan(const std::string &line)
     bool after_satellite = false;
     bool head = false;
     bool saw_brace = false;
+    bool after_library = false;
 
     for (const Token &token : tokens) {
         switch (token.kind) {
@@ -87,12 +88,18 @@ Scan scan(const std::string &line)
             // A `.` immediately after the root keeps the window open, so that
             // `satellite . capsule` -- legal, if nobody writes it -- is read the
             // same as `satellite.capsule`.
-            else if (token.text != "." || !after_satellite)
+            else if (token.text != "." || !(after_satellite || after_library))
                 at_start = false;
             continue;
         }
 
         if (token.kind == TokenKind::Word && at_start) {
+            if (after_library) {
+                out.library_name = token.text;
+                after_library = false;
+                at_start = false;
+                continue;
+            }
             if (!after_satellite) {
                 // Segment 0. Anything but the root means a bare name, which is
                 // the user's (DESIGN §1) and is never a top-level form.
@@ -108,6 +115,14 @@ Scan scan(const std::string &line)
                 out.placement = Placement::TopLevel;
             if (opens_a_body(token.text))
                 head = true;
+            // `library` keeps the window open for ONE more word, which is the
+            // global's name -- the only place this scanner reads segment 2.
+            if (token.text == "library") {
+                after_library = true;
+                at_start = true;
+                after_satellite = false;
+                continue;
+            }
             at_start = false;
             continue;
         }

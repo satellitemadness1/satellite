@@ -25,7 +25,7 @@ they are worth reading.
 | `window.cpp` | The command line, the `GtkApplication`, the window. Its title and size are the same three arguments `satellite.window.console.new("title", 800, 600)` takes, and this binary must not be a special case of that signature. It assembles the menu above and the tabs below in a plain box, and opens the first tab. |
 | `menu.cpp` | The File menu: four items, four window actions, and the two dialogs. The only file here that opens one. |
 | `tabs.cpp` | The notebook — how many terminals a window is holding, which is in front, and what happens to a page whose interpreter is finished. **The file the one-child assumption moved into.** |
-| `terminal.cpp` | One VTE widget and the life of the child in it: the palette, the font, the exit policy — hold on failure always, close on success until M22 — and the per-terminal state that used to be file statics. |
+| `terminal.cpp` | One VTE widget and the life of the child in it: the palette, the font, the exit policy — hold on failure always, and **since M22 close on success only when a FILE was run** — and the per-terminal state that used to be file statics. |
 | `child.cpp` | Where `satl` is, and what it is told. The only file that spells `--repl`, `--run` and `SATL_TERM`. |
 | `keys.cpp` | What Ctrl-C and Ctrl-V mean, and the "any key closes a held terminal" rule. One controller, so a keystroke has one answer. |
 | `*.hpp` | One door each, and each says what its file is separate from. |
@@ -85,7 +85,8 @@ tab in front if its interpreter has finished, and in a new tab if it has not.
 > for "run it in this window", against a new window. The alternative to taking
 > the free tab is either killing somebody's running program — which nothing in
 > this binary may do, and `keys.cpp` spends forty lines saying why — or greying
-> the item out while a child is alive. **Greying it out dies at M22**: the
+> the item out while a child is alive. **Greying it out died at M22**, which has
+> now landed and the prompt with it: the
 > prompt runs until the person leaves, so the File menu's main item would be
 > permanently unavailable in the window it was built for. The promise the item
 > keeps is "in this window, and never at the cost of a run".
@@ -117,6 +118,17 @@ terminal and leaves with it.
 window.** That is how M1.5's behaviour survives unchanged — one tab, a clean
 exit, and the window closes — while a clean exit in one of three tabs now closes
 only its own.
+
+**Since M22 that sentence is about a FILE.** *(2026-09-07.)* A tab with no file
+runs the prompt — `child.cpp` adds `--repl` in exactly that case — and a prompt
+that exits cleanly **keeps its tab**, because the exit word ends a session and
+the screen is full of what the person did. PLAN §8's M22 entry asked for the
+clean-exit arm to be deleted outright; it was written before tabs existed, and
+deleting it now would leave every program opened from the File menu sitting in a
+tab somebody has to dismiss. So the arm stays and the prompt opts out:
+`hold_always || file.empty()`. **`hold_forced` is what keeps `--hold` alive**
+across `Open…`, which recomputes the policy when it starts a file in a tab that
+was a prompt a moment ago.
 
 **The state that made this possible.** `terminal.cpp` held two file statics —
 is a child alive, is the screen being held — and `keys.cpp` held three more. A
@@ -337,6 +349,8 @@ was committed, with the rig this file describes:
 | the `*.satl` filter | only satellite programs listed; the chooser's own type column says "Satellite source code" |
 | Save output as… | wrote screen **and** scrollback, `satl`'s caret line included |
 | a clean exit with two tabs | closed **its** tab; the window and the other tab stayed |
+| **M22: type at the prompt, then `exit`** | the window **stayed**, with the whole session on it and "press any key to close" under it |
+| **M22: `satl-term example/hello_world.satl`** | still closed when the file was done — the file arm is unchanged |
 | Ctrl-C, nothing running, nothing selected | closed the tab in front; the bar hid at one tab; the **last** tab closed the window |
 | Ctrl-C with a selection | copied, and nothing closed |
 | a bare `Control_L` in a held tab | did **not** close it |

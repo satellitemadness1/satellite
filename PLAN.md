@@ -3701,6 +3701,29 @@ only listed what somebody had written, and it breaks DESIGN §1.1 outright — t
 a user a path works when nothing implements it is doing something behind their
 back, and *a refusal in plain words beats a guess.*
 
+***AND THAT RULE, AS WRITTEN, CANNOT SATISFY THIS MILESTONE'S OWN DONE-WHEN.***
+*(Found 2026-09-07, before any of it was built; the author settled it the same
+day.)* The done-when below asks for **"everything through M16 and M17, in build
+order"** — and M17's four paths are `satellite` `1`, `satellite.include` `1 1`,
+`1 1 0` and `1 1 1`, **none of which has a handler row and none of which ever
+will**. `include`, `capsule`, `main`, `return` and the type names are recognised
+by the parser, the resolver and the compiler and are never dispatched: of the six
+paths hello world is written in, **exactly one — `console.display` `1 5 1` — is a
+row in that table.** So help-as-specified would print `satellite.console.display`
+and stay silent about every other word in the language's own first program. That
+is not "cannot omit what can run"; it is omitting the whole front end.
+
+**The author's answer is a `built()` predicate over three kinds**, and it is this
+milestone's real content: a node is named by help when it has a **handler** row,
+an **assigner** row (M15's dials), or is a **front-end word** the parser or
+resolver recognises. There is no such predicate in the tree today —
+`words_nodes.hpp` has only `is_language_word` — and the front-end set has to be
+written down as data rather than inferred, or it drifts the first time a word
+moves. **§4.6's sentence then needs one more word than it has**: the trie is what
+exists, the handler table is what *runs*, and help answers for what is *built*,
+which is the larger set. DESIGN §4.6 points here for the argument, so the
+correction lands there when this milestone does.
+
 **The fix needs no new machinery: help prints a node when `handlers[path_id]` is
 non-null.** That table is already the dispatch mechanism (DESIGN §4.5, and this
 plan's §6 where M9 builds it), so **the same table that decides whether a call runs
@@ -3725,6 +3748,31 @@ parentheses being optional is why WORD_NUMBERS §2.2 carries a bare `1 19` row
 alongside `1 19 0` and `1 19 1` — one of only three parents in that table written
 without the `(0)` marker (`SCRATCH.md/THREADS.md` finding 211 has the other two).
 
+***THE ARGUMENT IS NOT AN EVALUATED ARGUMENT, AND NOTHING SAID SO.***
+*(2026-09-07.)* `satellite.help(satellite.console)` cannot work as an ordinary
+call: a bare language path read as a value compiles to `op_dispatch` and refuses
+at run time, so the argument dies before help is entered — **and it refuses
+identically for a module that IS built**, measured:
+
+    satl: error S0721: `satellite.console` is a path satellite has a number
+          for and nothing behind yet -- a later milestone
+
+So the done-when's second self-verifying check —
+`satellite.help(satellite.network)` refusing in plain words — **passes today by
+accident, through the wrong mechanism**, and would give the same answer to the
+central question help exists to answer. `1 19 1`'s argument is therefore a
+**path**, or a **name whose declared type resolve already knows**
+(`resolve::Info::type`), and in neither case is anything evaluated. That makes it
+the first unevaluated argument in the language, which is a language decision and
+is recorded here rather than discovered during the build.
+
+**The author settled the shapes around it the same day**: a bare word that
+nothing declares is refused with `no variable with the name "x"; did you mean
+satellite.x?` and a pointer to `satellite.help()`; **quotes are gone** — a topic
+is reached by its path, `satellite.help(satellite.random)`, and
+`satellite.help()` lists them; and `satellite.help()`'s own text is rewritten to
+say that a variable's name can be passed and help will answer for its type.
+
 **Open, and it is the one thing here that is not already decided: a topic is not a
 path.** v1 accepted `satellite.help(random)` and `satellite.help("random")` for
 seven topic pages — `arguments`, `random`, `fast`, `normal`, `ultra`,
@@ -3741,6 +3789,18 @@ only source.
 **Not this milestone.** `satellite.analyze` `1 16`, which still has no milestone
 anywhere, and the topic *pages* as prose. Adding a node's one-line description to
 `words.def` is this milestone; writing seven essays is not.
+
+**AND THE STORE IS THIS MILESTONE'S, WHICH M22 LANDED EARLY TO GIVE A READER.**
+*(2026-09-07.)* The author's account of help includes asking about a **variable**
+— `satellite.help(my_name)` answering with the node its declared type ends at,
+which `resolve::Info::type` already knows statically, so no value is ever
+evaluated and `1 19 1`'s argument is a path or a name and never a run-time thing.
+Asking **after the program has finished** is the part that needs keeping: the
+last run's names and types, discarded when the terminal closes. `resolve::Frame`
+carries `names` and `types` for every capsule already, so the data is computed;
+what M22 built is the prompt it is asked at. **The store belongs here and not
+there**, for M2's rule — help is what reads it, and a registry needs its consumer
+in the milestone that writes it. MILESTONES/M22.md §6.2.
 
 **Done when** `satl` runs a program whose whole body is `satellite.help` and the
 output names exactly the paths that are built when it runs — everything through M16
@@ -4174,7 +4234,13 @@ holes is not a failed milestone; it is the only one in this section positioned t
 find them before a user does.
 
 
-**M22 — the prompt, and the window stops closing.** The REPL itself: the prompt,
+**M22 — the prompt, and the window stops closing.** ***LANDED 2026-09-07, OUT OF
+ORDER — `MILESTONES/M22.md`, and its §0 is why.*** It was built before M18 at the
+author's direction: M18's help is meant to answer about a program's variables
+after it has run, which needs a prompt to be typed into, and a name-and-type
+store built at M18 would have had its only reader here — the no-consumer shape
+M2's entry above forbids. **The build order below is unchanged and nothing
+renumbers.** The REPL itself: the prompt,
 **the prompt's Ctrl-C — the byte `0x03`, because raw mode turns ISIG off and the
 signal never arrives** — and the exit words. DESIGN §10.2 is why Ctrl-C is two
 different things, and **the other one is M11's**: the SIGINT that sets a flag and lets
@@ -4223,6 +4289,18 @@ close button is how a window closes. `on_child_exited` in
 `src/programs/terminal.cpp` is the one function that changes, and it is written
 knowing this — the clean-exit arm is marked as M1.5's and this milestone removes
 it rather than discovering it.
+
+***And it NARROWED that arm rather than removing it, because this paragraph was
+written before tabs existed.*** *(2026-09-07, and the file moved too:
+`src/programs/satl-term/terminal.cpp`.)* `TERM.md` now says **"a tab closes when
+its interpreter is finished with"**, and the File menu's `Open…` runs a file in a
+tab — so deleting the arm would leave every finished program sitting in a tab the
+user has to dismiss by hand. The prompt opts out of it instead: `hold_always ||
+file.empty()`, and `child.cpp` already adds `--repl` in exactly that case. **The
+reason given above for closing is still exactly true of a file and is no longer
+true of a prompt**, which is the sentence doing the work rather than the
+instruction it produced when there was only ever one child. MILESTONES/M22.md
+§2.6.
 
 Done when: a person can start `satl-term`, type at the prompt, and have what they
 typed still on the screen after the interpreter is gone.

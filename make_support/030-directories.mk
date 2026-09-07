@@ -59,4 +59,4 @@ WORDS    = $(SRC)/satellite_words
 TESTS     = tests
 TESTNAMES = words_test lexer_test parser_test satc_test reporter_test \
             limits_test resolve_test number_test float_test eval_test \
-            console_test
+            console_test prompt_test

@@ -200,10 +200,19 @@ int run_prompt()
         }
 
         const Scan scanned = scan(line);
-        if (scanned.lex_error && depth == 0) {
-            // Let the real reporter answer it: the session builds the line and
-            // the lexer's own diagnostic comes out with a caret under it. This
-            // branch exists so a lex error does not silently open a block.
+
+        // A LINE THAT DID NOT LEX IS RUN AT ONCE so the real reporter answers
+        // it -- the session builds it and the lexer's own diagnostic comes out
+        // with a caret under it, rather than the prompt inventing a sentence.
+        //
+        // ONLY WHEN NOTHING IS IN HAND, and the first version of this was wrong
+        // in a way worth writing down: it fired whenever `depth == 0`, which is
+        // also true of a head line that owes a body -- so an unterminated string
+        // on the line after `satellite.statement.if (x)` ran alone AND left the
+        // head sitting in `entry`, where the next line joined it. The entry must
+        // either be empty or be abandoned; running one line out of the middle of
+        // a block is neither.
+        if (scanned.lex_error && entry.empty() && depth == 0 && !owed_body) {
             session.run(line);
             continue;
         }

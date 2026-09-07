@@ -76,6 +76,11 @@ enum ExitStatus {
 // mistake was to write that banner as a separate literal -- which then drifted,
 // and said 0.1 for months while --version said 002. One function, two callers,
 // no way to drift.
+//
+// THE SECOND CALLER ARRIVED ON 2026-09-07 and is satellite_prompt/prompt.cpp.
+// The prediction is three milestones old and cost one line to keep; writing it
+// as a literal would have cost the same line and then drifted, which is the
+// whole of the argument above demonstrated rather than argued.
 std::string opening_text();
 
 // Every way to start satl, one line each.

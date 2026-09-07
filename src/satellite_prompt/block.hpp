@@ -64,6 +64,18 @@ struct Scan {
 
     // Nothing but whitespace and comments. Not an error, and not worth running.
     bool empty = false;
+
+    // For `satellite.library.<name>`, the <name>. Empty for everything else.
+    //
+    // IT IS HERE BECAUSE THE SAME TEXT IS TWO DIFFERENT STATEMENTS DEPENDING ON
+    // WHERE IT SITS, and this scanner cannot see where it sits.
+    // `satellite.library.counter = 5` at the top of a file DECLARES a global;
+    // the identical line inside a capsule ASSIGNS to one, and both are legal --
+    // measured. So a prompt that always placed it at the top level made the
+    // second one a redeclaration (S0291) and the user could never change a
+    // global they had just made. The name is what lets session.cpp tell them
+    // apart: the first mention declares, every later one assigns.
+    std::string library_name;
 };
 
 Scan scan(const std::string &line);

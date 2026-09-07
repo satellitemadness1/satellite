@@ -466,6 +466,40 @@ $(TESTS)/console_test/console_test: $(console_test_SRCS) $(console_test_HDRS) \
 	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -I$(TESTS)/console_test -o $@ \
 	    $(console_test_SRCS) $(CONSOLE_TEST_SRCS)
 
+# prompt_test LINKS FOUR OF THE PROMPT'S NINE FILES AND THE LEXER BEHIND THEM,
+# and what it leaves out is the point. keys, editor, history and block are pure
+# -- bytes in, a line or a Scan out, no terminal anywhere -- so those three
+# sections run on a build machine with no tty at all. raw_mode, render,
+# line_reader, session and prompt are NOT here: every one of them needs a real
+# terminal or a whole interpreter, and the section that exercises them does it
+# the honest way, by forkpty(3)ing `./satl --repl` and typing at it.
+#
+# THE LEXER IS THE SUBJECT OF A CLAUSE AND NOT A DEPENDENCY TO TOLERATE.
+# block.cpp counts braces through lex() so that a `{` inside a string is not a
+# brace, and blocks.cpp clause 2 is exactly that -- so the lexer is linked for
+# the same reason parser_test links it: the thing being proved runs through it.
+PROMPT_TEST_SRCS = $(PROMPT)/keys.cpp \
+                   $(PROMPT)/editor.cpp \
+                   $(PROMPT)/history.cpp \
+                   $(PROMPT)/block.cpp \
+                   $(LEXER)/lexer.cpp \
+                   $(STRING)/satellite_string.cpp \
+                   $(ERRORS)/report.cpp \
+                   $(ERRORS)/suggest.cpp
+
+# AND ON `satl` ITSELF, for the same reason console_test asks for it: the
+# session section drives the real interpreter and asserts on the screen, so an
+# edit to satl must re-run the suite that types at it. On example/ too, because
+# clause 7 runs hello world through the prompt's own `run`.
+$(TESTS)/prompt_test/prompt_test: $(prompt_test_SRCS) $(prompt_test_HDRS) \
+                                  $(PROMPT_TEST_SRCS) $(ERRORS)/errors.def \
+                                  $(WORDS)/words.def $(HDRS) .cxxflags-stamp \
+                                  example/hello_world.satl satl
+	$(CXX) $(CXXFLAGS) -I$(SRC) -I$(TESTS)/prompt_test -o $@ \
+	    $(prompt_test_SRCS) $(PROMPT_TEST_SRCS)
+
+prompt_test: $(TESTS)/prompt_test/prompt_test
+
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
 #
@@ -485,6 +519,7 @@ test: $(TESTBINS)
 	./$(TESTS)/float_test/float_test
 	./$(TESTS)/eval_test/eval_test example
 	./$(TESTS)/console_test/console_test
+	./$(TESTS)/prompt_test/prompt_test
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
@@ -584,7 +619,13 @@ $(TESTS)/float_test/float_test: $(float_test_SRCS) $(float_test_HDRS) \
 
 float_test: $(TESTS)/float_test/float_test
 
+# console_test IS ABSENT FROM THIS LIST AND HAS NO ALIAS RULE EITHER, which is
+# a gap rather than a decision -- `make console_test` has never worked, and
+# nothing said so until prompt_test was added beside it and the two were
+# compared. Left for the author: adding the alias is one line, and it belongs to
+# whoever owns that suite. MILESTONES/M22.md §3 records it.
 TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
-              limits_test resolve_test number_test float_test eval_test
+              limits_test resolve_test number_test float_test eval_test \
+              prompt_test
 
 .PHONY: test $(TESTALIASES)

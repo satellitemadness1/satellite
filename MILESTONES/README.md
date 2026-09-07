@@ -31,6 +31,16 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M15.md](M15.md) | 2026-09-04 | The float, the rounding rule — half away from zero, delegated and ratified — and the retune: assignment to a dial is a write the next division observes. |
 | [M16.md](M16.md) | 2026-09-06 | The containers and the search power — `list`, `map`, their thirty-four methods, and the empty list `satellite.main`'s parameter needed. |
 | [M17.md](M17.md) | 2026-09-06 | Hello world — DESIGN §3 runs, held to the file by a test; the include's bare shape parses at last, and a spaceship's name stops being a variable. |
+| [M22.md](M22.md) | 2026-09-07 | **Out of order, and §0 says why.** The prompt — `satl --repl` reads a line, a typed line becomes a program, and `satl-term`'s window stops closing when what exited was the prompt. |
+
+**M22 sits between M17 and M18 in this table and that is the point of the date
+column.** It was built on 2026-09-07, before M18 through M21, at the author's
+direction — M18's `satellite.help` is meant to answer about a program's
+variables *after it has run*, which needs somewhere to type the question, and
+the prompt was M22. A store built at M18 would have had its only reader here,
+which is the no-consumer shape PLAN M2 forbids. **PLAN §8's build order is
+unchanged**; M22.md §0 is the record that it was departed from, and M18's own
+entry already allowed for one of the two moving.
 
 ***The M16 row said "not in this tree — a review of `prototype/M10`" until
 2026-09-06, and it was stale for the length of a milestone.*** The file it

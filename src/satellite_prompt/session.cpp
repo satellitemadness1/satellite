@@ -118,7 +118,21 @@ bool Session::run(const std::string &entry)
     // reports a mistake in it now rather than on the next line, when the user
     // has moved on and the caret would point at something they are no longer
     // looking at.
-    const bool top = scanned.placement == Placement::TopLevel;
+    // A GLOBAL ALREADY DECLARED IS AN ASSIGNMENT AND NOT A SECOND DECLARATION.
+    // `satellite.library.counter = 5` then `= 9` is two top-level declarations
+    // of one name, which is S0291 -- and inside a capsule the second line is a
+    // perfectly ordinary assignment, which is what the user meant. The scanner
+    // cannot tell (block.hpp says why); this can, because it is the thing that
+    // remembers what has been declared.
+    bool top = scanned.placement == Placement::TopLevel;
+    if (top && !scanned.library_name.empty()) {
+        for (const std::string &name : globals_) {
+            if (name == scanned.library_name) {
+                top = false;
+                break;
+            }
+        }
+    }
 
     // HOW MANY LINES SIT ABOVE WHAT WAS TYPED, computed before the entry joins
     // them so that both halves are measured the same way. A top-level form goes
@@ -144,6 +158,12 @@ bool Session::run(const std::string &entry)
             top_level_.pop_back();
         return true;
     }
+
+    // REMEMBERED ONLY AFTER IT BUILT, so a declaration that was rejected does
+    // not make the next mention of the name an assignment to something that
+    // does not exist.
+    if (top && !scanned.library_name.empty())
+        globals_.push_back(scanned.library_name);
 
     const int which = find_main(built);
     if (which < 0)

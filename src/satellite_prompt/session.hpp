@@ -66,6 +66,12 @@ private:
     void report(Built &built, const std::string &name, int above) const;
 
     std::vector<std::string> top_level_;
+
+    // Every `satellite.library.<name>` this session has DECLARED. The first
+    // mention of a name is a declaration and goes to the top level; every later
+    // one is an assignment and goes inside main, which is the only way a global
+    // made at the prompt can ever be changed. See block.hpp's `library_name`.
+    std::vector<std::string> globals_;
 };
 
 // How many lines the wrapper writes above the typed body. Public because
