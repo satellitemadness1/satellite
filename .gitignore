@@ -63,3 +63,8 @@
 # at the repository root and an old_versions/ somewhere deeper is still yours to
 # decide about.
 /old_versions/
+
+# Python's bytecode cache, which help_lines/ makes the moment gen.py imports
+# topics.py. Generated, machine-specific, and never worth a diff.
+__pycache__/
+*.pyc
