@@ -1,0 +1,222 @@
+{
+ "1 4": {
+  "query": "satellite.help(satellite.container)",
+  "prose": "The things that hold other things. There are two: a list, which keeps\nvalues in order, and a map, which keeps values under keys.\n\nBoth say what they hold inside angle brackets when you declare them, and\nboth are made by calling the bare shape rather than by the declaration\nalone.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nsatellite.console.display(l)"
+ },
+ "1 4 0": {
+  "query": "satellite.help(satellite.container)",
+  "prose": "The bare shape. There is no container called `container`; the word is the\nfamily and `list` or `map` is what you write.",
+  "example": ""
+ },
+ "1 4 1": {
+  "query": "satellite.help(satellite.container.map)",
+  "prose": "Values kept under keys. The declaration names both types, the key's and\nthe value's, separated by a comma inside the angle brackets.\n\nIt remembers the order things were put in, so walking its keys gives them\nback in that order rather than in some order of its own.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nsatellite.console.display(m)"
+ },
+ "1 4 1 0": {
+  "query": "satellite.help(satellite.container.map)",
+  "prose": "Makes an empty map. A declaration on its own holds nothing, so this call\nis what actually constructs one.\n\nIt is the same shape for every map whatever it holds; the types are in the\ndeclaration on the left.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nsatellite.console.display(m.empty())"
+ },
+ "1 4 1 1": {
+  "query": "satellite.help(satellite.container.map.set)",
+  "prose": "Puts a value under a key. A key that is not there yet is added; one that\nis already there has its value replaced.\n\nThe square bracket form does the same thing and reads better when the key\nis a literal.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nm[\"washer\"] = 4\nsatellite.console.display(m)"
+ },
+ "1 4 1 2": {
+  "query": "satellite.help(satellite.container.map.get)",
+  "prose": "Takes the value out from under a key.\n\nAsk `has` first if you are not sure the key is there, since asking for a\nkey that is missing is a refusal rather than a quiet empty answer.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nsatellite.console.display(m.get(\"bolt\"))\nsatellite.console.display(m[\"bolt\"])"
+ },
+ "1 4 1 3": {
+  "query": "satellite.help(satellite.container.map.has)",
+  "prose": "Answers true when the key is in the map.\n\nThis is the test to write before `get`, and it is also how you tell an\nabsent key from a key whose value happens to be zero.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nsatellite.console.display(m.has(\"bolt\"))\nsatellite.console.display(m.has(\"rivet\"))"
+ },
+ "1 4 1 4": {
+  "query": "satellite.help(satellite.container.map.size)",
+  "prose": "How many pairs the map holds.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nm.set(\"nut\", 9)\nsatellite.console.display(m.size())"
+ },
+ "1 4 1 5": {
+  "query": "satellite.help(satellite.container.map.empty)",
+  "prose": "Answers true when the map holds no pairs at all.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nsatellite.console.display(m.empty())"
+ },
+ "1 4 1 6": {
+  "query": "satellite.help(satellite.container.map.clear)",
+  "prose": "Throws away every pair, leaving the map empty and ready to use again.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nm.clear()\nsatellite.console.display(m.empty())"
+ },
+ "1 4 1 7": {
+  "query": "satellite.help(satellite.container.map.remove)",
+  "prose": "Takes one key and its value out of the map.\n\nThe order of what is left is unchanged, so removing from the middle does\nnot shuffle the rest.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nm.set(\"nut\", 9)\nm.remove(\"bolt\")\nsatellite.console.display(m)"
+ },
+ "1 4 1 8": {
+  "query": "satellite.help(satellite.container.map.keys)",
+  "prose": "Hands back every key as a list, in the order they were put in.\n\nBecause that order is kept rather than arbitrary, a walk over the keys is\nsomething a program can rely on.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nm.set(\"nut\", 9)\nsatellite.console.display(m.keys())"
+ },
+ "1 4 1 9": {
+  "query": "satellite.help(satellite.container.map.values)",
+  "prose": "Hands back every value as a list, in the same order the keys come back\nin, so the two lists line up position by position.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"bolt\", 7)\nm.set(\"nut\", 9)\nsatellite.console.display(m.values())"
+ },
+ "1 4 1 10": {
+  "query": "satellite.help(satellite.container.map.search)",
+  "prose": "Finds pairs whose key is close to the pattern, rather than exactly equal\nto it. How close is close enough is a dial, `satellite.system.threshold`,\nrunning from an exact match up to a substring either way.\n\nWhat comes back is a list of maps, one per hit, each carrying the value,\nthe key, the path and the score.",
+  "example": "satellite.container.map<satellite.variable.string, satellite.variable.number> m = satellite.container.map()\nm.set(\"washer\", 4)\nsatellite.system.threshold(6)\nsatellite.console.display(m.search(\"was\"))"
+ },
+ "1 4 2": {
+  "query": "satellite.help(satellite.container.list)",
+  "prose": "Values in order, counted from zero. The declaration names what it holds\ninside angle brackets, and everything in it is that one type.\n\nA position in square brackets reads or writes one value, a negative one\ncounts back from the end, and two positions with a colon between them\ntake a slice.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nsatellite.console.display(l[0])\nsatellite.console.display(l[-1])"
+ },
+ "1 4 2 0": {
+  "query": "satellite.help(satellite.container.list)",
+  "prose": "Makes an empty list. The declaration holds nothing on its own, so this\ncall is what constructs one.",
+  "example": "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\nsatellite.console.display(parts.empty())"
+ },
+ "1 4 2 1": {
+  "query": "satellite.help(satellite.container.list.append)",
+  "prose": "Adds one value to the end. It changes the list you called it on rather\nthan handing back a new one.\n\nThis is how a list gets built, since a list constructed empty has nothing\nin it and there is no literal form.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.append(2)\nsatellite.console.display(l)"
+ },
+ "1 4 2 2": {
+  "query": "satellite.help(satellite.container.list.size)",
+  "prose": "How many values the list holds.\n\nIt counts what is there now, so it is right after appends and removals\nwithout being told.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nsatellite.console.display(l.size())"
+ },
+ "1 4 2 3": {
+  "query": "satellite.help(satellite.container.list.sort)",
+  "prose": "Puts the values in order, smallest first, changing the list in place.\n\nStrings sort as text and numbers sort as numbers, so a list sorts the way\nthe type it holds compares.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.append(2)\nl.sort()\nsatellite.console.display(l)"
+ },
+ "1 4 2 4": {
+  "query": "satellite.help(satellite.container.list.sort)",
+  "prose": "Sorts in the direction you name, `\"up\"` or `\"down\"`.\n\nThe two spellings fold onto the plain sort and the sort_down beside it, so\nthis is the same work reached by a name rather than a different one.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.sort(\"down\")\nsatellite.console.display(l)\nl.sort(\"up\")\nsatellite.console.display(l)"
+ },
+ "1 4 2 5": {
+  "query": "satellite.help(satellite.container.list.sort_down)",
+  "prose": "Puts the values in order largest first, changing the list in place.\n\nIt is the plain sort turned round, and `sort(\"down\")` is the same thing\nsaid the other way.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(1)\nl.append(3)\nl.sort_down()\nsatellite.console.display(l)"
+ },
+ "1 4 2 6": {
+  "query": "satellite.help(satellite.container.list.sort_down)",
+  "prose": "Sorts largest first by a key you name, for a list holding maps.\n\nThe key is the name to look under in each map, so a list of records\nsorts by one of their fields.",
+  "example": ""
+ },
+ "1 4 2 7": {
+  "query": "satellite.help(satellite.container.list.sort_up)",
+  "prose": "Sorts smallest first by a key you name, for a list holding maps.\n\nIt is the pair to sort_down with a key, and the key is the name to look\nunder in each map.",
+  "example": ""
+ },
+ "1 4 2 8": {
+  "query": "satellite.help(satellite.container.list.contains)",
+  "prose": "Answers true when the value is somewhere in the list.\n\nWhen you need to know where rather than whether, `index_of` says.",
+  "example": "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\nparts.append(\"bolt\")\nsatellite.console.display(parts.contains(\"bolt\"))"
+ },
+ "1 4 2 9": {
+  "query": "satellite.help(satellite.container.list.index_of)",
+  "prose": "Answers the position of the first place the value appears, counting from\nzero.",
+  "example": "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\nparts.append(\"bolt\")\nparts.append(\"nut\")\nsatellite.console.display(parts.index_of(\"nut\"))"
+ },
+ "1 4 2 10": {
+  "query": "satellite.help(satellite.container.list.empty)",
+  "prose": "Answers true when the list holds nothing.\n\nIt is the honest test, since an empty list is not itself false.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nsatellite.console.display(l.empty())"
+ },
+ "1 4 2 11": {
+  "query": "satellite.help(satellite.container.list.clear)",
+  "prose": "Throws away every value, leaving the list empty and ready to use again.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.clear()\nsatellite.console.display(l.empty())"
+ },
+ "1 4 2 12": {
+  "query": "satellite.help(satellite.container.list.first)",
+  "prose": "The value at the front, without taking it out.\n\nIt is the same as position zero and reads better when the point is that it\nis the first one.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nsatellite.console.display(l.first())"
+ },
+ "1 4 2 13": {
+  "query": "satellite.help(satellite.container.list.last)",
+  "prose": "The value at the end, without taking it out.\n\nIt is the same as position -1 and says what it means more plainly.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nsatellite.console.display(l.last())"
+ },
+ "1 4 2 14": {
+  "query": "satellite.help(satellite.container.list.truncate)",
+  "prose": "Cuts the list down to the length you give, throwing away everything past\nit. A length longer than the list changes nothing.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.append(2)\nl.truncate(2)\nsatellite.console.display(l)"
+ },
+ "1 4 2 15": {
+  "query": "satellite.help(satellite.container.list.reserve)",
+  "prose": "Says roughly how many values are coming, so the list can make room once\ninstead of growing as it goes.\n\nIt changes nothing you can observe except speed. The list is still empty\nafterwards.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.reserve(1000)\nsatellite.console.display(l.empty())"
+ },
+ "1 4 2 16": {
+  "query": "satellite.help(satellite.container.list.remove_first)",
+  "prose": "Takes the front value out and shuffles the rest down.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.remove_first()\nsatellite.console.display(l)"
+ },
+ "1 4 2 17": {
+  "query": "satellite.help(satellite.container.list.remove_last)",
+  "prose": "Takes the end value out, which costs nothing since nothing has to move.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.remove_last()\nsatellite.console.display(l)"
+ },
+ "1 4 2 18": {
+  "query": "satellite.help(satellite.container.list.remove_at)",
+  "prose": "Takes out the value at the position you name and closes the gap.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.append(2)\nl.remove_at(1)\nsatellite.console.display(l)"
+ },
+ "1 4 2 19": {
+  "query": "satellite.help(satellite.container.list.remove)",
+  "prose": "Takes out the value you name rather than the position, removing the first\nplace it appears.\n\n**A quoted word here is read as an option, not as a value.** `remove` has\nthree of them — `\"first\"`, `\"last\"` and `\"at\"` — which fold onto the three\nmethods of those names. So to remove a string, hold it in a name first and\npass the name; a literal would be looked up among the options and refused.",
+  "example": "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\nparts.append(\"bolt\")\nparts.append(\"nut\")\nsatellite.variable.string which = \"bolt\"\nparts.remove(which)\nsatellite.console.display(parts)"
+ },
+ "1 4 2 20": {
+  "query": "satellite.help(satellite.container.list.insert)",
+  "prose": "Puts a value in at the position you name, pushing everything from there\non one place along.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(2)\nl.insert(1, 9)\nsatellite.console.display(l)"
+ },
+ "1 4 2 21": {
+  "query": "satellite.help(satellite.container.list.join)",
+  "prose": "Runs the values together into one string with the separator between\nthem, and nothing after the last one.\n\nIt is the other half of a string's `split`.",
+  "example": "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\nparts.append(\"a\")\nparts.append(\"b\")\nsatellite.console.display(parts.join(\", \"))"
+ },
+ "1 4 2 22": {
+  "query": "satellite.help(satellite.container.list.reverse)",
+  "prose": "Turns the list back to front in place.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.reverse()\nsatellite.console.display(l)"
+ },
+ "1 4 2 23": {
+  "query": "satellite.help(satellite.container.list.sum)",
+  "prose": "Adds every value together. The list has to hold numbers.\n\nSince a number here has no width, a long list of large values sums\nexactly rather than wrapping.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nl.append(2)\nsatellite.console.display(l.sum())"
+ },
+ "1 4 2 24": {
+  "query": "satellite.help(satellite.container.list.max)",
+  "prose": "The largest value in the list.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nsatellite.console.display(l.max())"
+ },
+ "1 4 2 25": {
+  "query": "satellite.help(satellite.container.list.min)",
+  "prose": "The smallest value in the list.",
+  "example": "satellite.container.list<satellite.variable.number> l = satellite.container.list()\nl.append(3)\nl.append(1)\nsatellite.console.display(l.min())"
+ },
+ "1 4 2 26": {
+  "query": "satellite.help(satellite.container.list.search)",
+  "prose": "Finds values close to the pattern rather than exactly equal to it, and\nhands back a list of maps, one per hit, carrying the value, the key, the\npath and the score.\n\nThe shorter form, a pattern in square brackets, gives just the values\nthat matched. How loose a match may be is `satellite.system.threshold`.",
+  "example": "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\nparts.append(\"washer\")\nsatellite.system.threshold(6)\nsatellite.console.display(parts.search(\"was\"))"
+ },
+ "1 4 3": {
+  "query": "satellite.help(satellite.container.arguments)",
+  "prose": "The command line, as a container.\n\n**Not built as this path.** What a program reads today is the parameter\nit declares on `satellite.main`, and the wider arguments object is M20.",
+  "example": ""
+ },
+ "1 4 4": {
+  "query": "satellite.help(satellite.container.result)",
+  "prose": "A result carrying either an answer or a reason it failed.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+  "example": ""
+ }
+}

@@ -1,0 +1,91 @@
+{
+"1 13": {
+  "query": "satellite.help(satellite.statement)",
+  "prose": "The statements that change what runs next, rather than what a value is.\nThere are exactly four of them and every one takes a block in braces on\nthe lines below it.\n\nThe brace goes on its own line, under the head, which is how every file in\nthis language is written.",
+  "example": "satellite.variable.bool ready = satellite.bool.true\nsatellite.statement.if (ready)\n    {\n    satellite.console.display(\"go\")\n    }"
+},
+
+"1 13 0": {
+  "query": "satellite.help(satellite.statement)",
+  "prose": "The bare shape. There is no statement called `statement`; the word is the\nfamily and one of the four underneath is what you write.\n\nAsking help about the family is how you see all four at once.",
+  "example": ""
+},
+
+"1 13 1": {
+  "query": "satellite.help(satellite.statement.if)",
+  "prose": "Runs its block when the condition is true. The condition has to be a\n`satellite.variable.bool` and nothing else.\n\n**There is no truthiness here.** A number that happens to be zero is not\nfalse, an empty string is not false, and a value that is holding nothing\nis not false. Compare something, or hold a bool, and the test is honest.",
+  "example": "satellite.variable.number count = 3\nsatellite.statement.if (count > 0)\n    {\n    satellite.console.display(\"there is at least one\")\n    }"
+},
+
+"1 13 2": {
+  "query": "satellite.help(satellite.statement.for)",
+  "prose": "Counts. The head holds three parts separated by semicolons: what to\ndeclare before the first pass, the test that decides whether to go round\nagain, and what to do at the end of each pass.\n\nThe variable declared in the head belongs to the loop and is gone after\nit.",
+  "example": "satellite.variable.number total = 0\nsatellite.statement.for (satellite.variable.number i = 0; i < 5; i = i + 1)\n    {\n    total = total + i\n    }\nsatellite.console.display(total)"
+},
+
+"1 13 3": {
+  "query": "satellite.help(satellite.statement.while)",
+  "prose": "Goes round for as long as the condition holds, testing before each pass\nrather than after, so a condition that is false to begin with runs the\nblock no times at all.\n\nSomething inside the block has to change what the condition reads, or the\nloop does not end. Ctrl-C stops one that does not.",
+  "example": "satellite.variable.number countdown = 3\nsatellite.statement.while (countdown > 0)\n    {\n    satellite.console.display(countdown)\n    countdown = countdown - 1\n    }"
+},
+
+"1 13 4": {
+  "query": "satellite.help(satellite.statement.else)",
+  "prose": "The other way. It follows an `if` block and runs when that condition was\nfalse, and it takes no condition of its own.\n\nIt is written as its own statement on the line after the if block's\nclosing brace.",
+  "example": "satellite.variable.bool loud = satellite.bool.false\nsatellite.statement.if (loud)\n    {\n    satellite.console.display(\"loud is true\")\n    }\nsatellite.statement.else\n    {\n    satellite.console.display(\"loud is false\")\n    }"
+},
+
+"1 15": {
+  "query": "satellite.help(satellite.return)",
+  "prose": "Leaves the capsule it is written in, at once, and optionally hands a\nvalue back to whoever called it.\n\nA capsule that runs off the end of its body has finished on its own, so\nthis is only needed when you want to leave early or to answer with\nsomething.",
+  "example": "satellite.capsule biggest(satellite.variable.number a, satellite.variable.number b) satellite.returns(satellite.variable.number)\n    {\n    satellite.statement.if (a > b)\n        {\n        satellite.return(a)\n        }\n    satellite.return(b)\n    }\n\nsatellite.console.display(biggest(3, 9))"
+},
+
+"1 15 0": {
+  "query": "satellite.help(satellite.return)",
+  "prose": "The bare shape, with nothing between the parentheses. It leaves the\ncapsule and hands nothing back, which is what you want for a capsule that\ndoes something rather than answers something.\n\nIt is the shape to use for an early exit out of a loop's enclosing\ncapsule.",
+  "example": "satellite.capsule announce(satellite.variable.string what)\n    {\n    satellite.console.display(what)\n    satellite.return()\n    }\n\nannounce(\"done\")"
+},
+
+"1 15 1": {
+  "query": "satellite.help(satellite.return)",
+  "prose": "Ends the program successfully. Written at the end of `satellite.main`, it\nis how a file says it finished on purpose rather than by running out of\nlines.\n\nThe word `satellite` inside the parentheses is part of the path's number\nand not a value you are returning, so nothing is handed back.",
+  "example": "satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n    {\n    satellite.console.display(\"Hello, World!\")\n    satellite.return(satellite)\n    }"
+},
+
+"1 15 2": {
+  "query": "satellite.help(satellite.return)",
+  "prose": "Hands a value back to the caller. The capsule has to have declared what\nkind of value with `satellite.returns`, and the value you give has to be\nof that kind.\n\nAnything can go here that is a value: a literal, a name, or the answer to\nanother call.",
+  "example": "satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)\n    {\n    satellite.return(n * 2)\n    }\n\nsatellite.console.display(double_it(21))"
+},
+
+"1 21": {
+  "query": "satellite.help(satellite.returns)",
+  "prose": "Declares what kind of value a capsule answers with. It goes on the\ncapsule's own line, after the parameters and before the brace.\n\nA capsule without it answers with nothing, and writing\n`satellite.return(value)` inside one is refused. It is the promise the\nreturn has to keep.",
+  "example": "satellite.capsule name_of(satellite.variable.number n) satellite.returns(satellite.variable.string)\n    {\n    satellite.return(n.to_string())\n    }\n\nsatellite.console.display(name_of(7))"
+},
+
+"1 17": {
+  "query": "satellite.help(satellite.bool)",
+  "prose": "The two constants, true and false. They are the only two values a\n`satellite.variable.bool` can hold and the only two things a condition\nwill accept.\n\nThey are written out in full. A bare `true` is a name you own, so typing\nit asks for a variable of yours by that name.",
+  "example": "satellite.variable.bool ready = satellite.bool.true\nsatellite.console.display(ready)"
+},
+
+"1 17 0": {
+  "query": "satellite.help(satellite.bool)",
+  "prose": "The bare shape. There is nothing to call here; the module holds two\nconstants and you write one of them by name.",
+  "example": ""
+},
+
+"1 17 1": {
+  "query": "satellite.help(satellite.bool.false)",
+  "prose": "False, written out. It is a value like any other, so it can be assigned,\npassed to a capsule, and stored in a list.\n\nWrite it in full. `false` on its own is a name the program owns, and\nnothing declares it.",
+  "example": "satellite.variable.bool loud = satellite.bool.false\nsatellite.statement.if (loud)\n    {\n    satellite.console.display(\"loud is true\")\n    }\nsatellite.statement.else\n    {\n    satellite.console.display(\"loud is false\")\n    }"
+},
+
+"1 17 2": {
+  "query": "satellite.help(satellite.bool.true)",
+  "prose": "True, written out, and the other half of the pair.\n\nA condition is a bool and there is no truthiness in this language, so\nthis constant and its opposite are what every test eventually comes down\nto.",
+  "example": "satellite.variable.bool ready = satellite.bool.true\nsatellite.statement.while (ready)\n    {\n    satellite.console.display(\"once\")\n    ready = satellite.bool.false\n    }"
+}
+}

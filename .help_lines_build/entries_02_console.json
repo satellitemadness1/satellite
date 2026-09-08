@@ -1,0 +1,60 @@
+{
+ "1 5": {
+  "query": "satellite.help(satellite.console)",
+  "prose": "The terminal the program is running in, both halves of it. Everything the\nprogram writes out goes through here, and everything the person types in\ncomes back through here.\n\nWriting is printed by a thread of its own, so a program that prints in a\ntight loop is not waiting on the terminal to keep up.",
+  "example": "satellite.console.display(\"Hello, World!\")"
+ },
+ "1 5 0": {
+  "query": "satellite.help(satellite.console)",
+  "prose": "The bare shape. The console is a module rather than a thing you construct,\nso there is nothing to call here and no value comes back.\n\nWhat you want is one of the words underneath, and asking help about the\nmodule lists them.",
+  "example": ""
+ },
+ "1 5 1": {
+  "query": "satellite.help(satellite.console.display)",
+  "prose": "Prints one value and moves to the next line. It takes any type, and it\nprints the value the way that type renders itself, so a list prints its\nbrackets and a map prints its pairs without you formatting anything.\n\nIt is the most-called word in the language and the first one most people\ntype.",
+  "example": "satellite.variable.string greeting = \"Hello\"\nsatellite.console.display(greeting)\nsatellite.console.display(greeting.size())"
+ },
+ "1 5 2": {
+  "query": "satellite.help(satellite.console.input)",
+  "prose": "Reads one line the person types and hands it back as a string, without\nprinting anything first. The newline they press is not part of what you\nget.\n\nIt waits. If nothing is there to type, the program stops on this line\nuntil something is.",
+  "example": "satellite.variable.string answer = satellite.console.input()\nsatellite.console.display(answer)",
+  "stdin": "Ada\n"
+ },
+ "1 5 3": {
+  "query": "satellite.help(satellite.console.input)",
+  "prose": "Prints the prompt you give it, then reads one line back. This is the\nordinary shape, because a question and the wait for its answer belong on\nthe same line.\n\nThe prompt is printed as you wrote it, so put your own space or colon at\nthe end if you want one.",
+  "example": "satellite.variable.string name = satellite.console.input(\"what is your name? \")\nsatellite.console.display(name)",
+  "stdin": "Ada\n"
+ },
+ "1 5 4": {
+  "query": "satellite.help(satellite.console.input)",
+  "prose": "Prints the prompt and reads the answer straight into a variable you\nname, instead of handing it back to be assigned.\n\nThe second argument is the variable itself and not its value, so the\nvariable has to be declared before the line runs. It is the one place in\nthe language where an argument is a name rather than a thing.",
+  "example": "satellite.variable.string name = \"\"\nsatellite.console.input(\"what is your name? \", name)\nsatellite.console.display(name)",
+  "stdin": "Ada\n"
+ },
+ "1 5 5": {
+  "query": "satellite.help(satellite.console.typed)",
+  "prose": "Reads a line **if one is already waiting**, and answers `nothing` if it is\nnot. It never waits, which is the whole point of it: a program with work to\ndo can check on the person between pieces of that work.\n\nWhat comes back is the line itself and not a yes-or-no, so hold it in a\n`satellite.variable.variant` and ask whether it is holding nothing.",
+  "example": "satellite.variable.variant line = satellite.console.typed()\nsatellite.statement.if (line.holds(\"nothing\"))\n    {\n    satellite.console.display(\"nobody has typed yet\")\n    }"
+ },
+ "1 5 6": {
+  "query": "satellite.help(satellite.console.width)",
+  "prose": "How many columns wide the terminal is right now. It is read when you ask\nrather than remembered, so a window the person resizes gives a new answer\non the next line.\n\nUse it to decide how much fits before you print it.",
+  "example": "satellite.console.display(satellite.console.width)"
+ },
+ "1 5 7": {
+  "query": "satellite.help(satellite.console.height)",
+  "prose": "How many rows tall the terminal is right now, read fresh the same way the\nwidth is.\n\nTogether the two are what you need to draw anything that should fill the\nscreen rather than scroll off it.",
+  "example": "satellite.console.display(satellite.console.height)"
+ },
+ "1 5 8": {
+  "query": "satellite.help(satellite.console.clear)",
+  "prose": "Wipes the screen and leaves the cursor at the top left. Nothing the\nprogram has printed is recoverable afterwards.\n\nIt is the first line of anything that redraws rather than scrolls.",
+  "example": "satellite.console.clear()\nsatellite.console.display(\"a fresh screen\")"
+ },
+ "1 5 9": {
+  "query": "satellite.help(satellite.console.home)",
+  "prose": "Moves the cursor back to the top left without erasing anything. What was\non the screen stays there until something is printed over it.\n\nThis is what you want for a display that updates in place, because\nclearing first is what makes a redraw flicker.",
+  "example": "satellite.console.home()\nsatellite.console.display(\"printed over the top line\")"
+ }
+}

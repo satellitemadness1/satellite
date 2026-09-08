@@ -1,0 +1,64 @@
+{
+"1 22": {
+  "query": "satellite.help(satellite.system)",
+  "prose": "The machine the program is running on, and the interpreter's own switches.\n\nThirty numbered paths sit under here and most of them describe memory. Two\npairs are built: how loose a search may be, and whether the prompt keeps\nwhat a line declares.",
+  "example": "satellite.console.display(satellite.system.threshold())"
+},
+"1 22 0": {"query": "satellite.help(satellite.system)", "prose": "The bare shape. There is nothing to call; one of the words underneath is\nwhat you write.", "example": ""},
+"1 22 1": {"query": "satellite.help(satellite.system.delete)", "prose": "Removes a file or a directory from the machine.\n\n**Not built.** The path is numbered and no milestone has reached it.", "example": ""},
+"1 22 2": {"query": "satellite.help(satellite.system.environment)", "prose": "The environment the program was started in.\n\n**Not built.** The path is numbered and no milestone has reached it.", "example": ""},
+"1 22 3": {"query": "satellite.help(satellite.system.home)", "prose": "The home directory of whoever is running the program.\n\n**Not built** as a path. The interpreter already reads it; what is missing\nis the word for it.", "example": ""},
+
+"1 22 4": {
+  "query": "satellite.help(satellite.system.memory)",
+  "prose": "How much memory there is, in every sense of the question: the machine's,\nthe swap file's, and this program's own.\n\n**Not built.** Twenty-eight numbered paths sit under here and no milestone\nhas reached any of them. Each of the counted ones has a second shape\ntaking a unit, so a number can come back in bytes or in something\nreadable.",
+  "example": ""
+},
+"1 22 4 0": {"query": "satellite.help(satellite.system.memory)", "prose": "The bare shape. **Not built.**", "example": ""},
+"1 22 4 1": {"query": "satellite.help(satellite.system.memory.bit)", "prose": "Whether the machine counts in 32 bits or 64. **Not built.**", "example": ""},
+"1 22 4 2": {"query": "satellite.help(satellite.system.memory.frequency)", "prose": "How fast the memory runs. **Not built.**", "example": ""},
+"1 22 4 3": {"query": "satellite.help(satellite.system.memory.main)", "prose": "The machine's main memory. **Not built.**", "example": ""},
+"1 22 4 9": {"query": "satellite.help(satellite.system.memory.main)", "prose": "The machine's main memory, in the unit you name. **Not built.**", "example": ""},
+"1 22 4 4": {"query": "satellite.help(satellite.system.memory.swap)", "prose": "The swap file, which is the disk the machine uses when memory runs out.\n\n**Not built.**", "example": ""},
+"1 22 4 4 0": {"query": "satellite.help(satellite.system.memory.swap)", "prose": "The bare shape. **Not built.**", "example": ""},
+"1 22 4 4 1": {"query": "satellite.help(satellite.system.memory.swap.free)", "prose": "How much swap is unused. **Not built.**", "example": ""},
+"1 22 4 4 2": {"query": "satellite.help(satellite.system.memory.swap.total)", "prose": "How much swap there is altogether. **Not built.**", "example": ""},
+"1 22 4 4 3": {"query": "satellite.help(satellite.system.memory.swap.used)", "prose": "How much swap is in use. **Not built.**", "example": ""},
+"1 22 4 4 4": {"query": "satellite.help(satellite.system.memory.swap.free)", "prose": "How much swap is unused, in the unit you name. **Not built.**", "example": ""},
+"1 22 4 4 5": {"query": "satellite.help(satellite.system.memory.swap.total)", "prose": "How much swap there is altogether, in the unit you name. **Not built.**", "example": ""},
+"1 22 4 4 6": {"query": "satellite.help(satellite.system.memory.swap)", "prose": "The swap file, reported in the unit you name. **Not built.**", "example": ""},
+"1 22 4 5": {"query": "satellite.help(satellite.system.memory.this)", "prose": "This program's own memory, as against the machine's. **Not built.**", "example": ""},
+"1 22 4 5 0": {"query": "satellite.help(satellite.system.memory.this)", "prose": "The bare shape. **Not built.**", "example": ""},
+"1 22 4 5 1": {"query": "satellite.help(satellite.system.memory.this.available)", "prose": "How much this program could still take. **Not built.**", "example": ""},
+"1 22 4 5 2": {"query": "satellite.help(satellite.system.memory.this.free)", "prose": "How much this program has asked for and is not using. **Not built.**", "example": ""},
+"1 22 4 5 3": {"query": "satellite.help(satellite.system.memory.this.used)", "prose": "How much this program is using. **Not built.**", "example": ""},
+"1 22 4 5 4": {"query": "satellite.help(satellite.system.memory.this.available)", "prose": "How much this program could still take, in the unit you name. **Not\nbuilt.**", "example": ""},
+"1 22 4 5 5": {"query": "satellite.help(satellite.system.memory.this.free)", "prose": "How much this program has asked for and is not using, in the unit you\nname. **Not built.**", "example": ""},
+"1 22 4 6": {"query": "satellite.help(satellite.system.memory.free)", "prose": "How much of the machine's memory is unused. **Not built.**", "example": ""},
+"1 22 4 7": {"query": "satellite.help(satellite.system.memory.total)", "prose": "How much memory the machine has altogether. **Not built.**", "example": ""},
+"1 22 4 8": {"query": "satellite.help(satellite.system.memory.used)", "prose": "How much of the machine's memory is in use. **Not built.**", "example": ""},
+"1 22 4 10": {"query": "satellite.help(satellite.system.memory.free)", "prose": "How much of the machine's memory is unused, in the unit you name. **Not\nbuilt.**", "example": ""},
+"1 22 4 11": {"query": "satellite.help(satellite.system.memory.total)", "prose": "How much memory the machine has altogether, in the unit you name. **Not\nbuilt.**", "example": ""},
+"1 22 4 12": {"query": "satellite.help(satellite.system.memory.used)", "prose": "How much of the machine's memory is in use, in the unit you name. **Not\nbuilt.**", "example": ""},
+
+"1 22 5": {
+  "query": "satellite.help(satellite.system.threshold)",
+  "prose": "Answers how loose a search is allowed to be at the moment.\n\nThe scale runs from 1, which is an exact match and nothing else, up to\n10. At 6 a substring matches either way round.",
+  "example": "satellite.console.display(satellite.system.threshold())"
+},
+"1 22 6": {
+  "query": "satellite.help(satellite.system.threshold)",
+  "prose": "Sets how loose a search may be, and answers what it now is.\n\nIt is what `search` on a list or a map reads, so turn it up to find near\nmisses and down to insist on the exact thing.",
+  "example": "satellite.system.threshold(6)\nsatellite.console.display(satellite.system.threshold())"
+},
+"1 22 7": {
+  "query": "satellite.help(satellite.system.persist)",
+  "prose": "Answers whether the prompt is keeping what each line declares.\n\nIt is on to begin with, which is why a variable you declare at the prompt\nis still there on the next line.",
+  "example": "satellite.console.display(satellite.system.persist())"
+},
+"1 22 8": {
+  "query": "satellite.help(satellite.system.persist)",
+  "prose": "Turns the prompt's memory of declarations on or off, and answers what it\nnow is.\n\nTurning it off does not throw away what is already held; it stops the next\nline adding to it, so a program can switch it off around one line and back\non afterwards. It wants a real bool, so write\n`satellite.bool.false` rather than a bare word.",
+  "example": "satellite.console.display(satellite.system.persist(satellite.bool.false))\nsatellite.console.display(satellite.system.persist(satellite.bool.true))"
+}
+}

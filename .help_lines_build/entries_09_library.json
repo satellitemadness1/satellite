@@ -1,0 +1,53 @@
+{
+"1 14": {
+  "query": "satellite.help(satellite.library)",
+  "prose": "Where the program's own globals live, and where the machine's settings\nare read and written.\n\nA name you make under `satellite.library` is a global: it is declared at\nthe top of a file, outside any capsule, and every capsule can see it.",
+  "example": "satellite.console.display(satellite.library.system.float_digits)"
+},
+"1 14 0": {"query": "satellite.help(satellite.library)", "prose": "The bare shape. The library is a place rather than a thing to call, and\none of the words underneath is what you write.", "example": ""},
+
+"1 14 1": {"query": "satellite.help(satellite.library.main)", "prose": "What the program was started with, gathered in one place.\n\n**Not built** — M20 is the milestone that builds the arguments object, and\nDESIGN §7.7 is the specification for it.", "example": ""},
+"1 14 1 0": {"query": "satellite.help(satellite.library.main)", "prose": "The bare shape. **Not built** — M20.", "example": ""},
+"1 14 1 1": {
+  "query": "satellite.help(satellite.library.main.arguments)",
+  "prose": "The arguments object: the command line, and the facts about the machine\nand the person running the program.\n\n**The name is yours.** It is reached through whatever you called the\nparameter on `satellite.main`, and six spellings are accepted for it —\n`arguments`, `argument`, `argumentz`, `args`, `argz` and `arg`. **Not\nbuilt** — the list of command-line words works today, and everything under\nit refuses until M20.",
+  "example": ""
+},
+"1 14 1 1 0": {"query": "satellite.help(satellite.library.main.arguments)", "prose": "The bare shape. **Not built** — M20.", "example": ""},
+"1 14 1 1 1": {"query": "satellite.help(satellite.library.main.arguments.machine)", "prose": "What the machine is: how many cores, how many threads, and which\nprocessor.\n\n**Not built** — M20. The numbers themselves are already read by the\ninterpreter, so what is missing is the path rather than the fact.", "example": ""},
+"1 14 1 1 1 0": {"query": "satellite.help(satellite.library.main.arguments.machine)", "prose": "The bare shape. **Not built** — M20.", "example": ""},
+"1 14 1 1 1 1": {"query": "satellite.help(satellite.library.main.arguments.machine.cores)", "prose": "How many physical cores the machine has. **Not built** — M20.", "example": ""},
+"1 14 1 1 1 2": {"query": "satellite.help(satellite.library.main.arguments.machine.cpu)", "prose": "What the processor calls itself. **Not built** — M20.", "example": ""},
+"1 14 1 1 1 3": {"query": "satellite.help(satellite.library.main.arguments.machine.threads)", "prose": "How many threads the machine can run at once, which is usually more than\nthe number of cores. **Not built** — M20.", "example": ""},
+"1 14 1 1 2": {"query": "satellite.help(satellite.library.main.arguments.memory)", "prose": "How much memory the machine has. **Not built** — M20.", "example": ""},
+"1 14 1 1 2 0": {"query": "satellite.help(satellite.library.main.arguments.memory)", "prose": "The bare shape. **Not built** — M20.", "example": ""},
+"1 14 1 1 2 1": {"query": "satellite.help(satellite.library.main.arguments.memory.total)", "prose": "How much memory the machine has in total. **Not built** — M20.\n\nFree memory is not a path here yet, and which of the two spellings it\ngets is something M20 has to settle.", "example": ""},
+"1 14 1 1 3": {"query": "satellite.help(satellite.library.main.arguments.username)", "prose": "Who is running the program. **Not built** — M20.", "example": ""},
+
+"1 14 2": {
+  "query": "satellite.help(satellite.library.system)",
+  "prose": "The four dials that change how the interpreter itself behaves.\n\nEach one reads like a value and is written like an assignment, and a\nchange takes effect at once rather than at the next run. They are seeded\nfrom `satellite_config.ini` at startup.",
+  "example": "satellite.console.display(satellite.library.system.float_digits)\nsatellite.library.system.float_digits = 5\nsatellite.console.display(satellite.library.system.float_digits)"
+},
+"1 14 2 0": {"query": "satellite.help(satellite.library.system)", "prose": "The bare shape. There is nothing to call; write one of the four dials by\nname.", "example": ""},
+"1 14 2 1": {
+  "query": "satellite.help(satellite.library.system.division_digits)",
+  "prose": "How many digits a division keeps.\n\nRetuning it is observed by the very next division rather than at the next\nrun, which is what makes it a dial rather than a setting.",
+  "example": "satellite.console.display(1 / 3)\nsatellite.library.system.division_digits = 40\nsatellite.console.display(1 / 3)"
+},
+"1 14 2 2": {
+  "query": "satellite.help(satellite.library.system.max_depth)",
+  "prose": "How deep the interpreter will go before it decides a program has run\naway with itself.\n\nIt is a ceiling on memory rather than a limit on the language: the walkers\nkeep their own stacks, so depth here is bounded by what the machine has\nrather than by a number somebody picked.",
+  "example": "satellite.console.display(satellite.library.system.max_depth)"
+},
+"1 14 2 3": {
+  "query": "satellite.help(satellite.library.system.min_free_mb)",
+  "prose": "How much memory the interpreter insists on leaving free, so a runaway\nprogram is stopped before the machine is.\n\nIt reads as `nothing` when no floor has been set, which is not the same as\na floor of zero.",
+  "example": "satellite.console.display(satellite.library.system.min_free_mb)"
+},
+"1 14 2 4": {
+  "query": "satellite.help(satellite.library.system.float_digits)",
+  "prose": "How many digits a float carries by default.\n\nPrecision travels with the value, so narrowing this dial changes the\nfloats made after it rather than the ones already held.",
+  "example": "satellite.library.system.float_digits = 5\nsatellite.variable.float narrow = 1\nsatellite.console.display(narrow / 3)"
+}
+}
