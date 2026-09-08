@@ -337,6 +337,46 @@ OpIndex Compiler::call(NodeIndex node)
     const NodeIndex target = n.a;
     const resolve::Info &about = info(target);
 
+    // A CAPSULE THIS PROGRAM DECLARED AT A PATH THE LANGUAGE ALSO NUMBERS, AND
+    // IT HAS TO BE ASKED BEFORE THE TWO ARMS BELOW OR IT IS UNREACHABLE.
+    // `satellite.main` is the only such name today: parser_declarations.cpp's
+    // capsule_decl has two arms and the reserved one LOOKS THE NAME UP instead
+    // of defining it, so the capsule's path is `1 3` -- a language word --
+    // while every capsule of the user's own is interned under
+    // `satellite.library` and gets an id past kNodeCount that
+    // `is_language_word` answers false for. That difference is why the plain
+    // capsule arm below, which fires on `kSlotCapsule`, catches every OTHER
+    // capsule and never this one.
+    //
+    // WHAT IT LOOKED LIKE BEFORE: `satellite.main()` resolved its call node to
+    // `1 3 0`, took the numbering arm, and dispatched a path with no handler --
+    // S0721, "a path satellite has a number for and nothing behind yet". A
+    // program calling a capsule IT HAD ITSELF DECLARED was told the language
+    // had not built it, which is the wrong sentence about the wrong thing.
+    //
+    // AND IT IS ASKED ON THE CALL NODE'S PARENT, WHICH `satl --resolve` IS
+    // WHAT SETTLED. `satellite.main()` does not resolve as a member with a
+    // path and a call around it: resolve's question one walks the whole shape,
+    // parentheses included, onto the CALL node as `1 3 0`, and the target
+    // member is left with no path at all. So the capsule to look for is the
+    // parent of that row -- `1 3` -- and reading `info(target).path` finds
+    // `kNoPath` and matches nothing. Measured before this was written, on a
+    // file whose main calls itself.
+    //
+    // The guard is `capsules_` and not a test for `NodeId::MAIN`, so the day
+    // the reserved arm admits a second name this needs no edit.
+    words::PathId declared = about.path;
+    if (const resolve::Info &self = info(node);
+        declared == words::kNoPath && self.path != words::kNoPath &&
+        words::is_language_word(self.path))
+        declared = static_cast<words::PathId>(
+            words::parent_of(static_cast<words::NodeId>(self.path)));
+
+    if (const auto mine = capsules_.find(declared);
+        mine != capsules_.end() && words::is_language_word(declared))
+        return emit(op_call, node, mine->second, arguments,
+                    out_.add_text(std::string(ast_.text_of(target))));
+
     // A WHOLE CALL THAT IS A ROW OF THE NUMBERING -- resolve's question ONE,
     // answered onto the CALL node and not its target, because the parentheses
     // are part of what the number says: `satellite.random.fast(2)` is `1 7 4`

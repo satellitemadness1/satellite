@@ -45,6 +45,22 @@ def as_program(example):
             head.append(line)
             i += 1
             continue
+        if (line.startswith("satellite.library.")
+                and not line.startswith("satellite.library.system.")):
+            # A GLOBAL IS A TOP-LEVEL DECLARATION, not a statement.  DESIGN
+            # section 6's top_level is include, capsule, spacesuit and global,
+            # so a line like `satellite.library.n = 0` belongs beside the
+            # capsules and NOT inside the main this wrapper synthesises --
+            # putting it in the body makes it an assignment to a name nothing
+            # declared.
+            #
+            # `satellite.library.system.` IS EXCLUDED and is the opposite case:
+            # those four are the machine's dials, they are RETUNED rather than
+            # declared, and an assignment to one is a statement that belongs
+            # inside a body.  Lumping them in here broke three examples.
+            decls.append(line)
+            i += 1
+            continue
         if line.startswith("satellite.capsule "):
             depth, started = 0, False
             while i < len(lines):

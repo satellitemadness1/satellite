@@ -619,6 +619,21 @@ $(TESTS)/float_test/float_test: $(float_test_SRCS) $(float_test_HDRS) \
 
 float_test: $(TESTS)/float_test/float_test
 
+# eval_test's ALIAS, MISSING SINCE THE SUITE WAS WRITTEN, and it is the
+# dangerous half of the gap console_test's note below describes. console_test is
+# absent from TESTALIASES, so `make console_test` fails LOUDLY with "no rule to
+# make target" and nobody is misled. eval_test was in TESTALIASES and in .PHONY
+# with no rule behind it, so `make eval_test` answered "Nothing to be done" and
+# EXITED 0 -- a target that reports success having compiled nothing.
+#
+# FOUND 2026-09-07 BY BEING TAKEN IN BY IT. A clause was added to
+# tests/eval_test/calls.cpp, `make eval_test` said ok, and the clause passed
+# against a mutant that broke the very thing it was written for -- because the
+# binary was an hour old and the clause had never been compiled. That is the
+# failure 030-directories.mk names in capitals: "not a red line, a green one
+# that is out of date." The suite it warns about was itself missing the line.
+eval_test: $(TESTS)/eval_test/eval_test
+
 # console_test IS ABSENT FROM THIS LIST AND HAS NO ALIAS RULE EITHER, which is
 # a gap rather than a decision -- `make console_test` has never worked, and
 # nothing said so until prompt_test was added beside it and the two were

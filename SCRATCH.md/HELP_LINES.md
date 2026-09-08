@@ -172,24 +172,23 @@ Where the program starts. Every program declares exactly one, written as
 a capsule whose name is `satellite.main`, and running the file runs its
 body from the first line to the last.
 
-You do not normally call it, because the interpreter does that for you.
-**Calling it by name is refused today**, and that is a milestone nobody has
-written rather than a decision against it: `satellite.main()` answers that
-the path has a number and nothing behind it, and `satl --call` finds it
-under neither spelling. It is meant to work, and until it does, put the
-work in a capsule of your own and call that from both places.
+**You can also call it yourself**, from another capsule or from inside
+main, and it behaves like any other capsule when you do: it gets its own
+frame each time, and it counts its arguments. If it declares the argument
+list, a call that hands it nothing is refused rather than run.
 
     satellite.include(satellite)
 
-    satellite.capsule the_work()
-    {
-        satellite.console.display("Hello, World!")
-    }
+    satellite.library.n = 0
 
     satellite.capsule satellite.main()
     {
-        the_work()
-        the_work()
+        satellite.library.n = satellite.library.n + 1
+        satellite.console.display(satellite.library.n)
+        satellite.statement.if (satellite.library.n < 3)
+        {
+            satellite.main()
+        }
     }
 
 .  `1 3 0`  `satellite.main()`
@@ -201,8 +200,8 @@ list of strings, that name holds the arguments the program was given, and
 the name is yours to choose.
 
 Displaying it prints the arguments as a list, so a program started with
-none prints `[]`. This is also the shape a call to main would take once
-calling it is built.
+none prints `[]`. It is also the shape a call to main takes, and calling
+one that declares a parameter with no argument is refused.
 
     satellite.include(satellite)
 

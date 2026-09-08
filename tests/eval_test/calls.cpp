@@ -152,6 +152,63 @@ void section_calls()
               "inner call cannot reach the outer one's slot");
     }
 
+    // --- satellite.main is a capsule and can be called like one --------------
+    //
+    // IT COULD NOT UNTIL 2026-09-07, and the failure was a sentence about the
+    // wrong thing: `satellite.main()` answered S0721, "a path satellite has a
+    // number for and nothing behind yet", so a program calling a capsule IT
+    // HAD DECLARED was told the LANGUAGE had not built it.
+    //
+    // The cause is that main is the one capsule whose name the parser LOOKS UP
+    // instead of defining -- capsule_decl's reserved arm -- so its path is
+    // `1 3`, a language word, where every capsule of the user's own is interned
+    // past kNodeCount. The compiler's numbering arm therefore caught the call
+    // first and dispatched a row with no handler.
+    //
+    // THE FIXTURE CALLS IT FROM ANOTHER CAPSULE ON PURPOSE. A test that only
+    // ran a file whose main calls itself would pass against a build that never
+    // reached the arm at all, because main runs anyway.
+    {
+        Run run;
+        build("satellite.capsule satellite.main()\n"
+              "{\n"
+              "    satellite.return(7)\n"
+              "}\n"
+              "satellite.capsule reach()\n"
+              "{\n"
+              "    satellite.return(satellite.main())\n"
+              "}\n",
+              run);
+        check(run.built, "a capsule that calls satellite.main compiles");
+        check(answer_of(run, "reach", {}) == "7",
+              "satellite.main() reaches the capsule the program declared, and "
+              "not handlers[1 3 0], which is empty and always will be");
+    }
+
+    // --- and calling it still counts the arguments ---------------------------
+    //
+    // The arm that made the clause above pass returns before the numbering arm
+    // runs, so this is the clause that says it did not also skip the checks
+    // every other capsule call gets. A main that declares the argument list and
+    // is called with nothing is S0722 and not a crash.
+    {
+        Run run;
+        build("satellite.capsule satellite.main("
+              "satellite.container.list<satellite.variable.string> arguments)\n"
+              "{\n"
+              "    satellite.return(1)\n"
+              "}\n"
+              "satellite.capsule reach()\n"
+              "{\n"
+              "    satellite.return(satellite.main())\n"
+              "}\n",
+              run);
+        call(run, "reach", {});
+        check(ran_into(errors::Code::EVAL_ARGUMENT_COUNT),
+              "S0722: satellite.main takes its declared parameters like any "
+              "other capsule -- the reserved name buys it no exemption");
+    }
+
     // --- the wrong number of arguments --------------------------------------
     {
         Run run;
