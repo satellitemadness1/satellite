@@ -6,7 +6,7 @@ ONE SOURCE, TWO ARTIFACTS. `HELP.md` is for a person reading the repository and
 `help.def` is for `satellite.help` answering inside a program, and they are
 generated side by side from `entries_*.json` in one run of gen.py so that
 neither can say something the other does not. A second document is the drift
-DESIGN §4.6 exists to remove, and a hand-maintained C++ copy of 264 entries
+DESIGN §4.6 exists to remove, and a hand-maintained C++ copy of 269 entries
 would be exactly that with a compiler in front of it.
 
 WHY THE HEAD IS A NODE AND NOT THE QUERY STRING. Each entry carries the `>`

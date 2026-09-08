@@ -1504,6 +1504,8 @@ it is; the labels changed. This table is the key to every document written befor
     M8.B    M17   hello world
     M8.5    M18   satellite.help
     M18     M19   persistence — files and directories
+            M19.5 binary and hexadecimal
+            M19.6 the `.satc` after resolve, and the option token
     M19     M20   the machine's facts in the language
     M20     M21   a piece of QUAD, running
     M11.B   M22   the prompt
@@ -2107,9 +2109,25 @@ the node. DESIGN §7. `src/name_resolver/` is six sources over three headers and
   `sort_down()` `1 4 2 5` — so it is this milestone's and not M9's.
   `SCRATCH.md/MILESTONE.md` §1 filed it as *"M7 or M9 — nothing says whether resolve
   or closure compilation owns it"*, and the answer is that closure compilation is
-  already past the point where the option is a literal. **M19 is waiting on this**:
+  already past the point where the option is a literal. ~~**M19 is waiting on this**:
   whether `satellite.file.open`'s four mode words fold decides whether its bad-mode
-  message is M5's suggester or a runtime check.
+  message is M5's suggester or a runtime check.~~
+
+  **CLOSED 2026-09-08 AT M19, AND WHAT CLOSED IT IS A MEASUREMENT THAT CONTRADICTS
+  THIS MILESTONE'S OWN CODE.** `name_resolver/numbers.cpp`'s `fold_option` carries a
+  comment saying the mode words "fold with no edit to this file, on the day
+  `words.def` gains `open_read_append`". **They do not, on two counts.**
+  `fold_option` has exactly one caller — `names.cpp`'s `call_target_done`, the
+  SELECTOR arm, reached only when the callee is a `Member` over a receiver with a
+  declared type — and `satellite.file.open(p, "read")` is a whole-PATH module call
+  resolved one arm earlier, which never reaches it. And it inspects **argument 0
+  only**, while `open`'s mode word is argument 1. `sort("down")` folds because the
+  option is a selector's first argument; nothing about a module's second argument
+  was ever built. **The author settled it the same day: the mode words do NOT
+  fold**, and the bad-mode message is M19's own runtime refusal through M5's
+  *reporter*. The fold stays what M7 built it as — selector calls, argument 0 — and
+  this bullet is the record that its generality was overstated by a comment rather
+  than by a test.
 - **The six spellings of `arguments` become the special variable here.** WORD_NUMBERS
   §2.3's third alias row is one node with six spellings; M2 and M3 hold the spelling
   table that says so, and **resolve is where a parameter named `argz` is recognised
@@ -3824,7 +3842,14 @@ comparable to the non-null entries of `handlers[]` by construction, and
 seven shapes nobody has written.
 
 **M19 — persistence: files and directories.** *(New 2026-08-28, corrected from the
-2026-08-27 draft. After M18.)* **Twenty numbered paths**, in three of
+2026-08-27 draft. After M18.)* **Twenty numbered paths, and four more minted on
+2026-09-08 when the author settled the open items below** — `ok` `1 6 2 8`,
+`path` `1 6 2 9`, `error` `1 6 2 10`, `write(x)` `1 6 2 11` and
+`exists(path)` `1 8 5`, which is five rows for four questions because `exists`
+now has a module face beside the handle's. **Of the twenty-five, twenty-one are
+built and four are not**: the three bare `(0)` shapes are not callable rows, and
+`1 6 2 1` is a number with nothing behind it by the decision recorded below. The
+original twenty sit in three of
 `SCRATCH.md/MILESTONE.md` §0.1's rows — the 5th, 8th and 10th of seventeen, not a
 contiguous block and not the largest one; `satellite.system` alone was thirty:
 
@@ -3915,68 +3940,78 @@ as a list method, `.lines()`, and v1's own comment says the rendering exists bec
 `.lines()` has no number in §2.2, and **whether it gets one is M16's question or
 M22's, not this milestone's to settle by declining it.**
 
-**Open, and the first two stand between this milestone and its demonstration:**
+**Open no longer — every one of these was settled by the author on 2026-09-08,
+before a line of the milestone was written, and the answers are recorded here
+rather than in the milestone note alone, because a question closed only in a
+review is a question the next reader of this entry still thinks is open:**
 
-- **The failed-open contract has no numbers.** v1's whole answer to DESIGN §9 for
-  files is that a failed open is a **value** — the handle comes back holding `errno`
-  and the caller asks `.ok()`. `.ok()`, `.path()` and `.error()` have **no rows in
-  §2.2** and the v1 sweep missed all three, and v1's handle also has a `clear` of its
-  own. **This milestone owns them as behaviour and is blocked only on their
-  numbers**, which only the author assigns — so its real size is twenty paths plus
-  the three-or-four the failure contract requires, and the moment those numbers
-  exist they must not read as fresh uncovered rows under a node this plan calls
-  finished.
-- **The mode word is not a trie level, so it is not M5's "did you mean".** DESIGN
-  §4.6's mechanism is edit distance over one node's *children*;
-  `read` / `write` / `append` / `read_append` are string literals in argument
-  position and `satellite.file.open` is one number, `1 8 2`, for all four. Either
-  they fold — WORD_NUMBERS §1.5's own worked example of the literal-option fold is
-  `satellite.file.open("filename", "read_append")`, and the fold gave `sort_down()`
-  a row of its own at `1 4 2 5` — in which case the folded rows are the author's to
-  assign and **M7 owns the fold** (its entry now says so); or they do not, and the
-  bad-mode message is a runtime check this milestone owns, using M5's *reporter*
-  rather than M5's *suggester*.
-- **Eleven of the twenty rows carry no call shape**, and §1.3 makes the shape part
-  of the number. `1 8 2`, `1 8 3` and `1 18 1`–`1 18 3` are the module rows where a
-  sibling carries one and they do not; v1 records their arities as legibly as
-  `open`'s — `SAT_PATH(P_FILE_OPEN, 1, 25, 31, 0, 2)`, and 1, 0, 1 for
-  `change`, `current`, `exists`. **Only the author may write them into §2.2**, and a
-  milestone that raises the question for two rows and silently ports the other three
-  is how §1.3 gets decided by accident.
-- **Which spelling constructs a file.** DESIGN §13's settled `satellite.thread.new`
-  entry calls the two-part shape established *"exactly as `satellite.file.new` and
-  `satellite.time.new` already do"*, which reads as: `1 8 1` and `1 8 4` are what a
-  program writes, and `1 6 2 1` is the dispatch-table row §6.4 qualification 2
-  describes. Confirm that reading — `1 6 2 1`'s entire origin is §6.4's example
-  sentence `my_file.new()`, and v1 has no `new` handle method at all. `open` is
-  **not** a second collision: `1 8 2` opens a path, `1 6 2 2` reopens a handle that
-  was closed or whose open failed.
-- **`1 8 3` `clear` has no v1 module form to read.** v1's `satellite.file` module is
-  `new` and `open` and nothing else — its `clear` is a handle method (`ftruncate`
-  then `lseek`) and its delete is `satellite.system.delete`, by v1's own argument.
-  So decide whether `1 8 3` is `clear(path)`, the module face of the handle method,
-  or a row that should never have left the handle.
-- **`read_line` `1 6 2 3` wants the one thing v1 refused.** v1's `.read()` seeks to
-  0 on every call, and the recorded reason is that with no `.seek()` in the language,
-  *read from wherever the offset happens to be* is a question no satellite program
-  can pose. Does `read_line` advance a per-handle cursor, and what does `read_all`
-  `1 6 2 5` do to that cursor when both are called on one handle?
-- **`write_line(s)` `1 6 2 4` overrules an argument that is written down.** v1's
-  `.write(s)` deliberately appends no newline: otherwise a file with no trailing
-  newline, and a line assembled from several writes, both become unwritable, and
-  §5.4 gave the language a real `\n` so `f.write("x\n")` already says what it means.
-  Either `write_line` is a second verb beside a byte-exact write, or that argument
-  loses. Say which — DESIGN §5.5 refuses `<<` for good, and this is the only surface
-  a `.sky` writer can use.
-- **`exists` `1 6 2 7` sits on the type node**, so §6.4 desugars it to a call whose
-  first argument binds a receiver — and *does this file exist* is asked before a
-  handle exists. Either it asks about an open handle's own path, which is a narrow
-  question, or it wants to be a module path under `1 8` the way
-  `satellite.directory.exists` `1 18 3` is.
-- **`.list` is the one failure in its module that is an error and not a value**,
-  because the empty list already means an empty directory and spending it on *there
-  was no directory* makes the two indistinguishable. Defensible under DESIGN §9's
-  reporter — but re-affirm it rather than inherit it by porting.
+- ~~**The failed-open contract has no numbers.**~~ **Three, minted 2026-09-08:**
+  `ok` `1 6 2 8`, `path` `1 6 2 9`, `error` `1 6 2 10`. v1's contract exactly —
+  a failed open is a VALUE, the handle comes back holding `errno`, and the
+  caller asks. **v1's handle `clear` does NOT come across**, which is what
+  settles `1 8 3` two bullets down: with no handle spelling, the module face is
+  the only spelling and is not a duplicate of anything.
+- ~~**The mode word is not a trie level.**~~ **They do not fold** — see M7's
+  bullet above, which this milestone corrected by measurement. The bad-mode
+  message is a runtime check this milestone owns, using M5's *reporter* and not
+  M5's *suggester*, and it names all four words.
+- ~~**Eleven of the twenty rows carry no call shape.**~~ **Written into §2.2 on
+  2026-09-08**, out of v1's recorded arities and not guessed:
+  `open(path, mode)` `1 8 2`, `clear(path)` `1 8 3`, `change(d)` `1 18 1`,
+  `current()` `1 18 2`, `exists(d)` `1 18 3`, `delete(x)` `1 22 1`, and
+  `exists(path)` on the new `1 8 5`. **`words.def` carries the same shapes, and
+  it has no choice**: `words_walk.hpp`'s `match_shape` compares a row's argument
+  list to the written one CHARACTER FOR CHARACTER, so a §2.2 that says
+  `open(path, mode)` over a registry that says `open` is a path `words_test`
+  cannot walk. The two files are one fact and this is the mechanism that says so.
+  **The shapes are also what makes the arity a resolve-time fact rather than a
+  handler-table one** — §1.3's whole claim — and they are the tree's own pattern:
+  `sleep(n)`, `find(x)`, `split(separator)` and `write_line(s)` are all single-arity
+  rows carrying their shape, and `display` is the outlier. Measured before the
+  change: `satellite.file.open("x", "read")` resolved to `1 8 2` through the
+  bare-word arm and refused at the handler table; `satellite.file.open("x")`
+  resolved just as happily and would have refused one layer later.
+- ~~**Which spelling constructs a file.**~~ **Confirmed, and WORD_NUMBERS §4's
+  paragraph now says so.** A program writes `satellite.file.new(path)` `1 8 1`;
+  `1 6 2 1` is a number with nothing behind it, because §6.4 qualification 2
+  names `my_file.new()` as the confusing arity error the receiver tag EXISTS TO
+  PREVENT rather than as a spelling to build. `open` is not a second collision:
+  `1 8 2` opens a path, `1 6 2 2` reopens a handle.
+- ~~**`1 8 3` `clear` has no v1 module form to read.**~~ **It is `clear(path)`,
+  the module face, and it is the only face** — the handle keeps no `clear` of
+  its own, per the first bullet. Its siblings under `1 8` all take a path and so
+  does it.
+- ~~**`read_line` `1 6 2 3` wants the one thing v1 refused.**~~ **It advances a
+  per-handle cursor**, and DESIGN §8.7 had already required it: *"`read_line`
+  answers a line, or nothing"*, which is a sentence with no meaning on a handle
+  that rewinds to 0 every call. `read_all` `1 6 2 5` reads the whole file **from
+  the beginning** and leaves the cursor **at the end**, so a `read_line` after
+  one answers nothing — the two verbs share one offset and neither pretends
+  otherwise. What v1 actually refused was *read from wherever the offset happens
+  to be*, and a cursor the language advances is not that.
+- ~~**`write_line(s)` `1 6 2 4` overrules an argument that is written down.**~~
+  **Both verbs exist and neither argument loses.** `write_line(s)` writes `s`
+  and a newline. **`write(x)` `1 6 2 11`, minted 2026-09-08, writes exactly the
+  bytes** — v1's `.write`, under the name that says so. That is what keeps a
+  file with no trailing newline and a line assembled from several writes
+  writable, and it is the verb **M19.5's `binary` and `hex` values are written
+  with**.
+- ~~**`exists` `1 6 2 7` sits on the type node.**~~ **Both, and they are two
+  questions.** `satellite.file.exists(path)` `1 8 5`, minted 2026-09-08, is
+  *is there a file there* asked with no handle, mirroring
+  `satellite.directory.exists(d)` `1 18 3`. `1 6 2 7` keeps the narrow question
+  — *is MY path still there* — which is what the done-when's last clause asks
+  after a `satellite.system.delete`.
+- ~~**`.list` is the one failure in its module that is an error and not a
+  value.**~~ **Re-affirmed rather than inherited.** The empty list already means
+  an empty directory; spending it on *there was no directory* makes the two
+  indistinguishable, which is the silent wrong answer DESIGN §9 exists to
+  refuse. Loud costs a caller one `.exists(d)`; quiet costs them a program that
+  lists a mistyped path as empty and does nothing.
+- **`satellite.directory` still has no create verb, and none is minted.** The
+  done-when needs none, and a verb minted to round out a namespace is a verb
+  designed by symmetry. It stays named here and in `MILESTONES/M19.md` so that
+  the next milestone to want one finds a hole rather than a surprise.
 
 **Done when two programs run under `satl --run`.** The first is a round trip over
 all twenty paths printing one `PASS`, and it **leaves the tree as it found it**, so
@@ -4017,6 +4052,138 @@ undecided rounding rule only through M16**, so if the float stalls, the thirteen
 paths under `1 8` and `1 6 2` can run at M11 — that is the seam, and splitting there
 orphans `satellite.directory` a second time, which is the precise failure
 `MILESTONE.md` exists to record.
+
+**M19.5 — binary and hexadecimal.** *(New 2026-09-08. After M19, before M20.)*
+**Two numbered paths and no third** — `satellite.variable.binary` `1 6 5` and
+`satellite.variable.hex` `1 6 11`, which WORD_NUMBERS §2.2 has carried since M2
+and which no milestone in this list has ever claimed.
+
+**It exists because DESIGN §8.5 said out loud that it had to.** That section has
+specified `x00FF` and `b1010` since the language was written — *"real types with
+literals, and the width is part of the value: `x0009` is not `x9`"* — M3 lexes
+both, and §8.5 records in capitals that M9 went looking for the milestone that
+builds them and found none. The answer until 2026-09-08 was S0720, *"a binary or
+hexadecimal literal parses and does not run yet — no milestone in PLAN.md §8 owns
+the value"*, which is DESIGN §1.1's honest refusal and is not a place to stop.
+
+**It is a design milestone and not a port, and that is the whole reason it is
+its own number rather than a paragraph inside M19.** §8.5 specifies the literals
+and the width rule **and nothing else**. Nothing anywhere says whether a bit can
+be indexed, whether two binaries concatenate, whether either converts to a
+`satellite.variable.number` and what happens to the width when it does, what
+`b1010 == b00001010` answers, or which of the two the `.satc` writes. v1 has no
+answer to read out of: **there is no binary or hex value in the first satellite
+at all** — §8.5 is new design, not a migration — so the arity evidence
+WORD_NUMBERS §4 says to read out of the v1 evaluator does not exist for these
+two. Every one of those is a sentence somebody has to write, and writing them in
+the margin of a milestone that already owns twenty-five file paths is how a type
+gets decided by accident.
+
+**Why here and not later.** M19 gives bytes a destination:
+`satellite.variable.file.write(x)` `1 6 2 11` is byte-exact and takes a
+`satellite.variable.string` on the day it lands. **The verb does not change when
+these two arrive** — it gains two arms and no new spelling — so the milestone
+that makes `write` mean what the author asked it to mean is the one directly
+after the milestone that built it. Waiting would leave `write(x)` looking like a
+duplicate of `write_line` for however long the gap ran.
+
+**What it must not do.** There is **no `"binary"` mode word on
+`satellite.file.open`**, and DESIGN §8.5 now says why at length: a satellite
+string already holds arbitrary bytes and POSIX has no newline translation to
+switch off, so the word would arrange nothing while telling a program that
+something had been arranged. This milestone adds value arms, not a fifth mode.
+
+**Its floor is M19 and its ceiling is `Value`.** DESIGN §8.2's forty-byte assert
+is the constraint that shapes the representation: the width is part of the value
+and a width is unbounded, so neither type lives inline any more than a float
+does — they arrive behind handles, sixteen bytes each against the 32-byte widest
+arm, appended at the END of the variant per value.hpp's append-only rule. That
+is the sixth and seventh appends and the assert does not move.
+
+**Done when** a program declares one of each, displays them at their written
+width, and writes both to a file with `write(x)` — and `satl --compile` no
+longer has S0720 in reach for a literal, because there is a producer.
+
+**M19.6 — the `.satc` written after resolve, and the option token.** *(New
+2026-09-08, at the author's ask. Slot open — after M19.5 in the list, and
+nothing depends on it.)* **No new paths.** It is a change to the cache format
+and to when the cache is written, and it closes a hole WORD_NUMBERS §1.5 has
+carried since M2 by giving up on it.
+
+**The author's idea, in the author's words: a token that encodes an option —
+`#` stands for a number in a `.satc` file, so `0#` stands for an option.**
+`my_list.sort("down")` folds to `sort_down()` `1 4 2 5` at resolve, and today
+that decision is taken again on every run. Writing it down is the obvious move
+and SATC.md §5.1 currently forbids it:
+
+> **A literal option is not folded here.** [...] §3's "literals stay literal"
+> governs the file. The `.satc` keeps `"down"`. The runtime keeps the number.
+> This is the one place the numbering deliberately says more than the file does,
+> and it is not a contradiction as long as nobody tries to make the file say it.
+
+**THE TOKEN ANSWERS THAT OBJECTION AND IS NOT WHAT BLOCKS IT.** §3's rule is
+about literals, and `0#down` is not a literal — it is a third kind of token
+beside `#1.4.2.5` and `"down"`, so §3 gains a row rather than losing one. What
+actually blocks it is **ORDER**, measured 2026-09-08:
+
+    out.satc = cache::satc_text(out.parsed.ast, words, out.stamp);
+
+**The writer takes the PARSE TREE and nothing from resolve**, in both arms of
+`programs/cache_command.cpp`. Whether `"down"` is an option depends on the
+receiver's declared TYPE — `sort` on a list takes options and `sort` on anything
+else does not — and a type is resolve's answer. §1.5 says exactly this about the
+neighbouring case: *"at the moment the file is written the selector's identity is
+unknowable."* So the milestone is not "add a token", it is **move the write to
+after resolve**, and the token is what the move makes writable.
+
+**And the same move settles the bigger one §1.5 gave up on.** That section's
+table has a row saying a selector is "numbered for dispatch only" and "stays
+bare" in the file, for the same reason — the receiver's type is not known yet.
+After resolve it is. **Whether a selector should then carry its number is this
+milestone's real question and it is not obviously yes**: SATC §3.1 keeps
+selectors bare, `words_runtime.hpp` warns that a user's PathId is valid inside
+one run only, and a language-owned selector's number is a property of the build
+rather than of the run — so the two halves of §3.1's rule have different answers
+and the milestone has to say which is which.
+
+**What it must not cost: §5's promise that the first run is never slower.**
+`cache_command.cpp` starts the write ON A THREAD and does not wait for it —
+*"the write happens beside the work instead of in front of it"*. Resolve runs
+before the program does, so moving the write after resolve keeps that whole
+argument intact and delays the thread's start by one pass. **Measure it rather
+than assert it**, which is what §9 asks of every milestone and what M4.5's own
+numbers exist to be compared against.
+
+**What it must not become: a cache that is wrong rather than stale.** SATC §4's
+whole safety story is that a `.satc` is a faster spelling of the source and a
+bad one is detected and ignored. A file that records a FOLD records a decision
+taken about a program's types, so the day a declared type changes, a stale
+`.satc` would carry a fold that is no longer the right one — and unlike a stale
+number, a stale fold reads as a legal program that calls the wrong row. The
+stamp is what has to answer that, and whether it already does is the first thing
+to check.
+
+**Open:**
+
+- **Whether a program that parses and does not RESOLVE still gets a `.satc`.**
+  It does today, in the second arm above, and it stops being possible.
+- **What `0#` is spelled**, which is the author's to pick — the sketch is theirs
+  and §1.1.1's argument about `#1.5.1` closing up to a float is the trap to
+  avoid repeating. **The option itself carries NO QUOTES** — the author,
+  2026-09-08 — so it is `0#down` and never `0#"down"`: the prefix has already
+  said this is an option rather than a string, and quoting it would be the file
+  saying the same thing twice in two notations that could disagree. That also
+  keeps §3's line clean from the other side, since a token with quotes in it
+  would read as a literal wearing a prefix.
+- **Whether the option token names the OPTION or the ROW.** `0#down` says which
+  word was written and leaves the fold to the reader; `#1.4.2.5` would say the
+  answer and lose what the program said. §3's "literals stay literal" points at
+  the first, and so does the ability to print the file back as source.
+
+**Done when** a `.satc` for a program containing `my_list.sort("down")` carries
+the option token, reading it back reaches `1 4 2 5` without the resolver
+deciding again, `satl --satc` prints the file legibly, and M4.5's startup
+measurement is re-taken and recorded.
 
 **M20 — the machine's facts, in the language.** *(New 2026-08-28, corrected from
 the 2026-08-27 draft. After M19.)* **Thirty-seven numbered paths** — the

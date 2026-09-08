@@ -1,207 +1,212 @@
 {
-  "1 8": {
-    "query": "satellite.help(satellite.file)",
-    "prose": "Making and opening files, as a module rather than as a value you hold.\n\n**Not built** — M19 is persistence, and it builds this alongside\n`satellite.directory` and the `satellite.variable.file` type.",
-    "example": ""
-  },
-  "1 8 0": {
-    "query": "satellite.help(satellite.file)",
-    "prose": "The bare shape. **Not built** — M19.",
-    "example": ""
-  },
-  "1 8 1": {
-    "query": "satellite.help(satellite.file.new)",
-    "prose": "Makes a file at the path you give. **Not built** — M19.",
-    "example": ""
-  },
-  "1 8 2": {
-    "query": "satellite.help(satellite.file.open)",
-    "prose": "Opens a file that already exists. **Not built** — M19.",
-    "example": ""
-  },
-  "1 8 3": {
-    "query": "satellite.help(satellite.file.clear)",
-    "prose": "Empties a file without removing it. **Not built** — M19.",
-    "example": ""
-  },
-  "1 8 4": {
-    "query": "satellite.help(satellite.file.new)",
-    "prose": "Makes a file at the path you give, in the mode you name — reading,\nwriting, or adding to the end. **Not built** — M19.",
-    "example": ""
-  },
-  "1 18": {
-    "query": "satellite.help(satellite.directory)",
-    "prose": "Directories: which one you are in, moving between them, and what is\ninside.\n\n**Not built** — M19 is persistence.",
-    "example": ""
-  },
-  "1 18 0": {
-    "query": "satellite.help(satellite.directory)",
-    "prose": "The bare shape. **Not built** — M19.",
-    "example": ""
-  },
-  "1 18 1": {
-    "query": "satellite.help(satellite.directory.change)",
-    "prose": "Moves to another directory. **Not built** — M19.",
-    "example": ""
-  },
-  "1 18 2": {
-    "query": "satellite.help(satellite.directory.current)",
-    "prose": "Which directory the program is in. **Not built** — M19.",
-    "example": ""
-  },
-  "1 18 3": {
-    "query": "satellite.help(satellite.directory.exists)",
-    "prose": "Whether a directory is there. **Not built** — M19.",
-    "example": ""
-  },
-  "1 18 4": {
-    "query": "satellite.help(satellite.directory.list)",
-    "prose": "What is inside the current directory. **Not built** — M19.",
-    "example": ""
-  },
-  "1 18 5": {
-    "query": "satellite.help(satellite.directory.list)",
-    "prose": "What is inside the directory you name. **Not built** — M19.",
-    "example": ""
-  },
-  "1 10": {
-    "query": "satellite.help(satellite.spacesuit)",
-    "prose": "A spacesuit: a body of code kept apart, with its own names, that a\nprogram brings in rather than writes out.\n\n**Not built** — M26. Its neighbours `satellite.protected` and\n`satellite.public` are the words that say what a spacesuit shows and what\nit keeps to itself.",
-    "example": ""
-  },
-  "1 10 0": {
-    "query": "satellite.help(satellite.spacesuit)",
-    "prose": "The bare shape. **Not built** — M26.",
-    "example": ""
-  },
-  "1 11": {
-    "query": "satellite.help(satellite.protected)",
-    "prose": "Marks something as belonging to the spacesuit that declares it, and not\nvisible outside.\n\n**Not built** — M26.",
-    "example": ""
-  },
-  "1 11 0": {
-    "query": "satellite.help(satellite.protected)",
-    "prose": "The bare shape. **Not built** — M26.",
-    "example": ""
-  },
-  "1 12": {
-    "query": "satellite.help(satellite.public)",
-    "prose": "Marks something as visible to whatever brings the spacesuit in.\n\n**Not built** — M26.",
-    "example": ""
-  },
-  "1 12 0": {
-    "query": "satellite.help(satellite.public)",
-    "prose": "The bare shape. **Not built** — M26.",
-    "example": ""
-  },
-  "1 16": {
-    "query": "satellite.help(satellite.analyze)",
-    "prose": "Reads a satellite file and says what is in it, without running it.\n\n**Not built**, and unlike most of the paths here it has no milestone\neither. It is the one word in the language nobody has scheduled.",
-    "example": ""
-  },
-  "1 19": {
-    "query": "satellite.help(satellite.help)",
-    "prose": "The language's account of itself. It walks the same tree of words the\ninterpreter dispatches through, so it cannot describe a word that does\nnot exist and cannot leave one out that does.\n\nThe parentheses are optional when you want everything. Write a path in\nthem to ask about one part of the language, or the name of one of your own\nvariables to ask about its type.",
-    "example": "satellite.help"
-  },
-  "1 19 0": {
-    "query": "satellite.help(satellite.help)",
-    "prose": "Everything, from the root down: the topics that are built, one to a line.\n\nEach line is indented one tab and carries the topic's path and a sentence\nsaying what it is, and the lines are separated by a blank one so a long\nlist stays readable on a narrow terminal. **Only what is built is\nlisted** — a path no milestone has reached is not offered as somewhere to\ngo.\n\nThis is the one to type when you do not yet know the name of the thing you\nare looking for. Then ask about a topic by its path.",
-    "example": "satellite.help()"
-  },
-  "1 19 1": {
-    "query": "satellite.help(satellite.help)",
-    "prose": "One part of the language, or one of your own variables.\n\nGive it a path and you get that node and the words underneath it, so\nasking about `satellite.console` brings up display and input and the rest\ntogether. Give it the name of a variable you declared and you get the help\nfor its type, which is why it still answers after the program that\ndeclared it has finished.\n\n**Nothing between the parentheses is evaluated.** The argument is a path\nor a name, never a value, so asking about a module does not try to call\nit.",
-    "example": "satellite.help(satellite.console)"
-  },
-  "1 20": {
-    "query": "satellite.help(satellite.network)",
-    "prose": "Talking to other machines: serving, connecting, sending and receiving.\n\n**Not built** — M27 is the network, and it is the last of the language's\nmodules to be scheduled.",
-    "example": ""
-  },
-  "1 20 0": {
-    "query": "satellite.help(satellite.network)",
-    "prose": "The bare shape. **Not built** — M27.",
-    "example": ""
-  },
-  "1 20 1": {
-    "query": "satellite.help(satellite.network.http)",
-    "prose": "Serves HTTP on a port. **Not built** — M27.",
-    "example": ""
-  },
-  "1 20 2": {
-    "query": "satellite.help(satellite.network.https)",
-    "prose": "Connects to a host over HTTPS. **Not built** — M27.",
-    "example": ""
-  },
-  "1 20 3": {
-    "query": "satellite.help(satellite.network.new)",
-    "prose": "Makes a connection. **Not built** — M27.",
-    "example": ""
-  },
-  "1 20 4": {
-    "query": "satellite.help(satellite.network.open)",
-    "prose": "Opens one. **Not built** — M27.",
-    "example": ""
-  },
-  "1 20 5": {
-    "query": "satellite.help(satellite.network.receive)",
-    "prose": "Reads what arrived. **Not built** — M27.",
-    "example": ""
-  },
-  "1 20 6": {
-    "query": "satellite.help(satellite.network.http)",
-    "prose": "Connects to a host over HTTP. **Not built** — M27.",
-    "example": ""
-  },
-  "1 20 7": {
-    "query": "satellite.help(satellite.network.https)",
-    "prose": "Serves HTTPS on a port, with a certificate and a key. **Not built** —\nM27.",
-    "example": ""
-  },
-  "1 23": {
-    "query": "satellite.help(satellite.thread)",
-    "prose": "Running more than one thing at once.\n\n**Not built** — M23. The evaluator walks an arena rather than a linked\nstructure, which is what is meant to make threads possible here without\nlocking, but nothing starts one yet.",
-    "example": ""
-  },
-  "1 23 0": {
-    "query": "satellite.help(satellite.thread)",
-    "prose": "The bare shape. **Not built** — M23.",
-    "example": ""
-  },
-  "1 23 1": {
-    "query": "satellite.help(satellite.thread.new)",
-    "prose": "Makes a thread. **Not built** — M23.",
-    "example": ""
-  },
-  "1 24": {
-    "query": "satellite.help(satellite.window)",
-    "prose": "Windows on the screen, drawn by the program rather than by the terminal.\n\n**Not built** — M24. It is meant to arrive as a library loaded the first\ntime a program asks for a window, so a program that never opens one never\npays for it.",
-    "example": ""
-  },
-  "1 24 0": {
-    "query": "satellite.help(satellite.window)",
-    "prose": "The bare shape. **Not built** — M24.",
-    "example": ""
-  },
-  "1 24 1": {
-    "query": "satellite.help(satellite.window.new)",
-    "prose": "Makes a window. **Not built** — M24.",
-    "example": ""
-  },
-  "1 24 2": {
-    "query": "satellite.help(satellite.window.console)",
-    "prose": "A window that behaves like the terminal, so a program that prints can be\ngiven one without being rewritten.\n\n**Not built** — M24.",
-    "example": ""
-  },
-  "1 24 2 0": {
-    "query": "satellite.help(satellite.window.console)",
-    "prose": "The bare shape. **Not built** — M24.",
-    "example": ""
-  },
-  "1 24 2 1": {
-    "query": "satellite.help(satellite.window.console.new)",
-    "prose": "Makes a console window with the title and size you give. **Not built** —\nM24.",
-    "example": ""
-  }
+ "1 8": {
+  "query": "satellite.help(satellite.file)",
+  "prose": "Making, opening, emptying and asking about files **by name**. The value you\nget back is a `satellite.variable.file`, and its own words -- reading, writing,\nclosing -- live under that path instead of this one.\n\nThe split is between what you do to a NAME and what you do through a HANDLE.\nOpening is a thing you do to a name, so it is here. Reading is a thing you do\nthrough a handle, so it is there. Removing is neither module's, because it\nworks on files and directories alike: that is `satellite.system.delete`.",
+  "example": "satellite.console.display(satellite.file.exists(\"no_such_file\"))"
+ },
+ "1 8 0": {
+  "query": "satellite.help(satellite.file)",
+  "prose": "The bare shape. `satellite.file` is a module and is never called on its own,\nso this number is reserved and nothing reaches it.",
+  "example": ""
+ },
+ "1 8 1": {
+  "query": "satellite.help(satellite.file.new)",
+  "prose": "Makes a file that is **not** already there, and hands back a handle already\nopen on it.\n\n**It refuses to clobber.** If something is already at that path you get a\nhandle that is not ok, holding the reason -- your file is untouched. That is\ndeliberate: `satellite.file.open(path, \"write\")` is how you say \"empty it and\nstart again\", and if `new` did that too, there would be no way left to say\n\"only if it is not there\".\n\nWith no mode named it opens for reading and adding, which is the one mode\nthat can both write the file you just made and read it back -- so you never\nhave to open a new file a second time.",
+  "example": "satellite.variable.file f = satellite.file.new(\"new_demo.txt\")\nsatellite.console.display(f.ok())\nsatellite.variable.file again = satellite.file.new(\"new_demo.txt\")\nsatellite.console.display(again.ok())\nsatellite.console.display(again.error())\nf.close()\nsatellite.system.delete(\"new_demo.txt\")"
+ },
+ "1 8 2": {
+  "query": "satellite.help(satellite.file.open)",
+  "prose": "Opens a file and hands back a handle. The second argument is a **word**\nsaying what you mean to do with it:\n\n- `\"read\"` -- reading only. The file must be there.\n- `\"write\"` -- writing only, starting from empty. Makes the file if it is\n  not there, and **empties it if it is**.\n- `\"append\"` -- writing only, on the end. Makes the file if it is not there\n  and never loses what is already in it.\n- `\"read_append\"` -- both. Reads from wherever you have got to, and writes\n  on the end.\n\nThere is no \"text\" or \"binary\" mode and none is needed: a satellite string\nalready holds any bytes at all, and the machine does nothing to newlines.\n\n**A file that would not open is a value, not an error.** Ask the handle `ok`.",
+  "example": "satellite.variable.file f = satellite.file.new(\"open_demo.txt\")\nf.write_line(\"stored\")\nf.close()\nsatellite.variable.file back = satellite.file.open(\"open_demo.txt\", \"read\")\nsatellite.console.display(back.read_line())\nback.close()\nsatellite.system.delete(\"open_demo.txt\")"
+ },
+ "1 8 3": {
+  "query": "satellite.help(satellite.file.clear)",
+  "prose": "Empties a file back to no bytes at all, **by name**, and leaves it there.\nAnswers true or false.\n\nThat is the difference between this and `satellite.system.delete`: after a\nclear the file still exists and anything holding it open still holds\nsomething; after a delete the name is gone.",
+  "example": "satellite.variable.file f = satellite.file.new(\"clear_demo.txt\")\nf.write_line(\"something\")\nf.close()\nsatellite.console.display(satellite.file.clear(\"clear_demo.txt\"))\nsatellite.variable.file back = satellite.file.open(\"clear_demo.txt\", \"read\")\nsatellite.variable.string left = back.read_all()\nsatellite.console.display(left.size())\nback.close()\nsatellite.system.delete(\"clear_demo.txt\")"
+ },
+ "1 8 4": {
+  "query": "satellite.help(satellite.file.new)",
+  "prose": "The same as `satellite.file.new(path)`, with the mode named yourself. The\nfour words are the ones `satellite.file.open` takes.\n\nIt still refuses to clobber: the mode says how you mean to use the file, not\nwhether it may already be there.",
+  "example": "satellite.variable.file f = satellite.file.new(\"mode_demo.txt\", \"write\")\nf.write_line(\"written\")\nf.close()\nsatellite.system.delete(\"mode_demo.txt\")"
+ },
+ "1 18": {
+  "query": "satellite.help(satellite.directory)",
+  "prose": "Which directory the program is in, moving between them, and what is inside\none.\n\nIt is not part of the terminal, however much moving between directories\nfeels like a terminal thing: a program run with no terminal at all still has a\ndirectory it is in.\n\n**There is no word here that makes a directory.** That is a real gap and it\nis known rather than overlooked -- a word to make one has not been designed,\nand one invented just to round the module out would be a word designed by\nsymmetry.",
+  "example": "satellite.console.display(satellite.directory.exists(\".\"))"
+ },
+ "1 18 0": {
+  "query": "satellite.help(satellite.directory)",
+  "prose": "The bare shape. `satellite.directory` is a module and is never called on its\nown, so this number is reserved and nothing reaches it.",
+  "example": ""
+ },
+ "1 18 1": {
+  "query": "satellite.help(satellite.directory.change)",
+  "prose": "Moves the program into another directory, and answers whether that worked.\n\n**It answers rather than stopping.** Somewhere not being reachable is an\nordinary thing for a program to find out, so it comes back as false -- and a\npath that is a plain file rather than a directory is false too, not a\ndifferent kind of trouble.",
+  "example": "satellite.variable.string here = satellite.directory.current()\nsatellite.console.display(satellite.directory.change(\"nowhere_at_all\"))\nsatellite.console.display(satellite.directory.change(here))"
+ },
+ "1 18 2": {
+  "query": "satellite.help(satellite.directory.current)",
+  "prose": "The directory the program is in, as a full path.\n\nThis is the one every other path is measured against: a name with no `/` in\nfront of it is read from here.",
+  "example": "satellite.variable.string here = satellite.directory.current()\nsatellite.console.display(here.size() > 0)"
+ },
+ "1 18 3": {
+  "query": "satellite.help(satellite.directory.exists)",
+  "prose": "Whether there is a directory at this path. A plain file answers false.\n\nIt is safe to ask about anything, and it never stops the program. Note that\nit is not a promise that `list` will work: a directory can be there and still\nnot be readable by you.",
+  "example": "satellite.console.display(satellite.directory.exists(\".\"))\nsatellite.console.display(satellite.directory.exists(\"nowhere_at_all\"))"
+ },
+ "1 18 4": {
+  "query": "satellite.help(satellite.directory.list)",
+  "prose": "What is in the directory the program is in, as a sorted list of names.\n\n`.` and `..` are not in it -- neither is a thing inside the directory, and a\nprogram that walked into them would go round forever. Files whose names begin\nwith a dot **are** in it: there are no flags in this language, so there is one\nanswer and it has to be the true one.\n\n**This is the one word in the module that stops rather than answering** when\nthere is no such directory. Every other one has somewhere to put bad news; a\nlist has not, because the empty list already means \"an empty directory\", and\nusing it for \"no directory\" would make those two impossible to tell apart.\nAsk `satellite.directory.exists` first if you are not sure.",
+  "example": "satellite.container.list<satellite.variable.string> here = satellite.directory.list()\nsatellite.console.display(here.size() > 0)"
+ },
+ "1 18 5": {
+  "query": "satellite.help(satellite.directory.list)",
+  "prose": "The same, for a directory you name.",
+  "example": "satellite.container.list<satellite.variable.string> names = satellite.directory.list(\".\")\nsatellite.console.display(names.size() > 0)"
+ },
+ "1 10": {
+  "query": "satellite.help(satellite.spacesuit)",
+  "prose": "A spacesuit: a body of code kept apart, with its own names, that a\nprogram brings in rather than writes out.\n\n**Not built** — M26. Its neighbours `satellite.protected` and\n`satellite.public` are the words that say what a spacesuit shows and what\nit keeps to itself.",
+  "example": ""
+ },
+ "1 10 0": {
+  "query": "satellite.help(satellite.spacesuit)",
+  "prose": "The bare shape. **Not built** — M26.",
+  "example": ""
+ },
+ "1 11": {
+  "query": "satellite.help(satellite.protected)",
+  "prose": "Marks something as belonging to the spacesuit that declares it, and not\nvisible outside.\n\n**Not built** — M26.",
+  "example": ""
+ },
+ "1 11 0": {
+  "query": "satellite.help(satellite.protected)",
+  "prose": "The bare shape. **Not built** — M26.",
+  "example": ""
+ },
+ "1 12": {
+  "query": "satellite.help(satellite.public)",
+  "prose": "Marks something as visible to whatever brings the spacesuit in.\n\n**Not built** — M26.",
+  "example": ""
+ },
+ "1 12 0": {
+  "query": "satellite.help(satellite.public)",
+  "prose": "The bare shape. **Not built** — M26.",
+  "example": ""
+ },
+ "1 16": {
+  "query": "satellite.help(satellite.analyze)",
+  "prose": "Reads a satellite file and says what is in it, without running it.\n\n**Not built**, and unlike most of the paths here it has no milestone\neither. It is the one word in the language nobody has scheduled.",
+  "example": ""
+ },
+ "1 19": {
+  "query": "satellite.help(satellite.help)",
+  "prose": "The language's account of itself. It walks the same tree of words the\ninterpreter dispatches through, so it cannot describe a word that does\nnot exist and cannot leave one out that does.\n\nThe parentheses are optional when you want everything. Write a path in\nthem to ask about one part of the language, or the name of one of your own\nvariables to ask about its type.",
+  "example": "satellite.help"
+ },
+ "1 19 0": {
+  "query": "satellite.help(satellite.help)",
+  "prose": "Everything, from the root down: the topics that are built, one to a line.\n\nEach line is indented one tab and carries the topic's path and a sentence\nsaying what it is, and the lines are separated by a blank one so a long\nlist stays readable on a narrow terminal. **Only what is built is\nlisted** — a path no milestone has reached is not offered as somewhere to\ngo.\n\nThis is the one to type when you do not yet know the name of the thing you\nare looking for. Then ask about a topic by its path.",
+  "example": "satellite.help()"
+ },
+ "1 19 1": {
+  "query": "satellite.help(satellite.help)",
+  "prose": "One part of the language, or one of your own variables.\n\nGive it a path and you get that node and the words underneath it, so\nasking about `satellite.console` brings up display and input and the rest\ntogether. Give it the name of a variable you declared and you get the help\nfor its type, which is why it still answers after the program that\ndeclared it has finished.\n\n**Nothing between the parentheses is evaluated.** The argument is a path\nor a name, never a value, so asking about a module does not try to call\nit.",
+  "example": "satellite.help(satellite.console)"
+ },
+ "1 20": {
+  "query": "satellite.help(satellite.network)",
+  "prose": "Talking to other machines: serving, connecting, sending and receiving.\n\n**Not built** — M27 is the network, and it is the last of the language's\nmodules to be scheduled.",
+  "example": ""
+ },
+ "1 20 0": {
+  "query": "satellite.help(satellite.network)",
+  "prose": "The bare shape. **Not built** — M27.",
+  "example": ""
+ },
+ "1 20 1": {
+  "query": "satellite.help(satellite.network.http)",
+  "prose": "Serves HTTP on a port. **Not built** — M27.",
+  "example": ""
+ },
+ "1 20 2": {
+  "query": "satellite.help(satellite.network.https)",
+  "prose": "Connects to a host over HTTPS. **Not built** — M27.",
+  "example": ""
+ },
+ "1 20 3": {
+  "query": "satellite.help(satellite.network.new)",
+  "prose": "Makes a connection. **Not built** — M27.",
+  "example": ""
+ },
+ "1 20 4": {
+  "query": "satellite.help(satellite.network.open)",
+  "prose": "Opens one. **Not built** — M27.",
+  "example": ""
+ },
+ "1 20 5": {
+  "query": "satellite.help(satellite.network.receive)",
+  "prose": "Reads what arrived. **Not built** — M27.",
+  "example": ""
+ },
+ "1 20 6": {
+  "query": "satellite.help(satellite.network.http)",
+  "prose": "Connects to a host over HTTP. **Not built** — M27.",
+  "example": ""
+ },
+ "1 20 7": {
+  "query": "satellite.help(satellite.network.https)",
+  "prose": "Serves HTTPS on a port, with a certificate and a key. **Not built** —\nM27.",
+  "example": ""
+ },
+ "1 23": {
+  "query": "satellite.help(satellite.thread)",
+  "prose": "Running more than one thing at once.\n\n**Not built** — M23. The evaluator walks an arena rather than a linked\nstructure, which is what is meant to make threads possible here without\nlocking, but nothing starts one yet.",
+  "example": ""
+ },
+ "1 23 0": {
+  "query": "satellite.help(satellite.thread)",
+  "prose": "The bare shape. **Not built** — M23.",
+  "example": ""
+ },
+ "1 23 1": {
+  "query": "satellite.help(satellite.thread.new)",
+  "prose": "Makes a thread. **Not built** — M23.",
+  "example": ""
+ },
+ "1 24": {
+  "query": "satellite.help(satellite.window)",
+  "prose": "Windows on the screen, drawn by the program rather than by the terminal.\n\n**Not built** — M24. It is meant to arrive as a library loaded the first\ntime a program asks for a window, so a program that never opens one never\npays for it.",
+  "example": ""
+ },
+ "1 24 0": {
+  "query": "satellite.help(satellite.window)",
+  "prose": "The bare shape. **Not built** — M24.",
+  "example": ""
+ },
+ "1 24 1": {
+  "query": "satellite.help(satellite.window.new)",
+  "prose": "Makes a window. **Not built** — M24.",
+  "example": ""
+ },
+ "1 24 2": {
+  "query": "satellite.help(satellite.window.console)",
+  "prose": "A window that behaves like the terminal, so a program that prints can be\ngiven one without being rewritten.\n\n**Not built** — M24.",
+  "example": ""
+ },
+ "1 24 2 0": {
+  "query": "satellite.help(satellite.window.console)",
+  "prose": "The bare shape. **Not built** — M24.",
+  "example": ""
+ },
+ "1 24 2 1": {
+  "query": "satellite.help(satellite.window.console.new)",
+  "prose": "Makes a console window with the title and size you give. **Not built** —\nM24.",
+  "example": ""
+ },
+ "1 8 5": {
+  "query": "satellite.help(satellite.file.exists)",
+  "prose": "Whether there is a file at this path -- asked with no handle, and without\nopening anything.\n\n**A directory answers false**, which is what separates this from\n`satellite.directory.exists`. The question is \"is there a file here I could\nopen\", and a directory is not one.",
+  "example": "satellite.console.display(satellite.file.exists(\"no_such_file\"))\nsatellite.console.display(satellite.file.exists(\".\"))"
+ }
 }

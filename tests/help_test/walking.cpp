@@ -56,9 +56,18 @@ void section_walking()
     check(!holds(bare, "satellite.returns"),
           "and it does not offer `satellite.returns`, which is built and is "
           "not how a capsule is written here");
-    check(!holds(bare, "satellite.file"),
-          "and it does not name M19's file, which is the next milestone and "
-          "not this one");
+    // THIS CLAUSE WAS WRITTEN THE OTHER WAY ROUND AT M18 AND IS THE TEST DOING
+    // ITS JOB. It read `!holds(bare, "satellite.file")` -- "it does not name
+    // M19's file, which is the next milestone and not this one" -- and M19
+    // landing is exactly what makes that false. A listing that still omitted
+    // `satellite.file` the day files were built would be help drifting from
+    // what exists, which is the one thing DESIGN §4.6 exists to prevent, so
+    // this failing was the correct outcome and flipping it is the milestone
+    // being recorded rather than the test being loosened.
+    check(holds(bare, "satellite.file"),
+          "and it names M19's file, which is built now");
+    check(holds(bare, "satellite.directory"),
+          "and the directory beside it");
 
     // 2 -- AND THE PARENTHESES ARE OPTIONAL. PLAN: "bare `satellite.help` and
     // `satellite.help()` start at the root", which is one walk and not two

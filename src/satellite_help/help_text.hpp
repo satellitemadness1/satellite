@@ -73,7 +73,7 @@ inline constexpr size_t kEntryCount = sizeof(kEntries) / sizeof(kEntries[0]) - 1
 // whose head is this one", so a head that pointed at a node with a different
 // head again would put an entry in a group nothing can ask for -- reachable in
 // the document and unreachable in the language. One compare rules it out for
-// all 264 at once.
+// all 269 at once.
 constexpr bool order_is_right()
 {
     if (kEntryCount != words::kNodeCount)

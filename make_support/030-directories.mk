@@ -20,6 +20,15 @@
 # assignment beats the environment -- except under `make -e`, where it does not,
 # and this directory would quietly become `xterm-256color`. A build variable
 # does not get to share a name with one the terminal already owns.
+#
+# SATFILE AND NOT FILE, DIRECTRY AND NOT DIRECTORY, and both are the same rule
+# one step further out. `FILE` is a C standard library type and `DIRECTORY` is
+# close enough to `DIR` and to the shell's own vocabulary to be worth avoiding;
+# neither is exported by a login shell the way TERM is, so neither is the exact
+# hazard above -- these are named for legibility at a `make -p` dump, where a
+# variable called FILE beside a rule about files reads as a pattern stem. The
+# directories themselves are spelled out in full, which is the rule that
+# matters: src/satellite_file/ and src/satellite_directory/.
 
 SRC      = src
 SYSTEM   = $(SRC)/system_facts
@@ -31,6 +40,8 @@ LEXER    = $(SRC)/lexical_analyzer
 CACHE    = $(SRC)/satellite_cache
 CONSOLE  = $(SRC)/satellite_console
 CONTAIN  = $(SRC)/satellite_containers
+DIRECTRY = $(SRC)/satellite_directory
+SATFILE  = $(SRC)/satellite_file
 FLOAT    = $(SRC)/satellite_float
 HELP     = $(SRC)/satellite_help
 SCALARS  = $(SRC)/satellite_scalars
@@ -60,4 +71,4 @@ WORDS    = $(SRC)/satellite_words
 TESTS     = tests
 TESTNAMES = words_test lexer_test parser_test satc_test reporter_test \
             limits_test resolve_test number_test float_test eval_test \
-            console_test prompt_test help_test
+            console_test prompt_test help_test file_test

@@ -224,6 +224,40 @@ void op_binary(Machine &m, const Op &op, uint32_t step)
         return;
     }
 
+    // `+` ON TWO STRINGS JOINS THEM -- the author, 2026-09-08, at M19.
+    //
+    // IT IS ONE OPERATOR OVER TWO TYPES AND NOT A SECOND MEANING FOR `+`.
+    // Addition and joining are the same shape: take two of a thing, answer one
+    // of that thing, change neither. What separates this from the truthiness
+    // ladder DESIGN §1.1 refuses is that NOTHING IS CONVERTED -- a string and a
+    // number is still S0711, so `"n = " + 4` is refused and the program says
+    // `4.to_string()` out loud. The only pair that joins is two strings.
+    //
+    // WHY IT WAS MISSING UNTIL NOW, which is worth recording because it looks
+    // like an omission and was one: `append(x)` `1 6 1 14` MUTATES its receiver
+    // under DESIGN §6.4's storage-slot rule, so every string built out of
+    // pieces needed a variable to build it in. That makes
+    // `display("the reason: " + f.error())` -- one string, used once, named
+    // nowhere -- unwritable, and M19's own file diagnostics are exactly that
+    // shape. Two example programs in the tree were already written this way and
+    // could not run.
+    //
+    // BEFORE both_numeric, DELIBERATELY. That check's refusal names a number,
+    // which is the right sentence for `"a" - "b"` and the wrong one for a join
+    // it would have refused on the way past.
+    if (which == BinaryOp::Add && pair.left.is_string() &&
+        pair.right.is_string()) {
+        static const SatString empty;
+        const Str &left = std::get<Str>(pair.left);
+        const Str &right = std::get<Str>(pair.right);
+        SatString joined = left ? *left : empty;
+        if (right)
+            joined.append(*right);
+        m.done();
+        m.fold(Value::string(std::move(joined)));
+        return;
+    }
+
     if (!both_numeric(m, which, pair, errors::Code::EVAL_NOT_A_NUMBER))
         return;
 

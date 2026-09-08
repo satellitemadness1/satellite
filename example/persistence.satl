@@ -1,0 +1,139 @@
+// M19 -- persistence: files and directories.
+//
+// THE ACCEPTANCE PROGRAM, and its first property is that it LEAVES THE TREE AS
+// IT FOUND IT. PLAN.md §8's M19 entry asks for that in those words, and the
+// reason is sharper than tidiness: `satellite.file.new` is O_EXCL -- new means
+// make one that is not there -- so a program that left its file behind would
+// come back not-ok on its second run and the round trip would fail. A
+// demonstration that passes once and cannot restore its own tree is not a
+// thing that works.
+//
+// EVERY PATH THIS MILESTONE BUILT IS EXERCISED HERE EXCEPT TWO, and both are
+// named rather than skipped:
+//
+//   satellite.variable.file.new  1 6 2 1  is a number with nothing behind it.
+//   satellite.file.open's bad mode word refuses, which ends a program -- it is
+//     example/persistence_bad_mode.satl, one file over.
+//
+// It prints one PASS. Every check that could be wrong is written as a
+// condition, so a failure says which one.
+
+satellite.include(satellite)
+
+satellite.capsule check(satellite.variable.bool held, satellite.variable.string what)
+{
+    satellite.statement.if (held == satellite.bool.false)
+    {
+        satellite.console.display("FAIL: " + what)
+    }
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.string name = "m19_round_trip.txt"
+    satellite.variable.string second = "m19_by_handle.txt"
+
+    // --- make one that is not there -------------------------------- 1 8 1
+    satellite.variable.file f = satellite.file.new(name)
+    check(f.ok(), "new(path) opened")
+    check(f.path() == name, "the handle knows its path")
+    check(f.error() == "", "a handle that opened has no reason to give")
+
+    // A SECOND `new` ON THE SAME PATH IS A VALUE THAT IS NOT OK, and the file
+    // is untouched. DESIGN §1.1: never silently truncate.
+    satellite.variable.file clash = satellite.file.new(name)
+    check(clash.ok() == satellite.bool.false, "a second new refuses to clobber")
+    check(clash.error() != "", "and it says why")
+
+    // --- write, close, and read the status ------------ 1 6 2 4, 1 6 2 6
+    f.write_line("alpha")
+    f.write_line("beta")
+    f.write_line("gamma")
+    check(f.close(), "close answered")
+
+    // --- reopen by path, and walk the lines ---------- 1 8 2, 1 6 2 3
+    satellite.variable.file back = satellite.file.open(name, "read")
+    check(back.ok(), "open(path, mode) opened")
+    check(back.read_line() == "alpha", "line 1")
+    check(back.read_line() == "beta", "line 2")
+    check(back.read_line() == "gamma", "line 3")
+
+    // AND THE END IS NOTHING AND NOT AN EMPTY STRING -- DESIGN §8.7. A variant
+    // is the type that can hold the difference and be asked which it holds.
+    satellite.variable.variant ended = back.read_line()
+    check(ended.holding() == "nothing", "the end of the file is nothing")
+    check(back.close(), "closed after reading")
+
+    // --- the whole thing at once ----------------------------------- 1 6 2 5
+    satellite.variable.file whole = satellite.file.open(name, "read")
+    check(whole.read_all() == "alpha\nbeta\ngamma\n", "read_all is the lines joined")
+    // The cursor is shared, so read_all leaves it at the end.
+    satellite.variable.variant after = whole.read_line()
+    check(after.holding() == "nothing", "read_all left the cursor at the end")
+    check(whole.close(), "closed after read_all")
+
+    // --- a path that is not there, and the program keeps running ---------
+    // DESIGN §9's ordinary case, and the one assertion here that cannot be
+    // faked: this is a refusal that is a VALUE.
+    satellite.variable.file missing = satellite.file.open("m19_no_such_file", "read")
+    check(missing.ok() == satellite.bool.false, "a missing file is not ok")
+    satellite.console.display("the reason: " + missing.error())
+
+    // --- exactly the bytes, with no newline ------------------------ 1 6 2 11
+    satellite.variable.file exact = satellite.file.new(second, "read_append")
+    check(exact.ok(), "new(path, mode) opened")
+    exact.write("one")
+    exact.write("two")
+    check(exact.read_all() == "onetwo", "write puts exactly the bytes")
+
+    // --- close, reopen through the handle -------------------------- 1 6 2 2
+    check(exact.close(), "closed before reopening")
+    check(exact.open(), "the handle reopened itself")
+    check(exact.read_line() == "onetwo", "a reopened handle reads from the start")
+
+    // --- the directory ------------------------- 1 18 2, 1 18 4, 1 18 5
+    satellite.variable.string here = satellite.directory.current()
+    check(here.size() > 0, "current() named a directory")
+    satellite.container.list<satellite.variable.string> listed = satellite.directory.list()
+    check(listed.contains(name), "list() has the file this program made")
+    satellite.container.list<satellite.variable.string> named = satellite.directory.list(here)
+    check(named.size() == listed.size(), "list(d) of here is list()")
+
+    // --- exists, both ways --------------------------- 1 18 3, 1 8 5, 1 6 2 7
+    check(satellite.directory.exists(here), "the directory we are in exists")
+    check(satellite.directory.exists("m19_no_such_directory") == satellite.bool.false,
+          "and one that is not there does not")
+    check(satellite.file.exists(name), "the file exists by name")
+    check(satellite.file.exists(here) == satellite.bool.false, "a directory is not a file")
+    check(exact.exists(), "the handle's own path is still there")
+
+    // --- change, and change onto a plain file ---------------------- 1 18 1
+    check(satellite.directory.change(here), "changed into a directory that exists")
+    check(satellite.directory.change(name) == satellite.bool.false,
+          "changing onto a plain file is false and does not die")
+
+    // --- empty a file without removing it -------------------------- 1 8 3
+    check(satellite.file.clear(name), "clear answered")
+    satellite.variable.file emptied = satellite.file.open(name, "read")
+    check(emptied.read_all() == "", "clear left it at zero bytes")
+    check(satellite.file.exists(name), "and the file is still there")
+    check(emptied.close(), "closed the emptied file")
+
+    // --- remove, BOTH SHAPES ---------------------------------------- 1 22 1
+    // A path, and an open handle. The handle shape is why this row is M19's:
+    // no other milestone can hand it one.
+    check(satellite.system.delete(name), "delete by path")
+    check(satellite.system.delete(exact), "delete by open handle")
+    check(satellite.file.exists(name) == satellite.bool.false, "the path is gone")
+    check(exact.exists() == satellite.bool.false, "and so is the handle's")
+
+    // Deleting what is already gone is FALSE and not a failure, so a cleanup
+    // step is safe to run twice.
+    check(satellite.system.delete(name) == satellite.bool.false,
+          "deleting what is gone is false")
+    check(exact.close(), "the handle still closes after its file is gone")
+
+    satellite.console.display("PASS")
+    satellite.return(satellite)
+}

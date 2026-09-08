@@ -611,16 +611,17 @@ SAT_HELP(CONTAINER_LIST_REMOVE, CONTAINER_LIST_REMOVE,
          "Takes out the value you name rather than the position, removing the first\n"
          "place it appears.\n"
          "\n"
-         "**A quoted word here is read as an option, not as a value.** `remove` has\n"
-         "three of them — `\"first\"`, `\"last\"` and `\"at\"` — which fold onto the three\n"
-         "methods of those names. So to remove a string, hold it in a name first and\n"
-         "pass the name; a literal would be looked up among the options and refused."
+         "A quoted word is a value here like any other. It did not used to be: until\n"
+         "M19 the compiler read `\"bolt\"` as the name of an option, because `remove_first`,\n"
+         "`remove_last` and `remove_at` sit beside `remove` and it guessed from the\n"
+         "spelling that those were three options rather than three separate words. They\n"
+         "are separate words, and which words take options is written down now instead\n"
+         "of guessed at."
          ,
          "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\n"
          "parts.append(\"bolt\")\n"
          "parts.append(\"nut\")\n"
-         "satellite.variable.string which = \"bolt\"\n"
-         "parts.remove(which)\n"
+         "parts.remove(\"bolt\")\n"
          "satellite.console.display(parts)"
          )
 
@@ -1121,69 +1122,223 @@ SAT_HELP(VARIABLE_STRING_AT, VARIABLE_STRING_AT,
 
 // 1 6 2  satellite.variable.file
 SAT_HELP(VARIABLE_FILE, VARIABLE_FILE,
-         "A file on disk, held as a value you can read from and write to.\n"
+         "A file on disk, held as a value you can read from and write to. It is a\n"
+         "**reference type**: two names for one open file are two names for one open\n"
+         "file, so closing it through either one closes it for both. Every other value\n"
+         "in the language is copied when you assign it; this one is shared.\n"
          "\n"
-         "**Not built.** The path is numbered and the seven words underneath are\n"
-         "numbered with it, but nothing opens a file yet. M19 is the milestone that\n"
-         "builds this and the `satellite.directory` module beside it."
+         "You never declare one and fill it in. `satellite.file.open` and\n"
+         "`satellite.file.new` are what make one, and both hand you a handle that is\n"
+         "already open.\n"
+         "\n"
+         "**A file that would not open is a value and not an error.** The handle comes\n"
+         "back anyway, `ok` answers false, and `error` says why -- so asking whether a\n"
+         "file is there never stops the program that asked."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.open(\"no_such_file\", \"read\")\n"
+         "satellite.console.display(f.ok())\n"
+         "satellite.console.display(f.error())"
          )
 
 // 1 6 2 0  satellite.variable.file()
 SAT_HELP(VARIABLE_FILE_0, VARIABLE_FILE,
-         "The bare shape. **Not built** — M19."
+         "The bare shape. A file is written as a type, never called, so this number is\n"
+         "reserved and nothing reaches it."
          ,
          ""
          )
 
 // 1 6 2 1  satellite.variable.file.new
-SAT_HELP(VARIABLE_FILE_NEW, VARIABLE_FILE,
-         "Makes a file that does not exist yet. **Not built** — M19."
+SAT_HELP(VARIABLE_FILE_NEW, VARIABLE_FILE_NEW,
+         "**Numbered, and deliberately empty.** There is one way to make a file and it\n"
+         "is `satellite.file.new(path)`, the module word. This number exists because the\n"
+         "language's design once sketched `my_file.new()` as an example of a call that\n"
+         "would be confusing, and the example got a number before anyone decided it was\n"
+         "not a word.\n"
+         "\n"
+         "It is left unbuilt rather than quietly made an alias, because two spellings\n"
+         "for one thing is worse than one spelling and a note saying so."
          ,
          ""
          )
 
 // 1 6 2 2  satellite.variable.file.open
-SAT_HELP(VARIABLE_FILE_OPEN, VARIABLE_FILE,
-         "Opens a file that does. **Not built** — M19."
+SAT_HELP(VARIABLE_FILE_OPEN, VARIABLE_FILE_OPEN,
+         "Opens a handle again -- one that was closed, or one whose first open failed\n"
+         "and whose reason has since gone away. It answers true or false.\n"
+         "\n"
+         "**It is not the same word as `satellite.file.open`,** which takes a path and\n"
+         "makes a handle. This one takes no arguments: it already knows which file it is\n"
+         "about, and it reopens it in the mode it was opened with the first time.\n"
+         "\n"
+         "A handle that is already open answers true and nothing happens. A reopened\n"
+         "handle reads from the beginning again."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"reopen_demo.txt\")\n"
+         "f.write_line(\"one\")\n"
+         "f.close()\n"
+         "satellite.console.display(f.open())\n"
+         "satellite.console.display(f.read_line())\n"
+         "f.close()\n"
+         "satellite.system.delete(\"reopen_demo.txt\")"
          )
 
 // 1 6 2 3  satellite.variable.file.read_line
-SAT_HELP(VARIABLE_FILE_READ_LINE, VARIABLE_FILE,
-         "Reads one line. **Not built** — M19."
+SAT_HELP(VARIABLE_FILE_READ_LINE, VARIABLE_FILE_READ_LINE,
+         "Reads the next line, **or nothing** when there are no more. The newline\n"
+         "itself is not part of what you get.\n"
+         "\n"
+         "Each call moves forward, so calling it in a loop walks the file. An empty\n"
+         "line and nothing are two different answers: an empty line is a line that was\n"
+         "there and had no characters in it, and nothing means the file ended.\n"
+         "\n"
+         "Declare the variable as a `satellite.variable.variant` if you mean to handle\n"
+         "the ending yourself and ask it `holding`. Declare it as a string and the\n"
+         "program stops by name at the line that first uses it after the end, which is\n"
+         "often exactly what you want."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"lines_demo.txt\")\n"
+         "f.write_line(\"first\")\n"
+         "f.write_line(\"second\")\n"
+         "satellite.variable.variant line = f.read_line()\n"
+         "satellite.statement.while (line.holding() != \"nothing\")\n"
+         "{\n"
+         "    satellite.console.display(line.held())\n"
+         "    line = f.read_line()\n"
+         "}\n"
+         "f.close()\n"
+         "satellite.system.delete(\"lines_demo.txt\")"
          )
 
 // 1 6 2 4  satellite.variable.file.write_line(s)
-SAT_HELP(VARIABLE_FILE_WRITE_LINE, VARIABLE_FILE,
-         "Writes one line. **Not built** — M19."
+SAT_HELP(VARIABLE_FILE_WRITE_LINE, VARIABLE_FILE_WRITE_LINE,
+         "Writes the text you give it **and a newline after it**. It answers true, or\n"
+         "false if the write itself failed -- a full disk, for instance.\n"
+         "\n"
+         "Use `write` instead when you want exactly the bytes and no newline. The two\n"
+         "verbs exist so that neither case has to be worked around: a file whose last\n"
+         "line has no newline, and a line put together from several calls, are both\n"
+         "writable."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"write_demo.txt\")\n"
+         "f.write_line(\"a line\")\n"
+         "f.close()\n"
+         "satellite.variable.file back = satellite.file.open(\"write_demo.txt\", \"read\")\n"
+         "satellite.console.display(back.read_all())\n"
+         "back.close()\n"
+         "satellite.system.delete(\"write_demo.txt\")"
          )
 
 // 1 6 2 5  satellite.variable.file.read_all
-SAT_HELP(VARIABLE_FILE_READ_ALL, VARIABLE_FILE,
-         "Reads the whole file at once. **Not built** — M19."
+SAT_HELP(VARIABLE_FILE_READ_ALL, VARIABLE_FILE_READ_ALL,
+         "The whole file, from the beginning, as one string.\n"
+         "\n"
+         "It shares its place in the file with `read_line`, and it leaves that place at\n"
+         "the end -- so a `read_line` straight after a `read_all` answers nothing. That\n"
+         "is the honest report of a file that has just been read from end to end."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"all_demo.txt\")\n"
+         "f.write_line(\"one\")\n"
+         "f.write_line(\"two\")\n"
+         "satellite.variable.string whole = f.read_all()\n"
+         "satellite.console.display(whole.size())\n"
+         "f.close()\n"
+         "satellite.system.delete(\"all_demo.txt\")"
          )
 
 // 1 6 2 6  satellite.variable.file.close
-SAT_HELP(VARIABLE_FILE_CLOSE, VARIABLE_FILE,
-         "Closes it. **Not built** — M19."
+SAT_HELP(VARIABLE_FILE_CLOSE, VARIABLE_FILE_CLOSE,
+         "Closes the file and answers whether that worked.\n"
+         "\n"
+         "**It answers rather than just happening,** because closing is where writes\n"
+         "actually reach the disk and where a full disk or a failing drive is reported.\n"
+         "A program that has written something it cares about should look at what this\n"
+         "says.\n"
+         "\n"
+         "Closing a file that is already closed is true and does nothing."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"close_demo.txt\")\n"
+         "f.write_line(\"safe\")\n"
+         "satellite.console.display(f.close())\n"
+         "satellite.system.delete(\"close_demo.txt\")"
          )
 
 // 1 6 2 7  satellite.variable.file.exists
-SAT_HELP(VARIABLE_FILE_EXISTS, VARIABLE_FILE,
-         "Answers whether the file is there. **Not built** — M19."
+SAT_HELP(VARIABLE_FILE_EXISTS, VARIABLE_FILE_EXISTS,
+         "Whether **this handle's own path** is still there.\n"
+         "\n"
+         "It asks about the name and not about the handle, so a closed handle still\n"
+         "answers, and a file that was deleted while you held it open answers false.\n"
+         "\n"
+         "To ask about a path you have no handle for, use `satellite.file.exists`\n"
+         "instead."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"exists_demo.txt\")\n"
+         "f.close()\n"
+         "satellite.console.display(f.exists())\n"
+         "satellite.system.delete(f)\n"
+         "satellite.console.display(f.exists())"
+         )
+
+// 1 6 2 8  satellite.variable.file.ok
+SAT_HELP(VARIABLE_FILE_OK, VARIABLE_FILE_OK,
+         "Whether the file is open.\n"
+         "\n"
+         "This is the question the whole design of files is built around. Opening a\n"
+         "file that is not there does not stop your program -- you get a handle that is\n"
+         "not ok, and you decide what to do about it. `error` is the sentence that says\n"
+         "why."
+         ,
+         "satellite.variable.file good = satellite.file.new(\"ok_demo.txt\")\n"
+         "satellite.console.display(good.ok())\n"
+         "good.close()\n"
+         "satellite.system.delete(\"ok_demo.txt\")\n"
+         "satellite.variable.file bad = satellite.file.open(\"ok_demo.txt\", \"read\")\n"
+         "satellite.console.display(bad.ok())"
+         )
+
+// 1 6 2 9  satellite.variable.file.path
+SAT_HELP(VARIABLE_FILE_PATH, VARIABLE_FILE_PATH,
+         "The path this handle was opened on, as a string.\n"
+         "\n"
+         "It answers whether or not the file is open, and whether or not the open\n"
+         "worked -- a handle always knows which file it is about."
+         ,
+         "satellite.variable.file f = satellite.file.open(\"nowhere/at/all\", \"read\")\n"
+         "satellite.console.display(f.path())"
+         )
+
+// 1 6 2 10  satellite.variable.file.error
+SAT_HELP(VARIABLE_FILE_ERROR, VARIABLE_FILE_ERROR,
+         "Why the last thing that went wrong went wrong, in plain words, or an empty\n"
+         "string when nothing has.\n"
+         "\n"
+         "It is the machine's own sentence -- \"No such file or directory\",\n"
+         "\"Permission denied\" -- so it says something a person can act on rather than a\n"
+         "number they have to look up.\n"
+         "\n"
+         "A successful reopen clears it, because a reason that no longer applies is\n"
+         "worse than no reason."
+         ,
+         "satellite.variable.file f = satellite.file.open(\"no_such_file\", \"read\")\n"
+         "satellite.console.display(f.error())"
+         )
+
+// 1 6 2 11  satellite.variable.file.write(x)
+SAT_HELP(VARIABLE_FILE_WRITE, VARIABLE_FILE_WRITE,
+         "Writes **exactly** what you give it -- no newline, nothing added. It answers\n"
+         "true, or false if the write failed.\n"
+         "\n"
+         "This is the verb for building a line out of pieces, for writing a file that\n"
+         "should not end in a newline, and for writing bytes rather than text.\n"
+         "`write_line` is the one that adds the newline for you."
+         ,
+         "satellite.variable.file f = satellite.file.new(\"exact_demo.txt\")\n"
+         "f.write(\"one\")\n"
+         "f.write(\"two\")\n"
+         "satellite.console.display(f.read_all())\n"
+         "f.close()\n"
+         "satellite.system.delete(\"exact_demo.txt\")"
          )
 
 // 1 6 3  satellite.variable.time
@@ -1404,9 +1559,13 @@ SAT_HELP(VARIABLE_NUMBER_DIGITS, VARIABLE_NUMBER_DIGITS,
 
 // 1 6 5  satellite.variable.binary
 SAT_HELP(VARIABLE_BINARY, VARIABLE_BINARY,
-         "A number written in base two.\n"
+         "A run of bits, written `b1010`. **The width is part of the value**, so\n"
+         "`b0010` and `b10` are not the same thing -- which is why this is a type of its\n"
+         "own and not a number written in another base.\n"
          "\n"
-         "**Not built.** The path is numbered and no milestone has reached it."
+         "**Not built** -- M19.5. The literal is read today and refused at the point it\n"
+         "would become a value; what a bit operation means has not been decided yet, and\n"
+         "will be at that milestone rather than in the margin of another one."
          ,
          ""
          )
@@ -1469,10 +1628,11 @@ SAT_HELP(VARIABLE_FLOAT, VARIABLE_FLOAT,
 
 // 1 6 11  satellite.variable.hex
 SAT_HELP(VARIABLE_HEX, VARIABLE_HEX,
-         "A number written in base sixteen. It has a second spelling,\n"
+         "A run of hexadecimal digits, written `x00FF`. **The width is part of the\n"
+         "value**, so `x0009` and `x9` are not the same thing. It has a second spelling,\n"
          "`satellite.variable.hexadecimal`, which is the same node.\n"
          "\n"
-         "**Not built.** The path is numbered and no milestone has reached it."
+         "**Not built** -- M19.5, alongside `satellite.variable.binary`."
          ,
          ""
          )
@@ -1738,48 +1898,122 @@ SAT_HELP(RANDOM_ULTRA_MIN_MAX_STEP, RANDOM_ULTRA_0,
 
 // 1 8  satellite.file
 SAT_HELP(FILE, FILE,
-         "Making and opening files, as a module rather than as a value you hold.\n"
+         "Making, opening, emptying and asking about files **by name**. The value you\n"
+         "get back is a `satellite.variable.file`, and its own words -- reading, writing,\n"
+         "closing -- live under that path instead of this one.\n"
          "\n"
-         "**Not built** — M19 is persistence, and it builds this alongside\n"
-         "`satellite.directory` and the `satellite.variable.file` type."
+         "The split is between what you do to a NAME and what you do through a HANDLE.\n"
+         "Opening is a thing you do to a name, so it is here. Reading is a thing you do\n"
+         "through a handle, so it is there. Removing is neither module's, because it\n"
+         "works on files and directories alike: that is `satellite.system.delete`."
          ,
-         ""
+         "satellite.console.display(satellite.file.exists(\"no_such_file\"))"
          )
 
 // 1 8 0  satellite.file()
 SAT_HELP(FILE_0, FILE,
-         "The bare shape. **Not built** — M19."
+         "The bare shape. `satellite.file` is a module and is never called on its own,\n"
+         "so this number is reserved and nothing reaches it."
          ,
          ""
          )
 
 // 1 8 1  satellite.file.new(path)
 SAT_HELP(FILE_NEW_PATH, FILE_NEW_PATH,
-         "Makes a file at the path you give. **Not built** — M19."
+         "Makes a file that is **not** already there, and hands back a handle already\n"
+         "open on it.\n"
+         "\n"
+         "**It refuses to clobber.** If something is already at that path you get a\n"
+         "handle that is not ok, holding the reason -- your file is untouched. That is\n"
+         "deliberate: `satellite.file.open(path, \"write\")` is how you say \"empty it and\n"
+         "start again\", and if `new` did that too, there would be no way left to say\n"
+         "\"only if it is not there\".\n"
+         "\n"
+         "With no mode named it opens for reading and adding, which is the one mode\n"
+         "that can both write the file you just made and read it back -- so you never\n"
+         "have to open a new file a second time."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"new_demo.txt\")\n"
+         "satellite.console.display(f.ok())\n"
+         "satellite.variable.file again = satellite.file.new(\"new_demo.txt\")\n"
+         "satellite.console.display(again.ok())\n"
+         "satellite.console.display(again.error())\n"
+         "f.close()\n"
+         "satellite.system.delete(\"new_demo.txt\")"
          )
 
-// 1 8 2  satellite.file.open
+// 1 8 2  satellite.file.open(path, mode)
 SAT_HELP(FILE_OPEN, FILE_OPEN,
-         "Opens a file that already exists. **Not built** — M19."
+         "Opens a file and hands back a handle. The second argument is a **word**\n"
+         "saying what you mean to do with it:\n"
+         "\n"
+         "- `\"read\"` -- reading only. The file must be there.\n"
+         "- `\"write\"` -- writing only, starting from empty. Makes the file if it is\n"
+         "  not there, and **empties it if it is**.\n"
+         "- `\"append\"` -- writing only, on the end. Makes the file if it is not there\n"
+         "  and never loses what is already in it.\n"
+         "- `\"read_append\"` -- both. Reads from wherever you have got to, and writes\n"
+         "  on the end.\n"
+         "\n"
+         "There is no \"text\" or \"binary\" mode and none is needed: a satellite string\n"
+         "already holds any bytes at all, and the machine does nothing to newlines.\n"
+         "\n"
+         "**A file that would not open is a value, not an error.** Ask the handle `ok`."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"open_demo.txt\")\n"
+         "f.write_line(\"stored\")\n"
+         "f.close()\n"
+         "satellite.variable.file back = satellite.file.open(\"open_demo.txt\", \"read\")\n"
+         "satellite.console.display(back.read_line())\n"
+         "back.close()\n"
+         "satellite.system.delete(\"open_demo.txt\")"
          )
 
-// 1 8 3  satellite.file.clear
+// 1 8 3  satellite.file.clear(path)
 SAT_HELP(FILE_CLEAR, FILE_CLEAR,
-         "Empties a file without removing it. **Not built** — M19."
+         "Empties a file back to no bytes at all, **by name**, and leaves it there.\n"
+         "Answers true or false.\n"
+         "\n"
+         "That is the difference between this and `satellite.system.delete`: after a\n"
+         "clear the file still exists and anything holding it open still holds\n"
+         "something; after a delete the name is gone."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"clear_demo.txt\")\n"
+         "f.write_line(\"something\")\n"
+         "f.close()\n"
+         "satellite.console.display(satellite.file.clear(\"clear_demo.txt\"))\n"
+         "satellite.variable.file back = satellite.file.open(\"clear_demo.txt\", \"read\")\n"
+         "satellite.variable.string left = back.read_all()\n"
+         "satellite.console.display(left.size())\n"
+         "back.close()\n"
+         "satellite.system.delete(\"clear_demo.txt\")"
          )
 
 // 1 8 4  satellite.file.new(path, mode)
 SAT_HELP(FILE_NEW_PATH_MODE, FILE_NEW_PATH,
-         "Makes a file at the path you give, in the mode you name — reading,\n"
-         "writing, or adding to the end. **Not built** — M19."
+         "The same as `satellite.file.new(path)`, with the mode named yourself. The\n"
+         "four words are the ones `satellite.file.open` takes.\n"
+         "\n"
+         "It still refuses to clobber: the mode says how you mean to use the file, not\n"
+         "whether it may already be there."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"mode_demo.txt\", \"write\")\n"
+         "f.write_line(\"written\")\n"
+         "f.close()\n"
+         "satellite.system.delete(\"mode_demo.txt\")"
+         )
+
+// 1 8 5  satellite.file.exists(path)
+SAT_HELP(FILE_EXISTS, FILE_EXISTS,
+         "Whether there is a file at this path -- asked with no handle, and without\n"
+         "opening anything.\n"
+         "\n"
+         "**A directory answers false**, which is what separates this from\n"
+         "`satellite.directory.exists`. The question is \"is there a file here I could\n"
+         "open\", and a directory is not one."
+         ,
+         "satellite.console.display(satellite.file.exists(\"no_such_file\"))\n"
+         "satellite.console.display(satellite.file.exists(\".\"))"
          )
 
 // 1 9  satellite.time
@@ -2318,54 +2552,91 @@ SAT_HELP(BOOL_TRUE, BOOL_TRUE,
 
 // 1 18  satellite.directory
 SAT_HELP(DIRECTORY, DIRECTORY,
-         "Directories: which one you are in, moving between them, and what is\n"
-         "inside.\n"
+         "Which directory the program is in, moving between them, and what is inside\n"
+         "one.\n"
          "\n"
-         "**Not built** — M19 is persistence."
+         "It is not part of the terminal, however much moving between directories\n"
+         "feels like a terminal thing: a program run with no terminal at all still has a\n"
+         "directory it is in.\n"
+         "\n"
+         "**There is no word here that makes a directory.** That is a real gap and it\n"
+         "is known rather than overlooked -- a word to make one has not been designed,\n"
+         "and one invented just to round the module out would be a word designed by\n"
+         "symmetry."
          ,
-         ""
+         "satellite.console.display(satellite.directory.exists(\".\"))"
          )
 
 // 1 18 0  satellite.directory()
 SAT_HELP(DIRECTORY_0, DIRECTORY,
-         "The bare shape. **Not built** — M19."
+         "The bare shape. `satellite.directory` is a module and is never called on its\n"
+         "own, so this number is reserved and nothing reaches it."
          ,
          ""
          )
 
-// 1 18 1  satellite.directory.change
+// 1 18 1  satellite.directory.change(d)
 SAT_HELP(DIRECTORY_CHANGE, DIRECTORY_CHANGE,
-         "Moves to another directory. **Not built** — M19."
+         "Moves the program into another directory, and answers whether that worked.\n"
+         "\n"
+         "**It answers rather than stopping.** Somewhere not being reachable is an\n"
+         "ordinary thing for a program to find out, so it comes back as false -- and a\n"
+         "path that is a plain file rather than a directory is false too, not a\n"
+         "different kind of trouble."
          ,
-         ""
+         "satellite.variable.string here = satellite.directory.current()\n"
+         "satellite.console.display(satellite.directory.change(\"nowhere_at_all\"))\n"
+         "satellite.console.display(satellite.directory.change(here))"
          )
 
-// 1 18 2  satellite.directory.current
+// 1 18 2  satellite.directory.current()
 SAT_HELP(DIRECTORY_CURRENT, DIRECTORY_CURRENT,
-         "Which directory the program is in. **Not built** — M19."
+         "The directory the program is in, as a full path.\n"
+         "\n"
+         "This is the one every other path is measured against: a name with no `/` in\n"
+         "front of it is read from here."
          ,
-         ""
+         "satellite.variable.string here = satellite.directory.current()\n"
+         "satellite.console.display(here.size() > 0)"
          )
 
-// 1 18 3  satellite.directory.exists
+// 1 18 3  satellite.directory.exists(d)
 SAT_HELP(DIRECTORY_EXISTS, DIRECTORY_EXISTS,
-         "Whether a directory is there. **Not built** — M19."
+         "Whether there is a directory at this path. A plain file answers false.\n"
+         "\n"
+         "It is safe to ask about anything, and it never stops the program. Note that\n"
+         "it is not a promise that `list` will work: a directory can be there and still\n"
+         "not be readable by you."
          ,
-         ""
+         "satellite.console.display(satellite.directory.exists(\".\"))\n"
+         "satellite.console.display(satellite.directory.exists(\"nowhere_at_all\"))"
          )
 
 // 1 18 4  satellite.directory.list()
 SAT_HELP(DIRECTORY_LIST_0, DIRECTORY_LIST_0,
-         "What is inside the current directory. **Not built** — M19."
+         "What is in the directory the program is in, as a sorted list of names.\n"
+         "\n"
+         "`.` and `..` are not in it -- neither is a thing inside the directory, and a\n"
+         "program that walked into them would go round forever. Files whose names begin\n"
+         "with a dot **are** in it: there are no flags in this language, so there is one\n"
+         "answer and it has to be the true one.\n"
+         "\n"
+         "**This is the one word in the module that stops rather than answering** when\n"
+         "there is no such directory. Every other one has somewhere to put bad news; a\n"
+         "list has not, because the empty list already means \"an empty directory\", and\n"
+         "using it for \"no directory\" would make those two impossible to tell apart.\n"
+         "Ask `satellite.directory.exists` first if you are not sure."
          ,
-         ""
+         "satellite.container.list<satellite.variable.string> here = satellite.directory.list()\n"
+         "satellite.console.display(here.size() > 0)"
          )
 
 // 1 18 5  satellite.directory.list(d)
 SAT_HELP(DIRECTORY_LIST_D, DIRECTORY_LIST_0,
-         "What is inside the directory you name. **Not built** — M19."
+         "The same, for a directory you name."
          ,
-         ""
+         "satellite.container.list<satellite.variable.string> names = satellite.directory.list(\".\")\n"
+         "satellite.console.display(names.size() > 0)"
          )
 
 // 1 19  satellite.help
@@ -2519,13 +2790,29 @@ SAT_HELP(SYSTEM_0, SYSTEM,
          ""
          )
 
-// 1 22 1  satellite.system.delete
+// 1 22 1  satellite.system.delete(x)
 SAT_HELP(SYSTEM_DELETE, SYSTEM_DELETE,
-         "Removes a file or a directory from the machine.\n"
+         "Removes a file, or an **empty** directory, and answers whether it is gone.\n"
          "\n"
-         "**Not built.** The path is numbered and no milestone has reached it."
+         "It takes either a path or an open file, so a program already holding a file\n"
+         "does not have to say its name a second time.\n"
+         "\n"
+         "**It is under `satellite.system` because it is one word about two kinds of\n"
+         "thing.** A `satellite.file.delete` and a `satellite.directory.delete` would\n"
+         "each be half an answer, and a program holding a path very often does not know\n"
+         "which of the two it has.\n"
+         "\n"
+         "**It does not go into a directory, and there is no way to ask it to.** A\n"
+         "removal that quietly descended is the one mistake here nobody could take back.\n"
+         "Walk `satellite.directory.list` and say each name out loud instead.\n"
+         "\n"
+         "False always means \"it is still there\" -- nothing was at that path, or the\n"
+         "directory was not empty, or it was not yours to remove."
          ,
-         ""
+         "satellite.variable.file f = satellite.file.new(\"delete_demo.txt\")\n"
+         "f.close()\n"
+         "satellite.console.display(satellite.system.delete(\"delete_demo.txt\"))\n"
+         "satellite.console.display(satellite.system.delete(\"delete_demo.txt\"))"
          )
 
 // 1 22 2  satellite.system.environment

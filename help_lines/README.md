@@ -44,8 +44,8 @@ last regeneration: 109 `H` rows against 155 dots, the three new ones being help'
 
 **This is not the same list as what help NAMES.** M18 built `satellite.help`, and
 it names what is **built** — a handler row, an assigner row, a front-end word, or
-anything with one of those underneath it, which is 144 of the 264 against the 109
-marked here. `src/satellite_help/built.hpp` is the predicate.
+anything with one of those underneath it, which is 168 of the 269 against the 130
+marked here (144 of 264 against 109 at M18). `src/satellite_help/built.hpp` is the predicate.
 
 ## Why the first block of HELP.md is run rather than written
 
@@ -71,6 +71,24 @@ argument for keeping it rather than the argument for having had it:
 answers a float; a quoted word inside `list.remove` is read as an option name
 rather than as a value; and `satellite.returns` is optional and used by no file
 in the tree. Every one of those was written down confidently and was wrong.
+
+**AND THE FOURTH OF THOSE WAS A BUG, NOT A FACT, WHICH M19 FOUND BY HITTING IT
+AGAIN.** *(2026-09-08.)* `parts.remove("bolt")` was refused because the resolver
+GUESSED which words take a literal option — a word took them when a sibling was
+spelled `<word>_<something>`, so `remove_first` made `first` look like an option
+of `remove`. This pass measured the guess over the whole registry: it fires on
+three words and is right about one. `sort` really does take `down` and `up`;
+`remove` does not take `first`, `last` and `at`; and `write` `1 6 2 11`, minted
+at M19 beside `write_line`, did not take `line`. **Two words in two milestones is
+a rule that is wrong, not two unlucky names**, so `words.def` gained a sixth list
+naming the words the fold applies to and the resolver reads it. `list.remove`'s
+entry now says what the language does rather than what the defect did.
+
+That is the failure mode this whole directory is built against, arriving from a
+direction it was not built for: verify.py runs every example, so an example
+written to work AROUND a bug passes exactly as loudly as one that demonstrates
+the language. **A worked line proves the sentence beside it runs; it cannot
+prove the sentence is the one that should have been written.**
 
 **LAYOUT.md now has a row for `HELP.md` and for `src/satellite_help/`.** This
 directory is the generator rather than part of the interpreter and still has

@@ -28,14 +28,14 @@ using namespace satellite;
 void section_entries()
 {
     check(help::kEntryCount == words::kNodeCount,
-          "help.def carries one row per node of words.def -- 264 of them");
+          "help.def carries one row per node of words.def -- 269 of them");
 
     size_t heads = 0;
     for (words::PathId i = 1; i <= words::kNodeCount; i++) {
         const std::string path =
             std::string(words::path_text(static_cast<words::NodeId>(i)));
 
-        // NO ROW IS BLANK. 158 of the 264 are paths nothing implements and
+        // NO ROW IS BLANK. 139 of the 269 are paths nothing implements and
         // every one of them still says what it will be and which milestone
         // owns it -- "where a path belongs to a milestone nobody has started,
         // the entry says which milestone and shows no example".

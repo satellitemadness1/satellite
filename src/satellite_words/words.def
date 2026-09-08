@@ -30,7 +30,7 @@
 // parent's children IS its number." The `// 1 5 1` ending every row is a
 // comment and nothing reads it; it is there so this file can be read against
 // WORD_NUMBERS §2.2 by eye. What actually checks the transcription is
-// tests/words_test, which opens that section of the markdown and walks all 231
+// tests/words_test, which opens that section of the markdown and walks all 236
 // of its paths -- because a number that only a human compares is not checked.
 //
 // So ORDER IS MEANING here, everywhere, and DESIGN §4.3 is the whole of the
@@ -95,7 +95,7 @@
 //   property 2, no duplicates among non-aliases. The numbering cannot express a
 //     duplicate at all, because a number IS a position. §2.2's only three
 //     duplicate numbers are the three `.range` rows below, and each is one node
-//     here, which is exactly why that section is 231 rows carrying 228 numbers.
+//     here, which is exactly why that section is 236 rows carrying 233 numbers.
 //   property 4, no alias points at a number that does not exist. An alias names
 //     an IDENTIFIER, so the compiler rejects one that does not.
 //
@@ -123,13 +123,16 @@
 // 227 / 224 since 2026-09-03, when M12 appended the variant's four at
 // `1 6 14 1` through `1 6 14 4`, 229 / 226 since 2026-09-05, when M16
 // appended `search(pattern)` under the map at `1 4 1 10` and under the list
-// at `1 4 2 26`, and 231 / 228 since 2026-09-07, when the author assigned
-// `persist()` `1 22 7` and `persist(x)` `1 22 8` -- WORD_NUMBERS §2.7:
+// at `1 4 2 26`, 231 / 228 since 2026-09-07, when the author assigned
+// `persist()` `1 22 7` and `persist(x)` `1 22 8` -- WORD_NUMBERS §2.7 -- and
+// 236 / 233 since 2026-09-08, when M19 appended the failed-open contract at
+// `1 6 2 8`-`1 6 2 10`, the byte-exact `write(x)` at `1 6 2 11` and
+// `satellite.file.exists(path)` at `1 8 5`:
 //
-//     225   SAT_NUMBERED   231 rows, less 3 written as bare shapes and 3 aliases
+//     230   SAT_NUMBERED   236 rows, less 3 written as bare shapes and 3 aliases
 //      39   SAT_BARE       36 `(0)` markers plus those 3 rows
 //     ---
-//     264   nodes, each with a PathId
+//     269   nodes, each with a PathId
 //       9   SAT_ALIAS      3 `.range`, `hexadecimal`, 5 spellings of `arguments`
 //
 // AND FOUR SMALL LISTS OVER THOSE NODES, each a fact about a word that one pass
@@ -301,6 +304,10 @@ SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_WRITE_LINE,    "write_line(s)",         
 SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_READ_ALL,      "read_all",              SAT_NUMBERED)  // 1 6 2 5
 SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_CLOSE,         "close",                 SAT_NUMBERED)  // 1 6 2 6
 SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_EXISTS,        "exists",                SAT_NUMBERED)  // 1 6 2 7
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_OK,            "ok",                    SAT_NUMBERED)  // 1 6 2 8
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_PATH,          "path",                  SAT_NUMBERED)  // 1 6 2 9
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_ERROR,         "error",                 SAT_NUMBERED)  // 1 6 2 10
+SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_WRITE,         "write(x)",              SAT_NUMBERED)  // 1 6 2 11
 SAT_NODE(VARIABLE,        VARIABLE_TIME,               "time",                  SAT_NUMBERED)  // 1 6 3
 SAT_NODE(VARIABLE_TIME,   VARIABLE_TIME_0,             "()",                    SAT_BARE)  // 1 6 3 0
 SAT_NODE(VARIABLE,        VARIABLE_NUMBER,             "number",                SAT_NUMBERED)  // 1 6 4
@@ -363,12 +370,13 @@ SAT_NODE(RANDOM,    RANDOM_ULTRA_MIN_MAX_STEP,  "ultra(min, max, step)",  SAT_NU
 // the module form. satellite.variable.file 1 6 2 is the type and carries its
 // own new -- WORD_NUMBERS §4 leaves which to write open.
 //
-SAT_NODE(SATELLITE, FILE,               "file",            SAT_NUMBERED)  // 1 8
-SAT_NODE(FILE,      FILE_0,             "()",              SAT_BARE)  // 1 8 0
-SAT_NODE(FILE,      FILE_NEW_PATH,      "new(path)",       SAT_NUMBERED)  // 1 8 1
-SAT_NODE(FILE,      FILE_OPEN,          "open",            SAT_NUMBERED)  // 1 8 2
-SAT_NODE(FILE,      FILE_CLEAR,         "clear",           SAT_NUMBERED)  // 1 8 3
-SAT_NODE(FILE,      FILE_NEW_PATH_MODE, "new(path, mode)", SAT_NUMBERED)  // 1 8 4
+SAT_NODE(SATELLITE, FILE,               "file",              SAT_NUMBERED)  // 1 8
+SAT_NODE(FILE,      FILE_0,             "()",                SAT_BARE)  // 1 8 0
+SAT_NODE(FILE,      FILE_NEW_PATH,      "new(path)",         SAT_NUMBERED)  // 1 8 1
+SAT_NODE(FILE,      FILE_OPEN,          "open(path, mode)",  SAT_NUMBERED)  // 1 8 2
+SAT_NODE(FILE,      FILE_CLEAR,         "clear(path)",       SAT_NUMBERED)  // 1 8 3
+SAT_NODE(FILE,      FILE_NEW_PATH_MODE, "new(path, mode)",   SAT_NUMBERED)  // 1 8 4
+SAT_NODE(FILE,      FILE_EXISTS,        "exists(path)",      SAT_NUMBERED)  // 1 8 5
 
 // --- time -------------------------------------------------------------------
 // sleep(n) 1 9 3 is what QUAD's main loop cannot run without.
@@ -455,9 +463,9 @@ SAT_NODE(BOOL,      BOOL_TRUE,  "true",  SAT_NUMBERED)  // 1 17 2
 // --- directory --------------------------------------------------------------
 SAT_NODE(SATELLITE, DIRECTORY,         "directory", SAT_NUMBERED)  // 1 18
 SAT_NODE(DIRECTORY, DIRECTORY_0,       "()",        SAT_BARE)  // 1 18 0
-SAT_NODE(DIRECTORY, DIRECTORY_CHANGE,  "change",    SAT_NUMBERED)  // 1 18 1
-SAT_NODE(DIRECTORY, DIRECTORY_CURRENT, "current",   SAT_NUMBERED)  // 1 18 2
-SAT_NODE(DIRECTORY, DIRECTORY_EXISTS,  "exists",    SAT_NUMBERED)  // 1 18 3
+SAT_NODE(DIRECTORY, DIRECTORY_CHANGE,  "change(d)", SAT_NUMBERED)  // 1 18 1
+SAT_NODE(DIRECTORY, DIRECTORY_CURRENT, "current()", SAT_NUMBERED)  // 1 18 2
+SAT_NODE(DIRECTORY, DIRECTORY_EXISTS,  "exists(d)", SAT_NUMBERED)  // 1 18 3
 SAT_NODE(DIRECTORY, DIRECTORY_LIST_0,  "list()",    SAT_NUMBERED)  // 1 18 4
 SAT_NODE(DIRECTORY, DIRECTORY_LIST_D,  "list(d)",   SAT_NUMBERED)  // 1 18 5
 
@@ -492,7 +500,7 @@ SAT_NODE(SATELLITE, RETURNS, "returns", SAT_NUMBERED)  // 1 21
 //
 SAT_NODE(SATELLITE,          SYSTEM,                            "system",          SAT_NUMBERED)  // 1 22
 SAT_NODE(SYSTEM,             SYSTEM_0,                          "()",              SAT_BARE)  // 1 22 0
-SAT_NODE(SYSTEM,             SYSTEM_DELETE,                     "delete",          SAT_NUMBERED)  // 1 22 1
+SAT_NODE(SYSTEM,             SYSTEM_DELETE,                     "delete(x)",       SAT_NUMBERED)  // 1 22 1
 SAT_NODE(SYSTEM,             SYSTEM_ENVIRONMENT,                "environment",     SAT_NUMBERED)  // 1 22 2
 SAT_NODE(SYSTEM,             SYSTEM_HOME,                       "home",            SAT_NUMBERED)  // 1 22 3
 SAT_NODE(SYSTEM,             SYSTEM_MEMORY,                     "memory",          SAT_NUMBERED)  // 1 22 4
@@ -734,8 +742,68 @@ SAT_BUILT(RETURNS, SAT_UNLISTED)              // 1 21     optional, and it parse
 
 SAT_TOPIC(HELP_X, 0)  // 1 19 1 -- `x` is a path or a name, and is never run
 
+// --- the words that take a literal option -----------------------------------
+//
+// WORD_NUMBERS §1.5's fold: `my_list.sort("down")` interns to `sort_down()`
+// `1 4 2 5` at resolve, so the readable word at the call site costs no string
+// comparison at run time. What this list says is WHICH WORDS THAT APPLIES TO.
+//
+// A SIXTH LIST, ADDED 2026-09-08 AT M19, AND IT REPLACES A GUESS THAT WAS
+// WRONG ABOUT TWO WORDS OUT OF THREE. `fold_option` used to ask the numbering
+// instead of a table: a word took options when the rows BESIDE IT were spelled
+// `<word>_<something>`, so `sort` took options because `sort_down` sat next to
+// it. That rule is a spelling coincidence wearing a semantic hat, and the whole
+// registry contains exactly three words it fires on:
+//
+//     sort    beside sort_down, sort_up               -- RIGHT
+//     remove  beside remove_first, remove_last,
+//                    remove_at                        -- WRONG
+//     write   beside write_line                       -- WRONG
+//
+// `remove_first()` is not the option `first` of `remove`, it is its own verb --
+// and the consequence shipped: `parts.remove("bolt")`, removing a string from a
+// list of strings, was refused with S0524 "`bolt` is not an option remove has".
+// M16 built that and nobody could write the call; M18's help pass then wrote
+// the defect down AS THE LANGUAGE, in help_lines/README.md's list of five
+// "plainly stated and plainly wrong" statements -- "a quoted word inside
+// `list.remove` is read as an option name rather than as a value". It was a
+// bug, and the note is corrected where it stands.
+//
+// M19 HIT THE SAME RAKE, which is what made it worth fixing rather than
+// working around: `write(x)` `1 6 2 11` sits beside `write_line(s)` `1 6 2 4`,
+// so `f.write("one")` refused with "`one` is not an option write has -- it has
+// line". Renaming the new verb was available and was declined by the author on
+// 2026-09-08: two words in two milestones is a rule that is wrong, not two
+// unlucky names.
+//
+// THE ROW NAMES THE NODE WHOSE SPELLING IS THE WORD, which carries the parent
+// with it -- `CONTAINER_LIST_SORT_0` is spelled `sort` and its parent is
+// `CONTAINER_LIST`, so one identifier answers both halves of "does `sort` under
+// a list take options". The OPTIONS THEMSELVES ARE STILL READ OFF THE SIBLINGS,
+// because for a word that is declared here that reading is correct and a second
+// list of `down` and `up` would be a second place for them to disagree.
+//
+// ONE ROW TODAY. A list that is one row long is the point rather than an
+// embarrassment: the fold is one mechanism serving one word, and the day a
+// second word wants it, adding it here is the whole of the change.
+//
+// AND IT IS SMALLER TO ASK THAN THE GUESS IT REPLACES, which is worth stating
+// because a lookup table sounds like a cost and this one is a saving. The guess
+// WALKED EVERY CHILD of the receiver's type on every selector call that had a
+// string literal in front -- `first_child`, `next_sibling`, and a string prefix
+// compare per child, twenty-six of them for a list. Asking this list is one
+// integer compare against the parent, which fails for every receiver that is
+// not a list and never reaches a character. `takes_options` in
+// words_nodes.hpp is the reader and returns the moment it knows.
+#ifndef SAT_OPTIONS
+#define SAT_OPTIONS(ident)
+#endif
+
+SAT_OPTIONS(CONTAINER_LIST_SORT_0)  // 1 4 2 3 -- `sort("down")`, `sort("up")`
+
 #undef SAT_NODE
 #undef SAT_ALIAS
+#undef SAT_OPTIONS
 #undef SAT_PLACE
 #undef SAT_BUILT
 #undef SAT_TOPIC

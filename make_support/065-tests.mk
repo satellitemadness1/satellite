@@ -536,6 +536,11 @@ HELP_TEST_SRCS = $(HELP)/built.cpp \
                  $(HELP)/render.cpp \
                  $(HELP)/handlers.cpp \
                  $(SYSLIB)/handlers.cpp \
+                 $(SATFILE)/file_handle.cpp \
+                 $(SATFILE)/handlers.cpp \
+                 $(SATFILE)/file_methods.cpp \
+                 $(SATFILE)/file_reading.cpp \
+                 $(DIRECTRY)/handlers.cpp \
                  $(LIMITS)/limits.cpp \
                  $(LIMITS)/config.cpp \
                  $(LIMITS)/pool.cpp \
@@ -552,6 +557,24 @@ $(TESTS)/help_test/help_test: $(help_test_SRCS) $(help_test_HDRS) \
 	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -I$(TESTS)/help_test -o $@ \
 	    $(help_test_SRCS) $(HELP_TEST_SRCS)
 
+# file_test -- PLAN M19. The half of persistence a running program cannot check
+# about itself: which refusal it got, and whether it got there at all.
+#
+# IT LINKS THE CONSOLE AS WELL AS THE MODULE, which console_test's own sources
+# supply. Every fixture reports through `display`, so a binary without it would
+# refuse at the line that says what happened rather than at the line under test
+# -- a suite that can only fail one way. containers comes in for
+# `satellite.directory.list`'s answer, which is an M16 list and cannot be faked,
+# and scalars for the `.size()` and `.holding()` every fixture asks with.
+#
+# NOT machine_limits, and eval_test's reason applies unchanged: nothing here is
+# about depth, and a raised RLIMIT_STACK is not something a file suite should
+# get for free or be denied.
+FILE_TEST_SRCS = $(SATFILE)/file_handle.cpp                  $(SATFILE)/handlers.cpp                  $(SATFILE)/file_methods.cpp                  $(SATFILE)/file_reading.cpp                  $(DIRECTRY)/handlers.cpp                  $(CONSOLE_TEST_SRCS)
+
+$(TESTS)/file_test/file_test: $(file_test_SRCS) $(file_test_HDRS)                               $(FILE_TEST_SRCS) $(ERRORS)/errors.def                               $(WORDS)/words.def $(HDRS) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -I$(TESTS)/file_test -o $@ 	    $(file_test_SRCS) $(FILE_TEST_SRCS)
+
 test: $(TESTBINS)
 	./$(TESTS)/words_test/words_test WORD_NUMBERS.md
 	./$(TESTS)/lexer_test/lexer_test example/hello_world.satl
@@ -566,6 +589,7 @@ test: $(TESTBINS)
 	./$(TESTS)/console_test/console_test
 	./$(TESTS)/prompt_test/prompt_test
 	./$(TESTS)/help_test/help_test
+	./$(TESTS)/file_test/file_test
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
@@ -686,6 +710,14 @@ eval_test: $(TESTS)/eval_test/eval_test
 # compiled nothing.
 help_test: $(TESTS)/help_test/help_test
 
+# file_test's ALIAS, and it is here because leaving it out is not a silence.
+# Added to TESTALIASES first and to this list second, and in between
+# `make file_test` printed "Nothing to be done for 'file_test'" -- which is the
+# HONEST version of the failure the note above eval_test's alias describes, and
+# is one word away from the dishonest one. A .PHONY name with no rule behind it
+# is a target make believes in and cannot build.
+file_test: $(TESTS)/file_test/file_test
+
 # console_test IS ABSENT FROM THIS LIST AND HAS NO ALIAS RULE EITHER, which is
 # a gap rather than a decision -- `make console_test` has never worked, and
 # nothing said so until prompt_test was added beside it and the two were
@@ -693,7 +725,7 @@ help_test: $(TESTS)/help_test/help_test
 # whoever owns that suite. MILESTONES/M22.md §3 records it.
 TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
               limits_test resolve_test number_test float_test eval_test \
-              help_test \
+              help_test file_test \
               prompt_test
 
 .PHONY: test $(TESTALIASES)

@@ -12,7 +12,7 @@
 // sibling after it, and both files stay internally consistent while meaning
 // different things. Nothing in the C++ can notice. The only thing that can is a
 // comparison against the authority, which is section_authority() -- it opens
-// WORD_NUMBERS.md §2.2 and walks all 231 of its paths.
+// WORD_NUMBERS.md §2.2 and walks all 236 of its paths.
 //
 // So this binary READS A MARKDOWN FILE, which is unusual and is the point.
 // WORD_NUMBERS.md is not documentation about the numbering; it IS the

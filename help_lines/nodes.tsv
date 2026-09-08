@@ -85,12 +85,16 @@ H	satellite.variable.string.at(n)	1 6 1 16	M11	2	1	0
 .	satellite.variable.file	1 6 2		0	0	0
 .	satellite.variable.file()	1 6 2 0		0	0	0
 .	satellite.variable.file.new	1 6 2 1		0	0	0
-.	satellite.variable.file.open	1 6 2 2		0	0	0
-.	satellite.variable.file.read_line	1 6 2 3		0	0	0
-.	satellite.variable.file.write_line(s)	1 6 2 4		0	0	0
-.	satellite.variable.file.read_all	1 6 2 5		0	0	0
-.	satellite.variable.file.close	1 6 2 6		0	0	0
-.	satellite.variable.file.exists	1 6 2 7		0	0	0
+H	satellite.variable.file.open	1 6 2 2	M19	1	1	0
+H	satellite.variable.file.read_line	1 6 2 3	M19	1	1	0
+H	satellite.variable.file.write_line(s)	1 6 2 4	M19	2	1	0
+H	satellite.variable.file.read_all	1 6 2 5	M19	1	1	0
+H	satellite.variable.file.close	1 6 2 6	M19	1	1	0
+H	satellite.variable.file.exists	1 6 2 7	M19	1	1	0
+H	satellite.variable.file.ok	1 6 2 8	M19	1	1	0
+H	satellite.variable.file.path	1 6 2 9	M19	1	1	0
+H	satellite.variable.file.error	1 6 2 10	M19	1	1	0
+H	satellite.variable.file.write(x)	1 6 2 11	M19	2	1	0
 .	satellite.variable.time	1 6 3		0	0	0
 .	satellite.variable.time()	1 6 3 0		0	0	0
 .	satellite.variable.number	1 6 4		0	0	0
@@ -146,10 +150,11 @@ H	satellite.random.ultra(min, max)	1 7 11	M13	2	0	0
 H	satellite.random.ultra(min, max, step)	1 7 12	M13	3	0	0
 .	satellite.file	1 8		0	0	0
 .	satellite.file()	1 8 0		0	0	0
-.	satellite.file.new(path)	1 8 1		0	0	0
-.	satellite.file.open	1 8 2		0	0	0
-.	satellite.file.clear	1 8 3		0	0	0
-.	satellite.file.new(path, mode)	1 8 4		0	0	0
+H	satellite.file.new(path)	1 8 1	M19	1	0	0
+H	satellite.file.open(path, mode)	1 8 2	M19	2	0	0
+H	satellite.file.clear(path)	1 8 3	M19	1	0	0
+H	satellite.file.new(path, mode)	1 8 4	M19	2	0	0
+H	satellite.file.exists(path)	1 8 5	M19	1	0	0
 .	satellite.time	1 9		0	0	0
 .	satellite.time()	1 9 0		0	0	0
 H	satellite.time.now	1 9 1	M13	0	0	0
@@ -199,11 +204,11 @@ H	satellite.bool.false	1 17 1	M11	0	0	0
 H	satellite.bool.true	1 17 2	M11	0	0	0
 .	satellite.directory	1 18		0	0	0
 .	satellite.directory()	1 18 0		0	0	0
-.	satellite.directory.change	1 18 1		0	0	0
-.	satellite.directory.current	1 18 2		0	0	0
-.	satellite.directory.exists	1 18 3		0	0	0
-.	satellite.directory.list()	1 18 4		0	0	0
-.	satellite.directory.list(d)	1 18 5		0	0	0
+H	satellite.directory.change(d)	1 18 1	M19	1	0	0
+H	satellite.directory.current()	1 18 2	M19	0	0	0
+H	satellite.directory.exists(d)	1 18 3	M19	1	0	0
+H	satellite.directory.list()	1 18 4	M19	0	0	0
+H	satellite.directory.list(d)	1 18 5	M19	1	0	0
 H	satellite.help	1 19	M18	0	0	0
 H	satellite.help()	1 19 0	M18	0	0	0
 H	satellite.help(x)	1 19 1	M18	1	0	0
@@ -219,7 +224,7 @@ H	satellite.help(x)	1 19 1	M18	1	0	0
 .	satellite.returns	1 21		0	0	0
 .	satellite.system	1 22		0	0	0
 .	satellite.system()	1 22 0		0	0	0
-.	satellite.system.delete	1 22 1		0	0	0
+H	satellite.system.delete(x)	1 22 1	M19	1	0	0
 .	satellite.system.environment	1 22 2		0	0	0
 .	satellite.system.home	1 22 3		0	0	0
 .	satellite.system.memory	1 22 4		0	0	0

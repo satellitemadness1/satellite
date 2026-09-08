@@ -446,6 +446,11 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(CONTAIN)/list_sorting.cpp \
             $(CONTAIN)/map_methods.cpp \
             $(SYSLIB)/handlers.cpp \
+            $(SATFILE)/file_handle.cpp \
+            $(SATFILE)/handlers.cpp \
+            $(SATFILE)/file_methods.cpp \
+            $(SATFILE)/file_reading.cpp \
+            $(DIRECTRY)/handlers.cpp \
             $(HELP)/built.cpp \
             $(HELP)/render.cpp \
             $(HELP)/handlers.cpp \
@@ -505,6 +510,10 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 HDRS = $(SYSTEM)/version.hpp \
        $(SYSTEM)/facts.hpp \
        $(SYSTEM)/interrupt.hpp \
+       $(SATFILE)/file_handle.hpp \
+       $(SATFILE)/file_internal.hpp \
+       $(SATFILE)/handlers.hpp \
+       $(DIRECTRY)/handlers.hpp \
        $(ERRORS)/errors.def \
        $(ERRORS)/codes.hpp \
        $(ERRORS)/report.hpp \

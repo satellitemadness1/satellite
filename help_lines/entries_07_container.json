@@ -171,8 +171,8 @@
  },
  "1 4 2 19": {
   "query": "satellite.help(satellite.container.list.remove)",
-  "prose": "Takes out the value you name rather than the position, removing the first\nplace it appears.\n\n**A quoted word here is read as an option, not as a value.** `remove` has\nthree of them — `\"first\"`, `\"last\"` and `\"at\"` — which fold onto the three\nmethods of those names. So to remove a string, hold it in a name first and\npass the name; a literal would be looked up among the options and refused.",
-  "example": "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\nparts.append(\"bolt\")\nparts.append(\"nut\")\nsatellite.variable.string which = \"bolt\"\nparts.remove(which)\nsatellite.console.display(parts)"
+  "prose": "Takes out the value you name rather than the position, removing the first\nplace it appears.\n\nA quoted word is a value here like any other. It did not used to be: until\nM19 the compiler read `\"bolt\"` as the name of an option, because `remove_first`,\n`remove_last` and `remove_at` sit beside `remove` and it guessed from the\nspelling that those were three options rather than three separate words. They\nare separate words, and which words take options is written down now instead\nof guessed at.",
+  "example": "satellite.container.list<satellite.variable.string> parts = satellite.container.list()\nparts.append(\"bolt\")\nparts.append(\"nut\")\nparts.remove(\"bolt\")\nsatellite.console.display(parts)"
  },
  "1 4 2 20": {
   "query": "satellite.help(satellite.container.list.insert)",

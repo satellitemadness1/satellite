@@ -371,13 +371,17 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.string.clear` | `1 6 1 15` | assigned |
 | `satellite.variable.string.at(n)` | `1 6 1 16` | assigned |
 | `satellite.variable.file` | `1 6 2 (0)` |  |
-| `satellite.variable.file.new` | `1 6 2 1` | assigned |
-| `satellite.variable.file.open` | `1 6 2 2` | assigned |
-| `satellite.variable.file.read_line` | `1 6 2 3` | assigned — one line, or nothing at end |
-| `satellite.variable.file.write_line(s)` | `1 6 2 4` | assigned |
-| `satellite.variable.file.read_all` | `1 6 2 5` | assigned |
+| `satellite.variable.file.new` | `1 6 2 1` | assigned — the dispatch row §6.4 q2 describes; a program writes `satellite.file.new(path)` `1 8 1`. M19 |
+| `satellite.variable.file.open` | `1 6 2 2` | assigned — reopens a handle that was closed or whose open failed; NOT a second `1 8 2`. M19 |
+| `satellite.variable.file.read_line` | `1 6 2 3` | assigned — one line, or nothing at end; advances a per-handle cursor (DESIGN §8.7). M19 |
+| `satellite.variable.file.write_line(s)` | `1 6 2 4` | assigned — writes `s` AND a newline; `write(x)` `1 6 2 11` is the byte-exact verb. M19 |
+| `satellite.variable.file.read_all` | `1 6 2 5` | assigned — the whole file from the beginning; leaves the cursor at the end. M19 |
 | `satellite.variable.file.close` | `1 6 2 6` | assigned |
-| `satellite.variable.file.exists` | `1 6 2 7` | assigned |
+| `satellite.variable.file.exists` | `1 6 2 7` | assigned — is THIS handle's own path still there; `satellite.file.exists(path)` `1 8 5` is the question asked without one. M19 |
+| `satellite.variable.file.ok` | `1 6 2 8` | **assigned 2026-09-08** — did the open work. DESIGN §9's failed open is a VALUE, and this is the word that asks it. M19 |
+| `satellite.variable.file.path` | `1 6 2 9` | **assigned 2026-09-08** — the path the handle was opened on. M19 |
+| `satellite.variable.file.error` | `1 6 2 10` | **assigned 2026-09-08** — why the last call failed, in plain words, or `""`. M19 |
+| `satellite.variable.file.write(x)` | `1 6 2 11` | **assigned 2026-09-08** — exactly the bytes of `x` and no newline. The verb M19.5's `binary` and `hex` values are written with. M19 |
 | `satellite.variable.time` | `1 6 3 (0)` |  |
 | `satellite.variable.number` | `1 6 4 (0)` |  |
 | `satellite.variable.number.shift_left(n)` | `1 6 4 1` | assigned — relocated from the corrected §5.5; `(n)` written on 2026-08-31, matching §5.5 and its `shift_right` twin |
@@ -431,9 +435,10 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.random.ultra(min, max, step)` | `1 7 12` | assigned |
 | `satellite.file` | `1 8 (0)` |  |
 | `satellite.file.new(path)` | `1 8 1` |  |
-| `satellite.file.open` | `1 8 2` |  |
-| `satellite.file.clear` | `1 8 3` |  |
+| `satellite.file.open(path, mode)` | `1 8 2` | shape written 2026-09-08 — v1's arity, `SAT_PATH(P_FILE_OPEN, ... 2)`. The mode is a WORD checked at run time and does not fold; §1.5's fold reaches selector calls at argument 0 only |
+| `satellite.file.clear(path)` | `1 8 3` | shape written 2026-09-08 — the module face, by name. v1 had only the handle method; the handle keeps none, so this is the one spelling |
 | `satellite.file.new(path, mode)` | `1 8 4` | assigned — not adjacent to shape one; §1.2 |
+| `satellite.file.exists(path)` | `1 8 5` | **assigned 2026-09-08** — is there a file at this path, asked with no handle. Mirrors `satellite.directory.exists(d)` `1 18 3`. M19 |
 | `satellite.time` | `1 9 (0)` |  |
 | `satellite.time.now` | `1 9 1` |  |
 | `satellite.time.new` | `1 9 2` |  |
@@ -470,9 +475,9 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.bool.false` | `1 17 1` | assigned |
 | `satellite.bool.true` | `1 17 2` | assigned |
 | `satellite.directory` | `1 18 (0)` | assigned |
-| `satellite.directory.change` | `1 18 1` | assigned |
-| `satellite.directory.current` | `1 18 2` | assigned |
-| `satellite.directory.exists` | `1 18 3` | assigned |
+| `satellite.directory.change(d)` | `1 18 1` | shape written 2026-09-08 — v1's arity, 1. Answers false rather than failing |
+| `satellite.directory.current()` | `1 18 2` | shape written 2026-09-08 — v1's arity, 0 |
+| `satellite.directory.exists(d)` | `1 18 3` | shape written 2026-09-08 — v1's arity, 1 |
 | `satellite.directory.list()` | `1 18 4` | assigned |
 | `satellite.directory.list(d)` | `1 18 5` | assigned |
 | `satellite.help` | `1 19` | assigned |
@@ -488,7 +493,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.network.https(port, cert, key)` | `1 20 7` | assigned — server |
 | `satellite.returns` | `1 21` | assigned |
 | `satellite.system` | `1 22 (0)` | assigned |
-| `satellite.system.delete` | `1 22 1` | assigned |
+| `satellite.system.delete(x)` | `1 22 1` | shape written 2026-09-08 — v1's arity, 1. `x` is a path OR an open `satellite.variable.file`, which is why the row is M19's. M19 |
 | `satellite.system.environment` | `1 22 2` | assigned |
 | `satellite.system.home` | `1 22 3` | assigned |
 | `satellite.system.memory` | `1 22 4 (0)` | assigned |
@@ -746,6 +751,17 @@ qualification says constructors live in the same table with a flag for whether t
 first parameter binds the receiver, so the two can coexist. But nothing yet says
 which one a program should write, and two spellings for one construction is the
 kind of thing that gets decided by accident at M16.
+
+> **Settled 2026-09-08, at M19, and it was not decided by accident.** A program
+> writes `satellite.file.new(path)` `1 8 1`. `1 6 2 1` is the dispatch row and
+> has no surface spelling — DESIGN §13's settled `satellite.thread.new` entry
+> already reads that way, calling the two-part shape the one *"`satellite.file.new`
+> and `satellite.time.new` already do"*, and v1 has no `new` handle method at
+> all. **`open` is NOT a second collision of the same kind**: `1 8 2` opens a
+> path and `1 6 2 2` reopens a handle that was closed or whose open failed, so
+> they are two operations that share a word rather than two spellings of one.
+> M19 builds `1 6 2 2` and leaves `1 6 2 1` a numbered row with nothing behind
+> it, which `satellite.help` says out loud.
 
 **`satellite.thread.new` has one number for two shapes.** `thread.new(f())` and
 `thread.new(f(x))` both hand `new` exactly one thing — a deferred call — so its own

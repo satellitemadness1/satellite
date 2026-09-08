@@ -1,0 +1,204 @@
+# 2_gb_limit
+The 2 GB limit refers to a physical memory barrier for a process running on a 32-bit operating system, which can only use a maximum of 2 GB of memory
+The problem mainly affects 32-bit versions of operating systems like Microsoft Windows and Linux, although some variants of the latter can overcome this barrier
+It is also found in servers like FTP servers or embedded systems like Xbox
+The use of Physical Address Extension (PAE) can overcome this barrier by extending the addresses used to represent mappings between virtual and physical memory
+The limit is created by the 32-bit integer limit (2,147,483,647), which is the largest possible integer that can be represented by 32 binary digits
+This is known as 4-gigabyte tuning (4GT), or the /3GB switch
+Once enabled, executables can have the "large address aware" flag set to increase their memory limit to 3 GB
+32-bit processes on 64-bit Windows are also limited to 2 GB
+However, they can use the "large address aware" flag as well, except that it doesn't require the /3GB switch and increases the limit to 4 GB
+# 2025_present_global_memory_supply_shortage
+A global computer memory supply shortage started in 2025 due to supply constraints and rapid price escalation in the semiconductor memory market, particularly affecting DRAM and NAND flash integrated circuits
+This shortage has been referred to in media outlets as "RAMmageddon" or the "RAMpocalypse"
+According to a 2026 Kearney's PERLab analysis, the shortage is expected to last at least until 2030
+In June 2026, Micron Technology CEO Sanjay Mehrotra expected the shortage to last through 2027, and supply to gradually improve by 2028
+# 3_gb_barrier
+In computing, the term 3 GB barrier refers to a limitation of some 32-bit operating systems running on x86 microprocessors
+It prevents the operating systems from using all of 4 GiB (4 × 10243 bytes) of main memory
+The exact barrier varies by motherboard and I/O device configuration, particularly the size of video RAM; it may be in the range of 2.75 GB to 3.5 GB
+Whatever the actual position of the "barrier", there is no code in operating system software nor any hardware architectural limit that directly imposes it
+Rather, the "barrier" is the result of interactions between several aspects of both
+# 3d_xpoint
+3D XPoint (pronounced three-D cross point) is a discontinued non-volatile memory (NVM) technology developed jointly by Intel and Micron Technology
+It was announced in July 2015 and was available on the open market under the brand name Optane (Intel) from April 2017 to July 2022
+Bit storage is based on a change of bulk resistance, in conjunction with a stackable cross-grid data access array, using a technology known as Ovonic Threshold Switch (OTS)
+Initial prices were less than dynamic random-access memory (DRAM) but more than flash memory
+As a non-volatile memory, 3D XPoint had a number of features that distinguish it from other currently available RAM and NVRAM
+As the memory was inherently fast and byte-addressable, techniques such as read-modify-write and caching used to enhance traditional SSDs are not needed to obtain high performance
+# 6264
+The 6264 is a JEDEC-standard static RAM integrated circuit
+It is produced by a wide variety of different vendors, including Hitachi, Hynix, and Cypress Semiconductor
+It is available in a variety of different configurations, such as DIP, SPDIP, and SOIC
+Some versions of the 6264 can run in ultra-low-power mode and retain memory when not in use, thus making them suitable for battery backup applications
+# acid
+In computer science, ACID (atomicity, consistency, isolation, durability) is a set of properties of database transactions intended to guarantee data validity despite errors, power failures, and other mishaps
+For example, a transfer of funds from one bank account to another, involving multiple changes such as debiting one account and crediting another, is a single transaction
+These four properties are the major guarantees of the transaction paradigm, which has influenced many aspects of development in database systems
+According to Gray and Reuter, the IBM Information Management System supported ACID transactions as early as 1973 (although the acronym was created later)
+BASE stands for basically available, soft state, and eventually consistent: the acronym highlights that BASE is opposite of ACID, like their chemical equivalents, acid and base
+A database either leans towards ACID or BASE, but it cannot be both (according to CAP theorem)
+For example, SQL databases (like MySQL, PostgreSQL, AWS RedShift) are structured over the ACID model, while NoSQL databases (like DynamoDB or MongoDB) use the BASE architecture
+However, some NoSQL databases might exhibit certain ACID traits
+# altq
+ALTQ (ALTernate Queueing) is the network scheduler for Berkeley Software Distribution
+ALTQ provides queueing disciplines, and other components related to quality of service (QoS), required to realize resource sharing
+It is most commonly implemented on BSD-based routers
+With ALTQ, packets can be assigned to queues for the purpose of bandwidth control
+The scheduler defines the algorithm used to decide which packets get delayed, dropped or sent out immediately
+There are five schedulers currently supported in the FreeBSD implementation of ALTQ: cbq — Class-based Queueing
+Queues attached to an interface build a tree, thus each queue can have further child queues
+Each queue can have a priority and a bandwidth assigned
+Priority mainly controls the time packets take to get sent out, while bandwidth has primarily effects on throughput
+Attempts to fairly distribute bandwidth among all connections
+hfsc — Hierarchical Fair Service Curve
+Queues attached to an interface build a tree, thus each queue can have further child queues
+Each queue can have a priority and a bandwidth assigned
+Priority mainly controls the time packets take to get sent out, while bandwidth has primarily effects on throughput
+Queues are flat attached to the interface, thus, queues cannot have further child queues
+Each queue has a unique priority assigned, ranging from 0 to 15
+Packets in the queue with the highest priority are processed first
+# avt_statistical_filtering_algorithm
+AVT Statistical filtering algorithm is an approach to improving quality of raw data collected from various sources
+It is most effective in cases when there is inband noise present
+In those cases AVT is better at filtering data then, band-pass filter or any digital filtering based on variation of
+Conventional filtering is useful when signal/data has different frequency than noise and signal/data is separated/filtered by frequency discrimination of noise
+Frequency discrimination filtering is done using Low Pass, High Pass and Band Pass filtering which refers to relative frequency filtering criteria target for such configuration
+Those filters are created using passive and active components and sometimes are implemented using software algorithms based on Fast Fourier transform (FFT)
+AVT filtering is implemented in software and its inner working is based on statistical analysis of raw data
+When signal frequency/(useful data distribution frequency) coincides with noise frequency/(noisy data distribution frequency) we have inband noise
+In this situations frequency discrimination filtering does not work since the noise and useful signal are indistinguishable and where AVT excels
+To achieve filtering in such conditions there are several methods/algorithms available which are briefly described below
+# abstract_family_of_acceptors
+An abstract family of acceptors (AFA) is a grouping of generalized acceptors
+Informally, an acceptor is a device with a finite state control, a finite number of input symbols, and an internal store with a read and write function
+Each acceptor has a start state and a set of accepting states
+The device reads a sequence of symbols, transitioning from state to state for each input symbol
+If the device ends in an accepting state, the device is said to accept the sequence of symbols
+A family of acceptors is a set of acceptors with the same type of internal store
+The study of AFA is part of AFL (abstract families of languages) theory
+# abstract_rewriting_system
+Despite its simplicity, an ARS is sufficient to describe important properties of rewriting systems like normal forms, termination, and various notions of confluence
+Historically, there have been several formalizations of rewriting in an abstract setting, each with its idiosyncrasies
+This is due in part to the fact that some notions are equivalent, see below in this article
+The formalization that is most commonly encountered in monographs and textbooks, and which is generally followed here, is due to Gérard Huet (1980)
+# abstract_semantic_graph
+An ASG is at a higher level of abstraction than an abstract syntax tree (or AST), which is used to express the syntactic structure of an expression or program
+ASGs are more complex and concise than ASTs because they may contain shared subterms (also known as "common subexpressions")
+Abstract semantic graphs are often used as an intermediate representation by compilers to store the results of performing common subexpression elimination upon abstract syntax trees
+ASTs are trees and are thus incapable of representing shared terms
+ASGs are usually directed acyclic graphs (DAG), although in some applications graphs containing cycles may be permitted
+For example, a graph containing a cycle might be used to represent the recursive expressions that are commonly used in functional programming languages as non-looping iteration constructs
+The mutability of these types of graphs, is studied in the field of graph rewriting
+Abstract syntax trees are not capable of sharing subexpression nodes because it is not possible for a node in a proper tree to have more than one parent
+Although this conceptual simplicity is appealing, it may come at the cost of redundant representation and, in turn, possibly inefficiently duplicating the computation of identical terms
+For this reason ASGs are often used as an intermediate language at a subsequent compilation stage to abstract syntax tree construction via parsing
+An abstract semantic graph is typically constructed from an abstract syntax tree by a process of enrichment and abstraction
+The enrichment can for example be the addition of back-pointers, edges from an identifier node (where a variable is being used) to a node representing the declaration of that variable
+The abstraction can entail the removal of details which are relevant only in parsing, not for semantics
+# abstract_syntax_tree
+An abstract syntax tree (AST) is a tree data structure used in computer science to represent the abstract syntactic structure of text, often source code, written in a formal language
+Each node of the tree denotes a construct occurring in the text
+It is sometimes called simply a syntax tree
+The syntax is "abstract" in the sense that it does not represent every detail of the concrete syntax, but instead represents the essential structural information of the text
+For example, grouping parentheses need not be represented as separate nodes because their effect is implicit in the tree structure
+Similarly, punctuation and delimiters such as braces, semicolons, and parentheses may be omitted from an AST
+This distinguishes an abstract syntax tree from a concrete syntax tree, traditionally called a parse tree
+During syntax analysis, a parser may construct an AST representing the syntactic structure of the input program
+The AST can then serve as an intermediate representation for subsequent compiler phases, which may use information in the AST, annotate it with additional information, or transform it
+Abstract syntax trees are also used in program analysis and program transformation systems
+# action_algebra
+In algebraic logic, an action algebra is an algebraic structure which is both a residuated semilattice and a Kleene algebra
+Unlike dynamic logic and other modal logics of programs, for which programs and propositions form two distinct sorts, action algebra combines the two into a single sort
+It can be thought of as a variant of intuitionistic logic with star and with a noncommutative conjunction whose identity need not be the top element
+Unlike Kleene algebras, action algebras form a variety, which furthermore is finitely axiomatizable, the crucial axiom being a•(a → a)* ≤ a
+Unlike models of the equational theory of Kleene algebras (the regular expression equations), the star operation of action algebras is reflexive transitive closure in every model of the equations
+Action algebras were introduced by Vaughan Pratt in the European Workshop JELIA'90
+# active_data_structure
+An active data structure is a data structure with an associated thread or process that performs internal operations
+More specifically, an active data structure is associated with a computing resource, which contains one or more concurrently executing processes, and data associated with those processes
+Communication is modeled using remote procedure calls, as opposed to shared memory or message passing
+The active data structure's internals are hidden behind its RPC interface, and may be accessed concurrently
+Common examples include databases and file systems
+Active data structures can perform maintenance when resources would otherwise be idle, and present multiple views of the data
+# adaptive_algorithm
+An adaptive algorithm is an algorithm that changes its behavior at the time it is run, based on information available and on a priori defined reward mechanism (or criterion)
+Among the most used adaptive algorithms is the Widrow-Hoff’s least mean squares (LMS), which represents a class of stochastic gradient-descent algorithms used in adaptive filtering and machine learning
+For example, stable partition, using no additional memory is O(n lg n) but given O(n) memory, it can be O(n) in time
+Another example is adaptive sort, whose behavior changes upon the presortedness of its input
+An example of an adaptive algorithm in radar systems is the constant false alarm rate (CFAR) detector
+Examples include adaptive simulated annealing, adaptive coordinate descent, adaptive quadrature, AdaBoost, Adagrad, Adadelta, RMSprop, and Adam
+# affix_grammar
+An affix grammar is a two-level grammar formalism used to describe the syntax of languages, mainly computer languages, using an approach based on how natural language is typically described
+The formalism was invented in 1962 by Lambert Meertens while developing a grammar for generating English sentences
+1 in C major for 2 violins, viola and violoncello, based on the first non-context-free affix grammar
+The string quartet was published in 1968, as Mathematical Centre Report MR 96
+The grammatical rules of an affix grammar are those of a context-free grammar, except that certain parts in the nonterminals (the affixes) are used as arguments
+If the same affix occurs multiple times in a rule, its value must agree, i.e
+it must be the same everywhere
+In some types of affix grammar, more complex relationships between affix values are possible
+# agent_communications_language
+Agent Communication Language (ACL) consists of computer communication protocols that are intended for AI agents to communicate with each other
+A new protocol to emerge in this area is Natural Language Interaction Protocol (NLIP)
+NLIP is an application-level communication protocol defined between AI Agents or between a human and an AI agent
+As a result, we can define agent communication protocols into two categories: ontology based agent communication protocols and generative AI based agent communication protocols
+Ontology based agent communication protocols use a common ontology to be used between agents
+An ontology is a part of the agent's knowledge base that describes what kind of things an agent can deal with and how they are related to each other
+FIPA-ACL and KQML are examples of such protocols
+These protocols rely on speech act theory developed by Searle in the 1960s and enhanced by Winograd and Flores in the 1970s
+They define a set of performatives, also called Communicative Acts, and their meaning (e.g
+The content of the performative is not standardized, but varies from system to system
+Implementation support of FIPA-ACL is included in FIPA-OS and Jade
+Generative AI based agent communication protocols such as NLIP do not require a shared ontology among communicating agents
+In its stead, they use generative AI models to translate natural language text, images, videos or other modalities of data into a local ontology
+This provides for hot-extensibility where the same protocol can be used for multiple communication needs, and simplifies version control since different agents can use different versions of a shared ontology
+NLIP has been designed with security considerations in mind
+The specification and standards comprising NLIP are developed and maintained by Ecma Technical Community 56
+Another emerging approach is Inthon, a domain-specific programming language layer designed for AI-native workflows and agent orchestration
+Unlike traditional communication protocols that focus on inter-agent messaging, Inthon provides a grammar for expressing agent execution intent, including tool calls, memory operations, and policy constraints, within a sandboxed environment
+It is implemented as a Python-hosted language and includes features such as a capability-based security model and a bytecode virtual machine for executing agent logic
+While not a communication protocol per se, Inthon's design addresses challenges in how agents specify and execute their plans, which includes interactions with external tools and services
+# algorithm
+Algorithms are used as specifications for performing calculations and data processing
+More advanced algorithms can use conditionals to divert the code execution through various routes (referred to as automated decision-making) and deduce valid inferences (referred to as automated reasoning)
+In contrast, a heuristic is an approach to solving problems without well-defined correct or optimal results
+For example, although social media recommender systems are commonly called "algorithms", they actually rely on heuristics as there is no truly "correct" recommendation
+As an effective method, an algorithm can be expressed within a finite amount of space and time and in a well-defined formal language for calculating a function
+Starting from an initial state and input, a computation occurs at each step, eventually producing output and terminating
+The transition between states can be non-deterministic; randomized algorithms incorporate random input
+# algorithmic_amplification
+Algorithmic amplification describes increases in the distribution or visibility of content on digital platforms, arising from a combination of automated ranking by recommendation systems and users' own sharing
+Definitions differ over the baseline used to determine whether content has been amplified, and separating the contribution of ranking from that of users is a recurring difficulty in the research
+Major platforms, including Facebook, YouTube, TikTok, and X (formerly Twitter), use such systems to determine what appears in users' feeds and search results
+The term is used in research on social media and digital media regulation to describe how platform design choices influence the distribution of online information
+A feed can be ordered by time, with the newest post at the top
+Algorithmic systems order it by prediction instead
+Material that scores well may be shown to progressively larger audiences through feeds, suggested videos, and search results
+A video that many people watch to the end, for instance, can reach users who do not follow the account that posted it
+That early attention can feed back into the model that ranks what users are shown next
+Recommendation systems also support content discovery and public-interest communication, and their ranking decisions shape the visibility and income of creators and news organisations
+Algorithmic amplification has been linked to the spread of misinformation, the circulation of extremist and other harmful material, and to concerns about young users' mental health
+It also features in debates about filter bubbles and echo chambers, and about political polarisation
+A systematic review of digital media use classified most reported associations with polarisation as detrimental to democracy
+Research isolating the effect of ranking has varied across platforms and methods
+Studies of X have found uneven amplification of political content, while large experiments on Facebook and Instagram found limited effects on users' attitudes
+A study of YouTube that used automated accounts to isolate the effect of its recommendation system found that user preferences played a larger role than recommendations in determining partisan consumption
+Researchers have also examined how state actors and automated accounts use recommendation systems to shape what is seen
+The scale and direction of these effects remain debated, in part because independent researchers have limited access to platform systems
+News organisations reported that internal Meta documents released by former employees indicated that engagement-based ranking rewarded divisive content; Meta disputed the claims
+Governments in the European Union, United Kingdom, United States, and China have taken differing approaches to regulating recommendation systems
+The UK's Online Safety Act 2023 requires services to assess risks arising from algorithms and, under Ofcom's child-safety codes, requires some providers to filter harmful content from children's feeds
+A House of Commons committee concluded in 2025 that the Act did not adequately address the amplification of legal but harmful content
+# algorithmic_game_theory
+Algorithmic game theory (AGT) is an interdisciplinary field at the intersection of game theory and computer science, focused on understanding and designing algorithms for environments where multiple strategic agents interact
+This research area combines computational thinking with economic principles to address challenges that emerge when algorithmic inputs come from self-interested participants
+In traditional algorithm design, inputs are assumed to be fixed and reliable
+AGT provides frameworks to analyze and design systems that remain effective despite such strategic behavior
+The field can be approached from two complementary perspectives: Analysis: Evaluating existing algorithms and systems through game-theoretic tools to understand their strategic properties
+Design: Creating mechanisms and algorithms with both desirable computational properties and game-theoretic robustness
+This sub-field, known as algorithmic mechanism design, develops systems that incentivize truthful behavior while maintaining computational efficiency
+# algorithmic_learning_theory
+
+# empty_section
+
+A line after a blank one, to prove blanks are skipped

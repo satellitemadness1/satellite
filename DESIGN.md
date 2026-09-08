@@ -851,6 +851,23 @@ without one.)*
 **All four levels are left-associative**, so `a - b - c` is `(a - b) - c` and
 `a - (b - c)` is a different number that keeps its brackets.
 
+**`+` JOINS TWO STRINGS AS WELL AS ADDING TWO NUMBERS.** *(The author,
+2026-09-08, at M19.)* It is one operator over two types and not a second meaning
+for the character: addition and joining are the same shape — take two of a
+thing, answer one of that thing, change neither of them. **Nothing is
+converted**, which is what keeps this on the right side of §1.1: `"n = " + 4` is
+still refused (S0711), and a program that wants it writes `4.to_string()` out
+loud. The only pair that joins is two strings, and every other mixed pair is the
+refusal it already was.
+
+*Until this, `append(x)` `1 6 1 14` was the only way to put two strings
+together, and it MUTATES its receiver under §6.4's storage-slot rule — so a
+string built out of pieces needed a variable to be built in, and
+`display("could not open " + f.path())` was unwritable. M19's file diagnostics
+are all that shape, and two example programs in the tree had been written with
+`+` on strings and could not run. `append` is unchanged and is still how a
+string a program is holding is added to in place.*
+
 **Unary `-` and unary `!` bind tighter than all of them.** The minus is not a
 choice: §5.6 refuses to fold a sign into a Number so that `a-1` stays a
 subtraction, which makes unary minus an expression rule by construction.
@@ -1410,13 +1427,32 @@ preference about extensibility — it is §6.5's deadlock one level down.
 value**: `x0009` is not `x9`. That is the whole reason they are not number literals
 in another base. `hexadecimal` is the language's one alias, for `hex`.
 
-**THEY HAVE A LEXER AND NO MILESTONE, WHICH M9 FOUND AND IS RECORDED HERE RATHER
+**THEY HAD A LEXER AND NO MILESTONE, WHICH M9 FOUND AND IS RECORDED HERE RATHER
 THAN LEFT TO AN AUDIT.** M3 lexes both, this section specifies both, and PLAN §8
-gives `satellite.variable.binary` `1 6 5` and `.hex` `1 6 11` to the lexer's
+gave `satellite.variable.binary` `1 6 5` and `.hex` `1 6 11` to the lexer's
 milestone and to no evaluator's — M11 is scalars and names bool, number and
 string; M16 is containers. Neither claims these two. `satl --compile` on a program
-holding a hex literal says so in those words, which is the most useful form the
-answer can take until somebody assigns it.
+holding a hex literal said so in those words, which was the most useful form the
+answer could take until somebody assigned it.
+
+**ASSIGNED 2026-09-08: THEY ARE M19.5's**, minted at M19 because that is the
+milestone that gives bytes a destination. `satellite.variable.file.write(x)`
+`1 6 2 11` is byte-exact and takes a string at M19; M19.5 makes it take these
+two with no edit to the verb. **What this section specifies is the LITERALS and
+the width rule and nothing else** — whether a bit can be indexed, whether two
+binaries concatenate, whether either converts to a `satellite.variable.number` —
+none of that is written down anywhere, so M19.5 is a design milestone and not a
+port, and PLAN §8's entry for it says so.
+
+**AND THERE IS NO `"binary"` MODE WORD ON `satellite.file.open`, WHICH IS A
+DIFFERENT QUESTION WEARING THE SAME WORD.** A `satellite.variable.string`
+already holds arbitrary bytes — §5 maps one byte to one code and back, and the
+raw area holds whatever the table has no character for — and POSIX has no
+newline translation to switch off. A mode word that arranged nothing would be
+worse than no mode word, because a program that passed it would believe
+something had been arranged for it. The mode governs the DIRECTION a handle may
+go; what gets written is decided by which verb is called and what value it is
+handed.
 
 ### 8.6 Floats — two numbers, and the four operations
 

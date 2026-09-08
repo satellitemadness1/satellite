@@ -41,48 +41,48 @@
  },
  "1 6 2": {
   "query": "satellite.help(satellite.variable.file)",
-  "prose": "A file on disk, held as a value you can read from and write to.\n\n**Not built.** The path is numbered and the seven words underneath are\nnumbered with it, but nothing opens a file yet. M19 is the milestone that\nbuilds this and the `satellite.directory` module beside it.",
-  "example": ""
+  "prose": "A file on disk, held as a value you can read from and write to. It is a\n**reference type**: two names for one open file are two names for one open\nfile, so closing it through either one closes it for both. Every other value\nin the language is copied when you assign it; this one is shared.\n\nYou never declare one and fill it in. `satellite.file.open` and\n`satellite.file.new` are what make one, and both hand you a handle that is\nalready open.\n\n**A file that would not open is a value and not an error.** The handle comes\nback anyway, `ok` answers false, and `error` says why -- so asking whether a\nfile is there never stops the program that asked.",
+  "example": "satellite.variable.file f = satellite.file.open(\"no_such_file\", \"read\")\nsatellite.console.display(f.ok())\nsatellite.console.display(f.error())"
  },
  "1 6 2 0": {
   "query": "satellite.help(satellite.variable.file)",
-  "prose": "The bare shape. **Not built** — M19.",
+  "prose": "The bare shape. A file is written as a type, never called, so this number is\nreserved and nothing reaches it.",
   "example": ""
  },
  "1 6 2 1": {
-  "query": "satellite.help(satellite.variable.file)",
-  "prose": "Makes a file that does not exist yet. **Not built** — M19.",
+  "query": "satellite.help(satellite.variable.file.new)",
+  "prose": "**Numbered, and deliberately empty.** There is one way to make a file and it\nis `satellite.file.new(path)`, the module word. This number exists because the\nlanguage's design once sketched `my_file.new()` as an example of a call that\nwould be confusing, and the example got a number before anyone decided it was\nnot a word.\n\nIt is left unbuilt rather than quietly made an alias, because two spellings\nfor one thing is worse than one spelling and a note saying so.",
   "example": ""
  },
  "1 6 2 2": {
-  "query": "satellite.help(satellite.variable.file)",
-  "prose": "Opens a file that does. **Not built** — M19.",
-  "example": ""
+  "query": "satellite.help(satellite.variable.file.open)",
+  "prose": "Opens a handle again -- one that was closed, or one whose first open failed\nand whose reason has since gone away. It answers true or false.\n\n**It is not the same word as `satellite.file.open`,** which takes a path and\nmakes a handle. This one takes no arguments: it already knows which file it is\nabout, and it reopens it in the mode it was opened with the first time.\n\nA handle that is already open answers true and nothing happens. A reopened\nhandle reads from the beginning again.",
+  "example": "satellite.variable.file f = satellite.file.new(\"reopen_demo.txt\")\nf.write_line(\"one\")\nf.close()\nsatellite.console.display(f.open())\nsatellite.console.display(f.read_line())\nf.close()\nsatellite.system.delete(\"reopen_demo.txt\")"
  },
  "1 6 2 3": {
-  "query": "satellite.help(satellite.variable.file)",
-  "prose": "Reads one line. **Not built** — M19.",
-  "example": ""
+  "query": "satellite.help(satellite.variable.file.read_line)",
+  "prose": "Reads the next line, **or nothing** when there are no more. The newline\nitself is not part of what you get.\n\nEach call moves forward, so calling it in a loop walks the file. An empty\nline and nothing are two different answers: an empty line is a line that was\nthere and had no characters in it, and nothing means the file ended.\n\nDeclare the variable as a `satellite.variable.variant` if you mean to handle\nthe ending yourself and ask it `holding`. Declare it as a string and the\nprogram stops by name at the line that first uses it after the end, which is\noften exactly what you want.",
+  "example": "satellite.variable.file f = satellite.file.new(\"lines_demo.txt\")\nf.write_line(\"first\")\nf.write_line(\"second\")\nsatellite.variable.variant line = f.read_line()\nsatellite.statement.while (line.holding() != \"nothing\")\n{\n    satellite.console.display(line.held())\n    line = f.read_line()\n}\nf.close()\nsatellite.system.delete(\"lines_demo.txt\")"
  },
  "1 6 2 4": {
-  "query": "satellite.help(satellite.variable.file)",
-  "prose": "Writes one line. **Not built** — M19.",
-  "example": ""
+  "query": "satellite.help(satellite.variable.file.write_line)",
+  "prose": "Writes the text you give it **and a newline after it**. It answers true, or\nfalse if the write itself failed -- a full disk, for instance.\n\nUse `write` instead when you want exactly the bytes and no newline. The two\nverbs exist so that neither case has to be worked around: a file whose last\nline has no newline, and a line put together from several calls, are both\nwritable.",
+  "example": "satellite.variable.file f = satellite.file.new(\"write_demo.txt\")\nf.write_line(\"a line\")\nf.close()\nsatellite.variable.file back = satellite.file.open(\"write_demo.txt\", \"read\")\nsatellite.console.display(back.read_all())\nback.close()\nsatellite.system.delete(\"write_demo.txt\")"
  },
  "1 6 2 5": {
-  "query": "satellite.help(satellite.variable.file)",
-  "prose": "Reads the whole file at once. **Not built** — M19.",
-  "example": ""
+  "query": "satellite.help(satellite.variable.file.read_all)",
+  "prose": "The whole file, from the beginning, as one string.\n\nIt shares its place in the file with `read_line`, and it leaves that place at\nthe end -- so a `read_line` straight after a `read_all` answers nothing. That\nis the honest report of a file that has just been read from end to end.",
+  "example": "satellite.variable.file f = satellite.file.new(\"all_demo.txt\")\nf.write_line(\"one\")\nf.write_line(\"two\")\nsatellite.variable.string whole = f.read_all()\nsatellite.console.display(whole.size())\nf.close()\nsatellite.system.delete(\"all_demo.txt\")"
  },
  "1 6 2 6": {
-  "query": "satellite.help(satellite.variable.file)",
-  "prose": "Closes it. **Not built** — M19.",
-  "example": ""
+  "query": "satellite.help(satellite.variable.file.close)",
+  "prose": "Closes the file and answers whether that worked.\n\n**It answers rather than just happening,** because closing is where writes\nactually reach the disk and where a full disk or a failing drive is reported.\nA program that has written something it cares about should look at what this\nsays.\n\nClosing a file that is already closed is true and does nothing.",
+  "example": "satellite.variable.file f = satellite.file.new(\"close_demo.txt\")\nf.write_line(\"safe\")\nsatellite.console.display(f.close())\nsatellite.system.delete(\"close_demo.txt\")"
  },
  "1 6 2 7": {
-  "query": "satellite.help(satellite.variable.file)",
-  "prose": "Answers whether the file is there. **Not built** — M19.",
-  "example": ""
+  "query": "satellite.help(satellite.variable.file.exists)",
+  "prose": "Whether **this handle's own path** is still there.\n\nIt asks about the name and not about the handle, so a closed handle still\nanswers, and a file that was deleted while you held it open answers false.\n\nTo ask about a path you have no handle for, use `satellite.file.exists`\ninstead.",
+  "example": "satellite.variable.file f = satellite.file.new(\"exists_demo.txt\")\nf.close()\nsatellite.console.display(f.exists())\nsatellite.system.delete(f)\nsatellite.console.display(f.exists())"
  },
  "1 6 3": {
   "query": "satellite.help(satellite.variable.time)",
@@ -96,7 +96,7 @@
  },
  "1 6 5": {
   "query": "satellite.help(satellite.variable.binary)",
-  "prose": "A number written in base two.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+  "prose": "A run of bits, written `b1010`. **The width is part of the value**, so\n`b0010` and `b10` are not the same thing -- which is why this is a type of its\nown and not a number written in another base.\n\n**Not built** -- M19.5. The literal is read today and refused at the point it\nwould become a value; what a bit operation means has not been decided yet, and\nwill be at that milestone rather than in the margin of another one.",
   "example": ""
  },
  "1 6 7": {
@@ -116,7 +116,7 @@
  },
  "1 6 11": {
   "query": "satellite.help(satellite.variable.hex)",
-  "prose": "A number written in base sixteen. It has a second spelling,\n`satellite.variable.hexadecimal`, which is the same node.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+  "prose": "A run of hexadecimal digits, written `x00FF`. **The width is part of the\nvalue**, so `x0009` and `x9` are not the same thing. It has a second spelling,\n`satellite.variable.hexadecimal`, which is the same node.\n\n**Not built** -- M19.5, alongside `satellite.variable.binary`.",
   "example": ""
  },
  "1 6 12": {
@@ -153,5 +153,25 @@
   "query": "satellite.help(satellite.variable.thread)",
   "prose": "Waits for it to finish. **Not built** — M23.",
   "example": ""
+ },
+ "1 6 2 8": {
+  "query": "satellite.help(satellite.variable.file.ok)",
+  "prose": "Whether the file is open.\n\nThis is the question the whole design of files is built around. Opening a\nfile that is not there does not stop your program -- you get a handle that is\nnot ok, and you decide what to do about it. `error` is the sentence that says\nwhy.",
+  "example": "satellite.variable.file good = satellite.file.new(\"ok_demo.txt\")\nsatellite.console.display(good.ok())\ngood.close()\nsatellite.system.delete(\"ok_demo.txt\")\nsatellite.variable.file bad = satellite.file.open(\"ok_demo.txt\", \"read\")\nsatellite.console.display(bad.ok())"
+ },
+ "1 6 2 9": {
+  "query": "satellite.help(satellite.variable.file.path)",
+  "prose": "The path this handle was opened on, as a string.\n\nIt answers whether or not the file is open, and whether or not the open\nworked -- a handle always knows which file it is about.",
+  "example": "satellite.variable.file f = satellite.file.open(\"nowhere/at/all\", \"read\")\nsatellite.console.display(f.path())"
+ },
+ "1 6 2 10": {
+  "query": "satellite.help(satellite.variable.file.error)",
+  "prose": "Why the last thing that went wrong went wrong, in plain words, or an empty\nstring when nothing has.\n\nIt is the machine's own sentence -- \"No such file or directory\",\n\"Permission denied\" -- so it says something a person can act on rather than a\nnumber they have to look up.\n\nA successful reopen clears it, because a reason that no longer applies is\nworse than no reason.",
+  "example": "satellite.variable.file f = satellite.file.open(\"no_such_file\", \"read\")\nsatellite.console.display(f.error())"
+ },
+ "1 6 2 11": {
+  "query": "satellite.help(satellite.variable.file.write)",
+  "prose": "Writes **exactly** what you give it -- no newline, nothing added. It answers\ntrue, or false if the write failed.\n\nThis is the verb for building a line out of pieces, for writing a file that\nshould not end in a newline, and for writing bytes rather than text.\n`write_line` is the one that adds the newline for you.",
+  "example": "satellite.variable.file f = satellite.file.new(\"exact_demo.txt\")\nf.write(\"one\")\nf.write(\"two\")\nsatellite.console.display(f.read_all())\nf.close()\nsatellite.system.delete(\"exact_demo.txt\")"
  }
 }

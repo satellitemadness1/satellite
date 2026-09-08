@@ -1,9 +1,9 @@
-// `built()` over the four kinds, swept over all 264 nodes. See
+// `built()` over the four kinds, swept over all 269 nodes. See
 // tests/help_test/help_test.hpp for what the done-when asks of this section.
 //
 // THE SWEEP IS THE TEST AND A SAMPLE WOULD NOT BE. PLAN M18 says the output is
 // "comparable to the non-null entries of handlers[] by construction", and the
-// only way to say that and mean it is to compare every row. 264 nodes against
+// only way to say that and mean it is to compare every row. 269 nodes against
 // two tables is microseconds; picking six of them would prove that six were
 // right on the day somebody picked them.
 
@@ -13,6 +13,8 @@
 #include "satellite_console/handlers.hpp"
 #include "satellite_containers/handlers.hpp"
 #include "satellite_help/built.hpp"
+#include "satellite_directory/handlers.hpp"
+#include "satellite_file/handlers.hpp"
 #include "satellite_help/handlers.hpp"
 #include "satellite_random/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
@@ -35,6 +37,8 @@ void install_every_module()
     time::install_handlers();
     system::install_handlers();
     help::install_handlers();
+    file::install_handlers();
+    directory::install_handlers();
 }
 
 namespace {
@@ -152,7 +156,7 @@ void section_predicate()
     // that is not about it.
     check(built.count() > 130 && built.count() < words::kNodeCount,
           "help names more than half the registry and not all of it -- 144 of "
-          "264 at M18, and a number that has to change");
+          "264 at M18, 168 of 269 at M19, and a number that has to change");
 }
 
 } // namespace help_test

@@ -22,8 +22,8 @@
 // caches in evaluator/dispatch.hpp all key on the type tag.
 //
 // FIVE ARMS AT M10, AND THE EMPTINESS IS DELIBERATE. DESIGN §8's table has
-// thirteen rows and this holds the five a program can PRODUCE today: nothing, a
-// bool, a number, a string and the runtime singleton. An arm with no producer
+// thirteen rows and this held the five a program could PRODUCE at M10: nothing,
+// a bool, a number, a string and the runtime singleton. Ten since M19. An arm with no producer
 // is a case every later reader has to rule out -- name_resolver/resolve.hpp
 // refuses six sentinels for three on exactly that argument -- so the rest
 // arrive with the milestone that can build one. PLAN §8's M9 entry names three
@@ -47,6 +47,7 @@
 // and the assert did not move, which is this paragraph doing the job it was
 // written for.
 
+#include "satellite_file/file_handle.hpp"
 #include "satellite_float/satellite_float.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
@@ -129,13 +130,35 @@ struct MapBody;
 using Lst = std::shared_ptr<const List>;
 using Map = std::shared_ptr<const MapBody>;
 
+// AN OPEN FILE -- M19, the SIXTH append, and the first arm in this variant
+// that is NOT const behind its handle. Every row above shares an immutable
+// body: a value two slots see can never change under either of them, because
+// every mutation is a copy published whole through the receiver's storage slot
+// (DESIGN §6.4). DESIGN §8's table calls a file a "reference type" and means
+// the opposite -- two names for one open file ARE one open file, and `close`
+// through either closes it for both, because there is one descriptor and the
+// kernel has never heard of our slots.
+//
+// SO THE `const` COMES OFF, AND IT COMES OFF EXACTLY HERE AND NOWHERE ELSE.
+// The rule the other arms keep is a rule about VALUES; a file is not one, and
+// writing it as `shared_ptr<const FileHandle>` with mutable atomics inside
+// would be the same reference semantics with a `const` that lied about them.
+// satellite_file/file_handle.hpp carries which fields move and why two of them
+// are atomic.
+//
+// SIXTEEN BYTES AGAINST A 32-BYTE WIDEST ARM, so the assert at the bottom does
+// not move -- `Str`'s accounting, for the fifth time. PLAN §8's M9 entry named
+// this append four milestones before it arrived.
+using Fil = std::shared_ptr<file::FileHandle>;
+
 // APPEND ONLY. A new arm goes at the END of this list, never in the middle.
 // `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
 // widest arm, the same accounting `Runtime`'s note above runs. `Flo` is the
 // third, M15's, sixteen bytes by the same account; `Lst` and `Map` are the
-// fourth and fifth, M16's, sixteen each by the same account again.
-using ValueBase =
-    std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo, Lst, Map>;
+// fourth and fifth, M16's, sixteen each by the same account again; `Fil` is
+// the sixth, M19's, sixteen more.
+using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo,
+                              Lst, Map, Fil>;
 
 // One value. DESIGN §8's table, nine rows of it since M16.
 //
@@ -164,6 +187,17 @@ struct Value : ValueBase {
     static Value list(List items);
     static Value map(MapBody body);
 
+    // NO `Value::file(...)` FACTORY, and the absence is deliberate. Every
+    // factory above BUILDS its body from a plain C++ value, because there is
+    // exactly one way to make a string or an instant and no state to get wrong.
+    // A FileHandle is opened, which is a syscall that can fail, and the failure
+    // is itself a handle -- DESIGN §9's failed open is a value. Putting that
+    // behind a one-line factory here would put the O_EXCL argument, the mode
+    // table and the errno contract in the value model, where nothing else knows
+    // what a file is. satellite_file/file_handle.cpp's `opened()` is the one
+    // constructor, both module rows go through it, and this arm is written
+    // `Value(handle)` at the two call sites that have one.
+
     bool is_nothing() const { return std::holds_alternative<Nothing>(*this); }
     bool is_bool() const { return std::holds_alternative<bool>(*this); }
     bool is_number() const { return std::holds_alternative<Number>(*this); }
@@ -173,6 +207,7 @@ struct Value : ValueBase {
     bool is_float() const { return std::holds_alternative<Flo>(*this); }
     bool is_list() const { return std::holds_alternative<Lst>(*this); }
     bool is_map() const { return std::holds_alternative<Map>(*this); }
+    bool is_file() const { return std::holds_alternative<Fil>(*this); }
 };
 
 // `satellite.container.list<T>` -- a vector of values with a name a forward

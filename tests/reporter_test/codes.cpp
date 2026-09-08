@@ -111,8 +111,20 @@ void section_codes()
     // last: a global is a variable with no declared type, and S1103 was telling
     // somebody `n` was not the name of a variable while they looked at the line
     // declaring it. MILESTONES/M18.md §3.
-    check(kCodeCount == 105,
-          "errors.def has 105 rows -- if that changed on purpose, change it here "
+    // AND BY EIGHT AT M19: S1201 through S1208, persistence's block -- and the
+    // block is SMALL BECAUSE OF WHAT DESIGN §9 DOES WITH A FILE. A failed open
+    // is a VALUE, so the commonest thing that goes wrong with a file raises
+    // nothing at all; what is left is the split v1 drew and this block keeps,
+    // that a PROGRAM mistake is an error and a RUNTIME failure is a value. Not
+    // one of the eight is about a syscall failing.
+    //
+    // S1208 ARRIVED LAST AND FOR S1104's REASON ONE MILESTONE ON: a handle
+    // whose open FAILED was being told it "is closed", which is a sentence
+    // about something that never happened, while the errno explaining it sat
+    // unread in `error`. Found by running a help example, not by review.
+    // MILESTONES/M19.md §2.6.
+    check(kCodeCount == 113,
+          "errors.def has 113 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 
@@ -129,6 +141,8 @@ void section_codes()
     check(block_of(Code::CONFIG_NOT_A_SETTING) == 8, "the machine limits are S08xx");
     check(block_of(Code::RANDOM_NEEDS_A_SHAPE) == 9, "the clock and the dice are S09xx");
     check(block_of(Code::CONSOLE_END_OF_INPUT) == 10, "the console's input is S10xx");
+    check(block_of(Code::HELP_NOT_BUILT) == 11, "satellite.help is S11xx");
+    check(block_of(Code::FILE_BAD_MODE) == 12, "persistence is S12xx");
 
     // THE RESERVED BLOCK IS EMPTY, and this is the check that makes reserving
     // it worth anything. errors.def keeps S07xx for the evaluator; a milestone

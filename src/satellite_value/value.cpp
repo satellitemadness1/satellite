@@ -45,6 +45,8 @@ const char *type_name(const Value &value)
         return "list";
     if (value.is_map())
         return "map";
+    if (value.is_file())
+        return "file";
     return "nothing";
 }
 
@@ -226,6 +228,31 @@ bool same(const Value &left, const Value &right)
                     {&entry.value, &mb->entries[found->second].value});
             }
             continue;
+        }
+
+        // TWO FILES ARE EQUAL WHEN THEY ARE THE SAME FILE -- identity, and it
+        // is the only answer a reference type has. M19. Every arm above
+        // compares what a value HOLDS, because holding the same thing is what
+        // being the same value means for a string or a list; a file is not a
+        // value in that sense -- DESIGN §8's table calls it a reference type,
+        // and two handles on one open file ARE one open file, so closing
+        // through either closes both.
+        //
+        // COMPARING THE PATHS WOULD BE WRONG AND IT IS THE OBVIOUS MISTAKE. Two
+        // separate `satellite.file.open` calls on one name are two descriptions
+        // with two cursors: reading a line from one does not advance the other,
+        // and closing one leaves the other open. Answering true for them would
+        // say they were interchangeable, and every one of those behaviours says
+        // they are not.
+        //
+        // AND WITHOUT THIS ARM THEY WOULD ALL BE EQUAL, which is why it is here
+        // and not left to the fall-through below: the index check has already
+        // proved both sides are files, so any two files would reach the end of
+        // the loop and be called the same.
+        if (const Fil *handle = std::get_if<Fil>(&a)) {
+            if (handle->get() == std::get<Fil>(b).get())
+                continue;
+            return false;
         }
 
         // BOTH ARE Nothing OR BOTH ARE Runtime, and in either case they are

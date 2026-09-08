@@ -188,6 +188,27 @@ std::string text_of(const Value &value)
     if (value.is_list() || value.is_map())
         return container_text(value);
 
+    // A FILE PRINTS AS THE PATH IT NAMES, IN ANGLE BRACKETS, WITH WHETHER IT
+    // IS OPEN. M19, and it is the one arm here whose rendering is not the
+    // value: a descriptor is a number the program never chose and must never
+    // depend on, and the errno is `error` `1 6 2 10`'s to say in words. What a
+    // reader of a displayed file wants is which file and whether it worked,
+    // which is exactly what `path` `1 6 2 9` and `ok` `1 6 2 8` answer -- so
+    // this line is those two, and a program that needs either of them
+    // separately has a method for it rather than a string to take apart.
+    //
+    // THE BRACKETS ARE WHAT KEEP IT FROM READING AS A STRING. `display(f)` and
+    // `display(f.path())` must not print the same thing: one is a handle and
+    // one is a name, and a renderer that lost the difference would make an
+    // unopened handle indistinguishable from the path it failed on.
+    if (const Fil *handle = std::get_if<Fil>(&value)) {
+        if (!*handle)
+            return "<file>";
+        const bool open = (*handle)->descriptor.load() >= 0;
+        return "<file " + live_text(encode_raw((*handle)->path)) +
+               (open ? ", open>" : ", closed>");
+    }
+
     // THE RUNTIME PRINTS AS THE WORD THE PROGRAM WROTE. DESIGN §8's table gives
     // `satellite` a row of its own and §3 calls it "the singleton runtime
     // object, not a zero sentinel"; a value that printed as blank or as

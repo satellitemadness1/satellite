@@ -247,18 +247,34 @@ bool Resolver::fold_option(NodeIndex call_node, NodeIndex target,
     const std::string_view option = ast_.text_of(first);
     const words::NodeId parent = static_cast<words::NodeId>(under);
 
-    // IS THIS A WORD THAT TAKES AN OPTION AT ALL? Asked of the numbering and
-    // not of a table: a word takes options when the rows beside it are spelled
-    // `<word>_<something>`. `sort` has `sort_down` and `sort_up`, so a literal
-    // first argument to it names one of them; `contains` has no such sibling,
-    // so `contains("x")` is an ordinary call with a string in it and nothing
-    // here happens. That rule is what makes this general -- PLAN's M7 bullet
-    // says M19 is waiting on this fold to decide whether
-    // `satellite.file.open`'s four mode words are M5's suggester or a runtime
-    // check, and the answer is that they fold with no edit to this file, on the
-    // day words.def gains `open_read_append`.
+    // IS THIS A WORD THAT TAKES AN OPTION AT ALL? ASKED OF A TABLE, AND THE
+    // TABLE IS words.def's SIXTH LIST -- corrected at M19, 2026-09-08, from a
+    // guess that was wrong about two words out of the three it fired on.
+    //
+    // THE GUESS WAS "a word takes options when the rows beside it are spelled
+    // `<word>_<something>`", and it shipped in M16. It is right about `sort`,
+    // which has `sort_down` and `sort_up`. It is wrong about `remove`, whose
+    // neighbours `remove_first`, `remove_last` and `remove_at` are three
+    // separate verbs -- so `parts.remove("bolt")`, taking a string out of a
+    // list of strings, was refused with S0524 "`bolt` is not an option remove
+    // has", and M18's help pass then recorded that as a fact about the language
+    // rather than as the bug it was. And it is wrong about `write` `1 6 2 11`,
+    // which M19 minted beside `write_line` `1 6 2 4` and which refused
+    // `f.write("one")` on its first run. Two words in two milestones is a rule
+    // that is wrong, not two unlucky names.
+    //
+    // `contains("x")` was always safe and still is, by a different route: it
+    // has no sibling spelled `contains_anything`, and now it is simply not in
+    // the list.
+    if (!words::takes_options(under, word))
+        return false;
+
+    // THE OPTIONS THEMSELVES ARE STILL READ OFF THE SIBLINGS, and for a word
+    // the list declares that reading is correct -- `sort_down` and `sort_up`
+    // ARE where `down` and `up` come from. A second list naming them would be a
+    // second place for the words and the rows to disagree, which is the drift
+    // words.def exists to remove.
     const std::string prefix = std::string(word) + "_";
-    bool takes_options = false;
     std::string options;
     for (words::PathId c = words::first_child(parent); c != words::kNoPath;
          c = words::next_sibling(c)) {
@@ -267,7 +283,6 @@ bool Resolver::fold_option(NodeIndex call_node, NodeIndex target,
         if (spelling.size() <= prefix.size() ||
             spelling.compare(0, prefix.size(), prefix) != 0)
             continue;
-        takes_options = true;
         const std::string_view named = spelling.substr(prefix.size());
         if (options.find(std::string(named)) == std::string::npos) {
             if (!options.empty())
@@ -275,8 +290,6 @@ bool Resolver::fold_option(NodeIndex call_node, NodeIndex target,
             options += named;
         }
     }
-    if (!takes_options)
-        return false;
 
     const std::string folded = prefix + std::string(option);
     const int argc = static_cast<int>(ast_.list_size(n.b)) - 1;

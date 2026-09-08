@@ -6,6 +6,8 @@
 #include "satellite_console/console.hpp"
 #include "satellite_console/handlers.hpp"
 #include "satellite_containers/handlers.hpp"
+#include "satellite_directory/handlers.hpp"
+#include "satellite_file/handlers.hpp"
 #include "satellite_help/handlers.hpp"
 #include "satellite_prompt/block.hpp"
 #include "satellite_prompt/line_reader.hpp"
@@ -172,6 +174,8 @@ void install_every_handler()
     time::install_handlers();
     system::install_handlers();
     help::install_handlers();
+    file::install_handlers();
+    directory::install_handlers();
 }
 
 } // namespace

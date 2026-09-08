@@ -247,4 +247,43 @@ constexpr bool is_unlisted(PathId id)
     return out;
 }
 
+// ---------------------------------------------------------------------------
+// The words that take a literal option
+// ---------------------------------------------------------------------------
+
+// Whether `word` under `parent` is a word WORD_NUMBERS §1.5's fold applies to
+// -- words.def's sixth list, read back.
+//
+// ASKED AS (PARENT, WORD) AND NOT AS A NODE, because that is the question the
+// resolver has at the moment it has to answer it: it holds the receiver's
+// declared type and the selector's text, and the node is what it is trying to
+// find. The list stores the node whose SPELLING is the word, which carries both
+// halves in one identifier -- so `CONTAINER_LIST_SORT_0` says "under a list,
+// `sort` takes options" and no second table of parents is needed.
+//
+// A GUESS IS WHAT THIS REPLACES, and words.def's own note carries the two words
+// the guess was wrong about. The short version is that "a sibling is spelled
+// `<word>_<something>`" is a fact about spelling and the fold needs a fact
+// about meaning: `sort_down` IS `sort` with an option and `remove_first` is not
+// `remove` with one, and nothing in the characters can tell them apart.
+constexpr bool takes_options(PathId parent, std::string_view word)
+{
+    // THE INTEGER COMPARE GATES EVERYTHING, AND THAT IS THE WHOLE COST FOR
+    // ALMOST EVERY CALL. `parent` is the receiver's declared type as a PathId,
+    // so a selector on a string, a number, a map or a file fails the first
+    // `&&` and never looks at a character. Only a call on a LIST reaches the
+    // spelling compare, and only a call spelled `sort` gets past it.
+    //
+    // AND IT RETURNS THE MOMENT IT KNOWS, rather than setting a flag and
+    // reading the rest of the list. With one row that is the same machine code;
+    // with twenty it is the difference between a lookup and a sweep, and the
+    // day somebody appends the twentieth is not the day to notice.
+#define SAT_OPTIONS(ident)                                                     \
+    if (static_cast<PathId>(parent_of(NodeId::ident)) == parent &&             \
+        spelling_of(NodeId::ident) == word)                                    \
+        return true;
+#include "satellite_words/words.def"
+    return false;
+}
+
 } // namespace satellite::words

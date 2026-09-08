@@ -77,8 +77,8 @@ statements that were plainly stated and plainly wrong**:
   uses it.
 
 The mark comes from walking the trie with every module's handlers installed.
-`H` means a handler row exists and a call to it runs today, which is **109 of
-the 264**. A dot means nothing is behind it yet, which is the other **155**.
+`H` means a handler row exists and a call to it runs today, which is **130 of
+the 269**. A dot means nothing is behind it yet, which is the other **139**.
 
 **A dot is not the same as undocumented, and that is the trap in this list.**
 The front-end words — `include`, `capsule`, `main`, `return`, `statement`
@@ -89,8 +89,8 @@ language is written in. Hello world uses seven paths and exactly one of them,
 
 **Which is why a dot is not what help goes by.** M18 built `satellite.help`, and
 what it names is what is **built** — a handler row, an assigner row, a front-end
-word, or anything with one of those underneath it. That is **144 of the 264**,
-against the 109 marked `H` here. `src/satellite_help/built.hpp` is the predicate
+word, or anything with one of those underneath it. That is **168 of the 269**,
+against the 130 marked `H` here. `src/satellite_help/built.hpp` is the predicate
 and DESIGN §4.6 carries the argument.
 
 **Where a path belongs to a milestone nobody has started, the entry says which

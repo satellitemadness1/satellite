@@ -20,6 +20,8 @@
 #include "satellite_containers/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
 #include "satellite_system/handlers.hpp"
+#include "satellite_directory/handlers.hpp"
+#include "satellite_file/handlers.hpp"
 #include "satellite_time/handlers.hpp"
 #include "satellite_value/render.hpp"
 #include "satellite_words/words.hpp"
@@ -105,6 +107,13 @@ int call_command(const std::vector<std::string> &args)
     random::install_handlers();
     time::install_handlers();
     system::install_handlers();
+    // FILES ARE INSTALLED UNDER `--call` AND THE CONSOLE IS NOT, which is the
+    // boundary above drawn the other way round. `display` needs a printer this
+    // arm never started; a file needs a filesystem, which is there whether or
+    // not anything is printing. So `--call` on a capsule that opens a file is a
+    // capsule that opens a file -- M19.
+    file::install_handlers();
+    directory::install_handlers();
     install_interrupt_handler();
     clear_interrupt();
 

@@ -6,7 +6,7 @@ WHY THIS IS PARSED RATHER THAN MEASURED. `nodes.tsv` is the output of a
 throwaway that LINKS the interpreter, so it can say which rows have a handler
 -- but it carries no identifiers, and `help.def` has to name every node by the
 same `NodeId` enumerator words.def declares. Parsing the registry is the only
-way to get that name without a second list of them, and a second list of 264
+way to get that name without a second list of them, and a second list of 269
 identifiers is exactly the drift M18 exists to end.
 
 The parse is checked rather than trusted: gen.py diffs the paths and numbers

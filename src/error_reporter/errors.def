@@ -937,4 +937,125 @@ SAT_CODE(1104, HELP_GLOBAL_HAS_NO_TYPE, SAT_ERROR,
          "answers for the type a name was declared with, and a global does not "
          "have one until the program has run")
 
+// --- S12xx -- persistence, files and directories ----------------------------
+//
+// M19's block, taken 2026-09-08. EIGHT ROWS -- seven written up front and 1208
+// added the same day, when a help example ran and 1203 said something false --
+// AND THE SMALLNESS IS THE WHOLE POINT OF THE MODULE: DESIGN §9 makes a failed OPEN a value and not an error,
+// so the commonest thing that goes wrong with a file -- it is not there --
+// raises nothing at all. The handle comes back holding `errno`, `ok` `1 6 2 8`
+// asks, `error` `1 6 2 10` says why, and the program carries on. That is
+// PLAN M19's done-when clause "open a path that does not exist, print the
+// reason, and keep running", and it is the one assertion in the milestone that
+// cannot be faked.
+//
+// SO WHAT IS LEFT IS THE SPLIT v1 DREW AND THIS BLOCK KEEPS: a PROGRAM mistake
+// is an error and a RUNTIME failure is a value. Asking a read-only handle to
+// write is a program that is wrong however the disk behaves; a write that fills
+// the disk is a false the caller can test. Every row below is on the first side
+// of that line, which is why none of them is about a syscall failing.
+//
+// 1201 IS WHY THE MODE WORDS DO NOT NEED TO FOLD. WORD_NUMBERS §1.5's literal
+// fold would have made a bad mode word M5's *suggester*, over siblings named
+// `open_read` and the rest; the author settled on 2026-09-08 that they do not
+// fold, so this is M5's *reporter* instead -- a code, a span and a caret, with
+// all four words named in the sentence rather than one guessed at. It names the
+// four by listing them because there are four, which is a list a reader can act
+// on; a "did you mean" over four candidates is a guess where an enumeration is
+// available.
+//
+// AND THERE IS NO "text" OR "binary" MODE, which v1 refused at length and
+// DESIGN §8.5 now records: a `satellite.variable.string` already holds
+// arbitrary bytes and POSIX has no newline translation to switch off, so the
+// word would arrange nothing while telling a program something had been
+// arranged. A reader who types one lands here and the sentence is the same
+// sentence, deliberately -- there is no special case saying "no such mode, and
+// here is a paragraph", because the four words ARE the answer.
+SAT_CODE(1201, FILE_BAD_MODE, SAT_ERROR,
+         "`{1}` opens a file in one of four modes -- \"read\", \"write\", "
+         "\"append\" or \"read_append\" -- and {2} is not one of them")
+
+// 1202 IS THE MISTAKE FOUR MODES MADE ORDINARY. While every mode went one way,
+// asking a handle for the other direction produced EBADF, and "Bad file
+// descriptor" is the wrong sentence about a descriptor in perfect health --
+// v1's note, and its `readable`/`writable` fields existed for a milestone
+// before anything read them. The direction is checked BEFORE the syscall and
+// the message names the modes that would have worked, because the fix is at the
+// open and not at the call that noticed.
+SAT_CODE(1202, FILE_WRONG_DIRECTION, SAT_ERROR,
+         "`{1}` cannot {2} `{3}`: this `satellite.variable.file` was not opened "
+         "for it -- open it with {4}")
+
+// 1203 IS A CLOSED HANDLE, AND IT IS AN ERROR RATHER THAN A FALSE BECAUSE
+// DESIGN §8's "never silently reopen" leaves nothing else it could be. A
+// program that reads after closing has a mistake in it that no disk state can
+// excuse, and answering false would make it indistinguishable from an empty
+// file. `open` `1 6 2 2` is the spelling that reopens, and the sentence names
+// it so the reader is not left to guess that closing is reversible.
+SAT_CODE(1203, FILE_IS_CLOSED, SAT_ERROR,
+         "`{1}` was asked of a `satellite.variable.file` that is closed -- "
+         "`open` reopens one, and a handle whose open failed answers `ok` false "
+         "rather than raising")
+
+// 1204 IS THE ONE FAILURE IN `satellite.directory` THAT IS AN ERROR AND NOT A
+// VALUE, AND M19 RE-AFFIRMED IT RATHER THAN INHERITING IT. `.list` has nowhere
+// to put bad news: the empty list is already a true answer about an empty
+// directory, so spending it on "there was no directory" makes the two
+// indistinguishable -- the silent wrong answer DESIGN §9 exists to refuse, and
+// the one that survives every other fix. Loud costs a caller one `exists(d)`;
+// quiet costs them a program that lists a mistyped path as empty and does
+// nothing. The sentence names `exists(d)` for exactly that reason.
+SAT_CODE(1204, DIRECTORY_NO_SUCH, SAT_ERROR,
+         "`satellite.directory.list` has no such directory {1} -- "
+         "`satellite.directory.exists` asks that without failing")
+
+SAT_CODE(1205, DIRECTORY_NOT_A_DIRECTORY, SAT_ERROR,
+         "`satellite.directory.list` wants a directory, and {1} is a file")
+
+// 1206 IS A DIRECTORY THAT IS THERE AND CANNOT BE READ, WHICH IS A THIRD THING
+// AND NOT A SHADE OF 1204. `exists` answers TRUE for it -- stat needs only
+// search permission on the parent -- so `exists` is a safe way to ask about
+// ENOENT and is not a promise that `list` will succeed, and a reader who has
+// just been sent to `exists` by 1204 has to be able to find that out here.
+//
+// IT ALSO COVERS A LISTING THAT STOPPED PART WAY, v1's case: a half-read
+// directory is worse than none, because its `.size()` is a number the caller
+// would believe.
+SAT_CODE(1206, DIRECTORY_UNREADABLE, SAT_ERROR,
+         "`satellite.directory.list` cannot read {1}: {2}")
+
+// 1207 IS `satellite.system.delete` REFUSING TO STRINGIFY. v1's note is the
+// argument and it is a sharp one: `to_string(7)` is "7", which is a filename
+// the filesystem would accept, so a number that reached this call by mistake
+// would delete a file named after itself and answer true. A destructive verb
+// gets the strictest argument check in the language, and nil gets its own half
+// of the sentence because the way a program arrives at nil here is almost
+// always a `satellite.variable.file` that was declared and never opened.
+SAT_CODE(1207, DELETE_NOT_A_NAME, SAT_ERROR,
+         "`satellite.system.delete` names what to remove with a "
+         "`satellite.variable.string` path or an open `satellite.variable.file`, "
+         "and {1} is neither -- a declared file holds nothing until "
+         "`satellite.file.open` or `satellite.file.new` gives it a path")
+
+// 1208 IS THE HANDLE THAT NEVER OPENED, AND IT EXISTS BECAUSE 1203'S SENTENCE
+// WAS FALSE ABOUT IT -- the same shape S1104 has beside S1103 one block up, and
+// found the same way: by running the thing and reading what it said.
+//
+// A leftover file from an earlier run made `satellite.file.new` come back
+// EEXIST, and the next line of the program said "`write_line` was asked of a
+// `satellite.variable.file` that is CLOSED" -- about a handle that had never
+// been open, three lines under the call that failed to open it, while the errno
+// explaining the whole thing sat unread in `error`. A message that points away
+// from the answer is worse than a shorter one.
+//
+// SO IT NAMES THE PATH AND CARRIES THE REASON, because the fix is at the
+// constructor and not at the line that noticed. The two states are told apart
+// by `FileHandle::ever_open` and not by whether an errno is held -- a handle
+// that opened, failed one write and was then closed holds an errno and HAS
+// been open, so the obvious derivation is the wrong one.
+SAT_CODE(1208, FILE_NEVER_OPENED, SAT_ERROR,
+         "`{1}` was asked of a `satellite.variable.file` that never opened -- "
+         "`{2}`: {3}. `ok` answers that without stopping, and `error` is this "
+         "same reason")
+
 #undef SAT_CODE

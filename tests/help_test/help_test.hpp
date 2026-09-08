@@ -9,7 +9,7 @@
 //   1. THE OUTPUT IS COMPARABLE TO THE NON-NULL ENTRIES OF handlers[] BY
 //      CONSTRUCTION. Every row in that table is named by help, nothing help
 //      names is missing from the four kinds that make a word built, and the
-//      answer is swept over ALL 264 nodes rather than sampled -- section
+//      answer is swept over ALL 269 nodes rather than sampled -- section
 //      predicate. A test that checked the predicate against a restatement of
 //      the predicate would prove nothing; what is compared here is help's
 //      ANSWER, node by node, against the tables it is supposed to be about.
@@ -53,7 +53,7 @@ std::string run(const std::string &source, bool *complained, int *code);
 // the predicate section, which is what needs them first.
 void install_every_module();
 
-void section_predicate(); // built() over the four kinds, swept over all 264
+void section_predicate(); // built() over the four kinds, swept over all 269
 void section_entries();   // one entry per node, and the groups partition
 void section_walking();   // the three shapes, and the refusals, through satl
 

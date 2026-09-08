@@ -11,6 +11,8 @@
 #include "satellite_console/handlers.hpp"
 #include "satellite_random/handlers.hpp"
 #include "satellite_containers/handlers.hpp"
+#include "satellite_directory/handlers.hpp"
+#include "satellite_file/handlers.hpp"
 #include "satellite_help/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
 #include "satellite_system/handlers.hpp"
@@ -159,6 +161,8 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     time::install_handlers();
     system::install_handlers();
     help::install_handlers();
+    file::install_handlers();
+    directory::install_handlers();
 
     // CTRL-C, BEFORE ANYTHING RUNS. Installed here because this is an entry
     // point that runs a program -- interrupt.hpp's rule -- and CLEARED here

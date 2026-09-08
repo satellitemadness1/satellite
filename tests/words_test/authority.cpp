@@ -1,6 +1,6 @@
 // Every row of WORD_NUMBERS.md §2.2, walked. See words_test.hpp.
 //
-// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 231 rows, 228 distinct numbers,
+// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 236 rows, 233 distinct numbers,
 // exactly 3 aliases, 36 `(0)` markers -- if the reader below finds a different
 // number of rows than the documents claim, every per-row result after it is
 // answering a question nobody asked, and a suite that reports PASS over half a
@@ -170,13 +170,22 @@ void section_authority()
 
     // The counts the documents claim, checked before anything is walked.
     // 222 UNTIL 2026-08-31, WHEN M8 APPENDED `digits` `1 6 4 15`, 223 until
-    // 2026-09-03, when M12 appended the variant's four, and 227 until
-    // 2026-09-05, when M16 appended `search(pattern)` under each container.
+    // 2026-09-03, when M12 appended the variant's four, 227 until
+    // 2026-09-05, when M16 appended `search(pattern)` under each container,
+    // and 231 until 2026-09-08, when M19 appended five: `ok`, `path` and
+    // `error` `1 6 2 8`-`1 6 2 10`, `write(x)` `1 6 2 11`, and
+    // `satellite.file.exists(path)` `1 8 5`.
     // That is the only kind of edit §1.2 allows to this section -- nothing
     // renumbered and nothing reused -- and it is the only kind these three
     // counts can tell apart from a transcription that dropped a row.
-    check(rows.size() == 231,
-          "§2.2 should hold 231 rows, found " + std::to_string(rows.size()));
+    //
+    // M19 ALSO WROTE SIX CALL SHAPES ONTO ROWS THAT HAD NONE, and that edit
+    // moves no count at all -- `open` became `open(path, mode)` on the same
+    // number. It is visible to this test through the WALK rather than through
+    // the counts: match_shape compares argument lists character for character,
+    // so a shape written here and not in words.def is a row that stops walking.
+    check(rows.size() == 236,
+          "§2.2 should hold 236 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -185,8 +194,8 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 228,
-          "§2.2 should carry 228 distinct numbers, found " +
+    check(numbers.size() == 233,
+          "§2.2 should carry 233 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 3, "§2.2 should declare exactly 3 aliases, found " +
                             std::to_string(aliases));
