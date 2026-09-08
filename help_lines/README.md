@@ -90,6 +90,29 @@ written to work AROUND a bug passes exactly as loudly as one that demonstrates
 the language. **A worked line proves the sentence beside it runs; it cannot
 prove the sentence is the one that should have been written.**
 
+## Writing an example: the one rule the language will not let you break
+
+**A method asked of a CALL'S ANSWER does not compile.** `f.read_all().size()`,
+`satellite.directory.current().size()`, `first.held().size()` — all three were
+written the natural way at M19 and all three were refused:
+
+    error S0720: a method on this expression parses and does not run yet --
+                 a selector folds only through a declared name
+
+A selector reaches its number through the receiver's **declared type**
+(WORD_NUMBERS §1.5), and a call's answer has no declared name to fold through.
+**Put a name in between**, which is one line and reads no worse:
+
+```satellite
+satellite.variable.string whole = f.read_all()
+satellite.console.display(whole.size())
+```
+
+`verify.py` catches this every time, because the example does not compile — so
+the cost is a re-run and not a wrong document. It is written here anyway
+because three of M19's twenty-eight new entries hit it, and knowing before
+writing is cheaper than knowing after.
+
 **LAYOUT.md now has a row for `HELP.md` and for `src/satellite_help/`.** This
 directory is the generator rather than part of the interpreter and still has
 none; whether it earns one is the author's call.

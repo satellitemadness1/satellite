@@ -704,6 +704,31 @@ float_test: $(TESTS)/float_test/float_test
 # that is out of date." The suite it warns about was itself missing the line.
 eval_test: $(TESTS)/eval_test/eval_test
 
+# THE THIRD MEMBER OF THIS FAMILY, AND THE ONLY ONE NO MAKEFILE EDIT CAN FIX --
+# added 2026-09-08 at M19, having been taken in by it in the same session that
+# added the file_test alias above.
+#
+# The two failures above are make's: a name in TESTALIASES with no rule behind
+# it, and a rule that builds nothing. THIS one is the PERSON'S, and it survives
+# every fix to this file. `make file_test` FAILED -- a static_assert in
+# errors.def's codes.hpp, a real compile error, printed loudly -- and the old
+# binary was still sitting in tests/file_test/. Running it by hand the next
+# second printed `file_test: ok`, from objects compiled before the change under
+# test, and the word `ok` looked exactly like the word `ok` always looks.
+#
+# `make test` cannot be fooled this way, because a failed build stops the recipe
+# before the binary runs; a person running one suite by hand between edits can
+# be, and that is the fast loop everybody actually uses while writing a suite.
+#
+# THE CHECK IS ONE COMMAND AND IT IS THE MTIME:
+#
+#     make file_test && ls -la tests/file_test/file_test
+#
+# A timestamp older than the edit is the answer, and `&&` is what makes the ls
+# not run when the build did not. 030-directories.mk's warning is about the same
+# thing one level up -- "not a red line, a green one that is out of date" -- and
+# the green line does not have to come from make to be out of date.
+
 # help_test's ALIAS, WRITTEN WITH THE SUITE AND NOT AFTER IT -- which is the
 # whole of what the paragraph above eval_test's alias asks for. `make help_test`
 # builds the binary and `make test` runs it; neither can report ok having

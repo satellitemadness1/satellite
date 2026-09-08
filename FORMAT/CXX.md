@@ -391,6 +391,32 @@ through `parse()`, because a registry adds a defect bespoke strings did not have
 a site raising the *wrong row*, which renders perfectly and describes a different
 problem. `MILESTONES/M5.md` §5 is the argument.
 
+### 6.4 Reading a green line — what M19 added
+
+*(2026-09-08.)* Every rule above is about what a test asserts. This one is about
+**believing what it printed**, and it is the only rule here that no code change
+can enforce.
+
+**`make <name>_test` exiting 0 does not mean the binary was rebuilt, and a
+binary printing `ok` does not mean it holds your change.** A compile error
+leaves the previous binary exactly where it was; running it by hand the next
+second prints the same `ok` it printed before the edit, from objects that
+predate the change under test. The word looks identical either way.
+
+    make file_test && ls -la tests/file_test/file_test
+
+**The `&&` is the whole of it** — the `ls` does not run when the build did not,
+and a timestamp older than the edit is the answer. `make test` cannot be fooled
+this way, because a failed build stops the recipe before anything runs; the fast
+single-suite loop everybody uses while writing a test can be, and that is
+precisely when the suite is least trustworthy.
+
+`make_support/065-tests.mk` carries two sibling failures that ARE make's and
+were each fixed with one line — a `.PHONY` name with no rule behind it, and a
+rule that builds nothing. This is the third and it belongs to the person.
+`030-directories.mk` names the whole family in capitals: **not a red line, a
+green one that is out of date.**
+
 ## 7. The X-macro registry — the mechanism M2 ported
 
 `old_versions/first_satellite/src/bytecode_format/` is 1133 lines across five files

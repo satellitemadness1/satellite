@@ -4100,6 +4100,20 @@ does — they arrive behind handles, sixteen bytes each against the 32-byte wide
 arm, appended at the END of the variant per value.hpp's append-only rule. That
 is the sixth and seventh appends and the assert does not move.
 
+**Two things to know before writing a line of it, both paid for at M19:**
+
+- **A method on a call's answer does not compile.** `h.to_number().to_string()`
+  is S0720 — a selector folds only through a DECLARED name, WORD_NUMBERS §1.5's
+  one hop, which that section now states as a consequence rather than leaving
+  each milestone to discover. **This milestone will feel it more than most**,
+  because a conversion verb is exactly the shape people chain. Put a name in
+  between; no milestone owns loosening it.
+- **`make <name>_test` exiting 0 is not the same as the binary being new.** A
+  compile error leaves the previous binary in place, and running it by hand
+  then prints `ok` from code that predates the change —
+  `make_support/065-tests.mk` carries the whole family of this failure. Check
+  the mtime.
+
 **Done when** a program declares one of each, displays them at their written
 width, and writes both to a file with `write(x)` — and `satl --compile` no
 longer has S0720 in reach for a literal, because there is a producer.
@@ -4179,6 +4193,12 @@ to check.
   word was written and leaves the fold to the reader; `#1.4.2.5` would say the
   answer and lose what the program said. §3's "literals stay literal" points at
   the first, and so does the ability to print the file back as source.
+
+**And the same two working notes M19.5's entry carries apply here**, because
+this milestone rewrites `satc_test` and will write fixtures: a method on a
+call's answer is S0720 (WORD_NUMBERS §1.5's one hop, named there), and a test
+alias exiting 0 does not mean the binary was rebuilt — check the mtime, and
+`make_support/065-tests.mk` says why in three places.
 
 **Done when** a `.satc` for a program containing `my_list.sort("down")` carries
 the option token, reading it back reaches `1 4 2 5` without the resolver

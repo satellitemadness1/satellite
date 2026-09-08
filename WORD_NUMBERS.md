@@ -207,6 +207,40 @@ everything: DESIGN §6.4's method sugar resolves once to a `PathId`, and every
 execution after that is `handlers[path_id]` — one array index. The number is what
 `my_list.sort()` *becomes*, never another way to spell it.
 
+#### The one hop is one hop, and `f().g()` is the cost of that
+
+*(Named 2026-09-08, at M19. Not a new rule — the consequence of the rule above,
+written down because three milestones have now paid it and none of them said
+so.)*
+
+**A selector reaches its number through the receiver's DECLARED TYPE, so the
+receiver has to be a declared name.** `name_resolver/names.cpp` folds a selector
+only through one — WORD_NUMBERS' one hop — so a method asked of a **call's
+answer** has no declared type to fold through and the compiler refuses it:
+
+    satellite.console.display(f.read_all().size())
+                                          ^^^^
+    error S0720: a method on this expression parses and does not run yet --
+                 a selector folds only through a declared name -- WORD_NUMBERS.md
+                 §1.5's one hop -- so name the receiver first
+
+**The fix a program can make today is a name in between**, and it is one line:
+
+```satellite
+satellite.variable.string whole = f.read_all()
+satellite.console.display(whole.size())
+```
+
+**NO MILESTONE OWNS LOOSENING IT**, and that is the reason this paragraph
+exists rather than a note in one milestone's review. `evaluator/compile_expressions.cpp`
+says the case *"waits for the type rules that would see through it"*, and PLAN §8
+has no entry that promises them. Until one does, **every worked line in
+`HELP.md` and every fixture in `tests/` has to be written with the hop in mind**
+— M13 hit this from the other side (MILESTONES/M13.md §3.1), M16 built the
+containers whose methods invite the chain, and M19 was the first milestone to
+write enough of them to trip over it repeatedly: three help examples and five
+test fixtures were written the natural way, refused, and had to be unwound.
+
 #### A literal option folds into the number
 
 DESIGN §1.1 requires an option to be a word at the call site rather than a bitmask:
