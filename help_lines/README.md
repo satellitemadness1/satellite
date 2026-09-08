@@ -1,4 +1,4 @@
-# `.help_lines_build/` — where `SCRATCH.md/HELP_LINES.md` comes from
+# `help_lines/` — where `HELP.md` comes from
 
 **The markdown is generated and this is its source.** Edit the JSON, run
 `gen.py`, and the document is rewritten; editing the document directly loses the
@@ -7,7 +7,7 @@ change the next time anything is regenerated.
     nodes.tsv                 the measured node table -- mark, path, number,
                               milestone, arity, receiver binding
     entries_*.json            the written entries, keyed by word number
-    gen.py                    nodes.tsv + entries -> SCRATCH.md/HELP_LINES.md
+    gen.py                    nodes.tsv + entries -> HELP.md
     verify.py                 runs every worked line against ./satl
 
 ## Why the table is measured rather than typed

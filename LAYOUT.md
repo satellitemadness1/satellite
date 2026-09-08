@@ -13,8 +13,9 @@ So: when a file is added, add a line here too, and know that forgetting costs a
 reader a minute rather than costing a build a file.
 
 Companions: [DESIGN.md](DESIGN.md) is what the language is, [PLAN.md](PLAN.md) is
-how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, and
-[SATC.md](SATC.md) specifies the `.satc` file those numbers get written to.
+how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it,
+[SATC.md](SATC.md) specifies the `.satc` file those numbers get written to, and
+[HELP.md](HELP.md) is what each of those numbers means to somebody using it.
 
 ---
 
@@ -28,6 +29,7 @@ how it gets built, [WORD_NUMBERS.md](WORD_NUMBERS.md) holds every number in it, 
 | [WORD_NUMBERS.md](WORD_NUMBERS.md) | **The numbering**, and the authority over every number in the language. DESIGN §4 explains it; `words.def` transcribes it; when they disagree this file is right. Permanent. |
 | [SATC.md](SATC.md) | The `.satc` file format: a program with its language-owned words replaced by their numbers, cached in `$HOME/.satl/cache`. Specified before it was built, because it constrains the numbering; **built at M4.5 on 2026-08-30**, which corrected three things in it. Permanent. |
 | [QUAD.md](QUAD.md) | The goal: `quad_infinity` must be expressible in satellite, what that program needs, and — after reading its source on 2026-08-27 — the one thing the language has not settled that it needs. Permanent. |
+| [HELP.md](HELP.md) | **The language's own account of itself**, one entry for every node `words.def` numbers: what you type to bring it up, what the word is for, and a worked line. Generated from `help_lines/`, and **every worked line in it has been run** against the interpreter in this tree. Written for M18, which puts the text into `words.def` and makes `satellite.help` walk it. Permanent. |
 | [LAYOUT.md](LAYOUT.md) | This file. |
 | [PLAN_ONE.md](PLAN_ONE.md) | The first draft plan, **superseded** by the two above and deletable as soon as nothing cites it. |
 | [Makefile](Makefile) | An index. Includes the twelve fragments under `make_support/` in numbered order and does nothing else. |
@@ -574,6 +576,28 @@ alone rather than derived from the ones they did.
 | `file_icon/352-3528073_piece-paper-frames-illustrations-piece-of-paper-icon.jpg` | The stock sheet-of-paper image the file icon was built from. |
 | `file_icon/file-icon.png`, `file_icon/file-icon-512.png` | Intermediate file-icon work. |
 | `file_icon_final/final_file_icon_{64,128,256,512}.png` | The finished file icon at four sizes. |
+
+## `help_lines/` — where `HELP.md` is written and checked
+
+The source of [HELP.md](HELP.md), which is generated and must not be edited in
+place. Its own [README.md](help_lines/README.md) says what each file is; the two
+things worth knowing from out here are why it exists at all.
+
+**The node table is measured and not typed.** `nodes.tsv` is the output of a
+walk over the trie with every module's handlers installed, asking
+`eval::Handlers::table().find(id)` for each node from 1 to `kNodeCount`. So
+"106 of the 264 run today" is what the dispatch table holds rather than what a
+document claims about it, and **the walk is also the shape M18 needs** — PLAN
+§8's `built()` predicate is this plus the front-end word set.
+
+**And every worked line in the document is executed.** `verify.py` wraps each
+example into a whole program and runs it under `SATL_NO_WINDOW=1`. It caught
+five statements that were written down confidently and were wrong — among them
+that `console.typed()` answers a bool, which it does not, and that a capsule
+must declare `satellite.returns`, which it need not. **A help text nobody ran is
+exactly the drift M18 exists to end**, and it drifted five times before it was
+finished. PLAN §8's M18 entry has the argument in full, with the first
+satellite's `help.cpp` as the evidence.
 
 ## `SCRATCH.md/` — the things that do not last forever
 

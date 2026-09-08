@@ -27,7 +27,7 @@ def load(name):
         out.update(json.load(open(path)))
     return out
 
-def main():
+def render():
     nodes = [l.rstrip("\n").split("\t") for l in open(os.path.join(HERE, "nodes.tsv")) if l.strip()]
     entries = load("entries_*.json")
 
@@ -49,14 +49,16 @@ def main():
         lines.append((path, first))
 
     width = max(len(p) for p, _ in lines)
-    print("satellite -- the topics that are built. Ask about any of them:")
-    print()
-    print("    satellite.help(satellite.console)")
-    print()
+    out = []
+    out.append("satellite -- the topics that are built. Ask about any of them:")
+    out.append("")
+    out.append("    satellite.help(satellite.console)")
+    out.append("")
     for path, first in lines:
-        print("\t%-*s   %s" % (width, path, first))
-        print()
-    print("    %d topics." % len(lines))
+        out.append("\t%-*s   %s" % (width, path, first))
+        out.append("")
+    out.append("    %d topics." % len(lines))
+    return "\n".join(out)
 
 if __name__ == "__main__":
-    main()
+    print(render())

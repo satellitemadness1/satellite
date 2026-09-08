@@ -14,13 +14,15 @@ Each entry is three things:
 
 **Every worked line in this file has been run.** A script pulls each one out,
 wraps it in a program, and executes it against the interpreter in this tree;
-140 of them run and pass. That is not a formality — writing these caught four
-things that were plainly stated and plainly wrong. `console.typed()` answers the
-line itself or nothing rather than a yes-or-no. `floor`, `ceil`, `round` and
-`truncate` are number methods and refuse a float. `power` answers a float.
-A quoted word inside `list.remove` is read as an option name and not as a value.
-And `satellite.returns` is optional rather than required, which is corrected at
-`1 21` and taken back out of every example.
+140 of them run and pass. That is not a formality — writing these caught **five
+statements that were plainly stated and plainly wrong**:
+
+- `console.typed()` answers the line itself, or nothing, and not a yes-or-no.
+- `floor`, `ceil`, `round` and `truncate` are number methods and refuse a float.
+- `power` answers a float, so `digits` refuses its result.
+- a quoted word inside `list.remove` is read as an option name, not a value.
+- `satellite.returns` is optional rather than required, and no file in the tree
+  uses it.
 
 The mark comes from walking the trie with every module's handlers installed.
 `H` means a handler row exists and a call to it runs today, which is **106 of
@@ -43,6 +45,48 @@ already listed, and help answers for the node.
 
 ---
 
+
+## What `satellite.help()` prints
+
+The topics that are built, one to a line, each indented one tab
+and separated by a blank line.  Generated from the entries below,
+so it cannot name a topic this file does not describe.
+
+```
+satellite -- the topics that are built. Ask about any of them:
+
+    satellite.help(satellite.console)
+
+	satellite.include     Brings a body of words into the program.
+
+	satellite.capsule     Declares a capsule, which is what this language calls a function.
+
+	satellite.main        Where the program starts.
+
+	satellite.container   The things that hold other things.
+
+	satellite.console     The terminal the program is running in, both halves of it.
+
+	satellite.variable    Every kind of value a name can hold.
+
+	satellite.random      Random numbers, in three grades.
+
+	satellite.time        The clock, and waiting.
+
+	satellite.statement   The statements that change what runs next, rather than what a value is.
+
+	satellite.library     Where the program's own globals live, and where the machine's settings are read and written.
+
+	satellite.return      Leaves the capsule it is written in, at once, and optionally hands a value back to whoever called it.
+
+	satellite.bool        The two constants, true and false.
+
+	satellite.system      The machine the program is running on, and the interpreter's own switches.
+
+    13 topics.
+```
+
+---
 
 ## satellite
 

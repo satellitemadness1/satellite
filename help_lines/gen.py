@@ -5,6 +5,7 @@ the mark, the number and the milestone are measured; only the prose is typed."""
 import os, sys, json
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)   # so `import topics` works from any directory
 ROOT = os.path.dirname(HERE)
 TSV  = os.path.join(HERE, "nodes.tsv")
 
@@ -56,13 +57,15 @@ Each entry is three things:
 
 **Every worked line in this file has been run.** A script pulls each one out,
 wraps it in a program, and executes it against the interpreter in this tree;
-140 of them run and pass. That is not a formality — writing these caught four
-things that were plainly stated and plainly wrong. `console.typed()` answers the
-line itself or nothing rather than a yes-or-no. `floor`, `ceil`, `round` and
-`truncate` are number methods and refuse a float. `power` answers a float.
-A quoted word inside `list.remove` is read as an option name and not as a value.
-And `satellite.returns` is optional rather than required, which is corrected at
-`1 21` and taken back out of every example.
+140 of them run and pass. That is not a formality — writing these caught **five
+statements that were plainly stated and plainly wrong**:
+
+- `console.typed()` answers the line itself, or nothing, and not a yes-or-no.
+- `floor`, `ceil`, `round` and `truncate` are number methods and refuse a float.
+- `power` answers a float, so `digits` refuses its result.
+- a quoted word inside `list.remove` is read as an option name, not a value.
+- `satellite.returns` is optional rather than required, and no file in the tree
+  uses it.
 
 The mark comes from walking the trie with every module's handlers installed.
 `H` means a handler row exists and a call to it runs today, which is **106 of
@@ -90,6 +93,21 @@ def main():
     nodes = load_nodes()
     entries = load_entries()
     out = [HEADER]
+
+    # THE TOPIC LISTING IS PART OF THIS DOCUMENT AND NOT A SECOND FILE.  It is
+    # what `satellite.help()` prints, it is generated from the same entries the
+    # rest of the file holds, and a second file would be free to disagree with
+    # them -- which is the drift M18 exists to end, reproduced in the document
+    # that describes it.
+    import topics
+    out.append("\n## What `satellite.help()` prints\n")
+    out.append("The topics that are built, one to a line, each indented one tab")
+    out.append("and separated by a blank line.  Generated from the entries below,")
+    out.append("so it cannot name a topic this file does not describe.\n")
+    out.append("```")
+    out.append(topics.render())
+    out.append("```\n")
+    out.append("---")
     last = None
     written = 0
     for n in nodes:
@@ -113,7 +131,7 @@ def main():
             out.append(">")
         out.append("")
     text = "\n".join(out) + "\n"
-    with open(os.path.join(ROOT, "SCRATCH.md", "HELP_LINES.md"), "w") as f:
+    with open(os.path.join(ROOT, "HELP.md"), "w") as f:
         f.write(text)
     sys.stderr.write("nodes %d, entries written %d, still blank %d\n"
                      % (len(nodes), written, len(nodes) - written))
