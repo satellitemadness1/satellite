@@ -455,10 +455,22 @@ this language does not want.
   exists. **The trie is what is *numbered*, though, and that is not the same as what
   is built** *(corrected 2026-08-28)* — after M2 it holds every path in `words.def`,
   including the ones no milestone has reached, so a walk of it alone would advertise
-  unwritten paths as working and break §1.1's *never behind their back*. The walk
-  therefore prints a node only when `handlers[path_id]` (§4.5) is non-null: **the
-  trie is what exists, the handler table is what works**, and help reads both. PLAN
-  M18 is where this is built and carries the argument in full.
+  unwritten paths as working and break §1.1's *never behind their back*.
+  **And `handlers[path_id]` alone is not the answer either, which is the second
+  correction and it arrived with the build** *(corrected 2026-09-08, M18)* — of the
+  six paths hello world is written in, **exactly one, `satellite.console.display`
+  `1 5 1`, is a row in that table**. `include`, `capsule`, `main`, `return` and
+  every type name are recognised by the parser and the resolver and are never
+  dispatched, so a help that printed only handler rows would name one word of the
+  language's own first program and stay silent about the other five. **The trie is
+  what *exists*, the handler table is what *runs*, and help answers for what is
+  *built*** — a node with a handler row, an **assigner** row (§4.5.3's dials), or a
+  **front-end word**, plus anything with one of those underneath it. The front-end
+  set is **written down as data** in `words.def`'s fourth list rather than inferred,
+  because a set derived from which spellings a parser compares against moves the
+  first time somebody refactors a comparison and the only symptom is a help text
+  that has started lying. `src/satellite_help/built.hpp` is the predicate and
+  MILESTONES/M18.md is the record; PLAN M18 carries the argument in full.
 - **The reservation rule becomes one interner lookup.**
 
 ---

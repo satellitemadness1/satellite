@@ -132,6 +132,17 @@
 //     264   nodes, each with a PathId
 //       9   SAT_ALIAS      3 `.range`, `hexadecimal`, 5 spellings of `arguments`
 //
+// AND FOUR SMALL LISTS OVER THOSE NODES, each a fact about a word that one pass
+// needs and no other, declared on the word rather than legislated from the pass:
+//
+//       1   SAT_PLACE      `input(prompt, target)`'s out parameter      M14
+//      27   SAT_BUILT      the front-end words help must name           M18
+//       1   SAT_TOPIC      `help(x)`'s argument, which is never run     M18
+//
+// Every one of them is SELF-DEFAULTING -- a consumer that does not care never
+// learns the list exists -- and each says at its own head why it is data here
+// instead of a comparison somewhere else.
+//
 // The node total is a count nobody had written down, because §2.2's 226 does not
 // include the bare shape a `(0)` marker names -- the marker rides on the row of
 // the node it belongs to, so it is a number that section carries without
@@ -591,6 +602,140 @@ SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argumentz")
 
 SAT_PLACE(CONSOLE_INPUT_PROMPT_TARGET, 1)  // 1 5 4 -- `target` receives the line
 
+// --- the front-end words -----------------------------------------------------
+//
+// A FOURTH LIST, AND IT IS WHAT MAKES `satellite.help` ABLE TO TELL THE TRUTH.
+// PLAN M18: help names a node when it has a HANDLER row, an ASSIGNER row, or
+// is a FRONT-END word -- one the parser or the resolver recognises and nothing
+// ever dispatches. The first two are read off the tables at run time and cannot
+// drift, because they ARE the mechanism. The third has no table: `include`,
+// `capsule`, `main`, `return` and the type names are recognised by name in the
+// front end and dispatch never sees them, so of the six paths hello world is
+// written in, exactly one -- `console.display` `1 5 1` -- is a row in
+// `handlers[path_id]`. Help built on the handler table alone would print that
+// one and stay silent about the language's own first program.
+//
+// SO IT IS WRITTEN DOWN HERE RATHER THAN INFERRED, which is PLAN M18's own
+// instruction and the reason is the same one this file gives everywhere else:
+// a set derived from "which spellings does parser_types.cpp compare against"
+// is a set that moves when somebody refactors a comparison, silently, and the
+// only symptom is a help text that has started lying. A row here is a claim
+// with a name on it.
+//
+// A NAMESPACE IS NOT LISTED AND MUST NOT BE. `satellite.console` `1 5` has no
+// handler row either, and it is built because nine words UNDER it are --
+// satellite_help/built.hpp derives that, so listing it here would be a second
+// answer to a question already answered. What belongs in this list is only a
+// word that is reached by name and has nothing underneath it to vouch for it.
+//
+// AND A WORD THAT PARSES IS NOT THEREBY BUILT. `satellite.include(spaceship)`
+// `1 1 2` is absent: the parser accepts the line and nothing loads a second
+// file, so it refuses when it runs and M25 is the milestone. Same for
+// `satellite.library.main` `1 14 1` and the arguments object under it, which
+// are M20's. The test of this list is not "does the front end have a case for
+// it" but "does a program that writes it do what it says".
+//
+// AND A SECOND COLUMN, WHICH IS NOT THE SAME QUESTION AS THE FIRST. A word can
+// be built and still not be something to OFFER somebody: `satellite.returns`
+// `1 21` parses, works, and is a real answer to `satellite.help(satellite.returns)`
+// -- and it is optional, no file under `example/` uses it, and the author's
+// instruction is that it is not how a capsule is written here. Listing it beside
+// `console` and `container` would be advertising a word the language does not
+// want written, which is DESIGN §1.1's own concern pointed the other way: help
+// must not hide what works, and must not push what nobody should type.
+//
+//     SAT_OFFERED    named in the listing a help walk prints
+//     SAT_UNLISTED   answers when asked about, never offered
+//
+// THE COLUMN IS ON THIS LIST AND NOT ON A SIXTH ONE, and it is on this list
+// rather than on SAT_NODE because it is a fact about a word being BUILT: a row
+// with a handler is offered by having a handler, and there is nothing to say
+// about a row that is neither. Everything not named here is offered, so the
+// default is the safe direction -- a word added to the language and forgotten
+// about shows up rather than disappearing.
+//
+// SELF-DEFAULTING, exactly as SAT_PLACE above: a consumer that cares defines
+// SAT_BUILT before including and everybody else gets a no-op.
+#ifndef SAT_BUILT
+#define SAT_BUILT(ident, listing)
+#endif
+#ifndef SAT_OFFERED
+#define SAT_OFFERED 1
+#endif
+#ifndef SAT_UNLISTED
+#define SAT_UNLISTED 0
+#endif
+
+SAT_BUILT(SATELLITE, SAT_OFFERED)             // 1        the root every path begins at
+SAT_BUILT(INCLUDE, SAT_OFFERED)               // 1 1      the first line of every file
+SAT_BUILT(INCLUDE_0, SAT_OFFERED)             // 1 1 0    parses, and includes nothing
+SAT_BUILT(INCLUDE_SATELLITE, SAT_OFFERED)     // 1 1 1    the line people actually type
+SAT_BUILT(CAPSULE, SAT_OFFERED)               // 1 2      the declaration
+SAT_BUILT(CAPSULE_0, SAT_OFFERED)             // 1 2 0    calling one
+SAT_BUILT(MAIN, SAT_OFFERED)                  // 1 3      where a program starts
+SAT_BUILT(MAIN_0, SAT_OFFERED)                // 1 3 0    and it is callable, since d91666a
+SAT_BUILT(CONTAINER_MAP, SAT_OFFERED)         // 1 4 1    a type name in a declaration
+SAT_BUILT(CONTAINER_LIST, SAT_OFFERED)        // 1 4 2
+SAT_BUILT(VARIABLE_STRING, SAT_OFFERED)       // 1 6 1
+SAT_BUILT(VARIABLE_TIME, SAT_OFFERED)         // 1 6 3    M13 gave Value its instant arm
+SAT_BUILT(VARIABLE_NUMBER, SAT_OFFERED)       // 1 6 4
+SAT_BUILT(VARIABLE_BOOL, SAT_OFFERED)         // 1 6 6
+SAT_BUILT(VARIABLE_FLOAT, SAT_OFFERED)        // 1 6 10   M15
+SAT_BUILT(VARIABLE_VARIANT, SAT_OFFERED)      // 1 6 14   M12
+SAT_BUILT(STATEMENT, SAT_OFFERED)             // 1 13     the family
+SAT_BUILT(STATEMENT_IF, SAT_OFFERED)          // 1 13 1
+SAT_BUILT(STATEMENT_FOR, SAT_OFFERED)         // 1 13 2
+SAT_BUILT(STATEMENT_WHILE, SAT_OFFERED)       // 1 13 3
+SAT_BUILT(STATEMENT_ELSE, SAT_OFFERED)        // 1 13 4
+SAT_BUILT(LIBRARY, SAT_OFFERED)               // 1 14     `satellite.library.<name>` globals
+SAT_BUILT(RETURN, SAT_OFFERED)                // 1 15
+SAT_BUILT(RETURN_0, SAT_OFFERED)              // 1 15 0
+SAT_BUILT(RETURN_SATELLITE, SAT_OFFERED)      // 1 15 1   `satellite.main`'s last line
+SAT_BUILT(RETURN_VALUE, SAT_OFFERED)          // 1 15 2
+SAT_BUILT(RETURNS, SAT_UNLISTED)              // 1 21     optional, and it parses
+
+// THE SIX TYPE NAMES ABOVE ARE THE SIX `Value` HAS AN ARM FOR, and that is the
+// test rather than "does a declaration of it parse". Every type name parses --
+// `satellite.variable.window x` is accepted today and the name simply holds
+// nothing -- so parsing cannot separate a type the language can hold a value of
+// from one it cannot. satellite_value/value.hpp's variant is the fact, and the
+// day it gains the file handle (M19) or the thread (M27) a row joins this list
+// beside it. `satellite.container.list` and `.map` are here for the same reason
+// one layer along: M16 gave both a body.
+
+// --- the unevaluated arguments -----------------------------------------------
+//
+// A FIFTH LIST, ONE ROW LONG, AND IT IS A LANGUAGE DECISION RATHER THAN A
+// CONVENIENCE. `satellite.help(satellite.console)` cannot be an ordinary call:
+// a bare language path read as a value compiles to `op_dispatch` and refuses at
+// run time, so the argument would die before help was ever entered -- and it
+// refuses IDENTICALLY for a module that is built, which means the one question
+// help exists to answer would be answered wrong in both directions. Measured
+// 2026-09-07, before any of this was built:
+//
+//     satl: error S0721: `satellite.console` is a path satellite has a number
+//           for and nothing behind yet -- a later milestone
+//
+// So `1 19 1`'s argument is a PATH, or a NAME whose declared type resolve
+// already knows, and in neither case is anything evaluated. The index below is
+// the written argument (0-based) the compiler reads as a path instead of
+// compiling -- SAT_PLACE's shape exactly, pointed at the other half of the
+// problem: a place is an argument compiled as a SLOT, and a topic is an
+// argument compiled as a NUMBER, and both are refusals the compiler can make
+// before anything runs.
+//
+// ONE ROW, AND THE POLICY IS THAT IT STAYS ONE ROW, which is what SAT_PLACE
+// says about itself and is the same argument. An unevaluated argument is a hole
+// in DESIGN §6's evaluation rule; one hole with a name on it is a feature and a
+// general facility for making them is a second language.
+#ifndef SAT_TOPIC
+#define SAT_TOPIC(ident, index)
+#endif
+
+SAT_TOPIC(HELP_X, 0)  // 1 19 1 -- `x` is a path or a name, and is never run
+
 #undef SAT_NODE
 #undef SAT_ALIAS
 #undef SAT_PLACE
+#undef SAT_BUILT
+#undef SAT_TOPIC

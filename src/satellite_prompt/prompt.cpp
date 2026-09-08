@@ -6,6 +6,7 @@
 #include "satellite_console/console.hpp"
 #include "satellite_console/handlers.hpp"
 #include "satellite_containers/handlers.hpp"
+#include "satellite_help/handlers.hpp"
 #include "satellite_prompt/block.hpp"
 #include "satellite_prompt/line_reader.hpp"
 #include "satellite_prompt/raw_mode.hpp"
@@ -170,6 +171,7 @@ void install_every_handler()
     random::install_handlers();
     time::install_handlers();
     system::install_handlers();
+    help::install_handlers();
 }
 
 } // namespace

@@ -32,6 +32,7 @@ CACHE    = $(SRC)/satellite_cache
 CONSOLE  = $(SRC)/satellite_console
 CONTAIN  = $(SRC)/satellite_containers
 FLOAT    = $(SRC)/satellite_float
+HELP     = $(SRC)/satellite_help
 SCALARS  = $(SRC)/satellite_scalars
 LIMITS   = $(SRC)/machine_limits
 NUMBER   = $(SRC)/satellite_number
@@ -59,4 +60,4 @@ WORDS    = $(SRC)/satellite_words
 TESTS     = tests
 TESTNAMES = words_test lexer_test parser_test satc_test reporter_test \
             limits_test resolve_test number_test float_test eval_test \
-            console_test prompt_test
+            console_test prompt_test help_test

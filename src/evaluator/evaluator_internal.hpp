@@ -148,6 +148,25 @@ private:
     // every method receiver a slot or a global at this milestone.
     NodeIndex method_receiver(NodeIndex call_node) const;
 
+    // Which written argument of this call is an UNEVALUATED topic, or
+    // words::kNoTopicParameter. words.def's fifth list is the declaration and
+    // `satellite.help(x)` `1 19 1` is its one row; PLAN M18 is the argument for
+    // the list existing at all.
+    //
+    // ASKED TWICE ON PURPOSE, and the two askers want opposite things. The Call
+    // case asks so it can decline to COMPILE that argument -- which is the whole
+    // point: `satellite.help(satellite.console)` read as an expression is an
+    // op_dispatch that refuses at run time, so the argument would die before
+    // help was entered. call() asks so it knows how many results are actually
+    // on the value stack, because an argument that was never visited left none.
+    uint32_t topic_parameter(NodeIndex call_node) const;
+
+    // `satellite.help(x)`'s one argument, compiled. The path or the declared
+    // type is folded to a constant HERE, at compile time, and the misuses are
+    // refused here too -- so nothing about the ask is decided while the program
+    // is running and the handler is handed a path it can trust.
+    OpIndex topic(NodeIndex node, words::PathId path, NodeIndex written);
+
     void capsule(NodeIndex node);
     void global(NodeIndex node);
 

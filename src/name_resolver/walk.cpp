@@ -75,6 +75,18 @@ void Resolver::run_work()
         case Act::CallTargetDone:
             call_target_done(item.node);
             break;
+        case Act::Topic:
+            // THE FLAG IS SET ONLY ACROSS THE NODE ITSELF, which is right and
+            // not a shortcut. A bare Name is handled synchronously by
+            // expression_at, so the flag is in force exactly where it is
+            // wanted; anything deeper -- a Member, a Call -- pushes more work
+            // and resolves after the flag is down, which is the behaviour that
+            // was wanted anyway. `satellite.help(satellite.consle)` still says
+            // "no such word under satellite".
+            in_topic_ = true;
+            expression_at(item.node);
+            in_topic_ = false;
+            break;
         }
     }
 }
@@ -84,8 +96,25 @@ void Resolver::run_work()
 void Resolver::visit_arguments(NodeIndex call)
 {
     const ListId args = ast_[call].b;
-    for (uint32_t i = ast_.list_size(args); i-- > 0;)
-        visit_expression(ast_.list_at(args, i));
+
+    // AN UNEVALUATED ARGUMENT IS WALKED DIFFERENTLY, NOT SKIPPED -- words.def's
+    // fifth list, M18. This is resolve's half of the decision the evaluator's
+    // compiler makes in compile_expressions.cpp: there, the argument is not
+    // COMPILED; here, it is resolved and one refusal is held back. The row is
+    // read off the CALL node, which is where resolve's own question one put the
+    // whole shape's number.
+    const words::PathId self = info(call).path;
+    const uint32_t topic =
+        self != words::kNoPath && words::is_language_word(self)
+            ? words::topic_parameter_of(static_cast<words::NodeId>(self))
+            : words::kNoTopicParameter;
+
+    for (uint32_t i = ast_.list_size(args); i-- > 0;) {
+        if (i == topic)
+            visit_topic(ast_.list_at(args, i));
+        else
+            visit_expression(ast_.list_at(args, i));
+    }
 }
 
 void Resolver::expression_at(NodeIndex node)

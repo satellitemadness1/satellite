@@ -63,6 +63,16 @@ void Resolver::name(NodeIndex node)
     // only expressions outside a body are a global's initialiser and an
     // include's argument -- and an unknown name in either of those is unknown.
     // The parser's S0204 says the same thing in the words a user reads.
+    // AND INSIDE AN UNEVALUATED ARGUMENT, NOTHING IS SAID HERE. A bare word in
+    // `satellite.help(random)` is a TOPIC somebody left the `satellite.` off,
+    // not a variable being read, and S0511's sentence answers the wrong
+    // question about it. The node is left unresolved on purpose: the
+    // evaluator's compiler finds no path and no slot on it and raises S1102,
+    // which is the sentence the author settled for this exact mistake.
+    // resolve_internal.hpp's visit_topic() carries the argument in full.
+    if (in_topic_)
+        return;
+
     problem<errors::Code::RESOLVE_NO_SUCH_NAME>(node, spelling);
     if (const std::string_view near = nearest_in_scope(spelling); !near.empty())
         suggest(near);
@@ -122,6 +132,29 @@ void Resolver::member(NodeIndex node)
                 return;
             }
         }
+        // AND A TOPIC NAMES A WORD RATHER THAN A SHAPE -- M18, words.def's
+        // fifth list. `satellite.help(satellite.variable.string.find)` stops
+        // here because `find` is only ever written `find(x)`, and the walk
+        // this pass uses is strict about that on purpose: `find` with no
+        // arguments is not an expression. It IS a topic, and it is the topic
+        // every listing help prints names it by. words_walk.hpp's word_named()
+        // is the looser lookup and this is its only caller.
+        //
+        // `found.at == node` KEEPS IT AS NARROW AS THE ARM ABOVE. Only the
+        // segment this node itself named may be answered for, so
+        // `satellite.help(satellite.consle.display)` still stops at `consle`
+        // and still gets "did you mean `console`?".
+        if (in_topic_ && found.at == node) {
+            const words::PathId shape = words::word_named(
+                static_cast<words::NodeId>(found.under), ast_.text_of(node));
+            if (shape != words::kNoPath) {
+                info(node).path = shape;
+                info(node).origin = Origin::Walked;
+                info(node).type = shape;
+                return;
+            }
+        }
+
         no_such_word(found);
         return;
     }

@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
-"""Assemble SCRATCH.md/HELP_LINES.md from the measured node table plus the
-written entries.  The node table is produced by the throwaway enumerator, so
-the mark, the number and the milestone are measured; only the prose is typed."""
+"""Assemble HELP.md from the measured node table plus the written entries, and
+write src/satellite_help/help.def from the same entries in the same run.
+
+The node table is produced by the throwaway enumerator, so the mark, the number
+and the milestone are measured; only the prose is typed.
+
+TWO ARTIFACTS OUT OF ONE RUN, WHICH IS THE POINT AND NOT A CONVENIENCE. HELP.md
+is what a person reads in the repository and help.def is what `satellite.help`
+prints inside a program; generating them separately would let the document and
+the language disagree about the language, which is the drift DESIGN §4.6 exists
+to remove."""
 import os, sys, json
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -57,7 +65,8 @@ Each entry is three things:
 
 **Every worked line in this file has been run.** A script pulls each one out,
 wraps it in a program, and executes it against the interpreter in this tree;
-140 of them run and pass. That is not a formality — writing these caught **five
+143 of them run and pass — **including help's own three**, which were marked
+unrunnable until M18 built the thing they demonstrate. That is not a formality — writing these caught **five
 statements that were plainly stated and plainly wrong**:
 
 - `console.typed()` answers the line itself, or nothing, and not a yes-or-no.
@@ -68,8 +77,8 @@ statements that were plainly stated and plainly wrong**:
   uses it.
 
 The mark comes from walking the trie with every module's handlers installed.
-`H` means a handler row exists and a call to it runs today, which is **106 of
-the 264**. A dot means nothing is behind it yet, which is the other **158**.
+`H` means a handler row exists and a call to it runs today, which is **109 of
+the 264**. A dot means nothing is behind it yet, which is the other **155**.
 
 **A dot is not the same as undocumented, and that is the trap in this list.**
 The front-end words — `include`, `capsule`, `main`, `return`, `statement`
@@ -77,6 +86,12 @@ and every type name — are all dotted, because the parser and the
 resolver recognise them and they are never dispatched. They are the words the
 language is written in. Hello world uses seven paths and exactly one of them,
 `satellite.console.display`, is a handler row.
+
+**Which is why a dot is not what help goes by.** M18 built `satellite.help`, and
+what it names is what is **built** — a handler row, an assigner row, a front-end
+word, or anything with one of those underneath it. That is **144 of the 264**,
+against the 109 marked `H` here. `src/satellite_help/built.hpp` is the predicate
+and DESIGN §4.6 carries the argument.
 
 **Where a path belongs to a milestone nobody has started, the entry says which
 milestone and shows no example.** Writing a worked line for
@@ -92,18 +107,43 @@ already listed, and help answers for the node.
 def main():
     nodes = load_nodes()
     entries = load_entries()
+
+    # THE PARSE IS CHECKED AGAINST THE MEASUREMENT BEFORE EITHER IS USED.
+    # words_def.py reads the registry to get each node's IDENTIFIER, which
+    # help.def needs and nodes.tsv does not carry; nodes.tsv was produced by a
+    # binary that linked the real trie. They agree on all 264 paths and numbers
+    # or this stops -- a generator that quietly emitted rows against a parse it
+    # had got wrong would put the error in a file nobody reads by hand.
+    import words_def
+    import defgen
+    parsed = words_def.read()
+    mine = {n.number: n.path for n in parsed.values()}
+    theirs = {n["num"]: n["path"] for n in nodes}
+    if mine != theirs:
+        wrong = sorted(set(mine.items()) ^ set(theirs.items()))
+        sys.exit("words.def parse disagrees with nodes.tsv: %r" % wrong[:4])
+    missing = [n["num"] for n in nodes if n["num"] not in entries]
+    if missing:
+        sys.exit("no entry for %d nodes, first %r -- help.def must be complete"
+                 % (len(missing), missing[:4]))
+    written = defgen.write(parsed, entries, words_def.by_path(parsed))
+    sys.stderr.write("help.def %d rows\n" % written)
+
     out = [HEADER]
 
-    # THE TOPIC LISTING IS PART OF THIS DOCUMENT AND NOT A SECOND FILE.  It is
-    # what `satellite.help()` prints, it is generated from the same entries the
-    # rest of the file holds, and a second file would be free to disagree with
-    # them -- which is the drift M18 exists to end, reproduced in the document
-    # that describes it.
+    # THE TOPIC LISTING IS ASKED OF THE INTERPRETER AND NOT REBUILT HERE.  It
+    # used to be assembled from nodes.tsv plus a hand-written front-end set --
+    # a second implementation of M18's whole subject, free to disagree with the
+    # first, and it did on the day help was built: the real walk names 14 topics
+    # and the reconstruction named 13, because help now names itself.  topics.py
+    # runs `satellite.help()` and this copies the answer in.
     import topics
     out.append("\n## What `satellite.help()` prints\n")
-    out.append("The topics that are built, one to a line, each indented one tab")
-    out.append("and separated by a blank line.  Generated from the entries below,")
-    out.append("so it cannot name a topic this file does not describe.\n")
+    out.append("**Taken from the interpreter in this tree, not reconstructed.**")
+    out.append("`topics.py` runs the three-line program and copies the answer in,")
+    out.append("so this block cannot say something the language does not.  The")
+    out.append("topics are the built children of `satellite`, one to a line, each")
+    out.append("indented one tab and separated by a blank line.\n")
     out.append("```")
     out.append(topics.render())
     out.append("```\n")

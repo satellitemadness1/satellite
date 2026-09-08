@@ -100,8 +100,19 @@ void section_codes()
     // an empty one. Each names the question that answers instead of
     // stopping, which is S0715 and S0716's shape retold for the two
     // containers. MILESTONES/M16.md is the record.
-    check(kCodeCount == 101,
-          "errors.def has 101 rows -- if that changed on purpose, change it here "
+    // AND BY FOUR AT M18: S1101 through S1104, `satellite.help`'s block --
+    // a topic that is numbered and not built, a bare word that is neither a
+    // variable nor a path, and everything else somebody can write between the
+    // parentheses. S1101 is the milestone's own done-when: before M18,
+    // `satellite.help(satellite.network)` refused with S0721 because the
+    // ARGUMENT dispatched and died, which gave the same answer for a module
+    // that IS built -- so a check that passed through the wrong mechanism now
+    // has a code that is about the right thing. S1104 is the fourth and arrived
+    // last: a global is a variable with no declared type, and S1103 was telling
+    // somebody `n` was not the name of a variable while they looked at the line
+    // declaring it. MILESTONES/M18.md §3.
+    check(kCodeCount == 105,
+          "errors.def has 105 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

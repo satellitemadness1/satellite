@@ -32,6 +32,7 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M16.md](M16.md) | 2026-09-06 | The containers and the search power — `list`, `map`, their thirty-four methods, and the empty list `satellite.main`'s parameter needed. |
 | [M17.md](M17.md) | 2026-09-06 | Hello world — DESIGN §3 runs, held to the file by a test; the include's bare shape parses at last, and a spaceship's name stops being a variable. |
 | [M22.md](M22.md) | 2026-09-07 | **Out of order, and §0 says why.** The prompt — `satl --repl` reads a line, a typed line becomes a program, and `satl-term`'s window stops closing when what exited was the prompt. |
+| [M18.md](M18.md) | 2026-09-08 | `satellite.help` — the trie answering for itself: the `built()` predicate over four kinds, the language's first unevaluated argument, and 264 entries generated into the binary from the file that writes the document. |
 
 **M22 sits between M17 and M18 in this table and that is the point of the date
 column.** It was built on 2026-09-07, before M18 through M21, at the author's

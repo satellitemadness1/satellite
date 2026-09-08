@@ -71,6 +71,7 @@
 //     S08xx   the machine limits            PLAN §4.5      M6
 //     S09xx   the clock and the dice        DESIGN §11/§13 M13
 //     S10xx   the console's input           DESIGN §10.1   M14
+//     S11xx   satellite.help                DESIGN §4.6    M18
 //
 // The reserved blocks are written down and NOT populated. A block reserved in a
 // comment costs nothing and stops the thing this file exists to stop, which is
@@ -869,5 +870,71 @@ SAT_CODE(1002, CONSOLE_TARGET_NOT_A_PLACE, SAT_ERROR,
 SAT_CODE(1003, CONSOLE_ANSWER_IS_THE_PLACE, SAT_ERROR,
          "`{1}` writes a place and yields nothing -- it is a statement of its "
          "own, and what it read is in the variable it wrote")
+
+// --- S11xx -- satellite.help ------------------------------------------------
+//
+// THE BLOCK IS SMALL BECAUSE HELP REFUSES IN ONLY THREE WAYS, and all three are
+// about the ARGUMENT rather than about help. `satellite.help` and
+// `satellite.help()` cannot fail: they walk a table that is in the binary.
+//
+// AND ALL THREE ARE DECIDED BY THE COMPILER, WHICH IS WHAT `1 19 1`'s ARGUMENT
+// BEING UNEVALUATED BUYS. words.def's fifth list says the argument is a path or
+// a name and is never run, so whether it is one is known before the program
+// starts -- there is no arrangement of inputs that turns a good ask into a bad
+// one. They are still RUN-time refusals, raised through op_misuse, for the
+// reason S0720 gives and M14's place arguments follow: a mistake in a branch
+// that never runs is a program that runs.
+
+// 1101 IS THE DONE-WHEN'S SECOND SELF-VERIFYING CHECK, AND IT HAD TO BE A NEW
+// CODE. `satellite.help(satellite.network)` refused in plain words before this
+// milestone existed -- with S0721, because the ARGUMENT dispatched and died
+// before help was entered -- and it refused identically for
+// `satellite.help(satellite.console)`, which is built. A check that passes
+// through the wrong mechanism and gives the same answer to the central question
+// help exists to answer is worse than a check that fails, so the sentence that
+// answers it now is its own, says what help is for, and names the one command
+// that lists the alternative.
+SAT_CODE(1101, HELP_NOT_BUILT, SAT_ERROR,
+         "`{1}` is a path satellite has a number for and nothing built behind "
+         "it yet, so there is nothing to tell you about it -- "
+         "`satellite.help()` lists what is built")
+
+// 1102 IS THE BARE WORD, and the author settled its sentence on 2026-09-07
+// along with the decision that quotes are gone: a topic is reached by its path,
+// `satellite.help(satellite.random)`, and `satellite.help()` is how you find
+// the path. So the two things a bare word can be are covered in one sentence --
+// a variable this program declared, or a word of the language somebody left the
+// `satellite.` off.
+SAT_CODE(1102, HELP_NO_SUCH_NAME, SAT_ERROR,
+         "there is no variable with the name `{1}` -- did you mean "
+         "`satellite.{1}`? `satellite.help()` lists the topics")
+
+// 1103 IS EVERYTHING ELSE, and it exists because the argument's grammar is
+// wider than its meaning: `satellite.help("random")` and `satellite.help(1 + 1)`
+// both parse. v1 accepted the quoted form for seven topic pages; this language
+// does not, and a refusal that says what IS accepted is the difference between
+// a rule and a wall.
+SAT_CODE(1103, HELP_NOT_A_TOPIC, SAT_ERROR,
+         "`satellite.help` takes a path or the name of a variable, and {1} is "
+         "neither -- write `satellite.help(satellite.console)` for a topic or "
+         "`satellite.help()` for the list")
+
+// 1104 IS A GLOBAL, AND IT IS ITS OWN SENTENCE BECAUSE 1103'S WAS FALSE ABOUT
+// IT. `satellite.help(satellite.library.n)` got "`n` is neither a path nor the
+// name of a variable" -- and `n` IS the name of a variable, which is the one
+// thing a refusal must not get wrong. Found while probing the shapes after the
+// milestone was otherwise finished.
+//
+// AND THE REASON IS A PROPERTY OF THE LANGUAGE RATHER THAN OF HELP. A global is
+// written `satellite.library.n = 0` and there is no typed form: DESIGN §6's
+// top_level takes `satellite.library.<name>` and S0204 refuses
+// `satellite.variable.number satellite.library.n = 0` outright. So resolve has
+// no declared type to hand over, and `1 19 1`'s argument is a path or a name
+// whose type is known STATICALLY -- help would have to run the program to
+// answer, which is the one thing this row is built not to do.
+SAT_CODE(1104, HELP_GLOBAL_HAS_NO_TYPE, SAT_ERROR,
+         "`{1}` is a global, and a global is declared without a type -- help "
+         "answers for the type a name was declared with, and a global does not "
+         "have one until the program has run")
 
 #undef SAT_CODE

@@ -92,15 +92,31 @@ std::string dump_text()
 
     // WHAT IS NUMBERED IS NOT WHAT IS BUILT, and this line is here because
     // DESIGN §4.6 was wrong about exactly that until 2026-08-28. Everything
-    // above exists as a number; almost none of it runs. satellite.help walks
-    // this same trie at M18 and must print a node only when handlers[path_id]
-    // is non-null -- there is no handler table yet, so a dump that did not say
-    // so would advertise the whole language as working, which DESIGN §1.1 calls
-    // doing something behind the user's back.
+    // above exists as a number; most of it still does not run.
+    //
+    // AND M18 BUILT THE THING THIS PARAGRAPH USED TO PROMISE. It said "there is
+    // no handler table yet" and "there is no evaluator yet", which stopped being
+    // true at M9 and M10 and went on being printed until 2026-09-08. The answer
+    // it pointed at is now `satellite.help`, which walks this same trie and
+    // names a node only when it is BUILT -- a handler row, an assigner row, a
+    // front-end word, or something built underneath it. satellite_help/built.hpp
+    // is the predicate and DESIGN §4.6 carries the correction.
+    //
+    // THIS COMMAND IS STILL NOT MARKED, AND THAT IS A DECISION RATHER THAN A
+    // LEFTOVER. Marking each row here would put `eval::Handlers` behind
+    // satellite_words -- and words.hpp's whole claim is that "the numbering can
+    // be read by a test, a future .satc reader or a disassembler without
+    // dragging the interpreter in behind it", which words_test relies on by
+    // linking no objects at all. The mark would have to arrive as a predicate
+    // passed in by programs/dump_commands.cpp; it is worth doing and it is not
+    // this milestone's, because the question `--words` answers is what the
+    // registry SAYS and `satellite.help` is now the command that answers what
+    // the language DOES. MILESTONES/M18.md §4 records it.
     out += "\n"
-           "Every path above is NUMBERED. Almost none of it is BUILT -- there\n"
-           "is no evaluator yet, and this is the registry M2 exists to write.\n"
-           "PLAN.md §8 says what lands when.\n";
+           "Every path above is NUMBERED and most of it is not BUILT. This is\n"
+           "the registry M2 wrote; `satellite.help` is what the language answers\n"
+           "about the part of it that runs today, and PLAN.md §8 says what\n"
+           "lands when.\n";
     return out;
 }
 

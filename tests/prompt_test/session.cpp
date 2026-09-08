@@ -43,12 +43,20 @@ void section_session()
     // four passes. S0721 -- a path the language numbers and nothing implements
     // -- is raised by op_dispatch while the program is RUNNING, so it comes
     // back on the Machine instead and went out with the wrapper's line number
-    // on it until this was noticed. `satellite.help` is the shortest way to
-    // reach it and will stay reachable until M18 builds help.
+    // on it until this was noticed.
+    //
+    // IT WAS `satellite.help` UNTIL M18 AND THIS COMMENT SAID SO IN ADVANCE:
+    // "will stay reachable until M18 builds help". M18 built help, the fixture
+    // went red on the day it was supposed to, and the vehicle is now
+    // `satellite.system.home` `1 22 3` -- a module constant read bare, which is
+    // the same road `satellite.console.width` took to this arm before M14 built
+    // it. WHAT IS BEING TESTED IS THE REBASING AND NOT THE PATH, so any path
+    // with a number and no handler will do; M19 takes `satellite.system.home`
+    // and will find this note the same way M18 found the last one.
     {
         Prompt p = start_a_prompt();
         p.wait_for("Type `exit`", 4000);
-        p.line("satellite.help");
+        p.line("satellite.system.home");
         check(p.wait_for("S0721", 4000), "an unbuilt path refuses at run time");
         check(holds(p.screen, "<prompt>:1:"),
               "and the refusal is on the line the person typed");

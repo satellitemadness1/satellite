@@ -57,6 +57,7 @@ private:
         Declare,         // a VarDecl's name, after its initialiser
         MemberDone,      // member(), after its receiver
         CallTargetDone,  // call(), after its target
+        Topic,           // an unevaluated argument -- resolve it, refuse nothing
     };
 
     // Twelve bytes, and `type` is read by Declare alone -- a VarDecl's type is
@@ -83,6 +84,26 @@ private:
         work_.push_back({Act::Expression, node, words::kNoPath});
     }
 
+    // AN UNEVALUATED ARGUMENT IS STILL RESOLVED, AND THAT IS THE WHOLE
+    // SUBTLETY. `satellite.help(x)` `1 19 1` never runs its argument, but the
+    // compiler READS what resolve decided about it -- `satellite.console` has
+    // to arrive carrying `1 5`, and a name the program declared has to arrive
+    // carrying its declared type. So the argument is walked exactly as any
+    // other; what is suppressed is one refusal.
+    //
+    // WHICH ONE, AND WHY IT CANNOT SIMPLY BE LEFT TO FIRE. A bare word here is
+    // not a variable being read -- it is a topic being named -- so S0511's
+    // "nothing called `random` is in scope here" answers a question nobody
+    // asked. The author settled the sentence that belongs here on 2026-09-07
+    // and it is S1102: `no variable with the name random -- did you mean
+    // satellite.random?`, with a pointer at `satellite.help()`. That sentence
+    // is the compiler's to raise, and it can only raise it if resolve leaves
+    // the name unresolved instead of stopping the program first.
+    void visit_topic(NodeIndex node)
+    {
+        work_.push_back({Act::Topic, node, words::kNoPath});
+    }
+
     void visit_statement(NodeIndex node)
     {
         work_.push_back({Act::Statement, node, words::kNoPath});
@@ -91,6 +112,11 @@ private:
     // --- names, paths and numbers (names.cpp) -------------------------------
 
     void name(NodeIndex node);
+
+    // Set while an unevaluated argument is being resolved. Read by name() and
+    // by nothing else: the deeper shapes an argument can take are paths, and a
+    // wrong path still deserves "no such word under satellite".
+    bool in_topic_ = false;
     void member(NodeIndex node);
     void member_done(NodeIndex node);
     void call(NodeIndex node);

@@ -91,6 +91,15 @@ int call_command(const std::vector<std::string> &args)
     // Ctrl-C is installed for the same reason it is in run_command:
     // this is an entry point that runs user code, and a loop under `--call`
     // is as interruptible as one under `satl file.satl`.
+    //
+    // AND NOT satellite.help EITHER, M18, WHICH IS THE SAME BOUNDARY AND NOT A
+    // SECOND ONE. Help's whole answer is printed, so a help installed where
+    // `display` is not would be a row that reaches a console this arm never
+    // started. It refuses here with S0721 exactly as `display` does, which is
+    // the honest answer: under `--call` there is nothing to print through.
+    // `built()` reads the table, so help correctly reports itself unbuilt in
+    // this process -- the predicate is a property of the RUN and not of the
+    // build, which is the whole reason it is computed fresh.
     scalars::install_handlers();
     containers::install_handlers();
     random::install_handlers();

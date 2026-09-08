@@ -150,6 +150,29 @@ inline PathId match_alias(NodeId node, std::string_view rest, size_t &length)
 
 } // namespace detail
 
+// What a bare spelling names under `node`, SHAPES INCLUDED -- the lowest-
+// numbered shape of the word when the word is only ever written with arguments.
+//
+// THE QUESTION `satl --words` ALREADY ANSWERS, GIVEN A NAME. Walking
+// `satellite.variable.string.find` from the command line lands on `1 6 1 3`
+// today, because match_shape above takes the first child with that spelling
+// when nothing was written in parentheses. What did not exist until M18 is a
+// way for anything else to ask it: resolve's own walk is stricter on purpose --
+// `satellite.variable.string.find` written in a program is not an expression --
+// and `child_named` in the resolver excludes shapes for a defect it records.
+//
+// SO THIS IS THE TOPIC LOOKUP AND IT HAS EXACTLY ONE CALLER. A help query names
+// a WORD -- "asking about a path brings up that node and the shapes written
+// beside it" -- so `satellite.help(satellite.variable.string.find)` has to
+// reach a node whose only shape takes an argument, and every listing help
+// prints is made of exactly these spellings. Nothing else in the tree may use
+// it: a program that writes a shape without its arguments is still wrong, and
+// the strictness resolve has is the reason it can say so.
+inline PathId word_named(NodeId node, std::string_view word)
+{
+    return detail::match_shape(node, word, {});
+}
+
 // A dotted path to the node it names.
 //
 // The path is written as WORD_NUMBERS §2.2 writes it, arguments included:

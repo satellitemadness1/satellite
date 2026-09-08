@@ -1,0 +1,23 @@
+// M18's done-when: a program whose whole body is `satellite.help`, and the
+// output names exactly the paths that are built when it runs. Run this again
+// at M19 and it prints a different and equally correct language.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    // Everything, from the root down -- the topics that are built.
+    satellite.help
+
+    // One topic, and the words underneath it. The parentheses hold a PATH and
+    // nothing in them is evaluated, which is why asking about a module does
+    // not try to call it.
+    satellite.help(satellite.console)
+
+    // And a variable, which answers for the type it was declared with. No
+    // value is read to do it, so this works before `ship` holds anything.
+    satellite.variable.string ship
+    satellite.help(ship)
+
+    satellite.return(satellite)
+}

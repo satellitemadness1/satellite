@@ -507,6 +507,51 @@ prompt_test: $(TESTS)/prompt_test/prompt_test
 # to the tree root, which is where make runs, and taking the path lets the
 # binary be run from anywhere -- including from an editor, which is where a
 # failing transcription is most likely to be looked at.
+# help_test LINKS console_test's LIST PLUS satellite_help, AND IT REDIRECTS ITS
+# OWN STDOUT FOR THE SAME REASON. Help's whole answer is bytes reaching
+# descriptor 1 through the printer thread, so the suite that watches it has to
+# take that descriptor away and give it back around every fixture -- which is
+# exactly why console_test is its own binary rather than six more sections in
+# eval_test, and why this is a fourteenth rather than four more in console_test.
+#
+# AND ON help.def, WHICH IS THE UNUSUAL PREREQUISITE. This suite's subject is
+# whether what help prints matches what the language builds, and the entries are
+# half of that -- so the generated table is an input to it in the way a source
+# file is. words_test depends on WORD_NUMBERS.md for the same reason and says so
+# in the same words: editing the thing being checked must re-run the check.
+# AND satellite_system, WHICH console_test LEAVES OUT AND THIS SUITE NEEDS FOR
+# A REASON THAT IS THE MILESTONE'S. M15's four dials are the only ASSIGNER rows
+# in the language, and an assigner row is one of the three kinds that make a
+# word built -- so a help_test linked without them would be a test of two thirds
+# of the predicate, and the third is the one a help built on `handlers[]` alone
+# would have missed.
+#
+# AND machine_limits BEHIND IT, which is not a preference: the dials write into
+# the running machine's Policy and read `limits::held()` to know what they are
+# retuning, so the module that owns them cannot be linked alone. eval_test omits
+# machine_limits deliberately -- M8.5 §4.1, a raised RLIMIT_STACK its depth
+# fixtures must not get for free -- and nothing here is about depth, so that
+# argument does not reach this binary.
+HELP_TEST_SRCS = $(HELP)/built.cpp \
+                 $(HELP)/render.cpp \
+                 $(HELP)/handlers.cpp \
+                 $(SYSLIB)/handlers.cpp \
+                 $(LIMITS)/limits.cpp \
+                 $(LIMITS)/config.cpp \
+                 $(LIMITS)/pool.cpp \
+                 $(LIMITS)/watchdog.cpp \
+                 $(SYSTEM)/stack_facts.cpp \
+                 $(PROGRAMS)/check_command.cpp \
+                 $(PROGRAMS)/source_file.cpp \
+                 $(CONSOLE_TEST_SRCS)
+
+$(TESTS)/help_test/help_test: $(help_test_SRCS) $(help_test_HDRS) \
+                              $(HELP_TEST_SRCS) $(HELP)/help.def \
+                              $(ERRORS)/errors.def $(WORDS)/words.def \
+                              $(HDRS) .cxxflags-stamp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -I$(TESTS)/help_test -o $@ \
+	    $(help_test_SRCS) $(HELP_TEST_SRCS)
+
 test: $(TESTBINS)
 	./$(TESTS)/words_test/words_test WORD_NUMBERS.md
 	./$(TESTS)/lexer_test/lexer_test example/hello_world.satl
@@ -520,6 +565,7 @@ test: $(TESTBINS)
 	./$(TESTS)/eval_test/eval_test example
 	./$(TESTS)/console_test/console_test
 	./$(TESTS)/prompt_test/prompt_test
+	./$(TESTS)/help_test/help_test
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
@@ -634,6 +680,12 @@ float_test: $(TESTS)/float_test/float_test
 # that is out of date." The suite it warns about was itself missing the line.
 eval_test: $(TESTS)/eval_test/eval_test
 
+# help_test's ALIAS, WRITTEN WITH THE SUITE AND NOT AFTER IT -- which is the
+# whole of what the paragraph above eval_test's alias asks for. `make help_test`
+# builds the binary and `make test` runs it; neither can report ok having
+# compiled nothing.
+help_test: $(TESTS)/help_test/help_test
+
 # console_test IS ABSENT FROM THIS LIST AND HAS NO ALIAS RULE EITHER, which is
 # a gap rather than a decision -- `make console_test` has never worked, and
 # nothing said so until prompt_test was added beside it and the two were
@@ -641,6 +693,7 @@ eval_test: $(TESTS)/eval_test/eval_test
 # whoever owns that suite. MILESTONES/M22.md §3 records it.
 TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
               limits_test resolve_test number_test float_test eval_test \
+              help_test \
               prompt_test
 
 .PHONY: test $(TESTALIASES)

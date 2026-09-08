@@ -446,6 +446,9 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(CONTAIN)/list_sorting.cpp \
             $(CONTAIN)/map_methods.cpp \
             $(SYSLIB)/handlers.cpp \
+            $(HELP)/built.cpp \
+            $(HELP)/render.cpp \
+            $(HELP)/handlers.cpp \
             $(RANDOM)/random.cpp \
             $(RANDOM)/tiers.cpp \
             $(RANDOM)/handlers.cpp \
@@ -484,6 +487,13 @@ SATL_OBJS = $(SATL_SRCS:.cpp=.o)
 # the tree and makes a from-scratch build depend on files a clean has removed.
 # This list is short and stays short if it is maintained; when it stops being
 # either, revisit that decision on purpose rather than by drift.
+#
+# help.def IS THE THIRD SUCH FILE, M18's, and it is the one that changes most
+# often of the three: it is what `satellite.help` prints, it is generated from
+# help_lines/, and help_text.hpp expands it twice. A build that did not depend
+# on it would leave the old text in every object while the document beside it
+# said something else -- which is the drift this milestone is about, arriving
+# through the build system instead of through a second document.
 #
 # words.def IS IN THIS LIST AND IS NOT A HEADER, deliberately. It is included by
 # six of the seven headers below and it is the file that actually changes when
@@ -557,6 +567,11 @@ HDRS = $(SYSTEM)/version.hpp \
        $(CONTAIN)/search.hpp \
        $(CONTAIN)/handlers.hpp \
        $(CONTAIN)/methods_internal.hpp \
+       $(HELP)/help.def \
+       $(HELP)/help_text.hpp \
+       $(HELP)/built.hpp \
+       $(HELP)/render.hpp \
+       $(HELP)/handlers.hpp \
        $(EVAL)/closure.hpp \
        $(EVAL)/machine.hpp \
        $(EVAL)/dispatch.hpp \

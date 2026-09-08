@@ -14,7 +14,8 @@ Each entry is three things:
 
 **Every worked line in this file has been run.** A script pulls each one out,
 wraps it in a program, and executes it against the interpreter in this tree;
-140 of them run and pass. That is not a formality — writing these caught **five
+143 of them run and pass — **including help's own three**, which were marked
+unrunnable until M18 built the thing they demonstrate. That is not a formality — writing these caught **five
 statements that were plainly stated and plainly wrong**:
 
 - `console.typed()` answers the line itself, or nothing, and not a yes-or-no.
@@ -25,8 +26,8 @@ statements that were plainly stated and plainly wrong**:
   uses it.
 
 The mark comes from walking the trie with every module's handlers installed.
-`H` means a handler row exists and a call to it runs today, which is **106 of
-the 264**. A dot means nothing is behind it yet, which is the other **158**.
+`H` means a handler row exists and a call to it runs today, which is **109 of
+the 264**. A dot means nothing is behind it yet, which is the other **155**.
 
 **A dot is not the same as undocumented, and that is the trap in this list.**
 The front-end words — `include`, `capsule`, `main`, `return`, `statement`
@@ -34,6 +35,12 @@ and every type name — are all dotted, because the parser and the
 resolver recognise them and they are never dispatched. They are the words the
 language is written in. Hello world uses seven paths and exactly one of them,
 `satellite.console.display`, is a handler row.
+
+**Which is why a dot is not what help goes by.** M18 built `satellite.help`, and
+what it names is what is **built** — a handler row, an assigner row, a front-end
+word, or anything with one of those underneath it. That is **144 of the 264**,
+against the 109 marked `H` here. `src/satellite_help/built.hpp` is the predicate
+and DESIGN §4.6 carries the argument.
 
 **Where a path belongs to a milestone nobody has started, the entry says which
 milestone and shows no example.** Writing a worked line for
@@ -48,14 +55,26 @@ already listed, and help answers for the node.
 
 ## What `satellite.help()` prints
 
-The topics that are built, one to a line, each indented one tab
-and separated by a blank line.  Generated from the entries below,
-so it cannot name a topic this file does not describe.
+**Taken from the interpreter in this tree, not reconstructed.**
+`topics.py` runs the three-line program and copies the answer in,
+so this block cannot say something the language does not.  The
+topics are the built children of `satellite`, one to a line, each
+indented one tab and separated by a blank line.
 
 ```
-satellite -- the topics that are built. Ask about any of them:
+  satellite                                             1
 
-    satellite.help(satellite.console)
+  The root of the language, and the only word that is not under another
+  one. Every path in satellite begins here, which is why its number is `1`
+  and why every other number starts with a 1.
+
+  On its own it names nothing you can call. Asking help about it is how you
+  get the list of modules underneath, and that list is the language as it is
+  built today rather than as it is planned.
+
+      satellite.help(satellite)
+
+  what is underneath, and every one of these is built:
 
 	satellite.include     Brings a body of words into the program.
 
@@ -81,9 +100,11 @@ satellite -- the topics that are built. Ask about any of them:
 
 	satellite.bool        The two constants, true and false.
 
+	satellite.help        The language's account of itself.
+
 	satellite.system      The machine the program is running on, and the interpreter's own switches.
 
-    13 topics.
+  14 of them -- ask about any by its path.
 ```
 
 ---
@@ -2337,7 +2358,7 @@ What is inside the directory you name. **Not built** — M19.
 
 ## help
 
-.  `1 19`  `satellite.help`
+H  `1 19`  `satellite.help`  _M18_
 > satellite.help(satellite.help)
 
 The language's account of itself. It walks the same tree of words the
@@ -2350,7 +2371,7 @@ variables to ask about its type.
 
     satellite.help
 
-.  `1 19 0`  `satellite.help()`
+H  `1 19 0`  `satellite.help()`  _M18_
 > satellite.help(satellite.help)
 
 Everything, from the root down: the topics that are built, one to a line.
@@ -2366,7 +2387,7 @@ are looking for. Then ask about a topic by its path.
 
     satellite.help()
 
-.  `1 19 1`  `satellite.help(x)`
+H  `1 19 1`  `satellite.help(x)`  _M18_
 > satellite.help(satellite.help)
 
 One part of the language, or one of your own variables.

@@ -184,4 +184,67 @@ constexpr uint32_t place_parameter_of(NodeId id)
     return out;
 }
 
+// ---------------------------------------------------------------------------
+// The unevaluated arguments
+// ---------------------------------------------------------------------------
+
+// No argument of this word is a topic -- the answer for every row but one.
+inline constexpr uint32_t kNoTopicParameter = 0xFFFFFFFFu;
+
+// Which written argument (0-based) is read as a PATH rather than compiled as an
+// expression, or kNoTopicParameter. words.def's fifth list is the declaration
+// and carries the argument for it; the evaluator's compiler is the consumer,
+// and it never visits that argument at all -- which is the difference from a
+// place, where the argument IS compiled and the op is left unreferenced.
+constexpr uint32_t topic_parameter_of(NodeId id)
+{
+    uint32_t out = kNoTopicParameter;
+#define SAT_TOPIC(ident, index)                                                \
+    if (id == NodeId::ident)                                                   \
+        out = index;
+#include "satellite_words/words.def"
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// The front-end words
+// ---------------------------------------------------------------------------
+
+// Whether the parser or the resolver recognises this word and nothing ever
+// dispatches it -- words.def's fourth list, read back.
+//
+// THIS IS ONE THIRD OF AN ANSWER AND NOT THE ANSWER. PLAN M18's `built()` is
+// this, plus a handler row, plus an assigner row, plus anything with a built
+// word underneath it -- and the other three are tables the evaluator owns, so
+// the predicate itself cannot live in this module. satellite_help/built.hpp is
+// where the four are put together, and it is the only caller of this function.
+constexpr bool is_front_end(PathId id)
+{
+    bool out = false;
+#define SAT_BUILT(ident, listing)                                              \
+    if (id == static_cast<PathId>(NodeId::ident))                              \
+        out = true;
+#include "satellite_words/words.def"
+    return out;
+}
+
+// Whether a word that IS built is nevertheless never offered in a listing.
+//
+// FALSE FOR EVERYTHING BUT ONE ROW, AND THE DEFAULT IS THE SAFE DIRECTION. A
+// word nobody has thought about shows up in the listing rather than vanishing
+// from it, so the failure this can have is a word being advertised that should
+// not be -- visible, and someone will say so -- rather than a word quietly
+// missing, which is the failure a help text cannot recover from. The one row is
+// `satellite.returns`: it answers when asked about and is not offered, because
+// it is optional and is not how a capsule is written here.
+constexpr bool is_unlisted(PathId id)
+{
+    bool out = false;
+#define SAT_BUILT(ident, listing)                                              \
+    if (id == static_cast<PathId>(NodeId::ident) && (listing) == 0)            \
+        out = true;
+#include "satellite_words/words.def"
+    return out;
+}
+
 } // namespace satellite::words

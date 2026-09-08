@@ -204,9 +204,9 @@ H	satellite.bool.true	1 17 2	M11	0	0	0
 .	satellite.directory.exists	1 18 3		0	0	0
 .	satellite.directory.list()	1 18 4		0	0	0
 .	satellite.directory.list(d)	1 18 5		0	0	0
-.	satellite.help	1 19		0	0	0
-.	satellite.help()	1 19 0		0	0	0
-.	satellite.help(x)	1 19 1		0	0	0
+H	satellite.help	1 19	M18	0	0	0
+H	satellite.help()	1 19 0	M18	0	0	0
+H	satellite.help(x)	1 19 1	M18	1	0	0
 .	satellite.network	1 20		0	0	0
 .	satellite.network()	1 20 0		0	0	0
 .	satellite.network.http(port)	1 20 1		0	0	0

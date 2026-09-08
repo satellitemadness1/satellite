@@ -21,6 +21,7 @@
 
 #include "satellite_cache/paths.hpp"
 #include "satellite_number/bignum.hpp"
+#include "satellite_string/satellite_string.hpp"
 
 #include <string>
 #include <utility>
@@ -186,7 +187,42 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
     case NodeKind::Call:
         if (step_number == 0) {
             again(1);
-            visit_reversed(n.b);
+            // AN UNEVALUATED ARGUMENT IS ONE THIS LINE DOES NOT VISIT.
+            //
+            // PLAN M18 CALLS THIS THE LOAD-BEARING LINE AND MUTATION SAYS IT
+            // IS NOT. What makes the argument a PATH is call()'s topic arm,
+            // which folds the path itself and never looks at the results
+            // stack -- so a compiler that visited the argument anyway still
+            // answers correctly: the argument's op is emitted, referenced by
+            // nothing, and never runs, exactly as M14's misused place
+            // arguments are. `visit_reversed` was put back in a copy of the
+            // tree and every clause of help_test passed.
+            //
+            // SO WHAT THIS LINE BUYS IS HYGIENE, AND SAYING SO IS BETTER THAN
+            // CLAIMING MORE. It keeps an op that can never run out of the
+            // arena, and it keeps the results stack balanced -- the visited
+            // argument's result is pushed and never taken, because the arm
+            // below takes `count - 1`. That leftover sits BELOW the answer
+            // and nothing reads it, which is why the mutation is invisible;
+            // the guard that would see it is a floor check on `results_` in
+            // compile_tree(), which is that file's to add. MILESTONES/M18.md
+            // §3 records both.
+            //
+            // THE OTHER ARGUMENTS ARE STILL VISITED, and there are none today
+            // -- `1 19 1` is the list's one row and its one argument is the
+            // topic. The loop is written for the general case anyway because
+            // the alternative is a line that is correct only while a count
+            // stays at one, and words.def's own note about the place list is
+            // that a policy is kept by saying it, not by being unable to
+            // express anything else.
+            if (const uint32_t skip = topic_parameter(node);
+                skip == words::kNoTopicParameter) {
+                visit_reversed(n.b);
+            } else {
+                for (uint32_t i = ast_.list_size(n.b); i > 0; i--)
+                    if (i - 1 != skip)
+                        visit(ast_.list_at(n.b, i - 1));
+            }
             // THE RECEIVER COMPILES FIRST AND BECOMES ARGUMENT 0 -- M11.
             // Pushed after the written arguments, so the task stack hands it
             // to call() at the bottom of take_many's answer, which is where
@@ -286,6 +322,103 @@ NodeIndex Compiler::method_receiver(NodeIndex call_node) const
     return kNoNode;
 }
 
+uint32_t Compiler::topic_parameter(NodeIndex call_node) const
+{
+    // ASKED OF THE CALL NODE AND NOT OF ITS TARGET, which is the same thing
+    // `satl --resolve` settled for the numbering arm below: resolve's question
+    // one walks the whole shape, parentheses included, onto the CALL node --
+    // `satellite.help(satellite.console)` is `1 19 1` there -- and leaves the
+    // target member with no path at all. Reading the target would find kNoPath
+    // and this function would answer "no topic" for the one row that has one.
+    const resolve::Info &self = info(call_node);
+    if (self.path == words::kNoPath || !words::is_language_word(self.path))
+        return words::kNoTopicParameter;
+    return words::topic_parameter_of(static_cast<words::NodeId>(self.path));
+}
+
+OpIndex Compiler::topic(NodeIndex node, words::PathId path, NodeIndex written)
+{
+    // WHAT THE HANDLER IS HANDED IS THE CANONICAL PATH TEXT, folded to a
+    // constant right here. Three reasons it is the path's TEXT and not its
+    // number: the refusals help raises quote the path, so the text is needed
+    // whatever else is; `satl --compile` prints a legible constant instead of
+    // an integer nobody can read back; and a `Value` holding a PathId would be
+    // a number that is not a number, which satellite_value/value.hpp's rule
+    // about arms with no producer exists to keep out. Walking the text back to
+    // a node costs help a dozen character compares once per ask, and help is
+    // asked by a person.
+    //
+    // AND IT IS THE LANGUAGE'S SPELLING, not the file's. `satellite.help(s)`
+    // on a string variable folds `satellite.variable.string` -- the node the
+    // declared type ends at, which resolve already knows and nothing has to
+    // run to find out. That is the whole of "help answers about a variable",
+    // and it is why it still answers after the program that declared it has
+    // finished: no value was ever consulted.
+    const resolve::Info &about = info(written);
+
+    words::PathId topic_path = words::kNoPath;
+    if (ast_[written].kind == NodeKind::Satellite) {
+        // `satellite.help(satellite)` -- THE ROOT, ASKED ABOUT BY NAME. The
+        // bare word is its own node kind and carries no path: DESIGN §3 makes
+        // it "the singleton runtime object, not a zero sentinel", so resolve
+        // has nothing to walk and every other reader of this node treats it as
+        // a VALUE. As a topic it is the one thing it cannot be as a value --
+        // the node `1`, which is where the walk starts anyway. That is why the
+        // three shapes are one walk: this line is what makes
+        // `satellite.help(satellite)` and bare `satellite.help` the same
+        // program, and help_test asserts they print the same bytes.
+        topic_path = static_cast<words::PathId>(words::NodeId::SATELLITE);
+    } else if (about.path != words::kNoPath && words::is_language_word(about.path)) {
+        topic_path = about.path;
+    } else if ((resolve::in_a_frame(about.slot) ||
+                globals_.find(about.path) != globals_.end()) &&
+               about.type != words::kNoPath) {
+        topic_path = about.type;
+    }
+
+    if (topic_path == words::kNoPath &&
+        globals_.find(about.path) != globals_.end()) {
+        // A GLOBAL, WHICH IS A VARIABLE WITH NO DECLARED TYPE. It reaches here
+        // and not the arm above because there is no typed form of a global in
+        // this language -- `satellite.library.n = 0` is the whole of it and
+        // S0204 refuses anything else -- so resolve has nothing to hand over
+        // and help would have to run the program to answer. The sentence below
+        // used to be S1103's, which told somebody that `n` was not the name of
+        // a variable while they were looking at the line declaring it.
+        return emit(op_misuse, node,
+                    static_cast<uint32_t>(errors::Code::HELP_GLOBAL_HAS_NO_TYPE),
+                    out_.add_text(std::string(ast_.text_of(written))));
+    }
+
+    if (topic_path == words::kNoPath) {
+        // A BARE WORD NOBODY DECLARED gets the sentence the author settled on
+        // 2026-09-07, and it covers the two things such a word can be in one
+        // line: a variable this program forgot to declare, or a word of the
+        // language somebody left the `satellite.` off the front of.
+        //
+        // BOTH REFUSALS ARE op_misuse AND THEREFORE RUN-TIME, which is M14's
+        // place arguments and S0720's argument: a mistake in a branch that
+        // never runs is a program that runs. Everything about the ask was
+        // still DECIDED here, before anything ran.
+        const std::string text = std::string(ast_.text_of(written));
+        if (ast_[written].kind == NodeKind::Name)
+            return emit(op_misuse, node,
+                        static_cast<uint32_t>(errors::Code::HELP_NO_SUCH_NAME),
+                        out_.add_text(text));
+        return emit(op_misuse, node,
+                    static_cast<uint32_t>(errors::Code::HELP_NOT_A_TOPIC),
+                    out_.add_text("`" + text + "`"));
+    }
+
+    const OpIndex folded =
+        emit(op_constant, written,
+             out_.add_constant(Value::string(encode_raw(std::string(
+                 words::path_text(static_cast<words::NodeId>(topic_path)))))));
+    return emit(op_dispatch, node, path, out_.add_list({folded}),
+                out_.add_cache(),
+                out_.add_text(std::string(ast_.text_of(ast_[node].a))));
+}
+
 OpIndex Compiler::call(NodeIndex node)
 {
     const Node &n = ast_[node];
@@ -332,7 +465,24 @@ OpIndex Compiler::call(NodeIndex node)
                          "is supposed to make impossible");
     }
 
-    const OpListId arguments = out_.add_list(take_many(count));
+    // ONLY WHAT WAS VISITED IS ON THE STACK. A topic argument was never
+    // compiled, so taking `count` results here would take somebody else's --
+    // the value under this call's own, which is a silent miscompile rather
+    // than an error. The Call case above and this line are one decision read
+    // from two ends, which is why they ask the same function.
+    //
+    // AND THE TEST IS THE SAME ONE THE ARM BELOW MAKES, index included. A row
+    // that declared a topic at an index the call did not write would leave the
+    // arm to fall through to an ordinary dispatch, and an `unevaluated` of 1
+    // here would then take one result too few -- or underflow `count` at zero
+    // and ask for four billion. Neither is reachable today, because resolve
+    // gives a call `1 19 1` only when one argument was written; both are
+    // ruled out by asking the identical question rather than a similar one.
+    const uint32_t written_topic = topic_parameter(node);
+    const uint32_t unevaluated =
+        written_topic != words::kNoTopicParameter && written_topic < count ? 1u
+                                                                          : 0u;
+    const OpListId arguments = out_.add_list(take_many(count - unevaluated));
 
     const NodeIndex target = n.a;
     const resolve::Info &about = info(target);
@@ -392,6 +542,17 @@ OpIndex Compiler::call(NodeIndex node)
         self.path != words::kNoPath && words::is_language_word(self.path) &&
         !cache::is_absorber(
             words::arguments_of(static_cast<words::NodeId>(self.path)))) {
+        // A ROW THAT DECLARES AN UNEVALUATED TOPIC -- words.def's fifth list,
+        // one row long, and it is asked BEFORE the place arm because the two
+        // are the same shape pointed at opposite halves of the same problem
+        // and a row can only be one of them. A place is an argument compiled
+        // as a SLOT; a topic is an argument compiled as a NUMBER; and both
+        // are refusals the compiler can make before anything runs.
+        if (const uint32_t which = words::topic_parameter_of(
+                static_cast<words::NodeId>(self.path));
+            which != words::kNoTopicParameter && which < count)
+            return topic(node, self.path, ast_.list_at(n.b, which));
+
         // A ROW THAT DECLARES A PLACE -- words.def's third list, one row long
         // by policy: `input(prompt, target)` `1 5 4`. The place compiles as a
         // SLOT and never as an expression, the misuses are caught HERE --
