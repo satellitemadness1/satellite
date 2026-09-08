@@ -38,12 +38,12 @@
  },
  "1 3": {
   "query": "satellite.help(satellite.main)",
-  "prose": "Where the program starts. Every program declares exactly one, written as\na capsule whose name is `satellite.main`, and running the file runs its\nbody from the first line to the last.\n\nYou do not normally call it, because the interpreter does that for you —\nand **calling it by name is refused today**. `satellite.main()` written as\na call answers that the path has a number and nothing behind it, and\n`satl --call` cannot find it under either spelling. To run its work twice,\nput that work in a capsule of your own and call that from both places.",
+  "prose": "Where the program starts. Every program declares exactly one, written as\na capsule whose name is `satellite.main`, and running the file runs its\nbody from the first line to the last.\n\nYou do not normally call it, because the interpreter does that for you.\n**Calling it by name is refused today**, and that is a milestone nobody has\nwritten rather than a decision against it: `satellite.main()` answers that\nthe path has a number and nothing behind it, and `satl --call` finds it\nunder neither spelling. It is meant to work, and until it does, put the\nwork in a capsule of your own and call that from both places.",
   "example": "satellite.include(satellite)\n\nsatellite.capsule the_work()\n{\n    satellite.console.display(\"Hello, World!\")\n}\n\nsatellite.capsule satellite.main()\n{\n    the_work()\n    the_work()\n}"
  },
  "1 3 0": {
   "query": "satellite.help(satellite.main)",
-  "prose": "The parameter list, and it takes either nothing or the command line.\nWritten empty, the program ignores how it was started. Written with a\nlist of strings, that name holds the arguments the program was given, and\nthe name is yours to choose.\n\nDisplaying it prints the arguments as a list, so a program started with\nnone prints `[]`.",
+  "prose": "The parameter list, and it takes either nothing or the command line.\nWritten empty, the program ignores how it was started. Written with a\nlist of strings, that name holds the arguments the program was given, and\nthe name is yours to choose.\n\nDisplaying it prints the arguments as a list, so a program started with\nnone prints `[]`. This is also the shape a call to main would take once\ncalling it is built.",
   "example": "satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments)\n}"
  }
 }

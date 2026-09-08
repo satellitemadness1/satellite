@@ -172,11 +172,12 @@ Where the program starts. Every program declares exactly one, written as
 a capsule whose name is `satellite.main`, and running the file runs its
 body from the first line to the last.
 
-You do not normally call it, because the interpreter does that for you —
-and **calling it by name is refused today**. `satellite.main()` written as
-a call answers that the path has a number and nothing behind it, and
-`satl --call` cannot find it under either spelling. To run its work twice,
-put that work in a capsule of your own and call that from both places.
+You do not normally call it, because the interpreter does that for you.
+**Calling it by name is refused today**, and that is a milestone nobody has
+written rather than a decision against it: `satellite.main()` answers that
+the path has a number and nothing behind it, and `satl --call` finds it
+under neither spelling. It is meant to work, and until it does, put the
+work in a capsule of your own and call that from both places.
 
     satellite.include(satellite)
 
@@ -200,7 +201,8 @@ list of strings, that name holds the arguments the program was given, and
 the name is yours to choose.
 
 Displaying it prints the arguments as a list, so a program started with
-none prints `[]`.
+none prints `[]`. This is also the shape a call to main would take once
+calling it is built.
 
     satellite.include(satellite)
 
