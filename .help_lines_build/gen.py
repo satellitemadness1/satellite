@@ -61,14 +61,16 @@ things that were plainly stated and plainly wrong. `console.typed()` answers the
 line itself or nothing rather than a yes-or-no. `floor`, `ceil`, `round` and
 `truncate` are number methods and refuse a float. `power` answers a float.
 A quoted word inside `list.remove` is read as an option name and not as a value.
+And `satellite.returns` is optional rather than required, which is corrected at
+`1 21` and taken back out of every example.
 
 The mark comes from walking the trie with every module's handlers installed.
 `H` means a handler row exists and a call to it runs today, which is **106 of
 the 264**. A dot means nothing is behind it yet, which is the other **158**.
 
 **A dot is not the same as undocumented, and that is the trap in this list.**
-The front-end words — `include`, `capsule`, `main`, `return`, `returns`,
-`statement` and every type name — are all dotted, because the parser and the
+The front-end words — `include`, `capsule`, `main`, `return`, `statement`
+and every type name — are all dotted, because the parser and the
 resolver recognise them and they are never dispatched. They are the words the
 language is written in. Hello world uses seven paths and exactly one of them,
 `satellite.console.display`, is a handler row.

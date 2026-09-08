@@ -68,11 +68,11 @@ def as_program(example):
     out += decls
     if not has_main:
         out.append("satellite.capsule satellite.main()")
-        out.append("    {")
+        out.append("{")
         for line in body:
             if line.strip():
                 out.append("    " + line)
-        out.append("    }")
+        out.append("}")
     elif any(l.strip() for l in body):
         raise SystemExit("entry declares main AND has loose statements: %r" % text)
     return "\n".join(out)

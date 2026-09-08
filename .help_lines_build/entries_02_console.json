@@ -35,7 +35,7 @@
  "1 5 5": {
   "query": "satellite.help(satellite.console.typed)",
   "prose": "Reads a line **if one is already waiting**, and answers `nothing` if it is\nnot. It never waits, which is the whole point of it: a program with work to\ndo can check on the person between pieces of that work.\n\nWhat comes back is the line itself and not a yes-or-no, so hold it in a\n`satellite.variable.variant` and ask whether it is holding nothing.",
-  "example": "satellite.variable.variant line = satellite.console.typed()\nsatellite.statement.if (line.holds(\"nothing\"))\n    {\n    satellite.console.display(\"nobody has typed yet\")\n    }"
+  "example": "satellite.variable.variant line = satellite.console.typed()\nsatellite.statement.if (line.holds(\"nothing\"))\n{\n    satellite.console.display(\"nobody has typed yet\")\n}"
  },
  "1 5 6": {
   "query": "satellite.help(satellite.console.width)",

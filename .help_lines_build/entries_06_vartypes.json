@@ -1,88 +1,157 @@
 {
-"1 6 6": {
+ "1 6 6": {
   "query": "satellite.help(satellite.variable.bool)",
   "prose": "True or false, and nothing else. It is the only type a condition will\naccept, because this language has no truthiness for anything to fall back\non.\n\nThe two values it can hold are written `satellite.bool.true` and\n`satellite.bool.false`. Note the difference between this path, which is\nthe type, and `satellite.bool`, which is the pair of constants.",
-  "example": "satellite.variable.bool ready = satellite.bool.true\nsatellite.statement.if (ready)\n    {\n    satellite.console.display(\"ready\")\n    }"
-},
-
-"1 6 10": {
+  "example": "satellite.variable.bool ready = satellite.bool.true\nsatellite.statement.if (ready)\n{\n    satellite.console.display(\"ready\")\n}"
+ },
+ "1 6 10": {
   "query": "satellite.help(satellite.variable.float)",
   "prose": "A number with a decimal point, and the arithmetic on it is exact where a\nmachine float is not: a tenth plus two tenths really is three tenths here.\n\nHow many digits a division keeps is a dial you can turn, and a change to\nit is observed by the very next division rather than at the next run.",
   "example": "satellite.variable.float tenth = 0.1\nsatellite.console.display(tenth + 0.2)"
-},
-
-"1 6 14": {
+ },
+ "1 6 14": {
   "query": "satellite.help(satellite.variable.variant)",
   "prose": "One box that can hold any type, one at a time, and can also hold nothing.\n\nIt is what you want when the kind of thing is not known until the program\nruns. Ask it what it is holding before you take the value out.",
   "example": "satellite.variable.variant box = 5\nsatellite.console.display(box)\nbox = \"Hello\"\nsatellite.console.display(box)"
-},
-
-"1 6 14 0": {
+ },
+ "1 6 14 0": {
   "query": "satellite.help(satellite.variable.variant)",
   "prose": "The bare shape, which is a variant holding nothing.\n\nNothing is a real state here rather than an absence, so a variant that\nhas not been given a value still answers questions about itself.",
   "example": "satellite.variable.variant box = 5\nbox.clear()\nsatellite.console.display(box.holds(\"nothing\"))"
-},
-
-"1 6 14 1": {
+ },
+ "1 6 14 1": {
   "query": "satellite.help(satellite.variable.variant.holding)",
   "prose": "Answers the name of the type currently in the box, as a string.\n\nA box that has been cleared answers `nothing`, which is a name like any\nother rather than a special case you have to test for separately.",
   "example": "satellite.variable.variant box = 5\nsatellite.console.display(box.holding())\nbox = \"Hello\"\nsatellite.console.display(box.holding())"
-},
-
-"1 6 14 2": {
+ },
+ "1 6 14 2": {
   "query": "satellite.help(satellite.variable.variant.holds)",
   "prose": "Answers true when the box is holding the type you name.\n\nIt takes the type's name as a string, and `\"nothing\"` is one of the names\nyou can ask about. This is the test to write before taking a value out.",
   "example": "satellite.variable.variant box = \"Hello\"\nsatellite.console.display(box.holds(\"string\"))\nsatellite.console.display(box.holds(\"nothing\"))"
-},
-
-"1 6 14 3": {
+ },
+ "1 6 14 3": {
   "query": "satellite.help(satellite.variable.variant.held)",
   "prose": "Takes the value out of the box so you can use it as its own type.\n\nAsk `holds` first. Taking out a value of a type you were not expecting is\nthe mistake this pair of methods exists to prevent.",
   "example": "satellite.variable.variant box = \"Hello\"\nsatellite.variable.string kept = box.held()\nsatellite.console.display(kept.upper())"
-},
-
-"1 6 14 4": {
+ },
+ "1 6 14 4": {
   "query": "satellite.help(satellite.variable.variant.clear)",
   "prose": "Empties the box, leaving it holding nothing.\n\nAfterwards `holding()` answers `nothing` and `holds(\"nothing\")` answers\ntrue.",
   "example": "satellite.variable.variant box = 5\nbox.clear()\nsatellite.console.display(box.holding())"
-},
-
-"1 6 2": {
+ },
+ "1 6 2": {
   "query": "satellite.help(satellite.variable.file)",
   "prose": "A file on disk, held as a value you can read from and write to.\n\n**Not built.** The path is numbered and the seven words underneath are\nnumbered with it, but nothing opens a file yet. M19 is the milestone that\nbuilds this and the `satellite.directory` module beside it.",
   "example": ""
-},
-"1 6 2 0": {"query": "satellite.help(satellite.variable.file)", "prose": "The bare shape. **Not built** — M19.", "example": ""},
-"1 6 2 1": {"query": "satellite.help(satellite.variable.file)", "prose": "Makes a file that does not exist yet. **Not built** — M19.", "example": ""},
-"1 6 2 2": {"query": "satellite.help(satellite.variable.file)", "prose": "Opens a file that does. **Not built** — M19.", "example": ""},
-"1 6 2 3": {"query": "satellite.help(satellite.variable.file)", "prose": "Reads one line. **Not built** — M19.", "example": ""},
-"1 6 2 4": {"query": "satellite.help(satellite.variable.file)", "prose": "Writes one line. **Not built** — M19.", "example": ""},
-"1 6 2 5": {"query": "satellite.help(satellite.variable.file)", "prose": "Reads the whole file at once. **Not built** — M19.", "example": ""},
-"1 6 2 6": {"query": "satellite.help(satellite.variable.file)", "prose": "Closes it. **Not built** — M19.", "example": ""},
-"1 6 2 7": {"query": "satellite.help(satellite.variable.file)", "prose": "Answers whether the file is there. **Not built** — M19.", "example": ""},
-
-"1 6 3": {
+ },
+ "1 6 2 0": {
+  "query": "satellite.help(satellite.variable.file)",
+  "prose": "The bare shape. **Not built** — M19.",
+  "example": ""
+ },
+ "1 6 2 1": {
+  "query": "satellite.help(satellite.variable.file)",
+  "prose": "Makes a file that does not exist yet. **Not built** — M19.",
+  "example": ""
+ },
+ "1 6 2 2": {
+  "query": "satellite.help(satellite.variable.file)",
+  "prose": "Opens a file that does. **Not built** — M19.",
+  "example": ""
+ },
+ "1 6 2 3": {
+  "query": "satellite.help(satellite.variable.file)",
+  "prose": "Reads one line. **Not built** — M19.",
+  "example": ""
+ },
+ "1 6 2 4": {
+  "query": "satellite.help(satellite.variable.file)",
+  "prose": "Writes one line. **Not built** — M19.",
+  "example": ""
+ },
+ "1 6 2 5": {
+  "query": "satellite.help(satellite.variable.file)",
+  "prose": "Reads the whole file at once. **Not built** — M19.",
+  "example": ""
+ },
+ "1 6 2 6": {
+  "query": "satellite.help(satellite.variable.file)",
+  "prose": "Closes it. **Not built** — M19.",
+  "example": ""
+ },
+ "1 6 2 7": {
+  "query": "satellite.help(satellite.variable.file)",
+  "prose": "Answers whether the file is there. **Not built** — M19.",
+  "example": ""
+ },
+ "1 6 3": {
   "query": "satellite.help(satellite.variable.time)",
   "prose": "A moment, held as a value.\n\n**Not built as a type.** `satellite.time.now()` answers the clock today,\nbut there is no declared time variable to keep one in yet. M29 is the\ncalendar milestone that decides what a time value can be.",
   "example": ""
-},
-"1 6 3 0": {"query": "satellite.help(satellite.variable.time)", "prose": "The bare shape. **Not built** — M29.", "example": ""},
-
-"1 6 5": {"query": "satellite.help(satellite.variable.binary)", "prose": "A number written in base two.\n\n**Not built.** The path is numbered and no milestone has reached it.", "example": ""},
-"1 6 7": {"query": "satellite.help(satellite.variable.date)", "prose": "A calendar date, apart from a moment in time.\n\n**Not built** — M29 is the calendar.", "example": ""},
-"1 6 8": {"query": "satellite.help(satellite.variable.duration)", "prose": "A length of time rather than a point in it.\n\n**Not built** — M29 is the calendar.", "example": ""},
-"1 6 9": {"query": "satellite.help(satellite.variable.expression)", "prose": "An expression held as a value, to be evaluated later.\n\n**Not built.** The path is numbered and no milestone has reached it.", "example": ""},
-"1 6 11": {"query": "satellite.help(satellite.variable.hex)", "prose": "A number written in base sixteen. It has a second spelling,\n`satellite.variable.hexadecimal`, which is the same node.\n\n**Not built.** The path is numbered and no milestone has reached it.", "example": ""},
-"1 6 12": {"query": "satellite.help(satellite.variable.network)", "prose": "A network connection held as a value.\n\n**Not built** — M27 is the network.", "example": ""},
-"1 6 15": {"query": "satellite.help(satellite.variable.window)", "prose": "A window on the screen, held as a value.\n\n**Not built** — M24 is windows.", "example": ""},
-"1 6 16": {"query": "satellite.help(satellite.variable.capsule)", "prose": "A capsule held as a value, so it can be passed to another one.\n\n**Not built.** The path is numbered and no milestone has reached it.", "example": ""},
-
-"1 6 13": {
+ },
+ "1 6 3 0": {
+  "query": "satellite.help(satellite.variable.time)",
+  "prose": "The bare shape. **Not built** — M29.",
+  "example": ""
+ },
+ "1 6 5": {
+  "query": "satellite.help(satellite.variable.binary)",
+  "prose": "A number written in base two.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+  "example": ""
+ },
+ "1 6 7": {
+  "query": "satellite.help(satellite.variable.date)",
+  "prose": "A calendar date, apart from a moment in time.\n\n**Not built** — M29 is the calendar.",
+  "example": ""
+ },
+ "1 6 8": {
+  "query": "satellite.help(satellite.variable.duration)",
+  "prose": "A length of time rather than a point in it.\n\n**Not built** — M29 is the calendar.",
+  "example": ""
+ },
+ "1 6 9": {
+  "query": "satellite.help(satellite.variable.expression)",
+  "prose": "An expression held as a value, to be evaluated later.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+  "example": ""
+ },
+ "1 6 11": {
+  "query": "satellite.help(satellite.variable.hex)",
+  "prose": "A number written in base sixteen. It has a second spelling,\n`satellite.variable.hexadecimal`, which is the same node.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+  "example": ""
+ },
+ "1 6 12": {
+  "query": "satellite.help(satellite.variable.network)",
+  "prose": "A network connection held as a value.\n\n**Not built** — M27 is the network.",
+  "example": ""
+ },
+ "1 6 15": {
+  "query": "satellite.help(satellite.variable.window)",
+  "prose": "A window on the screen, held as a value.\n\n**Not built** — M24 is windows.",
+  "example": ""
+ },
+ "1 6 16": {
+  "query": "satellite.help(satellite.variable.capsule)",
+  "prose": "A capsule held as a value, so it can be passed to another one.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+  "example": ""
+ },
+ "1 6 13": {
   "query": "satellite.help(satellite.variable.thread)",
   "prose": "A line of execution running beside the others.\n\n**Not built** — M23 is threads. The arena the evaluator walks is built to\nmake this possible without locking, but nothing starts one yet.",
   "example": ""
-},
-"1 6 13 0": {"query": "satellite.help(satellite.variable.thread)", "prose": "The bare shape. **Not built** — M23.", "example": ""},
-"1 6 13 1": {"query": "satellite.help(satellite.variable.thread)", "prose": "Starts the thread running. **Not built** — M23.", "example": ""},
-"1 6 13 2": {"query": "satellite.help(satellite.variable.thread)", "prose": "Waits for it to finish. **Not built** — M23.", "example": ""}
+ },
+ "1 6 13 0": {
+  "query": "satellite.help(satellite.variable.thread)",
+  "prose": "The bare shape. **Not built** — M23.",
+  "example": ""
+ },
+ "1 6 13 1": {
+  "query": "satellite.help(satellite.variable.thread)",
+  "prose": "Starts the thread running. **Not built** — M23.",
+  "example": ""
+ },
+ "1 6 13 2": {
+  "query": "satellite.help(satellite.variable.thread)",
+  "prose": "Waits for it to finish. **Not built** — M23.",
+  "example": ""
+ }
 }

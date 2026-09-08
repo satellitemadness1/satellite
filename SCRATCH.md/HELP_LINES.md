@@ -19,14 +19,16 @@ things that were plainly stated and plainly wrong. `console.typed()` answers the
 line itself or nothing rather than a yes-or-no. `floor`, `ceil`, `round` and
 `truncate` are number methods and refuse a float. `power` answers a float.
 A quoted word inside `list.remove` is read as an option name and not as a value.
+And `satellite.returns` is optional rather than required, which is corrected at
+`1 21` and taken back out of every example.
 
 The mark comes from walking the trie with every module's handlers installed.
 `H` means a handler row exists and a call to it runs today, which is **106 of
 the 264**. A dot means nothing is behind it yet, which is the other **158**.
 
 **A dot is not the same as undocumented, and that is the trap in this list.**
-The front-end words — `include`, `capsule`, `main`, `return`, `returns`,
-`statement` and every type name — are all dotted, because the parser and the
+The front-end words — `include`, `capsule`, `main`, `return`, `statement`
+and every type name — are all dotted, because the parser and the
 resolver recognise them and they are never dispatched. They are the words the
 language is written in. Hello world uses seven paths and exactly one of them,
 `satellite.console.display`, is a handler row.
@@ -73,9 +75,9 @@ outside any capsule, and nothing is returned by it.
     satellite.include(satellite)
 
     satellite.capsule satellite.main()
-        {
+    {
         satellite.console.display("the language is in scope")
-        }
+    }
 
 .  `1 1 0`  `satellite.include()`
 > satellite.help(satellite.include)
@@ -91,9 +93,9 @@ empty argument list here.
     satellite.include(satellite)
 
     satellite.capsule satellite.main()
-        {
+    {
         satellite.console.display("the empty one included nothing")
-        }
+    }
 
 .  `1 1 1`  `satellite.include(satellite)`
 > satellite.help(satellite.include)
@@ -110,9 +112,9 @@ name there.
     satellite.include(satellite)
 
     satellite.capsule satellite.main()
-        {
+    {
         satellite.console.display("Hello, World!")
-        }
+    }
 
 .  `1 1 2`  `satellite.include(spaceship)`
 > satellite.help(satellite.include)
@@ -134,14 +136,13 @@ Declares a capsule, which is what this language calls a function. The
 name you give it is yours, the parameters are typed, and the body is a
 block in braces on the lines below.
 
-A capsule that is going to answer with a value says so with
-`satellite.returns`. One that falls off the end of its body has simply
-finished, and needs no return at all.
+A capsule hands a value back with `satellite.return`. One that falls off
+the end of its body has simply finished, and needs no return at all.
 
     satellite.capsule announce(satellite.variable.string what)
-        {
+    {
         satellite.console.display(what)
-        }
+    }
 
 .  `1 2 0`  `satellite.capsule()`
 > satellite.help(satellite.capsule)
@@ -154,10 +155,10 @@ A capsule can call itself, and each call gets its own frame, so the
 parameters of the call in progress are never the ones the caller is
 holding.
 
-    satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)
-        {
+    satellite.capsule double_it(satellite.variable.number n)
+    {
         satellite.return(n * 2)
-        }
+    }
 
     satellite.console.display(double_it(21))
 
@@ -171,14 +172,24 @@ Where the program starts. Every program declares exactly one, written as
 a capsule whose name is `satellite.main`, and running the file runs its
 body from the first line to the last.
 
-It is the one capsule you do not call yourself.
+You do not normally call it, because the interpreter does that for you —
+and **calling it by name is refused today**. `satellite.main()` written as
+a call answers that the path has a number and nothing behind it, and
+`satl --call` cannot find it under either spelling. To run its work twice,
+put that work in a capsule of your own and call that from both places.
 
     satellite.include(satellite)
 
-    satellite.capsule satellite.main()
-        {
+    satellite.capsule the_work()
+    {
         satellite.console.display("Hello, World!")
-        }
+    }
+
+    satellite.capsule satellite.main()
+    {
+        the_work()
+        the_work()
+    }
 
 .  `1 3 0`  `satellite.main()`
 > satellite.help(satellite.main)
@@ -194,9 +205,9 @@ none prints `[]`.
     satellite.include(satellite)
 
     satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
-        {
+    {
         satellite.console.display(arguments)
-        }
+    }
 
 
 ## container
@@ -816,9 +827,9 @@ What comes back is the line itself and not a yes-or-no, so hold it in a
 
     satellite.variable.variant line = satellite.console.typed()
     satellite.statement.if (line.holds("nothing"))
-        {
+    {
         satellite.console.display("nobody has typed yet")
-        }
+    }
 
 H  `1 5 6`  `satellite.console.width`  _M14_
 > satellite.help(satellite.console.width)
@@ -939,9 +950,9 @@ empty string is not itself false.
 
     satellite.variable.string answer = ""
     satellite.statement.if (answer.empty())
-        {
+    {
         satellite.console.display("nothing was typed")
-        }
+    }
 
 H  `1 6 1 3`  `satellite.variable.string.find(x)`  _M11_
 > satellite.help(satellite.variable.string.find)
@@ -964,9 +975,9 @@ than comparing a position against a number.
 
     satellite.variable.string line = "bolt,nut,washer"
     satellite.statement.if (line.contains("nut"))
-        {
+    {
         satellite.console.display("found it")
-        }
+    }
 
 H  `1 6 1 5`  `satellite.variable.string.substring(start, end)`  _M11_
 > satellite.help(satellite.variable.string.substring)
@@ -990,9 +1001,9 @@ first.
 
     satellite.variable.string line = "error: something went wrong"
     satellite.statement.if (line.starts_with("error"))
-        {
+    {
         satellite.console.display("that is a complaint")
-        }
+    }
 
 H  `1 6 1 7`  `satellite.variable.string.ends_with(x)`  _M11_
 > satellite.help(satellite.variable.string.ends_with)
@@ -1004,9 +1015,9 @@ idea of an extension.
 
     satellite.variable.string name = "program.satl"
     satellite.statement.if (name.ends_with(".satl"))
-        {
+    {
         satellite.console.display("that is satellite source")
-        }
+    }
 
 H  `1 6 1 8`  `satellite.variable.string.lower`  _M11_
 > satellite.help(satellite.variable.string.lower)
@@ -1400,9 +1411,9 @@ the type, and `satellite.bool`, which is the pair of constants.
 
     satellite.variable.bool ready = satellite.bool.true
     satellite.statement.if (ready)
-        {
+    {
         satellite.console.display("ready")
-        }
+    }
 
 .  `1 6 7`  `satellite.variable.date`
 > satellite.help(satellite.variable.date)
@@ -1843,9 +1854,9 @@ this language is written.
 
     satellite.variable.bool ready = satellite.bool.true
     satellite.statement.if (ready)
-        {
+    {
         satellite.console.display("go")
-        }
+    }
 
 .  `1 13 0`  `satellite.statement()`
 > satellite.help(satellite.statement)
@@ -1867,9 +1878,9 @@ is not false. Compare something, or hold a bool, and the test is honest.
 
     satellite.variable.number count = 3
     satellite.statement.if (count > 0)
-        {
+    {
         satellite.console.display("there is at least one")
-        }
+    }
 
 .  `1 13 2`  `satellite.statement.for`
 > satellite.help(satellite.statement.for)
@@ -1883,9 +1894,9 @@ it.
 
     satellite.variable.number total = 0
     satellite.statement.for (satellite.variable.number i = 0; i < 5; i = i + 1)
-        {
+    {
         total = total + i
-        }
+    }
     satellite.console.display(total)
 
 .  `1 13 3`  `satellite.statement.while`
@@ -1900,10 +1911,10 @@ loop does not end. Ctrl-C stops one that does not.
 
     satellite.variable.number countdown = 3
     satellite.statement.while (countdown > 0)
-        {
+    {
         satellite.console.display(countdown)
         countdown = countdown - 1
-        }
+    }
 
 .  `1 13 4`  `satellite.statement.else`
 > satellite.help(satellite.statement.else)
@@ -1916,13 +1927,13 @@ closing brace.
 
     satellite.variable.bool loud = satellite.bool.false
     satellite.statement.if (loud)
-        {
+    {
         satellite.console.display("loud is true")
-        }
+    }
     satellite.statement.else
-        {
+    {
         satellite.console.display("loud is false")
-        }
+    }
 
 
 ## library
@@ -2106,14 +2117,14 @@ A capsule that runs off the end of its body has finished on its own, so
 this is only needed when you want to leave early or to answer with
 something.
 
-    satellite.capsule biggest(satellite.variable.number a, satellite.variable.number b) satellite.returns(satellite.variable.number)
-        {
+    satellite.capsule biggest(satellite.variable.number a, satellite.variable.number b)
+    {
         satellite.statement.if (a > b)
-            {
+        {
             satellite.return(a)
-            }
-        satellite.return(b)
         }
+        satellite.return(b)
+    }
 
     satellite.console.display(biggest(3, 9))
 
@@ -2128,10 +2139,10 @@ It is the shape to use for an early exit out of a loop's enclosing
 capsule.
 
     satellite.capsule announce(satellite.variable.string what)
-        {
+    {
         satellite.console.display(what)
         satellite.return()
-        }
+    }
 
     announce("done")
 
@@ -2148,25 +2159,24 @@ and not a value you are returning, so nothing is handed back.
     satellite.include(satellite)
 
     satellite.capsule satellite.main()
-        {
+    {
         satellite.console.display("Hello, World!")
         satellite.return(satellite)
-        }
+    }
 
 .  `1 15 2`  `satellite.return(value)`
 > satellite.help(satellite.return)
 
-Hands a value back to the caller. The capsule has to have declared what
-kind of value with `satellite.returns`, and the value you give has to be
-of that kind.
+Hands a value back to the caller.
 
 Anything can go here that is a value: a literal, a name, or the answer to
-another call.
+another call. Nothing has to be declared in advance for it to work — a
+capsule that returns a value needs no announcement on its head line.
 
-    satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)
-        {
+    satellite.capsule double_it(satellite.variable.number n)
+    {
         satellite.return(n * 2)
-        }
+    }
 
     satellite.console.display(double_it(21))
 
@@ -2214,13 +2224,13 @@ nothing declares it.
 
     satellite.variable.bool loud = satellite.bool.false
     satellite.statement.if (loud)
-        {
+    {
         satellite.console.display("loud is true")
-        }
+    }
     satellite.statement.else
-        {
+    {
         satellite.console.display("loud is false")
-        }
+    }
 
 H  `1 17 2`  `satellite.bool.true`  _M11_
 > satellite.help(satellite.bool.true)
@@ -2233,10 +2243,10 @@ to.
 
     satellite.variable.bool ready = satellite.bool.true
     satellite.statement.while (ready)
-        {
+    {
         satellite.console.display("once")
         ready = satellite.bool.false
-        }
+    }
 
 
 ## directory
@@ -2293,14 +2303,23 @@ The parentheses are optional when you want everything. Write a path in
 them to ask about one part of the language, or the name of one of your own
 variables to ask about its type.
 
+    satellite.help
+
 .  `1 19 0`  `satellite.help()`
 > satellite.help(satellite.help)
 
-Everything, from the root down: the modules that are built, and what each
-one is for.
+Everything, from the root down: the topics that are built, one to a line.
+
+Each line is indented one tab and carries the topic's path and a sentence
+saying what it is, and the lines are separated by a blank one so a long
+list stays readable on a narrow terminal. **Only what is built is
+listed** — a path no milestone has reached is not offered as somewhere to
+go.
 
 This is the one to type when you do not yet know the name of the thing you
-are looking for.
+are looking for. Then ask about a topic by its path.
+
+    satellite.help()
 
 .  `1 19 1`  `satellite.help(x)`
 > satellite.help(satellite.help)
@@ -2316,6 +2335,8 @@ declared it has finished.
 **Nothing between the parentheses is evaluated.** The argument is a path
 or a name, never a value, so asking about a module does not try to call
 it.
+
+    satellite.help(satellite.console)
 
 
 ## network
@@ -2375,17 +2396,19 @@ M27.
 .  `1 21`  `satellite.returns`
 > satellite.help(satellite.returns)
 
-Declares what kind of value a capsule answers with. It goes on the
-capsule's own line, after the parameters and before the brace.
+An optional note on a capsule's head line saying what kind of value it
+hands back, written after the parameters and before the brace.
 
-A capsule without it answers with nothing, and writing
-`satellite.return(value)` inside one is refused. It is the promise the
-return has to keep.
+**It is optional and it is not how capsules are written here.** A capsule
+without it returns values perfectly well, no file under `example/` uses
+it, and DESIGN calls it optional where it specifies it. What you actually
+write is `satellite.return(value)` in the body, and in
+`satellite.main` that is `satellite.return(satellite)` on the last line.
 
-    satellite.capsule name_of(satellite.variable.number n) satellite.returns(satellite.variable.string)
-        {
+    satellite.capsule name_of(satellite.variable.number n)
+    {
         satellite.return(n.to_string())
-        }
+    }
 
     satellite.console.display(name_of(7))
 
