@@ -71,16 +71,29 @@ void section_spellings()
 
     // -- The lexer's half of the spelling table (PLAN M3) ------------------
     //
-    // words::intern() knows the nodes and not the aliases. Resolving the six
+    // words::intern() knows the nodes and not the aliases. Resolving the seven
     // spellings of `arguments` to ONE id is what makes DESIGN §7.7's "one node,
-    // six spellings" true of the token stream rather than only of words.def.
+    // seven spellings" true of the token stream rather than only of words.def.
+    //
+    // `argv` IS THE SEVENTH AND IT IS IN THIS LIST BECAUSE THE AUTHOR ADDED THE
+    // ALIAS ROW ON 2026-09-09. Until then it was the worked example of the name
+    // that ALMOST means the object and got S0531 instead; §7.7 named adding the
+    // row as the author's own call, and this line is what says the row took
+    // effect all the way down to the token stream.
     {
         const words::SpellingId canonical = spelling_of_source("arguments");
         check(canonical != words::kNoSpelling, "arguments is a spelling");
-        const char *const spellings[] = {"arg", "args", "argz", "argument", "argumentz"};
+        const char *const spellings[] = {"arg",       "args",      "argz",
+                                         "argument",  "argumentz", "argv"};
         for (const char *spelling : spellings)
             check(spelling_of_source(spelling) == canonical,
                   std::string("§7.7: ") + spelling + " is a spelling of arguments");
+
+        // AND A NEAR MISS IS STILL A NEAR MISS, which is the half of S0531 that
+        // survived the reversal. If this ever ties to `canonical`, somebody has
+        // widened the alias rows into a prefix rule.
+        check(spelling_of_source("argvs") != canonical,
+              "§7.7: argvs is NOT a spelling of arguments -- S0531's job");
     }
 
     // WORD_NUMBERS §2.3's other lexical alias.

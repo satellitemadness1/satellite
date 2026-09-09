@@ -617,12 +617,29 @@ An alias is not a second word and does not take a second number:
 |---|---|
 | `satellite.random.fast.range(min, max)` | the number of `satellite.random.fast(min, max)` |
 | `satellite.variable.hexadecimal` | the number of `satellite.variable.hex` |
-| `arg` `args` `argz` `argument` `arguments` `argumentz` | one node, six spellings (DESIGN §7.7) |
+| `arg` `args` `argz` `argument` `arguments` `argumentz` `argv` | one node, **seven** spellings (DESIGN §7.7) — `argv` added 2026-09-09 |
 
 DESIGN §4.4 describes the opposite arrangement — two nodes sharing one piece of
 text, as `list` under `container` and `list` under `directory` do. **Both
 directions are real** and the spelling table has to hold each: deduplication is
 many-nodes-one-string, aliasing is one-node-many-strings.
+
+**`argv` is the seventh and it is the only row here the author added after the
+fact.** DESIGN §7.7 closed this question the other way at M7, on 2026-08-31:
+the seventh spelling was *refused* rather than silently plain, and S0531 told a
+parameter named `argv` that it was one edit from `arg`. §7.7 also named the one
+door a reversal could come through — *"adding `argv` to `words.def` would make
+it work and is an edit to the numbering, which WORD_NUMBERS.md is the authority
+over and which is the **author's** to make rather than a milestone's to take in
+passing"* — and on **2026-09-09** the author walked through it, having written
+`argv` in a program and been refused by their own interpreter. That is §7.7's
+*"people type what they type"* with the language's author as the witness, and
+it is the reason this table has seven spellings in its third row and not six.
+
+**S0531 keeps its number and its job.** It fires for `argu`, `arrgs`, `argvs`
+and every other near miss; one of its examples became a spelling, which is not
+the same as the code becoming wrong. Because the suggester reads the alias rows,
+adding one here grows the list it offers with no edit to the resolver.
 
 ### 2.4 Four numbers assigned 2026-08-28, and by whom
 

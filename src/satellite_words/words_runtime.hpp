@@ -95,7 +95,7 @@ public:
         // THE ALIASES COUNT AS THE LANGUAGE OWNING THE SPELLING, and leaving
         // them out made the comment above this function false. Found by review
         // 2026-08-28: `intern(satellite.library.main, "args")` allocated a USER
-        // number, 1 14 1 2, for one of DESIGN §7.7's six spellings of
+        // number, 1 14 1 2, for one of DESIGN §7.7's seven spellings of
         // `arguments` -- while walk() answered 1 14 1 1 for the same spelling
         // under the same parent. Two numbers for one word, and the half that
         // was wrong is the half a parser would have called.

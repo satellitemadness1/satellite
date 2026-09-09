@@ -133,7 +133,7 @@
 //      39   SAT_BARE       36 `(0)` markers plus those 3 rows
 //     ---
 //     269   nodes, each with a PathId
-//       9   SAT_ALIAS      3 `.range`, `hexadecimal`, 5 spellings of `arguments`
+//      10   SAT_ALIAS      3 `.range`, `hexadecimal`, 6 spellings of `arguments`
 //
 // AND FOUR SMALL LISTS OVER THOSE NODES, each a fact about a word that one pass
 // needs and no other, declared on the word rather than legislated from the pass:
@@ -584,7 +584,7 @@ SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_0,   "()",                        SAT_BA
 SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_NEW, "new(title, width, height)", SAT_NUMBERED)  // 1 24 2 1
 
 // --- the aliases ------------------------------------------------------------
-// WORD_NUMBERS §2.3, in full. Nine spellings over five nodes, and the whole of
+// WORD_NUMBERS §2.3, in full. Ten spellings over five nodes, and the whole of
 // the language's aliasing: every one of the 218-versus-215 and 227-versus-224
 // disagreements across these documents is the first three rows and nothing else.
 //
@@ -601,20 +601,39 @@ SAT_ALIAS(RANDOM_ULTRA_MIN_MAX,  "ultra.range(min, max)")    // 1 7 11
 // DESIGN §8.5 gives them literals, and a literal is lexed.
 SAT_ALIAS(VARIABLE_HEX, "hexadecimal")                       // 1 6 11
 
-// DESIGN §7.7's six spellings of the one library global. Five here; `arguments`
-// is the node's own text and is not repeated.
+// DESIGN §7.7's seven spellings of the one library global. Six here;
+// `arguments` is the node's own text and is not repeated.
 //
 // THE ONE PLACE A BARE IDENTIFIER IS LANGUAGE-OWNED, which DESIGN §1's
 // generating rule otherwise forbids. The rule survives because the user still
 // writes the name: the language does not introduce `arguments`, it RECOGNISES
 // the name the user chose for satellite.main's parameter when it is one of the
-// six. §7.7 leaves open what happens to a seventh -- `argv` gets a plain list
-// with no properties, silently, and DESIGN §9 says that silence is wrong.
+// seven.
+//
+// `argv` IS THE SEVENTH AND IT WAS ADDED ON 2026-09-09, BY THE AUTHOR, WHICH
+// IS THE ONLY WAY IT COULD HAVE BEEN ADDED. §7.7 had settled the question the
+// other way at M7: the seventh was refused rather than silently plain, and
+// S0531 told a program named `argv` that it was one edit from `arg`. That was
+// the right answer to "what happens to a name that ALMOST means the object"
+// and the wrong answer to this name, and §7.7 said which door the fix comes
+// through -- "adding `argv` to words.def would make it work and is an edit to
+// the numbering, which WORD_NUMBERS.md is the authority over and which is the
+// AUTHOR'S to make rather than a milestone's to take in passing." It was made
+// after the author wrote a program with `argv` in it and had to be told by the
+// interpreter that satellite does not accept the spelling every C program on
+// earth uses -- which is §7.7's own "people type what they type" with the
+// language's author as the witness.
+//
+// S0531 IS NOT DEAD AND MUST NOT BE DELETED. It still fires for `argu`,
+// `arrgs`, `argvs` and every other near miss; what changed is that one of its
+// examples became a spelling. An alias row is how a spelling is added, so the
+// suggester's list grows here with no edit to the resolver at all.
 SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "arg")                     // 1 14 1 1
 SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "args")
 SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argz")
 SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argument")
 SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argumentz")
+SAT_ALIAS(LIBRARY_MAIN_ARGUMENTS, "argv")
 
 // --- the place parameters ----------------------------------------------------
 //

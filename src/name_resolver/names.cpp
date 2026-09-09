@@ -20,8 +20,47 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace satellite::resolve {
+
+namespace {
+
+// Every spelling of the arguments object, as a sentence -- READ OUT OF THE
+// REGISTRY AND NOT WRITTEN HERE. S0531's `{1}`.
+//
+// THIS FUNCTION EXISTS BECAUSE THE LIST WAS A STRING LITERAL AND IT WENT STALE
+// THE HOUR `argv` WAS ADDED. On 2026-09-09 the author added the seventh
+// spelling; words.def, WORD_NUMBERS §2.3, DESIGN §7.7, the lexer's spelling
+// table and four test files all moved, the alias resolved end to end -- and
+// S0531 went on listing six, because this one call site held the sentence as
+// text. THE ERROR WHOSE ENTIRE JOB IS TO NAME THE ACCEPTED SPELLINGS WAS THE
+// LAST THING IN THE TREE THAT DID NOT KNOW ONE HAD BEEN ACCEPTED, and it was
+// found by running the program rather than by any of the fourteen suites --
+// none of them reads the sentence, they read the code.
+//
+// So the list is built from `words::kAliases` plus the node's own text. An
+// alias row added to words.def shows up here with no edit at all, which is
+// what the comment at the call site had been claiming before it was true.
+std::string accepted_spellings()
+{
+    std::vector<std::string_view> spellings;
+    spellings.push_back(words::text_of(words::NodeId::LIBRARY_MAIN_ARGUMENTS));
+    for (size_t i = 0; i < words::kAliasCount; i++)
+        if (words::kAliases[i].of == words::NodeId::LIBRARY_MAIN_ARGUMENTS)
+            spellings.push_back(words::kAliases[i].text);
+
+    // "a, b or c" -- `or` and not `and`, because exactly one of them is written.
+    std::string sentence;
+    for (size_t i = 0; i < spellings.size(); i++) {
+        if (i != 0)
+            sentence += (i + 1 == spellings.size()) ? " or " : ", ";
+        sentence += spellings[i];
+    }
+    return sentence;
+}
+
+} // namespace
 
 void Resolver::name(NodeIndex node)
 {
@@ -355,7 +394,7 @@ void Resolver::main_parameter(NodeIndex decl, std::string_view spelling,
     // machine it woke up on" -- `satellite.main`'s parameter, and no other. A
     // capsule of the user's own with a parameter called `args` is holding
     // whatever its caller passed, and the M6 draft's version -- which
-    // recognises the six spellings in every capsule -- would give that
+    // recognises the seven spellings in every capsule -- would give that
     // parameter the machine's answers instead. That is DESIGN §1.1's "behind
     // their back" with the wrong value in the variable.
     if (frame_ == nullptr ||
@@ -375,22 +414,24 @@ void Resolver::main_parameter(NodeIndex decl, std::string_view spelling,
         return;
     }
 
-    // DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named
-    // `argv` gets a plain list with no properties, silently. Under §9 that
-    // silence is wrong -- the language should say so." It is said here and
-    // ONLY where somebody plainly meant the object: the suggester has to come
-    // back with one of the six first, so `argv` is refused and `input_lines` is
-    // an ordinary list and is left alone. A rule and not a seventh spelling --
-    // adding one is an edit to words.def, which is WORD_NUMBERS' authority and
-    // the author's decision rather than this milestone's.
+    // DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named X
+    // gets a plain list with no properties, silently. Under §9 that silence is
+    // wrong -- the language should say so." It is said here and ONLY where
+    // somebody plainly meant the object: the suggester has to come back with
+    // one of the spellings first, so `argvs` is refused and `input_lines` is an
+    // ordinary list and is left alone.
+    //
+    // `argv` WAS THIS ERROR'S WORKED EXAMPLE UNTIL 2026-09-09 AND IS NOW A
+    // SPELLING, added to words.def by the author as §7.7 said only the author
+    // could. The rule did not change; which side of it `argv` sits on did.
     const std::string_view near =
         errors::suggest(static_cast<words::PathId>(words::NodeId::LIBRARY_MAIN),
                         spelling);
     if (near.empty() || near == "()")
         return;
 
-    problem<errors::Code::RESOLVE_ALMOST_ARGUMENTS>(
-        decl, "arg, args, argz, argument, arguments or argumentz", spelling);
+    problem<errors::Code::RESOLVE_ALMOST_ARGUMENTS>(decl, accepted_spellings(),
+                                                    spelling);
     suggest(near);
 }
 

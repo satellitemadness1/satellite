@@ -132,7 +132,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     // handover PLAN asks this milestone to write down rather than leave to be
     // discovered. The VALUE here is an ordinary empty list. The NAME
     // `arguments` is DESIGN §7.7's object as far as resolve is concerned --
-    // names.cpp routes any of its six spellings there -- so `arguments.size()`
+    // names.cpp routes any of its seven spellings there -- so `arguments.size()`
     // is S0532 naming what §7.7 holds, and not a list method, today and after
     // M20 alike. A program that wants the list itself passes `arguments` on;
     // a program that wants the machine's answers waits for M20. Both halves

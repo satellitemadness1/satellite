@@ -166,21 +166,48 @@ NodeIndex Parser::spacesuit_decl()
     if (panic_)
         return kNoNode;
 
-    // `[ "(" IDENT ")" ]` -- the superclass, and the parentheses are all or
-    // nothing. An empty pair is not the grammar's form for "no superclass";
-    // leaving them out is.
+    // `[ "(" [ IDENT ] ")" ]` -- the superclass. AN EMPTY PAIR AND NO PAIR AT
+    // ALL BOTH MEAN "no superclass", because both mean exactly one thing.
+    //
+    // THE EMPTY PAIR WAS REFUSED UNTIL 2026-09-09 AND THE AUTHOR OVERRULED IT,
+    // having written `test_class()` and `my_superclass():` in two files days
+    // apart -- which is precisely the evidence DESIGN §7.7 means by "people
+    // type what they type". Its rule for the seven spellings of `arguments` is
+    // this rule one level up: a language whose tie-breaker is do absolutely
+    // everything for the user does not refuse a form whose meaning is not in
+    // doubt. MILESTONES/M4.md §6 and tests/parser_test/roundtrip.cpp had both
+    // recorded the refusal as a fact about example/class_test.satl; it was a
+    // fact about this function, and the file parses now.
+    //
+    // WHAT IS STILL REFUSED IS EVERY FORM THAT MEANS NOTHING DEFINITE -- a `(`
+    // with no `)`, and a second name inside the pair, which would be multiple
+    // inheritance and is not designed (DESIGN §13 defers even `super(...)`).
+    // Accepting what is unambiguous is service; accepting what is broken only
+    // moves the error somewhere worse and costs the reader §4.6's suggester.
     NodeIndex super = kNoNode;
     if (at_punct("(")) {
         const uint32_t opener = here();
         advance();
-        const uint32_t super_name = expect_word("the name of the spacesuit this "
-                                                "one extends");
-        if (panic_)
-            return kNoNode;
-        super = ast_.add(NodeKind::Name, super_name);
+        if (!at_punct(")")) {
+            const uint32_t super_name = expect_word(
+                "the name of the spacesuit this one extends, or `)` for none");
+            if (panic_)
+                return kNoNode;
+            super = ast_.add(NodeKind::Name, super_name);
+        }
         if (!expect_punct(")", "to close the superclass", opener))
             return kNoNode;
     }
+
+    // A TRAILING `:` IS ACCEPTED AND MEANS NOTHING. The author writes it --
+    // `satellite.spacesuit my_superclass():` is example/class_test.satl's own
+    // fourth line -- and it is the habit of a language where the colon opens
+    // the block. Here the `{` on the next line opens it, so the colon carries
+    // no information, changes no program by its absence, and is dropped rather
+    // than stored: unparse() prints the canonical form and the round trip is a
+    // fixpoint on the second pass, which is what unparse.hpp asks of it.
+    if (at_punct(":"))
+        advance();
 
     const ListId items = suit_body(path);
     if (panic_)

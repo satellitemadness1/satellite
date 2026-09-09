@@ -47,7 +47,7 @@ milestone and shows no example.** Writing a worked line for
 `satellite.network.https` would be inventing the language, which is the thing
 help exists to stop.
 
-The nine aliases carry no entry of their own. Each shares a node with a path
+The ten aliases carry no entry of their own. Each shares a node with a path
 already listed, and help answers for the node.
 
 ---
@@ -2500,8 +2500,8 @@ The arguments object: the command line, and the facts about the machine
 and the person running the program.
 
 **The name is yours.** It is reached through whatever you called the
-parameter on `satellite.main`, and six spellings are accepted for it —
-`arguments`, `argument`, `argumentz`, `args`, `argz` and `arg`. **Not
+parameter on `satellite.main`, and seven spellings are accepted for it —
+`arguments`, `argument`, `argumentz`, `args`, `argz`, `arg` and `argv`. **Not
 built** — the list of command-line words works today, and everything under
 it refuses until M20.
 

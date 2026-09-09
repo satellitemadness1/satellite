@@ -2450,8 +2450,8 @@ SAT_HELP(LIBRARY_MAIN_ARGUMENTS, LIBRARY_MAIN_ARGUMENTS,
          "and the person running the program.\n"
          "\n"
          "**The name is yours.** It is reached through whatever you called the\n"
-         "parameter on `satellite.main`, and six spellings are accepted for it —\n"
-         "`arguments`, `argument`, `argumentz`, `args`, `argz` and `arg`. **Not\n"
+         "parameter on `satellite.main`, and seven spellings are accepted for it —\n"
+         "`arguments`, `argument`, `argumentz`, `args`, `argz`, `arg` and `argv`. **Not\n"
          "built** — the list of command-line words works today, and everything under\n"
          "it refuses until M20."
          ,

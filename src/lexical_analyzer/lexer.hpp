@@ -161,14 +161,16 @@ std::vector<Token> lex(const SatString &source);
 std::vector<errors::Diagnostic> diagnostics_of(const std::vector<Token> &tokens);
 
 // A bare word's spelling id, aliases included -- THE LEXER'S HALF OF THE
-// SPELLING TABLE, which is what PLAN M3 owes M2's nine aliases.
+// SPELLING TABLE, which is what PLAN M3 owes M2's ten aliases.
 //
 // words::intern() knows the nodes. It does not know that `hexadecimal` is a
-// second spelling of `hex`, or that `arg` `args` `argz` `argument` and
-// `argumentz` are five more spellings of `arguments` -- DESIGN §7.7's one node
-// with six spellings, WORD_NUMBERS §2.3. Those are alias rows in words.def, and
-// resolving them to the SAME id as the word they alias is what makes "one node,
-// six spellings" true of the token stream rather than only of the registry.
+// second spelling of `hex`, or that `arg` `args` `argz` `argument` `argumentz`
+// and `argv` are six more spellings of `arguments` -- DESIGN §7.7's one node
+// with seven spellings, WORD_NUMBERS §2.3. Those are alias rows in words.def,
+// and resolving them to the SAME id as the word they alias is what makes "one
+// node, seven spellings" true of the token stream rather than only of the
+// registry. `argv` joined them on 2026-09-09 and cost this file no edit but
+// this sentence, which is the alias mechanism doing its job.
 //
 // THE THREE DOTTED ALIASES ARE NOT LEXICAL AND ARE SKIPPED HERE.
 // `fast.range(min, max)` is a rewrite of a two-segment PATH, so it cannot be

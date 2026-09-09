@@ -195,9 +195,9 @@ inline std::string fact_spelling(words::NodeId node)
 // The node a written value names, or kNoPath.
 //
 // WALKED THROUGH THE REAL TRIE AND NOT COMPARED AGAINST A STRING, which is what
-// makes all six spellings of `arguments` work here for free. DESIGN §7.7 gives
-// the special variable six names -- `arg`, `args`, `argz`, `argument`,
-// `arguments`, `argumentz` -- and words_walk.hpp already matches an alias at
+// makes all seven spellings of `arguments` work here for free. DESIGN §7.7
+// gives the special variable seven names -- `arg`, `args`, `argz`, `argument`,
+// `arguments`, `argumentz`, `argv` -- and words_walk.hpp already matches an alias at
 // every segment, so `args.machine.cores` resolves for exactly the reason it
 // resolves inside a program. A string comparison would have had to know about
 // the aliases, which is the drift this whole module is arranged to avoid.

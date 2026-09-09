@@ -103,6 +103,68 @@ void section_declarations()
         check(program.words.defined() == 1, "with the first definition standing");
     }
 
+    // -- A spacesuit's header, in every form that means one thing ------------
+    //
+    // DESIGN §6: `IDENT [ "(" [ IDENT ] ")" ] [ ":" ]`. FIVE SPELLINGS AND ONE
+    // MEANING EACH -- the empty pair and no pair at all are both "no
+    // superclass", and the trailing colon is dropped. Until 2026-09-09 only two
+    // of the five parsed; the author overruled that after writing `test_class()`
+    // and `my_superclass():` in two files days apart, which is DESIGN §7.7's
+    // "people type what they type" one level up from a spelling.
+    {
+        struct Form {
+            const char *header;
+            bool has_super;
+            const char *what;
+        };
+        const Form forms[] = {
+            {"suit",              false, "no parentheses"},
+            {"suit()",            false, "an empty pair"},
+            {"suit():",           false, "an empty pair and a colon"},
+            {"suit(base)",        true,  "a superclass"},
+            {"suit(base):",       true,  "a superclass and a colon"},
+        };
+        for (const Form &form : forms) {
+            const Program program =
+                run(std::string("satellite.spacesuit ") + form.header +
+                    "\n{\n    satellite.public\n    {\n    }\n}\n");
+            check(program.ok(), std::string("a spacesuit header with ") +
+                                    form.what + " parses: " +
+                                    program.first_error());
+            check(count_of(program.ast(), NodeKind::Spacesuit) == 1,
+                  std::string("and ") + form.what + " builds one Spacesuit");
+            // The superclass is a Name node under the suit, so its presence is
+            // the whole difference between the two halves of the table -- an
+            // empty pair must not leave one behind.
+            check((count_of(program.ast(), NodeKind::Name) > 0) == form.has_super,
+                  std::string("and ") + form.what +
+                      (form.has_super ? " keeps the superclass"
+                                      : " leaves NO superclass node"));
+        }
+    }
+
+    // -- and the header forms that are still refused -------------------------
+    //
+    // ACCEPTING WHAT IS UNAMBIGUOUS IS NOT ACCEPTING ANYTHING. Each of these
+    // means nothing definite, so each still stops at the parser where §4.6's
+    // suggester can help, rather than becoming a silent misreading later.
+    {
+        const char *const refused[] = {
+            "suit(",        // never closed
+            "suit(a b)",    // two names, no separator
+            "suit(a, b)",   // multiple inheritance -- DESIGN §13 defers super(...)
+            "(base)",       // no name for the suit itself
+        };
+        for (const char *header : refused) {
+            const Program program =
+                run(std::string("satellite.spacesuit ") + header +
+                    "\n{\n    satellite.public\n    {\n    }\n}\n");
+            check(!program.ok(), std::string("`satellite.spacesuit ") + header +
+                                     "` is still refused, and means nothing "
+                                     "definite -- that is why");
+        }
+    }
+
     // -- A spacesuit ---------------------------------------------------------
 
     {

@@ -12,11 +12,20 @@
 // in a third place: a suite that quietly passes over its own inputs reports a
 // green line about nothing.
 //
-// TWO OF THE SIX PROGRAMS IN example/ ARE NOT HERE, and that is a statement
-// about them rather than about the parser -- MILESTONES/M4.md §6 names both,
-// the constructs are `my_superclass():` and `800x600`, and neither is in
-// DESIGN §6's grammar or DESIGN §8.5's literals. They are checked below as
-// what they are: files that do not parse, with the reason pinned to the line.
+// ONE OF THE SIX PROGRAMS IN example/ DOES NOT PARSE, and that is a statement
+// about it rather than about the parser -- the construct is `800x600`, which is
+// in none of DESIGN §8.5's literals. It is checked below as what it is: a file
+// that does not parse, with the reason pinned to it.
+//
+// IT WAS TWO UNTIL 2026-09-09 AND THE OTHER ONE WAS class_test.satl. Its
+// construct was `satellite.spacesuit my_superclass():`, and this file recorded
+// that as a fact about the FILE for the length of five milestones -- MILESTONES
+// /M4.md §6 says the same. It was a fact about spacesuit_decl(): DESIGN §6 now
+// writes the superclass as `[ "(" [ IDENT ] ")" ] [ ":" ]`, the empty pair and
+// the colon both parse, and the file round-trips with the others below. THE
+// LESSON IS THE ONE THIS DIRECTORY KEEPS RELEARNING: a test that pins today's
+// refusal reads as a specification of the language, and this one outlived the
+// decision it was recording.
 
 #include "parser_test.hpp"
 
@@ -119,6 +128,12 @@ void section_roundtrip()
     round_trips(example_directory + "/advanced.satl");
     round_trips(example_directory + "/thread_test.satl");
     round_trips(example_directory + "/super_advanced.satl");
+    // THE FIFTH, SINCE 2026-09-09. It parses because the spacesuit header took
+    // its other three forms that day; it round-trips to the canonical one, so
+    // `my_superclass():` prints back as `my_superclass` and the second pass is
+    // a fixpoint. That is the printer choosing one spelling out of several the
+    // parser accepts, which is exactly unparse.hpp's job.
+    round_trips(example_directory + "/class_test.satl");
 
     // -- hello world, character for character --------------------------------
 
@@ -214,27 +229,7 @@ void section_roundtrip()
               "and DESIGN §8.5's width survives the round trip: x0009 is not x9");
     }
 
-    // -- The two files that do not parse, and why ----------------------------
-
-    {
-        std::string source;
-        if (!read_file(example_directory + "/class_test.satl", source)) {
-            check(false, "cannot read class_test.satl");
-        } else {
-            const Program program = run(source);
-            check(!program.ok(),
-                  "example/class_test.satl does NOT parse, and the construct is "
-                  "`satellite.spacesuit my_superclass():` -- DESIGN §6 writes the "
-                  "superclass as `[ \"(\" IDENT \")\" ]`, so an empty pair is not "
-                  "the form for 'no superclass' and the colon is in no rule at all");
-            // THE LINE COMES OFF THE SPAN NOW rather than off a token index --
-            // M5 replaced ParseError with errors::Diagnostic, and a span is
-            // what a caret is drawn from, so the line is a field rather than a
-            // lookup.
-            check(program.parse.errors.front().at.line == 4,
-                  "and the first error is on line 4, which is that line");
-        }
-    }
+    // -- The one file that does not parse, and why ---------------------------
 
     {
         std::string source;

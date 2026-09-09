@@ -2962,8 +2962,8 @@ that a tree whose position is its number cannot express `1 7 5` for a node named
 of M2 as specified and neither survived M2 as built: `words.def` holds **254 nodes
 and 9 aliases**, an alias is a second spelling rather than a second node, and
 "no duplicates" is by construction because a number is a position. `hexadecimal`
-and DESIGN §7.7's six spellings of `arguments` are the same mechanism at two other
-scales. What is left for this milestone is to use it and to test it, which
+and DESIGN §7.7's spellings of `arguments` — six then, seven since 2026-09-09 —
+are the same mechanism at two other scales. What is left for this milestone is to use it and to test it, which
 done-when clause 2 does.
 
 **DESIGN §11 is stale about how many shapes there are and says so nowhere, and
@@ -4357,11 +4357,19 @@ type is a node and its methods are that node's children.
   `arguments.machine.cores`. Either a code is assigned or the rule is restated, and
   this milestone must not quietly pick a side of a contradiction whose whole point
   is that these must not disagree.
-- **The seventh spelling, and `arguments[0]`.** A parameter named `argv` gets a
-  plain list with no properties, silently, and DESIGN §9 says that silence is wrong.
-  `arguments[0]` v1 already answered — `.length()` and numeric `[i]` cover the
-  command line and nothing else, so index 0 is the program name — and the author
-  only has to confirm that answer is kept.
+- ~~**The seventh spelling**~~ **— ANSWERED 2026-09-09, AND IT IS A SPELLING.**
+  This item read *"a parameter named `argv` gets a plain list with no properties,
+  silently, and DESIGN §9 says that silence is wrong"*, and M7 had already ended
+  the silence with S0531. The author ended the refusal: `argv` is an alias row in
+  `words.def` and resolves to `1 14 1 1` like the other six. **It cost one line
+  and no code**, because the suggester and the error's own sentence both read the
+  alias rows — which is the mechanism M2 built and the reason §7.7 could name
+  this as the author's call rather than a milestone's. **S0531 keeps its number**
+  and still fires for `argu`, `arrgs` and `argvs`. What this milestone inherits is
+  narrower than it was: **seven spellings to recognise instead of six.**
+- **`arguments[0]`, still open.** v1 already answered it — `.length()` and numeric
+  `[i]` cover the command line and nothing else, so index 0 is the program name —
+  and the author only has to confirm that answer is kept.
 - **The arguments object is a startup cost.** v1 builds all 33 eagerly — `uname`,
   `/etc/os-release`, `getpwuid`, `gethostname`, `getcwd`, two `readlink`s,
   `sysconf` — a dozen syscalls and a file parse against satl's own measured 0.01 ms

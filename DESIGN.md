@@ -627,7 +627,7 @@ type           := "satellite" "." type_space "." IDENT [ "<" type { "," type } "
                 | IDENT                        // a spacesuit, named bare (§13)
 type_space     := "variable" | "container"
 
-spacesuit_decl := "satellite" "." "spacesuit" IDENT [ "(" IDENT ")" ] suit_block
+spacesuit_decl := "satellite" "." "spacesuit" IDENT [ "(" [ IDENT ] ")" ] [ ":" ] suit_block
 suit_block     := "{" { suit_section | member } "}"
 suit_section   := "satellite" "." ( "protected" | "public" ) suit_block
 
@@ -1195,10 +1195,10 @@ is the §1.1 tie-breaker applied to introspection: the information is already th
 so the language hands over all of it rather than making someone ask for it one
 field at a time.
 
-#### The name is any of six spellings
+#### The name is any of seven spellings
 
-`arg`, `args`, `argz`, `argument`, `arguments` and `argumentz` all become the
-special variable inside the program that declares one. The author writes
+`arg`, `args`, `argz`, `argument`, `arguments`, `argumentz` and `argv` all become
+the special variable inside the program that declares one. The author writes
 `arguments`; the others exist because people type what they type, and a language
 whose tie-breaker is *do absolutely everything for the user* does not make somebody
 lose an afternoon to a plural.
@@ -1206,7 +1206,7 @@ lose an afternoon to a plural.
 This is the **inverse of §4.4's interner** and needs saying plainly, because §4.4
 describes the opposite arrangement. There, two nodes share one spelling — `list`
 under `container` and `list` under `directory` are different nodes that happen to
-be spelled alike. Here, **one node answers to six spellings.** Deduplication is
+be spelled alike. Here, **one node answers to seven spellings.** Deduplication is
 many-nodes-one-string; aliasing is one-node-many-strings, and the table has to hold
 both directions.
 
@@ -1260,26 +1260,43 @@ opened.
 #### Open
 
 - ~~**Which spellings, exactly, and what happens to the seventh?**~~ **ANSWERED
-  AT M7, 2026-08-31.** The six are the ones above and they come out of
-  `words.def`'s alias rows rather than a list in any source file. **The seventh
-  is refused rather than silently plain** — but only where somebody plainly
-  *meant* the object: the condition is that DESIGN §4.6's suggester, run over
-  `satellite.library.main`'s children and aliases, comes back with one of the
-  six. `argv` is one edit from `arg` and gets **S0531** telling it so;
-  `input_lines` is nowhere near any of them and is an ordinary list, which is
-  what this section already says the language does — *it does not introduce
-  `arguments`, it recognises the name the user chose.*
+  AT M7, 2026-08-31 — AND THE ANSWER WAS REVERSED BY THE AUTHOR ON 2026-09-09.**
+  The spellings come out of `words.def`'s alias rows rather than a list in any
+  source file, and **there are seven of them: `argv` is one.**
 
-  **A rule and not a seventh spelling.** Adding `argv` to `words.def` would make
-  it work and is an edit to the numbering, which WORD_NUMBERS.md is the authority
+  **What M7 decided, and why it was right at the time.** The seventh was
+  *refused rather than silently plain*, but only where somebody plainly meant
+  the object: §4.6's suggester, run over `satellite.library.main`'s children and
+  aliases, had to come back with one of the six before the refusal was raised.
+  `argv` was one edit from `arg` and got **S0531** telling it so; `input_lines`
+  is nowhere near any of them and is an ordinary list, which is what this
+  section already says the language does — *it does not introduce `arguments`,
+  it recognises the name the user chose.*
+
+  **What changed is not the rule but which side of it `argv` sits on.** The old
+  text called this *"a rule and not a seventh spelling"* and named the one door
+  a reversal could come through: *"adding `argv` to `words.def` would make it
+  work and is an edit to the numbering, which WORD_NUMBERS.md is the authority
   over and which is the author's to make rather than a milestone's to take in
-  passing.
+  passing."* On 2026-09-09 the author walked through that door, having written a
+  program with `argv` in it and been refused by their own interpreter — which is
+  this section's *"people type what they type"* with the language's author as
+  the witness. `argv` is the spelling every C program on earth uses; a language
+  whose tie-breaker is *do absolutely everything for the user* had no business
+  making it the one near miss that fails.
+
+  **S0531 keeps its number and its job**, and deleting it would have been the
+  mistake this reversal invites. It still fires for `argu`, `arrgs`, `argvs` and
+  every other near miss. One of its worked examples became a spelling; the code
+  did not become wrong. And because the suggester reads the alias rows, the list
+  it offers grew with no edit to the resolver at all — which is the same
+  property that let this change be one line of `words.def`.
 
   **And the object is `satellite.main`'s parameter and no other capsule's.**
   *(Decided at M7.)* A capsule of the user's own with a parameter called `args`
   holds whatever its **caller** passed; giving it the machine's answers instead
   would be §1.1's *behind their back* with the wrong value in the variable. The
-  M6 draft in `prototype/` recognises the six spellings everywhere, which is
+  M6 draft in `prototype/` recognises the spellings everywhere, which is
   where that was found.
 - **What is `arguments[0]`?** It is a list as well as an object, and nothing yet
   says whether index 0 is the program name, the current directory, or the first

@@ -407,12 +407,21 @@ SAT_CODE(523, RESOLVE_NO_SUCH_SHAPE, SAT_ERROR,
 SAT_CODE(524, RESOLVE_NO_SUCH_OPTION, SAT_ERROR,
          "`{1}` is not an option {2} has -- it has {3}")
 
-// DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named `argv`
-// gets a plain list with no properties, silently. Under §9 that silence is
-// wrong -- the language should say so." It is said here, and only where
-// somebody has plainly meant the object: the suggester has to answer with one
-// of the six before this is raised, so a parameter that was never trying to be
+// DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named X gets a
+// plain list with no properties, silently. Under §9 that silence is wrong --
+// the language should say so." It is said here, and only where somebody has
+// plainly meant the object: the suggester has to answer with one of the
+// spellings before this is raised, so a parameter that was never trying to be
 // `arguments` is left alone and is an ordinary list.
+//
+// `argv` WAS THIS CODE'S WORKED EXAMPLE UNTIL 2026-09-09 AND IS NOW A SPELLING.
+// The author added it to words.def as §7.7 said only the author could, so a
+// parameter named `argv` gets the object rather than this error. THAT DID NOT
+// MAKE THIS CODE WRONG AND IT WAS NOT DELETED: `argu`, `arrgs` and `argvs` are
+// still near misses and still land here. The sentence below names the accepted
+// spellings from the registry rather than from a list in this file, so the
+// alias row is the whole of the edit -- which is the property that made the
+// reversal one line instead of a sweep.
 SAT_CODE(531, RESOLVE_ALMOST_ARGUMENTS, SAT_ERROR,
          "satellite.main's parameter is the arguments object when it is named "
          "{1}, and `{2}` is none of them -- it would be an ordinary list with "

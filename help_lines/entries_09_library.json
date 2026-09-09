@@ -10,7 +10,7 @@
 "1 14 1 0": {"query": "satellite.help(satellite.library.main)", "prose": "The bare shape. **Not built** — M20.", "example": ""},
 "1 14 1 1": {
   "query": "satellite.help(satellite.library.main.arguments)",
-  "prose": "The arguments object: the command line, and the facts about the machine\nand the person running the program.\n\n**The name is yours.** It is reached through whatever you called the\nparameter on `satellite.main`, and six spellings are accepted for it —\n`arguments`, `argument`, `argumentz`, `args`, `argz` and `arg`. **Not\nbuilt** — the list of command-line words works today, and everything under\nit refuses until M20.",
+  "prose": "The arguments object: the command line, and the facts about the machine\nand the person running the program.\n\n**The name is yours.** It is reached through whatever you called the\nparameter on `satellite.main`, and seven spellings are accepted for it —\n`arguments`, `argument`, `argumentz`, `args`, `argz`, `arg` and `argv`. **Not\nbuilt** — the list of command-line words works today, and everything under\nit refuses until M20.",
   "example": ""
 },
 "1 14 1 1 0": {"query": "satellite.help(satellite.library.main.arguments)", "prose": "The bare shape. **Not built** — M20.", "example": ""},

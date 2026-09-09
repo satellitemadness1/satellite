@@ -1,5 +1,12 @@
-// DESIGN §7.7 -- the one library global the language provides, its six
-// spellings, and the seventh that §7.7 left open and this milestone answered.
+// DESIGN §7.7 -- the one library global the language provides, its seven
+// spellings, and the near miss that is refused rather than silently plain.
+//
+// THIS FILE PINNED `argv` AS THE REFUSED SEVENTH UNTIL 2026-09-09. §7.7 had
+// answered its own open question that way at M7, and the author reopened it and
+// answered it the other way: `argv` is an alias row in words.def now, so it is
+// in the accepted list below and `argvs` carries the refusal it used to carry.
+// Nothing about S0531 changed except which names reach it -- which is the point
+// of reading the spellings from the registry instead of listing them here.
 
 #include "resolve_test.hpp"
 
@@ -24,14 +31,15 @@ void section_arguments()
 {
     using namespace satellite::resolve;
 
-    // ALL SIX, AND THE COUNT IS THE CHECK. WORD_NUMBERS §2.3's third alias row
-    // is one node with six spellings, and §7.7 says why the other five exist:
-    // "people type what they type, and a language whose tie-breaker is do
+    // ALL SEVEN, AND THE COUNT IS THE CHECK. WORD_NUMBERS §2.3's third alias
+    // row is one node with seven spellings, and §7.7 says why the other six
+    // exist: "people type what they type, and a language whose tie-breaker is do
     // absolutely everything for the user does not make somebody lose an
-    // afternoon to a plural."
-    const char *const six[] = {"arg",      "args",      "argz",
-                               "argument", "arguments", "argumentz"};
-    for (const char *const spelling : six) {
+    // afternoon to a plural." `argv` is the seventh and the newest, and it is
+    // here because the author hit the refusal in a program of their own.
+    const char *const seven[] = {"arg",       "args", "argz", "argument",
+                                 "arguments", "argumentz", "argv"};
+    for (const char *const spelling : seven) {
         Run run;
         resolve_source(main_with(spelling), run);
         const Frame *frame = frame_of(run, "main");
@@ -44,25 +52,27 @@ void section_arguments()
                   "locals too` and the reason the registry could not be kept");
     }
 
-    // AND A SEVENTH IS REFUSED. DESIGN §7.7's own open question: "Declaring a
-    // parameter named `argv` gets a plain list with no properties, silently.
-    // Under §9 that silence is wrong -- the language should say so."
-    Run seventh;
-    resolve_source(main_with("argv"), seventh);
-    check(only_problem(seventh, satellite::errors::Code::RESOLVE_ALMOST_ARGUMENTS),
-          "`argv` is S0531 rather than a silent plain list");
-    check(!seventh.resolved.problems.empty() &&
-              !seventh.resolved.problems.front().suggestion.empty(),
-          "and it is answered with one of the six, because the suggester having "
-          "an answer is the CONDITION for refusing at all");
+    // AND A NEAR MISS IS STILL REFUSED, WHICH IS THE HALF THAT SURVIVED.
+    // DESIGN §7.7's open question was "declaring a parameter named X gets a
+    // plain list with no properties, silently. Under §9 that silence is wrong."
+    // Adding `argv` to the registry answered it for one name and for no other:
+    // `argvs` is a plural of a spelling, is not one, and lands here.
+    Run near_miss;
+    resolve_source(main_with("argvs"), near_miss);
+    check(only_problem(near_miss, satellite::errors::Code::RESOLVE_ALMOST_ARGUMENTS),
+          "`argvs` is S0531 rather than a silent plain list");
+    check(!near_miss.resolved.problems.empty() &&
+              !near_miss.resolved.problems.front().suggestion.empty(),
+          "and it is answered with one of the seven, because the suggester "
+          "having an answer is the CONDITION for refusing at all");
 
     // AND A NAME THAT WAS NEVER TRYING TO BE ONE IS LEFT ALONE, which is the
     // half that makes the rule a rule rather than a blocklist. `input_lines` is
-    // nowhere near any of the six, so it is an ordinary list and says nothing.
+    // nowhere near any of the seven, so it is an ordinary list and says nothing.
     Run plain;
     resolve_source(main_with("input_lines"), plain);
     check(plain.resolved.ok(),
-          "a parameter that is not near any of the six is an ordinary list");
+          "a parameter that is not near any of the seven is an ordinary list");
     const Frame *plain_main = frame_of(plain, "main");
     check(plain_main != nullptr && plain_main->arguments == -1,
           "and it is NOT the arguments object -- §7.7 recognises the name the "
@@ -72,7 +82,7 @@ void section_arguments()
     // puts the object at `satellite.library.main.arguments` and calls it "the
     // language handing the PROGRAM everything it knows about the machine it
     // woke up on". A capsule of the user's own with a parameter called `args`
-    // is holding whatever its caller passed; the M6 draft recognises the six
+    // is holding whatever its caller passed; the M6 draft recognises the seven
     // spellings in EVERY capsule, which would put the machine's answers in that
     // variable instead.
     Run other;

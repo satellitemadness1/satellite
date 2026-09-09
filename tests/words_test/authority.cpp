@@ -253,7 +253,7 @@ void section_authority()
     }
 
     // §2.3: two spellings, one number. The aliases are read from the authority
-    // too, because the whole of the language's aliasing is nine spellings and
+    // too, because the whole of the language's aliasing is ten spellings and
     // hard-coding them here would be a second place they live.
     std::set<std::string> alias_paths;
     for (const Row &row : rows)
@@ -284,7 +284,7 @@ void section_authority()
                 expected_aliases++;
             checked++;
         } else if (left.size() > 1) {
-            // The six spellings of `arguments` (DESIGN §7.7), which are bare
+            // The seven spellings of `arguments` (DESIGN §7.7), which are bare
             // words rather than paths: each is checked under the node that owns
             // the special variable.
             const Walk owner = walk("satellite.library.main.arguments");
@@ -294,9 +294,16 @@ void section_authority()
                       "§7.7: `" + spelling +
                           "` should reach satellite.library.main.arguments");
             }
-            check(left.size() == 6, "§7.7 promises six spellings, §2.3 lists " +
+            // THE ONE HARD-CODED COUNT IN THIS FILE, AND IT EARNED ITS KEEP ON
+            // 2026-09-09. Every other number here is read from WORD_NUMBERS.md,
+            // so this is the only line that can disagree with the authority --
+            // which is precisely why it is the line that caught `argv` being
+            // added to §2.3 while five other documents still said "six". It is
+            // a tripwire and not a duplicate: a spelling added to the table
+            // must be a spelling somebody decided to add.
+            check(left.size() == 7, "§7.7 promises seven spellings, §2.3 lists " +
                                         std::to_string(left.size()));
-            // One of the six is the node's own text and is not an alias.
+            // One of the seven is the node's own text and is not an alias.
             expected_aliases += left.size() - 1;
             checked++;
         }
