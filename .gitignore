@@ -91,4 +91,10 @@ __pycache__/
 /distribute/enterprise_satellite/programs/
 /distribute/enterprise_satellite/share/
 /distribute/enterprise_satellite/example/
+# Both extensions, and the extracted copy. make-package.sh writes .tar.xz; the
+# .tar.gz is what it wrote before 2026-09-08 and may still be sitting there, and
+# an unpacked package beside its own tarball is the normal state of a directory
+# somebody is testing an install from.
 /distribute/*.tar.gz
+/distribute/*.tar.xz
+/distribute/satellite-*-almalinux10-*/

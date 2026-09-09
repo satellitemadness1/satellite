@@ -14,7 +14,7 @@
 #     enterprise_satellite/share/        the launcher, the mime packet, the
 #                                        artwork and the hicolor index.theme
 #     enterprise_satellite/example/      the example programs
-#     satellite-<version>-almalinux10-x86_64.tar.gz
+#     satellite-<version>-almalinux10-x86_64.tar.xz
 #
 # THE ARTWORK IS COPIED FROM ../satellite_enterprise/icons AND IS NOT EDITED,
 # EVER. Not scaled, not re-encoded, not "cleaned up", and no missing size
@@ -244,14 +244,40 @@ version=$(SATL_NO_WINDOW=1 "$repo/satl" --version 2>/dev/null | head -1 |
 [ -n "$version" ] || version=unknown
 
 stem=satellite-$version-almalinux10-x86_64
-tarball=$here/$stem.tar.gz
+tarball=$here/$stem.tar.xz
+
+# xz AND NOT gzip, AND THE REASON IS THE UPLOAD AND NOT THE COMPRESSION.
+#
+# The package is handed over by putting it on a WordPress site, and WordPress
+# refuses a .tar.gz upload -- its allowed-types list is a fixed allowlist keyed
+# on extension and mime type, and gzip is not on it. So the author was
+# recompressing every build by hand, which is a manual step in a script whose
+# whole job is to not have manual steps. Found 2026-09-08, the first time this
+# package was actually delivered to somebody.
+#
+# It is also simply smaller, which is worth having when the person downloading
+# it is on a home connection: 4,177,217 bytes as .tar.gz against 2,129,664 as
+# .tar.xz, for byte-identical contents. Roughly half, and the reason is that
+# almost all of this package is two nearly identical 4MB static binaries --
+# satl and satl.haswell are the same sources compiled twice -- and xz's much
+# larger dictionary window finds that redundancy across the megabytes between
+# them where gzip's 32KB window cannot see it at all.
+#
+# CHECKED RATHER THAN ASSUMED, because `tar -J` shells out to xz and a tar that
+# cannot find it fails partway through writing the archive, leaving a truncated
+# file with the right name. xz is on every AlmaLinux by way of rpm itself, so
+# this should never fire; it costs one line and turns a corrupt output into a
+# sentence.
+command -v xz >/dev/null 2>&1 ||
+    die "xz is not on this machine and this package is written with it.
+       On AlmaLinux: dnf install xz"
 
 # --transform SO THAT IT UNPACKS INTO ITS OWN DIRECTORY. A tarball that
 # scatters its contents into whatever directory it was opened in is the one
 # thing everybody who has ever used tar has been burned by, and the person this
 # package is for should not have to know that it is a risk.
 rm -f "$tarball"
-tar -czf "$tarball" \
+tar -cJf "$tarball" \
     -C "$here" \
     --transform "s,^enterprise_satellite,$stem," \
     --owner=0 --group=0 \
@@ -262,6 +288,6 @@ printf '  %s bytes, unpacks into %s/\n' "$(stat -c%s "$tarball")" "$stem"
 
 printf '\n%s: done.\n' "$me"
 printf '  Copy that one file to the target machine, then:\n'
-printf '      tar xf %s\n' "$stem.tar.gz"
+printf '      tar xf %s\n' "$stem.tar.xz"
 printf '      cd %s\n' "$stem"
 printf '      ./install-satellite.sh\n\n'

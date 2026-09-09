@@ -23,7 +23,14 @@ and nothing is downloaded.
 
 It builds the tree, checks the two properties that make a binary shippable,
 fills `enterprise_satellite/` with the programs, the artwork and the examples,
-and writes `satellite-<version>-almalinux10-x86_64.tar.gz` beside itself.
+and writes `satellite-<version>-almalinux10-x86_64.tar.xz` beside itself.
+
+xz rather than gzip for a reason that is about delivery, not compression: the
+site this gets uploaded to is WordPress, whose upload allowlist rejects
+`.tar.gz`. It is also half the size — 2,129,664 bytes against 4,177,217 — because
+most of the package is `satl` and `satl.haswell`, the same sources compiled
+twice, and xz's dictionary window is large enough to see across the megabytes
+between them.
 
 `--no-build` packages the binaries that are in the tree root already, instead of
 running `make` first.
@@ -32,7 +39,7 @@ running `make` first.
 
 Copy the tarball to the target machine, then:
 
-    tar xf satellite-003r01-almalinux10-x86_64.tar.gz
+    tar xf satellite-003r01-almalinux10-x86_64.tar.xz
     cd satellite-003r01-almalinux10-x86_64
     ./install-satellite.sh
 
