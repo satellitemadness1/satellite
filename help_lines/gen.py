@@ -98,7 +98,7 @@ milestone and shows no example.** Writing a worked line for
 `satellite.network.https` would be inventing the language, which is the thing
 help exists to stop.
 
-The ten aliases carry no entry of their own. Each shares a node with a path
+The eleven aliases carry no entry of their own. Each shares a node with a path
 already listed, and help answers for the node.
 
 ---

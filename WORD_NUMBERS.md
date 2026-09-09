@@ -617,6 +617,7 @@ An alias is not a second word and does not take a second number:
 |---|---|
 | `satellite.random.fast.range(min, max)` | the number of `satellite.random.fast(min, max)` |
 | `satellite.variable.hexadecimal` | the number of `satellite.variable.hex` |
+| `satellite.class` | the number of `satellite.spacesuit` — added 2026-09-09 |
 | `arg` `args` `argz` `argument` `arguments` `argumentz` `argv` | one node, **seven** spellings (DESIGN §7.7) — `argv` added 2026-09-09 |
 
 DESIGN §4.4 describes the opposite arrangement — two nodes sharing one piece of
@@ -640,6 +641,16 @@ it is the reason this table has seven spellings in its third row and not six.
 and every other near miss; one of its examples became a spelling, which is not
 the same as the code becoming wrong. Because the suggester reads the alias rows,
 adding one here grows the list it offers with no edit to the resolver.
+
+**`satellite.class` is the fourth row and the first alias on a word that is
+neither a type nor a call shape.** Added 2026-09-09, by the author, for the
+reason DESIGN §7.7 gives about `arguments`: people type what they type, and
+`class` is what every other language calls the construct `satellite.spacesuit`
+is. **`spacesuit` stays the word.** It is the node at `1 10`, it is what
+`satl --unparse` prints back, and it is what `satellite.help` heads the entry
+with; `class` is a second spelling that takes no number, which is what §2.3 is
+for. The alias shadows nothing — `satellite` has no child spelled `class` — and
+`words_invariants.hpp` checks that rather than trusting it.
 
 ### 2.4 Four numbers assigned 2026-08-28, and by whom
 

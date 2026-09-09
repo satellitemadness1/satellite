@@ -96,10 +96,19 @@ void section_spellings()
               "§7.7: argvs is NOT a spelling of arguments -- S0531's job");
     }
 
-    // WORD_NUMBERS §2.3's other lexical alias.
+    // WORD_NUMBERS §2.3's other lexical aliases.
     check(spelling_of_source("hexadecimal") == spelling_of_source("hex")
               && spelling_of_source("hex") != words::kNoSpelling,
           "§2.3: hexadecimal is a second spelling of hex");
+
+    // `satellite.class` IS `satellite.spacesuit` `1 10`, added 2026-09-09. The
+    // first alias in the language on a word that is neither a type nor a call
+    // shape, and it is here beside `hexadecimal` because it is the same lexical
+    // mechanism: no dot in the text, so the spelling table folds it and the
+    // parser never learns there were two ways to write it.
+    check(spelling_of_source("class") == spelling_of_source("spacesuit")
+              && spelling_of_source("spacesuit") != words::kNoSpelling,
+          "§2.3: class is a second spelling of spacesuit");
 
     // THE THREE DOTTED ALIASES ARE NOT LEXICAL AND MUST NOT LEAK IN HERE.
     // `fast.range(min, max)` rewrites a two-segment PATH, so no amount of

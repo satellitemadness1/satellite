@@ -308,7 +308,7 @@ void section_authority()
             checked++;
         }
     }
-    check(checked == 3, "§2.3 should hold three rows, read " + std::to_string(checked));
+    check(checked == 4, "§2.3 should hold four rows, read " + std::to_string(checked));
 
     // The same converse, for the aliases. Derived from the two sections rather
     // than written down here, for the same reason the node count is.

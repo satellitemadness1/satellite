@@ -161,7 +161,7 @@ std::vector<Token> lex(const SatString &source);
 std::vector<errors::Diagnostic> diagnostics_of(const std::vector<Token> &tokens);
 
 // A bare word's spelling id, aliases included -- THE LEXER'S HALF OF THE
-// SPELLING TABLE, which is what PLAN M3 owes M2's ten aliases.
+// SPELLING TABLE, which is what PLAN M3 owes M2's eleven aliases.
 //
 // words::intern() knows the nodes. It does not know that `hexadecimal` is a
 // second spelling of `hex`, or that `arg` `args` `argz` `argument` `argumentz`

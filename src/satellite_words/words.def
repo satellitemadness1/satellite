@@ -133,7 +133,7 @@
 //      39   SAT_BARE       36 `(0)` markers plus those 3 rows
 //     ---
 //     269   nodes, each with a PathId
-//      10   SAT_ALIAS      3 `.range`, `hexadecimal`, 6 spellings of `arguments`
+//      11   SAT_ALIAS      3 `.range`, `hexadecimal`, `class`, 6 of `arguments`
 //
 // AND FOUR SMALL LISTS OVER THOSE NODES, each a fact about a word that one pass
 // needs and no other, declared on the word rather than legislated from the pass:
@@ -584,7 +584,7 @@ SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_0,   "()",                        SAT_BA
 SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_NEW, "new(title, width, height)", SAT_NUMBERED)  // 1 24 2 1
 
 // --- the aliases ------------------------------------------------------------
-// WORD_NUMBERS §2.3, in full. Ten spellings over five nodes, and the whole of
+// WORD_NUMBERS §2.3, in full. Eleven spellings over six nodes, and the whole of
 // the language's aliasing: every one of the 218-versus-215 and 227-versus-224
 // disagreements across these documents is the first three rows and nothing else.
 //
@@ -600,6 +600,22 @@ SAT_ALIAS(RANDOM_ULTRA_MIN_MAX,  "ultra.range(min, max)")    // 1 7 11
 // to know rather than the parser -- PLAN M3 owns `binary` and `hex` because
 // DESIGN §8.5 gives them literals, and a literal is lexed.
 SAT_ALIAS(VARIABLE_HEX, "hexadecimal")                       // 1 6 11
+
+// `satellite.class` IS `satellite.spacesuit`, added 2026-09-09 by the author.
+//
+// THE FIRST ALIAS IN THE LANGUAGE ON A WORD THAT IS NOT A TYPE OR A CALL SHAPE,
+// and the reason is the one §7.7 gives for the spellings of `arguments`: people
+// type what they type. `class` is what every other language on earth calls this
+// construct, and a reader arriving from any of them writes it before they have
+// read a line of DESIGN. `spacesuit` remains the language's own word -- it is the
+// node, it is what unparse() prints, and it is what `satellite.help` heads the
+// entry with; `class` is a second spelling of it and takes no number of its own.
+//
+// It shadows nothing: SATELLITE's children carry no `class`, which is what
+// words_invariants.hpp's aliases_do_not_shadow() checks rather than trusts. And
+// it is LEXICAL -- no dot in the text -- so the lexer's spelling table resolves
+// it to SPACESUIT's id and the parser never learns there were two spellings.
+SAT_ALIAS(SPACESUIT, "class")                                // 1 10
 
 // DESIGN §7.7's seven spellings of the one library global. Six here;
 // `arguments` is the node's own text and is not repeated.

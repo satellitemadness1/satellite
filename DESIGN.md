@@ -2401,7 +2401,16 @@ different product.
   extra comparison, and `container` earns it by saying something `variable` cannot:
   this type holds other things and takes a generic parameter.
 - **Classes are `satellite.spacesuit`**, with `satellite.protected` / `.public`
-  blocks and a bare-name type. Reference semantics.
+  blocks and a bare-name type. Reference semantics. **`satellite.class` is a
+  second spelling of it** — an alias row on `1 10`, added 2026-09-09 for §7.7's
+  reason about `arguments`: `class` is what every other language calls this and a
+  reader writes it before reading a line of this document. `spacesuit` stays the
+  word — it is the node, it is what `satl --unparse` prints, and it is what
+  `satellite.help` heads the entry with. **The header takes five forms and each
+  means one thing**: `IDENT [ "(" [ IDENT ] ")" ] [ ":" ]`, so the empty pair and
+  no pair both say *no superclass* and a trailing colon says nothing. What is
+  refused is what means nothing definite — an unclosed paren, and a second name
+  inside it, which would be multiple inheritance.
 - **A unit of includable code is a spaceship.**
 - **Operator precedence** is §6.6's four levels, all left-associative, with unary
   `-` and `!` above them. *(Decided at M4, 2026-08-30, because the parser could not
