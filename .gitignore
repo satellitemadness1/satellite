@@ -31,21 +31,32 @@
 !/tests/*/*.cpp
 !/tests/*/*.hpp
 
-# The prototype test binaries, which sit beside their sources exactly as the real
-# ones do -- so this is the rule above, applied to a second directory for the
-# same reason and written the same way round.
+# `/prototype/` IS GONE, DELETED 2026-09-09, and the rules that used to be here
+# went with it. They read the same way round as the tests block above -- ignore
+# the folder, name what is source -- and their comment argued that "a citation to
+# a file that is not in the repository is a citation to nothing", because
+# MILESTONES/M3.md §3 and M4.md §3 each cite a draft by path.
 #
-# THE SOURCES ARE TRACKED ON PURPOSE. MILESTONES/M3.md §3 and MILESTONES/M4.md §3
-# each cite a directory under here by path and say what it got wrong; a citation
-# to a file that is not in the repository is a citation to nothing. What is not
-# tracked is the binary each prototype builds -- and `*.o` at the top of this
-# file already covers the objects beside them.
-/prototype/*/*
-!/prototype/*/*.cpp
-!/prototype/*/*.hpp
-!/prototype/*/*.def
-!/prototype/*/*.md
-!/prototype/*/Makefile
+# The author deleted the nine directories anyway; LAYOUT.md's `prototype/`
+# section keeps that argument beside the decision and says where the citations
+# resolve now -- `git show ace359d:prototype/M4/parser.cpp`, ace359d being the
+# last commit that holds them. Nothing is ignored here any more because there is
+# nothing to ignore, and a pattern for a path that cannot exist is a rule nobody
+# can check.
+
+# The benchmark harness under speed_test/, which builds three programs beside
+# their sources -- the same shape as tests/ above and ignored for the same
+# reason. `hello_world.cxx` is the odd name: it is the COMPILED C++ program and
+# not a source, which is worth saying out loud because every other .cxx in the
+# world is a source file and a reader would otherwise assume this one is too.
+/speed_test/speed_test
+/speed_test/hello_world.cxx
+
+# The startup probe's binary, built from speed_test/startup_check.cpp into the
+# repository root. Not to be confused with `.startup-floor` above, which is what
+# `make startup` generates and measures AGAINST; this one is the author's own
+# check and its source is tracked.
+/startup_check
 
 # The first satellite, kept beside this one to read and to pull from, and
 # DELIBERATELY NOT IN THIS REPOSITORY'S HISTORY. It is a whole second tree --
