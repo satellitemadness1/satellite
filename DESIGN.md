@@ -1503,9 +1503,9 @@ to arrange and means a reader who learns one has learned both:
 | `to_number()` `n=1` | `b1010` → 10 | `x00FF` → 255 |
 | `width()` `n=2` | 4 — bits | **16** — bits, not digits |
 | `to_string()` `n=3` | `"b1010"` | `"x00FF"` |
-| `as_number()` `n=4` | `b1010` → 1010 | `x00FF` → **11111111** |
-| `digits()` `n=5` | 4 | 4 |
-| the other radix `n=6` | `.to_hex()` → `xA` | `.to_binary()` → `b0000000011111111` |
+| `as_number()` | `1 6 5 4` — `b1010` → 1010 | **no such row** |
+| `digits()` | `1 6 5 5` — 4 | `1 6 11 4` — 4 |
+| the other radix | `1 6 5 6` `.to_hex()` → `xA` | `1 6 11 5` `.to_binary()` → `b0000000011111111` |
 
 **Which of the two conversions wore which verb was reversed once during the
 milestone** — the author settled it on the ground that `to_` is already this
@@ -1523,17 +1523,34 @@ sentence nobody writes down and everybody rediscovers. `digits()` is why
 nothing is lost by it, and it is on binary too so that the question is askable
 of a value whose radix the program does not know.
 
-**`as_number()` ON HEX READS THE BITS AND NOT THE DIGITS, WHICH IS WHAT MAKES
-THE ROW EXIST AT ALL.** `as_number()` means "take these characters as a decimal
+**HEX HAS NO `as_number()`, AND THE ROW EXISTED FOR PART OF ONE DAY BEFORE THE
+AUTHOR DROPPED IT.** `as_number()` means "take these characters as a decimal
 number", and binary can answer only by an accident of alphabet: `0` and `1` are
 also decimal digits, so `b1010`'s characters are the legal decimal 1010. Hex's
-are not — there is no decimal number spelled `00FF` — and for one sitting the
-row looked unbuildable. **Expanding to bits first makes it total rather than
-partial**: every hex value has a bit expansion, every expansion is `0`s and
-`1`s, and every run of those is a legal decimal. The alternatives were a row
-that refused whenever a letter appeared, and no row at all; this is better than
-both because it is the same question binary answers, asked of the same
-underlying value. The author found it, 2026-09-09.
+are not — there is no decimal number spelled `00FF`. It was built on 2026-09-09
+reading the BIT EXPANSION's characters instead, which made it total —
+`x00FF.as_number()` answered 11111111 — and the author removed it the same day
+on reading that answer: *"x00FF.as_number() = 11111111 looks wrong to me"*.
+
+**The objection is right and it is not really about zeros.** 11111111 is the
+decimal reading of characters **no program ever wrote**; `00FF` is what was
+written. So one name stood over two different questions, which is worse than
+one question having no name. `digits` and `to_binary` moved down to `1 6 11 4`
+and `1 6 11 5`; both had been minted hours earlier and seen by nothing outside
+this tree, which is the only condition WORD_NUMBERS §1.2's *never renumber*
+permits a shift under. **Binary keeps its `as_number()` at `1 6 5 4`**, where
+the row does mean what its name says.
+
+**AND THE LEADING ZEROS ARE NOT WHAT WAS AT STAKE, WHICH IS WORTH WRITING DOWN
+BECAUSE IT COST A CONVERSATION TO ESTABLISH.** No conversion to a
+`satellite.variable.number` can keep a leading zero, on either radix, ever:
+§8.1's number has no width, `007 == 7` is **true** in this language and always
+was, and `b0011.as_number()` and `b11.as_number()` are both 11 — binary loses
+them exactly as hex did. **The zeros are kept by the VALUE**, which stores the
+width beside the bits, and they are readable as characters through
+`to_string()` and `display`. That is what the width being part of the value
+buys, and it is the whole reason these are types rather than numbers in another
+base.
 
 **THE TWO CONVERSIONS ARE NOT SYMMETRIC AND THE ASYMMETRY IS THE
 MULTIPLE-OF-FOUR INVARIANT SEEN FROM EACH SIDE.** `hex.to_binary()` can never

@@ -1733,7 +1733,11 @@ SAT_HELP(VARIABLE_HEX, VARIABLE_HEX,
          "\n"
          "Ask `width()` for how many bits there are, `digits()` for how many digits were\n"
          "written, `to_number()` for what they are worth, and `to_binary()` for the same\n"
-         "value as a run of bits."
+         "value as a run of bits.\n"
+         "\n"
+         "**There is no `as_number()` here**, though `satellite.variable.binary` has one.\n"
+         "That row reads the characters as an ordinary decimal, and there is no decimal\n"
+         "number spelled `00FF`."
          ,
          "satellite.variable.hex colour = x00FF\n"
          "satellite.console.display(colour)\n"
@@ -1796,24 +1800,7 @@ SAT_HELP(VARIABLE_HEX_TO_STRING, VARIABLE_HEX_TO_STRING,
          "satellite.console.display(\"colour: \" + colour.to_string())"
          )
 
-// 1 6 11 4  satellite.variable.hex.as_number
-SAT_HELP(VARIABLE_HEX_AS_NUMBER, VARIABLE_HEX_AS_NUMBER,
-         "The bits, read as if they were an ordinary decimal number.\n"
-         "`x00FF.as_number()` is 11111111.\n"
-         "\n"
-         "It reads the **bits** and not the digits, because there is no decimal number\n"
-         "spelled `00FF` -- `F` is not a decimal digit. Expanding to bits first gives\n"
-         "every value an answer, since a bit is always `0` or `1`.\n"
-         "\n"
-         "`to_number()` is the one almost everybody wants; this is the writing taken at\n"
-         "face value."
-         ,
-         "satellite.variable.hex colour = x00FF\n"
-         "satellite.console.display(colour.as_number())\n"
-         "satellite.console.display(colour.to_number())"
-         )
-
-// 1 6 11 5  satellite.variable.hex.digits
+// 1 6 11 4  satellite.variable.hex.digits
 SAT_HELP(VARIABLE_HEX_DIGITS, VARIABLE_HEX_DIGITS,
          "How many digits were written. `x00FF.digits()` is 4.\n"
          "\n"
@@ -1826,7 +1813,7 @@ SAT_HELP(VARIABLE_HEX_DIGITS, VARIABLE_HEX_DIGITS,
          "satellite.console.display(colour.digits())"
          )
 
-// 1 6 11 6  satellite.variable.hex.to_binary
+// 1 6 11 5  satellite.variable.hex.to_binary
 SAT_HELP(VARIABLE_HEX_TO_BINARY, VARIABLE_HEX_TO_BINARY,
          "The same value, wearing the other radix. `x00FF.to_binary()` is\n"
          "`b0000000011111111`.\n"

@@ -676,21 +676,48 @@ OpIndex Compiler::call(NodeIndex node)
             const bool named = resolve::in_a_frame(holder.slot) ||
                                globals_.find(holder.path) != globals_.end();
             if (named && holder.type != words::kNoPath) {
+                const std::string_view asked = ast_.text_of(target);
                 const bool variant =
                     holder.type ==
                     static_cast<words::PathId>(words::NodeId::VARIABLE_VARIANT);
+                // ONE ROW IS CHOSEN BY THE SELECTOR AND NOT ONLY BY THE TYPE,
+                // and it is the only one: `as_number` on a hex run. Binary has
+                // that row at `1 6 5 4` and hex deliberately does not, so the
+                // person who reaches for it here has almost certainly read
+                // binary's -- and the generic sentence, "its methods are the
+                // words numbered under that path", answers a question they
+                // did not ask. The author dropped the row on 2026-09-09 and
+                // asked for this refusal in the same breath.
+                //
+                // THE REASON IN IT IS THE TRUE ONE. `as_number` reads the
+                // characters as an ordinary decimal; binary can answer because
+                // `0` and `1` ARE decimal digits and hex cannot because `A` to
+                // `F` are not. It is NOT about leading zeros -- no conversion
+                // to a number keeps those on either radix, `007` being `7` --
+                // and a sentence saying otherwise would teach the wrong rule
+                // in the one place a person is definitely reading.
+                const bool hex_as_number =
+                    holder.type ==
+                        static_cast<words::PathId>(words::NodeId::VARIABLE_HEX) &&
+                    asked == "as_number";
+                const char *advice =
+                    hex_as_number
+                        ? "`as_number` reads the digits as an ordinary "
+                          "decimal, and `A` to `F` are not decimal digits -- "
+                          "ask `to_number()` for what they are worth, or name "
+                          "a `to_binary()` of it and ask that"
+                    : variant ? "a variant answers `holding`, `holds(x)`, "
+                                "`held` and `clear`; to use what it holds, "
+                                "copy it to a typed name, or take it with "
+                                "`held()`"
+                              : "its methods are the words numbered under "
+                                "that path, and this is not one of them";
                 return emit(
                     op_no_question, node,
-                    out_.add_text(std::string(ast_.text_of(target))),
+                    out_.add_text(std::string(asked)),
                     out_.add_text(words::path_text(
                         static_cast<words::NodeId>(holder.type))),
-                    out_.add_text(
-                        variant ? "a variant answers `holding`, `holds(x)`, "
-                                  "`held` and `clear`; to use what it holds, "
-                                  "copy it to a typed name, or take it with "
-                                  "`held()`"
-                                : "its methods are the words numbered under "
-                                  "that path, and this is not one of them"));
+                    out_.add_text(advice));
             }
         }
         // The person who wrote `f().trim()` did nothing wrong by the grammar

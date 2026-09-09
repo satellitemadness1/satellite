@@ -1,19 +1,29 @@
-// `satellite.variable.hex`'s six methods -- `1 6 11 1` through `1 6 11 6`,
-// M19.5's second half. See satellite_scalars/bits_methods.cpp for the six that
-// mirror these on `satellite.variable.binary`, and satellite_bits/bits.hpp for
-// why a hex run HOLDS a bit run rather than deriving from one.
+// `satellite.variable.hex`'s five methods -- `1 6 11 1` through `1 6 11 5`,
+// M19.5's second half. See satellite_scalars/bits_methods.cpp for binary's six
+// and satellite_bits/bits.hpp for why a hex run HOLDS a bit run rather than
+// deriving from one.
 //
-// A SEPARATE FILE AND NOT SIX MORE ROWS NEXT DOOR, which is the line rule
+// FIVE AND NOT SIX, BECAUSE THERE IS NO `as_number()` HERE. Binary has one at
+// `1 6 5 4`; hex had one for a few hours on 2026-09-09 and the author dropped
+// it on sight of its answer -- *"x00FF.as_number() = 11111111 looks wrong to
+// me"*. It was right to go. `as_number` means "read these characters as an
+// ordinary decimal", which binary can answer because `0` and `1` ARE decimal
+// digits; hex cannot, there being no decimal spelled `00FF`, so the built
+// version read the BIT EXPANSION's characters instead -- 11111111, which no
+// program ever wrote. One name over two different questions is worse than one
+// question with no name, and words.def carries the numbering consequence.
+//
+// A SEPARATE FILE AND NOT FIVE MORE ROWS NEXT DOOR, which is the line rule
 // (300 lines, 2026-08-28) doing what it is for: bits_methods.cpp was at 150
 // before this milestone and both types gained rows, so one file would have
 // crossed the line on the day the second radix arrived rather than later, by
 // surprise.
 //
 // EVERY ROW HERE ANSWERS BY ROUTING THROUGH THE BITS, and that is the whole
-// design in one sentence. A hex value IS a bit run in a wrapper, so five of
-// these six call a `satellite_bits` function that a binary method also calls,
+// design in one sentence. A hex value IS a bit run in a wrapper, so four of
+// these five call a `satellite_bits` function that a binary method also calls,
 // and the answers cannot drift between the radices because there is one
-// implementation of each question. The sixth, `digits()`, is the one thing a
+// implementation of each question. The fifth, `digits()`, is the one thing a
 // bit run cannot answer for itself.
 //
 // NO ROW MUTATES -- bits_methods.cpp's note, and for its reason: every one of
@@ -64,7 +74,7 @@ bool hex_to_number(eval::Machine &m, const Value *a, uint32_t, Value *answer)
 // "a multiple of two" for hex, which is the kind of sentence nobody writes
 // down and everybody has to rediscover.
 //
-// `digits()` `1 6 11 5` IS THE OTHER QUESTION and the author asked for both.
+// `digits()` `1 6 11 4` IS THE OTHER QUESTION and the author asked for both.
 bool hex_width(eval::Machine &m, const Value *a, uint32_t, Value *answer)
 {
     const bits::HexRun *self = nullptr;
@@ -91,33 +101,7 @@ bool hex_to_string(eval::Machine &m, const Value *a, uint32_t, Value *answer)
     return true;
 }
 
-// `as_number()` `1 6 11 4` -- THE BITS, READ AS IF THEY WERE DECIMAL.
-// `x00FF.as_number()` is 11111111.
-//
-// IT GOES THROUGH THE BITS BECAUSE THE DIGITS THEMSELVES HAVE NO READING, and
-// this row exists at all only because the author found that route on
-// 2026-09-09. `as_number()` means "take these characters as a decimal number",
-// and binary can answer it by an accident of alphabet -- `0` and `1` are also
-// decimal digits, so `b1010`'s characters are the legal decimal 1010. Hex's
-// are not: there is no decimal number spelled `00FF`, and the row looked
-// unbuildable for one sitting because of it.
-//
-// EXPANDING TO BITS FIRST MAKES IT TOTAL RATHER THAN PARTIAL. Every hex value
-// has a bit expansion, every expansion is `0`s and `1`s, and every run of
-// those is a legal decimal -- so this answers for EVERY hex value and refuses
-// none. The alternatives on the table were a row that refused whenever a
-// letter appeared, and no row at all; this is better than both because it is
-// the same question binary answers, asked of the same underlying value.
-bool hex_as_number(eval::Machine &m, const Value *a, uint32_t, Value *answer)
-{
-    const bits::HexRun *self = nullptr;
-    if (!hex_at(m, a, 0, &self))
-        return false;
-    *answer = Value::number(bits::digits_as_number(self->bits));
-    return true;
-}
-
-// `digits()` `1 6 11 5` -- HOW MANY DIGITS WERE WRITTEN. `x00FF.digits()` is 4.
+// `digits()` `1 6 11 4` -- HOW MANY DIGITS WERE WRITTEN. `x00FF.digits()` is 4.
 //
 // THE ONE ROW A BIT RUN CANNOT ANSWER FOR THIS TYPE, and the reason `width()`
 // could be given to the bits without loss. Four is `width() / 4` and never a
@@ -138,7 +122,7 @@ bool hex_digits(eval::Machine &m, const Value *a, uint32_t, Value *answer)
     return true;
 }
 
-// `to_binary()` `1 6 11 6` -- THE SAME VALUE, WEARING THE OTHER RADIX.
+// `to_binary()` `1 6 11 5` -- THE SAME VALUE, WEARING THE OTHER RADIX.
 // `x00FF.to_binary()` is `b0000000011111111`.
 //
 // IT CANNOT FAIL, AND ITS TWIN CAN. Every hex digit is four bits, so a hex run
@@ -171,7 +155,7 @@ void install_hex_methods()
     eval::Handlers &table = eval::Handlers::table();
 
     // EVERY ROW BINDS ITS RECEIVER AND EVERY ARITY IS 1, the count including
-    // argument 0 -- bits_methods.cpp's note is the rule and these six are its
+    // argument 0 -- bits_methods.cpp's note is the rule and these five are its
     // simplest case again: no row here takes a written argument at all.
     struct Row {
         NodeId path;
@@ -181,7 +165,6 @@ void install_hex_methods()
         {NodeId::VARIABLE_HEX_TO_NUMBER, hex_to_number},
         {NodeId::VARIABLE_HEX_WIDTH,     hex_width},
         {NodeId::VARIABLE_HEX_TO_STRING, hex_to_string},
-        {NodeId::VARIABLE_HEX_AS_NUMBER, hex_as_number},
         {NodeId::VARIABLE_HEX_DIGITS,    hex_digits},
         {NodeId::VARIABLE_HEX_TO_BINARY, hex_to_binary},
     };

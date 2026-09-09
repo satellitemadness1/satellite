@@ -341,20 +341,29 @@ SAT_NODE(VARIABLE,        VARIABLE_DURATION,           "duration",              
 SAT_NODE(VARIABLE,        VARIABLE_EXPRESSION,         "expression",            SAT_NUMBERED)  // 1 6 9
 SAT_NODE(VARIABLE,        VARIABLE_FLOAT,              "float",                 SAT_NUMBERED)  // 1 6 10
 SAT_NODE(VARIABLE,        VARIABLE_HEX,                "hex",                   SAT_NUMBERED)  // 1 6 11
-// ROW FOR ROW WITH `binary` `1 6 5` ABOVE, AND THAT ALIGNMENT IS DELIBERATE:
-// `1 6 5 n` and `1 6 11 n` ask the same question of the two radices for every
-// n, so a reader who learns one table has learned both. It cost nothing to
-// arrange -- `digits` and the two conversions were appended to BOTH types in
-// the same order on 2026-09-09 -- and it is why `to_hex` sits on binary and
-// `to_binary` sits on hex at the same number rather than each landing wherever
-// its own type happened to reach.
+// ROW FOR ROW WITH `binary` `1 6 5` ABOVE FOR THE FIRST THREE, AND THEN
+// DELIBERATELY NOT. `1 6 5 4` is binary's `as_number` and HEX HAS NO SUCH ROW:
+// the author dropped it on 2026-09-09, hours after it was built, and the
+// reason is that the row does not mean the same thing on the two types.
+//
+// ON BINARY `as_number` READS THE CHARACTERS THE PROGRAM WROTE -- `b1010` is
+// the legal decimal 1010, because `0` and `1` are decimal digits too. ON HEX
+// there is no decimal spelled `00FF`, so the built version read the characters
+// of the BIT EXPANSION and answered 11111111 -- characters nobody wrote. One
+// name, two questions, and the author caught it by reading the answer:
+// *"x00FF.as_number() = 11111111 looks wrong to me"*.
+//
+// SO HEX'S `digits` AND `to_binary` TOOK 4 AND 5 rather than 5 and 6. Both
+// numbers were minted earlier the same day and no program outside this tree
+// had seen either, which is the only condition under which WORD_NUMBERS §1.2's
+// "never renumber" permits the shift -- binary's `1 6 5 4` shipped the day
+// before and is untouched.
 SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_0,              "()",                    SAT_BARE)  // 1 6 11 0
 SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_NUMBER,      "to_number",             SAT_NUMBERED)  // 1 6 11 1
 SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_WIDTH,          "width",                 SAT_NUMBERED)  // 1 6 11 2
 SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_STRING,      "to_string",             SAT_NUMBERED)  // 1 6 11 3
-SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_AS_NUMBER,      "as_number",             SAT_NUMBERED)  // 1 6 11 4
-SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_DIGITS,         "digits",                SAT_NUMBERED)  // 1 6 11 5
-SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_BINARY,      "to_binary",             SAT_NUMBERED)  // 1 6 11 6
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_DIGITS,         "digits",                SAT_NUMBERED)  // 1 6 11 4
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_BINARY,      "to_binary",             SAT_NUMBERED)  // 1 6 11 5
 SAT_NODE(VARIABLE,        VARIABLE_NETWORK,            "network",               SAT_NUMBERED)  // 1 6 12
 SAT_NODE(VARIABLE,        VARIABLE_THREAD,             "thread",                SAT_NUMBERED)  // 1 6 13
 SAT_NODE(VARIABLE_THREAD, VARIABLE_THREAD_0,           "()",                    SAT_BARE)  // 1 6 13 0

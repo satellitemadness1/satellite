@@ -462,13 +462,12 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.duration` | `1 6 8` | assigned |
 | `satellite.variable.expression` | `1 6 9` | assigned |
 | `satellite.variable.float` | `1 6 10` | assigned |
-| `satellite.variable.hex` | `1 6 11 (0)` | assigned; also spelled `hexadecimal`; **built at M19.5** — the `(0)` is new with its children below |
+| `satellite.variable.hex` | `1 6 11 (0)` | assigned; also spelled `hexadecimal`; **built at M19.5** — the `(0)` is new with its children below. **No `as_number`** — binary's `1 6 5 4` reads its characters as a decimal, which `00FF` has no reading as; the row existed for part of 2026-09-09 and the author dropped it, so `digits` and `to_binary` took 4 and 5. Both were minted the same day and unseen outside this tree, which is the only condition §1.2's *never renumber* allows the shift under |
 | `satellite.variable.hex.to_number` | `1 6 11 1` | assigned 2026-09-09 — what the digits are WORTH; `x00FF.to_number()` is 255 |
 | `satellite.variable.hex.width` | `1 6 11 2` | assigned 2026-09-09 — how many BITS; `x00FF.width()` is 16, which keeps `write(x)`'s multiple-of-8 rule one rule |
 | `satellite.variable.hex.to_string` | `1 6 11 3` | assigned 2026-09-09 — the characters `display` prints, the leading `x` included |
-| `satellite.variable.hex.as_number` | `1 6 11 4` | assigned 2026-09-09 — the BITS read as decimal; `x00FF.as_number()` is 11111111, there being no decimal spelled `00FF` |
-| `satellite.variable.hex.digits` | `1 6 11 5` | assigned 2026-09-09 — how many digits were written; `x00FF.digits()` is 4 |
-| `satellite.variable.hex.to_binary` | `1 6 11 6` | assigned 2026-09-09 — the same bits as binary; never refuses, a digit being exactly 4 bits |
+| `satellite.variable.hex.digits` | `1 6 11 4` | assigned 2026-09-09 — how many digits were written; `x00FF.digits()` is 4 |
+| `satellite.variable.hex.to_binary` | `1 6 11 5` | assigned 2026-09-09 — the same bits as binary; never refuses, a digit being exactly 4 bits |
 | `satellite.variable.network` | `1 6 12` | assigned |
 | `satellite.variable.thread` | `1 6 13 (0)` | assigned — the `(0)` is new with its children below |
 | `satellite.variable.thread.start()` | `1 6 13 1` | assigned 2026-08-28 |

@@ -116,7 +116,7 @@
   },
   "1 6 11": {
     "query": "satellite.help(satellite.variable.hex)",
-    "prose": "A run of hexadecimal digits, written `x00FF`. **The width is part of the\nvalue**, so `x0009` and `x9` are not the same thing -- which is why this is a\ntype of its own and not a number written in another base. It has a second\nspelling, `satellite.variable.hexadecimal`, which is the same node.\n\nIt is stored as bits, four to a digit, so nothing is lost converting either\nway. Both letter cases are accepted and neither is kept: `x00ff` and `x00FF`\nare one value, and it displays in upper case.\n\nAsk `width()` for how many bits there are, `digits()` for how many digits were\nwritten, `to_number()` for what they are worth, and `to_binary()` for the same\nvalue as a run of bits.",
+    "prose": "A run of hexadecimal digits, written `x00FF`. **The width is part of the\nvalue**, so `x0009` and `x9` are not the same thing -- which is why this is a\ntype of its own and not a number written in another base. It has a second\nspelling, `satellite.variable.hexadecimal`, which is the same node.\n\nIt is stored as bits, four to a digit, so nothing is lost converting either\nway. Both letter cases are accepted and neither is kept: `x00ff` and `x00FF`\nare one value, and it displays in upper case.\n\nAsk `width()` for how many bits there are, `digits()` for how many digits were\nwritten, `to_number()` for what they are worth, and `to_binary()` for the same\nvalue as a run of bits.\n\n**There is no `as_number()` here**, though `satellite.variable.binary` has one.\nThat row reads the characters as an ordinary decimal, and there is no decimal\nnumber spelled `00FF`.",
     "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour)\nsatellite.console.display(colour.width())\nsatellite.console.display(colour.digits())\nsatellite.console.display(colour.to_number())"
   },
   "1 6 12": {
@@ -230,16 +230,11 @@
     "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(\"colour: \" + colour.to_string())"
   },
   "1 6 11 4": {
-    "query": "satellite.help(satellite.variable.hex.as_number)",
-    "prose": "The bits, read as if they were an ordinary decimal number.\n`x00FF.as_number()` is 11111111.\n\nIt reads the **bits** and not the digits, because there is no decimal number\nspelled `00FF` -- `F` is not a decimal digit. Expanding to bits first gives\nevery value an answer, since a bit is always `0` or `1`.\n\n`to_number()` is the one almost everybody wants; this is the writing taken at\nface value.",
-    "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.as_number())\nsatellite.console.display(colour.to_number())"
-  },
-  "1 6 11 5": {
     "query": "satellite.help(satellite.variable.hex.digits)",
     "prose": "How many digits were written. `x00FF.digits()` is 4.\n\nAlways a whole number, never a remainder: a value is built from digits and each\none is four bits, so this is `width()` divided by four exactly.\n\nIt is the question `width()` does not answer, `width()` counting bits.",
     "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.digits())"
   },
-  "1 6 11 6": {
+  "1 6 11 5": {
     "query": "satellite.help(satellite.variable.hex.to_binary)",
     "prose": "The same value, wearing the other radix. `x00FF.to_binary()` is\n`b0000000011111111`.\n\n**It never refuses**, every hexadecimal digit being exactly four bits. The\nother direction can: `satellite.variable.binary.to_hex` needs a width that is a\nmultiple of four.\n\nThe answer is not equal to what it came from -- `x00FF == x00FF.to_binary()` is\nfalse, because two different types are never equal in this language, however\nthey are spelled.",
     "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.to_binary())"

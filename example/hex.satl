@@ -58,16 +58,16 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
     satellite.variable.bool same_value = lower == colour
     satellite.console.display(same_value)
 
-    // to_number is what the digits are WORTH; as_number reads the BITS as an
-    // ordinary decimal, there being no decimal number spelled 00FF at all.
+    // to_number is what the digits are WORTH, and it is the ONLY conversion to
+    // a number this type has. binary has `as_number` -- the characters read as
+    // an ordinary decimal -- and hex does not, because there is no decimal
+    // number spelled 00FF. The zeros are kept by the VALUE and by width(),
+    // which is where a width can live; a number has none at all, so 007 is 7.
     satellite.console.display("")
-    satellite.console.display("two ways to read the same run:")
+    satellite.console.display("what the digits are worth:")
     satellite.variable.number worth = colour.to_number()
-    satellite.variable.number written_as = colour.as_number()
     satellite.variable.string worth_text = worth.to_string()
-    satellite.variable.string written_text = written_as.to_string()
     satellite.console.display("  x00FF.to_number()    " + worth_text)
-    satellite.console.display("  x00FF.as_number()    " + written_text)
 
     // The two radices hold the same bits and are still two values, because
     // they are two types -- nothing in this language converts by itself.

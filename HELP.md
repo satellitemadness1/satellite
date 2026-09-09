@@ -1803,6 +1803,10 @@ Ask `width()` for how many bits there are, `digits()` for how many digits were
 written, `to_number()` for what they are worth, and `to_binary()` for the same
 value as a run of bits.
 
+**There is no `as_number()` here**, though `satellite.variable.binary` has one.
+That row reads the characters as an ordinary decimal, and there is no decimal
+number spelled `00FF`.
+
     satellite.variable.hex colour = x00FF
     satellite.console.display(colour)
     satellite.console.display(colour.width())
@@ -1863,24 +1867,7 @@ else.
     satellite.variable.hex colour = x00FF
     satellite.console.display("colour: " + colour.to_string())
 
-H  `1 6 11 4`  `satellite.variable.hex.as_number`  _M19.5_
-> satellite.help(satellite.variable.hex.as_number)
-
-The bits, read as if they were an ordinary decimal number.
-`x00FF.as_number()` is 11111111.
-
-It reads the **bits** and not the digits, because there is no decimal number
-spelled `00FF` -- `F` is not a decimal digit. Expanding to bits first gives
-every value an answer, since a bit is always `0` or `1`.
-
-`to_number()` is the one almost everybody wants; this is the writing taken at
-face value.
-
-    satellite.variable.hex colour = x00FF
-    satellite.console.display(colour.as_number())
-    satellite.console.display(colour.to_number())
-
-H  `1 6 11 5`  `satellite.variable.hex.digits`  _M19.5_
+H  `1 6 11 4`  `satellite.variable.hex.digits`  _M19.5_
 > satellite.help(satellite.variable.hex.digits)
 
 How many digits were written. `x00FF.digits()` is 4.
@@ -1893,7 +1880,7 @@ It is the question `width()` does not answer, `width()` counting bits.
     satellite.variable.hex colour = x00FF
     satellite.console.display(colour.digits())
 
-H  `1 6 11 6`  `satellite.variable.hex.to_binary`  _M19.5_
+H  `1 6 11 5`  `satellite.variable.hex.to_binary`  _M19.5_
 > satellite.help(satellite.variable.hex.to_binary)
 
 The same value, wearing the other radix. `x00FF.to_binary()` is

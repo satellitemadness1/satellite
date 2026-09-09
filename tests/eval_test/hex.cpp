@@ -15,11 +15,12 @@
 //                        hex has that binary does not and the reason `display`
 //                        cannot print back what was written
 //
-// AND `as_number()` IS TESTED HARDER THAN IT LOOKS. `x00FF.as_number()` being
-// 11111111 is the whole argument of the row: the digits `00FF` have no decimal
-// reading at all, so the answer comes from the BITS, and a change that made
-// this read the digits would not crash -- it would refuse on half its inputs
-// and answer wrongly on the other half.
+// AND THE ABSENCE OF `as_number()` IS TESTED, because it is a decision and not
+// a gap. Binary has the row and hex does not: it means "read these characters
+// as an ordinary decimal", which works on `b1010` only because `0` and `1` are
+// decimal digits too, and cannot work on `x00FF` at all. The row existed for
+// part of 2026-09-09, answering 11111111 off the bit expansion, and the author
+// dropped it on reading that answer.
 
 #include "eval_test.hpp"
 
@@ -121,7 +122,7 @@ void section_hex()
 
     check(answers("    satellite.variable.hex c = x00FF\n"
                   "    satellite.return(c.digits())\n") == "4",
-          "`digits()` `1 6 11 5` counts DIGITS -- the question `width()` "
+          "`digits()` `1 6 11 4` counts DIGITS -- the question `width()` "
           "stopped answering, and never a remainder, four bits being one digit");
 
     check(answers("    satellite.variable.hex c = x00FF\n"
@@ -129,17 +130,40 @@ void section_hex()
           "`to_string()` `1 6 11 3` matches the display exactly, `x` and all, "
           "which is what makes the printed case predictable at all");
 
-    check(answers("    satellite.variable.hex c = x00FF\n"
-                  "    satellite.return(c.as_number())\n") == "11111111",
-          "`as_number()` `1 6 11 4` reads the BITS as decimal, not the digits "
-          "-- there is no decimal number spelled `00FF`, so routing through "
-          "the bit expansion is what gives this row an answer for EVERY value "
-          "instead of refusing whenever a letter appears");
+    // AND THERE IS NO `as_number()`, WHICH IS A CLAIM AND NOT AN OMISSION.
+    // Binary has one at `1 6 5 4`; hex had one for a few hours on 2026-09-09
+    // and the author dropped it on sight of its answer. `as_number` means
+    // "read these characters as an ordinary decimal", which binary can answer
+    // because `0` and `1` ARE decimal digits -- and hex cannot, there being no
+    // decimal spelled `00FF`. The built version read the BIT EXPANSION's
+    // characters instead and answered 11111111, which no program ever wrote.
+    check(holds(refused("    satellite.variable.hex c = x00FF\n"
+                        "    satellite.return(c.as_number())\n"),
+                "is not a question"),
+          "S0723: `as_number` IS NOT A QUESTION A HEX RUN ANSWERS -- hex has "
+          "no such row, and this fixture is here because the row existed for "
+          "part of one day and a reader who found binary's `1 6 5 4` would "
+          "otherwise expect hex's");
+
+    check(holds(refused("    satellite.variable.hex c = x00FF\n"
+                        "    satellite.return(c.as_number())\n"),
+                "`A` to `F` are not decimal digits"),
+          "AND THE REFUSAL SAYS WHY, which the author asked for by name: this "
+          "is the one S0723 advice chosen by the SELECTOR and not only by the "
+          "type, because a person reaching for `as_number` on a hex has almost "
+          "certainly just read binary's and the generic sentence answers a "
+          "question they did not ask");
+
+    check(holds(refused("    satellite.variable.hex c = x00FF\n"
+                        "    satellite.return(c.upper())\n"),
+                "the words numbered under that path"),
+          "and every OTHER wrong selector on a hex still gets the general "
+          "sentence -- the special row is one row, not a type-wide rewrite");
 
     check(answers("    satellite.variable.hex c = x00FF\n"
                   "    satellite.return(c.to_binary())\n")
               == "b0000000011111111",
-          "`to_binary()` `1 6 11 6` re-spells the same run in the other radix, "
+          "`to_binary()` `1 6 11 5` re-spells the same run in the other radix, "
           "and NEVER refuses -- every hexadecimal digit is exactly four bits, "
           "which is the asymmetry with `binary.to_hex()` `1 6 5 6`");
 
