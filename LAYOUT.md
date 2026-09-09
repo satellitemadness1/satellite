@@ -652,24 +652,40 @@ author's first note; that note has been converted into the permanent documents a
 the file deleted, and its conversion is recorded in
 [SCRATCH.md/FIRST_NOTE.md](SCRATCH.md/FIRST_NOTE.md) until nothing needs it.
 
-## `prototype/` — drafts, and not a source
+## `prototype/` — drafts, and not a source. **DELETED 2026-09-09.**
 
 Nine directories, `M3` through `M11`, each a standalone sketch of a milestone
 with its own `Makefile`. **These names are PLAN §8's numbering as it stood before
-2026-08-30 and they are deliberately not renumbered** — a draft is dated by
+2026-08-30 and they were deliberately not renumbered** — a draft is dated by
 construction, and `prototype/M9` is what `MILESTONES/M11.md` reviews. §8's opening
-holds the old-to-new table. **They are read as drafts and never as sources**, which
-is a rule two milestones have now had to state: [MILESTONES/M3.md](MILESTONES/M3.md)
+holds the old-to-new table. **They were read as drafts and never as sources**, which
+is a rule two milestones had to state: [MILESTONES/M3.md](MILESTONES/M3.md)
 §3 records that `prototype/M3/` confused a `SpellingId` with a `PathId` — and
 compiled, because the two are the same 32 bits — and
 [MILESTONES/M4.md](MILESTONES/M4.md) §3 records that `prototype/M4/` decided every
 dispatch by comparing strings against `"satellite"`, which is PLAN §1.1's founding
 finding reproduced.
 
-They are **tracked** because those two reviews cite them by path, and a citation
-to a file that is not in the repository is a citation to nothing. Their objects
-and test binaries are not; `.gitignore` says why in the same terms it uses for
-`tests/`.
+**THE AUTHOR DELETED ALL 132 FILES ON 2026-09-09, AND THIS SECTION USED TO ARGUE
+THE OTHER WAY.** It read: *"They are **tracked** because those two reviews cite
+them by path, and a citation to a file that is not in the repository is a citation
+to nothing."* That sentence is kept above the decision rather than deleted with the
+files, because it is the argument the decision overrules and the next person to
+ask "why is there no `prototype/`" deserves to meet it.
+
+**Where the citations resolve now.** `ace359d` is the last commit that contains
+the directories, so `git show ace359d:prototype/M4/parser.cpp` is the draft
+`MILESTONES/M4.md` §3 is talking about, and `git log -- prototype/` is the whole
+of it. **This is weaker than a path in the working tree and it is not nothing** —
+which is the honest form of the old sentence: a citation to a file in the
+repository's *history* is a citation to something, as long as a reader is told
+that is where to look. This paragraph is that telling.
+
+**Nothing built from them.** Verified 2026-09-09 across `Makefile`,
+`make_support/`, `src/` and `tests/`: the only references anywhere are two
+comments — `name_resolver/resolve.hpp:63` on the M6 draft's six sentinels, and
+`evaluator/closure.hpp:24` on the M7 draft's recursion — and both are prose about
+a decision rather than a dependency on a file.
 
 ## `satellite_debian/` — the Debian family build
 
