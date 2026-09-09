@@ -4329,20 +4329,83 @@ v1's other consequence does not follow: its `help_for(const Value &)` switch on 
 raw variant index is **deleted rather than extended** at M18, because a value's
 type is a node and its methods are that node's children.
 
-**Open, and none of these is small:**
+**Open, and none of these is small.** *(Six of the nine below were settled by the
+author on 2026-09-09, in one sitting, and are struck through where they sit rather
+than deleted — a decision is worth more beside the argument that produced it than
+in a commit message. What is left open is the ten selectors, and the two SMBIOS
+rows that are a done-when clause rather than a question.)*
 
-- **The 33.** DESIGN §7.7 says each of v1's flat entries needs placing under a
-  parent or dropping. v1 took a third option and shipped it: the entry names get
-  **no registry ids at all**, the bare selector lowers to `.get(name)`, and
-  *"spending a permanent registry id on `kernel_release` would be the registry
-  recording a fact about somebody's machine."* §1.2's freeze is forever, so this is
-  33 permanent choices and the largest irreversible decision in the milestone.
-- **Three call shapes v1 accepts have no number.** The unit block is reached for
-  every swap and `this` form, so v1 answers `.swap.used(unit)` and `.this.used(unit)`
-  while §2.2 writes `1 22 4 4 3` and `1 22 4 5 3` without the parens their siblings
-  carry — the table recording a sweep's arity rather than the code, and v1's own
-  acceptance program writes `.this.used("kb")`. **`.environment(name)` is the
-  third.** Only WORD_NUMBERS can assign them.
+- ~~**The 33.**~~ **SETTLED 2026-09-09 BY THE AUTHOR: THEY ARE NUMBERED, AND THEY
+  ARE NESTED.** DESIGN §7.7 asked for each of v1's flat entries to be placed under
+  a parent or dropped, and offered v1's own third road — **no registry ids at all**,
+  the bare selector lowering to `.get(name)`, on the grounds that *"spending a
+  permanent registry id on `kernel_release` would be the registry recording a fact
+  about somebody's machine."*
+
+  **v1 decided that with no `satellite.help` in existence, and M18 is why it does
+  not hold.** 264 entries are generated into the binary from the file that writes
+  the document; a name with no number is one `satl --words` cannot print and
+  `satellite.help` cannot answer for. That is a second-class word in a language
+  whose tie-breaker is *do absolutely everything for the user*, and the cost of
+  the other road is nothing but rows — **a number is a position among its parent's
+  children, so appending renumbers nothing** (§8.1, and the whole of why the author
+  could say "just take the next available number").
+
+  **The shape, and these spellings are permanent.** Two of v1's 33 are already
+  numbered — `username` `1 14 1 1 3` and `thread_count`, which is
+  `machine.threads` `1 14 1 1 1 3`. The other 31 nest under `arguments`
+  `1 14 1 1`, whose children today are `machine` 1, `memory` 2, `username` 3:
+
+      machine     (append)  architecture  byte_order  page_size  pointer_bits
+      system      1 14 1 1 4   name  kernel  kernel_version  distribution
+                               distribution_id  distribution_version  hostname
+      build       1 14 1 1 5   compiler  compiler_version  standard  flags
+                               make  standard_library  c_library  built
+      interpreter 1 14 1 1 6   bare = the path; version  library_path
+                               library_path_source
+      process     1 14 1 1 7   id  parent
+      session     1 14 1 1 8   shell  terminal  language  home  directory
+      count       1 14 1 1 9
+
+  **`machine.cpu` `1 14 1 1 1 2` is new work and not a port**, and it is the one
+  row here with no reader in either tree: nothing in v1 or in `src/` reads
+  `/proc/cpuinfo`'s model name, and v1's `architecture` is `uname.machine`
+  (`x86_64`), which is a different fact and keeps its own row above.
+- **A TOOL BEFORE THE ROWS, AND IT IS THIS MILESTONE'S FIRST COMMIT.** `satl
+  --words <path>` answers number, path and depth, and says nothing about a node's
+  children or what is free under it — while `next_free(NodeId)` has been sitting
+  in `satellite_words/words_runtime.hpp` since M2 with **no caller anywhere in the
+  tree**. Minting forty rows by opening `words.def` and counting is the one way
+  this milestone can silently renumber something; asking the binary cannot be
+  wrong about the binary. So `--words <path>` grows the children and the next free
+  number first, which is M2's own *a registry gets a consumer* rule applied once
+  more, and the rest of this entry is then mechanical: ask, append, run
+  `words_test`.
+- ~~**Three call shapes v1 accepts have no number.**~~ **ASSIGNED 2026-09-09 BY
+  THE AUTHOR, AND ONE OF THEM WAS BLOCKING THE DONE-WHEN.** The unit block is
+  reached for every swap and `this` form, so v1 answers `.swap.used(unit)` and
+  `.this.used(unit)` while §2.2 writes `1 22 4 4 3` and `1 22 4 5 3` without the
+  parens their siblings carry — the table recording a sweep's arity rather than
+  the code. **This was not hypothetical: the done-when below cites
+  `example/full_test.satl:605–613`, whose last line is
+  `satellite.system.memory.this.used("kb")`, so M20 could not have met its own
+  done-when without minting at least one number.**
+
+      satellite.system.memory.swap.used(unit)   1 22 4 4 7
+      satellite.system.memory.this.used(unit)   1 22 4 5 6
+      satellite.system.environment(name)        1 22 9
+
+  **All three are appends and nothing renumbers.** The first two take the next
+  slot under `swap` and `this`. **`environment(name)` is a SIBLING and not a
+  child**, which is §4's rule and not a preference: a *user-owned* argument
+  contributes no number of its own, so its call shape takes a slot beside its
+  siblings — and `memory.main()` `1 22 4 3` against `main(unit)` `1 22 4 9`,
+  six slots apart, is the same rule already in the table.
+
+  **WORD_NUMBERS.md §2.2 is still the authority and does not yet carry these
+  rows.** Writing them there before `words.def` has them would fail
+  `tests/words_test`, which walks §2.2 against the registry — so the three rows
+  and the forty above land in **one commit, in both files**, as M20's first act.
 - **`satellite.container.arguments` `1 4 3` has no children and the object answers
   ten selectors** — `.length()`, `.count()`, `.names()`, `.to_string()`, `.lines()`,
   `.has(k)`, `.get(k)`, `.first()`, `.last()`, `.contains(x)`. That is M16's
@@ -4357,6 +4420,15 @@ type is a node and its methods are that node's children.
   `arguments.machine.cores`. Either a code is assigned or the rule is restated, and
   this milestone must not quietly pick a side of a contradiction whose whole point
   is that these must not disagree.
+
+  > **SETTLED 2026-09-09: §7.7's SENTENCE IS RESTATED AND NO CODE IS MINTED.**
+  > `cores` has **two** surfaces — the configuration and the arguments object —
+  > and the live code table keeps 97 threads, 98 mem_total_mb, 99 mem_used_mb as
+  > the code and PLAN §6.1 already have them. Minting code 100 for `cores` would
+  > add a fourth live code to a table whose rows are a permanent wire format, to
+  > satisfy a sentence's arithmetic; restating the sentence costs nothing and is
+  > true. **The done-when keeps its assertion for `threads`**, where all three
+  > surfaces really do exist, and that is the check §7.7 was asking for.
 - ~~**The seventh spelling**~~ **— ANSWERED 2026-09-09, AND IT IS A SPELLING.**
   This item read *"a parameter named `argv` gets a plain list with no properties,
   silently, and DESIGN §9 says that silence is wrong"*, and M7 had already ended
@@ -4367,14 +4439,24 @@ type is a node and its methods are that node's children.
   this as the author's call rather than a milestone's. **S0531 keeps its number**
   and still fires for `argu`, `arrgs` and `argvs`. What this milestone inherits is
   narrower than it was: **seven spellings to recognise instead of six.**
-- **`arguments[0]`, still open.** v1 already answered it — `.length()` and numeric
-  `[i]` cover the command line and nothing else, so index 0 is the program name —
-  and the author only has to confirm that answer is kept.
-- **The arguments object is a startup cost.** v1 builds all 33 eagerly — `uname`,
-  `/etc/os-release`, `getpwuid`, `gethostname`, `getcwd`, two `readlink`s,
-  `sysconf` — a dozen syscalls and a file parse against satl's own measured 0.01 ms
-  share (§4.3). §7.7's redesign is the chance to make it lazy, and §9 says measure it
-  here.
+- ~~**`arguments[0]`**~~ **CONFIRMED 2026-09-09: index 0 is the program name**,
+  which is v1's answer kept rather than a new one — `.length()` and numeric `[i]`
+  cover the command line and nothing else. DESIGN §13's open row closes with it.
+- **The arguments object is a startup cost. BUILD IT LAZILY, AND MEASURE BOTH** —
+  the author, 2026-09-09. v1 builds all 33 eagerly — `uname`, `/etc/os-release`,
+  `getpwuid`, `gethostname`, `getcwd`, two `readlink`s, `sysconf` — a dozen
+  syscalls and a file parse against satl's own share of §4.3's budget. **Measured
+  2026-09-09 on this machine: satl's whole startup is 2 ms**, against CPython
+  3.12's 17 on the same box, so the budget this is spent out of is real and small.
+  §9 says take the number rather than quote it, and the number wanted is *both*
+  arms — eager and lazy — because "lazy is faster" is the kind of claim this
+  section exists to stop being assumed.
+- **`satellite.system.environment` `1 22 2` — the shape, settled 2026-09-09.**
+  The bare form answers **a map** of the whole environment; `environment(name)`
+  `1 22 9` answers **the one variable**. M16 has maps, so the bare form costs
+  nothing it did not already have, and the pair is the same read-one / read-all
+  shape `satellite.system.memory` carries. It remains the one path in this
+  milestone that is not a port — v1 never built it and said so.
 - **`.bit` `1 22 4 1` and `.frequency` `1 22 4 2` cannot be demonstrated as an
   ordinary user.** Both come from SMBIOS type 17 through
   `/sys/firmware/dmi/entries/*/raw`, and v1's comment on the failure path reads
@@ -4382,12 +4464,12 @@ type is a node and its methods are that node's children.
   answer and not an error**, and the done-when says so rather than letting two paths
   ship answering 0 with nothing that fails.
 
-**The recognition of the six spellings is M7's and the spelling table is M2's**, and
+**The recognition of the spellings is M7's and the spelling table is M2's**, and
 neither said so before this pass. WORD_NUMBERS §2.3's third alias row is
-`arg` `args` `argz` `argument` `arguments` `argumentz` — *one node, six spellings* —
-which is the same mechanism `words.def` already carries nine of; **resolve is where
-a parameter name matching one of them becomes the special variable**, and M7's entry
-now says it. This milestone's headline demonstration rests on that table, and the
+`arg` `args` `argz` `argument` `arguments` `argumentz` `argv` — *one node, seven
+spellings since 2026-09-09* — which is the same mechanism `words.def` already
+carries ten of; **resolve is where a parameter name matching one of them becomes
+the special variable**, and M7's entry now says it. This milestone's headline demonstration rests on that table, and the
 draft it comes from asserted the whole mechanism was M7's while M3's own sentence
 called `hexadecimal` *"the language's one alias"*. **M3's word was wrong and is
 corrected**: §2.3 has three rows.
