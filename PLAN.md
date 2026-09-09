@@ -4374,13 +4374,44 @@ rows that are a done-when clause rather than a question.)*
 - **A TOOL BEFORE THE ROWS, AND IT IS THIS MILESTONE'S FIRST COMMIT.** `satl
   --words <path>` answers number, path and depth, and says nothing about a node's
   children or what is free under it — while `next_free(NodeId)` has been sitting
-  in `satellite_words/words_runtime.hpp` since M2 with **no caller anywhere in the
-  tree**. Minting forty rows by opening `words.def` and counting is the one way
-  this milestone can silently renumber something; asking the binary cannot be
-  wrong about the binary. So `--words <path>` grows the children and the next free
-  number first, which is M2's own *a registry gets a consumer* rule applied once
-  more, and the rest of this entry is then mechanical: ask, append, run
-  `words_test`.
+  in `satellite_words/words_runtime.hpp` since M2 with ~~**no caller anywhere in
+  the tree**~~ **no caller a PERSON can reach**. Minting forty rows by opening
+  `words.def` and counting is the one way this milestone can silently renumber
+  something; asking the binary cannot be wrong about the binary. So `--words
+  <path>` grows the children and the next free number first, which is M2's own
+  *a registry gets a consumer* rule applied once more, and the rest of this entry
+  is then mechanical: ask, append, run `words_test`.
+
+  **BUILT 2026-09-09, AND THE SENTENCE ABOVE WAS OVERSTATED.**
+  `tests/words_test/runtime.cpp` calls `next_free()` five times and has since
+  M2, which that milestone's own entry wrote down as deliberate — *"until then
+  the only consumer is tests/words_test"*. A test is a caller and a real one;
+  what there was none of is a caller reachable from a command line, and that is
+  the thing M2's rule is actually asking for. **The correction matters because
+  the overstatement pointed at the wrong risk**: an uncalled function might be
+  wrong, and this one was covered — what was missing was a way for a person
+  minting a row to ask it.
+
+  **AND BUILDING IT FOUND TWO THINGS THE ENTRY DID NOT ANTICIPATE.** First,
+  `next_free()` is `frozen_children() + 1` only for a numbering **that has
+  defined nothing** — a sweep asserting it over the `Words` `runtime.cpp` had
+  already been allocating into failed on `satellite.library`, whose counter that
+  same function moves twice forty lines earlier. That is the property rather
+  than a mistake in stating it, and it is why the command builds a fresh `Words`
+  per call rather than keeping one. The sweep now runs over all 254 nodes on a
+  fresh numbering, and it is what proves the printed number is the allocator's
+  answer and not file order read twice. Second, **`next_free()` cannot report
+  position 0**: it counts numbered children, and §1.3's bare shape is the one
+  child that takes no position from its siblings — so a parent with no `()` row
+  has a free number the allocator will never offer. This milestone needs that
+  answer **five times** (`system`, `build`, `interpreter`, `process`, `session`
+  are all new parents under `arguments`, and every parent in `words.def` carries
+  a `()` row), so the command says whether 0 is taken as well as what is next.
+
+  **THE THREE ASSIGNED CALL SHAPES BELOW WERE THEN CONFIRMED BY THE BINARY**
+  rather than by counting the file: next free under `swap` is `1 22 4 4 7`,
+  under `this` is `1 22 4 5 6`, under `system` is `1 22 9`, and under
+  `arguments` is `1 14 1 1 4` — which is where `system` goes.
 - ~~**Three call shapes v1 accepts have no number.**~~ **ASSIGNED 2026-09-09 BY
   THE AUTHOR, AND ONE OF THEM WAS BLOCKING THE DONE-WHEN.** The unit block is
   reached for every swap and `this` form, so v1 answers `.swap.used(unit)` and
@@ -4496,6 +4527,21 @@ truthful answer**; and when `satellite.system.home` and the memory verbs match
 floor — five assertions over `.home`, `.total`, `.free`, `.main` and
 `.this.used("kb")`, and that last line is also the proof that the missing `(unit)`
 numbers are a real problem and not a hypothetical one.
+
+***"ALMOST VERBATIM" HAS A SECOND CLAUSE AND IT IS A SPELLING, NOT A NUMBER.***
+*(Found 2026-09-09 by walking the cited lines through the tool this milestone's
+first commit built.)* Three of those five are written with parentheses in v1 and
+without them here: `format.def` has `satellite.system.home()`,
+`.memory.bit()` and `.memory.frequency()` at arity 0, while `words.def` numbers
+all three as plain words — `home` `1 22 3`, `bit` `1 22 4 1`, `frequency`
+`1 22 4 2` — with no call shape under any of them, so `satl --words
+'satellite.system.home()'` answers *"has that word, but not with those
+arguments"* and exits 2. **All three moved the same way, so it is a decision this
+tree already made and not three rows anybody forgot**, and the port adjusts the
+spelling rather than minting a number. Saying so here is what stops the person
+writing the demonstration reading a refusal as a missing row and appending a
+fourth `()`. **`.this.used("kb")` is the one line of the five that really is a
+missing number**, which is exactly what the entry above says.
 
 **The watchdog is not in this done-when**, and that is the M6 seam holding: the
 ceiling, the file and the exit path are demonstrated at M6 against no language at

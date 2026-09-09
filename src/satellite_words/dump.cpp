@@ -50,6 +50,96 @@ void row(std::string &out, const std::string &left, const std::string &right,
     out += '\n';
 }
 
+// The children of one node, and the number the next one would take.
+//
+// M20 IS WHY THIS EXISTS AND PLAN.md SAYS SO IN ITS OWN WORDS: "minting forty
+// rows by opening words.def and counting is the one way this milestone can
+// silently renumber something; asking the binary cannot be wrong about the
+// binary." So this is M20's first commit and it lands before any of its rows --
+// a tool, and then the work the tool is for.
+//
+// THE FREE NUMBER COMES FROM Words AND NOT FROM frozen_children() + 1, and the
+// two are the same answer today for exactly one reason: a fresh Words has met
+// no user names. Recomputing the sum here would be a second implementation of
+// M2's allocation rule, sitting next to the first, free to drift the day
+// WORD_NUMBERS §3 grows a case -- and the whole argument for this command is
+// that it asks the machine rather than repeating it. words_runtime.hpp's
+// next_free() is the allocator, so next_free() is what is printed.
+//
+// AND IT IS THAT FUNCTION'S FIRST CALLER OUTSIDE A TEST. It has been in
+// words_runtime.hpp since M2, exercised only by tests/words_test/runtime.cpp --
+// which PLAN M2 wrote down as deliberate ("until then the only consumer is
+// tests/words_test") and PLAN M20 then overstated as "no caller anywhere in the
+// tree". The test is a caller and a real one; what there was none of is a
+// caller a PERSON can reach, which is what M2's own rule about a registry
+// getting a consumer is asking for.
+//
+// THE BARE SHAPE IS LISTED AND NOT COUNTED, because that is what it is:
+// WORD_NUMBERS §1.3 makes position 0 a real number, and words_numbers.hpp keeps
+// the counter still when it passes one, so a parent's numbered children stay
+// dense from 1 whether it has a bare shape or not. Printing it inside the count
+// would make this command disagree with the numbering it reports.
+std::string children_text(NodeId id)
+{
+    size_t numbered = 0;
+    bool bare = false;
+    size_t column = 0;
+    for (PathId c = first_child(id); c != kNoPath; c = next_sibling(c)) {
+        const NodeId child = static_cast<NodeId>(c);
+        // THE COLUMN IS MEASURED OVER WHAT IS PRINTED HERE, not over the
+        // language -- the same choice the alias block below makes, and for the
+        // same reason: padding a six-character path out to the width of
+        // satellite.window.console.new(title, width, height) is a column with a
+        // gap in it rather than a column.
+        column = std::max(column, path_text(child).size());
+        if (is_bare(child))
+            bare = true;
+        else
+            numbered++;
+    }
+
+    std::string out = "  children ";
+    if (numbered == 0 && !bare)
+        out += "none\n";
+    else {
+        out += numbered == 0 ? std::string("none numbered")
+                             : std::to_string(numbered) + " numbered";
+        out += bare ? ", and a bare shape\n" : "\n";
+    }
+
+    if (numbered != 0 || bare) {
+        out += '\n';
+        for (PathId c = first_child(id); c != kNoPath; c = next_sibling(c))
+            row(out, "  " + path_text(static_cast<NodeId>(c)),
+                number_text(static_cast<NodeId>(c)), column + 4);
+        out += '\n';
+    }
+
+    // ONE Words PER CALL AND NOT A STATIC. It is a kilobyte of counters and a
+    // command that answers once, and words_runtime.hpp's own reason for the
+    // class -- "a run's names end with the run" -- is worth more here than the
+    // allocation it saves. It also has to be FRESH: next_free() is one past the
+    // frozen count only for a numbering that has defined nothing, which is a
+    // property tests/words_test/runtime.cpp states and demonstrated by failing
+    // on satellite.library when it was first written over a used one.
+    const Words words;
+    out += "  the next number free under it is " + number_text(id) + " " +
+           std::to_string(words.next_free(id));
+
+    // AND WHETHER 0 IS FREE, WHICH next_free() CANNOT SAY. It counts numbered
+    // children, and a bare shape is the one child that takes no position from
+    // its siblings -- so a node with no bare row has a free number the
+    // allocator will never offer, and M20 needs it five times over: `system`,
+    // `build`, `interpreter`, `process` and `session` are all new parents under
+    // `arguments`, and every parent in words.def carries a `()` row at 0.
+    //
+    // A COMMAND THAT ANSWERS "WHAT IS FREE" MUST ANSWER FOR 0 TOO, or the one
+    // row it stays silent about is the row somebody mints by hand.
+    out += bare ? ", and 0 is taken by the bare shape\n"
+                : ", and " + number_text(id) + " 0 is free for a bare shape\n";
+    return out;
+}
+
 } // namespace
 
 std::string dump_text()
@@ -130,6 +220,7 @@ std::string walk_text(const std::string &path, bool &resolved)
         out += "  number   " + number_text(id) + "\n";
         out += "  path     " + path_text(id) + "\n";
         out += "  depth    " + std::to_string(depth_of(id)) + "\n";
+        out += children_text(id);
         return out;
     }
 

@@ -113,6 +113,32 @@ void section_runtime()
     check(second.next_free(library) == 3 && second.defined() == 0,
           "§8.1: a second numbering starts from the frozen table again, which "
           "is why a user's number is not stable between runs");
+
+    // EVERY NODE, AND NOT ONE -- OVER THE FRESH NUMBERING, WHICH IS THE POINT.
+    // `satl --words <path>` prints next_free() as the number a new row under
+    // that path would take, and M20 mints about forty rows by asking it, so
+    // what the command is trusted for is that the allocator agrees with FILE
+    // ORDER everywhere and not just where a test happened to look. The two
+    // sides are computed by different code -- words_runtime.hpp's counter
+    // array here, words_numbers.hpp's constexpr forward pass there -- and the
+    // bare rows are where they could disagree, since a bare shape is a child
+    // that takes no position from its siblings.
+    //
+    // IT IS `second` AND NOT `words` BECAUSE `words` HAS MET NAMES, and writing
+    // it over `words` is what this check did for its first ten minutes: it
+    // failed on satellite.library, whose counter this function moved twice
+    // forty lines up. That failure is the property rather than a mistake in
+    // stating it -- next_free() is frozen_children() + 1 only for a numbering
+    // that has defined nothing, which is why the command builds a Words of its
+    // own per call instead of keeping one.
+    for (PathId i = 1; i <= kNodeCount; i++) {
+        const NodeId id = static_cast<NodeId>(i);
+        if (second.next_free(id) != frozen_children(id) + 1) {
+            check(false, "§8.1: the next free number under " + path_text(id) +
+                             " must be one past its last frozen child");
+            break;
+        }
+    }
 }
 
 } // namespace words_test
