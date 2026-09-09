@@ -154,6 +154,19 @@ std::string text_of(const Value &value)
     if (const Bin *run = std::get_if<Bin>(&value))
         return *run ? bits::text_of(**run) : std::string("b");
 
+    // A HEX RUN PRINTS AT ITS WRITTEN WIDTH TOO, `x` AND ALL -- `x0009` prints
+    // `x0009` and never `x9`, the bit run's clause one arm up.
+    //
+    // BUT THE CASE IS THIS PRINTER'S AND NOT THE PROGRAM'S, which is the one
+    // way hex differs from binary here. A bit run's digits ARE its value, so
+    // printing what was written and printing the value are the same act; a hex
+    // digit's case is not part of its value -- lexer_chars.hpp takes `x00ff`
+    // and `x00FF` as one thing -- so it is not stored and cannot be printed
+    // back. bits.hpp picks upper, on the ground that DESIGN §8.5 spells every
+    // example it has that way.
+    if (const Hex *run = std::get_if<Hex>(&value))
+        return *run ? bits::text_of(**run) : std::string("x");
+
     if (const Str *text = std::get_if<Str>(&value))
         return *text ? live_text(**text) : std::string();
 

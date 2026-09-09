@@ -333,12 +333,28 @@ SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_TO_NUMBER,   "to_number",             
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_WIDTH,       "width",                 SAT_NUMBERED)  // 1 6 5 2
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_TO_STRING,   "to_string",             SAT_NUMBERED)  // 1 6 5 3
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_AS_NUMBER,   "as_number",             SAT_NUMBERED)  // 1 6 5 4
+SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_DIGITS,      "digits",                SAT_NUMBERED)  // 1 6 5 5
+SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_TO_HEX,      "to_hex",                SAT_NUMBERED)  // 1 6 5 6
 SAT_NODE(VARIABLE,        VARIABLE_BOOL,               "bool",                  SAT_NUMBERED)  // 1 6 6
 SAT_NODE(VARIABLE,        VARIABLE_DATE,               "date",                  SAT_NUMBERED)  // 1 6 7
 SAT_NODE(VARIABLE,        VARIABLE_DURATION,           "duration",              SAT_NUMBERED)  // 1 6 8
 SAT_NODE(VARIABLE,        VARIABLE_EXPRESSION,         "expression",            SAT_NUMBERED)  // 1 6 9
 SAT_NODE(VARIABLE,        VARIABLE_FLOAT,              "float",                 SAT_NUMBERED)  // 1 6 10
 SAT_NODE(VARIABLE,        VARIABLE_HEX,                "hex",                   SAT_NUMBERED)  // 1 6 11
+// ROW FOR ROW WITH `binary` `1 6 5` ABOVE, AND THAT ALIGNMENT IS DELIBERATE:
+// `1 6 5 n` and `1 6 11 n` ask the same question of the two radices for every
+// n, so a reader who learns one table has learned both. It cost nothing to
+// arrange -- `digits` and the two conversions were appended to BOTH types in
+// the same order on 2026-09-09 -- and it is why `to_hex` sits on binary and
+// `to_binary` sits on hex at the same number rather than each landing wherever
+// its own type happened to reach.
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_0,              "()",                    SAT_BARE)  // 1 6 11 0
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_NUMBER,      "to_number",             SAT_NUMBERED)  // 1 6 11 1
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_WIDTH,          "width",                 SAT_NUMBERED)  // 1 6 11 2
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_STRING,      "to_string",             SAT_NUMBERED)  // 1 6 11 3
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_AS_NUMBER,      "as_number",             SAT_NUMBERED)  // 1 6 11 4
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_DIGITS,         "digits",                SAT_NUMBERED)  // 1 6 11 5
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_BINARY,      "to_binary",             SAT_NUMBERED)  // 1 6 11 6
 SAT_NODE(VARIABLE,        VARIABLE_NETWORK,            "network",               SAT_NUMBERED)  // 1 6 12
 SAT_NODE(VARIABLE,        VARIABLE_THREAD,             "thread",                SAT_NUMBERED)  // 1 6 13
 SAT_NODE(VARIABLE_THREAD, VARIABLE_THREAD_0,           "()",                    SAT_BARE)  // 1 6 13 0
@@ -693,6 +709,7 @@ SAT_BUILT(VARIABLE_STRING, SAT_OFFERED)       // 1 6 1
 SAT_BUILT(VARIABLE_TIME, SAT_OFFERED)         // 1 6 3    M13 gave Value its instant arm
 SAT_BUILT(VARIABLE_NUMBER, SAT_OFFERED)       // 1 6 4
 SAT_BUILT(VARIABLE_BINARY, SAT_OFFERED)       // 1 6 5    M19.5
+SAT_BUILT(VARIABLE_HEX, SAT_OFFERED)          // 1 6 11   M19.5's second half
 SAT_BUILT(VARIABLE_BOOL, SAT_OFFERED)         // 1 6 6
 SAT_BUILT(VARIABLE_FLOAT, SAT_OFFERED)        // 1 6 10   M15
 SAT_BUILT(VARIABLE_VARIANT, SAT_OFFERED)      // 1 6 14   M12

@@ -52,7 +52,30 @@ namespace {
 bool bytes_to_put(eval::Machine &m, const Value *arguments, bool newline,
                   std::string *out)
 {
-    if (const bits::BitRun *run = as_binary(arguments[1])) {
+    // A HEX RUN IS THE SAME BYTES AND THE SAME RULE, and it is written as its
+    // OWN arm rather than folded into the one below because the two values
+    // live in different variant arms (value.hpp) -- `as_binary` answers
+    // nullptr for a hex and there is nothing to fold. What the two arms share
+    // is `bits::to_bytes`, so `write(x41)` and `write(b01000001)` put the same
+    // single byte `A`, and the width rule reads identically on both.
+    //
+    // THE MULTIPLE OF EIGHT IS BITS AND NOT DIGITS, which is exactly why
+    // `hex.width()` `1 6 11 2` answers bits: `x41` is 8 bits and writes;
+    // `x415` is 12 and does not. Had `width()` counted digits, this refusal
+    // would have had to say "a multiple of two" for one type and "a multiple
+    // of eight" for the other while meaning one thing.
+    if (const bits::HexRun *run = as_hex(arguments[1])) {
+        if (!bits::to_bytes(run->bits, *out)) {
+            m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+                m.span_of(m.here()),
+                std::string(m.text_of(m.here())),
+                "a `satellite.variable.hex` whose width is a whole number "
+                "of bytes -- a multiple of 8",
+                bits::text_of(*run) + ", which is " +
+                    std::to_string(run->width()) + " bits wide"));
+            return false;
+        }
+    } else if (const bits::BitRun *run = as_binary(arguments[1])) {
         if (!bits::to_bytes(*run, *out)) {
             m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
                 m.span_of(m.here()),

@@ -49,6 +49,8 @@ const char *type_name(const Value &value)
         return "file";
     if (value.is_binary())
         return "binary";
+    if (value.is_hex())
+        return "hex";
     return "nothing";
 }
 
@@ -187,6 +189,25 @@ bool same(const Value &left, const Value &right)
         // BY VALUE AND NOT BY HANDLE, the string arm's rule directly below.
         if (const Bin *run = std::get_if<Bin>(&a)) {
             const Bin &twin = std::get<Bin>(b);
+            if (run->get() == twin.get())
+                continue;
+            if (*run && twin && **run == *twin)
+                continue;
+            return false;
+        }
+
+        // A HEX RUN COMPARES THE SAME WAY, AND NEVER AGAINST A BIT RUN. The
+        // arm check this loop already made is what makes `b1111 == xF` FALSE
+        // -- DESIGN §8.5 promised that answer and it is delivered by the two
+        // values being in different arms, not by anything written here. The
+        // two hold identical bits when they do, which is exactly why the type
+        // had to be a separate arm rather than a flag: a shared arm would have
+        // made that pair compare EQUAL unless this line remembered to ask.
+        //
+        // CASE IS NOT COMPARED BECAUSE CASE IS NOT STORED. `x00ff == x00FF` is
+        // true, which lexer_chars.hpp decided when it accepted both spellings.
+        if (const Hex *run = std::get_if<Hex>(&a)) {
+            const Hex &twin = std::get<Hex>(b);
             if (run->get() == twin.get())
                 continue;
             if (*run && twin && **run == *twin)

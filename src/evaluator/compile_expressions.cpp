@@ -72,27 +72,37 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
         // THE RADIX IS THE TOKEN'S AND NOT THIS FILE'S. lexer.cpp's
         // bits_radix() already decided `b` is 2 and `x` is 16 and already
         // proved every character is a digit of that radix, so what is left
-        // here is which TYPE the literal makes -- and at M19.5 only one of the
-        // two has an arm to make.
+        // here is which TYPE the literal makes -- and since 2026-09-09 both
+        // have an arm to make, which is what closed M19.5.
+        //
+        // THE LEADING CHARACTER IS THE TYPE AND THE REST IS THE VALUE, in both
+        // arms. The token cannot be shorter than two characters --
+        // bits_radix() requires a radix letter and at least one digit -- so
+        // `substr(1)` is never empty and every literal has at least one bit.
         const Token &token = ast_.token_of(node);
         const std::string_view written = ast_.text_of(node);
-        if (token.radix != 2) {
-            // HEX IS NEXT AND THE REFUSAL SAYS SO. This is no longer S0720's
-            // "no milestone owns the value" -- one does, this is it, and the
-            // author split it so binary could land first (2026-09-08). A
-            // refusal that names the milestone beats one that names a gap,
-            // which is the whole argument errors.def's S0720 block makes.
-            finish(not_built(node, "a hexadecimal literal",
-                             "M19.5 built `satellite.variable.binary` first, "
-                             "at the author\'s direction, and "
-                             "`satellite.variable.hex` is the half after it"));
+        const std::string_view digits = written.substr(1);
+
+        // THE PARSE CANNOT FAIL AND IS CHECKED ANYWAY, both arms, for the
+        // reason bits.cpp gives at each constructor: the lexer has already
+        // proved every character is a digit of this radix, and a constructor
+        // that trusts its caller is a crash waiting on the second caller.
+        if (token.radix == 16) {
+            bits::HexRun run;
+            if (!bits::parse_hex(digits, run)) {
+                problems_.push_back(
+                    errors::make<errors::Code::NUMBER_NOT_A_NUMBER>(
+                        span_of(node), std::string(written)));
+                finish(kNoOp);
+                return true;
+            }
+            finish(emit(op_constant, node,
+                        out_.add_constant(Value::hex(std::move(run)))));
             return true;
         }
+
         bits::BitRun run;
-        // The leading `b` is the type and the rest is the value. The token
-        // cannot be shorter than two characters -- bits_radix() requires it --
-        // so there is always at least one bit.
-        if (!bits::parse_binary(written.substr(1), run)) {
+        if (!bits::parse_binary(digits, run)) {
             problems_.push_back(errors::make<errors::Code::NUMBER_NOT_A_NUMBER>(
                 span_of(node), std::string(written)));
             finish(kNoOp);

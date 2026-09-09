@@ -1,7 +1,7 @@
 // Every row of WORD_NUMBERS.md §2.2, walked. See words_test.hpp.
 //
-// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 240 rows, 237 distinct numbers,
-// exactly 3 aliases, 37 `(0)` markers -- if the reader below finds a different
+// THE COUNTS ARE CHECKED BEFORE THE ROWS ARE. 248 rows, 245 distinct numbers,
+// exactly 3 aliases, 38 `(0)` markers -- if the reader below finds a different
 // number of rows than the documents claim, every per-row result after it is
 // answering a question nobody asked, and a suite that reports PASS over half a
 // table is the green line FORMAT/CXX.md §6 warns about.
@@ -184,8 +184,8 @@ void section_authority()
     // number. It is visible to this test through the WALK rather than through
     // the counts: match_shape compares argument lists character for character,
     // so a shape written here and not in words.def is a row that stops walking.
-    check(rows.size() == 240,
-          "§2.2 should hold 240 rows, found " + std::to_string(rows.size()));
+    check(rows.size() == 248,
+          "§2.2 should hold 248 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -194,12 +194,12 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 237,
-          "§2.2 should carry 237 distinct numbers, found " +
+    check(numbers.size() == 245,
+          "§2.2 should carry 245 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 3, "§2.2 should declare exactly 3 aliases, found " +
                             std::to_string(aliases));
-    check(markers == 37, "§2.2 should carry 37 `(0)` markers, found " +
+    check(markers == 38, "§2.2 should carry 38 `(0)` markers, found " +
                              std::to_string(markers));
 
     // AND NOW THE CONVERSE, WHICH IS THE HALF THIS FUNCTION DID NOT CHECK.

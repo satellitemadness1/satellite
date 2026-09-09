@@ -1504,7 +1504,7 @@ it is; the labels changed. This table is the key to every document written befor
     M8.B    M17   hello world
     M8.5    M18   satellite.help
     M18     M19   persistence — files and directories
-            M19.5 binary and hexadecimal   (binary built; hex owed)
+            M19.5 binary and hexadecimal   LANDED 2026-09-08 / 09
             M19.6 the `.satc` after resolve, and the option token
     M19     M20   the machine's facts in the language
     M20     M21   a piece of QUAD, running
@@ -4054,11 +4054,24 @@ orphans `satellite.directory` a second time, which is the precise failure
 `MILESTONE.md` exists to record.
 
 **M19.5 — binary and hexadecimal.** *(New 2026-09-08. After M19, before M20.)*
-***BINARY LANDED 2026-09-08; HEX IS THE HALF STILL OWED, and the split is the
+***LANDED WHOLE: BINARY 2026-09-08, HEX 2026-09-09.*** *The split was the
 author's — `satellite.variable.binary` `1 6 5` first, so the type's shape could
-be settled on one radix before the second inherited it. MILESTONES/M19.5.md is
-the review, DESIGN §8.5's new subsection is what got decided, and the entry
-below stands as it was written so that the two can be compared.***
+be settled on one radix before the second inherited it — and it paid: every
+question the second half faced was either already answered by the first or was
+genuinely new to hex, and the new ones are named in DESIGN §8.5. Both radices
+carry six methods at matching numbers, `1 6 5 n` and `1 6 11 n` asking the same
+question for every n. MILESTONES/M19.5.md is the review, DESIGN §8.5's
+subsection is what got decided, and the entry below stands as it was written so
+that the two can be compared.*
+
+***AND THE OPERATORS ARE NOT IN IT.*** `+`, `!!`, `[` and the shifts were all
+DECIDED on 2026-09-09 and none was built, at the author's call — *"we are doing
+just too much at one time"* — after the author spotted what the operator set
+actually costs: *"we forgot about order of operations like completely"*. The
+answers are written into DESIGN §8.5 and §6.6 so the milestone that builds them
+starts from them rather than re-arguing them. **A method needs a `words.def`
+row and an operator does not**, which is the line that made leaving them out
+cost nothing: not one path number is spent by the delay.
 **Two numbered paths and no third** — `satellite.variable.binary` `1 6 5` and
 `satellite.variable.hex` `1 6 11`, which WORD_NUMBERS §2.2 has carried since M2
 and which no milestone in this list has ever claimed.

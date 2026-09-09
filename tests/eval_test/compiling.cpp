@@ -140,16 +140,26 @@ void section_compile()
           "S0713: a subscript on a number names what CAN be indexed, now that "
           "M16 has built the two containers");
 
-    // A GAP NAMED IS A GAP SOMEBODY CAN CLOSE, AND M19.5 CLOSED HALF OF IT.
-    // This fixture asked, until 2026-09-08, that a hexadecimal literal say NO
-    // milestone owned its value -- which was true and was the most useful
-    // thing the refusal could say while it was. PLAN §8 assigned both literals
-    // to M19.5 and the author split it, so the two halves now answer
-    // differently and the pair of checks is the record of which is which.
-    check(holds(refusal_in(body("satellite.return(x00FF)"), "it"),
-                "`satellite.variable.hex` is the half after it"),
-          "S0720: a hexadecimal literal now names the milestone that owns it "
-          "rather than reporting a gap -- M19.5, second half");
+    // A GAP NAMED IS A GAP SOMEBODY CAN CLOSE, AND M19.5 CLOSED ALL OF IT.
+    // This fixture has now said three things in three days, which is why the
+    // history is written here rather than deleted with each rewrite: until
+    // 2026-09-08 it asked that a hexadecimal literal say NO milestone owned
+    // its value; on 2026-09-08 that it name M19.5's second half; and since
+    // 2026-09-09 there is no refusal to ask for, because the value exists.
+    //
+    // SO WHAT IS PINNED HERE IS THAT S0720 IS NOT REACHABLE FROM A LITERAL AT
+    // ALL, which is PLAN §8's done-when for this milestone in its own words:
+    // "`satl --compile` no longer has S0720 in reach for a literal, because
+    // there is a producer." tests/eval_test/hex.cpp is where the VALUE is
+    // tested; this is the gap's headstone.
+    {
+        Run run;
+        build(body("satellite.return(x00FF)"), run);
+        check(run.built,
+              "S0720 IS NO LONGER IN REACH FOR A LITERAL -- every literal this "
+              "language lexes now compiles to a value, which is what closed "
+              "M19.5 on 2026-09-09");
+    }
 
     // --- a language path with no handler behind it ---------------------------
     {

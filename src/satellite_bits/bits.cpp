@@ -1,5 +1,6 @@
-// The bit run's five operations. See satellite_bits/bits.hpp for what the
-// type is and why the bits are packed.
+// The bit run's five operations and the hex run's four. See
+// satellite_bits/bits.hpp for what the two types are, why the bits are packed,
+// and why hex HOLDS a bit run rather than deriving from one.
 
 #include "satellite_bits/bits.hpp"
 
@@ -95,6 +96,80 @@ bool to_bytes(const BitRun &run, std::string &out)
                                               (run.bits[at + i] ? 1u : 0u));
         out.push_back(static_cast<char>(byte));
     }
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// How many bits one hex digit is worth. NOT A TUNABLE -- 2^4 is 16 and there
+// are sixteen hex digits, so this is the only value that makes the round trip
+// exact, which is the property the whole type is built on.
+constexpr size_t kBitsPerDigit = 4;
+
+// One hex digit's value, or 16 when the character is not one. Sixteen and not
+// -1 so the caller's check is a comparison against the radix rather than
+// against a sentinel that has to be remembered.
+unsigned digit_value(char c)
+{
+    if (c >= '0' && c <= '9')
+        return static_cast<unsigned>(c - '0');
+    if (c >= 'a' && c <= 'f')
+        return static_cast<unsigned>(c - 'a') + 10u;
+    if (c >= 'A' && c <= 'F')
+        return static_cast<unsigned>(c - 'A') + 10u;
+    return 16u;
+}
+
+} // namespace
+
+bool parse_hex(std::string_view digits, HexRun &out)
+{
+    out.bits.bits.clear();
+    out.bits.bits.reserve(digits.size() * kBitsPerDigit);
+    for (const char c : digits) {
+        const unsigned value = digit_value(c);
+        if (value >= 16u)
+            return false;
+        // MOST SIGNIFICANT BIT OF THE DIGIT FIRST, which is what keeps the
+        // whole run in the order it was written: `xF0` must expand to
+        // `b11110000` and not `b00001111`, and it is the same order the digit
+        // is read back in below.
+        for (size_t bit = kBitsPerDigit; bit-- > 0;)
+            out.bits.bits.push_back(((value >> bit) & 1u) != 0);
+    }
+    return true;
+}
+
+std::string digits_of(const HexRun &run)
+{
+    static const char kDigits[] = "0123456789ABCDEF";
+    std::string text;
+    text.reserve(run.digits());
+    // THE LOOP CANNOT LEAVE A PARTIAL DIGIT because the width is a multiple of
+    // four by construction (bits.hpp's invariant) -- the `+ 4 <=` is what makes
+    // that a fact of this loop rather than a fact somebody has to remember.
+    for (size_t at = 0; at + kBitsPerDigit <= run.bits.bits.size();
+         at += kBitsPerDigit) {
+        unsigned value = 0;
+        for (size_t i = 0; i < kBitsPerDigit; i++)
+            value = (value << 1) | (run.bits.bits[at + i] ? 1u : 0u);
+        text.push_back(kDigits[value]);
+    }
+    return text;
+}
+
+std::string text_of(const HexRun &run)
+{
+    return "x" + digits_of(run);
+}
+
+bool to_hex(const BitRun &run, HexRun &out)
+{
+    if (run.bits.size() % kBitsPerDigit != 0)
+        return false;
+    out.bits = run;
     return true;
 }
 

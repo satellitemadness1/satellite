@@ -24,19 +24,30 @@
 // author raised the memory question before the type was written and this is
 // its answer.
 //
-// INDEX 0 IS THE LEFTMOST BIT AS WRITTEN, most significant first. That is the
-// order `b1000` reads in, and it makes `b1000[0]` the `b1` -- the same 0-based
-// counting from the left that DESIGN §8.3 gives a string and that
-// evaluator/operations_subscript.cpp gives a list, so a subscript means one
-// thing in this language rather than one thing per type.
+// INDEX 0 IS THE RIGHTMOST BIT -- the least significant, the 1s place -- so
+// `b0001[0]` is `b1`. THE AUTHOR'S, 2026-09-09, AND IT REVERSES WHAT THIS
+// COMMENT SAID FOR A DAY: until then this file and DESIGN §8.5 both said
+// leftmost, on the ground that a string and a list count from the left and a
+// subscript should mean one thing in this language.
 //
-// HEX IS NOT HERE YET AND WILL SHARE THIS BODY WITHOUT DERIVING FROM IT. The
-// author's plan, 2026-09-08: a hex value is stored as bits and converted at
-// display, because a hex digit is exactly four bits and the round trip is
-// exact. When it lands it gets its OWN struct holding a `BitRun`, never a
-// `struct HexRun : BitRun` -- a `shared_ptr<const HexRun>` converts implicitly
-// to a `shared_ptr<const BitRun>`, so inheritance would let a hex value be
-// assigned into a binary arm and silently become one. Composition cannot.
+// THE AUTHOR TOOK THE HARDWARE CONVENTION INSTEAD, and the cost is real and is
+// written here rather than argued away: a subscript now counts one way on a
+// string or a list and the other way on a bit run. `[-1]` reaches the far end
+// on all of them, as it does everywhere else.
+//
+// NOTHING BELOW IMPLEMENTS IT. `[` is an OPERATOR, costs no path number, and is
+// a later milestone's -- these lines exist so that milestone starts from the
+// decision instead of re-taking it, which is the whole reason DESIGN §8.5 keeps
+// the rest of the operator set written down and unbuilt.
+//
+// HEX SHARES THIS BODY WITHOUT DERIVING FROM IT -- `HexRun` at the bottom of
+// this file, M19.5's second half, landed 2026-09-09. The author's plan,
+// 2026-09-08: a hex value is stored as bits and converted at display, because
+// a hex digit is exactly four bits and the round trip is exact. It got its OWN
+// struct holding a `BitRun`, never a `struct HexRun : BitRun` -- a
+// `shared_ptr<const HexRun>` converts implicitly to a `shared_ptr<const
+// BitRun>`, so inheritance would let a hex value be assigned into a binary arm
+// and silently become one. Composition cannot.
 
 #include "satellite_number/bignum.hpp"
 
@@ -99,5 +110,79 @@ Number digits_as_number(const BitRun &run);
 // the answer, and it is one a program can act on: the width is the value's own
 // and `width()` `1 6 5 2` says what it is.
 bool to_bytes(const BitRun &run, std::string &out);
+
+// ---------------------------------------------------------------------------
+
+// A RUN OF HEX DIGITS -- `satellite.variable.hex` `1 6 11`, DESIGN §8.5's
+// other radix and the second half of M19.5.
+//
+// IT HOLDS A `BitRun` AND DOES NOT DERIVE FROM ONE, which the note at the top
+// of this file called before either existed. Under inheritance a
+// `shared_ptr<const HexRun>` converts implicitly to `shared_ptr<const BitRun>`,
+// so a hex value could be assigned into value.hpp's binary arm and silently
+// become a binary one -- a conversion in a language DESIGN §8 says has none.
+// Composition cannot be converted by accident, and that is the whole reason
+// for the extra `.bits` in every expression below.
+//
+// STORED AS BITS AND CONVERTED AT DISPLAY -- the author's, 2026-09-08 -- and
+// what makes it cost nothing is arithmetic rather than taste: one hex digit is
+// exactly four bits, 2^4 being 16, so neither direction rounds and neither
+// representation is the "real" one. `to_number()` reads the same value off
+// either, which is the fact the whole type leans on.
+//
+// THE WIDTH IS ALWAYS A MULTIPLE OF FOUR, BY CONSTRUCTION. A hex value is
+// built from DIGITS and each contributes four bits, so `digits()` never
+// rounds and never lies. That invariant is exactly what makes `to_binary()`
+// total and `to_hex()` partial, and the two are one function apart below.
+struct HexRun {
+    BitRun bits;
+
+    // WIDTH IS BITS, DIGITS ARE DIGITS, AND BOTH GOT A ROW because the author
+    // asked for both on 2026-09-09: `x00FF` is sixteen wide and four digits.
+    // `width()` `1 6 11 2` means the same thing it means on a bit run -- how
+    // many bits -- which is what lets `write(x)`'s multiple-of-eight rule stay
+    // ONE rule across the two types instead of reading as multiple-of-two here.
+    size_t width() const { return bits.width(); }
+    size_t digits() const { return bits.width() / 4; }
+    bool operator==(const HexRun &other) const { return bits == other.bits; }
+};
+
+// The digits of an `x` literal, WITHOUT the leading `x`, as a run. False when a
+// character is not a hex digit -- which the lexer has already ruled out, and
+// which is checked here for parse_binary's reason one type up.
+//
+// BOTH CASES ARE ACCEPTED AND NEITHER IS KEPT. lexer_chars.hpp takes `x00ff`
+// and `x00FF` alike "because the width is what carries meaning in §8.5 and
+// case does not" -- and since the value is the BITS, the case is not stored at
+// all. The two literals are one value, `x00ff == x00FF` is true, and
+// `digits_of` below picks the spelling back.
+bool parse_hex(std::string_view digits, HexRun &out);
+
+// The digits as the language writes them back -- "00FF", no prefix.
+//
+// UPPERCASE, AND IT IS A CHOICE THIS FUNCTION MAKES ALONE. The case a program
+// wrote is gone by the time anything gets here, so `display` cannot print what
+// was written the way it can for a bit run; it can only be consistent. Upper
+// is what DESIGN §8.5 writes in every example it has -- `x00FF`, `x0009` --
+// so the language prints hex the way its own specification spells it.
+std::string digits_of(const HexRun &run);
+
+// The digits as the language writes them -- "x00FF". The `x` does the job the
+// `b` does one type up and the float's always-printed point does a third: it
+// tells a reader of output which type answered.
+std::string text_of(const HexRun &run);
+
+// A bit run as a hex run, or false when the width is not a multiple of four.
+//
+// THE REFUSAL IS `to_bytes`'s REFUSAL ONE RADIX OVER AND FOR ITS REASON. Four
+// bits are one digit and three bits are no digits at all; padding to four
+// invents a bit the program never wrote and left-aligning invents the same bit
+// while hiding it better. So `b101.to_hex()` `1 6 5 6` refuses and says the
+// width, and there is no direction here in which something is quietly made up.
+//
+// THE OTHER DIRECTION NEEDS NO FUNCTION AND CANNOT FAIL: a `HexRun`'s `.bits`
+// IS the answer to `to_binary()` `1 6 11 6`, always, by the multiple-of-four
+// invariant above.
+bool to_hex(const BitRun &run, HexRun &out);
 
 } // namespace satellite::bits

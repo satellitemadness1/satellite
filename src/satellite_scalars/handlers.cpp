@@ -111,6 +111,30 @@ bool bits_at(eval::Machine &m, const Value *arguments, uint32_t who,
     return false;
 }
 
+bool hex_at(eval::Machine &m, const Value *arguments, uint32_t who,
+            const bits::HexRun **out)
+{
+    if (const bits::HexRun *run = as_hex(arguments[who])) {
+        // as_hex() answers an empty run for a null handle, as_binary's rule.
+        *out = run;
+        return true;
+    }
+    if (arguments[who].is_nothing() && who == 0) {
+        m.refuse(errors::make<errors::Code::EVAL_HOLDING_NOTHING>(
+            m.span_of(m.here()), asked(m)));
+        return false;
+    }
+    // `hex` AND NOT `hexadecimal`, which is the alias question this line is the
+    // only place in the module to face. WORD_NUMBERS §2.3 makes them one node
+    // with two spellings, so a diagnostic has to pick -- and it picks the one
+    // the path is written with everywhere else, so the word in the error is the
+    // word in `satellite.variable.hex`.
+    m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+        m.span_of(m.here()), asked(m), "a `satellite.variable.hex`",
+        spelled(arguments[who])));
+    return false;
+}
+
 bool position_at(eval::Machine &m, const Value *arguments, uint32_t who,
                  unsigned long long *out)
 {
@@ -152,6 +176,7 @@ void install_handlers()
     install_number_methods();
     install_variant_methods();
     install_bits_methods();
+    install_hex_methods();
 }
 
 } // namespace satellite::scalars

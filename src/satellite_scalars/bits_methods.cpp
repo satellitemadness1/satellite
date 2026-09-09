@@ -1,6 +1,14 @@
-// `satellite.variable.binary`'s four methods -- `1 6 5 1` through `1 6 5 4`,
+// `satellite.variable.binary`'s six methods -- `1 6 5 1` through `1 6 5 6`,
 // PLAN M19.5. See satellite_scalars/methods_internal.hpp for the receiver
-// check they share and satellite_bits/bits.hpp for what a bit run is.
+// check they share, satellite_bits/bits.hpp for what a bit run is, and
+// satellite_scalars/hex_methods.cpp for the six that mirror these on
+// `satellite.variable.hex` `1 6 11`.
+//
+// THE LAST TWO ROWS ARRIVED WITH THE SECOND RADIX, 2026-09-09, and the two
+// tables were made to line up on purpose: `1 6 5 n` and `1 6 11 n` ask the
+// same question for every n, so `digits` is 5 on both and the conversion to
+// the OTHER radix is 6 on both. words.def carries the same note where the rows
+// are.
 //
 // NO ROW MUTATES, which is the number rows' rule one file over and not a
 // coincidence: DESIGN §6.4 makes a mutating method publish through its
@@ -8,12 +16,15 @@
 // one answers a value of a DIFFERENT type. There is nothing to mutate until an
 // operation answers a bit run, and none does yet.
 //
-// FOUR ROWS AND THE TYPE HAS NO OTHERS, which is PLAN §8's "Two numbered paths
-// and no third" read at the level below it: `+`, `==` and `[` are OPERATORS
-// and cost no path number, so a later milestone can give this type an operator
+// SIX ROWS AND NO OPERATORS, which is PLAN §8's "Two numbered paths and no
+// third" read at the level below it: `+`, `==`, `!!` and `[` are OPERATORS and
+// cost no path number, so a later milestone can give this type any of them
 // without minting anything, while a method needs a row in words.def and is
-// therefore a decision about the numbering. These four were the author's,
-// 2026-09-08.
+// therefore a decision about the numbering. The first four rows were the
+// author's on 2026-09-08 and the last two on 2026-09-09, along with the call
+// to leave every operator to a later milestone -- `+` adding, `!!` joining,
+// and the whole order-of-operations question decided as one piece rather than
+// in the margin of this one.
 
 #include "satellite_scalars/methods_internal.hpp"
 
@@ -122,6 +133,66 @@ bool bits_as_number(eval::Machine &m, const Value *a, uint32_t, Value *answer)
     return true;
 }
 
+// `digits()` `1 6 5 5` -- HOW MANY DIGITS WERE WRITTEN. `b1010.digits()` is 4.
+//
+// IT ALWAYS EQUALS `width()` AND IS NOT REDUNDANT, which is worth saying
+// because it looks it: one bit is one digit, so these two rows answer the same
+// number for every binary value that will ever exist. What earns the row is
+// the OTHER type -- `x00FF.width()` is 16 and `x00FF.digits()` is 4 -- so a
+// program handed either radix can ask "how many characters did the author
+// write" and get an answer without first asking which type it holds. The row
+// exists so that the question is askable, not because the answer is news.
+//
+// THE AUTHOR ASKED FOR IT ON BOTH TYPES, 2026-09-09, and that was the reason.
+bool bits_digits(eval::Machine &m, const Value *a, uint32_t, Value *answer)
+{
+    const bits::BitRun *self = nullptr;
+    if (!bits_at(m, a, 0, &self))
+        return false;
+    *answer = Value::number(Number(static_cast<long long>(self->width())));
+    return true;
+}
+
+// `to_hex()` `1 6 5 6` -- THE SAME BITS, WEARING THE OTHER RADIX.
+// `b1010.to_hex()` is `xA`.
+//
+// IT REFUSES WHEN THE WIDTH IS NOT A MULTIPLE OF FOUR, and `b101.to_hex()` is
+// that refusal. Four bits are one hex digit and three bits are no hex digit at
+// all: padding to four invents a bit the program never wrote, and
+// left-aligning invents the same bit while hiding it better. Both are DESIGN
+// §1.1's "behind the user's back", so the refusal is the only answer that
+// makes nothing up -- `satellite.variable.file.write(x)`'s multiple-of-eight
+// rule, one step in.
+//
+// ITS TWIN CANNOT FAIL. `hex.to_binary()` `1 6 11 6` always answers, because
+// every hex digit has four bits; only this direction has a remainder to worry
+// about. A program that needs it asks `width()` `1 6 5 2` first.
+bool bits_to_hex(eval::Machine &m, const Value *a, uint32_t, Value *answer)
+{
+    const bits::BitRun *self = nullptr;
+    if (!bits_at(m, a, 0, &self))
+        return false;
+    bits::HexRun made;
+    if (!bits::to_hex(*self, made)) {
+        // THE SAME REFUSAL `write(x)` MAKES, DOWN TO THE CODE. file_methods.cpp
+        // reports its multiple-of-eight failure through EVAL_WRONG_TYPE with
+        // the width spelled out rather than through a code of its own, and the
+        // two readings of "this run does not divide" should not arrive in a
+        // program's output looking like different kinds of problem.
+        m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+            m.span_of(m.here()), std::string(m.text_of(m.here())),
+            "a `satellite.variable.binary` whose width is a whole number of "
+            "hexadecimal digits -- a multiple of 4",
+            // The template finishes with "and this one is ...", so this clause
+            // starts with the value -- file_methods.cpp's note is the rule.
+            bits::text_of(*self) + ", which is " +
+                std::to_string(self->width()) + " bits wide"));
+        return false;
+    }
+    *answer = Value::hex(std::move(made));
+    return true;
+}
+
 } // namespace
 
 void install_bits_methods()
@@ -141,6 +212,8 @@ void install_bits_methods()
         {NodeId::VARIABLE_BINARY_WIDTH,     bits_width},
         {NodeId::VARIABLE_BINARY_TO_STRING, bits_to_string},
         {NodeId::VARIABLE_BINARY_AS_NUMBER, bits_as_number},
+        {NodeId::VARIABLE_BINARY_DIGITS,    bits_digits},
+        {NodeId::VARIABLE_BINARY_TO_HEX,    bits_to_hex},
     };
     for (const Row &row : rows)
         table.install(static_cast<words::PathId>(row.path),

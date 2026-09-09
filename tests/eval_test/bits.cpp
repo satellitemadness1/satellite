@@ -1,6 +1,6 @@
 // M19.5's rows through the machine: `satellite.variable.binary` -- the literal
-// becoming a value, the width surviving display and equality, the four
-// methods, and the two refusals.
+// becoming a value, the width surviving display and equality, the six
+// methods, and the refusals. tests/eval_test/hex.cpp is the other radix.
 //
 // THE WIDTH IS WHAT THIS SECTION IS ABOUT. DESIGN §8.5's whole claim is that
 // "the width is part of the value", and it is a claim nothing but a test can
@@ -158,10 +158,40 @@ void section_bits()
           "S0714: a declared name holds nothing until something is assigned, "
           "and a bit run is no exception -- DESIGN §6.4 qualification 3");
 
-    check(holds(refused("    satellite.return(x00FF)\n"),
-                "`satellite.variable.hex` is the half after it"),
-          "a hexadecimal literal names M19.5's second half rather than "
-          "reporting a gap -- the author split the milestone on 2026-09-08");
+    // --- the two rows the second radix brought with it ---------------------
+
+    check(answers("    satellite.variable.binary bits = b1010\n"
+                  "    satellite.return(bits.digits())\n") == "4",
+          "`digits()` `1 6 5 5` counts the digits written, which on this type "
+          "is always `width()` -- it earns its row on hex, where the two "
+          "answers differ, so that one question is askable of either radix");
+
+    check(answers("    satellite.variable.binary bits = b1010\n"
+                  "    satellite.return(bits.to_hex())\n") == "xA",
+          "`to_hex()` `1 6 5 6` re-spells the same bits in the other radix, "
+          "four bits to the digit");
+
+    check(holds(refused("    satellite.variable.binary odd = b101\n"
+                        "    satellite.return(odd.to_hex())\n"),
+                "a multiple of 4"),
+          "A WIDTH THAT IS NOT A MULTIPLE OF FOUR IS REFUSED RATHER THAN "
+          "PADDED -- three bits are no hexadecimal digit, and padding would "
+          "write a bit the program never wrote. `write(x)`'s multiple-of-8 "
+          "refusal one module over is the same rule one step further out");
+
+    // --- and the refusal this milestone's second half removed ---------------
+
+    check(answers("    satellite.return(x00FF)\n") == "x00FF",
+          "A HEXADECIMAL LITERAL IS A VALUE SINCE 2026-09-09 and no longer "
+          "names an unbuilt half -- this fixture asserted the REFUSAL until "
+          "M19.5 closed, and it is kept pointing the other way so the day the "
+          "gap shut has a line that says so");
+
+    check(answers("    satellite.return(b1111 == xF)\n") == "false",
+          "A BIT RUN IS NEVER EQUAL TO A HEX RUN, however they are spelled -- "
+          "DESIGN §8.5 promised this answer before hex existed and it falls "
+          "out of the two being different arms of the variant, not out of any "
+          "comparison written for it");
 }
 
 } // namespace eval_test

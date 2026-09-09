@@ -851,6 +851,29 @@ without one.)*
 **All four levels are left-associative**, so `a - b - c` is `(a - b) - c` and
 `a - (b - c)` is a different number that keeps its brackets.
 
+**A FIFTH LEVEL IS DECIDED AND UNBUILT: `!!` JOINS TWO BIT RUNS AND BINDS
+LOOSER THAN `+`.** *(The author, 2026-09-09. §8.5 carries the whole set of
+decisions this belongs to; it is here as well because a table that a milestone
+will change is one every reader of the parser consults first.)* When it lands
+the table becomes
+
+| | binds | |
+|---|---|---|
+| 5 | tightest | `*` `/` `%` |
+| 4 | | `+` `-` |
+| 3 | | `!!` |
+| 2 | | `<` `>` `<=` `>=` |
+| 1 | loosest | `==` `!=` |
+
+so `xFF + x01 !! x02` is `(xFF + x01) !! x02` — each part worked out, then laid
+end to end — and `a !! b == c !! d` is `(a !! b) == (c !! d)`, which is what
+puts it above the comparisons rather than below them. **It is left-associative
+like every other row**, and that is worth saying because the author's first
+instruction was "right to left every time": scoped to all operators it would
+have made `10 - 3 - 2` answer 9, so it was scoped to `!!`, where associativity
+turns out not to change the answer at all — concatenation being associative —
+only the level does.
+
 **`+` JOINS TWO STRINGS AS WELL AS ADDING TWO NUMBERS.** *(The author,
 2026-09-08, at M19.)* It is one operator over two types and not a second meaning
 for the character: addition and joining are the same shape — take two of a
@@ -1450,15 +1473,15 @@ M19.5 was a design milestone and not a port, and PLAN §8's entry says so.
 
 #### What M19.5 decided, and what it deliberately left
 
-*(2026-09-08. `satellite.variable.binary` is BUILT; `satellite.variable.hex` is
-not, and the split is the author's — binary first, hex directly after, so that
-the type's shape could be settled on one radix before the second inherited
-it.)*
+*(Binary 2026-09-08, hex 2026-09-09, and the split was the author's — binary
+first, hex directly after, so that the type's shape could be settled on one
+radix before the second inherited it. **Both are now BUILT.** What the split
+bought is visible in this section: every paragraph below it that says "and hex
+inherits this" was written once and paid for once.)*
 
-**The value is a run of `satellite.variable.bool`, one per bit, and index 0 is
-the leftmost bit as written.** That counting is not a new rule: §8.3 gives a
-string 0-based positions from the left and so does every subscript in §6.2, so
-a run of bits joins a convention rather than starting one.
+**The value is a run of `satellite.variable.bool`, one per bit**, and a hex
+value is the same run with a wrapper — four bits to the digit, so nothing is
+lost converting either way and neither spelling is the "real" one.
 
 **The width is kept literally and nothing trims it.** `b0010` and `b10` are two
 values; `b0010 == b10` is **false**; and display prints what was written,
@@ -1471,16 +1494,61 @@ The second half is not a decision M19.5 took: §8's model has no conversion
 anywhere, so different arms compare false, and that is where `b1111 == xF`
 will land when hex arrives.
 
-**Four methods, and the numbering is what limited them.** `to_number()`
-`1 6 5 1` is what the bits are WORTH (`b1010` → 10), `as_number()` `1 6 5 4` is
-the digits read as an ordinary decimal (`b1010` → 1010), `width()` `1 6 5 2`
-counts the bits written, and `to_string()` `1 6 5 3` is the characters
-`display` prints. **Which of the two conversions wore which verb was reversed
-once during the milestone** — the author settled it on the ground that `to_` is
-already this language's conversion verb (`string.to_number`, `number.to_string`)
-and that the surprising answer must not sit behind the name a reader expects.
+**Six methods on each radix, and the two tables line up row for row.**
+`1 6 5 n` and `1 6 11 n` ask the same question for every n, which cost nothing
+to arrange and means a reader who learns one has learned both:
+
+| | binary `1 6 5` | hex `1 6 11` |
+|---|---|---|
+| `to_number()` `n=1` | `b1010` → 10 | `x00FF` → 255 |
+| `width()` `n=2` | 4 — bits | **16** — bits, not digits |
+| `to_string()` `n=3` | `"b1010"` | `"x00FF"` |
+| `as_number()` `n=4` | `b1010` → 1010 | `x00FF` → **11111111** |
+| `digits()` `n=5` | 4 | 4 |
+| the other radix `n=6` | `.to_hex()` → `xA` | `.to_binary()` → `b0000000011111111` |
+
+**Which of the two conversions wore which verb was reversed once during the
+milestone** — the author settled it on the ground that `to_` is already this
+language's conversion verb (`string.to_number`, `number.to_string`) and that
+the surprising answer must not sit behind the name a reader expects.
 **Neither conversion keeps the width**, by two different routes, which is why
 `width()` exists at all.
+
+**`width()` COUNTS BITS ON BOTH AND `digits()` COUNTS DIGITS**, the author's
+call on 2026-09-09, and the reason is one rule downstream rather than taste:
+`write(x)`'s "the width must be a multiple of eight" then reads the same on
+both types. Had hex's `width()` answered 4, that rule would silently have
+become "a multiple of two" for one radix while meaning one thing — the kind of
+sentence nobody writes down and everybody rediscovers. `digits()` is why
+nothing is lost by it, and it is on binary too so that the question is askable
+of a value whose radix the program does not know.
+
+**`as_number()` ON HEX READS THE BITS AND NOT THE DIGITS, WHICH IS WHAT MAKES
+THE ROW EXIST AT ALL.** `as_number()` means "take these characters as a decimal
+number", and binary can answer only by an accident of alphabet: `0` and `1` are
+also decimal digits, so `b1010`'s characters are the legal decimal 1010. Hex's
+are not — there is no decimal number spelled `00FF` — and for one sitting the
+row looked unbuildable. **Expanding to bits first makes it total rather than
+partial**: every hex value has a bit expansion, every expansion is `0`s and
+`1`s, and every run of those is a legal decimal. The alternatives were a row
+that refused whenever a letter appeared, and no row at all; this is better than
+both because it is the same question binary answers, asked of the same
+underlying value. The author found it, 2026-09-09.
+
+**THE TWO CONVERSIONS ARE NOT SYMMETRIC AND THE ASYMMETRY IS THE
+MULTIPLE-OF-FOUR INVARIANT SEEN FROM EACH SIDE.** `hex.to_binary()` can never
+fail, every digit being exactly four bits; `binary.to_hex()` refuses when the
+width is not a multiple of four, because three bits are no hex digit at all and
+padding would write a bit the program never wrote. That is `write(x)`'s
+refusal one step in, and it is the same argument: the refusal is the only
+answer that invents nothing.
+
+**CASE IS NOT PART OF A HEX VALUE, AND IT IS THE ONE THING THE TWO RADICES DO
+NOT SHARE.** The lexer takes `x00ff` and `x00FF` alike because the width is
+what carries meaning and case does not — so the case is not stored, `x00ff ==
+x00FF` is **true**, and `display` therefore CANNOT print back what was written
+the way it can for a bit run, whose digits *are* its value. It prints upper,
+which is how this section spells every example it has.
 
 **`write(x)` `1 6 2 11` puts the BYTES and refuses a width that is not a
 multiple of eight.** A file is made of bytes and half a byte cannot be written;
@@ -1490,22 +1558,66 @@ refusal is the only answer that invents nothing. Writing the TEXT is spelled
 
 **A method needs a number and an operator does not, which is the line the
 milestone drew.** PLAN §8 asked for "two numbered paths and no third", and the
-four rows above are under `1 6 5` rather than beside it. `+`, `[` and the
-shifts cost no path number at all, so a later milestone can give this type any
-of them without touching the numbering — **and M19.5 built none of them**, so:
+twelve rows above are under `1 6 5` and `1 6 11` rather than beside them. `+`,
+`!!`, `[` and the shifts cost no path number at all, so a later milestone can
+give these types any of them without touching the numbering — **and M19.5
+built none of them.**
 
-- **What `+` means on two bit runs is OPEN.** The author's sketch is `+` for
-  whichever reading is more expected and a second operator, `!!`, for the
-  other. §6.6's own note about `+` joining two strings — "take two of a thing,
-  answer one of that thing, change neither" — is an argument for concatenation
-  being the `+`; arithmetic addition needs a carry rule and a width for the
-  answer, which is exactly the kind of sentence this section exists to write
-  down before it is built.
-- **Indexing is OPEN**, and if it is built it answers a width-1 run of the same
-  type, by §8.3's "there being no character type" one type over.
-- **The shifts are OPEN**, and §5.5's number shifts are not them: that section's
-  "there is no width to shift out of" is a fact about `satellite.variable.number`
-  and is the opposite of true here.
+**THAT IS THE AUTHOR'S CALL OF 2026-09-09 AND THE REASON IS SCOPE, NOT
+DOUBT.** Every question below was answered that day; none was built. The
+author's words: *"we are doing just too much at one time, and we need to just
+pick a few things to do at a time"* — and the observation that earned the
+split, arriving as the operators were being specified: *"we forgot about order
+of operations like completely"*. Arithmetic on two width-carrying types across
+four radix combinations, with a new operator needing a precedence level, is a
+milestone; deciding it in the margin of the one that built the values is how it
+comes out inconsistent. **So the answers are recorded here as DECIDED AND
+UNBUILT, which is what this section is for.**
+
+- **`+` ADDS AND `!!` JOINS.** The author's, and reversed once en route: the
+  argument for `+` concatenating is §6.6's note about strings ("take two of a
+  thing, answer one of that thing, change neither"), and the author's own
+  answer to it is that `+` is the addition sign and hex values are numbers.
+  **The cost is named rather than denied** — `+` then joins two strings and
+  adds two bit runs, so a reader who expects concatenation gets arithmetic. No
+  compile-time signal can catch it, both readings being legal programs; the
+  mitigations are the help text and one accidental tell, that joining two
+  2-digit hexes is always 4 digits while adding them is 2 or 3.
+- **THE ANSWER'S WIDTH GROWS TO FIT AND NEVER WRAPS.** `xFF + x01` is `x100`,
+  three digits. Wrapping would drop a bit the program computed and refusing
+  would make ordinary addition a thing that can fail; growing matches §8.1's
+  unbounded number, which is the answer this language gives everywhere else it
+  is asked where a limit goes.
+- **MIXED RADICES ARE ALLOWED AND THE LEFT OPERAND'S TYPE WINS.** `xFF +
+  b1010` is a hex and `b1010 + xFF` is a binary. **This is the language's
+  first operation across two types** and §8's no-conversion model gains a
+  stated exception rather than losing a rule — different arms still never
+  compare *equal*, which is a separate clause. Because `+` is left-associative
+  (§6.6), the consequence states in one line: **the leftmost operand's type
+  wins the whole chain.**
+- **`!!` BINDS LOOSER THAN `+`, AND BOTH FOLD LEFT TO RIGHT.** `xFF + x01 !!
+  x02` is `(xFF + x01) !! x02`. The author asked for one to be picked rather
+  than leaving the two at one level, and looser is the reading that makes `!!`
+  assemble finished pieces — and that keeps `a !! b == c !! d` meaning
+  `(a !! b) == (c !! d)`. It takes a new level 3 in §6.6's table, pushing the
+  arithmetic up one. **Nothing becomes right-associative**; the author's first
+  instruction was "right to left every time", and it was scoped to `!!` alone
+  when the cost of the general form was measured — `10 - 3 - 2` would answer 9.
+- **INDEXING COUNTS FROM THE RIGHT: `b0001[0]` IS `b1`.** The author's, and it
+  **reverses what this section said until 2026-09-09**, which was leftmost-is-0
+  on the ground that §8.3 gives a string 0-based positions from the left. The
+  author chose the hardware convention instead — bit 0 is the least significant
+  bit, the 1s place — and the cost is real and is recorded rather than argued
+  away: **a subscript now counts one way on a string or a list and the other
+  way on a bit run.** `[-1]` reaches the far end on both, as everywhere else.
+  Nothing is built, so nothing is broken yet.
+- **What indexing ANSWERS is a width-1 run of the same type** — `x00FF[0]` is
+  `xF` and `b0001[0]` is `b1` — by §8.3's "there being no character type" one
+  type over.
+- **The shifts are still OPEN**, the one question of the set nobody has
+  answered. §5.5's number shifts are not them: that section's "there is no
+  width to shift out of" is a fact about `satellite.variable.number` and is
+  the opposite of true here.
 
 **AND THERE IS NO `"binary"` MODE WORD ON `satellite.file.open`, WHICH IS A
 DIFFERENT QUESTION WEARING THE SAME WORD.** A `satellite.variable.string`
@@ -2260,7 +2372,9 @@ different product.
 - **Operator precedence** is §6.6's four levels, all left-associative, with unary
   `-` and `!` above them. *(Decided at M4, 2026-08-30, because the parser could not
   be written without it — §6's expression rule read `... precedence climbing ...`
-  and named no operators.)*
+  and named no operators.)* **A fifth level is decided and unbuilt**: `!!` joining
+  two bit runs, looser than `+` and left-associative like the rest (§6.6, §8.5;
+  the author, 2026-09-09).
 
 ### Open
 

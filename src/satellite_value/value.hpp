@@ -171,24 +171,43 @@ using Fil = std::shared_ptr<file::FileHandle>;
 // 40-byte budget inline, so both arrive as a pointer.
 using Bin = std::shared_ptr<const bits::BitRun>;
 
+// A RUN OF HEX DIGITS -- `satellite.variable.hex` `1 6 11`, M19.5's second
+// half, and the EIGHTH append. Sixteen bytes again, for `Str`'s reason for the
+// sixth time, so the assert at the bottom does not move.
+//
+// A SEPARATE ARM AND NOT A FLAG ON `Bin`, which is DESIGN §8.5's "`b1111 ==
+// xF` is false" made structural. The two hold the SAME BITS -- a hex run is a
+// `BitRun` in a wrapper -- so a shared arm with a radix field would have made
+// that comparison true unless every reader remembered to check the field, and
+// `same()` in value.cpp would have been the one place forgetting was silent.
+// Two arms make different-arms-never-equal do the work, which §8's model
+// already promised and which costs nothing here.
+//
+// THE WRAPPER IS WHY THIS IS NOT `Bin` SPELLED TWICE. bits.hpp's `HexRun`
+// holds a `BitRun` rather than deriving from one precisely so that these two
+// `shared_ptr`s have no implicit conversion between them -- write
+// `Value::binary` where you meant `Value::hex` and it is a compile error
+// rather than a value that changed type on the way into a slot.
+using Hex = std::shared_ptr<const bits::HexRun>;
+
 // APPEND ONLY. A new arm goes at the END of this list, never in the middle.
 // `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
 // widest arm, the same accounting `Runtime`'s note above runs. `Flo` is the
 // third, M15's, sixteen bytes by the same account; `Lst` and `Map` are the
 // fourth and fifth, M16's, sixteen each by the same account again; `Fil` is
 // the sixth, M19's, sixteen more; `Bin` is the SEVENTH, M19.5's, sixteen more
-// again.
+// again; `Hex` is the EIGHTH, M19.5's other half, sixteen more still.
 //
 // PLAN §8's M19.5 ENTRY CALLS THESE "the sixth and seventh appends" AND THAT
 // IS OFF BY ONE, which is worth correcting here rather than anywhere else
 // because this list is the fact it is a claim about. The entry was written on
 // 2026-09-08 while M19 was in flight, and M19's `Fil` took sixth. Binary is
-// the seventh and hex will be the eighth. The assert does not move either way,
-// which is the half of the sentence that was the point.
+// the seventh and hex is the eighth, landed 2026-09-09. The assert did not
+// move either way, which is the half of the sentence that was the point.
 using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo,
-                              Lst, Map, Fil, Bin>;
+                              Lst, Map, Fil, Bin, Hex>;
 
-// One value. DESIGN §8's table, eleven arms of it since M19.5.
+// One value. DESIGN §8's table, twelve arms of it since M19.5.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -224,6 +243,13 @@ struct Value : ValueBase {
         return Value(std::make_shared<const bits::BitRun>(std::move(run)));
     }
 
+    // A RUN OF HEX DIGITS -- M19.5's second half. `binary`'s argument exactly:
+    // one way to make one, built from a value already in hand, nothing to fail.
+    static Value hex(bits::HexRun run)
+    {
+        return Value(std::make_shared<const bits::HexRun>(std::move(run)));
+    }
+
     // NO `Value::file(...)` FACTORY, and the absence is deliberate. Every
     // factory above BUILDS its body from a plain C++ value, because there is
     // exactly one way to make a string or an instant and no state to get wrong.
@@ -246,6 +272,7 @@ struct Value : ValueBase {
     bool is_map() const { return std::holds_alternative<Map>(*this); }
     bool is_file() const { return std::holds_alternative<Fil>(*this); }
     bool is_binary() const { return std::holds_alternative<Bin>(*this); }
+    bool is_hex() const { return std::holds_alternative<Hex>(*this); }
 };
 
 // `satellite.container.list<T>` -- a vector of values with a name a forward
@@ -313,6 +340,21 @@ inline const bits::BitRun *as_binary(const Value &value)
 {
     static const bits::BitRun empty;
     if (const Bin *handle = std::get_if<Bin>(&value))
+        return *handle ? handle->get() : &empty;
+    return nullptr;
+}
+
+// The run behind a hex arm, or nullptr when the value is not one. as_binary's
+// rule and as_binary's reason, one arm over.
+//
+// IT ANSWERS nullptr FOR A BINARY AND as_binary ANSWERS nullptr FOR A HEX,
+// which is the pair of facts DESIGN §8.5's "`b1111 == xF` is false" rests on
+// down here. Neither reader can be handed the other's value, so no method has
+// to check the radix and none does.
+inline const bits::HexRun *as_hex(const Value &value)
+{
+    static const bits::HexRun empty;
+    if (const Hex *handle = std::get_if<Hex>(&value))
         return *handle ? handle->get() : &empty;
     return nullptr;
 }

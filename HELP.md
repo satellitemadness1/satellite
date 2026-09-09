@@ -1707,6 +1707,36 @@ answers 10. This row is for when what matters is how the run was spelled.
     satellite.console.display(bits.as_number())
     satellite.console.display(bits.to_number())
 
+H  `1 6 5 5`  `satellite.variable.binary.digits`  _M19.5_
+> satellite.help(satellite.variable.binary.digits)
+
+How many digits were written. `b1010.digits()` is 4.
+
+On a run of bits this is always the same answer as `width()`, one bit being
+one digit. It earns its own name on the other type: `x00FF.width()` is 16 and
+`x00FF.digits()` is 4, so a program handed either radix can ask how many
+characters were written without first asking which type it is holding.
+
+    satellite.variable.binary bits = b1010
+    satellite.console.display(bits.digits())
+    satellite.console.display(bits.width())
+
+H  `1 6 5 6`  `satellite.variable.binary.to_hex`  _M19.5_
+> satellite.help(satellite.variable.binary.to_hex)
+
+The same bits, wearing the other radix. `b1010.to_hex()` is `xA`.
+
+**It refuses when the width is not a multiple of four**, because four bits are
+one hexadecimal digit and three bits are no digit at all -- padding would write
+a bit the program never wrote. `b101.to_hex()` is refused, and `width()` is the
+question to ask first.
+
+The other direction never refuses: every hexadecimal digit has four bits, so
+`satellite.variable.hex.to_binary` always answers.
+
+    satellite.variable.binary bits = b1010
+    satellite.console.display(bits.to_hex())
+
 .  `1 6 6`  `satellite.variable.bool`
 > satellite.help(satellite.variable.bool)
 
@@ -1761,10 +1791,124 @@ it is observed by the very next division rather than at the next run.
 > satellite.help(satellite.variable.hex)
 
 A run of hexadecimal digits, written `x00FF`. **The width is part of the
-value**, so `x0009` and `x9` are not the same thing. It has a second spelling,
-`satellite.variable.hexadecimal`, which is the same node.
+value**, so `x0009` and `x9` are not the same thing -- which is why this is a
+type of its own and not a number written in another base. It has a second
+spelling, `satellite.variable.hexadecimal`, which is the same node.
 
-**Not built** -- M19.5, alongside `satellite.variable.binary`.
+It is stored as bits, four to a digit, so nothing is lost converting either
+way. Both letter cases are accepted and neither is kept: `x00ff` and `x00FF`
+are one value, and it displays in upper case.
+
+Ask `width()` for how many bits there are, `digits()` for how many digits were
+written, `to_number()` for what they are worth, and `to_binary()` for the same
+value as a run of bits.
+
+    satellite.variable.hex colour = x00FF
+    satellite.console.display(colour)
+    satellite.console.display(colour.width())
+    satellite.console.display(colour.digits())
+    satellite.console.display(colour.to_number())
+
+.  `1 6 11 0`  `satellite.variable.hex()`
+> satellite.help(satellite.variable.hex)
+
+The bare shape, which is a name declared as a run of hexadecimal digits and
+given none.
+
+It holds nothing until something is written into it, the same state every
+other declared type starts in.
+
+    satellite.variable.hex colour = x00FF
+    satellite.console.display(colour.digits())
+
+H  `1 6 11 1`  `satellite.variable.hex.to_number`  _M19.5_
+> satellite.help(satellite.variable.hex.to_number)
+
+What the digits are worth. `x00FF.to_number()` is 255.
+
+The width does not survive the trip, because a number has no width to keep it
+in -- `x0009` and `x9` both answer 9. Ask `width()` first if you need it.
+
+    satellite.variable.hex colour = x00FF
+    satellite.console.display(colour.to_number())
+
+H  `1 6 11 2`  `satellite.variable.hex.width`  _M19.5_
+> satellite.help(satellite.variable.hex.width)
+
+How many **bits** were written. `x00FF.width()` is 16, not 4.
+
+Bits and not digits, so that `width()` means one thing on both radices -- and
+so that `satellite.variable.file.write(x)`'s rule that a width must be a whole
+number of bytes reads the same here as it does on a run of bits.
+
+`digits()` is the other question, and it answers 4.
+
+    satellite.variable.hex colour = x00FF
+    satellite.console.display(colour.width())
+    satellite.console.display(colour.digits())
+
+H  `1 6 11 3`  `satellite.variable.hex.to_string`  _M19.5_
+> satellite.help(satellite.variable.hex.to_string)
+
+The characters `display` would print, `x` and all. `x00FF.to_string()` is
+`"x00FF"`.
+
+It matches the display exactly, which is what makes the printed letter case
+predictable: the case a program wrote is not stored, so this and `display` both
+answer upper.
+
+It is how a run of digits joins a string, `+` joining two strings and nothing
+else.
+
+    satellite.variable.hex colour = x00FF
+    satellite.console.display("colour: " + colour.to_string())
+
+H  `1 6 11 4`  `satellite.variable.hex.as_number`  _M19.5_
+> satellite.help(satellite.variable.hex.as_number)
+
+The bits, read as if they were an ordinary decimal number.
+`x00FF.as_number()` is 11111111.
+
+It reads the **bits** and not the digits, because there is no decimal number
+spelled `00FF` -- `F` is not a decimal digit. Expanding to bits first gives
+every value an answer, since a bit is always `0` or `1`.
+
+`to_number()` is the one almost everybody wants; this is the writing taken at
+face value.
+
+    satellite.variable.hex colour = x00FF
+    satellite.console.display(colour.as_number())
+    satellite.console.display(colour.to_number())
+
+H  `1 6 11 5`  `satellite.variable.hex.digits`  _M19.5_
+> satellite.help(satellite.variable.hex.digits)
+
+How many digits were written. `x00FF.digits()` is 4.
+
+Always a whole number, never a remainder: a value is built from digits and each
+one is four bits, so this is `width()` divided by four exactly.
+
+It is the question `width()` does not answer, `width()` counting bits.
+
+    satellite.variable.hex colour = x00FF
+    satellite.console.display(colour.digits())
+
+H  `1 6 11 6`  `satellite.variable.hex.to_binary`  _M19.5_
+> satellite.help(satellite.variable.hex.to_binary)
+
+The same value, wearing the other radix. `x00FF.to_binary()` is
+`b0000000011111111`.
+
+**It never refuses**, every hexadecimal digit being exactly four bits. The
+other direction can: `satellite.variable.binary.to_hex` needs a width that is a
+multiple of four.
+
+The answer is not equal to what it came from -- `x00FF == x00FF.to_binary()` is
+false, because two different types are never equal in this language, however
+they are spelled.
+
+    satellite.variable.hex colour = x00FF
+    satellite.console.display(colour.to_binary())
 
 .  `1 6 12`  `satellite.variable.network`
 > satellite.help(satellite.variable.network)

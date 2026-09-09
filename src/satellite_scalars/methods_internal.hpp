@@ -41,6 +41,15 @@ bool number_at(eval::Machine &m, const Value *arguments, uint32_t who,
 bool bits_at(eval::Machine &m, const Value *arguments, uint32_t who,
              const bits::BitRun **out);
 
+// The same, for a hex run. A SEPARATE HELPER AND NOT A RADIX ARGUMENT TO THE
+// ONE ABOVE: value.hpp puts the two radices in different variant arms, so
+// `as_binary` answers nullptr for a hex value and `as_hex` answers nullptr for
+// a bit run, and neither of these two can ever be handed the other's receiver.
+// That is what stops a hex method from silently reading a binary -- the check
+// is the type system's here, not a field comparison somebody could omit.
+bool hex_at(eval::Machine &m, const Value *arguments, uint32_t who,
+            const bits::HexRun **out);
+
 // An argument as a position -- a whole number no less than zero that a machine
 // word can hold -- or a refusal and false. Positions are 0-based: `at(0)` is
 // the first character, which is the counting every reader of a C-family
@@ -57,5 +66,6 @@ void install_string_methods();
 void install_number_methods();
 void install_variant_methods();
 void install_bits_methods();
+void install_hex_methods();
 
 } // namespace satellite::scalars
