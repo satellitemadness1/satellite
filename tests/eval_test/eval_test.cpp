@@ -130,6 +130,7 @@ int main(int argc, char **argv)
     eval_test::section_interrupted();
     eval_test::section_clock_and_dice();
     eval_test::section_containers();
+    eval_test::section_bits();
 
     if (eval_test::failures != 0) {
         printf("eval_test: %d failed\n", eval_test::failures);

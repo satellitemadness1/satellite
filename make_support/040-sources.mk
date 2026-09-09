@@ -425,6 +425,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(NUMBER)/number_arith.cpp \
             $(NUMBER)/render.cpp \
             $(NUMBER)/random.cpp \
+            $(BITS)/bits.cpp \
             $(FLOAT)/float_value.cpp \
             $(FLOAT)/float_arith.cpp \
             $(FLOAT)/float_power.cpp \
@@ -438,6 +439,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SCALARS)/string_methods.cpp \
             $(SCALARS)/number_methods.cpp \
             $(SCALARS)/variant_methods.cpp \
+            $(SCALARS)/bits_methods.cpp \
             $(CONTAIN)/bodies.cpp \
             $(CONTAIN)/search_score.cpp \
             $(CONTAIN)/search_walk.cpp \
@@ -570,6 +572,7 @@ HDRS = $(SYSTEM)/version.hpp \
        $(CONSOLE)/console.hpp \
        $(CONSOLE)/reader.hpp \
        $(CONSOLE)/handlers.hpp \
+       $(BITS)/bits.hpp \
        $(SCALARS)/handlers.hpp \
        $(SCALARS)/methods_internal.hpp \
        $(CONTAIN)/containers.hpp \

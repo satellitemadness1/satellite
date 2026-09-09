@@ -47,6 +47,8 @@ const char *type_name(const Value &value)
         return "map";
     if (value.is_file())
         return "file";
+    if (value.is_binary())
+        return "binary";
     return "nothing";
 }
 
@@ -171,6 +173,23 @@ bool same(const Value &left, const Value &right)
             if (value->get() == twin.get())
                 continue;
             if (*value && twin && Float::compare(**value, *twin) == 0)
+                continue;
+            return false;
+        }
+
+        // TWO BIT RUNS ARE EQUAL WHEN THEIR BITS ARE, WIDTH INCLUDED -- M19.5,
+        // and the width is not an extra check bolted on: DESIGN §8.5 makes it
+        // part of the value, so `b0010 == b10` is FALSE and the vector compare
+        // below answers that by itself, two vectors of different length never
+        // being equal. Trimming a leading zero anywhere in this module would
+        // break it here, which is why nothing does.
+        //
+        // BY VALUE AND NOT BY HANDLE, the string arm's rule directly below.
+        if (const Bin *run = std::get_if<Bin>(&a)) {
+            const Bin &twin = std::get<Bin>(b);
+            if (run->get() == twin.get())
+                continue;
+            if (*run && twin && **run == *twin)
                 continue;
             return false;
         }

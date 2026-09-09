@@ -11,10 +11,11 @@
 // (declared and never assigned, S0714), and nothing stops a program assigning
 // a number into a name declared as a string, because satellite checks VALUES
 // and not annotations at this milestone. So every handler re-asks at run time,
-// through the two receiver helpers below, and the sentence is written once.
+// through the three receiver helpers below, and the sentence is written once.
 
 #include "evaluator/dispatch.hpp"
 #include "evaluator/machine.hpp"
+#include "satellite_bits/bits.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
 #include "satellite_value/value.hpp"
@@ -33,6 +34,13 @@ bool string_at(eval::Machine &m, const Value *arguments, uint32_t who,
 bool number_at(eval::Machine &m, const Value *arguments, uint32_t who,
                const Number **out);
 
+// The receiver or an argument as the bit run it must be, or a refusal and
+// false. M19.5, and the same shape as the two above for the same reason: the
+// compiler proved the DECLARATION was a `satellite.variable.binary`, and a
+// declaration is not a value.
+bool bits_at(eval::Machine &m, const Value *arguments, uint32_t who,
+             const bits::BitRun **out);
+
 // An argument as a position -- a whole number no less than zero that a machine
 // word can hold -- or a refusal and false. Positions are 0-based: `at(0)` is
 // the first character, which is the counting every reader of a C-family
@@ -48,5 +56,6 @@ bool position_at(eval::Machine &m, const Value *arguments, uint32_t who,
 void install_string_methods();
 void install_number_methods();
 void install_variant_methods();
+void install_bits_methods();
 
 } // namespace satellite::scalars

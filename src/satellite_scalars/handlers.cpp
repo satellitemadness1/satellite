@@ -91,6 +91,26 @@ bool number_at(eval::Machine &m, const Value *arguments, uint32_t who,
     return false;
 }
 
+bool bits_at(eval::Machine &m, const Value *arguments, uint32_t who,
+             const bits::BitRun **out)
+{
+    if (const bits::BitRun *run = as_binary(arguments[who])) {
+        // as_binary() answers an empty run for a null handle, so this arm
+        // needs no defence of its own -- value.hpp carries the argument.
+        *out = run;
+        return true;
+    }
+    if (arguments[who].is_nothing() && who == 0) {
+        m.refuse(errors::make<errors::Code::EVAL_HOLDING_NOTHING>(
+            m.span_of(m.here()), asked(m)));
+        return false;
+    }
+    m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+        m.span_of(m.here()), asked(m), "a `satellite.variable.binary`",
+        spelled(arguments[who])));
+    return false;
+}
+
 bool position_at(eval::Machine &m, const Value *arguments, uint32_t who,
                  unsigned long long *out)
 {
@@ -131,6 +151,7 @@ void install_handlers()
     install_string_methods();
     install_number_methods();
     install_variant_methods();
+    install_bits_methods();
 }
 
 } // namespace satellite::scalars

@@ -140,11 +140,16 @@ void section_compile()
           "S0713: a subscript on a number names what CAN be indexed, now that "
           "M16 has built the two containers");
 
+    // A GAP NAMED IS A GAP SOMEBODY CAN CLOSE, AND M19.5 CLOSED HALF OF IT.
+    // This fixture asked, until 2026-09-08, that a hexadecimal literal say NO
+    // milestone owned its value -- which was true and was the most useful
+    // thing the refusal could say while it was. PLAN §8 assigned both literals
+    // to M19.5 and the author split it, so the two halves now answer
+    // differently and the pair of checks is the record of which is which.
     check(holds(refusal_in(body("satellite.return(x00FF)"), "it"),
-                "no milestone"),
-          "S0720: a hexadecimal literal says that NO milestone owns its value "
-          "-- M3 lexes it, DESIGN §8.5 specifies it, and PLAN §8 gives it to "
-          "neither M11 nor M16. A gap named is a gap somebody can close");
+                "`satellite.variable.hex` is the half after it"),
+          "S0720: a hexadecimal literal now names the milestone that owns it "
+          "rather than reporting a gap -- M19.5, second half");
 
     // --- a language path with no handler behind it ---------------------------
     {

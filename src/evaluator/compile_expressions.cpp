@@ -19,11 +19,13 @@
 
 #include "evaluator/evaluator_internal.hpp"
 
+#include "satellite_bits/bits.hpp"
 #include "satellite_cache/paths.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -61,17 +63,45 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
                     out_.add_constant(Value::string(ast_.token_of(node).str))));
         return true;
 
-    case NodeKind::Bits:
-        // A GAP IN PLAN §8 RATHER THAN IN THIS MILESTONE, and saying so is the
-        // work. M3 lexes `x00FF` and `b1010`, DESIGN §8.5 specifies them as
-        // real types where "the width is part of the value", and PLAN §8 gives
-        // `satellite.variable.binary` `1 6 5` and `.hex` `1 6 11` to the
-        // LEXER's milestone and to no evaluator's. M11 is scalars and names
-        // bool, number and string; M16 is containers. Neither claims these two.
-        finish(not_built(node, "a binary or hexadecimal literal",
-                         "no milestone in PLAN.md §8 owns the value -- M3 lexes "
-                         "it and DESIGN §8.5 specifies it"));
+    case NodeKind::Bits: {
+        // THE LITERAL IS BUILT ONCE, AT COMPILE TIME -- the Number arm's rule
+        // directly above, for the Number arm's reason: a loop over a million
+        // iterations reads the constant a million times and walks its digits
+        // none.
+        //
+        // THE RADIX IS THE TOKEN'S AND NOT THIS FILE'S. lexer.cpp's
+        // bits_radix() already decided `b` is 2 and `x` is 16 and already
+        // proved every character is a digit of that radix, so what is left
+        // here is which TYPE the literal makes -- and at M19.5 only one of the
+        // two has an arm to make.
+        const Token &token = ast_.token_of(node);
+        const std::string_view written = ast_.text_of(node);
+        if (token.radix != 2) {
+            // HEX IS NEXT AND THE REFUSAL SAYS SO. This is no longer S0720's
+            // "no milestone owns the value" -- one does, this is it, and the
+            // author split it so binary could land first (2026-09-08). A
+            // refusal that names the milestone beats one that names a gap,
+            // which is the whole argument errors.def's S0720 block makes.
+            finish(not_built(node, "a hexadecimal literal",
+                             "M19.5 built `satellite.variable.binary` first, "
+                             "at the author\'s direction, and "
+                             "`satellite.variable.hex` is the half after it"));
+            return true;
+        }
+        bits::BitRun run;
+        // The leading `b` is the type and the rest is the value. The token
+        // cannot be shorter than two characters -- bits_radix() requires it --
+        // so there is always at least one bit.
+        if (!bits::parse_binary(written.substr(1), run)) {
+            problems_.push_back(errors::make<errors::Code::NUMBER_NOT_A_NUMBER>(
+                span_of(node), std::string(written)));
+            finish(kNoOp);
+            return true;
+        }
+        finish(emit(op_constant, node,
+                    out_.add_constant(Value::binary(std::move(run)))));
         return true;
+    }
 
     case NodeKind::Satellite:
         // THE RUNTIME SINGLETON, AND IT IS A CONSTANT LIKE ANY OTHER -- M10.

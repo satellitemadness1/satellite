@@ -1563,11 +1563,75 @@ SAT_HELP(VARIABLE_BINARY, VARIABLE_BINARY,
          "`b0010` and `b10` are not the same thing -- which is why this is a type of its\n"
          "own and not a number written in another base.\n"
          "\n"
-         "**Not built** -- M19.5. The literal is read today and refused at the point it\n"
-         "would become a value; what a bit operation means has not been decided yet, and\n"
-         "will be at that milestone rather than in the margin of another one."
+         "It displays exactly as it was written, leading zeros and all, and `b0010 == b10`\n"
+         "is false for the same reason. Ask `width()` for how many bits there are,\n"
+         "`to_number()` for what they are worth, and `as_number()` for the digits read as\n"
+         "an ordinary decimal."
          ,
-         ""
+         "satellite.variable.binary bits = b1010\n"
+         "satellite.console.display(bits)\n"
+         "satellite.console.display(bits.width())\n"
+         "satellite.console.display(bits.to_number())"
+         )
+
+// 1 6 5 0  satellite.variable.binary()
+SAT_HELP(VARIABLE_BINARY_0, VARIABLE_BINARY,
+         "The bare shape, which is a name declared as a run of bits and given none.\n"
+         "\n"
+         "It holds nothing until something is written into it, the same state every\n"
+         "other declared type starts in."
+         ,
+         "satellite.variable.binary bits = b1010\n"
+         "satellite.console.display(bits.width())"
+         )
+
+// 1 6 5 1  satellite.variable.binary.to_number
+SAT_HELP(VARIABLE_BINARY_TO_NUMBER, VARIABLE_BINARY_TO_NUMBER,
+         "What the bits are worth. `b1010.to_number()` is 10.\n"
+         "\n"
+         "The width does not survive the trip, because a number has no width to keep it\n"
+         "in -- `b0011` and `b11` both answer 3. Ask `width()` first if you need it."
+         ,
+         "satellite.variable.binary bits = b1010\n"
+         "satellite.console.display(bits.to_number())"
+         )
+
+// 1 6 5 2  satellite.variable.binary.width
+SAT_HELP(VARIABLE_BINARY_WIDTH, VARIABLE_BINARY_WIDTH,
+         "How many bits were written. `b0011.width()` is 4.\n"
+         "\n"
+         "This is the one question only this type can answer, and the reason a run of\n"
+         "bits is not just a number: the leading zeros are part of the value, and this\n"
+         "is what counts them."
+         ,
+         "satellite.variable.binary bits = b0011\n"
+         "satellite.console.display(bits.width())\n"
+         "satellite.console.display(bits.to_number())"
+         )
+
+// 1 6 5 3  satellite.variable.binary.to_string
+SAT_HELP(VARIABLE_BINARY_TO_STRING, VARIABLE_BINARY_TO_STRING,
+         "The bits as text, exactly as `display` would print them -- the leading `b`\n"
+         "included.\n"
+         "\n"
+         "Use it to join a run of bits onto a string, since the two types do not add to\n"
+         "each other."
+         ,
+         "satellite.variable.binary bits = b1010\n"
+         "satellite.console.display(\"the bits are \" + bits.to_string())"
+         )
+
+// 1 6 5 4  satellite.variable.binary.as_number
+SAT_HELP(VARIABLE_BINARY_AS_NUMBER, VARIABLE_BINARY_AS_NUMBER,
+         "The digits read as if they were an ordinary decimal number.\n"
+         "`b1010.as_number()` is one thousand and ten.\n"
+         "\n"
+         "This is not the value the bits stand for -- `to_number()` is that one, and it\n"
+         "answers 10. This row is for when what matters is how the run was spelled."
+         ,
+         "satellite.variable.binary bits = b1010\n"
+         "satellite.console.display(bits.as_number())\n"
+         "satellite.console.display(bits.to_number())"
          )
 
 // 1 6 6  satellite.variable.bool

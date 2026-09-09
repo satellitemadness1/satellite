@@ -26,8 +26,8 @@ statements that were plainly stated and plainly wrong**:
   uses it.
 
 The mark comes from walking the trie with every module's handlers installed.
-`H` means a handler row exists and a call to it runs today, which is **109 of
-the 264**. A dot means nothing is behind it yet, which is the other **155**.
+`H` means a handler row exists and a call to it runs today, which is **130 of
+the 269**. A dot means nothing is behind it yet, which is the other **139**.
 
 **A dot is not the same as undocumented, and that is the trap in this list.**
 The front-end words — `include`, `capsule`, `main`, `return`, `statement`
@@ -38,8 +38,8 @@ language is written in. Hello world uses seven paths and exactly one of them,
 
 **Which is why a dot is not what help goes by.** M18 built `satellite.help`, and
 what it names is what is **built** — a handler row, an assigner row, a front-end
-word, or anything with one of those underneath it. That is **144 of the 264**,
-against the 109 marked `H` here. `src/satellite_help/built.hpp` is the predicate
+word, or anything with one of those underneath it. That is **168 of the 269**,
+against the 130 marked `H` here. `src/satellite_help/built.hpp` is the predicate
 and DESIGN §4.6 carries the argument.
 
 **Where a path belongs to a milestone nobody has started, the entry says which
@@ -1318,7 +1318,8 @@ is the honest report of a file that has just been read from end to end.
     satellite.variable.file f = satellite.file.new("all_demo.txt")
     f.write_line("one")
     f.write_line("two")
-    satellite.console.display(f.read_all().size())
+    satellite.variable.string whole = f.read_all()
+    satellite.console.display(whole.size())
     f.close()
     satellite.system.delete("all_demo.txt")
 
@@ -1636,9 +1637,75 @@ A run of bits, written `b1010`. **The width is part of the value**, so
 `b0010` and `b10` are not the same thing -- which is why this is a type of its
 own and not a number written in another base.
 
-**Not built** -- M19.5. The literal is read today and refused at the point it
-would become a value; what a bit operation means has not been decided yet, and
-will be at that milestone rather than in the margin of another one.
+It displays exactly as it was written, leading zeros and all, and `b0010 == b10`
+is false for the same reason. Ask `width()` for how many bits there are,
+`to_number()` for what they are worth, and `as_number()` for the digits read as
+an ordinary decimal.
+
+    satellite.variable.binary bits = b1010
+    satellite.console.display(bits)
+    satellite.console.display(bits.width())
+    satellite.console.display(bits.to_number())
+
+.  `1 6 5 0`  `satellite.variable.binary()`
+> satellite.help(satellite.variable.binary)
+
+The bare shape, which is a name declared as a run of bits and given none.
+
+It holds nothing until something is written into it, the same state every
+other declared type starts in.
+
+    satellite.variable.binary bits = b1010
+    satellite.console.display(bits.width())
+
+H  `1 6 5 1`  `satellite.variable.binary.to_number`  _M19.5_
+> satellite.help(satellite.variable.binary.to_number)
+
+What the bits are worth. `b1010.to_number()` is 10.
+
+The width does not survive the trip, because a number has no width to keep it
+in -- `b0011` and `b11` both answer 3. Ask `width()` first if you need it.
+
+    satellite.variable.binary bits = b1010
+    satellite.console.display(bits.to_number())
+
+H  `1 6 5 2`  `satellite.variable.binary.width`  _M19.5_
+> satellite.help(satellite.variable.binary.width)
+
+How many bits were written. `b0011.width()` is 4.
+
+This is the one question only this type can answer, and the reason a run of
+bits is not just a number: the leading zeros are part of the value, and this
+is what counts them.
+
+    satellite.variable.binary bits = b0011
+    satellite.console.display(bits.width())
+    satellite.console.display(bits.to_number())
+
+H  `1 6 5 3`  `satellite.variable.binary.to_string`  _M19.5_
+> satellite.help(satellite.variable.binary.to_string)
+
+The bits as text, exactly as `display` would print them -- the leading `b`
+included.
+
+Use it to join a run of bits onto a string, since the two types do not add to
+each other.
+
+    satellite.variable.binary bits = b1010
+    satellite.console.display("the bits are " + bits.to_string())
+
+H  `1 6 5 4`  `satellite.variable.binary.as_number`  _M19.5_
+> satellite.help(satellite.variable.binary.as_number)
+
+The digits read as if they were an ordinary decimal number.
+`b1010.as_number()` is one thousand and ten.
+
+This is not the value the bits stand for -- `to_number()` is that one, and it
+answers 10. This row is for when what matters is how the run was spelled.
+
+    satellite.variable.binary bits = b1010
+    satellite.console.display(bits.as_number())
+    satellite.console.display(bits.to_number())
 
 .  `1 6 6`  `satellite.variable.bool`
 > satellite.help(satellite.variable.bool)
@@ -2034,7 +2101,8 @@ something; after a delete the name is gone.
     f.close()
     satellite.console.display(satellite.file.clear("clear_demo.txt"))
     satellite.variable.file back = satellite.file.open("clear_demo.txt", "read")
-    satellite.console.display(back.read_all().size())
+    satellite.variable.string left = back.read_all()
+    satellite.console.display(left.size())
     back.close()
     satellite.system.delete("clear_demo.txt")
 
@@ -2622,7 +2690,8 @@ The directory the program is in, as a full path.
 This is the one every other path is measured against: a name with no `/` in
 front of it is read from here.
 
-    satellite.console.display(satellite.directory.current().size() > 0)
+    satellite.variable.string here = satellite.directory.current()
+    satellite.console.display(here.size() > 0)
 
 H  `1 18 3`  `satellite.directory.exists(d)`  _M19_
 > satellite.help(satellite.directory.exists)

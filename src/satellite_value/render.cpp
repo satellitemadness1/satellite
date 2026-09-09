@@ -10,6 +10,7 @@
 
 #include "satellite_value/render.hpp"
 
+#include "satellite_bits/bits.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
 #include "system_facts/facts.hpp"
@@ -142,6 +143,16 @@ std::string text_of(const Value &value)
     // this arm only forwards, the way the number arm above does.
     if (const Flo *held = std::get_if<Flo>(&value))
         return *held ? (*held)->to_string() : std::string("0.0");
+
+    // A BIT RUN PRINTS AS IT WAS WRITTEN, `b` AND ALL -- M19.5, and at its
+    // written width, which is the clause PLAN §8's done-when names. `b0010`
+    // prints `b0010` and never `b10`: DESIGN §8.5 makes the width part of the
+    // value, so trimming a leading zero here would print a DIFFERENT value
+    // from the one being displayed. The `b` is the same job the float's
+    // always-printed point does one arm up -- it tells the reader which type
+    // answered.
+    if (const Bin *run = std::get_if<Bin>(&value))
+        return *run ? bits::text_of(**run) : std::string("b");
 
     if (const Str *text = std::get_if<Str>(&value))
         return *text ? live_text(**text) : std::string();

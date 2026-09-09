@@ -1279,6 +1279,7 @@ opened.
 | `satellite.variable.float` | a `bool` and **two `satellite_number`s** — `positive`, left of the point, right of it | §8.6. Left exact and unbounded; right bounded, and its length is the precision |
 | `satellite.container.list<T>` | vector of values | children shared |
 | `satellite.container.map<K,V>` | body behind a handle | insertion-ordered; keys restricted (§6.5) |
+| `satellite.variable.binary` | a run of bits, behind a handle — one `satellite.variable.bool` per bit, packed | §8.5. **The width is part of the value**, so the run's length is not metadata beside it; built at M19.5 |
 | `satellite.variable.time` | absolute instant, UTC — int64 nanoseconds on the Unix epoch, `system_clock`'s reading | §13, settled 2026-09-04; built at M13, and display-only until M29 numbers its methods |
 | `satellite.variable.file` | handle | reference type |
 | `satellite.variable.thread` | handle | reference type |
@@ -1433,16 +1434,78 @@ gave `satellite.variable.binary` `1 6 5` and `.hex` `1 6 11` to the lexer's
 milestone and to no evaluator's — M11 is scalars and names bool, number and
 string; M16 is containers. Neither claims these two. `satl --compile` on a program
 holding a hex literal said so in those words, which was the most useful form the
-answer could take until somebody assigned it.
+answer could take until somebody assigned it. **A binary literal no longer says
+it and a hex literal now names M19.5**, which is the same refusal doing the same
+job one step further along: a gap became a milestone, and half of that milestone
+became a type.
 
 **ASSIGNED 2026-09-08: THEY ARE M19.5's**, minted at M19 because that is the
 milestone that gives bytes a destination. `satellite.variable.file.write(x)`
 `1 6 2 11` is byte-exact and takes a string at M19; M19.5 makes it take these
-two with no edit to the verb. **What this section specifies is the LITERALS and
-the width rule and nothing else** — whether a bit can be indexed, whether two
-binaries concatenate, whether either converts to a `satellite.variable.number` —
-none of that is written down anywhere, so M19.5 is a design milestone and not a
-port, and PLAN §8's entry for it says so.
+two with no edit to the verb. **What this section specified until that
+milestone was the LITERALS and the width rule and nothing else** — whether a
+bit can be indexed, whether two binaries concatenate, whether either converts
+to a `satellite.variable.number` — none of it was written down anywhere, so
+M19.5 was a design milestone and not a port, and PLAN §8's entry says so.
+
+#### What M19.5 decided, and what it deliberately left
+
+*(2026-09-08. `satellite.variable.binary` is BUILT; `satellite.variable.hex` is
+not, and the split is the author's — binary first, hex directly after, so that
+the type's shape could be settled on one radix before the second inherited
+it.)*
+
+**The value is a run of `satellite.variable.bool`, one per bit, and index 0 is
+the leftmost bit as written.** That counting is not a new rule: §8.3 gives a
+string 0-based positions from the left and so does every subscript in §6.2, so
+a run of bits joins a convention rather than starting one.
+
+**The width is kept literally and nothing trims it.** `b0010` and `b10` are two
+values; `b0010 == b10` is **false**; and display prints what was written,
+leading zeros and all. This is the one clause of this section that a
+representation can silently break — an integer with a length beside it passes
+every other test — so it is the one the milestone's fixtures are built around.
+
+**`==` is by bits AND width, and a bit run is never equal to any other type.**
+The second half is not a decision M19.5 took: §8's model has no conversion
+anywhere, so different arms compare false, and that is where `b1111 == xF`
+will land when hex arrives.
+
+**Four methods, and the numbering is what limited them.** `to_number()`
+`1 6 5 1` is what the bits are WORTH (`b1010` → 10), `as_number()` `1 6 5 4` is
+the digits read as an ordinary decimal (`b1010` → 1010), `width()` `1 6 5 2`
+counts the bits written, and `to_string()` `1 6 5 3` is the characters
+`display` prints. **Which of the two conversions wore which verb was reversed
+once during the milestone** — the author settled it on the ground that `to_` is
+already this language's conversion verb (`string.to_number`, `number.to_string`)
+and that the surprising answer must not sit behind the name a reader expects.
+**Neither conversion keeps the width**, by two different routes, which is why
+`width()` exists at all.
+
+**`write(x)` `1 6 2 11` puts the BYTES and refuses a width that is not a
+multiple of eight.** A file is made of bytes and half a byte cannot be written;
+padding and left-aligning both invent bits the program never wrote, so the
+refusal is the only answer that invents nothing. Writing the TEXT is spelled
+`write(x.to_string())`, out loud.
+
+**A method needs a number and an operator does not, which is the line the
+milestone drew.** PLAN §8 asked for "two numbered paths and no third", and the
+four rows above are under `1 6 5` rather than beside it. `+`, `[` and the
+shifts cost no path number at all, so a later milestone can give this type any
+of them without touching the numbering — **and M19.5 built none of them**, so:
+
+- **What `+` means on two bit runs is OPEN.** The author's sketch is `+` for
+  whichever reading is more expected and a second operator, `!!`, for the
+  other. §6.6's own note about `+` joining two strings — "take two of a thing,
+  answer one of that thing, change neither" — is an argument for concatenation
+  being the `+`; arithmetic addition needs a carry rule and a width for the
+  answer, which is exactly the kind of sentence this section exists to write
+  down before it is built.
+- **Indexing is OPEN**, and if it is built it answers a width-1 run of the same
+  type, by §8.3's "there being no character type" one type over.
+- **The shifts are OPEN**, and §5.5's number shifts are not them: that section's
+  "there is no width to shift out of" is a fact about `satellite.variable.number`
+  and is the opposite of true here.
 
 **AND THERE IS NO `"binary"` MODE WORD ON `satellite.file.open`, WHICH IS A
 DIFFERENT QUESTION WEARING THE SAME WORD.** A `satellite.variable.string`

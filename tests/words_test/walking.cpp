@@ -4,7 +4,7 @@
 // PLAN M2's done-when is "a test proving satellite.console.display walks to
 // 1 5 1, satellite.random.normal to 1 7 2, and that both intern to stable
 // PathIds." Those two are checked here BY NAME as well as by authority.cpp's
-// sweep of all 236, because a milestone's own acceptance condition should be
+// sweep of all 240, because a milestone's own acceptance condition should be
 // findable by grepping for it rather than by trusting that a loop covered it.
 
 #include "words_test.hpp"

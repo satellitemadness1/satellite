@@ -34,6 +34,7 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M22.md](M22.md) | 2026-09-07 | **Out of order, and §0 says why.** The prompt — `satl --repl` reads a line, a typed line becomes a program, and `satl-term`'s window stops closing when what exited was the prompt. |
 | [M18.md](M18.md) | 2026-09-08 | `satellite.help` — the trie answering for itself: the `built()` predicate over four kinds, the language's first unevaluated argument, and 264 entries generated into the binary from the file that writes the document. |
 | [M19.md](M19.md) | 2026-09-08 | Persistence — files and directories, and the fold that had been guessing. |
+| [M19.5.md](M19.5.md) | 2026-09-08 | **Half of it** — `satellite.variable.binary`, the width that makes it a type, and the four verbs. `satellite.variable.hex` is the half still owed. |
 
 **M22 sits between M17 and M18 in this table and that is the point of the date
 column.** It was built on 2026-09-07, before M18 through M21, at the author's

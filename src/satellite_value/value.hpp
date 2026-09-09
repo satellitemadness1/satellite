@@ -23,7 +23,7 @@
 //
 // FIVE ARMS AT M10, AND THE EMPTINESS IS DELIBERATE. DESIGN §8's table has
 // thirteen rows and this held the five a program could PRODUCE at M10: nothing,
-// a bool, a number, a string and the runtime singleton. Ten since M19. An arm with no producer
+// a bool, a number, a string and the runtime singleton. ELEVEN since M19.5. An arm with no producer
 // is a case every later reader has to rule out -- name_resolver/resolve.hpp
 // refuses six sentinels for three on exactly that argument -- so the rest
 // arrive with the milestone that can build one. PLAN §8's M9 entry names three
@@ -47,6 +47,7 @@
 // and the assert did not move, which is this paragraph doing the job it was
 // written for.
 
+#include "satellite_bits/bits.hpp"
 #include "satellite_file/file_handle.hpp"
 #include "satellite_float/satellite_float.hpp"
 #include "satellite_number/bignum.hpp"
@@ -151,16 +152,43 @@ using Map = std::shared_ptr<const MapBody>;
 // this append four milestones before it arrived.
 using Fil = std::shared_ptr<file::FileHandle>;
 
+// A RUN OF BITS -- `satellite.variable.binary` `1 6 5`, M19.5, and the
+// SEVENTH append. DESIGN §8.5's type: the width is part of the value, so the
+// body is a `std::vector<bool>` and never an integer with a length beside it.
+// satellite_bits/bits.hpp is the type and carries the measurement behind
+// "one bit per bit".
+//
+// SHARED AND CONST, WHICH PUTS IT BACK ON THE RULE `Fil` CAME OFF. A bit run
+// is a VALUE -- two names for one are two values, and there is no descriptor
+// underneath for the kernel to have an opinion about -- so it takes `Str`'s
+// arrangement and not the file's: sixteen bytes of handle, copied by refcount,
+// and nothing can mutate a body two slots see.
+//
+// BEHIND A HANDLE FOR THE FLOAT'S REASON RATHER THAN THE FLOAT'S SHAPE. A
+// float is 72 bytes because DESIGN §8.6 makes it two `Number`s and a sign; a
+// bit run is unbounded because §8.5 makes the width part of the value and puts
+// no ceiling on it. Different types, same consequence: neither fits in the
+// 40-byte budget inline, so both arrive as a pointer.
+using Bin = std::shared_ptr<const bits::BitRun>;
+
 // APPEND ONLY. A new arm goes at the END of this list, never in the middle.
 // `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
 // widest arm, the same accounting `Runtime`'s note above runs. `Flo` is the
 // third, M15's, sixteen bytes by the same account; `Lst` and `Map` are the
 // fourth and fifth, M16's, sixteen each by the same account again; `Fil` is
-// the sixth, M19's, sixteen more.
+// the sixth, M19's, sixteen more; `Bin` is the SEVENTH, M19.5's, sixteen more
+// again.
+//
+// PLAN §8's M19.5 ENTRY CALLS THESE "the sixth and seventh appends" AND THAT
+// IS OFF BY ONE, which is worth correcting here rather than anywhere else
+// because this list is the fact it is a claim about. The entry was written on
+// 2026-09-08 while M19 was in flight, and M19's `Fil` took sixth. Binary is
+// the seventh and hex will be the eighth. The assert does not move either way,
+// which is the half of the sentence that was the point.
 using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo,
-                              Lst, Map, Fil>;
+                              Lst, Map, Fil, Bin>;
 
-// One value. DESIGN §8's table, nine rows of it since M16.
+// One value. DESIGN §8's table, eleven arms of it since M19.5.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -187,6 +215,15 @@ struct Value : ValueBase {
     static Value list(List items);
     static Value map(MapBody body);
 
+    // A RUN OF BITS -- M19.5. This one IS a plain factory the way `string` and
+    // `instant` are, and the note below about `file` says exactly why the file
+    // is not: a bit run is built from a value already in hand, there is one way
+    // to make one, and nothing about it can fail.
+    static Value binary(bits::BitRun run)
+    {
+        return Value(std::make_shared<const bits::BitRun>(std::move(run)));
+    }
+
     // NO `Value::file(...)` FACTORY, and the absence is deliberate. Every
     // factory above BUILDS its body from a plain C++ value, because there is
     // exactly one way to make a string or an instant and no state to get wrong.
@@ -208,6 +245,7 @@ struct Value : ValueBase {
     bool is_list() const { return std::holds_alternative<Lst>(*this); }
     bool is_map() const { return std::holds_alternative<Map>(*this); }
     bool is_file() const { return std::holds_alternative<Fil>(*this); }
+    bool is_binary() const { return std::holds_alternative<Bin>(*this); }
 };
 
 // `satellite.container.list<T>` -- a vector of values with a name a forward
@@ -263,6 +301,18 @@ inline const MapBody *as_map(const Value &value)
 {
     static const MapBody empty;
     if (const Map *handle = std::get_if<Map>(&value))
+        return *handle ? handle->get() : &empty;
+    return nullptr;
+}
+
+// The run behind a binary arm, or nullptr when the value is not one. A NULL
+// HANDLE ANSWERS AN EMPTY RUN, which is as_list's rule one row up and is held
+// to for as_list's reason: Value::binary never builds one, and a reader that
+// crashed on it would be a crash waiting on a producer this module cannot see.
+inline const bits::BitRun *as_binary(const Value &value)
+{
+    static const bits::BitRun empty;
+    if (const Bin *handle = std::get_if<Bin>(&value))
         return *handle ? handle->get() : &empty;
     return nullptr;
 }

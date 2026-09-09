@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include "error_reporter/report.hpp"
+#include "satellite_bits/bits.hpp"
 #include "satellite_file/file_internal.hpp"
 #include "satellite_string/satellite_string.hpp"
 #include "satellite_words/words.hpp"
@@ -28,6 +29,51 @@ namespace satellite::file {
 
 namespace {
 
+// What a write is being asked to put, or a refusal and false.
+//
+// `write(x)` `1 6 2 11` GAINED ITS BIT-RUN ARM AT M19.5 AND THE VERB DID NOT
+// CHANGE, which is the reason PLAN §8 put that milestone directly after this
+// one: the spelling is the same, the row is the same, and what widened is
+// which values it accepts. Until it did, `write(x)` accepted only a string and
+// therefore read as `write_line` with the newline left off.
+//
+// A BIT RUN GOES OUT AS BYTES AND NOT AS ITS TEXT. `write(b01000001)` puts one
+// byte, `A`, and never the nine characters `b01000001` -- writing the text is
+// what `write(x.to_string())` spells, out loud, and a verb that guessed
+// between the two would be DESIGN §1.1's "behind the user's back" on the one
+// operation where the difference is invisible until something reads the file
+// back.
+//
+// AND A WIDTH THAT IS NOT A MULTIPLE OF EIGHT IS REFUSED. A file is made of
+// bytes; half a byte has no representation in one. Padding to the next byte
+// and left-aligning in the last one both write bits the program never wrote,
+// so the refusal is the only answer that invents nothing -- and it is one the
+// program can act on, `width()` `1 6 5 2` being the question it would ask.
+bool bytes_to_put(eval::Machine &m, const Value *arguments, bool newline,
+                  std::string *out)
+{
+    if (const bits::BitRun *run = as_binary(arguments[1])) {
+        if (!bits::to_bytes(*run, *out)) {
+            m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+                m.span_of(m.here()),
+                std::string(m.text_of(m.here())),
+                "a `satellite.variable.binary` whose width is a whole number "
+                "of bytes -- a multiple of 8",
+                // THE SENTENCE IS FINISHED BY THE TEMPLATE, which reads
+                // "and this one is ..." -- so this clause starts with the
+                // value and never with a verb, or the two say "is" twice.
+                bits::text_of(*run) + ", which is " +
+                    std::to_string(run->width()) + " bits wide"));
+            return false;
+        }
+    } else if (!path_at(m, arguments, 1, out)) {
+        return false;
+    }
+    if (newline)
+        *out += '\n';
+    return true;
+}
+
 // The bytes a write puts, or a refusal and false. `write_line(s)` `1 6 2 4` and
 // `write(x)` `1 6 2 11` differ in exactly one character and share everything
 // else, which is why they are one function and two rows.
@@ -37,10 +83,8 @@ bool put(eval::Machine &m, const Value *arguments, bool newline, Value *answer)
     if (!handle_at(m, arguments, 0, &handle))
         return false;
     std::string bytes;
-    if (!path_at(m, arguments, 1, &bytes))
+    if (!bytes_to_put(m, arguments, newline, &bytes))
         return false;
-    if (newline)
-        bytes += '\n';
     if (wrong_direction(m, *handle, handle->writable, "write to",
                         modes_that_write()))
         return false;

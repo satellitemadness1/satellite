@@ -1504,7 +1504,7 @@ it is; the labels changed. This table is the key to every document written befor
     M8.B    M17   hello world
     M8.5    M18   satellite.help
     M18     M19   persistence — files and directories
-            M19.5 binary and hexadecimal
+            M19.5 binary and hexadecimal   (binary built; hex owed)
             M19.6 the `.satc` after resolve, and the option token
     M19     M20   the machine's facts in the language
     M20     M21   a piece of QUAD, running
@@ -4054,6 +4054,11 @@ orphans `satellite.directory` a second time, which is the precise failure
 `MILESTONE.md` exists to record.
 
 **M19.5 — binary and hexadecimal.** *(New 2026-09-08. After M19, before M20.)*
+***BINARY LANDED 2026-09-08; HEX IS THE HALF STILL OWED, and the split is the
+author's — `satellite.variable.binary` `1 6 5` first, so the type's shape could
+be settled on one radix before the second inherited it. MILESTONES/M19.5.md is
+the review, DESIGN §8.5's new subsection is what got decided, and the entry
+below stands as it was written so that the two can be compared.***
 **Two numbered paths and no third** — `satellite.variable.binary` `1 6 5` and
 `satellite.variable.hex` `1 6 11`, which WORD_NUMBERS §2.2 has carried since M2
 and which no milestone in this list has ever claimed.

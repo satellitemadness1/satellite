@@ -113,8 +113,25 @@ brackets are a reading aid marking a node that is reached both bare and as a
 parent; they are not a third kind of thing, and there is no second rule to learn.
 
 **A trailing `0` is written only where a program can actually write the bare
-form.** `satellite.variable.binary` `1 6 5` has no `(0)` because nothing calls it
-with no arguments — it is a type name, and the number is the whole of it.
+form.**
+
+***This paragraph used `satellite.variable.binary` `1 6 5` as its example —
+"no `(0)` because nothing calls it with no arguments, it is a type name, and
+the number is the whole of it" — and M19.5 gave that node four children and a
+`(0)`, on 2026-09-08.*** **The rule did not change and the example was wrong
+about the reason.** A type name's `(0)` is not a call with no arguments; it is
+the BARE SHAPE — `satellite.variable.binary bits` with no `= b1010` after it,
+a declared name holding nothing — and every other type node in §2.2 already
+carried one on exactly that ground: `string` `1 6 1 0`, `file` `1 6 2 0`,
+`time` `1 6 3 0`, `number` `1 6 4 0`, `thread` `1 6 13 0`, `variant`
+`1 6 14 0`. Binary had none because it had no children to hang them under, not
+because it was a different kind of word.
+
+**So the rule reads: a trailing `0` is written where a program can write the
+node with nothing after it**, which for a verb is a call with no arguments and
+for a type name is a declaration with no value. `1 6 13 (0)` and `1 6 14 (0)`
+are annotated "the `(0)` is new with its children below" for this reason and
+`1 6 5 (0)` now says the same thing.
 
 **A user-owned argument cannot extend anything**, because a string literal or a
 variable the user named has no number to contribute. So what distinguishes those
@@ -433,7 +450,11 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.number.truncate(a)` | `1 6 4 13` | assigned — on a float this is just its left half |
 | `satellite.variable.number.sqrt(a)` | `1 6 4 14` | assigned — irrational in general, so it rounds |
 | `satellite.variable.number.digits` | `1 6 4 15` | appended 2026-08-31 — v1 exposes `.digits()` and this section had no row for it |
-| `satellite.variable.binary` | `1 6 5` | assigned |
+| `satellite.variable.binary` | `1 6 5 (0)` | assigned; **built at M19.5** — the `(0)` is new with its children below |
+| `satellite.variable.binary.to_number` | `1 6 5 1` | assigned 2026-09-08 — what the bits are WORTH; `b1010.to_number()` is 10 |
+| `satellite.variable.binary.width` | `1 6 5 2` | assigned 2026-09-08 — how many bits were written; the one row that reads DESIGN §8.5's width |
+| `satellite.variable.binary.to_string` | `1 6 5 3` | assigned 2026-09-08 — the characters `display` prints, the leading `b` included |
+| `satellite.variable.binary.as_number` | `1 6 5 4` | assigned 2026-09-08 — the digits read as DECIMAL; `b1010.as_number()` is 1010 |
 | `satellite.variable.bool` | `1 6 6` | assigned |
 | `satellite.variable.date` | `1 6 7` | assigned |
 | `satellite.variable.duration` | `1 6 8` | assigned |
