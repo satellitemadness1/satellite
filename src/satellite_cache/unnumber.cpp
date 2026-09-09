@@ -141,6 +141,35 @@ bool unnumber(const std::string &body, std::string &into,
                 into.append(body, at, escaped ? 2 : 1);
                 at += escaped ? 2 : 1;
             }
+
+            // THE CLOSING QUOTE IS TAKEN HERE, AND NOT TAKING IT INVERTED THE
+            // WHOLE PASS. Without this the loop above stops ON the quote and
+            // `continue` hands it back to the top, which reads it as an OPENING
+            // one -- so the characters AFTER a string were copied through as
+            // string contents and the characters inside the NEXT string were
+            // read as code. A `#` in the first stretch reached the parser as
+            // itself, and the parser has no rule for one (SATC §1.1.1 is the
+            // sentence that makes that certain), so the file was refused as
+            // malformed by the check that exists to catch a corrupt cache.
+            //
+            // IT NEEDED A PATH AFTER A STRING ON ONE LINE, which is why it
+            // survived a year of round-trip tests: the inner loop also stops at
+            // a newline -- a literal may not cross one -- so every line begins
+            // in the right state and only a line with both on it went wrong.
+            // `#1.6.6 b = #1.8.5("no_such") == #1.17.1` is the shape, and
+            // example/persistence.satl was the only acceptance program that
+            // had it. section_reading()'s fixpoint runs over four programs and
+            // none of them do; literals_are_not_scanned() wrote its string
+            // LAST on the line, which is the one position that hides this.
+            // tests/satc_test/reading.cpp now writes one that does not.
+            //
+            // A `.satc` NOBODY CAN READ IS STILL SAFE AND THAT IS WHY IT WAS
+            // QUIET. §4's "a missing, stale or unreadable `.satc` is never an
+            // error" held the whole time: the program ran from its source and
+            // was correct. What it cost was the cache -- such a program wrote a
+            // file on every single run and read one on none of them.
+            if (at < body.size() && body[at] == '"')
+                into += body[at++];
             continue;
         }
 

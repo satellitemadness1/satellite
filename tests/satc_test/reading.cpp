@@ -270,6 +270,35 @@ void literals_are_not_scanned()
               satellite::errors::sentence(why));
     check(back.find("satellite.console.input()") == 0,
           "and arity 0 keeps the parentheses the number already says: " + back);
+
+    // A STRING WITH A PATH AFTER IT ON THE SAME LINE, which is the position the
+    // two checks above do not cover and the one that was broken. Both of them
+    // put the string LAST, so the pass could stop on the closing quote without
+    // taking it and nothing noticed: the newline put the next line back in the
+    // right state. What it takes to see is a `#` between two quotes, or a `#`
+    // after the last quote on a line that had one.
+    //
+    // example/persistence.satl HAD IT AND WAS NOT IN section_reading()'s LIST.
+    // The fixpoint runs over four acceptance programs chosen at M4.5 and this
+    // shape entered the tree at M19, five months later -- so the check that
+    // would have caught it was reading a set that no longer contained the case.
+    // That is the cost of naming fixtures one by one, and it is why this one is
+    // written as a form rather than added to the list.
+    check(satellite::cache::unnumber("#1.6.6 b = #1.8.5(\"no\") == #1.17.1\n",
+                                     back, why),
+          "a path after a string on one line is still a number: " +
+              satellite::errors::sentence(why));
+    check(back == "satellite.variable.bool b = satellite.file.exists(\"no\") == "
+                  "satellite.bool.false\n",
+          "the closing quote is consumed, so what follows it is code: " + back);
+
+    // AND THE STRING AFTER IT IS STILL A STRING, which is the same defect read
+    // from the other end: a pass that stayed inverted would take the contents
+    // of the SECOND literal as code and substitute inside it.
+    check(satellite::cache::unnumber("#1.5.1(\"a\" + \"#1.5.1\")\n", back, why),
+          "two strings on a line: " + satellite::errors::sentence(why));
+    check(back == "satellite.console.display(\"a\" + \"#1.5.1\")\n",
+          "a mark in the second string is not a number either: " + back);
 }
 
 } // namespace
