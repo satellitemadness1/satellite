@@ -11,6 +11,7 @@
 // than in front of them. A milestone whose consumer is a loop needs somewhere
 // for the loop to be.
 
+#include "name_resolver/resolve.hpp"
 #include "parser/parser.hpp"
 #include "satellite_cache/cache.hpp"
 #include "satellite_words/words.hpp"
@@ -30,9 +31,20 @@ namespace satellite {
 struct Reading {
     Parse parsed;
 
+    // RESOLVE RUNS IN HERE NOW -- M19.6, and it is the milestone. The writer
+    // needs to know which selectors folded an option, that is resolve's answer,
+    // and SATC.md §3.2's "the pipeline decides this, not taste" is the sentence
+    // that used to put the write one pass earlier. Empty when the tree did not
+    // parse, because there is nothing to resolve and twenty carets under a file
+    // whose real problem is a bracket is what running it anyway would give.
+    resolve::Resolved resolved;
+
     // What the `.satc` had already numbered, for M7. Empty on a miss, which is
     // the honest answer: the numbers were never there to take.
     cache::Marks marks;
+
+    // And which of its selectors it said were folded -- M19.6.
+    cache::Folded folded;
 
     cache::Source stamp;
     std::string cache_file;

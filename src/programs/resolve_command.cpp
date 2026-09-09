@@ -38,6 +38,7 @@
 
 #include <cstdio>
 #include <string>
+#include <utility>
 
 namespace satellite {
 
@@ -49,7 +50,7 @@ int resolve_command(const std::string &path)
     words::Words words;
     cache::Save writing;
 
-    const Reading read = read_program(path, words, writing);
+    Reading read = read_program(path, words, writing);
     if (!read.ok)
         return EXIT_USAGE;
 
@@ -61,7 +62,19 @@ int resolve_command(const std::string &path)
     if (!read.parsed.ok())
         return EXIT_MALFORMED;
 
-    resolve::Resolved resolved = resolve::resolve(read.parsed.ast, words, read.marks);
+    // RESOLVED ALREADY, BY read_program() -- M19.6 moved it there because the
+    // `.satc` writer needs its answer. Taking it rather than running it again is
+    // not an optimisation: a second resolve over the same tree with the same
+    // numbering would meet every capsule a second time and report the user's own
+    // program as declaring each of them twice, which is the shape M4.5's reader
+    // already had to avoid for the same reason.
+    // MOVED AND NOT COPIED, which is worth the word `std::move` rather than
+    // being left to be noticed. `Resolved` carries one `Info` per AST node, so
+    // a copy here is an allocation and a walk proportional to the program --
+    // and it was measurable the moment read_program() started producing one:
+    // 0.19 ms on example/frames.satl, on an arm that does exactly the same work
+    // it did before this milestone.
+    resolve::Resolved resolved = std::move(read.resolved);
 
     if (!resolved.ok() && read.from_cache) {
         // TAKEN AGAIN FROM THE SOURCE -- the header says why. `words` is left

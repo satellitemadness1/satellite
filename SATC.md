@@ -138,6 +138,33 @@ Literals stay literal too: `"Hello, World!"` is a string in the source and a str
 in the `.satc`. Numbering it would buy nothing and cost the readability §1.1 exists
 for.
 
+**AND THERE IS A THIRD KIND OF TOKEN SINCE M19.6, WHICH IS `0#down`.** A file
+holds three things now and not two: a path written as its number (`#1.5.1`), a
+literal written as itself (`"down"`), and an **option** written as neither
+(`0#down`). This section gains a row rather than losing one — an option is not a
+literal, and the rule above is untouched:
+
+| in the source | in a `.satc` | why |
+|---|---|---|
+| `satellite.console.display` | `#1.5.1` | a path, and §3.1 |
+| `"Hello, World!"` | `"Hello, World!"` | a literal, and the paragraph above |
+| `my_list.sort("down")` | `my_list.sort(0#down)` | an option, and §5.1 |
+
+**The `0#` is the author's spelling and the derivation is one sentence of
+theirs**: *"`#` stands for a number in a `.satc` file, so `0#` stands for an
+option."* **It carries no quotes** — also the author, 2026-09-08 — because the
+prefix has already said this is an option rather than a string, and `0#"down"`
+would be the file saying the same thing twice in two notations that could
+disagree. What keeps it unambiguous is a **letter** after the mark where a path
+has a digit, and `src/satellite_cache/paths.hpp` carries both halves of the
+test.
+
+**It names the OPTION and not the ROW, and that was the choice.** `#1.4.2.5`
+would have said the answer and lost what the program wrote; `0#down` says which
+word was written, so the file can still be read as the program it came from.
+What it costs is that the number is not in the file, and §5.1 is where that is
+paid.
+
 ### 3.1 Paths become numbers. Selectors do not.
 
 The rule in §3 is about *ownership* — the user's names stay names. There is a
@@ -170,6 +197,16 @@ would make the file name a handler, which §7 is the sentence forbidding.
 §3.1 is not a readability preference. It is forced, and the proof is where the
 writer runs.
 
+***M19.6 MOVED THE WRITE AND THIS SECTION IS WHERE THAT LANDS.*** Everything
+below was true from 2026-08-30 until 2026-09-09 and is kept because it is the
+argument the format was built on. What changed is the SCHEDULE and not the
+reasoning: the writer now runs **after** resolve, so the things this section
+calls "unknowable" are knowable, and §5.1's list has a sixth step. **The rule it
+draws is still the rule** — a selector is still bare in the file (§3.1), because
+knowing a type is not the same as having somewhere honest to put a number that
+means one thing for the language and another for a user. Only the OPTION moved,
+and only because an option is a word the program wrote.
+
 PLAN §8 schedules `.satc` as **M4.5 — after M4's parser and before M7's resolve.**
 DESIGN §6.3 keeps the parser resolution-free on purpose: it "emits a flat
 Member/Call/Index chain and resolves it afterwards, letting each object answer for
@@ -195,7 +232,17 @@ The order matters and is easy to get backwards:
 1. Look for this source's `.satc` in `$HOME/.satl/cache` (§1).
 2. If it exists, is well-formed, and all three header lines match — **use it, and
    do not walk the source.**
-3. Otherwise walk the source as normal, and write a fresh `.satc` afterwards.
+3. Otherwise walk the source as normal, **resolve it**, and write a fresh
+   `.satc` afterwards.
+
+**"AND RESOLVE IT" IS M19.6 AND IT CLOSED A HOLE AS WELL AS OPENING A STEP.** A
+`.satc` is now written only for a program that PARSED **and RESOLVED**, where
+before it was written for anything that parsed. That is not tidiness: the file
+records a decision taken about the program's types (§5.1 step 6), so writing one
+for a program whose names did not check would cache a fold nothing verified. It
+is the same rule the parse test already kept, one pass later — *a file that is
+read back INSTEAD of its source must not carry anything the source would have
+been refused for.*
 
 `src/satellite_cache/read.cpp` is steps 1 and 2, `save.cpp` is step 3, and
 `src/programs/cache_command.cpp` is the order — which is the whole of
@@ -275,6 +322,22 @@ The run does not wait for the write. The walk finishes, the program starts, and 
 `.satc` is written behind it — so the first run of a program is never slower for
 having produced one.
 
+**M19.6 DELAYED THE THREAD'S START BY ONE PASS AND IT MEASURED AS FREE.** The
+write now happens after resolve rather than after the parse, which PLAN asked to
+be measured rather than asserted. Taken 2026-09-09 on the same machine, same
+build flags, min of 50 — the baseline is `89dc0c4`, the commit before the move:
+
+| | before the move | after |
+|---|---|---|
+| `satl --version` (the floor) | 2.01 ms | 1.99 ms |
+| `satl --satc hello_world.satl`, cold | 3.77 ms | 3.75 ms |
+| `satl --resolve frames.satl`, cold | 3.90 ms | 3.90 ms |
+
+**The first attempt at this table compared `satl` against `satl.haswell` and
+reported a 0.17 ms regression that does not exist** — those two are built with
+different `-march`, so what it measured was codegen. Recorded because the wrong
+number was believable and the right one is not obviously different from it.
+
 Two things that follow, and both are how a cache corrupts a machine if they are
 skipped:
 
@@ -318,12 +381,45 @@ there rather than here.
 Three things stay untouched through all five: user names (§3), literals (§3), and
 selectors (§3.1).
 
-**A literal option is not folded here.** WORD_NUMBERS.md §1.5 lets
-`my_list.sort("down")` intern to a different `PathId` than `sort("up")` — but that
-is a resolve-time decision, and §3's "literals stay literal" governs the file. The
-`.satc` keeps `"down"` as a string. The runtime keeps the number. This is the one
-place the numbering deliberately says more than the file does, and it is not a
-contradiction as long as nobody tries to make the file say it.
+6. **Record which selectors folded an option.** `my_list.sort("down")` becomes
+   `my_list.sort(0#down)`. **Added at M19.6**, and it is the only step that is
+   not parse-tree work — which is why it could not exist until the write moved.
+
+***THE FIVE STEPS ABOVE ARE STILL FIVE AND STILL PARSE-TREE WORK.*** The sixth
+is separate rather than folded into the list because the sentence that opens
+this section — *"if any of them needs resolve, the writer is in the wrong place
+in the pipeline"* — is still the right test for those five. Step 6 is the one
+that needs resolve, and the writer moved to meet it rather than the other way
+round.
+
+**A literal option WAS not folded here, and this is what changed on 2026-09-09.**
+*(The paragraph this replaces is kept below, because it is the argument that had
+to be answered rather than a mistake.)* WORD_NUMBERS.md §1.5 lets
+`my_list.sort("down")` intern to a different `PathId` than `sort("up")`, and the
+file now records that it did — as `0#down`, which §3 lists as a third kind of
+token beside a number and a literal.
+
+> **The paragraph that stood here until M19.6:** *"A literal option is not folded
+> here. [...] that is a resolve-time decision, and §3's 'literals stay literal'
+> governs the file. The `.satc` keeps `"down"` as a string. The runtime keeps the
+> number. This is the one place the numbering deliberately says more than the
+> file does, and it is not a contradiction as long as nobody tries to make the
+> file say it."*
+
+**WHAT ANSWERED IT WAS THE ORDER AND NOT THE TOKEN.** The objection above is
+about `"down"` being a literal, and `0#down` is not one — so §3 gained a row and
+lost nothing. What actually blocked the file from saying it was that the writer
+took the PARSE TREE, and whether `"down"` is an option depends on the receiver's
+declared TYPE, which is resolve's answer. M19.6 moved the write; the token is
+what the move made writable.
+
+**WHAT THE FILE STILL DOES NOT SAY IS THE NUMBER.** `0#down` names the option,
+so `1 4 2 5` is not in the file and the resolver still looks the row up under
+the receiver's type — **one lookup, where a cold walk takes a decision**:
+`takes_options()` against words.def's sixth list, the sibling scan that collects
+`down, up`, and M16's bare-word retry are all skipped. MILESTONES/M19.6.md §3 is
+careful about that difference, because "the fold is written down" and "the fold
+costs nothing" are two claims and only the first one is true.
 
 ### 5.2 The writer must emit in source order
 

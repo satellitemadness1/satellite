@@ -41,7 +41,114 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 }
 )";
 
+// M19.6's fixture. All THREE fold shapes on three lines, which
+// example/containers.satl also has and for the same reason: they take three
+// different routes through fold_option() and a test with only the middle one
+// would pass with the other two broken.
+//
+//   sort()          no option at all -- an ordinary selector, still walked for
+//   sort("down")    folds to sort_down() 1 4 2 5, the row the option names
+//   sort("up")      folds onto the BARE sort() 1 4 2 3, because sort_up() does
+//                   not exist and WORD_NUMBERS §1.5 lets a fold land on the
+//                   word it was spelled from -- M16's rule
+const std::string kOptions = R"(
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.container.list<satellite.variable.number> l = satellite.container.list()
+    l.append(3)
+    l.sort()
+    l.sort("down")
+    l.sort("up")
+    satellite.return(satellite)
+}
+)";
+
 } // namespace
+
+// THE OPTION TOKEN, COLD AND WARM -- M19.6. SATC.md §5.1 used to forbid this
+// file from saying anything about a fold; the write now happens after resolve
+// and `0#down` is what the move made writable.
+void section_option_token()
+{
+    using satellite::resolve::Origin;
+
+    Run cold;
+    resolve_source(kOptions, cold);
+    check(cold.parsed_clean() && cold.resolved.ok(),
+          "the option fixture resolves");
+    check(resolved_to(cold, "1 4 2 5"),
+          "cold: sort(\"down\") folds to sort_down() 1 4 2 5");
+    check(origin_of(cold, "1 4 2 5") == Origin::Walked,
+          "cold: and it was WALKED for, because a source says only `down`");
+
+    // THE FILE SAYS IT NOW, WHICH IS THE MILESTONE. Written from the resolved
+    // tree -- the fourth argument is the whole of the change to this call.
+    const satellite::cache::Source stamp{"options.satl", 1, kOptions.size()};
+    const std::string satc = satellite::cache::satc_text(
+        cold.parsed.ast, cold.words, stamp,
+        satellite::resolve::folds_of(cold.resolved));
+
+    check(satc.find("l.sort(0#down)") != std::string::npos,
+          "the `.satc` carries the option token: " + satc);
+    check(satc.find("l.sort(0#up)") != std::string::npos,
+          "and the one whose fold lands on the bare word carries it too");
+    check(satc.find("l.sort()\n") != std::string::npos ||
+              satc.find("l.sort()") != std::string::npos,
+          "and a call with no option is untouched");
+    check(satc.find("\"down\"") == std::string::npos,
+          "the option is no longer written as a string -- §3 gains a row "
+          "rather than losing one");
+
+    // WARM: read it back and resolve with what the file said.
+    satellite::words::Words warm_words;
+    const satellite::cache::Reading found =
+        satellite::cache::read_text(satc, stamp, warm_words);
+    check(found.hit(), "a `.satc` with an option token in it reads back");
+    check(found.folded.size() == 2,
+          "and it hands back the two selectors it said were folded, got " +
+              std::to_string(found.folded.size()));
+
+    const satellite::resolve::Resolved warm = satellite::resolve::resolve(
+        found.program.ast, warm_words, found.marks, found.folded);
+    check(warm.ok(), "and it resolves clean");
+
+    Run warm_run;
+    warm_run.parsed = found.program;
+    warm_run.resolved = warm;
+
+    // THE ANSWER FIRST, WHICH IS THE ORDER THIS FILE ALREADY KEEPS. A skip that
+    // reached a different row would be a cache that changes what a program
+    // does -- and `sort_down` against `sort` is exactly the pair where that
+    // would reverse a list rather than raise anything.
+    check(resolved_to(warm_run, "1 4 2 5"),
+          "warm: the same fold, 1 4 2 5 -- PLAN's done-when for this milestone");
+    check(origin_of(warm_run, "1 4 2 5") == Origin::Cached,
+          "warm: and it came FROM the file, without the resolver deciding "
+          "again that `down` is an option");
+    check(warm.from_cache > cold.resolved.from_cache,
+          "and the warm run takes more from the file than the cold one, which "
+          "took nothing");
+
+    // AND THE THIRD SHAPE, WHICH IS THE ONE THAT NEEDS TWO LOOKUPS. `sort_up`
+    // is not a row; the token says `up` is an option and the bare retry is what
+    // finds `sort()`. Asserted separately because a cached branch that only
+    // tried the folded spelling would fall through here and still be right --
+    // silently paying for the decision this milestone removed.
+    // COUNTED AND NOT ASKED FIRST-MATCH, because BOTH `l.sort()` and
+    // `l.sort(0#up)` land on `1 4 2 3` in this fixture and they must arrive
+    // there by different routes: the bare call has no token and is walked for,
+    // the folded one is taken from the file. origin_of() answers about
+    // whichever comes first and cannot tell them apart.
+    check(count_origin(warm_run, "1 4 2 3", Origin::Cached) == 1,
+          "warm: sort(0#up) lands on the bare sort() 1 4 2 3 FROM the file -- "
+          "M16's bare-word rule reached through the token rather than "
+          "re-derived");
+    check(count_origin(warm_run, "1 4 2 3", Origin::Walked) == 1,
+          "warm: and the sort() that had no option is still walked for, which "
+          "is what says the token did the work and not the number");
+}
 
 void section_cache()
 {

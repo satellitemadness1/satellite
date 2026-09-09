@@ -18,6 +18,7 @@
 
 #include "abstract_syntax_tree/ast.hpp"
 #include "error_reporter/report.hpp"
+#include "name_resolver/resolve.hpp"
 #include "parser/parser.hpp"
 #include "programs/check_command.hpp"
 #include "programs/opening.hpp"
@@ -69,10 +70,20 @@ Reading read_program(const std::string &path, words::Words &words,
         fprintf(stderr, "satl: read %s\n", found.file.c_str());
         out.parsed = found.program;
         out.marks = found.marks;
+        out.folded = found.folded;
         out.text = found.text;
         out.from_cache = true;
         out.ok = true;
-        out.satc = cache::satc_text(out.parsed.ast, words, out.stamp);
+
+        // RESOLVED ON THE WARM SIDE TOO, AND THE FIXPOINT IS WHY. `--satc`
+        // prints what the WRITER makes of the tree the READER built, so a warm
+        // print that skipped resolve would have no folds in it and would differ
+        // from the file on disk by exactly the tokens this milestone added --
+        // tests/satc_test/reading.cpp compares those two and would say so.
+        out.resolved =
+            resolve::resolve(out.parsed.ast, words, out.marks, out.folded);
+        out.satc = cache::satc_text(out.parsed.ast, words, out.stamp,
+                                    resolve::folds_of(out.resolved));
         return out;
     }
 
@@ -85,7 +96,22 @@ Reading read_program(const std::string &path, words::Words &words,
     out.parsed = parse(source, words);
     out.text = source;
     report(path, source, out.parsed.errors);
-    out.satc = cache::satc_text(out.parsed.ast, words, out.stamp);
+
+    // NOTHING IS RESOLVED IN A TREE THAT DID NOT PARSE, which is the rule
+    // programs/resolve_command.cpp already states in full: half a program has
+    // names whose declarations were never read, so every one of them would be
+    // reported unknown -- twenty carets under a file whose real problem is the
+    // bracket on line 4.
+    //
+    // THE PROBLEMS ARE NOT PRINTED HERE. This function's job is the reading
+    // order; `--resolve` renders them against the right text and `--satc` is
+    // about the format. A pass that both resolved and complained would print
+    // them twice for the one caller that wants them.
+    if (out.parsed.ok())
+        out.resolved = resolve::resolve(out.parsed.ast, words);
+
+    out.satc = cache::satc_text(out.parsed.ast, words, out.stamp,
+                                resolve::folds_of(out.resolved));
     out.ok = true;
 
     // §5: THE RUN DOES NOT WAIT FOR THE WRITE. The thread starts here and is
@@ -103,7 +129,15 @@ Reading read_program(const std::string &path, words::Words &words,
     // of its source, so caching half a program would hide the errors above on
     // every later run.
     out.cache_file = cache::cache_path(path);
-    if (out.parsed.ok()) {
+
+    // AND A PROGRAM THAT DID NOT RESOLVE IS NOT CACHED EITHER -- M19.6, and
+    // PLAN named it as the open question this milestone closes. A `.satc` now
+    // records a decision taken about the program's TYPES, so writing one for a
+    // program whose types did not check would be caching a fold nothing
+    // verified. The parse test above already had the same shape and the same
+    // reason: a file that is read back INSTEAD of its source must not carry
+    // anything the source would have been refused for.
+    if (out.parsed.ok() && out.resolved.ok()) {
         writing.start(out.cache_file, out.satc);
         // "writing" AND NOT "wrote", because it has not happened yet and may
         // not: §5 says a failed write is silent, so the only honest thing to

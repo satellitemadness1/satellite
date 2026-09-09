@@ -27,8 +27,8 @@ namespace satellite::resolve {
 class Resolver {
 public:
     Resolver(const Ast &ast, words::Words &words, const cache::Marks &marks,
-             Resolved &out)
-        : ast_(ast), words_(words), marks_(marks), out_(out)
+             const cache::Folded &folded, Resolved &out)
+        : ast_(ast), words_(words), marks_(marks), folded_(folded), out_(out)
     {
     }
 
@@ -198,6 +198,11 @@ private:
     const Ast &ast_;
     words::Words &words_;
     const cache::Marks &marks_;
+
+    // WHICH SELECTORS THE `.satc` SAID WERE FOLDED -- M19.6. Empty for a
+    // program walked from source, which is the ordinary case and costs one
+    // comparison; cache.hpp's `Folded` says why it is offsets and not numbers.
+    const cache::Folded &folded_;
     Resolved &out_;
 
     std::vector<Capsule> capsules_;

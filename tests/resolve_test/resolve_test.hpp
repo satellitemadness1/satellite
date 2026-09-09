@@ -92,6 +92,11 @@ bool resolved_to(const Run &run, const std::string &number);
 // through every one of those assertions: the counts still moved in the right
 // direction, and they still added up. A count over a whole run cannot see which
 // of two mechanisms produced it.
+// How many nodes reached `number` with that origin -- see the definition for
+// why a count and not a first match.
+size_t count_origin(const Run &run, const std::string &number,
+                    satellite::resolve::Origin origin);
+
 satellite::resolve::Origin origin_of(const Run &run, const std::string &number);
 
 void section_frames();     // §7.2 and §7.4 -- slots, and the fresh one
@@ -99,6 +104,7 @@ void section_names();      // what a name reaches, and what it does not
 void section_paths();      // DESIGN §6.3's walk, and the numbers it arrives at
 void section_arguments();  // §7.7, its six spellings, and the seventh
 void section_cache();      // MILESTONES/M4.5.md §5's clause, counted
+void section_option_token(); // M19.6 -- `0#down`, and the fold read back
 void section_examples();   // the acceptance programs, through the real command
 
 } // namespace resolve_test

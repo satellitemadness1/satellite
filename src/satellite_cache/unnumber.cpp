@@ -114,15 +114,45 @@ size_t word_length(words::NodeId id)
     return words::path_text(id).size() - words::arguments_of(id).size();
 }
 
+// WHERE THE SELECTOR BEFORE AN OPTION ENDS -- M19.6, and it is a LOOKBEHIND
+// because the file writes `my_list.sort(0#down)` and the Mark has to land on
+// `sort`.
+//
+// THE MARK GOES ON THE SELECTOR AND NOT ON THE OPTION, WHICH IS WHAT MAKES IT
+// REACHABLE. numbers.cpp's path_of() looks a Mark up by `ast_.token_of(anchored)
+// .end` with `anchored = ast_[call].a` -- the Member node, anchored at the word
+// `sort`. A Mark sitting where `0#down` ends would key on the String node
+// instead and no selector would ever find it, so the offset has to be walked
+// back to the word the number is ABOUT.
+//
+// IT IS SAFE BECAUSE THE WRITER EMITS `name(` WITH NOTHING BETWEEN THEM.
+// write_expressions.cpp's Call arm says `expr(n.a)`, `"("`, then the arguments,
+// so an option at position 0 is always preceded by exactly one `(` and the
+// selector's last character. Anything else in that position is a `.satc` this
+// build did not write, and returning npos refuses it rather than guessing.
+size_t selector_ends_before(const std::string &into)
+{
+    size_t at = into.size();
+    if (at == 0 || into[at - 1] != '(')
+        return std::string::npos;
+    at--; // the `(` itself; the word ends where it begins
+    const size_t ends = at;
+    while (at > 0 && is_option_char(into[at - 1]))
+        at--;
+    return at < ends ? ends : std::string::npos;
+}
+
 } // namespace
 
 bool unnumber(const std::string &body, std::string &into,
-              errors::Diagnostic &why, Marks *marks)
+              errors::Diagnostic &why, Marks *marks, Folded *folded)
 {
     into.clear();
     into.reserve(body.size() * 2);
     if (marks != nullptr)
         marks->clear();
+    if (folded != nullptr)
+        folded->clear();
 
     for (size_t at = 0; at < body.size();) {
         const char c = body[at];
@@ -180,6 +210,50 @@ bool unnumber(const std::string &body, std::string &into,
         if (c == '/' && at + 1 < body.size() && body[at + 1] == '/') {
             while (at < body.size() && body[at] != '\n')
                 into += body[at++];
+            continue;
+        }
+
+        // SATC.md §3's THIRD KIND OF TOKEN -- M19.6's `0#down`, and it is read
+        // BEFORE the `#` scan below because its second character is one.
+        //
+        // A LETTER AFTER THE MARK AND NOT A DIGIT, which is the whole of what
+        // keeps it apart from a literal `0` butted against a path: `#` then
+        // digits is a number and `#` then a letter is an option, and no option
+        // in the numbering begins with a digit because they are all read off a
+        // `<word>_<option>` spelling. AND NO IDENTIFIER CHARACTER BEFORE IT,
+        // because this pass copies bytes rather than tokens -- without that
+        // test the `0` of a literal `10` would start an option token if a path
+        // ever followed it with nothing in between.
+        if (c == '0' && at + 2 < body.size() && body[at + 1] == kPathMark &&
+            (is_option_char(body[at + 2]) &&
+             !(body[at + 2] >= '0' && body[at + 2] <= '9')) &&
+            (at == 0 || !is_option_char(body[at - 1]))) {
+            size_t scan = at + 2;
+            while (scan < body.size() && is_option_char(body[scan]))
+                scan++;
+
+            // THE MARK GOES ON THE SELECTOR, WHICH IS BEHIND US. cache.hpp's
+            // `Folded` says why the entry is a bare offset and why the word
+            // itself is not carried: the string is about to go back into the
+            // text, so the resolver reads it off the tree.
+            const size_t ends = selector_ends_before(into);
+            if (ends == std::string::npos) {
+                why = errors::make<errors::Code::SATC_OPTION_WITHOUT_A_CALL>(
+                    errors::kNowhere, body.substr(at, scan - at));
+                return false;
+            }
+            if (folded != nullptr)
+                folded->push_back(static_cast<uint32_t>(ends));
+
+            // WHAT GOES BACK IS THE STRING THE PROGRAM WROTE, so the text the
+            // parser reads is the text a source would have given it and the
+            // tree is the same tree. §3's "literals stay literal" is kept on
+            // both sides of the round trip -- the file spells the option as a
+            // token, and the moment it stops being a file it is a string again.
+            into += '"';
+            into.append(body, at + 2, scan - (at + 2));
+            into += '"';
+            at = scan;
             continue;
         }
 

@@ -104,6 +104,30 @@ bool resolved_to(const Run &run, const std::string &number)
     return false;
 }
 
+// HOW MANY NODES REACHED `number` THAT WAY -- M19.6, and it exists because
+// origin_of() below answers about the FIRST node and one number can now be
+// reached two ways in one program. `l.sort()` and `l.sort("up")` both land on
+// `1 4 2 3` -- the bare row and M16's fold onto it -- and the whole point of
+// the option token is that the second is taken from the file while the first
+// is still walked for. A first-match answer cannot see that and reported the
+// walk, which is the honest answer to a question that was too coarse.
+size_t count_origin(const Run &run, const std::string &number,
+                    satellite::resolve::Origin origin)
+{
+    size_t found = 0;
+    for (satellite::NodeIndex node = 1; node < run.parsed.ast.size(); node++) {
+        const satellite::resolve::Info &info = run.resolved.at(node);
+        if (info.path == satellite::words::kNoPath ||
+            !satellite::words::is_language_word(info.path))
+            continue;
+        if (satellite::words::number_text(
+                static_cast<satellite::words::NodeId>(info.path)) == number &&
+            info.origin == origin)
+            found++;
+    }
+    return found;
+}
+
 satellite::resolve::Origin origin_of(const Run &run, const std::string &number)
 {
     for (satellite::NodeIndex node = 1; node < run.parsed.ast.size(); node++) {
@@ -130,6 +154,7 @@ int main(int argc, char **argv)
     resolve_test::section_paths();
     resolve_test::section_arguments();
     resolve_test::section_cache();
+    resolve_test::section_option_token();
     resolve_test::section_examples();
 
     if (resolve_test::failures != 0) {

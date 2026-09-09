@@ -279,6 +279,16 @@ SAT_CODE(305, SATC_MARK_WITHOUT_A_NUMBER, SAT_ERROR,
 SAT_CODE(306, SATC_UNKNOWN_PATH, SAT_ERROR,
          "this names `{1}`, which this satl's numbering does not have")
 
+// M19.6. `0#down` is only meaningful directly after the `(` of the call whose
+// selector it is an option to -- satellite_cache/unnumber.cpp walks back over
+// the word to find where the Mark belongs -- so an option token anywhere else
+// is a file this writer did not produce. Refused rather than guessed at: the
+// whole point of the token is to record a decision, and a decision attached to
+// no call is worse than none.
+SAT_CODE(307, SATC_OPTION_WITHOUT_A_CALL, SAT_ERROR,
+         "this has the option `{1}` where no call's selector comes before it, "
+         "which is not something the writer can produce")
+
 SAT_CODE(390, NOTE_SATC_IGNORED, SAT_NOTE,
          "it was ignored and the source was read instead, so nothing is wrong "
          "with your program -- deleting the file is safe, because a `.satc` is "

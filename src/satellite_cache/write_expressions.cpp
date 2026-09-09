@@ -90,9 +90,15 @@ void Writer::postfix(NodeIndex node)
         say("." + text(node));
         return;
     case NodeKind::Call:
+        // §3.1 STILL DECLINES THE SELECTOR AND M19.6 CHANGED ONLY ITS ARGUMENT.
+        // `sort` is printed as the program wrote it -- the receiver's type is
+        // known now, but a selector's number is a property of the RUN for a
+        // user's method and of the BUILD for the language's, and the file has
+        // no way to say which it is holding. The option is not that: `down` is
+        // a word the program wrote, and `0#down` records which one.
         expr(n.a);
         say("(");
-        arguments(n.b);
+        arguments(n.b, folds_.at(n.a));
         say(")");
         return;
     case NodeKind::Index:
@@ -147,12 +153,30 @@ void Writer::expand_type(NodeIndex node)
     say(">");
 }
 
-void Writer::arguments(ListId list)
+// THE OPTION IS ALWAYS THE FIRST ARGUMENT AND NEVER ANY OTHER -- M19.6.
+// `fold_option()` reads `ast_.list_at(n.b, 0)` and gives up unless that node is
+// a String, so position 0 is the only one a fold can have come from and the
+// flag says nothing about the rest. `my_list.sort("up", key)` folds on `up` and
+// leaves `key` alone, which is why this takes a bool rather than rewriting
+// every string in the list.
+void Writer::arguments(ListId list, bool first_is_an_option)
 {
     for (uint32_t i = 0; i < ast_.list_size(list); i++) {
         if (i > 0)
             say(", ");
-        expr(ast_.list_at(list, i));
+        const NodeIndex argument = ast_.list_at(list, i);
+
+        // PRINTED HERE RATHER THAN IN expand_expression(), because the node is
+        // an ordinary String and only its POSITION under a folded selector
+        // makes it an option. A String that knew it was one would be the tree
+        // carrying a resolve-time fact, which ast.hpp forbids and PLAN §2.2
+        // says why.
+        if (i == 0 && first_is_an_option &&
+            ast_[argument].kind == NodeKind::String) {
+            say(std::string(kOptionMark) + text(argument));
+            continue;
+        }
+        expr(argument);
     }
 }
 

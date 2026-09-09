@@ -34,7 +34,8 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M22.md](M22.md) | 2026-09-07 | **Out of order, and §0 says why.** The prompt — `satl --repl` reads a line, a typed line becomes a program, and `satl-term`'s window stops closing when what exited was the prompt. |
 | [M18.md](M18.md) | 2026-09-08 | `satellite.help` — the trie answering for itself: the `built()` predicate over four kinds, the language's first unevaluated argument, and 264 entries generated into the binary from the file that writes the document. |
 | [M19.md](M19.md) | 2026-09-08 | Persistence — files and directories, and the fold that had been guessing. |
-| [M19.5.md](M19.5.md) | 2026-09-08 | **Half of it** — `satellite.variable.binary`, the width that makes it a type, and the four verbs. `satellite.variable.hex` is the half still owed. |
+| [M19.5.md](M19.5.md) | 2026-09-08 / 09 | `satellite.variable.binary` and `satellite.variable.hex` — the width that makes it a type, and the four verbs. **Landed in two halves and the note carries both hashes.** |
+| [M19.6.md](M19.6.md) | 2026-09-09 | The `.satc` written after resolve, and the option token — `0#down`, and a cache that stops deciding what it already decided. |
 
 **M22 sits between M17 and M18 in this table and that is the point of the date
 column.** It was built on 2026-09-07, before M18 through M21, at the author's
@@ -44,6 +45,23 @@ the prompt was M22. A store built at M18 would have had its only reader here,
 which is the no-consumer shape PLAN M2 forbids. **PLAN §8's build order is
 unchanged**; M22.md §0 is the record that it was departed from, and M18's own
 entry already allowed for one of the two moving.
+
+***AND IT HAPPENED AGAIN AT M19.5, IN THE SAME DIRECTION, THREE WEEKS LATER.***
+That row read **"Half of it — `satellite.variable.hex` is the half still owed"**
+from 2026-09-08 until 2026-09-09, and the second half had landed in `cf04994`
+the morning after. M19.5.md's own opening said so in its first line — *"Landed
+in two halves: binary 2026-09-08, hex 2026-09-09"* — and the row above it did
+not. **Found by a reader asking which milestone was next**, which is the one
+question this table exists to answer and the one it was answering wrongly.
+
+**THE M16 PARAGRAPH BELOW DIAGNOSED THIS EXACTLY AND THE FIX DID NOT HOLD.** Its
+rule is *write the row in the commit that lands the work*, and M19.5's second
+half landed in a commit that touched `words.def`, three sources and a test, and
+not this file. The convention section below has a mechanism for a note that is
+owed something — the word `PENDING`, and a grep that finds it — and **an index
+row has no equivalent**, because a row is never incomplete, only wrong. That is
+the shape of both failures: an index holds no fact of its own and therefore has
+nothing to check it.
 
 ***The M16 row said "not in this tree — a review of `prototype/M10`" until
 2026-09-06, and it was stale for the length of a milestone.*** The file it

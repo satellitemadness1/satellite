@@ -301,6 +301,56 @@ void literals_are_not_scanned()
           "a mark in the second string is not a number either: " + back);
 }
 
+// M19.6's TOKEN, READ BACK. The writer's half is in tests/resolve_test, which
+// is where a fold can be produced at all -- this file does not link the
+// resolver -- so what is checked here is the half that lives in this module:
+// the text goes back to being the string the program wrote, and the offset
+// lands on the SELECTOR rather than on the option.
+void the_option_token()
+{
+    std::string back;
+    satellite::errors::Diagnostic why;
+    satellite::cache::Folded folded;
+
+    check(satellite::cache::unnumber("l.sort(0#down)\n", back, why, nullptr,
+                                     &folded),
+          "an option token is read: " + satellite::errors::sentence(why));
+    check(back == "l.sort(\"down\")\n",
+          "and it goes back to the string the program wrote, so the tree the "
+          "parser builds is the tree a source would have given it: " + back);
+
+    // `sort` SPANS [2, 6) IN `l.sort(...)`, so the mark is 6 -- one past the
+    // last character of the word, which is what `ast_.token_of(node).end` is.
+    // A mark at the option's own end would key on the String node and no
+    // selector would ever find it.
+    check(folded.size() == 1 && folded.front() == 6,
+          "and the offset is where the SELECTOR ends, not the option");
+
+    // AN OPTION WITH NO CALL IN FRONT OF IT IS REFUSED -- S0307. Guessing would
+    // mean attaching a decision to no call, which is worse than having none.
+    check(!satellite::cache::unnumber("0#down\n", back, why, nullptr, &folded),
+          "an option token with no selector before it is refused");
+    check(why.code == satellite::errors::Code::SATC_OPTION_WITHOUT_A_CALL,
+          "and it is S0307 that says so");
+
+    // AND THE TWO WAYS `0#` CAN APPEAR WITHOUT BEING ONE. A string is copied
+    // and never scanned -- the same rule as for `#` -- and a `0` that is part
+    // of a longer number is not the start of a token, which matters because
+    // this pass copies BYTES and would otherwise find one inside `10`.
+    check(satellite::cache::unnumber("#1.5.1(\"0#down\")\n", back, why),
+          "a `0#` inside a string is not a token: " +
+              satellite::errors::sentence(why));
+    check(back == "satellite.console.display(\"0#down\")\n",
+          "the string is copied through untouched: " + back);
+
+    check(satellite::cache::unnumber("x = 10#1.5.2\n", back, why, nullptr,
+                                     &folded),
+          "a `0` inside a longer number does not start an option: " +
+              satellite::errors::sentence(why));
+    check(back == "x = 10satellite.console.input()\n" && folded.empty(),
+          "it is a number and then a path, and no fold was recorded: " + back);
+}
+
 } // namespace
 
 void section_reading()
@@ -326,6 +376,7 @@ void section_reading()
 
     header_misses();
     malformed_bodies();
+    the_option_token();
     a_miss_leaves_no_trace();
     literals_are_not_scanned();
 }

@@ -123,8 +123,15 @@ void section_codes()
     // about something that never happened, while the errno explaining it sat
     // unread in `error`. Found by running a help example, not by review.
     // MILESTONES/M19.md §2.6.
-    check(kCodeCount == 113,
-          "errors.def has 113 rows -- if that changed on purpose, change it here "
+    // AND BY ONE AT M19.6: S0307, the option token's refusal. `0#down` is only
+    // meaningful directly after the `(` of the call it is an option to, because
+    // unnumber() walks BACK over the selector to find where the Mark belongs --
+    // so an option token anywhere else names no call and is a `.satc` this
+    // writer did not produce. Refused rather than guessed at, which is the same
+    // call S0305 and S0306 make about the two ways a `#` can be wrong.
+    // MILESTONES/M19.6.md §1.
+    check(kCodeCount == 114,
+          "errors.def has 114 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

@@ -153,6 +153,40 @@ constexpr bool is_absorber(std::string_view args)
 // file as §1.1 wrote it and having the reader disambiguate by grammar position.
 inline constexpr char kPathMark = '#';
 
+// THE OPTION TOKEN -- `0#down`, M19.6, and the author's spelling. SATC.md §3
+// gains a row here rather than losing one: `0#down` is not a literal, it is a
+// third kind of token beside `#1.4.2.5` and `"down"`, so "literals stay
+// literal" is untouched and the file gains a way to say what resolve decided.
+//
+// `0#` BECAUSE `#` ALREADY MEANS "a number follows" AND AN OPTION IS NOT ONE.
+// The author's sentence is the whole derivation -- "`#` stands for a number in
+// a `.satc` file, so `0#` stands for an option" -- and the `0` is readable as
+// the numbering's own `0`, which WORD_NUMBERS §1.3 already spends on "nothing
+// in that position".
+//
+// NO QUOTES, AND THE AUTHOR NAMED THE REASON ON 2026-09-08: the prefix has
+// already said this is an option rather than a string, and `0#"down"` would be
+// the file saying the same thing twice in two notations that could disagree. It
+// would also put a quote inside a token, which is the one thing that would make
+// §3's line unreadable from the other side.
+//
+// WHAT MAKES IT UNAMBIGUOUS IS A LETTER AFTER IT, and that is worth stating
+// because the reader scans bytes rather than tokens. `0` is an ordinary number
+// literal in a `.satc` and `#` begins a path, so `0#` could in principle be a
+// literal `0` butted against a path -- except that a path is `#` then DIGITS
+// and an option is `#` then a LETTER, and the writer never emits a number
+// against a path with no operator between them. unnumber.cpp checks both ends:
+// a letter after, and no identifier character before.
+inline constexpr char kOptionMark[] = "0#";
+
+// Whether `c` may appear in an option word -- the identifier alphabet, which is
+// DESIGN §5.1's and includes the underscore because `read_append` is one.
+inline constexpr bool is_option_char(char c)
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || c == '_';
+}
+
 // The number as a `.satc` writes it -- `#` then WORD_NUMBERS §2.2's "1 5 1"
 // with the spaces closed up to dots, so that a path is ONE token in the file.
 //

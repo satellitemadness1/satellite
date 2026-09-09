@@ -271,10 +271,26 @@ It need not be. When the option is a **literal**, the parser already knows it, s
 when the option is a variable, where §2.4's inline cache takes over on the second
 execution.
 
-**The fold is a resolve-time decision and must never reach a `.satc`**, because
-SATC.md §3 says literals stay literal. The file keeps `"down"`; the runtime keeps
-the number. This is the one place where the numbering deliberately says more than
-the file does.
+***THE FOLD REACHES A `.satc` SINCE M19.6, AND WHAT WAS WRONG WITH THE SENTENCE
+BELOW WAS THE WORD "never".*** The file now writes `my_list.sort(0#down)` — an
+**option token**, which SATC.md §3 lists as a third kind of thing beside a number
+and a literal. So "literals stay literal" is untouched, and this is no longer a
+place where the numbering says more than the file does.
+
+> **What stood here until 2026-09-09:** *"The fold is a resolve-time decision and
+> must never reach a `.satc`, because SATC.md §3 says literals stay literal. The
+> file keeps `"down"`; the runtime keeps the number. This is the one place where
+> the numbering deliberately says more than the file does."*
+
+**IT WAS RIGHT ABOUT WHY AND WRONG ABOUT WHETHER.** A fold IS a resolve-time
+decision — that never stopped being true — and the reason the file could not
+carry it was that the writer ran before resolve, not that §3 forbade it. M19.6
+moved the writer. The token is what the move made writable, and the sentence to
+keep is the narrower one: **a `.satc` records which option was WRITTEN and never
+which row it lands on**, so `1 4 2 5` is still reached by asking the numbering
+under the receiver's type. What the file saves is the DECISION — is `down` an
+option at all, which options exist, does the folded shape exist, should it fall
+back to the bare word — and not the lookup.
 
 **BUILT AT M7, 2026-08-31, AND IT READS THIS TABLE RATHER THAN A LIST OF SPECIAL
 CASES.** A word takes options when the rows beside it are spelled

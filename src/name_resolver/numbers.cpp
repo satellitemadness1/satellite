@@ -27,6 +27,7 @@
 #include "satellite_cache/paths.hpp"
 #include "satellite_words/words.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -246,6 +247,56 @@ bool Resolver::fold_option(NodeIndex call_node, NodeIndex target,
     const std::string_view word = ast_.text_of(target);
     const std::string_view option = ast_.text_of(first);
     const words::NodeId parent = static_cast<words::NodeId>(under);
+
+    // THE `.satc` ALREADY DECIDED THIS -- M19.6, and it is the whole of what
+    // the option token buys. `0#down` in the file says that the string sitting
+    // at position 0 is an OPTION and not an argument, which is the question the
+    // rest of this function exists to answer: `takes_options()` against
+    // words.def's sixth list, the sibling scan that collects `down, up` for a
+    // message, and the bare-word retry below are all skipping the same fact.
+    //
+    // ONE WALK STILL HAPPENS AND SATC.md §5.1 SAYS WHY IT MUST. The file names
+    // the OPTION and not the ROW -- the author's call -- so `sort_down`'s
+    // number is not in it, and `1 4 2 5` still has to be looked up under the
+    // receiver's type. What is gone is the DECIDING; what remains is a lookup,
+    // which is the same shape a Mark leaves behind for a path.
+    if (!folded_.empty() &&
+        std::binary_search(folded_.begin(), folded_.end(),
+                           ast_.token_of(target).end)) {
+        const std::string named = std::string(word) + "_" + std::string(option);
+        const int taken = static_cast<int>(ast_.list_size(n.b)) - 1;
+        out_.from_cache++;
+
+        cache::PathMatch said = cache::shape_path(parent, named, taken, false);
+
+        // AND THE BARE WORD SECOND, WHICH IS M16'S RULE AND NOT A SECOND GUESS.
+        // WORD_NUMBERS §1.5: "a fold may land on the bare word it was spelled
+        // from", because `sort_up()` does not exist and §2.2 says `sort()`
+        // ALREADY IS sorting up. example/containers.satl writes all three
+        // shapes on three lines -- `sort()`, `sort(0#down)`, `sort(0#up)` --
+        // and without this the third would take the token's word for it, miss
+        // `sort_up`, and fall through to decide the whole thing again. The file
+        // has already said this is an option; what is left is which row, and
+        // that is two lookups rather than a decision.
+        if (!said.found())
+            said = cache::shape_path(parent, word, taken, false);
+
+        if (said.found()) {
+            info(target).path = said.id;
+            info(target).origin = Origin::Cached;
+            info(target).folded_option = true;
+            return true;
+        }
+
+        // THE FILE SAID A FOLD AND THE NUMBERING NO LONGER HAS IT, which is a
+        // stale `.satc` and not a broken one. Falling through re-decides from
+        // the source's own words and gets the right answer or the right error,
+        // which is §4's "the walk is the fallback" applied to a decision rather
+        // than to a number. Not a diagnostic: the numbering's digest already
+        // invalidates every file on the machine when a row moves, so reaching
+        // here at all means something subtler, and a program that runs
+        // correctly is not the place to talk about it.
+    }
 
     // IS THIS A WORD THAT TAKES AN OPTION AT ALL? ASKED OF A TABLE, AND THE
     // TABLE IS words.def's SIXTH LIST -- corrected at M19, 2026-09-08, from a

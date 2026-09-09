@@ -139,7 +139,15 @@ void Writer::chain(const PathMatch &match, bool is_call, ListId args)
     if (!is_call || match.absorbs_argument || match.shape_arity == 0)
         return;
     say("(");
-    arguments(args);
+
+    // FALSE, AND IT IS A FACT ABOUT WHERE THE FOLD LIVES RATHER THAN A DEFAULT.
+    // `fold_option()` is reached from one place -- names.cpp's
+    // call_target_done(), on a SELECTOR whose receiver has a declared type --
+    // so a language path never folds, whatever it is spelled with.
+    // `satellite.file.open("f", "read")` is `1 8 2` with `mode` as a written
+    // argument and the string stays a string, which persistence.satl's `.satc`
+    // shows on its own line.
+    arguments(args, false);
     say(")");
 }
 
@@ -256,19 +264,20 @@ std::string header_text(const Source &source)
            std::to_string(source.size) + "\n";
 }
 
-std::string body_text(const Ast &ast, const words::Words &words)
+std::string body_text(const Ast &ast, const words::Words &words,
+                      const Folds &folds)
 {
     if (ast.root() == kNoNode)
         return std::string();
-    Writer writer(ast, words);
+    Writer writer(ast, words, folds);
     writer.program(ast.root());
     return writer.take();
 }
 
 std::string satc_text(const Ast &ast, const words::Words &words,
-                      const Source &source)
+                      const Source &source, const Folds &folds)
 {
-    return header_text(source) + "\n" + body_text(ast, words);
+    return header_text(source) + "\n" + body_text(ast, words, folds);
 }
 
 } // namespace satellite::cache

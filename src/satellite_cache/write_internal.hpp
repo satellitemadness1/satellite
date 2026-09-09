@@ -64,7 +64,10 @@ inline constexpr int kBindsTighterThanAny = 99;
 
 class Writer {
 public:
-    Writer(const Ast &ast, const words::Words &words) : ast_(ast), words_(words) {}
+    Writer(const Ast &ast, const words::Words &words, const Folds &folds)
+        : ast_(ast), words_(words), folds_(folds)
+    {
+    }
 
     std::string take() { return std::move(out_); }
 
@@ -113,7 +116,7 @@ private:
     void expand_expression(NodeIndex node);
     void postfix(NodeIndex node);
     void expand_type(NodeIndex node);
-    void arguments(ListId list);
+    void arguments(ListId list, bool first_is_an_option);
     void bracketed(NodeIndex node, int level, bool on_the_right);
 
     // write.cpp -- everything that turns a path id into digits, and the stack.
@@ -158,6 +161,11 @@ private:
 
     const Ast &ast_;
     const words::Words &words_;
+
+    // WHAT RESOLVE FOLDED, WHICH IS THE ONLY THING THIS WRITER KNOWS THAT THE
+    // M4.5 ONE DID NOT. Empty for every caller that writes without resolving,
+    // and cache.hpp's Folds says why that is a default rather than an error.
+    const Folds &folds_;
     std::string out_;
     std::string comment_;
     int indent_ = 0;

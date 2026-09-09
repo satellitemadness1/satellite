@@ -173,7 +173,8 @@ void Resolver::run()
                      });
 }
 
-Resolved resolve(const Ast &ast, words::Words &words, const cache::Marks &marks)
+Resolved resolve(const Ast &ast, words::Words &words, const cache::Marks &marks,
+                 const cache::Folded &folded)
 {
     Resolved out;
     // ONE ENTRY PER NODE, RESERVED RATHER THAN GROWN. The arena's size is known
@@ -182,7 +183,16 @@ Resolved resolve(const Ast &ast, words::Words &words, const cache::Marks &marks)
     out.nodes.resize(ast.size());
     if (ast.root() == kNoNode)
         return out;
-    Resolver(ast, words, marks, out).run();
+    Resolver(ast, words, marks, folded, out).run();
+    return out;
+}
+
+cache::Folds folds_of(const Resolved &resolved)
+{
+    cache::Folds out;
+    out.selector.resize(resolved.nodes.size(), false);
+    for (size_t node = 0; node < resolved.nodes.size(); node++)
+        out.selector[node] = resolved.nodes[node].folded_option;
     return out;
 }
 

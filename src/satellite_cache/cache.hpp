@@ -55,9 +55,50 @@ struct Source {
     uint64_t size = 0;
 };
 
+// WHICH SELECTORS RESOLVE FOLDED AN OPTION INTO -- what the writer needs from
+// the pass that now runs before it, and it is a side table for the same reason
+// `resolve::Info` is one: ast.hpp forbids a mutable field on a node.
+//
+// A `std::vector<bool>` AND NOT `const resolve::Resolved &`, WHICH IS A
+// DEPENDENCY AND NOT A TASTE. `name_resolver/resolve.hpp` includes THIS file --
+// `resolve()` takes `cache::Marks` -- so a writer that named `resolve::Resolved`
+// would close the cycle and neither module would compile. The seam is the one
+// `eval::Policy::interrupted` already keeps: the caller reads the pass it has
+// and hands over the one fact, rather than the two modules learning each other.
+// programs/cache_command.cpp is the caller that fills it in.
+//
+// INDEXED BY THE MEMBER NODE, WHICH IS WHERE THE RESOLVER PUTS IT.
+// `fold_option(call, target, under)` sets the flag on `target` -- the Member
+// that carries the word `sort` -- and never on the Call around it, so a writer
+// asking about the Call would ask about the wrong node and always get false.
+struct Folds {
+    std::vector<bool> selector;
+
+    bool at(NodeIndex node) const
+    {
+        return node < selector.size() && selector[node];
+    }
+};
+
+// NOTHING FOLDED -- what a caller that has not resolved hands over, and what
+// every arm did before M19.6. A default rather than an assert, which is the
+// choice ast.hpp makes for node 0: a program with no options in it resolves to
+// exactly this and writing one is the ordinary case rather than an error.
+inline const Folds &nothing_folded()
+{
+    static const Folds none;
+    return none;
+}
+
 // The whole file: three header lines, a blank line, and the program.
+//
+// `folds` IS WHAT MOVING THE WRITE AFTER RESOLVE BOUGHT -- M19.6, and SATC.md
+// §5.1 is the section that used to forbid it. Defaulted, because the two
+// callers that write a file without resolving one first are the tests that
+// check the FORMAT rather than the fold.
 std::string satc_text(const Ast &ast, const words::Words &words,
-                      const Source &source);
+                      const Source &source,
+                      const Folds &folds = nothing_folded());
 
 // §2's three lines alone. Separate because a reader compares them without
 // having read anything else, and because a test wants to bend one of them.
@@ -70,7 +111,8 @@ std::string header_text(const Source &source);
 // only, so the object that allocated the names has to be the object asked about
 // them. What gets WRITTEN is never that number -- SATC.md §3 -- but the parent
 // it hangs under is language-owned and is, and asking is how that is found.
-std::string body_text(const Ast &ast, const words::Words &words);
+std::string body_text(const Ast &ast, const words::Words &words,
+                      const Folds &folds = nothing_folded());
 
 // WHY A `.satc` IS NOT READ BACK BY A SECOND PARSER. SATC.md §4 asks for a
 // tree, and the file already is a satellite program -- one with its
@@ -112,6 +154,32 @@ struct Mark {
 };
 
 using Marks = std::vector<Mark>;
+
+// WHERE A FOLDED SELECTOR'S WORD ENDS -- M19.6, and it is a SECOND list rather
+// than a flag on Mark above.
+//
+// A Mark CARRIES A NUMBER AND THIS CANNOT. `0#down` names the option and not
+// the row, which is the author's call and SATC.md §3's line kept: the file says
+// what the program WROTE and the fold stays a thing that is worked out. The row
+// `1 4 2 5` depends on the receiver's TYPE, and a reader that turns text back
+// into text has not resolved anything and does not have one. So an entry here
+// is a bare offset -- "the selector ending at this byte had an option folded
+// into it" -- and putting one in `Marks` with `kNoPath` for its id would hand
+// `mark_ending_at()` an entry meaning "no number" in a list whose whole purpose
+// is to answer with one.
+//
+// THE WORD ITSELF IS NOT CARRIED, BECAUSE THE TREE ALREADY HAS IT. unnumber()
+// puts `"down"` back into the text as an ordinary string literal, so the
+// argument is a String node the resolver can read with `ast_.text_of()`. What
+// the file adds is not the word; it is that the fold HAPPENED, which is the one
+// thing a walk over the source has to work out and a warm read does not.
+//
+// WHAT IT SAVES IS THE DECISION AND NOT THE LOOKUP, and MILESTONES/M19.6.md is
+// careful about the difference: `takes_options()`, the sibling scan that
+// collects `down, up`, and the bare-word retry are all skipped, and the one
+// `shape_path()` walk for `sort_down` remains. A number in the file would have
+// removed that too, and it is the thing `0#down` deliberately does not say.
+using Folded = std::vector<uint32_t>;
 
 // Why a `.satc` was not used. SATC.md §4's three misses and its one error.
 //
@@ -165,6 +233,10 @@ struct Reading {
     // into was never handed to a parser.
     Marks marks;
 
+    // Which selectors the file says were folded -- M19.6, and `Folded` above
+    // says why it is not a column of `marks`.
+    Folded folded;
+
     // THE TEXT THE TREE'S SPANS INDEX INTO, WHICH IS NOT THE SOURCE FILE. It is
     // the `.satc` body with its numbers turned back into words -- no comments,
     // and blank lines where the writer put them -- so line 6 of this is not
@@ -199,8 +271,11 @@ Reading read_text(const std::string &text, const Source &source,
 // `marks` IS OPTIONAL AND IS NULL FOR EVERY CALLER BUT ONE. A test that wants
 // the text does not want the record, and a substitution pass that always built
 // one would be paying for M7 in the two places that only need M4.5.
+// `folded` IS THE SAME BARGAIN ONE MILESTONE LATER -- M19.6. Null for every
+// caller that only wants the text, filled for the one that is about to resolve.
 bool unnumber(const std::string &body, std::string &into,
-              errors::Diagnostic &why, Marks *marks = nullptr);
+              errors::Diagnostic &why, Marks *marks = nullptr,
+              Folded *folded = nullptr);
 
 // SATC.md §5: write `<name>.<pid>.tmp`, `fsync`, `rename`. False when it could
 // not be done, which is not an error and is not reported -- "a read-only

@@ -199,7 +199,20 @@ struct Resolved {
 //
 // `marks` IS WHAT A `.satc` ALREADY KNEW. Empty for a program read from source,
 // which is the ordinary case and costs one comparison.
+// `folded` IS THE OTHER HALF OF IT AT M19.6 -- which selectors the file said
+// had an option folded into them, so `fold_option()` looks the row up instead
+// of working out that there is one to look up.
 Resolved resolve(const Ast &ast, words::Words &words,
-                 const cache::Marks &marks = cache::Marks());
+                 const cache::Marks &marks = cache::Marks(),
+                 const cache::Folded &folded = cache::Folded());
+
+// WHAT THE `.satc` WRITER NEEDS OUT OF ALL THIS -- M19.6, and it lives on THIS
+// side of the seam because this is the side that may name both types. cache.hpp
+// cannot: `resolve()` above takes `cache::Marks`, so a writer that named
+// `Resolved` would close the cycle. One conversion in one place, so the two
+// callers that need it -- programs/cache_command.cpp and the test that checks
+// the round trip -- are asking the same function rather than each keeping three
+// lines that could drift.
+cache::Folds folds_of(const Resolved &resolved);
 
 } // namespace satellite::resolve

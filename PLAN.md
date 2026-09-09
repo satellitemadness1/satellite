@@ -1506,6 +1506,7 @@ it is; the labels changed. This table is the key to every document written befor
     M18     M19   persistence — files and directories
             M19.5 binary and hexadecimal   LANDED 2026-09-08 / 09
             M19.6 the `.satc` after resolve, and the option token
+                                           LANDED 2026-09-09
     M19     M20   the machine's facts in the language
     M20     M21   a piece of QUAD, running
     M11.B   M22   the prompt
@@ -4136,9 +4137,25 @@ is the sixth and seventh appends and the assert does not move.
 width, and writes both to a file with `write(x)` — and `satl --compile` no
 longer has S0720 in reach for a literal, because there is a producer.
 
-**M19.6 — the `.satc` written after resolve, and the option token.** *(New
+**M19.6 — the `.satc` written after resolve, and the option token.**
+***LANDED 2026-09-09. MILESTONES/M19.6.md is the review.*** *(New
 2026-09-08, at the author's ask. Slot open — after M19.5 in the list, and
-nothing depends on it.)* **No new paths.** It is a change to the cache format
+nothing depends on it.)*
+
+**The three open questions below were answered by the author on 2026-09-09 and
+the entry is kept as written, because it is the plan this was built against.**
+The token is spelled `0#down` and **names the OPTION**; a program that parses
+and does not resolve is no longer cached; **the selector does NOT take its
+number** — declined with the measurement in hand, and M19.6.md §2 carries why.
+**The stamp does answer the stale-fold question today**, because
+`satellite.include(satellite)` is the only include there is and a declared type
+therefore always moves the source's own mtime; M25 is when that stops being
+true, and it is item 3 of M19.6.md §5.
+
+**And the move measured free** — §3 of the review, against `89dc0c4` on the same
+machine with the same flags. **One measurement had to be thrown away to say so**,
+and the reason it is in the review is that the wrong number was the believable
+one. **No new paths.** It is a change to the cache format
 and to when the cache is written, and it closes a hole WORD_NUMBERS §1.5 has
 carried since M2 by giving up on it.
 
