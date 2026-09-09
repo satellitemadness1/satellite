@@ -280,7 +280,7 @@ void literals_are_not_scanned()
     //
     // example/persistence.satl HAD IT AND WAS NOT IN section_reading()'s LIST.
     // The fixpoint runs over four acceptance programs chosen at M4.5 and this
-    // shape entered the tree at M19, five months later -- so the check that
+    // shape entered the tree at M19 on 2026-09-08, nine days later -- so the check that
     // would have caught it was reading a set that no longer contained the case.
     // That is the cost of naming fixtures one by one, and it is why this one is
     // written as a form rather than added to the list.
