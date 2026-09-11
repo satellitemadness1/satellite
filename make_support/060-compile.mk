@@ -36,6 +36,16 @@ $(PROGRAMS)/main.o: $(PROGRAMS)/main.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 $(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/opening.cpp
 
+# THE THIRD OBJECT THAT LEARNS WHAT THIS BUILD IS -- M20. `arguments.build.*`
+# `1 14 1 1 5 1`-`1 14 1 1 5 8` is the compiler, the flags, the make and the
+# stamp, handed to a satellite program, and they describe THE BINARY THAT IS
+# RUNNING rather than whatever compiler happens to be installed now. That
+# distinction is the reason the facts are worth carrying at all, and an
+# explicit rule is what keeps a version bump invalidating one object instead of
+# the tree.
+$(SYSTEM)/arguments_facts.o: $(SYSTEM)/arguments_facts.cpp .cxxflags-stamp $(SYSTEM)/version.hpp $(SYSTEM)/arguments_facts.hpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(SYSTEM)/arguments_facts.cpp
+
 # THE WINDOW OBJECTS, which need $(WINDOW_CFLAGS) and are therefore the one
 # part of the tree the pattern rule above cannot compile: gtk4's headers are not
 # under src/ and no -I this build knows about reaches them. 047-window.mk is
@@ -105,7 +115,7 @@ $(RANDOM)/random.haswell.o: $(RANDOM)/random.cpp .cxxflags-stamp-haswell $(RANDO
 $(SRC)/%.haswell.o: $(SRC)/%.cpp
 	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) -c -o $@ $<
 
-# The two objects that learn what this build is, again, for the other variant.
+# The objects that learn what this build is, again, for the other variant.
 # VERSION_DEFS_HASWELL differs from VERSION_DEFS in exactly one string: the
 # flags. That is what makes an installed binary able to say which of the two it
 # is -- `satl --version` prints that line -- so the install needs no manifest
@@ -115,6 +125,12 @@ $(PROGRAMS)/main.haswell.o: $(PROGRAMS)/main.cpp .cxxflags-stamp-haswell $(SYSTE
 
 $(PROGRAMS)/opening.haswell.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp
 	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) $(VERSION_DEFS_HASWELL) -c -o $@ $(PROGRAMS)/opening.cpp
+
+# THREE OBJECTS SINCE M20, and the paragraph above says "the two". The
+# arguments object reports the flags this binary was built with, so it has to
+# know which variant it is for exactly the reason --version does.
+$(SYSTEM)/arguments_facts.haswell.o: $(SYSTEM)/arguments_facts.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp $(SYSTEM)/arguments_facts.hpp
+	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) $(VERSION_DEFS_HASWELL) -c -o $@ $(SYSTEM)/arguments_facts.cpp
 
 # make invalidates a target when a PREREQUISITE changes, and CXXFLAGS is not a
 # prerequisite of anything. So without this, `make OPT=-O3` over a tree built at

@@ -133,12 +133,12 @@ unsigned long long stack_used()
     return facts::thread_stack_bytes(&used, &total) ? used : 0;
 }
 
-unsigned long long stack_total()
-{
-    unsigned long long used = 0, total = 0;
-    return facts::thread_stack_bytes(&used, &total) ? total : 0;
-}
-
+// NO `stack_total`, AND THERE WAS ONE UNTIL M20's FOURTH COMMIT. It was
+// written on 2026-09-11 beside these two and never installed, because
+// `satellite.system.memory.this` has no `total` row -- its children are
+// `available`, `free` and `used` and their unit forms, and that is all. An
+// uninstalled reader is a -Wunused-function warning in a tree built with
+// -Wall -Wextra, which is how it was found.
 unsigned long long stack_free()
 {
     unsigned long long used = 0, total = 0;

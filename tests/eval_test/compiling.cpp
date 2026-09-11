@@ -131,14 +131,20 @@ void section_compile()
     // A SUBSCRIPT NAMED M16 HERE UNTIL 2026-09-06 and now compiles, so what
     // this fixture asks has moved one step along: `n[0]` on a NUMBER is a
     // wrong question rather than an unbuilt one, and the sentence says which
-    // three things a `[` can ask about instead of naming a milestone.
+    // things a `[` can ask about instead of naming a milestone.
+    //
+    // THREE BECAME FOUR AT M20, which is this fixture doing its job from the
+    // direction it was not pointed in. It pins the SENTENCE, so a milestone
+    // that adds a fourth indexable thing and forgets to say so in the refusal
+    // fails here -- and M20's arguments object is indexable, because its
+    // command line is what `[i]` reads.
     check(holds(refusal_in("satellite.capsule it()\n{\n"
                            "    satellite.variable.number n = 1\n"
                            "    satellite.return(n[0])\n}\n",
                            "it"),
-                "the three things a `[` can ask about"),
-          "S0713: a subscript on a number names what CAN be indexed, now that "
-          "M16 has built the two containers");
+                "the four things a `[` can ask about"),
+          "S0713: a subscript on a number names what CAN be indexed, and the "
+          "arguments object made that list four long at M20");
 
     // A GAP NAMED IS A GAP SOMEBODY CAN CLOSE, AND M19.5 CLOSED ALL OF IT.
     // This fixture has now said three things in three days, which is why the

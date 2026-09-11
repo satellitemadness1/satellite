@@ -34,6 +34,7 @@ SRC      = src
 SYSTEM   = $(SRC)/system_facts
 PROGRAMS = $(SRC)/programs
 TERM_DIR = $(PROGRAMS)/satl-term
+ARGS     = $(SRC)/satellite_arguments
 ERRORS   = $(SRC)/error_reporter
 EVAL     = $(SRC)/evaluator
 LEXER    = $(SRC)/lexical_analyzer

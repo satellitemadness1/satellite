@@ -1213,33 +1213,85 @@ both directions.
 It is also the one place a **bare** identifier is language-owned, which §1's
 generating rule otherwise forbids. The rule survives because the user still writes
 the name: the language does not introduce `arguments`, it *recognises* the name the
-user chose for `satellite.main`'s parameter when that name is one of the six.
+user chose for `satellite.main`'s parameter when that name is one of the seven.
 
 #### What it holds
 
-Nested, not flat — `memory` answers on its own *and* has children:
+Nested, not flat, and **the shape below is the author's, settled 2026-09-09** —
+thirty-six facts in eight sections, each one a numbered word the registry can
+print and `satellite.help` can answer for:
 
 ```
-arguments.username              the login name
-arguments.memory                free memory
-arguments.memory.total          total memory
-arguments.machine               what the processor is
-arguments.machine.cpu           the same, asked for directly
-arguments.machine.cores         physical cores, a satellite number
-arguments.machine.threads       hardware threads, a satellite number
+arguments.machine       cores  cpu  threads  architecture
+                        byte_order  page_size  pointer_bits
+arguments.memory        total
+arguments.username      the login name
+arguments.system        name  kernel  kernel_version  distribution
+                        distribution_id  distribution_version  hostname
+arguments.build         compiler  compiler_version  standard  flags
+                        make  standard_library  c_library  built
+arguments.interpreter   bare = the path to satl; version
+                        library_path  library_path_source
+arguments.process       id  parent
+arguments.session       shell  terminal  language  home  directory
+arguments.count         how many words were on the command line
 ```
 
-A node that is both a value and a parent is the general case here rather than a
-special one, and it is the same shape `satellite.container` already has — a bare
-form and a set of children, which is what the `(0)` in WORD_NUMBERS.md marks.
+**A GROUP WORD WRITTEN ON ITS OWN DISPLAYS ITS CHILDREN** — the author,
+2026-09-11, at M20, asked with the alternatives laid out. `arguments.machine`
+answers all seven of its facts as a map, `arguments.session` all five of its,
+and so on. That is the §1.1 tie-breaker one level down from *"displaying it bare
+prints all of it"*: a program can print a whole section without naming each word
+in it.
+
+**This section used to say otherwise and the two lines are corrected here.** It
+wrote `arguments.memory` as *free memory* and `arguments.machine` as *what the
+processor is*, which was v1's flat shape read through a nested one. Free memory
+is `satellite.system.memory.free()`, which M20 built, and the processor is
+`arguments.machine.cpu`, which this section already spelled as *"the same, asked
+for directly"*.
+
+**`interpreter` is the one exception and it is deliberate.** Written bare it is
+the path to the running `satl` binary rather than a map of its children:
+`machine`, `system`, `build`, `process` and `session` are groupings, and an
+interpreter is a thing, whose natural value is where it is.
+
+A node that is both a value and a parent is therefore still the general case
+here rather than a special one, and it is the same shape `satellite.container`
+already has — a bare form and a set of children, which is what the `(0)` in
+WORD_NUMBERS.md marks.
+
+**`cores` and `threads` are satellite numbers and so are five others** — page
+size, pointer bits, total memory, and the two process ids. The rest are strings.
+v1 could not do this: its arguments object *was* a `list<string>` and every
+entry had to be one. This one is its own type — `satellite.container.arguments`
+`1 4 3` — so a count is a count.
 
 #### Three surfaces, one set of facts
 
-`arguments.machine.threads`, `arguments.machine.cores` and `arguments.memory.total`
-are **the same numbers** as `THREAD_COUNT`, `CORE_COUNT` and `MEMORY_MAX` in the
-configuration, and the same numbers again as codes 97, 98 and 99 in
-`satellite_string`'s live code table (PLAN §6). Three ways to ask, one place that
-knows — `system_facts`.
+`arguments.machine.threads` and `arguments.memory.total` are **the same numbers**
+as `THREAD_COUNT` and `MEMORY_MAX` in the configuration, and the same numbers
+again as codes 97 and 98 in `satellite_string`'s live code table (PLAN §6).
+`arguments.machine.cores` has **two** surfaces and not three: it is the
+configuration's `CORE_COUNT` and the arguments object, and there is no live code
+for it. Three ways to ask where there are three, one place that knows —
+`system_facts`.
+
+**THAT SENTENCE COUNTED WRONG UNTIL 2026-09-09 AND THE ARITHMETIC IS WHY IT WAS
+RESTATED RATHER THAN MADE TRUE.** It read *"the same numbers again as codes 97,
+98 and 99"* over three names, which positionally makes 98 `cores`; the live code
+table has 97 threads, 98 mem_total_mb, 99 mem_used_mb, and PLAN §6.1 agrees.
+Minting a code 100 for `cores` would have added a fourth row to a table whose
+rows are a permanent wire format, to satisfy a sentence's arithmetic. The
+sentence was restated instead, which costs nothing and is true.
+
+**AND `arguments.memory.total` AGREES WITH CODE 98 AT WHOLE MEGABYTES, WHICH IS
+THE RESOLUTION BOTH OF THEM HAVE.** `satellite.system.memory.total("mb")`
+answers the exact figure, fraction and all — 63430.21484375 on this machine —
+and these two answer 63430. They are not three renderings of one number; they
+are two surfaces on the coarse fact and one on the exact one, and a program that
+asserts all three are equal has to say which of the two it is asking for. M20's
+demonstration does exactly that.
 
 They must not be allowed to disagree. Whatever the configuration finally says, it
 is a *setting* and the machine is a *fact*, and a program that asks
@@ -1248,7 +1300,7 @@ told. If the two ever need to differ, they need two different names.
 
 **And the configuration writes these three names, which it could not until
 2026-08-31.** `CORE_COUNT=arguments.machine.cores` is the machine's own answer, in
-the spelling above and in any of the six; `CORE_COUNT=12` is twelve. It is the bare
+the spelling above and in any of the seven; `CORE_COUNT=12` is twelve. It is the bare
 form and not the rooted path, for the reason this section already gives — a program
 writes the name it gave `satellite.main`'s parameter, never
 `satellite.library.main.arguments`, and a configuration that demanded the rooted

@@ -7,6 +7,7 @@
 #include "evaluator/machine.hpp"
 #include "programs/built_program.hpp"
 #include "programs/opening.hpp"
+#include "satellite_arguments/arguments.hpp"
 #include "satellite_console/console.hpp"
 #include "satellite_console/handlers.hpp"
 #include "satellite_random/handlers.hpp"
@@ -119,40 +120,35 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
 
     const eval::Capsule &main = built.program.closures.capsules()[which];
 
-    // THE PARAMETER IS BOUND AT M16, WHICH IS WHAT THIS MILESTONE OWED IT.
-    // DESIGN §3 declares `satellite.container.list<satellite.variable.string>
-    // arguments` and settles what it costs: "an empty list is still a list,
-    // and the milestone that constructs one has built the type -- so hello
-    // world is PLAN M17 and runs after M16, while the console it prints
-    // through stays at M10". Until 2026-09-05 this arm was S0720 and exit 3;
-    // the type exists now, so what stood in front of hello world is one empty
-    // `satellite.container.list` handed to slot 0.
+    // THE PARAMETER IS THE OBJECT SINCE M20, WHICH IS WHAT THIS MILESTONE
+    // OWED THE NAME. M16 built the type and handed slot 0 an empty
+    // `satellite.container.list`, and the note this replaces said exactly what
+    // was still missing: "the empty list is what M16 owed the slot, and the
+    // object is what M20 owes the name". Both halves are now the same value.
     //
-    // AND WHAT THE SLOT HOLDS IS NOT WHAT THE NAME REACHES, which is the M17
-    // handover PLAN asks this milestone to write down rather than leave to be
-    // discovered. The VALUE here is an ordinary empty list. The NAME
-    // `arguments` is DESIGN §7.7's object as far as resolve is concerned --
-    // names.cpp routes any of its seven spellings there -- so `arguments.size()`
-    // is S0532 naming what §7.7 holds, and not a list method, today and after
-    // M20 alike. A program that wants the list itself passes `arguments` on;
-    // a program that wants the machine's answers waits for M20. Both halves
-    // are true at once and neither is a stopgap: the empty list is what M16
-    // owed the slot, and the object is what M20 owes the name.
-    std::vector<Value> arguments;
-    if (main.parameters != 0)
-        arguments.push_back(Value::list(List{}));
+    // BUILT BEFORE THE HANDLERS AND BEFORE THE MACHINE, because it is what the
+    // command line IS and nothing else in this function may read a stale one.
+    // It costs one `getcwd()` -- satellite_arguments/arguments.hpp carries why
+    // that one fact cannot be deferred with the other thirty-two.
+    //
+    // THE WORDS ARE args[file_at...] AND NOT args[0...], which is the one
+    // place this arm decides something about the object rather than passing it
+    // through. `satl example/hello.satl one two` must give the program three
+    // words with the FILE as `program`, not five with `satl` as `program` and
+    // the flag it was run under as an argument -- so the command line the
+    // object holds starts where the file does. That is v1's answer kept:
+    // argv[0] is the script (its interp.hpp says so), and a program that wants
+    // the interpreter has `arguments.interpreter` for it.
+    arguments::start(std::vector<std::string>(args.begin() +
+                                                  static_cast<long>(file_at),
+                                              args.end()));
 
-    // ARGUMENTS ARE ACCEPTED AND NOTHING READS THEM YET, AND SAYING SO IS THE
-    // POINT. `satl <file> [args]` is in the usage text, so refusing them would
-    // break a command line satl advertises; taking them silently would let
-    // somebody believe their program received them, which is DESIGN §1.1's
-    // "behind their back" with the user's own input as the stake. One line on
-    // stderr, and the program still runs.
-    if (args.size() > file_at + 1)
-        fprintf(stderr,
-                "satl: %zu arguments were given and nothing reads them yet -- "
-                "`arguments` lands at M20 (DESIGN.md §7.7).\n",
-                args.size() - file_at - 1);
+    // NAMED `parameters` AND NOT `arguments`, which is not a style choice: a
+    // local called `arguments` shadows the namespace this arm now calls into,
+    // and `arguments::object()` stops compiling on the line below it.
+    std::vector<Value> parameters;
+    if (main.parameters != 0)
+        parameters.push_back(arguments::object());
 
     console::install_handlers();
     scalars::install_handlers();
@@ -163,6 +159,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     help::install_handlers();
     file::install_handlers();
     directory::install_handlers();
+    arguments::install_handlers();
 
     // CTRL-C, BEFORE ANYTHING RUNS. Installed here because this is an entry
     // point that runs a program -- interrupt.hpp's rule -- and CLEARED here
@@ -191,7 +188,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     // resolve numbers them in a pass before the bodies.
     machine.run_top_level();
     if (machine.ok())
-        machine.call(static_cast<uint32_t>(which), arguments);
+        machine.call(static_cast<uint32_t>(which), parameters);
 
     // THE FOUR STEPS, AND THEY COME BEFORE THE DIAGNOSTICS. drain, flush, stop,
     // join -- see satellite_console/console.hpp. A program that printed three

@@ -144,13 +144,21 @@ void section_predicate()
     // IT, which is this check working rather than failing: a list of paths
     // "no milestone has reached" is a list that every milestone shortens, and
     // the one way it could go wrong is by nobody noticing when an entry stops
-    // being true. `satellite.variable.thread` takes its place -- M21's, and
-    // not this milestone's. **`LIBRARY_MAIN` IS THE NEXT ONE TO GO**: M20's
-    // own arguments object hangs under it, so the day that lands, this line
-    // fails again and the fix is the same one.
+    // being true. `satellite.variable.thread` took its place -- M21's.
+    //
+    // AND `LIBRARY_MAIN` WENT THE SAME DAY, WHICH THIS COMMENT HAD PREDICTED
+    // IN THOSE WORDS: "**`LIBRARY_MAIN` IS THE NEXT ONE TO GO**: M20's own
+    // arguments object hangs under it, so the day that lands, this line fails
+    // again and the fix is the same one." It landed, the line failed, and the
+    // fix was the same one. The prediction cost one sentence and turned an
+    // hour of reading into a minute.
+    //
+    // `satellite.container.result` `1 4 4` TAKES ITS PLACE, and it should
+    // outlast several: it is Satellite Orbit's answer type, PLAN §8 puts it at
+    // **M28**, and nothing between here and there hangs anything under it.
     const words::NodeId unbuilt[] = {
         words::NodeId::NETWORK,          words::NodeId::INCLUDE_SPACESHIP,
-        words::NodeId::VARIABLE_WINDOW,  words::NodeId::LIBRARY_MAIN,
+        words::NodeId::VARIABLE_WINDOW,  words::NodeId::CONTAINER_RESULT,
         words::NodeId::ANALYZE,          words::NodeId::VARIABLE_THREAD,
     };
     for (const words::NodeId id : unbuilt)

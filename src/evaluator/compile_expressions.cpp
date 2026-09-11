@@ -151,12 +151,16 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
 
     case NodeKind::Member: {
         const resolve::Info &about = info(node);
-        if (about.arguments) {
-            finish(not_built(node, "`arguments`",
-                             "PLAN.md §8 builds it at M20, and DESIGN §7.7 "
-                             "specifies it"));
-            return true;
-        }
+        // NO ARM FOR `arguments` HERE SINCE M20, AND THE DELETION IS THE
+        // WHOLE CHANGE. This case used to refuse every member of the
+        // arguments object with S0720 naming M20 as the milestone that would
+        // build it. What M20 found is that the object needs no arm at all:
+        // resolve has walked `argz.machine.threads` to `1 14 1 1 1 3` since
+        // M7 -- names.cpp's arguments_member() -- and a language path read
+        // without being called is already a module constant, which is the
+        // dispatch two screens down. So the object arrives by having its rows
+        // installed, in satellite_arguments/handlers.cpp, and this file
+        // learns nothing about it.
         const auto found = globals_.find(about.path);
         if (found != globals_.end()) {
             finish(emit(op_global, node, found->second));
@@ -340,6 +344,31 @@ NodeIndex Compiler::method_receiver(NodeIndex call_node) const
     // not a language word is exactly the folded case and nothing but it.
     const resolve::Info &selector = info(target);
     if (selector.path == words::kNoPath || !words::is_language_word(selector.path))
+        return kNoNode;
+
+    // A FACT UNDER `arguments` IS NOT A METHOD ON IT -- M20, and it is the one
+    // case where a receiver in a frame slot is the WRONG reading. The object's
+    // facts are facts about the process: `arguments.machine.threads` is the
+    // machine's thread count, not something the object computes about itself,
+    // and satellite_arguments/handlers.cpp installs every one of them with no
+    // receiver and arity 0.
+    //
+    // WITHOUT THIS LINE THE TWO DEPTHS DISAGREED, which is how it was found.
+    // `arguments.machine.threads()` compiled through the module road -- its
+    // receiver `arguments.machine` is a member and names no slot -- and
+    // answered 24, while `arguments.count()` one level up read as a method,
+    // arrived with the object as argument 0, and was refused with S0722 "takes
+    // 0 arguments and was given 1". One of those two had to be wrong and it
+    // was not the one that worked.
+    //
+    // **THE TEN SELECTORS ARE THE OPPOSITE CASE AND THIS LINE MUST NOT CATCH
+    // THEM.** `arguments.length()` and `arguments.get(k)` really are methods
+    // on the object -- they fold through `satellite.container.arguments`
+    // `1 4 3`, the receiver's TYPE, and they need it as argument 0. The
+    // milestone that builds them has to leave `arguments` false on a selector
+    // in names.cpp's arguments_member(), or they arrive here with no receiver
+    // and answer about nothing.
+    if (selector.arguments)
         return kNoNode;
 
     // AND THE RECEIVER NAMES A STORAGE LOCATION, which is the positive test

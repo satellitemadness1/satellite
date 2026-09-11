@@ -22,6 +22,7 @@
 // builds it the way it builds a test, against the tree's own sources.
 
 #include "evaluator/dispatch.hpp"
+#include "satellite_arguments/arguments.hpp"
 #include "satellite_console/handlers.hpp"
 #include "satellite_containers/handlers.hpp"
 #include "satellite_directory/handlers.hpp"
@@ -53,6 +54,10 @@ int main()
     help::install_handlers();
     file::install_handlers();
     directory::install_handlers();
+    // M20. The arguments object's rows dispatch like any other module's, so
+    // the walk below sees them only if this line is here -- which is the whole
+    // reason the table is measured rather than typed.
+    arguments::install_handlers();
 
     const eval::Handlers &handlers = eval::Handlers::table();
     const eval::Assigners &assigners = eval::Assigners::table();

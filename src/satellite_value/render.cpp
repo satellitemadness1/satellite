@@ -10,6 +10,7 @@
 
 #include "satellite_value/render.hpp"
 
+#include "satellite_arguments/rows.hpp"
 #include "satellite_bits/bits.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
@@ -211,6 +212,15 @@ std::string text_of(const Value &value)
     // §7.5's reason.
     if (value.is_list() || value.is_map())
         return container_text(value);
+
+    // THE ARGUMENTS OBJECT PRINTS ALL OF ITSELF, WHICH IS DESIGN §7.7's OWN
+    // SENTENCE: "displaying it bare prints all of it ... the §1.1 tie-breaker
+    // applied to introspection". It is the one arm here that is more than one
+    // line of text, and satellite_arguments/render.cpp is the walk -- it reads
+    // the registry for the object's children and system_facts for their
+    // answers, which is that module's subject and not this file's.
+    if (const Arg *held = std::get_if<Arg>(&value))
+        return *held ? arguments::object_text(**held) : std::string();
 
     // A FILE PRINTS AS THE PATH IT NAMES, IN ANGLE BRACKETS, WITH WHETHER IT
     // IS OPEN. M19, and it is the one arm here whose rendering is not the

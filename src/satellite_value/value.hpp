@@ -23,7 +23,7 @@
 //
 // FIVE ARMS AT M10, AND THE EMPTINESS IS DELIBERATE. DESIGN §8's table has
 // thirteen rows and this held the five a program could PRODUCE at M10: nothing,
-// a bool, a number, a string and the runtime singleton. ELEVEN since M19.5. An arm with no producer
+// a bool, a number, a string and the runtime singleton. THIRTEEN since M20. An arm with no producer
 // is a case every later reader has to rule out -- name_resolver/resolve.hpp
 // refuses six sentinels for three on exactly that argument -- so the rest
 // arrive with the milestone that can build one. PLAN §8's M9 entry names three
@@ -190,6 +190,30 @@ using Bin = std::shared_ptr<const bits::BitRun>;
 // rather than a value that changed type on the way into a slot.
 using Hex = std::shared_ptr<const bits::HexRun>;
 
+// THE ARGUMENTS OBJECT -- `satellite.container.arguments` `1 4 3`, M20, and
+// the NINTH append. DESIGN §7.7's "the language handing the PROGRAM everything
+// it knows about the machine it woke up on": the command line it was started
+// with, reached by number, and the machine's own answers reached by name.
+//
+// FORWARD-DECLARED HERE AND DEFINED IN value_arguments.hpp, which is `List`
+// and `MapBody`'s arrangement six rows up and is forced by the same thing: the
+// body holds `Value`s, so it cannot be defined until this type is complete,
+// while the variant below cannot be spelled until the handle has a name.
+//
+// SHARED AND CONST, so the assert at the bottom does not move -- sixteen bytes
+// against a 32-byte widest arm, `Str`'s accounting for the SEVENTH time. PLAN
+// §8's M9 entry named this append four milestones before it arrived and asked
+// that the milestone re-run the assert; M20 did, and it holds at 40.
+//
+// A VALUE AND NOT A REFERENCE TYPE, which is the line `Fil` is on the other
+// side of. Two names for one open file are one open file because there is one
+// descriptor and the kernel has never heard of our slots; two names for one
+// arguments object are two values of a body nothing can write, because the
+// body is built before `make_shared` and frozen -- `MapBody`'s rule, and this
+// arm keeps it.
+struct Arguments;
+using Arg = std::shared_ptr<const Arguments>;
+
 // APPEND ONLY. A new arm goes at the END of this list, never in the middle.
 // `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
 // widest arm, the same accounting `Runtime`'s note above runs. `Flo` is the
@@ -204,10 +228,15 @@ using Hex = std::shared_ptr<const bits::HexRun>;
 // 2026-09-08 while M19 was in flight, and M19's `Fil` took sixth. Binary is
 // the seventh and hex is the eighth, landed 2026-09-09. The assert did not
 // move either way, which is the half of the sentence that was the point.
+//
+// `Arg` IS THE NINTH, M20's, sixteen more again -- and it is the one append
+// this file predicted by name. The paragraph five screens up has said "the
+// arguments object (M20)" since M9 wrote it, beside the instruction that each
+// named append re-runs the assert. It was re-run and it holds at 40.
 using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo,
-                              Lst, Map, Fil, Bin, Hex>;
+                              Lst, Map, Fil, Bin, Hex, Arg>;
 
-// One value. DESIGN §8's table, twelve arms of it since M19.5.
+// One value. DESIGN §8's table, THIRTEEN arms of it since M20.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -273,6 +302,7 @@ struct Value : ValueBase {
     bool is_file() const { return std::holds_alternative<Fil>(*this); }
     bool is_binary() const { return std::holds_alternative<Bin>(*this); }
     bool is_hex() const { return std::holds_alternative<Hex>(*this); }
+    bool is_arguments() const { return std::holds_alternative<Arg>(*this); }
 };
 
 // `satellite.container.list<T>` -- a vector of values with a name a forward

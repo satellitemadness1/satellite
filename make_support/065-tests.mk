@@ -391,6 +391,11 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(EVAL)/dump.cpp \
                  $(VALUE)/value.cpp \
                  $(VALUE)/render.cpp \
+                 $(ARGS)/arguments.cpp \
+                 $(ARGS)/rows.cpp \
+                 $(ARGS)/render.cpp \
+                 $(ARGS)/handlers.cpp \
+                 $(SYSTEM)/arguments_facts.cpp \
                  $(BITS)/bits.cpp \
                  $(FLOAT)/float_value.cpp \
                  $(FLOAT)/float_arith.cpp \
@@ -422,6 +427,17 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(LEXER)/lexer.cpp \
                  $(STRING)/satellite_string.cpp
 
+# THE ARGUMENTS MODULE ARRIVED AT M20 AND IT CAME IN BEHIND $(VALUE)/render.cpp
+# RATHER THAN ON ITS OWN ACCOUNT. DESIGN §7.7 says displaying the object prints
+# all of it, so the value renderer calls into satellite_arguments -- and every
+# binary that links the renderer needs the module with it. This list is the one
+# that supplies it: console_test, file_test and help_test all build on
+# EVAL_TEST_SRCS, so four suites were fixed by four lines in one place.
+#
+# $(SYSTEM)/arguments_facts.cpp COMPILES HERE WITHOUT $(VERSION_DEFS), which is
+# what its header's fallbacks are for: a test binary asking what compiled it
+# gets `unrecorded`, which is true of a binary make did not stamp.
+#
 # AND ON errors.def, which is the seventh place this argument is made:
 # tests/eval_test asserts one program per row of the S07xx block this milestone
 # populated, so editing a sentence must re-run the test that raises it.

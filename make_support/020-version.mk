@@ -48,7 +48,20 @@ BUILD_STAMP := $(shell date -u $(if $(SOURCE_DATE_EPOCH),-d @$(SOURCE_DATE_EPOCH
 # this file. That is fine and is the arrangement the top-level Makefile
 # describes: these are recursively expanded, so the reference below is resolved
 # when a recipe uses it, by which point every fragment has been read.
-version_defs = -DSATELLITE_VERSION='"$(SATELLITE_VERSION)"' \
+
+# WHICH MAKE RAN, for `arguments.build.make` `1 14 1 1 5 5`. MAKEFLAGS IS
+# CLEARED for this one sub-invocation: $(MAKE) carries the current flags, and
+# this value is compiled into an object as a string a program can read -- so
+# anything that perturbs the sub-make's output gets baked in and stays there
+# until that object is rebuilt. The first satellite observed a
+# `make_version: # GNU Make 4.4.1` in a built binary on 2026-08-24 and a clean
+# rebuild cleared it; the exact trigger was never reproduced, so this is
+# defensive rather than a proven fix. $(MAKE) rather than a literal `make`, so
+# a differently-named make still reports itself honestly.
+SATELLITE_MAKE := $(shell MAKEFLAGS= $(MAKE) --version 2>/dev/null | head -1)
+
+version_defs = -DSATELLITE_BUILD_MAKE='"$(SATELLITE_MAKE)"' \
+               -DSATELLITE_VERSION='"$(SATELLITE_VERSION)"' \
                -DSATELLITE_REVISION='"$(SATELLITE_REVISION)"' \
                -DSATELLITE_BUILT='"$(BUILD_STAMP)"' \
                -DSATELLITE_BUILD_CXX='"$(CXX)"' \

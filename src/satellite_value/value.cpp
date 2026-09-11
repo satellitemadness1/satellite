@@ -51,6 +51,13 @@ const char *type_name(const Value &value)
         return "binary";
     if (value.is_hex())
         return "hex";
+    // THE TYPE NAME AN ERROR MESSAGE NEEDS, and it is the whole reason
+    // `satellite.container.arguments` `1 4 3` has a number -- PLAN M20 names
+    // the row "the type name an error message uses so it does not send the
+    // reader to the list's method table". Without it a misused arguments
+    // object reads as a `list`, and the reader goes looking for `.append`.
+    if (value.is_arguments())
+        return "arguments";
     return "nothing";
 }
 
@@ -291,6 +298,24 @@ bool same(const Value &left, const Value &right)
         // the loop and be called the same.
         if (const Fil *handle = std::get_if<Fil>(&a)) {
             if (handle->get() == std::get<Fil>(b).get())
+                continue;
+            return false;
+        }
+
+        // TWO ARGUMENTS OBJECTS ARE EQUAL WHEN THEY ARE THE SAME OBJECT -- M20,
+        // and the file's clause one row up applies for a different reason.
+        // A file is identity because it is a reference type; this is identity
+        // because THERE IS ONLY ONE. The runtime builds one per run and hands
+        // it to `satellite.main`; nothing in the language constructs a second,
+        // so a walk comparing bodies would be code that can only ever be
+        // reached by a value that came from here anyway.
+        //
+        // AND WITHOUT THIS ARM THEY WOULD ALL BE EQUAL, which is the file
+        // arm's last paragraph exactly: the index check has already proved
+        // both sides are arguments objects, so any two would fall through to
+        // the both-empty tail below and be called the same.
+        if (const Arg *handle = std::get_if<Arg>(&a)) {
+            if (handle->get() == std::get<Arg>(b).get())
                 continue;
             return false;
         }

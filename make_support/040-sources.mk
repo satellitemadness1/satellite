@@ -414,6 +414,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(LIMITS)/pool.cpp \
             $(LIMITS)/watchdog.cpp \
             $(LIMITS)/dump.cpp \
+            $(SYSTEM)/arguments_facts.cpp \
             $(SYSTEM)/memory_facts.cpp \
             $(SYSTEM)/firmware_facts.cpp \
             $(SYSTEM)/host_facts.cpp \
@@ -453,6 +454,10 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SYSLIB)/units.cpp \
             $(SYSLIB)/memory_methods.cpp \
             $(SYSLIB)/host_methods.cpp \
+            $(ARGS)/arguments.cpp \
+            $(ARGS)/rows.cpp \
+            $(ARGS)/render.cpp \
+            $(ARGS)/handlers.cpp \
             $(SATFILE)/file_handle.cpp \
             $(SATFILE)/handlers.cpp \
             $(SATFILE)/file_methods.cpp \

@@ -29,6 +29,7 @@
 #include "satellite_containers/search.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_value/render.hpp"
+#include "satellite_value/value_arguments.hpp"
 
 #include <string>
 #include <utility>
@@ -165,10 +166,48 @@ void index_read(Machine &m, OpIndex subscript_op)
         return;
     }
 
+    // THE ARGUMENTS OBJECT INDEXES ITS COMMAND LINE AND NOTHING ELSE -- PLAN
+    // M20, confirmed by the author 2026-09-09: "index 0 is the program name
+    // ... `.length()` and numeric `[i]` cover the command line and nothing
+    // else". That is the whole reason the body stores the words apart from the
+    // machine's facts: a program writes `for (i = 1; i < args.length(); ...)`,
+    // and a `[i]` that walked into the facts would start handing back the
+    // kernel release as though it had been typed.
+    if (const Arg *held = std::get_if<Arg>(&target)) {
+        static const Arguments nothing_yet;
+        const Arguments &body = *held ? **held : nothing_yet;
+        const long long length = static_cast<long long>(body.words.size());
+        long long at = 0;
+        bool inside = false;
+        // NOT A SEARCH AND NOT A KEY. The search power's walker knows lists
+        // and maps and nothing else -- the string arm above declines for the
+        // same reason -- and the facts are reached by their NAMES, which are
+        // registry paths a program writes out: `arguments.machine.threads`.
+        if (!as_index(subscript, length, &at, &inside)) {
+            m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+                where, m.text_of(m.here()),
+                "a whole `satellite.variable.number` position -- the machine's "
+                "facts are reached by name, as `arguments.machine.threads`",
+                type_name(subscript)));
+            return;
+        }
+        if (!inside) {
+            m.refuse(errors::make<errors::Code::EVAL_OUTSIDE_THE_LIST>(
+                where, m.text_of(m.here()), text_of(subscript),
+                std::to_string(length)));
+            return;
+        }
+        Value answer = body.words[static_cast<size_t>(at)].value;
+        m.done();
+        m.fold(std::move(answer));
+        return;
+    }
+
     m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
         m.span_of(m.here()), m.text_of(m.here()),
-        "a `satellite.container.list`, a `satellite.container.map` or a "
-        "`satellite.variable.string` -- the three things a `[` can ask about",
+        "a `satellite.container.list`, a `satellite.container.map`, a "
+        "`satellite.variable.string` or the `arguments` object -- the four "
+        "things a `[` can ask about",
         type_name(target)));
 }
 

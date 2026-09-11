@@ -4449,6 +4449,18 @@ rows that are a done-when clause rather than a question.)*
   > 325, and the digest moved `ba12d6fa81d0fe61` → `1ef8ec50a203c593`, which
   > invalidates every cached `.satc` on the machine exactly as SATC.md §3 says
   > it should.
+  >
+  > **AND THE OBJECT ITSELF LANDED 2026-09-11, THE COMMIT AFTER.** `Arg` is the
+  > NINTH arm of the variant, sixteen bytes of shared const handle against a
+  > 32-byte widest arm — **`sizeof(Value)` re-measured at 40**, which is the
+  > check the M9 entry asked the milestone that landed this append to re-run.
+  > The compiler's arm for the object is DELETED rather than written: resolve
+  > has walked `argz.machine.threads` to `1 14 1 1 1 3` since M7, and a language
+  > path read without being called is already a module constant, so the S0720
+  > that used to name M20 simply came out and the rows were installed instead.
+  > `display(arguments)` prints all thirty-six lines (§7.7), `arguments[i]`
+  > reads the command line and nothing else, and `argz.machine.threads` answers
+  > 24 beside `\threads`.
 - ~~**`satellite.container.arguments` `1 4 3` has no children and the object
   answers ten selectors.**~~ **SETTLED 2026-09-11 BY THE AUTHOR, AND ONE WORD
   CHANGED.** The ten are `.length()`, `.count()`, **`.keys()`**, `.to_string()`,
@@ -4518,12 +4530,121 @@ rows that are a done-when clause rather than a question.)*
   §9 says take the number rather than quote it, and the number wanted is *both*
   arms — eager and lazy — because "lazy is faster" is the kind of claim this
   section exists to stop being assumed.
+
+  > **BUILT LAZY 2026-09-11, AND THE LAZINESS IS PER-PROCESS RATHER THAN
+  > PER-VALUE.** The thirty-two machine facts are a function-local static in
+  > `system_facts/arguments_facts.cpp`, assembled on the first ask; a program
+  > that never reads one pays for none of them. What is NOT deferred is the
+  > command line, which is already in hand, and **`session.directory`, which is
+  > `getcwd()` and had to be taken at startup** — `satellite.directory.change`
+  > `1 18 1` has been built since M19, so an eager build and a lazy one would
+  > answer differently for that one fact after a program changed directory. The
+  > object is what the program WOKE UP to (§7.7), so the starting directory is
+  > captured with the words and the other thirty-two are not. **That is the one
+  > thing the measurement would have hidden** — both arms would have been fast
+  > and one of them would have been wrong.
+  >
+  > **BOTH ARMS, MEASURED 2026-09-11 ON THIS MACHINE.** Best of five runs of
+  > 200 invocations each, load 2.06, the same shape §9's other figures are
+  > taken in. The eager arm is this tree with one line added to
+  > `run_command.cpp` calling `machine_answers()` before the program runs, and
+  > it was removed again after the numbers were taken:
+  >
+  >           program                  lazy      eager
+  >           reads no fact          1.156 ms   1.638 ms
+  >           reads one fact         1.644 ms   1.647 ms
+  >
+  > **Lazy costs nothing and saves 0.48 ms**, which is 42% of the startup of a
+  > program that never asks — so the claim §9 exists to stop being assumed is
+  > true here, by about the margin that would have been guessed. What it does
+  > NOT do is make the first ask cheaper, and the two numbers in the right-hand
+  > column are the same number: a program that reads one fact pays for all
+  > thirty-two either way.
+  >
+  > **AND THE 0.48 ms IS TWO READERS OUT OF THIRTY-TWO**, measured separately
+  > in a harness linked against the tree's own objects: `physical_cores()` is
+  > **303 µs** (it walks `/sys` topology, once per CPU) and reading
+  > `/proc/cpuinfo` for `machine.cpu` is **305 µs** (the kernel generates a
+  > block per thread, and this machine has 24). Against those,
+  > `hardware_threads()` is 6 µs, `/proc/meminfo` is 35 and `/etc/os-release`
+  > is 18. **So a per-SOURCE laziness would make `arguments.machine.threads`
+  > nearly free** while `cores` and `cpu` stayed expensive, and it is a named
+  > and quantified follow-up rather than something this milestone took in
+  > passing — the author's call, with the number attached.
 - **`satellite.system.environment` `1 22 2` — the shape, settled 2026-09-09.**
   The bare form answers **a map** of the whole environment; `environment(name)`
   `1 22 9` answers **the one variable**. M16 has maps, so the bare form costs
   nothing it did not already have, and the pair is the same read-one / read-all
   shape `satellite.system.memory` carries. It remains the one path in this
   milestone that is not a port — v1 never built it and said so.
+- **WHAT A BARE GROUP WORD UNDER `arguments` ANSWERS — SETTLED 2026-09-11 BY
+  THE AUTHOR: EVERY GROUP DISPLAYS ITS CHILDREN.** `arguments.machine` answers
+  all seven of its facts as a map, `arguments.session` all five, and so on for
+  `memory`, `system`, `build` and `process`. It was put to them because the
+  question could not be ducked and had two defensible answers: **DESIGN §7.7
+  wrote `arguments.memory` as FREE memory and `arguments.machine` as what the
+  processor is**, while the help lines minted the day before had written the
+  same words as groupings. The resolver is what made it a fork rather than a
+  wording problem — `arguments.machine` and `arguments.machine()` reach the
+  same node, so the `(0)` row cannot carry a second meaning and one of the two
+  readings had to go.
+
+  **THE COST WAS NAMED BEFORE IT WAS TAKEN AND IT IS REAL**: free memory was
+  `arguments.memory`'s only spelling and is now reachable only as
+  `satellite.system.memory.free()`, which this same milestone built. DESIGN
+  §7.7's two lines are corrected there rather than here.
+
+  **`interpreter` IS NOT ONE OF THE SIX**, because this entry's own shape table
+  settled it on 2026-09-09 — *"bare = the path"* — so it stays the one group
+  word in the object that answers a fact.
+- **`library_path` `1 14 1 1 6 2` AND `library_path_source` `1 14 1 1 6 3` DO
+  NOT ANSWER AT M20, AND THIS ENTRY ALREADY SAID SO WITHOUT NOTICING.** The
+  split above sends v1's `library_path()` and its `-DSATELLITE_LIB_DIR` build
+  coupling to **M25**, "which is where `satellite.include` of another file
+  lands" — and `arguments_for()` CALLS it, which is the collision the sentence
+  did not see. This tree's Makefile has no install prefix at all, so an answer
+  here would be a fact about a mechanism that does not exist. **Both rows
+  refuse with the reason and name M25**, which is what `retune_min_free_mb`
+  does one module over. Thirty-four of the thirty-six answer.
+- **OPEN, FOUND 2026-09-11 WHILE BUILDING THE OBJECT: FOUR BARE GROUP SHAPES
+  UNDER `satellite.system` ANSWER NOTHING.** `satellite.system()` `1 22 0`,
+  `.memory()` `1 22 4 0`, `.memory.swap()` `1 22 4 4 0` and `.memory.this()`
+  `1 22 4 5 0` all refuse with S0721 — they were numbered at the 2026-08-28
+  transcription and this milestone's third commit built everything under them
+  without reaching them.
+
+  **THE ANSWER THE AUTHOR GAVE FOR `arguments` DOES NOT SIMPLY TRANSFER**, which
+  is why this is open rather than done. "Display its children" works where the
+  children are facts; `satellite.system.memory`'s children are `free()`,
+  `free(unit)`, `total()`, `total(unit)` and the rest — call shapes in pairs —
+  so a map of them would have to pick a unit, and picking one is a decision the
+  unit table exists to avoid making. The candidates are a map of the
+  no-argument verbs in the default unit, or a refusal naming the children the
+  way `satellite.container` `1 4 0`'s help line already does.
+
+  **A DEAD READER WENT WITH IT.** `stack_total()` in
+  `satellite_system/memory_methods.cpp` was written on 2026-09-11 beside
+  `stack_used` and `stack_free` and installed nowhere, because
+  `satellite.system.memory.this` has no `total` row — its children are
+  `available`, `free` and `used` and their unit forms. It was a
+  `-Wunused-function` warning in a tree built `-Wall -Wextra`, which is how it
+  was found, and it is deleted.
+- **A BUG IN THE COMPILER, FOUND BY WRITING THE HELP LINES RATHER THAN BY ANY
+  SUITE.** `arguments.machine.threads()` answered 24 while `arguments.count()`
+  was refused with S0722 — *"takes 0 arguments and was given 1"* — and the two
+  depths disagreeing is what gave it away. `method_receiver()` in
+  `evaluator/compile_expressions.cpp` reads a call whose receiver sits in a
+  frame slot as DESIGN §6.4's method sugar, so a fact one hop under the bound
+  name arrived with the object as argument 0; two hops down the receiver is a
+  member, names no slot, and the module road was taken instead.
+
+  **The object's facts are facts about the PROCESS and not methods on it**, so
+  the fix is one clause: an arguments member is never a method receiver. **The
+  ten selectors are the opposite case and the clause must not catch them** —
+  `arguments.length()` folds through `satellite.container.arguments` `1 4 3`,
+  the receiver's type, and needs the object as argument 0. The milestone that
+  builds them has to leave `arguments` false on a selector in names.cpp's
+  `arguments_member()`, and the comment at the clause says so.
 - **`.bit` `1 22 4 1` and `.frequency` `1 22 4 2` cannot be demonstrated as an
   ordinary user.** Both come from SMBIOS type 17 through
   `/sys/firmware/dmi/entries/*/raw`, and v1's comment on the failure path reads
