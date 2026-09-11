@@ -4437,6 +4437,18 @@ rows that are a done-when clause rather than a question.)*
   rows.** Writing them there before `words.def` has them would fail
   `tests/words_test`, which walks §2.2 against the registry — so the three rows
   and the forty above land in **one commit, in both files**, as M20's first act.
+
+  > **LANDED 2026-09-11, AND IT WAS FOUR FILES RATHER THAN TWO.** `words.def`
+  > and §2.2 moved together as this paragraph requires, and the build refused
+  > until two more did: `help_lines/nodes.tsv` and the written entries, because
+  > `help_text.hpp` static-asserts that `help.def` carries **exactly one row per
+  > node of words.def, in words.def order**. So a registry row is not a registry
+  > row until it has a help line — M18's machinery holding a later milestone to
+  > its own rule, from a direction this entry did not see coming. **43 nodes
+  > from 38 rows** (five of the new parents carry a `(0)`), `kNodeCount` 282 →
+  > 325, and the digest moved `ba12d6fa81d0fe61` → `1ef8ec50a203c593`, which
+  > invalidates every cached `.satc` on the machine exactly as SATC.md §3 says
+  > it should.
 - **`satellite.container.arguments` `1 4 3` has no children and the object answers
   ten selectors** — `.length()`, `.count()`, `.names()`, `.to_string()`, `.lines()`,
   `.has(k)`, `.get(k)`, `.first()`, `.last()`, `.contains(x)`. That is M16's

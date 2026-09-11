@@ -175,6 +175,16 @@ void section_authority()
     // and 231 until 2026-09-08, when M19 appended five: `ok`, `path` and
     // `error` `1 6 2 8`-`1 6 2 10`, `write(x)` `1 6 2 11`, and
     // `satellite.file.exists(path)` `1 8 5`.
+    //
+    // AND 247 UNTIL 2026-09-11, WHEN M20 APPENDED 38 -- the largest single move
+    // this count has ever made, which is the reason to say what it was: 35 of
+    // DESIGN §7.7's arguments object (four appends under `machine`, then
+    // `system` `build` `interpreter` `process` `session` with their children,
+    // then `count`) and the three call shapes v1 accepts that §2.2 had no
+    // number for. THE MARKER COUNT MOVES BY 5 AND NOT BY 6, because `count` is
+    // a leaf and the other five are nodes reached both bare and as a parent.
+    // 38 rows + 5 markers is 43 nodes, which is the whole of the arithmetic
+    // below and the reason these three numbers are worth keeping in step.
     // That is the only kind of edit §1.2 allows to this section -- nothing
     // renumbered and nothing reused -- and it is the only kind these three
     // counts can tell apart from a transcription that dropped a row.
@@ -184,8 +194,8 @@ void section_authority()
     // number. It is visible to this test through the WALK rather than through
     // the counts: match_shape compares argument lists character for character,
     // so a shape written here and not in words.def is a row that stops walking.
-    check(rows.size() == 247,
-          "§2.2 should hold 247 rows, found " + std::to_string(rows.size()));
+    check(rows.size() == 285,
+          "§2.2 should hold 285 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -194,12 +204,12 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 244,
-          "§2.2 should carry 244 distinct numbers, found " +
+    check(numbers.size() == 282,
+          "§2.2 should carry 282 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 3, "§2.2 should declare exactly 3 aliases, found " +
                             std::to_string(aliases));
-    check(markers == 38, "§2.2 should carry 38 `(0)` markers, found " +
+    check(markers == 43, "§2.2 should carry 43 `(0)` markers, found " +
                              std::to_string(markers));
 
     // AND NOW THE CONVERSE, WHICH IS THE HALF THIS FUNCTION DID NOT CHECK.

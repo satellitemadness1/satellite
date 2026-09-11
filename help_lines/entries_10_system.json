@@ -16,7 +16,7 @@
  },
  "1 22 2": {
   "query": "satellite.help(satellite.system.environment)",
-  "prose": "The environment the program was started in.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+  "prose": "The environment the program was started in, as a map of every variable.\n\nFor a single variable, write `satellite.system.environment(name)`.\n**Not built** \u2014 M20.",
   "example": ""
  },
  "1 22 3": {
@@ -178,5 +178,22 @@
   "query": "satellite.help(satellite.system.persist)",
   "prose": "Turns the prompt's memory of declarations on or off, and answers what it\nnow is.\n\nTurning it off does not throw away what is already held; it stops the next\nline adding to it, so a program can switch it off around one line and back\non afterwards. It wants a real bool, so write\n`satellite.bool.false` rather than a bare word.",
   "example": "satellite.console.display(satellite.system.persist(satellite.bool.false))\nsatellite.console.display(satellite.system.persist(satellite.bool.true))"
- }
+ },
+
+"1 22 4 4 7": {
+  "query": "satellite.help(satellite.system.memory.swap.used)",
+  "prose": "How much swap is in use, in the unit you name. **Not built** — M20.",
+  "example": ""
+},
+"1 22 4 5 6": {
+  "query": "satellite.help(satellite.system.memory.this.used)",
+  "prose": "How much memory this program is actually using, in the unit you name.\n\nThis is the running thread's own figure. Linux accounts an address space\nper process, so a heap-per-thread number would be the same for every\nthread and would answer nothing. **Not built** — M20.",
+  "example": ""
+},
+"1 22 9": {
+  "query": "satellite.help(satellite.system.environment)",
+  "prose": "One environment variable, by name.\n\nWritten bare, `satellite.system.environment` answers a map of the whole\nenvironment; given a name it answers just that one — the same read-all /\nread-one pair `satellite.system.memory` carries. **Not built** — M20.",
+  "example": ""
+}
+
 }

@@ -2540,6 +2540,28 @@ What the processor calls itself. **Not built** — M20.
 How many threads the machine can run at once, which is usually more than
 the number of cores. **Not built** — M20.
 
+.  `1 14 1 1 1 4`  `satellite.library.main.arguments.machine.architecture`
+> satellite.help(satellite.library.main.arguments.machine.architecture)
+
+What kind of processor this is — `x86_64` on this machine. This is the
+machine's instruction set and not its model name; `cpu` is the model. **Not built** — M20.
+
+.  `1 14 1 1 1 5`  `satellite.library.main.arguments.machine.byte_order`
+> satellite.help(satellite.library.main.arguments.machine.byte_order)
+
+Which end of a number this machine stores first: `little` or `big`. **Not built** — M20.
+
+.  `1 14 1 1 1 6`  `satellite.library.main.arguments.machine.page_size`
+> satellite.help(satellite.library.main.arguments.machine.page_size)
+
+How many bytes the operating system hands out memory in. **Not built** — M20.
+
+.  `1 14 1 1 1 7`  `satellite.library.main.arguments.machine.pointer_bits`
+> satellite.help(satellite.library.main.arguments.machine.pointer_bits)
+
+How wide an address is on this machine — 64 on anything satellite
+currently runs on. **Not built** — M20.
+
 .  `1 14 1 1 2`  `satellite.library.main.arguments.memory`
 > satellite.help(satellite.library.main.arguments.memory)
 
@@ -2562,6 +2584,217 @@ gets is something M20 has to settle.
 > satellite.help(satellite.library.main.arguments.username)
 
 Who is running the program. **Not built** — M20.
+
+.  `1 14 1 1 4`  `satellite.library.main.arguments.system`
+> satellite.help(satellite.library.main.arguments.system)
+
+What the operating system is: its name, its kernel, which distribution
+it is, and what this machine is called.
+
+One fact per word rather than one sentence to read, so a program that
+wants the kernel does not have to take a string apart. **Not built** — M20.
+
+.  `1 14 1 1 4 0`  `satellite.library.main.arguments.system()`
+> satellite.help(satellite.library.main.arguments.system)
+
+The bare shape — all of the operating-system facts together. **Not built** — M20.
+
+.  `1 14 1 1 4 1`  `satellite.library.main.arguments.system.name`
+> satellite.help(satellite.library.main.arguments.system.name)
+
+What the operating system calls itself — `Linux` here. **Not built** — M20.
+
+.  `1 14 1 1 4 2`  `satellite.library.main.arguments.system.kernel`
+> satellite.help(satellite.library.main.arguments.system.kernel)
+
+Which kernel is running, as a release — the number you would quote when
+asking whether a feature is present. **Not built** — M20.
+
+.  `1 14 1 1 4 3`  `satellite.library.main.arguments.system.kernel_version`
+> satellite.help(satellite.library.main.arguments.system.kernel_version)
+
+The kernel's own build string, which says when it was built and by what.
+Longer and less useful than `kernel`, and occasionally the only thing that
+tells two machines apart. **Not built** — M20.
+
+.  `1 14 1 1 4 4`  `satellite.library.main.arguments.system.distribution`
+> satellite.help(satellite.library.main.arguments.system.distribution)
+
+The distribution, written the way it wants to be read — the pretty name
+out of `/etc/os-release`. **Not built** — M20.
+
+.  `1 14 1 1 4 5`  `satellite.library.main.arguments.system.distribution_id`
+> satellite.help(satellite.library.main.arguments.system.distribution_id)
+
+The distribution's short machine-readable name, which is the one to
+compare against. **Not built** — M20.
+
+.  `1 14 1 1 4 6`  `satellite.library.main.arguments.system.distribution_version`
+> satellite.help(satellite.library.main.arguments.system.distribution_version)
+
+Which release of the distribution this is. **Not built** — M20.
+
+.  `1 14 1 1 4 7`  `satellite.library.main.arguments.system.hostname`
+> satellite.help(satellite.library.main.arguments.system.hostname)
+
+What this machine calls itself on the network. **Not built** — M20.
+
+.  `1 14 1 1 5`  `satellite.library.main.arguments.build`
+> satellite.help(satellite.library.main.arguments.build)
+
+What built the interpreter that is running.
+
+**These describe the binary, not the machine.** They are baked in when
+satellite is compiled, so they stay true if the compiler is upgraded or
+removed afterwards — which is the whole reason they are worth carrying. **Not built** — M20.
+
+.  `1 14 1 1 5 0`  `satellite.library.main.arguments.build()`
+> satellite.help(satellite.library.main.arguments.build)
+
+The bare shape — all of the build facts together. **Not built** — M20.
+
+.  `1 14 1 1 5 1`  `satellite.library.main.arguments.build.compiler`
+> satellite.help(satellite.library.main.arguments.build.compiler)
+
+Which C++ compiler built this interpreter. **Not built** — M20.
+
+.  `1 14 1 1 5 2`  `satellite.library.main.arguments.build.compiler_version`
+> satellite.help(satellite.library.main.arguments.build.compiler_version)
+
+Which version of that compiler. **Not built** — M20.
+
+.  `1 14 1 1 5 3`  `satellite.library.main.arguments.build.standard`
+> satellite.help(satellite.library.main.arguments.build.standard)
+
+Which C++ standard it was built to. **Not built** — M20.
+
+.  `1 14 1 1 5 4`  `satellite.library.main.arguments.build.flags`
+> satellite.help(satellite.library.main.arguments.build.flags)
+
+The flags it was built with. **Not built** — M20.
+
+.  `1 14 1 1 5 5`  `satellite.library.main.arguments.build.make`
+> satellite.help(satellite.library.main.arguments.build.make)
+
+Which `make` drove the build. **Not built** — M20.
+
+.  `1 14 1 1 5 6`  `satellite.library.main.arguments.build.standard_library`
+> satellite.help(satellite.library.main.arguments.build.standard_library)
+
+Which C++ standard library it is linked against. **Not built** — M20.
+
+.  `1 14 1 1 5 7`  `satellite.library.main.arguments.build.c_library`
+> satellite.help(satellite.library.main.arguments.build.c_library)
+
+Which C library it is linked against. **Not built** — M20.
+
+.  `1 14 1 1 5 8`  `satellite.library.main.arguments.build.built`
+> satellite.help(satellite.library.main.arguments.build.built)
+
+When it was built. **Not built** — M20.
+
+.  `1 14 1 1 6`  `satellite.library.main.arguments.interpreter`
+> satellite.help(satellite.library.main.arguments.interpreter)
+
+The interpreter that is running this program, and **written bare it is
+the path to it** — where the `satl` binary actually lives.
+
+That is the one place in the arguments object where a bare word is a fact
+rather than a group of them, and it is deliberate: `machine`, `system`,
+`build`, `process` and `session` are groupings, and an interpreter is a
+thing, whose natural value is where it is. **Not built** — M20.
+
+.  `1 14 1 1 6 0`  `satellite.library.main.arguments.interpreter()`
+> satellite.help(satellite.library.main.arguments.interpreter)
+
+The bare shape, and here it is the answer: the path to the running
+`satl` binary. **Not built** — M20.
+
+.  `1 14 1 1 6 1`  `satellite.library.main.arguments.interpreter.version`
+> satellite.help(satellite.library.main.arguments.interpreter.version)
+
+Which version and revision of satellite this is. **Not built** — M20.
+
+.  `1 14 1 1 6 2`  `satellite.library.main.arguments.interpreter.library_path`
+> satellite.help(satellite.library.main.arguments.interpreter.library_path)
+
+Where it looks for the files `satellite.include` reads. **Not built** — M20.
+
+.  `1 14 1 1 6 3`  `satellite.library.main.arguments.interpreter.library_path_source`
+> satellite.help(satellite.library.main.arguments.interpreter.library_path_source)
+
+**How** it found that path, which is a different question from what the
+path is: an environment variable, a directory beside the binary, one
+compiled in, or none at all. "It found a library" and "it found the one
+you installed" are different answers and only one of them is reassuring. **Not built** — M20.
+
+.  `1 14 1 1 7`  `satellite.library.main.arguments.process`
+> satellite.help(satellite.library.main.arguments.process)
+
+This running program, as the operating system sees it. **Not built** — M20.
+
+.  `1 14 1 1 7 0`  `satellite.library.main.arguments.process()`
+> satellite.help(satellite.library.main.arguments.process)
+
+The bare shape — both process facts together. **Not built** — M20.
+
+.  `1 14 1 1 7 1`  `satellite.library.main.arguments.process.id`
+> satellite.help(satellite.library.main.arguments.process.id)
+
+This program's own process id. **Not built** — M20.
+
+.  `1 14 1 1 7 2`  `satellite.library.main.arguments.process.parent`
+> satellite.help(satellite.library.main.arguments.process.parent)
+
+The process id of whatever started it — usually the shell. **Not built** — M20.
+
+.  `1 14 1 1 8`  `satellite.library.main.arguments.session`
+> satellite.help(satellite.library.main.arguments.session)
+
+The session the program was started in: whose shell, which terminal,
+what language, where home is and where the program is running. **Not built** — M20.
+
+.  `1 14 1 1 8 0`  `satellite.library.main.arguments.session()`
+> satellite.help(satellite.library.main.arguments.session)
+
+The bare shape — all of the session facts together. **Not built** — M20.
+
+.  `1 14 1 1 8 1`  `satellite.library.main.arguments.session.shell`
+> satellite.help(satellite.library.main.arguments.session.shell)
+
+Which shell started it. **Not built** — M20.
+
+.  `1 14 1 1 8 2`  `satellite.library.main.arguments.session.terminal`
+> satellite.help(satellite.library.main.arguments.session.terminal)
+
+What kind of terminal it is attached to. **Not built** — M20.
+
+.  `1 14 1 1 8 3`  `satellite.library.main.arguments.session.language`
+> satellite.help(satellite.library.main.arguments.session.language)
+
+The language and encoding the session is set to. **Not built** — M20.
+
+.  `1 14 1 1 8 4`  `satellite.library.main.arguments.session.home`
+> satellite.help(satellite.library.main.arguments.session.home)
+
+The home directory of whoever is running it. Asked of the environment
+first and of the password database when that is empty, because `$HOME` can
+be unset or forged and the password database is the authority. **Not built** — M20.
+
+.  `1 14 1 1 8 5`  `satellite.library.main.arguments.session.directory`
+> satellite.help(satellite.library.main.arguments.session.directory)
+
+The directory the program was started in, which is what a relative path
+is relative to. **Not built** — M20.
+
+.  `1 14 1 1 9`  `satellite.library.main.arguments.count`
+> satellite.help(satellite.library.main.arguments.count)
+
+How many words were on the command line, the program's own name
+included.
+
+It **describes** the command line rather than being part of it, so it is
+not one of the words it counts. **Not built** — M20.
 
 .  `1 14 2`  `satellite.library.system`
 > satellite.help(satellite.library.system)
@@ -3034,9 +3267,10 @@ directory was not empty, or it was not yours to remove.
 .  `1 22 2`  `satellite.system.environment`
 > satellite.help(satellite.system.environment)
 
-The environment the program was started in.
+The environment the program was started in, as a map of every variable.
 
-**Not built.** The path is numbered and no milestone has reached it.
+For a single variable, write `satellite.system.environment(name)`.
+**Not built** — M20.
 
 .  `1 22 3`  `satellite.system.home`
 > satellite.help(satellite.system.home)
@@ -3119,6 +3353,11 @@ How much swap there is altogether, in the unit you name. **Not built.**
 
 The swap file, reported in the unit you name. **Not built.**
 
+.  `1 22 4 4 7`  `satellite.system.memory.swap.used(unit)`
+> satellite.help(satellite.system.memory.swap.used)
+
+How much swap is in use, in the unit you name. **Not built** — M20.
+
 .  `1 22 4 5`  `satellite.system.memory.this`
 > satellite.help(satellite.system.memory.this)
 
@@ -3155,6 +3394,15 @@ built.**
 
 How much this program has asked for and is not using, in the unit you
 name. **Not built.**
+
+.  `1 22 4 5 6`  `satellite.system.memory.this.used(unit)`
+> satellite.help(satellite.system.memory.this.used)
+
+How much memory this program is actually using, in the unit you name.
+
+This is the running thread's own figure. Linux accounts an address space
+per process, so a heap-per-thread number would be the same for every
+thread and would answer nothing. **Not built** — M20.
 
 .  `1 22 4 6`  `satellite.system.memory.free()`
 > satellite.help(satellite.system.memory.free)
@@ -3238,6 +3486,15 @@ on afterwards. It wants a real bool, so write
 
     satellite.console.display(satellite.system.persist(satellite.bool.false))
     satellite.console.display(satellite.system.persist(satellite.bool.true))
+
+.  `1 22 9`  `satellite.system.environment(name)`
+> satellite.help(satellite.system.environment)
+
+One environment variable, by name.
+
+Written bare, `satellite.system.environment` answers a map of the whole
+environment; given a name it answers just that one — the same read-all /
+read-one pair `satellite.system.memory` carries. **Not built** — M20.
 
 
 ## thread

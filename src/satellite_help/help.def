@@ -2505,6 +2505,36 @@ SAT_HELP(LIBRARY_MAIN_ARGUMENTS_MACHINE_THREADS, LIBRARY_MAIN_ARGUMENTS_MACHINE_
          ""
          )
 
+// 1 14 1 1 1 4  satellite.library.main.arguments.machine.architecture
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_MACHINE_ARCHITECTURE, LIBRARY_MAIN_ARGUMENTS_MACHINE_ARCHITECTURE,
+         "What kind of processor this is — `x86_64` on this machine. This is the\n"
+         "machine's instruction set and not its model name; `cpu` is the model. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 1 5  satellite.library.main.arguments.machine.byte_order
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_MACHINE_BYTE_ORDER, LIBRARY_MAIN_ARGUMENTS_MACHINE_BYTE_ORDER,
+         "Which end of a number this machine stores first: `little` or `big`. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 1 6  satellite.library.main.arguments.machine.page_size
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_MACHINE_PAGE_SIZE, LIBRARY_MAIN_ARGUMENTS_MACHINE_PAGE_SIZE,
+         "How many bytes the operating system hands out memory in. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 1 7  satellite.library.main.arguments.machine.pointer_bits
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_MACHINE_POINTER_BITS, LIBRARY_MAIN_ARGUMENTS_MACHINE_POINTER_BITS,
+         "How wide an address is on this machine — 64 on anything satellite\n"
+         "currently runs on. **Not built** — M20."
+         ,
+         ""
+         )
+
 // 1 14 1 1 2  satellite.library.main.arguments.memory
 SAT_HELP(LIBRARY_MAIN_ARGUMENTS_MEMORY, LIBRARY_MAIN_ARGUMENTS_MEMORY,
          "How much memory the machine has. **Not built** — M20."
@@ -2532,6 +2562,289 @@ SAT_HELP(LIBRARY_MAIN_ARGUMENTS_MEMORY_TOTAL, LIBRARY_MAIN_ARGUMENTS_MEMORY_TOTA
 // 1 14 1 1 3  satellite.library.main.arguments.username
 SAT_HELP(LIBRARY_MAIN_ARGUMENTS_USERNAME, LIBRARY_MAIN_ARGUMENTS_USERNAME,
          "Who is running the program. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4  satellite.library.main.arguments.system
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM, LIBRARY_MAIN_ARGUMENTS_SYSTEM,
+         "What the operating system is: its name, its kernel, which distribution\n"
+         "it is, and what this machine is called.\n"
+         "\n"
+         "One fact per word rather than one sentence to read, so a program that\n"
+         "wants the kernel does not have to take a string apart. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4 0  satellite.library.main.arguments.system()
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM_0, LIBRARY_MAIN_ARGUMENTS_SYSTEM,
+         "The bare shape — all of the operating-system facts together. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4 1  satellite.library.main.arguments.system.name
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM_NAME, LIBRARY_MAIN_ARGUMENTS_SYSTEM_NAME,
+         "What the operating system calls itself — `Linux` here. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4 2  satellite.library.main.arguments.system.kernel
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM_KERNEL, LIBRARY_MAIN_ARGUMENTS_SYSTEM_KERNEL,
+         "Which kernel is running, as a release — the number you would quote when\n"
+         "asking whether a feature is present. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4 3  satellite.library.main.arguments.system.kernel_version
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM_KERNEL_VERSION, LIBRARY_MAIN_ARGUMENTS_SYSTEM_KERNEL_VERSION,
+         "The kernel's own build string, which says when it was built and by what.\n"
+         "Longer and less useful than `kernel`, and occasionally the only thing that\n"
+         "tells two machines apart. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4 4  satellite.library.main.arguments.system.distribution
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION, LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION,
+         "The distribution, written the way it wants to be read — the pretty name\n"
+         "out of `/etc/os-release`. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4 5  satellite.library.main.arguments.system.distribution_id
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION_ID, LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION_ID,
+         "The distribution's short machine-readable name, which is the one to\n"
+         "compare against. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4 6  satellite.library.main.arguments.system.distribution_version
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION_VERSION, LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION_VERSION,
+         "Which release of the distribution this is. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 4 7  satellite.library.main.arguments.system.hostname
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SYSTEM_HOSTNAME, LIBRARY_MAIN_ARGUMENTS_SYSTEM_HOSTNAME,
+         "What this machine calls itself on the network. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5  satellite.library.main.arguments.build
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD, LIBRARY_MAIN_ARGUMENTS_BUILD,
+         "What built the interpreter that is running.\n"
+         "\n"
+         "**These describe the binary, not the machine.** They are baked in when\n"
+         "satellite is compiled, so they stay true if the compiler is upgraded or\n"
+         "removed afterwards — which is the whole reason they are worth carrying. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 0  satellite.library.main.arguments.build()
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_0, LIBRARY_MAIN_ARGUMENTS_BUILD,
+         "The bare shape — all of the build facts together. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 1  satellite.library.main.arguments.build.compiler
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_COMPILER, LIBRARY_MAIN_ARGUMENTS_BUILD_COMPILER,
+         "Which C++ compiler built this interpreter. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 2  satellite.library.main.arguments.build.compiler_version
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_COMPILER_VERSION, LIBRARY_MAIN_ARGUMENTS_BUILD_COMPILER_VERSION,
+         "Which version of that compiler. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 3  satellite.library.main.arguments.build.standard
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_STANDARD, LIBRARY_MAIN_ARGUMENTS_BUILD_STANDARD,
+         "Which C++ standard it was built to. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 4  satellite.library.main.arguments.build.flags
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_FLAGS, LIBRARY_MAIN_ARGUMENTS_BUILD_FLAGS,
+         "The flags it was built with. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 5  satellite.library.main.arguments.build.make
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_MAKE, LIBRARY_MAIN_ARGUMENTS_BUILD_MAKE,
+         "Which `make` drove the build. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 6  satellite.library.main.arguments.build.standard_library
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_STANDARD_LIBRARY, LIBRARY_MAIN_ARGUMENTS_BUILD_STANDARD_LIBRARY,
+         "Which C++ standard library it is linked against. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 7  satellite.library.main.arguments.build.c_library
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_C_LIBRARY, LIBRARY_MAIN_ARGUMENTS_BUILD_C_LIBRARY,
+         "Which C library it is linked against. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 5 8  satellite.library.main.arguments.build.built
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_BUILD_BUILT, LIBRARY_MAIN_ARGUMENTS_BUILD_BUILT,
+         "When it was built. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 6  satellite.library.main.arguments.interpreter
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_INTERPRETER, LIBRARY_MAIN_ARGUMENTS_INTERPRETER,
+         "The interpreter that is running this program, and **written bare it is\n"
+         "the path to it** — where the `satl` binary actually lives.\n"
+         "\n"
+         "That is the one place in the arguments object where a bare word is a fact\n"
+         "rather than a group of them, and it is deliberate: `machine`, `system`,\n"
+         "`build`, `process` and `session` are groupings, and an interpreter is a\n"
+         "thing, whose natural value is where it is. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 6 0  satellite.library.main.arguments.interpreter()
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_INTERPRETER_0, LIBRARY_MAIN_ARGUMENTS_INTERPRETER,
+         "The bare shape, and here it is the answer: the path to the running\n"
+         "`satl` binary. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 6 1  satellite.library.main.arguments.interpreter.version
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_INTERPRETER_VERSION, LIBRARY_MAIN_ARGUMENTS_INTERPRETER_VERSION,
+         "Which version and revision of satellite this is. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 6 2  satellite.library.main.arguments.interpreter.library_path
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_INTERPRETER_LIBRARY_PATH, LIBRARY_MAIN_ARGUMENTS_INTERPRETER_LIBRARY_PATH,
+         "Where it looks for the files `satellite.include` reads. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 6 3  satellite.library.main.arguments.interpreter.library_path_source
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_INTERPRETER_LIBRARY_PATH_SOURCE, LIBRARY_MAIN_ARGUMENTS_INTERPRETER_LIBRARY_PATH_SOURCE,
+         "**How** it found that path, which is a different question from what the\n"
+         "path is: an environment variable, a directory beside the binary, one\n"
+         "compiled in, or none at all. \"It found a library\" and \"it found the one\n"
+         "you installed\" are different answers and only one of them is reassuring. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 7  satellite.library.main.arguments.process
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_PROCESS, LIBRARY_MAIN_ARGUMENTS_PROCESS,
+         "This running program, as the operating system sees it. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 7 0  satellite.library.main.arguments.process()
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_PROCESS_0, LIBRARY_MAIN_ARGUMENTS_PROCESS,
+         "The bare shape — both process facts together. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 7 1  satellite.library.main.arguments.process.id
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_PROCESS_ID, LIBRARY_MAIN_ARGUMENTS_PROCESS_ID,
+         "This program's own process id. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 7 2  satellite.library.main.arguments.process.parent
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_PROCESS_PARENT, LIBRARY_MAIN_ARGUMENTS_PROCESS_PARENT,
+         "The process id of whatever started it — usually the shell. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 8  satellite.library.main.arguments.session
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SESSION, LIBRARY_MAIN_ARGUMENTS_SESSION,
+         "The session the program was started in: whose shell, which terminal,\n"
+         "what language, where home is and where the program is running. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 8 0  satellite.library.main.arguments.session()
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SESSION_0, LIBRARY_MAIN_ARGUMENTS_SESSION,
+         "The bare shape — all of the session facts together. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 8 1  satellite.library.main.arguments.session.shell
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SESSION_SHELL, LIBRARY_MAIN_ARGUMENTS_SESSION_SHELL,
+         "Which shell started it. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 8 2  satellite.library.main.arguments.session.terminal
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SESSION_TERMINAL, LIBRARY_MAIN_ARGUMENTS_SESSION_TERMINAL,
+         "What kind of terminal it is attached to. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 8 3  satellite.library.main.arguments.session.language
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SESSION_LANGUAGE, LIBRARY_MAIN_ARGUMENTS_SESSION_LANGUAGE,
+         "The language and encoding the session is set to. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 8 4  satellite.library.main.arguments.session.home
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SESSION_HOME, LIBRARY_MAIN_ARGUMENTS_SESSION_HOME,
+         "The home directory of whoever is running it. Asked of the environment\n"
+         "first and of the password database when that is empty, because `$HOME` can\n"
+         "be unset or forged and the password database is the authority. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 8 5  satellite.library.main.arguments.session.directory
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_SESSION_DIRECTORY, LIBRARY_MAIN_ARGUMENTS_SESSION_DIRECTORY,
+         "The directory the program was started in, which is what a relative path\n"
+         "is relative to. **Not built** — M20."
+         ,
+         ""
+         )
+
+// 1 14 1 1 9  satellite.library.main.arguments.count
+SAT_HELP(LIBRARY_MAIN_ARGUMENTS_COUNT, LIBRARY_MAIN_ARGUMENTS_COUNT,
+         "How many words were on the command line, the program's own name\n"
+         "included.\n"
+         "\n"
+         "It **describes** the command line rather than being part of it, so it is\n"
+         "not one of the words it counts. **Not built** — M20."
          ,
          ""
          )
@@ -3010,9 +3323,10 @@ SAT_HELP(SYSTEM_DELETE, SYSTEM_DELETE,
 
 // 1 22 2  satellite.system.environment
 SAT_HELP(SYSTEM_ENVIRONMENT, SYSTEM_ENVIRONMENT,
-         "The environment the program was started in.\n"
+         "The environment the program was started in, as a map of every variable.\n"
          "\n"
-         "**Not built.** The path is numbered and no milestone has reached it."
+         "For a single variable, write `satellite.system.environment(name)`.\n"
+         "**Not built** — M20."
          ,
          ""
          )
@@ -3126,6 +3440,13 @@ SAT_HELP(SYSTEM_MEMORY_SWAP_UNIT, SYSTEM_MEMORY_SWAP,
          ""
          )
 
+// 1 22 4 4 7  satellite.system.memory.swap.used(unit)
+SAT_HELP(SYSTEM_MEMORY_SWAP_USED_UNIT, SYSTEM_MEMORY_SWAP_USED,
+         "How much swap is in use, in the unit you name. **Not built** — M20."
+         ,
+         ""
+         )
+
 // 1 22 4 5  satellite.system.memory.this
 SAT_HELP(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS,
          "This program's own memory, as against the machine's. **Not built.**"
@@ -3173,6 +3494,17 @@ SAT_HELP(SYSTEM_MEMORY_THIS_AVAILABLE_UNIT, SYSTEM_MEMORY_THIS_AVAILABLE_0,
 SAT_HELP(SYSTEM_MEMORY_THIS_FREE_UNIT, SYSTEM_MEMORY_THIS_FREE_0,
          "How much this program has asked for and is not using, in the unit you\n"
          "name. **Not built.**"
+         ,
+         ""
+         )
+
+// 1 22 4 5 6  satellite.system.memory.this.used(unit)
+SAT_HELP(SYSTEM_MEMORY_THIS_USED_UNIT, SYSTEM_MEMORY_THIS_USED,
+         "How much memory this program is actually using, in the unit you name.\n"
+         "\n"
+         "This is the running thread's own figure. Linux accounts an address space\n"
+         "per process, so a heap-per-thread number would be the same for every\n"
+         "thread and would answer nothing. **Not built** — M20."
          ,
          ""
          )
@@ -3272,6 +3604,17 @@ SAT_HELP(SYSTEM_PERSIST_X, SYSTEM_PERSIST_0,
          ,
          "satellite.console.display(satellite.system.persist(satellite.bool.false))\n"
          "satellite.console.display(satellite.system.persist(satellite.bool.true))"
+         )
+
+// 1 22 9  satellite.system.environment(name)
+SAT_HELP(SYSTEM_ENVIRONMENT_NAME, SYSTEM_ENVIRONMENT,
+         "One environment variable, by name.\n"
+         "\n"
+         "Written bare, `satellite.system.environment` answers a map of the whole\n"
+         "environment; given a name it answers just that one — the same read-all /\n"
+         "read-one pair `satellite.system.memory` carries. **Not built** — M20."
+         ,
+         ""
          )
 
 // 1 23  satellite.thread

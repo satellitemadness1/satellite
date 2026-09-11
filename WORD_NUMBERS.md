@@ -536,9 +536,44 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.library.main.arguments.machine.cores` | `1 14 1 1 1 1` | assigned |
 | `satellite.library.main.arguments.machine.cpu` | `1 14 1 1 1 2` | assigned |
 | `satellite.library.main.arguments.machine.threads` | `1 14 1 1 1 3` | assigned |
+| `satellite.library.main.arguments.machine.architecture` | `1 14 1 1 1 4` | assigned — M20. `uname.machine`, and NOT `cpu` `1 14 1 1 1 2` |
+| `satellite.library.main.arguments.machine.byte_order` | `1 14 1 1 1 5` | assigned — M20 |
+| `satellite.library.main.arguments.machine.page_size` | `1 14 1 1 1 6` | assigned — M20 |
+| `satellite.library.main.arguments.machine.pointer_bits` | `1 14 1 1 1 7` | assigned — M20 |
 | `satellite.library.main.arguments.memory` | `1 14 1 1 2 (0)` | assigned |
 | `satellite.library.main.arguments.memory.total` | `1 14 1 1 2 1` | assigned |
 | `satellite.library.main.arguments.username` | `1 14 1 1 3` | assigned |
+| `satellite.library.main.arguments.system` | `1 14 1 1 4 (0)` | assigned — M20. The bare shape is the sub-object |
+| `satellite.library.main.arguments.system.name` | `1 14 1 1 4 1` | assigned |
+| `satellite.library.main.arguments.system.kernel` | `1 14 1 1 4 2` | assigned |
+| `satellite.library.main.arguments.system.kernel_version` | `1 14 1 1 4 3` | assigned |
+| `satellite.library.main.arguments.system.distribution` | `1 14 1 1 4 4` | assigned |
+| `satellite.library.main.arguments.system.distribution_id` | `1 14 1 1 4 5` | assigned |
+| `satellite.library.main.arguments.system.distribution_version` | `1 14 1 1 4 6` | assigned |
+| `satellite.library.main.arguments.system.hostname` | `1 14 1 1 4 7` | assigned |
+| `satellite.library.main.arguments.build` | `1 14 1 1 5 (0)` | assigned — M20. Baked in at compile time: these describe the binary that is RUNNING, not whatever compiler is installed now |
+| `satellite.library.main.arguments.build.compiler` | `1 14 1 1 5 1` | assigned |
+| `satellite.library.main.arguments.build.compiler_version` | `1 14 1 1 5 2` | assigned |
+| `satellite.library.main.arguments.build.standard` | `1 14 1 1 5 3` | assigned |
+| `satellite.library.main.arguments.build.flags` | `1 14 1 1 5 4` | assigned |
+| `satellite.library.main.arguments.build.make` | `1 14 1 1 5 5` | assigned |
+| `satellite.library.main.arguments.build.standard_library` | `1 14 1 1 5 6` | assigned |
+| `satellite.library.main.arguments.build.c_library` | `1 14 1 1 5 7` | assigned |
+| `satellite.library.main.arguments.build.built` | `1 14 1 1 5 8` | assigned |
+| `satellite.library.main.arguments.interpreter` | `1 14 1 1 6 (0)` | assigned — M20. **The `(0)` IS THE PATH** and not a sub-object, the one asymmetry in this subtree: a grouping has no value of its own and a binary does |
+| `satellite.library.main.arguments.interpreter.version` | `1 14 1 1 6 1` | assigned |
+| `satellite.library.main.arguments.interpreter.library_path` | `1 14 1 1 6 2` | assigned |
+| `satellite.library.main.arguments.interpreter.library_path_source` | `1 14 1 1 6 3` | assigned |
+| `satellite.library.main.arguments.process` | `1 14 1 1 7 (0)` | assigned — M20. The bare shape is the sub-object |
+| `satellite.library.main.arguments.process.id` | `1 14 1 1 7 1` | assigned |
+| `satellite.library.main.arguments.process.parent` | `1 14 1 1 7 2` | assigned |
+| `satellite.library.main.arguments.session` | `1 14 1 1 8 (0)` | assigned — M20. The bare shape is the sub-object |
+| `satellite.library.main.arguments.session.shell` | `1 14 1 1 8 1` | assigned |
+| `satellite.library.main.arguments.session.terminal` | `1 14 1 1 8 2` | assigned |
+| `satellite.library.main.arguments.session.language` | `1 14 1 1 8 3` | assigned |
+| `satellite.library.main.arguments.session.home` | `1 14 1 1 8 4` | assigned |
+| `satellite.library.main.arguments.session.directory` | `1 14 1 1 8 5` | assigned |
+| `satellite.library.main.arguments.count` | `1 14 1 1 9` | assigned — M20. v1's `argument_count`: it DESCRIBES the command line and is not part of it |
 | `satellite.library.system` | `1 14 2 (0)` | assigned |
 | `satellite.library.system.division_digits` | `1 14 2 1` | assigned |
 | `satellite.library.system.max_depth` | `1 14 2 2` | assigned |
@@ -585,12 +620,14 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.system.memory.swap.free(unit)` | `1 22 4 4 4` | assigned |
 | `satellite.system.memory.swap.total(unit)` | `1 22 4 4 5` | assigned |
 | `satellite.system.memory.swap(unit)` | `1 22 4 4 6` | assigned — swap's own optional unit |
+| `satellite.system.memory.swap.used(unit)` | `1 22 4 4 7` | assigned 2026-09-09 — M20. v1's unit block is reached for every swap form, so it ANSWERS this and §2.2 wrote `1 22 4 4 3` without the parens |
 | `satellite.system.memory.this` | `1 22 4 5 (0)` | assigned |
 | `satellite.system.memory.this.available()` | `1 22 4 5 1` | assigned |
 | `satellite.system.memory.this.free()` | `1 22 4 5 2` | assigned |
 | `satellite.system.memory.this.used` | `1 22 4 5 3` | assigned |
 | `satellite.system.memory.this.available(unit)` | `1 22 4 5 4` | assigned |
 | `satellite.system.memory.this.free(unit)` | `1 22 4 5 5` | assigned |
+| `satellite.system.memory.this.used(unit)` | `1 22 4 5 6` | assigned 2026-09-09 — M20, and it was BLOCKING M20's done-when: `example/full_test.satl:613` is this call |
 | `satellite.system.memory.free()` | `1 22 4 6` | assigned |
 | `satellite.system.memory.total()` | `1 22 4 7` | assigned |
 | `satellite.system.memory.used()` | `1 22 4 8` | assigned |
@@ -602,6 +639,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.system.threshold(n)` | `1 22 6` | assigned — set |
 | `satellite.system.persist()` | `1 22 7` | assigned 2026-09-07 — read, §2.7 |
 | `satellite.system.persist(x)` | `1 22 8` | assigned 2026-09-07 — set, §2.7 |
+| `satellite.system.environment(name)` | `1 22 9` | assigned 2026-09-09 — M20. A SIBLING and not a child: §4's rule, a user-owned argument contributes no number of its own. Bare `environment` `1 22 2` answers the whole map |
 | `satellite.thread` | `1 23 (0)` | assigned |
 | `satellite.thread.new` | `1 23 1` | assigned |
 | `satellite.window` | `1 24 (0)` | assigned |

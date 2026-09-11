@@ -49,5 +49,213 @@
   "query": "satellite.help(satellite.library.system.float_digits)",
   "prose": "How many digits a float carries by default.\n\nPrecision travels with the value, so narrowing this dial changes the\nfloats made after it rather than the ones already held.",
   "example": "satellite.library.system.float_digits = 5\nsatellite.variable.float narrow = 1\nsatellite.console.display(narrow / 3)"
+},
+
+"1 14 1 1 1 4": {
+  "query": "satellite.help(satellite.library.main.arguments.machine.architecture)",
+  "prose": "What kind of processor this is — `x86_64` on this machine. This is the\nmachine's instruction set and not its model name; `cpu` is the model. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 1 5": {
+  "query": "satellite.help(satellite.library.main.arguments.machine.byte_order)",
+  "prose": "Which end of a number this machine stores first: `little` or `big`. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 1 6": {
+  "query": "satellite.help(satellite.library.main.arguments.machine.page_size)",
+  "prose": "How many bytes the operating system hands out memory in. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 1 7": {
+  "query": "satellite.help(satellite.library.main.arguments.machine.pointer_bits)",
+  "prose": "How wide an address is on this machine — 64 on anything satellite\ncurrently runs on. **Not built** — M20.",
+  "example": ""
+},
+
+"1 14 1 1 4": {
+  "query": "satellite.help(satellite.library.main.arguments.system)",
+  "prose": "What the operating system is: its name, its kernel, which distribution\nit is, and what this machine is called.\n\nOne fact per word rather than one sentence to read, so a program that\nwants the kernel does not have to take a string apart. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 4 0": {
+  "query": "satellite.help(satellite.library.main.arguments.system)",
+  "prose": "The bare shape — all of the operating-system facts together. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 4 1": {
+  "query": "satellite.help(satellite.library.main.arguments.system.name)",
+  "prose": "What the operating system calls itself — `Linux` here. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 4 2": {
+  "query": "satellite.help(satellite.library.main.arguments.system.kernel)",
+  "prose": "Which kernel is running, as a release — the number you would quote when\nasking whether a feature is present. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 4 3": {
+  "query": "satellite.help(satellite.library.main.arguments.system.kernel_version)",
+  "prose": "The kernel's own build string, which says when it was built and by what.\nLonger and less useful than `kernel`, and occasionally the only thing that\ntells two machines apart. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 4 4": {
+  "query": "satellite.help(satellite.library.main.arguments.system.distribution)",
+  "prose": "The distribution, written the way it wants to be read — the pretty name\nout of `/etc/os-release`. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 4 5": {
+  "query": "satellite.help(satellite.library.main.arguments.system.distribution_id)",
+  "prose": "The distribution's short machine-readable name, which is the one to\ncompare against. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 4 6": {
+  "query": "satellite.help(satellite.library.main.arguments.system.distribution_version)",
+  "prose": "Which release of the distribution this is. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 4 7": {
+  "query": "satellite.help(satellite.library.main.arguments.system.hostname)",
+  "prose": "What this machine calls itself on the network. **Not built** — M20.",
+  "example": ""
+},
+
+"1 14 1 1 5": {
+  "query": "satellite.help(satellite.library.main.arguments.build)",
+  "prose": "What built the interpreter that is running.\n\n**These describe the binary, not the machine.** They are baked in when\nsatellite is compiled, so they stay true if the compiler is upgraded or\nremoved afterwards — which is the whole reason they are worth carrying. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 0": {
+  "query": "satellite.help(satellite.library.main.arguments.build)",
+  "prose": "The bare shape — all of the build facts together. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 1": {
+  "query": "satellite.help(satellite.library.main.arguments.build.compiler)",
+  "prose": "Which C++ compiler built this interpreter. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 2": {
+  "query": "satellite.help(satellite.library.main.arguments.build.compiler_version)",
+  "prose": "Which version of that compiler. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 3": {
+  "query": "satellite.help(satellite.library.main.arguments.build.standard)",
+  "prose": "Which C++ standard it was built to. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 4": {
+  "query": "satellite.help(satellite.library.main.arguments.build.flags)",
+  "prose": "The flags it was built with. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 5": {
+  "query": "satellite.help(satellite.library.main.arguments.build.make)",
+  "prose": "Which `make` drove the build. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 6": {
+  "query": "satellite.help(satellite.library.main.arguments.build.standard_library)",
+  "prose": "Which C++ standard library it is linked against. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 7": {
+  "query": "satellite.help(satellite.library.main.arguments.build.c_library)",
+  "prose": "Which C library it is linked against. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 5 8": {
+  "query": "satellite.help(satellite.library.main.arguments.build.built)",
+  "prose": "When it was built. **Not built** — M20.",
+  "example": ""
+},
+
+"1 14 1 1 6": {
+  "query": "satellite.help(satellite.library.main.arguments.interpreter)",
+  "prose": "The interpreter that is running this program, and **written bare it is\nthe path to it** — where the `satl` binary actually lives.\n\nThat is the one place in the arguments object where a bare word is a fact\nrather than a group of them, and it is deliberate: `machine`, `system`,\n`build`, `process` and `session` are groupings, and an interpreter is a\nthing, whose natural value is where it is. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 6 0": {
+  "query": "satellite.help(satellite.library.main.arguments.interpreter)",
+  "prose": "The bare shape, and here it is the answer: the path to the running\n`satl` binary. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 6 1": {
+  "query": "satellite.help(satellite.library.main.arguments.interpreter.version)",
+  "prose": "Which version and revision of satellite this is. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 6 2": {
+  "query": "satellite.help(satellite.library.main.arguments.interpreter.library_path)",
+  "prose": "Where it looks for the files `satellite.include` reads. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 6 3": {
+  "query": "satellite.help(satellite.library.main.arguments.interpreter.library_path_source)",
+  "prose": "**How** it found that path, which is a different question from what the\npath is: an environment variable, a directory beside the binary, one\ncompiled in, or none at all. \"It found a library\" and \"it found the one\nyou installed\" are different answers and only one of them is reassuring. **Not built** — M20.",
+  "example": ""
+},
+
+"1 14 1 1 7": {
+  "query": "satellite.help(satellite.library.main.arguments.process)",
+  "prose": "This running program, as the operating system sees it. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 7 0": {
+  "query": "satellite.help(satellite.library.main.arguments.process)",
+  "prose": "The bare shape — both process facts together. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 7 1": {
+  "query": "satellite.help(satellite.library.main.arguments.process.id)",
+  "prose": "This program's own process id. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 7 2": {
+  "query": "satellite.help(satellite.library.main.arguments.process.parent)",
+  "prose": "The process id of whatever started it — usually the shell. **Not built** — M20.",
+  "example": ""
+},
+
+"1 14 1 1 8": {
+  "query": "satellite.help(satellite.library.main.arguments.session)",
+  "prose": "The session the program was started in: whose shell, which terminal,\nwhat language, where home is and where the program is running. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 8 0": {
+  "query": "satellite.help(satellite.library.main.arguments.session)",
+  "prose": "The bare shape — all of the session facts together. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 8 1": {
+  "query": "satellite.help(satellite.library.main.arguments.session.shell)",
+  "prose": "Which shell started it. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 8 2": {
+  "query": "satellite.help(satellite.library.main.arguments.session.terminal)",
+  "prose": "What kind of terminal it is attached to. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 8 3": {
+  "query": "satellite.help(satellite.library.main.arguments.session.language)",
+  "prose": "The language and encoding the session is set to. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 8 4": {
+  "query": "satellite.help(satellite.library.main.arguments.session.home)",
+  "prose": "The home directory of whoever is running it. Asked of the environment\nfirst and of the password database when that is empty, because `$HOME` can\nbe unset or forged and the password database is the authority. **Not built** — M20.",
+  "example": ""
+},
+"1 14 1 1 8 5": {
+  "query": "satellite.help(satellite.library.main.arguments.session.directory)",
+  "prose": "The directory the program was started in, which is what a relative path\nis relative to. **Not built** — M20.",
+  "example": ""
+},
+
+"1 14 1 1 9": {
+  "query": "satellite.help(satellite.library.main.arguments.count)",
+  "prose": "How many words were on the command line, the program's own name\nincluded.\n\nIt **describes** the command line rather than being part of it, so it is\nnot one of the words it counts. **Not built** — M20.",
+  "example": ""
 }
+
 }

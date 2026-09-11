@@ -127,20 +127,36 @@
 // `persist()` `1 22 7` and `persist(x)` `1 22 8` -- WORD_NUMBERS §2.7 -- and
 // 236 / 233 since 2026-09-08, when M19 appended the failed-open contract at
 // `1 6 2 8`-`1 6 2 10`, the byte-exact `write(x)` at `1 6 2 11` and
-// `satellite.file.exists(path)` at `1 8 5`:
+// `satellite.file.exists(path)` at `1 8 5`, and 285 / 282 since 2026-09-11,
+// when M20 appended 38: the arguments object's 35 -- four under `machine`,
+// then `system` `build` `interpreter` `process`
+// `session` with their children, then `count` -- and the three call shapes v1
+// accepts that §2.2 had no number for, `swap.used(unit)` `1 22 4 4 7`,
+// `this.used(unit)` `1 22 4 5 6` and `environment(name)` `1 22 9`:
 //
-//     230   SAT_NUMBERED   236 rows, less 3 written as bare shapes and 3 aliases
-//      39   SAT_BARE       36 `(0)` markers plus those 3 rows
+//     279   SAT_NUMBERED   285 rows, less 3 written as bare shapes and 3 aliases
+//      46   SAT_BARE       43 `(0)` markers plus those 3 rows
 //     ---
-//     269   nodes, each with a PathId
-//      11   SAT_ALIAS      3 `.range`, `hexadecimal`, `class`, 6 of `arguments`
+//     325   nodes, each with a PathId
+//      11   SAT_ALIAS      3 `.range`, `hexadecimal`, `class`, 7 of `arguments`
 //
-// AND FOUR SMALL LISTS OVER THOSE NODES, each a fact about a word that one pass
+// THE BLOCK ABOVE READ 230 / 39 / 269 UNTIL 2026-09-11 AND HAD BEEN WRONG SINCE
+// M19.5. Four milestones appended nodes without touching it -- binary and hex,
+// M19.6's option token, and `spacesuit` -- so it was describing a registry
+// thirteen nodes smaller than the one below it. **A count in a comment has
+// nothing checking it**, which is exactly the property tests/words_test gives
+// §2.2's three counts and this paragraph does not have; what makes it
+// recoverable is that the numbers are derivable, and `satl --words` prints the
+// node total on its last line. Recorded rather than quietly fixed, because the
+// next milestone to append will be the fifth to walk past it.
+//
+// AND FIVE SMALL LISTS OVER THOSE NODES, each a fact about a word that one pass
 // needs and no other, declared on the word rather than legislated from the pass:
 //
 //       1   SAT_PLACE      `input(prompt, target)`'s out parameter      M14
-//      27   SAT_BUILT      the front-end words help must name           M18
+//      29   SAT_BUILT      the front-end words help must name           M18
 //       1   SAT_TOPIC      `help(x)`'s argument, which is never run     M18
+//       1   SAT_OPTIONS    the words WORD_NUMBERS §1.5's fold applies to M19
 //
 // Every one of them is SELF-DEFAULTING -- a consumer that does not care never
 // learns the list exists -- and each says at its own head why it is data here
@@ -456,10 +472,72 @@ SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_0,      
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_CORES,   "cores",           SAT_NUMBERED)  // 1 14 1 1 1 1
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_CPU,     "cpu",             SAT_NUMBERED)  // 1 14 1 1 1 2
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_THREADS, "threads",         SAT_NUMBERED)  // 1 14 1 1 1 3
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_ARCHITECTURE, "architecture",  SAT_NUMBERED)  // 1 14 1 1 1 4
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_BYTE_ORDER,   "byte_order",    SAT_NUMBERED)  // 1 14 1 1 1 5
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_PAGE_SIZE,    "page_size",     SAT_NUMBERED)  // 1 14 1 1 1 6
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MACHINE, LIBRARY_MAIN_ARGUMENTS_MACHINE_POINTER_BITS, "pointer_bits",  SAT_NUMBERED)  // 1 14 1 1 1 7
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS,         LIBRARY_MAIN_ARGUMENTS_MEMORY,          "memory",          SAT_NUMBERED)  // 1 14 1 1 2
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MEMORY,  LIBRARY_MAIN_ARGUMENTS_MEMORY_0,        "()",              SAT_BARE)  // 1 14 1 1 2 0
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS_MEMORY,  LIBRARY_MAIN_ARGUMENTS_MEMORY_TOTAL,    "total",           SAT_NUMBERED)  // 1 14 1 1 2 1
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS,         LIBRARY_MAIN_ARGUMENTS_USERNAME,        "username",        SAT_NUMBERED)  // 1 14 1 1 3
+
+// The 31 of DESIGN §7.7's 33 that had no number, NESTED -- the author's call
+// 2026-09-09, and PLAN.md §8's M20 entry carries the argument. v1 kept them
+// flat and offered a third road, no registry ids at all with the bare selector
+// lowering to .get(name), on the grounds that "spending a permanent registry id
+// on kernel_release would be the registry recording a fact about somebody's
+// machine." M18 IS WHY THAT DOES NOT HOLD: a name with no number is one
+// `satl --words` cannot print and satellite.help cannot answer for, which is a
+// second-class word in a language whose tie-breaker is do everything for the
+// user. The cost of this road is rows, and a number is a position among its
+// parent's children, so appending renumbers nothing.
+//
+// THE OTHER TWO WERE ALREADY HERE: `username` 1 14 1 1 3, and v1's
+// `thread_count`, which is `machine.threads` 1 14 1 1 1 3.
+//
+// `interpreter`'s BARE SHAPE IS THE PATH and not a sub-map, which is the one
+// asymmetry in this block: `machine`, `memory`, `system`, `build`, `process`
+// and `session` are groupings, and `interpreter` is a thing -- the binary that
+// is running -- whose natural value is where it lives, with its version and its
+// library path hanging off it as properties. §1.3's rule is what allows it: a
+// trailing 0 is written where a program can write the node with nothing after
+// it, and this is a node that is reached both bare and as a parent.
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,             LIBRARY_MAIN_ARGUMENTS_SYSTEM,                          "system",                SAT_NUMBERED)  // 1 14 1 1 4
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SYSTEM,      LIBRARY_MAIN_ARGUMENTS_SYSTEM_0,                        "()",                    SAT_BARE)  // 1 14 1 1 4 0
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SYSTEM,      LIBRARY_MAIN_ARGUMENTS_SYSTEM_NAME,                     "name",                  SAT_NUMBERED)  // 1 14 1 1 4 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SYSTEM,      LIBRARY_MAIN_ARGUMENTS_SYSTEM_KERNEL,                   "kernel",                SAT_NUMBERED)  // 1 14 1 1 4 2
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SYSTEM,      LIBRARY_MAIN_ARGUMENTS_SYSTEM_KERNEL_VERSION,           "kernel_version",        SAT_NUMBERED)  // 1 14 1 1 4 3
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SYSTEM,      LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION,             "distribution",          SAT_NUMBERED)  // 1 14 1 1 4 4
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SYSTEM,      LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION_ID,          "distribution_id",       SAT_NUMBERED)  // 1 14 1 1 4 5
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SYSTEM,      LIBRARY_MAIN_ARGUMENTS_SYSTEM_DISTRIBUTION_VERSION,     "distribution_version",  SAT_NUMBERED)  // 1 14 1 1 4 6
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SYSTEM,      LIBRARY_MAIN_ARGUMENTS_SYSTEM_HOSTNAME,                 "hostname",              SAT_NUMBERED)  // 1 14 1 1 4 7
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,             LIBRARY_MAIN_ARGUMENTS_BUILD,                           "build",                 SAT_NUMBERED)  // 1 14 1 1 5
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_0,                         "()",                    SAT_BARE)  // 1 14 1 1 5 0
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_COMPILER,                  "compiler",              SAT_NUMBERED)  // 1 14 1 1 5 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_COMPILER_VERSION,          "compiler_version",      SAT_NUMBERED)  // 1 14 1 1 5 2
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_STANDARD,                  "standard",              SAT_NUMBERED)  // 1 14 1 1 5 3
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_FLAGS,                     "flags",                 SAT_NUMBERED)  // 1 14 1 1 5 4
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_MAKE,                      "make",                  SAT_NUMBERED)  // 1 14 1 1 5 5
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_STANDARD_LIBRARY,          "standard_library",      SAT_NUMBERED)  // 1 14 1 1 5 6
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_C_LIBRARY,                 "c_library",             SAT_NUMBERED)  // 1 14 1 1 5 7
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_BUILD,       LIBRARY_MAIN_ARGUMENTS_BUILD_BUILT,                     "built",                 SAT_NUMBERED)  // 1 14 1 1 5 8
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,             LIBRARY_MAIN_ARGUMENTS_INTERPRETER,                     "interpreter",           SAT_NUMBERED)  // 1 14 1 1 6
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_INTERPRETER, LIBRARY_MAIN_ARGUMENTS_INTERPRETER_0,                   "()",                    SAT_BARE)  // 1 14 1 1 6 0
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_INTERPRETER, LIBRARY_MAIN_ARGUMENTS_INTERPRETER_VERSION,             "version",               SAT_NUMBERED)  // 1 14 1 1 6 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_INTERPRETER, LIBRARY_MAIN_ARGUMENTS_INTERPRETER_LIBRARY_PATH,        "library_path",          SAT_NUMBERED)  // 1 14 1 1 6 2
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_INTERPRETER, LIBRARY_MAIN_ARGUMENTS_INTERPRETER_LIBRARY_PATH_SOURCE, "library_path_source",   SAT_NUMBERED)  // 1 14 1 1 6 3
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,             LIBRARY_MAIN_ARGUMENTS_PROCESS,                         "process",               SAT_NUMBERED)  // 1 14 1 1 7
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_PROCESS,     LIBRARY_MAIN_ARGUMENTS_PROCESS_0,                       "()",                    SAT_BARE)  // 1 14 1 1 7 0
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_PROCESS,     LIBRARY_MAIN_ARGUMENTS_PROCESS_ID,                      "id",                    SAT_NUMBERED)  // 1 14 1 1 7 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_PROCESS,     LIBRARY_MAIN_ARGUMENTS_PROCESS_PARENT,                  "parent",                SAT_NUMBERED)  // 1 14 1 1 7 2
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,             LIBRARY_MAIN_ARGUMENTS_SESSION,                         "session",               SAT_NUMBERED)  // 1 14 1 1 8
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_0,                       "()",                    SAT_BARE)  // 1 14 1 1 8 0
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_SHELL,                   "shell",                 SAT_NUMBERED)  // 1 14 1 1 8 1
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_TERMINAL,                "terminal",              SAT_NUMBERED)  // 1 14 1 1 8 2
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_LANGUAGE,                "language",              SAT_NUMBERED)  // 1 14 1 1 8 3
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_HOME,                    "home",                  SAT_NUMBERED)  // 1 14 1 1 8 4
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_DIRECTORY,               "directory",             SAT_NUMBERED)  // 1 14 1 1 8 5
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,             LIBRARY_MAIN_ARGUMENTS_COUNT,                           "count",                 SAT_NUMBERED)  // 1 14 1 1 9
 SAT_NODE(LIBRARY,                        LIBRARY_SYSTEM,                         "system",          SAT_NUMBERED)  // 1 14 2
 SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_0,                       "()",              SAT_BARE)  // 1 14 2 0
 SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_DIVISION_DIGITS,         "division_digits", SAT_NUMBERED)  // 1 14 2 1
@@ -546,6 +624,7 @@ SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_USED,           "used",         
 SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_FREE_UNIT,      "free(unit)",      SAT_NUMBERED)  // 1 22 4 4 4
 SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_TOTAL_UNIT,     "total(unit)",     SAT_NUMBERED)  // 1 22 4 4 5
 SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_UNIT,           "(unit)",          SAT_NUMBERED)  // 1 22 4 4 6
+SAT_NODE(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP_USED_UNIT,      "used(unit)",      SAT_NUMBERED)  // 1 22 4 4 7
 SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_THIS,                "this",            SAT_NUMBERED)  // 1 22 4 5
 SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_0,              "()",              SAT_BARE)  // 1 22 4 5 0
 SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_AVAILABLE_0,    "available()",     SAT_NUMBERED)  // 1 22 4 5 1
@@ -553,6 +632,7 @@ SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_FREE_0,         "free()",       
 SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_USED,           "used",            SAT_NUMBERED)  // 1 22 4 5 3
 SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_AVAILABLE_UNIT, "available(unit)", SAT_NUMBERED)  // 1 22 4 5 4
 SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_FREE_UNIT,      "free(unit)",      SAT_NUMBERED)  // 1 22 4 5 5
+SAT_NODE(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS_USED_UNIT,      "used(unit)",      SAT_NUMBERED)  // 1 22 4 5 6
 SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_FREE_0,              "free()",          SAT_NUMBERED)  // 1 22 4 6
 SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_TOTAL_0,             "total()",         SAT_NUMBERED)  // 1 22 4 7
 SAT_NODE(SYSTEM_MEMORY,      SYSTEM_MEMORY_USED_0,              "used()",          SAT_NUMBERED)  // 1 22 4 8
@@ -564,6 +644,23 @@ SAT_NODE(SYSTEM,             SYSTEM_THRESHOLD_0,                "threshold()",  
 SAT_NODE(SYSTEM,             SYSTEM_THRESHOLD_N,                "threshold(n)",    SAT_NUMBERED)  // 1 22 6
 SAT_NODE(SYSTEM,             SYSTEM_PERSIST_0,                  "persist()",       SAT_NUMBERED)  // 1 22 7
 SAT_NODE(SYSTEM,             SYSTEM_PERSIST_X,                  "persist(x)",      SAT_NUMBERED)  // 1 22 8
+
+// THE THREE CALL SHAPES v1 ACCEPTS AND §2.2 HAD NO NUMBER FOR -- assigned by
+// the author 2026-09-09, and one of them was blocking M20's own done-when:
+// example/full_test.satl:613 is satellite.system.memory.this.used("kb"), a
+// shape this file did not carry. v1's unit block is reached for every swap and
+// `this` form, so it answers .swap.used(unit) and .this.used(unit) while §2.2
+// wrote 1 22 4 4 3 and 1 22 4 5 3 without the parens their siblings carry --
+// the table recording a sweep's arity rather than the code.
+//
+// `environment(name)` IS A SIBLING AND NOT A CHILD, which is §4's rule and not
+// a preference: a USER-owned argument contributes no number of its own, so its
+// call shape takes a slot beside its siblings. memory.main() 1 22 4 3 against
+// main(unit) 1 22 4 9, six slots apart, is the same rule already in the table.
+// The bare `environment` 1 22 2 answers a map of the whole environment and this
+// one answers the single variable -- the same read-all / read-one pair
+// satellite.system.memory carries.
+SAT_NODE(SYSTEM,             SYSTEM_ENVIRONMENT_NAME,           "environment(name)", SAT_NUMBERED)  // 1 22 9
 
 // --- thread -----------------------------------------------------------------
 // PLAN M23. new has one number for two shapes -- WORD_NUMBERS §4.
