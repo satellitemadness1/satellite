@@ -47,8 +47,23 @@ that does not exist yet: **one mechanism out of `mind.hpp`, running.**
 M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, M11 and M12 both on
 2026-09-03, M13, M14 and M15 all on 2026-09-04 — M13 the day its blockers
 cleared, which no earlier milestone can say, and M14 behind it the same
-sitting, the day the author took its six open answers — and M16 and M17 both
-on 2026-09-06.** *(M1.5 is the window, and it
+sitting, the day the author took its six open answers — M16 and M17 both
+on 2026-09-06, M18 and M19 both on 2026-09-08, M19.5 across 2026-09-08 and
+2026-09-09, and M19.6 on 2026-09-09.** **M20 IS IN PROGRESS as of 2026-09-11,
+five commits in** — §8's entry is where it is tracked and is the only place
+that is current about it; what is left there is the arguments object's ten
+selectors, the done-when program, `min_free_mb` being retunable, and
+`MILESTONES/M20.md`.
+
+**THE NARRATIVE BELOW STOPS AT M17 AND THE LIST ABOVE DOES NOT.** Everything
+from M18 on is in §8 and in `MILESTONES/`, and this section was not extended
+with it — which is worth saying here rather than leaving a reader to notice:
+`SCRATCH.md/SESSION.md` sends people to this section for *where things stand*,
+so a §1 that quietly ended at M17 was pointing them at a frontier four
+milestones behind the tree. **satellite.help exists (M18), files and
+directories are open and read (M19), binary and hexadecimal are values
+(M19.5), and `satellite.system` answers the machine (M20, in progress).**
+*(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
 file will be run, refuses to pretend about the parts that do not exist, **holds
