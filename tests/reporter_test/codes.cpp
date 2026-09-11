@@ -130,7 +130,7 @@ void section_codes()
     // writer did not produce. Refused rather than guessed at, which is the same
     // call S0305 and S0306 make about the two ways a `#` can be wrong.
     // MILESTONES/M19.6.md §1.
-    check(kCodeCount == 114,
+    check(kCodeCount == 115,
           "errors.def has 114 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
@@ -150,6 +150,7 @@ void section_codes()
     check(block_of(Code::CONSOLE_END_OF_INPUT) == 10, "the console's input is S10xx");
     check(block_of(Code::HELP_NOT_BUILT) == 11, "satellite.help is S11xx");
     check(block_of(Code::FILE_BAD_MODE) == 12, "persistence is S12xx");
+    check(block_of(Code::SYSTEM_BAD_UNIT) == 13, "the machine's facts are S13xx");
 
     // THE RESERVED BLOCK IS EMPTY, and this is the check that makes reserving
     // it worth anything. errors.def keeps S07xx for the evaluator; a milestone

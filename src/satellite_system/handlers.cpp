@@ -16,6 +16,8 @@
 #include "evaluator/dispatch.hpp"
 #include "evaluator/machine.hpp"
 #include "machine_limits/limits.hpp"
+#include "satellite_system/host_methods.hpp"
+#include "satellite_system/memory_methods.hpp"
 
 #include <atomic>
 #include "satellite_value/value.hpp"
@@ -235,6 +237,15 @@ void install_handlers()
     eval::Handlers::table().install(
         static_cast<words::PathId>(words::NodeId::SYSTEM_PERSIST_X),
         {write_persist, false, 1, "M22"});
+
+    // M20 -- THE REST OF `satellite.system`, INSTALLED FROM THEIR OWN FILES.
+    // The node above had two built children and thirty numbered ones until
+    // 2026-09-11; these two calls are most of the difference. They are separate
+    // files because they are separate subjects (PLAN M20 splits v1's one
+    // 321-line modules_system.cpp by exactly this seam) and one install because
+    // a caller still installs `satellite.system` once.
+    install_memory();
+    install_host();
 }
 
 bool persisting()

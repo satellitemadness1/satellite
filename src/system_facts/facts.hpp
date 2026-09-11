@@ -90,6 +90,37 @@ unsigned long mem_total_mb();
 unsigned long mem_available_mb();
 unsigned long mem_used_mb();
 
+// Swap: the same three questions, about the same file, read the same way.
+//
+// M6 LEFT THESE FOR M20 BY NAME and memory_facts.cpp's header says so -- "satl
+// does not hold itself to the swap in a machine", so they are not a LIMIT and
+// M6 had no consumer for them. `satellite.system.memory.swap` is the consumer.
+//
+// FREE IS READ AND USED IS COMPUTED, WHICH IS THE OTHER WAY ROUND FROM MAIN
+// MEMORY, and the asymmetry is the kernel's rather than a choice: /proc/meminfo
+// publishes SwapTotal and SwapFree and no SwapAvailable, because swap has no
+// cache to reclaim. So there is nothing here for "available" to mean that
+// "free" does not already mean, and `used` is the subtraction.
+unsigned long long swap_total_bytes();
+unsigned long long swap_free_bytes();
+unsigned long long swap_used_bytes();
+
+// --- the sticks themselves --------------------------------------------------
+
+// What the firmware will admit about the memory in the machine: how fast it is
+// clocked, and how wide the bus is. system_facts/firmware_facts.cpp.
+//
+// BOTH ANSWER 0 FOR AN ORDINARY USER AND 0 IS TRUTHFUL. They read SMBIOS type
+// 17 out of /sys/firmware/dmi/entries, which is mode 0400 root on every
+// ordinary Linux -- so unless satl is run as root these answer 0, and
+// `satellite.system.memory.bit` and `.frequency` report 0. That is not an
+// error and PLAN M20's done-when requires the demonstration to SAY so.
+//
+// M6 LEFT THESE FOR M20 with swap, for the same reason: what a machine's
+// memory is clocked at is not a limit satl holds itself to.
+unsigned long mem_frequency_mhz();
+unsigned mem_width_bits();
+
 // This process's own resident set, right now.
 //
 // RESIDENT AND NOT VIRTUAL. Virtual size counts address space the program

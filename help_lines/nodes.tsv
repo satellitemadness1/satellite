@@ -278,42 +278,42 @@ H	satellite.help(x)	1 19 1	M18	1	0	0
 .	satellite.system	1 22		0	0	0
 .	satellite.system()	1 22 0		0	0	0
 H	satellite.system.delete(x)	1 22 1	M19	1	0	0
-.	satellite.system.environment	1 22 2		0	0	0
-.	satellite.system.home	1 22 3		0	0	0
+H	satellite.system.environment	1 22 2	M20	0	0	0
+H	satellite.system.home	1 22 3	M20	0	0	0
 .	satellite.system.memory	1 22 4		0	0	0
 .	satellite.system.memory()	1 22 4 0		0	0	0
-.	satellite.system.memory.bit	1 22 4 1		0	0	0
-.	satellite.system.memory.frequency	1 22 4 2		0	0	0
-.	satellite.system.memory.main()	1 22 4 3		0	0	0
+H	satellite.system.memory.bit	1 22 4 1	M20	0	0	0
+H	satellite.system.memory.frequency	1 22 4 2	M20	0	0	0
+H	satellite.system.memory.main()	1 22 4 3	M20	0	0	0
 .	satellite.system.memory.swap	1 22 4 4		0	0	0
 .	satellite.system.memory.swap()	1 22 4 4 0		0	0	0
-.	satellite.system.memory.swap.free()	1 22 4 4 1		0	0	0
-.	satellite.system.memory.swap.total()	1 22 4 4 2		0	0	0
-.	satellite.system.memory.swap.used	1 22 4 4 3		0	0	0
-.	satellite.system.memory.swap.free(unit)	1 22 4 4 4		0	0	0
-.	satellite.system.memory.swap.total(unit)	1 22 4 4 5		0	0	0
-.	satellite.system.memory.swap(unit)	1 22 4 4 6		0	0	0
-.	satellite.system.memory.swap.used(unit)	1 22 4 4 7		0	0	0
+H	satellite.system.memory.swap.free()	1 22 4 4 1	M20	0	0	0
+H	satellite.system.memory.swap.total()	1 22 4 4 2	M20	0	0	0
+H	satellite.system.memory.swap.used	1 22 4 4 3	M20	0	0	0
+H	satellite.system.memory.swap.free(unit)	1 22 4 4 4	M20	1	0	0
+H	satellite.system.memory.swap.total(unit)	1 22 4 4 5	M20	1	0	0
+H	satellite.system.memory.swap(unit)	1 22 4 4 6	M20	1	0	0
+H	satellite.system.memory.swap.used(unit)	1 22 4 4 7	M20	1	0	0
 .	satellite.system.memory.this	1 22 4 5		0	0	0
 .	satellite.system.memory.this()	1 22 4 5 0		0	0	0
-.	satellite.system.memory.this.available()	1 22 4 5 1		0	0	0
-.	satellite.system.memory.this.free()	1 22 4 5 2		0	0	0
-.	satellite.system.memory.this.used	1 22 4 5 3		0	0	0
-.	satellite.system.memory.this.available(unit)	1 22 4 5 4		0	0	0
-.	satellite.system.memory.this.free(unit)	1 22 4 5 5		0	0	0
-.	satellite.system.memory.this.used(unit)	1 22 4 5 6		0	0	0
-.	satellite.system.memory.free()	1 22 4 6		0	0	0
-.	satellite.system.memory.total()	1 22 4 7		0	0	0
-.	satellite.system.memory.used()	1 22 4 8		0	0	0
-.	satellite.system.memory.main(unit)	1 22 4 9		0	0	0
-.	satellite.system.memory.free(unit)	1 22 4 10		0	0	0
-.	satellite.system.memory.total(unit)	1 22 4 11		0	0	0
-.	satellite.system.memory.used(unit)	1 22 4 12		0	0	0
+H	satellite.system.memory.this.available()	1 22 4 5 1	M20	0	0	0
+H	satellite.system.memory.this.free()	1 22 4 5 2	M20	0	0	0
+H	satellite.system.memory.this.used	1 22 4 5 3	M20	0	0	0
+H	satellite.system.memory.this.available(unit)	1 22 4 5 4	M20	1	0	0
+H	satellite.system.memory.this.free(unit)	1 22 4 5 5	M20	1	0	0
+H	satellite.system.memory.this.used(unit)	1 22 4 5 6	M20	1	0	0
+H	satellite.system.memory.free()	1 22 4 6	M20	0	0	0
+H	satellite.system.memory.total()	1 22 4 7	M20	0	0	0
+H	satellite.system.memory.used()	1 22 4 8	M20	0	0	0
+H	satellite.system.memory.main(unit)	1 22 4 9	M20	1	0	0
+H	satellite.system.memory.free(unit)	1 22 4 10	M20	1	0	0
+H	satellite.system.memory.total(unit)	1 22 4 11	M20	1	0	0
+H	satellite.system.memory.used(unit)	1 22 4 12	M20	1	0	0
 H	satellite.system.threshold()	1 22 5	M16	0	0	0
 H	satellite.system.threshold(n)	1 22 6	M16	1	0	0
 H	satellite.system.persist()	1 22 7	M22	0	0	0
 H	satellite.system.persist(x)	1 22 8	M22	1	0	0
-.	satellite.system.environment(name)	1 22 9		0	0	0
+H	satellite.system.environment(name)	1 22 9	M20	1	0	0
 .	satellite.thread	1 23		0	0	0
 .	satellite.thread()	1 23 0		0	0	0
 .	satellite.thread.new	1 23 1		0	0	0

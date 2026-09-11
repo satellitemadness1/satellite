@@ -59,6 +59,11 @@ VALUE    = $(SRC)/satellite_value
 TREE     = $(SRC)/abstract_syntax_tree
 WORDS    = $(SRC)/satellite_words
 
+# NOT UNDER $(SRC), AND THAT IS THE POINT. help_lines/ is the GENERATOR for
+# HELP.md and src/satellite_help/help.def; nothing in it is compiled into satl.
+# `make nodes` (065-tests.mk) is the one target that reaches in here.
+HELP_LINES = help_lines
+
 # The tests root, and TESTNAMES is THE SINGLE PLACE A TEST IS DECLARED TO EXIST.
 # 065-tests.mk derives everything else from it -- the per-test source lists, the
 # binaries, the run list, the aliases and what `clean` removes.

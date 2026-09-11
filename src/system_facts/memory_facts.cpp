@@ -95,6 +95,41 @@ unsigned long mem_used_mb()
     return static_cast<unsigned long>(mem_used_bytes() / (1024ULL * 1024ULL));
 }
 
+// --- swap -------------------------------------------------------------------
+//
+// THE HEADER OF THIS FILE PROMISED THESE TO M20 AND THIS IS M20 COLLECTING.
+// Nothing about them is new: they read the same file through the same helper as
+// everything above, which is why they land here rather than in a file of their
+// own -- "one file because they read one source" is the rule this obeys.
+unsigned long long swap_total_bytes()
+{
+    return kb_to_bytes(meminfo_kb("SwapTotal"));
+}
+
+unsigned long long swap_free_bytes()
+{
+    return kb_to_bytes(meminfo_kb("SwapFree"));
+}
+
+// TOTAL MINUS FREE, and NOT total minus available as main memory is.
+// /proc/meminfo has no SwapAvailable to read, because swap holds no reclaimable
+// cache -- so free IS what is available here and the two readings coincide.
+// Saying it in code rather than reusing mem_used_bytes()' shape is what keeps
+// the difference visible.
+unsigned long long swap_used_bytes()
+{
+    const unsigned long long total = swap_total_bytes();
+    const unsigned long long free_bytes = swap_free_bytes();
+    return total > free_bytes ? total - free_bytes : 0;
+}
+
+// A MACHINE WITH NO SWAP ANSWERS 0 FOR ALL THREE AND THAT IS TRUTHFUL, not a
+// failed read: SwapTotal is present and zero on such a machine, and
+// meminfo_kb() answers 0 for a key that is absent as well. The two cases are
+// indistinguishable here and do not need distinguishing -- "there is no swap"
+// and "this kernel will not say how much swap there is" both mean a program
+// gets nothing from it.
+
 // /proc/self/statm field 2 is the resident page count.
 //
 // statm RATHER THAN status, WHICH IS v1'S CHOICE AND ITS REASON: statm is six

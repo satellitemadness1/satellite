@@ -539,6 +539,9 @@ HELP_TEST_SRCS = $(HELP)/built.cpp \
                  $(HELP)/render.cpp \
                  $(HELP)/handlers.cpp \
                  $(SYSLIB)/handlers.cpp \
+                 $(SYSLIB)/units.cpp \
+                 $(SYSLIB)/memory_methods.cpp \
+                 $(SYSLIB)/host_methods.cpp \
                  $(SATFILE)/file_handle.cpp \
                  $(SATFILE)/handlers.cpp \
                  $(SATFILE)/file_methods.cpp \
@@ -549,6 +552,7 @@ HELP_TEST_SRCS = $(HELP)/built.cpp \
                  $(LIMITS)/pool.cpp \
                  $(LIMITS)/watchdog.cpp \
                  $(SYSTEM)/stack_facts.cpp \
+                 $(SYSTEM)/firmware_facts.cpp \
                  $(PROGRAMS)/check_command.cpp \
                  $(PROGRAMS)/source_file.cpp \
                  $(CONSOLE_TEST_SRCS)
@@ -757,3 +761,42 @@ TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
               prompt_test
 
 .PHONY: test $(TESTALIASES)
+
+# --- the node table's enumerator --------------------------------------------
+#
+# `make nodes` MEASURES help_lines/nodes.tsv INSTEAD OF SOMEBODY TYPING IT.
+# The table's whole claim is that the mark, the arity and the receiver binding
+# are what the dispatch tables actually hold -- and help_lines/README.md used to
+# say the program that measures them was "a throwaway", to be rebuilt from a
+# paragraph whenever the table needed regenerating.
+#
+# THAT WORKED ONCE AND THEN DID NOT. M19.5 appended eight rows and nobody
+# rebuilt it, so MILESTONES/M19.5.md §4 recorded "the 8 new rows were NOT
+# re-measured" as a known gap; M20 then appended 43 rows AND built 26 paths that
+# were marked `.`, which is more wrong rows than any milestone before it. A
+# generator with no target behind it is one nobody runs -- which is exactly what
+# 067-startup.mk says at its own head about `make startup`, and this is the same
+# fix for the same failure one directory over.
+#
+# NOT IN `all` AND NOT IN `test`, for 067-startup.mk's reason: it rewrites a
+# file in the source tree, and a suite that edits the repository as a side
+# effect of being run is a suite nobody can trust a clean `git status` from.
+# It is run BY HAND when rows are added or paths are built, and gen.py is what
+# turns its output into HELP.md and help.def.
+#
+# LINKED AGAINST THE TREE'S OWN OBJECT FILES, minus the four that carry a
+# main() or the window: this program has its own main() and must not pull
+# satl's, and satellite_prompt/ and the window are no part of what dispatches.
+NODES_OBJS = $(filter-out $(PROGRAMS)/main.o $(PROGRAMS)/cpu_level.o \
+                          $(PROGRAMS)/window_handover.o \
+                          $(PROMPT)/%.o, $(SATL_OBJS))
+
+$(HELP_LINES)/enumerator/enumerate: $(HELP_LINES)/enumerator/enumerate.cpp \
+                                    $(NODES_OBJS)
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -o $@ \
+	    $(HELP_LINES)/enumerator/enumerate.cpp $(NODES_OBJS)
+
+.PHONY: nodes
+nodes: $(HELP_LINES)/enumerator/enumerate
+	./$(HELP_LINES)/enumerator/enumerate > $(HELP_LINES)/nodes.tsv
+	@echo "  help_lines/nodes.tsv measured -- now run: python3 help_lines/gen.py"

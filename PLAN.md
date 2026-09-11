@@ -4449,11 +4449,35 @@ rows that are a done-when clause rather than a question.)*
   > 325, and the digest moved `ba12d6fa81d0fe61` → `1ef8ec50a203c593`, which
   > invalidates every cached `.satc` on the machine exactly as SATC.md §3 says
   > it should.
-- **`satellite.container.arguments` `1 4 3` has no children and the object answers
-  ten selectors** — `.length()`, `.count()`, `.names()`, `.to_string()`, `.lines()`,
-  `.has(k)`, `.get(k)`, `.first()`, `.last()`, `.contains(x)`. That is M16's
+- ~~**`satellite.container.arguments` `1 4 3` has no children and the object
+  answers ten selectors.**~~ **SETTLED 2026-09-11 BY THE AUTHOR, AND ONE WORD
+  CHANGED.** The ten are `.length()`, `.count()`, **`.keys()`**, `.to_string()`,
+  `.lines()`, `.has(k)`, `.get(k)`, `.first()`, `.last()`, `.contains(x)` — this
+  entry had written `.names()` and the author chose `keys`, which is the word
+  `satellite.container.map` `1 4 1 8` already uses for the same idea. That is M16's
   thirty-four container methods again, one level down, in a namespace nobody has
   looked at.
+
+  **`length` AND `count` ARE NEW WORDS AND THE AUTHOR KEPT THEM KNOWING SO.** The
+  question was put on 2026-09-11 with the finding that made it one: `length`
+  appears **nowhere** else in the language, and `size` is what
+  `satellite.container.map`, `satellite.container.list` and
+  `satellite.variable.string` all answer to — so these two arrive beside `size`
+  rather than instead of it, which DESIGN §1's *a word means one thing
+  everywhere* would otherwise argue against. **The reading that makes them one
+  thing each is that this object is TWO containers at once**: `length()` is how
+  long the command line is and `count()` is how many named facts there are, and
+  a single `size` could only ever answer one of those while looking like it
+  answered both. `keys` then had no such defence — the map's word already fits —
+  and that is the one the author moved.
+
+  **`count()` AND THE `count` ROW ARE DIFFERENT THINGS AND THE NAME IS REUSED ON
+  PURPOSE.** `satellite.library.main.arguments.count` `1 14 1 1 9` is v1's
+  `argument_count`: how many words were on the command line. `.count()` here is
+  how many entries the object holds. Both are counts of what their own receiver
+  holds, which is the same word meaning the same thing about two different
+  things — the distinction §2.3 draws between a word and the node it hangs
+  under.
 - **DESIGN §7.7's live-code mapping is wrong and this milestone is where it is
   fixed.** §7.7 reads *"`arguments.machine.threads`, `arguments.machine.cores` and
   `arguments.memory.total` … the same numbers again as codes 97, 98 and 99"*, which

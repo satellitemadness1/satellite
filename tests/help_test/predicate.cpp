@@ -139,10 +139,19 @@ void section_predicate()
     // parser accepts the line, so "does the front end have a case for it" is
     // the wrong test and "does a program that writes it do what it says" is
     // the right one.
+    //
+    // `satellite.system.home` WAS IN THIS LIST UNTIL 2026-09-11 AND M20 BUILT
+    // IT, which is this check working rather than failing: a list of paths
+    // "no milestone has reached" is a list that every milestone shortens, and
+    // the one way it could go wrong is by nobody noticing when an entry stops
+    // being true. `satellite.variable.thread` takes its place -- M21's, and
+    // not this milestone's. **`LIBRARY_MAIN` IS THE NEXT ONE TO GO**: M20's
+    // own arguments object hangs under it, so the day that lands, this line
+    // fails again and the fix is the same one.
     const words::NodeId unbuilt[] = {
         words::NodeId::NETWORK,          words::NodeId::INCLUDE_SPACESHIP,
         words::NodeId::VARIABLE_WINDOW,  words::NodeId::LIBRARY_MAIN,
-        words::NodeId::ANALYZE,          words::NodeId::SYSTEM_HOME,
+        words::NodeId::ANALYZE,          words::NodeId::VARIABLE_THREAD,
     };
     for (const words::NodeId id : unbuilt)
         check(!built.contains(static_cast<words::PathId>(id)),

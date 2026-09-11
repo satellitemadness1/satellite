@@ -3227,11 +3227,11 @@ write is `satellite.return(value)` in the body, and in
 
 The machine the program is running on, and the interpreter's own switches.
 
-Thirty numbered paths sit under here and most of them describe memory. Two
-pairs are built: how loose a search may be, and whether the prompt keeps
-what a line declares.
+Most of what is here describes memory, and the rest is what the machine and
+the session are: where home is, what the environment holds, how loose a
+search may be, and whether the prompt keeps what a line declares.
 
-    satellite.console.display(satellite.system.threshold())
+    satellite.console.display(satellite.system.memory.total("gb"))
 
 .  `1 22 0`  `satellite.system()`
 > satellite.help(satellite.system)
@@ -3264,183 +3264,314 @@ directory was not empty, or it was not yours to remove.
     satellite.console.display(satellite.system.delete("delete_demo.txt"))
     satellite.console.display(satellite.system.delete("delete_demo.txt"))
 
-.  `1 22 2`  `satellite.system.environment`
+H  `1 22 2`  `satellite.system.environment`  _M20_
 > satellite.help(satellite.system.environment)
 
 The environment the program was started in, as a map of every variable.
 
-For a single variable, write `satellite.system.environment(name)`.
-**Not built** — M20.
+For a single variable, write `satellite.system.environment(name)`, which
+answers nothing when it is not set.
 
-.  `1 22 3`  `satellite.system.home`
+    satellite.container.map<satellite.variable.string, satellite.variable.string> all = satellite.system.environment
+    satellite.console.display(all.size() > 0)
+
+H  `1 22 3`  `satellite.system.home`  _M20_
 > satellite.help(satellite.system.home)
 
 The home directory of whoever is running the program.
 
-**Not built** as a path. The interpreter already reads it; what is missing
-is the word for it.
+Asked of the environment first and of the password database when that is
+empty, because `$HOME` can be unset or forged and the password database is
+the authority.
+
+    satellite.console.display(satellite.system.home)
 
 .  `1 22 4`  `satellite.system.memory`
 > satellite.help(satellite.system.memory)
 
 How much memory there is, in every sense of the question: the machine's,
-the swap file's, and this program's own.
+this program's, the swap file's, and this thread's stack.
 
-**Not built.** Twenty-eight numbered paths sit under here and no milestone
-has reached any of them. Each of the counted ones has a second shape
-taking a unit, so a number can come back in bytes or in something
-readable.
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.total("gb"))
 
 .  `1 22 4 0`  `satellite.system.memory()`
 > satellite.help(satellite.system.memory)
 
-The bare shape. **Not built.**
+The bare shape. There is nothing to call; one of the words underneath is
+what you write.
 
-.  `1 22 4 1`  `satellite.system.memory.bit`
+H  `1 22 4 1`  `satellite.system.memory.bit`  _M20_
 > satellite.help(satellite.system.memory.bit)
 
-Whether the machine counts in 32 bits or 64. **Not built.**
+How wide the memory bus is, in bits — 64 on an ordinary machine, 72 where
+the memory carries error correction.
 
-.  `1 22 4 2`  `satellite.system.memory.frequency`
+**It answers 0 unless satellite is running as root**, and 0 is the truthful
+answer rather than a failure: this comes from the firmware's SMBIOS table,
+which is readable by root alone on every ordinary Linux.
+
+    satellite.console.display(satellite.system.memory.bit)
+
+H  `1 22 4 2`  `satellite.system.memory.frequency`  _M20_
 > satellite.help(satellite.system.memory.frequency)
 
-How fast the memory runs. **Not built.**
+How fast the memory is clocked, in MT/s.
 
-.  `1 22 4 3`  `satellite.system.memory.main()`
+**It answers 0 unless satellite is running as root**, for the same reason
+`bit` does: the firmware table it comes from is root-only.
+
+    satellite.console.display(satellite.system.memory.frequency)
+
+H  `1 22 4 3`  `satellite.system.memory.main()`  _M20_
 > satellite.help(satellite.system.memory.main)
 
-The machine's main memory. **Not built.**
+This program's own memory — its resident set, read fresh every time you
+ask, so a loop can watch itself grow.
+
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.main("kb") > 0)
 
 .  `1 22 4 4`  `satellite.system.memory.swap`
 > satellite.help(satellite.system.memory.swap)
 
 The swap file, which is the disk the machine uses when memory runs out.
 
-**Not built.**
+**A machine with no swap answers 0 to all three**, and that is truthful
+rather than a failed read.
+
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
 
 .  `1 22 4 4 0`  `satellite.system.memory.swap()`
 > satellite.help(satellite.system.memory.swap)
 
-The bare shape. **Not built.**
+The bare shape. One of the words underneath is what you write.
 
-.  `1 22 4 4 1`  `satellite.system.memory.swap.free()`
+H  `1 22 4 4 1`  `satellite.system.memory.swap.free()`  _M20_
 > satellite.help(satellite.system.memory.swap.free)
 
-How much swap is unused. **Not built.**
+How much swap is unused.
 
-.  `1 22 4 4 2`  `satellite.system.memory.swap.total()`
+    satellite.console.display(satellite.system.memory.swap.free("mb") >= 0)
+
+H  `1 22 4 4 2`  `satellite.system.memory.swap.total()`  _M20_
 > satellite.help(satellite.system.memory.swap.total)
 
-How much swap there is altogether. **Not built.**
+How much swap there is altogether.
 
-.  `1 22 4 4 3`  `satellite.system.memory.swap.used`
+    satellite.console.display(satellite.system.memory.swap.total("mb") >= 0)
+
+H  `1 22 4 4 3`  `satellite.system.memory.swap.used`  _M20_
 > satellite.help(satellite.system.memory.swap.used)
 
-How much swap is in use. **Not built.**
+How much swap is in use.
 
-.  `1 22 4 4 4`  `satellite.system.memory.swap.free(unit)`
+**Total minus free, and not total minus available** as the machine's own
+memory is: swap holds no reclaimable cache, so there is nothing for
+"available" to mean here that "free" does not already mean.
+
+    satellite.console.display(satellite.system.memory.swap.used("mb") >= 0)
+
+H  `1 22 4 4 4`  `satellite.system.memory.swap.free(unit)`  _M20_
 > satellite.help(satellite.system.memory.swap.free)
 
-How much swap is unused, in the unit you name. **Not built.**
+How much swap is unused, in the unit you name.
 
-.  `1 22 4 4 5`  `satellite.system.memory.swap.total(unit)`
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.swap.free("gb") >= 0)
+
+H  `1 22 4 4 5`  `satellite.system.memory.swap.total(unit)`  _M20_
 > satellite.help(satellite.system.memory.swap.total)
 
-How much swap there is altogether, in the unit you name. **Not built.**
+How much swap there is altogether, in the unit you name.
 
-.  `1 22 4 4 6`  `satellite.system.memory.swap(unit)`
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.swap.total("gb") >= 0)
+
+H  `1 22 4 4 6`  `satellite.system.memory.swap(unit)`  _M20_
 > satellite.help(satellite.system.memory.swap)
 
-The swap file, reported in the unit you name. **Not built.**
+The swap file, reported in the unit you name — which is how much
+of it there is altogether.
 
-.  `1 22 4 4 7`  `satellite.system.memory.swap.used(unit)`
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.swap("gb") >= 0)
+
+H  `1 22 4 4 7`  `satellite.system.memory.swap.used(unit)`  _M20_
 > satellite.help(satellite.system.memory.swap.used)
 
-How much swap is in use, in the unit you name. **Not built** — M20.
+How much swap is in use, in the unit you name.
+
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.swap.used("kb") >= 0)
 
 .  `1 22 4 5`  `satellite.system.memory.this`
 > satellite.help(satellite.system.memory.this)
 
-This program's own memory, as against the machine's. **Not built.**
+This thread's own stack, as against the machine's memory.
+
+**The running thread's, and deliberately so.** Linux accounts an address
+space per process, so a heap-per-thread figure would be the same number for
+every thread and would answer nothing.
+
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
 
 .  `1 22 4 5 0`  `satellite.system.memory.this()`
 > satellite.help(satellite.system.memory.this)
 
-The bare shape. **Not built.**
+The bare shape. One of the words underneath is what you write.
 
-.  `1 22 4 5 1`  `satellite.system.memory.this.available()`
+H  `1 22 4 5 1`  `satellite.system.memory.this.available()`  _M20_
 > satellite.help(satellite.system.memory.this.available)
 
-How much this program could still take. **Not built.**
+How much room this thread still has on its stack.
 
-.  `1 22 4 5 2`  `satellite.system.memory.this.free()`
+    satellite.console.display(satellite.system.memory.this.available("kb") > 0)
+
+H  `1 22 4 5 2`  `satellite.system.memory.this.free()`  _M20_
 > satellite.help(satellite.system.memory.this.free)
 
-How much this program has asked for and is not using. **Not built.**
+How much room this thread still has on its stack — the same
+question `available` asks, because a word means one thing everywhere.
 
-.  `1 22 4 5 3`  `satellite.system.memory.this.used`
+    satellite.console.display(satellite.system.memory.this.free("kb") > 0)
+
+H  `1 22 4 5 3`  `satellite.system.memory.this.used`  _M20_
 > satellite.help(satellite.system.memory.this.used)
 
-How much this program is using. **Not built.**
+How much of its stack this thread is using.
 
-.  `1 22 4 5 4`  `satellite.system.memory.this.available(unit)`
+    satellite.console.display(satellite.system.memory.this.used("kb") > 0)
+
+H  `1 22 4 5 4`  `satellite.system.memory.this.available(unit)`  _M20_
 > satellite.help(satellite.system.memory.this.available)
 
-How much this program could still take, in the unit you name. **Not
-built.**
+How much room this thread still has, in the unit you name.
 
-.  `1 22 4 5 5`  `satellite.system.memory.this.free(unit)`
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.this.available("kb") > 0)
+
+H  `1 22 4 5 5`  `satellite.system.memory.this.free(unit)`  _M20_
 > satellite.help(satellite.system.memory.this.free)
 
-How much this program has asked for and is not using, in the unit you
-name. **Not built.**
+How much room this thread still has, in the unit you name — the
+same question `available(unit)` asks.
 
-.  `1 22 4 5 6`  `satellite.system.memory.this.used(unit)`
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.this.free("kb") > 0)
+
+H  `1 22 4 5 6`  `satellite.system.memory.this.used(unit)`  _M20_
 > satellite.help(satellite.system.memory.this.used)
 
-How much memory this program is actually using, in the unit you name.
+How much of its stack this thread is using, in the unit you name.
 
-This is the running thread's own figure. Linux accounts an address space
-per process, so a heap-per-thread number would be the same for every
-thread and would answer nothing. **Not built** — M20.
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
 
-.  `1 22 4 6`  `satellite.system.memory.free()`
+    satellite.console.display(satellite.system.memory.this.used("kb") > 0)
+
+H  `1 22 4 6`  `satellite.system.memory.free()`  _M20_
 > satellite.help(satellite.system.memory.free)
 
-How much of the machine's memory is unused. **Not built.**
+How much of the machine's memory is unused.
 
-.  `1 22 4 7`  `satellite.system.memory.total()`
+**Unused means AVAILABLE and not free.** Linux spends every spare page
+on cache, so the "free" figure on a healthy machine is a small
+frightening number; available is what a program can still have.
+
+    satellite.console.display(satellite.system.memory.free("mb") > 0)
+
+H  `1 22 4 7`  `satellite.system.memory.total()`  _M20_
 > satellite.help(satellite.system.memory.total)
 
-How much memory the machine has altogether. **Not built.**
+How much memory the machine has altogether.
 
-.  `1 22 4 8`  `satellite.system.memory.used()`
+    satellite.console.display(satellite.system.memory.total("gb") > 0)
+
+H  `1 22 4 8`  `satellite.system.memory.used()`  _M20_
 > satellite.help(satellite.system.memory.used)
 
-How much of the machine's memory is in use. **Not built.**
+How much of the machine's memory is in use — its total less what
+is available.
 
-.  `1 22 4 9`  `satellite.system.memory.main(unit)`
+    satellite.console.display(satellite.system.memory.used("mb") > 0)
+
+H  `1 22 4 9`  `satellite.system.memory.main(unit)`  _M20_
 > satellite.help(satellite.system.memory.main)
 
-The machine's main memory, in the unit you name. **Not built.**
+This program's own memory, in the unit you name.
 
-.  `1 22 4 10`  `satellite.system.memory.free(unit)`
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.main("kb") > 0)
+
+H  `1 22 4 10`  `satellite.system.memory.free(unit)`  _M20_
 > satellite.help(satellite.system.memory.free)
 
-How much of the machine's memory is unused, in the unit you name. **Not
-built.**
+How much of the machine's memory is unused, in the unit you name.
 
-.  `1 22 4 11`  `satellite.system.memory.total(unit)`
+**Unused means AVAILABLE and not free.** Linux spends every spare page
+on cache, so the "free" figure on a healthy machine is a small
+frightening number; available is what a program can still have.
+
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.free("gb") > 0)
+
+H  `1 22 4 11`  `satellite.system.memory.total(unit)`  _M20_
 > satellite.help(satellite.system.memory.total)
 
-How much memory the machine has altogether, in the unit you name. **Not
-built.**
+How much memory the machine has altogether, in the unit you name.
 
-.  `1 22 4 12`  `satellite.system.memory.used(unit)`
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.total("gb") > 0)
+
+H  `1 22 4 12`  `satellite.system.memory.used(unit)`  _M20_
 > satellite.help(satellite.system.memory.used)
 
-How much of the machine's memory is in use, in the unit you name. **Not
-built.**
+How much of the machine's memory is in use, in the unit you name.
+
+The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
+what you get without asking. Every one of them is a power of 1024 away
+from a byte, so the answer is exact and never rounds.
+
+    satellite.console.display(satellite.system.memory.used("gb") > 0)
 
 H  `1 22 5`  `satellite.system.threshold()`  _M16_
 > satellite.help(satellite.system.threshold)
@@ -3487,14 +3618,19 @@ on afterwards. It wants a real bool, so write
     satellite.console.display(satellite.system.persist(satellite.bool.false))
     satellite.console.display(satellite.system.persist(satellite.bool.true))
 
-.  `1 22 9`  `satellite.system.environment(name)`
+H  `1 22 9`  `satellite.system.environment(name)`  _M20_
 > satellite.help(satellite.system.environment)
 
 One environment variable, by name.
 
 Written bare, `satellite.system.environment` answers a map of the whole
-environment; given a name it answers just that one — the same read-all /
-read-one pair `satellite.system.memory` carries. **Not built** — M20.
+environment; given a name it answers just that one.
+
+**A name that is not set answers nothing, not an empty string.** An empty
+string is a value a variable can really hold, so the two must stay apart.
+
+    satellite.console.display(satellite.system.environment("HOME"))
+    satellite.console.display(satellite.system.environment("NO_SUCH_VARIABLE"))
 
 
 ## thread

@@ -3281,11 +3281,11 @@ SAT_HELP(RETURNS, RETURNS,
 SAT_HELP(SYSTEM, SYSTEM,
          "The machine the program is running on, and the interpreter's own switches.\n"
          "\n"
-         "Thirty numbered paths sit under here and most of them describe memory. Two\n"
-         "pairs are built: how loose a search may be, and whether the prompt keeps\n"
-         "what a line declares."
+         "Most of what is here describes memory, and the rest is what the machine and\n"
+         "the session are: where home is, what the environment holds, how loose a\n"
+         "search may be, and whether the prompt keeps what a line declares."
          ,
-         "satellite.console.display(satellite.system.threshold())"
+         "satellite.console.display(satellite.system.memory.total(\"gb\"))"
          )
 
 // 1 22 0  satellite.system()
@@ -3325,240 +3325,319 @@ SAT_HELP(SYSTEM_DELETE, SYSTEM_DELETE,
 SAT_HELP(SYSTEM_ENVIRONMENT, SYSTEM_ENVIRONMENT,
          "The environment the program was started in, as a map of every variable.\n"
          "\n"
-         "For a single variable, write `satellite.system.environment(name)`.\n"
-         "**Not built** — M20."
+         "For a single variable, write `satellite.system.environment(name)`, which\n"
+         "answers nothing when it is not set."
          ,
-         ""
+         "satellite.container.map<satellite.variable.string, satellite.variable.string> all = satellite.system.environment\n"
+         "satellite.console.display(all.size() > 0)"
          )
 
 // 1 22 3  satellite.system.home
 SAT_HELP(SYSTEM_HOME, SYSTEM_HOME,
          "The home directory of whoever is running the program.\n"
          "\n"
-         "**Not built** as a path. The interpreter already reads it; what is missing\n"
-         "is the word for it."
+         "Asked of the environment first and of the password database when that is\n"
+         "empty, because `$HOME` can be unset or forged and the password database is\n"
+         "the authority."
          ,
-         ""
+         "satellite.console.display(satellite.system.home)"
          )
 
 // 1 22 4  satellite.system.memory
 SAT_HELP(SYSTEM_MEMORY, SYSTEM_MEMORY,
          "How much memory there is, in every sense of the question: the machine's,\n"
-         "the swap file's, and this program's own.\n"
+         "this program's, the swap file's, and this thread's stack.\n"
          "\n"
-         "**Not built.** Twenty-eight numbered paths sit under here and no milestone\n"
-         "has reached any of them. Each of the counted ones has a second shape\n"
-         "taking a unit, so a number can come back in bytes or in something\n"
-         "readable."
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.total(\"gb\"))"
          )
 
 // 1 22 4 0  satellite.system.memory()
 SAT_HELP(SYSTEM_MEMORY_0, SYSTEM_MEMORY,
-         "The bare shape. **Not built.**"
+         "The bare shape. There is nothing to call; one of the words underneath is\n"
+         "what you write."
          ,
          ""
          )
 
 // 1 22 4 1  satellite.system.memory.bit
 SAT_HELP(SYSTEM_MEMORY_BIT, SYSTEM_MEMORY_BIT,
-         "Whether the machine counts in 32 bits or 64. **Not built.**"
+         "How wide the memory bus is, in bits — 64 on an ordinary machine, 72 where\n"
+         "the memory carries error correction.\n"
+         "\n"
+         "**It answers 0 unless satellite is running as root**, and 0 is the truthful\n"
+         "answer rather than a failure: this comes from the firmware's SMBIOS table,\n"
+         "which is readable by root alone on every ordinary Linux."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.bit)"
          )
 
 // 1 22 4 2  satellite.system.memory.frequency
 SAT_HELP(SYSTEM_MEMORY_FREQUENCY, SYSTEM_MEMORY_FREQUENCY,
-         "How fast the memory runs. **Not built.**"
+         "How fast the memory is clocked, in MT/s.\n"
+         "\n"
+         "**It answers 0 unless satellite is running as root**, for the same reason\n"
+         "`bit` does: the firmware table it comes from is root-only."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.frequency)"
          )
 
 // 1 22 4 3  satellite.system.memory.main()
 SAT_HELP(SYSTEM_MEMORY_MAIN_0, SYSTEM_MEMORY_MAIN_0,
-         "The machine's main memory. **Not built.**"
+         "This program's own memory — its resident set, read fresh every time you\n"
+         "ask, so a loop can watch itself grow.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.main(\"kb\") > 0)"
          )
 
 // 1 22 4 4  satellite.system.memory.swap
 SAT_HELP(SYSTEM_MEMORY_SWAP, SYSTEM_MEMORY_SWAP,
          "The swap file, which is the disk the machine uses when memory runs out.\n"
          "\n"
-         "**Not built.**"
+         "**A machine with no swap answers 0 to all three**, and that is truthful\n"
+         "rather than a failed read.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
          ""
          )
 
 // 1 22 4 4 0  satellite.system.memory.swap()
 SAT_HELP(SYSTEM_MEMORY_SWAP_0, SYSTEM_MEMORY_SWAP,
-         "The bare shape. **Not built.**"
+         "The bare shape. One of the words underneath is what you write."
          ,
          ""
          )
 
 // 1 22 4 4 1  satellite.system.memory.swap.free()
 SAT_HELP(SYSTEM_MEMORY_SWAP_FREE_0, SYSTEM_MEMORY_SWAP_FREE_0,
-         "How much swap is unused. **Not built.**"
+         "How much swap is unused."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.swap.free(\"mb\") >= 0)"
          )
 
 // 1 22 4 4 2  satellite.system.memory.swap.total()
 SAT_HELP(SYSTEM_MEMORY_SWAP_TOTAL_0, SYSTEM_MEMORY_SWAP_TOTAL_0,
-         "How much swap there is altogether. **Not built.**"
+         "How much swap there is altogether."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.swap.total(\"mb\") >= 0)"
          )
 
 // 1 22 4 4 3  satellite.system.memory.swap.used
 SAT_HELP(SYSTEM_MEMORY_SWAP_USED, SYSTEM_MEMORY_SWAP_USED,
-         "How much swap is in use. **Not built.**"
+         "How much swap is in use.\n"
+         "\n"
+         "**Total minus free, and not total minus available** as the machine's own\n"
+         "memory is: swap holds no reclaimable cache, so there is nothing for\n"
+         "\"available\" to mean here that \"free\" does not already mean."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.swap.used(\"mb\") >= 0)"
          )
 
 // 1 22 4 4 4  satellite.system.memory.swap.free(unit)
 SAT_HELP(SYSTEM_MEMORY_SWAP_FREE_UNIT, SYSTEM_MEMORY_SWAP_FREE_0,
-         "How much swap is unused, in the unit you name. **Not built.**"
+         "How much swap is unused, in the unit you name.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.swap.free(\"gb\") >= 0)"
          )
 
 // 1 22 4 4 5  satellite.system.memory.swap.total(unit)
 SAT_HELP(SYSTEM_MEMORY_SWAP_TOTAL_UNIT, SYSTEM_MEMORY_SWAP_TOTAL_0,
-         "How much swap there is altogether, in the unit you name. **Not built.**"
+         "How much swap there is altogether, in the unit you name.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.swap.total(\"gb\") >= 0)"
          )
 
 // 1 22 4 4 6  satellite.system.memory.swap(unit)
 SAT_HELP(SYSTEM_MEMORY_SWAP_UNIT, SYSTEM_MEMORY_SWAP,
-         "The swap file, reported in the unit you name. **Not built.**"
+         "The swap file, reported in the unit you name — which is how much\n"
+         "of it there is altogether.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.swap(\"gb\") >= 0)"
          )
 
 // 1 22 4 4 7  satellite.system.memory.swap.used(unit)
 SAT_HELP(SYSTEM_MEMORY_SWAP_USED_UNIT, SYSTEM_MEMORY_SWAP_USED,
-         "How much swap is in use, in the unit you name. **Not built** — M20."
+         "How much swap is in use, in the unit you name.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.swap.used(\"kb\") >= 0)"
          )
 
 // 1 22 4 5  satellite.system.memory.this
 SAT_HELP(SYSTEM_MEMORY_THIS, SYSTEM_MEMORY_THIS,
-         "This program's own memory, as against the machine's. **Not built.**"
+         "This thread's own stack, as against the machine's memory.\n"
+         "\n"
+         "**The running thread's, and deliberately so.** Linux accounts an address\n"
+         "space per process, so a heap-per-thread figure would be the same number for\n"
+         "every thread and would answer nothing.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
          ""
          )
 
 // 1 22 4 5 0  satellite.system.memory.this()
 SAT_HELP(SYSTEM_MEMORY_THIS_0, SYSTEM_MEMORY_THIS,
-         "The bare shape. **Not built.**"
+         "The bare shape. One of the words underneath is what you write."
          ,
          ""
          )
 
 // 1 22 4 5 1  satellite.system.memory.this.available()
 SAT_HELP(SYSTEM_MEMORY_THIS_AVAILABLE_0, SYSTEM_MEMORY_THIS_AVAILABLE_0,
-         "How much this program could still take. **Not built.**"
+         "How much room this thread still has on its stack."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.this.available(\"kb\") > 0)"
          )
 
 // 1 22 4 5 2  satellite.system.memory.this.free()
 SAT_HELP(SYSTEM_MEMORY_THIS_FREE_0, SYSTEM_MEMORY_THIS_FREE_0,
-         "How much this program has asked for and is not using. **Not built.**"
+         "How much room this thread still has on its stack — the same\n"
+         "question `available` asks, because a word means one thing everywhere."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.this.free(\"kb\") > 0)"
          )
 
 // 1 22 4 5 3  satellite.system.memory.this.used
 SAT_HELP(SYSTEM_MEMORY_THIS_USED, SYSTEM_MEMORY_THIS_USED,
-         "How much this program is using. **Not built.**"
+         "How much of its stack this thread is using."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.this.used(\"kb\") > 0)"
          )
 
 // 1 22 4 5 4  satellite.system.memory.this.available(unit)
 SAT_HELP(SYSTEM_MEMORY_THIS_AVAILABLE_UNIT, SYSTEM_MEMORY_THIS_AVAILABLE_0,
-         "How much this program could still take, in the unit you name. **Not\n"
-         "built.**"
+         "How much room this thread still has, in the unit you name.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.this.available(\"kb\") > 0)"
          )
 
 // 1 22 4 5 5  satellite.system.memory.this.free(unit)
 SAT_HELP(SYSTEM_MEMORY_THIS_FREE_UNIT, SYSTEM_MEMORY_THIS_FREE_0,
-         "How much this program has asked for and is not using, in the unit you\n"
-         "name. **Not built.**"
+         "How much room this thread still has, in the unit you name — the\n"
+         "same question `available(unit)` asks.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.this.free(\"kb\") > 0)"
          )
 
 // 1 22 4 5 6  satellite.system.memory.this.used(unit)
 SAT_HELP(SYSTEM_MEMORY_THIS_USED_UNIT, SYSTEM_MEMORY_THIS_USED,
-         "How much memory this program is actually using, in the unit you name.\n"
+         "How much of its stack this thread is using, in the unit you name.\n"
          "\n"
-         "This is the running thread's own figure. Linux accounts an address space\n"
-         "per process, so a heap-per-thread number would be the same for every\n"
-         "thread and would answer nothing. **Not built** — M20."
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.this.used(\"kb\") > 0)"
          )
 
 // 1 22 4 6  satellite.system.memory.free()
 SAT_HELP(SYSTEM_MEMORY_FREE_0, SYSTEM_MEMORY_FREE_0,
-         "How much of the machine's memory is unused. **Not built.**"
+         "How much of the machine's memory is unused.\n"
+         "\n"
+         "**Unused means AVAILABLE and not free.** Linux spends every spare page\n"
+         "on cache, so the \"free\" figure on a healthy machine is a small\n"
+         "frightening number; available is what a program can still have."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.free(\"mb\") > 0)"
          )
 
 // 1 22 4 7  satellite.system.memory.total()
 SAT_HELP(SYSTEM_MEMORY_TOTAL_0, SYSTEM_MEMORY_TOTAL_0,
-         "How much memory the machine has altogether. **Not built.**"
+         "How much memory the machine has altogether."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.total(\"gb\") > 0)"
          )
 
 // 1 22 4 8  satellite.system.memory.used()
 SAT_HELP(SYSTEM_MEMORY_USED_0, SYSTEM_MEMORY_USED_0,
-         "How much of the machine's memory is in use. **Not built.**"
+         "How much of the machine's memory is in use — its total less what\n"
+         "is available."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.used(\"mb\") > 0)"
          )
 
 // 1 22 4 9  satellite.system.memory.main(unit)
 SAT_HELP(SYSTEM_MEMORY_MAIN_UNIT, SYSTEM_MEMORY_MAIN_0,
-         "The machine's main memory, in the unit you name. **Not built.**"
+         "This program's own memory, in the unit you name.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.main(\"kb\") > 0)"
          )
 
 // 1 22 4 10  satellite.system.memory.free(unit)
 SAT_HELP(SYSTEM_MEMORY_FREE_UNIT, SYSTEM_MEMORY_FREE_0,
-         "How much of the machine's memory is unused, in the unit you name. **Not\n"
-         "built.**"
+         "How much of the machine's memory is unused, in the unit you name.\n"
+         "\n"
+         "**Unused means AVAILABLE and not free.** Linux spends every spare page\n"
+         "on cache, so the \"free\" figure on a healthy machine is a small\n"
+         "frightening number; available is what a program can still have.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.free(\"gb\") > 0)"
          )
 
 // 1 22 4 11  satellite.system.memory.total(unit)
 SAT_HELP(SYSTEM_MEMORY_TOTAL_UNIT, SYSTEM_MEMORY_TOTAL_0,
-         "How much memory the machine has altogether, in the unit you name. **Not\n"
-         "built.**"
+         "How much memory the machine has altogether, in the unit you name.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.total(\"gb\") > 0)"
          )
 
 // 1 22 4 12  satellite.system.memory.used(unit)
 SAT_HELP(SYSTEM_MEMORY_USED_UNIT, SYSTEM_MEMORY_USED_0,
-         "How much of the machine's memory is in use, in the unit you name. **Not\n"
-         "built.**"
+         "How much of the machine's memory is in use, in the unit you name.\n"
+         "\n"
+         "The unit is `\"b\"`, `\"kb\"`, `\"mb\"`, `\"gb\"` or `\"tb\"`, and `\"mb\"` is\n"
+         "what you get without asking. Every one of them is a power of 1024 away\n"
+         "from a byte, so the answer is exact and never rounds."
          ,
-         ""
+         "satellite.console.display(satellite.system.memory.used(\"gb\") > 0)"
          )
 
 // 1 22 5  satellite.system.threshold()
@@ -3611,10 +3690,13 @@ SAT_HELP(SYSTEM_ENVIRONMENT_NAME, SYSTEM_ENVIRONMENT,
          "One environment variable, by name.\n"
          "\n"
          "Written bare, `satellite.system.environment` answers a map of the whole\n"
-         "environment; given a name it answers just that one — the same read-all /\n"
-         "read-one pair `satellite.system.memory` carries. **Not built** — M20."
+         "environment; given a name it answers just that one.\n"
+         "\n"
+         "**A name that is not set answers nothing, not an empty string.** An empty\n"
+         "string is a value a variable can really hold, so the two must stay apart."
          ,
-         ""
+         "satellite.console.display(satellite.system.environment(\"HOME\"))\n"
+         "satellite.console.display(satellite.system.environment(\"NO_SUCH_VARIABLE\"))"
          )
 
 // 1 23  satellite.thread

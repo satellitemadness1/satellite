@@ -47,16 +47,39 @@ void section_session()
     //
     // IT WAS `satellite.help` UNTIL M18 AND THIS COMMENT SAID SO IN ADVANCE:
     // "will stay reachable until M18 builds help". M18 built help, the fixture
-    // went red on the day it was supposed to, and the vehicle is now
+    // went red on the day it was supposed to, and the vehicle became
     // `satellite.system.home` `1 22 3` -- a module constant read bare, which is
     // the same road `satellite.console.width` took to this arm before M14 built
     // it. WHAT IS BEING TESTED IS THE REBASING AND NOT THE PATH, so any path
-    // with a number and no handler will do; M19 takes `satellite.system.home`
-    // and will find this note the same way M18 found the last one.
+    // with a number and no handler will do.
+    //
+    // AND IT HAPPENED A THIRD TIME ON 2026-09-11, WHICH IS THE NOTE ABOVE BEING
+    // RIGHT. It said "M19 takes `satellite.system.home` and will find this note
+    // the same way M18 found the last one" -- it was M20 rather than M19, and
+    // otherwise exactly that: the milestone built `1 22 3`, this fixture went
+    // red, and the note was waiting. **Predicting which milestone takes the
+    // vehicle is not the point and getting it wrong costs nothing; leaving the
+    // prediction is what makes the red line take a minute instead of an hour.**
+    //
+    // THE VEHICLE IS NOW `satellite.analyze` `1 16`, which PLAN §8 builds at
+    // **M25** -- five milestones out, and its own top-level word rather than
+    // anything hanging under `satellite.system`. **M25 WILL FIND THIS NOTE**,
+    // the way M18 and M20 did.
+    //
+    // AND "ANY PATH WITH A NUMBER AND NO HANDLER WILL DO" IS NOT QUITE TRUE,
+    // which this rebase is how we found out. The line has to be one the PARSER
+    // accepts as a statement on its own, and a TYPE name is not: typed bare into
+    // the prompt, `satellite.variable.window` answers S0202 -- "expected a name
+    // for the variable" -- because it reads as the start of a declaration and
+    // never reaches the evaluator at all. It was the first replacement tried
+    // here and it went red for a reason that has nothing to do with this arm.
+    // **What is needed is a MODULE CONSTANT read bare**, which is what the
+    // sentence above meant by naming `satellite.console.width` and
+    // `satellite.system.home` and not what it said.
     {
         Prompt p = start_a_prompt();
         p.wait_for("Type `exit`", 4000);
-        p.line("satellite.system.home");
+        p.line("satellite.analyze");
         check(p.wait_for("S0721", 4000), "an unbuilt path refuses at run time");
         check(holds(p.screen, "<prompt>:1:"),
               "and the refusal is on the line the person typed");
