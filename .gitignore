@@ -52,6 +52,14 @@
 /speed_test/speed_test
 /speed_test/hello_world.cxx
 
+# The node table's enumerator, built beside its source by `make nodes` -- the
+# same shape as tests/ and speed_test/ above, ignored for the same reason. Its
+# SOURCE is tracked and deliberately so: help_lines/README.md used to call this
+# program "a throwaway the tree doesn't ship", it was not rebuilt when M19.5
+# appended eight rows, and nodes.tsv quietly stopped being measured. The source
+# belongs in the tree; the binary does not.
+/help_lines/enumerator/enumerate
+
 # The startup probe's binary, built from speed_test/startup_check.cpp into the
 # repository root. Not to be confused with `.startup-floor` above, which is what
 # `make startup` generates and measures AGAINST; this one is the author's own
