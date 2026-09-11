@@ -130,11 +130,32 @@ words::PathId shape_of(words::NodeId at, std::string_view word, int argc,
     // arity, so there is nothing for a shape to match and looking is how the
     // defect above got in; the guard says that once, here, rather than relying
     // on a comparison against -1 never coming out true.
+    // AND ONLY THE WORD'S OWN CALL SHAPES, WHICH IS A ROW SPELLED AS A BARE
+    // ARGUMENT LIST -- `(unit)`, `(satellite)`, `(x)`. A NAMED child is a
+    // different word and can never be what `<word>(...)` meant, so matching
+    // one on arity alone is the same defect the paragraph above describes,
+    // arriving through the other loop.
+    //
+    // FOUND AT M20, 2026-09-11, AND IT WAS ANSWERING THE WRONG FACT RATHER
+    // THAN FAILING. `satellite.system.memory.swap("mb")` matched
+    // `swap.free(unit)` `1 22 4 4 4` -- the first child of `swap` with arity
+    // one -- and never reached `swap(unit)` `1 22 4 4 6`, whose handler was
+    // therefore dead. Worse one level up: `satellite.system.memory("mb")` is
+    // NOT A ROW AT ALL and matched `memory.main(unit)` `1 22 4 9`, so a
+    // program asking how much memory the machine has was told this process's
+    // resident set -- 3.39 against 63430 -- with nothing anywhere saying so.
+    //
+    // SIX ROWS IN THE REGISTRY ARE SPELLED THIS WAY and only one of them sat
+    // beside a named sibling of its own arity, which is why this went unseen:
+    // `include(satellite)`, `include(spaceship)`, `return(satellite)`,
+    // `return(value)` and `help(x)` collide with nothing but each other, and
+    // the absorber rule below is what tells those apart.
     if (argc >= 0 && absorber == words::kNoPath && plain == words::kNoPath &&
         word_node != words::kNoPath)
         for (words::PathId g = words::first_child(static_cast<words::NodeId>(word_node));
              g != words::kNoPath; g = words::next_sibling(g))
-            consider(g);
+            if (words::spelling_of(static_cast<words::NodeId>(g)).empty())
+                consider(g);
 
     // THE RESERVED WORD DECIDES BETWEEN TWO ROWS OF EQUAL ARITY, and getting it
     // backwards is silent: `satellite.include(satellite)` and

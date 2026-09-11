@@ -281,12 +281,12 @@ H	satellite.system.delete(x)	1 22 1	M19	1	0	0
 H	satellite.system.environment	1 22 2	M20	0	0	0
 H	satellite.system.home	1 22 3	M20	0	0	0
 .	satellite.system.memory	1 22 4		0	0	0
-.	satellite.system.memory()	1 22 4 0		0	0	0
+H	satellite.system.memory()	1 22 4 0	M20	0	0	0
 H	satellite.system.memory.bit	1 22 4 1	M20	0	0	0
 H	satellite.system.memory.frequency	1 22 4 2	M20	0	0	0
 H	satellite.system.memory.main()	1 22 4 3	M20	0	0	0
 .	satellite.system.memory.swap	1 22 4 4		0	0	0
-.	satellite.system.memory.swap()	1 22 4 4 0		0	0	0
+H	satellite.system.memory.swap()	1 22 4 4 0	M20	0	0	0
 H	satellite.system.memory.swap.free()	1 22 4 4 1	M20	0	0	0
 H	satellite.system.memory.swap.total()	1 22 4 4 2	M20	0	0	0
 H	satellite.system.memory.swap.used	1 22 4 4 3	M20	0	0	0

@@ -619,7 +619,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.system.memory.swap.used` | `1 22 4 4 3` | assigned |
 | `satellite.system.memory.swap.free(unit)` | `1 22 4 4 4` | assigned |
 | `satellite.system.memory.swap.total(unit)` | `1 22 4 4 5` | assigned |
-| `satellite.system.memory.swap(unit)` | `1 22 4 4 6` | assigned — swap's own optional unit |
+| `satellite.system.memory.swap(unit)` | `1 22 4 4 6` | assigned — swap's own optional unit, which answers **how much swap is available** (the author, 2026-09-11) |
 | `satellite.system.memory.swap.used(unit)` | `1 22 4 4 7` | assigned 2026-09-09 — M20. v1's unit block is reached for every swap form, so it ANSWERS this and §2.2 wrote `1 22 4 4 3` without the parens |
 | `satellite.system.memory.this` | `1 22 4 5 (0)` | assigned |
 | `satellite.system.memory.this.available()` | `1 22 4 5 1` | assigned |

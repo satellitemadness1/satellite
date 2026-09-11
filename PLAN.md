@@ -4606,21 +4606,59 @@ rows that are a done-when clause rather than a question.)*
   here would be a fact about a mechanism that does not exist. **Both rows
   refuse with the reason and name M25**, which is what `retune_min_free_mb`
   does one module over. Thirty-four of the thirty-six answer.
-- **OPEN, FOUND 2026-09-11 WHILE BUILDING THE OBJECT: FOUR BARE GROUP SHAPES
-  UNDER `satellite.system` ANSWER NOTHING.** `satellite.system()` `1 22 0`,
-  `.memory()` `1 22 4 0`, `.memory.swap()` `1 22 4 4 0` and `.memory.this()`
-  `1 22 4 5 0` all refuse with S0721 — they were numbered at the 2026-08-28
-  transcription and this milestone's third commit built everything under them
-  without reaching them.
+- **FOUR BARE GROUP SHAPES UNDER `satellite.system` ANSWERED NOTHING, AND TWO
+  OF THEM DO NOW.** `satellite.system()` `1 22 0`, `memory()` `1 22 4 0`,
+  `memory.swap()` `1 22 4 4 0` and `memory.this()` `1 22 4 5 0` all refused
+  with S0721 — numbered at the 2026-08-28 transcription, and this milestone's
+  third commit built everything under them without reaching them.
 
-  **THE ANSWER THE AUTHOR GAVE FOR `arguments` DOES NOT SIMPLY TRANSFER**, which
-  is why this is open rather than done. "Display its children" works where the
-  children are facts; `satellite.system.memory`'s children are `free()`,
-  `free(unit)`, `total()`, `total(unit)` and the rest — call shapes in pairs —
-  so a map of them would have to pick a unit, and picking one is a decision the
-  unit table exists to avoid making. The candidates are a map of the
-  no-argument verbs in the default unit, or a refusal naming the children the
-  way `satellite.container` `1 4 0`'s help line already does.
+  **SETTLED 2026-09-11 BY THE AUTHOR FOR TWO OF THE FOUR.** `memory()`
+  **displays its children**, which is the answer they gave for `arguments`'
+  groups the same day; `swap()` answers **how much swap is available**.
+
+  **THE OBJECTION THIS ENTRY RAISED WAS ANSWERED RATHER THAN OVERRULED.** It
+  said "display its children" could not transfer, because `memory`'s children
+  are `free()`/`free(unit)` pairs and a map of them would have to pick a unit.
+  It picks the **arity-0 row**: `free()` and `free(unit)` are two numbers and
+  one WORD, so the map is keyed by the word and answered by the shape that
+  takes nothing, which is the default unit by construction and not by a choice
+  made here. A program that wants gigabytes asks `memory.total("gb")`.
+
+  **A CHILD WITH NO NO-ARGUMENT ANSWER IS LEFT OUT** rather than filled with
+  `nothing` — today that is `this` `1 22 4 5`. Leaving it out says so; a blank
+  beside seven numbers would read as a fact about this thread's stack.
+  `satellite.system()` `1 22 0` and `this()` `1 22 4 5 0` are **still open**,
+  and `satellite_system/group_map.cpp` is the reader either of them would use.
+- **AND ASKING THE QUESTION FOUND A RESOLVER DEFECT THAT WAS ANSWERING THE
+  WRONG FACT RATHER THAN FAILING.** *(2026-09-11.)*
+  `satellite.system.memory.swap("mb")` never reached `swap(unit)` `1 22 4 4 6`
+  at all: it resolved to `swap.free(unit)` `1 22 4 4 4`, the first child of
+  `swap` with matching arity, so that row's handler was dead code and the
+  install table said `total` while the language answered `free`.
+
+  **WORSE ONE LEVEL UP, AND SILENTLY.** `satellite.system.memory("mb")` **is
+  not a row at all** and matched `memory.main(unit)` `1 22 4 9` — so a program
+  asking how much memory the machine has was told this process's resident set,
+  **3.39 against 63430**, with nothing anywhere saying so.
+
+  **THE CAUSE IS IN `satellite_cache/paths.cpp`'s `shape_of()`.** When a word
+  has a number of its own, its call shapes are its children — and the loop
+  that looks there matched on ARITY ALONE and never on the spelling. A named
+  child is a different word and can never be what `<word>(...)` meant. **Six
+  rows in the registry are spelled as a bare argument list** —
+  `include(satellite)`, `include(spaceship)`, `return(satellite)`,
+  `return(value)`, `help(x)` and `swap(unit)` — and only the last sat beside a
+  named sibling of its own arity, which is why four milestones walked past it.
+
+  **NO `.satc` NEEDED INVALIDATING AND THAT WAS CHECKED RATHER THAN ASSUMED.**
+  The numbering did not move, so the words digest did not either — which means
+  a cache written before the fix would have kept the wrong number. All 39 files
+  under `$HOME/.satl/cache` were read: two match the current digest
+  `1ef8ec50a203c593` and neither holds `1 22 4 9` or `1 22 4 4 4` from a call
+  of this shape. **SATC.md §2's three header lines have no reading for "the
+  resolver's rules changed while the numbering did not"**, and that gap is
+  worth a sentence there whenever the author next touches it; the format
+  version is the only lever, and it is an error rather than a silent walk.
 
   **A DEAD READER WENT WITH IT.** `stack_total()` in
   `satellite_system/memory_methods.cpp` was written on 2026-09-11 beside

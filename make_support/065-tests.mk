@@ -556,6 +556,7 @@ HELP_TEST_SRCS = $(HELP)/built.cpp \
                  $(HELP)/handlers.cpp \
                  $(SYSLIB)/handlers.cpp \
                  $(SYSLIB)/units.cpp \
+                 $(SYSLIB)/group_map.cpp \
                  $(SYSLIB)/memory_methods.cpp \
                  $(SYSLIB)/host_methods.cpp \
                  $(SATFILE)/file_handle.cpp \

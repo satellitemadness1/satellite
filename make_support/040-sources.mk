@@ -452,6 +452,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(CONTAIN)/map_methods.cpp \
             $(SYSLIB)/handlers.cpp \
             $(SYSLIB)/units.cpp \
+            $(SYSLIB)/group_map.cpp \
             $(SYSLIB)/memory_methods.cpp \
             $(SYSLIB)/host_methods.cpp \
             $(ARGS)/arguments.cpp \

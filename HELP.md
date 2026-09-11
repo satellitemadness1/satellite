@@ -3582,11 +3582,21 @@ from a byte, so the answer is exact and never rounds.
 
     satellite.console.display(satellite.system.memory.total("gb"))
 
-.  `1 22 4 0`  `satellite.system.memory()`
+H  `1 22 4 0`  `satellite.system.memory()`  _M20_
 > satellite.help(satellite.system.memory)
 
-The bare shape. There is nothing to call; one of the words underneath is
-what you write.
+The whole section at a glance — every word underneath that answers on its
+own, in one map: the firmware pair, this process, the swap file, and the
+machine's own free, total and used.
+
+The entries come out in megabytes, which is the unit you get without
+asking. A program that wants another names the word it wants and the unit
+with it — `satellite.system.memory.total("gb")`.
+
+`this` is not in the map, because this thread's stack has no answer on its
+own yet. Leaving it out says that; a blank beside seven numbers would not.
+
+    satellite.console.display(satellite.system.memory())
 
 H  `1 22 4 1`  `satellite.system.memory.bit`  _M20_
 > satellite.help(satellite.system.memory.bit)
@@ -3634,10 +3644,18 @@ The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
 what you get without asking. Every one of them is a power of 1024 away
 from a byte, so the answer is exact and never rounds.
 
-.  `1 22 4 4 0`  `satellite.system.memory.swap()`
+H  `1 22 4 4 0`  `satellite.system.memory.swap()`  _M20_
 > satellite.help(satellite.system.memory.swap)
 
-The bare shape. One of the words underneath is what you write.
+**How much swap is available** — what is left of the swap file, in
+megabytes.
+
+That is the useful question about a swap file, so it is the one you get
+for naming it. `swap.free()` is the same number under its own name, the
+way `memory.free()` and `this.available()` are, and `swap.total()` is how
+big the file is altogether.
+
+    satellite.console.display(satellite.system.memory.swap())
 
 H  `1 22 4 4 1`  `satellite.system.memory.swap.free()`  _M20_
 > satellite.help(satellite.system.memory.swap.free)
@@ -3689,14 +3707,14 @@ from a byte, so the answer is exact and never rounds.
 H  `1 22 4 4 6`  `satellite.system.memory.swap(unit)`  _M20_
 > satellite.help(satellite.system.memory.swap)
 
-The swap file, reported in the unit you name — which is how much
-of it there is altogether.
+**How much swap is available**, in the unit you name — the same question
+the bare word answers.
 
 The unit is `"b"`, `"kb"`, `"mb"`, `"gb"` or `"tb"`, and `"mb"` is
 what you get without asking. Every one of them is a power of 1024 away
 from a byte, so the answer is exact and never rounds.
 
-    satellite.console.display(satellite.system.memory.swap("gb") >= 0)
+    satellite.console.display(satellite.system.memory.swap("gb"))
 
 H  `1 22 4 4 7`  `satellite.system.memory.swap.used(unit)`  _M20_
 > satellite.help(satellite.system.memory.swap.used)

@@ -29,6 +29,7 @@
 #include "evaluator/dispatch.hpp"
 #include "evaluator/machine.hpp"
 #include "satellite_string/satellite_string.hpp"
+#include "satellite_system/group_map.hpp"
 #include "satellite_system/units.hpp"
 #include "satellite_value/render.hpp"
 #include "satellite_value/value.hpp"
@@ -36,6 +37,7 @@
 #include "system_facts/facts.hpp"
 
 #include <string>
+#include <utility>
 
 namespace satellite::system {
 
@@ -215,6 +217,8 @@ void install_memory()
         {NodeId::SYSTEM_MEMORY_USED_UNIT,       report<machine_used>,  1},
 
         // --- this process's own resident set ---
+        {NodeId::SYSTEM_MEMORY_0,
+         display_children<NodeId::SYSTEM_MEMORY>,                      0},
         {NodeId::SYSTEM_MEMORY_MAIN_0,          report<process_main>,  0},
         {NodeId::SYSTEM_MEMORY_MAIN_UNIT,       report<process_main>,  1},
 
@@ -232,10 +236,26 @@ void install_memory()
         {NodeId::SYSTEM_MEMORY_SWAP_TOTAL_UNIT, report<swap_total>,    1},
         {NodeId::SYSTEM_MEMORY_SWAP_USED_UNIT,  report<swap_used>,     1},
 
-        // `swap(unit)` 1 22 4 4 6 IS SWAP'S OWN OPTIONAL UNIT -- the bare
-        // object asked for in a unit, which is the total. §2.2 names it
-        // "swap's own optional unit" and that is what it answers.
-        {NodeId::SYSTEM_MEMORY_SWAP_UNIT,       report<swap_total>,    1},
+        // SWAP'S OWN TWO SHAPES, AND THEY ANSWER HOW MUCH SWAP IS AVAILABLE
+        // -- the author, 2026-09-11. `swap()` 1 22 4 4 0 is the bare object
+        // and `swap(unit)` 1 22 4 4 6 is the same question in a unit, so the
+        // two are one row written twice and cannot disagree.
+        //
+        // IT ANSWERED THE TOTAL UNTIL THIS COMMIT AND NOTHING COULD REACH IT
+        // TO NOTICE. `1 22 4 4 6` was installed with report<swap_total> on
+        // 2026-09-11 and satellite_cache/paths.cpp resolved
+        // `swap("mb")` to `swap.free(unit)` `1 22 4 4 4` instead -- so the
+        // language answered free, the table said total, and the row was dead.
+        // The resolver defect is fixed in that file; these two rows are what
+        // the author chose once it could be asked at all.
+        //
+        // AVAILABLE AND NOT FREE-THE-WORD: `swap.free()` 1 22 4 4 1 is the
+        // same number under its own name, exactly as `memory.free()` and
+        // `this.available()` are. What the bare object adds is that the
+        // useful question about a swap file -- how much of it is left -- is
+        // the one you get for naming it.
+        {NodeId::SYSTEM_MEMORY_SWAP_0,          report<swap_free>,     0},
+        {NodeId::SYSTEM_MEMORY_SWAP_UNIT,       report<swap_free>,     1},
 
         // --- this thread's stack ---
         //
