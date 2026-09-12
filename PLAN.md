@@ -5243,6 +5243,22 @@ proves the caller sees the mutation — reference semantics, demonstrated rather
 asserted — and when reaching a protected field from outside is refused by name with
 M5's caret rather than by silence.
 
+**CONSTRUCTORS — decided by the author 2026-09-12, built before M24.** A
+spacesuit has three sections: **`satellite.protected { }`, `satellite.public { }`
+and `satellite.constructor { }`.** The constructor is a SECTION, not a capsule
+named after its suit — which retires both M26's `satellite.capsule counter()`
+reading and v1 design/14's bare `counter(...)`. It runs when the object is
+built, and **`object_name.constructor()` calls it again.** `satellite.constructor`
+takes `1 25`, the next number free under `satellite` (`satl --words`,
+2026-09-12), minted when built; `.constructor()` on an instance is a new
+selector, so a user capsule named `constructor` is refused by name. *Carried
+from v1 design/14 as readings, unconfirmed: every field's starting value is set
+before the constructor runs, so it sees the whole object; the superclass's
+constructor runs before the subclass's; S0525 (a constructor may not declare a
+return type) has nothing left to catch and retires with the old spelling.
+Open: whether the section takes arguments, and how a declaration hands them
+over.*
+
 *(2026-09-12, the author's build order: **constructors first** — M26 §4's
 "compiles and silently skips it" — **then M24**, then the network. Kind 7
 needs `.pointer()`, which M26 still owes.)*
