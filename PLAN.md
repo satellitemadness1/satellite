@@ -5301,6 +5301,11 @@ field initialisers and stored, then exactly `tally.constructor("hello")`.
 - *Not built:* `counter tally = counter("hello")` as an expression, and
   `super(...)` (DESIGN §12).
 
+*(2026-09-12, later: **M24 is passed over for now** — the author's call, after
+constructors landed at `b600a46`. Next is **`satellite.directory.list(d)`
+`1 18 5`, and `list()` `1 18 4` for the current directory**; both shapes were
+already numbered.)*
+
 *(2026-09-12, the author's build order: **constructors first** — M26 §4's
 "compiles and silently skips it" — **then M24**, then the network. Kind 7
 needs `.pointer()`, which M26 still owes.)*
