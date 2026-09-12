@@ -473,6 +473,14 @@ void Resolver::gather_members(NodeIndex suit_node, Suit &into, bool)
                     item, method.name, into.name);
                 break;
             }
+            // THE CONSTRUCTOR MAY NOT DECLARE A RETURN TYPE -- DESIGN §13,
+            // enforced at M26. The caret goes on the `satellite.returns` type
+            // rather than the name, because the type is the part to delete.
+            // The member is still recorded: the program is refused either way,
+            // and dropping it would add an S0518 nobody made.
+            if (method.name == into.name && ast_[item].c != kNoNode)
+                problem<errors::Code::RESOLVE_CONSTRUCTOR_RETURNS>(
+                    ast_[item].c, method.name);
             into.methods.push_back(method);
             break;
         }

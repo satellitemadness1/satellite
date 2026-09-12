@@ -1,0 +1,142 @@
+satellite.include(satellite)
+
+// satellite.spacesuit -- M26, and DESIGN §13's classes.
+//
+// A SPACESUIT IS A REFERENCE. Every other value in the language is copied when
+// it is handed on; a spacesuit is shared. Pass one into a capsule and the
+// capsule changes the one you are holding, and `b = a` makes a second name for
+// the same object rather than a second object. That is the whole of this file.
+//
+// DECLARING ONE BUILDS ONE. `counter tally` with no `=` constructs a counter
+// with its fields at their starting values. With an `=`, the name takes the
+// object on the right instead, and nothing new is built.
+//
+// A FIELD IS REACHED ONLY THROUGH A CAPSULE. `tally.count` is refused even when
+// the field is public -- ask the object, with `tally.get()`. And a capsule in
+// `satellite.protected` can be called by the suit's own capsules and refused,
+// by name, to everyone else. The bottom of this file has one of each refusal to
+// uncomment.
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number count = 0
+        satellite.variable.string label = "unnamed"
+
+        satellite.capsule clamp_to_zero()
+        {
+            satellite.statement.if (count < 0)
+            {
+                count = 0
+            }
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule name(satellite.variable.string new_label)
+        {
+            label = new_label
+        }
+
+        satellite.capsule add(satellite.variable.number by)
+        {
+            count = count + by
+            clamp_to_zero()
+        }
+
+        satellite.capsule get() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(count)
+        }
+
+        satellite.capsule describe() satellite.returns(satellite.variable.string)
+        {
+            satellite.variable.string shown = count.to_string()
+            satellite.return(label + " is at " + shown)
+        }
+    }
+}
+
+// A SUIT CAN EXTEND ONE OTHER. A `loud_counter` holds everything a `counter`
+// does, and its own capsules call the parent's as if they were its own.
+satellite.spacesuit loud_counter(counter)
+{
+    satellite.public
+    {
+        satellite.capsule add_twice(satellite.variable.number by)
+        {
+            add(by)
+            add(by)
+        }
+    }
+}
+
+// THIS CAPSULE CHANGES THE CALLER'S OBJECT. It is handed a counter, adds to
+// it, and returns nothing -- and the caller still sees the change, because
+// there was only ever one counter.
+satellite.capsule bump(counter target)
+{
+    target.add(10)
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("two counters, built by declaring them:")
+    counter first
+    counter second
+    first.name("first")
+    second.name("second")
+    first.add(1)
+    second.add(5)
+    satellite.variable.string first_line = first.describe()
+    satellite.variable.string second_line = second.describe()
+    satellite.console.display("  " + first_line)
+    satellite.console.display("  " + second_line)
+
+    satellite.console.display("")
+    satellite.console.display("one of them handed to a capsule that adds 10:")
+    bump(first)
+    first_line = first.describe()
+    second_line = second.describe()
+    satellite.console.display("  " + first_line)
+    satellite.console.display("  " + second_line)
+
+    satellite.console.display("")
+    satellite.console.display("a second name for the first counter:")
+    counter same = first
+    same.add(100)
+    first_line = first.describe()
+    satellite.console.display("  " + first_line)
+
+    satellite.console.display("")
+    satellite.console.display("a loud_counter, which is a counter that adds twice:")
+    loud_counter loud
+    loud.name("loud")
+    loud.add_twice(4)
+    satellite.variable.string loud_line = loud.describe()
+    satellite.console.display("  " + loud_line)
+
+    satellite.console.display("")
+    satellite.console.display("a counter never goes below zero, and nobody outside can clamp it:")
+    counter careful
+    careful.name("careful")
+    careful.add(-3)
+    satellite.variable.string careful_line = careful.describe()
+    satellite.console.display("  " + careful_line)
+
+    // Uncomment either line to see it refused before anything runs:
+    //
+    //     satellite.console.display(first.count)
+    //
+    // S0517 -- a field is reached through a capsule, never with a dot.
+    //
+    //     careful.clamp_to_zero()
+    //
+    // S0516 -- clamp_to_zero is in `satellite.protected`, so only counter's
+    // own capsules can call it.
+
+    satellite.return(satellite)
+}

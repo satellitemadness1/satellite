@@ -122,5 +122,6 @@ void section_bits();        // M19.5's rows: the bit run, its width, its four me
 void section_hex();         // M19.5's second half: the hex run, its digits, its six methods
 void section_arguments();   // M20's rows: the ten selectors, and the live codes read
 void section_threads();     // M23's rows: the deferred call, the three verbs, the five refusals
+void section_suits();       // M26: construction, reference semantics, inheritance, seven refusals
 
 } // namespace eval_test

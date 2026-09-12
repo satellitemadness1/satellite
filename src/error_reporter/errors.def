@@ -507,6 +507,23 @@ SAT_CODE(523, RESOLVE_NO_SUCH_SHAPE, SAT_ERROR,
 SAT_CODE(524, RESOLVE_NO_SUCH_OPTION, SAT_ERROR,
          "`{1}` is not an option {2} has -- it has {3}")
 
+// A CONSTRUCTOR THAT DECLARES A RETURN TYPE -- M26, and DESIGN §13 decided it
+// before there was anything to apply it to: "A constructor is the one member
+// forbidden to declare one, since what a constructor produces is the object."
+// PLAN §8's M26 entry says this is the milestone that enforces it.
+//
+// WHAT COUNTS AS THE CONSTRUCTOR is the capsule inside a suit that carries the
+// suit's own name -- v1's spelling, and the one every language with classes
+// reads the same way. THIS BUILD DOES NOT RUN IT AT CONSTRUCTION: a declaration
+// with no `=` builds the object from its field initialisers (compile_statements
+// .cpp says why), and a same-named capsule is callable like any other. So this
+// refuses the one thing DESIGN has already settled about that member and
+// decides nothing about what a constructor does.
+SAT_CODE(525, RESOLVE_CONSTRUCTOR_RETURNS, SAT_ERROR,
+         "`{1}` is named after its own spacesuit, which makes it `{1}`'s "
+         "constructor -- and what a constructor produces is the object, so it "
+         "cannot declare `satellite.returns`")
+
 // DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named X gets a
 // plain list with no properties, silently. Under §9 that silence is wrong --
 // the language should say so." It is said here, and only where somebody has

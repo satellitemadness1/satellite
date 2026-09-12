@@ -163,8 +163,10 @@ void section_codes()
     // BOTH NUMBERS BELOW MOVED TOGETHER, which is what the paragraph above is
     // about -- the comparison and the sentence it prints are two copies of one
     // fact, and M20 moved one of them and not the other.
-    check(kCodeCount == 133,
-          "errors.def has 133 rows -- if that changed on purpose, change it here "
+    // AND 134 SINCE M26 CLOSED, which added one more: S0525, the constructor
+    // that declares `satellite.returns` DESIGN §13 forbids.
+    check(kCodeCount == 134,
+          "errors.def has 134 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

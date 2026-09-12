@@ -171,6 +171,7 @@ int main(int argc, char **argv)
     eval_test::section_hex();
     eval_test::section_arguments();
     eval_test::section_threads();
+    eval_test::section_suits();
 
     if (eval_test::failures != 0) {
         printf("eval_test: %d failed\n", eval_test::failures);
