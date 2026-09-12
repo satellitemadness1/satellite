@@ -79,11 +79,11 @@ void section_containers()
 
     scalars::install_handlers();
     containers::install_handlers();
-    check(eval::Handlers::table().installed() == 49 + 40,
+    check(eval::Handlers::table().installed() == 50 + 40,
           "M16's 40 rows -- 2 constructors, 25 list methods, 9 map methods, "
           "2 minted `search(pattern)` rows and the 2 threshold dials -- on "
-          "top of M11 and M12's 37, M19.5's 11 and M20's 1, and the count is "
-          "here so a row dropped from an install loop cannot vanish "
+          "top of M11 and M12's 37, M19.5's 11, M20's 1 and M21's 1, and the "
+          "count is here so a row dropped from an install loop cannot vanish "
           "quietly");
 
     // --- construction, which is where DESIGN §8.7 put the work -------------

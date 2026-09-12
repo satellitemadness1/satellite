@@ -276,6 +276,186 @@ void the_floors_hold()
                             std::to_string(paced) + " ms, the unit is seconds");
 }
 
+// --- M21's seeded tier -- `1 7 13`-`1 7 16` ---------------------------------
+//
+// IT RUNS FIRST IN THE SECTION AND ITS FIRST CLAUSE IS WHY. The stream is one
+// per process (per thread, strictly -- tiers.cpp holds it thread_local for
+// shared_source()'s reason), so once anything has seeded it, nothing can
+// unseed it. S0911's refusal is therefore only observable before the first
+// `seeded(seed)` in the whole run, and a clause that checked it later would
+// pass or fail depending on what ran before it.
+void the_seeded_tier()
+{
+    using satellite::errors::Code;
+
+    // THIS CLAUSE MUST BE FIRST. See the note above.
+    check(refused_with("    satellite.return("
+                       "satellite.random.seeded(0, 1))\n",
+                       Code::RANDOM_NOT_SEEDED),
+          "a draw before the stream is seeded refuses rather than seeding one");
+
+    check(refused_with("    satellite.return(satellite.random.seeded())\n",
+                       Code::RANDOM_SEEDED_NEEDS_A_SHAPE),
+          "the zero-argument call is a refusal by design");
+    check(refused_with("    satellite.return(satellite.random.seeded)\n",
+                       Code::RANDOM_SEEDED_NEEDS_A_SHAPE),
+          "and the bare spelling folds to the same number and the same text");
+    check(refused_with("    satellite.return(satellite.random.seeded(1.5))\n",
+                       Code::RANDOM_NOT_A_SEED),
+          "a fractional seed is refused -- it names a position, not a quantity");
+    check(refused_with("    satellite.return("
+                       "satellite.random.seeded(0 - 1))\n",
+                       Code::RANDOM_NOT_A_SEED),
+          "and so is a negative one");
+    check(refused_with("    satellite.return(satellite.random.seeded(\"x\"))\n",
+                       Code::RANDOM_NOT_A_SEED),
+          "and a seed that is not a number at all");
+
+    // THE SEED ITSELF ANSWERS NOTHING -- it is a statement about the stream.
+    check(answers("    satellite.random.seeded(4242)\n"
+                  "    satellite.return(satellite.bool.true)\n") == "true",
+          "seeded(seed) answers nothing and the program carries on");
+
+    // INVARIANT 8, which is the whole reason the tier exists: the same seed
+    // draws the same sequence. Two programs, each reseeding, must agree.
+    const std::string once =
+        answers("    satellite.random.seeded(4242)\n"
+                "    satellite.return(satellite.random.seeded(0, 1))\n");
+    const std::string twice =
+        answers("    satellite.random.seeded(4242)\n"
+                "    satellite.return(satellite.random.seeded(0, 1))\n");
+    check(once == twice, "the same seed replays -- QUAD's invariant 8");
+
+    // And a DIFFERENT seed must not, or "replays" would be true of a
+    // generator that ignored its seed. On a 34-digit grid a collision is not
+    // a thing that happens.
+    const std::string other =
+        answers("    satellite.random.seeded(4243)\n"
+                "    satellite.return(satellite.random.seeded(0, 1))\n");
+    check(once != other, "a different seed draws differently");
+
+    // THE FRACTION, which no other tier can answer. A whole-number draw
+    // between 0 and 1 would be "0" or "1"; this has a point in it.
+    check(once.find('.') != std::string::npos,
+          "seeded(0, 1) answers a fraction -- the one draw that can");
+    check(once.size() > 3,
+          "and it is drawn on the grid rather than at one end of it");
+
+    // The degenerate range is still a range of one, inclusive at both ends.
+    check(answers("    satellite.random.seeded(7)\n"
+                  "    satellite.return(satellite.random.seeded(5, 5))\n") == "5",
+          "seeded(5, 5) is 5 -- inclusive at both ends, as everywhere in §11");
+    check(answers("    satellite.random.seeded(7)\n"
+                  "    satellite.return("
+                  "satellite.random.seeded.range(5, 5))\n") == "5",
+          "and the .range spelling is the same number -- M2's alias rewrite");
+
+    // THE STEP SHAPE IS HOW THIS TIER ANSWERS A WHOLE NUMBER, and a step of
+    // one over a span of zero pins it exactly.
+    check(answers("    satellite.random.seeded(7)\n"
+                  "    satellite.return("
+                  "satellite.random.seeded(3, 3, 1))\n") == "3",
+          "seeded(3, 3, 1) is 3 -- the step shape over a span of one member");
+
+    // A FRACTIONAL STEP, which the three spinning tiers refuse (S0909's "a
+    // whole number of one or more"). Every member of {0, 0.5, 1} renders
+    // with at most one decimal, so the answer's length is the assertion.
+    const std::string quarter =
+        answers("    satellite.random.seeded(11)\n"
+                "    satellite.return("
+                "satellite.random.seeded(0, 1, 0.5))\n");
+    check(quarter == "0" || quarter == "0.5" || quarter == "1",
+          "a fractional step draws a member of its own set, and nothing else");
+
+    check(refused_with("    satellite.random.seeded(1)\n"
+                       "    satellite.return("
+                       "satellite.random.seeded(0, 1, 0.3))\n",
+                       Code::RANDOM_STEP_MISSES),
+          "a fractional step that misses `max` is refused naming what it hits");
+    check(refused_with("    satellite.random.seeded(1)\n"
+                       "    satellite.return("
+                       "satellite.random.seeded(0, 1, 0))\n",
+                       Code::RANDOM_STEP_NOT_A_STEP),
+          "a step of zero is no step at all, fractional tier or not");
+    check(refused_with("    satellite.random.seeded(1)\n"
+                       "    satellite.return("
+                       "satellite.random.seeded(10, 1))\n",
+                       Code::RANDOM_RANGE_EMPTY),
+          "a backwards range is empty here exactly as on the other three");
+
+    // AND IT DOES NOT SPIN, which is the tier's whole reason. The floor
+    // asserted for `fast` one clause down is 50 ms for ONE draw; twenty of
+    // these must come in under that, and this is a CEILING on purpose where
+    // the_floors_hold() asserts only floors -- a tier whose window is zero is
+    // the one case where a ceiling is the claim rather than the machine's
+    // luck. Generous by 10x so a loaded machine does not fail it.
+    const long long twenty = milliseconds_to_answer(
+        "    satellite.random.seeded(99)\n"
+        "    satellite.variable.number last = 0\n"
+        "    satellite.statement.for (satellite.variable.number i = 0;"
+        " i < 20; i = i + 1)\n"
+        "    {\n"
+        "        last = satellite.random.seeded(0, 1)\n"
+        "    }\n"
+        "    satellite.return(last)\n");
+    check(twenty < 500,
+          "twenty seeded draws come in under half a second -- no window, and "
+          "one `fast` draw alone is floored at 50 ms");
+}
+
+// --- M21's `satellite.variable.float.to_string()` -- `1 6 10 1` -------------
+//
+// The type's FIRST method, and the round trip QUAD's Sky::save needs. The
+// float's arithmetic is tests/float_test's; what is asserted here is the one
+// row this milestone added to the dispatch table.
+void the_float_answers_text()
+{
+    using satellite::errors::Code;
+
+    check(answers("    satellite.variable.float a = 0.4995225\n"
+                  "    satellite.return(a.to_string())\n") == "0.4995225",
+          "to_string() renders what display renders");
+    check(answers("    satellite.variable.float w = 4\n"
+                  "    satellite.return(w.to_string())\n") == "4.0",
+          "a whole float keeps its point -- one fractional digit minimum, so "
+          "a float never renders as a number");
+    check(answers("    satellite.variable.float n = 0 - 0.14\n"
+                  "    satellite.return(n.to_string())\n") == "-0.14",
+          "and a negative one keeps its sign");
+    check(answers("    satellite.variable.float z = 0\n"
+                  "    satellite.return(z.to_string())\n") == "0.0",
+          "positive zero renders as one -- §8.6's invariant 3, from outside");
+
+    // THE ROUND TRIP, which is the whole reason the row was minted: Sky::save
+    // had no way out and Sky::load already had its way in.
+    check(answers("    satellite.variable.float a = 0.4995225\n"
+                  "    satellite.variable.string s = a.to_string()\n"
+                  "    satellite.variable.float back = s.to_number()\n"
+                  "    satellite.return(back == a)\n") == "true",
+          "float -> string -> float is exact, so a .sky round trip is equality");
+
+    // It concatenates, which `"x " + a` does not -- S0711 is the refusal the
+    // row exists to route around, and it is still the refusal.
+    check(answers("    satellite.variable.float a = 1.5\n"
+                  "    satellite.return(\"N \" + a.to_string())\n") == "N 1.5",
+          "the string is an ordinary string and adds to one");
+    check(refused_with("    satellite.variable.float a = 1.5\n"
+                       "    satellite.return(\"N \" + a)\n",
+                       Code::EVAL_NOT_A_NUMBER),
+          "while the float itself still does not add to a string");
+
+    // A DECLARATION IS NOT A VALUE -- methods_internal.hpp's rule, at this
+    // row's own site.
+    check(refused_with("    satellite.variable.float a\n"
+                       "    satellite.return(a.to_string())\n",
+                       Code::EVAL_HOLDING_NOTHING),
+          "a declared float holds nothing until something is assigned to it");
+    check(refused_with("    satellite.variable.float a = 1.5\n"
+                       "    satellite.return(a.nonsense())\n",
+                       Code::EVAL_NO_SUCH_QUESTION),
+          "and to_string is the only word this type has");
+}
+
 } // namespace
 
 void section_clock_and_dice()
@@ -283,6 +463,11 @@ void section_clock_and_dice()
     satellite::random::install_handlers();
     satellite::time::install_handlers();
     satellite::scalars::install_handlers();
+
+    // THE SEEDED TIER FIRST, because its first clause is only observable
+    // before anything has seeded the process's stream -- see its own note.
+    the_seeded_tier();
+    the_float_answers_text();
 
     digit_draws_run_short();
     both_ends_and_the_step_set();

@@ -314,7 +314,10 @@ dice did not survive the same treatment**: PLAN M13 records that
 `satellite.random` cannot write `Rack::draw` at all — no float draw, no seed, and a
 50–100 ms floor per call against a 90 ms tick — so §2's filing of `random` under
 *"already decided in satellite, and fine"* is the one row of that table that is
-wrong, and M21 carries the gap.
+wrong, and M21 carries the gap. ***(2026-09-11: M21 landed and closed it.
+`satellite.random.seeded` `1 7 13`-`1 7 16` is the fourth tier -- seeded, no
+spin, and the one draw in the language that answers a fraction. That row of
+§2's table is right again, and DESIGN §11.0 is the specification.)***
 
 ---
 
@@ -351,6 +354,54 @@ number is the numbering's, and M21 carries it as its one blocker. That is this
 section's own prediction landing early: the gap between "the language has floats"
 and "this expression is writable" was found by reading `rack.hpp` against the
 numbering, and not by building either.
+
+***(2026-09-11.)* M21 LANDED AND THE PREDICTION ABOVE WAS RIGHT, so this is
+what the day of writing them actually found.** `MILESTONES/M21.md` is the
+review; both mechanisms are in `example/decay.satl` and `example/draw.satl`,
+and both assert rather than print.
+
+**The numbers agree, and where they do not it is the double that is wrong.**
+`Sky::decay` matched an independent exact-decimal referee on **40 of 40**
+activations, against the C++ double's **6 of 40** — worst double error 6e-17.
+All four of `Rack::draw`'s annealing exponents are exact in satellite and none
+are in the C++: `4.65` against `4.6500000000000004`. All twenty of the wheel's
+choices are identical. **This section's §3.1 argument for the float type is no
+longer an argument; it is a measurement.**
+
+**Six things the language could not say, which §3 did not have.** §5 promised
+this list exists and that §3 is a floor rather than a ceiling:
+
+1. **A float answered no methods at all** — no `to_string`, so `Sky::save` was
+   unwritable while `Sky::load` worked. **Closed:** `1 6 10 1`, minted at M21.
+2. **No seeded, non-spinning, fractional draw**, which is §4's own last
+   paragraph and PLAN M21's one blocker. **Closed:** `satellite.random.seeded`
+   `1 7 13`–`1 7 16`.
+3. **A container is passed BY VALUE and a capsule cannot mutate its caller's
+   list**, so every `void` method of QUAD that writes through a member has to
+   hand back what it changed. **Open, and it is a real cost**: `mind.hpp` is
+   full of them. The rule is deliberate (`value.hpp`'s *"BUILT, THEN
+   FROZEN"*) and DESIGN §6.4, which the source cites for it, does not state
+   it. **M26 has to answer the same question for a spacesuit method mutating
+   its own fields**, and that is the milestone where this stops being a
+   transcription cost and becomes a design one.
+4. **There is no `break` and no `continue`** — DESIGN §6's only loop is the
+   C-shaped `for` — so `sky.hpp`'s two `continue`s became nested `else` arms.
+   **Open, and cheap**; it reads no worse.
+5. **Spacesuits are M26**, so the sky is parallel lists indexed by a shared id
+   rather than an object. **Open by schedule** and no surprise.
+6. **A float's precision is decimal PLACES, not significant digits**, so a
+   value at `1e-28` keeps six significant digits where a double keeps fifteen.
+   This is the ONLY place either mechanism found where the double is the more
+   precise of the two. **Open**, quantified in DESIGN §8.6, and harmless here.
+
+**And one thing that is not a language hole and is worth as much.** A mechanism
+with a generator in it cannot be compared to another language's by its output —
+QUAD's is `std::mt19937`, satellite's is PCG. What survives comparison is the
+deterministic core; what survives *demonstration* is the property QUAD actually
+needs, which is invariant 8. `example/draw.satl` splits its own claim along that
+line and says so, and the sequence itself is deliberately **not** asserted,
+because `satellite_random/random.hpp` keeps the 32-bit seam replaceable on
+purpose and a frozen stream would make that replaceable thing unreplaceable.
 
 *Companions: [DESIGN.md](DESIGN.md) — what the language is. [PLAN.md](PLAN.md) —
 how it gets built, and the milestones §4 above amends. [WORD_NUMBERS.md](WORD_NUMBERS.md)

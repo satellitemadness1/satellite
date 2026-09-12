@@ -488,7 +488,8 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.date` | `1 6 7` | assigned |
 | `satellite.variable.duration` | `1 6 8` | assigned |
 | `satellite.variable.expression` | `1 6 9` | assigned |
-| `satellite.variable.float` | `1 6 10` | assigned |
+| `satellite.variable.float` | `1 6 10 (0)` | assigned; **built at M15** — the `(0)` is new with its child below, `binary`'s and `hex`'s precedent |
+| `satellite.variable.float.to_string` | `1 6 10 1` | assigned — **minted at M21**, and it is the type's FIRST method. `Float::to_string()` already existed in C++ and `satellite_value/render.cpp` was its only caller, so a float could be displayed and could not be turned into text: no `to_string`, `"x " + a` refused by S0711, `write_line(a)` by S0713. `Sky::save` writes 164 doubles into a text file and was unwritable for that reason while `Sky::load` worked, because `"0.4995225".to_number()` answers. Renders at the value's own precision, which is what `display` shows |
 | `satellite.variable.hex` | `1 6 11 (0)` | assigned; also spelled `hexadecimal`; **built at M19.5** — the `(0)` is new with its children below. **No `as_number`** — binary's `1 6 5 4` reads its characters as a decimal, which `00FF` has no reading as; the row existed for part of 2026-09-09 and the author dropped it, so `digits` and `to_binary` took 4 and 5. Both were minted the same day and unseen outside this tree, which is the only condition §1.2's *never renumber* allows the shift under |
 | `satellite.variable.hex.to_number` | `1 6 11 1` | assigned 2026-09-09 — what the digits are WORTH; `x00FF.to_number()` is 255 |
 | `satellite.variable.hex.width` | `1 6 11 2` | assigned 2026-09-09 — how many BITS; `x00FF.width()` is 16, which keeps `write(x)`'s multiple-of-8 rule one rule |
@@ -522,6 +523,11 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.random.ultra(min, max)` | `1 7 11` | assigned |
 | `satellite.random.ultra.range(min, max)` | `1 7 11` | ALIAS of the line above |
 | `satellite.random.ultra(min, max, step)` | `1 7 12` | assigned |
+| `satellite.random.seeded(seed)` | `1 7 13` | assigned — **minted at M21**, the number PLAN §8 reserved for *"a fourth `satellite.random` shape that takes a seed"* and declined to assign at M13. Reseeds the tier's stream and answers nothing; **it does not spin**, which is the other half of why the three tiers cannot write `Rack::draw` |
+| `satellite.random.seeded(min, max)` | `1 7 14` | assigned — **and it is the one draw in the language that takes FRACTIONAL bounds**, uniform over the grid of the value's own precision. The three spinning tiers refuse a fraction (S0905) because there is no uniform draw over the reals; a grid has one. `seeded(0, 1)` is QUAD's `rng.uniform()` |
+| `satellite.random.seeded.range(min, max)` | `1 7 14` | ALIAS of the line above |
+| `satellite.random.seeded(min, max, step)` | `1 7 15` | assigned — the step may be fractional too, and the same exact-division rule holds: the step must divide `max - min` exactly |
+| `satellite.random.seeded()` | `1 7 16` | assigned — a refusal by design, the other three tiers' `1 7 1`–`1 7 3` |
 | `satellite.file` | `1 8 (0)` |  |
 | `satellite.file.new(path)` | `1 8 1` |  |
 | `satellite.file.open(path, mode)` | `1 8 2` | shape written 2026-09-08 — v1's arity, `SAT_PATH(P_FILE_OPEN, ... 2)`. The mode is a WORD checked at run time and does not fold; §1.5's fold reaches selector calls at argument 0 only |

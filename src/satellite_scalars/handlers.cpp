@@ -177,6 +177,7 @@ void install_handlers()
     install_variant_methods();
     install_bits_methods();
     install_hex_methods();
+    install_float_methods();
 }
 
 } // namespace satellite::scalars

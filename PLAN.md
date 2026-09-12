@@ -55,6 +55,21 @@ carries every decision as it was argued and `MILESTONES/M20.md` is the review:
 the arguments object and its ten selectors, `satellite.system`, a word for
 reading a live code, and a watchdog floor a running program can move.
 
+**M21 LANDED THE SAME DAY** — `MILESTONES/M21.md`, two commits — and it is the
+only milestone in this list whose content is a *program* rather than a
+mechanism: **`Sky::decay` and `Rack::draw`, two pieces of QUAD, written in
+satellite by hand and refereed against the C++.** QUAD.md §4 had asked for it
+since its first draft. `Sky::decay` matched an independent exact-decimal
+referee on **40 of 40** activations where the C++ double matched on 6 of 40;
+all four of `Rack::draw`'s annealing exponents are exact in satellite and none
+in the double, and all twenty of its wheel choices are identical. Its two
+blockers both turned out to be numbers and the author cleared both:
+`satellite.random.seeded` `1 7 13`–`1 7 16`, a tier that does not spin and the
+only fractional draw in the language, and
+`satellite.variable.float.to_string()` `1 6 10 1`, without which `Sky::save`
+could not be written at all. **And it produced the list QUAD.md §5 predicted it
+would** — six things the language still cannot say, four of them still open.
+
 **THE NARRATIVE BELOW STOPS AT M17 AND THE LIST ABOVE DOES NOT.** Everything
 from M18 on is in §8 and in `MILESTONES/`, and this section was not extended
 with it — which is worth saying here rather than leaving a reader to notice:
@@ -62,7 +77,8 @@ with it — which is worth saying here rather than leaving a reader to notice:
 so a §1 that quietly ended at M17 was pointing them at a frontier four
 milestones behind the tree. **satellite.help exists (M18), files and
 directories are open and read (M19), binary and hexadecimal are values
-(M19.5), and `satellite.system` answers the machine (M20).**
+(M19.5), `satellite.system` answers the machine (M20), and two pieces of QUAD
+run and are held to the C++'s own numbers (M21).**
 *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
@@ -4812,7 +4828,9 @@ both halves.
 > what the machine has is killed within the second, on stderr, exit 4 -- the
 > watchdog acting on a floor no file ever carried.
 
-**M21 — a piece of QUAD, running.** *(New 2026-08-28. After M20.)* **The milestone
+**M21 — a piece of QUAD, running.** ***LANDED 2026-09-11 —
+`MILESTONES/M21.md`, and its §2.3 is how the blocker below was cleared.***
+*(New 2026-08-28. After M20.)* **The milestone
 QUAD.md §4 has asked for since its first draft and this list did not have**, in §4's
 own words: *"one whose done-when condition is a piece of QUAD, running. Not the whole
 program — one mechanism out of `mind.hpp`, chosen because it exercises floats,
@@ -4850,6 +4868,29 @@ refuse to pretend to do. **Done when the number is assigned and the shape is bui
 or when the refusal is written down beside the mechanism it blocks** — the same form
 M15 uses for the rounding rule.
 
+***CLEARED BY THE AUTHOR 2026-09-11: a fourth TIER word, and the number is
+assigned rather than refused.*** `satellite.random.seeded` `1 7 13`–`1 7 16` —
+`1 7 13` being the number this paragraph and M13's entry both reserved for it.
+Three shapes and not four, **and the registry chose that rather than a
+preference**: a call shape is keyed by its word and its ARITY, there are no
+dotted node names in `words.def` at all, and so the one-argument slot holds
+either a digit count or a seed. The seed is what the tier is for, so
+`seeded(digits)` is not offered — which costs QUAD nothing. The fraction is
+uniform over a **grid** of `float_digits` decimals, which is the answer to this
+paragraph's own objection: S0905 refuses fractional bounds because there is no
+uniform draw over the REALS, and a grid is countable. DESIGN §11.0 is the
+specification and M21.md §2.3 is the argument.
+
+**AND IT TURNED OUT TO CARRY A SECOND BLOCKER THAT NOBODY HAD WRITTEN DOWN**,
+found by trying to write the `Sky::save` half this entry assigns below:
+**`satellite.variable.float` answered no methods at all** — `1 6 10` was a leaf
+in the numbering from M2 until M21 — so a float could be computed and displayed
+and could not be turned into text. `Sky::save` writes 164 doubles into a text
+file and `write_line` refuses a float; `Sky::load` already worked. **Cleared the
+same sitting by the author: `satellite.variable.float.to_string()` `1 6 10 1`**,
+the type's first method. DESIGN §8.6 carries it, and M21.md §2.4 is why a
+round-trip available in one direction only is what made it a number.
+
 **Its floor is M15, M16, M13 and M19**, one for each thing QUAD.md §4 names: floats,
 containers and sorting, the dice, and persistence. **`Sky::save` / `Sky::load` is the
 fuller persistence half** and round-trips 164 doubles at six significant digits, which
@@ -4863,6 +4904,35 @@ day of writing them has produced its own list of what the language still cannot 
 a floor on what is missing and not a ceiling."* A milestone whose output includes new
 holes is not a failed milestone; it is the only one in this section positioned to
 find them before a user does.
+
+***AND IT IS DONE, WITH ONE CLAUSE THAT HAD TO BE READ MORE CAREFULLY THAN IT IS
+WRITTEN.*** *(2026-09-11.)* `example/decay.satl` and `example/draw.satl` are the
+two programs and both assert rather than print. **`Sky::decay` matched an
+independent exact-decimal referee on 40 of 40 activations and the C++ double
+matched it on 6 of 40**, worst double error 6e-17 — so "the same numbers" is
+true in the strongest available sense, and the two places the two disagree in
+the sixth digit are exact ties where satellite holds the value and the double
+does not.
+
+**"The same numbers" cannot mean what it says for `Rack::draw`, and the program
+says so instead of pretending.** A mechanism with a generator in it can only be
+compared where the generators agree, and QUAD's is `std::mt19937` against
+satellite's PCG. So the claim splits: the **deterministic core is compared** —
+all four annealing exponents, exact in satellite and not in the double (`4.65`
+against `4.6500000000000004`), and all twenty wheel choices identical — while
+the **stream is demonstrated**, by seeding, drawing, reseeding and asserting the
+replay, which is the property QUAD's invariant 8 actually asks for. The sequence
+itself is deliberately not asserted, because `satellite_random/random.hpp` keeps
+the 32-bit seam replaceable and a frozen stream would undo that.
+
+**The list of what the language cannot say has six entries and QUAD.md §5 now
+carries it.** Two were closed by this milestone's own two mints. The other four
+are open: a container is passed by value so no capsule can mutate its caller's
+list (**and M26 inherits that question for a spacesuit method**); there is no
+`break` and no `continue`; spacesuits are M26 so the sky is parallel lists; and
+a float's precision is decimal PLACES rather than significant digits, which is
+the one place in either mechanism where the double is the more precise of the
+two. M21.md §3 has each with its measurement.
 
 
 **M22 — the prompt, and the window stops closing.** ***LANDED 2026-09-07, OUT OF
@@ -5322,13 +5392,26 @@ above**, counted mechanically against §2.2 rather than read off the prose:
 ***THIS TABLE IS STALE AND THE HEADLINE NUMBERS ABOVE IT ARE TOO — FOUND
 2026-09-11, WHILE M20 WAS LANDING, AND SAID HERE RATHER THAN QUIETLY FIXED.***
 `tests/words_test` counts WORD_NUMBERS §2.2 mechanically on every build and it
-now reads **296 rows and 293 distinct numbers**, against the 227 and 224 this
-section claims. **The gap is 69 rows and none of them is a renumber**: M19.5's
-eight, M19.6, and M20's fifty-one — thirty-eight for the arguments subtree and
+now reads **302 rows and 298 distinct numbers**, against the 227 and 224 this
+section claims. **The gap is 75 rows and none of them is a renumber**: M19.5's
+eight, M19.6, M20's fifty-one — thirty-eight for the arguments subtree and
 the three call shapes, ten for `satellite.container.arguments`' selectors, and
-`satellite.variable.string.resolved` `1 6 1 17`. Each landed in a commit that
+`satellite.variable.string.resolved` `1 6 1 17` — and **M21's six**: the seeded
+tier's four at `1 7 13`–`1 7 16`, the float's first method `1 6 10 1`, and the
+`.range` alias of `1 7 14` that takes no number. Each landed in a commit that
 moved `words.def`, §2.2, `help_lines/nodes.tsv` and the entries together, and
 **none of them moved this table.**
+
+***AND M21 WALKED PAST IT TOO, WHICH IS THE SECOND MILESTONE TO DO SO SINCE
+THE NOTE ABOVE WAS WRITTEN.*** It updated these two headline numbers, because
+they are derivable from a checked thing in one command; it did not recount the
+per-milestone column, for the reason the next paragraph gives. **A note that
+says "somebody has to run a sweep" and is then walked past twice is evidence
+about the note rather than about the sweep** — M21's own §3.8 records the same
+shape one file over, where `words.def`'s header tallies had gone stale for the
+fifth time and its own comment had predicted it. The difference between the two
+is that `words.def`'s counts are now derivable from `tests/words_test`'s four
+assertions, and this column is derivable from nothing.
 
 **THE PER-MILESTONE COLUMN CANNOT BE PATCHED AND MUST BE RECOUNTED**, which is
 why this is a note and not an edit. Its own rule is that it is *"counted

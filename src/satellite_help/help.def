@@ -1886,6 +1886,31 @@ SAT_HELP(VARIABLE_FLOAT, VARIABLE_FLOAT,
          "satellite.console.display(tenth + 0.2)"
          )
 
+// 1 6 10 0  satellite.variable.float()
+SAT_HELP(VARIABLE_FLOAT_0, VARIABLE_FLOAT,
+         "The bare shape. A float is a type rather than a call, so there is nothing\n"
+         "to construct -- write a value with a point in it."
+         ,
+         ""
+         )
+
+// 1 6 10 1  satellite.variable.float.to_string
+SAT_HELP(VARIABLE_FLOAT_TO_STRING, VARIABLE_FLOAT,
+         "The value as text, exactly as `display` would print it.\n"
+         "\n"
+         "This is the float's **only** method, and it is here because a value you can\n"
+         "see on the screen and cannot put into a string is a value you cannot write\n"
+         "to a file. Adding a float to a string does not work and neither does\n"
+         "handing one to `write_line` -- this is how you get from the number to the\n"
+         "line.\n"
+         "\n"
+         "Reading one back is `to_number` on the string."
+         ,
+         "satellite.variable.float activation = 0.4995225\n"
+         "satellite.variable.string line = activation.to_string()\n"
+         "satellite.console.display(\"wrote \" + line)"
+         )
+
 // 1 6 11  satellite.variable.hex
 SAT_HELP(VARIABLE_HEX, VARIABLE_HEX,
          "A run of hexadecimal digits, written `x00FF`. **The width is part of the\n"
@@ -2130,12 +2155,16 @@ SAT_HELP(VARIABLE_CAPSULE, VARIABLE_CAPSULE,
 
 // 1 7  satellite.random
 SAT_HELP(RANDOM, RANDOM,
-         "Random numbers, in three grades. `fast` is quick and good enough for a\n"
-         "game, `normal` is the one to reach for by default, and `ultra` is the\n"
-         "slowest and the most carefully made.\n"
+         "Random numbers, in four grades. `fast` is quick and good enough for a\n"
+         "game, `normal` is the one to reach for by default, `ultra` is the slowest\n"
+         "and the most carefully made -- and `seeded` is the odd one out.\n"
          "\n"
-         "Each grade takes the same four shapes: bare, a number of digits, a range,\n"
-         "and a range with a step."
+         "The first three throw work away before they answer, which is the only\n"
+         "difference between them, and each takes the same four shapes: bare, a\n"
+         "number of digits, a range, and a range with a step.\n"
+         "\n"
+         "`seeded` answers straight away, draws the same sequence every time from\n"
+         "the same seed, and is the only one that can give you a fraction."
          ,
          "satellite.console.display(satellite.random.normal(1, 6))"
          )
@@ -2253,6 +2282,65 @@ SAT_HELP(RANDOM_ULTRA_MIN_MAX_STEP, RANDOM_ULTRA_0,
          "of the step."
          ,
          "satellite.console.display(satellite.random.ultra(0, 100, 5))"
+         )
+
+// 1 7 13  satellite.random.seeded(seed)
+SAT_HELP(RANDOM_SEEDED_SEED, RANDOM_SEEDED_SEED,
+         "Sets the seed, and answers nothing.\n"
+         "\n"
+         "The other three grades take their randomness from the kernel and you\n"
+         "cannot ask them where they are in the sequence. This one starts where you\n"
+         "tell it to, so **the same seed draws the same numbers in the same order**,\n"
+         "every run. That is what you want when you are chasing something that only\n"
+         "happens sometimes and need to see it twice.\n"
+         "\n"
+         "Write it once before the first draw. Writing it again starts over."
+         ,
+         "satellite.random.seeded(12345)\n"
+         "satellite.console.display(satellite.random.seeded(1, 6, 1))"
+         )
+
+// 1 7 14  satellite.random.seeded(min, max)
+SAT_HELP(RANDOM_SEEDED_MIN_MAX, RANDOM_SEEDED_SEED,
+         "A low and a high, inclusive at both ends -- **and this is the one draw in\n"
+         "the language that can answer a fraction**.\n"
+         "\n"
+         "The other three grades want whole numbers, because there is no way to pick\n"
+         "evenly from all the numbers between 1 and 100. This one picks evenly from\n"
+         "the numbers your precision can actually hold, which is a question that does\n"
+         "have an answer -- so `seeded(0, 1)` is a fraction between zero and one, and\n"
+         "the bounds themselves may be fractions too.\n"
+         "\n"
+         "Also spelled `seeded.range(min, max)`. Seed it first or it refuses."
+         ,
+         "satellite.random.seeded(12345)\n"
+         "satellite.variable.number fraction = satellite.random.seeded(0, 1)\n"
+         "satellite.console.display(fraction)"
+         )
+
+// 1 7 15  satellite.random.seeded(min, max, step)
+SAT_HELP(RANDOM_SEEDED_MIN_MAX_STEP, RANDOM_SEEDED_SEED,
+         "A low, a high and a step -- every value the step lands on, and nothing\n"
+         "between them.\n"
+         "\n"
+         "This is how you ask this grade for whole numbers: a step of 1 from 0 to 9\n"
+         "is the ten integers. The step may be a fraction as well, so 0.25 from 0 to\n"
+         "1 draws one of five quarters.\n"
+         "\n"
+         "The step has to divide the distance exactly, or the call is refused and\n"
+         "tells you the last value it would have reached."
+         ,
+         "satellite.random.seeded(12345)\n"
+         "satellite.console.display(satellite.random.seeded(0, 1, 0.25))"
+         )
+
+// 1 7 16  satellite.random.seeded()
+SAT_HELP(RANDOM_SEEDED_0, RANDOM_SEEDED_SEED,
+         "The bare shape, and it **draws nothing** -- the three other grades' bare\n"
+         "shapes do not either. Supply a seed, or a low and a high, or a low and a\n"
+         "high and a step."
+         ,
+         "satellite.console.display(satellite.random.seeded())"
          )
 
 // 1 8  satellite.file

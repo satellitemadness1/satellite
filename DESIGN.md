@@ -2007,6 +2007,42 @@ the three that class 1 already answered. All three waiters answer since M15,
 each returning a float per this section's result-type argument, except
 `truncate`, which stays a number because its answer is one by definition.
 
+#### `to_string()` `1 6 10 1` — the type's first method, and M21 is why
+
+*(Minted at M21, 2026-09-11.)* **`satellite.variable.float` was a leaf in the
+numbering from M2 until M21**: the type landed at M15 with four operations, a
+rounding rule and a dial, and nothing a program could *ask* it. That is a
+defensible place to have stopped — arithmetic and `display` are most of what a
+float is for — and **M21 found the edge of it by trying to write
+`Sky::save`.**
+
+`Float::to_string()` had existed in C++ since M15 with exactly one caller,
+`satellite_value/render.cpp`, which is the display path. So a value a program
+could see on the screen was one it could not put into a string, write to a
+file, or compare as text: `"x " + a` is S0711 and `write_line(a)` is S0713.
+**QUAD's `sky.hpp:461` writes 164 doubles into a text file with bare
+`operator<<`**, and it was the first mechanism in this tree to need the other
+direction — while `Sky::load` already worked, because `"0.4995225".to_number()`
+answers. **A round-trip available in one direction only** is the shape that
+made this a number rather than a note.
+
+**What it renders is what `display` renders, and that is the point rather than
+an economy.** The contract is this section's: sign, `L`, `.`, then `R`'s
+digits, with one fractional digit minimum so a float never prints as a number —
+`4.0` and not `4`. A second spelling would let a program's file and a program's
+screen disagree about the same value, which is the drift §4.6 exists to remove.
+
+**AND THE PRECISION IS PLACES AND NOT SIGNIFICANT DIGITS, which M21 measured
+from underneath.** *"R's digit count IS the precision"* is the sentence above,
+and read the other way it says that a value near zero has fewer significant
+digits than a double does. QUAD's `Rack::draw` weights span 28 orders of
+magnitude by design — `pow(1e-6, 4.65)` is about `1.26e-28` — and at the
+default `float_digits` of 34 that leaves **six** significant digits against a
+double's fifteen. It is the only place either half of M21 found where the
+double is the more precise of the two. It changed no answer there (that weight
+is 1.9e-28 of its wheel's total), and it is written down because the next
+mechanism to lean on a very small float may not be so lucky.
+
 ### 8.7 The variant, and what "nothing" is
 
 *(New 2026-09-03, at M12. PLAN §8's M12 entry held the blocker — "is 'nothing'
@@ -2269,13 +2305,16 @@ and the seam and the spin that landed ahead of their milestone at M2 and M8
 finally consumed by the language. [MILESTONES/M13.md](MILESTONES/M13.md) is
 the review.)*
 
-Three tiers, differing in nothing a program can see except how long they take:
+Three tiers, differing in nothing a program can see except how long they take
+— **and a fourth, added at M21, whose whole difference is that it does not
+take any time at all**:
 
 | tier | throwaway window |
 |---|---|
 | `satellite.random.fast` | 50–300 ms |
 | `satellite.random.normal` | 500–600 ms |
 | `satellite.random.ultra` | 2000–3000 ms |
+| `satellite.random.seeded` | **none** — it answers straight away |
 
 *(Windows set 2026-08-27; `fast` widened from 50–100 and `normal` moved up from
 250–300.)* **The duration is itself random, drawn inside the window**, so the length
@@ -2334,6 +2373,85 @@ leading zero is not printed and a uniform draw has one a tenth of the time. That
 what uniform means; a draw that always printed 40 digits would not be one. It is
 said out loud here, in the header, and in the test, because it is *not* what the name
 promises and someone will otherwise file it as a bug.
+
+### 11.0 The seeded tier — `1 7 13`–`1 7 16`, M21
+
+*(Built at M21, 2026-09-11. The number was reserved by PLAN §8's M13 entry and
+left unassigned there — *"minting a number is the numbering's and the author's"*
+— and the shape was settled by the author on 2026-09-11:
+**a fourth tier word.** [MILESTONES/M21.md](MILESTONES/M21.md) is the review.)*
+
+**It exists because `Rack::draw` could not be written**, and QUAD.md §5 named
+that program as the thing the language is for. Three separate properties were
+missing and they only look like one feature because they share a namespace:
+
+- **No draw answered a fraction.** The three tiers above refuse fractional
+  bounds (S0905) and refuse them for a true reason — there is no uniform draw
+  over the reals between 1 and 100.
+- **No stream could be seeded**, so QUAD's invariant 8 — *"the ability to see it
+  twice is the difference between science and staring"* — was not expressible at
+  all.
+- **The cheapest tier spends about 184 ms per draw on this machine** (measured:
+  0.92 s for five `fast` draws), against a 90 ms QUAD tick that draws from the
+  rack once and calls the generator nineteen more times.
+
+**Three shapes and not four, and the registry decided that rather than a
+preference.** A call shape is keyed by its word and its ARITY, so the
+one-argument slot holds either a digit count or a seed and cannot hold both.
+The seed is what this tier is for, so `seeded(digits)` is simply not
+offered — which costs QUAD nothing, because it draws no N-digit numbers.
+
+```satellite
+satellite.random.seeded(12345)                              // 1 7 13, reseeds
+satellite.variable.number u = satellite.random.seeded(0, 1) // 1 7 14, a fraction
+satellite.variable.number k = satellite.random.seeded(0, 9, 1)  // 1 7 15, whole
+```
+
+- **`seeded(seed)` `1 7 13`** sets the stream and answers nothing. The same seed
+  draws the same numbers in the same order, every run. Writing it again starts
+  over. A seed is whole and not negative (S0912): it names a position in a
+  sequence rather than a quantity, and a fractional one would have to be
+  rounded to mean anything — which would make two spellings one stream and hide
+  a typo in a replay.
+- **`seeded(min, max)` `1 7 14`**, with `.range` a second spelling, is
+  **uniform over a GRID and is the one draw in this language that answers a
+  fraction**. The refusal one section up is about the reals; a grid is
+  countable, and satellite already carries the grid's spacing on the value
+  itself — §8.6's *"R's digit count IS the precision"*. So the draw is uniform
+  over `(high − low) × 10^float_digits + 1` points, every one of them exactly
+  representable, inclusive at both ends like every other range here. The dial
+  is read off the machine rather than the config, so M15's retune reaches this
+  draw the way it reaches a division.
+- **`seeded(min, max, step)` `1 7 15`** is how a program asks this tier for
+  whole numbers — `seeded(0, 9, 1)` is the ten integers — and the step may be
+  fractional too. The exact-division rule is unchanged.
+- **`seeded()` `1 7 16`** is a refusal by design, like `1 7 1`–`1 7 3`, and it
+  carries **its own sentence** (S0913) rather than sharing S0901's: that one
+  offers a `digit_count` this tier does not have, so a shared text would have
+  told a program to write the one call that does not exist.
+
+**A draw before the stream is seeded is refused and not silently seeded**
+(S0911). A stream seeded by accident is the determinism bug this tier exists to
+remove, and a silent default would be indistinguishable from a working program
+until the day somebody had to replay it.
+
+**`seeded.range(1, 100)` answers a fraction, and that is the one surprise in the
+shape.** It is an alias of `1 7 14`, so it draws on the grid like everything
+else on this tier — where `fast.range(1, 100)` answers a whole number. Recorded
+here because the four `.range` spellings no longer mean the same kind of thing,
+and `seeded(1, 100, 1)` is the whole-number spelling.
+
+**It takes a fractional NUMBER and not a `satellite.variable.float`**, which is
+the one edge worth knowing before writing against it. A fractional literal is a
+Number — §8.1, where `0.999` is exact — so anything a program types is
+accepted; a value that reached float, as `n.power(x)` does by §8.6's
+result-type rule, is refused with S0904. Every door in `satellite_random` reads
+the Number arm and all four tiers share this. *(Found at M21 after the tier was
+built, recorded rather than closed: `Float::to_number()` is exact and would
+close it, and changing the argument contract of four tiers at once is the
+numbering's call.)*
+
+**It is no more secure than the three above it**, and §11.1 is about all four.
 
 ### 11.1 The tiers are a statistical character, not a security property
 

@@ -202,8 +202,18 @@ void section_authority()
     // not as a namespace (§1.5); the eleventh is
     // `satellite.variable.string.resolved` `1 6 1 17`, the read the six live
     // codes never had.
-    check(rows.size() == 296,
-          "§2.2 should hold 296 rows, found " + std::to_string(rows.size()));
+    // AND 296 UNTIL 2026-09-11's EVENING, WHEN M21 APPENDED SIX. Five carry a
+    // number -- the seeded tier's four, `1 7 13`-`1 7 16`, and
+    // `satellite.variable.float.to_string` `1 6 10 1` -- and the sixth is the
+    // `.range` ALIAS of `1 7 14`, which takes no number and is why the row
+    // count moves by one more than the number count. THE MARKER COUNT MOVES
+    // TOO, for the first time since M20: `1 6 10 0` is the float's bare shape,
+    // and the float had no children at all until this milestone, so its row
+    // gained a `(0)` the way `binary`'s and `hex`'s did when theirs arrived.
+    // All four of these numbers moved together and none of them alone, which
+    // is the only reading of this block that means anything.
+    check(rows.size() == 302,
+          "§2.2 should hold 302 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -212,12 +222,12 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 293,
-          "§2.2 should carry 293 distinct numbers, found " +
+    check(numbers.size() == 298,
+          "§2.2 should carry 298 distinct numbers, found " +
               std::to_string(numbers.size()));
-    check(aliases == 3, "§2.2 should declare exactly 3 aliases, found " +
+    check(aliases == 4, "§2.2 should declare exactly 4 aliases, found " +
                             std::to_string(aliases));
-    check(markers == 43, "§2.2 should carry 43 `(0)` markers, found " +
+    check(markers == 44, "§2.2 should carry 44 `(0)` markers, found " +
                              std::to_string(markers));
 
     // AND NOW THE CONVERSE, WHICH IS THE HALF THIS FUNCTION DID NOT CHECK.

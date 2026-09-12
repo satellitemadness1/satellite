@@ -872,6 +872,28 @@ SAT_CODE(910, RANDOM_STEP_MISSES, SAT_ERROR,
          "last on {4}, never {5} -- refused rather than quietly never "
          "answering {5}")
 
+// --- the seeded tier's three, M21 -------------------------------------------
+//
+// S0901 COULD NOT BE REUSED FOR THE BARE SHAPE and that is the whole reason
+// 913 exists: its text names "a digit_count, min and max, or min max and
+// step", and the seeded tier has no digit_count -- the one-argument slot
+// holds its seed. A shared sentence would have told a program to write the
+// one call this tier does not have.
+SAT_CODE(911, RANDOM_NOT_SEEDED, SAT_ERROR,
+         "`{1}` draws from a stream nothing has seeded -- write "
+         "`satellite.random.seeded(seed)` before the first draw")
+
+// A SEED IS NOT A BOUND AND IS CHECKED SEPARATELY. Whole and not negative,
+// because it names a starting point in a sequence rather than a quantity, and
+// a fractional one would have to be rounded to mean anything -- which would
+// make two spellings the same stream and hide a typo in a replay.
+SAT_CODE(912, RANDOM_NOT_A_SEED, SAT_ERROR,
+         "`{1}` wants a whole seed of zero or more, got {2}")
+
+SAT_CODE(913, RANDOM_SEEDED_NEEDS_A_SHAPE, SAT_ERROR,
+         "`{1}` draws nothing on its own -- you must supply a seed, min and "
+         "max, or min max and step")
+
 // THE UNIT IS SECONDS, WHOLE OR FRACTIONAL -- the author, 2026-09-04. One
 // unit always, so there is nothing at a call site to misread, and 0.09 is an
 // exact Number (DESIGN §8.1), so the fraction costs no float. What this row

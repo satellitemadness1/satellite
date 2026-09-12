@@ -134,11 +134,25 @@
 // accepts that §2.2 had no number for, `swap.used(unit)` `1 22 4 4 7`,
 // `this.used(unit)` `1 22 4 5 6` and `environment(name)` `1 22 9`:
 //
-//     279   SAT_NUMBERED   285 rows, less 3 written as bare shapes and 3 aliases
-//      46   SAT_BARE       43 `(0)` markers plus those 3 rows
+//     295   SAT_NUMBERED   302 rows, less 3 written as bare shapes and 4 aliases
+//      47   SAT_BARE       44 `(0)` markers plus those 3 rows
 //     ---
-//     325   nodes, each with a PathId
-//      11   SAT_ALIAS      3 `.range`, `hexadecimal`, `class`, 7 of `arguments`
+//     342   nodes, each with a PathId
+//      12   SAT_ALIAS      4 `.range`, `hexadecimal`, `class`, 7 of `arguments`
+//
+// AND THE BLOCK ABOVE WAS WRONG AGAIN THE SAME DAY, WHICH IS THE FIFTH TIME
+// AND THE ONE THE PARAGRAPH BELOW PREDICTED IN AS MANY WORDS. It read
+// 279 / 46 / 325 / 11 -- M20's own numbers, and M20.md §2.1 says in its own
+// text that it took `kNodeCount` to 336, so this block was eleven nodes stale
+// before the milestone that wrote it had finished landing. M21 found it by
+// counting rather than by reading, which is the only way it could have been
+// found: `grep -c '^SAT_NODE('` over this file is the whole measurement, and
+// it disagreed with the line above it by 17 once M21's six were in. The
+// numbers here are now 342 / 295 / 47 / 12 and they were counted that way.
+// **A count in a comment still has nothing checking it** -- that is the next
+// paragraph's point and it remains true -- but tests/words_test now asserts
+// all four of §2.2's, so the three counts a reader most needs do have a
+// checker, and this block is derivable from it in one subtraction.
 //
 // THE BLOCK ABOVE READ 230 / 39 / 269 UNTIL 2026-09-11 AND HAD BEEN WRONG SINCE
 // M19.5. Four milestones appended nodes without touching it -- binary and hex,
@@ -398,6 +412,8 @@ SAT_NODE(VARIABLE,        VARIABLE_DATE,               "date",                  
 SAT_NODE(VARIABLE,        VARIABLE_DURATION,           "duration",              SAT_NUMBERED)  // 1 6 8
 SAT_NODE(VARIABLE,        VARIABLE_EXPRESSION,         "expression",            SAT_NUMBERED)  // 1 6 9
 SAT_NODE(VARIABLE,        VARIABLE_FLOAT,              "float",                 SAT_NUMBERED)  // 1 6 10
+SAT_NODE(VARIABLE_FLOAT,  VARIABLE_FLOAT_0,            "()",                    SAT_BARE)  // 1 6 10 0
+SAT_NODE(VARIABLE_FLOAT,  VARIABLE_FLOAT_TO_STRING,    "to_string",             SAT_NUMBERED)  // 1 6 10 1
 SAT_NODE(VARIABLE,        VARIABLE_HEX,                "hex",                   SAT_NUMBERED)  // 1 6 11
 // ROW FOR ROW WITH `binary` `1 6 5` ABOVE FOR THE FIRST THREE, AND THEN
 // DELIBERATELY NOT. `1 6 5 4` is binary's `as_number` and HEX HAS NO SUCH ROW:
@@ -437,7 +453,19 @@ SAT_NODE(VARIABLE,        VARIABLE_WINDOW,             "window",                
 SAT_NODE(VARIABLE,        VARIABLE_CAPSULE,            "capsule",               SAT_NUMBERED)  // 1 6 16
 
 // --- random -----------------------------------------------------------------
-// DESIGN §11. Three tiers, four call shapes each, three aliases.
+// DESIGN §11. Three spinning tiers, four call shapes each, three aliases --
+// and a FOURTH TIER that takes a seed and does not spin, minted at M21
+// because `Rack::draw` cannot be written without it (PLAN §8's M21 entry
+// reserved `1 7 13` for exactly this and left the shape to the author).
+//
+// THE SEEDED TIER HAS THREE SHAPES AND NOT FOUR, AND THE REGISTRY IS WHAT
+// DECIDED THAT. A shape is keyed by its word and its ARITY, so the
+// one-argument slot holds either a digit count or a seed and cannot hold
+// both -- and the seed is the one this tier exists for. `seeded(digits)` is
+// therefore not offered, which costs QUAD nothing: it draws no N-digit
+// numbers. A dotted node name would have made room for one and there are
+// none in this file; only an alias may carry a dot, and an alias takes no
+// number.
 //
 SAT_NODE(SATELLITE, RANDOM,                     "random",                 SAT_NUMBERED)  // 1 7
 SAT_NODE(RANDOM,    RANDOM_0,                   "()",                     SAT_BARE)  // 1 7 0
@@ -453,6 +481,10 @@ SAT_NODE(RANDOM,    RANDOM_NORMAL_MIN_MAX_STEP, "normal(min, max, step)", SAT_NU
 SAT_NODE(RANDOM,    RANDOM_ULTRA_DIGITS,        "ultra(digits)",          SAT_NUMBERED)  // 1 7 10
 SAT_NODE(RANDOM,    RANDOM_ULTRA_MIN_MAX,       "ultra(min, max)",        SAT_NUMBERED)  // 1 7 11
 SAT_NODE(RANDOM,    RANDOM_ULTRA_MIN_MAX_STEP,  "ultra(min, max, step)",  SAT_NUMBERED)  // 1 7 12
+SAT_NODE(RANDOM,    RANDOM_SEEDED_SEED,         "seeded(seed)",           SAT_NUMBERED)  // 1 7 13
+SAT_NODE(RANDOM,    RANDOM_SEEDED_MIN_MAX,      "seeded(min, max)",       SAT_NUMBERED)  // 1 7 14
+SAT_NODE(RANDOM,    RANDOM_SEEDED_MIN_MAX_STEP, "seeded(min, max, step)", SAT_NUMBERED)  // 1 7 15
+SAT_NODE(RANDOM,    RANDOM_SEEDED_0,            "seeded()",               SAT_NUMBERED)  // 1 7 16
 
 // --- file -------------------------------------------------------------------
 // the module form. satellite.variable.file 1 6 2 is the type and carries its
@@ -748,6 +780,7 @@ SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_NEW, "new(title, width, height)", SAT_NU
 SAT_ALIAS(RANDOM_FAST_MIN_MAX,   "fast.range(min, max)")     // 1 7 5
 SAT_ALIAS(RANDOM_NORMAL_MIN_MAX, "normal.range(min, max)")   // 1 7 8
 SAT_ALIAS(RANDOM_ULTRA_MIN_MAX,  "ultra.range(min, max)")    // 1 7 11
+SAT_ALIAS(RANDOM_SEEDED_MIN_MAX, "seeded.range(min, max)")   // 1 7 14
 
 // The language's one alias for a type name, which the LEXER's spelling table has
 // to know rather than the parser -- PLAN M3 owns `binary` and `hex` because

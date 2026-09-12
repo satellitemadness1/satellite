@@ -7,6 +7,10 @@
 
 #include "satellite_random/tiers.hpp"
 
+#include <algorithm>
+#include <memory>
+#include <string>
+
 namespace satellite {
 
 namespace {
@@ -85,7 +89,86 @@ void discard_step(Bits32 &bits, void *context)
     (void)draw_step(bits, *work->low, *work->high, *work->step, thrown);
 }
 
+// The seeded tier's stream -- M21, and DELIBERATELY NOT shared_source(). That
+// one is seeded from the kernel on first use and a program can neither read
+// nor set its state, which is exactly the property a replayable draw cannot
+// have. Held behind a pointer because a Source is neither copyable nor
+// movable, and reseeding is therefore a replacement rather than an assignment.
+std::unique_ptr<Source> &seeded_source()
+{
+    static thread_local std::unique_ptr<Source> stream;
+    return stream;
+}
+
+// How many digits a Number carries to the right of the point. Number has no
+// places() of its own -- Float does, because there the right half IS the
+// precision -- so it is read off the rendered form, which is canonical: a
+// trailing zero does not survive it, so 0.50 answers 1 and not 2.
+unsigned places_of(const Number &value)
+{
+    if (value.is_integer())
+        return 0;
+    const std::string text = value.to_string();
+    const std::string::size_type point = text.find('.');
+    if (point == std::string::npos)
+        return 0;
+    return static_cast<unsigned>(text.size() - point - 1);
+}
+
 } // namespace
+
+void seed_stream(unsigned long long seed)
+{
+    seeded_source() = std::make_unique<Source>(static_cast<std::uint64_t>(seed));
+}
+
+bool stream_is_seeded() { return seeded_source() != nullptr; }
+
+bool draw_grid(Bits32 &bits, const Number &low, const Number &high,
+               unsigned digits, Number &out)
+{
+    // THE GRID MUST CONTAIN ITS OWN BOUNDS. A caller asking for 2 digits
+    // between 0.125 and 0.875 would otherwise be answered on a grid neither
+    // end sits on, and "inclusive at both ends" would quietly stop being
+    // true -- so the spacing is the finer of what was asked for and what the
+    // bounds already carry, never the coarser.
+    unsigned fine = digits;
+    fine = std::max(fine, places_of(low));
+    fine = std::max(fine, places_of(high));
+
+    const Number scale = power_of_ten(static_cast<long long>(fine));
+
+    // Both bounds onto the integers, exactly: `fine` is at least each one's
+    // own precision, so neither multiplication can leave a fraction behind.
+    const Number lo = Number::mul(low, scale);
+    const Number hi = Number::mul(high, scale);
+
+    Number index;
+    if (!draw_range(bits, lo, hi, index))
+        return false;
+
+    // Exact: the divisor is a power of ten and the dividend is an integer, so
+    // the quotient terminates within `fine` places and nothing is rounded.
+    out = Number::divide(index, scale, fine);
+    return true;
+}
+
+bool seeded_grid(const Number &low, const Number &high, unsigned digits,
+                 Number &out)
+{
+    return draw_grid(*seeded_source(), low, high, digits, out);
+}
+
+bool seeded_step(const Number &low, const Number &high, const Number &step,
+                 Number &out)
+{
+    // draw_step needs no change to take a FRACTIONAL step: member_count
+    // divides an exact span by an exact step and handlers.cpp has already
+    // refused a step that does not divide it, and `low + step * index` is
+    // exact multiplication either way. The only thing that was ever whole
+    // about it was the check at the door.
+    return draw_step(*seeded_source(), low, high, step, out);
+}
 
 bool draw_digits(Bits32 &bits, long long digits, Number &out)
 {

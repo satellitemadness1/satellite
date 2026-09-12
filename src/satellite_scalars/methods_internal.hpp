@@ -16,6 +16,7 @@
 #include "evaluator/dispatch.hpp"
 #include "evaluator/machine.hpp"
 #include "satellite_bits/bits.hpp"
+#include "satellite_float/satellite_float.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
 #include "satellite_value/value.hpp"
@@ -50,6 +51,12 @@ bool bits_at(eval::Machine &m, const Value *arguments, uint32_t who,
 bool hex_at(eval::Machine &m, const Value *arguments, uint32_t who,
             const bits::HexRun **out);
 
+// The same, for a float. M21, and the type's first method table -- so this is
+// the first helper in this file whose receiver arm did not exist before the
+// milestone that needed it.
+bool float_at(eval::Machine &m, const Value *arguments, uint32_t who,
+              const Float **out);
+
 // An argument as a position -- a whole number no less than zero that a machine
 // word can hold -- or a refusal and false. Positions are 0-based: `at(0)` is
 // the first character, which is the counting every reader of a C-family
@@ -67,5 +74,6 @@ void install_number_methods();
 void install_variant_methods();
 void install_bits_methods();
 void install_hex_methods();
+void install_float_methods();
 
 } // namespace satellite::scalars

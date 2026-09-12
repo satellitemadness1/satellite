@@ -65,4 +65,54 @@ bool tier_step(Tier tier, const Number &low, const Number &high,
                const Number &step, Number &out,
                long long *discarded = nullptr);
 
+// --- the seeded tier -- `1 7 13`-`1 7 16`, M21 -------------------------------
+//
+// A FOURTH TIER THAT IS NOT A TIER IN THE ONE WAY THAT MATTERS: it does not
+// spin. DESIGN §11's window is what separates `fast` from `normal` from
+// `ultra` and it is the whole of their difference; this one has no window,
+// because the program that needs it -- QUAD's `Rack::draw` -- draws once from
+// the rack and calls the generator nineteen more times against a 90 ms tick,
+// and the cheapest spinning tier costs about 184 ms per draw on this machine.
+//
+// AND IT IS THE ONLY DRAW A PROGRAM CAN REPLAY. The three spinning tiers share
+// one process-wide Source seeded from the kernel, whose state a program cannot
+// reach or set; QUAD's invariant 8 is determinism -- "the ability to see it
+// twice is the difference between science and staring", quad_core.hpp:77 --
+// and that is not expressible against a stream nobody can seed.
+
+// `seeded(seed)` `1 7 13`. Builds the stream, or replaces the one there: the
+// same seed twice gives the same sequence twice, which is the entire point.
+void seed_stream(unsigned long long seed);
+
+// False until `seeded(seed)` has run. The three draws below refuse on it
+// rather than inventing a seed, because a stream seeded by accident is the
+// determinism bug this tier exists to remove -- and a silent default would be
+// indistinguishable from a working program until the day it had to be
+// replayed.
+bool stream_is_seeded();
+
+// `seeded(min, max)` `1 7 14` -- uniform over the grid of `digits` decimals
+// in [low, high], INCLUSIVE AT BOTH ENDS like every other range in §11.
+//
+// THIS IS THE ONE DRAW IN THE LANGUAGE THAT ANSWERS A FRACTION. The three
+// spinning tiers refuse fractional bounds (S0905) and v1 refused them for a
+// true reason: there is no uniform draw over the reals between 1 and 100. A
+// GRID has one, and satellite already carries the grid's spacing on the value
+// itself -- DESIGN §8.6's "R's digit count IS the precision" -- so the answer
+// is uniform over ((high - low) * 10^digits + 1) points and every one of them
+// is exactly representable. `seeded(0, 1)` at the default 34 digits is QUAD's
+// `rng.uniform()`, whose only difference is that this one can also answer 1.
+bool draw_grid(Bits32 &bits, const Number &low, const Number &high,
+               unsigned digits, Number &out);
+
+// The two shapes on the seeded stream. No Tier argument and no spin: each one
+// asks the stream for exactly what it answers. THERE IS NO SEPARATE INTEGER
+// RANGE, because the step shape already is one -- `seeded(0, 9, 1)` is the
+// integers 0 through 9, which is how a program that wants whole numbers from
+// this tier says so, and it costs no number that §2.2 did not already have.
+bool seeded_grid(const Number &low, const Number &high, unsigned digits,
+                 Number &out);
+bool seeded_step(const Number &low, const Number &high, const Number &step,
+                 Number &out);
+
 } // namespace satellite

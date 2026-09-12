@@ -140,8 +140,26 @@ void section_codes()
     // about the four file modes reached again, and it names `0` in its own
     // sentence because the mistake it catches is somebody reaching for the off
     // switch. MILESTONES/M20.md §2.5, §3.1.
-    check(kCodeCount == 117,
-          "errors.def has 116 rows -- if that changed on purpose, change it here "
+    // AND BY THREE AT M21, which takes the record M20 held for one day. The
+    // seeded tier's three: S0911, a draw from a stream nothing has seeded --
+    // refused rather than seeded silently, because a stream seeded by
+    // accident is the determinism bug that tier exists to remove; S0912, a
+    // seed that is not a whole number of zero or more, checked apart from the
+    // bounds because it names a POSITION rather than a quantity; and S0913,
+    // the bare `seeded()`. **S0913 is the one that could not be shared** --
+    // S0901 offers "a digit_count, min and max, or min max and step" and the
+    // seeded tier has no digit_count, so reusing it would have told a program
+    // to write the one call this tier does not have. MILESTONES/M21.md §2.3.
+    //
+    // AND THE SENTENCE BELOW SAID 116 WHILE THE CHECK SAID 117, from M20
+    // until M21 found it here. **A count in a message has nothing checking
+    // it, INSIDE the check written to catch exactly that** -- M20 moved the
+    // number by two and updated the comparison and not its own text, which is
+    // the same shape as `words.def`'s stale header tallies one directory over
+    // (M21.md §3.8) and is why both numbers are now written once each and
+    // read together.
+    check(kCodeCount == 120,
+          "errors.def has 120 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

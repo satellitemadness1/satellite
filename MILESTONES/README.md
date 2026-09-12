@@ -37,6 +37,7 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M19.5.md](M19.5.md) | 2026-09-08 / 09 | `satellite.variable.binary` and `satellite.variable.hex` — the width that makes it a type, and the four verbs. **Landed in two halves and the note carries both hashes.** |
 | [M19.6.md](M19.6.md) | 2026-09-09 | The `.satc` written after resolve, and the option token — `0#down`, and a cache that stops deciding what it already decided. |
 | [M20.md](M20.md) | 2026-09-11 | The machine's facts, in the language — `satellite.system`, the arguments object and its ten selectors, the live codes a program can read at last, and a watchdog floor a running program can move. |
+| [M21.md](M21.md) | 2026-09-11 | A piece of QUAD, running — `Sky::decay` and `Rack::draw` written by hand, 40 activations of 40 against the double's 6, the seeded tier that made a replayable fractional draw sayable, and the float's first method. |
 
 **M22 sits between M17 and M18 in this table and that is the point of the date
 column.** It was built on 2026-09-07, before M18 through M21, at the author's

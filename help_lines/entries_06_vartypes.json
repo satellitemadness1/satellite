@@ -238,5 +238,15 @@
     "query": "satellite.help(satellite.variable.hex.to_binary)",
     "prose": "The same value, wearing the other radix. `x00FF.to_binary()` is\n`b0000000011111111`.\n\n**It never refuses**, every hexadecimal digit being exactly four bits. The\nother direction can: `satellite.variable.binary.to_hex` needs a width that is a\nmultiple of four.\n\nThe answer is not equal to what it came from -- `x00FF == x00FF.to_binary()` is\nfalse, because two different types are never equal in this language, however\nthey are spelled.",
     "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.to_binary())"
+  },
+  "1 6 10 0": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The bare shape. A float is a type rather than a call, so there is nothing\nto construct -- write a value with a point in it.",
+    "example": ""
+  },
+  "1 6 10 1": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The value as text, exactly as `display` would print it.\n\nThis is the float's **only** method, and it is here because a value you can\nsee on the screen and cannot put into a string is a value you cannot write\nto a file. Adding a float to a string does not work and neither does\nhanding one to `write_line` -- this is how you get from the number to the\nline.\n\nReading one back is `to_number` on the string.",
+    "example": "satellite.variable.float activation = 0.4995225\nsatellite.variable.string line = activation.to_string()\nsatellite.console.display(\"wrote \" + line)"
   }
 }

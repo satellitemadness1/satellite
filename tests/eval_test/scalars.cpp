@@ -53,11 +53,12 @@ void section_scalars()
     using namespace satellite;
 
     scalars::install_handlers();
-    check(eval::Handlers::table().installed() == 49,
+    check(eval::Handlers::table().installed() == 50,
           "M11's 33 rows -- 2 module constants, 16 string methods, 15 number "
           "methods -- plus M12's 4 variant methods, M19.5's 11 bit-run "
-          "methods, 6 on binary and 5 on hex, and M20's `resolved` "
-          "`1 6 1 17`, one summed install, and the count is here so a row "
+          "methods, 6 on binary and 5 on hex, M20's `resolved` "
+          "`1 6 1 17`, and M21's `satellite.variable.float.to_string` "
+          "`1 6 10 1`, one summed install, and the count is here so a row "
           "dropped from an install loop cannot vanish quietly");
 
     // --- the module constants -- a path that evaluates without a call --------

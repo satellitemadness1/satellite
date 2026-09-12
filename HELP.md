@@ -88,7 +88,7 @@ indented one tab and separated by a blank line.
 
 	satellite.variable    Every kind of value a name can hold.
 
-	satellite.random      Random numbers, in three grades.
+	satellite.random      Random numbers, in four grades.
 
 	satellite.file        Making, opening, emptying and asking about files **by name**.
 
@@ -1955,6 +1955,29 @@ it is observed by the very next division rather than at the next run.
     satellite.variable.float tenth = 0.1
     satellite.console.display(tenth + 0.2)
 
+.  `1 6 10 0`  `satellite.variable.float()`
+> satellite.help(satellite.variable.float)
+
+The bare shape. A float is a type rather than a call, so there is nothing
+to construct -- write a value with a point in it.
+
+H  `1 6 10 1`  `satellite.variable.float.to_string`  _M21_
+> satellite.help(satellite.variable.float)
+
+The value as text, exactly as `display` would print it.
+
+This is the float's **only** method, and it is here because a value you can
+see on the screen and cannot put into a string is a value you cannot write
+to a file. Adding a float to a string does not work and neither does
+handing one to `write_line` -- this is how you get from the number to the
+line.
+
+Reading one back is `to_number` on the string.
+
+    satellite.variable.float activation = 0.4995225
+    satellite.variable.string line = activation.to_string()
+    satellite.console.display("wrote " + line)
+
 .  `1 6 11`  `satellite.variable.hex`
 > satellite.help(satellite.variable.hex)
 
@@ -2189,12 +2212,16 @@ A capsule held as a value, so it can be passed to another one.
 .  `1 7`  `satellite.random`
 > satellite.help(satellite.random)
 
-Random numbers, in three grades. `fast` is quick and good enough for a
-game, `normal` is the one to reach for by default, and `ultra` is the
-slowest and the most carefully made.
+Random numbers, in four grades. `fast` is quick and good enough for a
+game, `normal` is the one to reach for by default, `ultra` is the slowest
+and the most carefully made -- and `seeded` is the odd one out.
 
-Each grade takes the same four shapes: bare, a number of digits, a range,
-and a range with a step.
+The first three throw work away before they answer, which is the only
+difference between them, and each takes the same four shapes: bare, a
+number of digits, a range, and a range with a step.
+
+`seeded` answers straight away, draws the same sequence every time from
+the same seed, and is the only one that can give you a fraction.
 
     satellite.console.display(satellite.random.normal(1, 6))
 
@@ -2310,6 +2337,65 @@ A highest-grade random number between two bounds, landing on a multiple
 of the step.
 
     satellite.console.display(satellite.random.ultra(0, 100, 5))
+
+H  `1 7 13`  `satellite.random.seeded(seed)`  _M21_
+> satellite.help(satellite.random.seeded)
+
+Sets the seed, and answers nothing.
+
+The other three grades take their randomness from the kernel and you
+cannot ask them where they are in the sequence. This one starts where you
+tell it to, so **the same seed draws the same numbers in the same order**,
+every run. That is what you want when you are chasing something that only
+happens sometimes and need to see it twice.
+
+Write it once before the first draw. Writing it again starts over.
+
+    satellite.random.seeded(12345)
+    satellite.console.display(satellite.random.seeded(1, 6, 1))
+
+H  `1 7 14`  `satellite.random.seeded(min, max)`  _M21_
+> satellite.help(satellite.random.seeded)
+
+A low and a high, inclusive at both ends -- **and this is the one draw in
+the language that can answer a fraction**.
+
+The other three grades want whole numbers, because there is no way to pick
+evenly from all the numbers between 1 and 100. This one picks evenly from
+the numbers your precision can actually hold, which is a question that does
+have an answer -- so `seeded(0, 1)` is a fraction between zero and one, and
+the bounds themselves may be fractions too.
+
+Also spelled `seeded.range(min, max)`. Seed it first or it refuses.
+
+    satellite.random.seeded(12345)
+    satellite.variable.number fraction = satellite.random.seeded(0, 1)
+    satellite.console.display(fraction)
+
+H  `1 7 15`  `satellite.random.seeded(min, max, step)`  _M21_
+> satellite.help(satellite.random.seeded)
+
+A low, a high and a step -- every value the step lands on, and nothing
+between them.
+
+This is how you ask this grade for whole numbers: a step of 1 from 0 to 9
+is the ten integers. The step may be a fraction as well, so 0.25 from 0 to
+1 draws one of five quarters.
+
+The step has to divide the distance exactly, or the call is refused and
+tells you the last value it would have reached.
+
+    satellite.random.seeded(12345)
+    satellite.console.display(satellite.random.seeded(0, 1, 0.25))
+
+H  `1 7 16`  `satellite.random.seeded()`  _M21_
+> satellite.help(satellite.random.seeded)
+
+The bare shape, and it **draws nothing** -- the three other grades' bare
+shapes do not either. Supply a seed, or a low and a high, or a low and a
+high and a step.
+
+    satellite.console.display(satellite.random.seeded())
 
 
 ## file

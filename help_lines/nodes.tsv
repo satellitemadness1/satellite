@@ -138,6 +138,8 @@ H	satellite.variable.binary.to_hex	1 6 5 6	M19.5	1	1	0
 .	satellite.variable.duration	1 6 8		0	0	0
 .	satellite.variable.expression	1 6 9		0	0	0
 .	satellite.variable.float	1 6 10		0	0	0
+.	satellite.variable.float()	1 6 10 0		0	0	0
+H	satellite.variable.float.to_string	1 6 10 1	M21	1	1	0
 .	satellite.variable.hex	1 6 11		0	0	0
 .	satellite.variable.hex()	1 6 11 0		0	0	0
 H	satellite.variable.hex.to_number	1 6 11 1	M19.5	1	1	0
@@ -172,6 +174,10 @@ H	satellite.random.normal(min, max, step)	1 7 9	M13	3	0	0
 H	satellite.random.ultra(digits)	1 7 10	M13	1	0	0
 H	satellite.random.ultra(min, max)	1 7 11	M13	2	0	0
 H	satellite.random.ultra(min, max, step)	1 7 12	M13	3	0	0
+H	satellite.random.seeded(seed)	1 7 13	M21	1	0	0
+H	satellite.random.seeded(min, max)	1 7 14	M21	2	0	0
+H	satellite.random.seeded(min, max, step)	1 7 15	M21	3	0	0
+H	satellite.random.seeded()	1 7 16	M21	0	0	0
 .	satellite.file	1 8		0	0	0
 .	satellite.file()	1 8 0		0	0	0
 H	satellite.file.new(path)	1 8 1	M19	1	0	0
