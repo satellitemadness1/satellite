@@ -120,14 +120,29 @@
 #define SAT_CODE(number, ident, severity, text)
 #endif
 
-// The two severities, as values, so the numbers live here and only there --
-// read back as errors::kError and errors::kNote. NOT #undef'd at the bottom
-// with the macro above, for that reason.
+// The three severities, as values, so the numbers live here and only there --
+// read back as errors::kError, errors::kNote and errors::kWarning. NOT
+// #undef'd at the bottom with the macro above, for that reason.
 #ifndef SAT_ERROR
 #define SAT_ERROR 1
 #endif
 #ifndef SAT_NOTE
 #define SAT_NOTE 0
+#endif
+
+// A WARNING IS A THING THE RUN DOES NOT STOP FOR, and that is the whole of the
+// difference from SAT_ERROR. Added 2026-09-12 for the static analyser, which
+// wants to say "this local is never read" and must not make `--check` exit
+// non-zero for saying it -- an advisory that fails a build is an advisory
+// nobody leaves switched on.
+//
+// IT IS 2 AND NOT -1, and the order of these three numbers means nothing. A
+// NOTE is not "less severe" than a WARNING; a note is a second place worth
+// looking at, attached to something else, while a warning stands on its own.
+// Anything comparing severities with `<` is reading an order that was never
+// declared.
+#ifndef SAT_WARNING
+#define SAT_WARNING 2
 #endif
 
 // --- S01xx -- the lexer -----------------------------------------------------

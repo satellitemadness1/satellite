@@ -160,7 +160,12 @@ std::string fill(std::string_view text, const std::vector<std::string> &argument
 
 const char *severity_word(Code code)
 {
-    return severity_of(code) == Severity::ERROR ? "error" : "note";
+    switch (severity_of(code)) {
+    case Severity::ERROR:   return "error";
+    case Severity::WARNING: return "warning";
+    case Severity::NOTE:    break;
+    }
+    return "note";
 }
 
 // `hello.satl:4:25: `, or `line 4: ` with no path, or `hello.satl: ` with no

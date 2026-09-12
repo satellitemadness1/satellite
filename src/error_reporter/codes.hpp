@@ -35,12 +35,28 @@ enum class Code : uint16_t {
 #include "error_reporter/errors.def"
 };
 
-// Which of two things a row is. The values come from errors.def so they live
+// Which of three things a row is. The values come from errors.def so they live
 // there and only there, exactly as words::kNumbered does.
+//
+// THESE ARE NOT ORDERED AND MUST NOT BE COMPARED. errors.def says why: a NOTE
+// hangs off another diagnostic, a WARNING stands alone and does not stop
+// anything, an ERROR stops the run. "More severe" is not a relation between
+// them, so `severity < Severity::ERROR` is a question with no answer.
 enum class Severity : uint8_t {
     NOTE = SAT_NOTE,
     ERROR = SAT_ERROR,
+    WARNING = SAT_WARNING,
 };
+
+// Does a diagnostic of this severity mean the thing that produced it failed?
+//
+// THE ONE QUESTION CALLERS ACTUALLY ASK, given as a function so that nobody
+// writes the comparison the comment above forbids. `--check` exits non-zero on
+// a code this answers true for and prints the rest.
+constexpr bool stops_the_work(Severity severity)
+{
+    return severity == Severity::ERROR;
+}
 
 // The sentence, with `{1}`-style holes still in it. Empty for NONE.
 constexpr std::string_view text_of(Code code)
@@ -53,7 +69,7 @@ constexpr std::string_view text_of(Code code)
     return {};
 }
 
-// Whether a row is an error or a note.
+// Whether a row is an error, a note or a warning.
 //
 // A CODE THIS FUNCTION DOES NOT KNOW ANSWERS `ERROR`, deliberately. The only
 // way to reach that arm is a cast from an integer -- `satl --errors S9999` is
