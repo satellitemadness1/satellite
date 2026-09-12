@@ -37,7 +37,14 @@ namespace {
 // yields nothing. words.def's place list is the declaration; the compiler is
 // what keeps a non-name out of the slot operand, so by the time either Place
 // arm runs, `op.d` names storage the way a method's receiver does.
-enum class Target : uint8_t { None, Local, Global, PlaceLocal, PlaceGlobal };
+// WHERE A MUTATING METHOD PUBLISHES ITS ANSWER BACK TO -- DESIGN §6.4's
+// storage-slot rule, and `Field` is M26's fourth answer to it. A frame slot, a
+// global, and now a FIELD of the spacesuit whose method is running: the object
+// is at slot 0 (resolve puts it there) and the index was decided before the
+// program started, so writing back is two indirections and no lookup.
+enum class Target : uint8_t {
+    None, Local, Global, Field, PlaceLocal, PlaceGlobal
+};
 
 // What the refusal sentences call the callee. op_dispatch compiled its
 // spelling into the text table; the method and place ops read the selector
@@ -149,10 +156,31 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
     }
 
     if (handler->mutates) {
-        if (target == Target::Local)
+        if (target == Target::Local) {
             m.set_local(op.d, answer);
-        else
+        } else if (target == Target::Field) {
+            // THE GUARD IS op_field's GUARD AND IS NOT DEFENSIVE. Slot 0 holds
+            // the receiver because a method can only be entered through a call
+            // that pushed one, so a non-suit here is a miscompile rather than a
+            // program's mistake -- and the alternative is dereferencing
+            // whatever is there.
+            // `const Sui *` AND THE MUTATION IS STILL LEGAL, which is
+            // op_field_store's trick one file over: the handle is const, the
+            // object it points at is not. That IS reference semantics -- the
+            // slot is not being rewritten, the thing in it is being changed,
+            // and every other name holding that object sees it.
+            const Sui *held = std::get_if<Sui>(&m.local(0));
+            if (held == nullptr || !*held || op.d >= (*held)->fields.size()) {
+                m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
+                    m.span_of(m.here()),
+                    "a method on a field outside a spacesuit method",
+                    "no milestone -- resolve puts the receiver at slot 0"));
+                return;
+            }
+            (*held)->fields[op.d] = answer;
+        } else {
             m.set_global(op.d, answer);
+        }
     }
     m.push_value(std::move(answer));
 }
@@ -172,6 +200,18 @@ void op_method(Machine &m, const Op &op, uint32_t step)
 void op_method_global(Machine &m, const Op &op, uint32_t step)
 {
     dispatch(m, op, step, Target::Global);
+}
+
+// A METHOD ON A FIELD OF THE SPACESUIT THIS METHOD BELONGS TO -- M26.
+// `class_dna.append(x)` inside one of the suit's own capsules, which is how
+// every suit in the author's infinity_data_main.satl is written and what a
+// spacesuit is FOR: a list nobody outside can reach, changed by the capsules
+// that own it. Without this the call compiled to a bare dispatch with no
+// receiver and answered S0718 -- "`append` is a method and is asked on a
+// value" -- six frames into the program.
+void op_method_field(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::Field);
 }
 
 void op_place(Machine &m, const Op &op, uint32_t step)

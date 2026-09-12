@@ -40,6 +40,11 @@ private:
     void collect_capsules();
     void note_spacesuits();
     void link_supers();
+    void note_capsule_constants();
+    void suit_field_initialisers();
+    bool constant_initialiser(NodeIndex node) const;
+    words::PathId user_path_of(const cache::PathMatch &found,
+                               NodeIndex node) const;
 
     // One suit's members, flattened across its sections -- M26. Keeps its own
     // stack, because a section may hold a section and the nesting is the user's

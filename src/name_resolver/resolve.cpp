@@ -64,6 +64,157 @@ void Resolver::collect_capsules()
     }
 }
 
+// EVERY CAPSULE'S DECLARED VARIABLES, NUMBERED UNDER THE CAPSULE -- M26's
+// nested globals, and most of this was already built. `satellite.library
+// .memory_vars` is ALREADY `1 14 4`: WORD_NUMBERS §3 gives every user capsule
+// the next free number under `satellite.library` when the parser first meets
+// it, so the first segment of the author's line has had a number all along.
+// What was missing is the SECOND -- a capsule's locals were never interned as
+// its children, so the walk stopped at the capsule and S0521 said `memory_vars`
+// "is not a word the language has", which was true of the language and false of
+// the program. That is exactly the sentence M9 met one level up, for globals.
+//
+// ONLY THE BODY'S TOP LEVEL, AND ONLY A DECLARATION WITH AN INITIALISER. A name
+// inside an `if` is reachable only when that branch runs, and one with no `=`
+// has no value written down anywhere -- neither has an answer to give a reader
+// standing outside the capsule. Both are left alone rather than given a number
+// that means nothing, which is WORD_NUMBERS §1.2's "never renumber, never
+// reuse" read forward: a number handed out here is one the language must be
+// able to answer forever.
+//
+// A METHOD'S BODY IS NOT WALKED. A spacesuit's capsules are numbered under the
+// SUIT, and their locals are a suit's business -- DESIGN §12 defers bare field
+// access precisely so that a spacesuit's insides are reached through its own
+// methods. `satellite.library` is the road to the file's capsules.
+void Resolver::note_capsule_constants()
+{
+    const Node &program = ast_[ast_.root()];
+    for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
+        const NodeIndex item = ast_.list_at(program.a, i);
+        if (ast_[item].kind != NodeKind::Capsule)
+            continue;
+
+        // `satellite.main` IS NOT UNDER `satellite.library` AND IS SKIPPED.
+        // The author's spelling is `satellite.library.capsule_name
+        // .variable_name`, and main's path is `1 3` -- a LANGUAGE word, whose
+        // children are the language's own rows. Interning a program's locals
+        // there would put user names in a namespace the language is still
+        // appending to, which is the one thing WORD_NUMBERS §3 keeps the user's
+        // numbers out of.
+        const words::PathId owner = ast_[item].a;
+        if (words::is_language_word(owner))
+            continue;
+
+        const NodeIndex body = ast_[item].d;
+        if (body == kNoNode || ast_[body].kind != NodeKind::Block)
+            continue;
+
+        for (uint32_t k = 0; k < ast_.list_size(ast_[body].a); k++) {
+            const NodeIndex line = ast_.list_at(ast_[body].a, k);
+            if (ast_[line].kind != NodeKind::VarDecl || ast_[line].b == kNoNode)
+                continue;
+
+            // AND THE INITIALISER HAS TO BE A CONSTANT, WHICH IS THE WHOLE OF
+            // WHAT MAKES THIS SOUND. The value is run ONCE, at startup, in the
+            // top-level block -- where there is no frame at all -- so an
+            // initialiser naming a parameter or another local compiles to
+            // `op_local` against nothing. That is not a refusal, it is a
+            // SEGFAULT, and it is how this was found: infinity_data_main.satl
+            // resolved clean, compiled clean, and died in op_local under
+            // run_top_level, because `satellite.main`'s line 1381 is
+            // `infinity_data infinity_pointer = local_infinity_data.pointer()`
+            // and `local_infinity_data` is a local.
+            //
+            // A LITERAL IS THE ONLY THING A DECLARATION WRITES DOWN WITH NO
+            // REGARD TO WHO IS CALLING, which is exactly the property the
+            // outside view needs -- and it is what the author's own case is:
+            // `satellite.variable.number target_gb = 50`. Anything else is a
+            // value that depends on the call, and a capsule's call is the thing
+            // a reader standing outside it does not have.
+            if (!constant_initialiser(ast_[line].b))
+                continue;
+
+            // `intern` AND NOT `define`, so a name written twice in one body
+            // answers one number rather than allocating a second nobody can
+            // reach. The duplicate itself is S0501's business in pass 4, where
+            // the slot is, and it is not this pass's to report twice.
+            const words::PathId path =
+                words_.intern(owner, ast_.text_of(line));
+            if (path == words::kNoPath)
+                continue;
+            out_.capsule_constants.push_back(
+                {path, type_of(ast_[line].a), line, ast_[line].b});
+        }
+    }
+}
+
+// WHETHER A DECLARATION WRITES DOWN A VALUE THAT DOES NOT DEPEND ON THE CALL.
+//
+// THE FOUR LITERAL KINDS AND NOTHING ELSE, AND THE NARROWNESS IS DELIBERATE
+// RATHER THAN LAZY. A wider rule -- "anything that reads no frame slot" --
+// would admit `satellite.library.other.setting + 1`, which is a real and useful
+// shape; what it needs first is a way to ASK whether an expression touches a
+// frame, and this resolver's walk is a work queue rather than a recursion, so
+// there is no point in it that brackets "inside this initialiser". Widening
+// this is a later milestone's, and it is a widening: every program that works
+// under this rule works under that one.
+bool Resolver::constant_initialiser(NodeIndex node) const
+{
+    if (node == kNoNode)
+        return false;
+    switch (ast_[node].kind) {
+    case NodeKind::Number:
+    case NodeKind::String:
+    case NodeKind::Bits:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// THE REST OF A PATH THAT LEFT THE LANGUAGE'S WORDS -- M26. `language_path`
+// walks the FROZEN trie and cannot do this: it is handed an `Ast` and a node
+// and has no runtime `Words` at all, which is right for a cache that must read
+// a file written by another run. So the walk is finished here, where the
+// program's own names live.
+//
+// IT PICKS UP EXACTLY WHERE THE FROZEN WALK STOPPED. `found.under` is the last
+// language node and `found.at` is the Member that failed under it, so the
+// segments still to place are `found.at` and every Member between it and
+// `node`. Each one is a `find` under the last, and EVERY step must land on a
+// user word -- a language word appearing mid-chain would mean the frozen walk
+// should have taken it and did not, which is a bug rather than a path.
+//
+// THIS GENERALISES THE ONE-SEGMENT ARM M9 WROTE and does not replace its
+// reason. M9 answered `satellite.library.total` by asking the runtime trie for
+// one name under one language node; a capsule's variable is the same question
+// asked twice, and asking it n times is the only difference.
+words::PathId Resolver::user_path_of(const cache::PathMatch &found,
+                                     NodeIndex node) const
+{
+    if (found.under == words::kNoPath || found.at == kNoNode)
+        return words::kNoPath;
+
+    std::vector<NodeIndex> chain;
+    for (NodeIndex at = node; at != kNoNode; at = ast_[at].a) {
+        if (ast_[at].kind != NodeKind::Member)
+            return words::kNoPath;
+        chain.push_back(at);
+        if (at == found.at)
+            break;
+    }
+    if (chain.empty() || chain.back() != found.at)
+        return words::kNoPath;
+
+    words::PathId at = found.under;
+    for (size_t i = chain.size(); i > 0; i--) {
+        at = words_.find(at, ast_.text_of(chain[i - 1]));
+        if (at == words::kNoPath || words::is_language_word(at))
+            return words::kNoPath;
+    }
+    return at;
+}
+
 // THE BARE SPELLING OF A CONVERSION, OR NO PATH -- 2026-09-12. Four words, and
 // the table is written out rather than derived because these four are the only
 // bare spellings the language answers: a fifth would be a decision, not a
@@ -372,6 +523,35 @@ void Resolver::globals()
     }
 }
 
+// EVERY SPACESUIT FIELD'S INITIALISER -- M26, and it was a hole the size of the
+// feature. `gather_members` recorded `field.init` and NOTHING EVER WALKED IT, so
+// a field's initialiser reached the compiler with no path on any of its nodes:
+//
+//     satellite.container.list<infinity_subject> subjects = satellite.container.list()
+//
+// compiled to S0720, "a method on this expression parses and does not run yet",
+// about `satellite.container.list()` -- a language row the compiler dispatches
+// perfectly well one line further down a capsule body. The construction that
+// worked at `box b` was the construction of a suit whose fields are LITERALS,
+// which is what every fixture and every probe had.
+//
+// WITH NO FRAME AND NO `inside_`, WHICH IS NOT A SIMPLIFICATION. A field
+// initialiser runs during op_construct, BEFORE the object exists -- its values
+// are pushed onto the value stack and only then assembled -- so there is no
+// receiver for a field to be read through and no slot 0 to read it from. A
+// field therefore cannot name another field, and that is a fact about when the
+// code runs rather than a rule this pass imposes. `frame_ = nullptr` is the
+// same statement a global's initialiser makes one pass up.
+void Resolver::suit_field_initialisers()
+{
+    frame_ = nullptr;
+    inside_ = nullptr;
+    for (const Suit &suit : out_.suits)
+        for (size_t i = suit.inherited; i < suit.fields.size(); i++)
+            if (suit.fields[i].init != kNoNode)
+                expression(suit.fields[i].init);
+}
+
 // --- pass 4 -- every body ---------------------------------------------------
 
 void Resolver::bodies()
@@ -435,8 +615,22 @@ void Resolver::bodies()
 void Resolver::run()
 {
     collect_capsules();
+
+    // BEFORE `globals()` AND BEFORE `bodies()`, FOR THE REASON §7.3 ORDERS
+    // EVERY OTHER PASS: a name has to be numbered before the pass that reads it
+    // runs. A global's initialiser or a capsule body may name
+    // `satellite.library.other.setting`, and either would be resolved against a
+    // trie that did not have it yet.
+    note_capsule_constants();
+
     note_spacesuits();
     globals();
+
+    // AFTER `globals()`, so a field initialiser may read one, and before
+    // `bodies()` for §7.3's ordering reason -- a method body may construct the
+    // suit whose fields these are.
+    suit_field_initialisers();
+
     bodies();
 
     // SORTED BY WHERE THEY ARE IN THE FILE, WHICH FOUR PASSES DO NOT PRODUCE.

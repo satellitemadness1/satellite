@@ -196,6 +196,23 @@ Compiled Compiler::compile()
             globals_[ast_[item].a] = out_.add_global();
     }
 
+    // AND EVERY CAPSULE'S DECLARED VARIABLE, WHICH IS A GLOBAL IN EVERY WAY
+    // THAT MATTERS HERE -- M26's nested globals. resolve numbered
+    // `satellite.library.memory_vars.target_gb` and this gives that number
+    // somewhere to live; the arm that READS one already exists and was written
+    // for M9's ordinary globals, because `globals_` is keyed by path and does
+    // not care which pass put the row in.
+    //
+    // THE SLOT IS SEPARATE FROM THE CAPSULE'S FRAME SLOT AND HAS TO BE. The
+    // same declaration is also a local -- DESIGN §7.1 is emphatic that a
+    // capsule's variables are per-call, and M23's threads mean several calls
+    // can hold different values at once -- so there is no frame to point at
+    // from outside. What this slot holds is the DECLARATION: the initialiser,
+    // run once at startup, which is the only value the name has that does not
+    // depend on who is calling.
+    for (const resolve::CapsuleConstant &each : resolved_.capsule_constants)
+        globals_[each.path] = out_.add_global();
+
     // PASS 3 -- the top level, which at DESIGN §6's grammar is the globals'
     // initialisers and the includes. resolve.cpp's pass 3 says why there is
     // nothing else: "this grammar has no top-level statements at all."
@@ -258,6 +275,19 @@ Compiled Compiler::compile()
             break;
         }
     }
+    // AND THE CAPSULE CONSTANTS' INITIALISERS, IN THE SAME BLOCK AND AFTER THE
+    // GLOBALS. They are ordinary expressions compiled against no frame, exactly
+    // as a global's initialiser is, so `satellite.library.a.b = c + 1` works if
+    // `c` is a global -- and a capsule's constant may read another capsule's,
+    // because pass 2 above gave every one of them a slot before any of this ran.
+    for (const resolve::CapsuleConstant &each : resolved_.capsule_constants) {
+        const OpIndex value = each.initialiser == kNoNode
+                                  ? kNoOp
+                                  : compile_tree(each.initialiser);
+        top.push_back(emit(op_store_global, each.declaration,
+                           globals_[each.path], value));
+    }
+
     out_.set_top(emit(op_block, ast_.root(), out_.add_list(top)));
 
     // PASS 4 -- every body, the suits' methods included.

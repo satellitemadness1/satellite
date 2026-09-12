@@ -296,10 +296,34 @@ struct Suit {
     }
 };
 
+// A VARIABLE DECLARED IN A CAPSULE BODY, REACHABLE FROM OUTSIDE IT -- M26, and
+// the author's sentence is the specification: "satellite.library is supposed to
+// have access to every capsule, and every variable inside of every capsule like
+// this: satellite.library.capsule_name.variable_name."
+//
+// WHAT IT ANSWERS IS THE DECLARED INITIALISER, AND THERE IS NO OTHER COHERENT
+// ANSWER. A capsule's local is a FRAME slot -- it exists per call, DESIGN §7.1
+// is emphatic that parameters and locals are not capsule-static, and M23's
+// threads mean several calls can be live at once. So there is no single "the"
+// value of `memory_vars.target_gb` while the program runs; what there is, is
+// the value the declaration WRITES DOWN. That makes a capsule usable as a
+// namespace of constants, which is exactly what infinity_data_main.satl line
+// 1307 asks of it, and it is evaluated once at startup like any other global.
+//
+// SO A LATER ASSIGNMENT INSIDE THE CAPSULE DOES NOT MOVE IT. Said here rather
+// than discovered: the outside view is the declaration, not the slot.
+struct CapsuleConstant {
+    words::PathId path = words::kNoPath;   // satellite.library.<capsule>.<name>
+    words::PathId type = words::kNoPath;
+    NodeIndex declaration = kNoNode;
+    NodeIndex initialiser = kNoNode;
+};
+
 // Everything the pass decided, and everything it could not.
 struct Resolved {
     std::vector<Info> nodes;
     std::vector<Frame> frames;
+    std::vector<CapsuleConstant> capsule_constants;
     std::vector<errors::Diagnostic> problems;
 
     // MILESTONES/M4.5.md §5's clause, counted rather than timed. On a 273-byte

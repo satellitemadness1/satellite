@@ -451,6 +451,14 @@ NodeIndex Compiler::method_receiver(NodeIndex call_node) const
     const resolve::Info &holder = info(receiver);
     if (resolve::in_a_frame(holder.slot))
         return receiver;
+
+    // A FIELD OF THE SPACESUIT WHOSE METHOD WE ARE COMPILING IS A STORAGE
+    // LOCATION TOO -- M26, and leaving it out is what made `class_dna.append(x)`
+    // answer S0718. It IS somewhere: two indirections from slot 0, decided
+    // before the program started. The test above asks "does this receiver name
+    // a place", and a field names one as squarely as a frame slot does.
+    if (holder.slot == resolve::kSlotField)
+        return receiver;
     if (holder.path != words::kNoPath && !words::is_language_word(holder.path) &&
         globals_.find(holder.path) != globals_.end())
         return receiver;
@@ -801,6 +809,18 @@ OpIndex Compiler::call(NodeIndex node)
         if (resolve::in_a_frame(holder.slot))
             return emit(op_method, node, about.path, with_receiver,
                         out_.add_cache(), static_cast<uint32_t>(holder.slot));
+
+        // AND A FIELD WRITES BACK THROUGH THE RECEIVER AT SLOT 0 -- M26. The
+        // fourth operand is the FIELD INDEX rather than a frame slot, which is
+        // the only difference between this and the line above: resolve decided
+        // the index, `op_method_field` does the two indirections, and a
+        // mutating method on a suit's own list changes the object every handle
+        // to it can see. That is DESIGN §7.4's reference semantics reaching the
+        // one place a suit actually keeps its state.
+        if (holder.slot == resolve::kSlotField)
+            return emit(op_method_field, node, about.path, with_receiver,
+                        out_.add_cache(), holder.member);
+
         if (const auto found = globals_.find(holder.path); found != globals_.end())
             return emit(op_method_global, node, about.path, with_receiver,
                         out_.add_cache(), found->second);

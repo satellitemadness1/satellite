@@ -49,6 +49,7 @@ void op_field_store(Machine &m, const Op &op, uint32_t step);
 void op_dispatch(Machine &m, const Op &op, uint32_t step);
 void op_method(Machine &m, const Op &op, uint32_t step);
 void op_method_global(Machine &m, const Op &op, uint32_t step);
+void op_method_field(Machine &m, const Op &op, uint32_t step);
 void op_place(Machine &m, const Op &op, uint32_t step);
 void op_place_global(Machine &m, const Op &op, uint32_t step);
 void op_refuse(Machine &m, const Op &op, uint32_t step);

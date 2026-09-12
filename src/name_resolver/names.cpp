@@ -239,6 +239,22 @@ void Resolver::member(NodeIndex node)
         // the failing segment is THIS node's own name -- `satellite.library
         // .total.foo` still stops at `total` and is still refused, because the
         // outer node is not where the walk gave up.
+        // AND M26 ASKS THE SAME QUESTION FOR A CHAIN RATHER THAN A SEGMENT.
+        // `satellite.library.memory_vars.target_gb` is a capsule's declared
+        // variable, and the arm above cannot answer it: the walk stops at
+        // `memory_vars`, so `found.at` is that node and not this one, and the
+        // `found.at == node` guard -- which is what keeps a misspelling from
+        // printing four carets -- correctly declines. `user_path_of` finishes
+        // the walk through the runtime trie instead, placing every remaining
+        // segment or answering nothing at all, so a broken path still falls
+        // through to the refusal below with its caret where it was.
+        if (const words::PathId nested = user_path_of(found, node);
+            nested != words::kNoPath) {
+            info(node).path = nested;
+            info(node).origin = Origin::Bound;
+            return;
+        }
+
         if (found.at == node) {
             const words::PathId declared = words_.find(
                 static_cast<words::NodeId>(found.under), ast_.text_of(node));

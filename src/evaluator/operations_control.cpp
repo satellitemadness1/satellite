@@ -510,6 +510,7 @@ const char *op_name(OpFn fn)
     if (fn == op_dispatch)     return "dispatch";
     if (fn == op_method)       return "method";
     if (fn == op_method_global) return "method_global";
+    if (fn == op_method_field)  return "method_field";
     if (fn == op_refuse)       return "refuse";
     if (fn == op_no_question)  return "no_question";
     if (fn == op_misuse)       return "misuse";
