@@ -5371,7 +5371,12 @@ Worked out beside it, *not yet confirmed by the author*:
   `satellite.library.main.arguments` `1 14 1 1`, whose next free child is
   `1 14 1 1 10` (`satl --words`, 2026-09-12) — so `network` would take
   `1 14 1 1 10` and `limit` `1 14 1 1 10 1`, **not minted here**; numbers are
-  given in the order they are first built. *My readings, unconfirmed: the limit
+  given in the order they are first built. **It takes megabytes BOTH ways** (the
+  author, same day): `limit("900")` and `limit(900)` mean the same thing. The
+  existing settings take only the bare number —
+  `satellite.library.system.division_digits = 40` in `example/floats.satl` — so
+  the quoted spelling is new, and a quoted value that is not a whole number is
+  refused by name, being an error that says what it found. *My readings, unconfirmed: the limit
   is per MESSAGE, not per connection; 128 GB is 131072 MB; a message over it is
   refused before it is read — v1's "every count is checked before it is
   believed" — and, being an error, closes that connection.*
