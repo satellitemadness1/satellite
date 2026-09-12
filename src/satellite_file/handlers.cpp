@@ -78,7 +78,6 @@ Value opened(const std::string &name, const Mode &mode, int flags)
     handle->readable = mode.readable;
     handle->writable = mode.writable;
     handle->reopen_flags = mode.flags;
-    handle->gzipped = mode.gzip;
 
     const int fd = ::open(name.c_str(), flags, 0644);
     if (fd < 0) {
@@ -87,14 +86,26 @@ Value opened(const std::string &name, const Mode &mode, int flags)
         handle->descriptor.store(fd);
         handle->ever_open = true;
 
-        // AND THE STREAM OVER IT, FOR "read_gzip" ONLY. A failure here is not
-        // errno's to describe -- gzdopen fails on a bad descriptor or no
-        // memory, not on anything the filesystem said -- but EIO is the honest
-        // shape for "the bytes are there and could not be made sense of", and
-        // `error` `1 6 2 10` has one field to say it in. The descriptor is left
-        // open and owned by the handle, because a gzdopen that answered null
-        // adopted nothing.
-        if (mode.gzip) {
+        // AND SATELLITE ASKS THE FILE WHAT IT IS, rather than making the user
+        // say. This is the whole of the "read_gzip" mode word that used to be
+        // here: a mode says what the PROGRAM wants to do, and compression is a
+        // fact about the BYTES, so a person writing `open(path, "read")` on a
+        // WARC gets their lines and never learns that a decompressor was
+        // involved. DESIGN §1.1, applied to an encoding.
+        //
+        // ONLY FOR A READABLE MODE. A writable handle goes on writing bytes to
+        // the descriptor as it always has -- compressing on the way out is a
+        // separate thing that nothing has asked for, and quietly inflating the
+        // read half of a read/write handle whose write half is raw would be two
+        // halves that disagree about what the file contains.
+        //
+        // A FAILURE HERE IS NOT errno's TO DESCRIBE -- gzdopen fails on a bad
+        // descriptor or no memory, not on anything the filesystem said -- but
+        // EIO is the honest shape for "the bytes are there and could not be
+        // made sense of", and `error` `1 6 2 10` has one field to say it in.
+        // The descriptor stays owned by the handle, because a gzdopen that
+        // answered null adopted nothing.
+        if (mode.readable && gzip::looks_gzipped(fd)) {
             handle->gz = gzip::open_for_reading(fd);
             if (handle->gz == nullptr)
                 handle->last_error.store(EIO);

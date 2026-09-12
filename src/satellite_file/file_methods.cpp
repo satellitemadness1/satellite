@@ -213,14 +213,18 @@ bool file_reopen(eval::Machine &m, const Value *arguments, uint32_t,
     handle->buffer_at = 0;
     handle->ever_open = true;
 
-    // AND A REOPENED GZIP HANDLE NEEDS A NEW STREAM OVER THE NEW DESCRIPTOR.
-    // `gzipped` is the mode and outlives a close; `gz` is the stream and does
-    // not -- the old one was released with the old fd. Without this, reopening
-    // a "read_gzip" handle would leave `gz` null and the read path would fall
-    // through to pread, handing the caller the COMPRESSED bytes and calling it
-    // a successful read. That is the failure shape this whole arm exists to
-    // avoid: not an error, an answer that is wrong.
-    if (handle->gzipped) {
+    // AND THE FILE IS ASKED AGAIN, NOT REMEMBERED. The stream was released with
+    // the old descriptor, so a reopened handle needs a new one -- and whether
+    // it needs one at all is re-read from the bytes rather than carried over,
+    // because the file may have been REPLACED while the handle was closed. The
+    // paragraph above says the cursor resets for that exact reason; what the
+    // file IS deserves the same treatment as where we were in it.
+    //
+    // WITHOUT THIS, A REOPENED HANDLE ON A GZIP FILE WOULD FALL THROUGH TO
+    // pread AND HAND BACK THE COMPRESSED BYTES AS A SUCCESSFUL READ. Not an
+    // error and not a refusal -- a plausible answer that is wrong, which is the
+    // one outcome DESIGN §1.1 rules out entirely.
+    if (handle->readable && gzip::looks_gzipped(fd)) {
         handle->gz = gzip::open_for_reading(fd);
         if (handle->gz == nullptr) {
             handle->last_error.store(EIO);

@@ -64,9 +64,11 @@ bool fill(eval::Machine &m, FileHandle &handle, int fd)
         // above it means by a cursor. It stays exact because the only reader is
         // sequential: `read_line` never goes backwards.
         //
-        // "read_gzip" IS READ-ONLY, so the paragraph below about the write side
-        // stealing the shared offset cannot arise here -- there is no write
-        // side to steal it.
+        // INFLATION IS ENGAGED ONLY FOR A READABLE MODE and the write side of a
+        // read/write handle never goes through it, so the paragraph below about
+        // the shared offset is untouched: a plain file still reads by pread at
+        // the handle's own cursor, and that is still every file that is not
+        // gzip.
         const ssize_t got =
             handle.gz != nullptr
                 ? static_cast<ssize_t>(

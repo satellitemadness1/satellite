@@ -20,6 +20,25 @@
 
 namespace satellite::file::gzip {
 
+// Is what this descriptor holds a gzip stream? Answers from the CONTENT and
+// never from the name.
+//
+// THE MAGIC TWO BYTES, WHICH IS WHAT ZLIB ITSELF LOOKS AT -- zlib.h:1388 says
+// gzopen detects the format "by looking for the magic two-byte gzip header".
+// So the question is answered the same way the library would answer it, and
+// asking it here rather than letting zlib decide is what keeps a plain file on
+// the pread path it has had since M19.
+//
+// AND NOT THE FILE EXTENSION, WHICH IS THE WHOLE POINT. A `.gz` that is not
+// gzip would be inflated into nonsense and a gzip stream not named `.gz` would
+// be read as bytes -- and Common Crawl's segments are full of the second. A
+// name is a claim; the first two bytes are the fact.
+//
+// READS WITHOUT MOVING ANYTHING. pread(2) at offset 0, so the shared file
+// offset the write side owns is untouched -- file_reading.cpp's cursor note is
+// the same argument.
+bool looks_gzipped(int descriptor);
+
 // Take over a descriptor and read it as gzip. Answers nullptr if zlib could
 // not, in which case the descriptor is still the caller's to close.
 //

@@ -4,9 +4,23 @@
 
 #include <zlib.h>
 
+#include <unistd.h>
+
 #include <cstddef>
 
 namespace satellite::file::gzip {
+
+bool looks_gzipped(int descriptor)
+{
+    if (descriptor < 0)
+        return false;
+    unsigned char magic[2] = {0, 0};
+    const ssize_t peeked = ::pread(descriptor, magic, sizeof magic, 0);
+    // A FILE SHORTER THAN TWO BYTES IS NOT GZIP AND IS NOT AN ERROR. An empty
+    // file is what `satellite.file.new` just made, and answering false for it
+    // is the honest answer rather than a failure to report.
+    return peeked == 2 && magic[0] == 0x1f && magic[1] == 0x8b;
+}
 
 void *open_for_reading(int descriptor)
 {

@@ -44,11 +44,6 @@ struct Mode {
     int flags;
     bool readable;
     bool writable;
-
-    // WHETHER THE BYTES ARRIVE INFLATED. The open(2) flags are the same
-    // O_RDONLY as "read" -- gzip is not a thing the kernel knows about -- so
-    // this is the one part of a mode that no flag can carry.
-    bool gzip = false;
 };
 
 // The four, in ONE table, because `satellite.file.open` `1 8 2` and
@@ -84,7 +79,19 @@ struct FileHandle {
     bool readable = false;
     bool writable = false;
 
-    // THE GZIP STREAM, AND `void *` SO THAT THIS HEADER DOES NOT NAME zlib.
+    // THE GZIP STREAM, AND NOBODY ASKED FOR IT. A mode says READ or WRITE,
+    // which is what the program means; whether the bytes on disk are
+    // compressed is a fact about the FILE, and satellite finds that out itself
+    // -- gzip::looks_gzipped() reads the magic two bytes at open. DESIGN §1.1
+    // is doing everything for the user, and "read_gzip" was the user doing the
+    // encoding by hand. A path ending `.gz` is not even consulted: the content
+    // is the answer and the name is only a claim.
+    //
+    // NULL MEANS PLAIN, and a plain file keeps the pread path it has had since
+    // M19 -- unchanged, uncopied, and not routed through a decompressor that
+    // would only hand the bytes straight back.
+    //
+    // `void *` SO THAT THIS HEADER DOES NOT NAME zlib.
     // satellite_file/gzip.hpp carries that argument: a `gzFile` here would put
     // -isystem vendor/zlib-develop on the compile line of every unit that
     // touches a file handle, and of every test binary that links one.
@@ -101,7 +108,6 @@ struct FileHandle {
     // stream is a fourth, and it is strictly sequential besides -- there is no
     // pread for a compressed stream, because byte N is not findable without
     // inflating the N-1 before it. One thread reading is exact.
-    bool gzipped = false;
     void *gz = nullptr;
 
     // WHETHER THIS HANDLE HAS EVER BEEN OPEN, which is what separates two
