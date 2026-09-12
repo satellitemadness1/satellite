@@ -377,6 +377,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/source_file.cpp \
             $(PROGRAMS)/cache_command.cpp \
             $(PROGRAMS)/check_command.cpp \
+            $(PROGRAMS)/source_report.cpp \
             $(PROGRAMS)/dump_commands.cpp \
             $(PROGRAMS)/file_commands.cpp \
             $(PROGRAMS)/limits_command.cpp \
@@ -385,6 +386,8 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/run_command.cpp \
             $(PROGRAMS)/number_command.cpp \
             $(PROGRAMS)/resolve_command.cpp \
+            $(DIAGNOSE)/diagnose.cpp \
+            $(DIAGNOSE)/suit_cycles.cpp \
             $(ERRORS)/report.cpp \
             $(ERRORS)/suggest.cpp \
             $(ERRORS)/foreign.cpp \

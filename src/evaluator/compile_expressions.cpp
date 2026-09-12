@@ -700,10 +700,17 @@ bool Compiler::no_question(NodeIndex at, NodeIndex member, OpIndex *out)
                     "`held()`"
                   : "its methods are the words numbered under "
                     "that path, and this is not one of them";
+    // RECORDED FOR `--check` AS WELL AS EMITTED -- M26.5, and Compiler::not_built
+    // in compile.cpp carries the argument for why both happen. This is the twin
+    // that cost the most: a selector a declared type does not answer is decided
+    // HERE, with the type in hand, and was then said only if the line ran.
+    const std::string type_text =
+        words::path_text(static_cast<words::NodeId>(holder.type));
+    deferred_refusals_.push_back(errors::make<errors::Code::EVAL_NO_SUCH_QUESTION>(
+        span_of(at), std::string(asked), type_text, advice));
+
     *out = emit(op_no_question, at, out_.add_text(std::string(asked)),
-    out_.add_text(words::path_text(
-        static_cast<words::NodeId>(holder.type))),
-    out_.add_text(advice));
+                out_.add_text(type_text), out_.add_text(advice));
     return true;
 }
 

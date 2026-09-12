@@ -158,8 +158,13 @@ void section_codes()
     // the same shape as `words.def`'s stale header tallies one directory over
     // (M21.md §3.8) and is why both numbers are now written once each and
     // read together.
-    check(kCodeCount == 132,
-          "errors.def has 132 rows -- if that changed on purpose, change it here "
+    // AND 133 SINCE M26.5, which added exactly one row: S1501, the static
+    // analyser's reference-cycle warning and the first SAT_WARNING in the file.
+    // BOTH NUMBERS BELOW MOVED TOGETHER, which is what the paragraph above is
+    // about -- the comparison and the sentence it prints are two copies of one
+    // fact, and M20 moved one of them and not the other.
+    check(kCodeCount == 133,
+          "errors.def has 133 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

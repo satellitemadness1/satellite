@@ -36,6 +36,17 @@ struct Program {
     Compiled closures;
     std::vector<errors::Diagnostic> problems;
 
+    // WHAT THIS PROGRAM WILL REFUSE IF IT GETS THERE -- M26.5. Separate from
+    // `problems` because these do not stop a compile and must not stop a run:
+    // `ok()` deliberately does not look at them. A piece of grammar that parses
+    // and does not run yet is a fact about the MILESTONE, not about the program,
+    // and errors.def's S0720 note is the argument for why a run keeps its
+    // nerve -- a construct in a branch nobody takes never happens.
+    //
+    // `satl --check` PRINTS THEM, which is the only behaviour that changed. The
+    // compiler always knew; nothing asked it.
+    std::vector<errors::Diagnostic> deferred;
+
     bool ok() const { return !errors::any_error(problems); }
 
     // Which compiled capsule this path is, or -1. `satl --call` needs it and so

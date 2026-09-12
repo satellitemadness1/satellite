@@ -75,9 +75,24 @@ errors::Span Compiler::span_of(NodeIndex node) const
     return errors::Span{at.start, at.end, at.line};
 }
 
+// THE ONE PLACE A PIECE OF GRAMMAR IS DECLARED EARLY, which is why the answer
+// for `satl --check` is recorded HERE and not walked out of the arena
+// afterwards. A pass over the compiled ops looking for `op_refuse` would have to
+// reach into evaluator_internal.hpp from another module to name the function it
+// is comparing against, and it would rebuild from `a` and `b` the two strings
+// this line already has in its hands.
+//
+// BOTH HAPPEN, AND THAT IS THE WHOLE OF M26.5. The op is still emitted, so a run
+// behaves exactly as it did -- reaching the construct refuses, and not reaching
+// it does not. The diagnostic is recorded beside it, so a command that asks the
+// compiler what it knows can be told before anything runs. errors.def's S0720
+// note says the delay is deliberate; the delay is kept, and the SILENCE about it
+// is what this ends.
 OpIndex Compiler::not_built(NodeIndex node, const std::string &what,
                             const char *milestone)
 {
+    deferred_refusals_.push_back(errors::make<errors::Code::EVAL_NOT_BUILT>(
+        span_of(node), what, milestone));
     return emit(op_refuse, node, out_.add_text(what), out_.add_text(milestone));
 }
 

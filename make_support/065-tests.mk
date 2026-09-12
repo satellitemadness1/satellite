@@ -231,13 +231,23 @@ $(TESTS)/reporter_test/reporter_test: $(reporter_test_SRCS) $(reporter_test_HDRS
 # come out of the constexpr node table, which is the property 040-sources.mk
 # keeps that module for.
 #
-# $(PROGRAMS)/check_command.cpp IS THE ONE THAT LOOKS WRONG AND IS NOT.
+# $(PROGRAMS)/source_report.cpp IS THE ONE THAT LOOKS WRONG AND IS NOT.
 # limits.cpp calls open_source() to read a config, because "what to say when a
-# file will not open" is one fact and S0401 is where it lives; check_command.cpp
+# file will not open" is one fact and S0401 is where it lives; source_report.cpp
 # is where that function is defined. It drags the parser in behind it, which is
 # why THIS list has a parser in it while the paragraph above says the subject
 # does not -- a seam in the code that the linker does not see. Named rather than
 # tidied, because the alternative is a second sentence about an unreadable file.
+#
+# IT WAS check_command.cpp UNTIL M26.5 AND THE CHANGE WAS FORCED BY THIS LIST.
+# `--check` grew from one pass to four, so the arm started calling
+# build_program() -- and this suite, which links no evaluator, stopped linking
+# on an undefined reference to it. The suite was right and the file was wrong:
+# open_source() is shared by six arms and had no business living in the
+# translation unit of the one arm that needs the whole language. That is the
+# rule this file states twice above, collecting: linking only what is called is
+# how a test starts failing on an unrelated edit -- and it is how this one
+# caught a defect before it shipped.
 LIMITS_TEST_SRCS = $(LIMITS)/limits.cpp \
                    $(LIMITS)/config.cpp \
                    $(LIMITS)/pool.cpp \
@@ -248,7 +258,7 @@ LIMITS_TEST_SRCS = $(LIMITS)/limits.cpp \
                    $(SYSTEM)/stack_facts.cpp \
                    $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                    $(ERRORS)/suggest.cpp \
-                   $(PROGRAMS)/check_command.cpp \
+                   $(PROGRAMS)/source_report.cpp \
                    $(PROGRAMS)/source_file.cpp \
                    $(PARSER)/parser.cpp \
                    $(PARSER)/parser_declarations.cpp \
@@ -576,7 +586,7 @@ HELP_TEST_SRCS = $(HELP)/built.cpp \
                  $(LIMITS)/watchdog.cpp \
                  $(SYSTEM)/stack_facts.cpp \
                  $(SYSTEM)/firmware_facts.cpp \
-                 $(PROGRAMS)/check_command.cpp \
+                 $(PROGRAMS)/source_report.cpp \
                  $(PROGRAMS)/source_file.cpp \
                  $(CONSOLE_TEST_SRCS)
 
@@ -667,7 +677,7 @@ NUMBER_TEST_SRCS = $(NUMBER)/limbs.cpp \
                    $(SYSTEM)/memory_facts.cpp \
                    $(SYSTEM)/host_facts.cpp \
                    $(SYSTEM)/stack_facts.cpp \
-                   $(PROGRAMS)/check_command.cpp \
+                   $(PROGRAMS)/source_report.cpp \
                    $(PROGRAMS)/source_file.cpp \
                    $(PROGRAMS)/opening.cpp \
                    $(LEXER)/lexer.cpp \

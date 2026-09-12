@@ -37,6 +37,7 @@ TERM_DIR = $(PROGRAMS)/satl-term
 ARGS     = $(SRC)/satellite_arguments
 ERRORS   = $(SRC)/error_reporter
 EVAL     = $(SRC)/evaluator
+DIAGNOSE = $(SRC)/program_diagnostics
 LEXER    = $(SRC)/lexical_analyzer
 BITS     = $(SRC)/satellite_bits
 CACHE    = $(SRC)/satellite_cache

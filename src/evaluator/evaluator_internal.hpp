@@ -104,6 +104,22 @@ public:
 
     std::vector<errors::Diagnostic> take_problems() { return std::move(problems_); }
 
+    // WHAT THE COMPILER KNOWS WILL BE REFUSED IF IT IS EVER REACHED -- M26.5,
+    // and it is a SECOND list on purpose. `problems_` stops a program: a
+    // compile that filled it produced nothing runnable. These do not, because
+    // the ops are emitted and the program runs right up until control arrives
+    // at one -- which is op_refuse's whole argument in operations.cpp, that a
+    // `satellite.include` in a branch nobody takes is a program that runs.
+    //
+    // SO THE KNOWLEDGE IS PUBLISHED RATHER THAN ACTED ON. `satl --check` prints
+    // these and a run does not, which means the answer arrives before the seven
+    // minutes rather than after them, and no program that runs today stops.
+    // `deferred_refusals_` AND NOT `deferred_`, WHICH IS TAKEN. M23's
+    // packaging already owns that name for a set of nodes whose arguments
+    // are NOT evaluated at the call (SAT_DEFER). Two different meanings of
+    // "deferred" in one class is how a reader loses ten minutes.
+    std::vector<errors::Diagnostic> take_deferred_refusals() { return std::move(deferred_refusals_); }
+
 private:
     // Compile one subtree and answer its op. ONE C++ FRAME PER CALL, whatever
     // the subtree's depth, which is what the task machine buys -- and the only
@@ -240,6 +256,7 @@ private:
 
     Compiled out_;
     std::vector<errors::Diagnostic> problems_;
+    std::vector<errors::Diagnostic> deferred_refusals_;
 
     std::vector<Task> tasks_;
     std::vector<OpIndex> results_;

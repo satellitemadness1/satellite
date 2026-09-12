@@ -26,6 +26,7 @@ Program compile(const Ast &ast, const resolve::Resolved &resolved, words::Words 
     Program out;
     out.closures = compiler.compile();
     out.problems = compiler.take_problems();
+    out.deferred = compiler.take_deferred_refusals();
     return out;
 }
 

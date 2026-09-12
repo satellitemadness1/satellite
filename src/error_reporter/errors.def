@@ -1347,4 +1347,58 @@ SAT_CODE(1405, THREAD_CANNOT_START, SAT_ERROR,
          "ceiling of its own on how many a program may start, so this is the "
          "operating system's answer and not satellite's")
 
+// ---------------------------------------------------------------------------
+// S15xx -- WHAT A PERSON WOULD FIND BY READING THE PROGRAM. M26.5's static
+// analyser, and the first block in this file whose rows are about a program
+// that RUNS.
+//
+// EVERY OTHER DECADE HERE IS ABOUT WORK THAT STOPPED. S03xx is a file that
+// would not open, S05xx a name that would not bind, S07xx a run that was
+// refused -- each one a sentence explaining why satellite did not do what was
+// asked. These rows are the opposite: satellite did exactly what was asked, it
+// worked, and somebody should still look at the line. That is what SAT_WARNING
+// was added for and this is the block that uses it.
+//
+// SO THE SENTENCES SAY WHAT WILL HAPPEN AND NOT WHAT TO DO. A ring of
+// spacesuits is a legitimate thing to build and the author of
+// infinity_data_main.satl built one on purpose, wrote a comment about the
+// price, and was right -- the leak is one object in a program that releases
+// nothing. A code that called that a mistake would be wrong about a real
+// program, and the second time somebody is wrongly warned they stop reading the
+// warnings. DESIGN §1.1 is that satellite never acts behind the user's back; it
+// is not that satellite argues with them.
+//
+// 1500-1509 memory -- what is allocated and not given back
+// 1510-1519 threads -- what two threads reach at once
+// 1520-1529 control flow -- a path that cannot be taken, or cannot be left
+// 1530-1539 a name that is written and never read
+//
+// The gaps are on purpose; see the block note at the top of this file. Three of
+// the four decades are empty today and are reserved rather than renumbered,
+// which is the promise S05xx, S06xx and S07xx were each given and each kept.
+
+// A RING OF SPACESUITS, WHICH IS THE ONE LEAK THIS LANGUAGE CAN HAVE -- M26.5.
+//
+// M26 MADE A SPACESUIT A REFERENCE HELD BY A COUNT, and a count frees
+// everything shaped like a tree and nothing shaped like a ring. If `a` holds
+// `b` and `b` holds `a` then each is holding the other's count above zero, both
+// are unreachable from the program, and neither is ever freed. DESIGN §12
+// defers a cycle collector, so this is not a risk of a leak, it is one -- and
+// it is decidable by reading the declared types, which is why it is the
+// analyser's first row rather than its hardest.
+//
+// IT NAMES THE FIELD AND THEN THE RING. The field is the line somebody can
+// change and is where the caret goes; the ring is the part they cannot see from
+// that line, and a person told only that `infinity_data` leaks has to find the
+// chain themselves in a file that may be two thousand lines long.
+//
+// AND IT IS A WARNING. See this block's note: the specimen this was written
+// against is a deliberate cycle whose author had already reasoned about the
+// cost in a comment above it.
+SAT_CODE(1501, ANALYSIS_SUIT_CYCLE, SAT_WARNING,
+         "`{1}` closes a ring of spacesuits -- {2} -- and satellite frees a "
+         "spacesuit by counting references, so a ring holds itself alive and "
+         "is never freed. Hold one of the links with `.pointer()` if the ring "
+         "should not own itself")
+
 #undef SAT_CODE

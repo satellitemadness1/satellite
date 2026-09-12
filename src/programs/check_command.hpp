@@ -17,11 +17,12 @@
 // /dev/null` is that command spelled as an accident, and it also pays for a
 // printer it does not want.
 //
-// THE TWO HELPERS ARE HERE RATHER THAN IN main.cpp because three arms share
-// them and main.cpp is where they were three copies. `satl --tokens`,
-// `--unparse` and `--satc` each opened a file and each wrote its own sentence
-// about not being able to -- which is the same fact in three places, and one of
-// the three had already drifted into a different stream.
+// THE TWO HELPERS MOVED TO programs/source_report.hpp AT M26.5, and this
+// include keeps every arm that used to get them from here working. They left
+// because THIS header now pulls the whole language: --check runs all four
+// passes, so a test binary that wanted open_source() started needing an
+// evaluator. source_report.hpp pulls the reporter and stops.
+#include "programs/source_report.hpp"
 
 #include "error_reporter/report.hpp"
 
@@ -30,24 +31,13 @@
 
 namespace satellite {
 
-// Read a source, or say why not and answer false.
+// Read it, parse it, resolve it, compile it, say everything wrong with it, and
+// print nothing else.
 //
-// THE SENTENCE IS S0401 AND IT IS ONE ROW, which is the difference from the
-// three literals this replaces. programs/source_file.hpp gets the bytes and
-// says in its own header that "what to say when a file will not open is the
-// caller's"; this is that caller, for every arm.
-bool open_source(const std::string &path, std::string &into);
-
-// Every diagnostic about a file, on stderr, through the one renderer.
-//
-// STDERR AND NOT STDOUT, ALWAYS, and the reason is a defect --tokens shipped
-// with for one day: `satl --unparse f.satl > out.satl` must write the program
-// to the file and the complaints to the terminal, or a person redirecting the
-// output gets an empty file and no idea why.
-void report(const std::string &path, const std::string &source,
-            const std::vector<errors::Diagnostic> &problems);
-
-// Lex it, parse it, say everything wrong with it, and print nothing else.
+// ALL FOUR PASSES SINCE M26.5. It ran one until then, which made the arm whose
+// job is to answer before a run the only one that could not see what the
+// compiler had already decided -- including a line that parses and resolves and
+// is refused the moment it is reached.
 int check_command(const std::string &path);
 
 } // namespace satellite
