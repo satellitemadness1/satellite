@@ -5371,7 +5371,15 @@ Worked out beside it, *not yet confirmed by the author*:
   `satellite.library.main.arguments` `1 14 1 1`, whose next free child is
   `1 14 1 1 10` (`satl --words`, 2026-09-12) — so `network` would take
   `1 14 1 1 10` and `limit` `1 14 1 1 10 1`, **not minted here**; numbers are
-  given in the order they are first built. **It takes megabytes BOTH ways** (the
+  given in the order they are first built. **Its full shape** (the author, same
+  day): **`arguments.network.limit(number, unit)`, the unit optional — `"kb"`,
+  `"mb"` or `"gb"`, megabytes when it is left out.** The unit is a WORD at the
+  call site, as `sort("down")` and `file.open(path, "read")` are. Because a
+  shape is keyed by word + ARITY (§1.3), **`limit(number)` and
+  `limit(number, unit)` are two numbered paths**, expected at `1 14 1 1 10 1`
+  and `1 14 1 1 10 2`. *My reading, unconfirmed: the units are binary —
+  1 gb = 1024 mb — the same reading as 128 GB = 131072 MB; and a unit word
+  outside the three is refused by name.* **The number goes in BOTH ways** (the
   author, same day): `limit("900")` and `limit(900)` mean the same thing. The
   existing settings take only the bare number —
   `satellite.library.system.division_digits = 40` in `example/floats.satl` — so
