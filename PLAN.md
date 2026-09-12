@@ -5243,6 +5243,10 @@ proves the caller sees the mutation — reference semantics, demonstrated rather
 asserted — and when reaching a protected field from outside is refused by name with
 M5's caret rather than by silence.
 
+*(2026-09-12, the author's build order: **constructors first** — M26 §4's
+"compiles and silently skips it" — **then M24**, then the network. Kind 7
+needs `.pointer()`, which M26 still owes.)*
+
 **M27 — the network.** *(New 2026-08-28. After M26.)* **Nine numbered paths** —
 `satellite.network` `1 20 (0)`, `.http(port)` `1 20 1`, `.https(host, port)`
 `1 20 2`, `.new` `1 20 3`, `.open` `1 20 4`, `.receive` `1 20 5`,
@@ -5296,6 +5300,13 @@ single `unsigned long long` first, saying which of six things follows:**
 | 4 | a spacesuit |
 | 5 | an instance of a spacesuit |
 | 6 | a thread waiting to be started — a capsule name as its input, and always sent with that capsule |
+| 7 | a `.pointer()` — **a copy of the actual object it points at** (the author, 2026-09-12; kind 7 proposed the same day, confirm) |
+
+**Kind 7 has one trap, found writing it down.** M26 §2 makes `.pointer()` a
+WEAK reference. A weak reference to a copy that nothing else holds is freed the
+moment it arrives, so the receiver would get an empty pointer every time.
+*Proposed:* the copy is installed and HELD under a name — its own, or
+`default_object_nameN` — and the pointer the program receives points at that.
 
 **A value with no name is a variable — decided by the author 2026-09-12.**
 `send("hi")` is a kind 2 whose type is `satellite.variable.string`, whose value
