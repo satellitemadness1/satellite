@@ -192,6 +192,21 @@ void Resolver::statement_at(NodeIndex node)
         // where the call sat, and this one has to say it.
         work_.push_back({Act::Declare, node, type});
         visit_expression(n.b);
+        // A SPACESUIT'S CONSTRUCTOR ARGUMENTS ARE THE INITIALISER'S CASE
+        // EXACTLY -- 2026-09-12. `counter x(x)` hands the constructor the OUTER
+        // x, so they are resolved before the name enters scope, and a type that
+        // is not a spacesuit has no constructor to hand them to.
+        if (n.c != kNoList) {
+            const Suit *suit = type == words::kNoPath || words::is_language_word(type)
+                                   ? nullptr
+                                   : out_.suit_at(type);
+            if (ast_.list_size(n.c) > 0 &&
+                (suit == nullptr || suit->method_named("constructor") == nullptr))
+                problem<errors::Code::RESOLVE_ARGUMENTS_NOT_A_SPACESUIT>(
+                    node, ast_.text_of(node), ast_.text_of(n.a));
+            for (size_t i = ast_.list_size(n.c); i > 0; i--)
+                visit_expression(ast_.list_at(n.c, static_cast<uint32_t>(i - 1)));
+        }
         break;
     }
 

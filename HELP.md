@@ -4586,3 +4586,19 @@ The bare shape. **Not built** — M24.
 Makes a console window with the title and size you give. **Not built** —
 M24.
 
+
+## constructor
+
+.  `1 25`  `satellite.constructor`
+> satellite.help(satellite.constructor)
+
+A spacesuit's third section, beside `satellite.protected` and
+`satellite.public`: `satellite.constructor(args) { }`. It runs when the object
+is built -- `counter tally("hello")` hands it `"hello"` -- after every field
+has its starting value, and `tally.constructor("again")` runs it again.
+
+.  `1 25 0`  `satellite.constructor()`
+> satellite.help(satellite.constructor)
+
+The bare shape.
+

@@ -365,3 +365,5 @@ H	satellite.thread.new	1 23 1	M23	1	0	0
 .	satellite.window.console	1 24 2		0	0	0
 .	satellite.window.console()	1 24 2 0		0	0	0
 .	satellite.window.console.new(title, width, height)	1 24 2 1		0	0	0
+.	satellite.constructor	1 25		0	0	0
+.	satellite.constructor()	1 25 0		0	0	0

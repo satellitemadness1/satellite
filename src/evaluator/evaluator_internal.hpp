@@ -235,6 +235,9 @@ private:
 
     // One spacesuit, constructed -- M26. See compile_statements.cpp.
     OpIndex construct(NodeIndex at, uint32_t layout);
+    std::vector<OpIndex> constructor_chain(NodeIndex at, const resolve::Info &about,
+                                           OpIndex stored,
+                                           const std::vector<OpIndex> &arguments);
 
     OpIndex emit(OpFn fn, NodeIndex node, uint32_t a = 0, uint32_t b = 0,
                  uint32_t c = 0, uint32_t d = 0);

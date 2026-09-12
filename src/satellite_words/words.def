@@ -839,6 +839,15 @@ SAT_NODE(WINDOW,         WINDOW_CONSOLE,     "console",                   SAT_NU
 SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_0,   "()",                        SAT_BARE)  // 1 24 2 0
 SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_NEW, "new(title, width, height)", SAT_NUMBERED)  // 1 24 2 1
 
+// --- constructor ------------------------------------------------------------
+// The author's, 2026-09-12: a spacesuit's third section beside `protected`
+// `1 11` and `public` `1 12`, spelled `satellite.constructor(args) { }`. It
+// runs when the object is built, and `object_name.constructor(args)` runs it
+// again. The next number free under `satellite` -- `satl --words` said so.
+//
+SAT_NODE(SATELLITE,   CONSTRUCTOR,   "constructor", SAT_NUMBERED)  // 1 25
+SAT_NODE(CONSTRUCTOR, CONSTRUCTOR_0, "()",          SAT_BARE)  // 1 25 0
+
 // --- the aliases ------------------------------------------------------------
 // WORD_NUMBERS §2.3, in full. Eleven spellings over six nodes, and the whole of
 // the language's aliasing: every one of the 218-versus-215 and 227-versus-224

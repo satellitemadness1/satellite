@@ -8,8 +8,9 @@ satellite.include(satellite)
 // the same object rather than a second object. That is the whole of this file.
 //
 // DECLARING ONE BUILDS ONE. `counter tally` with no `=` constructs a counter
-// with its fields at their starting values. With an `=`, the name takes the
-// object on the right instead, and nothing new is built.
+// with its fields at their starting values, then runs its constructor if it
+// has one. With an `=`, the name takes the object on the right instead, and
+// nothing new is built.
 //
 // A FIELD IS REACHED ONLY THROUGH A CAPSULE. `tally.count` is refused even when
 // the field is public -- ask the object, with `tally.get()`. And a capsule in
@@ -73,6 +74,19 @@ satellite.spacesuit loud_counter(counter)
     }
 }
 
+// A CONSTRUCTOR TAKES WHAT THE OBJECT NEEDS AT BIRTH. `satellite.constructor`
+// is a spacesuit's third section, beside `protected` and `public`. It runs when
+// the object is declared -- `named_counter tally("tally")` hands it "tally" --
+// after every field has its starting value, and after counter's own
+// constructor if counter had one. `tally.constructor("renamed")` runs it again.
+satellite.spacesuit named_counter(counter)
+{
+    satellite.constructor(satellite.variable.string given)
+    {
+        name(given)
+    }
+}
+
 // THIS CAPSULE CHANGES THE CALLER'S OBJECT. It is handed a counter, adds to
 // it, and returns nothing -- and the caller still sees the change, because
 // there was only ever one counter.
@@ -118,6 +132,16 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
     loud.add_twice(4)
     satellite.variable.string loud_line = loud.describe()
     satellite.console.display("  " + loud_line)
+
+    satellite.console.display("")
+    satellite.console.display("a named_counter, named by its constructor and then renamed:")
+    named_counter tally("tally")
+    tally.add(7)
+    satellite.variable.string tally_line = tally.describe()
+    satellite.console.display("  " + tally_line)
+    tally.constructor("renamed")
+    tally_line = tally.describe()
+    satellite.console.display("  " + tally_line)
 
     satellite.console.display("")
     satellite.console.display("a counter never goes below zero, and nobody outside can clamp it:")

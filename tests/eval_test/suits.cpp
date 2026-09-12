@@ -223,27 +223,193 @@ void section_suits()
                                  Code::RESOLVE_SUIT_INHERITANCE_CYCLE),
           "S0520: two suits extending each other, refused rather than repaired");
 
-    const std::string constructor =
-        "satellite.spacesuit named()\n"
+    // --- constructors -- 2026-09-12, `satellite.constructor(args) { }` ------
+
+    // ONE SUIT WHOSE CONSTRUCTOR DOES ARITHMETIC THAT SHOWS ITS ORDER. `n`
+    // starts at 3; the constructor doubles it and adds its argument. So 7 means
+    // the initialiser ran FIRST and the constructor saw it, and 1 would mean
+    // the constructor ran on a field that had not been given its value yet.
+    const std::string doubler =
+        "satellite.spacesuit doubler()\n"
         "{\n"
+        "    satellite.protected\n"
+        "    {\n"
+        "        satellite.variable.number n = 3\n"
+        "    }\n"
         "    satellite.public\n"
         "    {\n"
-        "        satellite.capsule named()%s\n"
+        "        satellite.capsule get() satellite.returns(satellite.variable.number)\n"
         "        {\n"
+        "            satellite.return(n)\n"
         "        }\n"
         "    }\n"
+        "    satellite.constructor(satellite.variable.number by)\n"
+        "    {\n"
+        "        n = n * 2 + by\n"
+        "    }\n"
         "}\n";
-    auto shaped = [&](const std::string &returns) {
-        std::string text = constructor;
-        text.replace(text.find("%s"), 2, returns);
-        return text;
-    };
-    check(refused_before_running(shaped(" satellite.returns(satellite.variable.string)"),
-                                 Code::RESOLVE_CONSTRUCTOR_RETURNS),
-          "S0525: DESIGN §13's rule -- the capsule named after its own suit may "
-          "not declare `satellite.returns`");
-    check(!refused_before_running(shaped(""), Code::RESOLVE_CONSTRUCTOR_RETURNS),
-          "and the same capsule without one is not refused");
+
+    check(answers(doubler, "    doubler d(1)\n"
+                           "    satellite.return(d.get())\n") == "7",
+          "`doubler d(1)` RUNS THE CONSTRUCTOR WITH 1, after the field has its "
+          "starting value -- 3 * 2 + 1");
+
+    check(answers(doubler, "    doubler d(1)\n"
+                           "    d.constructor(4)\n"
+                           "    satellite.return(d.get())\n") == "18",
+          "`d.constructor(4)` RUNS IT AGAIN, on the object as it now is -- "
+          "7 * 2 + 4. The author's spelling, and public from outside the suit");
+
+    check(answers(doubler, "    satellite.variable.number seed = 5\n"
+                           "    doubler d(seed + 1)\n"
+                           "    satellite.return(d.get())\n") == "12",
+          "the arguments are ordinary expressions in the caller's scope");
+
+    check(answers("satellite.spacesuit nine()\n"
+                  "{\n"
+                  "    satellite.protected { satellite.variable.number n = 0 }\n"
+                  "    satellite.public\n"
+                  "    {\n"
+                  "        satellite.capsule get() satellite.returns(satellite.variable.number)\n"
+                  "        {\n"
+                  "            satellite.return(n)\n"
+                  "        }\n"
+                  "    }\n"
+                  "    satellite.constructor()\n"
+                  "    {\n"
+                  "        n = 9\n"
+                  "    }\n"
+                  "}\n",
+                  "    nine a\n"
+                  "    nine b()\n"
+                  "    satellite.return(a.get() + b.get())\n") == "18",
+          "a constructor with no parameters runs for `nine a` and for `nine b()` "
+          "alike -- M26's `counter tally` no longer skips it");
+
+    // THE CHAIN RUNS FROM THE ROOT DOWN. Each constructor appends a digit, so
+    // the answer spells the order: 17 is base then child, 71 would be the
+    // reverse.
+    const std::string lineage =
+        "satellite.spacesuit base()\n"
+        "{\n"
+        "    satellite.protected { satellite.variable.number n = 0 }\n"
+        "    satellite.public\n"
+        "    {\n"
+        "        satellite.capsule get() satellite.returns(satellite.variable.number)\n"
+        "        {\n"
+        "            satellite.return(n)\n"
+        "        }\n"
+        "    }\n"
+        "    satellite.constructor()\n"
+        "    {\n"
+        "        n = n * 10 + 1\n"
+        "    }\n"
+        "}\n"
+        "satellite.spacesuit child(base)\n"
+        "{\n"
+        "    satellite.constructor(satellite.variable.number digit)\n"
+        "    {\n"
+        "        n = n * 10 + digit\n"
+        "    }\n"
+        "}\n";
+    check(answers(lineage, "    child k(7)\n"
+                           "    satellite.return(k.get())\n") == "17",
+          "THE SUPERCLASS'S CONSTRUCTOR RUNS FIRST, with nothing, and only the "
+          "most-derived one is handed the arguments -- v1 design/14's order");
+
+    check(answers("satellite.spacesuit parent()\n"
+                  "{\n"
+                  "    satellite.protected { satellite.variable.number n = 0 }\n"
+                  "    satellite.public\n"
+                  "    {\n"
+                  "        satellite.capsule get() satellite.returns(satellite.variable.number)\n"
+                  "        {\n"
+                  "            satellite.return(n)\n"
+                  "        }\n"
+                  "    }\n"
+                  "    satellite.constructor(satellite.variable.number by)\n"
+                  "    {\n"
+                  "        n = n + by\n"
+                  "    }\n"
+                  "}\n"
+                  "satellite.spacesuit heir(parent)\n"
+                  "{\n"
+                  "}\n",
+                  "    heir h(6)\n"
+                  "    satellite.return(h.get())\n") == "6",
+          "a suit with no constructor of its own INHERITS its parent's, and it "
+          "runs once -- 6, not a refusal for calling it a second time with none");
+
+    {
+        Run run;
+        build(with_it(doubler, "    doubler d\n"
+                               "    satellite.return(d.get())\n"),
+              run);
+        call(run, "it", {});
+        check(ran_into(Code::EVAL_ARGUMENT_COUNT),
+              "S0722: `doubler d` hands a one-parameter constructor nothing, and "
+              "is refused by count rather than run on a missing argument");
+    }
+
+    check(refused_before_running(
+              "satellite.spacesuit named()\n"
+              "{\n"
+              "    satellite.constructor() satellite.returns(satellite.variable.string)\n"
+              "    {\n"
+              "    }\n"
+              "}\n",
+              Code::RESOLVE_CONSTRUCTOR_RETURNS),
+          "S0525: DESIGN §13's rule, on the constructor section");
+
+    check(!refused_before_running("satellite.spacesuit named()\n"
+                                  "{\n"
+                                  "    satellite.public\n"
+                                  "    {\n"
+                                  "        satellite.capsule named() "
+                                  "satellite.returns(satellite.variable.string)\n"
+                                  "        {\n"
+                                  "            satellite.return(\"x\")\n"
+                                  "        }\n"
+                                  "    }\n"
+                                  "}\n",
+                                  Code::RESOLVE_CONSTRUCTOR_RETURNS),
+          "a capsule named after its suit is an ordinary method since the "
+          "constructor became a section, and may declare a return type");
+
+    check(refused_before_running(with_it(kCounter, "    satellite.variable.number n(5)\n"),
+                                 Code::RESOLVE_ARGUMENTS_NOT_A_SPACESUIT),
+          "S0526: arguments on a number have no constructor to go to");
+
+    check(refused_before_running(with_it(kCounter, "    counter c(5)\n"),
+                                 Code::RESOLVE_ARGUMENTS_NOT_A_SPACESUIT),
+          "S0526: and neither do arguments on a suit with no constructor section");
+
+    {
+        Run run;
+        build("satellite.spacesuit clash()\n"
+              "{\n"
+              "    satellite.public\n"
+              "    {\n"
+              "        satellite.capsule constructor()\n"
+              "        {\n"
+              "        }\n"
+              "    }\n"
+              "}\n",
+              run);
+        bool found = false;
+        for (const errors::Diagnostic &at : run.parsed.errors)
+            found = found || at.code == Code::PARSE_CAPSULE_NAMED_CONSTRUCTOR;
+        check(found, "S0245: a capsule inside a suit may not take the name the "
+                     "constructor section answers to");
+    }
+    {
+        Run run;
+        build("satellite.constructor()\n{\n}\n", run);
+        bool found = false;
+        for (const errors::Diagnostic &at : run.parsed.errors)
+            found = found || at.code == Code::PARSE_CONSTRUCTOR_OUTSIDE_SPACESUIT;
+        check(found, "S0244: a constructor at the top of a file has no suit");
+    }
 
     // PUT IT BACK, which every section that installs does.
     eval::Handlers::table().clear();

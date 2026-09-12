@@ -84,6 +84,7 @@ private:
     void expand_program(NodeIndex node);
     void expand_declaration(NodeIndex node);
     void capsule(NodeIndex node);
+    void constructor_arguments(ListId arguments);
     void spacesuit(NodeIndex node);
     void expand_members(ListId items);
     void expand_block(NodeIndex node);

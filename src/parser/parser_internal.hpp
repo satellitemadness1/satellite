@@ -68,9 +68,10 @@ enum class Segment1 : uint8_t {
     Returns,
     Protected,
     Public,
+    Constructor,  // a spacesuit's third section -- 2026-09-12
 };
 
-// Which of the eleven a spelling is, or None.
+// Which of the twelve a spelling is, or None.
 //
 // A SWITCH OVER CONSTEXPR CASE LABELS, and it is chosen over an array of pairs
 // for the property FORMAT/CXX.md §7 names: two rows sharing a value is
@@ -99,6 +100,7 @@ constexpr Segment1 segment1_of(words::SpellingId id)
     case words::spelling_id(words::NodeId::RETURNS):   return Segment1::Returns;
     case words::spelling_id(words::NodeId::PROTECTED): return Segment1::Protected;
     case words::spelling_id(words::NodeId::PUBLIC):    return Segment1::Public;
+    case words::spelling_id(words::NodeId::CONSTRUCTOR): return Segment1::Constructor;
     default: break;
     }
     return Segment1::None;
@@ -211,6 +213,7 @@ private:
     NodeIndex global_decl();
     ListId suit_body(words::PathId owner);
     NodeIndex suit_member(words::PathId owner);
+    NodeIndex constructor_decl(words::PathId owner);
 
     // The one call in this milestone that gives a name a number. `owner` is a
     // PathId and not a NodeId because a spacesuit's members are owned by the

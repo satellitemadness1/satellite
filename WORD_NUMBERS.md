@@ -688,6 +688,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.window.new` | `1 24 1` | assigned |
 | `satellite.window.console` | `1 24 2 (0)` | assigned 2026-08-28 |
 | `satellite.window.console.new(title, width, height)` | `1 24 2 1` | assigned 2026-08-28 |
+| `satellite.constructor` | `1 25 (0)` | assigned 2026-09-12 by the author — a spacesuit's third section, `satellite.constructor(args) { }`, beside `protected` and `public`; runs when the object is built and again on `object_name.constructor(args)` |
 
 ### 2.3 Two spellings, one number
 

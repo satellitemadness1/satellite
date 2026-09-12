@@ -212,6 +212,9 @@ NodeIndex Parser::block()
                 error<errors::Code::PARSE_DECLARATION_IN_BLOCK>(here() + 2,
                                                                 peek(2).text);
                 break;
+            case Segment1::Constructor:
+                error<errors::Code::PARSE_CONSTRUCTOR_OUTSIDE_SPACESUIT>(here() + 2);
+                break;
             case Segment1::Library:
             case Segment1::None:
                 // A value path or a module path. Both are expressions, and
@@ -355,13 +358,42 @@ NodeIndex Parser::var_decl(NodeIndex declared_type)
     // program. Numbering locals here would put one slot per local per program
     // back -- which is §7.1's verified blocker, where a recursive `fact`
     // returns 1 for every input.
+    // `counter tally("hello")` -- A SPACESUIT'S CONSTRUCTOR ARGUMENTS, 2026-09-12.
+    // Written where the declaration is, and handed to the suit's
+    // `satellite.constructor(args)`; the resolver refuses them on any type that
+    // is not a spacesuit, because this parser cannot tell a user's type name
+    // from any other word. The list is `c`, and an empty `()` is a list with
+    // nothing in it rather than kNoList, so the two spellings stay apart in the
+    // tree even though both hand the constructor nothing.
+    ListId arguments = kNoList;
+    if (at_punct("(")) {
+        const uint32_t opener = here();
+        advance();
+        open_bracket();
+        std::vector<NodeIndex> given;
+        while (!at_punct(")")) {
+            const NodeIndex argument = expression();
+            if (argument == kNoNode) {
+                close_bracket();
+                return kNoNode;
+            }
+            given.push_back(argument);
+            if (!take_punct(","))
+                break;
+        }
+        close_bracket();
+        if (!expect_punct(")", "to close the constructor's arguments", opener))
+            return kNoNode;
+        arguments = ast_.add_list(given);
+    }
+
     NodeIndex init = kNoNode;
-    if (take_punct("=")) {
+    if (arguments == kNoList && take_punct("=")) {
         init = expression();
         if (init == kNoNode)
             return kNoNode;
     }
-    return ast_.add(NodeKind::VarDecl, name, declared_type, init);
+    return ast_.add(NodeKind::VarDecl, name, declared_type, init, arguments);
 }
 
 NodeIndex Parser::return_stmt()

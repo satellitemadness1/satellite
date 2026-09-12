@@ -5254,8 +5254,7 @@ takes `1 25`, the next number free under `satellite` (`satl --words`,
 selector, so a user capsule named `constructor` is refused by name. *Carried
 from v1 design/14 as readings, unconfirmed: every field's starting value is set
 before the constructor runs, so it sees the whole object; the superclass's
-constructor runs before the subclass's; S0525 (a constructor may not declare a
-return type) has nothing left to catch and retires with the old spelling.*
+constructor runs before the subclass's.*
 **IT TAKES ARGUMENTS** (the author, same day, after considering and dropping
 a capsule named after the suit): **`satellite.constructor(args) { }`**, its own
 section, with a parameter list like a capsule's. *Readings, unconfirmed: a
@@ -5276,6 +5275,31 @@ takes none, or is refused by name when it needs some.*
 
     counter tally("hello")
     tally.constructor("again")
+
+**BUILT 2026-09-12, and where the build moved the readings above.** `satellite.
+constructor` is `1 25` in `words.def`. The section parses as a Capsule node
+anchored on the word `constructor`, so it files itself as the suit's method of
+that name, and `tally.constructor("again")` needed no new dispatch.
+`counter tally("hello")` compiles to two statements: the object built from its
+field initialisers and stored, then exactly `tally.constructor("hello")`.
+- **S0525 is KEPT, not retired.** `satellite.constructor() satellite.returns(...)`
+  is still writable and still wrong, so the code stayed and its sentence moved to
+  the section. A capsule named after its suit is now an ordinary method and may
+  declare a return type.
+- **Field starting values run first, and the chain runs root → derived**, with
+  only the most-derived constructor handed the arguments; an ancestor's own is
+  called with none. A suit with no constructor of its own inherits its
+  parent's, which runs once.
+- **`counter tally` against a constructor that needs arguments is refused by
+  count at RUN time** (S0722, op_call's own), not at compile time.
+- **Three new codes:** S0244 a constructor outside a spacesuit; S0245 a capsule
+  inside a suit named `constructor`; S0526 arguments on a declaration with no
+  constructor to take them — a non-suit type, or a suit with no section. An
+  empty `()` is not refused.
+- **The `.satc` and `--unparse` both write the section and the arguments back**,
+  verified by round trip: `#1.25(#1.6.1 new_label)` and `counter tally("hello")`.
+- *Not built:* `counter tally = counter("hello")` as an expression, and
+  `super(...)` (DESIGN §12).
 
 *(2026-09-12, the author's build order: **constructors first** — M26 §4's
 "compiles and silently skips it" — **then M24**, then the network. Kind 7

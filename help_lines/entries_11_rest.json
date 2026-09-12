@@ -204,6 +204,16 @@
   "prose": "Makes a console window with the title and size you give. **Not built** —\nM24.",
   "example": ""
  },
+ "1 25": {
+  "query": "satellite.help(satellite.constructor)",
+  "prose": "A spacesuit's third section, beside `satellite.protected` and\n`satellite.public`: `satellite.constructor(args) { }`. It runs when the object\nis built -- `counter tally(\"hello\")` hands it `\"hello\"` -- after every field\nhas its starting value, and `tally.constructor(\"again\")` runs it again.",
+  "example": ""
+ },
+ "1 25 0": {
+  "query": "satellite.help(satellite.constructor)",
+  "prose": "The bare shape.",
+  "example": ""
+ },
  "1 8 5": {
   "query": "satellite.help(satellite.file.exists)",
   "prose": "Whether there is a file at this path -- asked with no handle, and without\nopening anything.\n\n**A directory answers false**, which is what separates this from\n`satellite.directory.exists`. The question is \"is there a file here I could\nopen\", and a directory is not one.",

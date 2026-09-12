@@ -83,13 +83,33 @@ void Writer::expand_declaration(NodeIndex node)
     }
 }
 
+// `counter tally("hello")`'s arguments, or nothing when none were written --
+// 2026-09-12. An empty `()` is written back as `()`, so the file says what the
+// program said.
+void Writer::constructor_arguments(ListId arguments)
+{
+    if (arguments == kNoList)
+        return;
+    say("(");
+    for (uint32_t i = 0; i < ast_.list_size(arguments); i++) {
+        if (i > 0)
+            say(", ");
+        expr(ast_.list_at(arguments, i));
+    }
+    say(")");
+}
+
 void Writer::capsule(NodeIndex node)
 {
     const Node &n = ast_[node];
     line_starts();
-    fixed("satellite.capsule");
-    say(" ");
-    capsule_name(node);
+    if (ast_.is_constructor(node)) {
+        fixed("satellite.constructor");
+    } else {
+        fixed("satellite.capsule");
+        say(" ");
+        capsule_name(node);
+    }
     say("(");
     for (uint32_t i = 0; i < ast_.list_size(n.b); i++) {
         if (i > 0)
@@ -170,6 +190,7 @@ void Writer::expand_statement(NodeIndex node)
         line_starts();
         type_of(n.a);
         say(" " + text(node));
+        constructor_arguments(n.c);
         if (n.b != kNoNode) {
             say(" = ");
             expr(n.b);
@@ -262,6 +283,7 @@ void Writer::expand_inline(NodeIndex node)
     case NodeKind::VarDecl:
         type_of(n.a);
         say(" " + text(node));
+        constructor_arguments(n.c);
         if (n.b != kNoNode) {
             say(" = ");
             expr(n.b);

@@ -124,7 +124,7 @@ enum class NodeKind : uint8_t {
 //   Unary       the operator      operand          -               -            -
 //   Binary      the operator      left             right           -            -
 //   Type        the type's name   space SPELLING   generic list    -            -
-//   VarDecl     the declared name type             init or none    -            -
+//   VarDecl     the declared name type             init or none    ctor args    -
 //   Assign      the `=`           target           value           -            -
 //   ExprStmt    the expression's  expression       -               -            -
 //   Return      `satellite`       value or none    -               -            -
@@ -223,6 +223,20 @@ public:
     const Token &token_of(NodeIndex index) const { return tokens_[nodes_[index].token]; }
 
     const Token &token(uint32_t index) const { return tokens_[index]; }
+
+    // WHETHER A CAPSULE NODE IS A SPACESUIT'S `satellite.constructor(args)`
+    // SECTION -- 2026-09-12. The parser builds one as a Capsule anchored on the
+    // word `constructor` itself, so the word before its name is the `.` of
+    // `satellite.constructor`; a capsule the user named `constructor` at the
+    // top of a file has `capsule` there instead. Both printers ask this, because
+    // printing the section back as `satellite.capsule constructor` would be
+    // S0245 the next time the file is read.
+    bool is_constructor(NodeIndex index) const
+    {
+        const uint32_t at = nodes_[index].token;
+        return nodes_[index].kind == NodeKind::Capsule && at > 0 &&
+               tokens_[at].text == "constructor" && tokens_[at - 1].text == ".";
+    }
 
     // The text a node's anchor token was written with -- lexer.hpp's `text`,
     // which is the source's spelling and not an expansion of it.

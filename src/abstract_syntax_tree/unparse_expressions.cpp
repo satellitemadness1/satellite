@@ -135,6 +135,7 @@ void Printer::expand_inline(NodeIndex node)
     case NodeKind::VarDecl:
         type_of(n.a);
         say(" " + text(node));
+        constructor_arguments(n.c);
         if (n.b != kNoNode) {
             say(" = ");
             expr(n.b);

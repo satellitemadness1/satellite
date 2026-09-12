@@ -4565,4 +4565,21 @@ SAT_HELP(WINDOW_CONSOLE_NEW, WINDOW_CONSOLE_NEW,
          ""
          )
 
+// 1 25  satellite.constructor
+SAT_HELP(CONSTRUCTOR, CONSTRUCTOR,
+         "A spacesuit's third section, beside `satellite.protected` and\n"
+         "`satellite.public`: `satellite.constructor(args) { }`. It runs when the object\n"
+         "is built -- `counter tally(\"hello\")` hands it `\"hello\"` -- after every field\n"
+         "has its starting value, and `tally.constructor(\"again\")` runs it again."
+         ,
+         ""
+         )
+
+// 1 25 0  satellite.constructor()
+SAT_HELP(CONSTRUCTOR_0, CONSTRUCTOR,
+         "The bare shape."
+         ,
+         ""
+         )
+
 #undef SAT_HELP

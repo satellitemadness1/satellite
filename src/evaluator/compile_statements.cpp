@@ -59,6 +59,61 @@ OpIndex Compiler::construct(NodeIndex at, uint32_t layout)
     return emit(op_construct, at, layout, out_.add_list(fields));
 }
 
+// THE CONSTRUCTOR RUNS AFTER THE OBJECT IS STORED, AS A CALL ON THE NAME --
+// 2026-09-12, the author's `satellite.constructor(args) { }`. So
+// `counter tally("hello")` is the object built from its field initialisers,
+// stored into `tally`, and then exactly `tally.constructor("hello")`: the
+// ordinary method call, with the ordinary argument-count refusal (S0722) and a
+// receiver in slot 0. Doing it as two statements is what keeps op_call's
+// answer out of the way -- a constructor answers nothing, and the declaration
+// needs the OBJECT, which is already in the slot when the call begins.
+//
+// EVERY FIELD HAS ITS STARTING VALUE BEFORE ANY CONSTRUCTOR RUNS, and the
+// chain runs from the root suit down -- v1 design/14's order, which gives each
+// constructor a whole object. ONLY THE MOST-DERIVED CONSTRUCTOR IS HANDED THE
+// ARGUMENTS; an ancestor's own is called with none, and one that needs some is
+// refused by count when it runs, because there is no `super(...)` yet to pass
+// them (DESIGN §12).
+std::vector<OpIndex> Compiler::constructor_chain(NodeIndex at,
+                                                 const resolve::Info &about,
+                                                 OpIndex stored,
+                                                 const std::vector<OpIndex> &arguments)
+{
+    std::vector<OpIndex> steps{stored};
+    const resolve::Suit *suit = resolved_.suit_at(about.type);
+    if (suit == nullptr)
+        return steps;
+
+    std::vector<const resolve::Suit *> lineage;
+    for (const resolve::Suit *each = suit; each != nullptr;
+         each = each->parent == words::kNoPath ? nullptr
+                                               : resolved_.suit_at(each->parent))
+        lineage.insert(lineage.begin(), each);
+
+    const resolve::Method *chosen = suit->method_named("constructor");
+    const auto call = [&](words::PathId path, const std::vector<OpIndex> &given) {
+        const auto found = capsules_.find(path);
+        if (found == capsules_.end())
+            return;
+        std::vector<OpIndex> with_receiver{
+            emit(op_local, at, static_cast<uint32_t>(about.slot))};
+        with_receiver.insert(with_receiver.end(), given.begin(), given.end());
+        const OpIndex made =
+            emit(op_call, at, found->second, out_.add_list(with_receiver),
+                 out_.add_text("constructor"));
+        steps.push_back(emit(op_expression, at, made));
+    };
+
+    for (const resolve::Suit *ancestor : lineage) {
+        const resolve::Method *own = ancestor->own_method_named("constructor");
+        if (own != nullptr && (chosen == nullptr || own->path != chosen->path))
+            call(own->path, {});
+    }
+    if (chosen != nullptr)
+        call(chosen->path, arguments);
+    return steps;
+}
+
 OpIndex Compiler::into_declared(const resolve::Info &about, NodeIndex node,
                                 OpIndex value)
 {
@@ -79,13 +134,25 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
         // `b` IS THE INITIALISER AND `a` IS THE TYPE, which is ast.hpp's table
         // and is worth naming here because the two are both uint32_t and both
         // node indices, so nothing would catch the swap.
-        if (n.b != kNoNode && step_number == 0) {
+        //
+        // `c` IS THE CONSTRUCTOR'S ARGUMENTS -- 2026-09-12 -- and the parser
+        // never writes both `c` and `b`, so the order the two are taken back in
+        // cannot matter.
+        const bool has_arguments = n.c != kNoList;
+        if ((n.b != kNoNode || has_arguments) && step_number == 0) {
             again(1);
-            visit(n.b);
+            if (n.b != kNoNode)
+                visit(n.b);
+            if (has_arguments)
+                visit_reversed(n.c);
             return true;
         }
+        std::vector<OpIndex> arguments;
+        if (has_arguments)
+            arguments = take_many(ast_.list_size(n.c));
         OpIndex value = n.b == kNoNode ? kNoOp : take();
         const resolve::Info &about = info(node);
+        bool constructed = false;
 
         // A SPACESUIT DECLARED WITH NO `=` IS CONSTRUCTED -- M26, and it is the
         // one place in the language where a declaration DOES something.
@@ -108,8 +175,10 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
         // ends up holding.
         if (value == kNoOp && about.type != words::kNoPath)
             if (const auto found = suits_.find(about.type);
-                found != suits_.end())
+                found != suits_.end()) {
                 value = construct(node, found->second);
+                constructed = value != kNoOp;
+            }
 
         if (!resolve::in_a_frame(about.slot)) {
             finish(not_built(node, "a declaration outside a capsule",
@@ -118,8 +187,14 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
                              "statement"));
             return true;
         }
-        finish(emit(op_store, node, static_cast<uint32_t>(about.slot),
-                    into_declared(about, node, value)));
+        const OpIndex stored = emit(op_store, node, static_cast<uint32_t>(about.slot),
+                                    into_declared(about, node, value));
+        if (!constructed) {
+            finish(stored);
+            return true;
+        }
+        finish(emit(op_block, node,
+                    out_.add_list(constructor_chain(node, about, stored, arguments))));
         return true;
     }
 

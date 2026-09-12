@@ -71,6 +71,20 @@ void Printer::expand_declaration(NodeIndex node)
     }
 }
 
+// `counter tally("hello")`'s arguments -- 2026-09-12, the cache writer's twin.
+void Printer::constructor_arguments(ListId arguments)
+{
+    if (arguments == kNoList)
+        return;
+    say("(");
+    for (uint32_t i = 0; i < ast_.list_size(arguments); i++) {
+        if (i > 0)
+            say(", ");
+        expr(ast_.list_at(arguments, i));
+    }
+    say(")");
+}
+
 void Printer::capsule(NodeIndex node)
 {
     const Node &n = ast_[node];
@@ -79,10 +93,14 @@ void Printer::capsule(NodeIndex node)
     // is_language_word on the path id is how that is asked -- one compare
     // against the frozen half's boundary, which words_nodes.hpp calls the
     // predicate anything about to write a PathId down has to ask first.
-    say("satellite.capsule ");
-    if (words::is_language_word(n.a))
-        say("satellite.");
-    say(text(node) + "(");
+    if (ast_.is_constructor(node)) {
+        say("satellite.constructor(");
+    } else {
+        say("satellite.capsule ");
+        if (words::is_language_word(n.a))
+            say("satellite.");
+        say(text(node) + "(");
+    }
     for (uint32_t i = 0; i < ast_.list_size(n.b); i++) {
         if (i > 0)
             say(", ");
@@ -162,6 +180,7 @@ void Printer::expand_statement(NodeIndex node)
         pad();
         type_of(n.a);
         say(" " + text(node));
+        constructor_arguments(n.c);
         if (n.b != kNoNode) {
             say(" = ");
             expr(n.b);

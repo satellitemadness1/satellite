@@ -465,7 +465,13 @@ void Resolver::gather_members(NodeIndex suit_node, Suit &into, bool)
             method.path = ast_[item].a;
             method.name = ast_.text_of(item);
             method.node = item;
-            method.is_public = is_public;
+            // THE CONSTRUCTOR IS PUBLIC WHEREVER IT IS WRITTEN -- 2026-09-12.
+            // It is its own section beside `protected` and `public` rather than
+            // a member of either, and `object_name.constructor(args)` is the
+            // author's own spelling of calling it from outside the suit. The
+            // parser refuses any other capsule of this name, so the spelling is
+            // the whole test.
+            method.is_public = is_public || method.name == "constructor";
 
             if (into.own_field_named(method.name) != nullptr ||
                 into.own_method_named(method.name) != nullptr) {
@@ -477,10 +483,12 @@ void Resolver::gather_members(NodeIndex suit_node, Suit &into, bool)
             // enforced at M26. The caret goes on the `satellite.returns` type
             // rather than the name, because the type is the part to delete.
             // The member is still recorded: the program is refused either way,
-            // and dropping it would add an S0518 nobody made.
-            if (method.name == into.name && ast_[item].c != kNoNode)
+            // and dropping it would add an S0518 nobody made. SINCE 2026-09-12
+            // the constructor is the `satellite.constructor` section, not the
+            // capsule named after its suit, and the sentence names the suit.
+            if (method.name == "constructor" && ast_[item].c != kNoNode)
                 problem<errors::Code::RESOLVE_CONSTRUCTOR_RETURNS>(
-                    ast_[item].c, method.name);
+                    ast_[item].c, into.name);
             into.methods.push_back(method);
             break;
         }

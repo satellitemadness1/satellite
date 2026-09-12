@@ -227,14 +227,19 @@ void section_authority()
     // ARRIVED -- one leaf, one number, no alias and no marker, so two of the
     // four move by one and the other two stay where they were.
     //
+    // AND 327 UNTIL THE CONSTRUCTOR, THE SAME DAY -- `satellite.constructor`
+    // `1 25 (0)`, the author's third spacesuit section. One row, one number and
+    // one `(0)` marker, because the word has a bare shape as `protected` and
+    // `public` do; no alias. Three of the four move by one and aliases stay.
+    //
     // THIS CHECK IS WHAT CAUGHT THE ROWS BEING MISSING. words.def was appended
     // and WORD_NUMBERS.md §2.2 was not, and `make test` stopped with "words.def
     // declares 366 nodes and §2.2 accounts for 342 -- a row the authority does
     // not have renumbers nothing". §1's opening rule is that WORD_NUMBERS.md is
     // the authority over the numbering, and this suite is the only thing in the
     // tree that makes that a fact rather than a claim.
-    check(rows.size() == 327,
-          "§2.2 should hold 327 rows, found " + std::to_string(rows.size()));
+    check(rows.size() == 328,
+          "§2.2 should hold 328 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -243,12 +248,12 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 323,
-          "§2.2 should carry 323 distinct numbers, found " +
+    check(numbers.size() == 324,
+          "§2.2 should carry 324 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 4, "§2.2 should declare exactly 4 aliases, found " +
                             std::to_string(aliases));
-    check(markers == 44, "§2.2 should carry 44 `(0)` markers, found " +
+    check(markers == 45, "§2.2 should carry 45 `(0)` markers, found " +
                              std::to_string(markers));
 
     // AND NOW THE CONVERSE, WHICH IS THE HALF THIS FUNCTION DID NOT CHECK.

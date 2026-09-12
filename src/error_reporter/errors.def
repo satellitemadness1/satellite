@@ -265,6 +265,20 @@ SAT_CODE(243, PARSE_NAME_UNNUMBERABLE, SAT_ERROR,
          "{1} could not be given a number, which is satl's own limit and not "
          "anything wrong with this program")
 
+// THE CONSTRUCTOR SECTION'S TWO PLACEMENT RULES -- 2026-09-12, the author's
+// `satellite.constructor(args) { }`. It is a spacesuit's section and nothing
+// else has one; and because every object answers to `.constructor()`, a
+// capsule of that name inside a suit would be a second member nobody could
+// reach, so it is refused where it is written rather than shadowed silently.
+SAT_CODE(244, PARSE_CONSTRUCTOR_OUTSIDE_SPACESUIT, SAT_ERROR,
+         "satellite.constructor is a spacesuit's section and goes inside a "
+         "satellite.spacesuit, beside satellite.protected and satellite.public")
+
+SAT_CODE(245, PARSE_CAPSULE_NAMED_CONSTRUCTOR, SAT_ERROR,
+         "a capsule inside a spacesuit cannot be named `constructor` -- that "
+         "name is the spacesuit's satellite.constructor section, which every "
+         "object answers to as `.constructor()`")
+
 // The parser's notes. 290-299, at the end of the block rather than beside the
 // errors that raise them, because a note is reused: 290 is attached by nine
 // call sites and belongs to none of them.
@@ -512,17 +526,24 @@ SAT_CODE(524, RESOLVE_NO_SUCH_OPTION, SAT_ERROR,
 // forbidden to declare one, since what a constructor produces is the object."
 // PLAN §8's M26 entry says this is the milestone that enforces it.
 //
-// WHAT COUNTS AS THE CONSTRUCTOR is the capsule inside a suit that carries the
-// suit's own name -- v1's spelling, and the one every language with classes
-// reads the same way. THIS BUILD DOES NOT RUN IT AT CONSTRUCTION: a declaration
-// with no `=` builds the object from its field initialisers (compile_statements
-// .cpp says why), and a same-named capsule is callable like any other. So this
-// refuses the one thing DESIGN has already settled about that member and
-// decides nothing about what a constructor does.
+// WHAT COUNTS AS THE CONSTRUCTOR CHANGED ON 2026-09-12. M26 read it as the
+// capsule carrying the suit's own name, v1's spelling, and did not run it. The
+// author's `satellite.constructor(args) { }` section replaced that reading the
+// day constructors were built, and a capsule named after its suit is now an
+// ordinary method. The rule itself did not move, so the code did not either.
 SAT_CODE(525, RESOLVE_CONSTRUCTOR_RETURNS, SAT_ERROR,
-         "`{1}` is named after its own spacesuit, which makes it `{1}`'s "
-         "constructor -- and what a constructor produces is the object, so it "
-         "cannot declare `satellite.returns`")
+         "the satellite.constructor of `{1}` cannot declare `satellite.returns` "
+         "-- what a constructor produces is the object")
+
+// ARGUMENTS WRITTEN ON A DECLARATION THAT HAS NO CONSTRUCTOR TO TAKE THEM --
+// 2026-09-12. `counter tally("hello")` hands "hello" to counter's
+// `satellite.constructor`; `satellite.variable.number n(5)` has nowhere to send
+// the 5, and neither does a spacesuit with no constructor section. The parser
+// cannot tell these apart, because a spacesuit's name is the user's word. An
+// empty `()` is not refused: it hands over nothing, which is what was written.
+SAT_CODE(526, RESOLVE_ARGUMENTS_NOT_A_SPACESUIT, SAT_ERROR,
+         "`{1}` is declared with arguments, and `{2}` has no "
+         "satellite.constructor to take them")
 
 // DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named X gets a
 // plain list with no properties, silently. Under §9 that silence is wrong --

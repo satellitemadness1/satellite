@@ -165,8 +165,11 @@ void section_codes()
     // fact, and M20 moved one of them and not the other.
     // AND 134 SINCE M26 CLOSED, which added one more: S0525, the constructor
     // that declares `satellite.returns` DESIGN §13 forbids.
-    check(kCodeCount == 134,
-          "errors.def has 134 rows -- if that changed on purpose, change it here "
+    // AND 137 SINCE 2026-09-12, which added three: S0244 and S0245, where the
+    // author's `satellite.constructor(args) { }` section may and may not go,
+    // and S0526, arguments on a declaration that is not a spacesuit's.
+    check(kCodeCount == 137,
+          "errors.def has 137 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

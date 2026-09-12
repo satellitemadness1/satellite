@@ -38,6 +38,9 @@ NodeIndex Parser::top_level()
                                   words::NodeId::LIBRARY));
     case Segment1::Spacesuit: return spacesuit_decl();
     case Segment1::Library:   return global_decl();
+    case Segment1::Constructor:
+        error<errors::Code::PARSE_CONSTRUCTOR_OUTSIDE_SPACESUIT>(here() + 2);
+        return kNoNode;
     default: break;
     }
 
@@ -129,6 +132,11 @@ NodeIndex Parser::capsule_decl(words::PathId owner)
         name = expect_word("a name for the capsule");
         if (panic_)
             return kNoNode;
+        if (owner != static_cast<words::PathId>(words::NodeId::LIBRARY) &&
+            ast_.token(name).text == "constructor") {
+            error<errors::Code::PARSE_CAPSULE_NAMED_CONSTRUCTOR>(name);
+            return kNoNode;
+        }
         path = define_name(owner, name, "capsule");
         if (panic_)
             return kNoNode;
@@ -283,6 +291,20 @@ ListId Parser::suit_body(words::PathId owner)
                 continue;
             }
 
+            // THE CONSTRUCTOR IS THE THIRD SECTION AND THE ONE WITH ARGUMENTS
+            // -- the author's, 2026-09-12. It holds a body rather than members,
+            // so it is not an Open level: constructor_decl() takes the whole of
+            // it and hands back one member, which the resolver files as the
+            // suit's method named `constructor`.
+            if (opening() == Segment1::Constructor) {
+                const NodeIndex item = constructor_decl(owner);
+                if (item != kNoNode)
+                    open.back().items.push_back(item);
+                if (panic_)
+                    synchronise();
+                continue;
+            }
+
             // A SECTION NEEDS NO "did this rule consume anything" GUARD and a
             // member does, which is why the check is here rather than around
             // both: a section has already taken three tokens by the time it can
@@ -329,6 +351,41 @@ ListId Parser::suit_body(words::PathId owner)
         if (panic_)
             synchronise();
     }
+}
+
+// `satellite.constructor(args) { }` -- 2026-09-12. A CAPSULE NODE WHOSE NAME
+// TOKEN IS THE WORD `constructor` ITSELF, which is the whole trick: the resolver
+// reads a member's name off its token, so the section files itself as the
+// suit's method `constructor`, and `tally.constructor("again")` is an ordinary
+// method call with nothing new to dispatch. The parameter list and the optional
+// `satellite.returns` are capsule_decl()'s, read the same way, so S0525 can
+// still refuse a return type where it is written.
+NodeIndex Parser::constructor_decl(words::PathId owner)
+{
+    advance();  // satellite
+    advance();  // .
+    const uint32_t name = here();
+    advance();  // constructor
+
+    const words::PathId path = define_name(owner, name, "capsule");
+    if (panic_)
+        return kNoNode;
+
+    const ListId params = param_list();
+    if (panic_)
+        return kNoNode;
+
+    NodeIndex returns = kNoNode;
+    if (opening() == Segment1::Returns) {
+        returns = returns_clause();
+        if (returns == kNoNode)
+            return kNoNode;
+    }
+
+    const NodeIndex body = block();
+    if (body == kNoNode)
+        return kNoNode;
+    return ast_.add(NodeKind::Capsule, name, path, params, returns, body);
 }
 
 NodeIndex Parser::suit_member(words::PathId owner)
