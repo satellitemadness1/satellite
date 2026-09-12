@@ -381,6 +381,10 @@ inline constexpr unsigned long long kFloorMost = ~0ULL - 1;
 
 // The floor in megabytes, or false when the machine's free memory is not
 // watched at all.
+// The default floor when nothing sets one -- a thirty-second of the machine,
+// never less than 256 MB. limits.cpp carries why it is a share.
+unsigned long long default_free_floor_mb();
+
 bool watched_floor(unsigned long long *megabytes);
 
 // Arm the watch at this floor, or stop it.

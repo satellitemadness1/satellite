@@ -371,6 +371,7 @@
 # -- which was true of the first satellite's registry and is worth keeping. The
 # one file that prints is the one that had to be a translation unit.
 SATL_SRCS = $(PROGRAMS)/main.cpp \
+            $(PROGRAMS)/arms.cpp \
             $(PROGRAMS)/opening.cpp \
             $(PROGRAMS)/window_handover.cpp \
             $(PROGRAMS)/source_file.cpp \
@@ -386,6 +387,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/resolve_command.cpp \
             $(ERRORS)/report.cpp \
             $(ERRORS)/suggest.cpp \
+            $(ERRORS)/foreign.cpp \
             $(ERRORS)/dump.cpp \
             $(LEXER)/lexer.cpp \
             $(LEXER)/dump.cpp \

@@ -288,10 +288,36 @@ int begin(const std::string &named)
     // "disabled" arrive at the same number here, by construction rather than
     // by two branches agreeing.
     const Dial &floor = into.dial(DialId::MinFreeMb);
-    if (floor.set)
+    if (floor.set) {
         watch_floor(floor.value);
-    else
-        stop_watching_free_memory();
+    } else {
+        // A SHARE OF THE MACHINE, DECIDED 2026-09-12, and it is the stack's
+        // decision applied to the other dial -- see the Dial note in
+        // limits.hpp for the bug that asked for it.
+        //
+        // UNSET USED TO MEAN UNWATCHED AND THAT WAS HALF A CORRECTION. v1
+        // defaulted this to a flat 4096 MB and killed satl on any machine with
+        // less than 4 GB free, so the number went away -- rightly. What went
+        // with it was the protection: MEMORY_MAX defaults to the machine's OWN
+        // total, so the ceiling above can only fire once a run holds every byte
+        // the machine has, which never happens before the kernel intervenes.
+        // Between them the watchdog had no reachable trigger, and on
+        // 2026-09-12 a runaway program took a 61.9 GiB machine down with satl
+        // watching it the whole way.
+        //
+        // A RATE FIXES WHAT A CONSTANT BROKE. A thirty-second of memory is
+        // 2 GB here, 256 MB on a small machine and 128 GB on a four-terabyte
+        // one -- the same units the stack is asked for in, and the same
+        // argument: no one number is right on every machine, and a share is
+        // right on all of them.
+        const unsigned long long floor_mb = default_free_floor_mb();
+        watch_floor(floor_mb);
+
+        Dial &shown = into.dials[static_cast<size_t>(DialId::MinFreeMb)];
+        shown.value = floor_mb;
+        shown.set = true;
+        shown.origin = Origin::Machine;
+    }
 
     pool::start(static_cast<unsigned>(into.thread_count.value()));
     start_watchdog();
@@ -301,6 +327,22 @@ int begin(const std::string &named)
 const Held &held()
 {
     return store();
+}
+
+// A THIRTY-SECOND OF THE MACHINE, NEVER LESS THAN 256 MB.
+//
+// The floor exists so that a program which is eating the machine is stopped by
+// satellite, with a sentence saying so, rather than by the kernel -- which
+// stops it with a frozen desktop and no sentence at all.
+//
+// 256 IS A FLOOR AND NOT A DEFAULT, and the difference is v1's whole mistake:
+// it is reached only on a machine under 8 GB, where a thirty-second is less
+// than a quarter gigabyte and a program has bigger problems than this dial.
+unsigned long long default_free_floor_mb()
+{
+    const unsigned long long total_mb = facts::mem_total_bytes() / (1024ULL * 1024ULL);
+    const unsigned long long share = total_mb / 32ULL;
+    return share < 256ULL ? 256ULL : share;
 }
 
 bool watched_floor(unsigned long long *megabytes)

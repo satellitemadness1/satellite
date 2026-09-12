@@ -5,6 +5,7 @@
 
 #include "error_reporter/report.hpp"
 #include "evaluator/machine.hpp"
+#include "programs/arms.hpp"
 #include "programs/built_program.hpp"
 #include "programs/opening.hpp"
 #include "satellite_arguments/arguments.hpp"
@@ -152,17 +153,9 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     if (main.parameters != 0)
         parameters.push_back(arguments::object());
 
-    console::install_handlers();
-    scalars::install_handlers();
-    containers::install_handlers();
-    random::install_handlers();
-    time::install_handlers();
-    thread::install_handlers();
-    system::install_handlers();
-    help::install_handlers();
-    file::install_handlers();
-    directory::install_handlers();
-    arguments::install_handlers();
+    // ONE CALL AND NOT ELEVEN -- programs/arms.hpp. The eleven were here until
+    // 2026-09-12, and the copy of them in the prompt was missing threads.
+    arms::install_for(arms::Arm::Run);
 
     // CTRL-C, BEFORE ANYTHING RUNS. Installed here because this is an entry
     // point that runs a program -- interrupt.hpp's rule -- and CLEARED here

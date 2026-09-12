@@ -17,6 +17,7 @@
 #include "satellite_scalars/handlers.hpp"
 #include "satellite_system/handlers.hpp"
 #include "satellite_time/handlers.hpp"
+#include "programs/arms.hpp"
 #include "system_facts/facts.hpp"
 #include "system_facts/interrupt.hpp"
 
@@ -163,19 +164,23 @@ std::string status_text()
 
 void install_every_handler()
 {
-    // THE SAME SIX run_command INSTALLS, AND THE CONSOLE AMONG THEM. `--call`
+    // THE SAME run_command INSTALLS, AND THE CONSOLE AMONG THEM. `--call`
     // deliberately leaves the console out because it runs one capsule with no
     // printer behind it; a prompt is the other case -- the first thing anybody
     // types is a `display` -- so this is the run arm's list and not that one's.
-    console::install_handlers();
-    scalars::install_handlers();
-    containers::install_handlers();
-    random::install_handlers();
-    time::install_handlers();
-    system::install_handlers();
-    help::install_handlers();
-    file::install_handlers();
-    directory::install_handlers();
+    //
+    // AND "THE SAME AS run_command" HAS TO BE CHECKED AGAINST run_command AND
+    // NOT AGAINST THIS COMMENT, which is what went wrong here. M23 added
+    // `thread::install_handlers()` to run_command.cpp and to nothing else, so
+    // for three weeks this list said it matched the run arm while missing a
+    // row, and `satellite.thread.new` typed at the prompt answered S0721 --
+    // "a path satellite has a number for and nothing behind yet, a later
+    // milestone" -- about a milestone that had in fact landed. The error was
+    // truthful about the TABLE and wrong about the LANGUAGE, which is the
+    // worst shape a refusal can have: it sent the reader to the milestones to
+    // look for work that was already done. Found 2026-09-12 by a program that
+    // ran from a file and refused at the prompt, one line apart.
+    arms::install_for(arms::Arm::Prompt);
 }
 
 } // namespace

@@ -85,7 +85,7 @@ $(TESTS)/words_test/words_test: $(words_test_SRCS) $(words_test_HDRS) \
 # no lexical diagnostic offers a suggestion, and linking only what is called is
 # how a test starts failing on an unrelated edit.
 LEXER_TEST_SRCS = $(LEXER)/lexer.cpp $(STRING)/satellite_string.cpp \
-                  $(ERRORS)/report.cpp $(ERRORS)/suggest.cpp
+                  $(ERRORS)/report.cpp $(ERRORS)/suggest.cpp $(ERRORS)/foreign.cpp
 
 # AND ON example/hello_world.satl, which is the unusual prerequisite and is the
 # same argument words_test makes for WORD_NUMBERS.md one line up. LAYOUT.md
@@ -104,7 +104,7 @@ $(TESTS)/lexer_test/lexer_test: $(lexer_test_SRCS) $(lexer_test_HDRS) \
 # tree it builds has a printer. Named one by one for the reason the two rules
 # above give -- $(SATL_OBJS) would drag main.o and its window handover in, and a
 # test that starts by deciding whether to open a GUI hangs on a build machine.
-PARSER_TEST_SRCS = $(ERRORS)/report.cpp \
+PARSER_TEST_SRCS = $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                    $(ERRORS)/suggest.cpp \
                    $(PARSER)/parser.cpp \
                    $(PARSER)/parser_declarations.cpp \
@@ -151,7 +151,7 @@ $(TESTS)/parser_test/parser_test: $(parser_test_SRCS) $(parser_test_HDRS) \
 # interpreter's objects would drag main.o and its window handover into a test
 # binary, and a test that starts by deciding whether to open a GUI hangs on a
 # build machine.
-SATC_TEST_SRCS = $(ERRORS)/report.cpp \
+SATC_TEST_SRCS = $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                  $(ERRORS)/suggest.cpp \
                  $(CACHE)/paths.cpp \
                  $(CACHE)/write.cpp \
@@ -195,7 +195,7 @@ $(TESTS)/satc_test/satc_test: $(satc_test_SRCS) $(satc_test_HDRS) \
 # that the two of them now report through this module -- a reporter that is only
 # ever tested against diagnostics the test wrote itself is a reporter tested
 # against nobody's real output.
-REPORTER_TEST_SRCS = $(ERRORS)/report.cpp \
+REPORTER_TEST_SRCS = $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                      $(ERRORS)/suggest.cpp \
                      $(ERRORS)/dump.cpp \
                      $(PARSER)/parser.cpp \
@@ -246,7 +246,7 @@ LIMITS_TEST_SRCS = $(LIMITS)/limits.cpp \
                    $(SYSTEM)/memory_facts.cpp \
                    $(SYSTEM)/host_facts.cpp \
                    $(SYSTEM)/stack_facts.cpp \
-                   $(ERRORS)/report.cpp \
+                   $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                    $(ERRORS)/suggest.cpp \
                    $(PROGRAMS)/check_command.cpp \
                    $(PROGRAMS)/source_file.cpp \
@@ -303,7 +303,7 @@ RESOLVE_TEST_SRCS = $(RESOLVE)/resolve.cpp \
                     $(RESOLVE)/names.cpp \
                     $(RESOLVE)/numbers.cpp \
                     $(RESOLVE)/dump.cpp \
-                    $(ERRORS)/report.cpp \
+                    $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                     $(ERRORS)/suggest.cpp \
                     $(CACHE)/paths.cpp \
                     $(CACHE)/write.cpp \
@@ -420,7 +420,7 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(RESOLVE)/walk.cpp \
                  $(RESOLVE)/names.cpp \
                  $(RESOLVE)/numbers.cpp \
-                 $(ERRORS)/report.cpp \
+                 $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                  $(ERRORS)/suggest.cpp \
                  $(CACHE)/paths.cpp \
                  $(PARSER)/parser.cpp \
@@ -509,7 +509,7 @@ PROMPT_TEST_SRCS = $(PROMPT)/keys.cpp \
                    $(PROMPT)/block.cpp \
                    $(LEXER)/lexer.cpp \
                    $(STRING)/satellite_string.cpp \
-                   $(ERRORS)/report.cpp \
+                   $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                    $(ERRORS)/suggest.cpp
 
 # AND ON `satl` ITSELF, for the same reason console_test asks for it: the
@@ -662,7 +662,7 @@ NUMBER_TEST_SRCS = $(NUMBER)/limbs.cpp \
                    $(LIMITS)/pool.cpp \
                    $(LIMITS)/watchdog.cpp \
                    $(LIMITS)/dump.cpp \
-                   $(ERRORS)/report.cpp \
+                   $(ERRORS)/report.cpp $(ERRORS)/foreign.cpp \
                    $(ERRORS)/suggest.cpp \
                    $(SYSTEM)/memory_facts.cpp \
                    $(SYSTEM)/host_facts.cpp \

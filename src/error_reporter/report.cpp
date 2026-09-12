@@ -24,6 +24,7 @@
 #include "error_reporter/report.hpp"
 
 #include "error_reporter/codes.hpp"
+#include "error_reporter/foreign.hpp"
 #include "satellite_words/words.hpp"
 
 #include <algorithm>
@@ -251,6 +252,22 @@ std::string render(const Diagnostic &problem, const Source &source)
     // trie -- suggest.hpp says why that split matters.
     if (!problem.suggestion.empty())
         out += indent + "did you mean `" + problem.suggestion + "`?\n";
+
+    // AND IF THE LINE IS ANOTHER LANGUAGE, SAY SO AND SAY THE SPELLING --
+    // ERROR_HANDLING.md §9. Under the suggestion because it is the broader
+    // guess: `did you mean console?` is about one misspelled word, this is
+    // about a reader fluent somewhere else. foreign.hpp's guard keeps it quiet
+    // on correct satellite.
+    if (problem.at.somewhere() && !source.text.empty()) {
+        const Line here = line_around(source.text, problem.at.start);
+        const std::string advice = foreign_advice(excerpt_of(source.text, here));
+        for (size_t begin = 0; begin < advice.size();) {
+            const size_t stop = advice.find('\n', begin);
+            const size_t end = (stop == std::string::npos) ? advice.size() : stop;
+            out += indent + advice.substr(begin, end - begin) + "\n";
+            begin = (stop == std::string::npos) ? advice.size() : stop + 1;
+        }
+    }
 
     for (const Note &remark : problem.notes) {
         out += indent + severity_word(remark.code) + " " +

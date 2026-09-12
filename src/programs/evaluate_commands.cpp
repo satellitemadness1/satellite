@@ -24,6 +24,7 @@
 #include "satellite_file/handlers.hpp"
 #include "satellite_time/handlers.hpp"
 #include "satellite_value/render.hpp"
+#include "programs/arms.hpp"
 #include "satellite_thread/thread_handle.hpp"
 #include "satellite_words/words.hpp"
 #include "system_facts/interrupt.hpp"
@@ -113,18 +114,7 @@ int call_command(const std::vector<std::string> &args)
     // `built()` reads the table, so help correctly reports itself unbuilt in
     // this process -- the predicate is a property of the RUN and not of the
     // build, which is the whole reason it is computed fresh.
-    scalars::install_handlers();
-    containers::install_handlers();
-    random::install_handlers();
-    time::install_handlers();
-    system::install_handlers();
-    // FILES ARE INSTALLED UNDER `--call` AND THE CONSOLE IS NOT, which is the
-    // boundary above drawn the other way round. `display` needs a printer this
-    // arm never started; a file needs a filesystem, which is there whether or
-    // not anything is printing. So `--call` on a capsule that opens a file is a
-    // capsule that opens a file -- M19.
-    file::install_handlers();
-    directory::install_handlers();
+    arms::install_for(arms::Arm::Call);
     install_interrupt_handler();
     clear_interrupt();
 

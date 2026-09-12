@@ -22,6 +22,7 @@
 #include "programs/dump_commands.hpp"
 #include "programs/evaluate_commands.hpp"
 #include "programs/file_commands.hpp"
+#include "programs/arms.hpp"
 #include "programs/limits_command.hpp"
 #include "programs/number_command.hpp"
 #include "programs/opening.hpp"
@@ -139,6 +140,7 @@ bool only_prints_and_exits(const char *arg)
            flag == "--help" || flag == "-h" || flag == "--words" ||
            flag == "--tokens" || flag == "--unparse" || flag == "--satc" ||
            flag == "--check" || flag == "--errors" || flag == "--limits" ||
+           flag == "--arms" ||
            flag == "--resolve" || flag == "--number" ||
            flag == "--compile" || flag == "--call" ||
            flag == "--watchdog";
@@ -290,6 +292,21 @@ int main(int argc, char **argv)
     // by start_limits() above.
     if (first == "--limits") {
         fputs(satellite::limits::limits_text().c_str(), stdout);
+        return satellite::EXIT_FINE;
+    }
+
+    // WHICH ARM INSTALLS WHAT -- ERROR_HANDLING.md §4.3, and it answers the
+    // question M23's omission made somebody ask for three weeks: "the language
+    // has this, so why does THIS process say it does not?"
+    if (first == "--arms") {
+        fputs(satellite::arms::report().c_str(), stdout);
+
+        std::string complaints;
+        if (!satellite::arms::audit(&complaints)) {
+            fputs("\nthe audit is unhappy:\n", stderr);
+            fputs(complaints.c_str(), stderr);
+            return satellite::EXIT_USAGE;
+        }
         return satellite::EXIT_FINE;
     }
 
