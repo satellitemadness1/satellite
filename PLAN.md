@@ -5363,6 +5363,18 @@ Worked out beside it, *not yet confirmed by the author*:
   capsule it lacks. **A thread is the one arrival that does not wait for
   `name()`: it waits to be started, so the program types `name.start()`**,
   M23's existing word, and `join()` answers as it does today.
+- **THE CEILING — decided by the author 2026-09-12:
+  `arguments.network.limit("900")`, in megabytes, defaulting to 128 GB.**
+  v1 §20.6 asked for exactly this: *"a configurable ceiling on one message, …
+  so a program that means to receive something enormous can say so and one
+  that does not is protected by default."* `arguments.` is
+  `satellite.library.main.arguments` `1 14 1 1`, whose next free child is
+  `1 14 1 1 10` (`satl --words`, 2026-09-12) — so `network` would take
+  `1 14 1 1 10` and `limit` `1 14 1 1 10 1`, **not minted here**; numbers are
+  given in the order they are first built. *My readings, unconfirmed: the limit
+  is per MESSAGE, not per connection; 128 GB is 131072 MB; a message over it is
+  refused before it is read — v1's "every count is checked before it is
+  believed" — and, being an error, closes that connection.*
 - **Files and sockets do not cross** — each is a fact about this machine, and
   is refused by name.
 - **There is no `send` in the numbering**, nor v1's `accept`. Each is a new
