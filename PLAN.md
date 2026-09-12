@@ -5296,6 +5296,14 @@ single `unsigned long long` first, saying which of five things follows:**
 | 4 | a spacesuit |
 | 5 | an instance of a spacesuit |
 
+**A value with no name is a variable — decided by the author 2026-09-12.**
+`send("hi")` is a kind 2 whose type is `satellite.variable.string`, whose value
+is `"hi"`, and whose name is **`default_object_name1`**. So there is no sixth
+kind. *Unconfirmed: the trailing number counts up — the next unnamed send is
+`default_object_name2` — and what it counts per (the connection, or the
+process) is open; so is what happens when a program has its own variable
+literally named `default_object_name1`.*
+
 Worked out beside it, *not yet confirmed by the author*:
 
 - **The five kinds nest.** A capsule is its name then a series of kind 1 and
