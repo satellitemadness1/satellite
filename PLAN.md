@@ -5342,15 +5342,15 @@ Worked out beside it, *not yet confirmed by the author*:
 - **An arriving instance is restored, not constructed** — its constructor does
   not run again.
 - **Nothing runs on arrival — decided by the author 2026-09-12: it waits for
-  the program to call `run` on it by name**, `default_object_nameX` when it
+  the program to call `.call()` on it by name**, `default_object_nameX.call()` when it
   was sent without one. Installing a capsule does not call it, and an
   expression (`satellite.variable.expression` `1 6 9`, v1's
   `struct Quoted { ProgramPtr prog; const Expr *node; }`) does not evaluate.
-  This is the line v1 §20.6 was protecting, and it survives. **`run` is not in
+  This is the line v1 §20.6 was protecting, and it survives. **`.call()` is not in
   the numbering** — a new permanent path.
 - **A thread CAN be sent — decided by the author 2026-09-12**: *"that's like
   sending two satellite expressions, but they are threads"*, and like
-  everything else it waits for `run`. `satellite.thread.new` already packages a
+  everything else it waits for `.call()`. `satellite.thread.new` already packages a
   call, so what crosses is the call and not the OS thread. *Open: which kind
   number it opens with — the five have no thread row.*
 - **Files and sockets do not cross** — each is a fact about this machine, and
