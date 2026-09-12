@@ -5260,6 +5260,52 @@ DESIGN section, and no sentence in this plan outside the ledger that counts it.
 milestone is late in build order and honest in shape: eight of its nine numbers
 describe a protocol stack in five words.
 
+*(2026-09-12: **"no DESIGN section" was wrong.** v1 has 705 lines of one —
+`old_versions/first_satellite/design/20-a-networking.md`,
+`20-b-the-wire-format.md` and `20-c-the-frame-and-what-is-refused.md` — with a
+self-describing tagged encoding, the listener/accept/connection split (§20.6.3,
+decided 2026-08-24), and a build order. What v1 lacks is the CODE: its session
+notes end at "NEXT: THE CODEC. Not started." Read §20 before re-deriving any of
+it. **One part of it is reversed below.**)*
+
+**WHAT CROSSES THE WIRE — decided by the author 2026-09-12. Anything a program
+can name: values, variables, expressions, capsules, spacesuits, and instances of
+spacesuits.** This REVERSES v1 §20.6, *"the format carries data and never
+code"*, and §20.8's deferral of remote capsule invocation. The author's own
+spellings:
+
+- **A variable sends its name, its type and its value.** A snapshot, not a live
+  binding — the same thing a declaration says.
+- **A capsule sends a series of satellite expressions and variables** — its
+  body, which is exactly what `.satc` already writes for one (SATC.md §3: words
+  as their frozen numbers, the user's names as names).
+- *My reading, not yet confirmed:* **an instance arrives as a copy** by the
+  variable rule applied field by field, not as the sender's object; two
+  references to one object within a message stay one object (v1's rule:
+  register an object at its tag, before decoding its fields — which is also
+  what lets a ring of spacesuits arrive and terminate).
+
+**What that commits the language to**, worked out the same day:
+
+- **A thing brings what it depends on.** An instance needs its spacesuit, which
+  needs its field types and the capsules its methods call and the globals those
+  read. A message carries the closure.
+- **Receiving a definition is `satellite.include` from a connection instead of a
+  file**, so M25 is a real prerequisite and not only an order.
+- **A name that clashes is refused by name.** A receiver that already has a
+  `counter` with a different body refuses; an identical one is the same type.
+  Nothing is silently replaced.
+- **An arriving instance is restored, not constructed** — its constructor does
+  not run again.
+- **Nothing runs on arrival.** Installing a capsule does not call it, and an
+  expression (`satellite.variable.expression` `1 6 9`, v1's
+  `struct Quoted { ProgramPtr prog; const Expr *node; }`) waits for the program
+  to run it by name. This is the line v1 §20.6 was protecting, and it survives.
+- **Handles do not cross** — a file, a thread, a socket is a fact about this
+  machine; each is refused by name.
+- **There is no `send` in the numbering**, nor v1's `accept`. Each is a new
+  permanent path, minted in the order it is first written down.
+
 **What the numbering already commits to, and it is more than it looks.** The two
 `http` shapes are a **server** (`port`) and a **client** (`host, port`), and the two
 `https` shapes are the same split with the server's `(port, cert, key)` — so §1.3's
@@ -5343,6 +5389,9 @@ milestone being last rather than for it being small.
   same parent**, and §8.1's *"valid inside one run only"* becomes *valid inside one
   process only* — which is the same sentence and a much harder one, because two
   processes met the same name at different times.
+- *(2026-09-12: **M27's wire now carries capsules and spacesuits**, so a user
+  name numbered differently in two processes is no longer an edge case — every
+  transferred capsule is one. This blocker is the core of the work.)*
 - **Its relationship to M27.** Orbit over a socket is the obvious reading and the
   numbering does not say so; `satellite.container.result` is under `container`, not
   under `network`.
