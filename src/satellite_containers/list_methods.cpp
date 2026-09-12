@@ -51,11 +51,48 @@ bool inside(eval::Machine &m, const List &self, unsigned long long at,
     return false;
 }
 
+// APPEND, AND THE ONE PLACE IN THIS FILE THAT DOES NOT COPY -- 2026-09-12.
+//
+// DESIGN §12's deferred "in-place fast path for container mutation", built.
+// What it asks for is exactly the test below: *"Safe only when the slot's
+// handle is unshared."* When this handler holds the ONLY handle to the body,
+// no program can tell a mutation from a copy published whole -- there is
+// nobody else who could look -- so the copy is pure cost.
+//
+// `use_count() == 1` IS REACHABLE ONLY BECAUSE dispatch() CLEARED THE SLOT
+// FIRST. Before that change the storage slot and the value-stack copy were
+// always two handles and this branch could never have fired; its note in
+// operations_dispatch.cpp is the other half of this one and neither works
+// alone.
+//
+// WHAT IT IS WORTH: building a list was O(N²) -- 10,000 items 0.93s, 20,000
+// 3.73s, 40,000 14.44s, measured, 4x per doubling. That is what made
+// infinity_data_main.satl's population loop impossible rather than merely
+// large, and DESIGN §12 had already named the cause: "every append and set
+// copies the whole body, which makes building a container quadratic".
+//
+// THE SLOW PATH IS NOT A FALLBACK, IT IS THE SEMANTICS. After `b = a` the body
+// has two handles that outlive this call, the count is not one, and the copy
+// runs -- so `a.append(x)` leaves `b` alone, which is DESIGN §6.4's rule and
+// the whole reason the bodies were frozen in the first place. Nothing about
+// what a program can observe has changed.
 bool list_append(eval::Machine &m, const Value *a, uint32_t, Value *answer)
 {
     const List *self = nullptr;
     if (!list_at(m, a, 0, &self))
         return false;
+
+    if (const Lst *held = std::get_if<Lst>(&a[0]);
+        held != nullptr && held->use_count() == 1) {
+        // THE BODY WAS NEVER ACTUALLY CONST. `Value::list` allocates a plain
+        // `List` and the handle spells `const` to keep every OTHER holder
+        // honest -- so casting it back where we are the only holder is the
+        // const_cast that is defined rather than the one that is not.
+        std::const_pointer_cast<List>(*held)->push_back(a[1]);
+        *answer = a[0];
+        return true;
+    }
+
     List next = *self;
     next.push_back(a[1]);
     *answer = Value::list(std::move(next));

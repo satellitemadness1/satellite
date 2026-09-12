@@ -130,6 +130,51 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
         return;
     }
 
+    // --- THE RECEIVER LEAVES ITS STORAGE BEFORE A MUTATING METHOD RUNS -----
+    //
+    // DESIGN §12's in-place fast path needs one thing to be true and it never
+    // was: that the handler holds the ONLY handle to the body. A list is a
+    // `shared_ptr<const List>` and every mutation "is a copy published whole
+    // through the receiver's storage slot" -- which is what makes `b = a` safe
+    // and what makes building a list O(N²), because each append copies N
+    // elements.
+    //
+    // AT THE MOMENT A METHOD RUNS THERE ARE ALWAYS AT LEAST TWO HANDLES: the
+    // storage slot's, and the copy op_local/op_global/op_field pushed onto the
+    // value stack. So `use_count() == 1` was unreachable and no fast path could
+    // ever fire. Clearing the storage here drops it to one -- for a receiver
+    // nothing else shares.
+    //
+    // AND THAT IS EXACTLY THE TEST §12 ASKS FOR, "safe only when the slot's
+    // handle is unshared", made checkable rather than assumed. After `b = a`
+    // the body has three handles (a's slot, b's slot, the stack copy); clearing
+    // a's leaves two, the count is not one, and the copy path runs -- so `b`
+    // cannot see `a`'s append. The invariant is enforced by the refcount
+    // instead of by the type, and it is enforced at the moment it matters.
+    //
+    // §12 ALSO SAYS "only for a frame slot; a field or a global may have a
+    // reader holding a snapshot" -- and a refcount answers that too, because a
+    // reader holding a snapshot IS a handle. So all three targets qualify.
+    //
+    // THE SLOT IS RESTORED BY THE WRITE-BACK BELOW, which every mutating row
+    // already performs. A handler that REFUSES leaves it holding nothing, and
+    // that is safe because `m.refuse()` has already stopped the walk.
+    const bool takes_receiver_out =
+        handler->mutates &&
+        (target == Target::Local || target == Target::Global ||
+         target == Target::Field);
+    if (takes_receiver_out) {
+        if (target == Target::Local) {
+            m.set_local(op.d, Value::nothing());
+        } else if (target == Target::Global) {
+            m.set_global(op.d, Value::nothing());
+        } else {
+            const Sui *held = std::get_if<Sui>(&m.local(0));
+            if (held != nullptr && *held && op.d < (*held)->fields.size())
+                (*held)->fields[op.d] = Value::nothing();
+        }
+    }
+
     Value answer;
     if (!m.call_handler(handler, count, &answer))
         return;

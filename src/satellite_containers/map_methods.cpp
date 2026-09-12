@@ -26,12 +26,40 @@
 namespace satellite::containers {
 namespace {
 
+// `set(key, value)`, AND IT IS `list.append`'s NOTE ONE CONTAINER OVER.
+//
+// A MAP IS WORSE THAN A LIST WAS, because `map_with` copies the entries vector
+// AND the index -- so building a map of N pairs rehashed N²/2 keys. The two
+// halves of the fix are the same two: operations_dispatch.cpp clears the
+// receiver's storage so the count can reach one, and this holds the only handle
+// when it does.
+//
+// THE IN-PLACE PATH REPLACES `next = current` AND NOTHING ELSE, so the
+// insertion-ordered invariant (DESIGN §8.4) is untouched: a key already present
+// keeps its position and takes the new value, and a new key goes on the end
+// with its index entry. That is what `map_with` does to a copy; this does it to
+// the body itself.
 bool map_set(eval::Machine &m, const Value *a, uint32_t, Value *answer)
 {
     const MapBody *self = nullptr;
     std::string canonical;
     if (!map_at(m, a, 0, &self) || !key_at(m, a, 1, &canonical))
         return false;
+
+    if (const Map *held = std::get_if<Map>(&a[0]);
+        held != nullptr && held->use_count() == 1) {
+        MapBody *body = std::const_pointer_cast<MapBody>(*held).get();
+        const auto found = body->index.find(canonical);
+        if (found != body->index.end()) {
+            body->entries[found->second].value = a[2];
+        } else {
+            body->index.emplace(std::move(canonical), body->entries.size());
+            body->entries.push_back(MapEntry{a[1], a[2]});
+        }
+        *answer = a[0];
+        return true;
+    }
+
     MapBody next;
     // key_at already proved the key canonicalises, so this cannot fail --
     // map_with re-derives it rather than taking the string, because the body
