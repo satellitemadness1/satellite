@@ -837,9 +837,14 @@ TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
 # LINKED AGAINST THE TREE'S OWN OBJECT FILES, minus the four that carry a
 # main() or the window: this program has its own main() and must not pull
 # satl's, and satellite_prompt/ and the window are no part of what dispatches.
+#
+# AND THE VENDORED zlib, which satl links beside SATL_OBJS rather than inside
+# it (050-build.mk). cc19306 gave satellite_file/ a gzip reader and this list
+# did not follow, so `make nodes` stopped linking on `gzclose` until M26's
+# `binary.clear()` was the next row that needed measuring.
 NODES_OBJS = $(filter-out $(PROGRAMS)/main.o $(PROGRAMS)/cpu_level.o \
                           $(PROGRAMS)/window_handover.o \
-                          $(PROMPT)/%.o, $(SATL_OBJS))
+                          $(PROMPT)/%.o, $(SATL_OBJS)) $(ZLIB_OBJS)
 
 $(HELP_LINES)/enumerator/enumerate: $(HELP_LINES)/enumerator/enumerate.cpp \
                                     $(NODES_OBJS)

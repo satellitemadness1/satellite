@@ -1,8 +1,10 @@
-// `satellite.variable.binary`'s six methods -- `1 6 5 1` through `1 6 5 6`,
-// PLAN M19.5. See satellite_scalars/methods_internal.hpp for the receiver
-// check they share, satellite_bits/bits.hpp for what a bit run is, and
+// `satellite.variable.binary`'s methods -- M19.5's six at `1 6 5 1` through
+// `1 6 5 6`, and M26's `clear` at `1 6 5 12`. See
+// satellite_scalars/methods_internal.hpp for the receiver check they share,
+// satellite_bits/bits.hpp for what a bit run is, and
 // satellite_scalars/hex_methods.cpp for the six that mirror these on
-// `satellite.variable.hex` `1 6 11`.
+// `satellite.variable.hex` `1 6 11`. The conversion rows `1 6 5 7` through
+// `1 6 5 11` are one file over, in conversions.cpp, with the rest of their set.
 //
 // THE LAST TWO ROWS ARRIVED WITH THE SECOND RADIX, 2026-09-09, and the two
 // tables were made to line up on purpose: `1 6 5 n` and `1 6 11 n` ask the
@@ -10,14 +12,18 @@
 // the OTHER radix is 6 on both. words.def carries the same note where the rows
 // are.
 //
-// NO ROW MUTATES, which is the number rows' rule one file over and not a
-// coincidence: DESIGN §6.4 makes a mutating method publish through its
-// receiver's storage slot, and none of these has anything to publish -- every
-// one answers a value of a DIFFERENT type. There is nothing to mutate until an
-// operation answers a bit run, and none does yet.
+// NO ROW MUTATED UNTIL M26, and the reason it held for six was structural:
+// DESIGN §6.4 makes a mutating method publish through its receiver's storage
+// slot, and none of the first six had anything to publish -- every one answers
+// a value of a DIFFERENT type. This file's first note finished the thought
+// with "there is nothing to mutate until an operation answers a bit run, and
+// none does yet". `clear()` is the one that does, answering the empty run of
+// the receiver's own type, so it is the first row here to carry `mutates` --
+// and the install below carries the column now rather than a comment claiming
+// it will never be needed.
 //
-// SIX ROWS AND NO OPERATORS, which is PLAN §8's "Two numbered paths and no
-// third" read at the level below it: `+`, `==`, `!!` and `[` are OPERATORS and
+// STILL NO OPERATORS, which is PLAN §8's "Two numbered paths and no third"
+// read at the level below it: `+`, `==`, `!!` and `[` are OPERATORS and
 // cost no path number, so a later milestone can give this type any of them
 // without minting anything, while a method needs a row in words.def and is
 // therefore a decision about the numbering. The first four rows were the
@@ -193,6 +199,45 @@ bool bits_to_hex(eval::Machine &m, const Value *a, uint32_t, Value *answer)
     return true;
 }
 
+// `clear()` `1 6 5 12` -- THE RUN, EMPTIED. `bits.clear()` leaves a run of
+// width 0, and it is the one row here that writes back.
+//
+// IT IS `satellite.variable.string.clear` `1 6 1 15` ON THIS TYPE AND THAT IS
+// THE WHOLE ARGUMENT FOR IT. The author asked for it mid-M26 in one sentence
+// -- *"The words are supposed to all do the same thing"* -- which is DESIGN
+// §4.6's one-word-one-meaning read across the types rather than down a module:
+// a reader who has emptied a string should not have to find out whether the
+// bit run spells it differently, and a reader who finds no `clear` here learns
+// something false about the language rather than about the type.
+//
+// EMPTY IS WIDTH 0 AND THERE IS NO SECOND READING AVAILABLE. The other
+// candidate was "all the bits set to zero, width kept", and §8.5 rules it out
+// by making the width part of the value: `b0000` is a four-bit value that is
+// not empty, the way `"0000"` is a four-character string that is not empty.
+// So the empty value of this type is the run with nothing in it, exactly as
+// `SatString()` is the string's.
+//
+// IT ANSWERS A VALUE `display` CAN PRINT AND THE LEXER CANNOT READ BACK. An
+// emptied run prints as `b`, and `b` on its own is not a literal any program
+// can write -- lexer.cpp's bits_radix() wants at least one digit. That is the
+// same one-way door `satellite.variable.hex` has had since M19.5 for a width
+// of zero, and it is not a defect to fix here: the value is reachable, has a
+// width, converts and compares. What it has no spelling for is being typed in.
+//
+// AND IT IS THE FIRST MUTATING ROW ON THIS TYPE, which is why the install
+// below grew a column. This file's own note said "NO ROW MUTATES ... there is
+// nothing to mutate until an operation answers a bit run, and none does yet."
+// One does now, and the note above has been corrected rather than quietly
+// left standing.
+bool bits_clear(eval::Machine &m, const Value *a, uint32_t, Value *answer)
+{
+    const bits::BitRun *self = nullptr;
+    if (!bits_at(m, a, 0, &self))
+        return false;
+    *answer = Value::binary(bits::BitRun());
+    return true;
+}
+
 } // namespace
 
 void install_bits_methods()
@@ -201,23 +246,26 @@ void install_bits_methods()
     eval::Handlers &table = eval::Handlers::table();
 
     // EVERY ROW BINDS ITS RECEIVER AND EVERY ARITY IS 1, the count including
-    // argument 0 -- number_methods.cpp's note is the rule and these four are
-    // its simplest case: no row here takes a written argument at all.
+    // argument 0 -- number_methods.cpp's note is the rule and these are its
+    // simplest case: no row here takes a written argument at all.
     struct Row {
         NodeId path;
         eval::HandlerFn fn;
+        bool mutates;
+        const char *milestone;
     };
     static constexpr Row rows[] = {
-        {NodeId::VARIABLE_BINARY_TO_NUMBER, bits_to_number},
-        {NodeId::VARIABLE_BINARY_WIDTH,     bits_width},
-        {NodeId::VARIABLE_BINARY_TO_STRING, bits_to_string},
-        {NodeId::VARIABLE_BINARY_AS_NUMBER, bits_as_number},
-        {NodeId::VARIABLE_BINARY_DIGITS,    bits_digits},
-        {NodeId::VARIABLE_BINARY_TO_HEX,    bits_to_hex},
+        {NodeId::VARIABLE_BINARY_TO_NUMBER, bits_to_number, false, "M19.5"},
+        {NodeId::VARIABLE_BINARY_WIDTH,     bits_width,     false, "M19.5"},
+        {NodeId::VARIABLE_BINARY_TO_STRING, bits_to_string, false, "M19.5"},
+        {NodeId::VARIABLE_BINARY_AS_NUMBER, bits_as_number, false, "M19.5"},
+        {NodeId::VARIABLE_BINARY_DIGITS,    bits_digits,    false, "M19.5"},
+        {NodeId::VARIABLE_BINARY_TO_HEX,    bits_to_hex,    false, "M19.5"},
+        {NodeId::VARIABLE_BINARY_CLEAR,     bits_clear,     true,  "M26"},
     };
     for (const Row &row : rows)
         table.install(static_cast<words::PathId>(row.path),
-                      {row.fn, true, 1, "M19.5"});
+                      {row.fn, true, 1, row.milestone, row.mutates});
 }
 
 } // namespace satellite::scalars

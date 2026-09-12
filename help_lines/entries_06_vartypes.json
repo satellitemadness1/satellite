@@ -274,6 +274,11 @@
     "prose": "The bits as hex, four at a time.\n\nA hex digit is exactly four bits, so nothing rounds. A run whose width is not\na multiple of four is padded on the left to reach one.",
     "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.hex())"
   },
+  "1 6 5 12": {
+    "query": "satellite.help(satellite.variable.binary.clear)",
+    "prose": "The run, emptied. `bits.clear()` leaves a run of width 0, which displays as `b`\nand nothing else.\n\n**It is the same word as `satellite.variable.string.clear`**, doing the same thing\nto the other type, and it writes back through the name it was called on -- so it\nneeds a receiver that is a variable. `some_call().clear()` is refused, because\nthere is nowhere to write the answer.\n\nEmpty here means a width of 0, not four bits set to zero. The width is part of\nthe value, so `b0000` is a four-bit value that is not empty, exactly as `\"0000\"`\nis a four-character string that is not empty.",
+    "example": "satellite.variable.binary bits = b1010\nbits.clear()\nsatellite.console.display(bits.width())"
+  },
   "1 6 10 2": {
     "query": "satellite.help(satellite.variable.float)",
     "prose": "The float as text.\n\nA float always prints with a point -- `4.0` and not `4` -- so a reader of the\noutput can tell which kind answered.",

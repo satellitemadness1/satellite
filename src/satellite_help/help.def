@@ -1992,6 +1992,25 @@ SAT_HELP(VARIABLE_BINARY_HEX, VARIABLE_BINARY,
          "satellite.console.display(flags.hex())"
          )
 
+// 1 6 5 12  satellite.variable.binary.clear
+SAT_HELP(VARIABLE_BINARY_CLEAR, VARIABLE_BINARY_CLEAR,
+         "The run, emptied. `bits.clear()` leaves a run of width 0, which displays as `b`\n"
+         "and nothing else.\n"
+         "\n"
+         "**It is the same word as `satellite.variable.string.clear`**, doing the same thing\n"
+         "to the other type, and it writes back through the name it was called on -- so it\n"
+         "needs a receiver that is a variable. `some_call().clear()` is refused, because\n"
+         "there is nowhere to write the answer.\n"
+         "\n"
+         "Empty here means a width of 0, not four bits set to zero. The width is part of\n"
+         "the value, so `b0000` is a four-bit value that is not empty, exactly as `\"0000\"`\n"
+         "is a four-character string that is not empty."
+         ,
+         "satellite.variable.binary bits = b1010\n"
+         "bits.clear()\n"
+         "satellite.console.display(bits.width())"
+         )
+
 // 1 6 6  satellite.variable.bool
 SAT_HELP(VARIABLE_BOOL, VARIABLE_BOOL,
          "True or false, and nothing else. It is the only type a condition will\n"

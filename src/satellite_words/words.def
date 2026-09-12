@@ -455,6 +455,7 @@ SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_STRING,      "string",                
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_NUMBER,      "number",                SAT_NUMBERED)  // 1 6 5 9
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_BINARY,      "binary",                SAT_NUMBERED)  // 1 6 5 10
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_HEX,         "hex",                   SAT_NUMBERED)  // 1 6 5 11
+SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_CLEAR,       "clear",                 SAT_NUMBERED)  // 1 6 5 12
 SAT_NODE(VARIABLE,        VARIABLE_BOOL,               "bool",                  SAT_NUMBERED)  // 1 6 6
 SAT_NODE(VARIABLE,        VARIABLE_DATE,               "date",                  SAT_NUMBERED)  // 1 6 7
 SAT_NODE(VARIABLE,        VARIABLE_DURATION,           "duration",              SAT_NUMBERED)  // 1 6 8

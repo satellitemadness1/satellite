@@ -2069,6 +2069,25 @@ a multiple of four is padded on the left to reach one.
     satellite.variable.binary flags = b1010
     satellite.console.display(flags.hex())
 
+H  `1 6 5 12`  `satellite.variable.binary.clear`  _M26_
+> satellite.help(satellite.variable.binary.clear)
+
+The run, emptied. `bits.clear()` leaves a run of width 0, which displays as `b`
+and nothing else.
+
+**It is the same word as `satellite.variable.string.clear`**, doing the same thing
+to the other type, and it writes back through the name it was called on -- so it
+needs a receiver that is a variable. `some_call().clear()` is refused, because
+there is nowhere to write the answer.
+
+Empty here means a width of 0, not four bits set to zero. The width is part of
+the value, so `b0000` is a four-bit value that is not empty, exactly as `"0000"`
+is a four-character string that is not empty.
+
+    satellite.variable.binary bits = b1010
+    bits.clear()
+    satellite.console.display(bits.width())
+
 .  `1 6 6`  `satellite.variable.bool`
 > satellite.help(satellite.variable.bool)
 

@@ -223,14 +223,18 @@ void section_authority()
     // child here; `float` gained one at M21 and the other four had theirs
     // already).
     //
+    // AND 326 UNTIL LATER THE SAME DAY, WHEN `binary.clear()` `1 6 5 12`
+    // ARRIVED -- one leaf, one number, no alias and no marker, so two of the
+    // four move by one and the other two stay where they were.
+    //
     // THIS CHECK IS WHAT CAUGHT THE ROWS BEING MISSING. words.def was appended
     // and WORD_NUMBERS.md §2.2 was not, and `make test` stopped with "words.def
     // declares 366 nodes and §2.2 accounts for 342 -- a row the authority does
     // not have renumbers nothing". §1's opening rule is that WORD_NUMBERS.md is
     // the authority over the numbering, and this suite is the only thing in the
     // tree that makes that a fact rather than a claim.
-    check(rows.size() == 326,
-          "§2.2 should hold 326 rows, found " + std::to_string(rows.size()));
+    check(rows.size() == 327,
+          "§2.2 should hold 327 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -239,8 +243,8 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 322,
-          "§2.2 should carry 322 distinct numbers, found " +
+    check(numbers.size() == 323,
+          "§2.2 should carry 323 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 4, "§2.2 should declare exactly 4 aliases, found " +
                             std::to_string(aliases));
