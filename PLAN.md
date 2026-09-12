@@ -5299,10 +5299,11 @@ single `unsigned long long` first, saying which of five things follows:**
 **A value with no name is a variable — decided by the author 2026-09-12.**
 `send("hi")` is a kind 2 whose type is `satellite.variable.string`, whose value
 is `"hi"`, and whose name is **`default_object_name1`**. So there is no sixth
-kind. *Unconfirmed: the trailing number counts up — the next unnamed send is
-`default_object_name2` — and what it counts per (the connection, or the
-process) is open; so is what happens when a program has its own variable
-literally named `default_object_name1`.*
+kind. **The trailing number counts up, per connection** — the next unnamed send
+on the same connection is `default_object_name2`, and a new connection starts
+again at `default_object_name1`, so a receiver sees the same names for the same
+sends however long the program has run. *Open: what happens when a program has
+its own variable literally named `default_object_name1`.*
 
 Worked out beside it, *not yet confirmed by the author*:
 
