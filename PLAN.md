@@ -5285,6 +5285,34 @@ spellings:
   register an object at its tag, before decoding its fields — which is also
   what lets a ring of spacesuits arrive and terminate).
 
+**THE FRAME — decided by the author 2026-09-12. Every `send()` sends out a
+single `unsigned long long` first, saying which of five things follows:**
+
+| kind | what follows |
+|---:|---|
+| 1 | a satellite expression |
+| 2 | a variable — **its name, its `satellite.variable` type, and its value** |
+| 3 | a capsule |
+| 4 | a spacesuit |
+| 5 | an instance of a spacesuit |
+
+Worked out beside it, *not yet confirmed by the author*:
+
+- **The five kinds nest.** A capsule is its name then a series of kind 1 and
+  kind 2; a spacesuit is its name then kind 2 and kind 3; an instance is its
+  spacesuit's name then each field as a kind 2. So the table is the grammar of
+  the whole format and not only its first eight bytes.
+- **The closure is just more frames**, in dependency order — an instance's
+  kind 4 goes before its kind 5.
+- **The eight bytes have one byte order on the wire** (little-endian, fixed),
+  and a program never sees it.
+- **0 is not a kind**, so a zeroed or truncated stream is refused rather than
+  read; **a kind this `satl` does not know is refused by its number**; and a
+  kind, once shipped, is never reused — v1 `format.def`'s id 56 is the scar
+  that rule came from.
+- **A variable's type is its path's frozen numbers** (`1 6 1` for string); a
+  type the user wrote — a spacesuit — goes as its name, SATC.md §3's rule.
+
 **What that commits the language to**, worked out the same day:
 
 - **A thing brings what it depends on.** An instance needs its spacesuit, which
