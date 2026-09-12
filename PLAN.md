@@ -5255,9 +5255,27 @@ selector, so a user capsule named `constructor` is refused by name. *Carried
 from v1 design/14 as readings, unconfirmed: every field's starting value is set
 before the constructor runs, so it sees the whole object; the superclass's
 constructor runs before the subclass's; S0525 (a constructor may not declare a
-return type) has nothing left to catch and retires with the old spelling.
-Open: whether the section takes arguments, and how a declaration hands them
-over.*
+return type) has nothing left to catch and retires with the old spelling.*
+**IT TAKES ARGUMENTS** (the author, same day, after considering and dropping
+a capsule named after the suit): **`satellite.constructor(args) { }`**, its own
+section, with a parameter list like a capsule's. *Readings, unconfirmed: a
+declaration hands them over as `counter tally("hello")`, v1 design/14's sugar
+for `counter tally = counter("hello")`; `tally.constructor("again")` passes
+them again; and `counter tally` with no parentheses runs a constructor that
+takes none, or is refused by name when it needs some.*
+
+    satellite.spacesuit counter()
+    {
+        satellite.protected { satellite.variable.string label = "unnamed" }
+        satellite.public    { ... }
+        satellite.constructor(satellite.variable.string new_label)
+        {
+            label = new_label
+        }
+    }
+
+    counter tally("hello")
+    tally.constructor("again")
 
 *(2026-09-12, the author's build order: **constructors first** — M26 §4's
 "compiles and silently skips it" — **then M24**, then the network. Kind 7
