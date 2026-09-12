@@ -49,7 +49,7 @@ M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, M11 and M12 both on
 cleared, which no earlier milestone can say, and M14 behind it the same
 sitting, the day the author took its six open answers — M16 and M17 both
 on 2026-09-06, M18 and M19 both on 2026-09-08, M19.5 across 2026-09-08 and
-2026-09-09, and M19.6 on 2026-09-09.** **M20 LANDED 2026-09-11**, eight commits in
+2026-09-09, and M19.6 on 2026-09-09.** **M20 LANDED 2026-09-11** (`17ea781`), six commits in
 one day — the largest single milestone this list has had by paths. §8's entry
 carries every decision as it was argued and `MILESTONES/M20.md` is the review:
 the arguments object and its ten selectors, `satellite.system`, a word for
