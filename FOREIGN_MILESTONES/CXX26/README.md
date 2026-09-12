@@ -44,16 +44,16 @@ the program instead of by the interpreter.
 
 | # | C++26 | satellite | answer |
 |---|---|---|---|
-| 3 | `std::execution` / senders (P2300) | — | M43 — composing concurrent work above raw threads |
-| 4 | hazard pointers (P2530) | — | M43, and deeper than [M40](../SATELLITE/M40-locks-and-atomics.md) |
-| 5 | RCU (P2545) | — | M43 |
+| 3 | `std::execution` / senders (P2300) | — | [M43](M43.md) — composing concurrent work above raw threads |
+| 4 | hazard pointers (P2530) | — | [M43](M43.md), and deeper than [M40](../SATELLITE/M40-locks-and-atomics.md) |
+| 5 | RCU (P2545) | — | [M43](M43.md) |
 | 6 | atomic min/max | — | [M40](../SATELLITE/M40-locks-and-atomics.md) |
 
 ### Compile time and source
 
 | # | C++26 | satellite | answer |
 |---|---|---|---|
-| 7 | `#embed` — a file's bytes at compile time | — | M44 |
+| 7 | `#embed` — a file's bytes at compile time | — | [M44](M44.md) |
 | 8 | constexpr exceptions | — | [M33](../SATELLITE/M33-catching-a-refusal.md) + [M34](../SATELLITE/M34-compile-time-evaluation.md) |
 | 9 | constexpr placement new | — | never — no manual allocation |
 | 10 | erroneous behaviour (replacing some UB) | — | never — satellite has no undefined behaviour to tame |
@@ -76,7 +76,7 @@ the program instead of by the interpreter.
 | 17 | `std::linalg` (P1673) | — | never — a library, not a language feature |
 | 18 | `std::inplace_vector`, `std::hive` | — | never — there is one list, and its storage is not a program's business |
 | 19 | saturating arithmetic (`add_sat`) | — | never — numbers are arbitrary precision and do not wrap |
-| 20 | `std::text_encoding` | — | M45 — strings are bytes today and the encoding is undeclared |
+| 20 | `std::text_encoding` | — | [M45](M45.md) — strings are bytes today and the encoding is undeclared |
 | 21 | trivial relocation | — | never — refcounted handles, nothing to relocate |
 | 22 | **`std::debugging`** / `breakpoint()` | — | **never — decided 2026-09-12, see below** |
 
@@ -146,9 +146,9 @@ answer is that its numbers do not.
 |---|---|---|
 | [M41](M41.md) | a program reading the language's own numbering | 1 |
 | [M42](M42.md) | contracts — a capsule stating what it required | 2 |
-| M43 | composing concurrent work, and lock-free reclamation | 3, 4, 5 |
-| M44 | a file's bytes at parse time | 7 |
-| M45 | a declared string encoding | 20 |
+| [M43](M43.md) | composing concurrent work, and lock-free reclamation | 3, 4, 5 |
+| [M44](M44.md) | a file's bytes at parse time | 7 |
+| [M45](M45.md) | a declared string encoding | 20 |
 
 **None of these are in `foreign.cpp` and none should be** until the paper behind
 them is in a published standard — ERROR_HANDLING.md §10's rule is that a
