@@ -53,6 +53,13 @@ a single afternoon writing one real program (`infinity_data_main.satl`,
 2026-09-12). They are not speculative: the workarounds in that file's comments
 are what their absence costs, in the author's own words at the call site.
 
+**M29 is no longer the worst of the three.** It was, while a chained call passed
+every static check and failed only at run time — seven minutes into a program
+whose build phase runs that long. S0720 became a check-time diagnostic later the
+same day, so the fault is now reported before anything runs. M27 and M28 are
+the two that are still silent until you hit them, and they should be scheduled
+first for that reason. See [SATELLITE/M29](SATELLITE/M29-method-chaining.md).
+
 ---
 
 ## The folders
