@@ -36,17 +36,33 @@
 // DEPENDENCY. PLAN M6 says so in as many words: the decision above rests on a
 // construct that is in no numbering, no document and no milestone. The
 // language's whole parallelism surface today is `satellite.thread.new` `1 23 1`
-// and `satellite.variable.thread.start()` / `.join()` `1 6 13 1`-`1 6 13 2`.
+// and `satellite.variable.thread.start()` / `.join()` `1 6 13 1`-`1 6 13 2`,
+// all three BUILT at M23 and none of them through here.
 // The pool is still right without it for the reason §4.5.1 gives on its own
 // terms -- amortisation across a run, the second tenant onward -- and run_over()
 // is the C++ shape that construct will be built on rather than the construct.
 //
+// AND M23 IS NOT A TENANT AFTER ALL, WHICH THE RULE ABOVE IS THE REASON FOR AND
+// DOES NOT CATCH. "Does the work end" is necessary and not sufficient: a
+// satellite thread's capsule finishes, so it passes -- and the half the test is
+// missing is AND DOES THE CALLER WAIT FOR IT. run_over() returns when the last
+// chunk lands; `my_thread.start()` has to return before the work starts. The two
+// are opposites, and underneath that is the objection that settles it: a pool has
+// THREAD_COUNT workers, so a program starting one more thread than that, each
+// joining the next, would wait forever -- a ceiling on the language wearing an
+// optimisation's clothes. M23 makes a fresh std::thread per start() instead, at
+// about 28 us created-run-joined. PLAN §4.5.1 and §8's M23 entry carry the same
+// correction; MILESTONES/M23.md §2.4 is the argument. THE TEST FOR THE NEXT
+// CANDIDATE IS NOW TWO QUESTIONS.
+//
 // SO THE ONLY CALLER OF run_over() AT M6 IS tests/limits_test, and that is said
 // out loud rather than left to be noticed, the way 040-sources.mk had to say it
 // about satellite_random. The pool's tenants are M25's second file, M22's prompt
-// parsed repeatedly, M23's threads and whatever `parallel_for` becomes; none of
-// them exists. A batch runner nothing has ever run is a batch runner that does
-// not work, so the suite runs real batches through it.
+// parsed repeatedly, parse-time interning and whatever `parallel_for` becomes;
+// none of them exists. (This list named M23's threads until 2026-09-12 -- see the
+// correction above, which is where the reason is.) A batch runner nothing has
+// ever run is a batch runner that does not work, so the suite runs real batches
+// through it.
 //
 // THIS LIST NAMED "M10's PRINTER THREAD" FIRST UNTIL 2026-09-02, AND THE RULE
 // THAT REPLACES IT IS ONE LINE: THIS POOL TAKES WORK THAT FINISHES.

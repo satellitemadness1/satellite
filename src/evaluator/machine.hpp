@@ -58,10 +58,12 @@
 #include "abstract_syntax_tree/ast.hpp"
 #include "error_reporter/report.hpp"
 #include "evaluator/closure.hpp"
+#include "evaluator/globals.hpp"
 #include "satellite_value/value.hpp"
 #include "satellite_words/words.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -185,6 +187,28 @@ public:
     // fixture was passing against a raised stack it had never been given.
     Machine(const Compiled &program, const Ast &ast, const Policy &policy);
 
+    // A SECOND WALK OVER THE SAME PROGRAM -- M23's thread. Everything that is
+    // read-only is shared by reference (the op arena, the ast), `satellite
+    // .library` is shared through the handle, and EVERYTHING ELSE IS THIS
+    // MACHINE'S OWN: four stacks, the inline caches, the problems, the ending,
+    // the Policy and the search threshold.
+    //
+    // THE SPLIT IS NOT A DECISION THIS MILESTONE TOOK, it is closure.hpp's,
+    // taken at M9 and written down there: the Cache is "MUTABLE AND IN A SIDE
+    // TABLE, so the op arena stays immutable and shareable across threads
+    // (DESIGN §10.5) while the cache is per-run". M23 is the first caller that
+    // makes that sentence do any work, and it needed no change to be true.
+    //
+    // THE POLICY IS COPIED AND NOT SHARED, AND THAT IS A DECISION. A thread
+    // inherits its parent's dials as they stood when `start()` ran, and a
+    // `satellite.library.system.float_digits = 5` on either side afterwards is
+    // that side's own. Sharing them would make a dial a fourth piece of
+    // cross-thread state with none of §7.2's argument behind it -- a global is
+    // shared because a program SAID `satellite.library`, and nobody says that
+    // about a dial. MILESTONES/M23.md §2.7.
+    Machine(const Compiled &program, const Ast &ast, const Policy &policy,
+            std::shared_ptr<Globals> globals);
+
     // Run one capsule to completion and answer what it returned. Everything a
     // caller can ask for is here, because there is no console until M10.
     Value call(uint32_t capsule, const std::vector<Value> &arguments);
@@ -268,8 +292,26 @@ public:
         slots_[frames_.back().slots + slot] = std::move(value);
     }
 
-    const Value &global(uint32_t index) const { return globals_[index]; }
-    void set_global(uint32_t index, Value value) { globals_[index] = std::move(value); }
+    // A COPY AND NOT A REFERENCE SINCE M23 -- evaluator/globals.hpp carries
+    // why, and the short form is that a reference into storage another walk may
+    // be writing is a lock that protects the wrong thing. Every caller was
+    // already copying.
+    Value global(uint32_t index) const { return globals_->read(index); }
+    void set_global(uint32_t index, Value value)
+    {
+        globals_->write(index, std::move(value));
+    }
+
+    // THE GLOBALS, TO HAND TO A THREAD. `satellite.variable.thread.start()` is
+    // the one caller: it takes this, calls share() on it, and gives it to the
+    // child's Machine, so both walks read and write the same `satellite
+    // .library`. DESIGN §7.2 is the argument and globals.hpp is the mechanism.
+    const std::shared_ptr<Globals> &globals() const { return globals_; }
+
+    // THE TREE THE OPS CAME OUT OF. Read by anything that has to build a second
+    // Machine over the same program -- M23's thread, which needs it for spans
+    // in a diagnostic raised inside a threaded capsule.
+    const Ast &ast() const { return ast_; }
 
     // Enter a capsule. The arguments are the top `count` values on the value
     // stack, in order, and they become slots [0, count).
@@ -374,7 +416,7 @@ private:
     std::vector<Value> value_;
     std::vector<Value> slots_;
     std::vector<Frame> frames_;
-    std::vector<Value> globals_;
+    std::shared_ptr<Globals> globals_;
 
     // The outermost frame's storage, copied out of slots_ before it is given
     // back. See last_frame() above.

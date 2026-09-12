@@ -1392,8 +1392,8 @@ opened.
 | `satellite.variable.binary` | a run of bits, behind a handle — one `satellite.variable.bool` per bit, packed | §8.5. **The width is part of the value**, so the run's length is not metadata beside it; built at M19.5 |
 | `satellite.variable.time` | absolute instant, UTC — int64 nanoseconds on the Unix epoch, `system_clock`'s reading | §13, settled 2026-09-04; built at M13, and display-only until M29 numbers its methods |
 | `satellite.variable.file` | handle | reference type |
-| `satellite.variable.thread` | handle | reference type |
-| `satellite.variable.capsule` | `(capsule number, argument values)` | a deferred call; §13, and `1 6 16` |
+| `satellite.variable.thread` | handle | reference type — **built at M23**, §10.5. Two names for one thread are one thread, the file's row one line up read across; the SECOND arm ever to come off the `const` in `satellite_value/value.hpp` |
+| `satellite.variable.capsule` | `(capsule number, argument values)` | a deferred call; §13, and `1 6 16`. **Built at M23** and a VALUE rather than a reference type: nothing can write it, and two names for one are two things to run. Made only by `satellite.thread.new`; a program cannot yet declare one |
 | `satellite.variable.variant` | the `Value` itself | §8.7 — no arm of its own, no handle, no bytes; holds any arm, the nothing state included |
 | `satellite` | the runtime singleton | `satellite.return(satellite)` |
 
@@ -2295,6 +2295,79 @@ failed. `--no-window` is a seventh and is a flag rather than a condition.
 one; PLAN.md §2.2's arena is what makes walking the program **atomic-free** rather
 than merely safe.
 
+***BUILT AT M23, 2026-09-12, AND THE TWO SENTENCES ABOVE TURNED OUT TO BE THE
+WHOLE DESIGN.*** Both halves were built milestones before there was a thread to
+prove them on, and neither needed a line changed: a local is a frame slot
+reachable from one walk by construction, and the op arena is immutable with its
+one mutable part — the inline cache — already in a side table because
+`evaluator/closure.hpp` put it there at M9 *"so the op arena stays immutable and
+shareable across threads (DESIGN §10.5)"*. **§7.1's receipt now runs the other
+way**: eight threads over a capsule with no recursion and no shared state
+produced 1585 wrong results out of 1600 in the first satellite, and produce 1600
+right ones here — `example/threads.satl` §3 is that program.
+
+**The three verbs, and the order is the language.**
+
+```satellite
+satellite.variable.thread t = satellite.thread.new(capsule_test(word))
+t.start()
+satellite.variable.number answer = t.join()
+```
+
+- **`satellite.thread.new(f(x))` `1 23 1` packages and does not perform.** §13
+  settled that form on 2026-08-27 and M23 built it exactly: `x` is evaluated
+  here, on this thread, at this moment; `f` is not entered. What it answers is a
+  `satellite.variable.capsule` `1 6 16` — the capsule and the argument values,
+  frozen. It must be a capsule the program declared; one of the language's own
+  words is refused **at compile time**, so a `display` inside a `new` cannot
+  print on its way to being told no.
+- **`start()` `1 6 13 1` makes one fresh OS thread and comes straight back.** It
+  answers nothing, because the capsule's answer does not exist yet. A thread
+  runs once.
+- **`join()` `1 6 13 2` waits, and answers what the capsule returned.** The
+  author settled that on 2026-09-12: of the three verbs it is the only one that
+  waits until there is an answer, so it is the only one that can have one.
+
+**A THREAD IS A REFERENCE TYPE AND A DEFERRED CALL IS A VALUE.** §8's table calls
+a file a reference type and means that two names for one open file *are* one open
+file; a thread is the same sentence about a different resource, because there is
+one `pthread_t` and the kernel has never heard of our slots. A deferred call goes
+the other way: two names for one are two values of a body nothing can write, so
+handing the same one to two threads is two runs of one capsule.
+
+**WHAT A THREAD SHARES IS EXACTLY THREE THINGS** — the op arena, the syntax tree,
+and `satellite.library`. §7.2 asked for the third by name, and M23 is when the
+sentence became load-bearing: *"permanent identity, CROSS-THREAD SHARING,
+lock-free reads and atomic read-modify-write are exactly what globals need and
+exactly the opposite of what locals need."* Everything else — four stacks, the
+inline caches, the `1 14 2` dials, the search threshold — is the thread's own. A
+dial retuned on a thread is that thread's, because a global is shared because a
+program *said* `satellite.library` and nobody says that about a dial.
+
+**AND `read, add, write` IS STILL THREE OPERATIONS.** A shared global gives two
+threads one variable; it does not make `satellite.library.n = satellite.library.n
++ 1` atomic, and satellite does not pretend otherwise. That is a race in the
+*program*, and the language's answer to it is the frame — which is why §7.1's
+1600 are locals and `example/threads.satl` §4 asserts only that every thread saw
+the same global rather than asserting a total.
+
+**THERE IS NO CEILING ON HOW MANY THREADS A PROGRAM MAY START**, which is
+SCRATCH.md/NO_LIMITS.md's rule and is why M23 does not take its threads from
+PLAN §4.5.1's pool: a pool of `THREAD_COUNT` workers is a ceiling wearing an
+optimisation's clothes, and `run_over()` waits for its batch where `start()` must
+not. When the machine refuses a thread, S1405 reports the **machine's** reason.
+Measured on this machine: about 28 µs for a thread created, run and joined.
+
+**WHEN THE PROGRAM ENDS, EVERYTHING CLOSES.** The author's decision of
+2026-09-12: reaching `satellite.return(satellite)` closes every thread nobody
+joined. They are told to stop — at their next statement boundary, through the
+same hook §10.2's Ctrl-C uses — and then waited for, so nothing is left walking
+an arena that is about to go. **A thread started on the last line may therefore
+never run at all**, which is what the decision costs and is written here rather
+than discovered. A thread that had already *refused* on its own still has its
+diagnostic reported, because a program losing an error silently is what §1.1 will
+not have.
+
 ---
 
 ## 11. `satellite.random`
@@ -2775,6 +2848,19 @@ different product.
   value* survives: `capsule_name(args)` is a **call form**, not a bare name used as
   a value, so §2 stays shut. Its type is `satellite.variable.capsule` at `1 6 16`.
   `satellite.capsule` `1 2` remains the declaration keyword.
+
+  ***BUILT AT M23, AND THE ONE SENTENCE ABOVE THAT NEEDED CORRECTING IS "the
+  handler evaluates the arguments and stores (capsule number, argument values)".***
+  The handler does not, and cannot: by the time any handler runs, §6's evaluation
+  rule has already been applied to everything below it, so the call would have
+  been PERFORMED before `new` was entered. **The only place a call can be stopped
+  from being performed is where it is compiled**, which is where M23 put it —
+  `words.def`'s seventh list declares which argument of which row is deferred, and
+  `op_package` is `op_call` with the enter removed. What the handler receives is a
+  `satellite.variable.capsule` that already exists, and it is an ordinary
+  one-argument row over it. Everything else in this entry was built as written:
+  the form parses with no change to §6, the arguments are evaluated at the call
+  site, and §2 stayed shut. MILESTONES/M23.md §2.2.
 
 ---
 

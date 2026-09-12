@@ -72,6 +72,20 @@
 //     S09xx   the clock and the dice        DESIGN §11/§13 M13
 //     S10xx   the console's input           DESIGN §10.1   M14
 //     S11xx   satellite.help                DESIGN §4.6    M18
+//     S12xx   files and directories         DESIGN §9      M19
+//     S13xx   the machine's facts           DESIGN §7.7    M20
+//     S14xx   threads                       DESIGN §10.5   M23
+//
+// THE THREE ROWS ABOVE WERE ADDED AT M23 AND TWO OF THEM ARE BACKFILL. This
+// list ended at S11xx from M18 until 2026-09-12, while S12xx and S13xx had been
+// sitting three screens down since M19 and M20 -- so the index that exists to
+// stop two milestones reaching for the same number was telling M23 that S12xx
+// was free. It was not; M19 had it. **An index holds no fact of its own and
+// therefore has nothing to check it**, which is MILESTONES/README.md's sentence
+// about its own table, failing here for the third time in this tree (M21.md
+// §3.7 found it in a check's own message and §3.8 in words.def's tallies).
+// Found by M23 doing exactly what this list asks a milestone to do -- reading
+// it to take the next block -- which is the one use that catches it.
 //
 // The reserved blocks are written down and NOT populated. A block reserved in a
 // comment costs nothing and stops the thing this file exists to stop, which is
@@ -1159,5 +1173,83 @@ SAT_CODE(1302, SYSTEM_BAD_DIAL_WORD, SAT_ERROR,
          "`{1}` takes a whole number of megabytes or the word \"disabled\", "
          "and {2} is neither -- `0` is a floor of zero and keeps the watch "
          "armed, so \"disabled\" is how a program stops it")
+
+// --- S14xx -- threads -------------------------------------------------------
+//
+// M23. `satellite.thread.new` packages a call, `start()` runs it and `join()`
+// waits for it, and the five rows below are every way a program can get that
+// sequence wrong that is not already somebody else's.
+//
+// WHAT IS DELIBERATELY NOT HERE IS THE INTERESTING HALF.
+//
+// A CAPSULE THAT REFUSES ON A THREAD RAISES ITS OWN DIAGNOSTIC AND NOT ONE OF
+// THESE. A division by zero inside a threaded capsule is S0705 with S0705's
+// caret pointing at the line that did it -- `join()` re-raises the thread's
+// problem in the joining program rather than wrapping it in a sentence about
+// threads. A wrapper would put the word "thread" in front of every error a
+// program can make and bury the one that matters; the thread is HOW the
+// capsule ran and not WHAT went wrong with it. MILESTONES/M23.md section 2.6.
+//
+// AND THE ARGUMENT COUNT IS S0722, WHICH op_call ALREADY RAISES. Packaging a
+// call checks its arity exactly as performing one does, because it is the same
+// check about the same capsule -- a second code would be a second sentence for
+// one mistake, which is what errors.def's whole shape is against.
+//
+// THERE IS NO CODE FOR "TOO MANY THREADS" AND THERE MUST NOT BE. A ceiling on
+// how many threads a program may start is a limit the language does not have
+// (SCRATCH.md/NO_LIMITS.md), and S1405 below is not one: it reports that the
+// MACHINE refused, with the machine's own reason attached, which is a fact
+// about this computer at this moment rather than a number satellite chose.
+
+// A CALL, AND THE SENTENCE HAS TO SERVE TWO SITES. The compiler raises this
+// when the argument is not a call to a capsule the program declared -- caught
+// before anything runs, which is the place a misuse belongs -- and the handler
+// raises it when the argument is a value of some other type, which is the arm
+// a variable takes. So it names what is wanted and what arrived, in the shape
+// every S07xx type refusal uses, and works from either end.
+//
+// IT NAMES THE FORM RATHER THAN THE TYPE, because `satellite.variable.capsule`
+// is a type nothing can declare yet (M23.md section 4) and telling somebody to
+// reach for it would be advice they cannot take. What they can write is the
+// call, so the call is what the sentence shows.
+SAT_CODE(1401, THREAD_NOT_A_CAPSULE_CALL, SAT_ERROR,
+         "`{1}` runs a capsule of your own on a thread, so what goes inside it "
+         "is a CALL -- `my_capsule()` or `my_capsule(x)` -- and {2} is not "
+         "one. The arguments are worked out now; the capsule is not entered "
+         "until `start()`")
+
+// TWICE IS THE MISTAKE AND NOT THE SECOND CALL'S TIMING. A thread is one
+// activation of one capsule: starting it again would either run the body twice
+// on one handle -- so `join()` could not say which one it waited for -- or
+// silently do nothing, which is the do-it-behind-their-back shape DESIGN
+// section 1.1 refuses. So it refuses, and it says what the handle is for.
+SAT_CODE(1402, THREAD_ALREADY_STARTED, SAT_ERROR,
+         "this thread has already been started, and a thread runs once. "
+         "`satellite.thread.new` is what makes another one")
+
+// JOIN BEFORE START IS ALMOST ALWAYS THE TWO LINES IN THE WRONG ORDER, so the
+// sentence says the order rather than only naming the state.
+SAT_CODE(1403, THREAD_NOT_STARTED, SAT_ERROR,
+         "`join()` waits for a thread that is running, and this one has not "
+         "been started -- `start()` comes first")
+
+// AND THE SECOND JOIN IS A DIFFERENT MISTAKE FROM THE SECOND START, which is
+// why it is a row and not a shared sentence with S1402. Joining twice is
+// usually a `join()` inside a loop that has already run; the answer is still
+// there to be read, so the sentence says so instead of only refusing.
+SAT_CODE(1404, THREAD_ALREADY_JOINED, SAT_ERROR,
+         "this thread has already been joined and its answer has already been "
+         "given back -- a thread is waited for once")
+
+// THE MACHINE SAID NO, AND ITS REASON IS IN THE SENTENCE. `ulimit -u`, a
+// cgroup pids limit, a machine out of memory: all three come back from
+// std::thread's constructor as a std::system_error whose what() names the
+// cause, and a refusal that dropped it would leave a person guessing between
+// three unrelated fixes. This is the one code here that reports a fact about
+// the computer rather than about the program.
+SAT_CODE(1405, THREAD_CANNOT_START, SAT_ERROR,
+         "this machine would not make another thread: {1}. satellite sets no "
+         "ceiling of its own on how many a program may start, so this is the "
+         "operating system's answer and not satellite's")
 
 #undef SAT_CODE

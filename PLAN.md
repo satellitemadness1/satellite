@@ -893,7 +893,27 @@ had established, it was a fact established in the document the claim pointed at.
 **So the pool has two named tenants and not three**, and neither has been built.
 The honest list is **parse-time interning**, which is real work this tree does on
 one thread today and which belongs to no milestone, and
-**`satellite.variable.thread` at M23**. `parallel_for` would be the third and it
+**`satellite.variable.thread` at M23**.
+
+***AND M23 IS NOT A TENANT, WHICH THE PARAGRAPH ABOVE IS THE REASON FOR AND DID
+NOT NOTICE.*** *(Corrected 2026-09-12, when M23 was built.)* The rule stated here
+is **"this pool takes work that finishes"**, and it was arrived at by ruling out
+the console's two threads, which do not finish. A satellite thread's capsule DOES
+finish, so it passes — and the test turns out to be necessary and not sufficient.
+**The half it is missing is *and does the caller wait for it*.** `run_over()` is
+a range, a split and a join: it returns when the last chunk lands, and
+`my_thread.start()` has to return before the work starts. The two are opposites.
+
+**And the deeper objection is the one that settles it.** A pool has `THREAD_COUNT`
+workers. A program starting `THREAD_COUNT + 1` threads that join each other would
+wait forever — which is a ceiling on the language, arrived at by accident, of
+exactly the kind SCRATCH.md/NO_LIMITS.md refuses. So M23 makes a fresh
+`std::thread` per `start()` (about 28 us created-run-joined, measured
+2026-09-12) and **this list is down to one unbuilt tenant**: parse-time interning,
+plus whatever `parallel_for` becomes. **The test to apply to the next candidate
+is now two questions and not one**: does the work end, AND does the caller wait
+for it. `satellite_thread/thread_handle.hpp` carries the same correction beside
+the code that declines the pool. `parallel_for` would be the third and it
 is in no numbering, no document and no milestone; §4.5.1.2 is the decision that
 rests on it and says so out loud. `satellite.include` of a second file is **M25**
 and is the first thing that collects the ~170 figure below rather than the ~2,650
@@ -5006,8 +5026,54 @@ instruction it produced when there was only ever one child. MILESTONES/M22.md
 Done when: a person can start `satl-term`, type at the prompt, and have what they
 typed still on the screen after the interpreter is gone.
 
-**M23 — threads.** `satellite.variable.thread`. The arena makes the walk atomic-free;
+**M23 — threads.** ***LANDED 2026-09-12 — `MILESTONES/M23.md`.***
+`satellite.variable.thread`. The arena makes the walk atomic-free;
 the Console already keeps output lines atomic.
+
+**AND BOTH OF THOSE HELD WITH NO CHANGE, WHICH IS THE MILESTONE'S MAIN RESULT.**
+§2.2's arena and DESIGN §7.2's frames were built for this and neither needed a
+line; the inline cache was already in a side table because `evaluator/closure.hpp`
+put it there at M9 naming this milestone. DESIGN §7.1's receipt — *"eight threads
+... produced 1585 wrong results out of 1600"* — now runs the other way, 1600 of
+1600, in `example/threads.satl` §3.
+
+**WHAT THIS ENTRY GOT WRONG IS THE POOL, AND §4.5.1's TENANT LIST IS CORRECTED
+WHERE IT IS WRITTEN.** `machine_limits/pool.hpp` names *"M23's threads"* as a
+tenant, on the test *does the work end*. A satellite thread's body does end, so
+it passes that test — and the test is necessary and not sufficient. The half it
+is missing is **and does the caller wait for it**: `run_over()` is a range, a
+split and a join, and `start()` must come back immediately. Underneath that is a
+worse problem, which is the one that settles it: a pool has `THREAD_COUNT`
+workers, so a program starting one more thread than that, each joining the next,
+would wait forever — **a ceiling on the language wearing an optimisation's
+clothes**, which is what SCRATCH.md/NO_LIMITS.md exists to refuse. The author
+settled it on 2026-09-12: a fresh `std::thread` per `start()`, measured at about
+28 us created-run-joined. **The pool keeps parse-time interning and whatever
+`parallel_for` becomes, and loses this one.**
+
+**Three decisions the author took that no document had.** *(2026-09-12.)*
+`join()` **answers what the capsule returned** — it is the one of the three verbs
+that waits until there is an answer, so it is the one that can have one, and
+`start()` answering a promise would be a second type and a second word.
+`satellite.return(satellite)` **closes everything** — every thread nobody joined
+is told to stop and then waited for, which is what keeps a detached walk off an
+arena that is about to be destroyed, and which means a thread started on the last
+line may never run at all. And there is **no ceiling** on how many a program may
+start.
+
+**`satellite.library` IS THE ONE THING TWO WALKS SHARE, and DESIGN §7.2 asked for
+it by name four years of milestones early**: *"permanent identity, CROSS-THREAD
+SHARING, lock-free reads and atomic read-modify-write are exactly what globals
+need."* Lock-free reads are what it asks for and not what M23 built — a `Value` is
+a 40-byte variant and no machine this tree targets reads one atomically — so
+`evaluator/globals.hpp` takes a mutex, and what is lock-free is DECIDING WHETHER
+TO TAKE IT. A program with no second walk pays one relaxed load: 3,000,000 global
+reads and 3,000,000 local reads are indistinguishable on this machine, 1.19-1.25 s
+either way.
+
+**Done when: `example/thread_test.satl` runs** — the file that has defined this
+syntax since M2 and that nothing could execute. It does, and `example/threads.satl`
+is the acceptance program §7.1 asked for.
 
 **Six numbered paths, and its own line named one of them.** *(2026-08-28.)*
 `satellite.thread` `1 23 (0)` and `.new` `1 23 1` — the module face, which is what a

@@ -4,6 +4,8 @@
 
 #include "eval_test.hpp"
 
+#include "satellite_thread/thread_handle.hpp"
+
 #include "satellite_arguments/arguments.hpp"
 
 #include "evaluator/dispatch.hpp"
@@ -19,6 +21,7 @@ namespace eval_test {
 int failures = 0;
 std::string example_directory = "example";
 satellite::eval::Ending last_ending = satellite::eval::Ending::Finished;
+std::vector<satellite::errors::Diagnostic> last_abandoned;
 std::vector<satellite::errors::Diagnostic> last_problems;
 unsigned long long last_peak = 0;
 
@@ -102,6 +105,19 @@ satellite::Value call(Run &run, const std::string &capsule,
     last_ending = machine.ending();
     last_problems = machine.problems();
     last_peak = machine.peak_bytes();
+
+    // CLOSE EVERY THREAD BEFORE THIS FUNCTION RETURNS -- M23, and it is HERE
+    // rather than in the one section that starts threads for the same reason
+    // programs/run_command.cpp has it: satellite_thread/thread_handle.hpp's
+    // rule is that every entry point which runs a program closes its threads,
+    // and this is one. A thread walks `run.program` by pointer; a fixture that
+    // started one and then refused -- `t.start()` twice -- used to return with
+    // the thread still walking, and the `Run` was destroyed under it.
+    //
+    // FOUND AS A SEGFAULT IN THIS SUITE, which is the good place to find it:
+    // every section that ever starts a thread is now safe by construction
+    // instead of by remembering. MILESTONES/M23.md §3.6.
+    last_abandoned = satellite::thread::close_all();
     return answer;
 }
 
@@ -154,6 +170,7 @@ int main(int argc, char **argv)
     eval_test::section_bits();
     eval_test::section_hex();
     eval_test::section_arguments();
+    eval_test::section_threads();
 
     if (eval_test::failures != 0) {
         printf("eval_test: %d failed\n", eval_test::failures);

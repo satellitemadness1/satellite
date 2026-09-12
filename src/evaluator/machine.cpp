@@ -42,9 +42,21 @@ std::string arity_text(uint32_t count)
 }
 
 Machine::Machine(const Compiled &program, const Ast &ast, const Policy &policy)
-    : program_(program), ast_(ast), policy_(policy), ceiling_(policy.max_depth)
+    : Machine(program, ast, policy,
+              std::make_shared<Globals>(program.globals()))
 {
-    globals_.resize(program_.globals());
+}
+
+// A SECOND WALK OVER THE SAME PROGRAM -- M23. See machine.hpp for what is
+// shared and what is not; the one line worth repeating here is that `caches_`
+// is sized again rather than shared, which closure.hpp asked for at M9: the op
+// arena is immutable and shareable, and the mutable half is a side table so
+// that "DESIGN §10.5's threads walk one arena and hold one cache each".
+Machine::Machine(const Compiled &program, const Ast &ast, const Policy &policy,
+                 std::shared_ptr<Globals> globals)
+    : program_(program), ast_(ast), globals_(std::move(globals)),
+      policy_(policy), ceiling_(policy.max_depth)
+{
     caches_.resize(program_.caches());
 }
 

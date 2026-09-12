@@ -214,6 +214,61 @@ using Hex = std::shared_ptr<const bits::HexRun>;
 struct Arguments;
 using Arg = std::shared_ptr<const Arguments>;
 
+// A DEFERRED CALL -- `satellite.variable.capsule` `1 6 16`, M23, and the TENTH
+// append. DESIGN §13's settled form, in one sentence of its own: "the handler
+// evaluates the arguments and stores (capsule number, argument values) for the
+// thread to run later."
+//
+//     satellite.variable.thread t = satellite.thread.new(capsule_test(word))
+//
+// SO `word` IS IN HERE AND `capsule_test` IS NOT RUN. The arguments were
+// evaluated on the calling thread at the moment `new` ran, which is what makes
+// this a value rather than a closure: there is no environment to capture and
+// nothing here can see a slot. DESIGN §12's deferral of "a bare name can be a
+// value" survives it for exactly that reason -- what was written is a CALL, and
+// the only new semantics is that one handler packaged its arguments instead of
+// performing the call.
+//
+// SHARED AND CONST, which puts it on `Str`'s side of the line and not `Fil`'s.
+// A deferred call is a VALUE: two names for one are two values, nothing can
+// write it, and handing the same one to two threads is two runs of one capsule
+// rather than one run seen twice. Sixteen bytes against a 32-byte widest arm,
+// so the assert at the bottom does not move -- `Str`'s accounting for the
+// EIGHTH time.
+//
+// FORWARD-DECLARED, `Arguments`' arrangement one row up and forced by the same
+// thing: the body holds `Value`s, so it cannot be defined until this type is
+// complete. satellite_thread/thread_handle.hpp is where it is.
+namespace thread {
+struct Deferred;
+struct ThreadHandle;
+} // namespace thread
+
+using Cap = std::shared_ptr<const thread::Deferred>;
+
+// A THREAD -- `satellite.variable.thread` `1 6 13`, M23, and the ELEVENTH
+// append. DESIGN §10.5's type, and §7's frames are what make a capsule call
+// safe to run on one.
+//
+// NOT const BEHIND ITS HANDLE, WHICH IS `Fil`'s SIDE OF THE LINE AND THE SECOND
+// ROW EVER ON IT. DESIGN §8's table calls a file a reference type and means
+// that two names for one open file ARE one open file; a thread is the same
+// sentence about a different resource. `start()` through either handle starts
+// the one thread, `join()` through either waits for the same one, and there is
+// one `pthread_t` underneath that the kernel has never heard of our slots
+// about. Writing it `shared_ptr<const ThreadHandle>` with mutable atomics
+// inside would be the same reference semantics with a `const` that lied.
+//
+// AND IT IS THE FIRST ARM WHOSE BODY IS TOUCHED BY TWO THREADS AT ONCE, which
+// is the sentence `Fil`'s note has been waiting for: satellite_file/
+// file_handle.hpp says "M23 is when it first gets EXERCISED, not when it gets
+// written". satellite_thread/thread_handle.hpp carries which of its fields are
+// atomic and why.
+//
+// SIXTEEN BYTES AGAIN, `Str`'s accounting for the NINTH time, so the assert at
+// the bottom does not move.
+using Thr = std::shared_ptr<thread::ThreadHandle>;
+
 // APPEND ONLY. A new arm goes at the END of this list, never in the middle.
 // `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
 // widest arm, the same accounting `Runtime`'s note above runs. `Flo` is the
@@ -229,14 +284,19 @@ using Arg = std::shared_ptr<const Arguments>;
 // the seventh and hex is the eighth, landed 2026-09-09. The assert did not
 // move either way, which is the half of the sentence that was the point.
 //
+// `Cap` AND `Thr` ARE THE TENTH AND ELEVENTH, M23's, sixteen each by the same
+// account again -- and `Thr` is the SECOND arm ever to come off the `const`,
+// after `Fil`. The line it is on the far side of is "is this a value", and a
+// thread is not one for a file's reason exactly.
+//
 // `Arg` IS THE NINTH, M20's, sixteen more again -- and it is the one append
 // this file predicted by name. The paragraph five screens up has said "the
 // arguments object (M20)" since M9 wrote it, beside the instruction that each
 // named append re-runs the assert. It was re-run and it holds at 40.
 using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo,
-                              Lst, Map, Fil, Bin, Hex, Arg>;
+                              Lst, Map, Fil, Bin, Hex, Arg, Cap, Thr>;
 
-// One value. DESIGN §8's table, THIRTEEN arms of it since M20.
+// One value. DESIGN §8's table, FIFTEEN arms of it since M23.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -303,6 +363,8 @@ struct Value : ValueBase {
     bool is_binary() const { return std::holds_alternative<Bin>(*this); }
     bool is_hex() const { return std::holds_alternative<Hex>(*this); }
     bool is_arguments() const { return std::holds_alternative<Arg>(*this); }
+    bool is_capsule() const { return std::holds_alternative<Cap>(*this); }
+    bool is_thread() const { return std::holds_alternative<Thr>(*this); }
 };
 
 // `satellite.container.list<T>` -- a vector of values with a name a forward

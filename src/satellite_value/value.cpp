@@ -58,6 +58,14 @@ const char *type_name(const Value &value)
     // object reads as a `list`, and the reader goes looking for `.append`.
     if (value.is_arguments())
         return "arguments";
+    // M23's TWO. `capsule` is what a program wrote -- `my_capsule(x)` -- and
+    // not the word `satellite.variable.capsule`, which is every other row's
+    // rule here: the sentence that quotes this already names the path it was
+    // asked about, so the type is the bare word.
+    if (value.is_capsule())
+        return "capsule";
+    if (value.is_thread())
+        return "thread";
     return "nothing";
 }
 
@@ -316,6 +324,31 @@ bool same(const Value &left, const Value &right)
         // the both-empty tail below and be called the same.
         if (const Arg *handle = std::get_if<Arg>(&a)) {
             if (handle->get() == std::get<Arg>(b).get())
+                continue;
+            return false;
+        }
+
+        // A THREAD IS EQUAL TO ITSELF AND TO NOTHING ELSE -- M23, and the
+        // file's clause two up is the precedent AND the argument. Both are
+        // reference types: two names for one thread are one thread, so the
+        // question `a == b` asks is whether they are the same thread, which is
+        // the only question that has an answer. Comparing what they hold would
+        // make two handles equal while their capsules ran different lengths.
+        if (const Thr *handle = std::get_if<Thr>(&a)) {
+            if (handle->get() == std::get<Thr>(b).get())
+                continue;
+            return false;
+        }
+
+        // AND A DEFERRED CALL IS IDENTITY TOO, WHICH IS THE OTHER REASON --
+        // the arguments-object one, not the file one. A `Deferred` holds a
+        // capsule index and a vector of Values, so comparing bodies is
+        // expressible; it is declined because two packages of the same call
+        // with the same arguments are still two things to run, and a language
+        // where `a == b` is true for them would owe an answer to what
+        // `t1 == t2` means after both have been started with it.
+        if (const Cap *handle = std::get_if<Cap>(&a)) {
+            if (handle->get() == std::get<Cap>(b).get())
                 continue;
             return false;
         }

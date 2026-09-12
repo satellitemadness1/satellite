@@ -131,28 +131,28 @@
   },
   "1 6 16": {
     "query": "satellite.help(satellite.variable.capsule)",
-    "prose": "A capsule held as a value, so it can be passed to another one.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+    "prose": "A call that has not happened yet -- the capsule to run and the arguments to run it with, worked out and held.\n\nYou do not declare one. `satellite.thread.new(my_capsule(x))` makes one out of the call you write inside it: `x` is worked out there and then, on the thread you are already on, and `my_capsule` is not entered until something says `start()`.",
     "example": ""
   },
   "1 6 13": {
     "query": "satellite.help(satellite.variable.thread)",
-    "prose": "A line of execution running beside the others.\n\n**Not built** — M23 is threads. The arena the evaluator walks is built to\nmake this possible without locking, but nothing starts one yet.",
-    "example": ""
+    "prose": "A line of execution running beside the others. `satellite.thread.new` is what makes one, `start()` sets it going and `join()` waits for it and hands back what the capsule returned.\n\n**A thread is a reference type.** Two names for one thread are one thread, so starting through one name and joining through the other reaches the same thread. Every other value in the language is copied when you assign it; this one is shared, the way an open file is.\n\n**Each thread gets its own variables and shares your `satellite.library`.** Locals live in a frame per call, so two threads running the same capsule never see each other's; a `satellite.library` name is the one thing they both read and write.\n\n**There is no limit on how many you may start.** If the machine will not make another, satellite tells you what the machine said.",
+    "example": "satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)\n{\n    satellite.return(n * 2)\n}\nsatellite.variable.thread t = satellite.thread.new(double_it(21))\nt.start()\nsatellite.console.display(t.join())"
   },
   "1 6 13 0": {
     "query": "satellite.help(satellite.variable.thread)",
-    "prose": "The bare shape. **Not built** — M23.",
+    "prose": "The bare shape. A thread is written as a type, never called, so this number is reserved and nothing reaches it.",
     "example": ""
   },
   "1 6 13 1": {
-    "query": "satellite.help(satellite.variable.thread)",
-    "prose": "Starts the thread running. **Not built** — M23.",
-    "example": ""
+    "query": "satellite.help(satellite.variable.thread.start)",
+    "prose": "Sets the thread running and comes straight back -- it does not wait. The next line of your program runs while the capsule runs beside it.\n\nA thread runs once. Starting one that has already been started is refused; `satellite.thread.new` is how you get another.",
+    "example": "satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)\n{\n    satellite.return(n * 2)\n}\nsatellite.variable.thread t = satellite.thread.new(double_it(21))\nt.start()\nsatellite.console.display(\"this printed without waiting\")\nsatellite.console.display(t.join())"
   },
   "1 6 13 2": {
-    "query": "satellite.help(satellite.variable.thread)",
-    "prose": "Waits for it to finish. **Not built** — M23.",
-    "example": ""
+    "query": "satellite.help(satellite.variable.thread.join)",
+    "prose": "Waits for the thread to finish, and answers what its capsule returned.\n\nThis is the only one of the three that has an answer to give, because it is the only one that waits until there is one.\n\n**If the capsule went wrong, join tells you how** -- with its own error and its own line, not a sentence about threads.\n\nYou wait for a thread once. Joining one twice is refused, and so is joining one that was never started.",
+    "example": "satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)\n{\n    satellite.return(n * 2)\n}\nsatellite.variable.thread t = satellite.thread.new(double_it(21))\nt.start()\nsatellite.console.display(t.join())"
   },
   "1 6 2 8": {
     "query": "satellite.help(satellite.variable.file.ok)",

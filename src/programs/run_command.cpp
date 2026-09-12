@@ -17,6 +17,8 @@
 #include "satellite_help/handlers.hpp"
 #include "satellite_scalars/handlers.hpp"
 #include "satellite_system/handlers.hpp"
+#include "satellite_thread/handlers.hpp"
+#include "satellite_thread/thread_handle.hpp"
 #include "satellite_time/handlers.hpp"
 #include "satellite_value/value.hpp"
 #include "satellite_words/words.hpp"
@@ -155,6 +157,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     containers::install_handlers();
     random::install_handlers();
     time::install_handlers();
+    thread::install_handlers();
     system::install_handlers();
     help::install_handlers();
     file::install_handlers();
@@ -190,17 +193,45 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     if (machine.ok())
         machine.call(static_cast<uint32_t>(which), parameters);
 
-    // THE FOUR STEPS, AND THEY COME BEFORE THE DIAGNOSTICS. drain, flush, stop,
-    // join -- see satellite_console/console.hpp. A program that printed three
-    // lines and then divided by zero must show the three lines ABOVE the
-    // caret, and stdout and stderr are two streams with two buffers: without
-    // this the error is written while the output is still in a queue, and a
-    // terminal shows them in the wrong order.
+    // CLOSE EVERYTHING, AND IT COMES BEFORE THE CONSOLE'S SHUTDOWN -- M23, and
+    // the author's decision of 2026-09-12 in their own words: "whenever the
+    // program reaches `satellite.return(satellite)`, close everything."
+    //
+    // WHAT "CLOSE" MEANS HERE IS STOP AND JOIN, NOT WAIT. A thread nobody
+    // joined is told to stop -- it notices at its next statement boundary,
+    // through the same hook M11's Ctrl-C uses -- and then it IS joined, so no
+    // detached walk is left reading an op arena that is about to go out of
+    // scope with `built`. Waiting instead would hang a program whose thread
+    // loops forever; abandoning instead would be a use-after-free.
+    //
+    // BEFORE out.shutdown() BECAUSE A THREAD CAN PRINT. The console's four
+    // steps are drain, flush, stop, join, and a thread still walking after the
+    // queue was drained would push a line into a printer that had gone. So the
+    // walks stop first and the printer stops second, which is the same
+    // ordering argument the comment below makes about stdout and stderr, one
+    // producer further back.
+    //
+    // AND WHAT COMES BACK IS THE ERRORS OF THREADS NOBODY WAITED FOR. A thread
+    // that refused on its own and was never joined has a diagnostic that would
+    // otherwise be lost, and a program losing an error silently is what DESIGN
+    // §1.1 will not have. A thread THIS call stopped has none worth reporting:
+    // the program was over.
+    const std::vector<errors::Diagnostic> abandoned = thread::close_all();
+
     out.shutdown();
 
     if (!machine.ok())
         fputs(errors::render(machine.problems(), against).c_str(), stderr);
+    else if (!abandoned.empty())
+        fputs(errors::render(abandoned, against).c_str(), stderr);
 
+    // A THREAD'S REFUSAL IS THE PROGRAM'S REFUSAL, which is the one place this
+    // milestone changes what a status means. `status_of` reads the main walk's
+    // ending and the main walk finished; a capsule that divided by zero on a
+    // thread is still a program that was wrong, and a script that tested the
+    // status would otherwise be told it succeeded.
+    if (machine.ok() && !abandoned.empty())
+        return EXIT_MALFORMED;
     return status_of(machine);
 }
 

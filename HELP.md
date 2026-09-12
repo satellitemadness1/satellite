@@ -108,7 +108,9 @@ indented one tab and separated by a blank line.
 
 	satellite.system      The machine the program is running on, and the interpreter's own switches.
 
-  16 of them -- ask about any by its path.
+	satellite.thread      Running more than one thing at once.
+
+  17 of them -- ask about any by its path.
 ```
 
 ---
@@ -2098,25 +2100,61 @@ A network connection held as a value.
 .  `1 6 13`  `satellite.variable.thread`
 > satellite.help(satellite.variable.thread)
 
-A line of execution running beside the others.
+A line of execution running beside the others. `satellite.thread.new` is what makes one, `start()` sets it going and `join()` waits for it and hands back what the capsule returned.
 
-**Not built** — M23 is threads. The arena the evaluator walks is built to
-make this possible without locking, but nothing starts one yet.
+**A thread is a reference type.** Two names for one thread are one thread, so starting through one name and joining through the other reaches the same thread. Every other value in the language is copied when you assign it; this one is shared, the way an open file is.
+
+**Each thread gets its own variables and shares your `satellite.library`.** Locals live in a frame per call, so two threads running the same capsule never see each other's; a `satellite.library` name is the one thing they both read and write.
+
+**There is no limit on how many you may start.** If the machine will not make another, satellite tells you what the machine said.
+
+    satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)
+    {
+        satellite.return(n * 2)
+    }
+    satellite.variable.thread t = satellite.thread.new(double_it(21))
+    t.start()
+    satellite.console.display(t.join())
 
 .  `1 6 13 0`  `satellite.variable.thread()`
 > satellite.help(satellite.variable.thread)
 
-The bare shape. **Not built** — M23.
+The bare shape. A thread is written as a type, never called, so this number is reserved and nothing reaches it.
 
-.  `1 6 13 1`  `satellite.variable.thread.start()`
-> satellite.help(satellite.variable.thread)
+H  `1 6 13 1`  `satellite.variable.thread.start()`  _M23_
+> satellite.help(satellite.variable.thread.start)
 
-Starts the thread running. **Not built** — M23.
+Sets the thread running and comes straight back -- it does not wait. The next line of your program runs while the capsule runs beside it.
 
-.  `1 6 13 2`  `satellite.variable.thread.join()`
-> satellite.help(satellite.variable.thread)
+A thread runs once. Starting one that has already been started is refused; `satellite.thread.new` is how you get another.
 
-Waits for it to finish. **Not built** — M23.
+    satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)
+    {
+        satellite.return(n * 2)
+    }
+    satellite.variable.thread t = satellite.thread.new(double_it(21))
+    t.start()
+    satellite.console.display("this printed without waiting")
+    satellite.console.display(t.join())
+
+H  `1 6 13 2`  `satellite.variable.thread.join()`  _M23_
+> satellite.help(satellite.variable.thread.join)
+
+Waits for the thread to finish, and answers what its capsule returned.
+
+This is the only one of the three that has an answer to give, because it is the only one that waits until there is one.
+
+**If the capsule went wrong, join tells you how** -- with its own error and its own line, not a sentence about threads.
+
+You wait for a thread once. Joining one twice is refused, and so is joining one that was never started.
+
+    satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)
+    {
+        satellite.return(n * 2)
+    }
+    satellite.variable.thread t = satellite.thread.new(double_it(21))
+    t.start()
+    satellite.console.display(t.join())
 
 .  `1 6 14`  `satellite.variable.variant`
 > satellite.help(satellite.variable.variant)
@@ -2202,9 +2240,9 @@ A window on the screen, held as a value.
 .  `1 6 16`  `satellite.variable.capsule`
 > satellite.help(satellite.variable.capsule)
 
-A capsule held as a value, so it can be passed to another one.
+A call that has not happened yet -- the capsule to run and the arguments to run it with, worked out and held.
 
-**Not built.** The path is numbered and no milestone has reached it.
+You do not declare one. `satellite.thread.new(my_capsule(x))` makes one out of the call you write inside it: `x` is worked out there and then, on the thread you are already on, and `my_capsule` is not entered until something says `start()`.
 
 
 ## random
@@ -4208,21 +4246,29 @@ string is a value a variable can really hold, so the two must stay apart.
 .  `1 23`  `satellite.thread`
 > satellite.help(satellite.thread)
 
-Running more than one thing at once.
-
-**Not built** — M23. The evaluator walks an arena rather than a linked
-structure, which is what is meant to make threads possible here without
-locking, but nothing starts one yet.
+Running more than one thing at once. `satellite.thread.new` is the whole of the module; everything else a thread can do is asked of the thread itself -- `start()` and `join()`.
 
 .  `1 23 0`  `satellite.thread()`
 > satellite.help(satellite.thread)
 
-The bare shape. **Not built** — M23.
+The bare shape. `satellite.thread` is a family name rather than something to call, so this number is reserved and nothing reaches it.
 
-.  `1 23 1`  `satellite.thread.new`
+H  `1 23 1`  `satellite.thread.new`  _M23_
 > satellite.help(satellite.thread.new)
 
-Makes a thread. **Not built** — M23.
+Makes a thread out of a call to one of your own capsules. It does not start it -- `start()` does that.
+
+**What goes inside is a call, written out.** The arguments are worked out now, where you wrote them; the capsule itself is not entered until the thread starts. So a value that changes afterwards does not change what the thread was given.
+
+It has to be a capsule you declared. `satellite.thread.new` cannot be handed one of the language's own words.
+
+    satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)
+    {
+        satellite.return(n * 2)
+    }
+    satellite.variable.thread t = satellite.thread.new(double_it(21))
+    t.start()
+    satellite.console.display(t.join())
 
 
 ## window

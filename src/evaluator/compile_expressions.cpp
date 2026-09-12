@@ -283,6 +283,22 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
             // stays at one, and words.def's own note about the place list is
             // that a policy is kept by saying it, not by being unable to
             // express anything else.
+            // A DEFERRED ARGUMENT IS MARKED ON THE WAY DOWN AND VISITED IN
+            // FULL -- M23, words.def's seventh list. This is the line that is
+            // NOT like the topic three lines below it: a topic is skipped
+            // because compiling it would refuse before help was ever entered,
+            // and a deferred call is compiled completely because its own
+            // arguments genuinely run. What changes is the last act, and
+            // call() is where that happens.
+            //
+            // MARKED BY THE PARENT BECAUSE ONLY THE PARENT KNOWS. `f(x)` sitting
+            // anywhere else in the language is a call to be performed; it is the
+            // row above it -- `satellite.thread.new` `1 23 1` -- that makes this
+            // one a package. A child cannot ask.
+            if (const uint32_t defer = defer_parameter(node);
+                defer != words::kNoDeferParameter && defer < ast_.list_size(n.b))
+                deferred_.insert(ast_.list_at(n.b, defer));
+
             if (const uint32_t skip = topic_parameter(node);
                 skip == words::kNoTopicParameter) {
                 visit_reversed(n.b);
@@ -427,6 +443,63 @@ uint32_t Compiler::topic_parameter(NodeIndex call_node) const
     if (self.path == words::kNoPath || !words::is_language_word(self.path))
         return words::kNoTopicParameter;
     return words::topic_parameter_of(static_cast<words::NodeId>(self.path));
+}
+
+uint32_t Compiler::capsule_index(const resolve::Info &about,
+                                 words::PathId declared) const
+{
+    // THE RESERVED NAME FIRST, WHICH IS THE ORDER call() ASKS IN AND HAS TO BE.
+    // `satellite.main` is interned as a LANGUAGE path `1 3` rather than under
+    // `satellite.library`, so it is the one capsule the plain arm below cannot
+    // see -- call()'s own note has the whole account, found on a file whose
+    // main calls itself.
+    if (const auto mine = capsules_.find(declared);
+        mine != capsules_.end() && words::is_language_word(declared))
+        return mine->second;
+    if (about.slot == resolve::kSlotCapsule)
+        if (const auto found = capsules_.find(about.path);
+            found != capsules_.end())
+            return found->second;
+    return kNotACapsule;
+}
+
+uint32_t Compiler::defer_parameter(NodeIndex call_node) const
+{
+    // ASKED OF THE CALL NODE AND THEN OF ITS TARGET, AND THE SECOND HALF IS
+    // WHAT topic_parameter DOES NOT NEED. Both readers are one line of
+    // words.def away from each other and they are NOT the same lookup, because
+    // the two rows they read sit at different places in the numbering:
+    //
+    //   satellite.help(x)          1 19 1   is a SHAPE -- the number counts the
+    //                                       parentheses, so resolve's question
+    //                                       one lands it on the CALL node and
+    //                                       the target member carries no path
+    //   satellite.thread.new       1 23 1   is a WORD -- `new` is numbered on
+    //                                       its own, so the path lands on the
+    //                                       MEMBER and the call node carries
+    //                                       none
+    //
+    // MEASURED AND NOT REASONED: asking only the call node compiled
+    // `satellite.thread.new(capsule_test(x))` as an ordinary call, so the
+    // capsule RAN at `new` and the handler was handed what it returned --
+    // "HELLO, WORLD!" printed, and then S1401 said nothing is not a call. The
+    // failure is legible, which is the only good thing about it; a row whose
+    // deferred argument happened to be a bool would have silently threaded the
+    // wrong thing. MILESTONES/M23.md §3.2.
+    //
+    // BOTH, IN THAT ORDER, so a row of either kind can be added to words.def's
+    // seventh list without anybody having to know which kind it is.
+    const NodeIndex target = ast_[call_node].a;
+    const words::PathId where[] = {info(call_node).path, info(target).path};
+    for (const words::PathId path : where) {
+        if (path == words::kNoPath || !words::is_language_word(path))
+            continue;
+        if (const uint32_t which =
+                words::defer_parameter_of(static_cast<words::NodeId>(path));
+            which != words::kNoDeferParameter)
+            return which;
+    }
+    return words::kNoDeferParameter;
 }
 
 OpIndex Compiler::topic(NodeIndex node, words::PathId path, NodeIndex written)
@@ -688,6 +761,38 @@ OpIndex Compiler::call(NodeIndex node)
         declared = static_cast<words::PathId>(
             words::parent_of(static_cast<words::NodeId>(self.path)));
 
+    // A CALL THAT IS PACKAGED RATHER THAN PERFORMED -- M23, and it is asked
+    // BEFORE every arm below because it is a question about what to do with a
+    // call this function has already worked out how to make.
+    //
+    // BOTH CAPSULE ARMS AND NEITHER DISPATCH ARM, WHICH IS THE BOUNDARY AND NOT
+    // AN OVERSIGHT. `satellite.thread.new(my_capsule(x))` packages; `satellite
+    // .thread.new(satellite.console.display("x"))` does NOT, and must not be
+    // allowed to fall through to op_dispatch either -- falling through would
+    // PRINT, at the moment `new` ran, which is the one outcome worse than a
+    // refusal. So anything that is not a capsule of this program's own is
+    // S1401, raised here, before a line of it runs.
+    //
+    // WHY THE LANGUAGE'S OWN CALLS ARE OUT. A handler is a C++ function with no
+    // frame, no slots and nothing for DESIGN §7's isolation argument to protect
+    // -- so "run this on a thread" would mean something different for
+    // `display` than for a capsule, and DESIGN §10.1 already put the console on
+    // a thread of its own. What `satellite.thread.new` runs is a capsule,
+    // which is what DESIGN §13 says it runs.
+    if (deferred_.count(node) != 0) {
+        const uint32_t which = capsule_index(about, declared);
+        if (which == kNotACapsule)
+            return emit(op_misuse, node,
+                        static_cast<uint32_t>(
+                            errors::Code::THREAD_NOT_A_CAPSULE_CALL),
+                        out_.add_text("`satellite.thread.new`"),
+                        out_.add_text("`" +
+                                      std::string(ast_.text_of(target)) + "`"),
+                        2);
+        return emit(op_package, node, which, arguments,
+                    out_.add_text(std::string(ast_.text_of(target))));
+    }
+
     if (const auto mine = capsules_.find(declared);
         mine != capsules_.end() && words::is_language_word(declared))
         return emit(op_call, node, mine->second, arguments,
@@ -743,12 +848,14 @@ OpIndex Compiler::call(NodeIndex node)
                 return emit(op_misuse, node,
                             static_cast<uint32_t>(
                                 errors::Code::CONSOLE_ANSWER_IS_THE_PLACE),
-                            out_.add_text(std::string(ast_.text_of(target))));
+                            out_.add_text(std::string(ast_.text_of(target))), 0,
+                            1);
             if (!local && global == globals_.end())
                 return emit(op_misuse, node,
                             static_cast<uint32_t>(
                                 errors::Code::CONSOLE_TARGET_NOT_A_PLACE),
-                            out_.add_text(std::string(ast_.text_of(target))));
+                            out_.add_text(std::string(ast_.text_of(target))), 0,
+                            1);
 
             // The handler sees every argument BUT the place -- its arity is
             // the written count less one -- and the op spends its fourth

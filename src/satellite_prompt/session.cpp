@@ -6,6 +6,7 @@
 #include "evaluator/machine.hpp"
 #include "satellite_console/console.hpp"
 #include "satellite_system/handlers.hpp"
+#include "satellite_thread/thread_handle.hpp"
 #include "satellite_prompt/block.hpp"
 #include "name_resolver/resolve.hpp"
 #include "satellite_words/words.hpp"
@@ -267,6 +268,14 @@ bool Session::run(const std::string &entry)
     if (machine.ok() && system::persisting())
         keep_what_ran(built, machine, which);
 
+    // CLOSE EVERY THREAD BEFORE THIS LINE'S `built` GOES -- M23, and the prompt
+    // is the site where the rule bites hardest. `satl <file>` destroys its
+    // arena once, on the way out of the process; a session destroys one PER
+    // LINE TYPED, so a thread left running by line 4 would be walking freed
+    // memory while line 5 was being parsed. satellite_thread/thread_handle.hpp
+    // has the rule and the segfault that found it.
+    const std::vector<errors::Diagnostic> abandoned = thread::close_all();
+
     // DRAIN AND NOT SHUTDOWN, WHICH IS THE WHOLE DIFFERENCE BETWEEN A RUN AND A
     // SESSION. `satl file.satl` shuts the console down because the process is
     // about to end; here another line is coming, and shutdown would join the
@@ -283,6 +292,18 @@ bool Session::run(const std::string &entry)
     // said "line 4". Found by typing it, which is the only way this one shows.
     if (!machine.ok()) {
         std::vector<errors::Diagnostic> problems = machine.problems();
+        rebase_all(problems, above);
+        fputs(errors::render(problems, errors::Source{kPromptName, built.text,
+                                                      &built.words})
+                  .c_str(),
+              stderr);
+    } else if (!abandoned.empty()) {
+        // A THREAD THAT REFUSED AND WAS NEVER JOINED, AND IT IS REBASED LIKE
+        // EVERY OTHER SENTENCE AT THIS PROMPT. The typed line sits inside a
+        // wrapper, so a diagnostic carrying the wrapper's line number would
+        // point at code the person never wrote -- which is the defect the
+        // comment above records being found by typing `satellite.help`.
+        std::vector<errors::Diagnostic> problems = abandoned;
         rebase_all(problems, above);
         fputs(errors::render(problems, errors::Source{kPromptName, built.text,
                                                       &built.words})
@@ -329,10 +350,21 @@ bool Session::run_file(const std::string &path)
     if (machine.ok() && system::persisting())
         keep_what_ran(built, machine, which);
 
+    // AND THE SAME CLOSE, for the same reason as the typed line above -- see
+    // that one's note. `run <file>` at the prompt destroys an arena per file
+    // run, not per process. No rebasing here: a run file's diagnostics already
+    // carry its own line numbers.
+    const std::vector<errors::Diagnostic> abandoned = thread::close_all();
+
     console::Console::the().drain();
 
     if (!machine.ok())
         fputs(errors::render(machine.problems(),
+                             errors::Source{path, built.text, &built.words})
+                  .c_str(),
+              stderr);
+    else if (!abandoned.empty())
+        fputs(errors::render(abandoned,
                              errors::Source{path, built.text, &built.words})
                   .c_str(),
               stderr);

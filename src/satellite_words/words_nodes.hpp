@@ -207,6 +207,35 @@ constexpr uint32_t topic_parameter_of(NodeId id)
 }
 
 // ---------------------------------------------------------------------------
+// The deferred calls
+// ---------------------------------------------------------------------------
+
+// No argument of this word is a deferred call -- the answer for every row but
+// one.
+inline constexpr uint32_t kNoDeferParameter = 0xFFFFFFFFu;
+
+// Which written argument (0-based) is a CALL that is packaged rather than
+// performed, or kNoDeferParameter. words.def's seventh list is the declaration
+// and carries the argument for it.
+//
+// THE DIFFERENCE FROM A TOPIC IS ONE WORD AND IT IS WORTH HAVING BOTH READERS
+// SPELL IT. A topic argument is never VISITED -- the compiler folds a path in
+// its place and the argument's own subexpressions are never compiled. A
+// deferred argument is visited in full, its own arguments are compiled and run
+// exactly as any call's are, and only the ENTER is replaced. So this reader's
+// consumer is Compiler::call(), which changes which op it emits; the topic
+// reader's consumer is the walk, which changes what it descends into.
+constexpr uint32_t defer_parameter_of(NodeId id)
+{
+    uint32_t out = kNoDeferParameter;
+#define SAT_DEFER(ident, index)                                                \
+    if (id == NodeId::ident)                                                   \
+        out = index;
+#include "satellite_words/words.def"
+    return out;
+}
+
+// ---------------------------------------------------------------------------
 // The front-end words
 // ---------------------------------------------------------------------------
 

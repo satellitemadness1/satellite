@@ -18,8 +18,11 @@
 
 #include "evaluator/dispatch.hpp"
 
+#include "satellite_thread/thread_handle.hpp"
 #include "satellite_value/render.hpp"
 
+#include <memory>
+#include <string>
 #include <utility>
 
 namespace satellite {
@@ -317,6 +320,63 @@ void op_call(Machine &m, const Op &op, uint32_t step)
     m.unwind(Value::nothing());
 }
 
+// op_call WITH THE ENTER REMOVED -- M23, and the whole of DESIGN §13's deferred
+// call at run time.
+//
+//     satellite.variable.thread t = satellite.thread.new(capsule_test(word))
+//
+// `word` is evaluated HERE, on this thread, at this moment; `capsule_test` is
+// not entered. What goes on the value stack is a `satellite.variable.capsule`
+// `1 6 16` holding the capsule index and the argument values, frozen -- DESIGN
+// §13: "the handler evaluates the arguments and stores (capsule number,
+// argument values) for the thread to run later."
+//
+// SO IT IS op_call's STEP 0 AND op_call's ARITY CHECK, AND THEN NOT op_call's
+// enter(). Reading the two side by side is the point: every line they share is
+// a line a deferred call has to agree with a performed one about, and the one
+// they do not share is the one word that makes this milestone. The arity check
+// is S0722 for op_call's reason exactly -- it is the same question about the
+// same capsule, and a second code would be a second sentence for one mistake.
+//
+// AND THERE IS NO FRAME, WHICH IS WHY THIS OP IS SAFE TO BE WRONG ABOUT. If
+// nothing ever starts the thread, all that happened is that some arguments were
+// evaluated and a value was built. A packaged call that is never run costs what
+// its arguments cost and nothing else -- no slot is taken, no frame is pushed,
+// and unwind() never has to know this op existed.
+void op_package(Machine &m, const Op &op, uint32_t step)
+{
+    if (step == 0) {
+        // ARGUMENTS IN REVERSE SO THEY EVALUATE FORWARDS -- op_call's line and
+        // op_call's reason, thirty lines up.
+        m.again(1);
+        for (uint32_t i = m.program().list_size(op.b); i > 0; i--)
+            m.push(m.program().list_at(op.b, i - 1));
+        return;
+    }
+
+    const Capsule &target = m.program().capsules()[op.a];
+    const uint32_t count = m.program().list_size(op.b);
+    if (count != target.parameters) {
+        m.refuse(errors::make<errors::Code::EVAL_ARGUMENT_COUNT>(
+            m.span_of(m.here()), m.program().text(op.c),
+            arity_text(target.parameters), std::to_string(count)));
+        return;
+    }
+
+    // TAKEN OFF IN ORDER, WHICH IS BACKWARDS FROM THE STACK. The last argument
+    // is on top, so the vector is filled from its end -- enter() does the same
+    // thing into slots and this is that loop with a different destination.
+    auto packaged = std::make_shared<thread::Deferred>();
+    packaged->capsule = op.a;
+    packaged->name = std::string(m.program().text(op.c));
+    packaged->arguments.resize(count);
+    for (uint32_t i = count; i > 0; i--)
+        packaged->arguments[i - 1] = m.pop_value();
+
+    m.done();
+    m.push_value(Value(Cap(std::move(packaged))));
+}
+
 void op_enter(Machine &m, const Op &op, uint32_t step)
 {
     // op_call WITH THE ARGUMENTS ALREADY EVALUATED -- see Capsule::entry.
@@ -344,6 +404,7 @@ const char *op_name(OpFn fn)
     if (fn == op_binary)       return "binary";
     if (fn == op_call)         return "call";
     if (fn == op_enter)        return "enter";
+    if (fn == op_package)      return "package";
     if (fn == op_dispatch)     return "dispatch";
     if (fn == op_method)       return "method";
     if (fn == op_method_global) return "method_global";

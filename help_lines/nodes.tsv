@@ -150,8 +150,8 @@ H	satellite.variable.hex.to_binary	1 6 11 5	M19.5	1	1	0
 .	satellite.variable.network	1 6 12		0	0	0
 .	satellite.variable.thread	1 6 13		0	0	0
 .	satellite.variable.thread()	1 6 13 0		0	0	0
-.	satellite.variable.thread.start()	1 6 13 1		0	0	0
-.	satellite.variable.thread.join()	1 6 13 2		0	0	0
+H	satellite.variable.thread.start()	1 6 13 1	M23	1	1	0
+H	satellite.variable.thread.join()	1 6 13 2	M23	1	1	0
 .	satellite.variable.variant	1 6 14		0	0	0
 .	satellite.variable.variant()	1 6 14 0		0	0	0
 H	satellite.variable.variant.holding	1 6 14 1	M12	1	1	0
@@ -333,7 +333,7 @@ H	satellite.system.persist(x)	1 22 8	M22	1	0	0
 H	satellite.system.environment(name)	1 22 9	M20	1	0	0
 .	satellite.thread	1 23		0	0	0
 .	satellite.thread()	1 23 0		0	0	0
-.	satellite.thread.new	1 23 1		0	0	0
+H	satellite.thread.new	1 23 1	M23	1	0	0
 .	satellite.window	1 24		0	0	0
 .	satellite.window()	1 24 0		0	0	0
 .	satellite.window.new	1 24 1		0	0	0

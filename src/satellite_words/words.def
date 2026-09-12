@@ -168,9 +168,21 @@
 // needs and no other, declared on the word rather than legislated from the pass:
 //
 //       1   SAT_PLACE      `input(prompt, target)`'s out parameter      M14
-//      29   SAT_BUILT      the front-end words help must name           M18
+//      30   SAT_BUILT      the front-end words help must name           M18
 //       1   SAT_TOPIC      `help(x)`'s argument, which is never run     M18
+//       1   SAT_DEFER      `thread.new(f(x))`'s argument, not performed M23
 //       1   SAT_OPTIONS    the words WORD_NUMBERS §1.5's fold applies to M19
+//
+// THE WORD "FIVE" ABOVE WAS WRONG UNTIL M23 MADE IT RIGHT, WHICH IS THE FUNNIEST
+// WAY THIS FILE'S STANDING PROBLEM HAS TURNED UP YET. It said FIVE and listed
+// FOUR, from M19 -- when SAT_OPTIONS arrived and the prose did not move --
+// until 2026-09-12, when M23 added SAT_DEFER and the sentence became true by
+// accident. **A count in a comment has nothing checking it** is this file's own
+// refrain, and here it was a count that would have SILENTLY HEALED: a milestone
+// adding one more list and not reading the line would have left a correct
+// number nobody had ever checked. The four counts beside the names are counted
+// and not typed -- `grep -c '^SAT_PLACE(' words.def` and its three siblings --
+// and SAT_BUILT is 30 since M23 added `satellite.variable.capsule`.
 //
 // Every one of them is SELF-DEFAULTING -- a consumer that does not care never
 // learns the list exists -- and each says at its own head why it is data here
@@ -954,15 +966,43 @@ SAT_BUILT(RETURN_0, SAT_OFFERED)              // 1 15 0
 SAT_BUILT(RETURN_SATELLITE, SAT_OFFERED)      // 1 15 1   `satellite.main`'s last line
 SAT_BUILT(RETURN_VALUE, SAT_OFFERED)          // 1 15 2
 SAT_BUILT(RETURNS, SAT_UNLISTED)              // 1 21     optional, and it parses
+SAT_BUILT(VARIABLE_CAPSULE, SAT_OFFERED)      // 1 6 16   M23 -- a deferred call, and it has no children to be derived from
 
-// THE SIX TYPE NAMES ABOVE ARE THE SIX `Value` HAS AN ARM FOR, and that is the
-// test rather than "does a declaration of it parse". Every type name parses --
+// A TYPE NAME IS HERE WHEN `Value` HAS AN ARM FOR IT AND IT HAS NO BUILT CHILD,
+// and the second half of that sentence is M23's correction of the first. This
+// paragraph read "THE SIX TYPE NAMES ABOVE ARE THE SIX `Value` HAS AN ARM FOR"
+// from M11 until 2026-09-12, and by then there were ELEVEN rows and THIRTEEN
+// arms -- so the count was wrong and, more usefully, the RULE was.
+//
+// The test is not "does a declaration of it parse": every type name parses,
 // `satellite.variable.window x` is accepted today and the name simply holds
-// nothing -- so parsing cannot separate a type the language can hold a value of
-// from one it cannot. satellite_value/value.hpp's variant is the fact, and the
-// day it gains the file handle (M19) or the thread (M27) a row joins this list
-// beside it. `satellite.container.list` and `.map` are here for the same reason
-// one layer along: M16 gave both a body.
+// nothing, so parsing cannot separate a type the language can hold a value of
+// from one it cannot. satellite_value/value.hpp's variant is that fact. But it
+// is not the whole test either, because satellite_help/built.cpp derives a
+// FOURTH kind in one backward pass: A PARENT OF A BUILT ROW IS BUILT. So a type
+// with a method is already answered for by the method, and a row here would be
+// a second statement of a derived fact.
+//
+// THAT IS WHY M19's FILE AND M20's ARGUMENTS OBJECT ARE NOT HERE, AND THIS
+// PARAGRAPH ASKED FOR THE FIRST OF THEM BY NAME -- it said "the day it gains
+// the file handle (M19) ... a row joins this list beside it", and M19 landed
+// `satellite.variable.file` `1 6 2` with eleven numbered children and no row.
+// Nothing was broken by it: `1 6 2 1` has a handler, so the backward pass
+// carries built-ness up to `1 6 2` and help answers about the type correctly.
+// The instruction was simply wrong, and a milestone that had obeyed it would
+// have written a redundant line. `satellite.container.arguments` `1 4 3` is the
+// same story one milestone later. *(Found at M23, by a milestone asking whether
+// its own two types needed rows -- MILESTONES/M23.md section 3.)*
+//
+// SO M23 ADDS ONE ROW AND NOT TWO. `satellite.variable.thread` `1 6 13` has
+// `start()` and `join()` under it and is derived like the file;
+// `satellite.variable.capsule` `1 6 16` HAS NO CHILDREN AT ALL -- a deferred
+// call is made by `satellite.thread.new` and asked nothing -- so there is
+// nothing for the pass to derive from and the row is load-bearing. That is
+// `satellite.variable.float`'s position at M15 exactly, and M21 gave the float
+// its first method and made its row derivable without removing it.
+// `satellite.container.list` and `.map` are here for the reason the rule's
+// first half gives, one layer along: M16 gave both a body.
 
 // --- the unevaluated arguments -----------------------------------------------
 //
@@ -994,6 +1034,52 @@ SAT_BUILT(RETURNS, SAT_UNLISTED)              // 1 21     optional, and it parse
 #endif
 
 SAT_TOPIC(HELP_X, 0)  // 1 19 1 -- `x` is a path or a name, and is never run
+
+// --- the deferred calls ------------------------------------------------------
+//
+// A SEVENTH LIST, ONE ROW LONG, AND IT IS THE OTHER HOLE IN DESIGN section 6's
+// evaluation rule. The fifth list above is an argument that is never EVALUATED;
+// this one is an argument that is evaluated and then not PERFORMED.
+//
+//     satellite.variable.thread t = satellite.thread.new(capsule_test(word))
+//
+// DESIGN section 13 settled that form on 2026-08-27 and says exactly what has
+// to happen to it: "capsule_name(args) at that position is not performed -- it
+// is PACKAGED. The handler evaluates the arguments and stores (capsule number,
+// argument values) for the thread to run later." So `word` is evaluated, here,
+// on the calling thread, at the moment `new` runs -- and `capsule_test` is not
+// entered until somebody says `start()`.
+//
+// SO IT IS NEITHER OF THE TWO LISTS ABOVE, AND THAT IS WHY IT IS A THIRD ONE.
+// A TOPIC skips the argument entirely and folds a PATH in its place; a PLACE
+// compiles the argument as a SLOT. A deferred call compiles its argument's own
+// arguments exactly as any call would and replaces only the LAST act -- the
+// entering. The op is op_package and it is op_call with the enter removed,
+// which is the same relationship op_enter has to op_call one direction along.
+//
+// WHAT THE INDEX MEANS is the fifth list's exactly: the written argument
+// (0-based) that is a call to be packaged rather than performed.
+//
+// ONE ROW, AND THE POLICY IS THAT IT STAYS ONE ROW, which is what both lists
+// above say about themselves and is the same argument for the third time. A
+// general facility for deferring calls is `a bare name can be a value`, which
+// DESIGN section 12 has deferred since the language was designed and which
+// section 12's own note says this form does NOT reopen: `capsule_test(word)`
+// is a CALL, which section 6.2's postfix loop already produces, and the only
+// new semantics is that one handler packages its arguments instead of
+// performing the call. One hole with a name on it is a feature. Two are a
+// second language.
+//
+// AND THE ROW IS ON `new` AND NOT ON `thread`, because a deferred call is a
+// VALUE of its own -- satellite.variable.capsule `1 6 16` -- and `new` is the
+// one word that takes one today. The day a second word does, it joins this
+// list beside `new` and nothing else moves, which is the property the fifth
+// list's index has and the reason both are tables rather than special cases.
+#ifndef SAT_DEFER
+#define SAT_DEFER(ident, index)
+#endif
+
+SAT_DEFER(THREAD_NEW, 0)  // 1 23 1 -- `f(x)` is packaged, and x is evaluated
 
 // --- the words that take a literal option -----------------------------------
 //
@@ -1060,3 +1146,4 @@ SAT_OPTIONS(CONTAINER_LIST_SORT_0)  // 1 4 2 3 -- `sort("down")`, `sort("up")`
 #undef SAT_PLACE
 #undef SAT_BUILT
 #undef SAT_TOPIC
+#undef SAT_DEFER

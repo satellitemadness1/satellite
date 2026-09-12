@@ -158,8 +158,8 @@ void section_codes()
     // the same shape as `words.def`'s stale header tallies one directory over
     // (M21.md §3.8) and is why both numbers are now written once each and
     // read together.
-    check(kCodeCount == 120,
-          "errors.def has 120 rows -- if that changed on purpose, change it here "
+    check(kCodeCount == 125,
+          "errors.def has 125 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 
@@ -179,6 +179,7 @@ void section_codes()
     check(block_of(Code::HELP_NOT_BUILT) == 11, "satellite.help is S11xx");
     check(block_of(Code::FILE_BAD_MODE) == 12, "persistence is S12xx");
     check(block_of(Code::SYSTEM_BAD_UNIT) == 13, "the machine's facts are S13xx");
+    check(block_of(Code::THREAD_NOT_A_CAPSULE_CALL) == 14, "threads are S14xx");
 
     // THE RESERVED BLOCK IS EMPTY, and this is the check that makes reserving
     // it worth anything. errors.def keeps S07xx for the evaluator; a milestone

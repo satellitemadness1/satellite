@@ -161,18 +161,18 @@
  },
  "1 23": {
   "query": "satellite.help(satellite.thread)",
-  "prose": "Running more than one thing at once.\n\n**Not built** — M23. The evaluator walks an arena rather than a linked\nstructure, which is what is meant to make threads possible here without\nlocking, but nothing starts one yet.",
+  "prose": "Running more than one thing at once. `satellite.thread.new` is the whole of the module; everything else a thread can do is asked of the thread itself -- `start()` and `join()`.",
   "example": ""
  },
  "1 23 0": {
   "query": "satellite.help(satellite.thread)",
-  "prose": "The bare shape. **Not built** — M23.",
+  "prose": "The bare shape. `satellite.thread` is a family name rather than something to call, so this number is reserved and nothing reaches it.",
   "example": ""
  },
  "1 23 1": {
   "query": "satellite.help(satellite.thread.new)",
-  "prose": "Makes a thread. **Not built** — M23.",
-  "example": ""
+  "prose": "Makes a thread out of a call to one of your own capsules. It does not start it -- `start()` does that.\n\n**What goes inside is a call, written out.** The arguments are worked out now, where you wrote them; the capsule itself is not entered until the thread starts. So a value that changes afterwards does not change what the thread was given.\n\nIt has to be a capsule you declared. `satellite.thread.new` cannot be handed one of the language's own words.",
+  "example": "satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)\n{\n    satellite.return(n * 2)\n}\nsatellite.variable.thread t = satellite.thread.new(double_it(21))\nt.start()\nsatellite.console.display(t.join())"
  },
  "1 24": {
   "query": "satellite.help(satellite.window)",

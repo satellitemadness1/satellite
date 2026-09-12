@@ -86,6 +86,12 @@ satellite::Value call(Run &run, const std::string &capsule,
 // the stack tells them apart.
 extern satellite::eval::Ending last_ending;
 extern std::vector<satellite::errors::Diagnostic> last_problems;
+
+// WHAT `call` CLOSED AND NOBODY HAD JOINED -- M23. The helper closes every
+// thread the run left behind, exactly as programs/run_command.cpp does, and
+// this is what came back: the refusals of threads that failed on their own and
+// were never waited for. Empty for every fixture that starts no thread.
+extern std::vector<satellite::errors::Diagnostic> last_abandoned;
 extern unsigned long long last_peak;
 
 // Whether the compile or the run reported this code.
@@ -115,5 +121,6 @@ void section_containers();  // M16's rows: the containers, subscripts, search
 void section_bits();        // M19.5's rows: the bit run, its width, its four methods
 void section_hex();         // M19.5's second half: the hex run, its digits, its six methods
 void section_arguments();   // M20's rows: the ten selectors, and the live codes read
+void section_threads();     // M23's rows: the deferred call, the three verbs, the five refusals
 
 } // namespace eval_test

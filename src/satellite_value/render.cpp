@@ -14,6 +14,7 @@
 #include "satellite_bits/bits.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
+#include "satellite_thread/thread_handle.hpp"
 #include "system_facts/facts.hpp"
 
 #include <cstdio>
@@ -235,6 +236,36 @@ std::string text_of(const Value &value)
     // `display(f.path())` must not print the same thing: one is a handle and
     // one is a name, and a renderer that lost the difference would make an
     // unopened handle indistinguishable from the path it failed on.
+    // A THREAD AND A DEFERRED CALL PRINT LIKE A FILE AND FOR THE FILE'S REASON
+    // -- M23. Neither rendering is the value: a thread's value is a `pthread_t`
+    // the program never chose and must never depend on, and a deferred call's
+    // is a capsule index into an arena that exists for one run. What a reader
+    // of a displayed thread wants is WHICH capsule and WHERE IT HAS GOT TO,
+    // which is what these two lines are.
+    //
+    // THE ANGLE BRACKETS ARE THE FILE'S ARGUMENT EXACTLY: `display(t)` must not
+    // look like a string, because a handle and a name are different things and
+    // a renderer that lost the difference would be the only place in the
+    // language where they were confusable.
+    //
+    // AND THE WORD IS READ WITHOUT A LOCK, deliberately. `started` and
+    // `finished` are atomics and each load is honest on its own; what is not
+    // guaranteed is that the pair was true at one instant, so a thread that
+    // finishes between the two loads prints "running". That is a display of a
+    // moving thing and the alternative is stopping the thing to look at it.
+    if (const Thr *handle = std::get_if<Thr>(&value)) {
+        if (!*handle)
+            return "<thread>";
+        const char *where =
+            !(*handle)->started.load()    ? "not started"
+            : (*handle)->finished.load()  ? "finished"
+                                          : "running";
+        return "<thread " + (*handle)->body->name + ", " + where + ">";
+    }
+
+    if (const Cap *handle = std::get_if<Cap>(&value))
+        return *handle ? "<capsule " + (*handle)->name + ">" : "<capsule>";
+
     if (const Fil *handle = std::get_if<Fil>(&value)) {
         if (!*handle)
             return "<file>";

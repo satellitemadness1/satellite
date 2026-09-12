@@ -393,9 +393,19 @@ void op_misuse(Machine &m, const Op &op, uint32_t)
     // place-parameter refusals (S1002, S1003) share one shape, one hole, and
     // one op. errors::make's template checks the hole count against the code
     // at compile time and cannot here, where the code is data; what stands in
-    // for the static_assert is the contract that EVERY code this op carries
-    // has exactly one {1}, and tests/eval_test raises each row so a sentence
-    // grown a second hole fails a fixture rather than printing a hole.
+    // for the static_assert is the contract that a code this op carries fills
+    // EXACTLY the holes its row declares, and tests/eval_test raises each row
+    // so a sentence grown a hole fails a fixture rather than printing one.
+    //
+    // THE COUNT IS AN OPERAND SINCE M23, AND IT USED TO BE THE SENTENCE "every
+    // code this op carries has exactly one {1}". S1401 has two -- what was
+    // asked, and what arrived instead -- so the contract that was a comment is
+    // now `d`, and the two M14 rows pass 1 where they used to pass nothing.
+    //
+    // A COUNT AND NOT A `c != 0` TEST, because 0 is a perfectly good text index
+    // (Compiled::add_text returns the position, and the first text is at zero),
+    // so a sentinel here would have been a bug that only appeared in the first
+    // program in a run to raise one of these.
     //
     // RAISED AT RUN TIME for op_refuse's reason, told from the other side:
     // the misuse was DETECTED at compile, but `input(">", 3)` in a branch
@@ -404,6 +414,8 @@ void op_misuse(Machine &m, const Op &op, uint32_t)
     problem.code = static_cast<errors::Code>(op.a);
     problem.at = m.span_of(m.here());
     problem.arguments = {std::string(m.program().text(op.b))};
+    if (op.d == 2)
+        problem.arguments.push_back(std::string(m.program().text(op.c)));
     m.refuse(std::move(problem));
 }
 

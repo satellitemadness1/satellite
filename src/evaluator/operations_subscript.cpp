@@ -351,7 +351,13 @@ void index_store(Machine &m, const Op &op, uint32_t step, bool global)
 
     const Value &subscript = m.value_from_top(1);
     const Value &value = m.value_from_top(0);
-    const Value &current = global ? m.global(op.a) : m.local(op.a);
+    // A COPY SINCE M23, AND THE TERNARY IS WHY IT IS SPELLED OUT. `m.global`
+    // answers by value now (evaluator/globals.hpp: a reference into storage
+    // another walk may be writing is a lock protecting the wrong thing), and a
+    // `const Value &` bound to a ternary whose arms are a prvalue and an lvalue
+    // copies the local arm too, silently. Writing the copy makes the cost
+    // visible at the one site that pays it -- `my_list[i] = v` on a global.
+    const Value current = global ? m.global(op.a) : m.local(op.a);
 
     if (const MapBody *body = as_map(current)) {
         // A MAP TAKES A SUBSCRIPT STORE AND v1 REFUSED ONE, and this is the

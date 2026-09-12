@@ -55,6 +55,7 @@ RESOLVE  = $(SRC)/name_resolver
 RANDOM   = $(SRC)/satellite_random
 STRING   = $(SRC)/satellite_string
 SYSLIB   = $(SRC)/satellite_system
+THREAD   = $(SRC)/satellite_thread
 TIME     = $(SRC)/satellite_time
 VALUE    = $(SRC)/satellite_value
 TREE     = $(SRC)/abstract_syntax_tree

@@ -473,6 +473,8 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(RANDOM)/tiers.cpp \
             $(RANDOM)/handlers.cpp \
             $(RANDOM)/seeded.cpp \
+            $(THREAD)/thread_handle.cpp \
+            $(THREAD)/handlers.cpp \
             $(TIME)/time.cpp \
             $(TIME)/handlers.cpp \
             $(EVAL)/evaluate.cpp \
@@ -579,6 +581,8 @@ HDRS = $(SYSTEM)/version.hpp \
        $(RANDOM)/tiers.hpp \
        $(RANDOM)/handlers_internal.hpp \
        $(RANDOM)/handlers.hpp \
+       $(THREAD)/thread_handle.hpp \
+       $(THREAD)/handlers.hpp \
        $(TIME)/time.hpp \
        $(TIME)/handlers.hpp \
        $(STRING)/satellite_string.hpp \
@@ -601,6 +605,7 @@ HDRS = $(SYSTEM)/version.hpp \
        $(HELP)/handlers.hpp \
        $(EVAL)/closure.hpp \
        $(EVAL)/machine.hpp \
+       $(EVAL)/globals.hpp \
        $(EVAL)/dispatch.hpp \
        $(EVAL)/evaluate.hpp \
        $(EVAL)/evaluator_internal.hpp \

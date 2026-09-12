@@ -21,6 +21,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace satellite::eval {
@@ -41,6 +42,7 @@ void op_binary(Machine &m, const Op &op, uint32_t step);
 void op_to_float(Machine &m, const Op &op, uint32_t step);
 void op_call(Machine &m, const Op &op, uint32_t step);
 void op_enter(Machine &m, const Op &op, uint32_t step);
+void op_package(Machine &m, const Op &op, uint32_t step);
 void op_dispatch(Machine &m, const Op &op, uint32_t step);
 void op_method(Machine &m, const Op &op, uint32_t step);
 void op_method_global(Machine &m, const Op &op, uint32_t step);
@@ -168,6 +170,25 @@ private:
     // on the value stack, because an argument that was never visited left none.
     uint32_t topic_parameter(NodeIndex call_node) const;
 
+    // Which written argument of this call is a deferred call, or
+    // words::kNoDeferParameter. words.def's seventh list, read on the CALL node
+    // for topic_parameter's reason exactly -- resolve puts the number on the
+    // whole shape, parentheses included, and the target member carries none.
+    uint32_t defer_parameter(NodeIndex call_node) const;
+
+    // Not a capsule this program declared. A real index is a position in
+    // Compiled::capsules(), so the sentinel is one past anything a program of
+    // four billion capsules could reach.
+    static constexpr uint32_t kNotACapsule = 0xFFFFFFFFu;
+
+    // WHICH COMPILED CAPSULE THIS CALL WOULD HAVE ENTERED, or kNotACapsule --
+    // M23. It is call()'s two capsule arms asked as a question instead of taken
+    // as a branch, which is the only reason it exists: op_package needs the
+    // same index op_call would have got, decided by the same two lookups, and a
+    // third copy of them would be a third place they can drift.
+    uint32_t capsule_index(const resolve::Info &about,
+                           words::PathId declared) const;
+
     // `satellite.help(x)`'s one argument, compiled. The path or the declared
     // type is folded to a constant HERE, at compile time, and the misuses are
     // refused here too -- so nothing about the ask is decided while the program
@@ -227,6 +248,24 @@ private:
     // place-writing call is confined to "a statement of its own".
     // compile_statements' ExprStmt arm is the writer and the only one.
     NodeIndex statement_root_ = kNoNode;
+
+    // THE CALLS THAT ARE PACKAGED RATHER THAN PERFORMED -- M23, words.def's
+    // seventh list. A parent marks its deferred argument on the way DOWN, at
+    // step 0 of the Call case; call() reads it on the way back UP and emits
+    // op_package where it would have emitted op_call.
+    //
+    // A SET AND NOT A SINGLE NodeIndex, and the reason is a shape nobody should
+    // have to reason about twice. The walk is a task stack, so a marked child
+    // is compiled between its parent's step 0 and step 1 -- one field would
+    // work today. It would stop working the moment a deferred call appeared
+    // inside another one's arguments, and it would stop working SILENTLY, by
+    // compiling a real call as a package or the other way round. A set cannot:
+    // each node is marked at most once, by the one parent that defers it, and
+    // membership is a fact rather than a state.
+    //
+    // AND IT IS MARKED AND NEVER UNMARKED, which is what makes the previous
+    // sentence true. Nothing here depends on compile order.
+    std::unordered_set<NodeIndex> deferred_;
 };
 
 } // namespace satellite::eval

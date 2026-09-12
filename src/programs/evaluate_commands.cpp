@@ -24,6 +24,7 @@
 #include "satellite_file/handlers.hpp"
 #include "satellite_time/handlers.hpp"
 #include "satellite_value/render.hpp"
+#include "satellite_thread/thread_handle.hpp"
 #include "satellite_words/words.hpp"
 #include "system_facts/interrupt.hpp"
 
@@ -139,6 +140,15 @@ int call_command(const std::vector<std::string> &args)
     Value answer;
     if (machine.ok())
         answer = machine.call(static_cast<uint32_t>(which), arguments);
+
+    // CLOSE EVERY THREAD BEFORE `built` GOES -- M23, and satellite_thread/
+    // thread_handle.hpp states the rule: every entry point that runs a program
+    // calls this. A thread walks the op arena by pointer, and the arena is a
+    // local of the caller, so returning while one is still walking destroys it
+    // underneath. The diagnostics are dropped here rather than rendered because
+    // this arm prints ONE value and has no channel for a second sentence;
+    // `satl <file>` is the arm that reports them.
+    (void)thread::close_all();
 
     if (!machine.ok()) {
         fputs(errors::render(machine.problems(),

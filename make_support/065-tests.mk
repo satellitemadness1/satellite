@@ -388,6 +388,8 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(RANDOM)/tiers.cpp \
                  $(RANDOM)/handlers.cpp \
                  $(RANDOM)/seeded.cpp \
+                 $(THREAD)/thread_handle.cpp \
+                 $(THREAD)/handlers.cpp \
                  $(TIME)/time.cpp \
                  $(TIME)/handlers.cpp \
                  $(EVAL)/dump.cpp \

@@ -497,16 +497,16 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.hex.digits` | `1 6 11 4` | assigned 2026-09-09 — how many digits were written; `x00FF.digits()` is 4 |
 | `satellite.variable.hex.to_binary` | `1 6 11 5` | assigned 2026-09-09 — the same bits as binary; never refuses, a digit being exactly 4 bits |
 | `satellite.variable.network` | `1 6 12` | assigned |
-| `satellite.variable.thread` | `1 6 13 (0)` | assigned — the `(0)` is new with its children below |
-| `satellite.variable.thread.start()` | `1 6 13 1` | assigned 2026-08-28 |
-| `satellite.variable.thread.join()` | `1 6 13 2` | assigned 2026-08-28 |
+| `satellite.variable.thread` | `1 6 13 (0)` | assigned; **built at M23** — the `(0)` is new with its children below. A REFERENCE TYPE, which is `satellite.variable.file`'s row read across: two names for one thread are one thread, so `start()` through either reaches the same `pthread_t`. It gets NO `SAT_BUILT` row in `words.def` because its two children have handlers and `satellite_help/built.cpp` derives a parent from them |
+| `satellite.variable.thread.start()` | `1 6 13 1` | assigned 2026-08-28; **built at M23** — makes one fresh OS thread and comes straight back. Answers NOTHING, because the capsule's answer does not exist yet; S1402 refuses a second start, since a thread runs once |
+| `satellite.variable.thread.join()` | `1 6 13 2` | assigned 2026-08-28; **built at M23** — waits, and ANSWERS WHAT THE CAPSULE RETURNED. The author settled that on 2026-09-12: it is the one of the three verbs that waits until there is an answer, so it is the one that can have one. A capsule that refused on the thread re-raises ITS OWN diagnostic here, not a sentence about threads. S1403 refuses a join before a start, S1404 a second join |
 | `satellite.variable.variant` | `1 6 14 (0)` | assigned — the `(0)` is new with its children below |
 | `satellite.variable.variant.holding` | `1 6 14 1` | assigned 2026-09-03 |
 | `satellite.variable.variant.holds(x)` | `1 6 14 2` | assigned 2026-09-03 |
 | `satellite.variable.variant.held` | `1 6 14 3` | assigned 2026-09-03 |
 | `satellite.variable.variant.clear` | `1 6 14 4` | assigned 2026-09-03 |
 | `satellite.variable.window` | `1 6 15` | assigned |
-| `satellite.variable.capsule` | `1 6 16` | assigned — the type of a deferred call; `satellite.capsule` `1 2` is the keyword |
+| `satellite.variable.capsule` | `1 6 16` | assigned; **built at M23** — the type of a deferred call; `satellite.capsule` `1 2` is the keyword. What `satellite.thread.new(f(x))` builds: the capsule index and the ARGUMENT VALUES, worked out on the calling thread and frozen. **The one type in the language a program cannot yet declare and fill in** — it is reachable only as `new`'s argument, and M23.md §4 says what making it declarable would take. It is also the ONE row M23 added to `words.def`'s `SAT_BUILT` list, because it has no children for the built predicate to derive it from |
 | `satellite.random` | `1 7 (0)` |  |
 | `satellite.random.fast()` | `1 7 1` | the zero-argument shape — a refusal by design (DESIGN §11, 2026-09-04) |
 | `satellite.random.normal()` | `1 7 2` | the same — a refusal by design (DESIGN §11) |
@@ -657,8 +657,8 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.system.persist()` | `1 22 7` | assigned 2026-09-07 — read, §2.7 |
 | `satellite.system.persist(x)` | `1 22 8` | assigned 2026-09-07 — set, §2.7 |
 | `satellite.system.environment(name)` | `1 22 9` | assigned 2026-09-09 — M20. A SIBLING and not a child: §4's rule, a user-owned argument contributes no number of its own. Bare `environment` `1 22 2` answers the whole map |
-| `satellite.thread` | `1 23 (0)` | assigned |
-| `satellite.thread.new` | `1 23 1` | assigned |
+| `satellite.thread` | `1 23 (0)` | assigned; **built at M23** — derived from `new` below it, so no `SAT_BUILT` row of its own |
+| `satellite.thread.new` | `1 23 1` | assigned; **built at M23** — takes a CALL and packages it rather than performing it, which is DESIGN §13's settled form and the language's first DEFERRED argument. `words.def`'s seventh list (`SAT_DEFER`) is the declaration and `op_package` is the op; the argument's own arguments are evaluated where they are written, and the capsule is not entered until `start()`. Refuses anything that is not a capsule of the program's own with S1401 — **at compile time**, so `new(satellite.console.display("x"))` cannot print on its way to being refused |
 | `satellite.window` | `1 24 (0)` | assigned |
 | `satellite.window.new` | `1 24 1` | assigned |
 | `satellite.window.console` | `1 24 2 (0)` | assigned 2026-08-28 |
