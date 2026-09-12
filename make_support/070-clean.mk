@@ -33,7 +33,15 @@
 # difference as a milestone's fault. 067 makes it depend on both stamps so that
 # a rebuild is triggered rather than needed -- this line is the second lock on
 # the same door, and 040-sources.mk records what it costs when neither is there.
+# $(ZLIB)/*.o IS THE VENDORED LIBRARY AND IT IS NAMED FOR THE SAME REASON THE
+# TWO src GLOBS ARE. It is not under $(SRC), so neither of them reaches it, and
+# a zlib object surviving a `clean` is the exact failure this file's header
+# describes one case up: a rebuild that looks complete while linking bytes
+# compiled some other time, against flags 010-compiler.mk has since changed.
+# There is no .cxxflags-stamp on those objects -- 060-compile.mk says why -- so
+# this rule is the ONLY thing that makes them go.
 clean:
 	rm -f satl satl.haswell satl-cpu-level satl-term $(SRC)/*/*.o $(SRC)/*/*/*.o \
+	      $(ZLIB)/*.o \
 	      $(TESTBINS) $(STARTUP_FLOOR) \
 	      .cxxflags-stamp .cxxflags-stamp-haswell .ldflags-stamp

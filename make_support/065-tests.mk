@@ -579,6 +579,7 @@ HELP_TEST_SRCS = $(HELP)/built.cpp \
                  $(SATFILE)/handlers.cpp \
                  $(SATFILE)/file_methods.cpp \
                  $(SATFILE)/file_reading.cpp \
+                 $(SATFILE)/gzip.cpp \
                  $(DIRECTRY)/handlers.cpp \
                  $(LIMITS)/limits.cpp \
                  $(LIMITS)/config.cpp \
@@ -593,9 +594,25 @@ HELP_TEST_SRCS = $(HELP)/built.cpp \
 $(TESTS)/help_test/help_test: $(help_test_SRCS) $(help_test_HDRS) \
                               $(HELP_TEST_SRCS) $(HELP)/help.def \
                               $(ERRORS)/errors.def $(WORDS)/words.def \
-                              $(HDRS) .cxxflags-stamp
-	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -I$(TESTS)/help_test -o $@ \
-	    $(help_test_SRCS) $(HELP_TEST_SRCS)
+                              $(HDRS) .cxxflags-stamp $(ZLIB_OBJS)
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -isystem $(ZLIB) -I$(TESTS)/help_test -o $@ \
+	    $(help_test_SRCS) $(HELP_TEST_SRCS) $(ZLIB_OBJS)
+
+# $(SATFILE)/gzip.cpp AND $(ZLIB_OBJS) RIDE WITH THE FILE MODULE SINCE M26.5,
+# and the two suites that link that module are the two that needed them. The
+# handle's close, reopen and read paths all name satellite::file::gzip:: now, so
+# a binary linking file_handle.cpp without gzip.cpp does not link -- which is
+# how this was found, by help_test and file_test failing together.
+#
+# -isystem $(ZLIB) IS ON THE COMPILE LINE FOR gzip.cpp's SAKE ALONE. It is the
+# one file of ours that includes <zlib.h>, and the flag is -isystem rather than
+# -I for pcg's reason: a warning from a header this project does not own must
+# not read as ours.
+#
+# THE OBJECTS AND NOT THE SOURCES, because zlib is C and this command is a C++
+# compiler. 060-compile.mk builds them with $(CC); here they arrive already
+# compiled, which is also why $(ZLIB_OBJS) is a PREREQUISITE and not only a word
+# on the link line.
 
 # file_test -- PLAN M19. The half of persistence a running program cannot check
 # about itself: which refusal it got, and whether it got there at all.
@@ -610,10 +627,10 @@ $(TESTS)/help_test/help_test: $(help_test_SRCS) $(help_test_HDRS) \
 # NOT machine_limits, and eval_test's reason applies unchanged: nothing here is
 # about depth, and a raised RLIMIT_STACK is not something a file suite should
 # get for free or be denied.
-FILE_TEST_SRCS = $(SATFILE)/file_handle.cpp                  $(SATFILE)/handlers.cpp                  $(SATFILE)/file_methods.cpp                  $(SATFILE)/file_reading.cpp                  $(DIRECTRY)/handlers.cpp                  $(CONSOLE_TEST_SRCS)
+FILE_TEST_SRCS = $(SATFILE)/file_handle.cpp                  $(SATFILE)/handlers.cpp                  $(SATFILE)/file_methods.cpp                  $(SATFILE)/file_reading.cpp                  $(SATFILE)/gzip.cpp                  $(DIRECTRY)/handlers.cpp                  $(CONSOLE_TEST_SRCS)
 
-$(TESTS)/file_test/file_test: $(file_test_SRCS) $(file_test_HDRS)                               $(FILE_TEST_SRCS) $(ERRORS)/errors.def                               $(WORDS)/words.def $(HDRS) .cxxflags-stamp
-	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -I$(TESTS)/file_test -o $@ 	    $(file_test_SRCS) $(FILE_TEST_SRCS)
+$(TESTS)/file_test/file_test: $(file_test_SRCS) $(file_test_HDRS)                               $(FILE_TEST_SRCS) $(ERRORS)/errors.def                               $(WORDS)/words.def $(HDRS) .cxxflags-stamp $(ZLIB_OBJS)
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -isystem $(ZLIB) -I$(TESTS)/file_test -o $@ 	    $(file_test_SRCS) $(FILE_TEST_SRCS) $(ZLIB_OBJS)
 
 test: $(TESTBINS)
 	./$(TESTS)/words_test/words_test WORD_NUMBERS.md

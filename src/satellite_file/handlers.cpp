@@ -4,6 +4,8 @@
 
 #include "satellite_file/handlers.hpp"
 
+#include "satellite_file/gzip.hpp"
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -76,6 +78,7 @@ Value opened(const std::string &name, const Mode &mode, int flags)
     handle->readable = mode.readable;
     handle->writable = mode.writable;
     handle->reopen_flags = mode.flags;
+    handle->gzipped = mode.gzip;
 
     const int fd = ::open(name.c_str(), flags, 0644);
     if (fd < 0) {
@@ -83,6 +86,19 @@ Value opened(const std::string &name, const Mode &mode, int flags)
     } else {
         handle->descriptor.store(fd);
         handle->ever_open = true;
+
+        // AND THE STREAM OVER IT, FOR "read_gzip" ONLY. A failure here is not
+        // errno's to describe -- gzdopen fails on a bad descriptor or no
+        // memory, not on anything the filesystem said -- but EIO is the honest
+        // shape for "the bytes are there and could not be made sense of", and
+        // `error` `1 6 2 10` has one field to say it in. The descriptor is left
+        // open and owned by the handle, because a gzdopen that answered null
+        // adopted nothing.
+        if (mode.gzip) {
+            handle->gz = gzip::open_for_reading(fd);
+            if (handle->gz == nullptr)
+                handle->last_error.store(EIO);
+        }
     }
     return Value(std::move(handle));
 }

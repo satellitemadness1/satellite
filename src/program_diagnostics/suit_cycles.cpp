@@ -23,6 +23,21 @@
 // suit type is an owning edge; the moment `resolve::Field` can say otherwise,
 // the `continue` goes in the loop below and this comment is the reason.
 //
+// WHAT IT CANNOT SEE, WRITTEN DOWN HERE SO THAT A CLEAN RUN IS NOT MISREAD AS
+// A PROOF. This walks DECLARED FIELD TYPES and nothing else. A ring closed
+// through a `variant`, through a list or map ELEMENT, or through any field
+// whose declared type is not itself a suit, is invisible to it -- because
+// `resolve::Field` carries one `type` per field and a container's element type
+// is not among what resolve keeps. The specimen this was written against is
+// catchable precisely because its field is spelled `infinity_data local_this`.
+//
+// AND THAT BOUNDARY MATTERS MOST FOR THE WORK THIS LANGUAGE IS AIMED AT. A
+// program that models code holds a symbol table, and a symbol table is a map of
+// scopes -- so the cycle most worth finding is the one shape this check is
+// blind to. Closing it needs an element type on the resolved field, which is a
+// change to resolve and not to this file. Until then: a silent answer here
+// means "no ring among declared field types", not "no ring".
+
 // OWN FIELDS ONLY, WHICH IS NOT AN OPTIMISATION. resolve.hpp's `Suit` keeps a
 // child's inherited fields at the FRONT of `fields`, holding the indices they
 // had in the parent -- so walking them here would find every inherited edge

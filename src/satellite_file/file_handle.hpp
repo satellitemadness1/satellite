@@ -44,6 +44,11 @@ struct Mode {
     int flags;
     bool readable;
     bool writable;
+
+    // WHETHER THE BYTES ARRIVE INFLATED. The open(2) flags are the same
+    // O_RDONLY as "read" -- gzip is not a thing the kernel knows about -- so
+    // this is the one part of a mode that no flag can carry.
+    bool gzip = false;
 };
 
 // The four, in ONE table, because `satellite.file.open` `1 8 2` and
@@ -78,6 +83,26 @@ struct FileHandle {
     std::string path;
     bool readable = false;
     bool writable = false;
+
+    // THE GZIP STREAM, AND `void *` SO THAT THIS HEADER DOES NOT NAME zlib.
+    // satellite_file/gzip.hpp carries that argument: a `gzFile` here would put
+    // -isystem vendor/zlib-develop on the compile line of every unit that
+    // touches a file handle, and of every test binary that links one.
+    //
+    // ONCE THIS IS NON-NULL IT OWNS THE DESCRIPTOR. gzdopen(3) adopts the fd,
+    // so closing BOTH would close a number the OS had already handed out
+    // again -- the precise race the atomics above exist to prevent, arriving
+    // from a direction they cannot see. Every close site therefore branches:
+    // the stream is closed, or the descriptor is, never both.
+    //
+    // AND IT IS NOT ATOMIC, WHICH IS THE READ CURSOR'S LIMIT AND NOT A NEW ONE.
+    // The note above says `read_at`, `buffer` and `buffer_at` are one logical
+    // position spread over three fields that two threads cannot share; a gzip
+    // stream is a fourth, and it is strictly sequential besides -- there is no
+    // pread for a compressed stream, because byte N is not findable without
+    // inflating the N-1 before it. One thread reading is exact.
+    bool gzipped = false;
+    void *gz = nullptr;
 
     // WHETHER THIS HANDLE HAS EVER BEEN OPEN, which is what separates two
     // states that a descriptor of -1 collapses: a handle somebody CLOSED, and

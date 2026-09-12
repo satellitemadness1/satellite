@@ -471,6 +471,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SATFILE)/handlers.cpp \
             $(SATFILE)/file_methods.cpp \
             $(SATFILE)/file_reading.cpp \
+            $(SATFILE)/gzip.cpp \
             $(DIRECTRY)/handlers.cpp \
             $(HELP)/built.cpp \
             $(HELP)/render.cpp \
@@ -510,6 +511,29 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROMPT)/prompt.cpp
 
 SATL_OBJS = $(SATL_SRCS:.cpp=.o)
+
+# THE ONE VENDORED LIBRARY THAT IS COMPILED RATHER THAN INCLUDED. pcg is headers
+# and costs the build nothing; zlib is fifteen C files, and it is here because
+# `satellite.file.open(path, "read_gzip")` has to inflate.
+#
+# VENDORED AND NOT LINKED FROM THE SYSTEM, WHICH IS FORCED BY STATIC=full. This
+# machine has /usr/lib64/libz.so and no libz.a, so `-static` against the system
+# zlib does not link at all -- and 048-static.mk's whole argument is that satl
+# carries no dynamic dependencies. Building from source keeps that true and
+# keeps it true on machines that have no zlib at all.
+#
+# ALL FIFTEEN AND NOT THE NINE READING NEEDS. adler32, crc32, inflate, inffast,
+# inftrees, zutil, gzclose, gzlib and gzread would do for `read_gzip` today; the
+# other six are deflate's side. Naming nine would mean editing this list the day
+# somebody writes a `.gz`, and the difference is about 100KB against a 1.1MB
+# binary -- 048-static.mk's table is what makes that trade checkable.
+ZLIB_SRCS = $(ZLIB)/adler32.c $(ZLIB)/compress.c $(ZLIB)/crc32.c \
+            $(ZLIB)/deflate.c $(ZLIB)/gzclose.c $(ZLIB)/gzlib.c \
+            $(ZLIB)/gzread.c $(ZLIB)/gzwrite.c $(ZLIB)/infback.c \
+            $(ZLIB)/inffast.c $(ZLIB)/inflate.c $(ZLIB)/inftrees.c \
+            $(ZLIB)/trees.c $(ZLIB)/uncompr.c $(ZLIB)/zutil.c
+
+ZLIB_OBJS = $(ZLIB_SRCS:.c=.o)
 
 # Every header any object depends on. Listed rather than generated: -MMD would
 # do this automatically and is the obvious answer, but it writes .d files into

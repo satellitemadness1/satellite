@@ -89,6 +89,29 @@ $(TERM_DIR)/%.o: $(TERM_DIR)/%.cpp .cxxflags-stamp
 $(RANDOM)/random.o: $(RANDOM)/random.cpp .cxxflags-stamp $(RANDOM)/random.hpp
 	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -c -o $@ $(RANDOM)/random.cpp
 
+# THE VENDORED C LIBRARY, AND ITS OWN RULE BECAUSE THE PATTERN ABOVE IS C++.
+# zlib does not compile as C++ -- it is C and uses C-isms a C++ compiler
+# refuses -- so it gets $(CC) and $(CFLAGS) rather than $(CXX) and $(CXXFLAGS).
+# This is the only rule in the tree that compiles C, and 010-compiler.mk's CC is
+# defined for it alone.
+#
+# NO .cxxflags-stamp PREREQUISITE, WHICH IS DELIBERATE AND NOT AN OMISSION. That
+# stamp exists so that changing the C++ flags rebuilds the C++ tree; these
+# objects are not built with those flags and rebuilding them on a CXXFLAGS
+# change would be work done to produce identical bytes.
+$(ZLIB)/%.o: $(ZLIB)/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# THE ONE OBJECT OF OURS THAT NAMES zlib, and the -isystem is pcg's argument
+# with a different library in it: a warning from a header this project does not
+# own and cannot fix without forking it must not read as ours.
+# satellite_file/gzip.hpp says why the contact is confined to this one file.
+$(SATFILE)/gzip.o: $(SATFILE)/gzip.cpp .cxxflags-stamp $(SATFILE)/gzip.hpp
+	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem $(ZLIB) -c -o $@ $(SATFILE)/gzip.cpp
+
+$(SATFILE)/gzip.haswell.o: $(SATFILE)/gzip.cpp .cxxflags-stamp-haswell $(SATFILE)/gzip.hpp
+	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) -isystem $(ZLIB) -c -o $@ $(SATFILE)/gzip.cpp
+
 # The haswell twin, needed since M13 put random.cpp in SATL_SRCS: without it
 # the generic %.haswell.o pattern below would compile the one PCG-naming
 # object with -I semantics and the vendored header's warning would become

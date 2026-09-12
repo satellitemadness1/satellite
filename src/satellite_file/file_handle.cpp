@@ -4,6 +4,8 @@
 
 #include "satellite_file/file_handle.hpp"
 
+#include "satellite_file/gzip.hpp"
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -39,6 +41,18 @@ constexpr Mode kModes[] = {
     // and O_APPEND moving the shared offset to the end on every write is then
     // something the read side never observes.
     {"read_append", O_RDWR | O_CREAT | O_APPEND, true, true},
+
+    // THE FIFTH WORD, AND IT COSTS THE NUMBERING NOTHING. A mode is read from
+    // this table at run time rather than folded into a path under `1 8`, which
+    // the author settled on 2026-09-08 -- so "read_gzip" adds no numbered path,
+    // invalidates no `.satc`, and every method the file object already answers
+    // keeps working. `read_line` on a 900MB WARC is the same call it was.
+    //
+    // READ ONLY, AND O_RDONLY IS NOT THE HALF THAT MATTERS. Writing a `.gz`
+    // would be a "write_gzip" row beside this one and gzwrite(3) behind it;
+    // absent because nothing asks for it, and a half-used pair is the half
+    // nobody checked.
+    {"read_gzip", O_RDONLY, true, false, true},
 };
 
 // The words that can do a thing, listed for S1202's "open it with" clause.
@@ -97,6 +111,16 @@ FileHandle::~FileHandle()
     // scope, and a program that never called `close` has already finished
     // deciding what to do about a failed flush.
     const int held = descriptor.exchange(-1);
+
+    // THE STREAM FIRST, AND THEN NOT THE DESCRIPTOR. gzclose(3) closes the fd
+    // it adopted, so closing `held` as well would be a double close -- see
+    // file_handle.hpp's note on `gz`.
+    if (gz != nullptr) {
+        void *stream = gz;
+        gz = nullptr;
+        gzip::close_stream(stream);
+        return;
+    }
     if (held >= 0)
         ::close(held);
 }

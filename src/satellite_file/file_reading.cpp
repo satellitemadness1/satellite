@@ -15,6 +15,7 @@
 
 #include "error_reporter/report.hpp"
 #include "satellite_file/file_internal.hpp"
+#include "satellite_file/gzip.hpp"
 #include "satellite_string/satellite_string.hpp"
 
 #include <cerrno>
@@ -55,8 +56,36 @@ bool fill(eval::Machine &m, FileHandle &handle, int fd)
         // `write_line`, in the one mode whose entire purpose is writing and
         // reading back through one handle. pread takes its position as an
         // argument and moves nothing.
+        // AND A GZIP STREAM CANNOT BE pread AT ALL, WHICH IS WHY THIS BRANCHES
+        // RATHER THAN TAKING A DIFFERENT fd. Byte N of a compressed file is not
+        // findable without inflating the N-1 before it, so there is no
+        // positioned read to make -- the stream carries its own place, and
+        // `read_at` goes on counting bytes DELIVERED, which is what the caller
+        // above it means by a cursor. It stays exact because the only reader is
+        // sequential: `read_line` never goes backwards.
+        //
+        // "read_gzip" IS READ-ONLY, so the paragraph below about the write side
+        // stealing the shared offset cannot arise here -- there is no write
+        // side to steal it.
         const ssize_t got =
-            ::pread(fd, handle.buffer.data(), kChunk, handle.read_at);
+            handle.gz != nullptr
+                ? static_cast<ssize_t>(
+                      gzip::read_some(handle.gz, handle.buffer.data(), kChunk))
+                : ::pread(fd, handle.buffer.data(), kChunk, handle.read_at);
+
+        // A DECOMPRESSION FAULT IS NOT AN errno, and saying so matters: the
+        // file read perfectly and the bytes in it were not a gzip stream, or
+        // were a damaged one. errno at this moment describes whatever syscall
+        // last failed, which may be nothing to do with this file.
+        if (got < 0 && handle.gz != nullptr) {
+            const char *said = gzip::error_of(handle.gz);
+            handle.buffer.clear();
+            handle.last_error.store(EIO);
+            m.refuse(errors::make<errors::Code::DIRECTORY_UNREADABLE>(
+                m.span_of(m.here()), "\"" + handle.path + "\"",
+                said != nullptr ? said : "the file is not a gzip stream"));
+            return false;
+        }
         if (got >= 0) {
             handle.buffer.resize(static_cast<size_t>(got));
             return true;

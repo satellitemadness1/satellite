@@ -18,6 +18,7 @@
 #include "error_reporter/report.hpp"
 #include "satellite_bits/bits.hpp"
 #include "satellite_file/file_internal.hpp"
+#include "satellite_file/gzip.hpp"
 #include "satellite_string/satellite_string.hpp"
 #include "satellite_words/words.hpp"
 
@@ -212,6 +213,22 @@ bool file_reopen(eval::Machine &m, const Value *arguments, uint32_t,
     handle->buffer_at = 0;
     handle->ever_open = true;
 
+    // AND A REOPENED GZIP HANDLE NEEDS A NEW STREAM OVER THE NEW DESCRIPTOR.
+    // `gzipped` is the mode and outlives a close; `gz` is the stream and does
+    // not -- the old one was released with the old fd. Without this, reopening
+    // a "read_gzip" handle would leave `gz` null and the read path would fall
+    // through to pread, handing the caller the COMPRESSED bytes and calling it
+    // a successful read. That is the failure shape this whole arm exists to
+    // avoid: not an error, an answer that is wrong.
+    if (handle->gzipped) {
+        handle->gz = gzip::open_for_reading(fd);
+        if (handle->gz == nullptr) {
+            handle->last_error.store(EIO);
+            *answer = Value::boolean(false);
+            return true;
+        }
+    }
+
     // The stale errno goes. `error` means "the most recent failure", and once
     // the handle is open an open failure describes a state that no longer
     // exists -- `ok` true beside `error` "No such file or directory" would be
@@ -238,6 +255,20 @@ bool file_close(eval::Machine &m, const Value *arguments, uint32_t,
         *answer = Value::boolean(true);
         return true;
     }
+
+    // THE STREAM OWNS THE DESCRIPTOR, so a gzip handle is closed through zlib
+    // and the fd is not closed again -- file_handle.hpp's note on `gz`.
+    // gzclose(3) answers Z_OK or a code; anything else is a flush or a read
+    // that failed on the way out, and `close` `1 6 2 6` exists to hand that
+    // back rather than let a destructor swallow it.
+    if (handle->gz != nullptr) {
+        void *stream = handle->gz;
+        handle->gz = nullptr;
+        gzip::close_stream(stream);
+        *answer = Value::boolean(true);
+        return true;
+    }
+
     if (::close(fd) < 0) {
         handle->last_error.store(errno);
         *answer = Value::boolean(false);

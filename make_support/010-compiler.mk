@@ -31,6 +31,14 @@ ifeq ($(origin CXX),default)
   CXX := $(if $(wildcard $(LLVM_BIN)/clang++),$(LLVM_BIN)/clang++,c++)
 endif
 
+# AND A C COMPILER, WHICH THIS TREE HAD NO USE FOR UNTIL zlib. Every line of
+# satellite is C++; zlib is C and will not compile as C++. The same `origin`
+# trick for the same reason -- CC is a built-in make variable, so ?= would never
+# fire, and `default` means nobody has chosen.
+ifeq ($(origin CC),default)
+  CC := $(if $(wildcard $(LLVM_BIN)/clang),$(LLVM_BIN)/clang,cc)
+endif
+
 # OPT is the knob, and CXXFLAGS is not one. A command-line `make CXXFLAGS=-O3`
 # REPLACES this variable whole -- that is what a command-line assignment means
 # in make -- so it would take -std=c++20 with it and the build would die on a
@@ -58,6 +66,27 @@ endif
 # same argument 060-compile.mk makes about -I$(SRC).
 OPT ?= -O3
 CXXFLAGS = -std=c++20 -Wall -Wextra -pthread $(OPT)
+
+# THE VENDORED LIBRARY'S FLAGS, AND -Wall IS DELIBERATELY ABSENT. zlib is not
+# this project's code and its warnings are not this project's to fix; turning
+# them on would print diagnostics nobody here may act on, every build, which is
+# how a build's output stops being read. -isystem makes the same argument about
+# its headers where it is included. -DHAVE_HIDDEN keeps zlib's own symbols out
+# of satl's dynamic table, which matters to nobody while STATIC=full and costs
+# nothing when it is not.
+#
+# gnu11 AND NOT c11, WHICH THE BUILD INSISTED ON. Strict ISO sets
+# __STRICT_ANSI__, glibc then hides every POSIX declaration behind it, and
+# zlib's gzlib.c calls lseek(2) -- five errors about implicit declarations, none
+# of which is a fault in zlib. The library expects an ordinary POSIX C
+# environment and gnu11 is what that is spelled.
+#
+# -DHAVE_UNISTD_H=1 IS A NUMBER AND NOT A BARE DEFINE. zconf.h:446 tests it as
+# `#if HAVE_UNISTD_H-0`, which is the trick that makes an undefined macro and an
+# empty one both read as 0 -- so `-DHAVE_UNISTD_H` alone expands to `-0` and
+# fails to compile. Its comment says "may be set to #if 1 by ./configure"; this
+# is the build doing what configure would have.
+CFLAGS ?= -std=gnu11 $(OPT) -DHAVE_HIDDEN -DHAVE_UNISTD_H=1 -D_LARGEFILE64_SOURCE=1
 
 # Set nowhere in this build on purpose, so that a distribution's link-time
 # hardening -- -Wl,-z,relro,-z,now and whatever the next one adds -- arrives

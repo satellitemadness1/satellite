@@ -38,6 +38,7 @@ ARGS     = $(SRC)/satellite_arguments
 ERRORS   = $(SRC)/error_reporter
 EVAL     = $(SRC)/evaluator
 DIAGNOSE = $(SRC)/program_diagnostics
+ZLIB     = vendor/zlib-develop
 LEXER    = $(SRC)/lexical_analyzer
 BITS     = $(SRC)/satellite_bits
 CACHE    = $(SRC)/satellite_cache

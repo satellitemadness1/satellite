@@ -47,17 +47,23 @@ endif
 satl satl.haswell satl-cpu-level satl-term: .ldflags-stamp
 
 # $(LDFLAGS) BEFORE the objects, which is where a linker wants its options.
-satl: $(SATL_OBJS)
-	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) -o $@ $(SATL_OBJS)
+satl: $(SATL_OBJS) $(ZLIB_OBJS)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) -o $@ $(SATL_OBJS) $(ZLIB_OBJS)
 
 # $(MARCH_HASWELL) ON THE LINK LINE TOO, and not only on the compiles. It
 # changes nothing today -- the objects are already compiled and this build has
 # no -flto -- and it is what keeps that true the day somebody adds link-time
 # optimisation, where the linker becomes a compiler and would otherwise
 # re-emit these objects against the baseline it was told nothing about.
-satl.haswell: $(SATL_HASWELL_OBJS)
+# THE VENDORED OBJECTS ARE SHARED WITH THE BASELINE BUILD AND ARE NOT REBUILT
+# WITH -march. zlib has no dispatch of ours to get wrong, the ABI is identical,
+# and a second copy compiled for haswell would be a second thing to keep in step
+# for a library this program spends its time waiting on I/O inside. Our own
+# gzip.o DOES have a haswell twin -- 060-compile.mk -- because it is ours and
+# rides in $(SATL_HASWELL_OBJS) with the rest.
+satl.haswell: $(SATL_HASWELL_OBJS) $(ZLIB_OBJS)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(MARCH_HASWELL) $(LDFLAGS) $(STATIC_LDFLAGS) \
-	    -o $@ $(SATL_HASWELL_OBJS)
+	    -o $@ $(SATL_HASWELL_OBJS) $(ZLIB_OBJS)
 
 # NO -march, deliberately, and it is the one binary here for which that is a
 # correctness requirement rather than a default. This is the program that runs
