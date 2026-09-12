@@ -5373,11 +5373,19 @@ Worked out beside it, *not yet confirmed by the author*:
   `1 14 1 1 10` and `limit` `1 14 1 1 10 1`, **not minted here**; numbers are
   given in the order they are first built. **Its full shape** (the author, same
   day): **`arguments.network.limit(number, unit)`, the unit optional — `"kb"`,
-  `"mb"` or `"gb"`, megabytes when it is left out.** The unit is a WORD at the
-  call site, as `sort("down")` and `file.open(path, "read")` are. Because a
-  shape is keyed by word + ARITY (§1.3), **`limit(number)` and
-  `limit(number, unit)` are two numbered paths**, expected at `1 14 1 1 10 1`
-  and `1 14 1 1 10 2`. *My reading, unconfirmed: the units are binary —
+  `"mb"` or `"gb"`, megabytes when it is left out.** **`kb`, `mb` and `gb` are
+  OPTIONS** (the author, same day), in WORD_NUMBERS §1.5's sense — sibling rows
+  spelled `limit_kb`, `limit_mb`, `limit_gb`, as `sort` has `sort_down`. **What
+  the rules as built make of that, checked 2026-09-12:** the fold reaches
+  argument 0 ONLY (WORD_NUMBERS §2.2's `file.open(path, mode)` row), and the
+  unit is argument 1 — so as things stand it is checked at run time, as
+  `file.open`'s mode is, and folding it means extending the fold past argument
+  0, which is a build decision for M27. **And M16's fallback cannot carry
+  `kb` or `gb`:** a missing `<word>_<option>` shape retries the bare word,
+  which is only correct when the option means the bare word — true of `mb`,
+  false of the other two, so each gets its own shape row (the exact risk
+  WORD_NUMBERS §1.5 writes down). Paths expected under `1 14 1 1 10`, not
+  minted. *My reading, unconfirmed: the units are binary —
   1 gb = 1024 mb — the same reading as 128 GB = 131072 MB; and a unit word
   outside the three is refused by name.* **The number goes in BOTH ways** (the
   author, same day): `limit("900")` and `limit(900)` mean the same thing. The
