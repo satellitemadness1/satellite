@@ -451,6 +451,26 @@ SAT_CODE(518, RESOLVE_NO_SUCH_MEMBER, SAT_ERROR,
 // comment says a path the numbering cannot account for is "M7's to refuse with
 // M5's did-you-mean over the node the segment failed under", and the cache's
 // job in the meantime is to hand the tree over unchanged. This is that refusal.
+// A SUPERCLASS THAT IS NOT ONE -- M26. `satellite.spacesuit a(b)` where `b` is
+// a capsule, a global, or nothing at all. It is separate from S0522's "not a
+// type the language has" because the position is narrower than a type: only a
+// spacesuit the SAME FILE declares can stand there, so the candidate list is
+// short and nameable, and no `satellite.` path is ever right.
+SAT_CODE(519, RESOLVE_SUIT_NO_SUCH_SUPER, SAT_ERROR,
+         "`{1}` is not a spacesuit this file declares, so `{2}` has nothing to "
+         "extend -- the name in the brackets is another `satellite.spacesuit` "
+         "in this file")
+
+// A SUIT THAT EXTENDS ITSELF, DIRECTLY OR AROUND A CHAIN -- M26, and it is
+// refused rather than broken silently. The M6 draft's pass 2 "breaks
+// inheritance cycles", which is a repair; this language does not repair a
+// program it can name the mistake in. A cycle has no field layout at all --
+// each suit would have to hold the other whole -- so there is nothing to build
+// and nothing to guess at.
+SAT_CODE(520, RESOLVE_SUIT_INHERITANCE_CYCLE, SAT_ERROR,
+         "`{1}` extends itself -- following the brackets from `{1}` leads back "
+         "to `{1}`, and a spacesuit cannot hold a copy of itself")
+
 SAT_CODE(521, RESOLVE_NO_SUCH_WORD, SAT_ERROR,
          "`{1}` is not a word the language has under {2}")
 
@@ -769,6 +789,15 @@ SAT_CODE(731, EVAL_NO_SUCH_ENTRY, SAT_ERROR,
          "the arguments object holds nothing under {1} -- `keys()` lists every "
          "name it answers to and `has(k)` is the question that answers false "
          "instead of stopping")
+
+// A NUMBER WITH NO BIT PATTERN -- 2026-09-12. A `BitRun` has "no sign and no
+// radix field" (satellite_bits/bits.hpp), so a negative number and a fraction
+// are not narrow cases of a bit run, they are outside the type. Padding a
+// negative into two's complement would invent a width the program never wrote,
+// which is the same objection `to_hex` already makes about three bits.
+SAT_CODE(733, EVAL_NO_BIT_PATTERN, SAT_ERROR,
+         "{1} has no bits -- a bit run holds a whole number of zero or more, "
+         "and this one is {2}")
 
 SAT_CODE(790, NOTE_EVAL_DEEPEST_CALL, SAT_NOTE,
          "the deepest call is here, and the {1} frames under it are not printed")

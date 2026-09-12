@@ -227,22 +227,71 @@ struct Suit {
     std::string_view name;
     NodeIndex node = kNoNode;
 
+    // THE SUIT THIS ONE EXTENDS, AND HOW MUCH OF `fields` AND `methods` CAME
+    // FROM IT -- M26. A child's layout is its parent's layout followed by its
+    // own, which is the whole of what inheritance costs here: because the
+    // parent's fields keep the INDICES THEY HAD, every op the parent's methods
+    // already compiled reads the right slot of a child object without knowing
+    // one exists. That is the author's sentence -- "a spacesuit can hold a copy
+    // of its superclass" -- as a memory layout rather than as a lookup.
+    //
+    // AND THE TWO COUNTS ARE WHAT TELL A SUIT'S OWN MEMBERS FROM ITS BORROWED
+    // ONES, which two passes need and neither can recompute. resolve's pass 4
+    // and the compiler's pass 4 both walk every suit's method list, and an
+    // inherited method must be resolved and compiled ONCE -- against the suit
+    // that declared it, whose layout its field indices belong to. Walking from
+    // `inherited_methods` is how each pass skips what it has already done.
+    words::PathId parent = words::kNoPath;
+    uint32_t inherited = 0;
+    uint32_t inherited_methods = 0;
+
+    // The inherited members first, then this suit's own. See above.
     std::vector<Field> fields;
     std::vector<Method> methods;
 
+    // THE SEARCH RUNS BACKWARDS, AND THAT IS THE SHADOWING RULE -- M26.
+    // The inherited members sit at the front, so the LAST match is the
+    // most-derived one: a child that declares a field its parent also declares
+    // gets its own, and the parent's methods go on reading the parent's copy at
+    // the index they always used. All eleven spacesuits in the author's own
+    // infinity_data_main.satl declare `spacesuit_name`, two of them in a
+    // parent-and-child pair, so a forwards search would have silently handed
+    // the child its parent's name -- which is the one outcome worse than a
+    // refusal, because the program keeps running and prints the wrong thing.
     const Field *field_named(std::string_view spelling) const
     {
-        for (const Field &at : fields)
-            if (at.name == spelling)
-                return &at;
+        for (size_t i = fields.size(); i > 0; i--)
+            if (fields[i - 1].name == spelling)
+                return &fields[i - 1];
         return nullptr;
     }
 
     const Method *method_named(std::string_view spelling) const
     {
-        for (const Method &at : methods)
-            if (at.name == spelling)
-                return &at;
+        for (size_t i = methods.size(); i > 0; i--)
+            if (methods[i - 1].name == spelling)
+                return &methods[i - 1];
+        return nullptr;
+    }
+
+    // WHAT THIS SUIT DECLARED ITSELF, which is the question the two
+    // "declared twice" checks ask and the only one they may ask. Inheriting a
+    // name is not declaring it twice -- it is the shadowing the search above
+    // exists to resolve -- so a collision is looked for among a suit's OWN
+    // members and never among the ones it was handed.
+    const Field *own_field_named(std::string_view spelling) const
+    {
+        for (size_t i = fields.size(); i > inherited; i--)
+            if (fields[i - 1].name == spelling)
+                return &fields[i - 1];
+        return nullptr;
+    }
+
+    const Method *own_method_named(std::string_view spelling) const
+    {
+        for (size_t i = methods.size(); i > inherited_methods; i--)
+            if (methods[i - 1].name == spelling)
+                return &methods[i - 1];
         return nullptr;
     }
 };

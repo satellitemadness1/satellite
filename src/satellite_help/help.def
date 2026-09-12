@@ -1286,6 +1286,62 @@ SAT_HELP(VARIABLE_STRING_RESOLVED, VARIABLE_STRING_RESOLVED,
          "satellite.console.display(said)"
          )
 
+// 1 6 1 18  satellite.variable.string(x)
+SAT_HELP(VARIABLE_STRING_OF, VARIABLE_STRING,
+         "`string(x)` -- the value as text, written around it.\n"
+         "\n"
+         "This is the same answer `x.to_string()` gives. It is offered as a word you\n"
+         "wrap around a value so that a line reads the way you would say it."
+         ,
+         "satellite.variable.number count = 42\n"
+         "satellite.console.display(string(count))"
+         )
+
+// 1 6 1 19  satellite.variable.string.string
+SAT_HELP(VARIABLE_STRING_STRING, VARIABLE_STRING,
+         "`.string()` on a string answers the same string.\n"
+         "\n"
+         "It is here so the four conversions exist on every kind. A line that converts\n"
+         "a value it was handed does not have to ask what kind it already was."
+         ,
+         "satellite.variable.string name = \"Ada\"\n"
+         "satellite.console.display(name.string())"
+         )
+
+// 1 6 1 20  satellite.variable.string.number
+SAT_HELP(VARIABLE_STRING_NUMBER, VARIABLE_STRING,
+         "The text read as a number.\n"
+         "\n"
+         "The whole string has to be a number and nothing else -- no spaces around it,\n"
+         "no words after it. `.trim()` is one dot away if the text has edges."
+         ,
+         "satellite.variable.string written = \"42\"\n"
+         "satellite.variable.number read = written.number()\n"
+         "satellite.console.display(read)"
+         )
+
+// 1 6 1 21  satellite.variable.string.binary
+SAT_HELP(VARIABLE_STRING_BINARY, VARIABLE_STRING,
+         "The text as bits.\n"
+         "\n"
+         "If the text is nothing but `0` and `1`, those are the bits. Anything else is\n"
+         "read as the bytes of the characters -- eight bits each."
+         ,
+         "satellite.variable.string written = \"1010\"\n"
+         "satellite.console.display(written.binary())"
+         )
+
+// 1 6 1 22  satellite.variable.string.hex
+SAT_HELP(VARIABLE_STRING_HEX, VARIABLE_STRING,
+         "The text as hex.\n"
+         "\n"
+         "The same bits `.binary()` answers, four at a time. A hex run is always a\n"
+         "whole number of digits, so the bits are padded on the left to reach four."
+         ,
+         "satellite.variable.string written = \"1010\"\n"
+         "satellite.console.display(written.hex())"
+         )
+
 // 1 6 2  satellite.variable.file
 SAT_HELP(VARIABLE_FILE, VARIABLE_FILE,
          "A file on disk, held as a value you can read from and write to. It is a\n"
@@ -1723,6 +1779,63 @@ SAT_HELP(VARIABLE_NUMBER_DIGITS, VARIABLE_NUMBER_DIGITS,
          "satellite.console.display(big.digits())"
          )
 
+// 1 6 4 16  satellite.variable.number(x)
+SAT_HELP(VARIABLE_NUMBER_OF, VARIABLE_NUMBER,
+         "`number(x)` -- the value as a number, written around it.\n"
+         "\n"
+         "A string is read the way a written number is read; a bit run and a hex run\n"
+         "answer what they mean. A float is refused, because dropping a fraction is a\n"
+         "rounding and only you know which one."
+         ,
+         "satellite.variable.string written = \"42\"\n"
+         "satellite.console.display(number(written))"
+         )
+
+// 1 6 4 17  satellite.variable.number.string
+SAT_HELP(VARIABLE_NUMBER_STRING, VARIABLE_NUMBER,
+         "The number as text.\n"
+         "\n"
+         "The same answer `.to_string()` gives, under the name the other three\n"
+         "conversions use."
+         ,
+         "satellite.variable.number count = 42\n"
+         "satellite.console.display(count.string())"
+         )
+
+// 1 6 4 18  satellite.variable.number.number
+SAT_HELP(VARIABLE_NUMBER_NUMBER, VARIABLE_NUMBER,
+         "`.number()` on a number answers the same number.\n"
+         "\n"
+         "It is here so a line that converts a value does not have to know what kind\n"
+         "the value already was."
+         ,
+         "satellite.variable.number count = 42\n"
+         "satellite.console.display(count.number())"
+         )
+
+// 1 6 4 19  satellite.variable.number.binary
+SAT_HELP(VARIABLE_NUMBER_BINARY, VARIABLE_NUMBER,
+         "The number as bits, shortest first.\n"
+         "\n"
+         "No leading zero is added, because a leading zero is a bit you did not write.\n"
+         "A negative number and a fraction have no bit pattern and are refused."
+         ,
+         "satellite.variable.number count = 42\n"
+         "satellite.console.display(count.binary())"
+         )
+
+// 1 6 4 20  satellite.variable.number.hex
+SAT_HELP(VARIABLE_NUMBER_HEX, VARIABLE_NUMBER,
+         "The number as hex.\n"
+         "\n"
+         "The same value as `.binary()`, four bits to a digit. A hex run is always a\n"
+         "whole number of digits, so this one is padded to eight bits where the bit run\n"
+         "is six."
+         ,
+         "satellite.variable.number count = 42\n"
+         "satellite.console.display(count.hex())"
+         )
+
 // 1 6 5  satellite.variable.binary
 SAT_HELP(VARIABLE_BINARY, VARIABLE_BINARY,
          "A run of bits, written `b1010`. **The width is part of the value**, so\n"
@@ -1830,6 +1943,55 @@ SAT_HELP(VARIABLE_BINARY_TO_HEX, VARIABLE_BINARY_TO_HEX,
          "satellite.console.display(bits.to_hex())"
          )
 
+// 1 6 5 7  satellite.variable.binary(x)
+SAT_HELP(VARIABLE_BINARY_OF, VARIABLE_BINARY,
+         "`binary(x)` -- the value as bits, written around it.\n"
+         "\n"
+         "A number answers the bits it is made of. A hex run answers the bits it\n"
+         "already holds. A string answers its digits if they are all `0` and `1`, and\n"
+         "otherwise the bytes of its characters."
+         ,
+         "satellite.variable.number count = 42\n"
+         "satellite.console.display(binary(count))"
+         )
+
+// 1 6 5 8  satellite.variable.binary.string
+SAT_HELP(VARIABLE_BINARY_STRING, VARIABLE_BINARY,
+         "The bits as text -- the characters `display` would print, `b` and all."
+         ,
+         "satellite.variable.binary flags = b1010\n"
+         "satellite.console.display(flags.string())"
+         )
+
+// 1 6 5 9  satellite.variable.binary.number
+SAT_HELP(VARIABLE_BINARY_NUMBER, VARIABLE_BINARY,
+         "What the bits mean, as a number.\n"
+         "\n"
+         "The same answer `.to_number()` gives. `b1010` is ten."
+         ,
+         "satellite.variable.binary flags = b1010\n"
+         "satellite.console.display(flags.number())"
+         )
+
+// 1 6 5 10  satellite.variable.binary.binary
+SAT_HELP(VARIABLE_BINARY_BINARY, VARIABLE_BINARY,
+         "`.binary()` on a bit run answers the same bit run, width and all."
+         ,
+         "satellite.variable.binary flags = b1010\n"
+         "satellite.console.display(flags.binary())"
+         )
+
+// 1 6 5 11  satellite.variable.binary.hex
+SAT_HELP(VARIABLE_BINARY_HEX, VARIABLE_BINARY,
+         "The bits as hex, four at a time.\n"
+         "\n"
+         "A hex digit is exactly four bits, so nothing rounds. A run whose width is not\n"
+         "a multiple of four is padded on the left to reach one."
+         ,
+         "satellite.variable.binary flags = b1010\n"
+         "satellite.console.display(flags.hex())"
+         )
+
 // 1 6 6  satellite.variable.bool
 SAT_HELP(VARIABLE_BOOL, VARIABLE_BOOL,
          "True or false, and nothing else. It is the only type a condition will\n"
@@ -1909,6 +2071,51 @@ SAT_HELP(VARIABLE_FLOAT_TO_STRING, VARIABLE_FLOAT,
          "satellite.variable.float activation = 0.4995225\n"
          "satellite.variable.string line = activation.to_string()\n"
          "satellite.console.display(\"wrote \" + line)"
+         )
+
+// 1 6 10 2  satellite.variable.float.string
+SAT_HELP(VARIABLE_FLOAT_STRING, VARIABLE_FLOAT,
+         "The float as text.\n"
+         "\n"
+         "A float always prints with a point -- `4.0` and not `4` -- so a reader of the\n"
+         "output can tell which kind answered."
+         ,
+         "satellite.variable.float ratio = 1.5\n"
+         "satellite.console.display(ratio.string())"
+         )
+
+// 1 6 10 3  satellite.variable.float.number
+SAT_HELP(VARIABLE_FLOAT_NUMBER, VARIABLE_FLOAT,
+         "The float as a number, exactly.\n"
+         "\n"
+         "Nothing is lost and nothing is rounded: a number in satellite is a decimal, so\n"
+         "it holds the fraction the float held. What the two kinds differ in is how much\n"
+         "precision the arithmetic keeps, not what they can hold."
+         ,
+         "satellite.variable.float ratio = 1.5\n"
+         "satellite.variable.number same = ratio.number()\n"
+         "satellite.console.display(same)"
+         )
+
+// 1 6 10 4  satellite.variable.float.binary
+SAT_HELP(VARIABLE_FLOAT_BINARY, VARIABLE_FLOAT,
+         "The float as bits, when it is whole.\n"
+         "\n"
+         "A fraction has no bit pattern -- a bit run holds a whole number of zero or\n"
+         "more -- so a float with a fraction is refused and a whole one answers."
+         ,
+         "satellite.variable.float count = 42\n"
+         "satellite.console.display(count.binary())"
+         )
+
+// 1 6 10 5  satellite.variable.float.hex
+SAT_HELP(VARIABLE_FLOAT_HEX, VARIABLE_FLOAT,
+         "The float as hex, when it is whole.\n"
+         "\n"
+         "The same bits `.binary()` answers, four to a digit."
+         ,
+         "satellite.variable.float count = 42\n"
+         "satellite.console.display(count.hex())"
          )
 
 // 1 6 11  satellite.variable.hex
@@ -2019,6 +2226,55 @@ SAT_HELP(VARIABLE_HEX_TO_BINARY, VARIABLE_HEX_TO_BINARY,
          ,
          "satellite.variable.hex colour = x00FF\n"
          "satellite.console.display(colour.to_binary())"
+         )
+
+// 1 6 11 6  satellite.variable.hex(x)
+SAT_HELP(VARIABLE_HEX_OF, VARIABLE_HEX,
+         "`hex(x)` -- the value as hex, written around it.\n"
+         "\n"
+         "The same bits `binary(x)` answers, four to a digit, padded on the left to a\n"
+         "whole number of digits."
+         ,
+         "satellite.variable.number count = 42\n"
+         "satellite.console.display(hex(count))"
+         )
+
+// 1 6 11 7  satellite.variable.hex.string
+SAT_HELP(VARIABLE_HEX_STRING, VARIABLE_HEX,
+         "The hex as text -- the digits with their `x`, written the way the language\n"
+         "writes them back."
+         ,
+         "satellite.variable.hex mask = x00FF\n"
+         "satellite.console.display(mask.string())"
+         )
+
+// 1 6 11 8  satellite.variable.hex.number
+SAT_HELP(VARIABLE_HEX_NUMBER, VARIABLE_HEX,
+         "What the hex means, as a number.\n"
+         "\n"
+         "The same answer `.to_number()` gives. `x00FF` is 255."
+         ,
+         "satellite.variable.hex mask = x00FF\n"
+         "satellite.console.display(mask.number())"
+         )
+
+// 1 6 11 9  satellite.variable.hex.binary
+SAT_HELP(VARIABLE_HEX_BINARY, VARIABLE_HEX,
+         "The hex as bits.\n"
+         "\n"
+         "A hex value is stored as bits already, so this never rounds and never fails --\n"
+         "the width is always a multiple of four."
+         ,
+         "satellite.variable.hex mask = x00FF\n"
+         "satellite.console.display(mask.binary())"
+         )
+
+// 1 6 11 10  satellite.variable.hex.hex
+SAT_HELP(VARIABLE_HEX_HEX, VARIABLE_HEX,
+         "`.hex()` on a hex run answers the same hex run, width and all."
+         ,
+         "satellite.variable.hex mask = x00FF\n"
+         "satellite.console.display(mask.hex())"
          )
 
 // 1 6 12  satellite.variable.network

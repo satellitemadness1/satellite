@@ -74,6 +74,9 @@ void install_number_methods();
 void install_variant_methods();
 void install_bits_methods();
 void install_hex_methods();
+
+// The four forced conversions, at both spellings -- conversions.cpp.
+void install_conversions();
 void install_float_methods();
 
 } // namespace satellite::scalars

@@ -276,10 +276,19 @@ Compiled Compiler::compile()
     // `inside_` IS SET SO THE ARMS KNOW WHICH LAYOUT, and it is the compiler's
     // half of resolve's own member of the same name. Both exist because a
     // field index means nothing without the suit it indexes.
+    //
+    // AND IT STARTS AT `inherited_methods`, WHICH IS M26's INHERITANCE PAYING
+    // FOR ITSELF EXACTLY ONCE. A child's method table begins with a copy of its
+    // parent's, so walking all of it would compile the parent's bodies a second
+    // time with `inside_` pointing at the CHILD -- overwriting `target.body`
+    // with ops resolved against a different layout. The parent's methods are
+    // already right for a child object without being recompiled, because a
+    // child's fields sit AFTER its parent's and the parent's indices do not
+    // move.
     for (const resolve::Suit &suit : resolved_.suits) {
         inside_ = &suit;
-        for (const resolve::Method &method : suit.methods)
-            capsule(method.node);
+        for (size_t m = suit.inherited_methods; m < suit.methods.size(); m++)
+            capsule(suit.methods[m].node);
         inside_ = nullptr;
     }
 

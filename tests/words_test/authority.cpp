@@ -212,8 +212,25 @@ void section_authority()
     // gained a `(0)` the way `binary`'s and `hex`'s did when theirs arrived.
     // All four of these numbers moved together and none of them alone, which
     // is the only reading of this block that means anything.
-    check(rows.size() == 302,
-          "§2.2 should hold 302 rows, found " + std::to_string(rows.size()));
+    //
+    // AND 302 UNTIL 2026-09-12, WHEN M26 APPENDED TWENTY-FOUR -- the author's
+    // conversion set, §2.8. The row count and the number count move by the same
+    // 24 and the other two do not move at all, which is the shape this block
+    // exists to make readable: every one of the twenty-four is a LEAF carrying
+    // its own number, so there is no alias among them (nothing was given a
+    // second spelling under one number -- `string(x)` and `.string()` are two
+    // NUMBERS answering alike) and no `(0)` marker (no type gained its first
+    // child here; `float` gained one at M21 and the other four had theirs
+    // already).
+    //
+    // THIS CHECK IS WHAT CAUGHT THE ROWS BEING MISSING. words.def was appended
+    // and WORD_NUMBERS.md §2.2 was not, and `make test` stopped with "words.def
+    // declares 366 nodes and §2.2 accounts for 342 -- a row the authority does
+    // not have renumbers nothing". §1's opening rule is that WORD_NUMBERS.md is
+    // the authority over the numbering, and this suite is the only thing in the
+    // tree that makes that a fact rather than a claim.
+    check(rows.size() == 326,
+          "§2.2 should hold 326 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -222,8 +239,8 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 298,
-          "§2.2 should carry 298 distinct numbers, found " +
+    check(numbers.size() == 322,
+          "§2.2 should carry 322 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 4, "§2.2 should declare exactly 4 aliases, found " +
                             std::to_string(aliases));

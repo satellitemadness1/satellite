@@ -248,5 +248,75 @@
     "query": "satellite.help(satellite.variable.float)",
     "prose": "The value as text, exactly as `display` would print it.\n\nThis is the float's **only** method, and it is here because a value you can\nsee on the screen and cannot put into a string is a value you cannot write\nto a file. Adding a float to a string does not work and neither does\nhanding one to `write_line` -- this is how you get from the number to the\nline.\n\nReading one back is `to_number` on the string.",
     "example": "satellite.variable.float activation = 0.4995225\nsatellite.variable.string line = activation.to_string()\nsatellite.console.display(\"wrote \" + line)"
+  },
+  "1 6 5 7": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "`binary(x)` -- the value as bits, written around it.\n\nA number answers the bits it is made of. A hex run answers the bits it\nalready holds. A string answers its digits if they are all `0` and `1`, and\notherwise the bytes of its characters.",
+    "example": "satellite.variable.number count = 42\nsatellite.console.display(binary(count))"
+  },
+  "1 6 5 8": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "The bits as text -- the characters `display` would print, `b` and all.",
+    "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.string())"
+  },
+  "1 6 5 9": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "What the bits mean, as a number.\n\nThe same answer `.to_number()` gives. `b1010` is ten.",
+    "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.number())"
+  },
+  "1 6 5 10": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "`.binary()` on a bit run answers the same bit run, width and all.",
+    "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.binary())"
+  },
+  "1 6 5 11": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "The bits as hex, four at a time.\n\nA hex digit is exactly four bits, so nothing rounds. A run whose width is not\na multiple of four is padded on the left to reach one.",
+    "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.hex())"
+  },
+  "1 6 10 2": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The float as text.\n\nA float always prints with a point -- `4.0` and not `4` -- so a reader of the\noutput can tell which kind answered.",
+    "example": "satellite.variable.float ratio = 1.5\nsatellite.console.display(ratio.string())"
+  },
+  "1 6 11 6": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "`hex(x)` -- the value as hex, written around it.\n\nThe same bits `binary(x)` answers, four to a digit, padded on the left to a\nwhole number of digits.",
+    "example": "satellite.variable.number count = 42\nsatellite.console.display(hex(count))"
+  },
+  "1 6 11 7": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "The hex as text -- the digits with their `x`, written the way the language\nwrites them back.",
+    "example": "satellite.variable.hex mask = x00FF\nsatellite.console.display(mask.string())"
+  },
+  "1 6 11 8": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "What the hex means, as a number.\n\nThe same answer `.to_number()` gives. `x00FF` is 255.",
+    "example": "satellite.variable.hex mask = x00FF\nsatellite.console.display(mask.number())"
+  },
+  "1 6 11 9": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "The hex as bits.\n\nA hex value is stored as bits already, so this never rounds and never fails --\nthe width is always a multiple of four.",
+    "example": "satellite.variable.hex mask = x00FF\nsatellite.console.display(mask.binary())"
+  },
+  "1 6 11 10": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "`.hex()` on a hex run answers the same hex run, width and all.",
+    "example": "satellite.variable.hex mask = x00FF\nsatellite.console.display(mask.hex())"
+  },
+  "1 6 10 3": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The float as a number, exactly.\n\nNothing is lost and nothing is rounded: a number in satellite is a decimal, so\nit holds the fraction the float held. What the two kinds differ in is how much\nprecision the arithmetic keeps, not what they can hold.",
+    "example": "satellite.variable.float ratio = 1.5\nsatellite.variable.number same = ratio.number()\nsatellite.console.display(same)"
+  },
+  "1 6 10 4": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The float as bits, when it is whole.\n\nA fraction has no bit pattern -- a bit run holds a whole number of zero or\nmore -- so a float with a fraction is refused and a whole one answers.",
+    "example": "satellite.variable.float count = 42\nsatellite.console.display(count.binary())"
+  },
+  "1 6 10 5": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The float as hex, when it is whole.\n\nThe same bits `.binary()` answers, four to a digit.",
+    "example": "satellite.variable.float count = 42\nsatellite.console.display(count.hex())"
   }
 }

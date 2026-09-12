@@ -39,6 +39,7 @@ private:
 
     void collect_capsules();
     void note_spacesuits();
+    void link_supers();
 
     // One suit's members, flattened across its sections -- M26. Keeps its own
     // stack, because a section may hold a section and the nesting is the user's
@@ -175,6 +176,7 @@ private:
     const Binding *lookup(std::string_view spelling) const;
     const Capsule *capsule_named(std::string_view spelling) const;
     const Capsule *suit_named(std::string_view spelling) const;
+    words::PathId conversion_named(std::string_view spelling) const;
 
     void open_scope() { scopes_.push_back(bindings_.size()); }
     void close_scope();

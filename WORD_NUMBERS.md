@@ -448,6 +448,11 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.string.clear` | `1 6 1 15` | assigned |
 | `satellite.variable.string.at(n)` | `1 6 1 16` | assigned |
 | `satellite.variable.string.resolved` | `1 6 1 17` | assigned — the string with its live codes answered by the machine; the one method that crosses §5's render/store boundary, minted at M20 so the six live values can be read as well as printed |
+| `satellite.variable.string(x)` | `1 6 1 18` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the bare spelling, written around a value |
+| `satellite.variable.string.string` | `1 6 1 19` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — a string's own text, so the four names exist on every kind |
+| `satellite.variable.string.number` | `1 6 1 20` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_number` `1 6 1 13` |
+| `satellite.variable.string.binary` | `1 6 1 21` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the digits when the text is all `0` and `1`, otherwise the bytes |
+| `satellite.variable.string.hex` | `1 6 1 22` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same bits as `.binary()`, four to a digit |
 | `satellite.variable.file` | `1 6 2 (0)` |  |
 | `satellite.variable.file.new` | `1 6 2 1` | assigned — the dispatch row §6.4 q2 describes; a program writes `satellite.file.new(path)` `1 8 1`. M19 |
 | `satellite.variable.file.open` | `1 6 2 2` | assigned — reopens a handle that was closed or whose open failed; NOT a second `1 8 2`. M19 |
@@ -477,6 +482,11 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.number.truncate(a)` | `1 6 4 13` | assigned — on a float this is just its left half |
 | `satellite.variable.number.sqrt(a)` | `1 6 4 14` | assigned — irrational in general, so it rounds |
 | `satellite.variable.number.digits` | `1 6 4 15` | appended 2026-08-31 — v1 exposes `.digits()` and this section had no row for it |
+| `satellite.variable.number(x)` | `1 6 4 16` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the bare spelling |
+| `satellite.variable.number.string` | `1 6 4 17` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_string` `1 6 4 6` |
+| `satellite.variable.number.number` | `1 6 4 18` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — a number's own value |
+| `satellite.variable.number.binary` | `1 6 4 19` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the bits, shortest first; a negative or fractional value is S0733 |
+| `satellite.variable.number.hex` | `1 6 4 20` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same value, padded left to a whole digit |
 | `satellite.variable.binary` | `1 6 5 (0)` | assigned; **built at M19.5** — the `(0)` is new with its children below |
 | `satellite.variable.binary.to_number` | `1 6 5 1` | assigned 2026-09-08 — what the bits are WORTH; `b1010.to_number()` is 10 |
 | `satellite.variable.binary.width` | `1 6 5 2` | assigned 2026-09-08 — how many bits were written; the one row that reads DESIGN §8.5's width |
@@ -484,18 +494,32 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.binary.as_number` | `1 6 5 4` | assigned 2026-09-08 — the digits read as DECIMAL; `b1010.as_number()` is 1010 |
 | `satellite.variable.binary.digits` | `1 6 5 5` | assigned 2026-09-09 — how many digits were written; always `width()` here, and not on hex |
 | `satellite.variable.binary.to_hex` | `1 6 5 6` | assigned 2026-09-09 — the same bits as hex; REFUSES a width that is not a multiple of 4 |
+| `satellite.variable.binary(x)` | `1 6 5 7` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the bare spelling |
+| `satellite.variable.binary.string` | `1 6 5 8` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_string` `1 6 5 3` |
+| `satellite.variable.binary.number` | `1 6 5 9` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_number` `1 6 5 1` |
+| `satellite.variable.binary.binary` | `1 6 5 10` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the run itself, width and all |
+| `satellite.variable.binary.hex` | `1 6 5 11` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_hex` `1 6 5 6` |
 | `satellite.variable.bool` | `1 6 6` | assigned |
 | `satellite.variable.date` | `1 6 7` | assigned |
 | `satellite.variable.duration` | `1 6 8` | assigned |
 | `satellite.variable.expression` | `1 6 9` | assigned |
 | `satellite.variable.float` | `1 6 10 (0)` | assigned; **built at M15** — the `(0)` is new with its child below, `binary`'s and `hex`'s precedent |
 | `satellite.variable.float.to_string` | `1 6 10 1` | assigned — **minted at M21**, and it is the type's FIRST method. `Float::to_string()` already existed in C++ and `satellite_value/render.cpp` was its only caller, so a float could be displayed and could not be turned into text: no `to_string`, `"x " + a` refused by S0711, `write_line(a)` by S0713. `Sky::save` writes 164 doubles into a text file and was unwritable for that reason while `Sky::load` worked, because `"0.4995225".to_number()` answers. Renders at the value's own precision, which is what `display` shows |
+| `satellite.variable.float.string` | `1 6 10 2` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_string` `1 6 10 1` |
+| `satellite.variable.float.number` | `1 6 10 3` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — EXACT, because a number is a decimal: `Float::to_number` is *"the one direction of conversion that needs no rounding rule"* |
+| `satellite.variable.float.binary` | `1 6 10 4` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the bits when the value is whole; a fraction is S0733 |
+| `satellite.variable.float.hex` | `1 6 10 5` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — as `.binary()`, four bits to a digit |
 | `satellite.variable.hex` | `1 6 11 (0)` | assigned; also spelled `hexadecimal`; **built at M19.5** — the `(0)` is new with its children below. **No `as_number`** — binary's `1 6 5 4` reads its characters as a decimal, which `00FF` has no reading as; the row existed for part of 2026-09-09 and the author dropped it, so `digits` and `to_binary` took 4 and 5. Both were minted the same day and unseen outside this tree, which is the only condition §1.2's *never renumber* allows the shift under |
 | `satellite.variable.hex.to_number` | `1 6 11 1` | assigned 2026-09-09 — what the digits are WORTH; `x00FF.to_number()` is 255 |
 | `satellite.variable.hex.width` | `1 6 11 2` | assigned 2026-09-09 — how many BITS; `x00FF.width()` is 16, which keeps `write(x)`'s multiple-of-8 rule one rule |
 | `satellite.variable.hex.to_string` | `1 6 11 3` | assigned 2026-09-09 — the characters `display` prints, the leading `x` included |
 | `satellite.variable.hex.digits` | `1 6 11 4` | assigned 2026-09-09 — how many digits were written; `x00FF.digits()` is 4 |
 | `satellite.variable.hex.to_binary` | `1 6 11 5` | assigned 2026-09-09 — the same bits as binary; never refuses, a digit being exactly 4 bits |
+| `satellite.variable.hex(x)` | `1 6 11 6` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the bare spelling |
+| `satellite.variable.hex.string` | `1 6 11 7` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_string` `1 6 11 3` |
+| `satellite.variable.hex.number` | `1 6 11 8` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_number` `1 6 11 1` |
+| `satellite.variable.hex.binary` | `1 6 11 9` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the same answer as `to_binary` `1 6 11 5` |
+| `satellite.variable.hex.hex` | `1 6 11 10` | assigned 2026-09-12 — one of the conversion set the author asked for mid-M26: *"give them the `string(some_var)` `number(some_var)` `binary(some_var)` that will force that type"*, and *"give them the option of `some_var.to_string()` and `some_var.string()`"*. See §2.8 — the run itself, width and all |
 | `satellite.variable.network` | `1 6 12` | assigned |
 | `satellite.variable.thread` | `1 6 13 (0)` | assigned; **built at M23** — the `(0)` is new with its children below. A REFERENCE TYPE, which is `satellite.variable.file`'s row read across: two names for one thread are one thread, so `start()` through either reaches the same `pthread_t`. It gets NO `SAT_BUILT` row in `words.def` because its two children have handlers and `satellite_help/built.cpp` derives a parent from them |
 | `satellite.variable.thread.start()` | `1 6 13 1` | assigned 2026-08-28; **built at M23** — makes one fresh OS thread and comes straight back. Answers NOTHING, because the capsule's answer does not exist yet; S1402 refuses a second start, since a thread runs once |
@@ -840,6 +864,57 @@ expect `home` to.
 
 **Where the setting lives is not a numbering question and §2.2 takes no view.**
 MILESTONES/M22.md records what it is stored in and what happens when it is off.
+
+### 2.8 Twenty-four numbers assigned 2026-09-12, and by whom
+
+**The author, directly, during M26**, and the request arrived in three pieces
+over one conversation. First the forced conversions: *"then also give them the
+`string(some_var)` `number(some_var)` `binary(some_var)` that will force that
+type"*. Then the selector spelling: *"give them the option of
+`some_var.to_string()` and `some_var.string()` gives a string of some_var, and
+give `.number()` and `.binary()` and `.hex()` and `hex(some_var)`"*. And then,
+asked whether the bare form should be written out as
+`satellite.variable.string(x)`: *"just `string(some_var)` is good enough I
+guess, as we are not using this for anything else"*, and **"single word"**.
+
+**Four names, two spellings each, on five types — and the numbers hang under the
+TYPES rather than anywhere new.** §1.3 says a one-argument call shape is a child
+of the node it is called on, which `satellite.help(x)` `1 19 1` already
+demonstrates, so `satellite.variable.string(x)` is `1 6 1 18` — the next free
+child of `string`. **The bare spelling a program writes is a RECOGNITION, not a
+number of its own**: `string(n)` answers `1 6 1 18` because the resolver knows
+the word, which is how §7.7's `arguments` reaches
+`satellite.container.arguments` and what PLAN §8 asks of every bare identifier —
+*the language recognises a name rather than introducing one*. This section
+therefore mints twenty-four numbers and **no new parents**.
+
+**Nothing was renumbered and no `to_` row was retired**, which §1.2 requires and
+which is worth saying because the set overlaps them heavily: `to_string`
+`1 6 4 6` and `.string()` `1 6 4 17` are two rows answering identically on
+purpose. The `to_` names were minted one at a time as each type needed one, so
+they are a set with holes — hex never got `as_number`, binary never got
+`to_binary`, float had only `to_string` — and a program that just wants a value
+in another radix should not have to know which milestone minted what.
+
+**A float got all four, and the first cut of this section gave it one.** The row
+was written saying a float may only be rendered, because reading one as a whole
+number "loses the fraction" — and that is false in this language.
+`satellite.variable.number` is a **decimal** bignum: `n = 1.5` holds 1.5 and
+`n + 0.25` is 1.75, measured before this paragraph was rewritten.
+`satellite_float.hpp` says the same from its own side, calling `to_number`
+*"exact, because L + R is a finite decimal by construction … the one direction
+of conversion that needs no rounding rule."* What a fraction genuinely has no
+form for is **bits**, so `f.binary()` refuses with S0733 and `f.number()`
+answers — the obstacle is the bit run's shape, which is true, and not the
+number's precision, which was not.
+
+**`1 6 10 3`, `1 6 10 4` and `1 6 10 5` exist even though two of them usually
+refuse, and that is the point of having them.** Leaving them out made
+`f.number()` answer S0723 — *"`number` is not a question a float answers"* —
+which is the numbering saying *no such word* about a word every other scalar
+has. The mistake is not that the name is unknown; it is what the conversion
+would have to do. A row that refuses in its own sentence is worth more than a
+hole that refuses in the numbering's.
 
 ## 3. User-defined names take the next free number
 

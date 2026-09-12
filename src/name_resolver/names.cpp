@@ -147,6 +147,31 @@ void Resolver::name(NodeIndex node)
         return;
     }
 
+    // THE FOUR FORCED CONVERSIONS, WRITTEN BARE -- the author, 2026-09-12:
+    // "just string(some_var) is good enough", "single word". `string(n)`,
+    // `number(s)`, `binary(n)` and `hex(n)` are the third place in the
+    // language where a bare identifier means something other than a user's own
+    // name, and PLAN §8 says how all of them are to be settled: the language
+    // RECOGNISES a name rather than introducing one. Each answers a path the
+    // numbering already carries under its own type -- `1 6 1 18`, `1 6 4 16`,
+    // `1 6 5 7`, `1 6 11 6` -- so nothing new was invented to hold them.
+    //
+    // AND IT IS ASKED LAST, AFTER EVERY NAME THE PROGRAM COULD HAVE DECLARED,
+    // WHICH MAKES THIS ADDITIVE AND NOT A RESERVATION. A local, a field, a
+    // sibling method, a capsule and a spacesuit called `string` all still win,
+    // because each of those returned above. So no program that resolved before
+    // these rows existed resolves differently now -- the only thing that
+    // changed is that a spelling which used to be S0511 now answers. If the
+    // four are ever to become reserved words that a user may NOT declare, that
+    // is S0513's arm and a decision with a cost; this is the version with
+    // none.
+    if (const words::PathId forced = conversion_named(spelling);
+        forced != words::kNoPath) {
+        info(node).path = forced;
+        info(node).origin = Origin::Bound;
+        return;
+    }
+
     // NO "IT MIGHT BE A GLOBAL" ARM, AND THE M6 DRAFT HAS ONE. Its resolver
     // answers SLOT_GLOBAL for any unknown name met outside a capsule, which is
     // right for the grammar it was written against and wrong for this one:

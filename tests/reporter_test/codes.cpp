@@ -158,8 +158,8 @@ void section_codes()
     // the same shape as `words.def`'s stale header tallies one directory over
     // (M21.md §3.8) and is why both numbers are now written once each and
     // read together.
-    check(kCodeCount == 129,
-          "errors.def has 129 rows -- if that changed on purpose, change it here "
+    check(kCodeCount == 132,
+          "errors.def has 132 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

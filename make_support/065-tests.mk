@@ -377,6 +377,7 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(SCALARS)/bits_methods.cpp \
                  $(SCALARS)/hex_methods.cpp \
                  $(SCALARS)/float_methods.cpp \
+                 $(SCALARS)/conversions.cpp \
                  $(CONTAIN)/bodies.cpp \
                  $(CONTAIN)/search_score.cpp \
                  $(CONTAIN)/search_walk.cpp \

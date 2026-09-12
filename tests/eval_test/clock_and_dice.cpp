@@ -434,15 +434,26 @@ void the_float_answers_text()
                   "    satellite.return(back == a)\n") == "true",
           "float -> string -> float is exact, so a .sky round trip is equality");
 
-    // It concatenates, which `"x " + a` does not -- S0711 is the refusal the
-    // row exists to route around, and it is still the refusal.
+    // It concatenates, which is what the row was minted for.
     check(answers("    satellite.variable.float a = 1.5\n"
                   "    satellite.return(\"N \" + a.to_string())\n") == "N 1.5",
           "the string is an ordinary string and adds to one");
-    check(refused_with("    satellite.variable.float a = 1.5\n"
-                       "    satellite.return(\"N \" + a)\n",
-                       Code::EVAL_NOT_A_NUMBER),
-          "while the float itself still does not add to a string");
+
+    // AND THE FLOAT ITSELF ADDS TO A STRING NOW, WHICH THIS FIXTURE PINNED THE
+    // OPPOSITE OF UNTIL 2026-09-12. It read `refused_with(..., EVAL_NOT_A_NUMBER)`
+    // and said "while the float itself still does not add to a string" -- true
+    // when M21 minted `to_string` to route around exactly that refusal, and
+    // turned over by M26 when the author asked for the conversion to happen for
+    // the user: "if we can do it for the user, then we do it for them."
+    //
+    // TURNED OVER RATHER THAN DELETED, which is what MILESTONES/M4.md §6's
+    // pinned limit got when M26 lifted it too. The interesting fact was never
+    // that `"N " + a` refused; it is what `"N " + a` ANSWERS, and that it
+    // answers the same text `a.to_string()` does -- so the row M21 minted and
+    // the conversion M26 added cannot drift apart without this line noticing.
+    check(answers("    satellite.variable.float a = 1.5\n"
+                  "    satellite.return(\"N \" + a)\n") == "N 1.5",
+          "and the float itself adds to a string, rendering as to_string does");
 
     // A DECLARATION IS NOT A VALUE -- methods_internal.hpp's rule, at this
     // row's own site.

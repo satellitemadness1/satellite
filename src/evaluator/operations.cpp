@@ -61,6 +61,16 @@ bool is_numeric(const Value &value)
     return value.is_number() || value.is_float();
 }
 
+// WHAT A STRING WILL JOIN WITH -- the four types words.def gives a
+// `to_string` row, and no others. Written as a list rather than as "not a
+// container" so that a type added later is refused until somebody decides it
+// has a text form, which is the direction DESIGN §1.1 asks a default to lean.
+bool joins_into_a_string(const Value &value)
+{
+    return value.is_number() || value.is_float() || value.is_binary() ||
+           value.is_hex();
+}
+
 // The exact promotion. A float answers itself; a number splits at the point,
 // losing nothing. (A null float handle has no producer -- Value::floating
 // always allocates -- and reads as zero here rather than as undefined.)
@@ -245,17 +255,132 @@ void op_binary(Machine &m, const Op &op, uint32_t step)
     // BEFORE both_numeric, DELIBERATELY. That check's refusal names a number,
     // which is the right sentence for `"a" - "b"` and the wrong one for a join
     // it would have refused on the way past.
-    if (which == BinaryOp::Add && pair.left.is_string() &&
-        pair.right.is_string()) {
+    //
+    // AND SINCE 2026-09-12 THE TWO SIDES NEED NOT BE THE SAME TYPE -- the
+    // author, reversing the paragraph above in the words the motto is usually
+    // said in: "just do it all for them! That is our motto -- if we can do it
+    // for the user, then we do it for them."
+    //
+    // THE LEFT SIDE DECIDES WHAT IS TRIED FIRST, which is the author's rule
+    // ("it gives them the first variable type") and is the rule the float arm
+    // below has followed since M15 -- "the type that carries a precision wins,
+    // because the program asked for it by putting a float in the expression."
+    // A string on the left joins; a number on the left adds when the other side
+    // is a number and joins when it is not. `"n = " + 4` is "n = 4", `4 + "2"`
+    // is 6, and `4 + "abc"` is "4abc" -- three readings, and each is the only
+    // one its operands allow.
+    //
+    // THIS IS NOT THE TRUTHINESS LADDER DESIGN §1.1 REFUSES, and the
+    // difference is worth stating because the paragraph above used to say this
+    // conversion WAS that. Truthiness is a value standing in for a TEST it is
+    // not -- a number pretending to be a condition, where the program never
+    // wrote what it meant. Here the program wrote both types out and wrote the
+    // operator between them; what the language supplies is the `to_string()`
+    // or the `to_number()` the user would otherwise type on the next line, in
+    // the one position where there is nothing else `+` could have meant.
+    //
+    // WHAT CONVERTS IS EXACTLY WHAT `.to_string()` ALREADY CONVERTS, which is
+    // the boundary and is not an arbitrary list: number `1 6 4 6`, binary
+    // `1 6 5 3`, float `1 6 10 1` and hex `1 6 11 3` are the four rows
+    // words.def has, so `+` grants no type a text form the language did not
+    // already give it. A list, a map, a file, a thread and a SPACESUIT are
+    // left refused -- the last on purpose, because DESIGN §12 defers "a
+    // spacesuit `to_string` the printer consults", and joining one into a
+    // string here would be that feature arriving through the back door.
+    if (which == BinaryOp::Add &&
+        (pair.left.is_string() || pair.right.is_string())) {
         static const SatString empty;
-        const Str &left = std::get<Str>(pair.left);
-        const Str &right = std::get<Str>(pair.right);
-        SatString joined = left ? *left : empty;
-        if (right)
-            joined.append(*right);
-        m.done();
-        m.fold(Value::string(std::move(joined)));
-        return;
+
+        // A STRING ON THE LEFT JOINS, AND THE RIGHT IS RENDERED AS THE
+        // CHARACTERS `display` WOULD HAVE PRINTED. text_of() is the printer's
+        // own function, so `display(x)` and `display("" + x)` cannot disagree
+        // -- one of them being the other's definition.
+        if (pair.left.is_string()) {
+            if (!pair.right.is_string() && !joins_into_a_string(pair.right)) {
+                m.refuse(errors::make<errors::Code::EVAL_NOT_A_NUMBER>(
+                    m.span_of(m.here()), text_of(which),
+                    type_name(pair.right)));
+                return;
+            }
+            const Str &left = std::get<Str>(pair.left);
+            SatString joined = left ? *left : empty;
+            if (const Str *right = std::get_if<Str>(&pair.right)) {
+                if (*right)
+                    joined.append(**right);
+            } else {
+                joined.append(encode_raw(satellite::text_of(pair.right)));
+            }
+            m.done();
+            m.fold(Value::string(std::move(joined)));
+            return;
+        }
+
+        // A NUMBER ON THE LEFT READS THE STRING AS A NUMBER WHEN IT IS ONE,
+        // and JOINS WHEN IT IS NOT. The author's rule is both halves: "we just
+        // need to always check if it's a number WHEN we are given a number to
+        // add" -- and, of the other half, "well if the user types in 4 + "abc"
+        // don't you think they mean "4abc"?"
+        //
+        // THEY DO, AND THERE IS NOTHING ELSE IT COULD MEAN. `4 + "abc"` is not
+        // an arithmetic line with a typo in it; "abc" is not a number and no
+        // amount of squinting makes one. So a refusal here tells a person
+        // something they already knew and refuses the only reading available.
+        //
+        // THIS ARM REFUSED WITH S0610 FIRST, ON AN ARGUMENT THAT DOES NOT HOLD
+        // IN THIS LANGUAGE, and the argument is written out because it is a
+        // good one about a different language. It was: joining makes the TYPE
+        // of `n + s` depend on the CONTENTS of `s`, so `total + reading` is a
+        // number all week and a string the day a sensor writes "n/a", and the
+        // arithmetic downstream changes meaning without changing. What kills it
+        // is that satellite does not enforce a declared type on a store at all
+        // -- `satellite.variable.number n = "abc"` is accepted today and prints
+        // `abc`, and so does `n = s` from a string variable. A content-shaped
+        // type is something this language permits in every other line it has;
+        // refusing it HERE would have been one operator defending an invariant
+        // nothing else in the language keeps. Measured, not reasoned about.
+        if (is_numeric(pair.left)) {
+            const Str &right = std::get<Str>(pair.right);
+            const std::string text = right ? decode(*right) : std::string();
+            Number read;
+            if (Number::parse(text, read)) {
+                if (pair.left.is_number()) {
+                    Number answer =
+                        Number::add(std::get<Number>(pair.left), read);
+                    m.done();
+                    m.fold(Value::number(std::move(answer)));
+                    return;
+                }
+                Float answer =
+                    Float::add(as_float(pair.left), Float::from_number(read));
+                m.done();
+                m.fold(Value::floating(std::move(answer)));
+                return;
+            }
+
+            // falls through to the join below
+        }
+
+        // ANYTHING ELSE THAT HAS A TEXT FORM JOINS, which is the arm above's
+        // last line and a bit run's or a hex run's only one. `is_numeric` is
+        // number and float alone -- bits do not do arithmetic in this language
+        // -- so without this `b1010 + "abc"` reached both_numeric and was
+        // refused as "works on two numbers", which is a sentence about
+        // arithmetic nobody was attempting. The left is rendered by the
+        // printer's own function, so `display(x + s)` and `display("" + x + s)`
+        // cannot disagree.
+        if (joins_into_a_string(pair.left)) {
+            const Str &right = std::get<Str>(pair.right);
+            SatString joined = encode_raw(satellite::text_of(pair.left));
+            if (right)
+                joined.append(*right);
+            m.done();
+            m.fold(Value::string(std::move(joined)));
+            return;
+        }
+
+        // NEITHER SIDE CAN LEAD -- `my_list + "x"`. Left to both_numeric
+        // below, whose sentence names the operator and the offending type,
+        // which is the right one here and was already written.
     }
 
     if (!both_numeric(m, which, pair, errors::Code::EVAL_NOT_A_NUMBER))

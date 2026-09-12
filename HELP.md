@@ -1371,6 +1371,62 @@ Every other method sees what is stored, which is why `size` counts
     satellite.variable.string said = live.resolved()
     satellite.console.display(said)
 
+H  `1 6 1 18`  `satellite.variable.string(x)`  _M26_
+> satellite.help(satellite.variable.string)
+
+`string(x)` -- the value as text, written around it.
+
+This is the same answer `x.to_string()` gives. It is offered as a word you
+wrap around a value so that a line reads the way you would say it.
+
+    satellite.variable.number count = 42
+    satellite.console.display(string(count))
+
+H  `1 6 1 19`  `satellite.variable.string.string`  _M26_
+> satellite.help(satellite.variable.string)
+
+`.string()` on a string answers the same string.
+
+It is here so the four conversions exist on every kind. A line that converts
+a value it was handed does not have to ask what kind it already was.
+
+    satellite.variable.string name = "Ada"
+    satellite.console.display(name.string())
+
+H  `1 6 1 20`  `satellite.variable.string.number`  _M26_
+> satellite.help(satellite.variable.string)
+
+The text read as a number.
+
+The whole string has to be a number and nothing else -- no spaces around it,
+no words after it. `.trim()` is one dot away if the text has edges.
+
+    satellite.variable.string written = "42"
+    satellite.variable.number read = written.number()
+    satellite.console.display(read)
+
+H  `1 6 1 21`  `satellite.variable.string.binary`  _M26_
+> satellite.help(satellite.variable.string)
+
+The text as bits.
+
+If the text is nothing but `0` and `1`, those are the bits. Anything else is
+read as the bytes of the characters -- eight bits each.
+
+    satellite.variable.string written = "1010"
+    satellite.console.display(written.binary())
+
+H  `1 6 1 22`  `satellite.variable.string.hex`  _M26_
+> satellite.help(satellite.variable.string)
+
+The text as hex.
+
+The same bits `.binary()` answers, four at a time. A hex run is always a
+whole number of digits, so the bits are padded on the left to reach four.
+
+    satellite.variable.string written = "1010"
+    satellite.console.display(written.hex())
+
 .  `1 6 2`  `satellite.variable.file`
 > satellite.help(satellite.variable.file)
 
@@ -1800,6 +1856,63 @@ is refused rather than guessed at.
     satellite.variable.number big = 123456789
     satellite.console.display(big.digits())
 
+H  `1 6 4 16`  `satellite.variable.number(x)`  _M26_
+> satellite.help(satellite.variable.number)
+
+`number(x)` -- the value as a number, written around it.
+
+A string is read the way a written number is read; a bit run and a hex run
+answer what they mean. A float is refused, because dropping a fraction is a
+rounding and only you know which one.
+
+    satellite.variable.string written = "42"
+    satellite.console.display(number(written))
+
+H  `1 6 4 17`  `satellite.variable.number.string`  _M26_
+> satellite.help(satellite.variable.number)
+
+The number as text.
+
+The same answer `.to_string()` gives, under the name the other three
+conversions use.
+
+    satellite.variable.number count = 42
+    satellite.console.display(count.string())
+
+H  `1 6 4 18`  `satellite.variable.number.number`  _M26_
+> satellite.help(satellite.variable.number)
+
+`.number()` on a number answers the same number.
+
+It is here so a line that converts a value does not have to know what kind
+the value already was.
+
+    satellite.variable.number count = 42
+    satellite.console.display(count.number())
+
+H  `1 6 4 19`  `satellite.variable.number.binary`  _M26_
+> satellite.help(satellite.variable.number)
+
+The number as bits, shortest first.
+
+No leading zero is added, because a leading zero is a bit you did not write.
+A negative number and a fraction have no bit pattern and are refused.
+
+    satellite.variable.number count = 42
+    satellite.console.display(count.binary())
+
+H  `1 6 4 20`  `satellite.variable.number.hex`  _M26_
+> satellite.help(satellite.variable.number)
+
+The number as hex.
+
+The same value as `.binary()`, four bits to a digit. A hex run is always a
+whole number of digits, so this one is padded to eight bits where the bit run
+is six.
+
+    satellite.variable.number count = 42
+    satellite.console.display(count.hex())
+
 .  `1 6 5`  `satellite.variable.binary`
 > satellite.help(satellite.variable.binary)
 
@@ -1907,6 +2020,55 @@ The other direction never refuses: every hexadecimal digit has four bits, so
     satellite.variable.binary bits = b1010
     satellite.console.display(bits.to_hex())
 
+H  `1 6 5 7`  `satellite.variable.binary(x)`  _M26_
+> satellite.help(satellite.variable.binary)
+
+`binary(x)` -- the value as bits, written around it.
+
+A number answers the bits it is made of. A hex run answers the bits it
+already holds. A string answers its digits if they are all `0` and `1`, and
+otherwise the bytes of its characters.
+
+    satellite.variable.number count = 42
+    satellite.console.display(binary(count))
+
+H  `1 6 5 8`  `satellite.variable.binary.string`  _M26_
+> satellite.help(satellite.variable.binary)
+
+The bits as text -- the characters `display` would print, `b` and all.
+
+    satellite.variable.binary flags = b1010
+    satellite.console.display(flags.string())
+
+H  `1 6 5 9`  `satellite.variable.binary.number`  _M26_
+> satellite.help(satellite.variable.binary)
+
+What the bits mean, as a number.
+
+The same answer `.to_number()` gives. `b1010` is ten.
+
+    satellite.variable.binary flags = b1010
+    satellite.console.display(flags.number())
+
+H  `1 6 5 10`  `satellite.variable.binary.binary`  _M26_
+> satellite.help(satellite.variable.binary)
+
+`.binary()` on a bit run answers the same bit run, width and all.
+
+    satellite.variable.binary flags = b1010
+    satellite.console.display(flags.binary())
+
+H  `1 6 5 11`  `satellite.variable.binary.hex`  _M26_
+> satellite.help(satellite.variable.binary)
+
+The bits as hex, four at a time.
+
+A hex digit is exactly four bits, so nothing rounds. A run whose width is not
+a multiple of four is padded on the left to reach one.
+
+    satellite.variable.binary flags = b1010
+    satellite.console.display(flags.hex())
+
 .  `1 6 6`  `satellite.variable.bool`
 > satellite.help(satellite.variable.bool)
 
@@ -1979,6 +2141,51 @@ Reading one back is `to_number` on the string.
     satellite.variable.float activation = 0.4995225
     satellite.variable.string line = activation.to_string()
     satellite.console.display("wrote " + line)
+
+H  `1 6 10 2`  `satellite.variable.float.string`  _M26_
+> satellite.help(satellite.variable.float)
+
+The float as text.
+
+A float always prints with a point -- `4.0` and not `4` -- so a reader of the
+output can tell which kind answered.
+
+    satellite.variable.float ratio = 1.5
+    satellite.console.display(ratio.string())
+
+H  `1 6 10 3`  `satellite.variable.float.number`  _M26_
+> satellite.help(satellite.variable.float)
+
+The float as a number, exactly.
+
+Nothing is lost and nothing is rounded: a number in satellite is a decimal, so
+it holds the fraction the float held. What the two kinds differ in is how much
+precision the arithmetic keeps, not what they can hold.
+
+    satellite.variable.float ratio = 1.5
+    satellite.variable.number same = ratio.number()
+    satellite.console.display(same)
+
+H  `1 6 10 4`  `satellite.variable.float.binary`  _M26_
+> satellite.help(satellite.variable.float)
+
+The float as bits, when it is whole.
+
+A fraction has no bit pattern -- a bit run holds a whole number of zero or
+more -- so a float with a fraction is refused and a whole one answers.
+
+    satellite.variable.float count = 42
+    satellite.console.display(count.binary())
+
+H  `1 6 10 5`  `satellite.variable.float.hex`  _M26_
+> satellite.help(satellite.variable.float)
+
+The float as hex, when it is whole.
+
+The same bits `.binary()` answers, four to a digit.
+
+    satellite.variable.float count = 42
+    satellite.console.display(count.hex())
 
 .  `1 6 11`  `satellite.variable.hex`
 > satellite.help(satellite.variable.hex)
@@ -2089,6 +2296,55 @@ they are spelled.
 
     satellite.variable.hex colour = x00FF
     satellite.console.display(colour.to_binary())
+
+H  `1 6 11 6`  `satellite.variable.hex(x)`  _M26_
+> satellite.help(satellite.variable.hex)
+
+`hex(x)` -- the value as hex, written around it.
+
+The same bits `binary(x)` answers, four to a digit, padded on the left to a
+whole number of digits.
+
+    satellite.variable.number count = 42
+    satellite.console.display(hex(count))
+
+H  `1 6 11 7`  `satellite.variable.hex.string`  _M26_
+> satellite.help(satellite.variable.hex)
+
+The hex as text -- the digits with their `x`, written the way the language
+writes them back.
+
+    satellite.variable.hex mask = x00FF
+    satellite.console.display(mask.string())
+
+H  `1 6 11 8`  `satellite.variable.hex.number`  _M26_
+> satellite.help(satellite.variable.hex)
+
+What the hex means, as a number.
+
+The same answer `.to_number()` gives. `x00FF` is 255.
+
+    satellite.variable.hex mask = x00FF
+    satellite.console.display(mask.number())
+
+H  `1 6 11 9`  `satellite.variable.hex.binary`  _M26_
+> satellite.help(satellite.variable.hex)
+
+The hex as bits.
+
+A hex value is stored as bits already, so this never rounds and never fails --
+the width is always a multiple of four.
+
+    satellite.variable.hex mask = x00FF
+    satellite.console.display(mask.binary())
+
+H  `1 6 11 10`  `satellite.variable.hex.hex`  _M26_
+> satellite.help(satellite.variable.hex)
+
+`.hex()` on a hex run answers the same hex run, width and all.
+
+    satellite.variable.hex mask = x00FF
+    satellite.console.display(mask.hex())
 
 .  `1 6 12`  `satellite.variable.network`
 > satellite.help(satellite.variable.network)

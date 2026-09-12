@@ -379,6 +379,32 @@ SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_AT,          "at(n)",                 
 // makes. Every other method still sees the stored codes, and DESIGN §8.3 says
 // which side of the boundary each is on.
 SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_RESOLVED,    "resolved",              SAT_NUMBERED)  // 1 6 1 17
+// THE FORCED CONVERSIONS, minted 2026-09-12 by the author -- "give them the
+// string(some_var) number(some_var) binary(some_var) that will force that
+// type", and "single word". They are spelled `(x)` and hang under the TYPE
+// because that is what §1.3 says a one-argument call shape is: `satellite.help
+// (x)` `1 19 1` is the same row shape under a different parent. The bare
+// spelling a program writes -- `string(n)` -- is a RECOGNITION of a name the
+// numbering already has, which is how §7.7's `arguments` works and what PLAN §8
+// asks of every bare word: the language recognises a name rather than
+// introducing one. No new parent, no new kind of number.
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_OF,         "(x)",                   SAT_NUMBERED)  // 1 6 1 18
+// AND THE SAME CONVERSION AS A SELECTOR, on every scalar type -- the author,
+// 2026-09-12: "give them the option of some_var.to_string() and
+// some_var.string()". Four names, offered wherever they can be answered without
+// inventing anything, so a program can read left-to-right (`n.string()`) or
+// outside-in (`string(n)`) and get the same row.
+//
+// `.string()` IS NOT A SECOND `to_string`. It is the same answer under a name
+// that reads as a CAST rather than as a method, which is what makes the set
+// symmetrical: `to_binary` and `to_hex` exist on some types and not others for
+// reasons this file records one screen down, and a program that just wants the
+// value in another radix should not have to know which of them was minted.
+// The `to_` rows all stay -- nothing is renumbered and nothing is retired.
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_STRING,     "string",                SAT_NUMBERED)  // 1 6 1 19
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_NUMBER,     "number",                SAT_NUMBERED)  // 1 6 1 20
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_BINARY,     "binary",                SAT_NUMBERED)  // 1 6 1 21
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_HEX,        "hex",                   SAT_NUMBERED)  // 1 6 1 22
 SAT_NODE(VARIABLE,        VARIABLE_FILE,               "file",                  SAT_NUMBERED)  // 1 6 2
 SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_0,             "()",                    SAT_BARE)  // 1 6 2 0
 SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_NEW,           "new",                   SAT_NUMBERED)  // 1 6 2 1
@@ -411,6 +437,11 @@ SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_MODULUS,     "modulus(a, b)",         
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_TRUNCATE,    "truncate(a)",           SAT_NUMBERED)  // 1 6 4 13
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_SQRT,        "sqrt(a)",               SAT_NUMBERED)  // 1 6 4 14
 SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_DIGITS,      "digits",                SAT_NUMBERED)  // 1 6 4 15
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_OF,          "(x)",                   SAT_NUMBERED)  // 1 6 4 16
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_STRING,      "string",                SAT_NUMBERED)  // 1 6 4 17
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_NUMBER,      "number",                SAT_NUMBERED)  // 1 6 4 18
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_BINARY,      "binary",                SAT_NUMBERED)  // 1 6 4 19
+SAT_NODE(VARIABLE_NUMBER, VARIABLE_NUMBER_HEX,         "hex",                   SAT_NUMBERED)  // 1 6 4 20
 SAT_NODE(VARIABLE,        VARIABLE_BINARY,             "binary",                SAT_NUMBERED)  // 1 6 5
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_0,           "()",                    SAT_BARE)  // 1 6 5 0
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_TO_NUMBER,   "to_number",             SAT_NUMBERED)  // 1 6 5 1
@@ -419,6 +450,11 @@ SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_TO_STRING,   "to_string",             
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_AS_NUMBER,   "as_number",             SAT_NUMBERED)  // 1 6 5 4
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_DIGITS,      "digits",                SAT_NUMBERED)  // 1 6 5 5
 SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_TO_HEX,      "to_hex",                SAT_NUMBERED)  // 1 6 5 6
+SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_OF,          "(x)",                   SAT_NUMBERED)  // 1 6 5 7
+SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_STRING,      "string",                SAT_NUMBERED)  // 1 6 5 8
+SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_NUMBER,      "number",                SAT_NUMBERED)  // 1 6 5 9
+SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_BINARY,      "binary",                SAT_NUMBERED)  // 1 6 5 10
+SAT_NODE(VARIABLE_BINARY, VARIABLE_BINARY_HEX,         "hex",                   SAT_NUMBERED)  // 1 6 5 11
 SAT_NODE(VARIABLE,        VARIABLE_BOOL,               "bool",                  SAT_NUMBERED)  // 1 6 6
 SAT_NODE(VARIABLE,        VARIABLE_DATE,               "date",                  SAT_NUMBERED)  // 1 6 7
 SAT_NODE(VARIABLE,        VARIABLE_DURATION,           "duration",              SAT_NUMBERED)  // 1 6 8
@@ -426,6 +462,23 @@ SAT_NODE(VARIABLE,        VARIABLE_EXPRESSION,         "expression",            
 SAT_NODE(VARIABLE,        VARIABLE_FLOAT,              "float",                 SAT_NUMBERED)  // 1 6 10
 SAT_NODE(VARIABLE_FLOAT,  VARIABLE_FLOAT_0,            "()",                    SAT_BARE)  // 1 6 10 0
 SAT_NODE(VARIABLE_FLOAT,  VARIABLE_FLOAT_TO_STRING,    "to_string",             SAT_NUMBERED)  // 1 6 10 1
+// A FLOAT GETS ALL FOUR, AND THE FIRST CUT OF THIS BLOCK GAVE IT ONE.
+// It said a float may only be rendered, because reading one as a whole number
+// "loses the fraction" -- and that was wrong about this language.
+// `satellite.variable.number` is a DECIMAL bignum: `n = 1.5` holds 1.5 exactly
+// and `n + 0.25` is 1.75. satellite_float.hpp says the same from its own side,
+// calling `to_number` "exact ... the one direction of conversion that needs no
+// rounding rule."
+//
+// SO THE LINE IS NOT LOSSLESS-AGAINST-LOSSY AFTER ALL; NOTHING HERE IS LOSSY.
+// What a fraction has no form for is BITS -- a `BitRun` has "no sign and no
+// radix field" -- so `f.binary()` refuses a fractional value with S0733 and
+// answers a whole one. The obstacle is the bit run's shape, which is true, and
+// not the number's precision, which was not.
+SAT_NODE(VARIABLE_FLOAT,  VARIABLE_FLOAT_STRING,       "string",                SAT_NUMBERED)  // 1 6 10 2
+SAT_NODE(VARIABLE_FLOAT,  VARIABLE_FLOAT_NUMBER,       "number",                SAT_NUMBERED)  // 1 6 10 3
+SAT_NODE(VARIABLE_FLOAT,  VARIABLE_FLOAT_BINARY,       "binary",                SAT_NUMBERED)  // 1 6 10 4
+SAT_NODE(VARIABLE_FLOAT,  VARIABLE_FLOAT_HEX,          "hex",                   SAT_NUMBERED)  // 1 6 10 5
 SAT_NODE(VARIABLE,        VARIABLE_HEX,                "hex",                   SAT_NUMBERED)  // 1 6 11
 // ROW FOR ROW WITH `binary` `1 6 5` ABOVE FOR THE FIRST THREE, AND THEN
 // DELIBERATELY NOT. `1 6 5 4` is binary's `as_number` and HEX HAS NO SUCH ROW:
@@ -450,6 +503,11 @@ SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_WIDTH,          "width",                 
 SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_STRING,      "to_string",             SAT_NUMBERED)  // 1 6 11 3
 SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_DIGITS,         "digits",                SAT_NUMBERED)  // 1 6 11 4
 SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_TO_BINARY,      "to_binary",             SAT_NUMBERED)  // 1 6 11 5
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_OF,             "(x)",                   SAT_NUMBERED)  // 1 6 11 6
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_STRING,         "string",                SAT_NUMBERED)  // 1 6 11 7
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_NUMBER,         "number",                SAT_NUMBERED)  // 1 6 11 8
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_BINARY,         "binary",                SAT_NUMBERED)  // 1 6 11 9
+SAT_NODE(VARIABLE_HEX,    VARIABLE_HEX_HEX,            "hex",                   SAT_NUMBERED)  // 1 6 11 10
 SAT_NODE(VARIABLE,        VARIABLE_NETWORK,            "network",               SAT_NUMBERED)  // 1 6 12
 SAT_NODE(VARIABLE,        VARIABLE_THREAD,             "thread",                SAT_NUMBERED)  // 1 6 13
 SAT_NODE(VARIABLE_THREAD, VARIABLE_THREAD_0,           "()",                    SAT_BARE)  // 1 6 13 0

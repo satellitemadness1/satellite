@@ -93,6 +93,11 @@ H	satellite.variable.string.append(x)	1 6 1 14	M11	2	1	0
 H	satellite.variable.string.clear	1 6 1 15	M11	1	1	0
 H	satellite.variable.string.at(n)	1 6 1 16	M11	2	1	0
 H	satellite.variable.string.resolved	1 6 1 17	M20	1	1	0
+H	satellite.variable.string(x)	1 6 1 18	M26	1	0	0
+H	satellite.variable.string.string	1 6 1 19	M26	1	1	0
+H	satellite.variable.string.number	1 6 1 20	M26	1	1	0
+H	satellite.variable.string.binary	1 6 1 21	M26	1	1	0
+H	satellite.variable.string.hex	1 6 1 22	M26	1	1	0
 .	satellite.variable.file	1 6 2		0	0	0
 .	satellite.variable.file()	1 6 2 0		0	0	0
 .	satellite.variable.file.new	1 6 2 1		0	0	0
@@ -125,6 +130,11 @@ H	satellite.variable.number.modulus(a, b)	1 6 4 12	M11	2	1	0
 H	satellite.variable.number.truncate(a)	1 6 4 13	M15	1	1	0
 H	satellite.variable.number.sqrt(a)	1 6 4 14	M15	1	1	0
 H	satellite.variable.number.digits	1 6 4 15	M11	1	1	0
+H	satellite.variable.number(x)	1 6 4 16	M26	1	0	0
+H	satellite.variable.number.string	1 6 4 17	M26	1	1	0
+H	satellite.variable.number.number	1 6 4 18	M26	1	1	0
+H	satellite.variable.number.binary	1 6 4 19	M26	1	1	0
+H	satellite.variable.number.hex	1 6 4 20	M26	1	1	0
 .	satellite.variable.binary	1 6 5		0	0	0
 .	satellite.variable.binary()	1 6 5 0		0	0	0
 H	satellite.variable.binary.to_number	1 6 5 1	M19.5	1	1	0
@@ -133,6 +143,11 @@ H	satellite.variable.binary.to_string	1 6 5 3	M19.5	1	1	0
 H	satellite.variable.binary.as_number	1 6 5 4	M19.5	1	1	0
 H	satellite.variable.binary.digits	1 6 5 5	M19.5	1	1	0
 H	satellite.variable.binary.to_hex	1 6 5 6	M19.5	1	1	0
+H	satellite.variable.binary(x)	1 6 5 7	M26	1	0	0
+H	satellite.variable.binary.string	1 6 5 8	M26	1	1	0
+H	satellite.variable.binary.number	1 6 5 9	M26	1	1	0
+H	satellite.variable.binary.binary	1 6 5 10	M26	1	1	0
+H	satellite.variable.binary.hex	1 6 5 11	M26	1	1	0
 .	satellite.variable.bool	1 6 6		0	0	0
 .	satellite.variable.date	1 6 7		0	0	0
 .	satellite.variable.duration	1 6 8		0	0	0
@@ -140,6 +155,10 @@ H	satellite.variable.binary.to_hex	1 6 5 6	M19.5	1	1	0
 .	satellite.variable.float	1 6 10		0	0	0
 .	satellite.variable.float()	1 6 10 0		0	0	0
 H	satellite.variable.float.to_string	1 6 10 1	M21	1	1	0
+H	satellite.variable.float.string	1 6 10 2	M26	1	1	0
+H	satellite.variable.float.number	1 6 10 3	M26	1	1	0
+H	satellite.variable.float.binary	1 6 10 4	M26	1	1	0
+H	satellite.variable.float.hex	1 6 10 5	M26	1	1	0
 .	satellite.variable.hex	1 6 11		0	0	0
 .	satellite.variable.hex()	1 6 11 0		0	0	0
 H	satellite.variable.hex.to_number	1 6 11 1	M19.5	1	1	0
@@ -147,6 +166,11 @@ H	satellite.variable.hex.width	1 6 11 2	M19.5	1	1	0
 H	satellite.variable.hex.to_string	1 6 11 3	M19.5	1	1	0
 H	satellite.variable.hex.digits	1 6 11 4	M19.5	1	1	0
 H	satellite.variable.hex.to_binary	1 6 11 5	M19.5	1	1	0
+H	satellite.variable.hex(x)	1 6 11 6	M26	1	0	0
+H	satellite.variable.hex.string	1 6 11 7	M26	1	1	0
+H	satellite.variable.hex.number	1 6 11 8	M26	1	1	0
+H	satellite.variable.hex.binary	1 6 11 9	M26	1	1	0
+H	satellite.variable.hex.hex	1 6 11 10	M26	1	1	0
 .	satellite.variable.network	1 6 12		0	0	0
 .	satellite.variable.thread	1 6 13		0	0	0
 .	satellite.variable.thread()	1 6 13 0		0	0	0

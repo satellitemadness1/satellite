@@ -64,6 +64,24 @@ void Resolver::collect_capsules()
     }
 }
 
+// THE BARE SPELLING OF A CONVERSION, OR NO PATH -- 2026-09-12. Four words, and
+// the table is written out rather than derived because these four are the only
+// bare spellings the language answers: a fifth would be a decision, not a
+// pattern to be matched by accident.
+words::PathId Resolver::conversion_named(std::string_view spelling) const
+{
+    using words::NodeId;
+    if (spelling == "string")
+        return static_cast<words::PathId>(NodeId::VARIABLE_STRING_OF);
+    if (spelling == "number")
+        return static_cast<words::PathId>(NodeId::VARIABLE_NUMBER_OF);
+    if (spelling == "binary")
+        return static_cast<words::PathId>(NodeId::VARIABLE_BINARY_OF);
+    if (spelling == "hex")
+        return static_cast<words::PathId>(NodeId::VARIABLE_HEX_OF);
+    return words::kNoPath;
+}
+
 // --- pass 2 -- every spacesuit name, and it is M26's ------------------------
 
 // PASS 2, AND IT WAS A NAMED HOLE FROM M7 UNTIL M26. What stood here kept its
@@ -93,6 +111,13 @@ void Resolver::collect_capsules()
 // this short.
 void Resolver::note_spacesuits()
 {
+    // THE NAMES FIRST, ALL OF THEM, AND THEN THE MEMBERS -- M26's inheritance,
+    // and the two halves cannot be one loop. A suit may extend one declared
+    // FURTHER DOWN THE FILE, which is the same forward reference DESIGN §7.3
+    // grants every capsule; and a child's field layout is its parent's
+    // layout followed by its own, so no child's members can be gathered until
+    // its parent's have been. One loop in file order would have answered "no
+    // such spacesuit" to a program that is correct.
     const Node &program = ast_[ast_.root()];
     for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
         const NodeIndex item = ast_.list_at(program.a, i);
@@ -105,9 +130,111 @@ void Resolver::note_spacesuits()
         suit.path = ast_[item].a;
         suit.name = ast_.text_of(item);
         suit.node = item;
-        gather_members(item, suit, false);
         suits_.push_back({suit.path, suit.name, item});
         out_.suits.push_back(std::move(suit));
+    }
+
+    link_supers();
+
+    // GATHERED PARENT-FIRST, AND THE ORDER IS COMPUTED RATHER THAN ASSUMED.
+    // `ready` counts a suit as done when its parent is done, which walks the
+    // forest from its roots however the file happened to be written. A suit
+    // still unfinished when no progress is left is one whose parent chain never
+    // reaches a root -- a cycle -- and link_supers has already refused it and
+    // cut the link, so this loop's second pass finishes it as a root.
+    std::vector<bool> done(out_.suits.size(), false);
+    bool moved = true;
+    while (moved) {
+        moved = false;
+        for (size_t i = 0; i < out_.suits.size(); i++) {
+            if (done[i])
+                continue;
+            const words::PathId parent = out_.suits[i].parent;
+            size_t from = out_.suits.size();
+            if (parent != words::kNoPath) {
+                for (size_t j = 0; j < out_.suits.size(); j++)
+                    if (out_.suits[j].path == parent)
+                        from = j;
+                if (from < out_.suits.size() && !done[from])
+                    continue;
+            }
+
+            // THE PARENT'S MEMBERS ARE COPIED IN BEFORE A LINE OF THE CHILD'S
+            // IS READ, which is what makes the child's own field indices come
+            // out right the FIRST time. `gather_members` numbers a field by
+            // `into.fields.size()` as it appends, so starting the vector at the
+            // parent's length is the whole of the offset arithmetic -- there is
+            // no fix-up pass, and no second place that knows the layout.
+            if (from < out_.suits.size()) {
+                out_.suits[i].fields = out_.suits[from].fields;
+                out_.suits[i].methods = out_.suits[from].methods;
+                out_.suits[i].inherited =
+                    static_cast<uint32_t>(out_.suits[from].fields.size());
+                out_.suits[i].inherited_methods =
+                    static_cast<uint32_t>(out_.suits[from].methods.size());
+            }
+            gather_members(out_.suits[i].node, out_.suits[i], false);
+            done[i] = true;
+            moved = true;
+        }
+    }
+}
+
+// WHICH SUIT EACH `(name)` MEANS, AND WHETHER THE CHAIN ENDS -- M26. This is
+// two of the five things pass 2's note listed as "a decision about what a
+// spacesuit IS": linking superclasses, and refusing the cycles the M6 draft
+// silently broke.
+//
+// A CYCLE IS REFUSED AND THEN CUT, IN THAT ORDER. The refusal is the answer a
+// person gets; the cut is so that every pass after this one can assume the
+// parent chain terminates, which is what lets `note_spacesuits` above walk it
+// with a counter instead of a visited set, and what stops a field layout from
+// being defined in terms of itself.
+void Resolver::link_supers()
+{
+    for (Suit &suit : out_.suits) {
+        const NodeIndex super = ast_[suit.node].c;
+        if (super == kNoNode)
+            continue;
+
+        const std::string_view spelling = ast_.text_of(super);
+        const Capsule *found = suit_named(spelling);
+        if (found == nullptr) {
+            problem<errors::Code::RESOLVE_SUIT_NO_SUCH_SUPER>(super, spelling,
+                                                              suit.name);
+            continue;
+        }
+        if (found->path == suit.path) {
+            problem<errors::Code::RESOLVE_SUIT_INHERITANCE_CYCLE>(super,
+                                                                  suit.name);
+            continue;
+        }
+        suit.parent = found->path;
+        info(super).slot = kSlotSpacesuit;
+        info(super).path = found->path;
+        info(super).type = found->path;
+        info(super).origin = Origin::Bound;
+    }
+
+    // AND NOW THE CHAINS, WHICH ARE A SEPARATE WALK BECAUSE A CYCLE IS NOT A
+    // PROPERTY OF ONE ROW. Every link above is individually fine in `a(b)`,
+    // `b(c)`, `c(a)`; what is wrong is the loop, and it can only be seen by
+    // following one. The bound is the number of suits -- a chain longer than
+    // that has repeated a suit by the pigeonhole and nothing else -- so this
+    // costs one walk per suit and needs no marking.
+    for (Suit &suit : out_.suits) {
+        words::PathId at = suit.parent;
+        for (size_t steps = 0; at != words::kNoPath && steps <= out_.suits.size();
+             steps++) {
+            if (at == suit.path) {
+                problem<errors::Code::RESOLVE_SUIT_INHERITANCE_CYCLE>(
+                    ast_[suit.node].c, suit.name);
+                suit.parent = words::kNoPath;
+                break;
+            }
+            const Suit *up = out_.suit_at(at);
+            at = up == nullptr ? words::kNoPath : up->parent;
+        }
     }
 }
 
@@ -162,12 +289,16 @@ void Resolver::gather_members(NodeIndex suit_node, Suit &into, bool)
 
             // A NAME DECLARED TWICE IN ONE SUIT IS S0501's QUESTION ONE LEVEL
             // UP, and it is refused here rather than left to collide in a
-            // vector. DESIGN §7.4's fresh-slot rule is about a redeclaration in
+            // vector. IT ASKS ABOUT THIS SUIT'S OWN MEMBERS AND NOT ITS
+            // INHERITED ONES -- M26 -- because redeclaring a PARENT's field is
+            // not declaring one twice, it is the shadowing resolve.hpp's
+            // backwards search exists to settle, and the author's own file
+            // does it in every suit it has. DESIGN §7.4's fresh-slot rule is about a redeclaration in
             // a BODY, where rebinding is the right answer because the old slot
             // may still be referred to; a suit has one storage layout and two
             // fields of one name would be two indices nothing could tell apart.
-            if (into.field_named(field.name) != nullptr ||
-                into.method_named(field.name) != nullptr) {
+            if (into.own_field_named(field.name) != nullptr ||
+                into.own_method_named(field.name) != nullptr) {
                 problem<errors::Code::RESOLVE_SUIT_MEMBER_TWICE>(
                     item, field.name, into.name);
                 break;
@@ -185,8 +316,8 @@ void Resolver::gather_members(NodeIndex suit_node, Suit &into, bool)
             method.node = item;
             method.is_public = is_public;
 
-            if (into.field_named(method.name) != nullptr ||
-                into.method_named(method.name) != nullptr) {
+            if (into.own_field_named(method.name) != nullptr ||
+                into.own_method_named(method.name) != nullptr) {
                 problem<errors::Code::RESOLVE_SUIT_MEMBER_TWICE>(
                     item, method.name, into.name);
                 break;
@@ -280,7 +411,13 @@ void Resolver::bodies()
     // what grows, which is why `suit` below is re-read from `out_.suits` by
     // index rather than held across the push_back.
     for (size_t which = 0; which < out_.suits.size(); which++) {
-        for (size_t m = 0; m < out_.suits[which].methods.size(); m++) {
+        // FROM `inherited_methods`, SO AN INHERITED METHOD IS RESOLVED ONCE --
+        // M26. It is resolved against the suit that DECLARED it, whose layout
+        // its field indices belong to; resolving it a second time under a child
+        // would rebind those indices to the child's copies of the same names
+        // and silently move what the parent's own code reads.
+        for (size_t m = out_.suits[which].inherited_methods;
+             m < out_.suits[which].methods.size(); m++) {
             const NodeIndex node = out_.suits[which].methods[m].node;
 
             out_.frames.push_back(Frame{});
