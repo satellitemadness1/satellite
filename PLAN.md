@@ -5286,7 +5286,7 @@ spellings:
   what lets a ring of spacesuits arrive and terminate).
 
 **THE FRAME — decided by the author 2026-09-12. Every `send()` sends out a
-single `unsigned long long` first, saying which of five things follows:**
+single `unsigned long long` first, saying which of six things follows:**
 
 | kind | what follows |
 |---:|---|
@@ -5295,11 +5295,12 @@ single `unsigned long long` first, saying which of five things follows:**
 | 3 | a capsule |
 | 4 | a spacesuit |
 | 5 | an instance of a spacesuit |
+| 6 | a thread waiting to be started — a capsule name as its input, and always sent with that capsule |
 
 **A value with no name is a variable — decided by the author 2026-09-12.**
 `send("hi")` is a kind 2 whose type is `satellite.variable.string`, whose value
-is `"hi"`, and whose name is **`default_object_name1`**. So there is no sixth
-kind. **The trailing number counts up, per connection** — the next unnamed send
+is `"hi"`, and whose name is **`default_object_name1`**. So a bare value needs no
+kind of its own. **The trailing number counts up, per connection** — the next unnamed send
 on the same connection is `default_object_name2`, and a new connection starts
 again at `default_object_name1`, so a receiver sees the same names for the same
 sends however long the program has run. **It cannot clash, because the name is
@@ -5337,8 +5338,10 @@ Worked out beside it, *not yet confirmed by the author*:
 - **A name that clashes is a potential network WARNING — decided by the author
   2026-09-12.** A receiver that already has a `counter` with a different body
   reports it, at `Severity::WARNING`, and does not refuse; an identical one is
-  the same type and says nothing. *Open: after the warning, which `counter`
-  the name means — the receiver's own, the arrival, or both kept apart.*
+  the same type and says nothing. **After the warning the two are KEPT APART**
+  (the author, same day) — the receiver's own `counter` is not replaced and the
+  arrival is not dropped. *Open: the spelling a program uses to reach the
+  arrival rather than its own.*
 - **An arriving instance is restored, not constructed** — its constructor does
   not run again.
 - **Nothing runs on arrival — decided by the author 2026-09-12: it waits for
@@ -5349,10 +5352,13 @@ Worked out beside it, *not yet confirmed by the author*:
   This is the line v1 §20.6 was protecting, and it survives. **`.call()` is not in
   the numbering** — a new permanent path.
 - **A thread CAN be sent — decided by the author 2026-09-12**: *"that's like
-  sending two satellite expressions, but they are threads"*, and like
-  everything else it waits for `.call()`. `satellite.thread.new` already packages a
-  call, so what crosses is the call and not the OS thread. *Open: which kind
-  number it opens with — the five have no thread row.*
+  sending two satellite expressions, but they are threads"*. **It is kind 6**,
+  and **its input is a capsule name**; what crosses is that packaged call and
+  never the OS thread. **The capsule is always sent with it** — a kind 6 is
+  never sent without its kind 3, so a receiver never holds a thread naming a
+  capsule it lacks. **A thread is the one arrival that does not wait for
+  `.call()`: it waits to be started, so the program types `name.start()`**,
+  M23's existing word, and `join()` answers as it does today.
 - **Files and sockets do not cross** — each is a fact about this machine, and
   is refused by name.
 - **There is no `send` in the numbering**, nor v1's `accept`. Each is a new
