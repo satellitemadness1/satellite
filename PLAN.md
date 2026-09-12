@@ -5302,8 +5302,13 @@ is `"hi"`, and whose name is **`default_object_name1`**. So there is no sixth
 kind. **The trailing number counts up, per connection** — the next unnamed send
 on the same connection is `default_object_name2`, and a new connection starts
 again at `default_object_name1`, so a receiver sees the same names for the same
-sends however long the program has run. *Open: what happens when a program has
-its own variable literally named `default_object_name1`.*
+sends however long the program has run. **It cannot clash, because the name is
+reserved** — in the author's words, *"it's 'default', it's almost like saying
+'void'"*: it means *this had no name*, and no program may declare one. So a
+declaration spelled `default_object_name` plus digits is refused by name when
+it is compiled, which is one new `errors.def` row at build time. *(Whether the
+reservation covers the bare `default_object_name` and every digit suffix, or
+only the suffixes, is my reading — the whole family.)*
 
 Worked out beside it, *not yet confirmed by the author*:
 
