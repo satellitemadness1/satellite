@@ -454,6 +454,21 @@ uint32_t Compiler::topic_parameter(NodeIndex call_node) const
     return words::topic_parameter_of(static_cast<words::NodeId>(self.path));
 }
 
+// WHICH SPACESUIT THIS PATH IS A METHOD OF, or null -- M26. A path is a method
+// when some suit's table holds it, and that is the only test that separates a
+// method from an ordinary capsule of the file: both are user names, both are in
+// `capsules_`, and only one of them takes a receiver.
+const resolve::Suit *Compiler::suit_of_method(words::PathId path) const
+{
+    if (path == words::kNoPath || words::is_language_word(path))
+        return nullptr;
+    for (const resolve::Suit &suit : resolved_.suits)
+        for (const resolve::Method &method : suit.methods)
+            if (method.path == path)
+                return &suit;
+    return nullptr;
+}
+
 uint32_t Compiler::capsule_index(const resolve::Info &about,
                                  words::PathId declared) const
 {
@@ -903,7 +918,20 @@ OpIndex Compiler::call(NodeIndex node)
     // step 0 through `method_receiver`, and `with_receiver` below is the list
     // it built -- the receiver first, then the written arguments, which is
     // exactly the order §6.4 writes them in.
-    if (about.path != words::kNoPath && !words::is_language_word(about.path))
+    // AND IT ASKS WHETHER THE PATH IS A SUIT'S METHOD RATHER THAN WHETHER IT IS
+    // A USER'S NAME, WHICH IS THE DIFFERENCE BETWEEN THIS WORKING AND EVERY
+    // ORDINARY CALL BREAKING. The first version tested `!is_language_word` and
+    // a hit in `capsules_` -- which is true of EVERY capsule the program
+    // declares, so `helper()` at the top level took this arm, found no
+    // receiver, and had `op_local(0)` inserted as one. A capsule of no
+    // arguments was then entered with one, and op_local read a slot that was
+    // not there.
+    //
+    // FOUND BY tests/eval_test SEGFAULTING IN section_calls, which is the
+    // oldest section in the suite and is about frames -- so the guard that
+    // caught it is a fixture written eight milestones before spacesuits
+    // existed. MILESTONES/M26.md records it.
+    if (const resolve::Suit *of = suit_of_method(about.path); of != nullptr)
         if (const auto found = capsules_.find(about.path);
             found != capsules_.end()) {
             std::vector<OpIndex> given;

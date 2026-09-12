@@ -192,6 +192,9 @@ private:
     uint32_t capsule_index(const resolve::Info &about,
                            words::PathId declared) const;
 
+    // Which spacesuit this path is a method of, or null -- M26.
+    const resolve::Suit *suit_of_method(words::PathId path) const;
+
     // `satellite.help(x)`'s one argument, compiled. The path or the declared
     // type is folded to a constant HERE, at compile time, and the misuses are
     // refused here too -- so nothing about the ask is decided while the program
