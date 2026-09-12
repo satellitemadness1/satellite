@@ -5335,29 +5335,33 @@ Worked out beside it, *not yet confirmed by the author*:
   read. A message carries the closure.
 - **Receiving a definition is `satellite.include` from a connection instead of a
   file**, so M25 is a real prerequisite and not only an order.
-- **A name that clashes is a potential network WARNING — decided by the author
-  2026-09-12.** A receiver that already has a `counter` with a different body
-  reports it, at `Severity::WARNING`, and does not refuse; an identical one is
-  the same type and says nothing. **After the warning the two are KEPT APART**
-  (the author, same day) — the receiver's own `counter` is not replaced and the
-  arrival is not dropped. *Open: the spelling a program uses to reach the
-  arrival rather than its own.*
+- **A name that clashes is an ERROR, and the error CLOSES THAT CONNECTION —
+  decided by the author 2026-09-12.** A receiver that already has a `counter`
+  with a different body reports it by name and closes the connection it came
+  in on; **the program is not halted** (the author said "no" to that) and its
+  own `counter` is untouched. An identical definition is the same type and
+  says nothing. *(This went warning → kept apart → error that halts → error
+  that closes the connection, all the same day; the last is the decision. With
+  the arrival never installed, there is no second `counter` to spell. My
+  reading: EVERY error on a connection closes it, not only the clash — "we
+  close that connection on an error".)*
 - **An arriving instance is restored, not constructed** — its constructor does
   not run again.
 - **Nothing runs on arrival — decided by the author 2026-09-12: it waits for
-  the program to call `.call()` on it by name**, `default_object_nameX.call()` when it
-  was sent without one. Installing a capsule does not call it, and an
-  expression (`satellite.variable.expression` `1 6 9`, v1's
-  `struct Quoted { ProgramPtr prog; const Expr *node; }`) does not evaluate.
-  This is the line v1 §20.6 was protecting, and it survives. **`.call()` is not in
-  the numbering** — a new permanent path.
+  the program to call it by name**, **`name()` — the same spelling as any
+  capsule** (the author replaced `name.call()` the same day), and
+  `default_object_nameX()` when it was sent without one. Installing a capsule
+  does not call it, and an expression (`satellite.variable.expression` `1 6 9`,
+  v1's `struct Quoted { ProgramPtr prog; const Expr *node; }`) does not
+  evaluate. This is the line v1 §20.6 was protecting, and it survives. Because
+  the spelling is a plain call, **no new word is minted for it**.
 - **A thread CAN be sent — decided by the author 2026-09-12**: *"that's like
   sending two satellite expressions, but they are threads"*. **It is kind 6**,
   and **its input is a capsule name**; what crosses is that packaged call and
   never the OS thread. **The capsule is always sent with it** — a kind 6 is
   never sent without its kind 3, so a receiver never holds a thread naming a
   capsule it lacks. **A thread is the one arrival that does not wait for
-  `.call()`: it waits to be started, so the program types `name.start()`**,
+  `name()`: it waits to be started, so the program types `name.start()`**,
   M23's existing word, and `join()` answers as it does today.
 - **Files and sockets do not cross** — each is a fact about this machine, and
   is refused by name.
