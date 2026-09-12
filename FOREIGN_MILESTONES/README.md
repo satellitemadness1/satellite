@@ -67,7 +67,7 @@ first for that reason. See [SATELLITE/M29](SATELLITE/M29-method-chaining.md).
 | folder | what is in it |
 |---|---|
 | [CXX23/](CXX23/) | every C++23 (ISO/IEC 14882:2024) feature, one file each |
-| PYTHON/ | *to be written* |
+| [PYTHON/](PYTHON/) | every Python 3.12 feature, 323 rows, one file each |
 | JAVA/ | *to be written* |
 | RUST/ | *to be written* |
 | ASM/ | *to be written* |
