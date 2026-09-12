@@ -5334,17 +5334,27 @@ Worked out beside it, *not yet confirmed by the author*:
   read. A message carries the closure.
 - **Receiving a definition is `satellite.include` from a connection instead of a
   file**, so M25 is a real prerequisite and not only an order.
-- **A name that clashes is refused by name.** A receiver that already has a
-  `counter` with a different body refuses; an identical one is the same type.
-  Nothing is silently replaced.
+- **A name that clashes is a potential network WARNING — decided by the author
+  2026-09-12.** A receiver that already has a `counter` with a different body
+  reports it, at `Severity::WARNING`, and does not refuse; an identical one is
+  the same type and says nothing. *Open: after the warning, which `counter`
+  the name means — the receiver's own, the arrival, or both kept apart.*
 - **An arriving instance is restored, not constructed** — its constructor does
   not run again.
-- **Nothing runs on arrival.** Installing a capsule does not call it, and an
+- **Nothing runs on arrival — decided by the author 2026-09-12: it waits for
+  the program to call `run` on it by name**, `default_object_nameX` when it
+  was sent without one. Installing a capsule does not call it, and an
   expression (`satellite.variable.expression` `1 6 9`, v1's
-  `struct Quoted { ProgramPtr prog; const Expr *node; }`) waits for the program
-  to run it by name. This is the line v1 §20.6 was protecting, and it survives.
-- **Handles do not cross** — a file, a thread, a socket is a fact about this
-  machine; each is refused by name.
+  `struct Quoted { ProgramPtr prog; const Expr *node; }`) does not evaluate.
+  This is the line v1 §20.6 was protecting, and it survives. **`run` is not in
+  the numbering** — a new permanent path.
+- **A thread CAN be sent — decided by the author 2026-09-12**: *"that's like
+  sending two satellite expressions, but they are threads"*, and like
+  everything else it waits for `run`. `satellite.thread.new` already packages a
+  call, so what crosses is the call and not the OS thread. *Open: which kind
+  number it opens with — the five have no thread row.*
+- **Files and sockets do not cross** — each is a fact about this machine, and
+  is refused by name.
 - **There is no `send` in the numbering**, nor v1's `accept`. Each is a new
   permanent path, minted in the order it is first written down.
 
