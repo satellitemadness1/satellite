@@ -39,6 +39,7 @@ This file is an **index and holds no fact of its own**, the same shape as
 | [M20.md](M20.md) | 2026-09-11 | The machine's facts, in the language — `satellite.system`, the arguments object and its ten selectors, the live codes a program can read at last, and a watchdog floor a running program can move. |
 | [M21.md](M21.md) | 2026-09-11 | A piece of QUAD, running — `Sky::decay` and `Rack::draw` written by hand, 40 activations of 40 against the double's 6, the seeded tier that made a replayable fractional draw sayable, and the float's first method. |
 | [M23.md](M23.md) | 2026-09-12 | Threads — the language's first deferred call, three verbs, a `satellite.library` two walks share, and DESIGN §7.1's 1585-wrong-out-of-1600 run backwards at 1600 of 1600. **The first milestone to add no numbered path and invalidate no `.satc`.** |
+| [M26.md](M26.md) | 2026-09-12 | Spacesuits — construction by declaration, reference semantics, a superclass held as a prefix of the layout, `+` converting, and the author's 1433-line `infinity_data_main.satl` running. **`.pointer()` is still owed.** |
 
 **M22 sits between M17 and M18 in this table and that is the point of the date
 column.** It was built on 2026-09-07, before M18 through M21, at the author's
