@@ -39,6 +39,11 @@ private:
 
     void collect_capsules();
     void note_spacesuits();
+
+    // One suit's members, flattened across its sections -- M26. Keeps its own
+    // stack, because a section may hold a section and the nesting is the user's
+    // to choose (DESIGN §7.5).
+    void gather_members(NodeIndex suit_node, Suit &into, bool is_public);
     void globals();
     void bodies();
 
@@ -220,6 +225,16 @@ private:
     // that these two cases are DIFFERENT storage and not one with a flag:
     // `satellite.library` is shared and permanent, and a local is neither.
     Frame *frame_ = nullptr;
+
+    // THE SPACESUIT WHOSE METHOD IS BEING WALKED, or null -- M26. Set for the
+    // length of one method body by pass 4 and read by name(): a bare word
+    // inside a method is a local first, then a FIELD of this suit, then a
+    // capsule, then a suit. That order is DESIGN §7.1's rule ("a local shadows
+    // a capsule") extended by one row, and the row goes where it does because a
+    // field is storage and a capsule is not -- so a parameter named `n` in a
+    // suit that also has a field `n` means the parameter, which is what every
+    // language with both does and what a reader expects.
+    const Suit *inside_ = nullptr;
 
 };
 

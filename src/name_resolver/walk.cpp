@@ -256,6 +256,24 @@ void Resolver::body_of(NodeIndex capsule, Frame &frame)
     scopes_.clear();
     open_scope();
 
+    // SLOT 0 IS THE RECEIVER WHEN THIS IS A METHOD -- M26, and it is declared
+    // before the written parameters so that it really is slot 0. DESIGN §6.4:
+    // "Methods are sugar", with the receiver written out as the first argument
+    // -- `satellite.container.list.append(my_list, x)` -- so a method's frame
+    // is a capsule's frame with that argument actually present, and every piece
+    // of machinery a call already has works on it unchanged.
+    //
+    // THE NAME CANNOT BE WRITTEN AND THAT IS THE POINT. A space is not a legal
+    // identifier character, so no program can name slot 0 -- which matters
+    // because DESIGN §12 defers BARE FIELD ACCESS ("accessor methods only"),
+    // and a reachable receiver would be the back door onto it. What a field
+    // read uses instead is kSlotField, which goes through this slot without
+    // ever naming it.
+    if (frame.suit != words::kNoPath) {
+        frame.names.push_back("the spacesuit");
+        frame.types.push_back(kNoNode);
+    }
+
     // THE PARAMETERS ARE SLOTS 0..n AND THAT IS §7.1's SENTENCE IN THE TREE.
     // "This cannot be reframed as deliberate capsule-static semantics, because
     // parameters are locals too -- `arguments` would be a program-wide static."

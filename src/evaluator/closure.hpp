@@ -37,7 +37,10 @@
 #include "satellite_value/value.hpp"
 #include "satellite_words/words.hpp"
 
+#include "satellite_spacesuit/suit_object.hpp"
+
 #include <cstdint>
+#include <deque>
 #include <vector>
 
 namespace satellite::eval {
@@ -84,6 +87,9 @@ using OpFn = void (*)(Machine &machine, const Op &op, uint32_t step);
 //   op_binary       left             right           operator index -
 //   op_call         capsule index    argument list   -              -
 //   op_package      capsule index    argument list   text index     -
+//   op_construct    suit index       field init list -              -
+//   op_field        field index      -               -              -
+//   op_field_store  field index      value or none   -              -
 //   op_dispatch     PathId           argument list   cache index    text index
 //   op_method       PathId           argument list   cache index    frame slot
 //   op_method_global PathId          argument list   cache index    global index
@@ -194,6 +200,26 @@ public:
     uint32_t globals() const { return globals_; }
     uint32_t add_global() { return globals_++; }
 
+    // THE SPACESUIT LAYOUTS -- M26. One per suit the file declares, held by the
+    // program because that is what outlives every object of it; every
+    // `SuitObject` carries a bare pointer to its own, which
+    // satellite_spacesuit/suit_object.hpp says is safe for the arena's reason.
+    //
+    // A `deque` AND NOT A `vector`, WHICH IS THE ONE CONTAINER CHOICE IN THIS
+    // FILE THAT IS NOT THE OBVIOUS ONE. Objects hold `const Layout *`, and a
+    // vector that reallocates on its next push would leave every object built
+    // so far pointing at freed memory. A program declaring a suit, constructing
+    // one, and then declaring a second suit is not exotic -- it is
+    // `example/spacesuits.satl`. A deque never moves what it already holds.
+    uint32_t add_suit(suit::Layout layout)
+    {
+        suits_.push_back(std::move(layout));
+        return static_cast<uint32_t>(suits_.size() - 1);
+    }
+
+    const suit::Layout &suit_at(uint32_t index) const { return suits_[index]; }
+    size_t suits() const { return suits_.size(); }
+
     uint32_t caches() const { return caches_; }
     uint32_t add_cache() { return caches_++; }
 
@@ -214,6 +240,7 @@ private:
     std::vector<Value> constants_;
     std::vector<Capsule> capsules_;
     std::vector<std::string> texts_;
+    std::deque<suit::Layout> suits_;
     OpIndex top_ = kNoOp;
     uint32_t globals_ = 0;
     uint32_t caches_ = 0;

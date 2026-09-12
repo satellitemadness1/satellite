@@ -380,25 +380,30 @@ words::PathId Parser::define_name(words::PathId owner, uint32_t token,
 {
     const std::string_view name = toks()[token].text;
 
-    // A USER'S SPACESUIT CANNOT YET BE A PARENT, AND M4 IS WHERE THAT WAS
-    // FOUND -- by being M2's first caller, which is the whole reason PLAN asks
-    // for a consumer in the milestone that writes a thing. words::Words seeds
-    // one counter per node of the FROZEN table and walks the frozen child
-    // lists, both sized kNodeCount + 1; a user's PathId starts above that, so
-    // handing one to find() or define() indexes past the end of both arrays.
-    // So a capsule declared inside a spacesuit gets no number here, its node
-    // carries kNoPath, and tests/parser_test/declarations.cpp asserts that
-    // rather than leaving it to be discovered. MILESTONES/M4.md §6 carries what
-    // fixing it costs.
-    if (!words::is_language_word(owner))
-        return words::kNoPath;
-    const words::NodeId parent = static_cast<words::NodeId>(owner);
+    // A USER'S SPACESUIT IS A PARENT SINCE M26, AND THIS GUARD IS WHAT WENT.
+    // M4 found the hole by being M2's first caller -- which is the whole reason
+    // PLAN asks for a consumer in the milestone that writes a thing -- and
+    // recorded both the cost and the owner: words::Words seeded one counter per
+    // node of the FROZEN table and walked the frozen child lists, so a user's
+    // PathId handed to find() or define() indexed past the end of both. A
+    // capsule declared inside a spacesuit has exactly such a parent, so a
+    // method got no number, its node carried kNoPath, and
+    // tests/parser_test/declarations.cpp asserted that rather than leaving it
+    // to be discovered.
+    //
+    // M26 IS WHERE A SPACESUIT'S MEMBERS HAVE TO RESOLVE, so M26 is where the
+    // counter grew -- see words_runtime.hpp, which carries the shape. The line
+    // that stood here was `if (!words::is_language_word(owner)) return
+    // kNoPath;` and nothing replaces it: `owner` is now simply a PathId, and
+    // the two lookups below take one.
+    const words::PathId parent = owner;
 
     if (const words::PathId taken = words_.find(parent, name);
         taken != words::kNoPath) {
         if (words::is_language_word(taken)) {
             error<errors::Code::PARSE_NAME_IS_LANGUAGE_OWNED>(
-                token, name, words::path_text(parent), what);
+                token, name,
+                words::path_text(static_cast<words::NodeId>(parent)), what);
         } else {
             error<errors::Code::PARSE_NAME_ALREADY_DEFINED>(token, name);
             // THE NOTE THAT NEEDED A TABLE, and it is the reason `declared_at_`

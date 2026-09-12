@@ -66,19 +66,33 @@ void Resolver::collect_capsules()
 
 // --- pass 2 -- every spacesuit name, and it is M26's ------------------------
 
+// PASS 2, AND IT WAS A NAMED HOLE FROM M7 UNTIL M26. What stood here kept its
+// place in DESIGN §7.3's order, resolved nothing, and said so -- because "a
+// pass that silently resolved nothing is indistinguishable from one that
+// worked" -- and its note recorded exactly why it was empty:
+//
+//     "What the M6 draft does here is the other 40% of its source. It links
+//      superclasses, breaks inheritance cycles, flattens field layouts, builds
+//      method tables and checks access -- and every line of that is a decision
+//      about what a spacesuit IS, which is M26's to take. Copying it forward
+//      would have been this milestone deciding another one's design in
+//      passing."
+//
+// SO WHAT M26 BUILT IS THE TWO OF THOSE FIVE THAT ARE THIS LANGUAGE'S, AND NOT
+// THE OTHER THREE. It flattens the field layout and builds the method table.
+// It does NOT link superclasses or break inheritance cycles -- the parser keeps
+// a `super` name (Spacesuit::c) and DESIGN §13 defers even `super(...)`, so
+// inheritance is parsed, carried, and not yet given meaning. And access is
+// checked where it can be reported against the thing being reached, which is
+// names.cpp and not here.
+//
+// A FIELD IS A SLOT AND A METHOD IS A PATH -- resolve.hpp's `Suit` carries the
+// argument. Both halves are mechanisms the language already had: DESIGN §7.2's
+// storage decided before anything runs, and §7.6's capsules in a table of their
+// own. Neither needed inventing, which is why the largest feature in PLAN §8 is
+// this short.
 void Resolver::note_spacesuits()
 {
-    // A NAMED HOLE AND NOT AN OMISSION. DESIGN §7.3 puts spacesuits second in
-    // the order and PLAN §8 puts them at M26, so the honest shape is a pass
-    // that EXISTS, keeps its place in the order, and resolves nothing -- and
-    // `satl --resolve` prints how many it skipped, because a pass that silently
-    // resolved nothing is indistinguishable from one that worked.
-    //
-    // WHAT THE M6 DRAFT DOES HERE IS THE OTHER 40% OF ITS SOURCE. It links
-    // superclasses, breaks inheritance cycles, flattens field layouts, builds
-    // method tables and checks access -- and every line of that is a decision
-    // about what a spacesuit IS, which is M26's to take. Copying it forward
-    // would have been this milestone deciding another one's design in passing.
     const Node &program = ast_[ast_.root()];
     for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
         const NodeIndex item = ast_.list_at(program.a, i);
@@ -86,7 +100,108 @@ void Resolver::note_spacesuits()
             continue;
         info(item).slot = kSlotSpacesuit;
         info(item).path = ast_[item].a;
-        out_.spacesuits++;
+
+        Suit suit;
+        suit.path = ast_[item].a;
+        suit.name = ast_.text_of(item);
+        suit.node = item;
+        gather_members(item, suit, false);
+        suits_.push_back({suit.path, suit.name, item});
+        out_.suits.push_back(std::move(suit));
+    }
+}
+
+// ONE SUIT'S MEMBERS, FLATTENED ACROSS ITS SECTIONS -- and this is the second
+// of this file's walkers to keep its own stack, for DESIGN §7.5's reason. A
+// section may hold a section (parser_declarations.cpp's `suit_body` is one loop
+// over `open` for exactly that), so the nesting is the user's to choose and no
+// walker may spend the C++ stack on a depth a program picks.
+//
+// ACCESS TRAVELS DOWN. A member of a `public` section inside a `protected` one
+// is protected: the outer answer is the one that decided you could get this far,
+// which is the reading every language with nested access takes and is the only
+// one that cannot be used to smuggle a field out.
+void Resolver::gather_members(NodeIndex suit_node, Suit &into, bool)
+{
+    struct Level {
+        ListId items = kNoList;
+        uint32_t at = 0;
+        bool is_public = false;
+    };
+    std::vector<Level> open;
+    open.push_back({ast_[suit_node].b, 0, false});
+
+    while (!open.empty()) {
+        Level &here = open.back();
+        if (here.at >= ast_.list_size(here.items)) {
+            open.pop_back();
+            continue;
+        }
+        const NodeIndex item = ast_.list_at(here.items, here.at++);
+        const bool is_public = here.is_public;
+
+        switch (ast_[item].kind) {
+        case NodeKind::Section: {
+            // WHICH SECTION IT IS, IS THE TOKEN'S SPELLING AND NOT A FIELD --
+            // the parser says so where it builds the node, because both words
+            // are in words.def and the token already carries an integer that
+            // answers it.
+            const bool opens_public =
+                ast_.text_of(item) == "public" && !is_public ? true : is_public;
+            open.push_back({ast_[item].a, 0, opens_public});
+            break;
+        }
+
+        case NodeKind::VarDecl: {
+            Field field;
+            field.name = ast_.text_of(item);
+            field.type = type_of(ast_[item].a);
+            field.at = item;
+            field.init = ast_[item].b;
+            field.is_public = is_public;
+
+            // A NAME DECLARED TWICE IN ONE SUIT IS S0501's QUESTION ONE LEVEL
+            // UP, and it is refused here rather than left to collide in a
+            // vector. DESIGN §7.4's fresh-slot rule is about a redeclaration in
+            // a BODY, where rebinding is the right answer because the old slot
+            // may still be referred to; a suit has one storage layout and two
+            // fields of one name would be two indices nothing could tell apart.
+            if (into.field_named(field.name) != nullptr ||
+                into.method_named(field.name) != nullptr) {
+                problem<errors::Code::RESOLVE_SUIT_MEMBER_TWICE>(
+                    item, field.name, into.name);
+                break;
+            }
+            info(item).slot = static_cast<Slot>(into.fields.size());
+            info(item).type = field.type;
+            into.fields.push_back(field);
+            break;
+        }
+
+        case NodeKind::Capsule: {
+            Method method;
+            method.path = ast_[item].a;
+            method.name = ast_.text_of(item);
+            method.node = item;
+            method.is_public = is_public;
+
+            if (into.field_named(method.name) != nullptr ||
+                into.method_named(method.name) != nullptr) {
+                problem<errors::Code::RESOLVE_SUIT_MEMBER_TWICE>(
+                    item, method.name, into.name);
+                break;
+            }
+            into.methods.push_back(method);
+            break;
+        }
+
+        default:
+            // The parser's `suit_member` admits a capsule or a field and
+            // nothing else, so this is unreachable rather than defensive -- and
+            // it is written out because a switch with no default is a warning
+            // and a silent skip is how an added node kind disappears.
+            break;
+        }
     }
 }
 
@@ -147,6 +262,36 @@ void Resolver::bodies()
         frame.capsule = ast_[item].a;
         frame.node = item;
         body_of(item, frame);
+    }
+
+    // AND EVERY METHOD OF EVERY SPACESUIT -- M26, and it is the SAME pass and
+    // the same function. A method is a capsule with a receiver, so it gets a
+    // frame like any other; what pass 2 already decided is which suit's fields
+    // are in scope while its body is walked.
+    //
+    // AFTER THE CAPSULES AND NOT BEFORE, so that a method calling a top-level
+    // capsule finds it -- DESIGN §7.3's whole reason for passes is that "a
+    // capsule may call one defined further down the file". Pass 1 collected
+    // every capsule NAME before any body was walked, so the order here is about
+    // the frame list a dump prints and not about what resolves.
+    //
+    // A REFERENCE AND NOT A COPY, AND THE VECTOR IS NOT GROWN WHILE IT IS HELD.
+    // `suits_` is pass 2's and is complete before this runs; `out_.frames` is
+    // what grows, which is why `suit` below is re-read from `out_.suits` by
+    // index rather than held across the push_back.
+    for (size_t which = 0; which < out_.suits.size(); which++) {
+        for (size_t m = 0; m < out_.suits[which].methods.size(); m++) {
+            const NodeIndex node = out_.suits[which].methods[m].node;
+
+            out_.frames.push_back(Frame{});
+            Frame &frame = out_.frames.back();
+            frame.capsule = out_.suits[which].methods[m].path;
+            frame.node = node;
+            frame.suit = out_.suits[which].path;
+            inside_ = &out_.suits[which];
+            body_of(node, frame);
+            inside_ = nullptr;
+        }
     }
 }
 

@@ -18,6 +18,7 @@
 
 #include "evaluator/dispatch.hpp"
 
+#include "satellite_spacesuit/suit_object.hpp"
 #include "satellite_thread/thread_handle.hpp"
 #include "satellite_value/render.hpp"
 
@@ -377,6 +378,104 @@ void op_package(Machine &m, const Op &op, uint32_t step)
     m.push_value(Value(Cap(std::move(packaged))));
 }
 
+// A SPACESUIT, CONSTRUCTED -- M26. `a` is the layout, `b` is one op per field:
+// the initialiser the suit declared, or an op pushing nothing.
+//
+// ONE OP PER FIELD AND NOT A LOOP OVER "has an initialiser", which is what
+// makes this arm short. A field with no `=` gets an op that pushes nothing, so
+// the count on the stack is the field count by construction and the arm below
+// has no case to get wrong -- the same trick op_call uses by evaluating every
+// argument rather than only the interesting ones.
+//
+// AND THE INITIALISERS RUN AT CONSTRUCTION, ONCE PER OBJECT. They are ordinary
+// expressions compiled in the suit's own scope, so `satellite.variable.number
+// data_id = 0` is a zero stored into slot 0 of every object built, and two
+// objects never share it. That is the difference DESIGN §7.1 is a receipt for,
+// one level up from the frames: the first satellite's registry gave every
+// instance one storage cell between them.
+void op_construct(Machine &m, const Op &op, uint32_t step)
+{
+    if (step == 0) {
+        // IN REVERSE SO THEY EVALUATE FORWARDS -- op_call's line and op_call's
+        // reason, and it matters here for the same reason: a field initialiser
+        // may call something that prints.
+        m.again(1);
+        for (uint32_t i = m.program().list_size(op.b); i > 0; i--)
+            m.push(m.program().list_at(op.b, i - 1));
+        return;
+    }
+
+    const suit::Layout &layout = m.program().suit_at(op.a);
+    const uint32_t count = m.program().list_size(op.b);
+
+    auto made = std::make_shared<suit::SuitObject>();
+    made->layout = &layout;
+    made->fields.resize(count);
+    for (uint32_t i = count; i > 0; i--)
+        made->fields[i - 1] = m.pop_value();
+
+    m.done();
+    m.push_value(Value(Sui(std::move(made))));
+}
+
+// A FIELD, READ THROUGH THE RECEIVER AT SLOT 0 -- M26.
+//
+// TWO INDIRECTIONS AND NO NAME ANYWHERE, which is DESIGN §7.1's argument
+// arriving one level up from where it was made. Resolve turned `n` into a
+// field index before the program started, and slot 0 is the receiver because
+// resolve put it there -- so reading a field is a slot read and a vector index,
+// with nothing hashed and nothing compared.
+//
+// THE GUARD IS NOT DEFENSIVE. Slot 0 of a method's frame is filled by the call
+// that entered it, and a method can only be entered through a call that pushed
+// a receiver -- so a non-suit here would be a miscompile rather than a
+// program's mistake. It is checked because the alternative is dereferencing
+// whatever is there, and because `satellite_value/value.hpp`'s as_list note
+// makes the same argument about a producer this module cannot see.
+void op_field(Machine &m, const Op &op, uint32_t)
+{
+    const Sui *held = std::get_if<Sui>(&m.local(0));
+    if (held == nullptr || !*held || op.a >= (*held)->fields.size()) {
+        m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
+            m.span_of(m.here()), "a field read outside a spacesuit method",
+            "no milestone -- resolve puts the receiver at slot 0"));
+        return;
+    }
+    m.done();
+    m.push_value((*held)->fields[op.a]);
+}
+
+// A FIELD, WRITTEN THROUGH THE RECEIVER -- M26, and THIS IS WHERE REFERENCE
+// SEMANTICS ACTUALLY HAPPENS.
+//
+// IT WRITES THROUGH THE HANDLE AND NOT BACK INTO A SLOT, which is the whole
+// difference from every mutating method the language already has. A list is
+// frozen and a mutation is "a copy published whole through the receiver's
+// storage slot" (DESIGN §6.4) -- so `l.append(x)` changes what the CALLER's
+// name holds and nobody else's. A spacesuit is a reference type, so this
+// changes the object, and every name holding that object sees it. That is
+// PLAN §8's M26 done-when in one line: "passes one into a capsule that mutates
+// it, and proves the caller sees the mutation".
+void op_field_store(Machine &m, const Op &op, uint32_t step)
+{
+    if (step == 0 && op.b != kNoOp) {
+        m.again(1);
+        m.push(op.b);
+        return;
+    }
+
+    const Sui *held = std::get_if<Sui>(&m.local(0));
+    if (held == nullptr || !*held || op.a >= (*held)->fields.size()) {
+        m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
+            m.span_of(m.here()), "a field write outside a spacesuit method",
+            "no milestone -- resolve puts the receiver at slot 0"));
+        return;
+    }
+
+    (*held)->fields[op.a] = op.b == kNoOp ? Value::nothing() : m.pop_value();
+    m.done();
+}
+
 void op_enter(Machine &m, const Op &op, uint32_t step)
 {
     // op_call WITH THE ARGUMENTS ALREADY EVALUATED -- see Capsule::entry.
@@ -405,6 +504,9 @@ const char *op_name(OpFn fn)
     if (fn == op_call)         return "call";
     if (fn == op_enter)        return "enter";
     if (fn == op_package)      return "package";
+    if (fn == op_construct)    return "construct";
+    if (fn == op_field)        return "field";
+    if (fn == op_field_store)  return "field_store";
     if (fn == op_dispatch)     return "dispatch";
     if (fn == op_method)       return "method";
     if (fn == op_method_global) return "method_global";

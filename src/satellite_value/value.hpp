@@ -269,6 +269,30 @@ using Cap = std::shared_ptr<const thread::Deferred>;
 // the bottom does not move.
 using Thr = std::shared_ptr<thread::ThreadHandle>;
 
+// A SPACESUIT INSTANCE -- `satellite.spacesuit` `1 10`, M26, and the TWELFTH
+// append. DESIGN §7 calls its subject "the most important decision in the
+// language", and this is the storage that is not a call's: an object's fields,
+// shared by every method called on it and outliving all of them.
+//
+// NOT const, WHICH IS THE THIRD ARM ON THAT SIDE OF THE LINE AFTER `Fil` AND
+// `Thr` -- and the first of the three where it is the LANGUAGE's semantics
+// rather than a resource's. A file is a reference type because there is one
+// descriptor; a thread because there is one `pthread_t`; a spacesuit because
+// DESIGN §13 says so under Decided and §7.4 carries the receipt for what the
+// other answer costs: "a spacesuit is a reference type, so reusing the old slot
+// would leave every handle already taken to the first instance pointing at the
+// second -- and a list built by that idiom would read back as n copies of its
+// last element WITH NO ERROR ANYWHERE."
+//
+// SIXTEEN BYTES, `Str`'s accounting for the TENTH time, so the assert at the
+// bottom does not move. satellite_spacesuit/suit_object.hpp is the body and
+// carries the cycle-leak decision.
+namespace suit {
+struct SuitObject;
+} // namespace suit
+
+using Sui = std::shared_ptr<suit::SuitObject>;
+
 // APPEND ONLY. A new arm goes at the END of this list, never in the middle.
 // `Time` IS THE SECOND APPEND AND IT COST NO BYTES -- eight against a 32-byte
 // widest arm, the same accounting `Runtime`'s note above runs. `Flo` is the
@@ -294,9 +318,9 @@ using Thr = std::shared_ptr<thread::ThreadHandle>;
 // arguments object (M20)" since M9 wrote it, beside the instruction that each
 // named append re-runs the assert. It was re-run and it holds at 40.
 using ValueBase = std::variant<Nothing, bool, Number, Str, Runtime, Time, Flo,
-                              Lst, Map, Fil, Bin, Hex, Arg, Cap, Thr>;
+                              Lst, Map, Fil, Bin, Hex, Arg, Cap, Thr, Sui>;
 
-// One value. DESIGN §8's table, FIFTEEN arms of it since M23.
+// One value. DESIGN §8's table, SIXTEEN arms of it since M26.
 //
 // A STRUCT OVER THE VARIANT AND NOT AN ALIAS, so that the helpers below have
 // somewhere to live and so that `Value` is a name the compiler prints in an
@@ -365,6 +389,7 @@ struct Value : ValueBase {
     bool is_arguments() const { return std::holds_alternative<Arg>(*this); }
     bool is_capsule() const { return std::holds_alternative<Cap>(*this); }
     bool is_thread() const { return std::holds_alternative<Thr>(*this); }
+    bool is_suit() const { return std::holds_alternative<Sui>(*this); }
 };
 
 // `satellite.container.list<T>` -- a vector of values with a name a forward

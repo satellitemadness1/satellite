@@ -201,14 +201,26 @@ void Writer::write_global_name(NodeIndex node)
     // (words_runtime.hpp), so the object that allocated the name is the only
     // thing that can say what it hangs under -- and that answer is
     // language-owned, which is what makes it legal to write down.
-    const words::NodeId parent = words_.parent_of(id);
-    if (parent == words::NodeId::NONE) {
+    const words::PathId parent = words_.parent_of(id);
+    if (parent == static_cast<words::PathId>(words::NodeId::NONE)) {
         write_fixed("satellite.library");
         out_ += "." + text(node);
         return;
     }
-    note(static_cast<words::PathId>(parent));
-    out_ += number_text(static_cast<words::PathId>(parent)) + "." + text(node);
+
+    // A USER'S NAME UNDER A USER'S NAME IS WRITTEN AS TEXT ALL THE WAY DOWN --
+    // M26, where a spacesuit's members became the first names whose parent is
+    // itself a user name. The paragraph above is why: a user's PathId is valid
+    // inside one run only, so the only part of this that may be written down is
+    // the part the LANGUAGE owns, and a user parent owns none of it. Writing
+    // the spelling is what `write_capsule_name` already does one function down
+    // for exactly this reason, and SATC.md §3's rule is kept rather than bent.
+    if (!words::is_language_word(parent)) {
+        out_ += std::string(words_.name_of(parent)) + "." + text(node);
+        return;
+    }
+    note(parent);
+    out_ += number_text(parent) + "." + text(node);
 }
 
 // A capsule's name: `satellite.main` is the one the language owns a number for,

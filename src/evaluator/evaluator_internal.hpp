@@ -43,6 +43,9 @@ void op_to_float(Machine &m, const Op &op, uint32_t step);
 void op_call(Machine &m, const Op &op, uint32_t step);
 void op_enter(Machine &m, const Op &op, uint32_t step);
 void op_package(Machine &m, const Op &op, uint32_t step);
+void op_construct(Machine &m, const Op &op, uint32_t step);
+void op_field(Machine &m, const Op &op, uint32_t step);
+void op_field_store(Machine &m, const Op &op, uint32_t step);
 void op_dispatch(Machine &m, const Op &op, uint32_t step);
 void op_method(Machine &m, const Op &op, uint32_t step);
 void op_method_global(Machine &m, const Op &op, uint32_t step);
@@ -210,6 +213,9 @@ private:
     OpIndex into_declared(const resolve::Info &about, NodeIndex node,
                           OpIndex value);
 
+    // One spacesuit, constructed -- M26. See compile_statements.cpp.
+    OpIndex construct(NodeIndex at, uint32_t layout);
+
     OpIndex emit(OpFn fn, NodeIndex node, uint32_t a = 0, uint32_t b = 0,
                  uint32_t c = 0, uint32_t d = 0);
 
@@ -242,6 +248,16 @@ private:
 
     // Which global slot a `satellite.library.NAME` PathId is.
     std::unordered_map<words::PathId, uint32_t> globals_;
+
+    // Which layout a spacesuit's PathId is -- M26, `capsules_`' shape one
+    // declaration kind over, and filled in the same pass and for the same
+    // reason: a field initialiser may construct a suit declared further down.
+    std::unordered_map<words::PathId, uint32_t> suits_;
+
+    // The spacesuit whose method is being compiled, or null. resolve's member
+    // of the same name is the other half; a field index means nothing without
+    // the suit it indexes.
+    const resolve::Suit *inside_ = nullptr;
 
     // The root expression of the statement being compiled, so call() can
     // tell statement position from every other -- the whole of how M14's

@@ -32,11 +32,22 @@ namespace {
 // THE ONES THIS MILESTONE IS ABOUT. words_runtime.hpp's table is the two: the
 // language's words are frozen and quotable, and a user's capsule is numbered
 // when it is met and is valid inside one run. `satl --resolve` prints a run.
+// RECURSIVE SINCE M26, AND THEY HAVE TO BE. A user's name used to hang under a
+// language node always, so one step reached a printable parent; a spacesuit's
+// method hangs under the SPACESUIT, which is itself a user name, so the walk is
+// as deep as the nesting. Two levels today -- a suit and its members -- and the
+// recursion is written for the general case because the alternative is a
+// function that is correct only while a number stays at two.
+//
+// NO DEPTH PROBLEM HERE, which is worth saying in a tree that keeps its walkers'
+// stacks by hand (DESIGN §7.5): this walks a name's ANCESTRY and not a program,
+// and an ancestry is bounded by how deeply the user nested a declaration, which
+// the grammar caps at a spacesuit holding members.
 std::string spelled(const words::Words &words, words::PathId id)
 {
     if (words::is_language_word(id))
         return words::path_text(static_cast<words::NodeId>(id));
-    return words::path_text(words.parent_of(id)) + "." +
+    return spelled(words, words.parent_of(id)) + "." +
            std::string(words.name_of(id));
 }
 
@@ -44,7 +55,7 @@ std::string numbered(const words::Words &words, words::PathId id)
 {
     if (words::is_language_word(id))
         return words::number_text(static_cast<words::NodeId>(id));
-    return words::number_text(words.parent_of(id)) + " " +
+    return numbered(words, words.parent_of(id)) + " " +
            std::to_string(words.number_of(id));
 }
 
@@ -164,14 +175,37 @@ std::string dump_text(const std::string &path, const Ast &ast,
     out += "  " + padded("the frames", 18) +
            counted(resolved.frames.size(), "capsule", "capsules") + "\n";
 
-    // PASS 2 SAYS SO OUT LOUD, which is the whole of what makes it a named hole
-    // rather than a pass that does not work. DESIGN §7.3 puts spacesuits second
-    // in the order and PLAN §8 puts them at M26; a resolver that skipped them
-    // in silence would be indistinguishable from one that resolved them wrong.
-    if (resolved.spacesuits != 0)
+    // PASS 2 SAID SO OUT LOUD WHILE IT WAS A HOLE, AND NOW IT PRINTS WHAT IT
+    // DECIDED. The line used to read "N seen and none resolved -- what is
+    // inside one lands at M26", which is what made it a named hole rather than
+    // a pass that did not work: a resolver that skipped them in silence would
+    // be indistinguishable from one that resolved them wrong. M26 built it, so
+    // the honest version is now the members themselves -- and this command is
+    // where a reader checks that a field got a slot and a method got a number.
+    if (!resolved.suits.empty()) {
         out += "  " + padded("spacesuits", 18) +
-               counted(resolved.spacesuits, "seen", "seen") +
-               " and none resolved -- what is inside one lands at M26\n";
+               counted(static_cast<uint32_t>(resolved.suits.size()), "suit",
+                       "suits") +
+               "\n";
+        for (const Suit &suit : resolved.suits) {
+            out += "\n  " + std::string(suit.name) + "  (" +
+                   numbered(words, suit.path) + ")\n";
+            for (size_t i = 0; i < suit.fields.size(); i++) {
+                const Field &field = suit.fields[i];
+                out += "    " + padded(std::to_string(i), 4) +
+                       padded(std::string(field.name), 18) +
+                       padded(unparse(ast, ast[field.at].a), 52) +
+                       (field.is_public ? "public field" : "protected field") +
+                       "\n";
+            }
+            for (const Method &method : suit.methods)
+                out += "    " + padded(" ", 4) +
+                       padded(std::string(method.name), 18) +
+                       padded(numbered(words, method.path), 52) +
+                       (method.is_public ? "public capsule" : "protected capsule") +
+                       "\n";
+        }
+    }
 
     return out;
 }

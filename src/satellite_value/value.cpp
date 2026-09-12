@@ -10,6 +10,8 @@
 
 #include "satellite_value/value.hpp"
 
+#include "satellite_spacesuit/suit_object.hpp"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -66,6 +68,16 @@ const char *type_name(const Value &value)
         return "capsule";
     if (value.is_thread())
         return "thread";
+    // THE SUIT'S OWN NAME AND NOT THE WORD "spacesuit" -- M26, and it is the
+    // one row here that is not a fixed string. Every other type in the language
+    // has one name; a program has as many spacesuits as it declares, and
+    // "expected a `counter` and this one is a `dna_counter`" is the sentence a
+    // person needs. The layout carries the name for exactly this.
+    if (const Sui *held = std::get_if<Sui>(&value))
+        if (*held && (*held)->layout != nullptr)
+            return (*held)->layout->name.c_str();
+    if (value.is_suit())
+        return "spacesuit";
     return "nothing";
 }
 

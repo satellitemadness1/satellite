@@ -80,6 +80,17 @@ inline constexpr Slot kSlotCapsule = -2;
 // The name is a spacesuit this file declares. What is INSIDE one is M26's.
 inline constexpr Slot kSlotSpacesuit = -3;
 
+// The name is a FIELD of the spacesuit whose method we are inside -- M26.
+// `Info::member` is which one, by index into the suit's field list.
+//
+// A FOURTH SENTINEL AND NOT A FRAME SLOT, and the difference is the milestone.
+// A frame slot is this activation's storage: private, fresh per call, gone when
+// the call returns (DESIGN §7.2). A field is the OBJECT's storage: shared by
+// every call on that object, and outliving all of them. Reading `n` inside a
+// method is therefore not a local read at all -- it is a read through the
+// receiver, which lives at slot 0 of every method's frame.
+inline constexpr Slot kSlotField = -4;
+
 constexpr bool in_a_frame(Slot slot) { return slot >= 0; }
 
 // WHERE A NUMBER CAME FROM, which the dump prints and which is the only way to
@@ -115,6 +126,12 @@ struct Info {
     // that ONE HOP is what makes WORD_NUMBERS §1.5's fold reachable -- see
     // names.cpp.
     words::PathId type = words::kNoPath;
+
+    // WHICH FIELD, when `slot` is kSlotField -- M26. Meaningless otherwise, and
+    // it is a separate word rather than a reuse of `path` because a PathId and
+    // an index are both uint32_t and this tree has a page in lexer.hpp about
+    // what that costs when two of them share a field.
+    uint32_t member = 0;
 
     // How `path` was arrived at. MILESTONES/M4.5.md §5 is what asks for this.
     Origin origin = Origin::Parsed;
@@ -158,7 +175,76 @@ struct Frame {
     // Which slot §7.7's object is in, or -1. Only `satellite.main` has one.
     Slot arguments = -1;
 
+    // THE SPACESUIT THIS IS A METHOD OF, or kNoPath for an ordinary capsule --
+    // M26. When it is set, SLOT 0 IS THE RECEIVER and the written parameters
+    // start at 1, which is DESIGN §6.4's "methods are sugar" made structural:
+    // the section writes the receiver out as the first argument, so a method's
+    // frame is a capsule's frame with that argument really there.
+    //
+    // THE RECEIVER'S NAME IS UNSPELLABLE ON PURPOSE. It is stored so the dump
+    // has something to print, and it is not a word the lexer can produce, so
+    // no program can reach slot 0 by writing its name -- DESIGN §12 defers bare
+    // field access and this is the one place that could have quietly granted it.
+    words::PathId suit = words::kNoPath;
+
     size_t size() const { return names.size(); }
+};
+
+// ONE SPACESUIT, RESOLVED -- M26, and this is pass 2's output where there used
+// to be a counter.
+//
+// A FIELD IS A SLOT AND A METHOD IS A PATH, which is the one sentence this
+// whole structure is. DESIGN §7.2's argument for frames applies to a
+// spacesuit's storage word for word -- reached by INDEX, decided before
+// anything runs, never looked up by name at run time -- and DESIGN §7.6's
+// argument for capsules applies to its methods: they live in their own table
+// and are called by number. So the two halves of a suit are the two halves the
+// language already had, and neither needed a new mechanism.
+//
+// THE FIELD ORDER IS THE DECLARATION ORDER ACROSS EVERY SECTION, flattened. A
+// suit with a protected block, then a public one, then another protected one
+// numbers its fields 0, 1, 2 in the order they are written and not in the order
+// of the sections -- because a section is about ACCESS and not about layout,
+// which is what PLAN §8's M26 entry means by "blocks inside the suit, not
+// modifiers on a member".
+struct Field {
+    std::string_view name;
+    words::PathId type = words::kNoPath;
+    NodeIndex at = kNoNode;
+    NodeIndex init = kNoNode;   // the declared initialiser, run at construction
+    bool is_public = false;
+};
+
+struct Method {
+    words::PathId path = words::kNoPath;
+    std::string_view name;
+    NodeIndex node = kNoNode;
+    bool is_public = false;
+};
+
+struct Suit {
+    words::PathId path = words::kNoPath;
+    std::string_view name;
+    NodeIndex node = kNoNode;
+
+    std::vector<Field> fields;
+    std::vector<Method> methods;
+
+    const Field *field_named(std::string_view spelling) const
+    {
+        for (const Field &at : fields)
+            if (at.name == spelling)
+                return &at;
+        return nullptr;
+    }
+
+    const Method *method_named(std::string_view spelling) const
+    {
+        for (const Method &at : methods)
+            if (at.name == spelling)
+                return &at;
+        return nullptr;
+    }
 };
 
 // Everything the pass decided, and everything it could not.
@@ -173,8 +259,21 @@ struct Resolved {
     uint32_t walked = 0;
     uint32_t from_cache = 0;
 
-    // Pass 2's named hole: how many spacesuits were seen and left to M26.
-    uint32_t spacesuits = 0;
+    // WHAT PASS 2 RESOLVED -- M26. This was `uint32_t spacesuits`, a count, from
+    // M7 until 2026-09-12: the pass existed, kept its place in DESIGN §7.3's
+    // order, resolved nothing, and SAID SO, because "a pass that silently
+    // resolved nothing is indistinguishable from one that worked". The count is
+    // now `suits.size()` and the honesty is kept by there being something to
+    // count.
+    std::vector<Suit> suits;
+
+    const Suit *suit_at(words::PathId path) const
+    {
+        for (const Suit &at : suits)
+            if (at.path == path)
+                return &at;
+        return nullptr;
+    }
 
     // A DEFAULT AND NOT AN ASSERT for a node nothing decided anything about,
     // which is the same choice ast.hpp makes for node 0 and words.def for path

@@ -40,7 +40,10 @@ void section_runtime()
     check(x != kNoPath, "§3: a user capsule takes the next free number");
     check(words.number_of(x) == 3, "and that number is 3 -- satellite.library.x");
     check(words.next_free(library) == 4, "which the counter then moves past");
-    check(words.parent_of(x) == library, "and it is numbered under `library`");
+    // A PathId SINCE M26, because a spacesuit's method hangs under a name that
+    // is itself the user's and a NodeId could only answer NONE for it.
+    check(words.parent_of(x) == static_cast<PathId>(library),
+          "and it is numbered under `library`");
     check(words.name_of(x) == "x", "a user's name is kept as a NAME");
 
     // THE HALF THE FROZEN GUARANTEE DOES NOT REACH, said in a check rather than

@@ -14,6 +14,7 @@
 #include "satellite_bits/bits.hpp"
 #include "satellite_number/bignum.hpp"
 #include "satellite_string/satellite_string.hpp"
+#include "satellite_spacesuit/suit_object.hpp"
 #include "satellite_thread/thread_handle.hpp"
 #include "system_facts/facts.hpp"
 
@@ -261,6 +262,34 @@ std::string text_of(const Value &value)
             : (*handle)->finished.load()  ? "finished"
                                           : "running";
         return "<thread " + (*handle)->body->name + ", " + where + ">";
+    }
+
+    // A SPACESUIT PRINTS AS ITS NAME AND WHAT IT IS HOLDING -- M26, and the
+    // brackets are the file's and the thread's argument for the third time:
+    // `display(b)` must not look like a string.
+    //
+    // ITS FIELDS AND NOT ITS ADDRESS. An object's identity is a pointer the
+    // program never chose and must never depend on; what a reader of a
+    // displayed suit wants is what is in it. DESIGN §12 defers a user-defined
+    // `to_string` the printer consults -- PLAN §8's M26 entry asks in as many
+    // words that this milestone "must not quietly grant either by needing one
+    // for its own demonstration" -- so this is the language's rendering and
+    // never the program's.
+    //
+    // THE PROTECTED FIELDS ARE SHOWN TOO, which is worth stating because it
+    // looks like a leak and is not. `satellite.protected` is about what a
+    // PROGRAM may reach, and DESIGN §1.1's rule is that satellite never hides
+    // what is there from the person running it; a debugger that showed half an
+    // object would be the language keeping a secret from its author.
+    if (const Sui *handle = std::get_if<Sui>(&value)) {
+        if (!*handle || (*handle)->layout == nullptr)
+            return "<spacesuit>";
+        const suit::Layout &layout = *(*handle)->layout;
+        std::string out = "<" + layout.name;
+        for (size_t i = 0; i < (*handle)->fields.size(); i++)
+            out += (i == 0 ? " " : ", ") + layout.field_names[i] + ": " +
+                   text_of((*handle)->fields[i]);
+        return out + ">";
     }
 
     if (const Cap *handle = std::get_if<Cap>(&value))

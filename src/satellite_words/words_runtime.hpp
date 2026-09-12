@@ -33,6 +33,29 @@
 // 261 uint32_t, about a kilobyte -- and user rows are appended in a vector that
 // stays empty until something is defined.
 
+// A USER'S NAME CAN BE A PARENT SINCE M26, AND M4 IS WHERE THAT WAS OWED.
+// MILESTONES/M4.md §6 found it and named both the cost and the milestone: this
+// file seeded one counter per node of the FROZEN table and walked the frozen
+// child lists, so a `PathId` above kNodeCount handed to find() or define()
+// indexed past the end of both -- and **a capsule declared inside a spacesuit
+// has exactly such a parent**. A method therefore got no number at M4, its node
+// carried kNoPath, and tests/parser_test/declarations.cpp asserted that rather
+// than leaving it to be discovered.
+//
+// "Fixing it is a growable counter vector and a user-side child list -- small,
+// and M26's, because M26 is where a spacesuit's members have to resolve." That
+// is what this is, and it was small: `parent` widens from NodeId to PathId, the
+// counters get a second home that grows with `user_`, and the three lookups
+// each gain one arm for a parent above kNodeCount.
+//
+// THE FROZEN HALF IS UNTOUCHED AND THE ASYMMETRY IS THE POINT. A language
+// parent still searches its frozen children, then the aliases, then the user
+// rows -- in that order, so a user name can never answer in place of a word the
+// language owns. A USER parent has no frozen children and no aliases by
+// construction: nothing in words.def hangs under a name that did not exist when
+// words.def was written. So its arm is the user rows alone, and the reservation
+// rule is not weakened by a spacesuit having members.
+
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -60,9 +83,16 @@ public:
     }
 
     // The number a name would take under this parent, without taking it.
+    uint32_t next_free(PathId parent) const
+    {
+        return is_language_word(parent) ? next_free_[parent]
+               : valid(parent)          ? user_[parent - kNodeCount - 1].next_free
+                                        : 1;
+    }
+
     uint32_t next_free(NodeId parent) const
     {
-        return next_free_[static_cast<PathId>(parent)];
+        return next_free(static_cast<PathId>(parent));
     }
 
     // A name already met under this parent, or kNoPath.
@@ -80,6 +110,31 @@ public:
     // accepts because `satellite` is a legal `primary` (DESIGN §6) and only a
     // scope can refuse. errors.def's S0513 is that.
     PathId find(NodeId parent, std::string_view name) const
+    {
+        return find(static_cast<PathId>(parent), name);
+    }
+
+    PathId find(PathId parent, std::string_view name) const
+    {
+        // A USER PARENT HAS NEITHER FROZEN CHILDREN NOR ALIASES, by
+        // construction -- nothing in words.def hangs under a name that did not
+        // exist when words.def was written -- so its arm is the user rows
+        // alone. See the header note: this is where the two halves stop being
+        // symmetrical, and it is why the reservation rule survives a spacesuit
+        // having members.
+        if (!is_language_word(parent)) {
+            if (name.empty() || !valid(parent))
+                return kNoPath;
+            for (size_t i = 0; i < user_.size(); i++)
+                if (user_[i].parent == parent && user_[i].name == name)
+                    return kNodeCount + 1 + static_cast<PathId>(i);
+            return kNoPath;
+        }
+        return find_under_language(static_cast<NodeId>(parent), name);
+    }
+
+private:
+    PathId find_under_language(NodeId parent, std::string_view name) const
     {
         // AN EMPTY NAME IS NOT A NAME. The bare rows are spelled "" on purpose,
         // so without this an empty name matches the parent's bare shape and
@@ -105,32 +160,54 @@ public:
                 return static_cast<PathId>(kAliases[i].of);
 
         for (size_t i = 0; i < user_.size(); i++)
-            if (user_[i].parent == parent && user_[i].name == name)
+            if (user_[i].parent == static_cast<PathId>(parent) &&
+                user_[i].name == name)
                 return kNodeCount + 1 + static_cast<PathId>(i);
         return kNoPath;
     }
 
+public:
     // Take the next free number under `parent` for `name`.
     //
     // Returns kNoPath when the language already owns that spelling under that
     // parent, or when the name has been defined in this run already. Both are
     // the caller's to report; M5 is the error reporter and M2 comes first, so
     // what this returns has to be enough to report from without changing later.
-    PathId define(NodeId parent, std::string_view name)
+    PathId define(PathId parent, std::string_view name)
     {
         if (name.empty() || find(parent, name) != kNoPath)
             return kNoPath;
-        user_.push_back({parent, std::string(name),
-                         next_free_[static_cast<PathId>(parent)]++});
+
+        // A USER PARENT MUST EXIST BEFORE IT CAN OWN ANYTHING, which cannot be
+        // arranged by ordering alone: the parser defines a spacesuit's name
+        // before it parses the body, so the order is right by construction, and
+        // this is the guard that says so rather than the guard that makes it so.
+        if (!is_language_word(parent) && !valid(parent))
+            return kNoPath;
+
+        const uint32_t taken = is_language_word(parent)
+                                   ? next_free_[parent]++
+                                   : user_[parent - kNodeCount - 1].next_free++;
+        user_.push_back({parent, std::string(name), taken, 1});
         return kNodeCount + static_cast<PathId>(user_.size());
+    }
+
+    PathId define(NodeId parent, std::string_view name)
+    {
+        return define(static_cast<PathId>(parent), name);
     }
 
     // Find, or define if this is the first time the name has been met. This is
     // what a parser wants; find() and define() are what a diagnostic wants.
-    PathId intern(NodeId parent, std::string_view name)
+    PathId intern(PathId parent, std::string_view name)
     {
         const PathId found = find(parent, name);
         return found != kNoPath ? found : define(parent, name);
+    }
+
+    PathId intern(NodeId parent, std::string_view name)
+    {
+        return intern(static_cast<PathId>(parent), name);
     }
 
     // The position under the parent, for either half of the numbering.
@@ -141,11 +218,17 @@ public:
         return valid(id) ? user_[id - kNodeCount - 1].number : 0;
     }
 
-    NodeId parent_of(PathId id) const
+    // WHAT THIS HANGS UNDER, AND IT ANSWERS A PathId SINCE M26 BECAUSE IT HAS
+    // TO. A spacesuit's method hangs under the spacesuit, which is a user name,
+    // and a NodeId cannot say so -- it could only answer NONE, which is what
+    // "no parent" means. Every caller that genuinely wants a language node asks
+    // `is_language_word` first, and the two that print a path now recurse.
+    PathId parent_of(PathId id) const
     {
         if (is_language_word(id))
-            return words::parent_of(static_cast<NodeId>(id));
-        return valid(id) ? user_[id - kNodeCount - 1].parent : NodeId::NONE;
+            return static_cast<PathId>(words::parent_of(static_cast<NodeId>(id)));
+        return valid(id) ? user_[id - kNodeCount - 1].parent
+                         : static_cast<PathId>(NodeId::NONE);
     }
 
     // The user's own spelling. Empty for a language word, which has a text
@@ -161,9 +244,21 @@ public:
 
 private:
     struct UserName {
-        NodeId parent;
+        PathId parent;
         std::string name;
         uint32_t number;
+
+        // THE COUNTER THIS NAME HANDS OUT TO ITS OWN CHILDREN -- M26's half of
+        // the growable counter vector M4 asked for. It rides on the row rather
+        // than in a second vector so that a name and the numbers it owns cannot
+        // get out of step with each other, which is the same argument
+        // `next_free_` makes for the frozen half by being indexed by PathId.
+        //
+        // IT STARTS AT 1 AND NOT AT 0, because 0 is the bare shape -- WORD_NUMBERS
+        // §1.3, "a trailing 0 is written only where a program can actually
+        // write the bare form", and a spacesuit's members start at one for the
+        // same reason every language node's children do.
+        uint32_t next_free;
     };
 
     bool valid(PathId id) const

@@ -94,6 +94,42 @@ void Resolver::name(NodeIndex node)
         return;
     }
 
+    // A FIELD OF THE SPACESUIT WHOSE METHOD WE ARE INSIDE -- M26, and it sits
+    // BETWEEN the locals above and the capsules below for a reason worth
+    // stating. A local shadows a field, because a parameter named `n` in a suit
+    // that also has a field `n` means the parameter -- what every language with
+    // both does, and what a reader expects. A field shadows a CAPSULE, because
+    // storage is nearer than a name in another table.
+    //
+    // AND IT IS REACHED ONLY FROM INSIDE. `inside_` is set for the length of
+    // one method body and is null everywhere else, so `n` at the top of a file
+    // or in an ordinary capsule finds nothing here -- which is DESIGN §12's
+    // "a spacesuit field is reachable from inside the spacesuit and nowhere
+    // else", enforced by the scope rather than by a check somebody has to
+    // remember to write.
+    if (inside_ != nullptr) {
+        if (const Field *found = inside_->field_named(spelling)) {
+            info(node).slot = kSlotField;
+            info(node).member =
+                static_cast<uint32_t>(found - inside_->fields.data());
+            info(node).type = found->type;
+            info(node).origin = Origin::Bound;
+            return;
+        }
+
+        // A METHOD OF THE SAME SUIT, CALLED WITHOUT A RECEIVER. `bump()` inside
+        // `call_bump()` is how every one of the author's own suits is written,
+        // and it is not a capsule of the file -- it is a sibling. It resolves
+        // to the method's PATH, and the compiler turns that into a call on the
+        // receiver already sitting at slot 0.
+        if (const Method *found = inside_->method_named(spelling)) {
+            info(node).slot = kSlotCapsule;
+            info(node).path = found->path;
+            info(node).origin = Origin::Bound;
+            return;
+        }
+    }
+
     // DESIGN §7.6: capsules are not in the registry and live in their own
     // table. A bare capsule name cannot even form a legal registry key -- v1
     // verified it -- so this is a lookup and never a fallback.
@@ -241,6 +277,48 @@ void Resolver::member_done(NodeIndex node)
     // milestone that inferred the second would be building M9's type rules to
     // finish M7's clause.
     if (receiver.type != words::kNoPath) {
+        // A SPACESUIT'S METHOD IS FOUND IN PASS 2's TABLE AND NOT IN THE FROZEN
+        // TRIE -- M26, and this arm is FIRST because `child_named` takes a
+        // NodeId and a suit's path is not one. Casting a user's PathId to a
+        // NodeId and walking the frozen child lists with it is exactly the
+        // read past the end MILESTONES/M4.md §6 recorded, arriving from the
+        // other direction.
+        //
+        // THE ACCESS CHECK IS HERE AND NOT AT THE CALL, because this is where
+        // the receiver and the member are both in hand and where M5's caret can
+        // point at the word that was reached for. DESIGN §12: "a spacesuit
+        // field is reachable from inside the spacesuit and nowhere else."
+        if (!words::is_language_word(receiver.type)) {
+            const Suit *of = out_.suit_at(receiver.type);
+            if (of == nullptr)
+                return;
+
+            if (const Method *found = of->method_named(word)) {
+                if (!found->is_public && inside_ != of) {
+                    problem<errors::Code::RESOLVE_SUIT_MEMBER_PROTECTED>(
+                        node, word, of->name);
+                    return;
+                }
+                info(node).path = found->path;
+                info(node).origin = Origin::Bound;
+                return;
+            }
+
+            // A FIELD REACHED FROM OUTSIDE IS ITS OWN SENTENCE AND NOT "no such
+            // word". DESIGN §12 defers BARE FIELD ACCESS -- "accessor methods
+            // only" -- so `c.n` is a form the language has decided against
+            // rather than a name it cannot find, and telling somebody their
+            // field does not exist would send them to add one.
+            if (of->field_named(word) != nullptr) {
+                problem<errors::Code::RESOLVE_NO_BARE_FIELD>(node, word,
+                                                             of->name);
+                return;
+            }
+
+            problem<errors::Code::RESOLVE_NO_SUCH_MEMBER>(node, word, of->name);
+            return;
+        }
+
         out_.walked++;
         const words::PathId selector =
             child_named(static_cast<words::NodeId>(receiver.type), word);

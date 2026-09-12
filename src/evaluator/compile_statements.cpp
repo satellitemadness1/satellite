@@ -28,6 +28,37 @@ namespace eval {
 // `satellite.variable.float`, and a non-numeric value stopping there is
 // S0713 with a caret rather than a slot quietly holding the wrong arm.
 // Declarations and both assignment arms share it so the three cannot drift.
+// ONE SPACESUIT, CONSTRUCTED -- M26. The layout is already registered; what
+// this builds is the list of ops that fill an object's fields.
+//
+// EVERY FIELD GETS AN OP, INCLUDING THE ONES WITH NO INITIALISER, so that the
+// count on the value stack is the field count by construction and op_construct
+// has no case to get wrong. A field with no `=` gets an op pushing nothing,
+// which is DESIGN §6.4 q3's "a declared variable holding nothing" -- the same
+// state a bare local has, arriving through the same door.
+//
+// THE INITIALISERS ARE COMPILED IN THE SUIT'S OWN SCOPE, which resolve already
+// walked: `satellite.variable.string spacesuit_name = "this.dna.counter"` is an
+// ordinary expression, and one that referred to another field would have
+// resolved to a field read. Nothing here re-decides any of that.
+OpIndex Compiler::construct(NodeIndex at, uint32_t layout)
+{
+    const resolve::Suit *suit = nullptr;
+    for (const resolve::Suit &each : resolved_.suits)
+        if (const auto found = suits_.find(each.path);
+            found != suits_.end() && found->second == layout)
+            suit = &each;
+    if (suit == nullptr)
+        return kNoOp;
+
+    std::vector<OpIndex> fields;
+    for (const resolve::Field &field : suit->fields)
+        fields.push_back(field.init == kNoNode
+                             ? emit(op_constant, at, out_.add_constant(Value::nothing()))
+                             : compile_tree(field.init));
+    return emit(op_construct, at, layout, out_.add_list(fields));
+}
+
 OpIndex Compiler::into_declared(const resolve::Info &about, NodeIndex node,
                                 OpIndex value)
 {
@@ -53,8 +84,33 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
             visit(n.b);
             return true;
         }
-        const OpIndex value = n.b == kNoNode ? kNoOp : take();
+        OpIndex value = n.b == kNoNode ? kNoOp : take();
         const resolve::Info &about = info(node);
+
+        // A SPACESUIT DECLARED WITH NO `=` IS CONSTRUCTED -- M26, and it is the
+        // one place in the language where a declaration DOES something.
+        //
+        // `dna_counter counter` BUILDS ONE, and that is the author's own
+        // spelling out of `infinity_data_main.satl` rather than a form invented
+        // here. Every other type in the language holds NOTHING until something
+        // is assigned (DESIGN §6.4 q3) -- and a spacesuit cannot, because there
+        // is no expression that makes one: DESIGN §12 defers a constructor
+        // call, and `satellite.spacesuit` is a declaration keyword rather than
+        // a verb. So the declaration is the construction, which is the shape
+        // both PLAN §8's M26 done-when and the author's files already assume.
+        //
+        // AND A SPACESUIT WITH AN `=` IS NOT CONSTRUCTED, which is the half
+        // that keeps reference semantics honest: `infinity_subject subject =
+        // build_infinity_subject(...)` takes the object the capsule answered.
+        // Constructing one here and then overwriting it would build an object
+        // per declaration that nothing ever saw -- wasteful, and worse, it
+        // would make `a = b` on two suits ambiguous about which object a name
+        // ends up holding.
+        if (value == kNoOp && about.type != words::kNoPath)
+            if (const auto found = suits_.find(about.type);
+                found != suits_.end())
+                value = construct(node, found->second);
+
         if (!resolve::in_a_frame(about.slot)) {
             finish(not_built(node, "a declaration outside a capsule",
                              "DESIGN.md §7.2 reserves `satellite.library` for "
@@ -89,6 +145,18 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
 
         if (resolve::in_a_frame(about.slot)) {
             finish(emit(op_store, node, static_cast<uint32_t>(about.slot),
+                        into_declared(about, node, value)));
+            return true;
+        }
+
+        // WRITING A FIELD -- M26, AND THIS IS WHERE REFERENCE SEMANTICS LIVES.
+        // `n = n + 1` inside a method writes through the receiver at slot 0, so
+        // every name holding that object sees it. Compare the two arms around
+        // this one: a local write changes one frame's storage, a global write
+        // changes the program's -- and this changes the OBJECT's, which is a
+        // third kind of storage the language did not have until M26.
+        if (about.slot == resolve::kSlotField) {
+            finish(emit(op_field_store, node, about.member,
                         into_declared(about, node, value)));
             return true;
         }

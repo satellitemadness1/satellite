@@ -167,6 +167,27 @@ Compiled Compiler::compile()
                                    frame.parameters, frame.node});
     }
 
+    // PASS 1b -- EVERY SPACESUIT'S LAYOUT, and it is here for pass 1's reason
+    // exactly: a field initialiser may construct another suit declared further
+    // down the file, so every layout has to have an index before any of them is
+    // compiled. That is DESIGN §7.3's forward-reference argument, applied to a
+    // second kind of declaration.
+    //
+    // THE NAMES ARE COPIED AND THE `string_view`s ARE NOT KEPT. resolve's
+    // `Field::name` points into the source text, which outlives the compile and
+    // does NOT outlive the run in M22's prompt -- where each typed line has its
+    // own text and the objects built by line 4 are still alive at line 5. One
+    // copy per field per program, once.
+    for (const resolve::Suit &suit : resolved_.suits) {
+        suit::Layout layout;
+        layout.name = std::string(suit.name);
+        for (const resolve::Field &field : suit.fields) {
+            layout.field_names.push_back(std::string(field.name));
+            layout.field_is_public.push_back(field.is_public);
+        }
+        suits_[suit.path] = out_.add_suit(std::move(layout));
+    }
+
     // PASS 2 -- every global's slot, before any initialiser is compiled, so
     // that one global's initialiser may read another declared below it.
     for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
@@ -221,7 +242,17 @@ Compiled Compiler::compile()
                     "PLAN.md §8 builds the spaceships at M25"));
             break;
         case NodeKind::Spacesuit:
-            top.push_back(not_built(item, "a `satellite.spacesuit`", "M26"));
+            // A SPACESUIT DECLARATION RUNS NOTHING, WHICH IS WHY THIS CASE IS
+            // EMPTY AND NOT ABSENT -- M26. What used to stand here was
+            // `not_built(item, "a `satellite.spacesuit`", "M26")`: the whole
+            // feature, refused by one op with a milestone number in it.
+            //
+            // The suit's LAYOUT was registered in pass 1 beside the frames, and
+            // its methods are bodies compiled in pass 4 like any other. A
+            // declaration itself is a statement about what a name MEANS, and
+            // this grammar has nowhere for such a statement to execute --
+            // DESIGN §6's top_level is include, capsule, spacesuit and global,
+            // and three of those four already compile to nothing here.
             break;
         default:
             break;
@@ -229,11 +260,27 @@ Compiled Compiler::compile()
     }
     out_.set_top(emit(op_block, ast_.root(), out_.add_list(top)));
 
-    // PASS 4 -- every body.
+    // PASS 4 -- every body, the suits' methods included.
     for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
         const NodeIndex item = ast_.list_at(program.a, i);
         if (ast_[item].kind == NodeKind::Capsule)
             capsule(item);
+    }
+
+    // A METHOD IS A CAPSULE AND IS COMPILED BY THE SAME FUNCTION -- M26. What
+    // makes its body different is entirely resolve's doing: the receiver is at
+    // slot 0 and a bare field name arrived carrying kSlotField, so the arms
+    // that read those are in compile_expressions.cpp and there is nothing for
+    // this loop to do but find them.
+    //
+    // `inside_` IS SET SO THE ARMS KNOW WHICH LAYOUT, and it is the compiler's
+    // half of resolve's own member of the same name. Both exist because a
+    // field index means nothing without the suit it indexes.
+    for (const resolve::Suit &suit : resolved_.suits) {
+        inside_ = &suit;
+        for (const resolve::Method &method : suit.methods)
+            capsule(method.node);
+        inside_ = nullptr;
     }
 
     return std::move(out_);

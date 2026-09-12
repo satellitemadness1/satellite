@@ -157,14 +157,33 @@ words::PathId Resolver::type_at(NodeIndex node)
 
     const Node &n = ast_[node];
 
-    // NO TYPE SPACE MEANS ONE OF TWO FORMS AND NEITHER IS THIS MILESTONE'S.
+    // NO TYPE SPACE MEANS ONE OF TWO FORMS, AND SINCE M26 ONE OF THEM ANSWERS.
     // parser_types.cpp: `satellite` alone is the singleton runtime type, and a
     // bare IDENT is a spacesuit named by hand -- "is_reserved_word on the node's
-    // own token tells them apart in one integer compare". A spacesuit's
-    // contents are M26's, so there is nothing here to check the name against
-    // that would not be M26 deciding what a spacesuit is.
-    if (n.a == words::kNoSpelling)
+    // own token tells them apart in one integer compare".
+    //
+    // THE SPACESUIT IS THE SECOND PLACE IN THE LANGUAGE WHERE A BARE IDENTIFIER
+    // MEANS SOMETHING OTHER THAN A USER'S OWN NAME, which PLAN §8's M26 entry
+    // names as the thing to settle -- §7.7's spellings of `arguments` are the
+    // first. Its rule for all of them is the one kept here: **the language
+    // RECOGNISES a name rather than introducing one.** So this is a lookup in
+    // the table pass 2 built, and a bare name that is not a suit is still no
+    // type at all rather than a new kind of declaration.
+    //
+    // PASS 2 HAS ALREADY RUN AND THAT IS WHY THIS CAN ANSWER. DESIGN §7.3 puts
+    // spacesuits second and bodies fourth for exactly this reason, one row
+    // further along than the capsules it was written for: a field or a local
+    // may be declared of a suit written further down the file.
+    if (n.a == words::kNoSpelling) {
+        const std::string_view bare = ast_.text_of(node);
+        if (const Capsule *found = suit_named(bare)) {
+            info(node).path = found->path;
+            info(node).type = found->path;
+            info(node).origin = Origin::Bound;
+            return found->path;
+        }
         return words::kNoPath;
+    }
 
     const words::NodeId space =
         n.a == words::spelling_id(words::NodeId::CONTAINER) ? words::NodeId::CONTAINER

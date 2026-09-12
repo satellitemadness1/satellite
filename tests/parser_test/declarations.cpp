@@ -38,7 +38,8 @@ void section_declarations()
               "a number on the USER's side of the boundary -- above kNodeCount, "
               "which words_nodes.hpp calls the predicate anything about to write "
               "a PathId down has to ask first");
-        check(program.words.parent_of(path) == NodeId::LIBRARY,
+        check(program.words.parent_of(path) ==
+                  static_cast<satellite::words::PathId>(NodeId::LIBRARY),
               "under satellite.library, which DESIGN §7.2 reserves for shared and "
               "global state");
         check(program.words.number_of(path) == 3,
@@ -197,22 +198,46 @@ void section_declarations()
               "cite suit_block, which is what this check pins");
 
         const satellite::NodeIndex suit = first_of(program.ast(), NodeKind::Spacesuit);
-        check(program.words.parent_of(program.ast()[suit].a) == NodeId::LIBRARY,
+        check(program.words.parent_of(program.ast()[suit].a) ==
+                  static_cast<satellite::words::PathId>(NodeId::LIBRARY),
               "the suit's own name is numbered under library, beside the capsules");
         check(program.ast()[suit].c != satellite::kNoNode,
               "and its superclass is kept");
 
-        // THE LIMIT M4 FOUND IN M2 BY BEING ITS FIRST CALLER, asserted so that
-        // it is a checked fact rather than a comment. words::Words seeds one
-        // counter per node of the FROZEN table, so a user's PathId cannot be a
-        // parent -- and a capsule inside a spacesuit has exactly that.
+        // THE LIMIT M4 FOUND IN M2 BY BEING ITS FIRST CALLER, AND M26 CLOSED.
+        // This block asserted the opposite of what it asserts now, on purpose:
+        // words::Words seeded one counter per node of the FROZEN table, so a
+        // user's PathId could not be a parent -- and a capsule inside a
+        // spacesuit has exactly that -- so a method got kNoPath and the test
+        // PINNED that, because a limit nobody wrote down is a limit somebody
+        // rediscovers. MILESTONES/M4.md §6 named the fix and the milestone:
+        // "a growable counter vector and a user-side child list -- small, and
+        // M26's, because M26 is where a spacesuit's members have to resolve."
+        //
+        // THE CHECK IS KEPT AND TURNED OVER rather than deleted, because the
+        // interesting fact is not that a method has a number -- it is that this
+        // is the first name in the language whose PARENT is a user's name, and
+        // that is what the two lines below say.
         const satellite::NodeIndex method = first_of(program.ast(), NodeKind::Capsule);
-        check(program.ast()[method].a == satellite::words::kNoPath,
-              "a capsule inside a spacesuit gets NO number yet, because its owner "
-              "is the user's spacesuit and M2's tables are sized to the language's "
-              "half");
-        check(program.words.defined() == 1,
-              "so one name was numbered here and not two");
+        check(program.ast()[method].a != satellite::words::kNoPath,
+              "a capsule inside a spacesuit IS numbered since M26");
+        check(program.words.parent_of(program.ast()[method].a) ==
+                  program.ast()[suit].a,
+              "and it hangs under THE SPACESUIT -- the first name in the "
+              "language whose parent is itself a user's name, which is what M4 "
+              "recorded as impossible and M26 built");
+        check(program.words.number_of(program.ast()[method].a) == 1,
+              "numbered from 1 under its suit, because 0 is the bare shape "
+              "(WORD_NUMBERS §1.3) and a member is not one");
+        // TWO AND NOT THREE, AND THE ONE THAT IS MISSING SAYS SOMETHING. The
+        // suit and its capsule are numbered; the FIELD is not, because a field
+        // is a slot rather than a path -- DESIGN §7.2's storage, reached by
+        // index and never by name at run time. That is the same distinction
+        // `satellite.library` draws one level up, and it is why M26's resolve
+        // gives fields slots and methods numbers.
+        check(program.words.defined() == 2,
+              "two names met: the suit and its capsule. A field is a SLOT and "
+              "not a path, so it takes no number");
     }
 
     // -- A global ------------------------------------------------------------

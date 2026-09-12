@@ -396,6 +396,57 @@ SAT_CODE(513, RESOLVE_NAME_IS_RESERVED, SAT_ERROR,
 SAT_CODE(514, RESOLVE_CAPSULE_TWICE, SAT_ERROR,
          "this file declares {1} twice, and a call has to name one of them")
 
+// A NAME DECLARED TWICE INSIDE ONE SPACESUIT -- M26, and S0512 and S0514 above
+// are the same mistake in the two places that already had one.
+//
+// NOT REUSING EITHER IS THE POINT. S0512 is a parameter clashing with a
+// parameter and S0514 a capsule with a capsule; both name the thing they are
+// about, and "declared twice" with no noun is the sentence a reader has to
+// guess at. And DESIGN §7.4 is why this cannot simply be S0501's rebinding: a
+// redeclaration in a BODY takes a FRESH SLOT on purpose -- "a spacesuit is a
+// reference type, so reusing the old slot would leave every handle already
+// taken to the first instance pointing at the second" -- which works because
+// the old slot stays alive for whoever already had it. A suit has ONE storage
+// layout and ONE method table, so two members of one name are two indices
+// nothing can tell apart, and there is nothing for a fresh one to mean.
+SAT_CODE(515, RESOLVE_SUIT_MEMBER_TWICE, SAT_ERROR,
+         "`{1}` is declared twice inside the spacesuit `{2}` -- a spacesuit has "
+         "one name for each of its fields and capsules")
+
+// REACHING A PROTECTED MEMBER FROM OUTSIDE -- M26, and PLAN §8's M26 done-when
+// asks for exactly this sentence: "reaching a protected field from outside is
+// refused BY NAME with M5's caret rather than by silence."
+//
+// IT NAMES THE SUIT AS WELL AS THE MEMBER, because the fix is almost always to
+// move the member into the `satellite.public` block of that suit, and a person
+// with two suits open needs to be told which one.
+SAT_CODE(516, RESOLVE_SUIT_MEMBER_PROTECTED, SAT_ERROR,
+         "`{1}` is inside the `satellite.protected` part of `{2}`, so only "
+         "`{2}`'s own capsules can reach it -- move it to "
+         "`satellite.public`, or add a capsule there that answers it")
+
+// A FIELD REACHED WITH A DOT -- M26, and it is a DIFFERENT refusal from the one
+// above on purpose, because it is refused even when the field is public.
+//
+// DESIGN §12 DEFERS BARE FIELD ACCESS: "accessor methods only. A spacesuit
+// field is reachable from inside the spacesuit and nowhere else, which is what
+// makes `satellite.protected` a statement about the language rather than a
+// comment." So `c.n` is a form the language has decided against rather than a
+// name it could not find -- and S0521's "not a word the language has" would
+// send somebody off to declare one.
+SAT_CODE(517, RESOLVE_NO_BARE_FIELD, SAT_ERROR,
+         "`{1}` is a field of `{2}` and fields are reached from inside the "
+         "spacesuit only -- write a capsule in `{2}` that answers it and call "
+         "that instead")
+
+// A MEMBER THAT IS NEITHER -- M26. The suit is named because the candidate list
+// a reader needs is that suit's members, which is not something S0521's
+// suggester can walk: it searches the frozen trie, and these names were met
+// when the file was parsed.
+SAT_CODE(518, RESOLVE_NO_SUCH_MEMBER, SAT_ERROR,
+         "`{2}` has no `{1}` -- a spacesuit answers only what its own capsules "
+         "and fields are called")
+
 // THE ERROR satellite_cache/paths.cpp NAMES AND DECLINES TO RAISE. Its own
 // comment says a path the numbering cannot account for is "M7's to refuse with
 // M5's did-you-mean over the node the segment failed under", and the cache's

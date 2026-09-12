@@ -135,6 +135,15 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
             finish(emit(op_local, node, static_cast<uint32_t>(about.slot)));
             return true;
         }
+        // A FIELD OF THE SPACESUIT THIS METHOD BELONGS TO -- M26. Resolve
+        // decided the index before anything ran; what is left is two
+        // indirections and no name, which is DESIGN §7.1's argument one level
+        // up from where it was made.
+        if (about.slot == resolve::kSlotField) {
+            finish(emit(op_field, node, about.member));
+            return true;
+        }
+
         if (about.slot == resolve::kSlotCapsule) {
             // DESIGN §12 DEFERS "a bare name can be a value", and QUAD.md §3
             // closed the one thing that wanted it -- sorting needs a primitive
@@ -874,6 +883,47 @@ OpIndex Compiler::call(NodeIndex node)
         return emit(op_dispatch, node, self.path, arguments, out_.add_cache(),
                     out_.add_text(std::string(ast_.text_of(target))));
     }
+
+    // A SPACESUIT'S METHOD -- M26, and it is asked before every arm below
+    // because a method's path is a USER path and the arms below all assume a
+    // language one. `no_question` casting one to a NodeId and reading the
+    // frozen child lists with it is the same read past the end
+    // MILESTONES/M4.md §6 recorded, arriving in the compiler; it segfaulted
+    // before this arm existed, which is how it was found.
+    //
+    // IT COMPILES TO op_call AND NOTHING ELSE, which is the happiest thing in
+    // this milestone. DESIGN §6.4's "methods are sugar" writes the receiver out
+    // as the first argument, and resolve put the receiver at slot 0 of every
+    // method's frame -- so a method call is an ordinary capsule call whose
+    // first argument is the object. No new op, no new frame machinery, and
+    // recursion, mutual recursion and the depth rules all work because they are
+    // the same ones.
+    //
+    // THE RECEIVER IS ALREADY ON THE RESULTS STACK. The Call case visited it at
+    // step 0 through `method_receiver`, and `with_receiver` below is the list
+    // it built -- the receiver first, then the written arguments, which is
+    // exactly the order §6.4 writes them in.
+    if (about.path != words::kNoPath && !words::is_language_word(about.path))
+        if (const auto found = capsules_.find(about.path);
+            found != capsules_.end()) {
+            std::vector<OpIndex> given;
+            const NodeIndex receiver = method_receiver(node);
+            if (receiver != kNoNode)
+                given.push_back(take());
+            for (uint32_t i = 0; i < count; i++)
+                given.push_back(out_.list_at(arguments, i));
+
+            // A METHOD CALLED WITH NO RECEIVER IS A SIBLING CALL -- `bump()`
+            // inside `call_bump()`, which is how every suit in the author's own
+            // files is written. resolve resolved it to the method's path; the
+            // receiver it runs on is the one this method is already holding, at
+            // slot 0.
+            if (receiver == kNoNode)
+                given.insert(given.begin(), emit(op_local, node, 0));
+
+            return emit(op_call, node, found->second, out_.add_list(given),
+                        out_.add_text(std::string(ast_.text_of(target))));
+        }
 
     // A CAPSULE THIS PROGRAM DECLARED. The index was decided in pass 1, before
     // any body was compiled, which is what makes a call to a capsule further
