@@ -36,6 +36,11 @@ namespace satellite {
 // shell; putting it on the SCREEN is the caller's, because a message to the
 // person looking at the window belongs with the policy that holds the window
 // open to show it.
+// The scheduling niceness the spawned interpreter is put at, -20 through 19.
+// Defaults to 19 and is set from --nice; see child.cpp for why the default is
+// the lowest priority rather than the inherited one.
+void child_set_nice(int niceness);
+
 bool child_spawn(VteTerminal *terminal,
                  const std::string &file,
                  const std::vector<std::string> &args,

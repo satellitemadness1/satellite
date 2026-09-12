@@ -3,6 +3,7 @@
 #include "programs/satl-term/child.hpp"
 
 #include <cstdio>
+#include <sys/resource.h>
 #include <unistd.h>
 
 namespace satellite {
@@ -29,7 +30,48 @@ std::string interpreter_beside_me()
                                        : path.substr(0, slash + 1)) + "satl";
 }
 
+// HOW NICE THE INTERPRETER RUNS, and 19 -- the lowest priority there is -- is
+// the default rather than an option nobody sets.
+//
+// THE REASON IS THAT NOTHING ELSE CAN REACH IT. A person who nices `satl` in a
+// shell alias has not niced the one THIS program spawns: a launcher runs
+// `Exec=satl-term %f` through the desktop shell, and a shell alias is expanded
+// by bash on a line a person types, so neither ever sees the child. Measured
+// 2026-09-12 on a 24-thread, 12-core machine: an interpreter running 23 compute
+// threads at priority 0 took every core and the desktop stopped answering, and
+// it looked exactly like running out of memory when it was not.
+//
+// IT COSTS AN IDLE MACHINE NOTHING. Niceness only decides who yields when two
+// things want the same core; with nothing else asking, a niced process still
+// gets all of them. What it buys is that the window this interpreter is
+// printing into keeps repainting while it works.
+//
+// SET FROM --nice, AND THE WHOLE RANGE IS ALLOWED including negatives, which
+// the kernel will refuse without privilege -- refuse, and leave the child at
+// what it inherited, which is the same as not having asked.
+int spawn_niceness = 19;
+
+// RUNS IN THE CHILD, between fork and exec -- GSpawn's own hook for exactly
+// this. setpriority() and not nice(): nice() adds to whatever the process
+// already has, so a window that was itself niced would compound it, and this
+// wants to arrive at a value rather than move by one.
+//
+// A FAILURE IS NOT REPORTED AND CANNOT BE. There is no safe way to say
+// anything from between a fork and an exec -- stdio in a forked child of a
+// threaded process is not async-signal-safe -- and the consequence of the
+// refusal is a child at the priority it inherited, which is what would have
+// happened anyway. setpriority itself is a syscall and is safe to call here.
+void lower_the_child(gpointer)
+{
+    setpriority(PRIO_PROCESS, 0, spawn_niceness);
+}
+
 } // namespace
+
+void child_set_nice(int niceness)
+{
+    spawn_niceness = niceness;
+}
 
 bool child_spawn(VteTerminal *terminal,
                  const std::string &file,
@@ -75,7 +117,7 @@ bool child_spawn(VteTerminal *terminal,
                              child_argv.data(),
                              child_env,
                              G_SPAWN_DEFAULT,
-                             nullptr, nullptr, nullptr,   // no child setup
+                             lower_the_child, nullptr, nullptr,
                              -1,               // default timeout
                              nullptr,          // no cancellable
                              done,

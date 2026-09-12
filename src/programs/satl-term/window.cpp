@@ -28,6 +28,7 @@
 // in SCRATCH.md/SESSION.md; the author owns the numbering.
 
 #include "programs/opening.hpp"
+#include "programs/satl-term/child.hpp"
 #include "programs/satl-term/menu.hpp"
 #include "programs/satl-term/tabs.hpp"
 #include "system_facts/version.hpp"
@@ -52,6 +53,7 @@ WindowRequest requested;
 std::string child_file;
 std::vector<std::string> child_args;
 bool hold_always = false;
+int child_niceness = 19;
 
 // "800x600" -- the spelling a person types, not the two numbers the language
 // passes. Both halves must parse and both must be positive; a partly-parsed
@@ -115,6 +117,7 @@ std::string usage_text()
            "       --title <text>                 the window title\n"
            "       --size <width>x<height>        the window size, in pixels\n"
            "       --hold                         keep the window after a clean exit\n"
+           "       --nice <-20..19>               the interpreter's priority (default 19)\n"
            "       --version                      what this build is\n"
            "\n"
            "the interpreter itself is `satl`, and it does not link gtk.\n"
@@ -125,7 +128,12 @@ std::string usage_text()
            "of it.\n"
            "\n"
            "a window whose interpreter FAILS is held open either way, so the\n"
-           "reason stays on the screen. --hold holds a clean exit too.\n";
+           "reason stays on the screen. --hold holds a clean exit too.\n"
+           "\n"
+           "the interpreter is spawned at niceness 19 -- the lowest priority --\n"
+           "so that a program using every core leaves the desktop answering. A\n"
+           "shell alias cannot do this: a launcher runs this binary directly and\n"
+           "bash never sees the line. --nice 0 asks for the ordinary priority.\n";
 }
 
 int usage_error(const std::string &complaint)
@@ -168,6 +176,18 @@ int main(int argc, char **argv)
                 return usage_error("--title needs text after it");
             requested.title = args[1];
             args.erase(args.begin(), args.begin() + 2);
+        } else if (flag == "--nice") {
+            if (args.size() < 2)
+                return usage_error("--nice needs a number after it");
+
+            char *rest = nullptr;
+            const long n = strtol(args[1].c_str(), &rest, 10);
+            if (*rest != '\0' || n < -20 || n > 19)
+                return usage_error("--nice wants a number from -20 to 19, and "
+                                   "got " + args[1]);
+
+            child_niceness = (int)n;
+            args.erase(args.begin(), args.begin() + 2);
         } else if (flag == "--size") {
             if (args.size() < 2)
                 return usage_error("--size needs <width>x<height> after it");
@@ -187,6 +207,11 @@ int main(int argc, char **argv)
         child_file = args[0];
         child_args.assign(args.begin() + 1, args.end());
     }
+
+    // Told to child.cpp BEFORE the window exists, because the first tab is
+    // opened from activate() and there is no moment after that where no
+    // interpreter has been spawned yet.
+    satellite::child_set_nice(child_niceness);
 
     // Never hand the user's argv to GApplication -- it treats the extra words
     // as files to open. It gets the program name and nothing else.
