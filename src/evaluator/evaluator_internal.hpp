@@ -148,6 +148,13 @@ private:
     // every method receiver a slot or a global at this milestone.
     NodeIndex method_receiver(NodeIndex call_node) const;
 
+    // S0723 -- a selector a declared type does not have. True when it applies
+    // and `*out` is the op; false when the receiver is not a declared name, in
+    // which case the caller has its own sentence. BOTH the call road and the
+    // bare member read reach it; compile_expressions.cpp carries why that took
+    // until M20 to be true.
+    bool no_question(NodeIndex at, NodeIndex member, OpIndex *out);
+
     // Which written argument of this call is an UNEVALUATED topic, or
     // words::kNoTopicParameter. words.def's fifth list is the declaration and
     // `satellite.help(x)` `1 19 1` is its one row; PLAN M18 is the argument for

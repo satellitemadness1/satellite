@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 namespace satellite::arguments {
 
@@ -52,6 +53,31 @@ Value answer_for(const Row &row);
 // on the command line. False for the two rows that are M25's, which is what
 // keeps them out of `session`'s map as well as off the dispatch table.
 bool answer_of(words::PathId path, Value *out);
+
+// ONE ENTRY OF THE OBJECT: the name a program asks by, and the value behind
+// it. The name is the path RELATIVE to `arguments`, dotted -- `machine.threads`
+// and not `threads` -- so what `keys()` lists is exactly what `get(k)` takes
+// and exactly what the printer puts in its left column.
+struct Entry {
+    std::string name;
+    Value value;
+};
+
+// Every entry, in display order: the command line first, in argv order, then
+// the machine's facts in REGISTRY order.
+//
+// THE ONE ENUMERATION, AND THAT IS THE POINT OF IT BEING HERE. The printer
+// (`display(arguments)`), `count()`, `keys()`, `has(k)` and `get(k)` are five
+// readings of one list, and a second walk for any of them would be a second
+// answer to "what is in this object" -- the shape read_group()'s note in
+// handlers.cpp already refuses for a group's children.
+//
+// IT COSTS THE THIRTY-TWO. Every fact goes through facts::machine_answers(),
+// so the first call to this assembles them -- which is why `length()`,
+// `first()`, `last()` and `contains(x)` read the command line directly and
+// never come here. A program that only walks what it was typed pays nothing
+// for the machine, and PLAN M20's measurement is what that is worth.
+std::vector<Entry> entries_of(const Arguments &body);
 
 // The whole object as the text `satellite.console.display(arguments)` prints
 // -- DESIGN §7.7. satellite_value/render.cpp's arm is one line calling this.

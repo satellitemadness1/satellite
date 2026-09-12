@@ -38,6 +38,7 @@
 #include "programs/opening.hpp"
 #include "system_facts/facts.hpp"
 
+#include <atomic>
 #include <climits>
 #include <cstdio>
 #include <string>
@@ -63,6 +64,13 @@ Held &store()
     static Held held;
     return held;
 }
+
+// THE LIVE FLOOR. Separate from the `Held` above rather than inside it,
+// because `Held` is copied and printed and compared and this one word is read
+// by a detached thread while the main one may be writing it -- an atomic
+// member would make the whole struct uncopyable for the sake of a field two
+// functions touch. limits.hpp carries the argument that one word cannot tear.
+std::atomic<unsigned long long> floor_watched{0};
 
 // The machine's own answer to one of the three, asked NOW.
 //
@@ -274,6 +282,17 @@ int begin(const std::string &named)
     // difference is visible either way, which is §4.5.4's third open question
     // answered: a setting MAY differ from a fact, and the fix is to show both
     // rather than to make one of them lie.
+    // THE SEED, AND IT IS TAKEN BEFORE THE THREAD THAT READS IT STARTS. An
+    // unset dial means the machine's free memory is not watched, which is the
+    // correction to v1 the Dial note in limits.hpp records -- so unset and
+    // "disabled" arrive at the same number here, by construction rather than
+    // by two branches agreeing.
+    const Dial &floor = into.dial(DialId::MinFreeMb);
+    if (floor.set)
+        watch_floor(floor.value);
+    else
+        stop_watching_free_memory();
+
     pool::start(static_cast<unsigned>(into.thread_count.value()));
     start_watchdog();
     return EXIT_FINE;
@@ -282,6 +301,26 @@ int begin(const std::string &named)
 const Held &held()
 {
     return store();
+}
+
+bool watched_floor(unsigned long long *megabytes)
+{
+    const unsigned long long stored =
+        floor_watched.load(std::memory_order_relaxed);
+    if (stored == 0)
+        return false;
+    *megabytes = stored - 1;
+    return true;
+}
+
+void watch_floor(unsigned long long megabytes)
+{
+    floor_watched.store(megabytes + 1, std::memory_order_relaxed);
+}
+
+void stop_watching_free_memory()
+{
+    floor_watched.store(0, std::memory_order_relaxed);
 }
 
 unsigned division_digits()

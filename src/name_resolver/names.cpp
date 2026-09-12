@@ -74,6 +74,22 @@ void Resolver::name(NodeIndex node)
             info(node).origin = Origin::Bound;
             info(node).path =
                 static_cast<words::PathId>(words::NodeId::LIBRARY_MAIN_ARGUMENTS);
+            // AND ITS TYPE IS THE OBJECT'S OWN, WHICH IS TRUER THAN WHAT WAS
+            // WRITTEN -- M20, and the three shaped selectors need it. A
+            // program declares the parameter `satellite.container.list<
+            // satellite.variable.string>`, which is v1's compatibility
+            // spelling and is what DESIGN §7.7 keeps so hello world stays five
+            // lines; what the slot HOLDS is a
+            // `satellite.container.arguments` `1 4 3`. call_target_done()
+            // looks a shaped selector up under the receiver's `type`, so
+            // `argz.has("machine.threads")` finds `has(k)` `1 4 3 6` here and
+            // would have looked for it on a list otherwise.
+            //
+            // THE FACTS ARE NOT AFFECTED AND THAT IS BY ORDER RATHER THAN BY
+            // LUCK: member_done() branches on `arguments` BEFORE it reaches
+            // the type fold, so `argz.machine` is still the object's road.
+            info(node).type =
+                static_cast<words::PathId>(words::NodeId::CONTAINER_ARGUMENTS);
         }
         return;
     }
@@ -448,6 +464,28 @@ void Resolver::arguments_member(NodeIndex node, std::string_view word)
     if (parent == words::kNoPath)
         return;
 
+    // PAST A LEAF FACT, SAY NOTHING AND LET THE ONE HOP SAY IT -- M20, and
+    // the empty list is what found it. `argz.machine.threads.to_string()` runs
+    // this function with `threads` `1 14 1 1 1 3` as the parent: a leaf with no
+    // children, so the sentence below came out as "the arguments object has no
+    // `to_string` on it ... and  is what this build has", with nothing between
+    // "and" and "is".
+    //
+    // AND THE ADVICE IT OWED WAS A DIFFERENT SENTENCE ENTIRELY. `threads` is a
+    // NUMBER, `to_string` is a number's method `1 6 4 6`, and what stops the
+    // fold is WORD_NUMBERS §1.5's one hop -- a selector folds through a
+    // DECLARED name and a fact two members deep is not one. Leaving the node
+    // unresolved is what lets compile_expressions.cpp say exactly that, on
+    // both the bare reading and the call.
+    //
+    // THE FLAG STILL GOES ON THE LEAF, WHICH IS WHY THIS IS A GUARD AND NOT A
+    // NARROWING OF THE MARK. `arguments.count()` needs `count` marked: without
+    // it method_receiver() reads the call as DESIGN §6.4's method sugar, hands
+    // the object over as argument 0 and refuses with S0722 -- which is the bug
+    // this milestone's third commit fixed.
+    if (words::first_child(static_cast<words::NodeId>(parent)) == words::kNoPath)
+        return;
+
     const words::PathId field =
         child_named(static_cast<words::NodeId>(parent), word);
     out_.walked++;
@@ -457,6 +495,67 @@ void Resolver::arguments_member(NodeIndex node, std::string_view word)
         info(node).path = field;
         return;
     }
+
+    // AND THEN THE OBJECT'S OWN METHODS, WHICH ARE THE OPPOSITE CASE AND MUST
+    // NOT BE MARKED `arguments` -- PLAN M20 asks for this line by name.
+    // `argz.machine.threads` is a FACT about the process: it takes no
+    // receiver, compiles as a module constant, and the flag below is what
+    // tells compile_expressions.cpp's method_receiver() to leave it alone.
+    // `argz.length()` is a METHOD on the object, folded through
+    // `satellite.container.arguments` `1 4 3` -- the receiver's TYPE, which is
+    // §1.5's one hop -- and it needs the object as argument 0. So the flag
+    // stays false here and `type` is set instead, which is exactly what the
+    // ordinary selector fold forty lines up does.
+    //
+    // THE FACTS ARE ASKED FOR FIRST, AND NOTHING IS SPELLED BOTH WAYS -- the
+    // order is a tie-break for a tie that no longer exists, and it is written
+    // down because the day it does exist again it will be silent. `count` was
+    // the one collision: `1 14 1 1 9` was spelled `count` for eight hours on
+    // 2026-09-11, beside `satellite.container.arguments.count` `1 4 3 2`, and
+    // off `satellite.main`'s parameter this loop answered the fact -- 3, where
+    // the help line the same milestone wrote promised 37.
+    //
+    // THE AUTHOR SPLIT THE WORDS RATHER THAN LET THE ORDER DECIDE IT, and
+    // words.def's note at `1 14 1 1 9` carries the reasoning: `length` is how
+    // long the command line is, `count` is how many entries there are, each
+    // meaning one thing everywhere (DESIGN §1). So a word appended under
+    // `arguments` that is also one of the ten would be shadowed HERE, quietly,
+    // and whoever appends it should read this instead of finding out.
+    //
+    // AND ONLY OFF THE OBJECT ITSELF, WHICH IS THE NARROWING THIS CLAUSE
+    // NEEDS. This function runs at every depth -- `machine` is marked and so
+    // `threads` comes through it too -- so an unguarded lookup would make
+    // `argz.machine.length()` resolve to `1 4 3 1` and then fail one layer
+    // later with a sentence about receivers. A selector is on the OBJECT, the
+    // way `size` is on a list and not on what a list holds.
+    const bool on_the_object =
+        parent == static_cast<words::PathId>(words::NodeId::LIBRARY_MAIN_ARGUMENTS);
+    const words::PathId selector =
+        on_the_object ? child_named(words::NodeId::CONTAINER_ARGUMENTS, word)
+                      : words::kNoPath;
+    if (selector != words::kNoPath) {
+        info(node).origin = Origin::Walked;
+        info(node).path = selector;
+        info(node).type = selector;
+        return;
+    }
+
+    // A SHAPED SELECTOR IS NOT REFUSED HERE, IT IS LEFT FOR THE ARITY ROAD.
+    // `child_named` answers only rows with an EMPTY argument list, which is
+    // numbers.cpp's rule and the reason `1 4 3 1`'s `length` was found above
+    // and `1 4 3 6`'s `has(k)` was not. The shapes are matched by ARITY, in
+    // call_target_done(), against the receiver's type -- so this function's
+    // job for one is to say nothing and let the call carry on. Refusing would
+    // report "the arguments object has no `has` on it" about a row three lines
+    // of this same file just listed.
+    if (on_the_object)
+        for (words::PathId c = words::first_child(words::NodeId::CONTAINER_ARGUMENTS);
+             c != words::kNoPath; c = words::next_sibling(c)) {
+            const words::NodeId child = static_cast<words::NodeId>(c);
+            if (!words::arguments_of(child).empty() &&
+                words::spelling_of(child) == word)
+                return;
+        }
 
     std::string has;
     for (words::PathId c = words::first_child(static_cast<words::NodeId>(parent));
@@ -469,6 +568,29 @@ void Resolver::arguments_member(NodeIndex node, std::string_view word)
             has += ", ";
         has += spelling;
     }
+    // THE TEN ARE PART OF THE ANSWER WHERE THEY ARE REACHABLE. A sentence
+    // listing what the object holds and leaving out half of what can be asked
+    // of it is the kind of advice S0723's note calls worse than none -- so the
+    // selectors are appended off the object and left out one level down, which
+    // is exactly where each is true.
+    if (on_the_object)
+        for (words::PathId c = words::first_child(words::NodeId::CONTAINER_ARGUMENTS);
+             c != words::kNoPath; c = words::next_sibling(c)) {
+            // THE WORD AND NOT THE SHAPE, so `has(k)` reads `has` beside
+            // `machine` -- the listing is what a reader may WRITE after the
+            // dot, and the arguments come from their own line of the source.
+            const std::string_view spelling =
+                words::spelling_of(static_cast<words::NodeId>(c));
+            // AND NEVER TWICE. `count` is spelled both ways on purpose --
+            // `1 14 1 1 9` counts the command line, `1 4 3 2` counts every
+            // entry -- and a sentence that listed it twice would read as a
+            // transcription mistake rather than as the one thing a reader can
+            // type.
+            if (spelling.empty() || has.find(std::string(spelling)) != std::string::npos)
+                continue;
+            has += ", ";
+            has += spelling;
+        }
     problem<errors::Code::RESOLVE_NO_SUCH_ARGUMENT_FIELD>(node, word, has);
     if (const std::string_view near = errors::suggest(parent, word); !near.empty())
         suggest(near);

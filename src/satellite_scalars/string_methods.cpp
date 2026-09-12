@@ -1,6 +1,8 @@
 // The sixteen `satellite.variable.string` methods, `1 6 1 1` through
-// `1 6 1 16` -- PLAN M11. See satellite_scalars/handlers.hpp for what
-// installs and methods_internal.hpp for the checks every row makes first.
+// `1 6 1 16` -- PLAN M11 -- and `resolved` `1 6 1 17`, which is M20's and
+// carries its own milestone in the table below. See
+// satellite_scalars/handlers.hpp for what installs and methods_internal.hpp
+// for the checks every row makes first.
 //
 // THE SIXTEEN CAME FROM QUAD AND NOT FROM v1, which decides how they are
 // specified. v1's string surface is six methods and only three of these are
@@ -24,10 +26,22 @@
 // through, the same way the lexer and the `.satc` writer treat it. Resolving
 // live codes here would make `size` disagree with what is stored, which is
 // the render/store boundary satellite_string's header draws.
+//
+// AND `resolved` `1 6 1 17` IS THE ONE ROW ON THE OTHER SIDE OF THAT LINE,
+// minted at M20 by the author's decision. The paragraph above is why every
+// OTHER method stays where it is; what it left behind was six values a program
+// could print and never read -- `"\memtotal".to_number()` refuses on the
+// placeholder text, and `total.to_string() == "\memtotal"` is false while both
+// print `63430`. That is the second-class word M20's own "the 33" decision
+// refused to allow, one layer down, and this row is the read. It answers a
+// string with no live codes left in it, so every method above it then sees
+// what the machine said; the boundary moves for exactly one call, where the
+// program asked for it.
 
 #include "satellite_scalars/methods_internal.hpp"
 
 #include "error_reporter/report.hpp"
+#include "satellite_value/render.hpp"
 #include "satellite_words/words.hpp"
 
 #include <string>
@@ -333,6 +347,27 @@ bool string_char_at(eval::Machine &m, const Value *a, uint32_t, Value *answer)
     return true;
 }
 
+// THE SAME CALL `display` MAKES, and it is written as one line for that
+// reason: live_text() in satellite_value/render.cpp is the renderer's own
+// entry point, so a string put through here and the same string displayed
+// cannot disagree about what this machine is. A second reader would be the
+// drift DESIGN §4.6 names.
+//
+// AND IT RE-ENCODES, which is what makes the answer an ordinary string. The
+// machine answers bytes -- `/home/madness`, `24` -- and encode_raw maps every
+// byte back onto DESIGN §5's table, so what comes out holds no code in 95..100
+// and `size`, `find` and `==` all work on it the way they work on a literal.
+// A string with no live code in it makes the round trip unchanged, which is
+// the property that lets a program call this without asking first.
+bool string_resolved(eval::Machine &m, const Value *a, uint32_t, Value *answer)
+{
+    const SatString *self = nullptr;
+    if (!string_at(m, a, 0, &self))
+        return false;
+    *answer = as_value(encode_raw(live_text(*self)));
+    return true;
+}
+
 } // namespace
 
 void install_string_methods()
@@ -344,33 +379,40 @@ void install_string_methods()
     // the string the method was asked of, per DESIGN §6.4's written-out form,
     // and operations_dispatch.cpp subtracts it back out of any sentence about
     // counts. The two mutating rows are the last column doing its job.
+    //
+    // AND THE MILESTONE IS A COLUMN, because the sixteen are M11's and the
+    // seventeenth is not. `satl --compile` prints this string, so a row
+    // carrying the wrong one is a table that cannot say where it came from --
+    // which evaluator/dispatch.hpp counts as the shape PLAN §1.1 is about.
     struct Row {
         NodeId path;
         eval::HandlerFn fn;
         uint32_t arity;
         bool mutates;
+        const char *milestone;
     };
     static constexpr Row rows[] = {
-        {NodeId::VARIABLE_STRING_SIZE,        string_size,        1, false},
-        {NodeId::VARIABLE_STRING_EMPTY,       string_empty,       1, false},
-        {NodeId::VARIABLE_STRING_FIND,        string_find,        2, false},
-        {NodeId::VARIABLE_STRING_CONTAINS,    string_contains,    2, false},
-        {NodeId::VARIABLE_STRING_SUBSTRING,   string_substring,   3, false},
-        {NodeId::VARIABLE_STRING_STARTS_WITH, string_starts_with, 2, false},
-        {NodeId::VARIABLE_STRING_ENDS_WITH,   string_ends_with,   2, false},
-        {NodeId::VARIABLE_STRING_LOWER,       string_lower,       1, false},
-        {NodeId::VARIABLE_STRING_UPPER,       string_upper,       1, false},
-        {NodeId::VARIABLE_STRING_SPLIT,       string_split,       2, false},
-        {NodeId::VARIABLE_STRING_TRIM,        string_trim,        1, false},
-        {NodeId::VARIABLE_STRING_REPLACE,     string_replace,     3, false},
-        {NodeId::VARIABLE_STRING_TO_NUMBER,   string_to_number,   1, false},
-        {NodeId::VARIABLE_STRING_APPEND,      string_append,      2, true},
-        {NodeId::VARIABLE_STRING_CLEAR,       string_clear,       1, true},
-        {NodeId::VARIABLE_STRING_AT,          string_char_at,     2, false},
+        {NodeId::VARIABLE_STRING_SIZE,        string_size,        1, false, "M11"},
+        {NodeId::VARIABLE_STRING_EMPTY,       string_empty,       1, false, "M11"},
+        {NodeId::VARIABLE_STRING_FIND,        string_find,        2, false, "M11"},
+        {NodeId::VARIABLE_STRING_CONTAINS,    string_contains,    2, false, "M11"},
+        {NodeId::VARIABLE_STRING_SUBSTRING,   string_substring,   3, false, "M11"},
+        {NodeId::VARIABLE_STRING_STARTS_WITH, string_starts_with, 2, false, "M11"},
+        {NodeId::VARIABLE_STRING_ENDS_WITH,   string_ends_with,   2, false, "M11"},
+        {NodeId::VARIABLE_STRING_LOWER,       string_lower,       1, false, "M11"},
+        {NodeId::VARIABLE_STRING_UPPER,       string_upper,       1, false, "M11"},
+        {NodeId::VARIABLE_STRING_SPLIT,       string_split,       2, false, "M11"},
+        {NodeId::VARIABLE_STRING_TRIM,        string_trim,        1, false, "M11"},
+        {NodeId::VARIABLE_STRING_REPLACE,     string_replace,     3, false, "M11"},
+        {NodeId::VARIABLE_STRING_TO_NUMBER,   string_to_number,   1, false, "M11"},
+        {NodeId::VARIABLE_STRING_APPEND,      string_append,      2, true, "M11"},
+        {NodeId::VARIABLE_STRING_CLEAR,       string_clear,       1, true, "M11"},
+        {NodeId::VARIABLE_STRING_AT,          string_char_at,     2, false, "M11"},
+        {NodeId::VARIABLE_STRING_RESOLVED,    string_resolved,    1, false, "M20"},
     };
     for (const Row &row : rows)
         table.install(static_cast<words::PathId>(row.path),
-                      {row.fn, true, row.arity, "M11", row.mutates});
+                      {row.fn, true, row.arity, row.milestone, row.mutates});
 }
 
 } // namespace satellite::scalars

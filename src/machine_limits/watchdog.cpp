@@ -80,14 +80,20 @@ void watch()
                  " and MEMORY_MAX is " + human_bytes(ceiling) +
                  " (" + std::string(origin_text(now.memory_max.origin)) + ")");
 
-        const Dial &floor = now.dial(DialId::MinFreeMb);
-        if (!floor.set)
+        // THE FLOOR IS READ FRESH EVERY WAKE-UP AND IS NOT THE DIAL, since
+        // M20. A program may retune it while this thread is sleeping --
+        // `satellite.library.system.min_free_mb = 2048` -- so the seeded value
+        // is the value only until something says otherwise. One atomic word,
+        // read once here: limits.hpp carries why that is the whole of the
+        // synchronisation and why a torn read is not possible.
+        unsigned long long floor = 0;
+        if (!watched_floor(&floor))
             continue;
         const unsigned long available = facts::mem_available_mb();
-        if (available != 0 && available < floor.value)
+        if (available != 0 && available < floor)
             stop("this machine has " + std::to_string(available) +
                  " MB of memory available and min_free_mb asks for " +
-                 std::to_string(floor.value));
+                 std::to_string(floor));
     }
 }
 
@@ -104,9 +110,10 @@ int hold_for_the_watchdog()
     std::printf("satl: watching. MEMORY_MAX is %s, from %s.\n",
                 human_bytes(now.memory_max.value()).c_str(),
                 std::string(origin_text(now.memory_max.origin)).c_str());
-    if (const Dial &floor = now.dial(DialId::MinFreeMb); floor.set)
-        std::printf("      min_free_mb is %llu, from %s.\n", floor.value,
-                    std::string(origin_text(floor.origin)).c_str());
+    if (unsigned long long floor = 0; watched_floor(&floor))
+        std::printf("      min_free_mb is %llu, from %s.\n", floor,
+                    std::string(origin_text(now.dial(DialId::MinFreeMb).origin))
+                        .c_str());
     else
         std::printf("      min_free_mb is unset, so the machine's free memory "
                     "is not watched.\n");

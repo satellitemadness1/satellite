@@ -408,6 +408,16 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.container.list.min` | `1 4 2 25` | assigned |
 | `satellite.container.list.search(pattern)` | `1 4 2 26` | assigned — appended 2026-09-05, §2.6 |
 | `satellite.container.arguments` | `1 4 3` | assigned — the type of the arguments object |
+| `satellite.container.arguments.length` | `1 4 3 1` | assigned — how many words were on the command line, argv[0] included; the same number as `1 14 1 1 9`, from the same vector, reached through the receiver's type instead of off the object — the command line half and nothing else, so `for (i = 1; i < args.length(); i = i + 1)` walks what the user typed. M20 |
+| `satellite.container.arguments.count` | `1 4 3 2` | assigned — how many entries the object holds, the command line and the machine's facts together. `1 14 1 1 9` is `length` and counts the command line; the author split the two words on 2026-09-11 rather than let one shadow the other. M20 |
+| `satellite.container.arguments.keys` | `1 4 3 3` | assigned — every entry's name, in display order, as a `list<string>` — the map's word for the same idea, chosen by the author over `names` 2026-09-11. M20 |
+| `satellite.container.arguments.to_string` | `1 4 3 4` | assigned — the whole object as the text `display` prints — names beside data, not the command line alone. M20 |
+| `satellite.container.arguments.lines` | `1 4 3 5` | assigned — the same text as `1 4 3 4`; two words for one answer, v1's pair kept. M20 |
+| `satellite.container.arguments.has(k)` | `1 4 3 6` | assigned — whether an entry of that name exists — the question `get` refuses. M20 |
+| `satellite.container.arguments.get(k)` | `1 4 3 7` | assigned — the entry of that name, or a refusal naming it. M20 |
+| `satellite.container.arguments.first` | `1 4 3 8` | assigned — the first word of the command line, which is the program. M20 |
+| `satellite.container.arguments.last` | `1 4 3 9` | assigned — the last word of the command line. M20 |
+| `satellite.container.arguments.contains(x)` | `1 4 3 10` | assigned — whether the command line holds that word. M20 |
 | `satellite.container.result` | `1 4 4` | assigned — Satellite Orbit's answer |
 | `satellite.console` | `1 5 (0)` |  |
 | `satellite.console.display` | `1 5 1` |  |
@@ -437,6 +447,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.variable.string.append(x)` | `1 6 1 14` | assigned |
 | `satellite.variable.string.clear` | `1 6 1 15` | assigned |
 | `satellite.variable.string.at(n)` | `1 6 1 16` | assigned |
+| `satellite.variable.string.resolved` | `1 6 1 17` | assigned — the string with its live codes answered by the machine; the one method that crosses §5's render/store boundary, minted at M20 so the six live values can be read as well as printed |
 | `satellite.variable.file` | `1 6 2 (0)` |  |
 | `satellite.variable.file.new` | `1 6 2 1` | assigned — the dispatch row §6.4 q2 describes; a program writes `satellite.file.new(path)` `1 8 1`. M19 |
 | `satellite.variable.file.open` | `1 6 2 2` | assigned — reopens a handle that was closed or whose open failed; NOT a second `1 8 2`. M19 |
@@ -573,7 +584,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.library.main.arguments.session.language` | `1 14 1 1 8 3` | assigned |
 | `satellite.library.main.arguments.session.home` | `1 14 1 1 8 4` | assigned |
 | `satellite.library.main.arguments.session.directory` | `1 14 1 1 8 5` | assigned |
-| `satellite.library.main.arguments.count` | `1 14 1 1 9` | assigned — M20. v1's `argument_count`: it DESCRIBES the command line and is not part of it |
+| `satellite.library.main.arguments.length` | `1 14 1 1 9` | assigned — M20. v1's `argument_count`, respelled `length` the day the selectors landed: it DESCRIBES the command line and is not part of it, and `count` is now `1 4 3 2`'s word for how many entries the object holds |
 | `satellite.library.system` | `1 14 2 (0)` | assigned |
 | `satellite.library.system.division_digits` | `1 14 2 1` | assigned |
 | `satellite.library.system.max_depth` | `1 14 2 2` | assigned |

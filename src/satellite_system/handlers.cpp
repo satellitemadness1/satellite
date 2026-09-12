@@ -59,13 +59,18 @@ bool read_max_depth(eval::Machine &m, const Value *, uint32_t, Value *answer)
 bool read_min_free_mb(eval::Machine &, const Value *, uint32_t, Value *answer)
 {
     // THE ONE DIAL WHOSE HOME IS NOT THE POLICY: the watchdog's floor, read
-    // from where the watchdog reads it. UNSET ANSWERS NOTHING -- M12's
-    // askable state, and the honest one: an unset floor means the machine's
-    // free memory is not watched at all, and a 0 here would be a number
-    // claiming it is.
-    const limits::Dial &dial = limits::held().dial(limits::DialId::MinFreeMb);
-    *answer = dial.set ? Value::number(Number::from_u64(dial.value))
-                       : Value::nothing();
+    // from where the watchdog reads it. NOT WATCHED ANSWERS NOTHING -- M12's
+    // askable state, and the honest one: an unwatched floor means the
+    // machine's free memory is not looked at at all, and a 0 here would be a
+    // number claiming it is.
+    //
+    // AND IT IS THE LIVE WORD SINCE M20, NOT THE SEEDED DIAL, so a program
+    // reads back what it just wrote. The dial still records where the seed
+    // came from, which is what `satl --limits` prints.
+    unsigned long long floor = 0;
+    *answer = limits::watched_floor(&floor)
+                  ? Value::number(Number::from_u64(floor))
+                  : Value::nothing();
     return true;
 }
 
@@ -139,20 +144,49 @@ bool retune_max_depth(eval::Machine &m, const Value *arguments, uint32_t,
     return true;
 }
 
-bool retune_min_free_mb(eval::Machine &m, const Value *, uint32_t, Value *)
+// THE ROW THAT REFUSED UNTIL M20, AND WHAT IT WAS WAITING FOR WAS ONE WORD.
+// It used to say "the watchdog reads its floor from the config's store on a
+// thread of its own, and a live handoff to it is undesigned" -- which was true
+// and was the right refusal while it lasted: a torn read on that thread kills
+// a healthy process, the worst thing a watchdog can do. The design is a single
+// atomic `unsigned long long`, written whole here and read once per wake-up
+// there, and machine_limits/limits.hpp carries why that is all of it.
+//
+// SO §4.5.3's SENTENCE IS TRUE FOR THE FIRST TIME: "the file is where a
+// machine's settings live before a program starts; the namespace is how a
+// running program reads and changes them." Both halves, one dial.
+//
+// "disabled" TURNS THE WATCH OFF AND `0` DOES NOT, settled by the author on
+// 2026-09-11. A floor of zero is a real floor that is never crossed -- no
+// machine has less than 0 MB free -- and reading it as "stop watching" would
+// be the language guessing at a number's meaning, which is the conversion
+// DESIGN §1.1 does not have. So the off switch is a WORD, and it is quoted
+// because a bare one is a variable name in this language: the four file modes
+// at S1201 are the same shape and the same decision.
+bool retune_min_free_mb(eval::Machine &m, const Value *arguments, uint32_t,
+                        Value *)
 {
-    // REFUSED WITH THE REASON, NOT SKIPPED: the watchdog is a detached
-    // thread reading the seeded store once a second, and handing it a live
-    // value is a synchronization design of its own -- a torn read there
-    // kills a healthy process, which is the worst thing a watchdog can do.
-    // The mechanism is in place the day that design is taken; until then the
-    // row says so instead of letting S0724 imply the path means nothing.
-    m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
-        m.span_of(m.here()), "retuning `min_free_mb`",
-        "the watchdog reads its floor from the config's store on a thread of "
-        "its own, and a live handoff to it is undesigned -- the seeded value "
-        "stands for this run"));
-    return false;
+    if (const Str *word = std::get_if<Str>(&arguments[0])) {
+        const std::string said = *word ? decode(**word) : std::string();
+        if (said != "disabled") {
+            m.refuse(errors::make<errors::Code::SYSTEM_BAD_DIAL_WORD>(
+                m.span_of(m.here()), "min_free_mb", "\"" + said + "\""));
+            return false;
+        }
+        limits::stop_watching_free_memory();
+        return true;
+    }
+
+    // ANY NUMBER OF MEGABYTES IS A NUMBER OF MEGABYTES, which is max_depth's
+    // rule one row up and holds here for the same reason: a floor above what
+    // the machine has stops the run within the second, and that is a working
+    // answer to somebody who asked for it rather than a mistake to refuse.
+    unsigned long long megabytes = 0;
+    if (!dial_count(m, arguments[0], "min_free_mb", 0, limits::kFloorMost,
+                    &megabytes))
+        return false;
+    limits::watch_floor(megabytes);
+    return true;
 }
 
 } // namespace

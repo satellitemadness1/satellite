@@ -4,6 +4,8 @@
 
 #include "eval_test.hpp"
 
+#include "satellite_arguments/arguments.hpp"
+
 #include "evaluator/dispatch.hpp"
 #include "satellite_value/render.hpp"
 
@@ -56,10 +58,18 @@ satellite::Value call(Run &run, const std::string &capsule,
     // parser_declarations.cpp's top_level() hands `satellite.library` in as the
     // owner, and WORD_NUMBERS §3's worked example is that a user's first name
     // there is `1 14 3`.
+    // AND THE SECOND LOOKUP RUNS WHEN THE FIRST NAMES NOTHING COMPILED, not
+    // when it names nothing at all -- M20. `satellite.library.main` `1 14 1`
+    // is a real node, so asking for `main` under `library` SUCCEEDS and
+    // answers a path this program has no capsule for; stopping there reported
+    // that a fixture declaring `satellite.main` declares no `main`.
+    // programs/evaluate_commands.cpp had the same two lines and the same bug.
     words::PathId path = run.words.find(words::NodeId::LIBRARY, capsule);
-    if (path == words::kNoPath)
+    int which = path == words::kNoPath ? -1 : run.program.find(path);
+    if (which < 0) {
         path = run.words.find(words::NodeId::SATELLITE, capsule);
-    const int which = path == words::kNoPath ? -1 : run.program.find(path);
+        which = path == words::kNoPath ? -1 : run.program.find(path);
+    }
     if (which < 0) {
         check(false, "the fixture declares no capsule called `" + capsule + "`");
         return Value::nothing();
@@ -76,6 +86,17 @@ satellite::Value call(Run &run, const std::string &capsule,
         std::vector<Value> given;
         for (const long long number : arguments)
             given.push_back(Value::number(Number(number)));
+        // THE ARGUMENTS OBJECT, FOR A `satellite.main` THAT DECLARES ONE --
+        // M20, and it is what programs/run_command.cpp does at the same point:
+        // "if (main.parameters != 0) parameters.push_back(object())". A
+        // fixture cannot hand it over any other way, because the object is not
+        // a value a program can write; it is what the language passes in.
+        // Every other capsule takes what the caller wrote, which is the
+        // numbers above.
+        if (given.empty() && capsule == "main" &&
+            run.program.closures.capsules()[static_cast<size_t>(which)]
+                    .parameters != 0)
+            given.push_back(arguments::object());
         answer = machine.call(static_cast<uint32_t>(which), given);
     }
     last_ending = machine.ending();
@@ -132,6 +153,7 @@ int main(int argc, char **argv)
     eval_test::section_containers();
     eval_test::section_bits();
     eval_test::section_hex();
+    eval_test::section_arguments();
 
     if (eval_test::failures != 0) {
         printf("eval_test: %d failed\n", eval_test::failures);

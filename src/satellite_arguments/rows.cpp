@@ -8,6 +8,9 @@
 #include "satellite_string/satellite_string.hpp"
 
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace satellite::arguments {
 
@@ -115,7 +118,7 @@ bool answer_of(words::PathId path, Value *out)
         return true;
     }
     if (path ==
-        static_cast<words::PathId>(NodeId::LIBRARY_MAIN_ARGUMENTS_COUNT)) {
+        static_cast<words::PathId>(NodeId::LIBRARY_MAIN_ARGUMENTS_LENGTH)) {
         // IT DESCRIBES THE COMMAND LINE RATHER THAN BEING PART OF IT, so it
         // counts the words and is not one of them -- which is also why it is a
         // sibling of `machine` and not one of the numbered positions.
@@ -124,6 +127,63 @@ bool answer_of(words::PathId path, Value *out)
         return true;
     }
     return false;
+}
+
+namespace {
+
+// Every fact under `arguments`, as name and value, in REGISTRY order and never
+// from a list written here. words.def is what says `machine` has seven
+// children; a second list in this file would be the thing that goes stale the
+// next time one is appended -- read_group()'s argument in handlers.cpp, and the
+// mistake the M6 draft's `kValidProps[]` made.
+//
+// THE RECURSION IS TWO DEEP AND CANNOT BE MORE, which is why it is recursion at
+// all: DESIGN §7.5 forbids a C++ stack over a depth the USER chooses, and this
+// one is over words.def, whose shape is fixed at compile time. WORD_NUMBERS §4
+// calls this subtree the deepest in the language at six numbers, and
+// `arguments` sits at four of them.
+void collect(NodeId parent, const std::string &prefix,
+             std::vector<Entry> &into)
+{
+    for (words::PathId child = words::first_child(parent);
+         child != words::kNoPath; child = words::next_sibling(child)) {
+        const std::string_view spelling =
+            words::spelling_of(static_cast<NodeId>(child));
+        // The `()` row takes no position among its siblings and names no fact.
+        if (spelling.empty() || spelling == "()")
+            continue;
+
+        const std::string name = prefix + std::string(spelling);
+        Value value;
+        // answer_of() is what leaves out the rows a later milestone owns, so
+        // `interpreter.library_path` is absent from `keys()` exactly as it is
+        // absent from the printed lines -- one rule, read in both places.
+        if (answer_of(child, &value))
+            into.push_back({name, std::move(value)});
+
+        // A GROUP'S CHILDREN ARE ENTRIES AND THE GROUP IS NOT, because a
+        // group's own answer is a map of exactly these entries -- listing both
+        // would say everything twice. `interpreter` is the exception in both
+        // directions: it has an answer of its own AND children, so the line
+        // above emitted it and this line walks into it.
+        collect(static_cast<NodeId>(child), name + ".", into);
+    }
+}
+
+} // namespace
+
+std::vector<Entry> entries_of(const Arguments &body)
+{
+    std::vector<Entry> out;
+
+    // THE COMMAND LINE FIRST, IN ARGV ORDER, which is the order it was typed
+    // in and the order `[i]` reads it in. `program`, then `argument_1`...,
+    // so a name and an index name the same word.
+    for (const CommandLineWord &word : body.words)
+        out.push_back({word.name, word.value});
+
+    collect(NodeId::LIBRARY_MAIN_ARGUMENTS, std::string(), out);
+    return out;
 }
 
 } // namespace satellite::arguments

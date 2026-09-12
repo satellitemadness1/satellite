@@ -270,6 +270,39 @@ SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_MIN,            "min",             SAT_N
 // the same reason `size` and `empty` already appear under both.
 SAT_NODE(CONTAINER_LIST, CONTAINER_LIST_SEARCH,         "search(pattern)", SAT_NUMBERED)  // 1 4 2 26
 SAT_NODE(CONTAINER,      CONTAINER_ARGUMENTS,           "arguments",       SAT_NUMBERED)  // 1 4 3
+// THE TEN SELECTORS, settled by the author 2026-09-11 and built at M20. This
+// node is a TYPE and not a namespace -- WORD_NUMBERS §1.5's fold is what makes
+// a row here reachable, through the receiver's declared type and through
+// nothing else -- so these are M16's thirty-four container methods one level
+// down, over the object DESIGN §7.7 hands `satellite.main`.
+//
+// NO `()` ROW, AND THE ABSENCE IS THE DECISION. `list()` `1 4 2 0` and `map()`
+// `1 4 1 0` are constructors; there is exactly one arguments object per run and
+// the language hands it over, so a program has nothing to construct. §1.3's
+// bare shape is for a word that means something with no arguments, and this one
+// would mean nothing at all.
+//
+// `length` AND `count` ARRIVE BESIDE `size` AND NOT INSTEAD OF IT, which
+// DESIGN §1's "a word means one thing everywhere" would otherwise argue
+// against. The reading that makes them one thing each is that this object is
+// TWO containers at once: `length()` is how long the command line is and
+// `count()` is how many named facts it holds, and a single `size` could only
+// ever answer one of those while looking like it answered both.
+//
+// `count` IS ALSO A ROW UNDER `arguments` `1 14 1 1 9` AND THE REUSE IS
+// DELIBERATE. That one is how many words were on the command line; this one is
+// how many entries the object holds. Both are counts of what their own receiver
+// holds, which is §2.3's distinction between a word and the node it hangs under.
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_LENGTH,    "length",          SAT_NUMBERED)  // 1 4 3 1
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_COUNT,     "count",           SAT_NUMBERED)  // 1 4 3 2
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_KEYS,      "keys",            SAT_NUMBERED)  // 1 4 3 3
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_TO_STRING, "to_string",       SAT_NUMBERED)  // 1 4 3 4
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_LINES,     "lines",           SAT_NUMBERED)  // 1 4 3 5
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_HAS,       "has(k)",          SAT_NUMBERED)  // 1 4 3 6
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_GET,       "get(k)",          SAT_NUMBERED)  // 1 4 3 7
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_FIRST,     "first",           SAT_NUMBERED)  // 1 4 3 8
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_LAST,      "last",            SAT_NUMBERED)  // 1 4 3 9
+SAT_NODE(CONTAINER_ARGUMENTS, CONTAINER_ARGUMENTS_CONTAINS,  "contains(x)",     SAT_NUMBERED)  // 1 4 3 10
 SAT_NODE(CONTAINER,      CONTAINER_RESULT,              "result",          SAT_NUMBERED)  // 1 4 4
 
 // --- console ----------------------------------------------------------------
@@ -311,6 +344,15 @@ SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_TO_NUMBER,   "to_number",             
 SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_APPEND,      "append(x)",             SAT_NUMBERED)  // 1 6 1 14
 SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_CLEAR,       "clear",                 SAT_NUMBERED)  // 1 6 1 15
 SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_AT,          "at(n)",                 SAT_NUMBERED)  // 1 6 1 16
+// THE ONE METHOD THAT CROSSES THE RENDER/STORE BOUNDARY, minted at M20 by the
+// author's decision. A live code (`\threads`, `\memtotal`, `\cwd`) is ONE
+// stored code that the machine answers at DISPLAY time -- so the six live
+// values could be printed and never read, which made them the second-class
+// words M20's own "the 33" decision refused to allow. This row is the read:
+// the string with its live codes answered, which is the call `display` already
+// makes. Every other method still sees the stored codes, and DESIGN §8.3 says
+// which side of the boundary each is on.
+SAT_NODE(VARIABLE_STRING, VARIABLE_STRING_RESOLVED,    "resolved",              SAT_NUMBERED)  // 1 6 1 17
 SAT_NODE(VARIABLE,        VARIABLE_FILE,               "file",                  SAT_NUMBERED)  // 1 6 2
 SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_0,             "()",                    SAT_BARE)  // 1 6 2 0
 SAT_NODE(VARIABLE_FILE,   VARIABLE_FILE_NEW,           "new",                   SAT_NUMBERED)  // 1 6 2 1
@@ -537,7 +579,21 @@ SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_TERM
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_LANGUAGE,                "language",              SAT_NUMBERED)  // 1 14 1 1 8 3
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_HOME,                    "home",                  SAT_NUMBERED)  // 1 14 1 1 8 4
 SAT_NODE(LIBRARY_MAIN_ARGUMENTS_SESSION,     LIBRARY_MAIN_ARGUMENTS_SESSION_DIRECTORY,               "directory",             SAT_NUMBERED)  // 1 14 1 1 8 5
-SAT_NODE(LIBRARY_MAIN_ARGUMENTS,             LIBRARY_MAIN_ARGUMENTS_COUNT,                           "count",                 SAT_NUMBERED)  // 1 14 1 1 9
+// `length` AND NOT `count`, SETTLED BY THE AUTHOR 2026-09-11 WHEN THE TEN
+// SELECTORS COLLIDED WITH IT. This row was minted as `count` earlier the same
+// day -- v1's `argument_count` -- and `satellite.container.arguments.count`
+// `1 4 3 2` is how many entries the OBJECT holds, which is a different number
+// (3 against 37 on this machine). Both are reached off `satellite.main`'s
+// parameter and the object's own children are asked first, so one word would
+// have answered the other's question with nothing saying so -- the shape this
+// milestone's own resolver defect had and the reason it was worth a commit.
+//
+// SO THE WORDS ARE SPLIT AND EACH MEANS ONE THING EVERYWHERE (DESIGN §1):
+// `length` is how long the command line is, `count` is how many entries there
+// are. `1 4 3 1` is `length` too and answers the same number from the same
+// vector, so the shadow here is two rows agreeing rather than one hiding the
+// other -- which is the whole difference between this and what it replaced.
+SAT_NODE(LIBRARY_MAIN_ARGUMENTS,             LIBRARY_MAIN_ARGUMENTS_LENGTH,                          "length",                SAT_NUMBERED)  // 1 14 1 1 9
 SAT_NODE(LIBRARY,                        LIBRARY_SYSTEM,                         "system",          SAT_NUMBERED)  // 1 14 2
 SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_0,                       "()",              SAT_BARE)  // 1 14 2 0
 SAT_NODE(LIBRARY_SYSTEM,                 LIBRARY_SYSTEM_DIVISION_DIGITS,         "division_digits", SAT_NUMBERED)  // 1 14 2 1

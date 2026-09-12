@@ -796,10 +796,160 @@ that matched. How loose a match may be is `satellite.system.threshold`.
 .  `1 4 3`  `satellite.container.arguments`
 > satellite.help(satellite.container.arguments)
 
-The command line, as a container.
+The type of the object `satellite.main` is handed — the command line and
+the machine's own answers, in one value.
 
-**Not built as this path.** What a program reads today is the parameter
-it declares on `satellite.main`, and the wider arguments object is M20.
+It is two containers at once, and its ten methods say which half they are
+asking about. `length()`, `first()`, `last()` and `contains(x)` are the
+command line; `count()`, `keys()`, `has(k)` and `get(k)` are every entry,
+the machine's facts included; `to_string()` and `lines()` are the whole of
+it as text.
+
+**The name is yours.** A program never writes this path — it writes the
+name it gave the parameter, and the methods are reached through that.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.console.display(arguments.length())
+    }
+
+H  `1 4 3 1`  `satellite.container.arguments.length`  _M20_
+> satellite.help(satellite.container.arguments.length)
+
+How many words were on the command line, the program's own name included.
+
+**The command line and nothing else.** The machine's facts are reached by
+name, never by number, so `for (i = 1; i < arguments.length(); i = i + 1)`
+walks exactly what somebody typed.
+
+`satellite.library.main.arguments.length` `1 14 1 1 9` is the same question
+and the same number, asked off the object rather than through its type.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.console.display(arguments.length())
+    }
+
+H  `1 4 3 2`  `satellite.container.arguments.count`  _M20_
+> satellite.help(satellite.container.arguments.count)
+
+How many entries the object holds altogether — the command line and every
+fact about the machine.
+
+It is a different number from `length()` on purpose, and the two words were
+split so that neither could answer the other's question. A program that
+means "all of them" says `count`; one that means "what was typed" says
+`length`.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.console.display(arguments.count())
+    }
+
+H  `1 4 3 3`  `satellite.container.arguments.keys`  _M20_
+> satellite.help(satellite.container.arguments.keys)
+
+Every entry's name, as a list of strings, in the order they are printed.
+
+It is how a program walks what it was given rather than knowing the list in
+advance — the command line's `program` and `argument_1`, then
+`machine.threads` and the rest.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.container.list<satellite.variable.string> names = arguments.keys()
+        satellite.console.display(names.size())
+    }
+
+H  `1 4 3 4`  `satellite.container.arguments.to_string`  _M20_
+> satellite.help(satellite.container.arguments.to_string)
+
+The whole object as the text `display` prints: one entry per line, names
+beside the data.
+
+Not the command line alone. Showing only that would hide the facts that are
+the point of the object.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.variable.string all = arguments.to_string()
+        satellite.console.display(all)
+    }
+
+H  `1 4 3 5`  `satellite.container.arguments.lines`  _M20_
+> satellite.help(satellite.container.arguments.lines)
+
+The same text as `to_string()`.
+
+Two words for one answer, kept because both readings are natural: one asks
+what the object looks like written down, the other asks for its lines.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.variable.string all = arguments.lines()
+        satellite.console.display(all)
+    }
+
+H  `1 4 3 6`  `satellite.container.arguments.has(k)`  _M20_
+> satellite.help(satellite.container.arguments.has)
+
+Whether an entry of that name exists, as a yes or no.
+
+It is the question `get(k)` refuses, so a program can ask before it asks.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.console.display(arguments.has("machine.threads"))
+    }
+
+H  `1 4 3 7`  `satellite.container.arguments.get(k)`  _M20_
+> satellite.help(satellite.container.arguments.get)
+
+The entry of that name.
+
+A name nothing answers to is refused rather than answered with nothing —
+`has(k)` is how to ask first. The names are the ones `keys()` lists.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.console.display(arguments.get("machine.threads"))
+    }
+
+H  `1 4 3 8`  `satellite.container.arguments.first`  _M20_
+> satellite.help(satellite.container.arguments.first)
+
+The first word of the command line, which is the program itself.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.console.display(arguments.first())
+    }
+
+H  `1 4 3 9`  `satellite.container.arguments.last`  _M20_
+> satellite.help(satellite.container.arguments.last)
+
+The last word of the command line.
+
+With no arguments given it is the program's own name, because that is the
+only word there is.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.console.display(arguments.last())
+    }
+
+H  `1 4 3 10`  `satellite.container.arguments.contains(x)`  _M20_
+> satellite.help(satellite.container.arguments.contains)
+
+Whether that word was on the command line.
+
+The command line only — it does not look through the machine's facts, which
+`keys()` and `get(k)` are for.
+
+    satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+    {
+        satellite.console.display(arguments.contains("--quiet"))
+    }
 
 .  `1 4 4`  `satellite.container.result`
 > satellite.help(satellite.container.result)
@@ -1200,6 +1350,24 @@ one character.
 
     satellite.variable.string greeting = "Hello"
     satellite.console.display(greeting.at(0))
+
+H  `1 6 1 17`  `satellite.variable.string.resolved`  _M20_
+> satellite.help(satellite.variable.string.resolved)
+
+The string with its live values answered by the machine.
+
+Six escapes are read when they are USED rather than when the file is lexed
+— `\home`, `\user`, `\threads`, `\memtotal`, `\memused` and `\cwd`. Each is
+stored as one character, and `display` asks the machine for it on the way
+to the screen; this is that same question, asked where a program can keep
+the answer.
+
+Every other method sees what is stored, which is why `size` counts
+`"\threads"` as one. A string with no live value in it answers itself.
+
+    satellite.variable.string live = "this machine runs \threads threads"
+    satellite.variable.string said = live.resolved()
+    satellite.console.display(said)
 
 .  `1 6 2`  `satellite.variable.file`
 > satellite.help(satellite.variable.file)
@@ -3066,8 +3234,8 @@ it was, because the arguments object is what the program woke up to.
         satellite.console.display(arguments.session.directory)
     }
 
-H  `1 14 1 1 9`  `satellite.library.main.arguments.count`  _M20_
-> satellite.help(satellite.library.main.arguments.count)
+H  `1 14 1 1 9`  `satellite.library.main.arguments.length`  _M20_
+> satellite.help(satellite.library.main.arguments.length)
 
 How many words were on the command line, the program's own name included,
 as a number.
@@ -3075,9 +3243,14 @@ as a number.
 It **describes** the command line rather than being part of it, so it is
 not one of the words it counts.
 
+It was spelled `count` until the object's own methods arrived, and the two
+words were split so that neither could answer the other's question:
+`length` is how long the command line is, `count` is how many entries the
+object holds.
+
     satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
     {
-        satellite.console.display(arguments.count)
+        satellite.console.display(arguments.length)
     }
 
 .  `1 14 2`  `satellite.library.system`
@@ -3129,9 +3302,18 @@ H  `1 14 2 3`  `satellite.library.system.min_free_mb`  _M15_
 How much memory the interpreter insists on leaving free, so a runaway
 program is stopped before the machine is.
 
-It reads as `nothing` when no floor has been set, which is not the same as
-a floor of zero.
+It reads as `nothing` when nothing is being watched, which is not the same
+as a floor of zero.
 
+**Assigning to it retunes the watchdog**, which looks again within a
+second. A number is a floor in megabytes — `0` included, which stays armed
+and is never crossed — and the word `"disabled"` stops the watch. The
+configuration file sets it before a program starts; this is how a running
+program reads and changes it.
+
+    satellite.library.system.min_free_mb = 512
+    satellite.console.display(satellite.library.system.min_free_mb)
+    satellite.library.system.min_free_mb = "disabled"
     satellite.console.display(satellite.library.system.min_free_mb)
 
 H  `1 14 2 4`  `satellite.library.system.float_digits`  _M15_

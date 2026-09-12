@@ -1234,8 +1234,26 @@ arguments.interpreter   bare = the path to satl; version
                         library_path  library_path_source
 arguments.process       id  parent
 arguments.session       shell  terminal  language  home  directory
-arguments.count         how many words were on the command line
+arguments.length        how many words were on the command line
 ```
+
+**IT WAS `arguments.count` UNTIL THE OBJECT GAINED ITS OWN METHODS**, on the
+day M20 built them, and the author split the two words rather than let one
+shadow the other. `satellite.container.arguments.count()` `1 4 3 2` is how many
+ENTRIES the object holds — the command line and every fact about the machine,
+37 against 3 on this machine — and both are reached off `satellite.main`'s
+parameter, so one spelling would have answered the other's question with
+nothing saying so. **`length` is how long the command line is and `count` is
+how many entries there are, everywhere**, which is §1's *a word means one thing*
+applied to a collision rather than to a preference.
+
+**AND THE OBJECT ANSWERS TEN QUESTIONS ABOUT ITSELF**, settled by the author on
+2026-09-11 and numbered under `satellite.container.arguments` `1 4 3` — a TYPE,
+so §1.5's fold through the receiver is what reaches them. `length()`, `first()`,
+`last()` and `contains(x)` are the command line; `count()`, `keys()`, `has(k)`
+and `get(k)` are every entry, by the dotted name the printer uses; `to_string()`
+and `lines()` are the whole of it as text. It is M16's thirty-four container
+methods one level down, over an object that is two containers at once.
 
 **A GROUP WORD WRITTEN ON ITS OWN DISPLAYS ITS CHILDREN** — the author,
 2026-09-11, at M20, asked with the alternatives laid out. `arguments.machine`
@@ -1508,6 +1526,18 @@ mutating method's answer is its receiver's new value; `at(n)` answers a
 one-character string, there being no character type; and a method sees the
 STORED codes — a live code counts as one and resolves at display, per §5's
 render/store boundary.
+
+**ONE METHOD IS ON THE OTHER SIDE OF THAT LINE AND IT IS THE ONLY ONE.**
+`satellite.variable.string.resolved` `1 6 1 17`, minted by the author at M20,
+answers the string with its live codes resolved — the same question `display`
+asks on the way to the screen, asked where a program can keep the answer. What
+the rule above left behind was six values a program could PRINT and never READ:
+`"\memtotal".to_number()` refuses on the placeholder text, and
+`total.to_string() == "\memtotal"` is false while both print `63430`, so M20's
+own done-when — *assert the three surfaces agree* — could not be written at
+all. The sentence above still holds for every other method, and it is what
+keeps `size` of `"\threads"` at 1; this row is the door through the boundary,
+and it is one call wide because a program asks for it by name.
 
 ### 8.4 Maps
 

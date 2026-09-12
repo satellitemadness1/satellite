@@ -98,5 +98,10 @@
   "query": "satellite.help(satellite.variable.string.at)",
   "prose": "Hands back the one character at the position you name, counting from\nzero.\n\nThere is no character type here, so what comes back is a string holding\none character.",
   "example": "satellite.variable.string greeting = \"Hello\"\nsatellite.console.display(greeting.at(0))"
+ },
+ "1 6 1 17": {
+  "query": "satellite.help(satellite.variable.string.resolved)",
+  "prose": "The string with its live values answered by the machine.\n\nSix escapes are read when they are USED rather than when the file is lexed\n— `\\home`, `\\user`, `\\threads`, `\\memtotal`, `\\memused` and `\\cwd`. Each is\nstored as one character, and `display` asks the machine for it on the way\nto the screen; this is that same question, asked where a program can keep\nthe answer.\n\nEvery other method sees what is stored, which is why `size` counts\n`\"\\threads\"` as one. A string with no live value in it answers itself.",
+  "example": "satellite.variable.string live = \"this machine runs \\threads threads\"\nsatellite.variable.string said = live.resolved()\nsatellite.console.display(said)"
  }
 }

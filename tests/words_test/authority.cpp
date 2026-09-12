@@ -194,8 +194,16 @@ void section_authority()
     // number. It is visible to this test through the WALK rather than through
     // the counts: match_shape compares argument lists character for character,
     // so a shape written here and not in words.def is a row that stops walking.
-    check(rows.size() == 285,
-          "§2.2 should hold 285 rows, found " + std::to_string(rows.size()));
+    //
+    // AND 285 UNTIL LATER THE SAME DAY, WHEN M20 APPENDED ELEVEN MORE and
+    // every one is a LEAF -- so the marker count below does not move and the
+    // two numbers here move together. Ten are the arguments object's selectors
+    // `1 4 3 1`-`1 4 3 10`, which are reached through the receiver's type and
+    // not as a namespace (§1.5); the eleventh is
+    // `satellite.variable.string.resolved` `1 6 1 17`, the read the six live
+    // codes never had.
+    check(rows.size() == 296,
+          "§2.2 should hold 296 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -204,8 +212,8 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 282,
-          "§2.2 should carry 282 distinct numbers, found " +
+    check(numbers.size() == 293,
+          "§2.2 should carry 293 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 3, "§2.2 should declare exactly 3 aliases, found " +
                             std::to_string(aliases));

@@ -42,6 +42,9 @@ void start(const std::vector<std::string> &words);
 const Value &object();
 
 // The rows. Installed by whoever runs a program, beside every other module's.
+// The ten selectors go in with them -- selectors.cpp is a separate file for a
+// SUBJECT reason and not a linking one: those rows bind a receiver and these
+// do not, which is the whole division the directory draws.
 void install_handlers();
 
 } // namespace satellite::arguments

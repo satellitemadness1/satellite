@@ -459,6 +459,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(ARGS)/rows.cpp \
             $(ARGS)/render.cpp \
             $(ARGS)/handlers.cpp \
+            $(ARGS)/selectors.cpp \
             $(SATFILE)/file_handle.cpp \
             $(SATFILE)/handlers.cpp \
             $(SATFILE)/file_methods.cpp \

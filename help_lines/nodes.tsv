@@ -50,6 +50,16 @@ H	satellite.container.list.max	1 4 2 24	M16	1	1	0
 H	satellite.container.list.min	1 4 2 25	M16	1	1	0
 H	satellite.container.list.search(pattern)	1 4 2 26	M16	2	1	0
 .	satellite.container.arguments	1 4 3		0	0	0
+H	satellite.container.arguments.length	1 4 3 1	M20	1	1	0
+H	satellite.container.arguments.count	1 4 3 2	M20	1	1	0
+H	satellite.container.arguments.keys	1 4 3 3	M20	1	1	0
+H	satellite.container.arguments.to_string	1 4 3 4	M20	1	1	0
+H	satellite.container.arguments.lines	1 4 3 5	M20	1	1	0
+H	satellite.container.arguments.has(k)	1 4 3 6	M20	2	1	0
+H	satellite.container.arguments.get(k)	1 4 3 7	M20	2	1	0
+H	satellite.container.arguments.first	1 4 3 8	M20	1	1	0
+H	satellite.container.arguments.last	1 4 3 9	M20	1	1	0
+H	satellite.container.arguments.contains(x)	1 4 3 10	M20	2	1	0
 .	satellite.container.result	1 4 4		0	0	0
 .	satellite.console	1 5		0	0	0
 .	satellite.console()	1 5 0		0	0	0
@@ -82,6 +92,7 @@ H	satellite.variable.string.to_number	1 6 1 13	M11	1	1	0
 H	satellite.variable.string.append(x)	1 6 1 14	M11	2	1	0
 H	satellite.variable.string.clear	1 6 1 15	M11	1	1	0
 H	satellite.variable.string.at(n)	1 6 1 16	M11	2	1	0
+H	satellite.variable.string.resolved	1 6 1 17	M20	1	1	0
 .	satellite.variable.file	1 6 2		0	0	0
 .	satellite.variable.file()	1 6 2 0		0	0	0
 .	satellite.variable.file.new	1 6 2 1		0	0	0
@@ -239,7 +250,7 @@ H	satellite.library.main.arguments.session.terminal	1 14 1 1 8 2	M20	0	0	0
 H	satellite.library.main.arguments.session.language	1 14 1 1 8 3	M20	0	0	0
 H	satellite.library.main.arguments.session.home	1 14 1 1 8 4	M20	0	0	0
 H	satellite.library.main.arguments.session.directory	1 14 1 1 8 5	M20	0	0	0
-H	satellite.library.main.arguments.count	1 14 1 1 9	M20	0	0	0
+H	satellite.library.main.arguments.length	1 14 1 1 9	M20	0	0	0
 .	satellite.library.system	1 14 2		0	0	0
 .	satellite.library.system()	1 14 2 0		0	0	0
 H	satellite.library.system.division_digits	1 14 2 1	M15	0	0	0

@@ -49,11 +49,11 @@ M8.5 and M9 on 2026-09-01, M10 on 2026-09-02, M11 and M12 both on
 cleared, which no earlier milestone can say, and M14 behind it the same
 sitting, the day the author took its six open answers — M16 and M17 both
 on 2026-09-06, M18 and M19 both on 2026-09-08, M19.5 across 2026-09-08 and
-2026-09-09, and M19.6 on 2026-09-09.** **M20 IS IN PROGRESS as of 2026-09-11,
-five commits in** — §8's entry is where it is tracked and is the only place
-that is current about it; what is left there is the arguments object's ten
-selectors, the done-when program, `min_free_mb` being retunable, and
-`MILESTONES/M20.md`.
+2026-09-09, and M19.6 on 2026-09-09.** **M20 LANDED 2026-09-11**, eight commits in
+one day — the largest single milestone this list has had by paths. §8's entry
+carries every decision as it was argued and `MILESTONES/M20.md` is the review:
+the arguments object and its ten selectors, `satellite.system`, a word for
+reading a live code, and a watchdog floor a running program can move.
 
 **THE NARRATIVE BELOW STOPS AT M17 AND THE LIST ABOVE DOES NOT.** Everything
 from M18 on is in §8 and in `MILESTONES/`, and this section was not extended
@@ -62,7 +62,7 @@ with it — which is worth saying here rather than leaving a reader to notice:
 so a §1 that quietly ended at M17 was pointing them at a frontier four
 milestones behind the tree. **satellite.help exists (M18), files and
 directories are open and read (M19), binary and hexadecimal are values
-(M19.5), and `satellite.system` answers the machine (M20, in progress).**
+(M19.5), and `satellite.system` answers the machine (M20).**
 *(M1.5 is the window, and it
 was called M11.A and counted as unlanded until the 2026-08-30 renumber found it
 had been finished for three days — §8's opening carries the whole mapping.)* There is a `satl` that says what it is, says how a
@@ -4477,7 +4477,37 @@ rows that are a done-when clause rather than a question.)*
   > reads the command line and nothing else, and `argz.machine.threads` answers
   > 24 beside `\threads`.
 - ~~**`satellite.container.arguments` `1 4 3` has no children and the object
-  answers ten selectors.**~~ **SETTLED 2026-09-11 BY THE AUTHOR, AND ONE WORD
+  answers ten selectors.**~~ **BUILT 2026-09-11, AND THE COLLISION IT MADE IS
+  BELOW.** The ten are `1 4 3 1`-`1 4 3 10`, in the order this entry lists
+  them, with **no `()` row**: `list()` and `map()` are constructors and there
+  is exactly one arguments object per run which the language hands over, so a
+  program has nothing to construct. They are reached through the RECEIVER'S
+  TYPE and `satellite.main`'s parameter is declared
+  `satellite.container.list<satellite.variable.string>` -- v1's compatibility
+  spelling, which DESIGN §7.7 keeps so hello world stays five lines -- so
+  names.cpp gives the bound name the object's own type and the fold reaches
+  `1 4 3` from there. The four command-line rows never touch `entries_of()`,
+  which is the laziness above still holding.
+
+  > **AND `count` WAS SPELLED TWICE UNDER ONE RECEIVER, WHICH NEITHER DECISION
+  > COULD SEE ON ITS OWN.** `satellite.library.main.arguments.count`
+  > `1 14 1 1 9` is v1's `argument_count` and `1 4 3 2` is how many entries the
+  > object holds -- 3 against 37 here -- and BOTH are reached off the
+  > parameter, the object's own children first. So `argz.count()` answered 3
+  > while the help line this milestone wrote promised 37: **answering the wrong
+  > fact rather than failing**, which is the shape the resolver defect below
+  > had and the reason it was worth a commit.
+  >
+  > **SETTLED 2026-09-11 BY THE AUTHOR: `length` is the command line, `count`
+  > is the entries, and `1 14 1 1 9` was RESPELLED rather than renumbered.**
+  > Nothing moved but a string. `1 4 3 1` is `length` too and answers the same
+  > number from the same vector, so what is left is two rows agreeing rather
+  > than one hiding the other -- which is the whole difference between this and
+  > what it replaced. The paragraph below was written before the collision and
+  > is left as it was argued; its last sentence is the one that did not survive
+  > contact.
+
+  **SETTLED 2026-09-11 BY THE AUTHOR, AND ONE WORD
   CHANGED.** The ten are `.length()`, `.count()`, **`.keys()`**, `.to_string()`,
   `.lines()`, `.has(k)`, `.get(k)`, `.first()`, `.last()`, `.contains(x)` — this
   entry had written `.names()` and the author chose `keys`, which is the word
@@ -4760,6 +4790,27 @@ running program** through `satellite.library.system` — which is §4.5.3's *"th
 is where a machine's settings live before a program starts; the namespace is how a
 running program reads and changes them"*, and the first time any milestone can show
 both halves.
+
+> **BUILT 2026-09-11, AND THE DESIGN THE REFUSAL WAS WAITING FOR IS ONE WORD.**
+> The row refused with a true reason -- the watchdog is a detached thread and a
+> torn read there kills a healthy process -- and what it needed was a single
+> atomic `unsigned long long`, written whole by the evaluator and read once per
+> wake-up. **Two words, a flag and a value, would have brought the problem back
+> in a smaller form**, since a reader can take the flag from one write and the
+> value from another; so "not watched" is carried in the same word and the
+> stored value is the floor PLUS ONE.
+>
+> **`0` IS A FLOOR OF ZERO AND `"disabled"` IS THE OFF SWITCH**, settled by the
+> author on 2026-09-11 in those words. A floor of zero is armed and never
+> crossed -- no machine has less than 0 MB free -- and reading it as "stop
+> watching" would be the language guessing at a number's meaning. It is QUOTED
+> because a bare `disabled` is a variable name in this language; the four file
+> modes at S1201 are the same shape and the same decision, and S1302 is the
+> refusal that enumerates rather than guesses.
+>
+> **DEMONSTRATED BY BEING STOPPED.** A program that sets `min_free_mb` above
+> what the machine has is killed within the second, on stderr, exit 4 -- the
+> watchdog acting on a floor no file ever carried.
 
 **M21 — a piece of QUAD, running.** *(New 2026-08-28. After M20.)* **The milestone
 QUAD.md §4 has asked for since its first draft and this list did not have**, in §4's
@@ -5267,6 +5318,32 @@ above**, counted mechanically against §2.2 rather than read off the prose:
 | M14 | 8 | | M28 | 1 |
 | M15 | 4 | | M29 | 3 |
 | | | | **total** | **227** |
+
+***THIS TABLE IS STALE AND THE HEADLINE NUMBERS ABOVE IT ARE TOO — FOUND
+2026-09-11, WHILE M20 WAS LANDING, AND SAID HERE RATHER THAN QUIETLY FIXED.***
+`tests/words_test` counts WORD_NUMBERS §2.2 mechanically on every build and it
+now reads **296 rows and 293 distinct numbers**, against the 227 and 224 this
+section claims. **The gap is 69 rows and none of them is a renumber**: M19.5's
+eight, M19.6, and M20's fifty-one — thirty-eight for the arguments subtree and
+the three call shapes, ten for `satellite.container.arguments`' selectors, and
+`satellite.variable.string.resolved` `1 6 1 17`. Each landed in a commit that
+moved `words.def`, §2.2, `help_lines/nodes.tsv` and the entries together, and
+**none of them moved this table.**
+
+**THE PER-MILESTONE COLUMN CANNOT BE PATCHED AND MUST BE RECOUNTED**, which is
+why this is a note and not an edit. Its own rule is that it is *"counted
+mechanically against §2.2 rather than read off the prose"*, and adding 69 to
+whichever rows look likeliest would be reading it off the prose — the exact
+thing `SCRATCH.md/MILESTONE.md` §2 says produced the 122. **The recount is a
+sweep somebody has to run**, and the two totals above are what it has to come
+out at.
+
+**WHAT DID NOT GO WRONG IS WORTH SAYING TOO.** The staleness is in this
+section's arithmetic and nowhere else: §2.2, `words.def`, `help.def` and
+`nodes.tsv` agree with each other on every build, by three separate asserts,
+and it is those four that decide what the language is. What this table decides
+is whether a path has an owner — and the check that every row is named by
+exactly one milestone has not run since M19.5 either.
 
 ***And one of the 227 is named by no sentence above, which M17 found by trying
 to write its own four down.*** *(2026-09-06.)* `satellite` `1` — the root, and

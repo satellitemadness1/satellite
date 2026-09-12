@@ -211,8 +211,58 @@
  },
  "1 4 3": {
   "query": "satellite.help(satellite.container.arguments)",
-  "prose": "The command line, as a container.\n\n**Not built as this path.** What a program reads today is the parameter\nit declares on `satellite.main`, and the wider arguments object is M20.",
-  "example": ""
+  "prose": "The type of the object `satellite.main` is handed — the command line and\nthe machine's own answers, in one value.\n\nIt is two containers at once, and its ten methods say which half they are\nasking about. `length()`, `first()`, `last()` and `contains(x)` are the\ncommand line; `count()`, `keys()`, `has(k)` and `get(k)` are every entry,\nthe machine's facts included; `to_string()` and `lines()` are the whole of\nit as text.\n\n**The name is yours.** A program never writes this path — it writes the\nname it gave the parameter, and the methods are reached through that.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.length())\n}"
+ },
+ "1 4 3 1": {
+  "query": "satellite.help(satellite.container.arguments.length)",
+  "prose": "How many words were on the command line, the program's own name included.\n\n**The command line and nothing else.** The machine's facts are reached by\nname, never by number, so `for (i = 1; i < arguments.length(); i = i + 1)`\nwalks exactly what somebody typed.\n\n`satellite.library.main.arguments.length` `1 14 1 1 9` is the same question\nand the same number, asked off the object rather than through its type.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.length())\n}"
+ },
+ "1 4 3 2": {
+  "query": "satellite.help(satellite.container.arguments.count)",
+  "prose": "How many entries the object holds altogether — the command line and every\nfact about the machine.\n\nIt is a different number from `length()` on purpose, and the two words were\nsplit so that neither could answer the other's question. A program that\nmeans \"all of them\" says `count`; one that means \"what was typed\" says\n`length`.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.count())\n}"
+ },
+ "1 4 3 3": {
+  "query": "satellite.help(satellite.container.arguments.keys)",
+  "prose": "Every entry's name, as a list of strings, in the order they are printed.\n\nIt is how a program walks what it was given rather than knowing the list in\nadvance — the command line's `program` and `argument_1`, then\n`machine.threads` and the rest.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.container.list<satellite.variable.string> names = arguments.keys()\n    satellite.console.display(names.size())\n}"
+ },
+ "1 4 3 4": {
+  "query": "satellite.help(satellite.container.arguments.to_string)",
+  "prose": "The whole object as the text `display` prints: one entry per line, names\nbeside the data.\n\nNot the command line alone. Showing only that would hide the facts that are\nthe point of the object.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.variable.string all = arguments.to_string()\n    satellite.console.display(all)\n}"
+ },
+ "1 4 3 5": {
+  "query": "satellite.help(satellite.container.arguments.lines)",
+  "prose": "The same text as `to_string()`.\n\nTwo words for one answer, kept because both readings are natural: one asks\nwhat the object looks like written down, the other asks for its lines.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.variable.string all = arguments.lines()\n    satellite.console.display(all)\n}"
+ },
+ "1 4 3 6": {
+  "query": "satellite.help(satellite.container.arguments.has)",
+  "prose": "Whether an entry of that name exists, as a yes or no.\n\nIt is the question `get(k)` refuses, so a program can ask before it asks.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.has(\"machine.threads\"))\n}"
+ },
+ "1 4 3 7": {
+  "query": "satellite.help(satellite.container.arguments.get)",
+  "prose": "The entry of that name.\n\nA name nothing answers to is refused rather than answered with nothing —\n`has(k)` is how to ask first. The names are the ones `keys()` lists.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.get(\"machine.threads\"))\n}"
+ },
+ "1 4 3 8": {
+  "query": "satellite.help(satellite.container.arguments.first)",
+  "prose": "The first word of the command line, which is the program itself.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.first())\n}"
+ },
+ "1 4 3 9": {
+  "query": "satellite.help(satellite.container.arguments.last)",
+  "prose": "The last word of the command line.\n\nWith no arguments given it is the program's own name, because that is the\nonly word there is.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.last())\n}"
+ },
+ "1 4 3 10": {
+  "query": "satellite.help(satellite.container.arguments.contains)",
+  "prose": "Whether that word was on the command line.\n\nThe command line only — it does not look through the machine's facts, which\n`keys()` and `get(k)` are for.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.contains(\"--quiet\"))\n}"
  },
  "1 4 4": {
   "query": "satellite.help(satellite.container.result)",

@@ -1,311 +1,309 @@
 {
-"1 14": {
+ "1 14": {
   "query": "satellite.help(satellite.library)",
   "prose": "Where the program's own globals live, and where the machine's settings\nare read and written.\n\nA name you make under `satellite.library` is a global: it is declared at\nthe top of a file, outside any capsule, and every capsule can see it.",
   "example": "satellite.console.display(satellite.library.system.float_digits)"
-},
-"1 14 0": {"query": "satellite.help(satellite.library)", "prose": "The bare shape. The library is a place rather than a thing to call, and\none of the words underneath is what you write.", "example": ""},
-
-"1 14 1": {
+ },
+ "1 14 0": {
+  "query": "satellite.help(satellite.library)",
+  "prose": "The bare shape. The library is a place rather than a thing to call, and\none of the words underneath is what you write.",
+  "example": ""
+ },
+ "1 14 1": {
   "query": "satellite.help(satellite.library.main)",
   "prose": "Where the program's own starting point lives, and the one thing under it:\nthe arguments object.\n\nYou do not write this path. `satellite.main`'s parameter is how the object\nis reached, and the name is whatever you called that parameter.",
   "example": ""
-},
-"1 14 1 0": {
+ },
+ "1 14 1 0": {
   "query": "satellite.help(satellite.library.main)",
   "prose": "The bare shape. `main` is a place rather than a thing to call — the capsule\nyou declare is `satellite.capsule satellite.main(...)`, and this path is\nwhere the numbering puts what that capsule is handed.",
   "example": ""
-},
-"1 14 1 1": {
+ },
+ "1 14 1 1": {
   "query": "satellite.help(satellite.library.main.arguments)",
   "prose": "The arguments object: the command line, and the facts about the machine\nand the person running the program.\n\n**The name is yours.** It is reached through whatever you called the\nparameter on `satellite.main`, and seven spellings are accepted for it —\n`arguments`, `argument`, `argumentz`, `args`, `argz`, `arg` and `argv`.\n\nDisplaying it bare prints all of it, one fact per line. The words that were\ntyped are reached by number and the machine's answers by name.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments)\n}"
-},
-"1 14 1 1 0": {
+ },
+ "1 14 1 1 0": {
   "query": "satellite.help(satellite.library.main.arguments)",
   "prose": "The bare shape. The object is handed to the program rather than made by it,\nso there is nothing to call: write the parameter's name.",
   "example": ""
-},
-"1 14 1 1 1": {
+ },
+ "1 14 1 1 1": {
   "query": "satellite.help(satellite.library.main.arguments.machine)",
   "prose": "What the machine is — written on its own it displays all seven of its\nfacts at once, as a map.\n\nEvery group under `arguments` answers this way, so you can print a whole\nsection without naming each word in it.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.machine)\n}"
-},
-"1 14 1 1 1 0": {
+ },
+ "1 14 1 1 1 0": {
   "query": "satellite.help(satellite.library.main.arguments.machine)",
   "prose": "The bare shape. Writing `machine` with or without the parentheses reaches\nthe same answer, which is all of its children together.",
   "example": ""
-},
-"1 14 1 1 1 1": {
+ },
+ "1 14 1 1 1 1": {
   "query": "satellite.help(satellite.library.main.arguments.machine.cores)",
   "prose": "How many physical cores the machine has, as a number.\n\nCounted from the kernel's own topology and never as threads divided by two,\nwhich is wrong on any machine that does not run two threads per core.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.machine.cores)\n}"
-},
-"1 14 1 1 1 2": {
+ },
+ "1 14 1 1 1 2": {
   "query": "satellite.help(satellite.library.main.arguments.machine.cpu)",
   "prose": "What the processor calls itself — the model name, as a string.\n\nThis is the marketing name a person recognises. `architecture` is the\ninstruction set, which is a different fact and has its own word.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.machine.cpu)\n}"
-},
-"1 14 1 1 1 3": {
+ },
+ "1 14 1 1 1 3": {
   "query": "satellite.help(satellite.library.main.arguments.machine.threads)",
   "prose": "How many threads the machine can run at once, as a number, which is usually\nmore than the number of cores.\n\nThis is the same number `\\threads` puts in a string and the same number the\nconfiguration file writes as `THREAD_COUNT`. Three ways to ask, one place\nthat knows.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.machine.threads)\n}"
-},
-"1 14 1 1 2": {
+ },
+ "1 14 1 1 2": {
   "query": "satellite.help(satellite.library.main.arguments.memory)",
   "prose": "How much memory the machine has — written on its own it displays its\nchildren, which today is `total`.\n\n**Free memory is not here.** `satellite.system.memory.free()` is what\nanswers that, in whichever unit you ask for; this section is what the\nprogram was told about the machine when it started.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.memory)\n}"
-},
-"1 14 1 1 2 0": {
+ },
+ "1 14 1 1 2 0": {
   "query": "satellite.help(satellite.library.main.arguments.memory)",
   "prose": "The bare shape, which is the same answer as the word on its own: all of\nthis section's children together.",
   "example": ""
-},
-"1 14 1 1 2 1": {
+ },
+ "1 14 1 1 2 1": {
   "query": "satellite.help(satellite.library.main.arguments.memory.total)",
   "prose": "How much memory the machine has in total, in whole megabytes, as a number.\n\nThe same number `\\memtotal` puts in a string. `satellite.system.memory\n.total(\"mb\")` answers the exact figure with its fraction, and this is that\nfigure with the fraction dropped — the two agree at whole megabytes, which\nis the resolution this one has.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.memory.total)\n}"
-},
-"1 14 1 1 3": {
+ },
+ "1 14 1 1 3": {
   "query": "satellite.help(satellite.library.main.arguments.username)",
   "prose": "Who is running the program, as a string.\n\nTaken from the password database rather than from `$USER`, because the\nenvironment is something a shell was told and the kernel's answer is what\nthe process actually is.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.username)\n}"
-},
-
-"1 14 2": {
+ },
+ "1 14 2": {
   "query": "satellite.help(satellite.library.system)",
   "prose": "The four dials that change how the interpreter itself behaves.\n\nEach one reads like a value and is written like an assignment, and a\nchange takes effect at once rather than at the next run. They are seeded\nfrom `satellite_config.ini` at startup.",
   "example": "satellite.console.display(satellite.library.system.float_digits)\nsatellite.library.system.float_digits = 5\nsatellite.console.display(satellite.library.system.float_digits)"
-},
-"1 14 2 0": {"query": "satellite.help(satellite.library.system)", "prose": "The bare shape. There is nothing to call; write one of the four dials by\nname.", "example": ""},
-"1 14 2 1": {
+ },
+ "1 14 2 0": {
+  "query": "satellite.help(satellite.library.system)",
+  "prose": "The bare shape. There is nothing to call; write one of the four dials by\nname.",
+  "example": ""
+ },
+ "1 14 2 1": {
   "query": "satellite.help(satellite.library.system.division_digits)",
   "prose": "How many digits a division keeps.\n\nRetuning it is observed by the very next division rather than at the next\nrun, which is what makes it a dial rather than a setting.",
   "example": "satellite.console.display(1 / 3)\nsatellite.library.system.division_digits = 40\nsatellite.console.display(1 / 3)"
-},
-"1 14 2 2": {
+ },
+ "1 14 2 2": {
   "query": "satellite.help(satellite.library.system.max_depth)",
   "prose": "How deep the interpreter will go before it decides a program has run\naway with itself.\n\nIt is a ceiling on memory rather than a limit on the language: the walkers\nkeep their own stacks, so depth here is bounded by what the machine has\nrather than by a number somebody picked.",
   "example": "satellite.console.display(satellite.library.system.max_depth)"
-},
-"1 14 2 3": {
+ },
+ "1 14 2 3": {
   "query": "satellite.help(satellite.library.system.min_free_mb)",
-  "prose": "How much memory the interpreter insists on leaving free, so a runaway\nprogram is stopped before the machine is.\n\nIt reads as `nothing` when no floor has been set, which is not the same as\na floor of zero.",
-  "example": "satellite.console.display(satellite.library.system.min_free_mb)"
-},
-"1 14 2 4": {
+  "prose": "How much memory the interpreter insists on leaving free, so a runaway\nprogram is stopped before the machine is.\n\nIt reads as `nothing` when nothing is being watched, which is not the same\nas a floor of zero.\n\n**Assigning to it retunes the watchdog**, which looks again within a\nsecond. A number is a floor in megabytes — `0` included, which stays armed\nand is never crossed — and the word `\"disabled\"` stops the watch. The\nconfiguration file sets it before a program starts; this is how a running\nprogram reads and changes it.",
+  "example": "satellite.library.system.min_free_mb = 512\nsatellite.console.display(satellite.library.system.min_free_mb)\nsatellite.library.system.min_free_mb = \"disabled\"\nsatellite.console.display(satellite.library.system.min_free_mb)"
+ },
+ "1 14 2 4": {
   "query": "satellite.help(satellite.library.system.float_digits)",
   "prose": "How many digits a float carries by default.\n\nPrecision travels with the value, so narrowing this dial changes the\nfloats made after it rather than the ones already held.",
   "example": "satellite.library.system.float_digits = 5\nsatellite.variable.float narrow = 1\nsatellite.console.display(narrow / 3)"
-},
-
-"1 14 1 1 1 4": {
+ },
+ "1 14 1 1 1 4": {
   "query": "satellite.help(satellite.library.main.arguments.machine.architecture)",
   "prose": "What kind of processor this is — `x86_64` on this machine. This is the\nmachine's instruction set and not its model name; `cpu` is the model.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.machine.architecture)\n}"
-},
-"1 14 1 1 1 5": {
+ },
+ "1 14 1 1 1 5": {
   "query": "satellite.help(satellite.library.main.arguments.machine.byte_order)",
   "prose": "Which end of a number this machine stores first — `little` or `big`.\n\nAnswered by looking at a value rather than by trusting a compiler macro, so\nit is right on a machine the macro does not cover.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.machine.byte_order)\n}"
-},
-"1 14 1 1 1 6": {
+ },
+ "1 14 1 1 1 6": {
   "query": "satellite.help(satellite.library.main.arguments.machine.page_size)",
   "prose": "How many bytes are in a page of memory, as a number. 4096 on most machines,\nand worth asking rather than assuming on the ones where it is not.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.machine.page_size)\n}"
-},
-"1 14 1 1 1 7": {
+ },
+ "1 14 1 1 1 7": {
   "query": "satellite.help(satellite.library.main.arguments.machine.pointer_bits)",
   "prose": "How wide an address is on this machine — 64 on anything current, as a\nnumber. It describes the running interpreter, so a 32-bit build on a 64-bit\nmachine answers 32.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.machine.pointer_bits)\n}"
-},
-
-"1 14 1 1 4": {
+ },
+ "1 14 1 1 4": {
   "query": "satellite.help(satellite.library.main.arguments.system)",
   "prose": "What the operating system is: its name, its kernel, which distribution it\nis, and what this machine is called. Written on its own it displays all\nseven at once.\n\nOne fact per word rather than one sentence to read, so a program that wants\nthe kernel does not have to take a string apart.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.system)\n}"
-},
-"1 14 1 1 4 0": {
+ },
+ "1 14 1 1 4 0": {
   "query": "satellite.help(satellite.library.main.arguments.system)",
   "prose": "The bare shape — all of the operating-system facts together, which is the\nsame answer the word on its own gives.",
   "example": ""
-},
-"1 14 1 1 4 1": {
+ },
+ "1 14 1 1 4 1": {
   "query": "satellite.help(satellite.library.main.arguments.system.name)",
   "prose": "What the operating system calls itself — `Linux` here. The kernel's own\nword for itself, not the distribution's.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.system.name)\n}"
-},
-"1 14 1 1 4 2": {
+ },
+ "1 14 1 1 4 2": {
   "query": "satellite.help(satellite.library.main.arguments.system.kernel)",
   "prose": "Which kernel release is running — the version number a person would quote.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.system.kernel)\n}"
-},
-"1 14 1 1 4 3": {
+ },
+ "1 14 1 1 4 3": {
   "query": "satellite.help(satellite.library.main.arguments.system.kernel_version)",
   "prose": "The kernel's full build string: how it was configured and when it was\nbuilt. Longer than `kernel` and a different fact — two kernels with the\nsame release can have different build strings.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.system.kernel_version)\n}"
-},
-"1 14 1 1 4 4": {
+ },
+ "1 14 1 1 4 4": {
   "query": "satellite.help(satellite.library.main.arguments.system.distribution)",
   "prose": "Which distribution this is, written out for a person to read.\n\nRead straight from `/etc/os-release` rather than by running a shell, so it\nstill answers inside a container that has no shell in it.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.system.distribution)\n}"
-},
-"1 14 1 1 4 5": {
+ },
+ "1 14 1 1 4 5": {
   "query": "satellite.help(satellite.library.main.arguments.system.distribution_id)",
   "prose": "The distribution's short name — the one to compare against in a program,\nsince it is lower case and does not change when the marketing name does.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.system.distribution_id)\n}"
-},
-"1 14 1 1 4 6": {
+ },
+ "1 14 1 1 4 6": {
   "query": "satellite.help(satellite.library.main.arguments.system.distribution_version)",
   "prose": "Which release of the distribution this is.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.system.distribution_version)\n}"
-},
-"1 14 1 1 4 7": {
+ },
+ "1 14 1 1 4 7": {
   "query": "satellite.help(satellite.library.main.arguments.system.hostname)",
   "prose": "What this machine is called on the network.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.system.hostname)\n}"
-},
-
-"1 14 1 1 5": {
+ },
+ "1 14 1 1 5": {
   "query": "satellite.help(satellite.library.main.arguments.build)",
   "prose": "What built the interpreter that is running. Written on its own it displays\nall eight at once.\n\n**These describe the binary, not the machine.** They are baked in when\nsatellite is compiled, so they stay true if the compiler is upgraded or\nremoved afterwards — which is the whole reason they are worth carrying.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build)\n}"
-},
-"1 14 1 1 5 0": {
+ },
+ "1 14 1 1 5 0": {
   "query": "satellite.help(satellite.library.main.arguments.build)",
   "prose": "The bare shape — all of the build facts together, which is the same answer\nthe word on its own gives.",
   "example": ""
-},
-"1 14 1 1 5 1": {
+ },
+ "1 14 1 1 5 1": {
   "query": "satellite.help(satellite.library.main.arguments.build.compiler)",
   "prose": "Which compiler the build invoked, as the path `make` was given.\n\n`compiler_version` is what that path turned out to be, and the two are\nseparate facts on purpose: a path that does not exist quietly falls back to\nsomething else, and then only the second one tells you.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build.compiler)\n}"
-},
-"1 14 1 1 5 2": {
+ },
+ "1 14 1 1 5 2": {
   "query": "satellite.help(satellite.library.main.arguments.build.compiler_version)",
   "prose": "Which compiler actually answered, in its own words. See `compiler` for why\nthis is a second fact rather than the same one.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build.compiler_version)\n}"
-},
-"1 14 1 1 5 3": {
+ },
+ "1 14 1 1 5 3": {
   "query": "satellite.help(satellite.library.main.arguments.build.standard)",
   "prose": "Which C++ standard the interpreter was compiled to, as a year — `C++20`.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build.standard)\n}"
-},
-"1 14 1 1 5 4": {
+ },
+ "1 14 1 1 5 4": {
   "query": "satellite.help(satellite.library.main.arguments.build.flags)",
   "prose": "The flags the interpreter was compiled with, including which processor\nvariant this binary is. That is how an installed satl can say which of the\ntwo builds it is without anything recording it separately.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build.flags)\n}"
-},
-"1 14 1 1 5 5": {
+ },
+ "1 14 1 1 5 5": {
   "query": "satellite.help(satellite.library.main.arguments.build.make)",
   "prose": "Which make ran the build, in its own words.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build.make)\n}"
-},
-"1 14 1 1 5 6": {
+ },
+ "1 14 1 1 5 6": {
   "query": "satellite.help(satellite.library.main.arguments.build.standard_library)",
   "prose": "Which C++ standard library the interpreter was built against, and which\nrelease of it.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build.standard_library)\n}"
-},
-"1 14 1 1 5 7": {
+ },
+ "1 14 1 1 5 7": {
   "query": "satellite.help(satellite.library.main.arguments.build.c_library)",
   "prose": "Which C library the interpreter was built against, and which release of it.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build.c_library)\n}"
-},
-"1 14 1 1 5 8": {
+ },
+ "1 14 1 1 5 8": {
   "query": "satellite.help(satellite.library.main.arguments.build.built)",
   "prose": "When this build happened, in UTC.\n\nA timestamp without a zone means something different on every machine that\nreads it, which is why this one carries its own.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.build.built)\n}"
-},
-
-"1 14 1 1 6": {
+ },
+ "1 14 1 1 6": {
   "query": "satellite.help(satellite.library.main.arguments.interpreter)",
   "prose": "The interpreter that is running this program, and **written bare it is the\npath to it** — where the `satl` binary actually lives.\n\nThat is the one place in the arguments object where a group word answers a\nfact rather than displaying its children: `machine`, `system`, `build`,\n`process` and `session` are sections, and an interpreter is a thing, whose\nnatural value is where it is.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.interpreter)\n}"
-},
-"1 14 1 1 6 0": {
+ },
+ "1 14 1 1 6 0": {
   "query": "satellite.help(satellite.library.main.arguments.interpreter)",
   "prose": "The bare shape, and here it is the answer: the path to the running `satl`\nbinary.",
   "example": ""
-},
-"1 14 1 1 6 1": {
+ },
+ "1 14 1 1 6 1": {
   "query": "satellite.help(satellite.library.main.arguments.interpreter.version)",
   "prose": "Which version of satellite is running — the same line `satl --version`\nprints, read from the same place so the two cannot drift apart.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.interpreter.version)\n}"
-},
-"1 14 1 1 6 2": {
+ },
+ "1 14 1 1 6 2": {
   "query": "satellite.help(satellite.library.main.arguments.interpreter.library_path)",
   "prose": "Where the interpreter looks for another satellite file.\n\n**Not built** — M25, which is the milestone that builds\n`satellite.include` of another file. Until something reads a library path\nthere is no library path to report, so this refuses and says so rather than\nnaming a directory nothing consults.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.interpreter.library_path)\n}",
   "expect": "refuses"
-},
-"1 14 1 1 6 3": {
+ },
+ "1 14 1 1 6 3": {
   "query": "satellite.help(satellite.library.main.arguments.interpreter.library_path_source)",
   "prose": "Which of the ways of finding the library path answered — the environment,\nthe directory beside the binary, or the one compiled in.\n\n**Not built** — M25, with `library_path` itself.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.interpreter.library_path_source)\n}",
   "expect": "refuses"
-},
-
-"1 14 1 1 7": {
+ },
+ "1 14 1 1 7": {
   "query": "satellite.help(satellite.library.main.arguments.process)",
   "prose": "This running program, as the operating system sees it. Written on its own\nit displays both of its facts at once.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.process)\n}"
-},
-"1 14 1 1 7 0": {
+ },
+ "1 14 1 1 7 0": {
   "query": "satellite.help(satellite.library.main.arguments.process)",
   "prose": "The bare shape — both process facts together, which is the same answer the\nword on its own gives.",
   "example": ""
-},
-"1 14 1 1 7 1": {
+ },
+ "1 14 1 1 7 1": {
   "query": "satellite.help(satellite.library.main.arguments.process.id)",
   "prose": "This program's own process id, as a number.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.process.id)\n}"
-},
-"1 14 1 1 7 2": {
+ },
+ "1 14 1 1 7 2": {
   "query": "satellite.help(satellite.library.main.arguments.process.parent)",
   "prose": "The process id of whatever started this one — the shell, usually.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.process.parent)\n}"
-},
-
-"1 14 1 1 8": {
+ },
+ "1 14 1 1 8": {
   "query": "satellite.help(satellite.library.main.arguments.session)",
   "prose": "The session the program was started in: whose shell, which terminal, what\nlanguage, where home is and where the program is running. Written on its\nown it displays all five at once.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.session)\n}"
-},
-"1 14 1 1 8 0": {
+ },
+ "1 14 1 1 8 0": {
   "query": "satellite.help(satellite.library.main.arguments.session)",
   "prose": "The bare shape — all five session facts together, which is the same answer\nthe word on its own gives.",
   "example": ""
-},
-"1 14 1 1 8 1": {
+ },
+ "1 14 1 1 8 1": {
   "query": "satellite.help(satellite.library.main.arguments.session.shell)",
   "prose": "Which shell the program was started from.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.session.shell)\n}"
-},
-"1 14 1 1 8 2": {
+ },
+ "1 14 1 1 8 2": {
   "query": "satellite.help(satellite.library.main.arguments.session.terminal)",
   "prose": "What kind of terminal the program is running in, or `unrecorded` when there\nis none — which is the honest answer for a program started by a file\nmanager or a menu.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.session.terminal)\n}"
-},
-"1 14 1 1 8 3": {
+ },
+ "1 14 1 1 8 3": {
   "query": "satellite.help(satellite.library.main.arguments.session.language)",
   "prose": "Which language and encoding the session is set to.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.session.language)\n}"
-},
-"1 14 1 1 8 4": {
+ },
+ "1 14 1 1 8 4": {
   "query": "satellite.help(satellite.library.main.arguments.session.home)",
   "prose": "Where the home directory is.\n\nTaken from `$HOME` first and the password database second, which is the\nopposite order from `username`: a person may point `$HOME` wherever they\nlike and every other program will honour it.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.session.home)\n}"
-},
-"1 14 1 1 8 5": {
+ },
+ "1 14 1 1 8 5": {
   "query": "satellite.help(satellite.library.main.arguments.session.directory)",
   "prose": "The directory the program was started in, which is what a relative path is\nrelative to.\n\n**It is where the program STARTED**, and it does not move.\n`satellite.directory.change` changes where the program is working;\n`satellite.directory.current()` is what answers that. This one stays what\nit was, because the arguments object is what the program woke up to.",
   "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.session.directory)\n}"
-},
-
-"1 14 1 1 9": {
-  "query": "satellite.help(satellite.library.main.arguments.count)",
-  "prose": "How many words were on the command line, the program's own name included,\nas a number.\n\nIt **describes** the command line rather than being part of it, so it is\nnot one of the words it counts.",
-  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.count)\n}"
-}
-
+ },
+ "1 14 1 1 9": {
+  "query": "satellite.help(satellite.library.main.arguments.length)",
+  "prose": "How many words were on the command line, the program's own name included,\nas a number.\n\nIt **describes** the command line rather than being part of it, so it is\nnot one of the words it counts.\n\nIt was spelled `count` until the object's own methods arrived, and the two\nwords were split so that neither could answer the other's question:\n`length` is how long the command line is, `count` is how many entries the\nobject holds.",
+  "example": "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.console.display(arguments.length)\n}"
+ }
 }

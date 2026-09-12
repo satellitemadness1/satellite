@@ -49,11 +49,11 @@ void section_variant()
     using namespace satellite;
 
     scalars::install_handlers();
-    check(eval::Handlers::table().installed() == 48,
+    check(eval::Handlers::table().installed() == 49,
           "M11's 33 rows plus M12's 4 -- `holding`, `holds(x)`, `held`, "
           "`clear` -- plus M19.5's 11 bit-run rows, 6 binary and 5 hex, and "
-          "the count is here so a row dropped from an install loop cannot "
-          "vanish quietly");
+          "M20's `resolved`, and the count is here so a row dropped from an "
+          "install loop cannot vanish quietly");
 
     // --- holding: one word per arm, and the nothing state IS an answer ------
     check(answers("    satellite.variable.variant box = 5\n"

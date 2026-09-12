@@ -128,14 +128,20 @@ void install_one(NodeId path, eval::HandlerFn fn)
 
 } // namespace
 
+// Declared here rather than in the header, because nothing outside this module
+// installs half of it -- selectors.cpp holds the ten rows that bind a receiver
+// and this function is the one door.
+void install_selectors();
+
 void install_handlers()
 {
     install_facts(std::make_index_sequence<kRowCount>{});
+    install_selectors();
 
     install_one(NodeId::LIBRARY_MAIN_ARGUMENTS_SESSION_DIRECTORY,
                 read_of_object<NodeId::LIBRARY_MAIN_ARGUMENTS_SESSION_DIRECTORY>);
-    install_one(NodeId::LIBRARY_MAIN_ARGUMENTS_COUNT,
-                read_of_object<NodeId::LIBRARY_MAIN_ARGUMENTS_COUNT>);
+    install_one(NodeId::LIBRARY_MAIN_ARGUMENTS_LENGTH,
+                read_of_object<NodeId::LIBRARY_MAIN_ARGUMENTS_LENGTH>);
 
     install_one(NodeId::LIBRARY_MAIN_ARGUMENTS_MACHINE,
                 read_group<NodeId::LIBRARY_MAIN_ARGUMENTS_MACHINE>);

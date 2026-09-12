@@ -250,7 +250,10 @@ std::string limits_text()
            "that crosses it is stopped within a second, with a line on stderr\n"
            "and exit status 4. The four dials read back from inside a program\n"
            "as the paths above, and since M15 an assignment to one is the\n"
-           "retune -- min_free_mb excepted, and its refusal says why.\n";
+           "retune. min_free_mb was the exception until M20 and is not one\n"
+           "any more: it takes a number of megabytes, or the word\n"
+           "\"disabled\" to stop the watch, and the watchdog reads the new\n"
+           "floor on its next look.\n";
     return out;
 }
 

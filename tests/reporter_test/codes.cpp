@@ -130,8 +130,18 @@ void section_codes()
     // writer did not produce. Refused rather than guessed at, which is the same
     // call S0305 and S0306 make about the two ways a `#` can be wrong.
     // MILESTONES/M19.6.md §1.
-    check(kCodeCount == 115,
-          "errors.def has 114 rows -- if that changed on purpose, change it here "
+    // AND BY TWO AT M20, which is the largest single move this count has had.
+    // S0731 is the arguments object's missing name -- S0726 for the object
+    // rather than S0726 itself, because that row's sentence says "this map"
+    // and sending somebody who asked `arguments.get("machine.thread")` to a
+    // map's method table is what `satellite.container.arguments` `1 4 3`
+    // exists to prevent. S1302 is the one word `min_free_mb` accepts beside a
+    // number: an enumeration over a list of ONE, which is S1201's decision
+    // about the four file modes reached again, and it names `0` in its own
+    // sentence because the mistake it catches is somebody reaching for the off
+    // switch. MILESTONES/M20.md §2.5, §3.1.
+    check(kCodeCount == 117,
+          "errors.def has 116 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

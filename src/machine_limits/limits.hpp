@@ -344,6 +344,49 @@ int begin(const std::string &named);
 // answers with nothing from any file.
 const Held &held();
 
+// --- the watchdog's floor, live ---------------------------------------------
+
+// WHAT THE WATCHDOG IS ACTUALLY HOLDING TO. Seeded from `min_free_mb` at
+// startup and written by `satellite.library.system.min_free_mb = n` while a
+// program runs -- which is §4.5.3's whole sentence, "the file is where a
+// machine's settings live before a program starts; the namespace is how a
+// running program reads and changes them", and the first time both halves of
+// it are true.
+//
+// ONE ATOMIC WORD, WHICH IS THE WHOLE SYNCHRONISATION DESIGN AND THE REASON
+// THE RETUNE STOPPED REFUSING. The row refused until M20 because "the watchdog
+// is a detached thread reading the seeded store once a second, and a torn read
+// there kills a healthy process" -- the worst thing a watchdog can do. A single
+// `unsigned long long` cannot tear: the watchdog reads it once per wake-up and
+// compares, the evaluator writes it whole, and there is no second field to be
+// inconsistent with. TWO words -- a flag and a value -- would have brought the
+// problem back in a smaller form, since a reader can take the flag from one
+// write and the value from another.
+//
+// SO "NOT WATCHED" IS CARRIED IN THE SAME WORD, AND 0 IS NOT IT. The author
+// settled the pair on 2026-09-11: `min_free_mb = 0` is a floor of ZERO -- armed
+// and never crossed, because no machine has less than 0 MB free -- and
+// `min_free_mb = "disabled"` is how a program stops the watch. Both states are
+// real and they are different, so the stored word is the floor PLUS ONE and
+// zero means nothing is watched. That spends one value out of 2^64 on the
+// sentinel, which is why the retune's ceiling is one below the word's: it is a
+// fact about the representation, said where it is true, and never a limit on
+// what a program may ask for. SCRATCH.md/NO_LIMITS.md is the standing rule and
+// this is the shape it allows.
+//
+// THE `Dial` BESIDE IT IS NOT UPDATED, deliberately. It records where the SEED
+// came from, which is what `satl --limits` prints and what a retune does not
+// change.
+inline constexpr unsigned long long kFloorMost = ~0ULL - 1;
+
+// The floor in megabytes, or false when the machine's free memory is not
+// watched at all.
+bool watched_floor(unsigned long long *megabytes);
+
+// Arm the watch at this floor, or stop it.
+void watch_floor(unsigned long long megabytes);
+void stop_watching_free_memory();
+
 // --- the dials that have a meaning -----------------------------------------
 
 // WHAT A NON-TERMINATING DIVISION KEEPS, in significant digits.

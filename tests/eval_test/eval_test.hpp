@@ -114,5 +114,6 @@ void section_clock_and_dice(); // M13's rows: the tiers' shapes, now and sleep
 void section_containers();  // M16's rows: the containers, subscripts, search
 void section_bits();        // M19.5's rows: the bit run, its width, its four methods
 void section_hex();         // M19.5's second half: the hex run, its digits, its six methods
+void section_arguments();   // M20's rows: the ten selectors, and the live codes read
 
 } // namespace eval_test

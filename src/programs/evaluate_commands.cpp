@@ -64,10 +64,20 @@ int call_command(const std::vector<std::string> &args)
     // §3's worked example is that a user's first name there is `1 14 3` --
     // while a capsule named `satellite.main` is a LANGUAGE path looked up
     // rather than defined. Both are callable and neither is the other's parent.
+    // AND THE FIRST ANSWER IS NOT ALWAYS THE RIGHT ONE, which M20 found by
+    // asking for `main`. `satellite.library.main` `1 14 1` IS a node -- it is
+    // where DESIGN §7.7 hangs the arguments object -- so the lookup under
+    // `library` succeeds, answers a path no capsule was ever compiled for, and
+    // the search stopped there saying the program declares no `main`. What
+    // decides between the two is which one the PROGRAM has a capsule for, so
+    // the second lookup runs when the first names nothing compiled rather than
+    // when it names nothing at all.
     words::PathId path_id = built.words.find(words::NodeId::LIBRARY, name);
-    if (path_id == words::kNoPath)
+    int which = path_id == words::kNoPath ? -1 : built.program.find(path_id);
+    if (which < 0) {
         path_id = built.words.find(words::NodeId::SATELLITE, name);
-    const int which = path_id == words::kNoPath ? -1 : built.program.find(path_id);
+        which = path_id == words::kNoPath ? -1 : built.program.find(path_id);
+    }
     if (which < 0) {
         fprintf(stderr, "satl: %s declares no capsule called `%s`\n", path.c_str(),
                 name.c_str());

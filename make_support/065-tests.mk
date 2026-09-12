@@ -395,6 +395,7 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(ARGS)/rows.cpp \
                  $(ARGS)/render.cpp \
                  $(ARGS)/handlers.cpp \
+                 $(ARGS)/selectors.cpp \
                  $(SYSTEM)/arguments_facts.cpp \
                  $(BITS)/bits.cpp \
                  $(FLOAT)/float_value.cpp \

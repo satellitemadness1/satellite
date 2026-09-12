@@ -178,6 +178,30 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
             return true;
         }
 
+        // A SELECTOR THAT NEVER FOLDED, ON THE BARE READING -- `box.upper`
+        // rather than `box.upper()`, and the same sentence. It sits ABOVE the
+        // module-constant arm because that arm dispatches `about.path`, and
+        // `kNoPath` is a path number of 0: what came out was S0721 quoting an
+        // empty name. no_question()'s note carries how it was found.
+        if (about.path == words::kNoPath) {
+            if (OpIndex said = kNoOp; no_question(node, node, &said)) {
+                finish(said);
+                return true;
+            }
+            // AND WHEN THE RECEIVER IS NOT A DECLARED NAME, the boundary is
+            // what has to be named -- call()'s `f().trim()` sentence, on the
+            // bare reading. `held.machine.threads` is the case that found it:
+            // the receiver of `threads` is `held.machine`, which is an
+            // expression and names no slot, so §1.5's one hop cannot reach
+            // from it. Falling through to the dispatch below instead printed
+            // S0721 about path 0.
+            finish(not_built(node, "a member of this expression",
+                             "a selector folds only through a declared name "
+                             "-- WORD_NUMBERS.md §1.5's one hop -- so name "
+                             "the receiver first"));
+            return true;
+        }
+
         // A LANGUAGE PATH READ WITHOUT BEING CALLED is a module constant --
         // `satellite.bool.true` is DESIGN §6.1's example, and M11 is what
         // turned this arm from a refusal naming itself into a dispatch: a
@@ -488,6 +512,79 @@ OpIndex Compiler::topic(NodeIndex node, words::PathId path, NodeIndex written)
                 out_.add_text(std::string(ast_.text_of(ast_[node].a))));
 }
 
+// A SELECTOR THAT NEVER FOLDED, WHERE THE RECEIVER IS A DECLARED NAME -- the
+// S0723 sentence, and it is a function because BOTH ROADS REACH IT. `box.upper()`
+// is a call and `box.upper` is a bare member, and until M20 only the first of
+// those had a sentence: the second fell through the module-constant arm and was
+// dispatched as path 0, which S0721 rendered as "`` is a path satellite has a
+// number for and nothing behind yet". An empty pair of backticks and a wrong
+// claim, on the reading a person is at least as likely to write.
+//
+// FOUND BY THE ARGUMENTS OBJECT'S SECOND ROAD, WHICH M20 CREATED. A name
+// declared `satellite.container.arguments` folds the ten selectors through
+// `1 4 3`, and `held.machine` -- a FACT, reachable only off the parameter --
+// is then a word that type does not have. It was pre-existing and general:
+// `s.nonsense` on a string did the same thing, measured 2026-09-11 against
+// the binary of the commit before this one.
+//
+// The advice text is chosen here because this is the one place that knows the
+// type. The variant gets its own because M12 made a wrong selector on one an
+// easy mistake to make, and `as_number` on a hex run gets its own because the
+// author dropped that row and asked for the refusal in the same breath.
+bool Compiler::no_question(NodeIndex at, NodeIndex member, OpIndex *out)
+{
+    const NodeIndex who = ast_[member].a;
+    if (who == kNoNode)
+        return false;
+    const resolve::Info &holder = info(who);
+    const bool named = resolve::in_a_frame(holder.slot) ||
+           globals_.find(holder.path) != globals_.end();
+    if (!named || holder.type == words::kNoPath)
+        return false;
+
+    const std::string_view asked = ast_.text_of(member);
+    const bool variant =
+        holder.type ==
+        static_cast<words::PathId>(words::NodeId::VARIABLE_VARIANT);
+    // ONE ROW IS CHOSEN BY THE SELECTOR AND NOT ONLY BY THE TYPE,
+    // and it is the only one: `as_number` on a hex run. Binary has
+    // that row at `1 6 5 4` and hex deliberately does not, so the
+    // person who reaches for it here has almost certainly read
+    // binary's -- and the generic sentence, "its methods are the
+    // words numbered under that path", answers a question they
+    // did not ask. The author dropped the row on 2026-09-09 and
+    // asked for this refusal in the same breath.
+    //
+    // THE REASON IN IT IS THE TRUE ONE. `as_number` reads the
+    // characters as an ordinary decimal; binary can answer because
+    // `0` and `1` ARE decimal digits and hex cannot because `A` to
+    // `F` are not. It is NOT about leading zeros -- no conversion
+    // to a number keeps those on either radix, `007` being `7` --
+    // and a sentence saying otherwise would teach the wrong rule
+    // in the one place a person is definitely reading.
+    const bool hex_as_number =
+        holder.type ==
+            static_cast<words::PathId>(words::NodeId::VARIABLE_HEX) &&
+        asked == "as_number";
+    const char *advice =
+        hex_as_number
+            ? "`as_number` reads the digits as an ordinary "
+              "decimal, and `A` to `F` are not decimal digits -- "
+              "ask `to_number()` for what they are worth, or name "
+              "a `to_binary()` of it and ask that"
+        : variant ? "a variant answers `holding`, `holds(x)`, "
+                    "`held` and `clear`; to use what it holds, "
+                    "copy it to a typed name, or take it with "
+                    "`held()`"
+                  : "its methods are the words numbered under "
+                    "that path, and this is not one of them";
+    *out = emit(op_no_question, at, out_.add_text(std::string(asked)),
+    out_.add_text(words::path_text(
+        static_cast<words::NodeId>(holder.type))),
+    out_.add_text(advice));
+    return true;
+}
+
 OpIndex Compiler::call(NodeIndex node)
 {
     const Node &n = ast_[node];
@@ -699,56 +796,8 @@ OpIndex Compiler::call(NodeIndex node)
     // that knows the type, and the variant gets its own because M12 made a
     // wrong selector on one an easy mistake to make.
     if (ast_[target].kind == NodeKind::Member) {
-        const NodeIndex who = ast_[target].a;
-        if (who != kNoNode) {
-            const resolve::Info &holder = info(who);
-            const bool named = resolve::in_a_frame(holder.slot) ||
-                               globals_.find(holder.path) != globals_.end();
-            if (named && holder.type != words::kNoPath) {
-                const std::string_view asked = ast_.text_of(target);
-                const bool variant =
-                    holder.type ==
-                    static_cast<words::PathId>(words::NodeId::VARIABLE_VARIANT);
-                // ONE ROW IS CHOSEN BY THE SELECTOR AND NOT ONLY BY THE TYPE,
-                // and it is the only one: `as_number` on a hex run. Binary has
-                // that row at `1 6 5 4` and hex deliberately does not, so the
-                // person who reaches for it here has almost certainly read
-                // binary's -- and the generic sentence, "its methods are the
-                // words numbered under that path", answers a question they
-                // did not ask. The author dropped the row on 2026-09-09 and
-                // asked for this refusal in the same breath.
-                //
-                // THE REASON IN IT IS THE TRUE ONE. `as_number` reads the
-                // characters as an ordinary decimal; binary can answer because
-                // `0` and `1` ARE decimal digits and hex cannot because `A` to
-                // `F` are not. It is NOT about leading zeros -- no conversion
-                // to a number keeps those on either radix, `007` being `7` --
-                // and a sentence saying otherwise would teach the wrong rule
-                // in the one place a person is definitely reading.
-                const bool hex_as_number =
-                    holder.type ==
-                        static_cast<words::PathId>(words::NodeId::VARIABLE_HEX) &&
-                    asked == "as_number";
-                const char *advice =
-                    hex_as_number
-                        ? "`as_number` reads the digits as an ordinary "
-                          "decimal, and `A` to `F` are not decimal digits -- "
-                          "ask `to_number()` for what they are worth, or name "
-                          "a `to_binary()` of it and ask that"
-                    : variant ? "a variant answers `holding`, `holds(x)`, "
-                                "`held` and `clear`; to use what it holds, "
-                                "copy it to a typed name, or take it with "
-                                "`held()`"
-                              : "its methods are the words numbered under "
-                                "that path, and this is not one of them";
-                return emit(
-                    op_no_question, node,
-                    out_.add_text(std::string(asked)),
-                    out_.add_text(words::path_text(
-                        static_cast<words::NodeId>(holder.type))),
-                    out_.add_text(advice));
-            }
-        }
+        if (OpIndex said = kNoOp; no_question(node, target, &said))
+            return said;
         // The person who wrote `f().trim()` did nothing wrong by the grammar
         // and needs the boundary named: names.cpp folds a method only through
         // a DECLARED name, WORD_NUMBERS §1.5's one hop, so a method on a
