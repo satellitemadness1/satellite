@@ -5380,7 +5380,10 @@ Worked out beside it, *not yet confirmed by the author*:
   argument 0 ONLY (WORD_NUMBERS §2.2's `file.open(path, mode)` row), and the
   unit is argument 1 — so as things stand it is checked at run time, as
   `file.open`'s mode is, and folding it means extending the fold past argument
-  0, which is a build decision for M27. **And M16's fallback cannot carry
+  0. **DECIDED by the author 2026-09-12: M27 extends the fold past argument 0**,
+  so a literal option folds wherever it is written — and `file.open(path,
+  "read")`'s mode folds with it, retiring that row's run-time check.
+  **And M16's fallback cannot carry
   `kb` or `gb`:** a missing `<word>_<option>` shape retries the bare word,
   which is only correct when the option means the bare word — true of `mb`,
   false of the other two, so each gets its own shape row (the exact risk
