@@ -391,8 +391,25 @@ NodeIndex Compiler::method_receiver(NodeIndex call_node) const
     // folds `s.upper` to `1 6 1 9` through the receiver's DECLARED type and
     // through nothing else, so a selector with a path and a receiver that is
     // not a language word is exactly the folded case and nothing but it.
+    //
+    // OR IT RESOLVED TO A SPACESUIT'S METHOD, WHICH IS THE SECOND KIND OF
+    // SELECTOR AND THE ONE WHOSE PATH IS A USER'S -- M26, and leaving it out
+    // is what kept the receiver off the results stack. `b.call_n()` folds
+    // through `b`'s declared type exactly as `s.upper()` does, but pass 2
+    // numbers a method UNDER ITS SUIT, so its path is past kNodeCount and the
+    // language-word test above answered false for it. The Call case asks this
+    // function at step 0 to decide whether to visit the receiver at all: with
+    // the test as it stood the receiver was never compiled, the spacesuit arm
+    // in call() found none, and it inserted `op_local(0)` as one -- reading
+    // slot 0 of whatever frame the CALLER was in. At the top level that is not
+    // an object, which is the "a field read outside a spacesuit method" the
+    // method then stopped on. The receiver was never missing from slot 0; it
+    // was never evaluated.
     const resolve::Info &selector = info(target);
-    if (selector.path == words::kNoPath || !words::is_language_word(selector.path))
+    if (selector.path == words::kNoPath)
+        return kNoNode;
+    if (!words::is_language_word(selector.path) &&
+        suit_of_method(selector.path) == nullptr)
         return kNoNode;
 
     // A FACT UNDER `arguments` IS NOT A METHOD ON IT -- M20, and it is the one
@@ -687,6 +704,71 @@ OpIndex Compiler::call(NodeIndex node)
     const Node &n = ast_[node];
     const uint32_t count = ast_.list_size(n.b);
 
+    // A SPACESUIT'S METHOD -- M26, AND IT IS THE FIRST ARM IN THIS FUNCTION
+    // BECAUSE OF WHERE THE RECEIVER IS SITTING. The Call case pushed it onto
+    // the results stack LAST, so `arguments` below -- `take_many(count)` --
+    // would take the receiver as the final written argument and leave the
+    // first one behind for somebody else. Every arm that reads `arguments` is
+    // therefore wrong for a method call, and the only safe place to stand is
+    // above the line that builds it. The first version of this arm stood at
+    // the bottom and tried to correct for that with a separate `take()`
+    // afterwards, which is the bug e2a129c's message describes.
+    //
+    // IT COMPILES TO op_call AND NOTHING ELSE, which is the happiest thing in
+    // this milestone. DESIGN §6.4's "methods are sugar" writes the receiver out
+    // as the first argument, and resolve put the receiver at slot 0 of every
+    // method's frame -- so a method call is an ordinary capsule call whose
+    // first argument is the object. No new op, no new frame machinery, and
+    // recursion, mutual recursion and the depth rules all work because they are
+    // the same ones. ONE `take_many(count + 1)` is the M11 arm's idiom below
+    // and it is this arm's for the same reason: the reversal lives in one
+    // function, and a list taken in one call comes back in written order with
+    // the receiver already at index 0.
+    //
+    // AND IT ASKS WHETHER THE PATH IS A SUIT'S METHOD RATHER THAN WHETHER IT IS
+    // A USER'S NAME, WHICH IS THE DIFFERENCE BETWEEN THIS WORKING AND EVERY
+    // ORDINARY CALL BREAKING. The first version tested `!is_language_word` and
+    // a hit in `capsules_` -- which is true of EVERY capsule the program
+    // declares, so `helper()` at the top level took this arm, found no
+    // receiver, and had `op_local(0)` inserted as one. A capsule of no
+    // arguments was then entered with one, and op_local read a slot that was
+    // not there. FOUND BY tests/eval_test SEGFAULTING IN section_calls, which
+    // is the oldest section in the suite and is about frames -- so the guard
+    // that caught it is a fixture written eight milestones before spacesuits
+    // existed. MILESTONES/M26.md records it.
+    if (const resolve::Info &member = info(n.a);
+        suit_of_method(member.path) != nullptr)
+        if (const auto found = capsules_.find(member.path);
+            found != capsules_.end()) {
+            const NodeIndex receiver = method_receiver(node);
+            std::vector<OpIndex> given =
+                take_many(receiver != kNoNode ? count + 1 : count);
+
+            // A METHOD CALLED WITH NO RECEIVER IS A SIBLING CALL -- `bump()`
+            // inside `call_bump()`, which is how every suit in the author's own
+            // files is written. resolve resolved it to the method's path; the
+            // receiver it runs on is the one this method is already holding, at
+            // slot 0.
+            if (receiver == kNoNode)
+                given.insert(given.begin(), emit(op_local, node, 0));
+
+            const OpListId with_receiver = out_.add_list(given);
+            const auto said = out_.add_text(std::string(ast_.text_of(n.a)));
+
+            // A METHOD PACKAGED FOR A THREAD IS STILL A METHOD -- M23's arm
+            // further down cannot be reached from here, so the question it asks
+            // is asked again rather than skipped. A capsule index and an
+            // argument list are all op_package wants, and the receiver being
+            // argument 0 is exactly what makes the thread enter the method
+            // holding the object. Falling through to `deferred_` below instead
+            // would have run the method AT THE MOMENT `satellite.thread.new`
+            // was called, which is the one outcome worse than a refusal.
+            if (deferred_.count(node) != 0)
+                return emit(op_package, node, found->second, with_receiver,
+                            said);
+            return emit(op_call, node, found->second, with_receiver, said);
+        }
+
     // A METHOD ON A VALUE -- DESIGN §6.4's sugar, compiled down. The receiver
     // was visited by the Call case and sits under the written arguments, so
     // taking one extra result hands back the argument list with the receiver
@@ -898,60 +980,6 @@ OpIndex Compiler::call(NodeIndex node)
         return emit(op_dispatch, node, self.path, arguments, out_.add_cache(),
                     out_.add_text(std::string(ast_.text_of(target))));
     }
-
-    // A SPACESUIT'S METHOD -- M26, and it is asked before every arm below
-    // because a method's path is a USER path and the arms below all assume a
-    // language one. `no_question` casting one to a NodeId and reading the
-    // frozen child lists with it is the same read past the end
-    // MILESTONES/M4.md §6 recorded, arriving in the compiler; it segfaulted
-    // before this arm existed, which is how it was found.
-    //
-    // IT COMPILES TO op_call AND NOTHING ELSE, which is the happiest thing in
-    // this milestone. DESIGN §6.4's "methods are sugar" writes the receiver out
-    // as the first argument, and resolve put the receiver at slot 0 of every
-    // method's frame -- so a method call is an ordinary capsule call whose
-    // first argument is the object. No new op, no new frame machinery, and
-    // recursion, mutual recursion and the depth rules all work because they are
-    // the same ones.
-    //
-    // THE RECEIVER IS ALREADY ON THE RESULTS STACK. The Call case visited it at
-    // step 0 through `method_receiver`, and `with_receiver` below is the list
-    // it built -- the receiver first, then the written arguments, which is
-    // exactly the order §6.4 writes them in.
-    // AND IT ASKS WHETHER THE PATH IS A SUIT'S METHOD RATHER THAN WHETHER IT IS
-    // A USER'S NAME, WHICH IS THE DIFFERENCE BETWEEN THIS WORKING AND EVERY
-    // ORDINARY CALL BREAKING. The first version tested `!is_language_word` and
-    // a hit in `capsules_` -- which is true of EVERY capsule the program
-    // declares, so `helper()` at the top level took this arm, found no
-    // receiver, and had `op_local(0)` inserted as one. A capsule of no
-    // arguments was then entered with one, and op_local read a slot that was
-    // not there.
-    //
-    // FOUND BY tests/eval_test SEGFAULTING IN section_calls, which is the
-    // oldest section in the suite and is about frames -- so the guard that
-    // caught it is a fixture written eight milestones before spacesuits
-    // existed. MILESTONES/M26.md records it.
-    if (const resolve::Suit *of = suit_of_method(about.path); of != nullptr)
-        if (const auto found = capsules_.find(about.path);
-            found != capsules_.end()) {
-            std::vector<OpIndex> given;
-            const NodeIndex receiver = method_receiver(node);
-            if (receiver != kNoNode)
-                given.push_back(take());
-            for (uint32_t i = 0; i < count; i++)
-                given.push_back(out_.list_at(arguments, i));
-
-            // A METHOD CALLED WITH NO RECEIVER IS A SIBLING CALL -- `bump()`
-            // inside `call_bump()`, which is how every suit in the author's own
-            // files is written. resolve resolved it to the method's path; the
-            // receiver it runs on is the one this method is already holding, at
-            // slot 0.
-            if (receiver == kNoNode)
-                given.insert(given.begin(), emit(op_local, node, 0));
-
-            return emit(op_call, node, found->second, out_.add_list(given),
-                        out_.add_text(std::string(ast_.text_of(target))));
-        }
 
     // A CAPSULE THIS PROGRAM DECLARED. The index was decided in pass 1, before
     // any body was compiled, which is what makes a call to a capsule further
