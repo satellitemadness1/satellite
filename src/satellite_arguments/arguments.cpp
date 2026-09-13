@@ -18,8 +18,8 @@ namespace {
 // THE OBJECT ITSELF, AND IT IS A `Value` RATHER THAN AN `Arg`. What every
 // reader wants is something to hand back, and a `Value` holding the handle is
 // sixteen bytes plus a tag -- so building it once here saves every `display`
-// and every subscript from making one. It is written exactly once, by start(),
-// before any thread but the main one exists.
+// and every subscript from making one. It is written only by start(), before
+// any thread but the main one exists -- once, or once per `run` at the prompt.
 Value &held()
 {
     static Value one;

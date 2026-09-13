@@ -30,10 +30,14 @@ namespace satellite::arguments {
 // Build the one object, from the words `satl` was started with. argv[0] is the
 // program and the rest are the user's, in order.
 //
-// CALLED ONCE, BEFORE ANYTHING RUNS, AND IT COSTS NO SYSCALL BUT ONE. The
-// command line is already in hand and `getcwd()` is the one fact that cannot
-// wait -- value_arguments.hpp carries why. Everything else the object answers
-// is deferred to the first ask, in system_facts/arguments_facts.cpp.
+// CALLED BEFORE ANYTHING RUNS, AND IT COSTS NO SYSCALL BUT ONE. The command
+// line is already in hand and `getcwd()` is the one fact that cannot wait --
+// value_arguments.hpp carries why. Everything else the object answers is
+// deferred to the first ask, in system_facts/arguments_facts.cpp.
+//
+// ONCE PER RUN, WHICH IS ONCE PER PROCESS EXCEPT AT THE PROMPT: each
+// `run <file> a b` there is a command line of its own and calls this again,
+// between runs, when no thread of the last one is left to be reading it.
 void start(const std::vector<std::string> &words);
 
 // The object as a value. `nothing` before start() -- which is what a test

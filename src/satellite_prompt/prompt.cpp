@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 namespace satellite::prompt {
 
@@ -71,21 +72,58 @@ bool refuse_bare_help(const std::string &line)
 // the prompt. NOT a language path and not pretending to be one: these are the
 // prompt's own words, in the same class as the exit words, and they take a file
 // the way `satl <file>` does.
+//
+// AND THE WORDS AFTER THE FILE ARE THE PROGRAM'S, split the way a shell splits
+// `satl <file> a b`: on spaces, with a quoted word kept whole. So a path with a
+// space in it is quoted here exactly as it is quoted there -- until 2026-09-13
+// the whole rest of the line was the path, which read `run prog.satl --small`
+// as a file called "prog.satl --small".
 bool run_file_command(const std::string &line, Session &session)
 {
-    std::string path;
+    std::string rest;
     if (starts_with(line, "run "))
-        path = trimmed(line.substr(4));
+        rest = line.substr(4);
     else if (starts_with(line, "interpret "))
-        path = trimmed(line.substr(10));
+        rest = line.substr(10);
     else
         return false;
 
-    if (path.empty()) {
+    std::vector<std::string> words;
+    std::string word;
+    bool in_word = false;
+    char quote = 0;
+    for (const char c : rest) {
+        if (quote != 0) {
+            if (c == quote)
+                quote = 0;
+            else
+                word += c;
+        } else if (c == '"' || c == '\'') {
+            quote = c;
+            in_word = true;
+        } else if (c == ' ' || c == '\t') {
+            if (in_word)
+                words.push_back(word);
+            word.clear();
+            in_word = false;
+        } else {
+            word += c;
+            in_word = true;
+        }
+    }
+    if (quote != 0) {
+        std::fputs("satellite: a quote on the `run` line is never closed.\n",
+                   stderr);
+        return true;
+    }
+    if (in_word)
+        words.push_back(word);
+
+    if (words.empty()) {
         std::fputs("satellite: `run` needs a file after it.\n", stderr);
         return true;
     }
-    session.run_file(path);
+    session.run_file(words);
     return true;
 }
 

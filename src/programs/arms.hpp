@@ -4,7 +4,8 @@
 //
 // WHAT AN ARM IS. satl runs a program from more than one entry point, and they
 // are not the same program: `--run` has a command line and a printer, the
-// prompt has a printer and no command line, `--call` has neither. Each one
+// prompt has a printer and a command line per `run <file>`, `--call` has only
+// the handlers. Each one
 // builds the handler table it needs.
 //
 // WHY THIS FILE EXISTS, AND IT IS A BUG RATHER THAN A TIDINESS ARGUMENT.

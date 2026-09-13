@@ -6,7 +6,9 @@
 #include "pty.hpp"
 
 #include <cstddef>
+#include <cstdio>
 #include <string>
+#include <unistd.h>
 
 namespace prompt_test {
 
@@ -172,6 +174,36 @@ void section_session()
         check(p.wait_for("Hello, World!", 5000), "`run` runs a file");
         p.line("exit");
         p.finish();
+    }
+
+    // 7b -- `run <file> a b` HANDS THE PROGRAM THE ARGUMENTS OBJECT, the same
+    // one `satl <file> a b` builds. Until 2026-09-13 main got an empty list and
+    // `arguments.length()` was S0721 at the prompt -- and so in satl-term.
+    // WRITTEN TO /tmp AND NOT PUT IN example/, because every suite that sweeps
+    // example/ would run it with no words and read `arguments[2]` off the end.
+    {
+        const std::string path =
+            "/tmp/prompt_test_arguments_" + std::to_string(getpid()) + ".satl";
+        if (FILE *out = std::fopen(path.c_str(), "w")) {
+            std::fputs(
+                "satellite.include(satellite)\n"
+                "satellite.capsule satellite.main(satellite.container.list"
+                "<satellite.variable.string> arguments)\n{\n"
+                "    satellite.variable.number n = arguments.length()\n"
+                "    satellite.variable.string last = arguments[2]\n"
+                "    satellite.console.display(\"words \" + n.to_string() + "
+                "\" last \" + last)\n}\n",
+                out);
+            std::fclose(out);
+        }
+        Prompt p = start_a_prompt();
+        p.wait_for("Type `exit`", 4000);
+        p.line("run " + path + " --small \"two words\"");
+        check(p.wait_for("words 3 last two words", 5000),
+              "`run <file> a b` gives main the arguments object");
+        p.line("exit");
+        p.finish();
+        std::remove(path.c_str());
     }
 
     // 8 -- A GLOBAL DECLARED, THEN ASSIGNED TO, EACH ON ITS OWN LINE.

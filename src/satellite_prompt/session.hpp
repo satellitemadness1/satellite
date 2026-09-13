@@ -84,7 +84,11 @@ public:
     // program runs, and afterwards its variable names and types are still
     // known. THE STORE ITSELF IS NOT HERE -- see MILESTONES/M22.md §6 and
     // PLAN §8's M18 entry, which owns both the store and its only reader.
-    bool run_file(const std::string &path);
+    //
+    // `command_line` IS THE FILE AND THEN ITS WORDS, which is what the run arm
+    // hands `arguments::start()` -- so `run prog.satl a b` and
+    // `satl prog.satl a b` give the program the same object.
+    bool run_file(const std::vector<std::string> &command_line);
 
     // The top-level forms typed so far, oldest first.
     const std::vector<std::string> &top_level() const { return top_level_; }
