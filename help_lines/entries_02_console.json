@@ -11,8 +11,8 @@
  },
  "1 5 1": {
   "query": "satellite.help(satellite.console.display)",
-  "prose": "Prints one value and moves to the next line. It takes any type, and it\nprints the value the way that type renders itself, so a list prints its\nbrackets and a map prints its pairs without you formatting anything.\n\nIt is the most-called word in the language and the first one most people\ntype.\n\n`end=` replaces the newline with whatever you give it, so\n`satellite.console.display(\"Loading\", end=\"...\")` stays on the same line.",
-  "example": "satellite.variable.string greeting = \"Hello\"\nsatellite.console.display(greeting)\nsatellite.console.display(greeting.size())\nsatellite.console.display(\"no newline\", end=\"\")\nsatellite.console.display(\" -- then one\")"
+  "prose": "Prints one value and moves to the next line. It takes any type, and it\nprints the value the way that type renders itself, so a list prints its\nbrackets and a map prints its pairs without you formatting anything.\n\nIt is the most-called word in the language and the first one most people\ntype.\n\n`end=` replaces the newline with whatever you give it, so\n`satellite.console.display(\"Loading\", end=\"...\")` stays on the same line.\n\n`foreground=` and `background=` take a colour as six hex digits, xRRGGBB,\nand `bold=` and `italic=` take `satellite.bool.true`. The style lasts for\nthis one line. Output to a pipe or a file gets the plain text, and setting\nNO_COLOR drops the colours but keeps bold and italic.",
+  "example": "satellite.variable.string greeting = \"Hello\"\nsatellite.console.display(greeting)\nsatellite.console.display(greeting.size())\nsatellite.console.display(\"no newline\", end=\"\")\nsatellite.console.display(\" -- then one\")\nsatellite.console.display(\"warning\", foreground=xFF8800, bold=satellite.bool.true)"
  },
  "1 5 2": {
   "query": "satellite.help(satellite.console.input)",

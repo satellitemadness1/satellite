@@ -311,8 +311,11 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
             // NAMED VALUES ARE PUSHED FIRST SO THEY COMPILE LAST -- M30. The
             // results stack then holds them above the positional ones, which
             // is the order they were written in and the order call() takes.
-            for (uint32_t i = 0; n.c != kNoList && i < ast_.list_size(n.c); i++)
-                visit(ast_[ast_.list_at(n.c, i)].a);
+            // PUSHED IN REVERSE, for visit_reversed's reason: the task stack
+            // runs the last push first. Written forwards, two options had
+            // their values swapped -- `end=` alone could not show it.
+            for (uint32_t i = n.c == kNoList ? 0 : ast_.list_size(n.c); i > 0; i--)
+                visit(ast_[ast_.list_at(n.c, i - 1)].a);
 
             if (const uint32_t skip = topic_parameter(node);
                 skip == words::kNoTopicParameter) {

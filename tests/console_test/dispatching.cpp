@@ -169,6 +169,54 @@ void section_dispatching()
         });
         check(out.empty(), "and nothing was printed on the way to refusing it");
     }
+
+    // --- two options, each under its own name --------------------------------
+    //
+    // M30. The compiler once pushed named values in written order onto a task
+    // stack that runs the last push first, so `foreground=` was handed end='s
+    // "!" and refused. One option cannot show that; two in both orders can.
+    // capture() is a pipe, so the style is checked and the text comes out plain.
+    {
+        const std::string out = capture([] {
+            run("satellite.capsule satellite.main()\n"
+                "{\n"
+                "    satellite.console.display(\"a\", foreground=xFF8800, end=\"!\")\n"
+                "    satellite.console.display(\"b\", end=\"?\", background=x000000)\n"
+                "    satellite.console.display(\"\")\n"
+                "    satellite.return(satellite)\n"
+                "}\n");
+        });
+        check(out == "a!b?\n",
+              "each option reaches the handler under its own name, in either "
+              "order, and a pipe gets the text without escapes");
+    }
+
+    // --- a colour that is not xRRGGBB is refused, even into a pipe ----------
+    {
+        const std::string out = capture([] {
+            using namespace satellite;
+            words::Words words;
+            Parse parsed = parse("satellite.capsule satellite.main()\n"
+                                 "{\n"
+                                 "    satellite.console.display(\"a\", foreground=xF80)\n"
+                                 "}\n",
+                                 words);
+            resolve::Resolved resolved = resolve::resolve(parsed.ast, words);
+            eval::Program program = eval::compile(parsed.ast, resolved, words);
+            eval::Policy policy;
+            policy.max_depth = 64ull * 1024 * 1024;
+            eval::Machine machine(program.closures, parsed.ast, policy);
+            machine.call(
+                static_cast<uint32_t>(
+                    program.find(static_cast<words::PathId>(words::NodeId::MAIN))),
+                {});
+            check(!machine.problems().empty() &&
+                      machine.problems().front().code ==
+                          errors::Code::CONSOLE_NOT_A_COLOUR,
+                  "S1004: xF80 is three digits, and a colour is six");
+        });
+        check(out.empty(), "and the text was not printed without its colour");
+    }
 }
 
 } // namespace console_test

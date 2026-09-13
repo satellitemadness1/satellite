@@ -488,6 +488,7 @@ $(TESTS)/eval_test/eval_test: $(eval_test_SRCS) $(eval_test_HDRS) \
 CONSOLE_TEST_SRCS = $(CONSOLE)/console.cpp \
                     $(CONSOLE)/reader.cpp \
                     $(CONSOLE)/handlers.cpp \
+                    $(CONSOLE)/style.cpp \
                     $(SYSTEM)/interrupt.cpp \
                     $(EVAL_TEST_SRCS)
 

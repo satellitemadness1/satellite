@@ -11,6 +11,7 @@
 #include "evaluator/machine.hpp"
 #include "satellite_console/console.hpp"
 #include "satellite_console/reader.hpp"
+#include "satellite_console/style.hpp"
 #include "satellite_string/satellite_string.hpp"
 #include "satellite_value/render.hpp"
 #include "satellite_words/words.hpp"
@@ -48,10 +49,18 @@ bool display(eval::Machine &m, const Value *arguments, uint32_t, Value *answer)
     // separately would be two units, and DESIGN §10.1's atomicity is a
     // property of the unit (Console::display says so). `Console::write` has
     // been waiting for this spelling since M10.
+    //
+    // foreground=, background=, bold= and italic= wrap the text in the same
+    // unit, and the reset comes before end= -- style.hpp says what is written
+    // and when.
+    std::string open, close;
+    if (!style_of(m, &open, &close))
+        return false;
+    std::string line = open + text_of(arguments[0]) + close;
     if (const Value *end = m.option("end")) {
-        Console::the().write(text_of(arguments[0]) + text_of(*end));
+        Console::the().write(line + text_of(*end));
     } else {
-        Console::the().display(text_of(arguments[0]));
+        Console::the().display(std::move(line));
     }
     *answer = Value::nothing();
     return true;
@@ -59,7 +68,8 @@ bool display(eval::Machine &m, const Value *arguments, uint32_t, Value *answer)
 
 // The named options display takes -- M30. Colour, style and position join
 // this list as they are built; the dispatch refuses any name not on it.
-const char *const kDisplayOptions[] = {"end", nullptr};
+const char *const kDisplayOptions[] = {"end",  "foreground", "background",
+                                       "bold", "italic",     nullptr};
 
 // The read every `input` shape shares -- "ask, and wait, in three shapes",
 // one place that prompts, one place that drains, one place that reads (v1's

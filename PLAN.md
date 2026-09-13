@@ -5690,8 +5690,21 @@ its number already stands for the parentheses. **`display(text, end="")` is the
 first option** and `Console::write` finally has a spelling. At the prompt a line
 left mid-row by `end=""` was erased by the redraw's `\r ESC[K`; the console now
 remembers whether its last byte ended a line and the prompt starts a fresh row.
-DESIGN §6's `args` rule carries the grammar. *Next: `foreground=`,
-`background=`, `bold=`, `italic=` on display.*
+DESIGN §6's `args` rule carries the grammar.
+
+***STYLE BUILT 2026-09-12 — `foreground=`, `background=`, `bold=`, `italic=`
+on display.*** One SGR sequence (`ESC[1;3;38;2;r;g;b;48;2;r;g;bm`) before the
+text and `ESC[0m` after it, inside the one queued unit and BEFORE `end=` or the
+newline, so a background never paints the next row. A colour is exactly six hex
+digits or S1004, which also names a string or a number given instead; `bold=`
+that is not a bool is S0713. The style is checked whether or not it is written.
+**The author's two answers, 2026-09-12:** stdout that is not a terminal (a pipe,
+a file) gets the plain text; `NO_COLOR` set and not empty drops the colours and
+keeps bold and italic, as no-color.org says. `satellite_console/style.cpp`.
+AND IT FOUND A BUG IN NAMED ARGUMENTS: the compiler pushed their values in
+written order onto a task stack that runs the last push first, so two options
+swapped values — `end=` alone could never show it. Pushed in reverse now, with a
+console_test case in both orders. *Next: `line=`/`column=`, then regions.*
 
 **The blocker, and it is grammar: DESIGN §6 has no named arguments** —
 `args := expression { "," expression }`, and M14's text in this file already
@@ -5704,8 +5717,6 @@ words is open.* `end=""` comes back with it — `Console::write` has existed
 since M10 with no spelling.
 
 **Also open:**
-- output to a pipe or a file gets NO escapes, and `NO_COLOR` is honoured —
-  *proposed, not confirmed*;
 - `display(..., line=)` with no region: an absolute screen line, and the switch
   to the alternate screen;
 - a terminal without 24-bit colour gets the nearest of its 256;

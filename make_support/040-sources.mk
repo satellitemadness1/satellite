@@ -442,6 +442,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(CONSOLE)/console.cpp \
             $(CONSOLE)/reader.cpp \
             $(CONSOLE)/handlers.cpp \
+            $(CONSOLE)/style.cpp \
             $(SCALARS)/handlers.cpp \
             $(SCALARS)/string_methods.cpp \
             $(SCALARS)/number_methods.cpp \
@@ -623,6 +624,7 @@ HDRS = $(SYSTEM)/version.hpp \
        $(CONSOLE)/console.hpp \
        $(CONSOLE)/reader.hpp \
        $(CONSOLE)/handlers.hpp \
+       $(CONSOLE)/style.hpp \
        $(BITS)/bits.hpp \
        $(SCALARS)/handlers.hpp \
        $(SCALARS)/methods_internal.hpp \

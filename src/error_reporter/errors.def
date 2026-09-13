@@ -1113,6 +1113,14 @@ SAT_CODE(1003, CONSOLE_ANSWER_IS_THE_PLACE, SAT_ERROR,
          "`{1}` writes a place and yields nothing -- it is a statement of its "
          "own, and what it read is in the variable it wrote")
 
+// A COLOUR THAT IS NOT xRRGGBB -- M30, display's foreground= and background=,
+// 2026-09-12. Exactly six hex digits: digits() and not width(), which counts
+// bits. xF80 is refused rather than widened, and so is "#FF8800" -- `#`
+// already means numbers and options in .satc, so a colour is a hex value.
+SAT_CODE(1004, CONSOLE_NOT_A_COLOUR, SAT_ERROR,
+         "`{1}` takes a colour as six hex digits, xRRGGBB like xFF8800 -- "
+         "{2} is not one")
+
 // --- S11xx -- satellite.help ------------------------------------------------
 //
 // THE BLOCK IS SMALL BECAUSE HELP REFUSES IN ONLY THREE WAYS, and all three are

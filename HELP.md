@@ -997,11 +997,17 @@ type.
 `end=` replaces the newline with whatever you give it, so
 `satellite.console.display("Loading", end="...")` stays on the same line.
 
+`foreground=` and `background=` take a colour as six hex digits, xRRGGBB,
+and `bold=` and `italic=` take `satellite.bool.true`. The style lasts for
+this one line. Output to a pipe or a file gets the plain text, and setting
+NO_COLOR drops the colours but keeps bold and italic.
+
     satellite.variable.string greeting = "Hello"
     satellite.console.display(greeting)
     satellite.console.display(greeting.size())
     satellite.console.display("no newline", end="")
     satellite.console.display(" -- then one")
+    satellite.console.display("warning", foreground=xFF8800, bold=satellite.bool.true)
 
 H  `1 5 2`  `satellite.console.input()`  _M14_
 > satellite.help(satellite.console.input)

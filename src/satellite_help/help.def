@@ -910,13 +910,19 @@ SAT_HELP(CONSOLE_DISPLAY, CONSOLE_DISPLAY,
          "type.\n"
          "\n"
          "`end=` replaces the newline with whatever you give it, so\n"
-         "`satellite.console.display(\"Loading\", end=\"...\")` stays on the same line."
+         "`satellite.console.display(\"Loading\", end=\"...\")` stays on the same line.\n"
+         "\n"
+         "`foreground=` and `background=` take a colour as six hex digits, xRRGGBB,\n"
+         "and `bold=` and `italic=` take `satellite.bool.true`. The style lasts for\n"
+         "this one line. Output to a pipe or a file gets the plain text, and setting\n"
+         "NO_COLOR drops the colours but keeps bold and italic."
          ,
          "satellite.variable.string greeting = \"Hello\"\n"
          "satellite.console.display(greeting)\n"
          "satellite.console.display(greeting.size())\n"
          "satellite.console.display(\"no newline\", end=\"\")\n"
-         "satellite.console.display(\" -- then one\")"
+         "satellite.console.display(\" -- then one\")\n"
+         "satellite.console.display(\"warning\", foreground=xFF8800, bold=satellite.bool.true)"
          )
 
 // 1 5 2  satellite.console.input()
