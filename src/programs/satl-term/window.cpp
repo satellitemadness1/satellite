@@ -47,7 +47,48 @@ struct WindowRequest {
     std::string title = "satellite";
     int width = 800;
     int height = 600;
+    bool sized = false;  // --size was given; otherwise fit_cells() sizes it
 };
+
+// 120 COLUMNS BY 48 ROWS -- the author's ask of 2026-09-12, "the size of
+// satellite.directory.list()". Measured that day at the prompt: the table is 89
+// to 101 columns wide in the tree, its src/ and example/ and in $HOME, and
+// $HOME's is 44 rows plus its header -- so 120 leaves room for a longer name
+// and 48 holds the listing and the prompt under it. 800x600 was 88 by 27 in
+// IBM Plex Mono 11, measured the same day on a headless mutter, and wrapped
+// every one of them.
+constexpr long kColumns = 120;
+constexpr long kRows = 48;
+
+// THE WINDOW IS SIZED IN CELLS BY MEASURING, NOT BY ASKING. The terminal sits in
+// a GtkScrolledWindow, whose natural size is next to nothing, so a window left
+// to its children's natural size opened at 46x73 pixels -- 4 by 2 cells --
+// which is what the first attempt at this did. Instead the window opens at its
+// pixel default, and on the first frame the terminal has cells this reads
+// what one cell measures and how many fit, and resizes by the difference.
+// Adding whole cells to an allocation adds exactly that many columns, whatever
+// padding and chrome (the menu, the tab strip) the rest of the window holds, so
+// the answer is exact rather than estimated. set_default_size and not a size
+// request: a request is a MINIMUM, and a window nobody can shrink is not a
+// default. Once, then the callback removes itself.
+gboolean fit_cells(GtkWidget *widget, GdkFrameClock *, gpointer data)
+{
+    VteTerminal *terminal = VTE_TERMINAL(widget);
+    GtkWidget *window = GTK_WIDGET(data);
+    const long columns = vte_terminal_get_column_count(terminal);
+    const long rows = vte_terminal_get_row_count(terminal);
+    const long cell_width = vte_terminal_get_char_width(terminal);
+    const long cell_height = vte_terminal_get_char_height(terminal);
+    const int width = gtk_widget_get_width(window);
+    const int height = gtk_widget_get_height(window);
+    if (columns <= 0 || rows <= 0 || cell_width <= 0 || cell_height <= 0 ||
+        width <= 0 || height <= 0 || gtk_widget_get_width(widget) <= 0)
+        return G_SOURCE_CONTINUE;
+    gtk_window_set_default_size(GTK_WINDOW(window),
+                                width + (int)((kColumns - columns) * cell_width),
+                                height + (int)((kRows - rows) * cell_height));
+    return G_SOURCE_REMOVE;
+}
 
 WindowRequest requested;
 std::string child_file;
@@ -76,6 +117,7 @@ bool parse_size(const std::string &text, WindowRequest &into)
 
     into.width = (int)w;
     into.height = (int)h;
+    into.sized = true;
     return true;
 }
 
@@ -83,6 +125,9 @@ void activate(GtkApplication *app, gpointer)
 {
     GtkWidget *window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), requested.title.c_str());
+    // --size IS PIXELS, for M24's `satellite.window.console.new("title", 800,
+    // 600)`, and is taken as given. Without it fit_cells() below turns the
+    // pixel default into kColumns by kRows once the terminal has cells.
     gtk_window_set_default_size(GTK_WINDOW(window),
                                 requested.width, requested.height);
 
@@ -105,6 +150,9 @@ void activate(GtkApplication *app, gpointer)
     // was handed one an hour later hold the same kind of tab, which is what
     // stops the menu from being a second way of doing this with its own bugs.
     satellite::tabs_open_tab(child_file, child_args);
+    if (!requested.sized)
+        gtk_widget_add_tick_callback(satellite::tabs_terminal_in_front(),
+                                     fit_cells, window, nullptr);
 
     gtk_window_present(GTK_WINDOW(window));
 }
