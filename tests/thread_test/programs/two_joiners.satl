@@ -1,0 +1,27 @@
+satellite.include(satellite)
+
+satellite.capsule slow() satellite.returns(satellite.variable.number)
+{
+    satellite.time.sleep(0.3)
+    satellite.return(7)
+}
+
+satellite.capsule joiner(satellite.variable.thread t) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number got = t.join()
+    satellite.return(got)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.thread work = satellite.thread.new(slow())
+    work.start()
+    satellite.variable.thread a = satellite.thread.new(joiner(work))
+    satellite.variable.thread b = satellite.thread.new(joiner(work))
+    a.start()
+    b.start()
+    satellite.variable.number x = a.join()
+    satellite.variable.number y = b.join()
+    satellite.console.display("joined " + x.to_string() + " " + y.to_string())
+    satellite.return(satellite)
+}

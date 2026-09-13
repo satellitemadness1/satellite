@@ -30,6 +30,8 @@
 /tests/*/*
 !/tests/*/*.cpp
 !/tests/*/*.hpp
+# THREAD.md's evidence -- the programs that crash and hang it cites by path.
+!/tests/thread_test/programs/
 
 # `/prototype/` IS GONE, DELETED 2026-09-09, and the rules that used to be here
 # went with it. They read the same way round as the tests block above -- ignore

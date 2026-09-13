@@ -1,0 +1,29 @@
+satellite.include(satellite)
+
+satellite.capsule leaf() satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number i = 0
+    satellite.variable.number s = 0
+    satellite.statement.for (i = 0; i < 1000; i = i + 1)
+    {
+        s = s + i
+    }
+    satellite.return(s)
+}
+
+satellite.capsule middle() satellite.returns(satellite.variable.number)
+{
+    satellite.variable.thread t = satellite.thread.new(leaf())
+    t.start()
+    satellite.variable.number got = t.join()
+    satellite.return(got)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.thread m = satellite.thread.new(middle())
+    m.start()
+    satellite.variable.number got = m.join()
+    satellite.console.display("nested answer " + got.to_string() + " (want 499500)")
+    satellite.return(satellite)
+}
