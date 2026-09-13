@@ -170,8 +170,9 @@ void section_codes()
     // and S0526, arguments on a declaration that is not a spacesuit's.
     // AND 141 SINCE M30's NAMED ARGUMENTS, which added four: S0232 and S0233
     // in the parser, S0527 in resolve and S0732 at the handler.
-    check(kCodeCount == 141,
-          "errors.def has 141 rows -- if that changed on purpose, change it here "
+    // AND 142 WITH S0921, sleep's unit word.
+    check(kCodeCount == 142,
+          "errors.def has 142 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

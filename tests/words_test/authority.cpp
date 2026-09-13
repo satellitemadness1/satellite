@@ -238,8 +238,9 @@ void section_authority()
     // not have renumbers nothing". §1's opening rule is that WORD_NUMBERS.md is
     // the authority over the numbering, and this suite is the only thing in the
     // tree that makes that a fact rather than a claim.
-    check(rows.size() == 328,
-          "§2.2 should hold 328 rows, found " + std::to_string(rows.size()));
+    // AND 329 SINCE `sleep(n, unit)` `1 9 4`, 2026-09-12: one row, one number.
+    check(rows.size() == 329,
+          "§2.2 should hold 329 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -248,8 +249,8 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 324,
-          "§2.2 should carry 324 distinct numbers, found " +
+    check(numbers.size() == 325,
+          "§2.2 should carry 325 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 4, "§2.2 should declare exactly 4 aliases, found " +
                             std::to_string(aliases));

@@ -1077,6 +1077,12 @@ SAT_CODE(920, TIME_NOT_A_LENGTH, SAT_ERROR,
          "`satellite.time.sleep` waits a number of seconds, and {1} is not a "
          "length of time it can wait")
 
+// THE UNIT WORD -- `sleep(n, unit)` `1 9 4`, the author, 2026-09-12. A word
+// checked at run time, like file.open's mode, and the sentence names all four.
+SAT_CODE(921, TIME_NO_SUCH_UNIT, SAT_ERROR,
+         "`satellite.time.sleep` counts in \"s\", \"ms\", \"us\" or \"ns\", "
+         "and {1} is none of them")
+
 // --- S10xx -- the console's input --------------------------------------------
 //
 // M14's block, taken 2026-09-04. Three rows, and the interrupted case is

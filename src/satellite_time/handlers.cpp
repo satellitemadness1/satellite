@@ -7,6 +7,7 @@
 #include "error_reporter/report.hpp"
 #include "evaluator/dispatch.hpp"
 #include "evaluator/machine.hpp"
+#include "satellite_string/satellite_string.hpp"
 #include "satellite_time/time.hpp"
 #include "satellite_value/render.hpp"
 #include "satellite_value/value.hpp"
@@ -35,8 +36,47 @@ bool time_now(eval::Machine &, const Value *, uint32_t, Value *answer)
 // at a call site to misread, and 0.09 is an exact Number so the fraction
 // costs no float and no M15. v1's `100ms` literal died with the special case
 // that consumed it (PLAN §7).
+//
+// `sleep(n, unit)` `1 9 4` IS THE SAME WAIT WITH n COUNTED IN ANOTHER UNIT --
+// the author, 2026-09-12, `sleep(90, "ms")`. The unit is how many decimal
+// places n sits above a nanosecond, so the conversion below stays one exact
+// multiplication by a power of ten and no unit costs a float either.
+bool sleep_for(eval::Machine &m, const Value *arguments, int32_t places,
+               Value *answer);
+
 bool time_sleep(eval::Machine &m, const Value *arguments, uint32_t,
                 Value *answer)
+{
+    return sleep_for(m, arguments, 9, answer);
+}
+
+bool time_sleep_unit(eval::Machine &m, const Value *arguments, uint32_t,
+                     Value *answer)
+{
+    static const struct {
+        const char *word;
+        int32_t places;
+    } kUnits[] = {{"s", 9}, {"ms", 6}, {"us", 3}, {"ns", 0}};
+
+    const Str *text = std::get_if<Str>(&arguments[1]);
+    if (text == nullptr) {
+        m.refuse(errors::make<errors::Code::EVAL_WRONG_TYPE>(
+            m.span_of(m.here()), std::string(m.text_of(m.here())),
+            "a unit word (\"s\", \"ms\", \"us\" or \"ns\")",
+            type_name(arguments[1])));
+        return false;
+    }
+    const std::string word = *text ? decode(**text) : std::string();
+    for (const auto &unit : kUnits)
+        if (word == unit.word)
+            return sleep_for(m, arguments, unit.places, answer);
+    m.refuse(errors::make<errors::Code::TIME_NO_SUCH_UNIT>(
+        m.span_of(m.here()), "\"" + word + "\""));
+    return false;
+}
+
+bool sleep_for(eval::Machine &m, const Value *arguments, int32_t places,
+               Value *answer)
 {
     const Number *seconds = std::get_if<Number>(&arguments[0]);
     if (seconds == nullptr) {
@@ -54,7 +94,7 @@ bool time_sleep(eval::Machine &m, const Value *arguments, uint32_t,
     // fraction of a nanosecond is not a wait anybody can observe.
     long long count = 0;
     const Number in_nanoseconds =
-        Number::mul(*seconds, Number::from_small(true, 1, 9)).floor();
+        Number::mul(*seconds, Number::from_small(true, 1, places)).floor();
     if (seconds->is_negative() || !in_nanoseconds.to_integer(count)) {
         m.refuse(errors::make<errors::Code::TIME_NOT_A_LENGTH>(
             m.span_of(m.here()), seconds->to_string()));
@@ -87,6 +127,8 @@ void install_handlers()
                   eval::Handler{time_now, false, 0, "M13"});
     table.install(static_cast<words::PathId>(NodeId::TIME_SLEEP),
                   eval::Handler{time_sleep, false, 1, "M13"});
+    table.install(static_cast<words::PathId>(NodeId::TIME_SLEEP_UNIT),
+                  eval::Handler{time_sleep_unit, false, 2, "M13"});
 }
 
 } // namespace satellite::time

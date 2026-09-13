@@ -94,8 +94,13 @@
   },
   "1 9 3": {
     "query": "satellite.help(satellite.time.sleep)",
-    "prose": "Stops the program for the number of milliseconds you give, then carries\non.\n\nCtrl-C still reaches a program that is sleeping, so a long wait is not a\nprogram you have to kill.",
-    "example": "satellite.console.display(\"before\")\nsatellite.time.sleep(10)\nsatellite.console.display(\"after\")"
+    "prose": "Stops the program for the number of seconds you give, then carries on.\nThe seconds can be a fraction: `0.09` is ninety milliseconds, and the wait\nis exact down to a nanosecond.\n\nCtrl-C still reaches a program that is sleeping, so a long wait is not a\nprogram you have to kill.",
+    "example": "satellite.console.display(\"before\")\nsatellite.time.sleep(0.01)\nsatellite.console.display(\"after\")"
+  },
+  "1 9 4": {
+    "query": "satellite.help(satellite.time.sleep)",
+    "prose": "The same wait, counted in the unit you name: `\"s\"` for seconds, `\"ms\"`\nfor milliseconds, `\"us\"` for microseconds or `\"ns\"` for nanoseconds.\n`satellite.time.sleep(90, \"ms\")` and `satellite.time.sleep(0.09)` wait\nexactly as long. Any other word stops the program and names the four.",
+    "example": "satellite.time.sleep(90, \"ms\")\nsatellite.time.sleep(500, \"us\")\nsatellite.console.display(\"waited\")"
   },
   "1 7 13": {
     "query": "satellite.help(satellite.random.seeded)",

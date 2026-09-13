@@ -2814,15 +2814,28 @@ SAT_HELP(TIME_NEW, TIME_NEW,
 
 // 1 9 3  satellite.time.sleep(n)
 SAT_HELP(TIME_SLEEP, TIME_SLEEP,
-         "Stops the program for the number of milliseconds you give, then carries\n"
-         "on.\n"
+         "Stops the program for the number of seconds you give, then carries on.\n"
+         "The seconds can be a fraction: `0.09` is ninety milliseconds, and the wait\n"
+         "is exact down to a nanosecond.\n"
          "\n"
          "Ctrl-C still reaches a program that is sleeping, so a long wait is not a\n"
          "program you have to kill."
          ,
          "satellite.console.display(\"before\")\n"
-         "satellite.time.sleep(10)\n"
+         "satellite.time.sleep(0.01)\n"
          "satellite.console.display(\"after\")"
+         )
+
+// 1 9 4  satellite.time.sleep(n, unit)
+SAT_HELP(TIME_SLEEP_UNIT, TIME_SLEEP,
+         "The same wait, counted in the unit you name: `\"s\"` for seconds, `\"ms\"`\n"
+         "for milliseconds, `\"us\"` for microseconds or `\"ns\"` for nanoseconds.\n"
+         "`satellite.time.sleep(90, \"ms\")` and `satellite.time.sleep(0.09)` wait\n"
+         "exactly as long. Any other word stops the program and names the four."
+         ,
+         "satellite.time.sleep(90, \"ms\")\n"
+         "satellite.time.sleep(500, \"us\")\n"
+         "satellite.console.display(\"waited\")"
          )
 
 // 1 10  satellite.spacesuit

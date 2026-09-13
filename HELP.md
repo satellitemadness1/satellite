@@ -2877,15 +2877,28 @@ value can be.
 H  `1 9 3`  `satellite.time.sleep(n)`  _M13_
 > satellite.help(satellite.time.sleep)
 
-Stops the program for the number of milliseconds you give, then carries
-on.
+Stops the program for the number of seconds you give, then carries on.
+The seconds can be a fraction: `0.09` is ninety milliseconds, and the wait
+is exact down to a nanosecond.
 
 Ctrl-C still reaches a program that is sleeping, so a long wait is not a
 program you have to kill.
 
     satellite.console.display("before")
-    satellite.time.sleep(10)
+    satellite.time.sleep(0.01)
     satellite.console.display("after")
+
+H  `1 9 4`  `satellite.time.sleep(n, unit)`  _M13_
+> satellite.help(satellite.time.sleep)
+
+The same wait, counted in the unit you name: `"s"` for seconds, `"ms"`
+for milliseconds, `"us"` for microseconds or `"ns"` for nanoseconds.
+`satellite.time.sleep(90, "ms")` and `satellite.time.sleep(0.09)` wait
+exactly as long. Any other word stops the program and names the four.
+
+    satellite.time.sleep(90, "ms")
+    satellite.time.sleep(500, "us")
+    satellite.console.display("waited")
 
 
 ## spacesuit

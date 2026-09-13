@@ -577,6 +577,10 @@ SAT_NODE(TIME,      TIME_0,     "()",       SAT_BARE)  // 1 9 0
 SAT_NODE(TIME,      TIME_NOW,   "now",      SAT_NUMBERED)  // 1 9 1
 SAT_NODE(TIME,      TIME_NEW,   "new",      SAT_NUMBERED)  // 1 9 2
 SAT_NODE(TIME,      TIME_SLEEP, "sleep(n)", SAT_NUMBERED)  // 1 9 3
+// sleep(n, unit) 1 9 4 -- the author, 2026-09-12: `sleep(90, "ms")`, the shape
+// of `arguments.network.limit(n, "kb|mb|gb")`. The unit is a WORD checked at run
+// time, like file.open's mode; sleep(n) stays seconds.
+SAT_NODE(TIME,      TIME_SLEEP_UNIT, "sleep(n, unit)", SAT_NUMBERED)  // 1 9 4
 
 // --- spacesuit --------------------------------------------------------------
 // DESIGN §13. Decided, unscheduled, and the grammar rule is written.

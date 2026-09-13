@@ -563,6 +563,7 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.time.now` | `1 9 1` |  |
 | `satellite.time.new` | `1 9 2` |  |
 | `satellite.time.sleep(n)` | `1 9 3` | assigned |
+| `satellite.time.sleep(n, unit)` | `1 9 4` | **assigned 2026-09-12** — the author: `sleep(90, "ms")`, a quoted unit word, `"s"` `"ms"` `"us"` `"ns"`, checked at run time like `file.open`'s mode. `1 9 3` stays seconds, whole or fractional |
 | `satellite.spacesuit` | `1 10 (0)` |  |
 | `satellite.protected` | `1 11 (0)` |  |
 | `satellite.public` | `1 12 (0)` |  |

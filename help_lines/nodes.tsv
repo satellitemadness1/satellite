@@ -215,6 +215,7 @@ H	satellite.file.exists(path)	1 8 5	M19	1	0	0
 H	satellite.time.now	1 9 1	M13	0	0	0
 .	satellite.time.new	1 9 2		0	0	0
 H	satellite.time.sleep(n)	1 9 3	M13	1	0	0
+H	satellite.time.sleep(n, unit)	1 9 4	M13	2	0	0
 .	satellite.spacesuit	1 10		0	0	0
 .	satellite.spacesuit()	1 10 0		0	0	0
 .	satellite.protected	1 11		0	0	0
