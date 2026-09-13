@@ -382,6 +382,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PROGRAMS)/file_commands.cpp \
             $(PROGRAMS)/limits_command.cpp \
             $(PROGRAMS)/built_program.cpp \
+            $(PROGRAMS)/spaceships.cpp \
             $(PROGRAMS)/evaluate_commands.cpp \
             $(PROGRAMS)/run_command.cpp \
             $(PROGRAMS)/number_command.cpp \
@@ -402,6 +403,8 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(PARSER)/parser_types.cpp \
             $(RESOLVE)/resolve.cpp \
             $(RESOLVE)/scopes.cpp \
+            $(RESOLVE)/spaceships.cpp \
+            $(SHIP)/shape.cpp \
             $(RESOLVE)/walk.cpp \
             $(RESOLVE)/names.cpp \
             $(RESOLVE)/numbers.cpp \
@@ -490,9 +493,11 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(EVAL)/compile.cpp \
             $(EVAL)/compile_expressions.cpp \
             $(EVAL)/compile_statements.cpp \
+            $(EVAL)/compile_includes.cpp \
             $(EVAL)/machine.cpp \
             $(EVAL)/operations.cpp \
             $(EVAL)/operations_control.cpp \
+            $(EVAL)/operations_include.cpp \
             $(EVAL)/operations_dispatch.cpp \
             $(EVAL)/operations_subscript.cpp \
             $(EVAL)/dispatch.cpp \
@@ -597,6 +602,8 @@ HDRS = $(SYSTEM)/version.hpp \
        $(PROGRAMS)/evaluate_commands.hpp \
        $(PROGRAMS)/number_command.hpp \
        $(PROGRAMS)/built_program.hpp \
+       $(PROGRAMS)/spaceships.hpp \
+       $(SHIP)/shape.hpp \
        $(PROGRAMS)/run_command.hpp \
        $(PROGRAMS)/resolve_command.hpp \
        $(PROGRAMS)/opening.hpp \

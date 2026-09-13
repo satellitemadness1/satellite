@@ -10,6 +10,7 @@
 #include "programs/built_program.hpp"
 #include "programs/opening.hpp"
 
+#include <cstdio>
 #include <string>
 #include <vector>
 
@@ -55,7 +56,7 @@ int check_command(const std::string &path)
     // the least urgent -- a program with a name it cannot bind has a worse
     // problem than a program using a piece of grammar M25 will finish.
     if (!built.program.deferred.empty())
-        report(path, built.text, built.program.deferred);
+        fputs(errors::render(built.program.deferred, built.source(path)).c_str(), stderr);
 
     // THE FIFTH PASS, AND IT IS ASKED ONLY WHEN THERE IS A PROGRAM TO ASK
     // ABOUT. program_diagnostics/diagnose.hpp is not on the road to running
@@ -72,10 +73,23 @@ int check_command(const std::string &path)
     // severities -- there is no order between them to compare.
     bool stopped = false;
     if (whole) {
-        const std::vector<errors::Diagnostic> found = diagnostics::diagnose(
+        std::vector<errors::Diagnostic> found = diagnostics::diagnose(
             built.parsed.ast, built.resolved, built.program);
+        // AND EVERY SPACESHIP, EACH AGAINST ITS OWN TREE -- M25, found by
+        // review: a ring of spacesuits in an included file was reported by
+        // `--check ship.satl` and by nothing that included it.
+        for (size_t k = 0; k < built.ships.size(); k++) {
+            std::vector<errors::Diagnostic> theirs = diagnostics::diagnose(
+                built.ships[k]->parsed.ast, built.ships[k]->resolved, built.program);
+            for (errors::Diagnostic &one : theirs) {
+                one.at.file = static_cast<uint32_t>(k + 1);
+                for (errors::Note &note : one.notes)
+                    note.at.file = static_cast<uint32_t>(k + 1);
+                found.push_back(std::move(one));
+            }
+        }
         if (!found.empty())
-            report(path, built.text, found);
+            fputs(errors::render(found, built.source(path)).c_str(), stderr);
         for (const errors::Diagnostic &one : found)
             if (errors::stops_the_work(errors::severity_of(one.code)))
                 stopped = true;

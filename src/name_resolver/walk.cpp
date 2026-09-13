@@ -217,7 +217,7 @@ void Resolver::statement_at(NodeIndex node)
         if (n.c != kNoList) {
             const Suit *suit = type == words::kNoPath || words::is_language_word(type)
                                    ? nullptr
-                                   : out_.suit_at(type);
+                                   : suit_anywhere(type);
             if (ast_.list_size(n.c) > 0 &&
                 (suit == nullptr || suit->method_named("constructor") == nullptr))
                 problem<errors::Code::RESOLVE_ARGUMENTS_NOT_A_SPACESUIT>(
@@ -241,6 +241,12 @@ void Resolver::statement_at(NodeIndex node)
 
     case NodeKind::Return:
         statement_form(node, words::NodeId::SATELLITE, "return");
+        break;
+
+    // AN INCLUDE INSIDE A CAPSULE -- M25. statement_form() finds its row and
+    // walks its arguments, exactly as it does for one at the top of a file.
+    case NodeKind::Include:
+        statement_form(node, words::NodeId::SATELLITE, "include");
         break;
 
     case NodeKind::Block:

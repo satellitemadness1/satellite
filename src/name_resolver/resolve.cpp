@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <string_view>
 
 namespace satellite::resolve {
@@ -61,6 +62,26 @@ void Resolver::collect_capsules()
         info(item).path = ast_[item].a;
         info(item).origin = Origin::Parsed;
         capsules_.push_back({ast_[item].a, spelling, item});
+        out_.declared.push_back({ast_[item].a, Declares::Capsule, item});
+
+        // A LAUNCH ANSWERS NOBODY -- 2026-09-13, S0525's argument one
+        // declaration over. The caret goes on the type, which is the part to
+        // delete.
+        if (ast_.is_launch(item) && ast_[item].c != kNoNode)
+            problem<errors::Code::RESOLVE_LAUNCH_RETURNS>(ast_[item].c, spelling);
+    }
+}
+
+// EVERY GLOBAL THE FILE DECLARES, BY NUMBER -- M25. Nothing here resolves one;
+// pass 3 does that. What another file needs before any body is walked is to
+// know that `satellite.library.ship.total` is a global and not a capsule.
+void Resolver::note_globals()
+{
+    const Node &program = ast_[ast_.root()];
+    for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
+        const NodeIndex item = ast_.list_at(program.a, i);
+        if (ast_[item].kind == NodeKind::Global)
+            out_.declared.push_back({ast_[item].a, Declares::Global, item});
     }
 }
 
@@ -142,8 +163,13 @@ void Resolver::note_capsule_constants()
                 words_.intern(owner, ast_.text_of(line));
             if (path == words::kNoPath)
                 continue;
-            out_.capsule_constants.push_back(
-                {path, type_of(ast_[line].a), line, ast_[line].b});
+            // QUIETLY, because pass 4 walks this declaration again and says
+            // whatever is wrong with its type there. Asked aloud here too, a
+            // bad type in a capsule's first lines was reported twice.
+            quiet_ = true;
+            const words::PathId type = type_of(ast_[line].a);
+            quiet_ = false;
+            out_.capsule_constants.push_back({path, type, line, ast_[line].b});
         }
     }
 }
@@ -206,13 +232,44 @@ words::PathId Resolver::user_path_of(const cache::PathMatch &found,
     if (chain.empty() || chain.back() != found.at)
         return words::kNoPath;
 
-    words::PathId at = found.under;
-    for (size_t i = chain.size(); i > 0; i--) {
-        at = words_.find(at, ast_.text_of(chain[i - 1]));
-        if (at == words::kNoPath || words::is_language_word(at))
+    // THE SEGMENTS FROM `from` DOWN, skipping the first `skip` of them.
+    const auto walk = [&](words::PathId from, size_t skip) {
+        words::PathId at = from;
+        for (size_t i = chain.size() - skip; i > 0; i--) {
+            at = words_.find(at, ast_.text_of(chain[i - 1]));
+            if (at == words::kNoPath || words::is_language_word(at))
+                return words::kNoPath;
+        }
+        return at;
+    };
+    if (found.under != static_cast<words::PathId>(words::NodeId::LIBRARY))
+        return walk(found.under, 0);
+
+    // `satellite.library.ship.rest` -- A SPACESHIP THIS FILE INCLUDES, M25, and
+    // the rest is looked up among ITS names, from its node. For the file satl
+    // was given, reached as a spaceship, that node is `satellite.library`
+    // itself, which is why this is not simply the walk below.
+    if (const Spaceship *ship = spaceship_named(ast_.text_of(chain.back()))) {
+        if (ship->node == words::kNoPath || chain.size() < 2)
             return words::kNoPath;
+        return walk(ship->node, 1);
     }
-    return at;
+
+    // A SPACESHIP'S OWN `satellite.library` IS ITS NODE, AND NOTHING ELSE IS.
+    // Inside `ship.satl`, `satellite.library.total` is ship's own global; the
+    // program's globals and every other file's names are not reachable from
+    // it, because the file never included them -- found by review, when a
+    // spaceship read and overwrote its includer's global through its own
+    // bare `satellite.library.secret`.
+    if (library_ != found.under)
+        return walk(library_, 0);
+
+    // AND THE FILE satl WAS GIVEN REACHES ITS OWN NAMES, but not a spaceship
+    // it did not include -- whose node hangs under the same `satellite.library`.
+    const words::PathId first = words_.find(found.under, ast_.text_of(chain.back()));
+    if (a_spaceship_node(first))
+        return words::kNoPath;
+    return walk(found.under, 0);
 }
 
 // THE BARE SPELLING OF A CONVERSION, OR NO PATH -- 2026-09-12. Four words, and
@@ -260,15 +317,20 @@ words::PathId Resolver::conversion_named(std::string_view spelling) const
 // storage decided before anything runs, and §7.6's capsules in a table of their
 // own. Neither needed inventing, which is why the largest feature in PLAN §8 is
 // this short.
-void Resolver::note_spacesuits()
+// THE NAMES FIRST, ALL OF THEM, AND THEN THE MEMBERS -- M26's inheritance,
+// and the two halves cannot be one loop. A suit may extend one declared
+// FURTHER DOWN THE FILE, which is the same forward reference DESIGN §7.3
+// grants every capsule; and a child's field layout is its parent's
+// layout followed by its own, so no child's members can be gathered until
+// its parent's have been. One loop in file order would have answered "no
+// such spacesuit" to a program that is correct.
+//
+// AND THE TWO HALVES ARE TWO FUNCTIONS SINCE M25, because the forward reference
+// now crosses files: a field of `ship.box` in this file is gathered after every
+// file's suits have names, which resolve_run() arranges by calling this half
+// for every file before note_spacesuits() for any.
+void Resolver::name_spacesuits()
 {
-    // THE NAMES FIRST, ALL OF THEM, AND THEN THE MEMBERS -- M26's inheritance,
-    // and the two halves cannot be one loop. A suit may extend one declared
-    // FURTHER DOWN THE FILE, which is the same forward reference DESIGN §7.3
-    // grants every capsule; and a child's field layout is its parent's
-    // layout followed by its own, so no child's members can be gathered until
-    // its parent's have been. One loop in file order would have answered "no
-    // such spacesuit" to a program that is correct.
     const Node &program = ast_[ast_.root()];
     for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
         const NodeIndex item = ast_.list_at(program.a, i);
@@ -283,8 +345,12 @@ void Resolver::note_spacesuits()
         suit.node = item;
         suits_.push_back({suit.path, suit.name, item});
         out_.suits.push_back(std::move(suit));
+        out_.declared.push_back({ast_[item].a, Declares::Spacesuit, item});
     }
+}
 
+void Resolver::note_spacesuits()
+{
     link_supers();
 
     // GATHERED PARENT-FIRST, AND THE ORDER IS COMPUTED RATHER THAN ASSUMED.
@@ -628,18 +694,30 @@ void Resolver::bodies()
     }
 }
 
-void Resolver::run()
+// PHASE ONE: every name this file declares at its top -- the capsules, the
+// globals, the spacesuits' names. Nothing is read yet.
+void Resolver::declare_names()
 {
     collect_capsules();
+    note_globals();
+    name_spacesuits();
+}
 
+// PHASE TWO: what the declarations hold.
+void Resolver::declare_members()
+{
     // BEFORE `globals()` AND BEFORE `bodies()`, FOR THE REASON §7.3 ORDERS
     // EVERY OTHER PASS: a name has to be numbered before the pass that reads it
     // runs. A global's initialiser or a capsule body may name
     // `satellite.library.other.setting`, and either would be resolved against a
     // trie that did not have it yet.
     note_capsule_constants();
-
     note_spacesuits();
+}
+
+// PHASE THREE: every expression and every body.
+void Resolver::resolve_bodies()
+{
     globals();
 
     // AFTER `globals()`, so a field initialiser may read one, and before
@@ -665,6 +743,13 @@ void Resolver::run()
                      });
 }
 
+void Resolver::run()
+{
+    declare_names();
+    declare_members();
+    resolve_bodies();
+}
+
 Resolved resolve(const Ast &ast, words::Words &words, const cache::Marks &marks,
                  const cache::Folded &folded)
 {
@@ -676,6 +761,35 @@ Resolved resolve(const Ast &ast, words::Words &words, const cache::Marks &marks,
     if (ast.root() == kNoNode)
         return out;
     Resolver(ast, words, marks, folded, out).run();
+    return out;
+}
+
+std::vector<Resolved> resolve_run(const std::vector<File> &files,
+                                  words::Words &words)
+{
+    // SIZED ONCE, BEFORE ANY RESOLVER EXISTS: each holds a reference to its
+    // own answer, and a vector that grew would move them all.
+    std::vector<Resolved> out(files.size());
+    const Run run{&files, &out};
+
+    std::vector<std::unique_ptr<Resolver>> resolvers;
+    for (uint32_t f = 0; f < files.size(); f++) {
+        out[f].nodes.resize(files[f].ast->size());
+        if (files[f].ast->root() != kNoNode)
+            resolvers.push_back(std::make_unique<Resolver>(run, f, words, out[f]));
+        else
+            resolvers.push_back(nullptr);
+    }
+
+    for (auto &each : resolvers)
+        if (each)
+            each->declare_names();
+    for (auto &each : resolvers)
+        if (each)
+            each->declare_members();
+    for (auto &each : resolvers)
+        if (each)
+            each->resolve_bodies();
     return out;
 }
 

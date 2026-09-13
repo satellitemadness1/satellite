@@ -47,7 +47,9 @@ int find_main(const Built &built)
 // diagnostic would print with no place at all.
 void rebase(errors::Span &at, int above)
 {
-    if (at.line == 0)
+    // A SPAN IN A SPACESHIP IS THAT FILE'S OWN LINE -- M25. Only the typed
+    // line sits inside the wrapper.
+    if (at.line == 0 || at.file != 0)
         return;
     const int moved = static_cast<int>(at.line) - above;
     at.line = static_cast<uint32_t>(moved > 0 ? moved : 1);
@@ -130,7 +132,7 @@ std::string Session::wrap(const std::string &body) const
 
 void Session::report(Built &built, const std::string &name, int above) const
 {
-    const errors::Source against{name, built.text, &built.words};
+    const errors::Source against = built.source(name);
 
     rebase_all(built.parsed.errors, above);
     rebase_all(built.resolved.problems, above);
@@ -283,6 +285,7 @@ bool Session::run(const std::string &entry)
 
     clear_interrupt();
     errors::log::set_program(kPromptName);
+    errors::log::set_other_files(built.other_paths());
 
     eval::Machine machine(built.program.closures, built.parsed.ast,
                           policy_from_the_limits());
@@ -314,6 +317,17 @@ bool Session::run(const std::string &entry)
     // has the rule and the segfault that found it.
     const std::vector<errors::Diagnostic> abandoned = thread::close_all();
 
+    // A TOP-LEVEL FORM WHOSE RUN REFUSED DOES NOT STAY EITHER -- the rule
+    // above for a form that did not build, one pass later. Found at M25: a
+    // typed include whose launch refused was kept, and every later line ran it
+    // and refused again, with no way to take it back.
+    if (top && !machine.ok()) {
+        top_level_.pop_back();
+        if (!scanned.library_name.empty() && !globals_.empty() &&
+            globals_.back() == scanned.library_name)
+            globals_.pop_back();
+    }
+
     // DRAIN AND NOT SHUTDOWN, WHICH IS THE WHOLE DIFFERENCE BETWEEN A RUN AND A
     // SESSION. `satl file.satl` shuts the console down because the process is
     // about to end; here another line is coming, and shutdown would join the
@@ -327,8 +341,7 @@ bool Session::run(const std::string &entry)
     std::vector<errors::Diagnostic> warned = errors::log::take();
     if (!warned.empty()) {
         rebase_all(warned, above);
-        fputs(errors::render(warned, errors::Source{kPromptName, built.text,
-                                                    &built.words})
+        fputs(errors::render(warned, built.source(kPromptName))
                   .c_str(),
               stderr);
     }
@@ -342,8 +355,7 @@ bool Session::run(const std::string &entry)
     if (!machine.ok()) {
         std::vector<errors::Diagnostic> problems = machine.problems();
         rebase_all(problems, above);
-        fputs(errors::render(problems, errors::Source{kPromptName, built.text,
-                                                      &built.words})
+        fputs(errors::render(problems, built.source(kPromptName))
                   .c_str(),
               stderr);
     } else if (!abandoned.empty()) {
@@ -354,8 +366,7 @@ bool Session::run(const std::string &entry)
         // comment above records being found by typing `satellite.help`.
         std::vector<errors::Diagnostic> problems = abandoned;
         rebase_all(problems, above);
-        fputs(errors::render(problems, errors::Source{kPromptName, built.text,
-                                                      &built.words})
+        fputs(errors::render(problems, built.source(kPromptName))
                   .c_str(),
               stderr);
     }
@@ -373,7 +384,7 @@ bool Session::run_file(const std::vector<std::string> &command_line)
     if (which < 0) {
         fputs(errors::render(
                   errors::make<errors::Code::FILE_NO_MAIN>(errors::kNowhere),
-                  errors::Source{path, built.text, &built.words})
+                  built.source(path))
                   .c_str(),
               stderr);
         return true;
@@ -381,6 +392,7 @@ bool Session::run_file(const std::vector<std::string> &command_line)
 
     clear_interrupt();
     errors::log::set_program(path);
+    errors::log::set_other_files(built.other_paths());
 
     // THE RUN ARM'S OBJECT, BUILT THE RUN ARM'S WAY -- programs/run_command.cpp:
     // the file as `program` and the words after it numbered from 1. This was an
@@ -403,6 +415,9 @@ bool Session::run_file(const std::vector<std::string> &command_line)
     eval::Machine machine(built.program.closures, built.parsed.ast,
                           policy_from_the_limits());
     machine.run_top_level();
+    // run_command.cpp's order: the file's launches before `satellite.main`.
+    if (machine.ok())
+        machine.run_launches();
     if (machine.ok())
         machine.call(static_cast<uint32_t>(which), parameters);
 
@@ -425,18 +440,18 @@ bool Session::run_file(const std::vector<std::string> &command_line)
     const std::vector<errors::Diagnostic> warned = errors::log::take();
     if (!warned.empty())
         fputs(errors::render(warned,
-                             errors::Source{path, built.text, &built.words})
+                             built.source(path))
                   .c_str(),
               stderr);
 
     if (!machine.ok())
         fputs(errors::render(machine.problems(),
-                             errors::Source{path, built.text, &built.words})
+                             built.source(path))
                   .c_str(),
               stderr);
     else if (!abandoned.empty())
         fputs(errors::render(abandoned,
-                             errors::Source{path, built.text, &built.words})
+                             built.source(path))
                   .c_str(),
               stderr);
     return true;

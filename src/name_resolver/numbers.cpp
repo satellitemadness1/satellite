@@ -175,6 +175,10 @@ words::PathId Resolver::type_at(NodeIndex node)
     // further along than the capsules it was written for: a field or a local
     // may be declared of a suit written further down the file.
     if (n.a == words::kNoSpelling) {
+        // `ship.box` -- A SPACESUIT ANOTHER FILE DECLARES, M25.
+        if (const uint32_t qualifier = ast_.qualifier_of(node); qualifier != 0)
+            return qualified_type(node, qualifier);
+
         const std::string_view bare = ast_.text_of(node);
         if (const Capsule *found = suit_named(bare)) {
             info(node).path = found->path;

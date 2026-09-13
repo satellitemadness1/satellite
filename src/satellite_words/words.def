@@ -852,6 +852,16 @@ SAT_NODE(WINDOW_CONSOLE, WINDOW_CONSOLE_NEW, "new(title, width, height)", SAT_NU
 SAT_NODE(SATELLITE,   CONSTRUCTOR,   "constructor", SAT_NUMBERED)  // 1 25
 SAT_NODE(CONSTRUCTOR, CONSTRUCTOR_0, "()",          SAT_BARE)  // 1 25 0
 
+// --- launch -----------------------------------------------------------------
+// The author's, 2026-09-13: `satellite.capsule.launch name(args) { }`, a
+// capsule that runs when its file is included -- `satellite.include(ship(args))`
+// hands it the arguments, and every launch whose parameters fit them runs, in
+// file order. `capsule` had no numbered child, so this is `1 2 1`; appended
+// here rather than beside `capsule` because a row inserted mid-file renumbers
+// every node id after it.
+//
+SAT_NODE(CAPSULE, CAPSULE_LAUNCH, "launch", SAT_NUMBERED)  // 1 2 1
+
 // --- the aliases ------------------------------------------------------------
 // WORD_NUMBERS §2.3, in full. Eleven spellings over six nodes, and the whole of
 // the language's aliasing: every one of the 218-versus-215 and 227-versus-224
@@ -972,8 +982,9 @@ SAT_PLACE(CONSOLE_INPUT_PROMPT_TARGET, 1)  // 1 5 4 -- `target` receives the lin
 // word that is reached by name and has nothing underneath it to vouch for it.
 //
 // AND A WORD THAT PARSES IS NOT THEREBY BUILT. `satellite.include(spaceship)`
-// `1 1 2` is absent: the parser accepts the line and nothing loads a second
-// file, so it refuses when it runs and M25 is the milestone. Same for
+// `1 1 2` was absent until 2026-09-13: the parser accepted the line and nothing
+// loaded a second file, so it refused when it ran. It is listed now because a
+// program that writes it gets the file it named. Same for
 // `satellite.library.main` `1 14 1` and the arguments object under it, which
 // are M20's. The test of this list is not "does the front end have a case for
 // it" but "does a program that writes it do what it says".
@@ -1039,6 +1050,8 @@ SAT_BUILT(RETURN_SATELLITE, SAT_OFFERED)      // 1 15 1   `satellite.main`'s las
 SAT_BUILT(RETURN_VALUE, SAT_OFFERED)          // 1 15 2
 SAT_BUILT(RETURNS, SAT_UNLISTED)              // 1 21     optional, and it parses
 SAT_BUILT(VARIABLE_CAPSULE, SAT_OFFERED)      // 1 6 16   M23 -- a deferred call, and it has no children to be derived from
+SAT_BUILT(INCLUDE_SPACESHIP, SAT_OFFERED)     // 1 1 2    M25 -- loads another file, 2026-09-13
+SAT_BUILT(CAPSULE_LAUNCH, SAT_OFFERED)        // 1 2 1    runs when its file is included
 
 // A TYPE NAME IS HERE WHEN `Value` HAS AN ARM FOR IT AND IT HAS NO BUILT CHILD,
 // and the second half of that sentence is M23's correction of the first. This

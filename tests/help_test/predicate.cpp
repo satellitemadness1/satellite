@@ -156,10 +156,15 @@ void section_predicate()
     // `satellite.container.result` `1 4 4` TAKES ITS PLACE, and it should
     // outlast several: it is Satellite Orbit's answer type, PLAN §8 puts it at
     // **M28**, and nothing between here and there hangs anything under it.
+    //
+    // AND `INCLUDE_SPACESHIP` WENT ON 2026-09-13, with M25's include half --
+    // "the trap beside it" is no longer a trap, because a program that writes
+    // the line now gets the file it named. `satellite.analyze` beside it is
+    // M25's other half and stays.
     const words::NodeId unbuilt[] = {
-        words::NodeId::NETWORK,          words::NodeId::INCLUDE_SPACESHIP,
-        words::NodeId::VARIABLE_WINDOW,  words::NodeId::CONTAINER_RESULT,
-        words::NodeId::ANALYZE,          words::NodeId::VARIABLE_THREAD,
+        words::NodeId::NETWORK,          words::NodeId::VARIABLE_WINDOW,
+        words::NodeId::CONTAINER_RESULT, words::NodeId::ANALYZE,
+        words::NodeId::VARIABLE_THREAD,
     };
     for (const words::NodeId id : unbuilt)
         check(!built.contains(static_cast<words::PathId>(id)),

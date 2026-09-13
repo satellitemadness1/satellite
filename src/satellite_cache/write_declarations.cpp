@@ -106,7 +106,7 @@ void Writer::capsule(NodeIndex node)
     if (ast_.is_constructor(node)) {
         fixed("satellite.constructor");
     } else {
-        fixed("satellite.capsule");
+        fixed(ast_.is_launch(node) ? "satellite.capsule.launch" : "satellite.capsule");
         say(" ");
         capsule_name(node);
     }

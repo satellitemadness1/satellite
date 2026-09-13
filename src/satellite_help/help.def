@@ -55,8 +55,8 @@ SAT_HELP(INCLUDE, INCLUDE,
          "satellite file, and until it has run the language's own names are not in\n"
          "scope, so a program without it cannot even reach `satellite.console`.\n"
          "\n"
-         "It is a declaration and not a call. It sits at the top of the file,\n"
-         "outside any capsule, and nothing is returned by it."
+         "It is not a call, and nothing is returned by it. It sits at the top of a\n"
+         "file, or inside a capsule, where it runs when that line is reached."
          ,
          "satellite.include(satellite)\n"
          "\n"
@@ -105,12 +105,18 @@ SAT_HELP(INCLUDE_SATELLITE, INCLUDE,
 
 // 1 1 2  satellite.include(spaceship)
 SAT_HELP(INCLUDE_SPACESHIP, INCLUDE,
-         "Includes another satellite file, a spaceship, so its capsules can be\n"
-         "called from this one.\n"
+         "Includes another satellite file, a spaceship. `satellite.include(ship)` loads\n"
+         "`ship.satl` from the directory of the file that includes it; `ship.satl` may be\n"
+         "written out, and arguments in brackets -- `ship(5, \"five\")` -- go to its\n"
+         "`satellite.capsule.launch` capsules.\n"
          "\n"
-         "**Not built.** The path is numbered and the parser accepts it, but nothing\n"
-         "loads a second file yet, so a program that writes this line refuses when\n"
-         "it runs. M25 is the milestone that builds it."
+         "What the spaceship declares is reached through its name and never bare:\n"
+         "`ship.setup()` calls a capsule, `ship.box b` declares one of its spacesuits, and\n"
+         "`satellite.library.ship.total` reads one of its globals. A file is loaded once\n"
+         "however often it is included; every include runs its launches again.\n"
+         "\n"
+         "An include may sit at the top of a file or inside a capsule, where it runs when\n"
+         "that line does."
          ,
          ""
          )
@@ -4609,6 +4615,24 @@ SAT_HELP(CONSTRUCTOR_0, CONSTRUCTOR,
          "The bare shape."
          ,
          ""
+         )
+
+// 1 2 1  satellite.capsule.launch
+SAT_HELP(CAPSULE_LAUNCH, CAPSULE_LAUNCH,
+         "A capsule that runs when its file is included:\n"
+         "`satellite.capsule.launch greet(satellite.variable.string who) { }`.\n"
+         "\n"
+         "`satellite.include(ship(\"Ada\"))` hands `\"Ada\"` to every launch in `ship.satl`\n"
+         "whose parameters fit it, one after another in the order the file declares\n"
+         "them. An include with no arguments runs the launches that take none; one\n"
+         "with arguments that fit no launch is refused. The file `satl` is given runs\n"
+         "its own launches that take nothing, after its globals and before\n"
+         "`satellite.main`."
+         ,
+         "satellite.capsule.launch hello()\n"
+         "{\n"
+         "    satellite.console.display(\"launched\")\n"
+         "}"
          )
 
 #undef SAT_HELP

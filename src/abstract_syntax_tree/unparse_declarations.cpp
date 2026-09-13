@@ -96,7 +96,7 @@ void Printer::capsule(NodeIndex node)
     if (ast_.is_constructor(node)) {
         say("satellite.constructor(");
     } else {
-        say("satellite.capsule ");
+        say(ast_.is_launch(node) ? "satellite.capsule.launch " : "satellite.capsule ");
         if (words::is_language_word(n.a))
             say("satellite.");
         say(text(node) + "(");

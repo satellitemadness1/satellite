@@ -59,6 +59,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -66,7 +67,31 @@ namespace satellite::eval {
 
 class Globals {
 public:
-    explicit Globals(uint32_t count) : slots_(count) {}
+    explicit Globals(uint32_t count, uint32_t files = 1)
+        : slots_(count), included_(new std::atomic<bool>[files == 0 ? 1 : files]),
+          loading_(new thread::Access[files == 0 ? 1 : files]),
+          files_(files == 0 ? 1 : files)
+    {
+        for (uint32_t i = 0; i < files_; i++)
+            included_[i].store(false, std::memory_order_relaxed);
+    }
+
+    // THE FIRST INCLUDE OF A FILE, CLAIMED ONCE PER RUN -- M25. True for the
+    // one walk that gets there first, which then runs the includes written at
+    // the file's top; every later include of the same file, on any thread,
+    // runs only its launches. Here and not in a Machine because a thread's
+    // walk and the program's are one run, and a file is included once in it.
+    bool claim(uint32_t file)
+    {
+        if (file >= files_)
+            return false;
+        bool expected = false;
+        return included_[file].compare_exchange_strong(expected, true);
+    }
+
+    // A FILE'S LOADING, ON A THREAD'S ACCESS LIST -- M25. Held by the walk
+    // running the file's top-level includes; see operations_include.cpp.
+    thread::Access &loading(uint32_t file) { return loading_[file < files_ ? file : 0]; }
 
     // ONE MORE WALK CAN SEE THESE FROM NOW ON. Called on the parent thread
     // before the child exists -- see the note above about why that ordering is
@@ -124,6 +149,9 @@ private:
     mutable std::recursive_mutex lock_;
     std::atomic<bool> shared_{false};
     std::vector<Value> slots_;
+    std::unique_ptr<std::atomic<bool>[]> included_;
+    std::unique_ptr<thread::Access[]> loading_;
+    uint32_t files_ = 1;
 };
 
 } // namespace satellite::eval

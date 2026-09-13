@@ -16,6 +16,7 @@
 #include "error_reporter/report.hpp"
 #include "error_reporter/suggest.hpp"
 #include "satellite_cache/paths.hpp"
+#include "satellite_spaceship/shape.hpp"
 
 #include <cstdint>
 #include <string>
@@ -147,6 +148,18 @@ void Resolver::name(NodeIndex node)
         return;
     }
 
+    // A SPACESHIP THIS FILE INCLUDES -- M25. After everything the file declares
+    // for itself, so a capsule of this file's own is never hidden by a file it
+    // happens to include; and the loader refuses a spaceship named like one of
+    // the program's own names (S1602), so in the file satl was given the order
+    // can only matter to a local.
+    if (const Spaceship *ship = spaceship_named(spelling)) {
+        info(node).slot = kSlotSpaceship;
+        info(node).path = ship->node;
+        info(node).origin = Origin::Bound;
+        return;
+    }
+
     // THE FOUR FORCED CONVERSIONS, WRITTEN BARE -- the author, 2026-09-12:
     // "just string(some_var) is good enough", "single word". `string(n)`,
     // `number(s)`, `binary(n)` and `hex(n)` are the third place in the
@@ -255,7 +268,17 @@ void Resolver::member(NodeIndex node)
             return;
         }
 
-        if (found.at == node) {
+        // A LOOKUP THROUGH A SPACESHIP NOTHING LOADED IS SILENT -- M25, and
+        // own_ships() in spaceships.cpp says why: `satl --resolve` reads one
+        // file and has not seen what `satellite.library.ship.total` names.
+        if (through_an_unloaded_spaceship(found))
+            return;
+
+        // THE ONE-SEGMENT ARM IS THE FILE satl WAS GIVEN's, since M25: a
+        // spaceship's own `satellite.library.total` was answered above, from
+        // its own node, and asking `satellite.library` itself here would hand
+        // it the program's global of that name.
+        if (found.at == node && library_ == found.under) {
             const words::PathId declared = words_.find(
                 static_cast<words::NodeId>(found.under), ast_.text_of(node));
             if (declared != words::kNoPath && !words::is_language_word(declared)) {
@@ -310,6 +333,14 @@ void Resolver::member_done(NodeIndex node)
         return;
     }
 
+    // `ship.setup` -- a name ANOTHER FILE declares, M25. Its receiver has no
+    // type and no storage; what it has is the node the spaceship's names are
+    // numbered under, so this is a lookup there and nowhere else.
+    if (receiver.slot == kSlotSpaceship) {
+        spaceship_member(node, receiver, word);
+        return;
+    }
+
     // ONE HOP, AND THE BOUNDARY IS WORTH STATING. WORD_NUMBERS §1.5 says a
     // selector's number is reachable only THROUGH THE RECEIVER'S TYPE, and the
     // one receiver whose type this milestone knows is a name whose declaration
@@ -330,7 +361,7 @@ void Resolver::member_done(NodeIndex node)
         // point at the word that was reached for. DESIGN §12: "a spacesuit
         // field is reachable from inside the spacesuit and nowhere else."
         if (!words::is_language_word(receiver.type)) {
-            const Suit *of = out_.suit_at(receiver.type);
+            const Suit *of = suit_anywhere(receiver.type);
             if (of == nullptr)
                 return;
 
@@ -511,12 +542,27 @@ void Resolver::statement_form(NodeIndex node, words::NodeId under,
     // lookup on the way. Leaving the name alone puts all three on the same
     // sentence, and it stays right after M25 lands: a spaceship is looked up
     // among spaceships, never among locals.
-    const bool names_a_spaceship =
-        found.found() &&
-        found.id == static_cast<words::PathId>(words::NodeId::INCLUDE_SPACESHIP) &&
-        has_argument && ast_[n.a].kind == NodeKind::Name;
+    //
+    // AND SINCE M25 ALL FOUR SPELLINGS ARE A SPACESHIP -- `ship`, `ship(args)`,
+    // `ship.satl`, `ship.satl(args)` -- so the name is marked as the
+    // spaceship's and only the ARGUMENTS are walked. They are ordinary
+    // expressions of this file: an include inside a capsule hands its launch
+    // capsules the capsule's own locals.
+    if (node_is_include(node)) {
+        const spaceship::Shape shape = spaceship::shape_of(ast_, node);
+        if (shape.named == spaceship::Named::Spaceship) {
+            info(shape.name).slot = kSlotSpaceship;
+            if (const Spaceship *ship =
+                    spaceship_named(spaceship::name_of(ast_, shape)))
+                info(shape.name).path = ship->node;
+            info(shape.name).origin = Origin::Bound;
+            for (uint32_t i = shape.argument_count(ast_); i-- > 0;)
+                visit_expression(ast_.list_at(shape.arguments, i));
+            return;
+        }
+    }
 
-    if (!found.absorbs_argument && !names_a_spaceship)
+    if (!found.absorbs_argument)
         visit_expression(n.a);
 }
 

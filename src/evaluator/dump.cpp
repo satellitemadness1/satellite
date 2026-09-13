@@ -77,8 +77,13 @@ std::string dump_text(const std::string &path, const Ast &ast,
         // THE SOURCE LINE, WHICH IS WHAT MAKES THE LISTING READABLE AT ALL.
         // An op index means nothing on its own; the line it came from is what a
         // person matches against the file they are looking at.
-        if (node != kNoNode)
-            out += "line " + number(ast.token_of(node).line);
+        if (node != kNoNode) {
+            // AND WHICH FILE, WHEN IT IS NOT THIS ONE -- M25.
+            const uint32_t file = closures.file_of(i);
+            out += "line " + number(closures.ast_of(file, ast).token_of(node).line);
+            if (file != 0 && file < closures.files().size())
+                out += " of " + closures.files()[file].name;
+        }
         out += "\n";
 
         // A refusal says what it will refuse and when it will stop, because

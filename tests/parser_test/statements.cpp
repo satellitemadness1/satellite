@@ -150,12 +150,23 @@ void section_statements()
 
     // -- What a block does not hold ------------------------------------------
 
+    // AN INCLUDE DOES GO INSIDE A BLOCK SINCE 2026-09-13 -- M25, the author's
+    // "satellite.include(filename(args)) in the middle of a capsule". This
+    // clause asserted the opposite until then, and a declaration word that
+    // still does not belong in a block takes its place below.
     {
-        const Program program = in_capsule("satellite.include(satellite)");
+        const Program program = in_capsule("satellite.include(cargo(1, \"two\"))");
+        check(program.ok() && count_of(program.ast(), NodeKind::Include) == 1,
+              "satellite.include is a statement inside a block: " +
+                  program.first_error());
+    }
+
+    {
+        const Program program = in_capsule("satellite.spacesuit inner()\n{\n}");
         check(!program.ok(),
-              "satellite.include is a declaration and does not go inside a block, "
-              "and the message says which word was written rather than 'unexpected "
-              "token'");
+              "satellite.spacesuit is a declaration and does not go inside a "
+              "block, and the message says which word was written rather than "
+              "'unexpected token'");
     }
 
     // -- Statements are newline-terminated -----------------------------------

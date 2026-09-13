@@ -23,7 +23,7 @@ namespace satellite {
 namespace eval {
 
 OpIndex Compiled::add(OpFn fn, NodeIndex node, uint32_t a, uint32_t b, uint32_t c,
-                      uint32_t d)
+                      uint32_t d, uint32_t file)
 {
     // OP ZERO IS THE EMPTY STATEMENT AND IS SET HERE rather than in a
     // constructor, because op_no_op lives in operations.cpp and a header that
@@ -33,6 +33,7 @@ OpIndex Compiled::add(OpFn fn, NodeIndex node, uint32_t a, uint32_t b, uint32_t 
 
     ops_.push_back({fn, a, b, c, d});
     nodes_.push_back(node);
+    op_files_.push_back(file);
     return static_cast<OpIndex>(ops_.size() - 1);
 }
 
@@ -59,7 +60,23 @@ uint32_t Compiled::add_text(std::string text)
 }
 
 Compiler::Compiler(const Ast &ast, const resolve::Resolved &resolved, words::Words &words)
-    : ast_(ast), resolved_(resolved), words_(words)
+    : own_(std::make_unique<Linking>()), linking_(*own_), ast_(ast),
+      resolved_(resolved), words_(words), out_(linking_.out),
+      problems_(linking_.problems), deferred_refusals_(linking_.deferred_refusals),
+      op_began_(linking_.op_began), capsules_(linking_.capsules),
+      globals_(linking_.globals), suits_(linking_.suits)
+{
+    linking_.files = {&resolved};
+    linking_.includes.resize(1);
+}
+
+Compiler::Compiler(Linking &linking, uint32_t file, const Ast &ast,
+                   const resolve::Resolved &resolved, words::Words &words)
+    : linking_(linking), file_(file), ast_(ast), resolved_(resolved),
+      words_(words), out_(linking.out), problems_(linking.problems),
+      deferred_refusals_(linking.deferred_refusals), op_began_(linking.op_began),
+      capsules_(linking.capsules), globals_(linking.globals),
+      suits_(linking.suits)
 {
 }
 
@@ -75,7 +92,7 @@ OpIndex Compiler::emit(OpFn fn, NodeIndex node, uint32_t a, uint32_t b, uint32_t
     const auto began = began_.find(node);
     const uint32_t first =
         began == began_.end() ? static_cast<uint32_t>(out_.size()) : began->second;
-    const OpIndex made = out_.add(fn, node, a, b, c, d);
+    const OpIndex made = out_.add(fn, node, a, b, c, d, file_);
     if (op_began_.size() <= made)
         op_began_.resize(made + 1, made);
     op_began_[made] = first;
@@ -85,7 +102,7 @@ OpIndex Compiler::emit(OpFn fn, NodeIndex node, uint32_t a, uint32_t b, uint32_t
 errors::Span Compiler::span_of(NodeIndex node) const
 {
     const Token &at = ast_.token_of(node);
-    return errors::Span{at.start, at.end, at.line};
+    return errors::Span{at.start, at.end, at.line, file_};
 }
 
 // THE ONE PLACE A PIECE OF GRAMMAR IS DECLARED EARLY, which is why the answer
@@ -180,7 +197,18 @@ void Compiler::global(NodeIndex node)
 
 Compiled Compiler::compile()
 {
+    register_file();
+    compile_fields();
+    compile_file();
+    return finish_run(linking_, {});
+}
+
+void Compiler::register_file()
+{
     const Node &program = ast_[ast_.root()];
+    if (out_.files().size() <= file_)
+        out_.files().resize(file_ + 1);
+    out_.files()[file_].ast = &ast_;
 
     // PASS 1 -- every capsule's frame, from resolve's own answer.
     //
@@ -191,11 +219,18 @@ Compiled Compiler::compile()
     // rule that a slot is never reused across scopes is exactly the sort of
     // thing two counters disagree about.
     for (const resolve::Frame &frame : resolved_.frames) {
+        // A SPACESHIP'S OWN `satellite.main` IS NOT THE PROGRAM'S -- M25. It is
+        // where that file starts when satl is given it; included, the file is
+        // not the program, and registering the capsule would put a second
+        // `1 3` in a table keyed by number.
+        if (file_ != 0 &&
+            frame.capsule == static_cast<words::PathId>(words::NodeId::MAIN))
+            continue;
         capsules_[frame.capsule] = static_cast<uint32_t>(out_.capsules().size());
         out_.capsules().push_back({frame.capsule, kNoOp, kNoOp,
                                    static_cast<uint32_t>(frame.size()),
                                    frame.parameters, frame.node,
-                                   suit_of_method(frame.capsule) != nullptr});
+                                   suit_of_method(frame.capsule) != nullptr, file_});
     }
 
     // PASS 1b -- EVERY SPACESUIT'S LAYOUT, and it is here for pass 1's reason
@@ -243,19 +278,31 @@ Compiled Compiler::compile()
     // depend on who is calling.
     for (const resolve::CapsuleConstant &each : resolved_.capsule_constants)
         globals_[each.path] = out_.add_global();
+}
+
+void Compiler::compile_file()
+{
+    const Node &program = ast_[ast_.root()];
 
     // PASS 3 -- the top level, which at DESIGN §6's grammar is the globals'
     // initialisers and the includes. resolve.cpp's pass 3 says why there is
     // nothing else: "this grammar has no top-level statements at all."
-    std::vector<OpIndex> top;
     for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
         const NodeIndex item = ast_.list_at(program.a, i);
         switch (ast_[item].kind) {
         case NodeKind::Global:
             global(item);
-            top.push_back(take());
+            setup_.push_back(take());
             break;
         case NodeKind::Include:
+            // A SPACESHIP -- M25. What stood below this line refused every
+            // include of one naming this milestone; the note above it is kept
+            // because its argument about the other two forms is unchanged.
+            if (info(item).path ==
+                static_cast<words::PathId>(words::NodeId::INCLUDE_SPACESHIP)) {
+                top_includes_.push_back(include(item));
+                break;
+            }
             // `satellite.include(satellite)` IS THE ONE INCLUDE FORM THAT DOES
             // NOTHING, AND DESIGN §3 SAYS SO IN THOSE WORDS: "that is not a
             // leftover -- it means 'include the runtime', which a running
@@ -285,7 +332,7 @@ Compiled Compiler::compile()
                     static_cast<words::PathId>(words::NodeId::INCLUDE_SATELLITE) &&
                 info(item).path !=
                     static_cast<words::PathId>(words::NodeId::INCLUDE_0))
-                top.push_back(not_built(
+                top_includes_.push_back(not_built(
                     item, "`satellite.include` of a spaceship",
                     "PLAN.md §8 builds the spaceships at M25"));
             break;
@@ -315,17 +362,68 @@ Compiled Compiler::compile()
         const OpIndex value = each.initialiser == kNoNode
                                   ? kNoOp
                                   : compile_tree(each.initialiser);
-        top.push_back(emit(op_store_global, each.declaration,
-                           globals_[each.path], value));
+        setup_.push_back(emit(op_store_global, each.declaration,
+                              globals_[each.path], value));
     }
 
-    out_.set_top(emit(op_block, ast_.root(), out_.add_list(top)));
+    // EVERY FILE'S GLOBALS BEFORE ANY FILE'S INCLUDES -- M25, and file 0 is no
+    // exception. A launch an include runs may read a global the including file
+    // declares further down, and a file's globals are set up before a line of
+    // anybody's code runs; found by two files that include each other, where
+    // alpha's include of beta ran beta's launch before alpha's global below the
+    // include had its value. A program that includes nothing has no include
+    // ops at all, so its top level is exactly what it was.
+    File &record = out_.files()[file_];
+    record.setup = emit(op_block, ast_.root(), out_.add_list(setup_));
+    record.includes = top_includes_.empty()
+                          ? kNoOp
+                          : emit(op_block, ast_.root(), out_.add_list(top_includes_));
 
     // PASS 4 -- every body, the suits' methods included.
     for (uint32_t i = 0; i < ast_.list_size(program.a); i++) {
         const NodeIndex item = ast_.list_at(program.a, i);
-        if (ast_[item].kind == NodeKind::Capsule)
-            capsule(item);
+        if (ast_[item].kind != NodeKind::Capsule)
+            continue;
+        if (file_ != 0 && ast_[item].a ==
+                              static_cast<words::PathId>(words::NodeId::MAIN))
+            continue;
+        capsule(item);
+
+        // AND EVERY LAUNCH, IN FILE ORDER, WITH ITS PARAMETERS' TYPES -- M25.
+        // The order is the order an include runs them in.
+        if (!ast_.is_launch(item))
+            continue;
+        const auto found = capsules_.find(ast_[item].a);
+        if (found == capsules_.end())
+            continue;
+        Launch launch;
+        launch.capsule = found->second;
+        for (uint32_t k = 0; k < ast_.list_size(ast_[item].b); k++) {
+            const words::PathId type = info(ast_.list_at(ast_[item].b, k)).type;
+            std::vector<uint32_t> accepted;
+            if (const auto layout = suits_.find(type); layout != suits_.end()) {
+                accepted.push_back(layout->second);
+                // EVERY SUIT WHOSE PARENT CHAIN REACHES THIS ONE, in any file.
+                // The chain is walked with a loop, and link_supers has already
+                // cut any cycle in it.
+                for (const resolve::Resolved *file : linking_.files)
+                    for (const resolve::Suit &suit : file->suits) {
+                        if (suit.path == type)
+                            continue;
+                        for (const resolve::Suit *up = suit_anywhere(suit.parent);
+                             up != nullptr; up = suit_anywhere(up->parent))
+                            if (up->path == type) {
+                                if (const auto mine = suits_.find(suit.path);
+                                    mine != suits_.end())
+                                    accepted.push_back(mine->second);
+                                break;
+                            }
+                    }
+            }
+            launch.types.push_back(type);
+            launch.layouts.push_back(std::move(accepted));
+        }
+        record.launches.push_back(std::move(launch));
     }
 
     // A METHOD IS A CAPSULE AND IS COMPILED BY THE SAME FUNCTION -- M26. What
@@ -353,26 +451,49 @@ Compiled Compiler::compile()
         inside_ = nullptr;
     }
 
+}
+
+Compiled Compiler::finish_run(Linking &linking, const std::vector<uint32_t> &setup_order)
+{
+    Compiled &out = linking.out;
+
+    // THE PROGRAM'S TOP LEVEL IS EVERY SPACESHIP'S SETUP AND THEN ITS OWN --
+    // M25. `setup_order` puts a file after every file it includes, so a global
+    // initialiser that reads another file's global finds it set. No launch runs
+    // here: a launch runs when control reaches the include that names it.
+    std::vector<OpIndex> top;
+    for (const uint32_t file : setup_order)
+        if (file != 0 && file < out.files().size() && out.files()[file].setup != kNoOp)
+            top.push_back(out.files()[file].setup);
+    if (!out.files().empty()) {
+        top.push_back(out.files()[0].setup);
+        if (out.files()[0].includes != kNoOp)
+            top.push_back(out.files()[0].includes);
+    }
+    out.set_top(top.size() == 1 ? top[0] : out.add(op_block, kNoNode, out.add_list(top)));
+    if (!out.files().empty() && !out.files()[0].launches.empty())
+        out.set_launch_op(out.add(op_include, kNoNode, 0, kNoOpList, 0));
+
     // EVERY OP'S "CAN THIS STATEMENT WRITE A GLOBAL" -- closure.hpp's
     // statement_writes(). The walk is depth-first, so a node's ops sit between
     // where it began and its own op; a running count of the ops that write a
     // global answers each range in one subtraction. The four writers are every
     // op that reaches Machine::set_global().
-    std::vector<uint32_t> writers(out_.size() + 1, 0);
-    for (OpIndex i = 0; i < out_.size(); i++) {
-        const OpFn fn = out_[i].fn;
+    std::vector<uint32_t> writers(out.size() + 1, 0);
+    for (OpIndex i = 0; i < out.size(); i++) {
+        const OpFn fn = out[i].fn;
         const bool writes = fn == op_store_global || fn == op_index_store_global ||
                             fn == op_method_global || fn == op_place_global;
         writers[i + 1] = writers[i] + (writes ? 1 : 0);
     }
-    std::vector<uint8_t> writes(out_.size(), 0);
-    for (OpIndex i = 0; i < out_.size(); i++) {
-        const uint32_t first = i < op_began_.size() ? op_began_[i] : i;
+    std::vector<uint8_t> writes(out.size(), 0);
+    for (OpIndex i = 0; i < out.size(); i++) {
+        const uint32_t first = i < linking.op_began.size() ? linking.op_began[i] : i;
         writes[i] = writers[i + 1] - writers[first] > 0 ? 1 : 0;
     }
-    out_.set_writes(std::move(writes));
+    out.set_writes(std::move(writes));
 
-    return std::move(out_);
+    return std::move(out);
 }
 
 } // namespace eval

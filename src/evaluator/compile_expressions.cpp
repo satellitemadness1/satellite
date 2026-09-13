@@ -144,6 +144,13 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
             return true;
         }
 
+        if (about.slot == resolve::kSlotSpaceship) {
+            finish(not_built(node, "a spaceship's name used as a value",
+                             "a spaceship is a file, and what it holds is "
+                             "reached as `ship.capsule(...)`"));
+            return true;
+        }
+
         if (about.slot == resolve::kSlotCapsule) {
             // DESIGN §12 DEFERS "a bare name can be a value", and QUAD.md §3
             // closed the one thing that wanted it -- sorting needs a primitive
@@ -496,10 +503,23 @@ const resolve::Suit *Compiler::suit_of_method(words::PathId path) const
 {
     if (path == words::kNoPath || words::is_language_word(path))
         return nullptr;
-    for (const resolve::Suit &suit : resolved_.suits)
-        for (const resolve::Method &method : suit.methods)
-            if (method.path == path)
-                return &suit;
+    // EVERY FILE'S SUITS -- M25: `b.bump()` on a `ship.box` is a method of a
+    // suit another file declared.
+    for (const resolve::Resolved *file : linking_.files)
+        if (file != nullptr)
+            for (const resolve::Suit &suit : file->suits)
+                for (const resolve::Method &method : suit.methods)
+                    if (method.path == path)
+                        return &suit;
+    return nullptr;
+}
+
+const resolve::Suit *Compiler::suit_anywhere(words::PathId path) const
+{
+    for (const resolve::Resolved *file : linking_.files)
+        if (file != nullptr)
+            if (const resolve::Suit *suit = file->suit_at(path))
+                return suit;
     return nullptr;
 }
 
@@ -955,6 +975,17 @@ OpIndex Compiler::call(NodeIndex node)
     // `display` than for a capsule, and DESIGN §10.1 already put the console on
     // a thread of its own. What `satellite.thread.new` runs is a capsule,
     // which is what DESIGN §13 says it runs.
+    // `satellite.main` CALLED INSIDE A SPACESHIP -- found by review. An
+    // included file's own main is not compiled (compile.cpp's register_file),
+    // and `1 3` in the one capsule table is the PROGRAM's main, so the call
+    // ran the includer's main instead of the file's own. Refused where it is
+    // written, because neither reading is the one the file's author meant.
+    if (file_ != 0 &&
+        declared == static_cast<words::PathId>(words::NodeId::MAIN))
+        return not_built(node, "`satellite.main` called inside a spaceship",
+                         "an included file is not the program, so its own "
+                         "satellite.main runs only when satl is given that file");
+
     if (named_count != 0 && deferred_.count(node) != 0)
         return no_options();
     if (deferred_.count(node) != 0) {

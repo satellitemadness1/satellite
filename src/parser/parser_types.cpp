@@ -89,6 +89,15 @@ NodeIndex Parser::type()
         } else if (at_word()) {
             // `satellite` alone -- the singleton runtime type -- or a spacesuit
             // named bare (DESIGN §13). One node either way.
+            //
+            // OR `ship.box`, A SPACESUIT ANOTHER FILE DECLARES -- M25. The node
+            // is anchored on `box` exactly as a bare `box` is, and ast.hpp's
+            // qualifier_of() reads `ship` back two tokens behind it, so a
+            // qualified type costs no payload word and no new kind.
+            if (!is_reserved_word(peek()) && at_punct(".", 1) && at_word(2)) {
+                advance();  // the spaceship
+                advance();  // .
+            }
             const uint32_t at = here();
             advance();
             node = ast_.add(NodeKind::Type, at, words::kNoSpelling, kNoList);

@@ -66,6 +66,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace satellite::eval {
@@ -149,6 +150,7 @@ struct Frame {
     uint32_t value_floor = 0; // value_'s height when its body began
     words::PathId capsule = words::kNoPath;
     NodeIndex call = kNoNode; // the call SITE, which is what a FrameRef prints
+    uint32_t call_file = 0;   // and the file that node is in -- M25
 
     // THE OBJECT THIS METHOD CALL HAS ON ITS THREAD'S ACCESS LIST, or null --
     // THREAD.md T2. Taken in enter(), given back in unwind(). A handle and not
@@ -348,7 +350,37 @@ public:
 
     // Enter a capsule. The arguments are the top `count` values on the value
     // stack, in order, and they become slots [0, count).
-    void enter(uint32_t capsule, uint32_t count, NodeIndex call);
+    void enter(uint32_t capsule, uint32_t count, NodeIndex call,
+               uint32_t call_file = 0);
+
+    // WHICH FILE'S TREE AN OP'S NODE INDEXES -- M25.
+    const Ast &ast_of(uint32_t file) const { return program_.ast_of(file, ast_); }
+
+    // THE LAUNCHES OF THE FILE satl WAS GIVEN, which run after its top level
+    // and before `satellite.main` -- M25. The file's own includes ran inside
+    // run_top_level(), in the order they were written.
+    void run_launches();
+
+    // THE CALL SITE THE NEXT op_enter RECORDS ON ITS FRAME -- M25. An include
+    // enters a launch through the capsule's entry op, which has no call node of
+    // its own; op_include names itself here first.
+    void call_from(NodeIndex node, uint32_t file)
+    {
+        pending_call_ = node;
+        pending_call_file_ = file;
+    }
+    std::pair<NodeIndex, uint32_t> take_call_site()
+    {
+        const std::pair<NodeIndex, uint32_t> out{pending_call_, pending_call_file_};
+        pending_call_ = kNoNode;
+        pending_call_file_ = 0;
+        return out;
+    }
+
+    // A FILE'S LOADING ACCESS, ON THIS WALK'S LIST -- M25, and only once the
+    // program can start a thread. False means the walk was refused.
+    bool hold_loading(uint32_t file);
+    void release_loading(uint32_t file);
 
     // Leave the innermost capsule with this answer. Both `satellite.return` and
     // falling off the end of a body come here.
@@ -474,6 +506,9 @@ private:
         return work_.empty() ? errors::kNowhere : span_of(work_.back().op);
     }
     uint32_t globals_depth_ = kNotHeld;
+    std::vector<uint32_t> loading_held_;
+    NodeIndex pending_call_ = kNoNode;
+    uint32_t pending_call_file_ = 0;
     bool statement_writes_ = true; // this frame's current statement
     thread::ThreadWait own_wait_;
     thread::ThreadWait *wait_ = &own_wait_;

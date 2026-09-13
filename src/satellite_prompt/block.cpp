@@ -52,6 +52,17 @@ Scan scan(const std::string &line)
     bool saw_brace = false;
     bool after_library = false;
 
+    // AN INCLUDE THAT HANDS ITS SPACESHIP ARGUMENTS IS A STATEMENT AT THE
+    // PROMPT -- M25. Its arguments are expressions of the line, which may name
+    // what earlier lines left behind, and those are parameters of the wrapped
+    // capsule rather than anything the top of a file can see. So it runs once,
+    // as part of its line. A bare `satellite.include(ship)` is still a
+    // top-level form, which is what lets later lines say `ship.setup()`.
+    int parentheses = 0;
+    for (const Token &token : tokens)
+        if (token.kind == TokenKind::Punct && token.text == "(")
+            parentheses++;
+
     for (const Token &token : tokens) {
         switch (token.kind) {
         case TokenKind::Error:
@@ -111,7 +122,8 @@ Scan scan(const std::string &line)
                 continue;
             }
             // Segment 1 -- the word the parser dispatches on.
-            if (is_top_level_word(token.text))
+            if (is_top_level_word(token.text) &&
+                !(token.text == "include" && parentheses > 1))
                 out.placement = Placement::TopLevel;
             if (opens_a_body(token.text))
                 head = true;

@@ -137,6 +137,8 @@ void Writer::expand_type(NodeIndex node)
         return;
     const Node &n = ast_[node];
     if (n.a == words::kNoSpelling) {
+        if (const uint32_t qualifier = ast_.qualifier_of(node); qualifier != 0)
+            say(std::string(ast_.token(qualifier).text) + ".");
         say(text(node));
         return;
     }

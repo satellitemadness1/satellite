@@ -175,8 +175,11 @@ void section_codes()
     // than one thread -- kept in satellite.log, the author's Q4. AND 145
     // WITH S1407, a join that would wait for itself, AND 146 WITH S1408 AT
     // T2, a wait on a thread's access list that would never end.
-    check(kCodeCount == 146,
-          "errors.def has 146 rows -- if that changed on purpose, change it here "
+    // AND 158 WITH M25's INCLUDE HALF, 2026-09-13: S0246 and S0247 where a
+    // launch may not go, S0528-S0530 and S0533 in resolve, S0734 for arguments
+    // no launch takes, and the loader's S1601, S1602, S1604, S1605 and S1606.
+    check(kCodeCount == 158,
+          "errors.def has 158 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

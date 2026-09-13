@@ -117,6 +117,9 @@ void Printer::expand_type(NodeIndex node)
     // No type space: either the singleton `satellite` or a spacesuit named
     // bare, and the token says which without a third field.
     if (n.a == words::kNoSpelling) {
+        // `ship.box` -- M25's qualified spacesuit, printed as it was written.
+        if (const uint32_t qualifier = ast_.qualifier_of(node); qualifier != 0)
+            say(std::string(ast_.token(qualifier).text) + ".");
         say(text(node));
         return;
     }

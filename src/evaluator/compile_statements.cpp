@@ -43,20 +43,29 @@ namespace eval {
 // resolved to a field read. Nothing here re-decides any of that.
 OpIndex Compiler::construct(NodeIndex at, uint32_t layout)
 {
-    const resolve::Suit *suit = nullptr;
-    for (const resolve::Suit &each : resolved_.suits)
-        if (const auto found = suits_.find(each.path);
-            found != suits_.end() && found->second == layout)
-            suit = &each;
-    if (suit == nullptr)
+    // THE LIST WAS COMPILED BY THE SUIT'S OWN FILE -- Linking::fields says why.
+    // One list per layout, shared by every declaration that builds one: an op
+    // is immutable, so two parents naming one child is two walks of it.
+    const auto compiled = linking_.fields.find(layout);
+    if (compiled == linking_.fields.end())
         return kNoOp;
+    return emit(op_construct, at, layout, compiled->second);
+}
 
-    std::vector<OpIndex> fields;
-    for (const resolve::Field &field : suit->fields)
-        fields.push_back(field.init == kNoNode
-                             ? emit(op_constant, at, out_.add_constant(Value::nothing()))
-                             : compile_tree(field.init));
-    return emit(op_construct, at, layout, out_.add_list(fields));
+void Compiler::compile_fields()
+{
+    for (const resolve::Suit &suit : resolved_.suits) {
+        const auto layout = suits_.find(suit.path);
+        if (layout == suits_.end())
+            continue;
+        std::vector<OpIndex> fields;
+        for (const resolve::Field &field : suit.fields)
+            fields.push_back(field.init == kNoNode
+                                 ? emit(op_constant, suit.node,
+                                        out_.add_constant(Value::nothing()))
+                                 : compile_tree(field.init));
+        linking_.fields[layout->second] = out_.add_list(fields);
+    }
 }
 
 // THE CONSTRUCTOR RUNS AFTER THE OBJECT IS STORED, AS A CALL ON THE NAME --
@@ -80,14 +89,14 @@ std::vector<OpIndex> Compiler::constructor_chain(NodeIndex at,
                                                  const std::vector<OpIndex> &arguments)
 {
     std::vector<OpIndex> steps{stored};
-    const resolve::Suit *suit = resolved_.suit_at(about.type);
+    const resolve::Suit *suit = suit_anywhere(about.type);
     if (suit == nullptr)
         return steps;
 
     std::vector<const resolve::Suit *> lineage;
     for (const resolve::Suit *each = suit; each != nullptr;
          each = each->parent == words::kNoPath ? nullptr
-                                               : resolved_.suit_at(each->parent))
+                                               : suit_anywhere(each->parent))
         lineage.insert(lineage.begin(), each);
 
     const resolve::Method *chosen = suit->method_named("constructor");
@@ -335,6 +344,30 @@ bool Compiler::step_statement(NodeIndex node, uint32_t step_number)
             return true;
         }
         finish(emit(op_return, node, n.a == kNoNode ? kNoOp : take()));
+        return true;
+
+    case NodeKind::Include:
+        // `satellite.include(satellite)` AND `satellite.include()` INSIDE A
+        // CAPSULE DO WHAT THEY DO AT THE TOP OF A FILE, which is nothing --
+        // compile.cpp's pass 3 carries DESIGN §3's argument. An empty block is
+        // the statement that does nothing.
+        if (info(node).path !=
+            static_cast<words::PathId>(words::NodeId::INCLUDE_SPACESHIP)) {
+            finish(emit(op_block, node, kNoOpList));
+            return true;
+        }
+        // AN INCLUDE INSIDE A CAPSULE -- M25. Its arguments are this capsule's
+        // expressions, so they are visited like a call's; what they are handed
+        // to is decided when the line runs, by op_include.
+        if (step_number == 0 &&
+            info(node).path ==
+                static_cast<words::PathId>(words::NodeId::INCLUDE_SPACESHIP)) {
+            again(1);
+            for (NodeIndex argument : include_arguments(node))
+                visit(argument);
+            return true;
+        }
+        finish(include(node));
         return true;
 
     case NodeKind::Block:

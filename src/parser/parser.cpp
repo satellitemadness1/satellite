@@ -242,7 +242,7 @@ void Parser::run()
 // The entry points
 // ---------------------------------------------------------------------------
 
-Parse parse(std::vector<Token> tokens, words::Words &words)
+Parse parse(std::vector<Token> tokens, words::Words &words, words::PathId library)
 {
     // AN EMPTY STREAM IS NOT A THING THE LEXER PRODUCES -- lex() always ends
     // with End -- so this is about a caller that built a vector by hand, which
@@ -266,7 +266,7 @@ Parse parse(std::vector<Token> tokens, words::Words &words)
     if (!result.errors.empty())
         return result;
 
-    Parser parser(result.ast, words);
+    Parser parser(result.ast, words, library);
     parser.run();
 
     // ASKED BEFORE take_errors() AND NOT AFTER, which is a one-line ordering
@@ -289,9 +289,9 @@ Parse parse(std::vector<Token> tokens, words::Words &words)
     return result;
 }
 
-Parse parse(const std::string &source, words::Words &words)
+Parse parse(const std::string &source, words::Words &words, words::PathId library)
 {
-    return parse(lex(source), words);
+    return parse(lex(source), words, library);
 }
 
 } // namespace satellite

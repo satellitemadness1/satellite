@@ -41,6 +41,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <string>
 #include <vector>
 
 namespace satellite::eval {
@@ -156,6 +157,39 @@ struct Capsule {
     // A SPACESUIT'S METHOD, whose receiver is slot 0 -- what Machine::enter()
     // puts on the thread's access list for the call (THREAD.md T2).
     bool method = false;
+
+    // WHICH FILE DECLARED IT -- M25. `node` indexes that file's tree.
+    uint32_t file = 0;
+};
+
+// ONE `satellite.capsule.launch`, AS AN INCLUDE MATCHES ARGUMENTS TO IT -- M25,
+// the author's "smart arg passing -- we look for where the arguments fit". A
+// launch fits when the include hands it one value per parameter and every value
+// is one its parameter's declared type can hold.
+struct Launch {
+    uint32_t capsule = 0;
+
+    // Each parameter's declared type, and -- for a spacesuit parameter -- the
+    // layouts an object may have been built from: the suit's own and every
+    // suit that extends it, found by review when a `dog` did not fit an
+    // `animal` parameter. Empty for any other type; kNoPath fits anything.
+    std::vector<words::PathId> types;
+    std::vector<std::vector<uint32_t>> layouts;
+};
+
+// ONE FILE OF THE PROGRAM -- M25. File 0 is the one satl was given; file n is
+// the nth spaceship the loader met. What runs when a file is included is here.
+struct File {
+    std::string name;          // the spaceship's name, empty for file 0
+    const Ast *ast = nullptr;  // the tree its ops' nodes index
+
+    // THE FILE'S GLOBALS, SET UP ONCE AT THE START OF THE RUN, and the includes
+    // written at its top, run the first time the file itself is included. File
+    // 0's two are inside `top()` in the order they were written, as always.
+    OpIndex setup = kNoOp;
+    OpIndex includes = kNoOp;
+
+    std::vector<Launch> launches;
 };
 
 // An inline cache cell -- PLAN §2.4. One per dispatching call site.
@@ -178,7 +212,7 @@ struct Cache {
 class Compiled {
 public:
     OpIndex add(OpFn fn, NodeIndex node, uint32_t a = 0, uint32_t b = 0,
-                uint32_t c = 0, uint32_t d = 0);
+                uint32_t c = 0, uint32_t d = 0, uint32_t file = 0);
 
     OpListId add_list(const std::vector<OpIndex> &items);
 
@@ -193,6 +227,22 @@ public:
 
     NodeIndex node_of(OpIndex index) const { return nodes_[index]; }
 
+    // WHICH FILE AN OP CAME FROM -- M25, the side table beside `nodes_`, and
+    // the tree its node indexes. A program of one file answers 0 and itself.
+    uint32_t file_of(OpIndex index) const
+    {
+        return index < op_files_.size() ? op_files_[index] : 0;
+    }
+    const Ast &ast_of(uint32_t file, const Ast &own) const
+    {
+        return file == 0 || file >= files_.size() || files_[file].ast == nullptr
+                   ? own
+                   : *files_[file].ast;
+    }
+
+    const std::vector<File> &files() const { return files_; }
+    std::vector<File> &files() { return files_; }
+
     const std::vector<Capsule> &capsules() const { return capsules_; }
     std::vector<Capsule> &capsules() { return capsules_; }
 
@@ -201,6 +251,12 @@ public:
     // has no top-level statement, so there is nothing else it can be.
     OpIndex top() const { return top_; }
     void set_top(OpIndex top) { top_ = top; }
+
+    // AN INCLUDE OF FILE 0 WITH NOTHING HANDED OVER -- M25. What
+    // Machine::run_launches() pushes, so the file satl was given runs its
+    // launches through the one op every include runs through.
+    OpIndex launch_op() const { return launch_op_; }
+    void set_launch_op(OpIndex op) { launch_op_ = op; }
 
     uint32_t globals() const { return globals_; }
     uint32_t add_global() { return globals_++; }
@@ -266,12 +322,15 @@ private:
     // the empty list's count. Both are ast.hpp's tricks, kept for its reasons.
     std::vector<Op> ops_{Op{}};
     std::vector<NodeIndex> nodes_{kNoNode};
+    std::vector<uint32_t> op_files_{0};
+    std::vector<File> files_;
     std::vector<OpIndex> lists_{0};
     std::vector<Value> constants_;
     std::vector<Capsule> capsules_;
     std::vector<std::string> texts_;
     std::deque<suit::Layout> suits_;
     OpIndex top_ = kNoOp;
+    OpIndex launch_op_ = kNoOp;
     uint32_t globals_ = 0;
     uint32_t caches_ = 0;
     bool starts_threads_ = false;

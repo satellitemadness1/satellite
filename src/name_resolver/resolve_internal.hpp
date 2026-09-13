@@ -24,20 +24,72 @@
 
 namespace satellite::resolve {
 
+// THE FILES OF A RUN AND THEIR ANSWERS, which every Resolver of the run can
+// read -- M25. `results` is sized before any Resolver is built and never grown,
+// because each Resolver holds a reference to its own element.
+struct Run {
+    const std::vector<File> *files = nullptr;
+    const std::vector<Resolved> *results = nullptr;
+};
+
 class Resolver {
 public:
     Resolver(const Ast &ast, words::Words &words, const cache::Marks &marks,
              const cache::Folded &folded, Resolved &out)
         : ast_(ast), words_(words), marks_(marks), folded_(folded), out_(out)
     {
+        own_ships();
+    }
+
+    // ONE FILE OF SEVERAL -- M25. `file` is its index in `run.files`.
+    Resolver(const Run &run, uint32_t file, words::Words &words, Resolved &out)
+        : ast_(*(*run.files)[file].ast), words_(words), marks_(no_marks_),
+          folded_(no_folded_), out_(out), run_(&run), file_(file),
+          library_((*run.files)[file].library), ships_((*run.files)[file].ships)
+    {
     }
 
     void run();
 
+    // THE THREE PHASES run() IS, so resolve_run() can take every file through
+    // one before any file starts the next. See resolve.cpp.
+    void declare_names();
+    void declare_members();
+    void resolve_bodies();
+
 private:
+    // --- M25: other files ---------------------------------------------------
+
+    // A file resolved on its own still knows which names are spaceships -- it
+    // reads its own includes -- and knows nothing about what is inside them.
+    void own_ships();
+    const Spaceship *spaceship_named(std::string_view spelling) const;
+    const Spaceship *spaceship_at(words::PathId node) const;
+    const Resolved *resolved_of(uint32_t file) const;
+
+    // Whether a PathId is the node some loaded spaceship's names hang under.
+    bool a_spaceship_node(words::PathId path) const;
+
+    // Whether a member chain that stopped under `satellite.library` names a
+    // spaceship nothing loaded here -- a lookup a one-file arm must not refuse.
+    bool through_an_unloaded_spaceship(const cache::PathMatch &found) const;
+
+    // A spacesuit declared in any file of the run, by its number.
+    const Suit *suit_anywhere(words::PathId path) const;
+
+    // `ship.word`, where `ship` is a spaceship this file includes.
+    void spaceship_member(NodeIndex node, const Info &receiver, std::string_view word);
+    words::PathId qualified_type(NodeIndex node, uint32_t qualifier);
+    bool node_is_include(NodeIndex node) const
+    {
+        return ast_[node].kind == NodeKind::Include;
+    }
+
     // --- the four passes, DESIGN §7.3 (resolve.cpp) -------------------------
 
     void collect_capsules();
+    void note_globals();
+    void name_spacesuits();
     void note_spacesuits();
     void link_supers();
     void note_capsule_constants();
@@ -198,17 +250,48 @@ private:
     template <errors::Code C, typename... Args>
     void problem(NodeIndex at, Args &&...arguments)
     {
+        if (quiet_)
+            return;
         out_.problems.push_back(
             errors::make<C>(span_of(at), std::forward<Args>(arguments)...));
     }
 
-    void attach(errors::Note remark) { out_.problems.back().notes.push_back(remark); }
-    void suggest(std::string_view word) { out_.problems.back().suggestion = std::string(word); }
+    // The same, with the caret under one token rather than a node's anchor.
+    template <errors::Code C, typename... Args>
+    void problem_at_token(uint32_t token, Args &&...arguments)
+    {
+        if (quiet_)
+            return;
+        const Token &at = ast_.token(token);
+        out_.problems.push_back(errors::make<C>(
+            errors::Span{at.start, at.end, at.line, file_},
+            std::forward<Args>(arguments)...));
+    }
+
+    void attach(errors::Note remark)
+    {
+        if (!quiet_)
+            out_.problems.back().notes.push_back(remark);
+    }
+    void suggest(std::string_view word)
+    {
+        if (!quiet_)
+            out_.problems.back().suggestion = std::string(word);
+    }
+
+    // Set while a type is looked up a second time for a table, so what is
+    // wrong with it is said once -- by the walk that owns the declaration.
+    bool quiet_ = false;
 
     Info &info(NodeIndex node);
 
     const Ast &ast_;
     words::Words &words_;
+
+    // What a file resolved as part of a run has instead of a `.satc`: nothing.
+    // Declared before the references below so they bind to living objects.
+    const cache::Marks no_marks_;
+    const cache::Folded no_folded_;
     const cache::Marks &marks_;
 
     // WHICH SELECTORS THE `.satc` SAID WERE FOLDED -- M19.6. Empty for a
@@ -216,6 +299,12 @@ private:
     // comparison; cache.hpp's `Folded` says why it is offsets and not numbers.
     const cache::Folded &folded_;
     Resolved &out_;
+
+    // M25. Null and 0 for a file resolved on its own.
+    const Run *run_ = nullptr;
+    uint32_t file_ = 0;
+    words::PathId library_ = static_cast<words::PathId>(words::NodeId::LIBRARY);
+    std::vector<Spaceship> ships_;
 
     std::vector<Capsule> capsules_;
     std::vector<Capsule> suits_;

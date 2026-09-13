@@ -1,0 +1,39 @@
+satellite.include(satellite)
+
+// satellite.include(spaceship) and satellite.capsule.launch -- 2026-09-13.
+//
+// `satellite.include(cargo)` LOADS cargo.satl FROM THIS FILE'S DIRECTORY. The
+// `.satl` may be written out, and arguments in brackets go to cargo's launch
+// capsules. The file is loaded once however often it is included; every include
+// runs its launches.
+satellite.include(cargo)
+
+// THIS FILE'S OWN LAUNCH, WHICH TAKES NOTHING, runs after the includes above
+// and before satellite.main.
+satellite.capsule.launch ready()
+{
+    satellite.console.display("launch.satl: ready")
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    // AN INCLUDE INSIDE A CAPSULE RUNS WHEN THE LINE DOES, and hands its
+    // launches this capsule's own values.
+    satellite.variable.string fuel = "fuel"
+    satellite.include(cargo.satl(fuel))
+    satellite.include(cargo(fuel, 2))
+
+    satellite.variable.number loads = satellite.library.cargo.loads
+    satellite.variable.string shown = loads.to_string()
+    satellite.console.display("loads so far: " + shown)
+
+    satellite.variable.number weight = cargo.weigh(3)
+    satellite.variable.string heavy = weight.to_string()
+    satellite.console.display("three crates weigh " + heavy)
+
+    cargo.crate box
+    box.fill("apples")
+    satellite.console.display(box.describe())
+
+    satellite.return(satellite)
+}

@@ -104,7 +104,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     if (!build_program(path, built))
         return built.opened ? EXIT_MALFORMED : EXIT_USAGE;
 
-    const errors::Source against{path, built.text, &built.words};
+    const errors::Source against = built.source(path);
 
     const int which = find_main(built);
     if (which < 0) {
@@ -167,6 +167,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     install_interrupt_handler();
     clear_interrupt();
     errors::log::set_program(path);
+    errors::log::set_other_files(built.other_paths());
 
     // THE PRINTER STARTS HERE, WHERE THE COST CAN BE ATTRIBUTED. The console
     // starts it for itself on the first line queued -- console.cpp's push() --
@@ -185,6 +186,14 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     // which means the initialisers run before any capsule does, exactly as
     // resolve numbers them in a pass before the bodies.
     machine.run_top_level();
+
+    // AND THE FILE'S OWN LAUNCHES, THE ONES THAT TAKE NOTHING -- M25, the
+    // author's `satellite.capsule.launch`, which "runs right when the
+    // interpreter hits" it. Running a file is including it with no arguments,
+    // so this is op_include's own road, after the file's globals and its
+    // top-level includes and before `satellite.main`.
+    if (machine.ok())
+        machine.run_launches();
     if (machine.ok())
         machine.call(static_cast<uint32_t>(which), parameters);
 

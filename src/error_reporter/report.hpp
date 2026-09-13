@@ -58,10 +58,16 @@ namespace satellite::errors {
 // and needs no separate flag -- which matters because a Diagnostic about a
 // whole file (a `.satc` that is not one) has to be renderable without inventing
 // a byte offset for it.
+// AND WHICH FILE, SINCE M25's INCLUDE -- 2026-09-13. `file` is 0 for the file
+// satl was given and n for the nth spaceship a run loaded, which is the id
+// Source::others below is indexed by. Every span written before there was a
+// second file says 0 by default initialisation, and that is the right answer
+// for all of them.
 struct Span {
     uint32_t start = 0;
     uint32_t end = 0;
     uint32_t line = 0;
+    uint32_t file = 0;
 
     bool somewhere() const { return line != 0; }
 };
@@ -189,14 +195,12 @@ Note note(Span at, Args &&...arguments)
 // worth quoting; a diagnostic rendered by a test has text and no path. Each
 // drops the part of the header it cannot fill instead of printing a placeholder.
 //
-// ONE SOURCE AND NOT A MAP, which is where M25 will have to change something.
-// `satellite.include` makes a program more than one file, and then a Span needs
-// to say WHICH file -- the first satellite grew a SourceMap and a file id in a
-// span for exactly that. It is not built now because nothing can produce a
-// second file, and a field with no producer is a field whose meaning gets
-// settled by whoever first needs it. That is the call M4 made about a node's
-// extent, made again here for the same reason and recorded so M25 does not have
-// to rediscover it.
+// ONE SOURCE AND NOT A MAP UNTIL M25 CHANGED IT, and this paragraph predicted
+// exactly where. `satellite.include` makes a program more than one file, so a
+// Span says WHICH file (`Span::file`) and a Source carries the others: file 0
+// is this one, and file n is `others[n - 1]`. A renderer handed a span from a
+// file it has no Source for falls back to this one, which is wrong but bounded
+// -- the caret block's clamp says the same about a stale span.
 struct Source {
     std::string_view path;
     std::string_view text;
@@ -221,6 +225,18 @@ struct Source {
     // before M9 has no capsule to name. The renderer falls back to the sentence
     // it used to always print.
     const words::Words *words = nullptr;
+
+    // EVERY SPACESHIP THE RUN LOADED, by file id less one -- M25. Null for a
+    // program of one file, which is every program written before 2026-09-13.
+    const std::vector<Source> *others = nullptr;
+
+    // The Source a span of `file` is rendered against.
+    const Source &of(uint32_t file) const
+    {
+        if (file == 0 || others == nullptr || file > others->size())
+            return *this;
+        return (*others)[file - 1];
+    }
 };
 
 // The one place a diagnostic becomes characters. DESIGN §9.

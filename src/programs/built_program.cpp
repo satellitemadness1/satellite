@@ -5,6 +5,7 @@
 #include "error_reporter/report.hpp"
 #include "machine_limits/limits.hpp"
 #include "programs/check_command.hpp"
+#include "programs/spaceships.hpp"
 #include "system_facts/interrupt.hpp"
 
 #include <cstdio>
@@ -36,13 +37,19 @@ bool build_program(const std::string &path, Built &out)
 // printing, and passes true.
 bool build_source(const std::string &name, Built &out, bool report)
 {
-    const errors::Source against{name, out.text, &out.words};
+    const errors::Source against = out.source(name);
 
     out.parsed = parse(out.text, out.words);
     if (report && !out.parsed.errors.empty())
         fputs(errors::render(out.parsed.errors, against).c_str(), stderr);
     if (!out.parsed.ok())
         return false;
+
+    // A PROGRAM THAT INCLUDES ANOTHER FILE TAKES THE ROAD THAT LOADS IT -- M25.
+    // Every other program is one file and goes on below exactly as it always
+    // has, so nothing written before 2026-09-13 is built any differently.
+    if (includes_a_spaceship(out.parsed.ast))
+        return build_with_spaceships(name, out, report);
 
     out.resolved = resolve::resolve(out.parsed.ast, out.words);
     if (report && !out.resolved.problems.empty())

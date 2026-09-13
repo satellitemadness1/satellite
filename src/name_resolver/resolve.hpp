@@ -91,7 +91,33 @@ inline constexpr Slot kSlotSpacesuit = -3;
 // receiver, which lives at slot 0 of every method's frame.
 inline constexpr Slot kSlotField = -4;
 
+// The name is a SPACESHIP this file includes -- M25, 2026-09-13. `ship` in
+// `ship.setup()` and `ship.box b`: not storage and not a capsule, but the file
+// whose names the next segment is looked up among. `Info::path` is its node,
+// `satellite.library.<ship>`.
+inline constexpr Slot kSlotSpaceship = -5;
+
 constexpr bool in_a_frame(Slot slot) { return slot >= 0; }
+
+// ONE SPACESHIP, AS A FILE THAT INCLUDES IT SEES IT -- M25. The name the
+// include wrote, the node its names are numbered under, and which file of the
+// run it is. `node` is kNoPath when nothing loaded the file, which is what a
+// single-file arm like `satl --resolve` sees: the name is still a spaceship's,
+// and what is inside it is simply not known there.
+struct Spaceship {
+    std::string_view name;
+    words::PathId node = words::kNoPath;
+    uint32_t file = 0;
+};
+
+// ONE FILE OF A RUN -- M25. File 0 is the one satl was given; every other is a
+// spaceship, whose names are numbered under its own node rather than under
+// `satellite.library` itself.
+struct File {
+    const Ast *ast = nullptr;
+    words::PathId library = static_cast<words::PathId>(words::NodeId::LIBRARY);
+    std::vector<Spaceship> ships;
+};
 
 // WHERE A NUMBER CAME FROM, which the dump prints and which is the only way to
 // read MILESTONES/M4.5.md §5's clause honestly.
@@ -319,6 +345,19 @@ struct CapsuleConstant {
     NodeIndex initialiser = kNoNode;
 };
 
+// WHAT A FILE DECLARES AT ITS TOP, BY NUMBER -- M25. Another file reaching
+// `ship.setup` has a PathId from the numbering and needs to know what kind of
+// thing it is, which the numbering does not record and should not: a capsule
+// is called, a spacesuit is declared, and a global is read through
+// `satellite.library`.
+enum class Declares : uint8_t { Capsule, Spacesuit, Global };
+
+struct Declared {
+    words::PathId path = words::kNoPath;
+    Declares kind = Declares::Capsule;
+    NodeIndex node = kNoNode;
+};
+
 // Everything the pass decided, and everything it could not.
 struct Resolved {
     std::vector<Info> nodes;
@@ -339,6 +378,17 @@ struct Resolved {
     // now `suits.size()` and the honesty is kept by there being something to
     // count.
     std::vector<Suit> suits;
+
+    // Every capsule, spacesuit and global the file declares -- M25.
+    std::vector<Declared> declared;
+
+    const Declared *declared_at(words::PathId path) const
+    {
+        for (const Declared &at : declared)
+            if (at.path == path)
+                return &at;
+        return nullptr;
+    }
 
     const Suit *suit_at(words::PathId path) const
     {
@@ -377,6 +427,15 @@ struct Resolved {
 Resolved resolve(const Ast &ast, words::Words &words,
                  const cache::Marks &marks = cache::Marks(),
                  const cache::Folded &folded = cache::Folded());
+
+// EVERY FILE OF A RUN, RESOLVED TOGETHER -- M25. One answer per file, in the
+// order given, and the passes run ACROSS the files rather than one file at a
+// time: every file's names, then every file's members, then every file's
+// bodies. DESIGN §7.3's forward-reference argument is the reason, one level up
+// -- "a capsule may call one defined further down the file", and now in another
+// file, which may itself include this one.
+std::vector<Resolved> resolve_run(const std::vector<File> &files,
+                                  words::Words &words);
 
 // WHAT THE `.satc` WRITER NEEDS OUT OF ALL THIS -- M19.6, and it lives on THIS
 // side of the seam because this is the side that may name both types. cache.hpp

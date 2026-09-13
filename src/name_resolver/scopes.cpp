@@ -147,7 +147,8 @@ errors::Span Resolver::span_of(NodeIndex node) const
     // whole expression would point at `satellite.console.display("x")` where
     // what is wrong is `consle`.
     const Token &at = ast_.token_of(node);
-    return errors::Span{at.start, at.end, at.line};
+    // AND WHICH FILE, which is this Resolver's -- M25. 0 for a file on its own.
+    return errors::Span{at.start, at.end, at.line, file_};
 }
 
 } // namespace satellite::resolve

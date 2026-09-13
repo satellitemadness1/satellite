@@ -34,8 +34,7 @@ NodeIndex Parser::top_level()
 {
     switch (opening()) {
     case Segment1::Include:   return include_decl();
-    case Segment1::Capsule:   return capsule_decl(static_cast<words::PathId>(
-                                  words::NodeId::LIBRARY));
+    case Segment1::Capsule:   return capsule_decl(library_);
     case Segment1::Spacesuit: return spacesuit_decl();
     case Segment1::Library:   return global_decl();
     case Segment1::Constructor:
@@ -110,6 +109,20 @@ NodeIndex Parser::capsule_decl(words::PathId owner)
     advance();  // .
     advance();  // capsule
 
+    // `satellite.capsule.launch` -- 2026-09-13, the author's. ONE MORE WORD
+    // BEFORE THE NAME AND NOTHING ELSE CHANGES: the node is an ordinary
+    // Capsule, and ast.hpp's is_launch() reads the word back off the tokens.
+    // A launch belongs to a FILE, because it is a file that is included, so a
+    // spacesuit refuses one where it is written.
+    const bool launch =
+        at_punct(".") && at_word(1) &&
+        peek(1).spelling == words::spelling_id(words::NodeId::CAPSULE_LAUNCH);
+    const uint32_t launch_word = here() + 1;
+    if (launch) {
+        advance();  // .
+        advance();  // launch
+    }
+
     // `capsule_name := IDENT | "satellite" "." IDENT`, and the second arm is
     // RESERVED: it names a capsule the language already has a number for, which
     // today is `satellite.main` and nothing else. So the two arms do opposite
@@ -132,8 +145,7 @@ NodeIndex Parser::capsule_decl(words::PathId owner)
         name = expect_word("a name for the capsule");
         if (panic_)
             return kNoNode;
-        if (owner != static_cast<words::PathId>(words::NodeId::LIBRARY) &&
-            ast_.token(name).text == "constructor") {
+        if (owner != library_ && ast_.token(name).text == "constructor") {
             error<errors::Code::PARSE_CAPSULE_NAMED_CONSTRUCTOR>(name);
             return kNoNode;
         }
@@ -156,6 +168,18 @@ NodeIndex Parser::capsule_decl(words::PathId owner)
     const NodeIndex body = block();
     if (body == kNoNode)
         return kNoNode;
+
+    // A MISPLACED LAUNCH IS SAID ONCE THE CAPSULE HAS BEEN READ, so the parser
+    // is standing after its `}` and the next member parses as itself rather
+    // than as the rubble of this one.
+    if (launch && owner != library_) {
+        error<errors::Code::PARSE_LAUNCH_IN_SPACESUIT>(launch_word);
+        return kNoNode;
+    }
+    if (launch && words::is_language_word(path)) {
+        error<errors::Code::PARSE_LAUNCH_NEEDS_A_NAME>(name, ast_.token(name).text);
+        return kNoNode;
+    }
     return ast_.add(NodeKind::Capsule, name, path, params, returns, body);
 }
 
@@ -168,9 +192,7 @@ NodeIndex Parser::spacesuit_decl()
     const uint32_t name = expect_word("a name for the spacesuit");
     if (panic_)
         return kNoNode;
-    const words::PathId path =
-        define_name(static_cast<words::PathId>(words::NodeId::LIBRARY), name,
-                    "spacesuit");
+    const words::PathId path = define_name(library_, name, "spacesuit");
     if (panic_)
         return kNoNode;
 
@@ -418,8 +440,7 @@ NodeIndex Parser::global_decl()
     if (panic_)
         return kNoNode;
 
-    const words::PathId path = define_name(
-        static_cast<words::PathId>(words::NodeId::LIBRARY), name, "global");
+    const words::PathId path = define_name(library_, name, "global");
     if (panic_)
         return kNoNode;
 

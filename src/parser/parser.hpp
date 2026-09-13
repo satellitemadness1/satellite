@@ -76,11 +76,19 @@ struct Parse {
 // program, and M22 runs many programs in one process. A parse that reached
 // for a singleton would carry one program's capsules into the next one's
 // numbering.
-Parse parse(const std::string &source, words::Words &words);
+//
+// `library` IS WHERE THIS FILE'S NAMES ARE NUMBERED -- M25, 2026-09-13. The file
+// satl was given numbers its capsules, spacesuits and globals under
+// `satellite.library` as it always has; a spaceship numbers its own under
+// `satellite.library.<ship>`, which is what gives every file a counter of its
+// own and keeps `ship.satl`'s names out of the program's namespace.
+Parse parse(const std::string &source, words::Words &words,
+            words::PathId library = static_cast<words::PathId>(words::NodeId::LIBRARY));
 
 // Same, over a stream that has already been lexed. The tokens are MOVED into
 // the tree -- ast.hpp says why the tree owns them -- so a caller that wants to
 // keep its own copy has to say so by copying.
-Parse parse(std::vector<Token> tokens, words::Words &words);
+Parse parse(std::vector<Token> tokens, words::Words &words,
+            words::PathId library = static_cast<words::PathId>(words::NodeId::LIBRARY));
 
 } // namespace satellite

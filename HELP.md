@@ -140,8 +140,8 @@ Brings a body of words into the program. It is the first line of every
 satellite file, and until it has run the language's own names are not in
 scope, so a program without it cannot even reach `satellite.console`.
 
-It is a declaration and not a call. It sits at the top of the file,
-outside any capsule, and nothing is returned by it.
+It is not a call, and nothing is returned by it. It sits at the top of a
+file, or inside a capsule, where it runs when that line is reached.
 
     satellite.include(satellite)
 
@@ -190,12 +190,18 @@ name there.
 .  `1 1 2`  `satellite.include(spaceship)`
 > satellite.help(satellite.include)
 
-Includes another satellite file, a spaceship, so its capsules can be
-called from this one.
+Includes another satellite file, a spaceship. `satellite.include(ship)` loads
+`ship.satl` from the directory of the file that includes it; `ship.satl` may be
+written out, and arguments in brackets -- `ship(5, "five")` -- go to its
+`satellite.capsule.launch` capsules.
 
-**Not built.** The path is numbered and the parser accepts it, but nothing
-loads a second file yet, so a program that writes this line refuses when
-it runs. M25 is the milestone that builds it.
+What the spaceship declares is reached through its name and never bare:
+`ship.setup()` calls a capsule, `ship.box b` declares one of its spacesuits, and
+`satellite.library.ship.total` reads one of its globals. A file is loaded once
+however often it is included; every include runs its launches again.
+
+An include may sit at the top of a file or inside a capsule, where it runs when
+that line does.
 
 
 ## capsule
@@ -4630,4 +4636,25 @@ has its starting value, and `tally.constructor("again")` runs it again.
 > satellite.help(satellite.constructor)
 
 The bare shape.
+
+
+## capsule
+
+.  `1 2 1`  `satellite.capsule.launch`
+> satellite.help(satellite.capsule.launch)
+
+A capsule that runs when its file is included:
+`satellite.capsule.launch greet(satellite.variable.string who) { }`.
+
+`satellite.include(ship("Ada"))` hands `"Ada"` to every launch in `ship.satl`
+whose parameters fit it, one after another in the order the file declares
+them. An include with no arguments runs the launches that take none; one
+with arguments that fit no launch is refused. The file `satl` is given runs
+its own launches that take nothing, after its globals and before
+`satellite.main`.
+
+    satellite.capsule.launch hello()
+    {
+        satellite.console.display("launched")
+    }
 

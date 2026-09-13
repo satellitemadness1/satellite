@@ -176,8 +176,9 @@ const char *severity_word(Code code)
 // a test renders text with no path. The first satellite's `span_location` made
 // the same split for the same reason and its comment is the one to keep --
 // WHERE an error happened must read the same everywhere.
-std::string location(const Diagnostic &problem, const Source &source)
+std::string location(const Diagnostic &problem, const Source &whole)
 {
+    const Source &source = whole.of(problem.at.file);
     std::string out;
     if (!source.path.empty())
         out += std::string(source.path);
@@ -206,8 +207,9 @@ std::string location(const Diagnostic &problem, const Source &source)
 // at the end of the line instead, "which is wrong but bounded and visibly
 // wrong". Reached here by rendering a `.satc`'s parse error against the
 // SOURCE's text, which is a mistake somebody will make.
-std::string caret_block(Span at, const Source &source, size_t width)
+std::string caret_block(Span at, const Source &whole, size_t width)
 {
+    const Source &source = whole.of(at.file);
     if (!at.somewhere() || source.text.empty())
         return {};
 
@@ -263,9 +265,10 @@ std::string render(const Diagnostic &problem, const Source &source)
     // guess: `did you mean console?` is about one misspelled word, this is
     // about a reader fluent somewhere else. foreign.hpp's guard keeps it quiet
     // on correct satellite.
-    if (problem.at.somewhere() && !source.text.empty()) {
-        const Line here = line_around(source.text, problem.at.start);
-        const std::string advice = foreign_advice(excerpt_of(source.text, here));
+    if (const Source &own = source.of(problem.at.file);
+        problem.at.somewhere() && !own.text.empty()) {
+        const Line here = line_around(own.text, problem.at.start);
+        const std::string advice = foreign_advice(excerpt_of(own.text, here));
         for (size_t begin = 0; begin < advice.size();) {
             const size_t stop = advice.find('\n', begin);
             const size_t end = (stop == std::string::npos) ? advice.size() : stop;
@@ -298,8 +301,14 @@ std::string render(const Diagnostic &problem, const Source &source)
             named = std::string(source.words->name_of(frame.capsule));
 
         out += indent + "in " + named;
-        if (frame.at.somewhere())
+        if (frame.at.somewhere()) {
             out += ", called at line " + digits_of(frame.at.line);
+            // A CALL MADE IN ANOTHER FILE SAYS WHICH -- M25. The frames of one
+            // file need no name, which is every trace written before includes.
+            if (frame.at.file != problem.at.file &&
+                !source.of(frame.at.file).path.empty())
+                out += " of " + std::string(source.of(frame.at.file).path);
+        }
         out += "\n";
     }
     return out;

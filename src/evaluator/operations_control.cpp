@@ -311,7 +311,8 @@ void op_call(Machine &m, const Op &op, uint32_t step)
             return;
         }
         m.again(2);
-        m.enter(op.a, count, m.program().node_of(m.here()));
+        m.enter(op.a, count, m.program().node_of(m.here()),
+                m.program().file_of(m.here()));
         return;
     }
 
@@ -505,7 +506,10 @@ void op_enter(Machine &m, const Op &op, uint32_t step)
     // Machine::call() puts them on the value stack and pushes this.
     if (step == 0) {
         m.again(1);
-        m.enter(op.a, m.program().capsules()[op.a].parameters, kNoNode);
+        // WHOEVER PUSHED THIS NAMED A CALL SITE, OR NOBODY DID -- op_include
+        // names itself (M25); Machine::call() and a thread name nothing.
+        const auto [call, file] = m.take_call_site();
+        m.enter(op.a, m.program().capsules()[op.a].parameters, call, file);
         return;
     }
     m.unwind(Value::nothing());
@@ -527,6 +531,7 @@ const char *op_name(OpFn fn)
     if (fn == op_call)         return "call";
     if (fn == op_enter)        return "enter";
     if (fn == op_package)      return "package";
+    if (fn == op_include)      return "include";
     if (fn == op_construct)    return "construct";
     if (fn == op_field)        return "field";
     if (fn == op_field_store)  return "field_store";

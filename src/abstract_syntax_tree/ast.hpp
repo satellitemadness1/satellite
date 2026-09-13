@@ -245,6 +245,34 @@ public:
                tokens_[at].text == "constructor" && tokens_[at - 1].text == ".";
     }
 
+    // WHETHER A CAPSULE NODE IS A `satellite.capsule.launch` -- 2026-09-13, and
+    // it is is_constructor()'s trick one word along. The parser anchors every
+    // capsule on its NAME, so a launch is the capsule whose name is preceded by
+    // the word `launch` and the `.` before it; `satellite.capsule launch()` --
+    // a capsule the user named `launch` -- has `capsule` there instead. No
+    // payload word is spent and no printer has to be told twice.
+    bool is_launch(NodeIndex index) const
+    {
+        const uint32_t at = nodes_[index].token;
+        return nodes_[index].kind == NodeKind::Capsule && at > 1 &&
+               tokens_[at - 1].text == "launch" && tokens_[at - 2].text == ".";
+    }
+
+    // THE SPACESHIP A BARE TYPE IS QUALIFIED BY, or 0 -- M25. `ship.box b`
+    // declares a `box` from `ship.satl`; the Type node is anchored on `box`
+    // exactly as a bare `box` would be, and the qualifier is the word two
+    // tokens back. Only a type with no type space can have one, because
+    // `satellite.variable.number`'s anchor is also preceded by a `.`.
+    uint32_t qualifier_of(NodeIndex index) const
+    {
+        const uint32_t at = nodes_[index].token;
+        if (nodes_[index].kind != NodeKind::Type ||
+            nodes_[index].a != words::kNoSpelling || at < 2 ||
+            tokens_[at - 1].text != "." || tokens_[at - 2].kind != TokenKind::Word)
+            return 0;
+        return at - 2;
+    }
+
     // The text a node's anchor token was written with -- lexer.hpp's `text`,
     // which is the source's spelling and not an expansion of it.
     std::string_view text_of(NodeIndex index) const;

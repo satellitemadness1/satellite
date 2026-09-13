@@ -119,6 +119,7 @@ int call_command(const std::vector<std::string> &args)
     install_interrupt_handler();
     clear_interrupt();
     errors::log::set_program(path);
+    errors::log::set_other_files(built.other_paths());
 
     eval::Machine machine(built.program.closures, built.parsed.ast,
                           policy_from_the_limits());
@@ -145,14 +146,14 @@ int call_command(const std::vector<std::string> &args)
     // stderr, and a capsule that failed on a thread nobody joined reported
     // nothing at all. stderr is the channel; stdout still carries one value.
     const std::vector<errors::Diagnostic> abandoned = thread::close_all();
-    const errors::Source against{path, built.text, &built.words};
+    const errors::Source against = built.source(path);
     const std::vector<errors::Diagnostic> warned = errors::log::take();
     if (!warned.empty())
         fputs(errors::render(warned, against).c_str(), stderr);
 
     if (!machine.ok()) {
         fputs(errors::render(machine.problems(),
-                             errors::Source{path, built.text, &built.words})
+                             built.source(path))
                   .c_str(),
               stderr);
         // A CEILING IS NOT A MALFORMED FILE, AND NEITHER IS A CTRL-C.

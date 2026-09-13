@@ -251,7 +251,12 @@ void section_compile()
         check(answer_of(run, "it", {}) == "7", "and it too is no op at all");
     }
 
-    // A SPACESHIP IS THE ONE THAT REFUSES, IN ALL THREE OF ITS SPELLINGS. The
+    // A SPACESHIP IS THE ONE THAT REFUSES HERE, IN ALL THREE OF ITS SPELLINGS
+    // -- and since 2026-09-13 "here" is the point: this fixture compiles ONE
+    // file with no loader in front of it, which is not how satl builds a
+    // program, so there is no file to run. programs/spaceships.cpp is the
+    // loader, and `satl` refuses `"cargo"` and `satellite.console` there, as
+    // S1604, before anything compiles. The
     // bare identifier is the spelling both DESIGN §3 and WORD_NUMBERS §2.2
     // use, and it was the one that did NOT reach this refusal until M17 -- it
     // was diverted into scope lookup at resolve and came back as S0511,
@@ -268,7 +273,7 @@ void section_compile()
               std::string("satellite.include(") + spelling + ") compiles");
         call(run, "it", {});
         check(ran_into(errors::Code::EVAL_NOT_BUILT),
-              std::string("and S0720 refuses it naming M25, for `") + spelling +
+              std::string("and S0720 refuses it with no loader, for `") + spelling +
                   "` as for the other two");
     }
 

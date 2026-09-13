@@ -58,6 +58,7 @@ RANDOM   = $(SRC)/satellite_random
 STRING   = $(SRC)/satellite_string
 SYSLIB   = $(SRC)/satellite_system
 THREAD   = $(SRC)/satellite_thread
+SHIP     = $(SRC)/satellite_spaceship
 TIME     = $(SRC)/satellite_time
 VALUE    = $(SRC)/satellite_value
 TREE     = $(SRC)/abstract_syntax_tree
@@ -81,4 +82,4 @@ HELP_LINES = help_lines
 TESTS     = tests
 TESTNAMES = words_test lexer_test parser_test satc_test reporter_test \
             limits_test resolve_test number_test float_test eval_test \
-            console_test prompt_test help_test file_test
+            console_test prompt_test help_test file_test spaceship_test

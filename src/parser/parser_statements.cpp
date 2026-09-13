@@ -49,6 +49,13 @@ bool names_a_place(NodeKind kind)
 // is where it became structural.
 bool Parser::at_declaration() const
 {
+    // AND `ship.box b` -- M25, a spacesuit from another file, qualified by the
+    // spaceship that declares it. Four tokens where a bare type is two, and no
+    // expression statement begins `word . word word`, so the reading takes
+    // nothing a program could already say. `satellite` is not a spaceship: a
+    // `satellite.` path is §6.1's to dispatch on segment 1.
+    if (at_word(0) && at_punct(".", 1) && at_word(2) && at_word(3))
+        return !is_reserved_word(peek(0));
     return at_word(0) && at_word(1);
 }
 
@@ -200,12 +207,21 @@ NodeIndex Parser::block()
                     end_of_statement();
                 break;
             case Segment1::Include:
+                // AN INCLUDE INSIDE A CAPSULE IS A STATEMENT -- M25, the
+                // author's, 2026-09-13: "this is for writing a
+                // satellite.include(filename(args)) in the middle of a capsule
+                // somewhere in the middle of a file". The same node as at the
+                // top of a file, and it runs when control reaches the line.
+                value = include_decl();
+                if (value != kNoNode)
+                    end_of_statement();
+                break;
             case Segment1::Capsule:
             case Segment1::Spacesuit:
             case Segment1::Returns:
             case Segment1::Protected:
             case Segment1::Public:
-                // DESIGN §6 puts all six under `top_level` or inside a suit
+                // DESIGN §6 puts all five under `top_level` or inside a suit
                 // block, never inside a `block`. Saying which one was written is
                 // what makes this better than "unexpected token": the person
                 // wrote a real word of the language in a place it does not go.

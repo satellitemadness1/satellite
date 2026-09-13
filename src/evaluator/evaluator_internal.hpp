@@ -19,6 +19,7 @@
 #include "name_resolver/resolve.hpp"
 #include "satellite_words/words.hpp"
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -56,6 +57,8 @@ void op_refuse(Machine &m, const Op &op, uint32_t step);
 void op_no_question(Machine &m, const Op &op, uint32_t step);
 void op_misuse(Machine &m, const Op &op, uint32_t step);
 void op_options(Machine &m, const Op &op, uint32_t step);
+
+void op_include(Machine &m, const Op &op, uint32_t step);
 
 void op_block(Machine &m, const Op &op, uint32_t step);
 void op_expression(Machine &m, const Op &op, uint32_t step);
@@ -97,11 +100,56 @@ const char *op_name(OpFn fn);
 // -- the four lines below are machine.hpp's four with the nouns changed. Nothing
 // was factored out of the two, because they share no type; the resemblance is
 // the point and a shared base class would hide it.
+// WHAT EVERY FILE'S COMPILER SHARES -- M25, 2026-09-13. A run of several files
+// is ONE program: one op arena, one capsule table, one `satellite.library`, so
+// a call from `host.satl` into `ship.satl` is an ordinary op_call and a thread
+// started in either walks the same arena. What is per file is the tree and
+// what resolve said about it, and that is all a Compiler below holds of its own.
+struct Linking {
+    Compiled out;
+    std::vector<errors::Diagnostic> problems;
+    std::vector<errors::Diagnostic> deferred_refusals;
+    std::vector<uint32_t> op_began;
+    std::unordered_map<words::PathId, uint32_t> capsules;
+    std::unordered_map<words::PathId, uint32_t> globals;
+    std::unordered_map<words::PathId, uint32_t> suits;
+
+    // Every file's resolve, by file id -- a spacesuit is looked up in all of
+    // them, because `ship.box b` in one file constructs a layout another made.
+    std::vector<const resolve::Resolved *> files;
+
+    // Which file an Include node loads, per including file: (node, file id).
+    std::vector<std::vector<std::pair<NodeIndex, uint32_t>>> includes;
+
+    // EVERY LAYOUT'S FIELD INITIALISERS, COMPILED ONCE BY THE FILE THAT
+    // DECLARED THE SUIT -- M25, by layout index. `ship.crate box` in another
+    // file constructs a crate whose initialisers are nodes of `ship.satl`'s
+    // tree, and only ship's compiler reads that tree. Found by running
+    // example/spaceships/launch.satl, whose first `cargo.crate` compiled
+    // cargo's node numbers against launch.satl and refused with a caret on the
+    // wrong line of the wrong file.
+    std::unordered_map<uint32_t, OpListId> fields;
+};
+
 class Compiler {
 public:
     Compiler(const Ast &ast, const resolve::Resolved &resolved, words::Words &words);
 
+    // ONE FILE OF A RUN -- M25. `linking.files[file]` must be this file's.
+    Compiler(Linking &linking, uint32_t file, const Ast &ast,
+             const resolve::Resolved &resolved, words::Words &words);
+
     Compiled compile();
+
+    // THE THREE HALVES OF compile(), for a run of several files. register_file()
+    // is passes 1, 1b and 2 -- every capsule, layout and global slot -- and runs
+    // for every file before compile_file() runs for any, which is DESIGN §7.3's
+    // forward reference across files. finish_run() is the last step of
+    // compile() and runs once.
+    void register_file();
+    void compile_fields();
+    void compile_file();
+    static Compiled finish_run(Linking &linking, const std::vector<uint32_t> &setup_order);
 
     std::vector<errors::Diagnostic> take_problems() { return std::move(problems_); }
 
@@ -213,6 +261,16 @@ private:
     // Which spacesuit this path is a method of, or null -- M26.
     const resolve::Suit *suit_of_method(words::PathId path) const;
 
+    // A spacesuit declared in any file of the run -- M25.
+    const resolve::Suit *suit_anywhere(words::PathId path) const;
+
+    // `satellite.include(ship(args))` -- M25. The file it loads, or kNotLoaded
+    // when the loader did not load one, which is a program built on its own.
+    static constexpr uint32_t kNotLoaded = 0xFFFFFFFFu;
+    uint32_t file_included(NodeIndex include) const;
+    OpIndex include(NodeIndex node);
+    std::vector<NodeIndex> include_arguments(NodeIndex node) const;
+
     // `satellite.help(x)`'s one argument, compiled. The path or the declared
     // type is folded to a constant HERE, at compile time, and the misuses are
     // refused here too -- so nothing about the ask is decided while the program
@@ -254,35 +312,47 @@ private:
         uint32_t step = 0;
     };
 
+    // THE SHARED HALF, OWNED HERE FOR A PROGRAM OF ONE FILE -- M25. Declared
+    // first so the references below bind to a living object.
+    std::unique_ptr<Linking> own_;
+    Linking &linking_;
+    uint32_t file_ = 0;
+
     const Ast &ast_;
     const resolve::Resolved &resolved_;
     words::Words &words_;
 
-    Compiled out_;
-    std::vector<errors::Diagnostic> problems_;
-    std::vector<errors::Diagnostic> deferred_refusals_;
+    Compiled &out_;
+    std::vector<errors::Diagnostic> &problems_;
+    std::vector<errors::Diagnostic> &deferred_refusals_;
 
     std::vector<Task> tasks_;
 
     // WHERE EACH NODE'S OPS BEGAN, and each op's node's beginning -- what
     // Compiled::statement_writes() is computed from at the end of compile().
     std::unordered_map<NodeIndex, uint32_t> began_;
-    std::vector<uint32_t> op_began_;
+    std::vector<uint32_t> &op_began_;
     std::vector<OpIndex> results_;
 
     // Which compiled capsule a capsule's PathId is. Built in a pass of its own
     // before any body is compiled, so that a call to a capsule declared further
     // down the file resolves -- which is DESIGN §7.3's reason for resolve
     // running in four passes, and this walk has the same forward reference.
-    std::unordered_map<words::PathId, uint32_t> capsules_;
+    std::unordered_map<words::PathId, uint32_t> &capsules_;
 
     // Which global slot a `satellite.library.NAME` PathId is.
-    std::unordered_map<words::PathId, uint32_t> globals_;
+    std::unordered_map<words::PathId, uint32_t> &globals_;
 
     // Which layout a spacesuit's PathId is -- M26, `capsules_`' shape one
     // declaration kind over, and filled in the same pass and for the same
     // reason: a field initialiser may construct a suit declared further down.
-    std::unordered_map<words::PathId, uint32_t> suits_;
+    std::unordered_map<words::PathId, uint32_t> &suits_;
+
+    // THIS FILE'S TOP LEVEL, AS register_file() AND compile_file() LEAVE IT --
+    // M25. For file 0 it is the program's top block; for a spaceship it is the
+    // globals' initialisers (`setup`) and the includes written at its top.
+    std::vector<OpIndex> setup_;
+    std::vector<OpIndex> top_includes_;
 
     // The spacesuit whose method is being compiled, or null. resolve's member
     // of the same name is the other half; a field index means nothing without

@@ -44,7 +44,9 @@ std::string arity_text(uint32_t count)
 
 Machine::Machine(const Compiled &program, const Ast &ast, const Policy &policy)
     : Machine(program, ast, policy,
-              std::make_shared<Globals>(program.globals()))
+              std::make_shared<Globals>(
+                  program.globals(),
+                  static_cast<uint32_t>(program.files().size())))
 {
 }
 
@@ -117,7 +119,8 @@ void Machine::push_value(Value value)
     value_.push_back(std::move(value));
 }
 
-void Machine::enter(uint32_t capsule, uint32_t count, NodeIndex call)
+void Machine::enter(uint32_t capsule, uint32_t count, NodeIndex call,
+                    uint32_t call_file)
 {
     const Capsule &target = program_.capsules()[capsule];
 
@@ -156,7 +159,7 @@ void Machine::enter(uint32_t capsule, uint32_t count, NodeIndex call)
 
     frames_.push_back({base, static_cast<uint32_t>(work_.size() - 1),
                        static_cast<uint32_t>(value_.size()), target.path, call,
-                       std::move(holding), statement_writes_});
+                       call_file, std::move(holding), statement_writes_});
     statement_writes_ = true;
     push(target.body);
 }
@@ -218,8 +221,10 @@ errors::Span Machine::span_of(OpIndex op) const
     const NodeIndex node = program_.node_of(op);
     if (node == kNoNode)
         return errors::kNowhere;
-    const Token &at = ast_.token_of(node);
-    return errors::Span{at.start, at.end, at.line};
+    // THE FILE THE OP CAME FROM, AND ITS TREE -- M25.
+    const uint32_t file = program_.file_of(op);
+    const Token &at = ast_of(file).token_of(node);
+    return errors::Span{at.start, at.end, at.line, file};
 }
 
 std::string_view Machine::text_of(OpIndex op) const
@@ -227,6 +232,7 @@ std::string_view Machine::text_of(OpIndex op) const
     const NodeIndex node = program_.node_of(op);
     if (node == kNoNode)
         return {};
+    const Ast &tree = ast_of(program_.file_of(op));
     // A CALL'S ANCHOR TOKEN IS ITS `(` (ast.hpp's table), AND NO SENTENCE
     // WANTS THAT WORD. Every caller here is building a refusal that quotes
     // what was ASKED -- `held`, `size`, a capsule's name -- so a call answers
@@ -242,12 +248,12 @@ std::string_view Machine::text_of(OpIndex op) const
     // refusal would open "`[` was asked about position 9" -- M12's exact
     // finding, arriving at the second bracketing form the grammar has.
     NodeIndex named = node;
-    while ((ast_[named].kind == NodeKind::Call ||
-            ast_[named].kind == NodeKind::Index ||
-            ast_[named].kind == NodeKind::Slice) &&
-           ast_[named].a != kNoNode)
-        named = ast_[named].a;
-    return ast_.text_of(named);
+    while ((tree[named].kind == NodeKind::Call ||
+            tree[named].kind == NodeKind::Index ||
+            tree[named].kind == NodeKind::Slice) &&
+           tree[named].a != kNoNode)
+        named = tree[named].a;
+    return tree.text_of(named);
 }
 
 std::vector<errors::FrameRef> Machine::call_stack() const
@@ -259,11 +265,13 @@ std::vector<errors::FrameRef> Machine::call_stack() const
     const size_t show = frames_.size() < kFramesPrinted ? frames_.size() : kFramesPrinted;
     for (size_t i = 0; i < show; i++) {
         const Frame &frame = frames_[frames_.size() - 1 - i];
+        const Ast &tree = ast_of(frame.call_file);
         out.push_back({frame.capsule, frame.call == kNoNode
                                           ? errors::kNowhere
-                                          : errors::Span{ast_.token_of(frame.call).start,
-                                                         ast_.token_of(frame.call).end,
-                                                         ast_.token_of(frame.call).line}});
+                                          : errors::Span{tree.token_of(frame.call).start,
+                                                         tree.token_of(frame.call).end,
+                                                         tree.token_of(frame.call).line,
+                                                         frame.call_file}});
     }
     return out;
 }
@@ -370,8 +378,33 @@ void Machine::refuse_wait(const std::string &what)
         here_or_nowhere(), what));
 }
 
+bool Machine::hold_loading(uint32_t file)
+{
+    if (!globals_->shared())
+        return true;
+    if (!thread::acquire(globals_->loading(file), wait_)) {
+        refuse_wait("the loading of an included file");
+        return false;
+    }
+    loading_held_.push_back(file);
+    return true;
+}
+
+void Machine::release_loading(uint32_t file)
+{
+    for (size_t i = loading_held_.size(); i > 0; i--)
+        if (loading_held_[i - 1] == file) {
+            thread::release(globals_->loading(file));
+            loading_held_.erase(loading_held_.begin() + static_cast<long>(i - 1));
+            return;
+        }
+}
+
 void Machine::release_accesses()
 {
+    for (const uint32_t file : loading_held_)
+        thread::release(globals_->loading(file));
+    loading_held_.clear();
     for (Frame &frame : frames_)
         if (frame.holding) {
             thread::release(frame.holding->access);
@@ -442,9 +475,24 @@ void Machine::run()
 
 void Machine::run_top_level()
 {
+    // FILE 0 IS INCLUDED BY BEING RUN -- M25. Its top-level includes are in the
+    // block below, so an include of it from a spaceship later runs its
+    // launches and not those includes a second time.
+    globals_->claim(0);
     if (program_.top() == kNoOp)
         return;
     push(program_.top());
+    run();
+}
+
+void Machine::run_launches()
+{
+    if (program_.files().empty() || program_.files()[0].launches.empty())
+        return;
+    // AN INCLUDE OF FILE 0 WITH NO ARGUMENTS, which is what running a file is.
+    // The op is made here rather than compiled, because it names nothing a
+    // program wrote; `launch_op_` holds it so a span has something to say.
+    push(program_.launch_op());
     run();
 }
 
@@ -452,12 +500,14 @@ Value Machine::call(uint32_t capsule, const std::vector<Value> &arguments)
 {
     const Capsule &target = program_.capsules()[capsule];
     if (arguments.size() != target.parameters) {
+        const Ast &tree = ast_of(target.file);
         refuse(errors::make<errors::Code::EVAL_ARGUMENT_COUNT>(
             target.node == kNoNode ? errors::kNowhere
-                                   : errors::Span{ast_.token_of(target.node).start,
-                                                  ast_.token_of(target.node).end,
-                                                  ast_.token_of(target.node).line},
-            std::string(ast_.text_of(target.node)),
+                                   : errors::Span{tree.token_of(target.node).start,
+                                                  tree.token_of(target.node).end,
+                                                  tree.token_of(target.node).line,
+                                                  target.file},
+            std::string(tree.text_of(target.node)),
             arity_text(target.parameters),
             std::to_string(arguments.size())));
         return Value::nothing();

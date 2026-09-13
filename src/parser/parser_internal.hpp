@@ -108,7 +108,11 @@ constexpr Segment1 segment1_of(words::SpellingId id)
 
 class Parser {
 public:
-    Parser(Ast &ast, words::Words &words) : ast_(ast), words_(words) {}
+    Parser(Ast &ast, words::Words &words,
+           words::PathId library = static_cast<words::PathId>(words::NodeId::LIBRARY))
+        : ast_(ast), words_(words), library_(library)
+    {
+    }
 
     void run();
 
@@ -280,6 +284,9 @@ private:
 
     Ast &ast_;
     words::Words &words_;
+
+    // WHERE THIS FILE'S OWN NAMES ARE NUMBERED -- parser.hpp's parse() says why.
+    words::PathId library_;
     std::vector<errors::Diagnostic> errors_;
 
     // Where each name this program declared was declared, so a second

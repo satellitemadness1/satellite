@@ -27,6 +27,8 @@
 #include "name_resolver/resolve.hpp"
 #include "satellite_words/words.hpp"
 
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace satellite::eval {
@@ -62,5 +64,21 @@ struct Program {
 // parse: half a program's names were never bound, so every call in it would be
 // refused and the carets would bury the one thing that is actually wrong.
 Program compile(const Ast &ast, const resolve::Resolved &resolved, words::Words &words);
+
+// ONE FILE OF A PROGRAM OF SEVERAL -- M25. The tree, what resolve said about
+// it, the spaceship's name (empty for file 0), and which file each of its
+// Include nodes loads.
+struct Unit {
+    const Ast *ast = nullptr;
+    const resolve::Resolved *resolved = nullptr;
+    std::string name;
+    std::vector<std::pair<NodeIndex, uint32_t>> includes;
+};
+
+// Every file, compiled into ONE program -- one op arena, one capsule table, one
+// `satellite.library`. `setup_order` is the order the files' globals are set up
+// in at the start of a run: every file after the files it includes.
+Program compile_run(const std::vector<Unit> &units, words::Words &words,
+                    const std::vector<uint32_t> &setup_order);
 
 } // namespace satellite::eval

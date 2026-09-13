@@ -46,6 +46,7 @@ namespace detail {
 struct State {
     std::mutex lock;
     std::string program;             // what each line names; "" = unknown
+    std::vector<std::string> others; // M25: file n's path is others[n - 1]
     std::string file;                // "" = ~/.satl/satellite.log
     std::vector<Diagnostic> to_print;
 };
@@ -80,6 +81,25 @@ inline void set_program(std::string path)
     }
     std::lock_guard<std::mutex> held(detail::state().lock);
     detail::state().program = std::move(path);
+    detail::state().others.clear();
+}
+
+// EVERY OTHER FILE OF THE RUN, IN FILE-ID ORDER -- M25. Called after
+// set_program(), which forgets the last run's. A warning raised in a spaceship
+// names the spaceship's file and not the program's -- found by review, where a
+// warning at line 13 of `ship.satl` was logged against a host with no line 13.
+inline void set_other_files(const std::vector<std::string> &paths)
+{
+    std::vector<std::string> absolute;
+    for (std::string path : paths) {
+        if (char *whole = ::realpath(path.c_str(), nullptr)) {
+            path = whole;
+            std::free(whole);
+        }
+        absolute.push_back(std::move(path));
+    }
+    std::lock_guard<std::mutex> held(detail::state().lock);
+    detail::state().others = std::move(absolute);
 }
 
 // WHERE THE LOG IS WRITTEN INSTEAD -- tests/eval_test, so a fixture's warnings
@@ -110,6 +130,8 @@ inline bool append(const Diagnostic &warning)
     {
         std::lock_guard<std::mutex> held(detail::state().lock);
         program = detail::state().program;
+        if (warning.at.file != 0 && warning.at.file <= detail::state().others.size())
+            program = detail::state().others[warning.at.file - 1];
         redirected = !detail::state().file.empty();
     }
     const std::string file = path();

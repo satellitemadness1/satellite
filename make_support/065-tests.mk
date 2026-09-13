@@ -309,6 +309,8 @@ $(TESTS)/limits_test/limits_test: $(limits_test_SRCS) $(limits_test_HDRS) \
 # build machine.
 RESOLVE_TEST_SRCS = $(RESOLVE)/resolve.cpp \
                     $(RESOLVE)/scopes.cpp \
+                    $(RESOLVE)/spaceships.cpp \
+                    $(SHIP)/shape.cpp \
                     $(RESOLVE)/walk.cpp \
                     $(RESOLVE)/names.cpp \
                     $(RESOLVE)/numbers.cpp \
@@ -374,9 +376,11 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(EVAL)/compile.cpp \
                  $(EVAL)/compile_expressions.cpp \
                  $(EVAL)/compile_statements.cpp \
+                 $(EVAL)/compile_includes.cpp \
                  $(EVAL)/machine.cpp \
                  $(EVAL)/operations.cpp \
                  $(EVAL)/operations_control.cpp \
+                 $(EVAL)/operations_include.cpp \
                  $(EVAL)/operations_dispatch.cpp \
                  $(EVAL)/operations_subscript.cpp \
                  $(EVAL)/dispatch.cpp \
@@ -427,6 +431,8 @@ EVAL_TEST_SRCS = $(EVAL)/evaluate.cpp \
                  $(SYSTEM)/user_facts.cpp \
                  $(RESOLVE)/resolve.cpp \
                  $(RESOLVE)/scopes.cpp \
+                 $(RESOLVE)/spaceships.cpp \
+                 $(SHIP)/shape.cpp \
                  $(RESOLVE)/walk.cpp \
                  $(RESOLVE)/names.cpp \
                  $(RESOLVE)/numbers.cpp \
@@ -535,6 +541,19 @@ $(TESTS)/prompt_test/prompt_test: $(prompt_test_SRCS) $(prompt_test_HDRS) \
 	    $(prompt_test_SRCS) $(PROMPT_TEST_SRCS)
 
 prompt_test: $(TESTS)/prompt_test/prompt_test
+
+# spaceship_test -- PLAN M25's include half, 2026-09-13. LINKS NOTHING AND RUNS
+# `satl`, because loading a second file is programs/spaceships.cpp's and no
+# other suite links it; so the dependency on the binary is the whole of what
+# makes this suite re-run when the loader changes. And on the demonstration it
+# runs, for the same reason prompt_test depends on hello world.
+$(TESTS)/spaceship_test/spaceship_test: $(spaceship_test_SRCS) $(spaceship_test_HDRS) \
+                                        .cxxflags-stamp satl \
+                                        example/spaceships/launch.satl \
+                                        example/spaceships/cargo.satl
+	$(CXX) $(CXXFLAGS) -o $@ $(spaceship_test_SRCS)
+
+spaceship_test: $(TESTS)/spaceship_test/spaceship_test
 
 # The run list is written out rather than derived, because it is an ORDER and
 # not a set. What it can no longer do is run a binary nobody built.
@@ -649,6 +668,7 @@ test: $(TESTBINS)
 	./$(TESTS)/prompt_test/prompt_test
 	./$(TESTS)/help_test/help_test
 	./$(TESTS)/file_test/file_test
+	./$(TESTS)/spaceship_test/spaceship_test satl example/spaceships
 
 # Keeps `make words_test` working, which is what fingers type.
 words_test: $(TESTS)/words_test/words_test
@@ -810,7 +830,7 @@ file_test: $(TESTS)/file_test/file_test
 TESTALIASES = words_test lexer_test parser_test satc_test reporter_test \
               limits_test resolve_test number_test float_test eval_test \
               help_test file_test \
-              prompt_test
+              prompt_test spaceship_test
 
 .PHONY: test $(TESTALIASES)
 

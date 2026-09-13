@@ -75,6 +75,8 @@
 //     S12xx   files and directories         DESIGN §9      M19
 //     S13xx   the machine's facts           DESIGN §7.7    M20
 //     S14xx   threads                       DESIGN §10.5   M23
+//     S15xx   the analyser -- `satl --check` M26.5
+//     S16xx   another file -- spaceships    PLAN M25       2026-09-13
 //
 // THE THREE ROWS ABOVE WERE ADDED AT M23 AND TWO OF THEM ARE BACKFILL. This
 // list ended at S11xx from M18 until 2026-09-12, while S12xx and S13xx had been
@@ -291,6 +293,18 @@ SAT_CODE(245, PARSE_CAPSULE_NAMED_CONSTRUCTOR, SAT_ERROR,
          "a capsule inside a spacesuit cannot be named `constructor` -- that "
          "name is the spacesuit's satellite.constructor section, which every "
          "object answers to as `.constructor()`")
+
+// THE LAUNCH CAPSULE'S TWO PLACEMENT RULES -- 2026-09-13, the author's
+// `satellite.capsule.launch name(args) { }`. A launch runs when its FILE is
+// included, so it belongs to a file and not to a spacesuit; and it is a capsule
+// of the program's own, so it takes a name the program chose.
+SAT_CODE(246, PARSE_LAUNCH_IN_SPACESUIT, SAT_ERROR,
+         "satellite.capsule.launch goes at the top of a file -- a launch runs "
+         "when its file is included, and a spacesuit is not included")
+
+SAT_CODE(247, PARSE_LAUNCH_NEEDS_A_NAME, SAT_ERROR,
+         "a satellite.capsule.launch takes a name of its own, and satellite.{1} "
+         "is the language's")
 
 // The parser's notes. 290-299, at the end of the block rather than beside the
 // errors that raise them, because a note is reused: 290 is attached by nine
@@ -566,6 +580,26 @@ SAT_CODE(527, RESOLVE_OPTION_ON_CAPSULE, SAT_ERROR,
          "`{1}` is given `{2}=`, and only a word the language owns takes "
          "named options -- a capsule's arguments go by position")
 
+// A LAUNCH THAT DECLARES A RETURN TYPE -- 2026-09-13. S0525's argument one
+// declaration over: a launch is run by `satellite.include`, and an include is a
+// statement, so nothing is waiting for the answer.
+SAT_CODE(528, RESOLVE_LAUNCH_RETURNS, SAT_ERROR,
+         "the satellite.capsule.launch `{1}` cannot declare `satellite.returns` "
+         "-- it runs when its file is included, and nothing receives what it "
+         "answers")
+
+// A NAME REACHED THROUGH A SPACESHIP -- 2026-09-13. `ship.setup()` and
+// `ship.box b` find what `ship.satl` declares; what they cannot find is
+// something it does not declare, and a global is a third case with its own
+// road, because a global is `satellite.library`'s and the author spells the
+// road `satellite.library.ship.name`.
+SAT_CODE(529, RESOLVE_NO_SUCH_SPACESHIP_MEMBER, SAT_ERROR,
+         "the spaceship `{1}` declares no capsule or spacesuit named `{2}`")
+
+SAT_CODE(530, RESOLVE_SPACESHIP_GLOBAL, SAT_ERROR,
+         "`{2}` is a global of the spaceship `{1}`, and a global is read as "
+         "satellite.library.{1}.{2}")
+
 // DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named X gets a
 // plain list with no properties, silently. Under §9 that silence is wrong --
 // the language should say so." It is said here, and only where somebody has
@@ -589,6 +623,13 @@ SAT_CODE(531, RESOLVE_ALMOST_ARGUMENTS, SAT_ERROR,
 SAT_CODE(532, RESOLVE_NO_SUCH_ARGUMENT_FIELD, SAT_ERROR,
          "the arguments object has no `{1}` on it -- DESIGN §7.7 lists what it "
          "holds, and {2} is what this build has")
+
+// AND A NAME THE SPACESHIP DOES DECLARE, WRITTEN WHERE A TYPE GOES -- found by
+// review: `ship.helper h` for a capsule `helper` said ship declares no capsule
+// or spacesuit named `helper`, which was false.
+SAT_CODE(533, RESOLVE_SPACESHIP_NOT_A_TYPE, SAT_ERROR,
+         "`{2}` in the spaceship `{1}` is not a spacesuit, so it cannot be a "
+         "type")
 
 // Resolve's notes. 590-599, at the end of the block rather than beside the
 // errors that raise them -- the arrangement S02xx and S08xx already have, and
@@ -877,6 +918,16 @@ SAT_CODE(732, EVAL_NO_SUCH_OPTION_NAME, SAT_ERROR,
 SAT_CODE(733, EVAL_NO_BIT_PATTERN, SAT_ERROR,
          "{1} has no bits -- a bit run holds a whole number of zero or more, "
          "and this one is {2}")
+
+// ARGUMENTS WITH NOWHERE TO GO -- 2026-09-13. `satellite.include(ship(5))` hands
+// 5 to every satellite.capsule.launch in `ship.satl` whose parameters fit it.
+// An include with arguments that fit none of them is the author's program
+// saying something `ship.satl` cannot hear, which is refused rather than
+// dropped; an include with NO arguments runs the launches that take none and is
+// never refused, because a file included only for its capsules is a real
+// program.
+SAT_CODE(734, EVAL_NO_LAUNCH_FITS, SAT_ERROR,
+         "nothing in the spaceship `{1}` takes {2} -- {3}")
 
 SAT_CODE(790, NOTE_EVAL_DEEPEST_CALL, SAT_NOTE,
          "the deepest call is here, and the {1} frames under it are not printed")
@@ -1518,5 +1569,36 @@ SAT_CODE(1501, ANALYSIS_SUIT_CYCLE, SAT_WARNING,
          "spacesuit by counting references, so a ring holds itself alive and "
          "is never freed. Hold one of the links with `.pointer()` if the ring "
          "should not own itself")
+
+// S16xx -- ANOTHER FILE: `satellite.include(spaceship)`, PLAN M25's first half,
+// built 2026-09-13. Everything here is found by the loader, before a line of
+// either file resolves, and is reported against the include that named the
+// file -- the one line the person can change.
+SAT_CODE(1601, SPACESHIP_NOT_FOUND, SAT_ERROR,
+         "there is no spaceship `{1}` to include -- satellite looked for {2}, "
+         "beside the file that includes it")
+
+SAT_CODE(1602, SPACESHIP_NAME_TAKEN, SAT_ERROR,
+         "the spaceship `{1}` has the name of a {2} this program already "
+         "declares, and a name is declared once")
+
+// 1603 IS NOT HERE AND THE GAP IS DELIBERATE. It was written the day the loader
+// was, for two different files with one name, and nothing can produce it: every
+// include looks beside the file that wrote it, and every file after the first
+// was found beside the first, so two files of one name would need two
+// directories. It returns with the first include that can name a directory.
+
+SAT_CODE(1604, SPACESHIP_NOT_A_NAME, SAT_ERROR,
+         "satellite.include names a spaceship by its name -- "
+         "`satellite.include(ship)`, `ship(arguments)` or "
+         "`ship.satl(arguments)` -- and this is not one")
+
+SAT_CODE(1605, SPACESHIP_UNREADABLE, SAT_ERROR,
+         "the spaceship `{1}` is {2} and could not be read: {3}")
+
+// ONE FILE REACHED UNDER TWO NAMES, WHICH ONLY A LINK CAN DO -- found by review.
+SAT_CODE(1606, SPACESHIP_TWO_NAMES, SAT_ERROR,
+         "`{1}` is the file already included as the spaceship `{2}`, and a file "
+         "is one spaceship with one name")
 
 #undef SAT_CODE

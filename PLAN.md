@@ -5184,6 +5184,56 @@ same code, span and caret M5 would print for it **without running a line of it**
 and over a clean file says so. **Two files, one run, one numbering** is the whole
 claim.
 
+*(2026-09-13: **THE INCLUDE HALF IS BUILT, AND THE AUTHOR CHANGED FOUR THINGS
+ABOUT IT ON THE WAY.** `satellite.analyze` is still owed and so are its two
+blockers above. What was decided, in the author's words where they gave them:*
+
+- ***"separate files so we can use separate name counters."*** **Not one
+  numbering counter across files, which the done-when above asked for.** Each
+  spaceship's names are numbered under its own node, `satellite.library.<ship>`,
+  so every file counts from 1. A run still has ONE numbering — a PathId is unique
+  in it, which is what lets `ship.satl`'s capsules sit in the same op arena as the
+  host's — and the counter is per file because the parent is.
+- ***"It doesn't get dragged into the global namespace."*** What a spaceship
+  declares is reached through its name and never bare: `ship.setup()` calls a
+  capsule, `ship.box b` declares one of its spacesuits, and
+  `satellite.library.ship.total` reads a global (S0530 says so to `ship.total`).
+  Inside `ship.satl` its own names are bare and its `satellite.library.total` is
+  its own. A spaceship may not share a name with anything the program declares
+  (S1602).
+- ***"what would be the point of loading them twice?"*** **None, so a file is
+  loaded once per run** however many includes name it, from however many files;
+  a file that includes the file satl was given reaches file 0, not a copy.
+  Every file's globals are set up at the start of the run, deepest include
+  first; the includes at a file's top run the first time the file is included.
+- ***`satellite.capsule.launch name(args) { }`*** — the author's word was
+  `auto`, then `start`; `launch` was chosen because `thread.start()` already
+  means run-a-thread. **`1 2 1`**, the first numbered child of `capsule`. The
+  include's arguments — `satellite.include(ship(args))`, `.satl` optional — go to
+  launches by **"smart arg passing — we look for where the arguments fit"**:
+  every launch whose parameter count and declared types fit the values runs, in
+  file order (*"match the arguments first, then run the first launch, then the
+  second"*). Arguments that fit none are refused before any launch runs (S0734);
+  an include with no arguments runs the launches that take none and is never
+  refused. The file satl is given runs its own no-argument launches after its
+  top level and before `satellite.main`; a spaceship's own `satellite.main`
+  runs only when satl is given that file. A launch declares no return (S0528)
+  and belongs to a file, not a spacesuit (S0246).
+- ***"this is for writing a satellite.include(filename(args)) in the middle of a
+  capsule."*** **An include is also a statement**, and runs when control reaches
+  it with that capsule's own values as arguments — which the plan above, where an
+  include was a top-level form only, did not allow.
+- **A spaceship is found beside the file that includes it** (a typed line at the
+  prompt looks in the current directory), and nowhere else yet. S1601, S1602 and
+  S1604–S1606 are the loader's refusals; a file named like a language word
+  under `satellite.library` (`system`, `main`) is S0241.
+- **A spaceship reaches only what it includes.** Its `satellite.library` is its
+  own node; `satellite.library.<ship>.x` reads a spaceship it includes, the file
+  satl was given included — the review's finding — among them.
+  `satellite.main` called inside a spaceship is refused.
+
+*`example/spaceships/launch.satl` and `cargo.satl` are the demonstration.)*
+
 **M26 — spacesuits.** *(New 2026-08-28. After M25.)* **Three numbered paths** —
 `satellite.spacesuit` `1 10 (0)`, `satellite.protected` `1 11 (0)` and
 `satellite.public` `1 12 (0)` — and the largest feature in this list by everything

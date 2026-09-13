@@ -38,9 +38,26 @@
 #include "parser/parser.hpp"
 #include "satellite_words/words.hpp"
 
+#include <memory>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace satellite {
+
+// ONE SPACESHIP A RUN LOADED -- PLAN M25, 2026-09-13. Everything the four passes
+// produced for it, kept for the same reason Built keeps its own: the op arena
+// indexes this tree, and the renderer quotes this text. Held by pointer in
+// Built so that neither moves once something points into it.
+struct LoadedSpaceship {
+    std::string path;        // as the including file's directory spells it
+    std::string canonical;   // the same file however it was reached
+    std::string name;        // `ship`
+    std::string text;
+    words::PathId node = words::kNoPath;  // `satellite.library.ship`
+    Parse parsed;
+    resolve::Resolved resolved;
+};
 
 // Everything the four passes produced, kept together because they refer to each
 // other.
@@ -57,6 +74,27 @@ struct Built {
     Parse parsed;
     resolve::Resolved resolved;
     eval::Program program;
+
+    // THE OTHER FILES, BY FILE ID LESS ONE -- M25. Empty for a program that
+    // includes nothing, which then builds exactly as it did before includes.
+    std::vector<std::unique_ptr<LoadedSpaceship>> ships;
+    std::vector<errors::Source> others;
+
+    // What every diagnostic about this program is rendered against: this file,
+    // and every spaceship's own text for a span that says it is in one.
+    errors::Source source(std::string_view name) const
+    {
+        return errors::Source{name, text, &words, ships.empty() ? nullptr : &others};
+    }
+
+    // Every spaceship's path, by file id less one -- for the warning log.
+    std::vector<std::string> other_paths() const
+    {
+        std::vector<std::string> out;
+        for (const auto &ship : ships)
+            out.push_back(ship->path);
+        return out;
+    }
 
     // WHETHER THE FILE OPENED, WHICH IS A DIFFERENT FAILURE FROM THE REST. A
     // path that could not be read is EXIT_USAGE -- the command line named

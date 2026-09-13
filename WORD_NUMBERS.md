@@ -365,8 +365,9 @@ Rows marked *assigned* were derived by §1's rules rather than written by hand.
 | `satellite.include` | `1 1` |  |
 | `satellite.include()` | `1 1 0` | zero arguments — 0 means nothing there |
 | `satellite.include(satellite)` | `1 1 1` | `satellite` is word 1, so it extends the path |
-| `satellite.include(spaceship)` | `1 1 2` | assigned — a user-named spaceship |
+| `satellite.include(spaceship)` | `1 1 2` | assigned — a user-named spaceship; **built 2026-09-13** — `ship`, `ship(args)` or `ship.satl(args)`, found beside the file that includes it, at the top of a file or inside a capsule |
 | `satellite.capsule` | `1 2 (0)` |  |
+| `satellite.capsule.launch` | `1 2 1` | assigned 2026-09-13 by the author — `satellite.capsule.launch name(args) { }` runs when its file is included; the include's arguments go to every launch whose parameters fit them, in file order |
 | `satellite.main` | `1 3 (0)` |  |
 | `satellite.container` | `1 4 (0)` |  |
 | `satellite.container.map` | `1 4 1 (0)` |  |

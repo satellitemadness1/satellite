@@ -239,8 +239,11 @@ void section_authority()
     // the authority over the numbering, and this suite is the only thing in the
     // tree that makes that a fact rather than a claim.
     // AND 329 SINCE `sleep(n, unit)` `1 9 4`, 2026-09-12: one row, one number.
-    check(rows.size() == 329,
-          "§2.2 should hold 329 rows, found " + std::to_string(rows.size()));
+    // AND 330 SINCE `satellite.capsule.launch` `1 2 1`, 2026-09-13 -- M25's
+    // include half. One row, one number, no marker: a launch is declared, never
+    // called bare.
+    check(rows.size() == 330,
+          "§2.2 should hold 330 rows, found " + std::to_string(rows.size()));
 
     std::set<std::string> numbers;
     size_t aliases = 0, markers = 0;
@@ -249,8 +252,8 @@ void section_authority()
         aliases += row.alias;
         markers += row.marked;
     }
-    check(numbers.size() == 325,
-          "§2.2 should carry 325 distinct numbers, found " +
+    check(numbers.size() == 326,
+          "§2.2 should carry 326 distinct numbers, found " +
               std::to_string(numbers.size()));
     check(aliases == 4, "§2.2 should declare exactly 4 aliases, found " +
                             std::to_string(aliases));
