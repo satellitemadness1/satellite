@@ -13,7 +13,7 @@
 # the language is being rebuilt, not because this build is newer than that one.
 # old_versions/first_satellite/ still answers 002 and always will.
 SATELLITE_VERSION  ?= 003
-SATELLITE_REVISION ?= 04
+SATELLITE_REVISION ?= 05
 
 # When this build happened. SOURCE_DATE_EPOCH WINS WHENEVER IT IS SET, and that
 # is not a nicety: dpkg exports it precisely so two builds of identical source

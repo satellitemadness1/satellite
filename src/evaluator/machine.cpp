@@ -156,7 +156,8 @@ void Machine::enter(uint32_t capsule, uint32_t count, NodeIndex call)
 
     frames_.push_back({base, static_cast<uint32_t>(work_.size() - 1),
                        static_cast<uint32_t>(value_.size()), target.path, call,
-                       std::move(holding)});
+                       std::move(holding), statement_writes_});
+    statement_writes_ = true;
     push(target.body);
 }
 
@@ -176,6 +177,7 @@ void Machine::unwind(Value answer)
 
     const Frame frame = std::move(frames_.back());
     frames_.pop_back();
+    statement_writes_ = frame.caller_writes;
 
     // THE ACCESS LIST GIVES BACK WHAT THIS CALL TOOK -- the object, and the
     // globals if the statement that took them was in this frame.
@@ -350,7 +352,9 @@ void Machine::refuse_depth()
 
 bool Machine::touch_globals()
 {
-    if (globals_depth_ != kNotHeld)
+    // A STATEMENT THAT ONLY READS TAKES NO HOLD -- closure.hpp's
+    // statement_writes() has the regression this fixes.
+    if (globals_depth_ != kNotHeld || !statement_writes_)
         return true;
     if (!thread::acquire(globals_->access, wait_)) {
         refuse_wait("`satellite.library`");
@@ -388,6 +392,7 @@ bool Machine::interrupted(OpIndex at)
         globals_depth_ = kNotHeld;
         thread::release(globals_->access);
     }
+    statement_writes_ = at == kNoOp || program_.statement_writes(at);
 
     if (policy_.interrupted == nullptr || !policy_.interrupted())
         return false;

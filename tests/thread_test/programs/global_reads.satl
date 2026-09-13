@@ -1,0 +1,69 @@
+// Found by the dark_mechanicum session on revision 04 (THREAD.md D24): eight
+// threads that only READ a satellite.library constant queued on each other,
+// because every statement touching a global took the exclusive hold -- 0.80 s
+// against T1's 0.04 s. Since the fix a statement that only reads takes no hold.
+// Passes when it prints "steps 160000"; its speed is the point, not asserted.
+
+satellite.include(satellite)
+
+satellite.library.multiplier = 25214903917
+satellite.library.threads = 8
+satellite.library.steps = 20000
+
+// READS A CONSTANT GLOBAL IN EVERY STEP. No object is shared, nothing is written.
+satellite.capsule reader(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number sum = 0
+    satellite.variable.number i = 0
+    satellite.statement.for (i = 0; i < n; i = i + 1)
+    {
+        sum = sum + satellite.library.multiplier
+    }
+    satellite.return(n)
+}
+
+// THE SAME WORK WITH THE CONSTANT COPIED TO A LOCAL ONCE.
+satellite.capsule local_reader(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number m = satellite.library.multiplier
+    satellite.variable.number sum = 0
+    satellite.variable.number i = 0
+    satellite.statement.for (i = 0; i < n; i = i + 1)
+    {
+        sum = sum + m
+    }
+    satellite.return(n)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.bool use_local = arguments.contains("--local")
+    satellite.variable.number count = satellite.library.threads
+    satellite.variable.number steps = satellite.library.steps
+    satellite.container.list<satellite.variable.thread> crew = satellite.container.list()
+    satellite.variable.number t = 0
+    satellite.statement.for (t = 0; t < count; t = t + 1)
+    {
+        satellite.statement.if (use_local)
+        {
+            crew.append(satellite.thread.new(local_reader(steps)))
+        }
+        satellite.statement.else
+        {
+            crew.append(satellite.thread.new(reader(steps)))
+        }
+    }
+    satellite.statement.for (t = 0; t < count; t = t + 1)
+    {
+        satellite.variable.thread one = crew[t]
+        one.start()
+    }
+    satellite.variable.number total = 0
+    satellite.statement.for (t = 0; t < count; t = t + 1)
+    {
+        satellite.variable.thread one = crew[t]
+        total = total + one.join()
+    }
+    satellite.console.display("steps " + total)
+    satellite.return(satellite)
+}

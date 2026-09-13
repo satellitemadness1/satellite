@@ -72,7 +72,14 @@ OpIndex Compiler::emit(OpFn fn, NodeIndex node, uint32_t a, uint32_t b, uint32_t
     if ((fn == op_method || fn == op_method_global || fn == op_method_field) &&
         a == static_cast<uint32_t>(words::NodeId::VARIABLE_THREAD_START_0))
         out_.set_starts_threads();
-    return out_.add(fn, node, a, b, c, d);
+    const auto began = began_.find(node);
+    const uint32_t first =
+        began == began_.end() ? static_cast<uint32_t>(out_.size()) : began->second;
+    const OpIndex made = out_.add(fn, node, a, b, c, d);
+    if (op_began_.size() <= made)
+        op_began_.resize(made + 1, made);
+    op_began_[made] = first;
+    return made;
 }
 
 errors::Span Compiler::span_of(NodeIndex node) const
@@ -132,6 +139,8 @@ OpIndex Compiler::compile_tree(NodeIndex root)
 
 void Compiler::step(NodeIndex node, uint32_t step_number)
 {
+    if (step_number == 0)
+        began_.emplace(node, static_cast<uint32_t>(out_.size()));
     if (step_expression(node, step_number))
         return;
     if (step_statement(node, step_number))
@@ -343,6 +352,25 @@ Compiled Compiler::compile()
             capsule(suit.methods[m].node);
         inside_ = nullptr;
     }
+
+    // EVERY OP'S "CAN THIS STATEMENT WRITE A GLOBAL" -- closure.hpp's
+    // statement_writes(). The walk is depth-first, so a node's ops sit between
+    // where it began and its own op; a running count of the ops that write a
+    // global answers each range in one subtraction. The four writers are every
+    // op that reaches Machine::set_global().
+    std::vector<uint32_t> writers(out_.size() + 1, 0);
+    for (OpIndex i = 0; i < out_.size(); i++) {
+        const OpFn fn = out_[i].fn;
+        const bool writes = fn == op_store_global || fn == op_index_store_global ||
+                            fn == op_method_global || fn == op_place_global;
+        writers[i + 1] = writers[i] + (writes ? 1 : 0);
+    }
+    std::vector<uint8_t> writes(out_.size(), 0);
+    for (OpIndex i = 0; i < out_.size(); i++) {
+        const uint32_t first = i < op_began_.size() ? op_began_[i] : i;
+        writes[i] = writers[i + 1] - writers[first] > 0 ? 1 : 0;
+    }
+    out_.set_writes(std::move(writes));
 
     return std::move(out_);
 }

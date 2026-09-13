@@ -214,6 +214,22 @@ public:
     bool starts_threads() const { return starts_threads_; }
     void set_starts_threads() { starts_threads_ = true; }
 
+    // WHETHER THE STATEMENT THAT ENDS AT `op` CAN WRITE `satellite.library` --
+    // THREAD.md T2, and the fix for the regression dark_mechanicum found on
+    // revision 04: every statement that merely READ a global took the
+    // exclusive hold, so eight threads reading a constant queued on each other
+    // (0.80 s against T1's 0.04 s). A statement that only reads needs no hold
+    // -- each read is whole under Globals' mutex -- and one that writes holds
+    // the globals from its first touch, so `n = n + 1` stays exact. Decided by
+    // the compiler, over every op the statement compiled to; a statement
+    // containing another (an `if` with a body that writes) counts as writing,
+    // which only ever holds more, never less.
+    bool statement_writes(OpIndex op) const
+    {
+        return op < writes_.size() && writes_[op] != 0;
+    }
+    void set_writes(std::vector<uint8_t> writes) { writes_ = std::move(writes); }
+
     // THE SPACESUIT LAYOUTS -- M26. One per suit the file declares, held by the
     // program because that is what outlives every object of it; every
     // `SuitObject` carries a bare pointer to its own, which
@@ -259,6 +275,7 @@ private:
     uint32_t globals_ = 0;
     uint32_t caches_ = 0;
     bool starts_threads_ = false;
+    std::vector<uint8_t> writes_;
 };
 
 } // namespace satellite::eval

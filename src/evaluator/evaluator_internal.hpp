@@ -263,6 +263,11 @@ private:
     std::vector<errors::Diagnostic> deferred_refusals_;
 
     std::vector<Task> tasks_;
+
+    // WHERE EACH NODE'S OPS BEGAN, and each op's node's beginning -- what
+    // Compiled::statement_writes() is computed from at the end of compile().
+    std::unordered_map<NodeIndex, uint32_t> began_;
+    std::vector<uint32_t> op_began_;
     std::vector<OpIndex> results_;
 
     // Which compiled capsule a capsule's PathId is. Built in a pass of its own

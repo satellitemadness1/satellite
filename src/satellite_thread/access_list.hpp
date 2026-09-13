@@ -31,6 +31,15 @@
 // path is waiting for the next and none can move, so the ask is refused (S1408,
 // or S1407 when the last edge is a join). THREAD.md §1: nothing hangs.
 //
+// EVERY ATOMIC OPERATION HERE IS SEQUENTIALLY CONSISTENT -- the default, and
+// load-bearing. release() stores `owner = null` and then reads `waiters`; a
+// waiter adds to `waiters` and then reads `owner`. That pair is only safe when
+// each thread sees the other's write in order. The first version asked for
+// memory_order_acquire, which lets a store be a plain `mov` that can sit in the
+// core's store buffer: the releaser saw no waiters and left, the waiter saw the
+// old owner and slept, and four threads waited for ever on a free entry --
+// caught by the 1,000-run loop (global_counter 989 of 1000) and read out of gdb.
+//
 // WHY THE WALK IS EXACT AND NOT A GUESS. Every edge it reads is written under
 // the graph mutex: `waiting_for` and `joining` are, and an Access somebody is
 // waiting for has `waiters > 0`, and its owner lets go of it only under the
@@ -40,6 +49,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <deque>
 #include <mutex>
 
 namespace satellite::thread {
@@ -55,6 +65,14 @@ struct Access {
     std::atomic<uint32_t> depth{0};
     std::atomic<uint32_t> waiters{0}; // threads registered to wait, under graph
     std::condition_variable changed;  // waited on with the graph mutex
+
+    // THE WAITERS, IN THE ORDER THEY ASKED -- under graph. Only the front may
+    // take a free Access, and nobody may take it past a waiter. Found by
+    // dark_mechanicum on revision 04: a thread calling its object in a loop won
+    // the compare-and-swap every time it came back, and a watcher reading the
+    // same object waited ~215 us per read -- with nothing promising it would
+    // ever get in at all. First come, first served is that promise.
+    std::deque<ThreadWait *> queue;
 };
 
 struct ThreadWait {
@@ -76,7 +94,7 @@ inline bool leads_back(const ThreadWait *from, const ThreadWait *me)
         if (at == me)
             return true;
         if (at->waiting_for != nullptr)
-            at = at->waiting_for->owner.load(std::memory_order_acquire);
+            at = at->waiting_for->owner.load();
         else
             at = at->joining;
     }
@@ -87,55 +105,80 @@ inline bool leads_back(const ThreadWait *from, const ThreadWait *me)
 // taken; the caller refuses.
 inline bool acquire(Access &thing, ThreadWait *me)
 {
-    if (thing.owner.load(std::memory_order_acquire) == me) {
-        thing.depth.fetch_add(1, std::memory_order_relaxed);
-        return true;
-    }
-    ThreadWait *free = nullptr;
-    if (thing.owner.compare_exchange_strong(free, me, std::memory_order_acquire)) {
-        thing.depth.store(1, std::memory_order_relaxed);
+    if (thing.owner.load() == me) {
+        thing.depth.fetch_add(1);
         return true;
     }
 
+    // FREE AND NOBODY QUEUED: one compare-and-swap. A SHORT SPIN FIRST, because
+    // most holds are one method call of a few microseconds, and sleeping on
+    // the condition variable costs a futex wake and a reschedule -- far more
+    // than the hold. The spin is a count of tries, not a limit on anything:
+    // when it runs out the thread queues and waits as long as it must.
+    for (int tries = 0; tries < 128; tries++) {
+        if (thing.waiters.load() == 0) {
+            ThreadWait *free = nullptr;
+            if (thing.owner.compare_exchange_strong(free, me)) {
+                thing.depth.store(1);
+                return true;
+            }
+        } else {
+            break;
+        }
+#if defined(__x86_64__) || defined(__i386__)
+        __builtin_ia32_pause();
+#endif
+    }
+
     std::unique_lock<std::mutex> held(graph());
-    thing.waiters.fetch_add(1, std::memory_order_acquire);
+    thing.waiters.fetch_add(1);
+    thing.queue.push_back(me);
     me->waiting_for = &thing;
     for (;;) {
-        free = nullptr;
-        if (thing.owner.compare_exchange_strong(free, me,
-                                                std::memory_order_acquire))
-            break;
-        if (leads_back(thing.owner.load(std::memory_order_acquire), me)) {
+        if (thing.queue.front() == me) {
+            ThreadWait *free = nullptr;
+            if (thing.owner.compare_exchange_strong(free, me))
+                break;
+        }
+        if (leads_back(thing.owner.load(), me)) {
+            for (auto at = thing.queue.begin(); at != thing.queue.end(); ++at)
+                if (*at == me) {
+                    thing.queue.erase(at);
+                    break;
+                }
             me->waiting_for = nullptr;
-            thing.waiters.fetch_sub(1, std::memory_order_acquire);
+            thing.waiters.fetch_sub(1);
+            // THE NEXT IN LINE MAY NOW BE AT THE FRONT.
+            thing.changed.notify_all();
             return false;
         }
         thing.changed.wait(held);
     }
+    thing.queue.pop_front();
     me->waiting_for = nullptr;
-    thing.waiters.fetch_sub(1, std::memory_order_acquire);
-    thing.depth.store(1, std::memory_order_relaxed);
+    thing.waiters.fetch_sub(1);
+    thing.depth.store(1);
     return true;
 }
 
 // LET GO OF ONE LEVEL OF `thing`, which `me` holds.
 inline void release(Access &thing)
 {
-    if (thing.depth.fetch_sub(1, std::memory_order_relaxed) > 1)
+    if (thing.depth.fetch_sub(1) > 1)
         return;
-    if (thing.waiters.load(std::memory_order_acquire) == 0) {
-        thing.owner.store(nullptr, std::memory_order_acquire);
+    if (thing.waiters.load() == 0) {
+        thing.owner.store(nullptr);
         // A THREAD MAY HAVE REGISTERED BETWEEN THE LOAD AND THE STORE. It
         // holds the graph mutex from registering until it sleeps, so taking
         // the mutex here waits until it is asleep, and the wake reaches it.
-        if (thing.waiters.load(std::memory_order_acquire) == 0)
+        if (thing.waiters.load() == 0)
             return;
         std::lock_guard<std::mutex> held(graph());
         thing.changed.notify_all();
         return;
     }
     std::lock_guard<std::mutex> held(graph());
-    thing.owner.store(nullptr, std::memory_order_acquire);
+    thing.owner.store(nullptr);
     thing.changed.notify_all();
 }
 

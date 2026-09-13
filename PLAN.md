@@ -635,7 +635,7 @@ over `make_support/`, and `satellite_enterprise/install.sh` is an index over
 ### 4.1 Two version numbers, moving at different rates
 
 `SATELLITE_VERSION` (003) is the **language**; it changes rarely and deliberately.
-`SATELLITE_REVISION` (04) is **this build of it** and goes up as work lands. 001 was
+`SATELLITE_REVISION` (05) is **this build of it** and goes up as work lands. 001 was
 what the first satellite carried while its design was being written, 002 is what it
 became, and 003 is the second satellite — the number moved because the language is
 being rebuilt, not because this build is newer.

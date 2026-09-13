@@ -155,6 +155,9 @@ struct Frame {
     // a bare pointer, so the object outlives the hold whatever the method does
     // with its slots.
     Sui holding;
+
+    // WHETHER THE CALLER'S STATEMENT WRITES A GLOBAL, put back on return.
+    bool caller_writes = true;
 };
 
 // What a run ended as.
@@ -471,6 +474,7 @@ private:
         return work_.empty() ? errors::kNowhere : span_of(work_.back().op);
     }
     uint32_t globals_depth_ = kNotHeld;
+    bool statement_writes_ = true; // this frame's current statement
     thread::ThreadWait own_wait_;
     thread::ThreadWait *wait_ = &own_wait_;
 
