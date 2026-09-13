@@ -20,11 +20,13 @@
 # sibling would start copying binaries that were still being linked.
 #
 # THE INSTALLER RUNS make ITSELF -- install_support/050-building.sh, before it
-# copies anything -- so without the MAKELEVEL test this rule recurses forever.
-# That make is started from inside this recipe and reads MAKELEVEL 1; it builds
-# `all`, finds it up to date, and stops. MAKELEVEL rather than a variable of our
-# own, because a command-line `INSTALL_AFTER_BUILD=yes` is handed to every
-# sub-make in MAKEFLAGS and would switch such a guard straight back on.
+# copies anything -- so this rule would recurse forever, and TWO LOCKS keep it
+# from doing so. The installer passes INSTALL_AFTER_BUILD=no on its make's
+# command line, which covers `sh install.sh` run by hand (whose make is a
+# top-level make, MAKELEVEL 0) and survives sudo. MAKELEVEL covers every make
+# started from inside a recipe, including one that somehow lacks that variable:
+# a command-line `make INSTALL_AFTER_BUILD=yes` is handed to every sub-make in
+# MAKEFLAGS, and only the installer's own command line outranks it.
 #
 # NOT AS ROOT. `sudo make` would run the HOME installer as root, which is not
 # the install anybody meant by it; the system install is its own command, and it

@@ -163,7 +163,14 @@ $(printf '%s\n' "$_foreign" | sed 's/^/           /')
             step "building as $SUDO_USER; root is used only for the copy"
         fi
     fi
-    make_as_builder -C "$repo" ${static_arg:+"$static_arg"}
+    # INSTALL_AFTER_BUILD=no, ON THE COMMAND LINE, because a bare `make` runs
+    # this script when it finishes (make_support/080-install.mk). Without it,
+    # `sh install.sh` builds, that make installs by running a second copy of
+    # this script, and everything is copied twice -- measured 2026-09-13, the
+    # day the hook landed. On the command line rather than in the environment
+    # because sudo -u clears the environment and a command-line variable beats
+    # anything a sub-make inherits.
+    make_as_builder -C "$repo" INSTALL_AFTER_BUILD=no ${static_arg:+"$static_arg"}
 
     # THE CHOICE. satl-cpu-level is compiled at the baseline precisely so that
     # it can run here, before anything is known about the machine, and it prints

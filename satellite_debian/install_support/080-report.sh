@@ -219,15 +219,26 @@ elif [ -L "$user_bin/satl" ] && [ "$user_bin/satl" -ef "$installed_satl" ]; then
             printf '            so the link sitting in it is never consulted.\n' ;;
     esac
 
-    # THE REMEDY IS PRINTED AND NOT PERFORMED. Taking the older file out may
-    # need root, and this script does not escalate.
-    printf '\n            This script will not touch %s: it is\n' "$found"
-    printf '            not this install%ss file. Two ways out --\n' "'"
-    printf '\n              1. remove the older install with its own uninstaller;\n'
-    printf '\n              2. or put %s ahead of\n' "$user_bin"
-    printf '                 %s in your PATH yourself. That is a\n' "$_shadow_dir"
-    printf '                 change to a file you own, so it is yours to make.\n'
-    printf '\n            Either way run `hash -r` afterwards, or open a new shell:\n'
+    # THE BUILD ITSELF ON PATH IS NOT AN OLDER INSTALL -- the tree, or build/
+    # where this installer's make puts the binaries -- so it gets no advice to
+    # remove anything. The enterprise installer told its author exactly that,
+    # wrongly, until 2026-09-13.
+    if [ "$_shadow_dir" -ef "$repo" ] || [ "$_shadow_dir" -ef "$build" ]; then
+        printf '\n            %s holds the build this install was\n' "$_shadow_dir"
+        printf '            copied from, so nothing there needs removing. To reach the\n'
+        printf '            install, put %s ahead of it in your PATH\n' "$user_bin"
+        printf '            yourself.\n'
+    else
+        # THE REMEDY IS PRINTED AND NOT PERFORMED. Taking the older file out
+        # may need root, and this script does not escalate.
+        printf '\n            This script will not touch %s: it is\n' "$found"
+        printf '            not this install%ss file. Two ways out --\n' "'"
+        printf '\n              1. remove the older install with its own uninstaller;\n'
+        printf '\n              2. or put %s ahead of\n' "$user_bin"
+        printf '                 %s in your PATH yourself. That is a\n' "$_shadow_dir"
+        printf '                 change to a file you own, so it is yours to make.\n'
+    fi
+    printf '\n            Afterwards run `hash -r`, or open a new shell:\n'
     printf '            this one has already remembered where satl was.\n'
 else
     cat <<EOF
@@ -242,14 +253,31 @@ install.sh: note -- \`satl\` already runs $found,
 EOF
 fi
 
-# Said last, because it is still the honest headline: there are binaries, and
-# none of them interprets anything yet.
+if [ -n "$found" ]; then
+    printf '\ninstall.sh: an alias or shell function named satl beats PATH, and a\n'
+    printf '            script cannot see yours: `type satl` in your shell says\n'
+    printf '            what the word really runs.\n'
+fi
+
+# THE VERSION IS READ, NOT WRITTEN HERE. This said "milestone 2 ... It still
+# runs no program" until 2026-09-13, long after M10 ran the first one. The
+# number now comes from the INSTALLED binary, and in a dry run from the root's
+# make_support/020-version.mk, which this tree's build includes and compiles
+# that number from. The enterprise installer's 080-report.sh does the same.
+if [ "$dry_run" = no ]; then
+    release=$("$installed_satl" --version 2>/dev/null | sed -n '1s/^satl //p')
+else
+    _vf=$repo/make_support/020-version.mk
+    _v=$(sed -n 's/^SATELLITE_VERSION[[:space:]]*?=[[:space:]]*//p' "$_vf" 2>/dev/null)
+    _r=$(sed -n 's/^SATELLITE_REVISION[[:space:]]*?=[[:space:]]*//p' "$_vf" 2>/dev/null)
+    release=${_v:+$_v revision $_r}
+fi
 printf '\n'
-printf 'install.sh: this build is milestone 2 -- the trie and the path interner\n'
-printf '            landed 2026-08-28, so satl knows every word in the language\n'
-printf '            and can dump the numbering with --words. It still runs no\n'
-printf '            program: the lexer is M3 and the first program runs at M10.\n'
+printf 'install.sh: this is satellite %s. `satl <file>` runs a program,\n' \
+    "${release:-(no version could be read)}"
+printf '            `satl --repl` opens the prompt, and `satl --help` lists the\n'
+printf '            rest.\n'
 if [ "$have_term" = yes ]; then
-    printf '            satl-term opens, spawns the satl beside it, and shows you\n'
-    printf '            what that satl says.\n'
+    printf '            `satl-term` is the same prompt in a window of its own, and\n'
+    printf '            `satl-term <file>` runs a program in one.\n'
 fi

@@ -89,9 +89,10 @@ if [ -n "$linked" ]; then
     done
 fi
 
-# REFUSED, AND NAMED. This is the list the machine this was written on produces
-# on every --link --desktop run, because the first satellite's installer owns
-# all of those paths and this script will not overwrite what it did not create.
+# REFUSED, AND NAMED, WITHOUT GUESSING WHOSE THEY ARE. This used to say they
+# must be the first satellite's, and on 2026-09-06 they were not: ~/.local/bin
+# held plain copies of THIS tree's binaries, put there by hand. What matters is
+# that this script did not create them, which is the one thing it knows.
 if [ -n "$occupied" ]; then
     cat <<EOF
 install.sh: note -- these paths already hold something this script did not
@@ -101,10 +102,10 @@ EOF
         [ -n "$_p" ] && printf '    %s\n' "$_p"
     done
     cat <<EOF
-            On a machine that has the first satellite installed, that is what
-            these are: its interpreter and its artwork, installed by its own
-            installer. Removing them is that install's business, not this
-            one's. Nothing above was changed.
+            They may be an older install, or copies of a satl put there by
+            hand. Delete the ones you do not want and re-run this script, and
+            it will link those names to $root.
+            Nothing above was changed.
 EOF
 fi
 
@@ -161,9 +162,10 @@ fi
 # `satl` runs whichever copy the shell finds FIRST, and $root is not on PATH by
 # design -- it is a directory of satellite's own, not a bin directory. So the
 # question worth answering is not "is it on PATH" but "what does the word satl
-# get you right now", which command -v answers exactly. On the machine this was
-# written on the answer is the FIRST satellite, and saying so is more useful
-# than any advice about PATH.
+# get you right now", which command -v answers for PATH. It cannot answer for an
+# alias or a shell function, which live in the interactive shell that started
+# this one and never reach a script -- so the closing lines below say so rather
+# than let "runs the copy just installed" stand as the whole truth.
 found=$(command -v satl 2>/dev/null || :)
 printf '\n'
 if [ -z "$found" ]; then
@@ -215,37 +217,49 @@ elif [ -L "$user_bin/satl" ] && [ "$user_bin/satl" -ef "$installed_satl" ]; then
             printf '            so the link sitting in it is never consulted.\n' ;;
     esac
 
-    # THE REMEDY IS PRINTED AND NOT PERFORMED. Taking the older file out needs
-    # root, and this script's first rule is NO ROOT, EVER -- a script that
-    # shells out to sudo in order to honour that rule has not honoured it. The
-    # prefix is derived from the shadowing file rather than assumed, so this
-    # names /usr/local because that is where the file actually is.
-    printf '\n            This script will not touch %s: it is\n' "$found"
-    printf '            not this install%ss file, and removing it needs a privilege\n' "'"
-    printf '            nothing here takes. Two ways out --\n'
-    if [ -f "$repo/old_versions/first_satellite/install.sh" ]; then
-        printf '\n              1. remove the older install with its OWN uninstaller,\n'
-        printf '                 which removes only the files it named:\n\n'
-        printf '                     sudo sh %s \\\n' \
-            "$(quoted "$repo/old_versions/first_satellite/install.sh")"
-        printf '                          --uninstall --prefix %s\n' \
-            "$(quoted "$(dirname -- "$_shadow_dir")")"
+    # THE BUILD TREE ITSELF ON PATH IS NOT AN OLDER INSTALL, and until
+    # 2026-09-13 this branch told the author to sudo-uninstall "the first
+    # satellite" from /home/madness/code/cxx when the satl ahead of the link was
+    # this tree's own build, the one the install had just been copied from.
+    # Nothing there should be removed, so that case gets no remedy but PATH.
+    if [ "$_shadow_dir" -ef "$repo" ]; then
+        printf '\n            %s is the tree this install was built\n' "$_shadow_dir"
+        printf '            from, so that satl is the same revision and needs no removing.\n'
+        if [ "$variant" = haswell ]; then
+            printf '            It is the baseline build, though, and the install is the\n'
+            printf '            haswell one chosen for this CPU.\n'
+        fi
+        printf '            To reach the install, put %s ahead of\n' "$user_bin"
+        printf '            %s in your PATH yourself.\n' "$_shadow_dir"
     else
+        # THE REMEDY IS PRINTED AND NOT PERFORMED. Taking the older file out may
+        # need root, and this script never calls sudo. The prefix is derived
+        # from the shadowing file rather than assumed.
+        printf '\n            This script will not touch %s: it is\n' "$found"
+        printf '            not this install%ss file. Two ways out --\n' "'"
         printf '\n              1. remove the older install, using whatever put it there;\n'
+        if [ -f "$repo/old_versions/first_satellite/install.sh" ]; then
+            printf '                 if it is the first satellite, its own uninstaller:\n\n'
+            _sudo=
+            [ -w "$_shadow_dir" ] || _sudo='sudo '
+            printf '                     %ssh %s \\\n' "$_sudo" \
+                "$(quoted "$repo/old_versions/first_satellite/install.sh")"
+            printf '                          --uninstall --prefix %s\n' \
+                "$(quoted "$(dirname -- "$_shadow_dir")")"
+        fi
+        printf '\n              2. or put %s ahead of\n' "$user_bin"
+        printf '                 %s in your PATH yourself. That is a\n' "$_shadow_dir"
+        printf '                 change to a file you own, so it is yours to make and not\n'
+        printf '                 this script%ss business.\n' "'"
     fi
-    printf '\n              2. or put %s ahead of\n' "$user_bin"
-    printf '                 %s in your PATH yourself. That is a\n' "$_shadow_dir"
-    printf '                 change to a file you own, so it is yours to make and not\n'
-    printf '                 this script%ss business.\n' "'"
-    printf '\n            Either way run `hash -r` afterwards, or open a new shell:\n'
+    printf '\n            Afterwards run `hash -r`, or open a new shell:\n'
     printf '            this one has already remembered where satl was.\n'
 else
     cat <<EOF
 install.sh: note -- \`satl\` already runs $found,
-            which is not the copy just installed. That is expected on a machine
-            with the first satellite on it, and nothing was done about it: this
-            install put its interpreter in $root and touched
-            nothing else. To run the one from this tree, spell it out:
+            which is not the copy just installed, and nothing was done about
+            it: this install put its interpreter in $root and
+            linked nothing to it. To run the one just installed, spell it out:
 
                 $(quoted "$installed_satl")
 
@@ -253,27 +267,34 @@ install.sh: note -- \`satl\` already runs $found,
 EOF
 fi
 
-# Said last, because it is the thing a reader of the banner will want next and
-# because it is still the honest headline: there are binaries, and none of them
-# interprets anything yet.
-#
-# THIS PARAGRAPH WENT FOUR MILESTONES STALE AND NOTHING CAUGHT IT. It said
-# "milestone 2 ... the lexer is M3" from 2026-08-28 until 2026-08-31, through
-# M3, M4, M4.5, M5 and M6 -- so the installer's closing word about what it had
-# just installed named a build three days and five milestones behind the files
-# it had copied. It was found by doing what PLAN.md sec 9 asks and nothing else
-# does: running the installed binary. Whoever lands a milestone edits this.
+if [ -n "$found" ]; then
+    printf '\ninstall.sh: an alias or shell function named satl beats PATH, and a\n'
+    printf '            script cannot see yours: `type satl` in your shell says\n'
+    printf '            what the word really runs.\n'
+fi
+
+# THE VERSION IS READ, NOT WRITTEN HERE. This paragraph used to name a milestone
+# by hand and went stale twice: "milestone 2" through M3-M6, then "milestone 6
+# ... it still runs no program" until 2026-09-13, long after M10 ran the first
+# one. So the number now comes from the INSTALLED binary, which the check above
+# already trusts as its own record, and from 020-version.mk in a dry run, where
+# no binary has been copied yet -- the file that binary's number is compiled
+# from. What follows it describes the command line, which milestones add to and
+# have not yet taken anything away from.
+if [ "$dry_run" = no ]; then
+    release=$("$installed_satl" --version 2>/dev/null | sed -n '1s/^satl //p')
+else
+    _vf=$repo/make_support/020-version.mk
+    _v=$(sed -n 's/^SATELLITE_VERSION[[:space:]]*?=[[:space:]]*//p' "$_vf" 2>/dev/null)
+    _r=$(sed -n 's/^SATELLITE_REVISION[[:space:]]*?=[[:space:]]*//p' "$_vf" 2>/dev/null)
+    release=${_v:+$_v revision $_r}
+fi
 printf '\n'
-printf 'install.sh: this build is milestone 6 -- satl knows every word in the\n'
-printf '            language and dumps the numbering with --words, lexes a file\n'
-printf '            with --tokens, parses one and prints it back with --unparse,\n'
-printf '            caches it as its numbers with --satc, says everything wrong\n'
-printf '            with it with --check, lists its own error codes with\n'
-printf '            --errors, and holds itself to a satellite_config.ini beside\n'
-printf '            this binary -- --limits prints what it settled on and where\n'
-printf '            each value came from. It still runs no program: the first\n'
-printf '            one runs at M10.\n'
+printf 'install.sh: this is satellite %s. `satl <file>` runs a program,\n' \
+    "${release:-(no version could be read)}"
+printf '            `satl --repl` opens the prompt, and `satl --help` lists the\n'
+printf '            rest.\n'
 if [ "$have_term" = yes ]; then
-    printf '            satl-term opens, spawns the satl beside it, and shows you\n'
-    printf '            what that satl says -- which today is --repl declining.\n'
+    printf '            `satl-term` is the same prompt in a window of its own, and\n'
+    printf '            `satl-term <file>` runs a program in one.\n'
 fi
