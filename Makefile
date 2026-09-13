@@ -9,6 +9,7 @@
 #
 # WHERE TO LOOK, by what you want to change:
 #
+#     how many recipes run at once ........ 005-jobs.mk
 #     a compiler or a warning flag ........ 010-compiler.mk
 #     the version number .................. 020-version.mk
 #     a new source directory .............. 030-directories.mk
@@ -19,6 +20,7 @@
 #     how a .cpp becomes a .o ............. 060-compile.mk
 #     a test, or the test target .......... 065-tests.mk
 #     what `make startup` measures ........ 067-startup.mk
+#     installing after every `make` ....... 080-install.mk
 #
 # ORDER IS LOAD-BEARING in two places, and each fragment says so at its top:
 # 010 before 020, because VERSION_DEFS bakes $(CXX) and $(CXXFLAGS) into the
@@ -45,6 +47,7 @@
 # The paths are RELATIVE, so make must be run with this directory as its working
 # directory.
 
+include make_support/005-jobs.mk
 include make_support/010-compiler.mk
 include make_support/020-version.mk
 include make_support/030-directories.mk
@@ -57,3 +60,4 @@ include make_support/060-compile.mk
 include make_support/065-tests.mk
 include make_support/067-startup.mk
 include make_support/070-clean.mk
+include make_support/080-install.mk

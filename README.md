@@ -59,6 +59,12 @@ newer, and `satl-cpu-level`, the small program that says which one this machine 
 execute. Everywhere else it produces one `satl`. [PLAN.md §4](PLAN.md) explains why
 there are two builds and why the detector is compiled at the baseline.
 
+`make` runs twenty-four jobs at once unless a `-j` on the command line says
+otherwise, and **it installs every time it builds**: once `all` is up to date it runs
+`satellite_enterprise/install.sh`, so `$HOME/.satl` and the `~/.local/bin` links are
+never older than the tree. `make INSTALL_AFTER_BUILD=no` builds without installing;
+`make satl`, `make test` and the other named targets never install.
+
 `make test` runs the suites — one per module that has one, each a binary beside its
 own sources. `make startup` re-measures what `satl` costs to start against an empty
 program linked the same way, and diffs it against what it cost last time; PLAN §9
