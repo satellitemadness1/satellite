@@ -77,9 +77,9 @@ it can't happen), then fix it.
 
 | id | defect | where | evidence | fix in |
 |---|---|---|---|---|
-| **D10** | `satellite.library.n = satellite.library.n + 1` from several threads loses updates: the read and the write are separate lock grabs. This is DESIGN §7.1's "1585 wrong out of 1600", the thing globals were meant to prevent. | `globals.hpp` `read`/`write` | run: 36,333 of 80,000 | T2 |
-| **D11** | The same lost update on a spacesuit field (`count = count + 1`). T1's lock stops the crash but not this. | as D1 | run (hidden behind D1's crash) | T2 |
-| **D12** | A method's effects are not atomic on its object. `call_feed` doing `received + 1` then `pieces.append` can be seen half-done by another thread, which then reports `received != pieces.size()`. | spacesuit method dispatch | read | T2 |
+| **D10** | `satellite.library.n = satellite.library.n + 1` from several threads loses updates: the read and the write are separate lock grabs. This is DESIGN §7.1's "1585 wrong out of 1600", the thing globals were meant to prevent. | `globals.hpp` `read`/`write` | run: 36,333 of 80,000 | T2 ✓ — a statement keeps `satellite.library` on its thread's access list; 80,000 of 80,000 |
+| **D11** | The same lost update on a spacesuit field (`count = count + 1`). T1's lock stops the crash but not this. | as D1 | run (hidden behind D1's crash) | T2 ✓ — a method call keeps its object on the access list; `shared_suit_fields` 80,000 of 80,000 |
+| **D12** | A method's effects are not atomic on its object. `call_feed` doing `received + 1` then `pieces.append` can be seen half-done by another thread, which then reports `received != pieces.size()`. | spacesuit method dispatch | run at T1: `dark_mechanicum_link` received 57,217 / pieces 59,579 of 160,000 | T2 ✓ — 160,000 and 160,000 |
 | **D13** | A thread's error re-raised at `join()` names the WRONG capsule: `Machine::refuse()` overwrites `problem.frames` with the joiner's call stack. | `machine.cpp:281`, `handlers.cpp:161` | run (`in satellite.main` for an error in `starter`) | T1 ✓ — now `in starter`, 1,000 runs |
 | **D14** | `satl --evaluate` discards errors from threads nobody joined (`(void)thread::close_all()`), although it prints its own errors to stderr. A program that failed in a thread reports nothing. | `programs/evaluate_commands.cpp:141` | run: `call_thread_error.satl` under `--call` at 9cfd479 exits 0 and prints nothing | T1 ✓ — S0601 on stderr, exit 1 |
 | **D15** | The wake signal SIGUSR2 (no `SA_RESTART`) interrupts any blocking call in a thread being closed. satellite's own `read`/`write` retry on EINTR, but vendored zlib's `gz_load` treats `read() == -1` as an error. A thread reading a `.gz` file when the program ends gets a spurious refusal, which `close_all()` then reports. | `thread_handle.cpp:80-105`, `vendor/zlib-develop/gzread.c:30-35`, `satellite_file/gzip.cpp:42` | read: **not reproduced** — `gzip_at_close.satl` 0 of 100 bad at 9cfd479 and after; read(2) of a regular file on a local filesystem is not interrupted by a signal on Linux. Reachable on NFS/FUSE | T1 ✓ — SIGUSR2 masked around `gzfread` |
@@ -93,6 +93,9 @@ it can't happen), then fix it.
 
 | **D20** | `close_all()` woke threads one at a time in launch order, waiting for each to end. A parent joining its sleeping child came first, could not end until the child did, and the child was never signalled: the program hung at exit for the length of the sleep (for ever on console input). Found by T1's fresh-reader review. | `thread_handle.cpp` `close_all`, `keep_waking` | run: `join_sleeping_child.satl` exit 124 (timeout) before the fix | T1 ✓ — every unended thread is woken together, then reaped |
 | **D21** | A join that waits for itself: a thread joining its own handle, or A joining B while B joins A, waited for ever — also at program end, where one Ctrl-C could not reach it. `std::thread::join()` used to throw for the self case; the T1 wait did not. Found by the same review. | `thread_handle.cpp` `wait`, `handlers.cpp` `thread_join` | run: `join_itself.satl` exit 124 before the fix; `join_each_other.satl` | T1 ✓ — a join whose chain of waits leads back to the asker is refused, **S1407** |
+
+| **D22** | *(T2, found by its review)* A method call or statement already under way when the program's first `start()` ran was never put on the access list: `c.run()` starting a worker that calls `c.bump()` raced run()'s own increments. | `machine.cpp` `enter`, `global()` | run: `started_inside_method.satl` 29,839 / 29,725 / 29,451 of 40,000 | T2 ✓ — a program containing `start()` is shared from its first line (`Compiled::starts_threads`); 40,000 of 40,000 |
+| **D23** | *(T2, found by its review)* A mutating method on a global took T1's globals mutex and then waited for `satellite.library`'s access entry; the entry's owner then blocked on that mutex — a hang no wait check can see, because a mutex is not an edge. | `operations_dispatch.cpp` | read: needs a method on a global, which no source can spell today (see D3) | T2 ✓ — the entry is taken before the mutex |
 
 ### What is missing to prove any of this
 
@@ -220,6 +223,39 @@ Fixes D10–D12 by building Q1's answer.
   a cycle is refused**, never slept on.
 - `example/threads.satl`'s "touched" and "marks" checks become exact counts
   under 8 threads.
+
+**Status (2026-09-13):** built as the author's access list —
+`satellite_thread/access_list.hpp`. An `Access` on every spacesuit object and
+one on `Globals`; `Machine::enter` puts a method's receiver on the thread's list
+and `unwind` takes it off; the first global touch in a statement puts
+`satellite.library` on until the statement's boundary (or the frame's return);
+a run that ends any other way gives everything back. Joins and access waits are
+one graph, so S1407 and the new **S1408** both refuse a wait that would never
+end — `two_object_deadlock.satl` ends in S1408, every time.
+`example/threads.satl` §4 now asserts exactly 16. **Verified:** 1,000 runs each
+of `started_inside_method`, `global_counter` (80,000), `shared_suit_fields`
+(80,000), `dark_mechanicum_link` (160,000 / 160,000), `two_object_deadlock`
+(S1408), `join_sleeping_child`, `join_itself`, `join_each_other`,
+`nested_thread`, `two_joiners`, `two_starters`, `closing_threads`,
+`shared_file` — all passed; TSan 0 warnings on all but `shared_file` (unchanged
+by T2, clean at T1); `make test` 14/14; `help_lines/verify.py` 301/301. A
+two-reader review (concurrency, semantics) with a skeptic per finding found
+D22 and D23 and the S1408 sentence, all fixed before this commit.
+
+**What "one statement" means, written down.** The globals are held from a
+statement's first touch until that statement ends **in the same capsule**. A read
+in one capsule and a write in another are two statements: in
+`satellite.library.n = next()`, where `next()` reads `n` in its own statement, an
+update can still be lost. Holding through calls would make `run_everything()` in
+`satellite.main` hold the globals for the whole program, so the unit stays the
+statement; a program that needs a larger unit puts the read and write in one
+statement or in one spacesuit method. Joining a thread while holding what that
+thread needs is a real deadlock and is refused (S1407/S1408).
+
+**Measured (load ~8, best of 3), T1 → T2:** single-threaded 160,000 method calls
+0.18 s → 0.18 s; 8 threads each on its own object 0.04 s → 0.04 s; 8 threads on
+one shared object 12.84 s (with lost updates, which forced copies) → 1.02 s exact,
+about 6 µs per contended call.
 
 **Done when:** `global_counter.satl` prints `80000 of 80000` and
 `dark_mechanicum_link.satl` prints `received 160000` and `pieces 160000`,

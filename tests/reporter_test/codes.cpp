@@ -173,9 +173,10 @@ void section_codes()
     // AND 142 WITH S0921, sleep's unit word, AND 143 WITH S1004, display's
     // colour. AND 144 WITH S1406 AT THREAD.md T1, a file handle used by more
     // than one thread -- kept in satellite.log, the author's Q4. AND 145
-    // WITH S1407, a join that would wait for itself.
-    check(kCodeCount == 145,
-          "errors.def has 145 rows -- if that changed on purpose, change it here "
+    // WITH S1407, a join that would wait for itself, AND 146 WITH S1408 AT
+    // T2, a wait on a thread's access list that would never end.
+    check(kCodeCount == 146,
+          "errors.def has 146 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

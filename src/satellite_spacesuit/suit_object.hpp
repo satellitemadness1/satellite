@@ -48,6 +48,7 @@
 // MILESTONES/M26.md §4 carries this as the thing left open, with the author's
 // decision attached, so nobody discovers it.
 
+#include "satellite_thread/access_list.hpp"
 #include "satellite_value/value.hpp"
 
 #include <cstdint>
@@ -111,6 +112,12 @@ struct SuitObject {
     // render the object itself -- a refusal quoting its argument -- and the
     // same thread must not wait for itself.
     mutable std::recursive_mutex hold;
+
+    // THIS OBJECT ON A THREAD'S ACCESS LIST -- THREAD.md T2. Held for a whole
+    // method call (Machine::enter / unwind), so every method is one step to
+    // every other thread. `hold` above stays for the renderer, which reads an
+    // object from outside any method.
+    thread::Access access;
 
     // DESTROYED ONE LEVEL AT A TIME -- THREAD.md D19, value.hpp's Burial. A
     // chain of objects each holding the next is a linked list, and freeing a

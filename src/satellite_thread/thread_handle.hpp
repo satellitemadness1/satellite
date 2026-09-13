@@ -51,6 +51,7 @@
 #include "evaluator/closure.hpp"
 #include "evaluator/globals.hpp"
 #include "evaluator/machine.hpp"
+#include "satellite_thread/access_list.hpp"
 #include "satellite_value/value.hpp"
 
 #include <atomic>
@@ -158,10 +159,10 @@ struct ThreadHandle : std::enable_shared_from_this<ThreadHandle> {
     bool reaped = false;         // worker.join() has returned
     bool joined = false;         // a PROGRAM has called join() on this thread
 
-    // THE HANDLE THIS THREAD IS INSIDE join() ON, or null. Guarded by
-    // thread_handle.cpp's `waits()` lock, not `lock` above, because the check
-    // walks many handles' fields at once.
-    ThreadHandle *waiting_on = nullptr;
+    // THIS THREAD'S RECORD IN THE WAIT GRAPH -- THREAD.md T2. Its walk uses
+    // it (Machine::wait_as), so a joiner can point at it and the deadlock
+    // check can follow a join into whatever this thread is waiting for.
+    ThreadWait wait_record;
 
     Value answer;
     std::vector<errors::Diagnostic> problems;
@@ -212,7 +213,7 @@ enum class Joined {
 // WHAT `join()` DOES. Waits until the thread has ended and been reaped --
 // exactly one std::thread::join() across every caller -- then says which join
 // this was. `answer` and `problems` are final once it returns.
-Joined wait(const Thr &handle);
+Joined wait(const Thr &handle, ThreadWait *me);
 
 // EVERY THREAD THIS RUN STARTED AND NOBODY JOINED, CLOSED.
 //

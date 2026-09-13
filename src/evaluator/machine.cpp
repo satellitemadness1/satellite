@@ -15,6 +15,7 @@
 
 #include "error_reporter/codes.hpp"
 #include "evaluator/dispatch.hpp"
+#include "satellite_spacesuit/suit_object.hpp"
 #include "system_facts/facts.hpp"
 #include "satellite_value/render.hpp"
 
@@ -58,6 +59,8 @@ Machine::Machine(const Compiled &program, const Ast &ast, const Policy &policy,
       policy_(policy), ceiling_(policy.max_depth)
 {
     caches_.resize(program_.caches());
+    if (program_.starts_threads())
+        globals_->share();
 }
 
 unsigned long long Machine::control_bytes() const
@@ -135,8 +138,25 @@ void Machine::enter(uint32_t capsule, uint32_t count, NodeIndex call)
         slots_[base + i] = std::move(value_[value_.size() - count + i]);
     value_.resize(value_.size() - count);
 
+    // A METHOD TAKES ITS OBJECT FOR THE WHOLE CALL -- THREAD.md T2, the
+    // author's access list. Only once there is a second thread; a program with
+    // none pays the one load of `shared()`.
+    Sui holding;
+    if (target.method && globals_->shared() && count > 0)
+        if (const Sui *object = std::get_if<Sui>(&slots_[base]); object && *object) {
+            if (!thread::acquire((*object)->access, wait_)) {
+                slots_.resize(base);
+                refuse_wait((*object)->layout ? "an object of `" +
+                                                    (*object)->layout->name + "`"
+                                              : std::string("an object"));
+                return;
+            }
+            holding = *object;
+        }
+
     frames_.push_back({base, static_cast<uint32_t>(work_.size() - 1),
-                       static_cast<uint32_t>(value_.size()), target.path, call});
+                       static_cast<uint32_t>(value_.size()), target.path, call,
+                       std::move(holding)});
     push(target.body);
 }
 
@@ -154,8 +174,17 @@ void Machine::unwind(Value answer)
         return;
     }
 
-    const Frame frame = frames_.back();
+    const Frame frame = std::move(frames_.back());
     frames_.pop_back();
+
+    // THE ACCESS LIST GIVES BACK WHAT THIS CALL TOOK -- the object, and the
+    // globals if the statement that took them was in this frame.
+    if (frame.holding)
+        thread::release(frame.holding->access);
+    if (globals_depth_ != kNotHeld && frames_.size() < globals_depth_) {
+        globals_depth_ = kNotHeld;
+        thread::release(globals_->access);
+    }
 
     // THE OUTERMOST FRAME IS KEPT, AND ONLY THAT ONE -- M22's prompt, which
     // needs a finished program's variables to still exist afterwards. The
@@ -319,8 +348,47 @@ void Machine::refuse_depth()
     ending_ = Ending::Stopped;
 }
 
+bool Machine::touch_globals()
+{
+    if (globals_depth_ != kNotHeld)
+        return true;
+    if (!thread::acquire(globals_->access, wait_)) {
+        refuse_wait("`satellite.library`");
+        return false;
+    }
+    globals_depth_ = static_cast<uint32_t>(frames_.size());
+    return true;
+}
+
+void Machine::refuse_wait(const std::string &what)
+{
+    refuse(errors::make<errors::Code::THREAD_WAIT_NEVER_ENDS>(
+        here_or_nowhere(), what));
+}
+
+void Machine::release_accesses()
+{
+    for (Frame &frame : frames_)
+        if (frame.holding) {
+            thread::release(frame.holding->access);
+            frame.holding.reset();
+        }
+    if (globals_depth_ != kNotHeld) {
+        globals_depth_ = kNotHeld;
+        thread::release(globals_->access);
+    }
+}
+
 bool Machine::interrupted(OpIndex at)
 {
+    // THE END OF A STATEMENT IS THE END OF ITS HOLD ON THE GLOBALS -- THREAD.md
+    // T2 -- when the statement that took them is in this frame. A boundary in a
+    // capsule the statement called is deeper, and lets go of nothing.
+    if (globals_depth_ != kNotHeld && frames_.size() <= globals_depth_) {
+        globals_depth_ = kNotHeld;
+        thread::release(globals_->access);
+    }
+
     if (policy_.interrupted == nullptr || !policy_.interrupted())
         return false;
 
@@ -360,6 +428,11 @@ void Machine::run()
         const Op &op = program_[top.op];
         op.fn(*this, op, top.step);
     }
+
+    // A RUN THAT ENDS -- by finishing, refusing or being stopped -- leaves
+    // nothing on its access list, or every thread waiting on it would wait for
+    // ever. A refused walk never unwinds its frames, so they are walked here.
+    release_accesses();
 }
 
 void Machine::run_top_level()

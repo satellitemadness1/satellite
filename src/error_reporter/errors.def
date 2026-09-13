@@ -1451,7 +1451,19 @@ SAT_CODE(1406, THREAD_SHARED_FILE, SAT_WARNING,
 // would have closed the circle, in the thread that closed it.
 SAT_CODE(1407, THREAD_JOIN_NEVER_RETURNS, SAT_ERROR,
          "this `join()` would never return: the thread it waits for is this "
-         "thread, or is itself waiting, through other joins, for this one")
+         "thread, or is itself waiting -- through joins, or for something this "
+         "thread holds -- for this one")
+
+// A WAIT ON THE ACCESS LIST THAT WOULD NEVER END -- THREAD.md T2. The thing
+// this thread needs is held by a thread that is waiting, through other waits,
+// for something this thread holds: thread A in `x.m()` calling `y.n()` while
+// thread B in `y.n()` calls `x.m()`. Refused in whichever thread would have
+// closed the circle; the other goes on once this one's walk has ended and let
+// go of what it held.
+SAT_CODE(1408, THREAD_WAIT_NEVER_ENDS, SAT_ERROR,
+         "{1} is in use by another thread that is itself waiting -- for this "
+         "thread to finish, or through other threads for something this thread "
+         "has in use -- so waiting here would never end")
 
 // ---------------------------------------------------------------------------
 // S15xx -- WHAT A PERSON WOULD FIND BY READING THE PROGRAM. M26.5's static

@@ -188,6 +188,7 @@ void run_the_body(const Thr &handle)
 
     eval::Machine machine(*handle->program, *handle->ast, mine,
                           handle->globals);
+    machine.wait_as(&handle->wait_record);
 
     // THE TOP LEVEL IS NOT RE-RUN, AND THAT IS THE POINT OF SHARING THE
     // GLOBALS. `satellite.library`'s initialisers ran once, on the main walk,
@@ -294,38 +295,27 @@ bool launch(const Thr &handle, std::string &why)
     return true;
 }
 
-// WHO IS WAITING FOR WHOM -- found by T1's review, and reproduced by
-// tests/thread_test/programs/join_itself.satl. A thread that reached its own
-// handle and joined it waited for ever, and so did two threads joining each
-// other; std::thread::join() used to throw for the first, and nothing caught
-// the second. So every thread's join records the handle it waits on, under
-// one lock, and a join whose chain of waits leads back to the asker is
-// refused before it sleeps. The program's own walk is never waited on -- no
-// thread can hold a handle to it -- so it records nothing.
-std::mutex &waits()
+// WHO IS WAITING FOR WHOM -- found by T1's review, reproduced by
+// tests/thread_test/programs/join_itself.satl, and since T2 the same graph as
+// the access list's (satellite_thread/access_list.hpp). A join records the
+// thread it waits on, and a join whose chain of waits -- joins, or things held
+// -- leads back to the asker is refused before it sleeps.
+Joined wait(const Thr &handle, ThreadWait *me)
 {
-    static std::mutex the;
-    return the;
-}
-
-Joined wait(const Thr &handle)
-{
-    if (self != nullptr) {
-        std::lock_guard<std::mutex> held(waits());
-        for (ThreadHandle *at = handle.get(); at != nullptr; at = at->waiting_on)
-            if (at == self)
-                return Joined::WouldNeverReturn;
-        self->waiting_on = handle.get();
+    {
+        std::lock_guard<std::mutex> held(graph());
+        if (leads_back(&handle->wait_record, me))
+            return Joined::WouldNeverReturn;
+        me->joining = &handle->wait_record;
     }
     struct Unrecord {
+        ThreadWait *me;
         ~Unrecord()
         {
-            if (self == nullptr)
-                return;
-            std::lock_guard<std::mutex> held(waits());
-            self->waiting_on = nullptr;
+            std::lock_guard<std::mutex> held(graph());
+            me->joining = nullptr;
         }
-    } unrecord;
+    } unrecord{me};
 
     // `joined` IS TAKEN BEFORE THE WAIT, so of two joins racing, exactly one
     // is First whatever the timing -- Q2's "exactly", kept.

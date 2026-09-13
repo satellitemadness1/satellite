@@ -152,6 +152,10 @@ struct Capsule {
     uint32_t slots = 0;
     uint32_t parameters = 0;
     NodeIndex node = kNoNode;
+
+    // A SPACESUIT'S METHOD, whose receiver is slot 0 -- what Machine::enter()
+    // puts on the thread's access list for the call (THREAD.md T2).
+    bool method = false;
 };
 
 // An inline cache cell -- PLAN §2.4. One per dispatching call site.
@@ -201,6 +205,15 @@ public:
     uint32_t globals() const { return globals_; }
     uint32_t add_global() { return globals_++; }
 
+    // WHETHER THE PROGRAM CAN START A THREAD -- THREAD.md T2. A program that
+    // does is shared from its first line (Machine's constructor), so no method
+    // call or statement already under way when the first `start()` runs is
+    // left off its thread's access list. Found by T2's review: `o.run()`
+    // starting a worker that calls `o.bump()` left run() unheld, and both
+    // threads' increments raced.
+    bool starts_threads() const { return starts_threads_; }
+    void set_starts_threads() { starts_threads_ = true; }
+
     // THE SPACESUIT LAYOUTS -- M26. One per suit the file declares, held by the
     // program because that is what outlives every object of it; every
     // `SuitObject` carries a bare pointer to its own, which
@@ -245,6 +258,7 @@ private:
     OpIndex top_ = kNoOp;
     uint32_t globals_ = 0;
     uint32_t caches_ = 0;
+    bool starts_threads_ = false;
 };
 
 } // namespace satellite::eval

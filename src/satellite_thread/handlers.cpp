@@ -142,7 +142,7 @@ bool thread_join(eval::Machine &m, const Value *arguments, uint32_t,
         return false;
     }
 
-    const Joined how = wait(handle);
+    const Joined how = wait(handle, m.wait_record());
     if (how == Joined::WouldNeverReturn) {
         m.refuse(errors::make<errors::Code::THREAD_JOIN_NEVER_RETURNS>(
             m.span_of(m.here())));

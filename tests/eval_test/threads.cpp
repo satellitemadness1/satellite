@@ -190,6 +190,31 @@ void a_second_join_warns_and_answers_the_same()
           "and it is already written to satellite.log");
 }
 
+void a_global_counted_by_threads_is_exact()
+{
+    // THREAD.md T2 -- D10. Four threads adding one to a global 500 times each
+    // lost more than half the updates before the access list; a statement now
+    // keeps `satellite.library` until it ends, so the total is exact.
+    check(answers("satellite.variable.thread a = satellite.thread.new(bump())\n"
+                  "satellite.variable.thread b = satellite.thread.new(bump())\n"
+                  "satellite.variable.thread c = satellite.thread.new(bump())\n"
+                  "satellite.variable.thread d = satellite.thread.new(bump())\n"
+                  "a.start()\nb.start()\nc.start()\nd.start()\n"
+                  "a.join()\nb.join()\nc.join()\nd.join()\n"
+                  "satellite.return(satellite.library.n)\n",
+                  "satellite.library.n = 0\n"
+                  "satellite.capsule bump() satellite.returns(satellite.variable.number)\n"
+                  "{\n"
+                  "    satellite.variable.number i = 0\n"
+                  "    satellite.statement.for (i = 0; i < 500; i = i + 1)\n"
+                  "    {\n"
+                  "        satellite.library.n = satellite.library.n + 1\n"
+                  "    }\n"
+                  "    satellite.return(0)\n"
+                  "}\n") == "2000",
+          "four threads adding one 500 times each to a global give exactly 2000");
+}
+
 void a_thread_can_start_a_thread()
 {
     // THREAD.md D8, which hung every time: the inner thread's interrupt hook
@@ -379,6 +404,7 @@ void section_threads()
     the_three_verbs_refuse_in_the_wrong_order();
     a_second_join_warns_and_answers_the_same();
     a_thread_can_start_a_thread();
+    a_global_counted_by_threads_is_exact();
     a_declared_thread_holds_nothing();
     a_thread_that_refuses_hands_its_own_sentence_back();
     close_all_reports_a_thread_nobody_waited_for();

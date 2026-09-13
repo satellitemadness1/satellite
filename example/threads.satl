@@ -65,12 +65,11 @@ satellite.capsule count_alone(satellite.variable.number from) satellite.returns(
 // DESIGN §7.2 reserves for sharing: "permanent identity, CROSS-THREAD SHARING,
 // lock-free reads and atomic read-modify-write are exactly what globals need".
 //
-// THE ASSERTION IS NOT ON THE TOTAL AND THE COMMENT SAYS WHY. `read, add,
-// write` is three operations and satellite does not make them one, so two
-// threads can interleave and lose an increment. That is a data race in the
-// PROGRAM and not in the language, and it is exactly what a global is for --
-// what this section asserts is that every thread saw the SAME variable, which
-// is provable without a total: a global nobody shared would still hold 0.
+// THE ASSERTION IS ON THE TOTAL SINCE THREAD.md T2. At M23 `read, add, write`
+// was three operations another thread could get between, and this section only
+// asserted that the total was not 0. Now the statement puts `satellite.library`
+// on its thread's access list until it ends -- the author's design, 2026-09-13
+// -- so sixteen threads adding one give exactly sixteen.
 satellite.capsule touch_the_global()
 {
     satellite.library.touched = satellite.library.touched + 1
@@ -208,10 +207,9 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 
     // --- §4 -- one satellite.library, seen by all of them ----------------
     //
-    // Sixteen threads each adding one to a global. The total may be anything
-    // from 1 to 16 -- read, add and write are three operations and the
-    // language does not fuse them -- but it CANNOT be 0, and a thread whose
-    // globals were its own private copy would leave it at exactly 0.
+    // Sixteen threads each adding one to a global, and the total is exactly
+    // sixteen: a thread whose globals were its own copy would leave 0, and a
+    // lost update (THREAD.md D10, before T2) would leave fewer.
     satellite.container.list<satellite.variable.thread> touchers = satellite.container.list()
     satellite.statement.for (t = 0; t < 16; t = t + 1)
     {
@@ -235,14 +233,9 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
     // reader will copy the idiom out of.
     satellite.variable.number touched = satellite.library.touched
 
-    satellite.statement.if (touched < 1)
+    satellite.statement.if (touched != 16)
     {
-        satellite.console.display("WRONG: the threads had their own globals")
-        wrong = wrong + 1
-    }
-    satellite.statement.if (touched > 16)
-    {
-        satellite.console.display("WRONG: touched is " + touched.to_string())
+        satellite.console.display("WRONG: touched is " + touched.to_string() + " of 16")
         wrong = wrong + 1
     }
 

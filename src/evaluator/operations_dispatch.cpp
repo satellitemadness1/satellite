@@ -210,8 +210,15 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
             object = held->get();
     suit::HandlerHold object_hold(object);
     std::unique_lock<std::recursive_mutex> globals_hold;
-    if (shared && target == Target::Global)
+    if (shared && target == Target::Global) {
+        // THE ACCESS LIST FIRST, THE MUTEX SECOND -- found by T2's review. The
+        // other order let this thread sleep on `satellite.library`'s entry while
+        // holding the mutex its owner needed for its next write: a hang no wait
+        // check could see, because a mutex is not an edge in the graph.
+        if (!m.take_globals())
+            return;
         globals_hold = m.globals()->hold();
+    }
 
     if (takes_receiver_out) {
         if (target == Target::Local) {

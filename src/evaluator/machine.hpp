@@ -59,6 +59,7 @@
 #include "error_reporter/report.hpp"
 #include "evaluator/closure.hpp"
 #include "evaluator/globals.hpp"
+#include "satellite_thread/access_list.hpp"
 #include "satellite_value/value.hpp"
 #include "satellite_words/words.hpp"
 
@@ -148,6 +149,12 @@ struct Frame {
     uint32_t value_floor = 0; // value_'s height when its body began
     words::PathId capsule = words::kNoPath;
     NodeIndex call = kNoNode; // the call SITE, which is what a FrameRef prints
+
+    // THE OBJECT THIS METHOD CALL HAS ON ITS THREAD'S ACCESS LIST, or null --
+    // THREAD.md T2. Taken in enter(), given back in unwind(). A handle and not
+    // a bare pointer, so the object outlives the hold whatever the method does
+    // with its slots.
+    Sui holding;
 };
 
 // What a run ended as.
@@ -296,11 +303,34 @@ public:
     // why, and the short form is that a reference into storage another walk may
     // be writing is a lock that protects the wrong thing. Every caller was
     // already copying.
-    Value global(uint32_t index) const { return globals_->read(index); }
+    //
+    // AND ONCE THERE ARE TWO THREADS, THE FIRST TOUCH IN A STATEMENT PUTS
+    // `satellite.library` ON THIS THREAD'S ACCESS LIST -- THREAD.md T2 -- until
+    // the statement ends. A wait that would never end refuses, and the read
+    // answers nothing to a walk that has already stopped.
+    Value global(uint32_t index)
+    {
+        if (globals_->shared() && !touch_globals())
+            return Value::nothing();
+        return globals_->read(index);
+    }
     void set_global(uint32_t index, Value value)
     {
+        if (globals_->shared() && !touch_globals())
+            return;
         globals_->write(index, std::move(value));
     }
+
+    // THIS WALK'S RECORD IN THE WAIT GRAPH -- THREAD.md T2. A thread's walk
+    // uses its handle's, so a joiner can follow the edge to it; the program's
+    // own walk uses the Machine's.
+    thread::ThreadWait *wait_record() { return wait_; }
+
+    // `satellite.library` ON THIS THREAD'S ACCESS LIST NOW, before anything
+    // that might wait while holding a lock -- operations_dispatch.cpp. False
+    // means the walk has been refused.
+    bool take_globals() { return !globals_->shared() || touch_globals(); }
+    void wait_as(thread::ThreadWait *record) { wait_ = record; }
 
     // THE GLOBALS, TO HAND TO A THREAD. `satellite.variable.thread.start()` is
     // the one caller: it takes this, calls share() on it, and gives it to the
@@ -427,6 +457,22 @@ private:
     bool room(std::vector<T> &v);
 
     void refuse_depth();
+
+    // THE ACCESS LIST'S TWO HALVES THAT ARE NOT IN A FRAME -- THREAD.md T2.
+    // `globals_depth_` is how many frames deep the statement that took
+    // `satellite.library` is, or kNotHeld; release_accesses() gives back
+    // everything, for a run that ends without unwinding.
+    static constexpr uint32_t kNotHeld = 0xFFFFFFFF;
+    bool touch_globals();
+    void release_accesses();
+    void refuse_wait(const std::string &what);
+    errors::Span here_or_nowhere() const
+    {
+        return work_.empty() ? errors::kNowhere : span_of(work_.back().op);
+    }
+    uint32_t globals_depth_ = kNotHeld;
+    thread::ThreadWait own_wait_;
+    thread::ThreadWait *wait_ = &own_wait_;
 
     const Compiled &program_;
     const Ast &ast_;

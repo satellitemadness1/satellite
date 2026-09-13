@@ -54,6 +54,7 @@
 // programs in one process. A static here would let one program read the
 // globals of the one before it.
 
+#include "satellite_thread/access_list.hpp"
 #include "satellite_value/value.hpp"
 
 #include <atomic>
@@ -114,6 +115,10 @@ public:
             return {};
         return std::unique_lock<std::recursive_mutex>(lock_);
     }
+
+    // `satellite.library` ON A THREAD'S ACCESS LIST -- THREAD.md T2. One for
+    // all the globals, held for a statement: Machine::touch_globals().
+    thread::Access access;
 
 private:
     mutable std::recursive_mutex lock_;

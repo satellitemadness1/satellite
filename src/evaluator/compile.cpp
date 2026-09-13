@@ -66,6 +66,12 @@ Compiler::Compiler(const Ast &ast, const resolve::Resolved &resolved, words::Wor
 OpIndex Compiler::emit(OpFn fn, NodeIndex node, uint32_t a, uint32_t b, uint32_t c,
                        uint32_t d)
 {
+    // A `start()` ANYWHERE MAKES THE PROGRAM SHARED FROM ITS FIRST LINE --
+    // closure.hpp's starts_threads() says why. Every method op carries the
+    // row's path in `a`.
+    if ((fn == op_method || fn == op_method_global || fn == op_method_field) &&
+        a == static_cast<uint32_t>(words::NodeId::VARIABLE_THREAD_START_0))
+        out_.set_starts_threads();
     return out_.add(fn, node, a, b, c, d);
 }
 
@@ -179,7 +185,8 @@ Compiled Compiler::compile()
         capsules_[frame.capsule] = static_cast<uint32_t>(out_.capsules().size());
         out_.capsules().push_back({frame.capsule, kNoOp, kNoOp,
                                    static_cast<uint32_t>(frame.size()),
-                                   frame.parameters, frame.node});
+                                   frame.parameters, frame.node,
+                                   suit_of_method(frame.capsule) != nullptr});
     }
 
     // PASS 1b -- EVERY SPACESUIT'S LAYOUT, and it is here for pass 1's reason

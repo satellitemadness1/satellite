@@ -4,7 +4,7 @@
 // with.
 //
 // TWO NUMBERS, and they move at different rates. The VERSION (003) is the
-// LANGUAGE; it changes rarely and deliberately. The REVISION (03) is this build
+// LANGUAGE; it changes rarely and deliberately. The REVISION (04) is this build
 // of it and goes up as work lands. 001 was the version the first satellite
 // carried while its design was being written and 002 is what it became; 003 is
 // the second satellite, and the number moved because the language is being
@@ -28,7 +28,7 @@
 #define SATELLITE_VERSION "003"
 #endif
 #ifndef SATELLITE_REVISION
-#define SATELLITE_REVISION "03"
+#define SATELLITE_REVISION "04"
 #endif
 #ifndef SATELLITE_BUILT
 #define SATELLITE_BUILT "unrecorded"
@@ -42,7 +42,7 @@
 
 namespace satellite {
 
-// "003 revision 03" -- the one line that names this build.
+// "003 revision 04" -- the one line that names this build.
 //
 // ONE FUNCTION, read by --version and by the opening information both, so the
 // two cannot disagree about what is running. The first satellite had them as

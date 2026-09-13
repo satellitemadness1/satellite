@@ -615,6 +615,7 @@ HDRS = $(SYSTEM)/version.hpp \
        $(RANDOM)/tiers.hpp \
        $(RANDOM)/handlers_internal.hpp \
        $(RANDOM)/handlers.hpp \
+       $(THREAD)/access_list.hpp \
        $(THREAD)/thread_handle.hpp \
        $(THREAD)/handlers.hpp \
        $(TIME)/time.hpp \
