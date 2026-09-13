@@ -51,6 +51,7 @@
 #include "satellite_value/value.hpp"
 
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -94,6 +95,61 @@ struct Layout {
 struct SuitObject {
     const Layout *layout = nullptr;
     std::vector<Value> fields;
+
+    // THE HOLD -- THREAD.md D1 and D2. Two threads sharing one object wrote
+    // one 40-byte Value at once and freed a string twice, and a mutating
+    // method's take-out (operations_dispatch.cpp) left a field holding nothing
+    // for another thread to read. So every field read and write takes this,
+    // and a mutating method on a field keeps it from the take-out through the
+    // write-back -- which is also what keeps the in-place fast path: nobody
+    // else can reach the body while its count is one.
+    //
+    // TAKEN ONLY ONCE THE RUN HAS A SECOND THREAD (Globals::shared()), so a
+    // program with no threads pays nothing but that one relaxed load.
+    //
+    // RECURSIVE FOR ONE CALLER: the renderer. A handler holding this object may
+    // render the object itself -- a refusal quoting its argument -- and the
+    // same thread must not wait for itself.
+    mutable std::recursive_mutex hold;
+
+    // DESTROYED ONE LEVEL AT A TIME -- THREAD.md D19, value.hpp's Burial. A
+    // chain of objects each holding the next is a linked list, and freeing a
+    // long one recursed once per object.
+    ~SuitObject()
+    {
+        Burial burial;
+        for (Value &field : fields)
+            burial.add(field);
+    }
+};
+
+// HOW MANY OBJECT HOLDS THIS THREAD HAS OPEN ACROSS A HANDLER. Only the
+// renderer reads it: a thread holding one object that renders another tries
+// that one's hold instead of waiting for it, because the thread holding the
+// other may be rendering this one. Two holds, taken in opposite orders, would
+// be a hang -- THREAD.md §1's second rule.
+inline thread_local int holds_open = 0;
+
+// One hold kept across a handler, counted for the renderer above.
+class HandlerHold {
+public:
+    explicit HandlerHold(const SuitObject *object)
+    {
+        if (object == nullptr)
+            return;
+        lock_ = std::unique_lock<std::recursive_mutex>(object->hold);
+        holds_open++;
+    }
+    ~HandlerHold()
+    {
+        if (lock_.owns_lock())
+            holds_open--;
+    }
+    HandlerHold(const HandlerHold &) = delete;
+    HandlerHold &operator=(const HandlerHold &) = delete;
+
+private:
+    std::unique_lock<std::recursive_mutex> lock_;
 };
 
 } // namespace satellite::suit

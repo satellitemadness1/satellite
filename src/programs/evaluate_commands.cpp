@@ -12,6 +12,7 @@
 #include "programs/evaluate_commands.hpp"
 
 #include "error_reporter/report.hpp"
+#include "error_reporter/warning_log.hpp"
 #include "evaluator/dump.hpp"
 #include "evaluator/machine.hpp"
 #include "programs/built_program.hpp"
@@ -117,6 +118,7 @@ int call_command(const std::vector<std::string> &args)
     arms::install_for(arms::Arm::Call);
     install_interrupt_handler();
     clear_interrupt();
+    errors::log::set_program(path);
 
     eval::Machine machine(built.program.closures, built.parsed.ast,
                           policy_from_the_limits());
@@ -135,10 +137,18 @@ int call_command(const std::vector<std::string> &args)
     // thread_handle.hpp states the rule: every entry point that runs a program
     // calls this. A thread walks the op arena by pointer, and the arena is a
     // local of the caller, so returning while one is still walking destroys it
-    // underneath. The diagnostics are dropped here rather than rendered because
-    // this arm prints ONE value and has no channel for a second sentence;
-    // `satl <file>` is the arm that reports them.
-    (void)thread::close_all();
+    // underneath.
+    //
+    // AND ITS ERRORS ARE PRINTED, NOT DROPPED -- THREAD.md D14. The first
+    // version discarded them because this arm "prints ONE value and has no
+    // channel for a second sentence", but it already prints its own errors to
+    // stderr, and a capsule that failed on a thread nobody joined reported
+    // nothing at all. stderr is the channel; stdout still carries one value.
+    const std::vector<errors::Diagnostic> abandoned = thread::close_all();
+    const errors::Source against{path, built.text, &built.words};
+    const std::vector<errors::Diagnostic> warned = errors::log::take();
+    if (!warned.empty())
+        fputs(errors::render(warned, against).c_str(), stderr);
 
     if (!machine.ok()) {
         fputs(errors::render(machine.problems(),
@@ -157,6 +167,10 @@ int call_command(const std::vector<std::string> &args)
     // THE ANSWER GOES TO STDOUT AND THE COMPLAINTS TO STDERR, which is the
     // split every arm since `--tokens` has kept.
     fputs((text_of(answer) + "\n").c_str(), stdout);
+    if (!abandoned.empty()) {
+        fputs(errors::render(abandoned, against).c_str(), stderr);
+        return EXIT_MALFORMED;
+    }
     return EXIT_FINE;
 }
 

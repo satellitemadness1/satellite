@@ -17,13 +17,17 @@
 #include "eval_test.hpp"
 
 #include "error_reporter/codes.hpp"
+#include "error_reporter/warning_log.hpp"
 #include "evaluator/dispatch.hpp"
 #include "satellite_scalars/handlers.hpp"
 #include "satellite_thread/handlers.hpp"
 #include "satellite_thread/thread_handle.hpp"
 #include "satellite_time/handlers.hpp"
 
+#include <cstdio>
 #include <string>
+#include <unistd.h>
+#include <vector>
 
 namespace eval_test {
 
@@ -32,9 +36,9 @@ namespace {
 using satellite::errors::Code;
 
 // A whole program with one capsule to thread and one `it` to run it from.
-std::string program(const std::string &body)
+std::string program(const std::string &body, const std::string &more = "")
 {
-    return "satellite.capsule work()\n"
+    return more + "satellite.capsule work()\n"
            "{\n"
            "    satellite.return(7)\n"
            "}\n"
@@ -46,10 +50,10 @@ std::string program(const std::string &body)
            body + "}\n";
 }
 
-std::string answers(const std::string &body)
+std::string answers(const std::string &body, const std::string &more = "")
 {
     Run run;
-    build(program(body), run);
+    build(program(body, more), run);
     if (!run.built)
         return "<did not compile>";
     return answer_of(run, "it", {});
@@ -153,13 +157,55 @@ void the_three_verbs_refuse_in_the_wrong_order()
                        Code::THREAD_NOT_STARTED),
           "joining before starting is S1403");
 
-    check(refused_with("satellite.variable.thread t = "
-                       "satellite.thread.new(work())\n"
-                       "t.start()\n"
-                       "t.join()\n"
-                       "t.join()\n",
-                       Code::THREAD_ALREADY_JOINED),
-          "joining twice is S1404");
+}
+
+void a_second_join_warns_and_answers_the_same()
+{
+    // S1404 IS A WARNING SINCE THREAD.md T1 -- the author's Q2. The thread is
+    // done, so the second join is done too: the same answer, the run goes on,
+    // the warning waits to be printed and is already in the log.
+    const std::string log = satellite::errors::log::path();
+    std::remove(log.c_str());
+    (void)satellite::errors::log::take();
+    check(answers("satellite.variable.thread t = "
+                  "satellite.thread.new(work())\n"
+                  "t.start()\n"
+                  "satellite.variable.number first = t.join()\n"
+                  "satellite.return(first + t.join())\n") == "14",
+          "joining twice gives back the same answer twice");
+    const std::vector<satellite::errors::Diagnostic> warned =
+        satellite::errors::log::take();
+    check(warned.size() == 1 && warned[0].code == Code::THREAD_ALREADY_JOINED,
+          "and S1404 is waiting to be printed when the run ends");
+
+    std::string kept;
+    if (std::FILE *in = std::fopen(log.c_str(), "r")) {
+        char chunk[512];
+        size_t got = 0;
+        while ((got = std::fread(chunk, 1, sizeof chunk, in)) > 0)
+            kept.append(chunk, got);
+        std::fclose(in);
+    }
+    check(kept.find("warning S1404") != std::string::npos,
+          "and it is already written to satellite.log");
+}
+
+void a_thread_can_start_a_thread()
+{
+    // THREAD.md D8, which hung every time: the inner thread's interrupt hook
+    // was the outer thread's `stopped_or_interrupted`, and it asked itself for
+    // ever. The answer travels two joins back.
+    check(answers("satellite.variable.thread t = "
+                  "satellite.thread.new(outer())\n"
+                  "t.start()\n"
+                  "satellite.return(t.join())\n",
+                  "satellite.capsule outer()\n"
+                  "{\n"
+                  "    satellite.variable.thread u = satellite.thread.new(work())\n"
+                  "    u.start()\n"
+                  "    satellite.return(u.join() + 1)\n"
+                  "}\n") == "8",
+          "a thread started by a thread runs, and both joins answer");
 }
 
 void a_declared_thread_holds_nothing()
@@ -314,6 +360,12 @@ void section_threads()
     satellite::time::install_handlers();
     satellite::thread::install_handlers();
 
+    // THE LOG GOES TO A FILE OF THIS SUITE'S OWN, so a fixture's S1404 does not
+    // sit in the author's ~/.satl/satellite.log for ever.
+    const std::string own_log =
+        "/tmp/satellite_eval_test_" + std::to_string(getpid()) + ".log";
+    satellite::errors::log::redirect(own_log);
+
     // THE COUNT IS HERE SO A ROW DROPPED FROM THE INSTALL LOOP CANNOT VANISH
     // QUIETLY -- the contract three other sections keep, and M21.md §5 records
     // that all three caught a row ARRIVING, which is the direction they were
@@ -325,6 +377,8 @@ void section_threads()
     only_a_capsule_of_your_own_can_be_threaded();
     a_thread_runs_and_answers();
     the_three_verbs_refuse_in_the_wrong_order();
+    a_second_join_warns_and_answers_the_same();
+    a_thread_can_start_a_thread();
     a_declared_thread_holds_nothing();
     a_thread_that_refuses_hands_its_own_sentence_back();
     close_all_reports_a_thread_nobody_waited_for();
@@ -333,6 +387,8 @@ void section_threads()
     check(table.installed() == after,
           "nothing installed a row while the section ran");
     table.clear();
+    std::remove(own_log.c_str());
+    satellite::errors::log::redirect("");
 }
 
 } // namespace eval_test

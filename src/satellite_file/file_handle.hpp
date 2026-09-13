@@ -29,9 +29,14 @@
 // reading one handle at M23 need a lock or a per-snapshot cursor, and which of
 // those it is is a design question about what a shared handle MEANS -- the same
 // question DESIGN §8 leaves open for the socket. One thread reading is exact.
+//
+// ANSWERED AT THREAD.md T1: A LOCK. The author's Q4 of 2026-09-13; `lock` below
+// is it, and every method row runs under it.
 
 #include <atomic>
+#include <mutex>
 #include <string>
+#include <thread>
 
 namespace satellite::file {
 
@@ -107,7 +112,8 @@ struct FileHandle {
     // position spread over three fields that two threads cannot share; a gzip
     // stream is a fourth, and it is strictly sequential besides -- there is no
     // pread for a compressed stream, because byte N is not findable without
-    // inflating the N-1 before it. One thread reading is exact.
+    // inflating the N-1 before it. One thread reading is exact -- and since
+    // THREAD.md T1 so are several, one at a time, under `lock` below.
     void *gz = nullptr;
 
     // WHETHER THIS HANDLE HAS EVER BEEN OPEN, which is what separates two
@@ -162,6 +168,18 @@ struct FileHandle {
     // recomputed from the other.
     std::string buffer;
     size_t buffer_at = 0;
+
+    // THE HANDLE'S LOCK -- THREAD.md D7, the author's Q4 of 2026-09-13: "use
+    // locks". Every method row on a file runs under it (file_methods.cpp's
+    // `whole`), so the cursor above, the buffer, the gzip stream and a
+    // write_line's bytes are each one thing to every thread. The two notes
+    // above that called the cursor a limit of M19 are answered by this.
+    //
+    // `user` AND `shared_seen` ARE UNDER IT TOO: the first thread to use the
+    // handle, and whether S1406 has been written to satellite.log for it yet.
+    std::mutex lock;
+    std::thread::id user;
+    bool shared_seen = false;
 
     // RAII IS THE BACKSTOP AND NOT THE INTERFACE. DESIGN §8 requires an
     // explicit `close` `1 6 2 6` that answers a status, because close(2) is

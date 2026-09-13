@@ -442,7 +442,19 @@ void op_field(Machine &m, const Op &op, uint32_t)
         return;
     }
     m.done();
-    m.push_value((*held)->fields[op.a]);
+    // UNDER THE HOLD ONCE THERE ARE TWO THREADS -- THREAD.md D1, and D2's
+    // third thread, which read a field another was mid-method on and found
+    // nothing. suit_object.hpp carries the argument.
+    if (!m.globals()->shared()) {
+        m.push_value((*held)->fields[op.a]);
+        return;
+    }
+    Value copy;
+    {
+        std::lock_guard<std::recursive_mutex> in((*held)->hold);
+        copy = (*held)->fields[op.a];
+    }
+    m.push_value(std::move(copy));
 }
 
 // A FIELD, WRITTEN THROUGH THE RECEIVER -- M26, and THIS IS WHERE REFERENCE
@@ -472,7 +484,18 @@ void op_field_store(Machine &m, const Op &op, uint32_t step)
         return;
     }
 
-    (*held)->fields[op.a] = op.b == kNoOp ? Value::nothing() : m.pop_value();
+    Value incoming = op.b == kNoOp ? Value::nothing() : m.pop_value();
+    if (!m.globals()->shared()) {
+        (*held)->fields[op.a] = std::move(incoming);
+    } else {
+        // THE OLD VALUE IS DESTROYED AFTER THE HOLD IS LET GO, v1's A7:
+        // destroying a Value can run any destructor -- a file's, a whole list
+        // of objects' -- and none of that belongs inside somebody's lock.
+        {
+            std::lock_guard<std::recursive_mutex> in((*held)->hold);
+            std::swap((*held)->fields[op.a], incoming);
+        }
+    }
     m.done();
 }
 

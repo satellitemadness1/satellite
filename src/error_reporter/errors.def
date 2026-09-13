@@ -1409,10 +1409,17 @@ SAT_CODE(1403, THREAD_NOT_STARTED, SAT_ERROR,
 // AND THE SECOND JOIN IS A DIFFERENT MISTAKE FROM THE SECOND START, which is
 // why it is a row and not a shared sentence with S1402. Joining twice is
 // usually a `join()` inside a loop that has already run; the answer is still
-// there to be read, so the sentence says so instead of only refusing.
-SAT_CODE(1404, THREAD_ALREADY_JOINED, SAT_ERROR,
-         "this thread has already been joined and its answer has already been "
-         "given back -- a thread is waited for once")
+// there to be read, so the sentence says so.
+//
+// A WARNING SINCE THREAD.md T1, THE AUTHOR'S DECISION OF 2026-09-13 (Q2). It
+// was a refusal, and two threads joining one thread at once could not be made
+// to refuse exactly -- the second hung inside std::thread::join(). The author's
+// answer: the thread is done, so the second join is done too. It gets the same
+// answer (or the same error) the first did, the run goes on, and the warning is
+// printed and kept in ~/.satl/satellite.log.
+SAT_CODE(1404, THREAD_ALREADY_JOINED, SAT_WARNING,
+         "this thread had already been joined, so this join gave back the same "
+         "answer the first one did -- a thread runs once and is waited for once")
 
 // THE MACHINE SAID NO, AND ITS REASON IS IN THE SENTENCE. `ulimit -u`, a
 // cgroup pids limit, a machine out of memory: all three come back from
@@ -1424,6 +1431,26 @@ SAT_CODE(1405, THREAD_CANNOT_START, SAT_ERROR,
          "this machine would not make another thread: {1}. satellite sets no "
          "ceiling of its own on how many a program may start, so this is the "
          "operating system's answer and not satellite's")
+
+// ONE FILE HANDLE, MORE THAN ONE THREAD -- THREAD.md D7, the author's decision
+// of 2026-09-13 (Q4): allowed, locked, and written down. Each `read_line` and
+// `write_line` is whole under the handle's lock, so nothing is torn; what no
+// lock can decide is WHICH thread gets the next line, and that is the thing a
+// person should know is happening. Kept in ~/.satl/satellite.log, once per
+// handle, and not printed: the program is doing what it was written to do.
+SAT_CODE(1406, THREAD_SHARED_FILE, SAT_WARNING,
+         "{1} is being used by more than one thread. Each read and write is "
+         "whole, but which thread gets the next line depends on how the "
+         "threads run")
+
+// A JOIN THAT COULD NEVER RETURN -- found by T1's review. A thread joining its
+// own handle, or A joining B while B joins A: each waits for a thread that is
+// waiting for it. THREAD.md §1 says a join always returns, so the wait is
+// refused before it starts instead of hanging the program -- at the moment it
+// would have closed the circle, in the thread that closed it.
+SAT_CODE(1407, THREAD_JOIN_NEVER_RETURNS, SAT_ERROR,
+         "this `join()` would never return: the thread it waits for is this "
+         "thread, or is itself waiting, through other joins, for this one")
 
 // ---------------------------------------------------------------------------
 // S15xx -- WHAT A PERSON WOULD FIND BY READING THE PROGRAM. M26.5's static

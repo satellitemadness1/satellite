@@ -375,4 +375,53 @@ bool same(const Value &left, const Value &right)
     return true;
 }
 
+// THREAD.md D19 -- see Burial in value.hpp. `burying` is the queue of the
+// outermost burial open on this thread, or null when there is none.
+namespace {
+
+thread_local std::vector<Value> *burying = nullptr;
+
+template <typename Handle>
+bool last_handle(const Value &child)
+{
+    const Handle *held = std::get_if<Handle>(&child);
+    return held != nullptr && *held && held->use_count() == 1;
+}
+
+} // namespace
+
+Burial::Burial()
+{
+    if (burying == nullptr) {
+        burying = &queue_;
+        owner_ = true;
+    }
+}
+
+void Burial::add(Value &child)
+{
+    // ONLY A BODY THIS HANDLE IS THE LAST OWNER OF. A count of one cannot rise
+    // under us: there are no weak references in the value model, so nobody
+    // else can reach the body to take a second handle.
+    if (last_handle<Lst>(child) || last_handle<Map>(child) ||
+        last_handle<Sui>(child) || last_handle<Cap>(child) ||
+        last_handle<Thr>(child))
+        burying->push_back(std::move(child));
+}
+
+Burial::~Burial()
+{
+    if (!owner_)
+        return;
+    // ONE LEVEL AT A TIME, ON THE HEAP. Each value taken off the back dies at
+    // the end of its iteration, and its body's own burial pushes its children
+    // onto this same queue -- so the C++ stack stays two frames deep however
+    // deep the value was.
+    while (!queue_.empty()) {
+        Value last = std::move(queue_.back());
+        queue_.pop_back();
+    }
+    burying = nullptr;
+}
+
 } // namespace satellite

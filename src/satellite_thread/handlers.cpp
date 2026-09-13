@@ -4,6 +4,7 @@
 #include "satellite_thread/handlers.hpp"
 
 #include "error_reporter/report.hpp"
+#include "error_reporter/warning_log.hpp"
 #include "evaluator/dispatch.hpp"
 #include "evaluator/machine.hpp"
 #include "satellite_thread/thread_handle.hpp"
@@ -88,6 +89,7 @@ bool thread_new(eval::Machine &m, const Value *arguments, uint32_t,
     handle->ast = &m.ast();
     handle->globals = m.globals();
     handle->policy = m.policy();
+    handle->root = interrupt_root(m.policy());
 
     *answer = Value(std::move(handle));
     return true;
@@ -101,7 +103,10 @@ bool thread_start(eval::Machine &m, const Value *arguments, uint32_t,
     if (!thread_at(m, arguments, &handle))
         return false;
 
-    if (handle->started.load(std::memory_order_relaxed)) {
+    // `exchange` AND NOT `load` -- THREAD.md D4. Two threads starting one
+    // handle both read false, both launched, and the second assignment to a
+    // joinable std::thread was std::terminate. Exactly one caller sees false.
+    if (handle->started.exchange(true, std::memory_order_acquire)) {
         m.refuse(errors::make<errors::Code::THREAD_ALREADY_STARTED>(
             m.span_of(m.here())));
         return false;
@@ -131,18 +136,43 @@ bool thread_join(eval::Machine &m, const Value *arguments, uint32_t,
     if (!thread_at(m, arguments, &handle))
         return false;
 
-    if (!handle->started.load(std::memory_order_relaxed)) {
+    if (!handle->started.load(std::memory_order_acquire)) {
         m.refuse(errors::make<errors::Code::THREAD_NOT_STARTED>(
             m.span_of(m.here())));
         return false;
     }
-    if (handle->joined) {
-        m.refuse(errors::make<errors::Code::THREAD_ALREADY_JOINED>(
+
+    const Joined how = wait(handle);
+    if (how == Joined::WouldNeverReturn) {
+        m.refuse(errors::make<errors::Code::THREAD_JOIN_NEVER_RETURNS>(
+            m.span_of(m.here())));
+        return false;
+    }
+    if (how == Joined::NeverRan) {
+        m.refuse(errors::make<errors::Code::THREAD_NOT_STARTED>(
             m.span_of(m.here())));
         return false;
     }
 
-    wait(handle);
+    // A SECOND JOIN IS DONE JOINING -- the author's Q2, 2026-09-13. The thread
+    // has ended, so there is nothing to wait for and nothing to refuse: this
+    // join gives back what the first one did, the warning is printed when the
+    // run ends, and it is kept in ~/.satl/satellite.log. Before T1 this was
+    // S1404 as an error in sequence and a hang for ever across two threads.
+    if (how == Joined::Again)
+        errors::log::warn(errors::make<errors::Code::THREAD_ALREADY_JOINED>(
+                              m.span_of(m.here())),
+                          true);
+
+    // A THREAD THAT WAS STOPPED WAS NOT WRONG, AND NEITHER IS ITS JOINER --
+    // THREAD.md D18, found by tests/thread_test/programs/closing_threads.satl.
+    // A thread joining its own child while the run closed re-raised the
+    // child's S0730 as a refusal: close_all() then reported "Ctrl-C arrived"
+    // for a program nobody interrupted, and failed its status. The joiner is
+    // being stopped too -- by the same close or the same Ctrl-C -- so it stops
+    // here, Interrupted, the way every walk stops.
+    if (handle->ending == eval::Ending::Interrupted && m.interrupted(m.here()))
+        return false;
 
     // THE THREAD'S OWN REFUSAL, RE-RAISED WHOLE AND NOT WRAPPED. errors.def's
     // S14xx block note is the argument: a division by zero inside a threaded

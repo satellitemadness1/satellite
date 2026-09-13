@@ -4,6 +4,7 @@
 #include "programs/run_command.hpp"
 
 #include "error_reporter/report.hpp"
+#include "error_reporter/warning_log.hpp"
 #include "evaluator/machine.hpp"
 #include "programs/arms.hpp"
 #include "programs/built_program.hpp"
@@ -165,6 +166,7 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     // statement and look like a bug in the program.
     install_interrupt_handler();
     clear_interrupt();
+    errors::log::set_program(path);
 
     // THE PRINTER STARTS HERE, WHERE THE COST CAN BE ATTRIBUTED. The console
     // starts it for itself on the first line queued -- console.cpp's push() --
@@ -212,6 +214,13 @@ int run_command(const std::vector<std::string> &args, size_t file_at)
     const std::vector<errors::Diagnostic> abandoned = thread::close_all();
 
     out.shutdown();
+
+    // THE WARNINGS FIRST, BECAUSE THEY HAPPENED FIRST -- a second join() that
+    // warned and then an error later in the run read in the order they came.
+    // They change no status: the run did what it was written to do.
+    const std::vector<errors::Diagnostic> warned = errors::log::take();
+    if (!warned.empty())
+        fputs(errors::render(warned, against).c_str(), stderr);
 
     if (!machine.ok())
         fputs(errors::render(machine.problems(), against).c_str(), stderr);

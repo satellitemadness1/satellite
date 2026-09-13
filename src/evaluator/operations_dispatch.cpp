@@ -23,7 +23,9 @@
 #include "evaluator/evaluator_internal.hpp"
 
 #include "evaluator/dispatch.hpp"
+#include "satellite_spacesuit/suit_object.hpp"
 
+#include <mutex>
 #include <string>
 
 namespace satellite {
@@ -188,6 +190,29 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
         handler->mutates &&
         (target == Target::Local || target == Target::Global ||
          target == Target::Field);
+
+    // --- AND ONCE THERE ARE TWO THREADS, NOBODY ELSE SEES THE GAP ----------
+    //
+    // THREAD.md D2 and D3. Between the take-out above and the write-back below
+    // the slot holds nothing, and a field or a global is a slot another thread
+    // can read: it got S0713, or it took the same body out too and one thread
+    // freed what the other was appending to. So for those two targets the whole
+    // take-out, handler and write-back happens under one hold -- the object's,
+    // or the globals' -- and every other thread's read waits for the write-back.
+    // The fast path is untouched: inside the hold the count is still one.
+    //
+    // A HANDLER CANNOT WAIT ON THIS THREAD'S WALK -- no row calls back into the
+    // machine -- so the hold ends when this function returns, on every path.
+    const bool shared = takes_receiver_out && m.globals()->shared();
+    const suit::SuitObject *object = nullptr;
+    if (shared && target == Target::Field)
+        if (const Sui *held = std::get_if<Sui>(&m.local(0)))
+            object = held->get();
+    suit::HandlerHold object_hold(object);
+    std::unique_lock<std::recursive_mutex> globals_hold;
+    if (shared && target == Target::Global)
+        globals_hold = m.globals()->hold();
+
     if (takes_receiver_out) {
         if (target == Target::Local) {
             m.set_local(op.d, Value::nothing());
@@ -201,8 +226,22 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
     }
 
     Value answer;
-    if (!m.call_handler(handler, count, &answer, named))
+    if (!m.call_handler(handler, count, &answer, named)) {
+        // A REFUSAL STOPS THIS WALK AND NOT THE OTHERS. Left empty, a shared
+        // field or global would be a second, false error in whichever thread
+        // read it next -- so the receiver, still on the value stack, goes back.
+        if (shared) {
+            const uint32_t given =
+                named == kNoOpList ? 0 : m.program().list_size(named);
+            Value receiver = m.value_from_top(count + given - 1);
+            if (target == Target::Global)
+                m.set_global(op.d, std::move(receiver));
+            else if (const Sui *held = std::get_if<Sui>(&m.local(0));
+                     held != nullptr && *held && op.d < (*held)->fields.size())
+                (*held)->fields[op.d] = std::move(receiver);
+        }
         return;
+    }
 
     m.done();
 

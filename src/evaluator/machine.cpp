@@ -278,7 +278,12 @@ void Machine::refuse(errors::Diagnostic problem)
     if (ending_ != Ending::Finished)
         return;
 
-    problem.frames = call_stack();
+    // A DIAGNOSTIC THAT ALREADY HAS FRAMES KEEPS THEM -- THREAD.md D13. The
+    // only producer of one is `join()` re-raising a thread's refusal, and its
+    // frames are the thread's: overwriting them with the joiner's stack blamed
+    // `satellite.main` for an error in the capsule the thread ran.
+    if (problem.frames.empty())
+        problem.frames = call_stack();
     problems_.push_back(std::move(problem));
     ending_ = Ending::Refused;
 }

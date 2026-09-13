@@ -286,9 +286,28 @@ std::string text_of(const Value &value)
             return "<spacesuit>";
         const suit::Layout &layout = *(*handle)->layout;
         std::string out = "<" + layout.name;
-        for (size_t i = 0; i < (*handle)->fields.size(); i++)
+
+        // A COPY OF THE FIELDS, TAKEN UNDER THE OBJECT'S HOLD AND RENDERED
+        // OUTSIDE IT -- THREAD.md D1. Rendering a field can render another
+        // object, and holding this one while waiting for that one is how two
+        // threads rendering each other's objects would hang. A thread already
+        // holding an object across a handler only TRIES, for the same reason
+        // one level out, and says so in the text if the object is busy.
+        std::vector<Value> fields;
+        std::unique_lock<std::recursive_mutex> in((*handle)->hold,
+                                                  std::defer_lock);
+        if (suit::holds_open > 0) {
+            if (!in.try_lock())
+                return out + " (in use by another thread)>";
+        } else {
+            in.lock();
+        }
+        fields = (*handle)->fields;
+        in.unlock();
+
+        for (size_t i = 0; i < fields.size(); i++)
             out += (i == 0 ? " " : ", ") + layout.field_names[i] + ": " +
-                   text_of((*handle)->fields[i]);
+                   text_of(fields[i]);
         return out + ">";
     }
 

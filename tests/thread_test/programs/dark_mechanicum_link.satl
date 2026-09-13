@@ -55,7 +55,9 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
         m.join()
     }
     satellite.console.display("expected 160000")
-    satellite.console.display("received " + shared_link.call_received().to_string())
-    satellite.console.display("pieces   " + shared_link.call_size().to_string())
+    satellite.variable.number received = shared_link.call_received()
+    satellite.variable.number pieces = shared_link.call_size()
+    satellite.console.display("received " + received.to_string())
+    satellite.console.display("pieces   " + pieces.to_string())
     satellite.return(satellite)
 }

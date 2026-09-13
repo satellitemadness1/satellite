@@ -3,6 +3,7 @@
 #include "satellite_prompt/session.hpp"
 
 #include "error_reporter/report.hpp"
+#include "error_reporter/warning_log.hpp"
 #include "evaluator/machine.hpp"
 #include "satellite_console/console.hpp"
 #include "satellite_directory/listing.hpp"
@@ -280,6 +281,7 @@ bool Session::run(const std::string &entry)
         return true;
 
     clear_interrupt();
+    errors::log::set_program(kPromptName);
 
     eval::Machine machine(built.program.closures, built.parsed.ast,
                           policy_from_the_limits());
@@ -318,6 +320,17 @@ bool Session::run(const std::string &entry)
     // the same guarantee that matters -- everything printed is on the terminal
     // before the next prompt is drawn -- at no cost.
     console::Console::the().drain();
+
+    // WARNINGS FIRST, REBASED LIKE EVERY OTHER SENTENCE AT THIS PROMPT -- see
+    // the note below for why a typed line's numbers need it.
+    std::vector<errors::Diagnostic> warned = errors::log::take();
+    if (!warned.empty()) {
+        rebase_all(warned, above);
+        fputs(errors::render(warned, errors::Source{kPromptName, built.text,
+                                                    &built.words})
+                  .c_str(),
+              stderr);
+    }
 
     // A RUN-TIME DIAGNOSTIC NEEDS REBASING TOO, AND THIS WAS MISSED THE FIRST
     // TIME. `report()` above covers what the four passes found; S0721 -- a path
@@ -365,6 +378,7 @@ bool Session::run_file(const std::string &path)
     }
 
     clear_interrupt();
+    errors::log::set_program(path);
 
     const eval::Capsule &main = built.program.closures.capsules()[which];
     std::vector<Value> arguments;
@@ -392,6 +406,13 @@ bool Session::run_file(const std::string &path)
     const std::vector<errors::Diagnostic> abandoned = thread::close_all();
 
     console::Console::the().drain();
+
+    const std::vector<errors::Diagnostic> warned = errors::log::take();
+    if (!warned.empty())
+        fputs(errors::render(warned,
+                             errors::Source{path, built.text, &built.words})
+                  .c_str(),
+              stderr);
 
     if (!machine.ok())
         fputs(errors::render(machine.problems(),

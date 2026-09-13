@@ -392,11 +392,59 @@ struct Value : ValueBase {
     bool is_suit() const { return std::holds_alternative<Sui>(*this); }
 };
 
+// A BURIAL -- THREAD.md D19: destroying a value NESTED A MILLION DEEP.
+//
+// A list holding a list holding a list is destroyed by C++ one frame per level:
+// the last handle to the outer body frees it, which frees its elements, which
+// frees theirs. A list nested 1,000,000 deep killed a worker thread with
+// SIGSEGV -- at 9cfd479 and after -- while the same list on the main walk
+// survived, so a program that worked went on to crash the moment it was moved
+// onto a thread. SCRATCH.md/NO_LIMITS.md's rule is that a crash is not a limit
+// and a bound is not the fix, and the walker's own answer to recursion is the
+// one here: keep the stack on the heap.
+//
+// So a body that dies hands its children to a Burial instead of destroying
+// them inline. The OUTERMOST burial on a thread owns a queue and empties it in
+// a loop; every burial opened while that loop runs only adds to the same
+// queue. Nothing is destroyed twice and nothing is left, and a child that
+// somebody else still holds is not touched -- dropping one handle to it is a
+// count going down, not a destruction.
+class Burial {
+public:
+    Burial();
+    ~Burial();
+    Burial(const Burial &) = delete;
+    Burial &operator=(const Burial &) = delete;
+
+    // Takes `child` if destroying it here would destroy a body that can hold
+    // more values -- a list, a map, a spacesuit, a deferred call, a thread.
+    void add(Value &child);
+
+private:
+    std::vector<Value> queue_;
+    bool owner_ = false;
+};
+
 // `satellite.container.list<T>` -- a vector of values with a name a forward
 // declaration can carry, which an alias cannot. NOT polymorphic and never
 // deleted through the base; the inheritance is spelling, not design.
+//
+// THE DESTRUCTOR IS THE BURIAL ABOVE, and the five defaulted members are what
+// declaring one costs: without them C++ quietly drops the move constructor, and
+// every list published through a slot would be copied instead of moved.
 struct List : std::vector<Value> {
     using std::vector<Value>::vector;
+    List() = default;
+    List(const List &) = default;
+    List(List &&) = default;
+    List &operator=(const List &) = default;
+    List &operator=(List &&) = default;
+    ~List()
+    {
+        Burial burial;
+        for (Value &child : *this)
+            burial.add(child);
+    }
 };
 
 // One `satellite.container.map` entry, in insertion order. The stored KEY
@@ -416,6 +464,21 @@ struct MapEntry {
 struct MapBody {
     std::vector<MapEntry> entries;
     std::unordered_map<std::string, size_t> index;
+
+    // List's burial and List's five defaults, for List's reasons.
+    MapBody() = default;
+    MapBody(const MapBody &) = default;
+    MapBody(MapBody &&) = default;
+    MapBody &operator=(const MapBody &) = default;
+    MapBody &operator=(MapBody &&) = default;
+    ~MapBody()
+    {
+        Burial burial;
+        for (MapEntry &entry : entries) {
+            burial.add(entry.key);
+            burial.add(entry.value);
+        }
+    }
 };
 
 inline Value Value::list(List items)

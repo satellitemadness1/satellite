@@ -4,6 +4,8 @@
 
 #include <zlib.h>
 
+#include <pthread.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include <cstddef>
@@ -39,7 +41,22 @@ long read_some(void *stream, char *into, std::size_t many)
     // block. Nothing here asks for 2GB today -- the caller's buffer decides --
     // but a buffer size is the kind of constant that grows without anybody
     // rereading this function.
+    //
+    // AND THE THREAD WAKE IS HELD OFF FOR THE LENGTH OF THE READ -- THREAD.md
+    // D15. satellite_thread/thread_handle.cpp wakes a thread being closed with
+    // SIGUSR2 and no SA_RESTART, so a blocked read(2) comes back EINTR.
+    // satellite's own reads retry that; vendored zlib's gz_load does not, and
+    // calls it a stream error -- and drops the bytes it had already read in
+    // that call, so retrying from out here could not be exact either. A gzip
+    // handle is always a regular file (looks_gzipped needs pread, which a pipe
+    // refuses), so this read ends on its own; the wake is left pending and
+    // lands the moment the mask is restored, where the stop is noticed.
+    sigset_t wake, before;
+    sigemptyset(&wake);
+    sigaddset(&wake, SIGUSR2);
+    pthread_sigmask(SIG_BLOCK, &wake, &before);
     const z_size_t got = gzfread(into, 1, many, static_cast<gzFile>(stream));
+    pthread_sigmask(SIG_SETMASK, &before, nullptr);
     if (got == 0 && gzeof(static_cast<gzFile>(stream)) == 0) {
         int problem = 0;
         gzerror(static_cast<gzFile>(stream), &problem);

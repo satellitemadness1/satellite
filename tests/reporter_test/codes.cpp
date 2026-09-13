@@ -171,9 +171,11 @@ void section_codes()
     // AND 141 SINCE M30's NAMED ARGUMENTS, which added four: S0232 and S0233
     // in the parser, S0527 in resolve and S0732 at the handler.
     // AND 142 WITH S0921, sleep's unit word, AND 143 WITH S1004, display's
-    // colour.
-    check(kCodeCount == 143,
-          "errors.def has 143 rows -- if that changed on purpose, change it here "
+    // colour. AND 144 WITH S1406 AT THREAD.md T1, a file handle used by more
+    // than one thread -- kept in satellite.log, the author's Q4. AND 145
+    // WITH S1407, a join that would wait for itself.
+    check(kCodeCount == 145,
+          "errors.def has 145 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

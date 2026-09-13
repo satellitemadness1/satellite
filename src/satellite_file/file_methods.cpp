@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include "error_reporter/report.hpp"
+#include "error_reporter/warning_log.hpp"
 #include "satellite_bits/bits.hpp"
 #include "satellite_file/file_internal.hpp"
 #include "satellite_file/gzip.hpp"
@@ -24,7 +25,9 @@
 
 #include <cerrno>
 #include <cstring>
+#include <mutex>
 #include <string>
+#include <thread>
 
 namespace satellite::file {
 
@@ -342,6 +345,36 @@ bool file_error(eval::Machine &m, const Value *arguments, uint32_t,
     return true;
 }
 
+// EVERY ROW, WHOLE -- THREAD.md D7 and the author's Q4. The row runs under the
+// handle's lock, so two threads reading one handle each get whole lines from
+// one cursor, and a write_line's bytes are never split by another thread's.
+// A handler cannot wait on a walk, so the lock ends with the row.
+//
+// AND THE FIRST TIME A SECOND THREAD USES THE HANDLE, S1406 GOES TO
+// ~/.satl/satellite.log -- once per handle, not printed: the author asked for
+// the sharing to be recorded and the program to run.
+template <eval::HandlerFn body>
+bool whole(eval::Machine &m, const Value *arguments, uint32_t count,
+           Value *answer)
+{
+    const Fil *held = std::get_if<Fil>(&arguments[0]);
+    if (held == nullptr || !*held)
+        return body(m, arguments, count, answer);
+
+    FileHandle &handle = **held;
+    std::lock_guard<std::mutex> in(handle.lock);
+    const std::thread::id me = std::this_thread::get_id();
+    if (handle.user == std::thread::id()) {
+        handle.user = me;
+    } else if (handle.user != me && !handle.shared_seen) {
+        handle.shared_seen = true;
+        errors::log::warn(errors::make<errors::Code::THREAD_SHARED_FILE>(
+                              m.span_of(m.here()), "\"" + handle.path + "\""),
+                          false);
+    }
+    return body(m, arguments, count, answer);
+}
+
 } // namespace
 
 void install_file_methods()
@@ -355,16 +388,16 @@ void install_file_methods()
         uint32_t arity;
     };
     static constexpr Row rows[] = {
-        {NodeId::VARIABLE_FILE_OPEN,       file_reopen,       1},
-        {NodeId::VARIABLE_FILE_READ_LINE,  file_read_line,    1},
-        {NodeId::VARIABLE_FILE_WRITE_LINE, file_write_line,   2},
-        {NodeId::VARIABLE_FILE_READ_ALL,   file_read_all,     1},
-        {NodeId::VARIABLE_FILE_CLOSE,      file_close,        1},
-        {NodeId::VARIABLE_FILE_EXISTS,     file_exists_here,  1},
-        {NodeId::VARIABLE_FILE_OK,         file_ok,           1},
-        {NodeId::VARIABLE_FILE_PATH,       file_path,         1},
-        {NodeId::VARIABLE_FILE_ERROR,      file_error,        1},
-        {NodeId::VARIABLE_FILE_WRITE,      file_write,        2},
+        {NodeId::VARIABLE_FILE_OPEN,       whole<file_reopen>,       1},
+        {NodeId::VARIABLE_FILE_READ_LINE,  whole<file_read_line>,    1},
+        {NodeId::VARIABLE_FILE_WRITE_LINE, whole<file_write_line>,   2},
+        {NodeId::VARIABLE_FILE_READ_ALL,   whole<file_read_all>,     1},
+        {NodeId::VARIABLE_FILE_CLOSE,      whole<file_close>,        1},
+        {NodeId::VARIABLE_FILE_EXISTS,     whole<file_exists_here>,  1},
+        {NodeId::VARIABLE_FILE_OK,         whole<file_ok>,           1},
+        {NodeId::VARIABLE_FILE_PATH,       whole<file_path>,         1},
+        {NodeId::VARIABLE_FILE_ERROR,      whole<file_error>,        1},
+        {NodeId::VARIABLE_FILE_WRITE,      whole<file_write>,        2},
     };
     for (const Row &row : rows)
         table.install(static_cast<words::PathId>(row.path),

@@ -46,6 +46,7 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
     b.join()
     c.join()
     d.join()
-    satellite.console.display("suit count " + shared.get().to_string() + " of 80000")
+    satellite.variable.number count = shared.get()
+    satellite.console.display("suit count " + count.to_string() + " of 80000")
     satellite.return(satellite)
 }

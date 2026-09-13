@@ -17,7 +17,7 @@ namespace satellite::thread {
 
 namespace {
 
-// THE CHILD'S OWN VIEW OF ITSELF. Two thread_locals and a free function,
+// THE CHILD'S OWN VIEW OF ITSELF. A thread_local and a free function,
 // because evaluator/machine.hpp's Policy carries `bool (*interrupted)()` -- a
 // plain function pointer with nowhere to put a handle.
 //
@@ -28,19 +28,25 @@ namespace {
 // one thing that can add per-thread state to a per-process signature without
 // widening it for every walk that has no thread in it.
 thread_local ThreadHandle *self = nullptr;
-thread_local bool (*inherited)() = nullptr;
 
 // STOPPED OR INTERRUPTED, AND THE WALK CANNOT TELL THEM APART ON PURPOSE. Both
 // mean "stop at the next statement boundary" and both produce Ending::
 // Interrupted; what separates them is who asked and what the answer is worth,
-// and that is decided in close_all() where the asking happened. A Ctrl-C
-// reaches every thread because `inherited` is the same process-wide flag the
-// parent reads.
+// and that is decided in close_all() where the asking happened.
+//
+// THIS THREAD, THEN EVERY THREAD ABOVE IT, THEN THE PROCESS -- THREAD.md D8.
+// The first version read `self->stop` and then called an `inherited` hook
+// copied from the parent's policy; for a thread started by a thread that hook
+// was this function, and the child spun in it for ever. The chain is the
+// parents' handles, and the last question is the root hook, which is never
+// this function: interrupt_root() below makes sure of it.
 bool stopped_or_interrupted()
 {
-    if (self != nullptr && self->stop.load(std::memory_order_relaxed))
-        return true;
-    return inherited != nullptr && inherited();
+    ThreadHandle *const me = self;
+    for (ThreadHandle *at = me; at != nullptr; at = at->parent.get())
+        if (at->stop.load(std::memory_order_relaxed))
+            return true;
+    return me != nullptr && me->root != nullptr && me->root();
 }
 
 // THE WAKE SIGNAL, AND WHY THE STOP FLAG IS NOT ENOUGH ON ITS OWN.
@@ -118,14 +124,31 @@ void arm_the_wake()
 // that never comes back is a thread in an uninterruptible syscall -- which no
 // mechanism in user space can reach and which a timeout would only let us LIE
 // about.
-void keep_waking(const Thr &handle)
+void keep_waking(const std::vector<Thr> &handles)
 {
-    const pthread_t which = handle->worker.native_handle();
-    while (!handle->finished.load(std::memory_order_acquire)) {
-        // SAFE ON A THREAD THAT HAS ALREADY ENDED. The pthread_t stays valid
-        // until join() or detach(), so the worst case is ESRCH, which is the
-        // loop's own exit condition arriving by another road.
-        pthread_kill(which, kWake);
+    // EVERY THREAD AT ONCE, AND NOT ONE AFTER ANOTHER -- found by T1's review
+    // and reproduced by tests/thread_test/programs/join_sleeping_child.satl.
+    // Waking in launch order hung the run: a parent joining its sleeping child
+    // comes first, cannot end until the child does, and the child was never
+    // signalled because the loop was still waiting on the parent.
+    for (;;) {
+        bool all_ended = true;
+        for (const Thr &handle : handles) {
+            // UNDER THE LOCK, WHICH IS WHAT MAKES THE SIGNAL SAFE -- THREAD.md
+            // D5. The note above this used to say the worst case was ESRCH;
+            // that holds only until somebody joins, and after a join the
+            // pthread_t may name nothing or another thread. A thread that has
+            // not ended cannot have been joined, and `ended` is written under
+            // this lock, so the signal goes only to a thread that exists.
+            std::lock_guard<std::mutex> held(handle->lock);
+            if (handle->ended || handle->failed)
+                continue;
+            all_ended = false;
+            if (handle->worker.joinable())
+                pthread_kill(handle->worker.native_handle(), kWake);
+        }
+        if (all_ended)
+            return;
         const struct timespec pause{0, 1000000}; // 1 ms
         nanosleep(&pause, nullptr);
     }
@@ -159,7 +182,6 @@ Registry &registry()
 void run_the_body(const Thr &handle)
 {
     self = handle.get();
-    inherited = handle->policy.interrupted;
 
     eval::Policy mine = handle->policy;
     mine.interrupted = stopped_or_interrupted;
@@ -172,22 +194,59 @@ void run_the_body(const Thr &handle)
     // before any capsule did -- DESIGN §7.2's order. A thread that ran them
     // again would reset every global the program had changed since, which is a
     // program silently losing work rather than a race.
-    handle->answer = machine.call(handle->body->capsule,
-                                  handle->body->arguments);
+    Value answer = machine.call(handle->body->capsule, handle->body->arguments);
+
+    // PUBLISHED UNDER THE LOCK AND ALL AT ONCE. A joiner waits on `ended`, so
+    // everything it reads is written before it can wake; `finished` goes last
+    // for the renderer, which reads it without the lock.
+    std::lock_guard<std::mutex> held(handle->lock);
+    handle->answer = std::move(answer);
     handle->problems = machine.problems();
     handle->ending = machine.ending();
-
-    // LAST, AND AFTER EVERYTHING ELSE IS WRITTEN. close_all() reads `finished`
-    // to decide whether this thread ran to its own end or was stopped, and a
-    // store published before `answer` was would make that answer a lie.
+    handle->ended = true;
     handle->finished.store(true, std::memory_order_release);
+    handle->changed.notify_all();
+}
+
+// EXACTLY ONE std::thread::join(), WHOEVER ASKS -- THREAD.md D5 and D9. The
+// first caller to find the thread ended claims the join and does it without
+// the lock; every other caller, a program's second join() or close_all(),
+// waits for `reaped`. Answers false for a thread the machine never made.
+bool reap(const Thr &handle)
+{
+    std::unique_lock<std::mutex> held(handle->lock);
+    handle->changed.wait(held, [&] { return handle->ended || handle->failed; });
+    if (!handle->ended)
+        return false;
+    if (handle->claimed) {
+        handle->changed.wait(held, [&] { return handle->reaped; });
+        return true;
+    }
+    handle->claimed = true;
+    held.unlock();
+    handle->worker.join();
+    held.lock();
+    handle->reaped = true;
+    handle->changed.notify_all();
+    return true;
 }
 
 } // namespace
 
+bool (*interrupt_root(const eval::Policy &policy))()
+{
+    // A THREAD'S WALK HAS stopped_or_interrupted AS ITS HOOK, so a thread made
+    // on a thread takes the root its maker was given; the program's own walk
+    // has no `self` and its hook is the root.
+    return self != nullptr ? self->root : policy.interrupted;
+}
+
 bool launch(const Thr &handle, std::string &why)
 {
-    handle->started.store(true, std::memory_order_relaxed);
+    // THE WALK THAT STARTS IT IS ITS PARENT, whoever made the handle. A handle
+    // made on the main walk and started by a worker is closed with the worker.
+    if (self != nullptr)
+        handle->parent = self->shared_from_this();
 
     // SHARED BEFORE THE CHILD EXISTS. evaluator/globals.hpp's safety argument
     // is entirely about this line's position: the store is sequenced before
@@ -203,7 +262,12 @@ bool launch(const Thr &handle, std::string &why)
 
     arm_the_wake();
 
+    // THE WORKER IS ASSIGNED UNDER THE HANDLE'S LOCK, so close_all() or a
+    // joiner on another thread never reads it half-written, and the child --
+    // which takes the lock to publish its answer -- cannot end before it is.
+    std::unique_lock<std::mutex> held(handle->lock);
     try {
+        handle->failed = false;
         handle->worker = std::thread(run_the_body, handle);
     } catch (const std::system_error &refused) {
         // THE MACHINE SAID NO. std::thread's constructor is the one thing in
@@ -212,22 +276,73 @@ bool launch(const Thr &handle, std::string &why)
         // pool that could not be fully built "a SMALLER pool". There is no
         // smaller answer available here: the program asked for a thread and
         // there is not one, so it is told, with the operating system's own
-        // sentence attached.
+        // sentence attached. Any joiner already waiting is woken to S1403.
+        handle->failed = true;
         handle->started.store(false, std::memory_order_relaxed);
+        handle->changed.notify_all();
+        held.unlock();
         why = refused.what();
-        std::lock_guard<std::mutex> held(registry().lock);
-        if (!registry().live.empty() && registry().live.back() == handle)
-            registry().live.pop_back();
+        std::lock_guard<std::mutex> in(registry().lock);
+        for (size_t i = registry().live.size(); i > 0; i--)
+            if (registry().live[i - 1] == handle) {
+                registry().live.erase(registry().live.begin() +
+                                      static_cast<long>(i - 1));
+                break;
+            }
         return false;
     }
     return true;
 }
 
-void wait(const Thr &handle)
+// WHO IS WAITING FOR WHOM -- found by T1's review, and reproduced by
+// tests/thread_test/programs/join_itself.satl. A thread that reached its own
+// handle and joined it waited for ever, and so did two threads joining each
+// other; std::thread::join() used to throw for the first, and nothing caught
+// the second. So every thread's join records the handle it waits on, under
+// one lock, and a join whose chain of waits leads back to the asker is
+// refused before it sleeps. The program's own walk is never waited on -- no
+// thread can hold a handle to it -- so it records nothing.
+std::mutex &waits()
 {
-    if (handle->worker.joinable())
-        handle->worker.join();
-    handle->joined = true;
+    static std::mutex the;
+    return the;
+}
+
+Joined wait(const Thr &handle)
+{
+    if (self != nullptr) {
+        std::lock_guard<std::mutex> held(waits());
+        for (ThreadHandle *at = handle.get(); at != nullptr; at = at->waiting_on)
+            if (at == self)
+                return Joined::WouldNeverReturn;
+        self->waiting_on = handle.get();
+    }
+    struct Unrecord {
+        ~Unrecord()
+        {
+            if (self == nullptr)
+                return;
+            std::lock_guard<std::mutex> held(waits());
+            self->waiting_on = nullptr;
+        }
+    } unrecord;
+
+    // `joined` IS TAKEN BEFORE THE WAIT, so of two joins racing, exactly one
+    // is First whatever the timing -- Q2's "exactly", kept.
+    bool again = false;
+    {
+        std::lock_guard<std::mutex> held(handle->lock);
+        again = handle->joined;
+        handle->joined = true;
+    }
+
+    if (!reap(handle)) {
+        std::lock_guard<std::mutex> held(handle->lock);
+        handle->joined = again;
+        return Joined::NeverRan;
+    }
+    if (again)
+        return Joined::Again;
 
     // TAKEN OUT OF THE REGISTRY, because close_all() exists to close what
     // nobody closed and this one has been. Leaving it in would make its
@@ -240,38 +355,52 @@ void wait(const Thr &handle)
                                   static_cast<long>(i));
             break;
         }
+    return Joined::First;
 }
 
 std::vector<errors::Diagnostic> close_all()
 {
-    // TAKEN OUT FROM UNDER THE LOCK FIRST, AND NOT WALKED UNDER IT. A child
-    // still running may be inside `wait()` on a handle of its own -- a thread
-    // that started a thread -- and joining while holding this lock would be
-    // this function waiting for a thread waiting for this lock.
-    std::vector<Thr> taken;
-    {
-        std::lock_guard<std::mutex> held(registry().lock);
-        taken.swap(registry().live);
-    }
-
     std::vector<errors::Diagnostic> unreported;
-    for (const Thr &handle : taken) {
-        handle->stop.store(true, std::memory_order_relaxed);
-        if (handle->worker.joinable()) {
-            // THE FLAG, THEN THE ALARM CLOCK, THEN THE WAIT -- in that order,
-            // because the flag is what the thread acts on and the signal only
-            // makes it look.
-            keep_waking(handle);
-            handle->worker.join();
-        }
 
-        // ASKED AFTER THE JOIN, WHERE IT IS A FACT. The ending says which of
-        // the two things happened to this thread, and `Interrupted` is the one
-        // this function caused -- see the header for the race that reading
-        // `finished` beforehand had.
-        if (!handle->joined && handle->ending != eval::Ending::Interrupted)
-            for (const errors::Diagnostic &problem : handle->problems)
-                unreported.push_back(problem);
+    // UNTIL THE REGISTRY IS EMPTY, AND NOT ONE PASS -- THREAD.md D6. A thread
+    // being closed can still reach a start() before its next statement
+    // boundary, and that thread arrived after the swap: one pass returned, the
+    // arena was destroyed, and the new thread went on walking it. Now the new
+    // thread's parent is stopped, so it ends at its first statement, and the
+    // next pass reaps it.
+    for (;;) {
+        // TAKEN OUT FROM UNDER THE LOCK FIRST, AND NOT WALKED UNDER IT. A child
+        // still running may be inside `wait()` on a handle of its own, and
+        // joining while holding this lock would be this function waiting for a
+        // thread waiting for this lock.
+        std::vector<Thr> taken;
+        {
+            std::lock_guard<std::mutex> held(registry().lock);
+            taken.swap(registry().live);
+        }
+        if (taken.empty())
+            break;
+
+        for (const Thr &handle : taken)
+            handle->stop.store(true, std::memory_order_relaxed);
+
+        // THE FLAG, THEN THE ALARM CLOCK, THEN THE WAIT -- in that order,
+        // because the flag is what the thread acts on and the signal only makes
+        // it look.
+        keep_waking(taken);
+
+        for (const Thr &handle : taken) {
+            if (!reap(handle))
+                continue;
+
+            // ASKED AFTER THE JOIN, WHERE IT IS A FACT. `Interrupted` is the
+            // ending this function caused -- MILESTONES/M23.md §3.5 has the race
+            // that reading `finished` beforehand had.
+            std::lock_guard<std::mutex> held(handle->lock);
+            if (!handle->joined && handle->ending != eval::Ending::Interrupted)
+                for (const errors::Diagnostic &problem : handle->problems)
+                    unreported.push_back(problem);
+        }
     }
     return unreported;
 }

@@ -85,7 +85,7 @@ public:
     {
         if (!shared())
             return slots_[index];
-        std::lock_guard<std::mutex> held(lock_);
+        std::lock_guard<std::recursive_mutex> held(lock_);
         return slots_[index];
     }
 
@@ -95,14 +95,28 @@ public:
             slots_[index] = std::move(value);
             return;
         }
-        std::lock_guard<std::mutex> held(lock_);
+        std::lock_guard<std::recursive_mutex> held(lock_);
         slots_[index] = std::move(value);
     }
 
     uint32_t count() const { return static_cast<uint32_t>(slots_.size()); }
 
+    // ONE HOLD ACROSS SEVERAL READS AND WRITES -- THREAD.md D3. A mutating
+    // method on a global takes the value out, runs, and writes it back, and
+    // those were three separate grabs of the lock above: another thread read
+    // `nothing` in the gap and one of two appends was lost. The returned lock
+    // keeps every other thread's read() and write() waiting until it goes out
+    // of scope, and read()/write() inside it re-enter, which is why the mutex
+    // is recursive. Empty, and free, while the globals are not shared.
+    std::unique_lock<std::recursive_mutex> hold() const
+    {
+        if (!shared())
+            return {};
+        return std::unique_lock<std::recursive_mutex>(lock_);
+    }
+
 private:
-    mutable std::mutex lock_;
+    mutable std::recursive_mutex lock_;
     std::atomic<bool> shared_{false};
     std::vector<Value> slots_;
 };

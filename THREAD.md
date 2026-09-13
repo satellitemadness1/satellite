@@ -58,20 +58,20 @@ it can't happen), then fix it.
 
 | id | defect | where | evidence | fix in |
 |---|---|---|---|---|
-| **D1** | Spacesuit fields are a plain `std::vector<Value>` with no lock. Two threads writing a field write one 40-byte variant at once; a string or list handle is freed twice. | `satellite_spacesuit/suit_object.hpp:94`, `op_field_store`, `operations_dispatch.cpp:199,250` | run | T1 |
-| **D2** | A mutating method on a field TAKES THE VALUE OUT (`fields[i] = nothing`) so `use_count()==1` allows in-place mutation (`19526c9`), then writes it back. Two threads can both take it out; one frees what the other mutates. A third reads the empty slot and gets S0713/S0714. | `operations_dispatch.cpp:187-201, 228-254` | run | T1 |
-| **D3** | The same take-out and write-back on a **global** is two separate lock grabs, so another thread sees `nothing` in between, and appends are lost. | `operations_dispatch.cpp:194-195, 252`; `evaluator/globals.hpp` | read | T1 |
-| **D4** | Two threads calling `start()` on one handle both pass the `started` check, then both assign `handle->worker`. Assigning to a joinable `std::thread` is `std::terminate`. | `satellite_thread/handlers.cpp:104-111`, `thread_handle.cpp:190` | read (S1402 won the race 3 of 3) | T1 |
-| **D5** | `close_all()` joins a handle it swapped out of the registry while a child thread may be inside `wait()` on the same handle. Two joins on one `std::thread` are undefined behaviour, and `worker` is read and written from two threads with no lock. `pthread_kill` on a `pthread_t` another thread already joined is also undefined behaviour; the comment's "worst case is ESRCH" holds only before a join. | `thread_handle.cpp:121-132, 226-243, 245-277` | read | T1 |
-| **D6** | A thread started AFTER `close_all()` has swapped the registry is never closed. The run returns, `Compiled` and `Ast` are destroyed, and that thread keeps walking freed memory. | `thread_handle.cpp:251-255` | read | T1 |
-| **D7** | A **file handle** shared by threads: `read_at`, `buffer`, `buffer_at` and the gzip stream are one position across unsynchronised fields (the header says so: "Two threads reading one handle at M23 need a lock"). | `satellite_file/file_handle.hpp:22-31, 101-110` | read | T1 |
+| **D1** | Spacesuit fields are a plain `std::vector<Value>` with no lock. Two threads writing a field write one 40-byte variant at once; a string or list handle is freed twice. | `satellite_spacesuit/suit_object.hpp:94`, `op_field_store`, `operations_dispatch.cpp:199,250` | run | T1 ✓ — per-object hold; TSan clean; 1,000 runs |
+| **D2** | A mutating method on a field TAKES THE VALUE OUT (`fields[i] = nothing`) so `use_count()==1` allows in-place mutation (`19526c9`), then writes it back. Two threads can both take it out; one frees what the other mutates. A third reads the empty slot and gets S0713/S0714. | `operations_dispatch.cpp:187-201, 228-254` | run | T1 ✓ — hold kept from take-out to write-back |
+| **D3** | The same take-out and write-back on a **global** is two separate lock grabs, so another thread sees `nothing` in between, and appends are lost. | `operations_dispatch.cpp:194-195, 252`; `evaluator/globals.hpp` | read: **not reachable from source** — every spelling of a method on a global is refused before running (S0521 `satellite.library.x.append`, S0204). Guarded anyway | T1 ✓ — `Globals::hold()` |
+| **D4** | Two threads calling `start()` on one handle both pass the `started` check, then both assign `handle->worker`. Assigning to a joinable `std::thread` is `std::terminate`. | `satellite_thread/handlers.cpp:104-111`, `thread_handle.cpp:190` | read (S1402 won the race 3 of 3; not forced to terminate) | T1 ✓ — `started.exchange` |
+| **D5** | `close_all()` joins a handle it swapped out of the registry while a child thread may be inside `wait()` on the same handle. Two joins on one `std::thread` are undefined behaviour, and `worker` is read and written from two threads with no lock. `pthread_kill` on a `pthread_t` another thread already joined is also undefined behaviour; the comment's "worst case is ESRCH" holds only before a join. | `thread_handle.cpp:121-132, 226-243, 245-277` | run: `closing_threads.satl` hangs 3 of 3 at 9cfd479 (with D8 in front of it) | T1 ✓ — one join via `claimed`/`reaped`; wake only before `ended` |
+| **D6** | A thread started AFTER `close_all()` has swapped the registry is never closed. The run returns, `Compiled` and `Ast` are destroyed, and that thread keeps walking freed memory. | `thread_handle.cpp:251-255` | read: only reachable through a thread starting a thread, which D8 hung first. `closing_threads.satl` covers it | T1 ✓ — parent chain stops late starters; `close_all` loops until empty |
+| **D7** | A **file handle** shared by threads: `read_at`, `buffer`, `buffer_at` and the gzip stream are one position across unsynchronised fields (the header says so: "Two threads reading one handle at M23 need a lock"). | `satellite_file/file_handle.hpp:22-31, 101-110` | run: `shared_file.satl` at 9cfd479 — SIGABRT (`std::out_of_range`) 1 of 3, and 42,440 / 40,087 lines of 40,000 with 80 / 72 torn | T1 ✓ — per-handle lock (Q4) + S1406 in satellite.log |
 
 ### Hangs
 
 | id | defect | where | evidence | fix in |
 |---|---|---|---|---|
-| **D8** | A thread's own thread inherits `stopped_or_interrupted` as its "parent's hook", which is itself. At every statement boundary it calls itself forever (the tail call became a loop). **Any thread that starts a thread hangs.** | `thread_handle.cpp:39-44, 161-165`; `handlers.cpp:90` copies `m.policy()` | run + gdb | T1 |
-| **D9** | Two threads joining one thread: both reach `std::thread::join()`; the second waits forever. `joined` is a plain `bool` written after the join. | `thread_handle.cpp:226-230`, `handlers.cpp:139-145` | run + gdb | T1 |
+| **D8** | A thread's own thread inherits `stopped_or_interrupted` as its "parent's hook", which is itself. At every statement boundary it calls itself forever (the tail call became a loop). **Any thread that starts a thread hangs.** | `thread_handle.cpp:39-44, 161-165`; `handlers.cpp:90` copies `m.policy()` | run + gdb | T1 ✓ — root hook fixed at `new`; 1,000 runs |
+| **D9** | Two threads joining one thread: both reach `std::thread::join()`; the second waits forever. `joined` is a plain `bool` written after the join. | `thread_handle.cpp:226-230`, `handlers.cpp:139-145` | run + gdb | T1 ✓ — second join waits for `reaped`, gets S1404 warning + same answer (Q2) |
 
 ### Wrong answers and lost errors
 
@@ -80,9 +80,19 @@ it can't happen), then fix it.
 | **D10** | `satellite.library.n = satellite.library.n + 1` from several threads loses updates: the read and the write are separate lock grabs. This is DESIGN §7.1's "1585 wrong out of 1600", the thing globals were meant to prevent. | `globals.hpp` `read`/`write` | run: 36,333 of 80,000 | T2 |
 | **D11** | The same lost update on a spacesuit field (`count = count + 1`). T1's lock stops the crash but not this. | as D1 | run (hidden behind D1's crash) | T2 |
 | **D12** | A method's effects are not atomic on its object. `call_feed` doing `received + 1` then `pieces.append` can be seen half-done by another thread, which then reports `received != pieces.size()`. | spacesuit method dispatch | read | T2 |
-| **D13** | A thread's error re-raised at `join()` names the WRONG capsule: `Machine::refuse()` overwrites `problem.frames` with the joiner's call stack. | `machine.cpp:281`, `handlers.cpp:161` | run (`in satellite.main` for an error in `starter`) | T1 |
-| **D14** | `satl --evaluate` discards errors from threads nobody joined (`(void)thread::close_all()`), although it prints its own errors to stderr. A program that failed in a thread reports nothing. | `programs/evaluate_commands.cpp:141` | read | T1 |
-| **D15** | The wake signal SIGUSR2 (no `SA_RESTART`) interrupts any blocking call in a thread being closed. satellite's own `read`/`write` retry on EINTR, but vendored zlib's `gz_load` treats `read() == -1` as an error. A thread reading a `.gz` file when the program ends gets a spurious refusal, which `close_all()` then reports. | `thread_handle.cpp:80-105`, `vendor/zlib-develop/gzread.c:30-35`, `satellite_file/gzip.cpp:42` | read | T1 |
+| **D13** | A thread's error re-raised at `join()` names the WRONG capsule: `Machine::refuse()` overwrites `problem.frames` with the joiner's call stack. | `machine.cpp:281`, `handlers.cpp:161` | run (`in satellite.main` for an error in `starter`) | T1 ✓ — now `in starter`, 1,000 runs |
+| **D14** | `satl --evaluate` discards errors from threads nobody joined (`(void)thread::close_all()`), although it prints its own errors to stderr. A program that failed in a thread reports nothing. | `programs/evaluate_commands.cpp:141` | run: `call_thread_error.satl` under `--call` at 9cfd479 exits 0 and prints nothing | T1 ✓ — S0601 on stderr, exit 1 |
+| **D15** | The wake signal SIGUSR2 (no `SA_RESTART`) interrupts any blocking call in a thread being closed. satellite's own `read`/`write` retry on EINTR, but vendored zlib's `gz_load` treats `read() == -1` as an error. A thread reading a `.gz` file when the program ends gets a spurious refusal, which `close_all()` then reports. | `thread_handle.cpp:80-105`, `vendor/zlib-develop/gzread.c:30-35`, `satellite_file/gzip.cpp:42` | read: **not reproduced** — `gzip_at_close.satl` 0 of 100 bad at 9cfd479 and after; read(2) of a regular file on a local filesystem is not interrupted by a signal on Linux. Reachable on NFS/FUSE | T1 ✓ — SIGUSR2 masked around `gzfread` |
+
+### Found while building T1
+
+| id | defect | where | evidence | fix in |
+|---|---|---|---|---|
+| **D18** | A thread joining a child that the closing run stopped re-raised the child's S0730 ("Ctrl-C arrived") as a refusal; `close_all()` reported it and the program exited 1 though nobody interrupted it. | `satellite_thread/handlers.cpp` `thread_join` | run: `closing_threads.satl` exit 1, 5 of 5, before the fix | T1 ✓ — the joiner stops Interrupted too |
+| **D19** | Destroying a value nested deep recursed in C++ once per level. A list nested 1,000,000 deep: fine on the main walk, **SIGSEGV on a worker thread** (gdb: `_Sp_counted_ptr_inplace<List>::_M_dispose`), at 9cfd479 too. Same shape for maps, spacesuit chains, deferred calls, thread answers and the parent chain. | `satellite_value/value.hpp` | run: `satl deep.satl 1000000` exit 139 | T1 ✓ — `Burial`: children queued on the heap; 10,000,000 deep passes on both |
+
+| **D20** | `close_all()` woke threads one at a time in launch order, waiting for each to end. A parent joining its sleeping child came first, could not end until the child did, and the child was never signalled: the program hung at exit for the length of the sleep (for ever on console input). Found by T1's fresh-reader review. | `thread_handle.cpp` `close_all`, `keep_waking` | run: `join_sleeping_child.satl` exit 124 (timeout) before the fix | T1 ✓ — every unended thread is woken together, then reaped |
+| **D21** | A join that waits for itself: a thread joining its own handle, or A joining B while B joins A, waited for ever — also at program end, where one Ctrl-C could not reach it. `std::thread::join()` used to throw for the self case; the T1 wait did not. Found by the same review. | `thread_handle.cpp` `wait`, `handlers.cpp` `thread_join` | run: `join_itself.satl` exit 124 before the fix; `join_each_other.satl` | T1 ✓ — a join whose chain of waits leads back to the asker is refused, **S1407** |
 
 ### What is missing to prove any of this
 
@@ -98,7 +108,17 @@ it can't happen), then fix it.
 Each has a recommendation. **T2 cannot start until Q1 is answered.**
 
 **Q1 — what a program can rely on when threads share something (D10–D12).**
-Three options:
+**ANSWERED 2026-09-13 — (a), built as a per-thread ACCESS LIST.** The author's
+design: every thread keeps a list of the shared things it is accessing; when
+something is on another thread's list, a thread that wants it waits its turn,
+"like a lock, but it's an access list kept per thread", at a small per-thread
+CPU cost. An entry lasts **one method call** on a spacesuit (on when the method
+starts, off when it returns) and **one statement** for globals. A thread
+already holding an entry re-enters freely; two objects calling each other from
+two threads take turns; a wait that would close a cycle through the lists is
+refused with a new S14xx, never slept on. (Asked and decided against: holding
+entries for a thread's whole life, which would run threads that share anything
+one after another.) The options as they were written:
 
 - **(a) A spacesuit's method call is atomic on its object** (monitor
   semantics): while `link.call_feed(e)` runs, no other thread is inside a
@@ -115,20 +135,22 @@ Three options:
   spacesuit, file or thread, and threads talk through a new channel type. That
   is the safest, but it rules out dark_mechanicum's design.
 
-**Q2 — a second `join()` from another thread (D9).** Today a second join in
-sequence is S1404. *Recommended:* keep S1404 and make it exact across threads:
-exactly one join waits, and every other gets S1404 at once, whatever the timing.
-The alternative is that every join answers the same value, since "two names for
-one thread are one thread".
+**Q2 — a second `join()` from another thread (D9).** **ANSWERED 2026-09-13:**
+the thread is done, so the second join is done too. It gives back the same
+answer (or raises the same error) the first join did, the run keeps going, and
+S1404 becomes a *warning*: printed when the run ends and appended to
+`~/.satl/satellite.log`, where it stays until somebody clears it. This applies
+to a second join in sequence as well.
 
 **Q3 — `satellite.console.input` from several threads.** It is safe today (the
 reader's queue is locked), and each line goes to whichever thread asked first.
 v1's plan refused input from a worker. *Recommended:* allow it, documented, with
 T3 testing that no line is lost or duplicated.
 
-**Q4 — one file handle used by several threads (D7).** *Recommended:* a lock
-per handle, so each `read_line` / `write_line` is whole and lines are never torn
-or skipped. The alternative is refusing a file handle as a thread argument.
+**Q4 — one file handle used by several threads (D7).** **ANSWERED 2026-09-13:**
+use locks — each method call on a handle is whole — and write warning S1406 to
+`~/.satl/satellite.log` (once per handle, not printed) so the sharing is on
+record, and let the program run.
 
 ---
 
@@ -163,6 +185,26 @@ runs the same.
 - **Measure, don't assume:** a worker's stack under `ulimit -s unlimited` is
   glibc's 2 MB. The walker keeps its own stack, but check that no C++
   recursion (deep value destruction, rendering) reaches that cliff first.
+
+**Status (2026-09-13):** built, `make test` 14/14. New reproduction programs:
+`shared_file.satl` (D7), `closing_threads.satl` (D5, D6, D18),
+`call_thread_error.satl` (D14, run with `--call ... later`),
+`join_sleeping_child.satl` (D20), `join_itself.satl` and `join_each_other.satl`
+(D21, both end in S1407 by design),
+`gzip_at_close.satl` (D15; needs `thread_gzip_test.txt.gz` in the current
+directory). A dynamic `-fsanitize=thread -O1 -g` satl, built in a scratch copy of
+the tree, reported **0 warnings** on `dark_mechanicum_link`, `shared_suit_fields`,
+`nested_thread`, `two_joiners`, `two_starters` and `global_counter`, and 0 on
+`join_sleeping_child`, `join_itself`, `join_each_other`, `closing_threads` and
+`shared_file` after D20/D21. **1,000 runs each, all passed:** `nested_thread`,
+`two_joiners`, `two_starters`, `closing_threads`, `shared_file`,
+`global_counter`, `shared_suit_fields`, `join_sleeping_child`, `join_itself`,
+`join_each_other` on the final binary, and `dark_mechanicum_link` on the binary
+before D20/D21 (whose change is to join and close, which it does not reach).
+`two_starters` passes by ending in S1402 named `in starter`; the two `join_`
+cycle programs pass by ending in S1407. `make test` 14/14,
+`help_lines/verify.py` 301/301. The counts in `global_counter`,
+`shared_suit_fields` and `dark_mechanicum_link` are still wrong — T2.
 
 **Done when:** every program in §2 runs 1,000 times with exit 0 (hangs are
 killed by `timeout`, and a timeout is a failure), and the two spacesuit

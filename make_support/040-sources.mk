@@ -568,6 +568,7 @@ HDRS = $(SYSTEM)/version.hpp \
        $(ERRORS)/errors.def \
        $(ERRORS)/codes.hpp \
        $(ERRORS)/report.hpp \
+       $(ERRORS)/warning_log.hpp \
        $(ERRORS)/suggest.hpp \
        $(ERRORS)/dump.hpp \
        $(LEXER)/lexer.hpp \

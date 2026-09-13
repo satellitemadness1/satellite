@@ -54,8 +54,10 @@
 #include "satellite_value/value.hpp"
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -86,30 +88,39 @@ struct Deferred {
     // back from the capsule index inside a diagnostic, which is work done on
     // the failure path to save bytes on the working one.
     std::string name;
+
+    // value.hpp's Burial -- THREAD.md D19. The arguments may be a list nested
+    // as deep as any other.
+    ~Deferred()
+    {
+        Burial burial;
+        for (Value &argument : arguments)
+            burial.add(argument);
+    }
 };
 
 // A THREAD -- `satellite.variable.thread` `1 6 13`.
 //
-// WHICH FIELDS ARE ATOMIC AND WHY, which satellite_file/file_handle.hpp asked
-// for by name when it said "M23 is when it first gets EXERCISED, not when it
-// gets written".
+// WHICH FIELDS ARE GUARDED BY WHAT -- REWRITTEN AT THREAD.md T1. The M23 note
+// here said `joined`, `answer` and `problems` needed no lock because only the
+// parent joins, and that "a second join() from a second thread is a program
+// that has already lost its own race". THREAD.md D4, D5 and D9 were that
+// sentence being wrong: a handle is a value, values are passed to threads, and
+// two threads joining one thread hung for ever inside std::thread::join(). So:
 //
-//   started_   read by the parent to refuse a second start(), written once by
-//              the parent before the child exists. Atomic so that a handle
-//              shared between two threads -- `t` passed to another capsule
-//              running on a third thread -- cannot see a torn answer.
-//   finished_  written by the CHILD as its last act, read by anyone. This is
-//              the only field with a writer that is not the parent.
-//   stop_      written by close_all() on the main thread, read by the child at
-//              every statement boundary through the Policy's interrupted hook.
+//   started   atomic, and start() takes it with `exchange` -- D4: two threads
+//             starting one handle both passed a load() and the second
+//             assignment to a joinable std::thread was std::terminate.
+//   finished  atomic, for the renderer, which reads it without the lock.
+//   stop      atomic, read at every statement boundary of this thread AND of
+//             every thread it started (D8's parent chain).
 //
-// `answer` AND `problems` ARE NOT ATOMIC AND DO NOT NEED TO BE, because the
-// only thing that reads them is a join(), and std::thread::join() is a
-// synchronisation point: everything the child wrote before it ended happens-
-// before everything the joiner does after. That is the same argument
-// file_handle.hpp makes for its buffer and is the reason a mutex here would be
-// a mutex around a fence.
-struct ThreadHandle {
+//   everything below `lock` is written and read under it. `ended` is what
+//   waiters wait on; `claimed` makes std::thread::join() happen exactly once
+//   whoever asks (D5, D9); `reaped` is what every other waiter waits on,
+//   which is also what makes pthread_kill safe: it is only sent while the
+//   thread has not ended, and a thread that has not ended has not been joined.
+struct ThreadHandle : std::enable_shared_from_this<ThreadHandle> {
     Cap body;
 
     // THE WORLD THE CHILD WALKS. Pointers and not copies: the arena and the ast
@@ -120,17 +131,37 @@ struct ThreadHandle {
     std::shared_ptr<eval::Globals> globals;
     eval::Policy policy;
 
-    std::thread worker;
+    // THE PROCESS'S OWN INTERRUPT HOOK -- Ctrl-C -- and never a thread's.
+    // THREAD.md D8: a thread started by a thread copied its parent's policy,
+    // whose hook was the parent's `stopped_or_interrupted`, and the child then
+    // asked itself at every statement boundary for ever. The root is decided
+    // once, at `new`, by interrupt_root() below.
+    bool (*root)() = nullptr;
+
+    // THE THREAD WHOSE WALK CALLED start(), or null for the program's own
+    // walk. Its `stop` stops this one too, so closing a thread closes what it
+    // started -- and a thread started while the run is closing stops at its
+    // first statement, which is what makes close_all() final (D6).
+    std::shared_ptr<ThreadHandle> parent;
 
     std::atomic<bool> started{false};
     std::atomic<bool> finished{false};
     std::atomic<bool> stop{false};
 
-    // JOINED IS THE PARENT'S ALONE and is deliberately not atomic. Only the
-    // walk that calls join() writes it, and a second join() from a second
-    // thread is a program that has already lost its own race -- S1404 catches
-    // the ordinary mistake, which is a join() inside a loop.
-    bool joined = false;
+    std::mutex lock;
+    std::condition_variable changed;
+
+    std::thread worker;
+    bool ended = false;          // the body returned; answer/problems are set
+    bool failed = false;         // the machine would not make the thread
+    bool claimed = false;        // somebody is inside worker.join()
+    bool reaped = false;         // worker.join() has returned
+    bool joined = false;         // a PROGRAM has called join() on this thread
+
+    // THE HANDLE THIS THREAD IS INSIDE join() ON, or null. Guarded by
+    // thread_handle.cpp's `waits()` lock, not `lock` above, because the check
+    // walks many handles' fields at once.
+    ThreadHandle *waiting_on = nullptr;
 
     Value answer;
     std::vector<errors::Diagnostic> problems;
@@ -139,24 +170,49 @@ struct ThreadHandle {
     // REFUSAL IS WORTH REPORTING. Stopping is not failing: a thread the run
     // closed ends Interrupted and was doing nothing wrong, while one that
     // refused on its own ends Refused and has a sentence somebody needs.
-    //
-    // AND IT REPLACED A `finished` PRE-CHECK THAT WAS A RACE. The first version
-    // asked whether the thread had finished BEFORE raising `stop`, and a thread
-    // that was one microsecond from refusing was recorded as "we stopped it"
-    // and had its diagnostic thrown away. The ending is the same question asked
-    // after the join, where the answer is a fact rather than a sample.
     // MILESTONES/M23.md §3.5.
     eval::Ending ending = eval::Ending::Finished;
+
+    // TWO THINGS NESTED DEEP ENOUGH TO CRASH ON THE WAY OUT -- THREAD.md D19.
+    // The answer is buried like any value. The PARENT chain is unlinked in a
+    // loop: a thread that starts its successor and ends, a million times over,
+    // leaves a million handles each holding the one before, and letting the
+    // last go freed them one C++ frame per generation.
+    ~ThreadHandle()
+    {
+        {
+            Burial burial;
+            burial.add(answer);
+        }
+        std::shared_ptr<ThreadHandle> up = std::move(parent);
+        while (up && up.use_count() == 1) {
+            std::shared_ptr<ThreadHandle> next = std::move(up->parent);
+            up = std::move(next);
+        }
+    }
 };
 
-// WHAT `start()` DOES, AND THE ONE PLACE AN OS THREAD IS MADE. Answers false
-// when the machine would not make one, with the machine's own reason in
-// `why` -- S1405's {1}.
+// THE HOOK A NEW THREAD'S `root` IS: the process's, whichever walk asks.
+// `policy` is the asking walk's own.
+bool (*interrupt_root(const eval::Policy &policy))();
+
+// WHAT `start()` DOES, AND THE ONE PLACE AN OS THREAD IS MADE. The caller has
+// already taken `started`. Answers false when the machine would not make one,
+// with the machine's own reason in `why` -- S1405's {1}.
 bool launch(const Thr &handle, std::string &why);
 
-// WHAT `join()` DOES. Waits, then hands back what the capsule returned. The
-// caller has already checked that there is something to wait for.
-void wait(const Thr &handle);
+// HOW A join() CAME OUT.
+enum class Joined {
+    First,     // this was the join -- the program's first
+    Again,     // somebody had already joined it: S1404, the same answer
+    NeverRan,  // start() was asked and the machine refused: S1403
+    WouldNeverReturn,  // the thread waits, through joins, for the asker: S1407
+};
+
+// WHAT `join()` DOES. Waits until the thread has ended and been reaped --
+// exactly one std::thread::join() across every caller -- then says which join
+// this was. `answer` and `problems` are final once it returns.
+Joined wait(const Thr &handle);
 
 // EVERY THREAD THIS RUN STARTED AND NOBODY JOINED, CLOSED.
 //
