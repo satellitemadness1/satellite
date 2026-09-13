@@ -145,6 +145,37 @@ std::vector<Token> lex(const SatString &src)
 
         const size_t start = i;
 
+        // `#RRGGBB` IS `xRRGGBB` -- the author's decision of 2026-09-13: "# is
+        // just an alias for a hex code". A colour is written the way every
+        // colour picker writes it, and what it becomes is the hex value `x`
+        // makes, so every rule about a hex run -- display's six digits among
+        // them -- applies to both spellings without knowing there are two.
+        //
+        // THE TOKEN'S TEXT IS SPELLED WITH `x`, and that is what keeps `#`'s
+        // other meaning safe: a `.satc` writes a path as `#1.14.2`, and
+        // satellite_cache/unnumber.cpp reads `#` and digits back as a path in a
+        // text pass before this lexer runs. Everything downstream reads the
+        // text, so no `.satc` ever holds a `#` colour to be misread. And `#`
+        // followed by a dot is never claimed here, which is the other half.
+        //
+        // ANY NUMBER OF HEX DIGITS, AS `x` TAKES: `#FFF` is `xFFF`, a hex value
+        // three digits wide, and display refuses it with S1004 rather than
+        // widening it. A `#` whose word is not all hex digits stays punctuation.
+        if (c == encode_raw("#")[0] && i + 1 < src.size() && word_cont(src[i + 1])) {
+            size_t end = i + 1;
+            while (end < src.size() && word_cont(src[end]))
+                end++;
+            const std::string spelling = "x" + decode(src.substr(i + 1, end - i - 1));
+            const bool dotted = end < src.size() && src[end] == SAT_DOT;
+            if (!dotted && bits_radix(spelling) == 16) {
+                Token &token = add(TokenKind::Bits, start, end);
+                token.radix = 16;
+                token.text = spelling;
+                i = end;
+                continue;
+            }
+        }
+
         // Words, and the Bits literals that are shaped like them.
         if (word_start(c)) {
             while (i < src.size() && word_cont(src[i]))

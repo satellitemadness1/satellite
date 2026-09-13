@@ -94,6 +94,29 @@ void section_literals()
     check(one("b1010").radix == 2 && one("hello").radix == 0,
           "radix is 0 on everything that is not a Bits literal");
 
+    // `#` IS `x` -- the author's decision of 2026-09-13. The token is the same
+    // Bits literal, its text spelled with `x` so a `.satc` never holds a `#`
+    // colour for unnumber.cpp's `#1.14` pass to misread.
+    check(one("#D4AF37").kind == TokenKind::Bits && one("#D4AF37").radix == 16 &&
+              one("#D4AF37").text == "xD4AF37",
+          "#D4AF37 is the Bits literal xD4AF37");
+    check(one("#fff").text == "xfff", "#fff keeps its width, as xfff does");
+    {
+        const std::vector<Token> tokens = body("#12G456");
+        check(tokens.size() >= 2 && tokens[0].kind == TokenKind::Punct,
+              "#12G456 is not all hex digits, so # stays punctuation");
+    }
+    {
+        const std::vector<Token> tokens = body("#1.14");
+        check(tokens.size() >= 2 && tokens[0].kind == TokenKind::Punct,
+              "#1.14 -- a .satc path -- is never claimed as a colour");
+    }
+    {
+        const std::vector<Token> tokens = body("#000000 // black");
+        check(tokens.size() == 1 && tokens[0].text == "x000000",
+              "a // comment after a # colour is still a comment");
+    }
+
     // -- Strings, §5.3 and §5.4 --------------------------------------------
 
     check(one("\"hello\"").kind == TokenKind::String, "a quoted body is a String");

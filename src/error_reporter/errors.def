@@ -1115,8 +1115,9 @@ SAT_CODE(1003, CONSOLE_ANSWER_IS_THE_PLACE, SAT_ERROR,
 
 // A COLOUR THAT IS NOT xRRGGBB -- M30, display's foreground= and background=,
 // 2026-09-12. Exactly six hex digits: digits() and not width(), which counts
-// bits. xF80 is refused rather than widened, and so is "#FF8800" -- `#`
-// already means numbers and options in .satc, so a colour is a hex value.
+// bits. xF80 is refused rather than widened, and so is "#FF8800" -- a string.
+// The bare #FF8800 is accepted since 2026-09-13: the lexer reads `#` as `x`
+// (lexical_analyzer/lexer.cpp), so #FFF is xFFF and refused here the same way.
 SAT_CODE(1004, CONSOLE_NOT_A_COLOUR, SAT_ERROR,
          "`{1}` takes a colour as six hex digits, xRRGGBB like xFF8800 -- "
          "{2} is not one")

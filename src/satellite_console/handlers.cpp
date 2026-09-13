@@ -56,7 +56,28 @@ bool display(eval::Machine &m, const Value *arguments, uint32_t, Value *answer)
     std::string open, close;
     if (!style_of(m, &open, &close))
         return false;
-    std::string line = open + text_of(arguments[0]) + close;
+    // THE STYLE NEVER SPANS A NEWLINE -- 2026-09-13, asked for by
+    // dark_mechanicum's board. A terminal that scrolls or moves to a new row
+    // while a background is set paints the rest of that row in it, so a
+    // "\n" printed with background= would colour the whole line. Each piece
+    // between newlines is wrapped on its own and the newlines go out plain.
+    const std::string text = text_of(arguments[0]);
+    std::string line;
+    if (open.empty()) {
+        line = text;
+    } else {
+        size_t from = 0;
+        for (;;) {
+            const size_t newline = text.find('\n', from);
+            const size_t to = newline == std::string::npos ? text.size() : newline;
+            if (to > from)
+                line += open + text.substr(from, to - from) + close;
+            if (newline == std::string::npos)
+                break;
+            line += '\n';
+            from = newline + 1;
+        }
+    }
     if (const Value *end = m.option("end")) {
         Console::the().write(line + text_of(*end));
     } else {
