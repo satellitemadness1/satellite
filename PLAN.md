@@ -5619,6 +5619,94 @@ clock; and no instant is ever a literal in source.
 sleeps, takes it again, and displays the difference through whatever `.minus`
 answers — the ten-line proof that an instant stopped being display-only.
 
+**M30 — the screen: colour, style, position and regions.** *(New 2026-09-12,
+in conversation with the author while `040d380` built. After M29 — appended for
+M29's own reason: nothing depends on it and a mid-list insertion renumbers every
+milestone behind it.)* **What ncurses does, without ncurses**, for `satl` in any
+terminal and for `satl-term` alike.
+
+**Decided by the author, 2026-09-12:**
+
+- **Style is an option on the call, never a switch.** v1-style
+  `satellite.terminal.bold(true)` is refused as a design:
+  `satellite.console.display("text", bold=true, italic=true,
+  foreground=xFF8800, background=x000000, line=2, column=5)`. The reason that
+  makes it more than taste: display goes through the printer thread and DESIGN
+  §10.1 makes a queued line atomic, so a process-wide "bold is on" would be
+  shared by every thread and one thread's switch would restyle another's line.
+  A style carried by the call is carried by the line.
+- **`foreground=`, not `color=`.** It pairs with `background=`.
+- **A colour is a hex value, `xRRGGBB`** — M19.5's literal, no lexer change.
+  Not `#RRGGBB`: `#` already means a number in a `.satc` (`#1.4.2.5`) and an
+  option (`0#down`, M19.6). *Exactly six digits, refused otherwise — `.digits()`
+  and not `.width()`, which counts BITS (24); `xF80` shorthand refused. Proposed
+  in conversation, not yet confirmed.*
+- **The size is `satellite.console.width()` / `.height()`**, `1 5 6` / `1 5 7`,
+  which already exist and already ask `TIOCGWINSZ` fresh on every call
+  (console.cpp), so a resize is seen by the next ask. `arguments.ncurses.width()`
+  was proposed and withdrawn in favour of them: DESIGN §7.7's object is what a
+  program woke up to, and a terminal's size is not a startup fact.
+- **A region is a HANDLE, not a minted word.** The author first proposed that
+  `region("status", 9, 5)` make `satellite.console.status()` callable, and chose
+  the handle once the cost was laid out — a runtime string cannot make a path the
+  resolver needs before the program runs, and a user's region name would collide
+  with every present and future word under `satellite.console`:
+
+      satellite.variable.region status = satellite.console.ncurses.region(9, 5, "ready", line=3, column=10)
+      status.display("text", foreground=xFF8800)
+
+  **No name argument. `9, 5` is width then height, not `9x5`** (which lexes as
+  `9` and a name `x5`). The optional string is drawn starting on the region's
+  first line. **`line=` / `column=` place its top-left corner, 1-based**, and
+  default to 1, 1.
+- **Text past a region's edge WRAPS, and past its bottom the region SCROLLS** —
+  a region is a log pane. (Offered: clip; wrap then clip. The author chose this.)
+- **The first positioned draw switches to the ALTERNATE SCREEN**, and the user's
+  terminal is restored exactly when the program ends — **including on a refusal,
+  a crash and Ctrl-C**, or a program that dies leaves the terminal unusable.
+- **No libncurses: the escapes are written here.** A static `satl` cannot be
+  sure a terminfo database exists at run time, every terminal that matters
+  (VTE included) speaks xterm's sequences, and satellite_prompt/render.cpp
+  already draws this way.
+
+**Proposed numbers, not minted** — `words.def`, WORD_NUMBERS §2.2,
+`help_lines/nodes.tsv` and the entries move in one commit when they are:
+`satellite.console.ncurses` `1 5 10 (0)`, `.region(width, height)` `1 5 10 1`,
+`.region(width, height, text)` `1 5 10 2`; `satellite.variable.region`
+`1 6 17 (0)`, `.display(text)` `1 6 17 1`, `.clear()` `1 6 17 2`.
+*`ncurses` as the word is the author's; this tree otherwise spells names out,
+and the author may prefer a word like `screen`.*
+
+**The blocker, and it is grammar: DESIGN §6 has no named arguments** —
+`args := expression { "," expression }`, and M14's text in this file already
+records v1's `display(text, end="")` as dropped for exactly that. `name=value`
+inside an argument list must not become an assignment, must reach the handler
+without counting toward the arity `words_walk.hpp`'s `match_shape` compares
+character for character, and must go into the `.satc` and `--unparse`. *Whether
+an option name is a numbered path or a runtime table lookup like M19's mode
+words is open.* `end=""` comes back with it — `Console::write` has existed
+since M10 with no spelling.
+
+**Also open:**
+- output to a pipe or a file gets NO escapes, and `NO_COLOR` is honoured —
+  *proposed, not confirmed*;
+- `display(..., line=)` with no region: an absolute screen line, and the switch
+  to the alternate screen;
+- a terminal without 24-bit colour gets the nearest of its 256;
+- `satellite.terminal.background(x…)` / `.foreground(x…)` for the DEFAULT
+  colours — OSC 10/11 through the pty, because DESIGN §10.4 puts satl-term's
+  window in another process and satl cannot call `vte_terminal_set_colors`;
+  `satellite.terminal` is not a word today;
+- keys without Enter (arrows, function keys, a timeout), resize notification,
+  underline / reverse / dim / strikethrough, hiding the cursor, borders, batching
+  a redraw, the mouse, and double-width characters in column arithmetic — raised
+  as what ncurses has that the list above does not, and none decided.
+
+**Done when** a program under `satl --run` draws two regions on the alternate
+screen — a coloured, bold header and a log pane that wraps and scrolls — resizes
+correctly, is interrupted with Ctrl-C, and leaves the terminal as it found it;
+and the same program redirected to a file writes plain text with no escapes.
+
 **"Later, in no fixed order" is empty, and this is where it used to be.** It held
 eight entries — `satellite.variable.file`, `.time`, `.date`; `satellite.random.*`;
 `satellite.variable.variant`; spacesuits; `satellite.include` of other files;
