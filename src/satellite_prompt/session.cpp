@@ -5,6 +5,7 @@
 #include "error_reporter/report.hpp"
 #include "error_reporter/warning_log.hpp"
 #include "evaluator/machine.hpp"
+#include "satellite_arguments/arguments.hpp"
 #include "satellite_console/console.hpp"
 #include "satellite_directory/listing.hpp"
 #include "satellite_system/handlers.hpp"
@@ -361,8 +362,9 @@ bool Session::run(const std::string &entry)
     return true;
 }
 
-bool Session::run_file(const std::string &path)
+bool Session::run_file(const std::vector<std::string> &command_line)
 {
+    const std::string &path = command_line.front();
     Built built;
     if (!build_program(path, built))
         return true;
@@ -380,16 +382,29 @@ bool Session::run_file(const std::string &path)
     clear_interrupt();
     errors::log::set_program(path);
 
+    // THE RUN ARM'S OBJECT, BUILT THE RUN ARM'S WAY -- programs/run_command.cpp:
+    // the file as `program` and the words after it numbered from 1. This was an
+    // empty list until 2026-09-13, so `arguments.length()` worked under
+    // `satl <file>` and was S0721 under `run <file>` in satl-term.
+    //
+    // REBUILT PER RUN AND NOT ONCE PER PROCESS, which is the one way the prompt
+    // uses the object differently: each `run` is its own command line. Safe to
+    // overwrite here because thread::close_all() below ended the last run's
+    // threads before this line could be reached again.
+    arguments::start(command_line);
+
     const eval::Capsule &main = built.program.closures.capsules()[which];
-    std::vector<Value> arguments;
+    // `parameters` AND NOT `arguments`, for run_command.cpp's reason: the local
+    // would shadow the namespace on the line below it.
+    std::vector<Value> parameters;
     if (main.parameters != 0)
-        arguments.push_back(Value::list(List{}));
+        parameters.push_back(arguments::object());
 
     eval::Machine machine(built.program.closures, built.parsed.ast,
                           policy_from_the_limits());
     machine.run_top_level();
     if (machine.ok())
-        machine.call(static_cast<uint32_t>(which), arguments);
+        machine.call(static_cast<uint32_t>(which), parameters);
 
     // THE FILE'S OWN VARIABLES BECOME THE SESSION'S, which is the whole of
     // `satl -i` and of `run <file>` at the prompt: the program finishes and

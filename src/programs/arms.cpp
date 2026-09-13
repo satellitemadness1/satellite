@@ -37,13 +37,16 @@ constexpr Exception kExceptions[] = {
     { Arm::Call, Group::Help,
       "help's whole answer is printed, and --call starts no printer" },
 
-    // `arguments::start()` is called by the run arm alone, because the
-    // arguments object is the COMMAND LINE and these two arms do not have one.
-    // A prompt's argv is satl's own, which is not the program's.
+    // `arguments::start()` is never called under `--call`, because the
+    // arguments object is the COMMAND LINE and that arm does not have one.
+    //
+    // THE PROMPT HAD A ROW HERE UNTIL 2026-09-13 AND IT WAS WRONG ABOUT WHAT A
+    // COMMAND LINE IS. Its argv is satl's own, but `run <file> a b` is a command
+    // line the user typed, and a program that reads `arguments.length()` ran
+    // from a file and answered S0721 from satl-term. The prompt now builds the
+    // object per `run` -- satellite_prompt/session.cpp's run_file().
     { Arm::Call, Group::Arguments,
       "--call has no command line of its own to report" },
-    { Arm::Prompt, Group::Arguments,
-      "the prompt has no command line of its own to report" },
 };
 
 void install_group(Group group)
