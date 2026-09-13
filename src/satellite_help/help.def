@@ -3902,7 +3902,12 @@ SAT_HELP(DIRECTORY_LIST_0, DIRECTORY_LIST_0,
          "there is no such directory. Every other one has somewhere to put bad news; a\n"
          "list has not, because the empty list already means \"an empty directory\", and\n"
          "using it for \"no directory\" would make those two impossible to tell apart.\n"
-         "Ask `satellite.directory.exists` first if you are not sure."
+         "Ask `satellite.directory.exists` first if you are not sure.\n"
+         "\n"
+         "**Typed on a line of its own at the prompt, it shows a table instead** --\n"
+         "one row per entry: its name, `dir` or `text` or `- -`, its permissions with\n"
+         "`exe` after them when it is a program that can be run, who owns it, and when it\n"
+         "was created and last modified. A program still gets the names."
          ,
          "satellite.container.list<satellite.variable.string> here = satellite.directory.list()\n"
          "satellite.console.display(here.size() > 0)"
@@ -3910,7 +3915,7 @@ SAT_HELP(DIRECTORY_LIST_0, DIRECTORY_LIST_0,
 
 // 1 18 5  satellite.directory.list(d)
 SAT_HELP(DIRECTORY_LIST_D, DIRECTORY_LIST_0,
-         "The same, for a directory you name."
+         "The same, for a directory you name -- and the same table at the prompt."
          ,
          "satellite.container.list<satellite.variable.string> names = satellite.directory.list(\".\")\n"
          "satellite.console.display(names.size() > 0)"

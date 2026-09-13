@@ -56,12 +56,12 @@
  },
  "1 18 4": {
   "query": "satellite.help(satellite.directory.list)",
-  "prose": "What is in the directory the program is in, as a sorted list of names.\n\n`.` and `..` are not in it -- neither is a thing inside the directory, and a\nprogram that walked into them would go round forever. Files whose names begin\nwith a dot **are** in it: there are no flags in this language, so there is one\nanswer and it has to be the true one.\n\n**This is the one word in the module that stops rather than answering** when\nthere is no such directory. Every other one has somewhere to put bad news; a\nlist has not, because the empty list already means \"an empty directory\", and\nusing it for \"no directory\" would make those two impossible to tell apart.\nAsk `satellite.directory.exists` first if you are not sure.",
+  "prose": "What is in the directory the program is in, as a sorted list of names.\n\n`.` and `..` are not in it -- neither is a thing inside the directory, and a\nprogram that walked into them would go round forever. Files whose names begin\nwith a dot **are** in it: there are no flags in this language, so there is one\nanswer and it has to be the true one.\n\n**This is the one word in the module that stops rather than answering** when\nthere is no such directory. Every other one has somewhere to put bad news; a\nlist has not, because the empty list already means \"an empty directory\", and\nusing it for \"no directory\" would make those two impossible to tell apart.\nAsk `satellite.directory.exists` first if you are not sure.\n\n**Typed on a line of its own at the prompt, it shows a table instead** --\none row per entry: its name, `dir` or `text` or `- -`, its permissions with\n`exe` after them when it is a program that can be run, who owns it, and when it\nwas created and last modified. A program still gets the names.",
   "example": "satellite.container.list<satellite.variable.string> here = satellite.directory.list()\nsatellite.console.display(here.size() > 0)"
  },
  "1 18 5": {
   "query": "satellite.help(satellite.directory.list)",
-  "prose": "The same, for a directory you name.",
+  "prose": "The same, for a directory you name -- and the same table at the prompt.",
   "example": "satellite.container.list<satellite.variable.string> names = satellite.directory.list(\".\")\nsatellite.console.display(names.size() > 0)"
  },
  "1 10": {

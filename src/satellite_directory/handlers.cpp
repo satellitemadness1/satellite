@@ -2,12 +2,14 @@
 // the table. See satellite_directory/handlers.hpp for what this module is not.
 
 #include "satellite_directory/handlers.hpp"
+#include "satellite_directory/listing.hpp"
 
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include "error_reporter/report.hpp"
+#include "satellite_console/console.hpp"
 #include "satellite_file/file_internal.hpp"
 #include "satellite_string/satellite_string.hpp"
 #include "satellite_value/value.hpp"
@@ -134,7 +136,9 @@ bool directory_list(eval::Machine &m, const Value *arguments, uint32_t count,
         return false;
     }
 
-    std::vector<SatString> names;
+    // The raw leaf beside its encoding: the list is built from the one and the
+    // prompt's table is drawn from the other, in the same sorted order.
+    std::vector<std::pair<SatString, std::string>> names;
     int failure = 0;
     for (;;) {
         // Cleared before EVERY call, because a null return means both "the
@@ -160,7 +164,7 @@ bool directory_list(eval::Machine &m, const Value *arguments, uint32_t count,
         // encode_raw and never encode, for the reason as_text carries one module
         // over: a POSIX filename is arbitrary bytes and a file called "\cwd"
         // would otherwise list as the working directory instead of as itself.
-        names.push_back(encode_raw(leaf));
+        names.emplace_back(encode_raw(leaf), leaf);
     }
     // Before closedir, which may fail and set errno itself and would otherwise
     // get to decide whether the loop above worked.
@@ -191,12 +195,24 @@ bool directory_list(eval::Machine &m, const Value *arguments, uint32_t count,
     // the LIST and would be wrong about the order: `sort` is a row a program
     // calls on a value, and this is the order the value is BUILT in. Sorting
     // after the fact would put the same comparison behind a dispatch.
-    std::sort(names.begin(), names.end());
+    std::sort(names.begin(), names.end(),
+              [](const auto &a, const auto &b) { return a.first < b.first; });
+
+    // THE PROMPT'S TABLE -- satellite_directory/listing.hpp. Drawn here and not
+    // from the list afterwards, because only this call knows which directory
+    // the leaves are in.
+    if (take_listing_request()) {
+        std::vector<std::string> leaves;
+        leaves.reserve(names.size());
+        for (const auto &one : names)
+            leaves.push_back(one.second);
+        console::Console::the().display(listing(name, leaves));
+    }
 
     List entries;
     entries.reserve(names.size());
-    for (SatString &leaf : names)
-        entries.push_back(Value::string(std::move(leaf)));
+    for (auto &one : names)
+        entries.push_back(Value::string(std::move(one.first)));
     *answer = Value::list(std::move(entries));
     return true;
 }

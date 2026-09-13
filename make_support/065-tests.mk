@@ -581,6 +581,7 @@ HELP_TEST_SRCS = $(HELP)/built.cpp \
                  $(SATFILE)/file_reading.cpp \
                  $(SATFILE)/gzip.cpp \
                  $(DIRECTRY)/handlers.cpp \
+                 $(DIRECTRY)/listing.cpp \
                  $(LIMITS)/limits.cpp \
                  $(LIMITS)/config.cpp \
                  $(LIMITS)/pool.cpp \
@@ -627,7 +628,7 @@ $(TESTS)/help_test/help_test: $(help_test_SRCS) $(help_test_HDRS) \
 # NOT machine_limits, and eval_test's reason applies unchanged: nothing here is
 # about depth, and a raised RLIMIT_STACK is not something a file suite should
 # get for free or be denied.
-FILE_TEST_SRCS = $(SATFILE)/file_handle.cpp                  $(SATFILE)/handlers.cpp                  $(SATFILE)/file_methods.cpp                  $(SATFILE)/file_reading.cpp                  $(SATFILE)/gzip.cpp                  $(DIRECTRY)/handlers.cpp                  $(CONSOLE_TEST_SRCS)
+FILE_TEST_SRCS = $(SATFILE)/file_handle.cpp                  $(SATFILE)/handlers.cpp                  $(SATFILE)/file_methods.cpp                  $(SATFILE)/file_reading.cpp                  $(SATFILE)/gzip.cpp                  $(DIRECTRY)/handlers.cpp                  $(DIRECTRY)/listing.cpp                  $(CONSOLE_TEST_SRCS)
 
 $(TESTS)/file_test/file_test: $(file_test_SRCS) $(file_test_HDRS)                               $(FILE_TEST_SRCS) $(ERRORS)/errors.def                               $(WORDS)/words.def $(HDRS) .cxxflags-stamp $(ZLIB_OBJS)
 	$(CXX) $(CXXFLAGS) -I$(SRC) -isystem pcg/include -isystem $(ZLIB) -I$(TESTS)/file_test -o $@ 	    $(file_test_SRCS) $(FILE_TEST_SRCS) $(ZLIB_OBJS)

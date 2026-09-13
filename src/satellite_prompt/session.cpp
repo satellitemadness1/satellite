@@ -5,6 +5,7 @@
 #include "error_reporter/report.hpp"
 #include "evaluator/machine.hpp"
 #include "satellite_console/console.hpp"
+#include "satellite_directory/listing.hpp"
 #include "satellite_system/handlers.hpp"
 #include "satellite_thread/thread_handle.hpp"
 #include "satellite_prompt/block.hpp"
@@ -57,6 +58,36 @@ void rebase_all(std::vector<errors::Diagnostic> &problems, int above)
         for (errors::Note &note : problem.notes)
             rebase(note.at, above);
     }
+}
+
+// IS THE TYPED LINE `satellite.directory.list()` OR `list(d)` AND NOTHING ELSE?
+// Then its answer would be thrown away, and the prompt shows the table instead
+// -- satellite_directory/listing.hpp, the author's call of 2026-09-12. Asked of
+// the RESOLVED TREE and not the text, so spacing, a variable for `d`, or a
+// comment on the line change nothing, and `x = list()` or `display(list())`
+// are not it. `list()` carries its number on the call; `list(d)` on the target
+// -- names.cpp's questions one and two.
+bool bare_listing(const Built &built, int which)
+{
+    const Ast &ast = built.parsed.ast;
+    const NodeIndex capsule = built.program.closures.capsules()[which].node;
+    const NodeIndex body = ast[capsule].d;
+    if (body == kNoNode || ast[body].kind != NodeKind::Block ||
+        ast.list_size(ast[body].a) != 1)
+        return false;
+    const NodeIndex statement = ast.list_at(ast[body].a, 0);
+    if (ast[statement].kind != NodeKind::ExprStmt)
+        return false;
+    const NodeIndex call = ast[statement].a;
+    if (call == kNoNode || ast[call].kind != NodeKind::Call)
+        return false;
+    for (const NodeIndex at : {call, ast[call].a}) {
+        const auto path = static_cast<words::NodeId>(built.resolved.at(at).path);
+        if (path == words::NodeId::DIRECTORY_LIST_0 ||
+            path == words::NodeId::DIRECTORY_LIST_D)
+            return true;
+    }
+    return false;
 }
 
 // Lines in a block of text, counting a final line with no newline on it.
@@ -252,9 +283,13 @@ bool Session::run(const std::string &entry)
 
     eval::Machine machine(built.program.closures, built.parsed.ast,
                           policy_from_the_limits());
+    // Withdrawn straight after, so a line that refused before the handler ran
+    // cannot leave a table waiting for the next one.
+    directory::ask_for_listing(!top && bare_listing(built, which));
     machine.run_top_level();
     if (machine.ok())
         machine.call(static_cast<uint32_t>(which), arguments());
+    directory::ask_for_listing(false);
 
     // WHAT THE LINE LEFT BEHIND, TAKEN BEFORE ANYTHING ELSE CAN DISTURB IT.
     // Only from a run that finished: a line that refused halfway has a frame

@@ -473,6 +473,7 @@ SATL_SRCS = $(PROGRAMS)/main.cpp \
             $(SATFILE)/file_reading.cpp \
             $(SATFILE)/gzip.cpp \
             $(DIRECTRY)/handlers.cpp \
+            $(DIRECTRY)/listing.cpp \
             $(HELP)/built.cpp \
             $(HELP)/render.cpp \
             $(HELP)/handlers.cpp \
@@ -562,6 +563,7 @@ HDRS = $(SYSTEM)/version.hpp \
        $(SATFILE)/file_internal.hpp \
        $(SATFILE)/handlers.hpp \
        $(DIRECTRY)/handlers.hpp \
+       $(DIRECTRY)/listing.hpp \
        $(ERRORS)/errors.def \
        $(ERRORS)/codes.hpp \
        $(ERRORS)/report.hpp \

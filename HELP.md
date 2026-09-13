@@ -3950,13 +3950,18 @@ list has not, because the empty list already means "an empty directory", and
 using it for "no directory" would make those two impossible to tell apart.
 Ask `satellite.directory.exists` first if you are not sure.
 
+**Typed on a line of its own at the prompt, it shows a table instead** --
+one row per entry: its name, `dir` or `text` or `- -`, its permissions with
+`exe` after them when it is a program that can be run, who owns it, and when it
+was created and last modified. A program still gets the names.
+
     satellite.container.list<satellite.variable.string> here = satellite.directory.list()
     satellite.console.display(here.size() > 0)
 
 H  `1 18 5`  `satellite.directory.list(d)`  _M19_
 > satellite.help(satellite.directory.list)
 
-The same, for a directory you name.
+The same, for a directory you name -- and the same table at the prompt.
 
     satellite.container.list<satellite.variable.string> names = satellite.directory.list(".")
     satellite.console.display(names.size() > 0)
