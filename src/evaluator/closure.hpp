@@ -91,6 +91,7 @@ using OpFn = void (*)(Machine &machine, const Op &op, uint32_t step);
 //   op_field        field index      -               -              -
 //   op_field_store  field index      value or none   -              -
 //   op_dispatch     PathId           argument list   cache index    text index
+//   op_options      the wrapped op   names (texts)   -              -
 //   op_method       PathId           argument list   cache index    frame slot
 //   op_method_global PathId          argument list   cache index    global index
 //   op_refuse       errors::Code     text index      -              -

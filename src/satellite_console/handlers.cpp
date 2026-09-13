@@ -40,12 +40,26 @@ namespace {
 // leaves exactly one value (evaluator/machine.hpp's contract), and a statement
 // that prints has nothing to say afterwards; `op_expression` drops it. Since
 // M12 a program can ask what it got (DESIGN §8.7).
-bool display(eval::Machine &, const Value *arguments, uint32_t, Value *answer)
+bool display(eval::Machine &m, const Value *arguments, uint32_t, Value *answer)
 {
-    Console::the().display(text_of(arguments[0]));
+    // `end=` -- M30's first named option, and v1's `display(text, end="")`
+    // back under the grammar that dropped it. What is written after the text in
+    // place of the newline, as ONE queued unit: text and ending queued
+    // separately would be two units, and DESIGN §10.1's atomicity is a
+    // property of the unit (Console::display says so). `Console::write` has
+    // been waiting for this spelling since M10.
+    if (const Value *end = m.option("end")) {
+        Console::the().write(text_of(arguments[0]) + text_of(*end));
+    } else {
+        Console::the().display(text_of(arguments[0]));
+    }
     *answer = Value::nothing();
     return true;
 }
+
+// The named options display takes -- M30. Colour, style and position join
+// this list as they are built; the dispatch refuses any name not on it.
+const char *const kDisplayOptions[] = {"end", nullptr};
 
 // The read every `input` shape shares -- "ask, and wait, in three shapes",
 // one place that prompts, one place that drains, one place that reads (v1's
@@ -182,7 +196,7 @@ void install_handlers()
         // namespace rather than a value, so it is false. The first true one is
         // a method on a value -- `satellite.variable.file.new` `1 6 2 1` at
         // M19, which WORD_NUMBERS §4 pairs with `satellite.file.new` `1 8 1`.
-        eval::Handler{display, false, 1, "M10"});
+        eval::Handler{display, false, 1, "M10", false, kDisplayOptions});
 
     // M14's eight, finishing the namespace. None binds a receiver --
     // `console` is a namespace, not a value -- and `1 5 4`'s arity is ONE

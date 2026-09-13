@@ -176,6 +176,7 @@ const char *kind_name(NodeKind kind)
     case NodeKind::Spacesuit: return "Spacesuit";
     case NodeKind::Section:   return "Section";
     case NodeKind::Global:    return "Global";
+    case NodeKind::Named:     return "Named";
     }
     return "?";
 }

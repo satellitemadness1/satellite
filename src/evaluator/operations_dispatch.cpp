@@ -69,7 +69,13 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
         return;
     }
 
-    const uint32_t count = m.program().list_size(op.b);
+    // THE NAMED VALUES ARE THE LAST ENTRIES OF `op.b` -- M30, compiled there so
+    // they run in written order -- and op_options, which wraps this op, says
+    // how many and what they are called. `count` stays the POSITIONAL count,
+    // so the arity check below means exactly what it meant before.
+    const OpListId named = m.named_here();
+    const uint32_t count = m.program().list_size(op.b) -
+                           (named == kNoOpList ? 0 : m.program().list_size(named));
     const words::PathId path = op.a;
 
     // THE INLINE CACHE -- PLAN §2.4. The guard is the receiver's type tag, or
@@ -119,6 +125,25 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
             arity_text(handler->arity - hidden),
             std::to_string(count > hidden ? count - hidden : 0)));
         return;
+    }
+
+    if (named != kNoOpList) {
+        for (uint32_t i = 0; i < m.program().list_size(named); i++) {
+            const std::string &name = m.program().text(m.program().list_at(named, i));
+            bool taken = false;
+            for (const char *const *o = handler->options; o && *o && !taken; o++)
+                taken = name == *o;
+            if (taken)
+                continue;
+            std::string offer;
+            for (const char *const *o = handler->options; o && *o; o++)
+                offer += std::string(offer.empty() ? "" : ", ") + "`" + *o + "=`";
+            m.refuse(errors::make<errors::Code::EVAL_NO_SUCH_OPTION_NAME>(
+                m.span_of(m.here()), callee(m, op, target), name,
+                offer.empty() ? std::string("it takes no named options")
+                              : "it takes " + offer));
+            return;
+        }
     }
 
     if (handler->mutates && target == Target::None) {
@@ -176,7 +201,7 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
     }
 
     Value answer;
-    if (!m.call_handler(handler, count, &answer))
+    if (!m.call_handler(handler, count, &answer, named))
         return;
 
     m.done();
@@ -231,6 +256,21 @@ void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
 }
 
 } // namespace
+
+// A call given named options -- M30. `a` is the dispatch op it wraps and `b`
+// the names, as text indices. It opens the record before the wrapped op runs
+// and closes it after, and the wrapped op's answer is the answer.
+void op_options(Machine &m, const Op &op, uint32_t step)
+{
+    if (step == 0) {
+        m.again(1);
+        m.open_options(op.a, op.b);
+        m.push(op.a);
+        return;
+    }
+    m.close_options();
+    m.done();
+}
 
 void op_dispatch(Machine &m, const Op &op, uint32_t step)
 {

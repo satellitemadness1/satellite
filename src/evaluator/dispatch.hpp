@@ -87,6 +87,13 @@ struct Handler {
     // LAST IN THE STRUCT ON PURPOSE: every non-mutating install site stays a
     // four-field initialiser and the default answers for it.
     bool mutates = false;
+
+    // THE NAMED OPTIONS THIS ROW TAKES -- M30, `display("x", end="")`. A
+    // nullptr-terminated list of names, or nullptr for none, which is every row
+    // written before M30. An option not on the list is refused before the
+    // handler runs (S0732), so a handler reads Machine::option() knowing the
+    // name was one it declared. After `mutates` for that field's reason.
+    const char *const *options = nullptr;
 };
 
 // The table. One row per language PathId, indexed directly.

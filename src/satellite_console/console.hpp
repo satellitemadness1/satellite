@@ -99,6 +99,12 @@ public:
     // and a prompt is exactly a write with no terminator followed by a drain.
     void write(std::string text);
 
+    // WHETHER THE LAST THING PRINTED LEFT THE CURSOR MID-LINE, and forget it --
+    // M30. `display("a", end="")` at the prompt printed `a` and the prompt's
+    // redraw, which starts with `\r ESC[K`, erased it. The prompt asks this
+    // after drain() and starts a fresh row when the answer is yes.
+    bool take_mid_line();
+
     // STEP 1 OF THE SHUTDOWN, ON ITS OWN. Returns when everything queued before
     // the call has been written AND flushed -- see the note in console.cpp on
     // why the flush happens under the lock, which is what makes that promise
@@ -163,6 +169,7 @@ private:
     // empty queue cannot express and which a drain that ignored it would return
     // in the middle of.
     bool writing_ = false;
+    bool mid_line_ = false;  // take_mid_line(); guarded by mutex_
 };
 
 } // namespace satellite::console

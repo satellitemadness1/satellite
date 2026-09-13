@@ -132,8 +132,24 @@ void Writer::flush()
 // programs and a cache may not merge them. At 0 the row IS the empty call and
 // 1.5.2 already says `input()`. Above 0 the row names the shape and the
 // arguments carry the values.
-void Writer::chain(const PathMatch &match, bool is_call, ListId args)
+void Writer::chain(const PathMatch &match, bool is_call, ListId args,
+                   ListId named)
 {
+    // A ZERO-SHAPE ROW GIVEN NAMED ARGUMENTS IS WRITTEN AS TEXT -- M30. Its
+    // number stands for the whole `clear()`, parentheses included, so there is
+    // nowhere after it to put `region=r` that would read back as one call. The
+    // reader walks that one path, which is the price and the whole of it.
+    if (is_call && named != kNoList && match.shape_arity == 0 &&
+        !match.absorbs_argument) {
+        std::string written =
+            words::path_text(static_cast<words::NodeId>(match.id));
+        if (written.size() >= 2 && written.compare(written.size() - 2, 2, "()") == 0)
+            written.resize(written.size() - 2);
+        say(written + "(");
+        named_arguments(named, false);
+        say(")");
+        return;
+    }
     note(match.id);
     say(number_text(match.id));
     if (!is_call || match.absorbs_argument || match.shape_arity == 0)
@@ -148,6 +164,7 @@ void Writer::chain(const PathMatch &match, bool is_call, ListId args)
     // argument and the string stays a string, which persistence.satl's `.satc`
     // shows on its own line.
     arguments(args, false);
+    named_arguments(named, ast_.list_size(args) > 0);
     say(")");
 }
 

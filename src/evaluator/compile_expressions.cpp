@@ -308,6 +308,12 @@ bool Compiler::step_expression(NodeIndex node, uint32_t step_number)
                 defer != words::kNoDeferParameter && defer < ast_.list_size(n.b))
                 deferred_.insert(ast_.list_at(n.b, defer));
 
+            // NAMED VALUES ARE PUSHED FIRST SO THEY COMPILE LAST -- M30. The
+            // results stack then holds them above the positional ones, which
+            // is the order they were written in and the order call() takes.
+            for (uint32_t i = 0; n.c != kNoList && i < ast_.list_size(n.c); i++)
+                visit(ast_[ast_.list_at(n.c, i)].a);
+
             if (const uint32_t skip = topic_parameter(node);
                 skip == words::kNoTopicParameter) {
                 visit_reversed(n.b);
@@ -719,6 +725,38 @@ OpIndex Compiler::call(NodeIndex node)
     const Node &n = ast_[node];
     const uint32_t count = ast_.list_size(n.b);
 
+    // NAMED OPTIONS -- M30. Taken off the top first, because the Call case
+    // compiled them last; every arm below then sees the stack it always saw.
+    // Only the dispatch arms use them: `with_options` appends the values to the
+    // argument list and wraps the op in op_options, which tells the dispatch
+    // how many of its arguments are named and what they are called. Every
+    // other arm is a capsule the program wrote, which resolve already refused
+    // (S0527), or a language word that is not a handler and takes none.
+    const uint32_t named_count = n.c == kNoList ? 0 : ast_.list_size(n.c);
+    const std::vector<OpIndex> named = take_many(named_count);
+    const auto with_named = [&](OpListId list) {
+        if (named_count == 0)
+            return list;
+        std::vector<OpIndex> all;
+        for (uint32_t i = 0; i < out_.list_size(list); i++)
+            all.push_back(out_.list_at(list, i));
+        all.insert(all.end(), named.begin(), named.end());
+        return out_.add_list(all);
+    };
+    const auto with_options = [&](OpIndex op) {
+        if (named_count == 0)
+            return op;
+        std::vector<OpIndex> names;
+        for (uint32_t i = 0; i < named_count; i++)
+            names.push_back(out_.add_text(std::string(ast_.text_of(ast_.list_at(n.c, i)))));
+        return emit(op_options, node, op, out_.add_list(names));
+    };
+    const auto no_options = [&]() {
+        return not_built(node, "named options on this call",
+                         "only a word the language answers with a handler "
+                         "takes them");
+    };
+
     // A SPACESUIT'S METHOD -- M26, AND IT IS THE FIRST ARM IN THIS FUNCTION
     // BECAUSE OF WHERE THE RECEIVER IS SITTING. The Call case pushed it onto
     // the results stack LAST, so `arguments` below -- `take_many(count)` --
@@ -755,6 +793,8 @@ OpIndex Compiler::call(NodeIndex node)
         suit_of_method(member.path) != nullptr)
         if (const auto found = capsules_.find(member.path);
             found != capsules_.end()) {
+            if (named_count != 0)
+                return no_options();
             const NodeIndex receiver = method_receiver(node);
             std::vector<OpIndex> given =
                 take_many(receiver != kNoNode ? count + 1 : count);
@@ -811,11 +851,11 @@ OpIndex Compiler::call(NodeIndex node)
         // there and which no fold ever touches.
         if (about.folded_option && given.size() > 1)
             given.erase(given.begin() + 1);
-        const OpListId with_receiver = out_.add_list(given);
+        const OpListId with_receiver = with_named(out_.add_list(given));
         const resolve::Info &holder = info(receiver);
         if (resolve::in_a_frame(holder.slot))
-            return emit(op_method, node, about.path, with_receiver,
-                        out_.add_cache(), static_cast<uint32_t>(holder.slot));
+            return with_options(emit(op_method, node, about.path, with_receiver,
+                        out_.add_cache(), static_cast<uint32_t>(holder.slot)));
 
         // AND A FIELD WRITES BACK THROUGH THE RECEIVER AT SLOT 0 -- M26. The
         // fourth operand is the FIELD INDEX rather than a frame slot, which is
@@ -825,12 +865,12 @@ OpIndex Compiler::call(NodeIndex node)
         // to it can see. That is DESIGN §7.4's reference semantics reaching the
         // one place a suit actually keeps its state.
         if (holder.slot == resolve::kSlotField)
-            return emit(op_method_field, node, about.path, with_receiver,
-                        out_.add_cache(), holder.member);
+            return with_options(emit(op_method_field, node, about.path, with_receiver,
+                        out_.add_cache(), holder.member));
 
         if (const auto found = globals_.find(holder.path); found != globals_.end())
-            return emit(op_method_global, node, about.path, with_receiver,
-                        out_.add_cache(), found->second);
+            return with_options(emit(op_method_global, node, about.path, with_receiver,
+                        out_.add_cache(), found->second));
         return not_built(node, "a method on this receiver",
                          "resolve folded a selector through a receiver that "
                          "names no slot, which names.cpp's one-hop boundary "
@@ -912,6 +952,8 @@ OpIndex Compiler::call(NodeIndex node)
     // `display` than for a capsule, and DESIGN §10.1 already put the console on
     // a thread of its own. What `satellite.thread.new` runs is a capsule,
     // which is what DESIGN §13 says it runs.
+    if (named_count != 0 && deferred_.count(node) != 0)
+        return no_options();
     if (deferred_.count(node) != 0) {
         const uint32_t which = capsule_index(about, declared);
         if (which == kNotACapsule)
@@ -928,7 +970,7 @@ OpIndex Compiler::call(NodeIndex node)
 
     if (const auto mine = capsules_.find(declared);
         mine != capsules_.end() && words::is_language_word(declared))
-        return emit(op_call, node, mine->second, arguments,
+        return named_count != 0 ? no_options() : emit(op_call, node, mine->second, arguments,
                     out_.add_text(std::string(ast_.text_of(target))));
 
     // A WHOLE CALL THAT IS A ROW OF THE NUMBERING -- resolve's question ONE,
@@ -955,7 +997,8 @@ OpIndex Compiler::call(NodeIndex node)
         if (const uint32_t which = words::topic_parameter_of(
                 static_cast<words::NodeId>(self.path));
             which != words::kNoTopicParameter && which < count)
-            return topic(node, self.path, ast_.list_at(n.b, which));
+            return named_count != 0 ? no_options()
+                                    : topic(node, self.path, ast_.list_at(n.b, which));
 
         // A ROW THAT DECLARES A PLACE -- words.def's third list, one row long
         // by policy: `input(prompt, target)` `1 5 4`. The place compiles as a
@@ -997,15 +1040,15 @@ OpIndex Compiler::call(NodeIndex node)
             for (uint32_t i = 0; i < count; i++)
                 if (i != place)
                     kept.push_back(out_.list_at(arguments, i));
-            const OpListId given = out_.add_list(kept);
-            return local ? emit(op_place, node, self.path, given,
+            const OpListId given = with_named(out_.add_list(kept));
+            return with_options(local ? emit(op_place, node, self.path, given,
                                 out_.add_cache(),
                                 static_cast<uint32_t>(held.slot))
                          : emit(op_place_global, node, self.path, given,
-                                out_.add_cache(), global->second);
+                                out_.add_cache(), global->second));
         }
-        return emit(op_dispatch, node, self.path, arguments, out_.add_cache(),
-                    out_.add_text(std::string(ast_.text_of(target))));
+        return with_options(emit(op_dispatch, node, self.path, with_named(arguments),
+                    out_.add_cache(), out_.add_text(std::string(ast_.text_of(target)))));
     }
 
     // A CAPSULE THIS PROGRAM DECLARED. The index was decided in pass 1, before
@@ -1014,7 +1057,7 @@ OpIndex Compiler::call(NodeIndex node)
     if (about.slot == resolve::kSlotCapsule) {
         const auto found = capsules_.find(about.path);
         if (found != capsules_.end())
-            return emit(op_call, node, found->second, arguments,
+            return named_count != 0 ? no_options() : emit(op_call, node, found->second, arguments,
                         out_.add_text(std::string(ast_.text_of(target))));
     }
 
@@ -1023,8 +1066,8 @@ OpIndex Compiler::call(NodeIndex node)
     // immutable and the mutable half is a side table: DESIGN §10.5's threads
     // walk one arena and hold one cache each.
     if (about.path != words::kNoPath && words::is_language_word(about.path))
-        return emit(op_dispatch, node, about.path, arguments, out_.add_cache(),
-                    out_.add_text(std::string(ast_.text_of(target))));
+        return with_options(emit(op_dispatch, node, about.path, with_named(arguments),
+                    out_.add_cache(), out_.add_text(std::string(ast_.text_of(target)))));
 
     // A SELECTOR THAT NEVER FOLDED is two sentences, told apart by whether
     // the receiver IS a declared name. When it is one and carries a type, the

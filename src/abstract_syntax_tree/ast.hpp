@@ -103,6 +103,12 @@ enum class NodeKind : uint8_t {
     Spacesuit,
     Section,    // satellite.protected { ... } / satellite.public { ... }
     Global,     // satellite.library.IDENT [= expression]
+
+    // `name=value` INSIDE AN ARGUMENT LIST -- M30, 2026-09-12. LAST IN THE
+    // ENUM so no kind before it changes number. It lives in a Call's `c` list
+    // and never in `b`, so every arity count, shape match and option fold that
+    // reads `b` is exactly what it was.
+    Named,
 };
 
 // ONE NODE. Five words, and the four payload words mean different things in
@@ -118,7 +124,7 @@ enum class NodeKind : uint8_t {
 //   Satellite   `satellite`       -                -               -            -
 //   Name        the identifier    -                -               -            -
 //   Member      the member name   receiver         -               -            -
-//   Call        the `(`           target           args list       -            -
+//   Call        the `(`           target           args list       named list   -
 //   Index       the `[`           target           subscript       -            -
 //   Slice       the `[`           target           low or none     high or none -
 //   Unary       the operator      operand          -               -            -
@@ -137,6 +143,7 @@ enum class NodeKind : uint8_t {
 //   Spacesuit   the suit name     PATH ID          items list      super or none -
 //   Section     `protected`/`public`  items list   -               -            -
 //   Global      the global's name PATH ID          init or none    -            -
+//   Named       the option's name value            -               -            -
 //
 // THREE OF THOSE COLUMNS DO NOT HOLD A NODE INDEX and the table is the only
 // place that can be seen: `Type::a` is a words::SpellingId, and the path id on

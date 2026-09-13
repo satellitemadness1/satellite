@@ -55,6 +55,7 @@ void op_place_global(Machine &m, const Op &op, uint32_t step);
 void op_refuse(Machine &m, const Op &op, uint32_t step);
 void op_no_question(Machine &m, const Op &op, uint32_t step);
 void op_misuse(Machine &m, const Op &op, uint32_t step);
+void op_options(Machine &m, const Op &op, uint32_t step);
 
 void op_block(Machine &m, const Op &op, uint32_t step);
 void op_expression(Machine &m, const Op &op, uint32_t step);

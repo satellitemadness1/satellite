@@ -5677,6 +5677,22 @@ terminal and for `satl-term` alike.
 *`ncurses` as the word is the author's; this tree otherwise spells names out,
 and the author may prefer a word like `screen`.*
 
+***NAMED ARGUMENTS BUILT 2026-09-12 — the first step, and the paragraph below is
+the plan it was built against.*** `IDENT "=" expression` at the start of an
+argument, after every positional one (S0232), once each (S0233), in a Call's own
+`c` list so no arity or shape moved. Resolve refuses them on a capsule the
+program wrote (S0527); the compiler appends their values to a dispatch op's
+arguments and wraps it in `op_options`, which records the names against THAT op
+only, so `display(f(), end="")` never shows `end` to f's handler; a handler
+lists the names it takes and any other is S0732. `.satc` and `--unparse` carry
+them — a ZERO-shape row given one (`clear(end="")`) is written as text, because
+its number already stands for the parentheses. **`display(text, end="")` is the
+first option** and `Console::write` finally has a spelling. At the prompt a line
+left mid-row by `end=""` was erased by the redraw's `\r ESC[K`; the console now
+remembers whether its last byte ended a line and the prompt starts a fresh row.
+DESIGN §6's `args` rule carries the grammar. *Next: `foreground=`,
+`background=`, `bold=`, `italic=` on display.*
+
 **The blocker, and it is grammar: DESIGN §6 has no named arguments** —
 `args := expression { "," expression }`, and M14's text in this file already
 records v1's `display(text, end="")` as dropped for exactly that. `name=value`

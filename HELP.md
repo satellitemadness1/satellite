@@ -994,9 +994,14 @@ brackets and a map prints its pairs without you formatting anything.
 It is the most-called word in the language and the first one most people
 type.
 
+`end=` replaces the newline with whatever you give it, so
+`satellite.console.display("Loading", end="...")` stays on the same line.
+
     satellite.variable.string greeting = "Hello"
     satellite.console.display(greeting)
     satellite.console.display(greeting.size())
+    satellite.console.display("no newline", end="")
+    satellite.console.display(" -- then one")
 
 H  `1 5 2`  `satellite.console.input()`  _M14_
 > satellite.help(satellite.console.input)

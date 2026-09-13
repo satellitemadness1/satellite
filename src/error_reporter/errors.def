@@ -249,6 +249,19 @@ SAT_CODE(231, PARSE_EXPECTED_EXPRESSION, SAT_ERROR,
          "expected an expression -- a number, a string, a name, a path, or one "
          "in brackets -- and found {1}")
 
+// NAMED ARGUMENTS -- M30, 2026-09-12. `display("x", end="")`: a word and `=` at
+// the start of an argument names it. The positional ones come first, because a
+// reader counts positions from the left and a name in the middle would make
+// "the second argument" mean two things; and a name is given once, because the
+// second would silently win.
+SAT_CODE(232, PARSE_POSITIONAL_AFTER_NAMED, SAT_ERROR,
+         "this argument has no name and comes after one that does -- write the "
+         "unnamed arguments first and the named ones after them")
+
+SAT_CODE(233, PARSE_NAMED_TWICE, SAT_ERROR,
+         "`{1}` is already given earlier in this argument list, and an option "
+         "is given once")
+
 SAT_CODE(240, PARSE_NOT_A_LANGUAGE_CAPSULE, SAT_ERROR,
          "satellite.{1} is not a capsule the language owns -- the one reserved "
          "capsule name is satellite.main")
@@ -544,6 +557,14 @@ SAT_CODE(525, RESOLVE_CONSTRUCTOR_RETURNS, SAT_ERROR,
 SAT_CODE(526, RESOLVE_ARGUMENTS_NOT_A_SPACESUIT, SAT_ERROR,
          "`{1}` is declared with arguments, and `{2}` has no "
          "satellite.constructor to take them")
+
+// NAMED ARGUMENTS ON A CAPSULE THE PROGRAM WROTE -- M30, 2026-09-12. An option
+// is something a language word declares it takes; a capsule's parameters have
+// names too, but whether `f(x=1)` should bind by them is a question nobody has
+// decided, and guessing would make it a promise.
+SAT_CODE(527, RESOLVE_OPTION_ON_CAPSULE, SAT_ERROR,
+         "`{1}` is given `{2}=`, and only a word the language owns takes "
+         "named options -- a capsule's arguments go by position")
 
 // DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named X gets a
 // plain list with no properties, silently. Under §9 that silence is wrong --
@@ -842,6 +863,11 @@ SAT_CODE(731, EVAL_NO_SUCH_ENTRY, SAT_ERROR,
          "the arguments object holds nothing under {1} -- `keys()` lists every "
          "name it answers to and `has(k)` is the question that answers false "
          "instead of stopping")
+
+// AN OPTION THE WORD DOES NOT TAKE -- M30. The handler's own list fills {3}, so
+// a word that gains an option is offered here with no edit to this row.
+SAT_CODE(732, EVAL_NO_SUCH_OPTION_NAME, SAT_ERROR,
+         "`{1}` has no option called `{2}` -- {3}")
 
 // A NUMBER WITH NO BIT PATTERN -- 2026-09-12. A `BitRun` has "no sign and no
 // radix field" (satellite_bits/bits.hpp), so a negative number and a fraction

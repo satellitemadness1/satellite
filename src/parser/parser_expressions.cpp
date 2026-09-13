@@ -85,6 +85,8 @@ struct Operator {
 };
 
 // One open bracket, and what it interrupted.
+constexpr uint32_t kNoName = UINT32_MAX;
+
 struct Frame {
     enum class Kind : uint8_t { Paren, Call, Subscript };
 
@@ -95,6 +97,10 @@ struct Frame {
 
     size_t unaries = 0;
     std::vector<NodeIndex> arguments;   // Call
+    std::vector<NodeIndex> named;       // Call: `name=value`, M30
+    bool argument_start = false;        // Call: the next operand begins an argument
+    uint32_t name = kNoName;            // Call: the name this argument was given
+    uint32_t started = 0;               // Call: this argument's first token
     NodeIndex low = kNoNode;            // Subscript
     bool colon = false;                 // Subscript: a ':' was taken
 };
@@ -149,6 +155,32 @@ NodeIndex Parser::expression()
         switch (step) {
 
         case Step::Operand: {
+            // `name=value` -- M30's named argument. ONLY AT THE START OF AN
+            // ARGUMENT, which is what keeps `f(a == b)` a comparison: `==` is
+            // one token, and a word followed by `=` anywhere else is not an
+            // expression at all. Two tokens of lookahead, asked once per
+            // argument and never inside one.
+            if (!frames.empty() && frames.back().kind == Frame::Kind::Call &&
+                frames.back().argument_start) {
+                Frame &call = frames.back();
+                call.argument_start = false;
+                call.started = here();
+                if (peek().kind == TokenKind::Word && peek(1).kind == TokenKind::Punct &&
+                    peek(1).text == "=") {
+                    const uint32_t name = here();
+                    for (const NodeIndex earlier : call.named) {
+                        if (toks()[ast_[earlier].token].text == toks()[name].text) {
+                            error<errors::Code::PARSE_NAMED_TWICE>(
+                                name, std::string(toks()[name].text));
+                            return give_up();
+                        }
+                    }
+                    call.name = name;
+                    advance();
+                    advance();
+                }
+            }
+
             // `unary := ( "-" | "!" ) unary`, collected rather than nested. They
             // apply to the whole postfix chain that follows, so they wait.
             while (peek().kind == TokenKind::Punct &&
@@ -236,6 +268,7 @@ NodeIndex Parser::expression()
                     continue;
                 }
                 push_frame(Frame::Kind::Call, opener, current);
+                frames.back().argument_start = true;
                 step = Step::Operand;
                 continue;
             }
@@ -322,8 +355,18 @@ NodeIndex Parser::expression()
             }
 
             case Frame::Kind::Call: {
-                frames.back().arguments.push_back(current);
+                Frame &call = frames.back();
+                if (call.name != kNoName) {
+                    call.named.push_back(ast_.add(NodeKind::Named, call.name, current));
+                    call.name = kNoName;
+                } else if (!call.named.empty()) {
+                    error<errors::Code::PARSE_POSITIONAL_AFTER_NAMED>(call.started);
+                    return give_up();
+                } else {
+                    call.arguments.push_back(current);
+                }
                 if (take_punct(",")) {
+                    call.argument_start = true;
                     step = Step::Operand;
                     continue;
                 }
@@ -334,7 +377,9 @@ NodeIndex Parser::expression()
                 if (panic_)
                     return give_up();
                 current = ast_.add(NodeKind::Call, done.opener, done.target,
-                                   ast_.add_list(done.arguments));
+                                   ast_.add_list(done.arguments),
+                                   done.named.empty() ? kNoList
+                                                      : ast_.add_list(done.named));
                 step = Step::Postfix;
                 continue;
             }

@@ -514,6 +514,7 @@ const char *op_name(OpFn fn)
     if (fn == op_refuse)       return "refuse";
     if (fn == op_no_question)  return "no_question";
     if (fn == op_misuse)       return "misuse";
+    if (fn == op_options)      return "options";
     if (fn == op_place)        return "place";
     if (fn == op_place_global) return "place_global";
     if (fn == op_block)        return "block";

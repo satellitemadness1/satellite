@@ -80,7 +80,8 @@ void Writer::postfix(NodeIndex node)
 {
     const Node &n = ast_[node];
     if (const PathMatch match = language_path(ast_, node); match.found()) {
-        chain(match, n.kind == NodeKind::Call, n.b);
+        chain(match, n.kind == NodeKind::Call, n.b,
+              n.kind == NodeKind::Call ? n.c : kNoList);
         return;
     }
 
@@ -99,6 +100,7 @@ void Writer::postfix(NodeIndex node)
         expr(n.a);
         say("(");
         arguments(n.b, folds_.at(n.a));
+        named_arguments(n.c, ast_.list_size(n.b) > 0);
         say(")");
         return;
     case NodeKind::Index:
@@ -177,6 +179,20 @@ void Writer::arguments(ListId list, bool first_is_an_option)
             continue;
         }
         expr(argument);
+    }
+}
+
+// `name=value`, after the positional arguments -- M30. The name is a word the
+// program wrote and not a path, so it is printed as written; the value is an
+// ordinary expression and numbers like any other.
+void Writer::named_arguments(ListId list, bool after_positional)
+{
+    for (uint32_t i = 0; list != kNoList && i < ast_.list_size(list); i++) {
+        if (i > 0 || after_positional)
+            say(", ");
+        const NodeIndex named = ast_.list_at(list, i);
+        say(text(named) + "=");
+        expr(ast_[named].a);
     }
 }
 

@@ -234,6 +234,10 @@ int run_prompt()
         // descriptor directly (render.hpp says why), so without this barrier a
         // program's last line and the next prompt race for the same row.
         out.drain();
+        // A PROGRAM THAT ENDED MID-LINE -- `display("a", end="")` -- gets its
+        // line ended here, or the redraw below erases what it printed.
+        if (out.take_mid_line())
+            std::fputs("\n", stdout);
         std::fflush(stdout);
 
         const LineStatus status = reader.read(

@@ -82,6 +82,14 @@ void Console::display(std::string line)
 
 void Console::write(std::string text) { push(std::move(text)); }
 
+bool Console::take_mid_line()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    const bool was = mid_line_;
+    mid_line_ = false;
+    return was;
+}
+
 void Console::drain()
 {
     // A CONSOLE NOTHING HAS PRINTED THROUGH RETURNS AT ONCE, AND THERE IS NO
@@ -202,11 +210,20 @@ void Console::printer()
         // because a satellite string may hold a NUL -- DESIGN §5's code table
         // is 16-bit and `satellite_value/render.cpp` hands back whatever it
         // decoded, so a length is the only honest way to write it.
-        for (const std::string &text : batch)
+        bool mid_line = false;
+        bool wrote = false;
+        for (const std::string &text : batch) {
             fwrite(text.data(), 1, text.size(), stdout);
+            if (!text.empty()) {
+                wrote = true;
+                mid_line = text.back() != '\n';
+            }
+        }
         batch.clear();
 
         lock.lock();
+        if (wrote)
+            mid_line_ = mid_line;
         writing_ = false;
         if (!queue_.empty())
             continue;

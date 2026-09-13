@@ -237,13 +237,34 @@ std::vector<errors::FrameRef> Machine::call_stack() const
     return out;
 }
 
-bool Machine::call_handler(const Handler *handler, uint32_t count, Value *answer)
+bool Machine::call_handler(const Handler *handler, uint32_t count, Value *answer,
+                           OpListId named)
 {
-    const Value *arguments = value_.data() + value_.size() - count;
-    if (!handler->fn(*this, arguments, count, answer))
+    // THE NAMED VALUES SIT ABOVE THE POSITIONAL ONES on the value stack, in the
+    // order the names list gives -- the compiler appended them -- so the
+    // handler's `arguments` still starts at argument 0 and `count` is still the
+    // positional count it always was.
+    const uint32_t given = named == kNoOpList ? 0 : program_.list_size(named);
+    const Value *arguments = value_.data() + value_.size() - count - given;
+    active_names_ = named;
+    active_values_ = given ? arguments + count : nullptr;
+    const bool ok = handler->fn(*this, arguments, count, answer);
+    active_names_ = kNoOpList;
+    active_values_ = nullptr;
+    if (!ok)
         return false;
-    value_.resize(value_.size() - count);
+    value_.resize(value_.size() - count - given);
     return true;
+}
+
+const Value *Machine::option(std::string_view name) const
+{
+    if (active_names_ == kNoOpList)
+        return nullptr;
+    for (uint32_t i = 0; i < program_.list_size(active_names_); i++)
+        if (program_.text(program_.list_at(active_names_, i)) == name)
+            return active_values_ + i;
+    return nullptr;
 }
 
 void Machine::refuse(errors::Diagnostic problem)

@@ -118,12 +118,13 @@ private:
     void postfix(NodeIndex node);
     void expand_type(NodeIndex node);
     void arguments(ListId list, bool first_is_an_option);
+    void named_arguments(ListId list, bool after_positional);
     void bracketed(NodeIndex node, int level, bool on_the_right);
 
     // write.cpp -- everything that turns a path id into digits, and the stack.
     void run();
     void flush();
-    void chain(const PathMatch &match, bool is_call, ListId args);
+    void chain(const PathMatch &match, bool is_call, ListId args, ListId named);
     void form(const PathMatch &match, NodeIndex argument);
     void write_fixed(const std::string &path);
     void write_global_name(NodeIndex node);

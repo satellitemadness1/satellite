@@ -648,13 +648,25 @@ for_stmt       := stmt_kw "for" "(" [ var_decl | assign ] ";" [ expression ] ";"
 
 expression     := precedence climbing over the operators in §6.6
 postfix        := primary { "." IDENT | "(" [ args ] ")" | "[" subscript "]" }
-args           := expression { "," expression }
+args           := named { "," named } | expression { "," expression } { "," named }
+named          := IDENT "=" expression
 subscript      := expression | [ expression ] ":" [ expression ]
 primary        := NUMBER | STRING | "satellite" | IDENT | "(" expression ")"
 ```
 
 Statements are newline-terminated, which is why §6.2's same-line rule for a postfix
 opener is load-bearing rather than a nicety.
+
+***`args` gained `named` on 2026-09-12 (PLAN M30), and the rule it replaced was
+`args := expression { "," expression }`.*** v1's `display(text, end="")` had been
+dropped for exactly that line. A word followed by `=` **at the start of an argument**
+names it, which keeps `f(a == b)` a comparison: `==` is one token. The unnamed
+arguments come first and a name is given once (S0232, S0233). **A named argument is
+not part of the call's shape**: it lives in its own list on the Call node, so arity,
+`words.def`'s shapes and the option fold all count the positional ones exactly as
+before. Only a word the language answers with a handler takes one, and the handler
+declares which (S0732); a capsule the program wrote refuses them (S0527), because
+whether `f(x=1)` binds by parameter name is not decided.
 
 ***`suit_section` cited `block` until 2026-08-30, and as written the rule could not
 parse the program it was written for.*** A `block` is `"{" { statement } "}"`, and a

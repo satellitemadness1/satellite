@@ -109,6 +109,24 @@ void Resolver::visit_arguments(NodeIndex call)
             ? words::topic_parameter_of(static_cast<words::NodeId>(self))
             : words::kNoTopicParameter;
 
+    // NAMED ARGUMENTS -- M30. Their values are ordinary expressions and are
+    // pushed FIRST so they are walked LAST, after the positional ones, which is
+    // the order they were written in. Only a word the language owns takes
+    // them: by the time this runs the call's path is known -- on the call for a
+    // whole shape, on the target otherwise -- and a path the PROGRAM declared
+    // is refused once, at the first name.
+    if (const ListId named = ast_[call].c;
+        named != kNoList && ast_.list_size(named) > 0) {
+        const words::PathId target = info(ast_[call].a).path;
+        const words::PathId called = self != words::kNoPath ? self : target;
+        if (called != words::kNoPath && !words::is_language_word(called))
+            problem<errors::Code::RESOLVE_OPTION_ON_CAPSULE>(
+                ast_.list_at(named, 0), ast_.text_of(ast_[call].a),
+                ast_.text_of(ast_.list_at(named, 0)));
+        for (uint32_t i = ast_.list_size(named); i-- > 0;)
+            visit_expression(ast_[ast_.list_at(named, i)].a);
+    }
+
     for (uint32_t i = ast_.list_size(args); i-- > 0;) {
         if (i == topic)
             visit_topic(ast_.list_at(args, i));

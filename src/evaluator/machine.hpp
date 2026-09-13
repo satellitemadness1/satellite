@@ -327,7 +327,26 @@ public:
     // pointer and a count rather than the machine's vector: `arguments` points
     // INTO value_, so a handler that pushed would reallocate under its own
     // feet. Everything a handler needs to say goes through refuse().
-    bool call_handler(const Handler *handler, uint32_t count, Value *answer);
+    bool call_handler(const Handler *handler, uint32_t count, Value *answer,
+                      OpListId named = kNoOpList);
+
+    // NAMED OPTIONS -- M30. op_options opens a record naming the ONE op it
+    // wraps before that op runs and closes it after; the dispatch asks
+    // named_here(), which answers only when the record on top is its own. So a
+    // call nested in an argument -- `display(f(), end="")`, where f's handler
+    // runs first -- can never see its parent's options, and a call with none
+    // pays one empty() for the question.
+    void open_options(OpIndex call, OpListId names) { named_.push_back({call, names}); }
+    void close_options() { named_.pop_back(); }
+    OpListId named_here() const
+    {
+        return !named_.empty() && named_.back().call == here() ? named_.back().names
+                                                               : kNoOpList;
+    }
+
+    // Inside a handler: the option given under `name`, or nullptr when the
+    // call did not give it.
+    const Value *option(std::string_view name) const;
 
     // Stop, with a sentence. Nothing runs after this.
     void refuse(errors::Diagnostic problem);
@@ -422,6 +441,16 @@ private:
     // back. See last_frame() above.
     std::vector<Value> last_frame_;
     std::vector<Cache> caches_;
+
+    struct Named {
+        OpIndex call = kNoOp;
+        OpListId names = kNoOpList;
+    };
+    std::vector<Named> named_;
+    // The option names and their values while a handler that was given some
+    // is running, and nothing otherwise.
+    OpListId active_names_ = kNoOpList;
+    const Value *active_values_ = nullptr;
 
     std::vector<errors::Diagnostic> problems_;
     Ending ending_ = Ending::Finished;

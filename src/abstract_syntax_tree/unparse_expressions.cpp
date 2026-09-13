@@ -56,6 +56,15 @@ void Printer::expand_expression(NodeIndex node)
                 say(", ");
             expr(ast_.list_at(n.b, i));
         }
+        // Named arguments after the positional ones, which is the only order
+        // the parser accepts -- M30.
+        for (uint32_t i = 0; n.c != kNoList && i < ast_.list_size(n.c); i++) {
+            if (i > 0 || ast_.list_size(n.b) > 0)
+                say(", ");
+            const NodeIndex named = ast_.list_at(n.c, i);
+            say(text(named) + "=");
+            expr(ast_[named].a);
+        }
         say(")");
         return;
     case NodeKind::Index:
