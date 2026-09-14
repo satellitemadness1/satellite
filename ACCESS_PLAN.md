@@ -123,6 +123,13 @@ Each has a recommendation, and the plan is written against it until answered.
 - **D6. `satellite.container.multiple` takes `1 4 5`**, the next free number
   under `satellite.container` (`1 4 3` is `arguments`, `1 4 4` is `result`).
   `satellite.access` takes **`1 26` — confirmed by the author 2026-09-14.**
+- **D7. Shared memory in the size column.** Recommended: **count it once**
+  in every total, and mark the repeat row `shared with <place>`. Counting it
+  twice would make the top row larger than the memory the process really uses.
+- **D8. Rounding the size column.** `satellite.system.memory`'s rows answer
+  exactly and never round (`memory_methods.cpp`), so they give
+  `1.0986328125 kb`. Recommended for the column: **one decimal place**,
+  `1.1 kb`, and whole numbers of bytes below 1 kb.
 
 ---
 
@@ -226,15 +233,15 @@ list of methods after the whole table.**
 ```
 satellite.access(my_lists)
 
-name            | type                      | value
-----------------+---------------------------+---------
-my_lists        | satellite.container.list  | 2 items
-my_lists[0]     | satellite.container.list  | 2 items
-my_lists[0][0]  | satellite.variable.string | "str1"
-my_lists[0][1]  | satellite.variable.string | "str2"
-my_lists[1]     | satellite.container.list  | 2 items
-my_lists[1][0]  | satellite.variable.string | "str3"
-my_lists[1][1]  | satellite.variable.string | "str4"
+name            | type                      | size   | value
+----------------+---------------------------+--------+---------
+my_lists        | satellite.container.list  | 1.1 kb | 2 items
+my_lists[0]     | satellite.container.list  | 512 b  | 2 items
+my_lists[0][0]  | satellite.variable.string | 112 b  | "str1"
+my_lists[0][1]  | satellite.variable.string | 112 b  | "str2"
+my_lists[1]     | satellite.container.list  | 512 b  | 2 items
+my_lists[1][0]  | satellite.variable.string | 112 b  | "str3"
+my_lists[1][1]  | satellite.variable.string | 112 b  | "str4"
 
 methods
 my_lists.method()  my_lists[x].method()  satellite.container.list
@@ -252,6 +259,28 @@ size()  empty()  find(x)  contains(x)  substring(start, end)  ...every row, on o
   container, shows the DECLARED type (A1's type node) and a row
   `my_lists[x]  satellite.container.list  (empty)`, so the shape shows before
   any value exists.
+- **Size** *(the author, 2026-09-14)* is the memory the object uses, with
+  everything inside it added in: a list is its own storage plus every item's
+  size. The sizes in the mockup are illustrative; A5 measures them.
+  - **Nothing is tracked.** `access` already visits every item, so each size
+    is added up on that same pass, from the innermost items out. A running
+    program that never calls `access` pays nothing. Keeping a running count
+    instead would slow every `append`, `set` and string join in every program,
+    for a number only `access` reads.
+  - **It is real memory, not text length.** Measured 2026-09-14 at `03cadb7`,
+    1,000,000 of each in a list: **~153 bytes per short string** (`"str123456"`)
+    and **~42 per number**. A string's size is its 40-byte slot, its handle's
+    control block and its character buffer. A list's is its slot, its control
+    block and its vector's CAPACITY × 40, not its length. A map's adds the
+    key index. A heap block counts what the allocator really handed over
+    (`malloc_usable_size`), so the total matches what the process pays.
+  - **A shared body is counted once in the total.** `b = a`, or appending one
+    list twice, makes two handles to the same memory. Each row still shows its
+    own size, but a row whose body already appeared says `shared with
+    my_lists[0]`, and the rows above it don't add it again. **Decision D7.**
+  - **Units are `units.hpp`'s**: `b`, `kb`, `mb`, `gb`, `tb`, each 1024 of the
+    last, so 1024 b is `1 kb`. A row uses the largest unit its size reaches.
+    **Decision D8** covers rounding.
 - **Value**: strings quoted (`display` does not quote, so `"1"` and `1` look
   alike there), containers `N items`, nothing as `nothing`.
 - **Methods**: one block per type met, headed by the access patterns that reach
@@ -263,7 +292,10 @@ size()  empty()  find(x)  contains(x)  substring(start, end)  ...every row, on o
   and once to print. Pipes and files get the same text with no style (the
   2026-09-12 decision).
 
-**Done when** `example/access.satl` prints the table above for `my_lists`, and
+**Done when** the top row's size for a 1,000,000-string list agrees with
+`satellite.system.memory.main("b")` measured before and after building it,
+within the allocator's page rounding. That check proves the size column. And
+`example/access.satl` prints the table above for `my_lists`, and
 also for a map of lists, a multiple, a spacesuit holding a list, an empty
 declared list and a 100,000-deep nest (R5). The help line runs under
 `verify.py`, and **the author has seen it in satl-term** — which is what they
