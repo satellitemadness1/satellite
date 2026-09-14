@@ -269,11 +269,43 @@ size()  empty()  find(x)  contains(x)  substring(start, end)  ...every row, on o
     for a number only `access` reads.
   - **It is real memory, not text length.** Measured 2026-09-14 at `03cadb7`,
     1,000,000 of each in a list: **~153 bytes per short string** (`"str123456"`)
-    and **~42 per number**. A string's size is its 40-byte slot, its handle's
-    control block and its character buffer. A list's is its slot, its control
-    block and its vector's CAPACITY × 40, not its length. A map's adds the
-    key index. A heap block counts what the allocator really handed over
-    (`malloc_usable_size`), so the total matches what the process pays.
+    and **~42 per number**. A heap block counts what the allocator really
+    handed over (`malloc_usable_size`), so the total matches what the process
+    pays.
+  - **C++'s `sizeof` cannot answer it on its own.** It is fixed when the
+    program is compiled, so it measures a type's fixed part and never what the
+    type points to. Compiled against this tree's `value.hpp` on 2026-09-14:
+    `sizeof(satellite::Value)` is 40 for every value, `sizeof(satellite::List)`
+    is 24 for a list of none or of a million, and a 1,000,000-character
+    `std::string` is 32 bytes by `sizeof` while it really uses 1,000,033.
+    `sizeof` supplies the fixed part (the 40), and the rest has to be asked of
+    the value.
+  - **So every value type answers two questions, and none of them stores
+    anything.** `payload_bytes()` is the bytes it owns beyond its 40-byte slot.
+    `payload_id()` is the address of that memory, so shared memory is counted
+    once. **`Number` already has both** (`bignum_number.hpp`, used by
+    `satl --number`), with the comment "shared storage is counted once". A5
+    writes the same pair for the other fifteen arms:
+
+    | arm | what it counts beyond the 40-byte slot |
+    |---|---|
+    | nothing, bool, runtime, time | 0 — they fit in the slot |
+    | number | `Number::payload_bytes()`, which exists: 0 in the small form, 4 per limb once boxed |
+    | string, float, binary, hex | the body behind the handle and its character or digit storage |
+    | list | the body, then CAPACITY × 40 (not length), then every item's own size |
+    | map | the body, entries capacity × 80, the key index's buckets and key strings, then every key and value |
+    | file | the handle and its read buffer, plus zlib's state when the file is gzipped |
+    | arguments | the object and its strings |
+    | capsule | the packaged call and the arguments it holds |
+    | thread | the handle and the answer it holds; its OS stack is `satellite.system.memory.this`'s to report, not this column's |
+    | spacesuit | the object and every field's own size |
+
+  - **A spacesuit can point back at itself**, which DESIGN §12's refcounting
+    cannot free and S1501 warns about. The walk remembers every
+    `payload_id()` it has visited. An object it meets a second time gets one
+    row saying `shared with <place>`, and the walk does not go inside it again.
+    That rule is what stops `access` from printing forever on a ring, and it's
+    the same rule as D7's.
   - **A shared body is counted once in the total.** `b = a`, or appending one
     list twice, makes two handles to the same memory. Each row still shows its
     own size, but a row whose body already appeared says `shared with
