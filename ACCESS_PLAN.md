@@ -63,6 +63,17 @@ paragraph saying so when A2 lands.
   `names.append(y)` is answered as Python. Fixed in A2: the guard also skips a
   line whose receiver resolved to a declared name.
 
+- **F3. An object holding one number costs ~937 bytes, and ~600 of them wait
+  for a second thread.** `sizeof(SuitObject)` is 216, and 184 of that is
+  threading: `std::recursive_mutex hold` (40) and `thread::Access` (144).
+  `Access` holds a `std::deque`, and libstdc++'s deque allocates its map and
+  a 512-byte block when it is CONSTRUCTED, empty or not. That's 216 + 16 +
+  the field vector + ~600 for the deque + the 40-byte list slot, about 936
+  bytes, against 937 measured. A program with no threads pays it on every
+  object. It matters for QUAD's millions of objects, and A5's size column
+  will show it. **Not this plan's to fix**: creating the queue only when a
+  second thread first waits is a decision for THREAD.md.
+
 ---
 
 ## 3. The rules — v1's, and what changes in this tree
@@ -298,8 +309,17 @@ size()  empty()  find(x)  contains(x)  substring(start, end)  ...every row, on o
     | arguments | the object and its strings |
     | capsule | the packaged call and the arguments it holds |
     | thread | the handle and the answer it holds; its OS stack is `satellite.system.memory.this`'s to report, not this column's |
-    | spacesuit | the object and every field's own size |
+    | spacesuit | the object (216 bytes fixed, then its field vector) and every field's own size — **not its capsules**, below |
 
+  - **A spacesuit object does not hold its capsules, so its size doesn't
+    include them.** `suit_object.hpp`: an object is one pointer to a `Layout`
+    that every object of that spacesuit shares, plus its fields, plus its
+    threading hold. The capsules are compiled once into the program. Measured
+    2026-09-14: 1,000,000 objects of a spacesuit with one number field cost
+    **937 bytes each with a 1-line capsule, and 936 with a 3,000-line
+    capsule.** `access` shows the capsules in its methods section, and
+    capsules added to one object (POLY_PLAN.md, the author's next plan) will
+    count in that object's size.
   - **A spacesuit can point back at itself**, which DESIGN §12's refcounting
     cannot free and S1501 warns about. The walk remembers every
     `payload_id()` it has visited. An object it meets a second time gets one
