@@ -11,6 +11,7 @@
 #include "satellite_system/handlers.hpp"
 #include "satellite_thread/thread_handle.hpp"
 #include "satellite_prompt/block.hpp"
+#include "programs/spaceships.hpp"
 #include "name_resolver/resolve.hpp"
 #include "satellite_words/words.hpp"
 #include "system_facts/interrupt.hpp"
@@ -262,6 +263,7 @@ bool Session::run(const std::string &entry)
 
     Built built;
     built.text = top ? wrap(std::string()) : wrap(entry);
+    built.already_included = includes_run_;
 
     if (!build_source(kPromptName, built, false)) {
         report(built, kPromptName, above);
@@ -292,10 +294,33 @@ bool Session::run(const std::string &entry)
     // Withdrawn straight after, so a line that refused before the handler ran
     // cannot leave a table waiting for the next one.
     directory::ask_for_listing(!top && bare_listing(built, which));
+    // A FILE AN EARLIER LINE INCLUDED IS ALREADY INCLUDED -- M25. Claimed
+    // before anything runs, so an include of it on this line runs its launches
+    // and not the includes at its top.
+    for (size_t k = 0; k < built.ships.size(); k++)
+        for (const std::string &path : loaded_)
+            if (path == built.ships[k]->canonical)
+                machine.globals()->claim(static_cast<uint32_t>(k + 1));
     machine.run_top_level();
     if (machine.ok())
         machine.call(static_cast<uint32_t>(which), arguments());
     directory::ask_for_listing(false);
+
+    // AND WHAT THIS LINE INCLUDED IS REMEMBERED, from a run that finished. Every
+    // top-level include now in the program has run -- the kept ones on their
+    // own lines, this line's just now.
+    if (machine.ok()) {
+        includes_run_ = top_level_spaceships(built.parsed.ast);
+        for (size_t k = 0; k < built.ships.size(); k++) {
+            if (!machine.globals()->claimed(static_cast<uint32_t>(k + 1)))
+                continue;
+            bool known = false;
+            for (const std::string &path : loaded_)
+                known = known || path == built.ships[k]->canonical;
+            if (!known)
+                loaded_.push_back(built.ships[k]->canonical);
+        }
+    }
 
     // WHAT THE LINE LEFT BEHIND, TAKEN BEFORE ANYTHING ELSE CAN DISTURB IT.
     // Only from a run that finished: a line that refused halfway has a frame

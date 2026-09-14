@@ -39,6 +39,8 @@ Program compile_run(const std::vector<Unit> &units, words::Words &words,
         linking.files.push_back(unit.resolved);
         linking.includes.push_back(unit.includes);
     }
+    if (!units.empty())
+        linking.already_included = units[0].already_included;
 
     std::vector<std::unique_ptr<Compiler>> compilers;
     for (uint32_t f = 0; f < units.size(); f++)

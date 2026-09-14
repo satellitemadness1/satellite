@@ -119,6 +119,15 @@ private:
     std::vector<std::string> globals_;
 
     std::vector<Kept> kept_;
+
+    // WHAT THIS SESSION HAS ALREADY INCLUDED -- M25. The number of top-level
+    // spaceship includes kept from earlier lines, every one of which has run;
+    // and every file whose first include has happened, by real path, so a later
+    // line that includes one again runs its launches and not the includes at
+    // its top a second time. A line's program is rebuilt from scratch, so
+    // without these every line typed ran every kept include again.
+    uint32_t includes_run_ = 0;
+    std::vector<std::string> loaded_;
 };
 
 // How many lines the wrapper writes above the typed body. Public because

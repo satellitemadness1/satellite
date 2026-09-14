@@ -34,4 +34,8 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report);
 // before taking the road above, so a program of one file is untouched.
 bool includes_a_spaceship(const Ast &ast);
 
+// How many spaceship includes sit at the top of a file -- in the order the
+// compiler meets them, which is what Built::already_included counts against.
+uint32_t top_level_spaceships(const Ast &ast);
+
 } // namespace satellite

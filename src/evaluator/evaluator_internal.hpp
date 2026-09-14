@@ -129,6 +129,9 @@ struct Linking {
     // cargo's node numbers against launch.satl and refused with a caret on the
     // wrong line of the wrong file.
     std::unordered_map<uint32_t, OpListId> fields;
+
+    // File 0's top-level spaceship includes that ran on an earlier prompt line.
+    uint32_t already_included = 0;
 };
 
 class Compiler {
@@ -353,6 +356,7 @@ private:
     // globals' initialisers (`setup`) and the includes written at its top.
     std::vector<OpIndex> setup_;
     std::vector<OpIndex> top_includes_;
+    uint32_t included_so_far_ = 0;
 
     // The spacesuit whose method is being compiled, or null. resolve's member
     // of the same name is the other half; a field index means nothing without

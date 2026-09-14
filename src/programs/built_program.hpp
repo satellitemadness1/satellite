@@ -80,6 +80,15 @@ struct Built {
     std::vector<std::unique_ptr<LoadedSpaceship>> ships;
     std::vector<errors::Source> others;
 
+    // HOW MANY OF FILE 0's TOP-LEVEL SPACESHIP INCLUDES ALREADY RAN -- M25, and
+    // only M22's prompt sets it. The prompt rebuilds the whole program for every
+    // line typed, with every top-level form kept from the lines before; the
+    // first N includes at the top were typed on earlier lines and ran then, so
+    // they are loaded for their names and compiled to nothing. The author:
+    // launch code runs "when the interpreter hits satellite.include(filename)
+    // ... then and only then" -- not again on every later line.
+    uint32_t already_included = 0;
+
     // What every diagnostic about this program is rendered against: this file,
     // and every spaceship's own text for a span that says it is in one.
     errors::Source source(std::string_view name) const

@@ -73,6 +73,10 @@ struct Unit {
     const resolve::Resolved *resolved = nullptr;
     std::string name;
     std::vector<std::pair<NodeIndex, uint32_t>> includes;
+
+    // The first N top-level spaceship includes compile to nothing -- Built's
+    // `already_included`, which says why. File 0's only.
+    uint32_t already_included = 0;
 };
 
 // Every file, compiled into ONE program -- one op arena, one capsule table, one

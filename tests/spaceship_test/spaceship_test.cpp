@@ -75,6 +75,36 @@ bool holds(const std::string &text, const std::string &needle)
     return text.find(needle) != std::string::npos;
 }
 
+size_t count_of(const std::string &text, const std::string &needle)
+{
+    size_t count = 0;
+    for (size_t at = text.find(needle); at != std::string::npos;
+         at = text.find(needle, at + needle.size()))
+        count++;
+    return count;
+}
+
+// `satl --repl` from `root`, fed `typed` on stdin, with HOME in `root` so the
+// session's history lands in the scratch directory and not in anyone's home.
+Ran repl(const std::string &typed)
+{
+    write("typed.txt", typed);
+    Ran ran;
+    const std::string command = "cd '" + root + "' && HOME='" + root +
+                                "' SATL_NO_WINDOW=1 '" + satl_path +
+                                "' --repl 2>&1 <typed.txt";
+    FILE *pipe = popen(command.c_str(), "r");
+    if (pipe == nullptr)
+        return ran;
+    char buffer[4096];
+    size_t got = 0;
+    while ((got = std::fread(buffer, 1, sizeof buffer, pipe)) > 0)
+        ran.out.append(buffer, got);
+    const int raw = pclose(pipe);
+    ran.status = WIFEXITED(raw) ? WEXITSTATUS(raw) : -1;
+    return ran;
+}
+
 const char *kMain =
     "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n";
 
@@ -432,6 +462,61 @@ void section_review()
           "that file: " + ran.out);
 }
 
+// --- 7: a launch runs when its include is reached, and then only ---------------
+//
+// The author, 2026-09-14: "so when the interpreter hits satellite.include
+// (filename) it runs the launch inside of filename then and only then". A file
+// always did; the prompt, which rebuilds its program for every line typed, ran
+// every kept include again on every later line -- calling one of the file's
+// capsules on the next line printed the launch first.
+void section_prompt()
+{
+    write("pod.satl", "satellite.include(satellite)\n"
+                      "satellite.include(inner)\n"
+                      "satellite.capsule.launch hello()\n{\n"
+                      "    satellite.console.display(\"pod launch\")\n}\n"
+                      "satellite.capsule.launch hello_n(satellite.variable.number n)\n{\n"
+                      "    satellite.console.display(\"pod launch with a number\")\n}\n"
+                      "satellite.capsule ping()\n{\n"
+                      "    satellite.console.display(\"pod ping\")\n}\n");
+    write("inner.satl", "satellite.include(satellite)\n"
+                        "satellite.capsule.launch arrive()\n{\n"
+                        "    satellite.console.display(\"inner launch\")\n}\n");
+
+    Ran ran = repl("satellite.include(pod)\n"
+                   "pod.ping()\n"
+                   "satellite.console.display(\"unrelated\")\n"
+                   "pod.ping()\n");
+    check(count_of(ran.out, "pod launch\n") == 1 &&
+              count_of(ran.out, "inner launch") == 1 &&
+              count_of(ran.out, "pod ping") == 2 && holds(ran.out, "unrelated"),
+          "at the prompt, an include's launches run on the line that includes "
+          "and on no later line -- capsule calls and other lines run none: " +
+              ran.out);
+
+    ran = repl("satellite.include(pod)\n"
+               "satellite.variable.number five = 5\n"
+               "satellite.include(pod(five))\n"
+               "pod.ping()\n");
+    check(count_of(ran.out, "pod launch\n") == 1 &&
+              count_of(ran.out, "pod launch with a number") == 1 &&
+              count_of(ran.out, "inner launch") == 1 &&
+              count_of(ran.out, "pod ping") == 1,
+          "a second include of a file on a later line runs that include's "
+          "launches, once, and not the includes at the file's top again: " +
+              ran.out);
+
+    write("podhost.satl", std::string("satellite.include(satellite)\n"
+                                      "satellite.include(pod)\n") +
+                              kMain + "{\n    pod.ping()\n    pod.ping()\n"
+                                      "    satellite.return(satellite)\n}\n");
+    const Ran file = run("podhost.satl");
+    check(file.status == 0 &&
+              file.out == "inner launch\npod launch\npod ping\npod ping\n",
+          "in a file the same include runs its nested include's launch and its "
+          "own once, and calling its capsules runs neither again: " + file.out);
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -460,6 +545,7 @@ int main(int argc, char **argv)
     section_refusals();
     section_threads_and_printing();
     section_review();
+    section_prompt();
 
     std::system(("rm -rf '" + root + "'").c_str());
     if (failures != 0) {

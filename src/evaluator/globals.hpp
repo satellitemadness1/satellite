@@ -89,6 +89,12 @@ public:
         return included_[file].compare_exchange_strong(expected, true);
     }
 
+    // Whether a file's first include has happened in this run.
+    bool claimed(uint32_t file) const
+    {
+        return file < files_ && included_[file].load();
+    }
+
     // A FILE'S LOADING, ON A THREAD'S ACCESS LIST -- M25. Held by the walk
     // running the file's top-level includes; see operations_include.cpp.
     thread::Access &loading(uint32_t file) { return loading_[file < files_ ? file : 0]; }

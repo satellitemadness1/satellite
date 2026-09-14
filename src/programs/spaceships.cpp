@@ -121,6 +121,21 @@ bool includes_a_spaceship(const Ast &ast)
     return false;
 }
 
+uint32_t top_level_spaceships(const Ast &ast)
+{
+    if (ast.root() == kNoNode)
+        return 0;
+    uint32_t count = 0;
+    const Node &program = ast[ast.root()];
+    for (uint32_t i = 0; i < ast.list_size(program.a); i++) {
+        const NodeIndex item = ast.list_at(program.a, i);
+        if (ast[item].kind == NodeKind::Include &&
+            spaceship::shape_of(ast, item).named == spaceship::Named::Spaceship)
+            count++;
+    }
+    return count;
+}
+
 bool build_with_spaceships(const std::string &name, Built &out, bool report)
 {
     std::vector<errors::Diagnostic> problems;
@@ -337,6 +352,8 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
         units[f].resolved = f == 0 ? &out.resolved : &out.ships[f - 1]->resolved;
         units[f].name = f == 0 ? host_name : out.ships[f - 1]->name;
         units[f].includes = files[f].includes;
+        if (f == 0)
+            units[f].already_included = out.already_included;
     }
     out.program = eval::compile_run(units, out.words, order);
     if (report && !out.program.problems.empty())

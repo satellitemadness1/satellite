@@ -300,6 +300,12 @@ void Compiler::compile_file()
             // because its argument about the other two forms is unchanged.
             if (info(item).path ==
                 static_cast<words::PathId>(words::NodeId::INCLUDE_SPACESHIP)) {
+                // ONE THE PROMPT ALREADY RAN IS LOADED AND NOT RUN -- Built's
+                // `already_included`. Its file is still loaded and resolved, so
+                // `ship.setup()` on this line finds it; nothing is emitted, so
+                // neither its launches nor its arguments run a second time.
+                if (file_ == 0 && included_so_far_++ < linking_.already_included)
+                    break;
                 top_includes_.push_back(include(item));
                 break;
             }
