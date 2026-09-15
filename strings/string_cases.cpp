@@ -9,7 +9,7 @@
 //   speed <megabytes>    time decoding and bit conversion of multilingual text
 
 #include "satellite_string.hpp"
-#include "../machine_codes.hpp"
+#include "../satellite/machine/machine_codes.hpp"
 
 #include <chrono>
 #include <cstdio>

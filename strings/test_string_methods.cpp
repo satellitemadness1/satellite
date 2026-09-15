@@ -9,8 +9,8 @@
 //                              or for append/clear the receiver afterwards.
 // Written 2026-09-14.
 
-#include "machine_codes.hpp"
-#include "machine_state.hpp"
+#include "satellite/machine/machine_codes.hpp"
+#include "satellite/machine/machine_state.hpp"
 #include "satellite-numbers/call_number.hpp"
 #include "strings/satellite_string.hpp"
 

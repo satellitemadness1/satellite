@@ -19,7 +19,7 @@ is in §12. Anything else is a recommendation and says so.
 2. **No built-in limits.** (author) Nothing in the code may assume what the
    operating system allows today. Every maximum (threads, memory, digits,
    nesting, the length of a command) is a `satellite_number` read from
-   `satellite_config.hpp` (in the satellite-004 folder). The default maximum for everything is
+   `satellite/config/satellite_config.hpp`. The default maximum for everything is
    **999,999,999,999,999,999,999,999,999** (27 digits, nine hundred ninety-nine
    septillion), and a larger machine adds nines. The code is written so that
    no other number stands in the way.
@@ -177,7 +177,7 @@ struct satellite_number {
   40-byte value for exactly this reason. So: one inline limb for numbers that
   fit, and the vector and pointers only beyond that.
 
-The largest allowed number of digits comes from `satellite_config.hpp` (in the satellite-004 folder)
+The largest allowed number of digits comes from `satellite/config/satellite_config.hpp`
 (author).
 
 ---

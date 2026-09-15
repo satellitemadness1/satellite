@@ -6,8 +6,8 @@
 // where x is a string literal, a whole number, or satellite.bool.true/false.
 // Any other line is satl_line_not_understood (13), with its line number.
 
-#include "arguments.hpp"
-#include "satellite-numbers/call_number.hpp"
+#include "../arguments/arguments.hpp"
+#include "../../satellite-numbers/call_number.hpp"
 
 #include <string>
 #include <vector>

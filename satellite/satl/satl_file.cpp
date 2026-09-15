@@ -1,7 +1,7 @@
 #include "satl_file.hpp"
 
-#include "machine_codes.hpp"
-#include "machine_state.hpp"
+#include "../machine/machine_codes.hpp"
+#include "../machine/machine_state.hpp"
 
 #include <cerrno>
 #include <cstdio>
@@ -197,6 +197,7 @@ signed long long int run_calls(const std::vector<Call> &calls, MachineState &sta
         case ArgumentKind::text: code = call.row->scenarios.text(call.text, true); break;
         case ArgumentKind::count: code = call.row->scenarios.count(call.count, true); break;
         case ArgumentKind::flag: code = call.row->scenarios.flag(call.flag, true); break;
+        case ArgumentKind::number: // a signed config number; no .satl line compiles to one yet
         case ArgumentKind::size: code = satl_line_not_understood; break;
         }
         if (code != success)

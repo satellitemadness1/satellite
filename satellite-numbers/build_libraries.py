@@ -37,7 +37,7 @@ ROOT = os.path.dirname(HERE)
 OUT = os.path.join(ROOT, "build", "satellite-numbers")
 CXX = os.environ.get("CXX", "g++")
 FLAGS = ["-std=c++20", "-O2", "-Wall", "-Wextra", "-shared", "-fPIC"]
-SHARED_HEADERS = [os.path.join(HERE, "number_row.hpp"), os.path.join(ROOT, "machine_codes.hpp"),
+SHARED_HEADERS = [os.path.join(HERE, "number_row.hpp"), os.path.join(ROOT, "satellite", "machine", "machine_codes.hpp"),
                   os.path.join(ROOT, "strings", "string_method.hpp")]
 
 

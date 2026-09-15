@@ -7,7 +7,8 @@
 // The author's list, 2026-09-14. 13 was added the same day, for a line the
 // runner has no scenario for yet. 14-19 were added the same night for the
 // satellite_string methods, each matching a refusal 003 06 already makes
-// (satellite_scalars/string_methods.cpp).
+// (satellite_scalars/string_methods.cpp). 20 and 21 were added 2026-09-15, when
+// the interpreter first read satellite_config.hpp and started its threads.
 
 namespace satellite004 {
 
@@ -32,6 +33,10 @@ enum MachineCode : signed long long int {
     positions_backwards = 17,           // substring: start is after end (003's backwards refusal)
     empty_search_text = 18,             // replace: nothing to replace (003 refuses an empty needle)
     not_a_position = 19,                // a position that is negative
+    config_value_not_understood = 20,   // satellite_config.hpp: a row that cannot mean what its name asks
+    thread_start_error = 21,            // the machine refused a start-up thread (the rest stay warm)
+    division_by_zero = 22,              // satellite_number: a divisor of 0
+    command_line_not_understood = 23,   // satl was given words it does not take (PLAN M0.5)
 };
 
 inline const char *machine_code_name(signed long long int code)
@@ -57,6 +62,10 @@ inline const char *machine_code_name(signed long long int code)
     case positions_backwards: return "positions_backwards";
     case empty_search_text: return "empty_search_text";
     case not_a_position: return "not_a_position";
+    case config_value_not_understood: return "config_value_not_understood";
+    case thread_start_error: return "thread_start_error";
+    case division_by_zero: return "division_by_zero";
+    case command_line_not_understood: return "command_line_not_understood";
     }
     return "not_on_the_list";
 }

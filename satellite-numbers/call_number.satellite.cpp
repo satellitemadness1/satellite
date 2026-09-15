@@ -6,8 +6,8 @@
 
 #include "call_number.hpp"
 
-#include "../machine_codes.hpp"
-#include "../machine_state.hpp"
+#include "../satellite/machine/machine_codes.hpp"
+#include "../satellite/machine/machine_state.hpp"
 
 #include <algorithm>
 #include <string>

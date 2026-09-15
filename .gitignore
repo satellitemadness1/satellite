@@ -1,6 +1,9 @@
 # satellite 004 -- build output and scratch. Nothing here is source.
 /build/
 __pycache__/
+# The number the last build used, per checkout (build_number.py), and its lock.
+/.satellite_build
+/.satellite_build.lock
 *.o
 *.so
 

@@ -9,7 +9,7 @@
 // src/satellite_scalars/string_methods.cpp; written 2026-09-14.
 
 #include "../number_row.hpp"
-#include "../../machine_codes.hpp"
+#include "../../satellite/machine/machine_codes.hpp"
 
 namespace {
 

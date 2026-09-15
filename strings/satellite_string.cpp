@@ -19,7 +19,7 @@
 
 #include "satellite_string.hpp"
 
-#include "../machine_codes.hpp"
+#include "../satellite/machine/machine_codes.hpp"
 
 namespace satellite004 {
 

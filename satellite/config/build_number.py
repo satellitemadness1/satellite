@@ -1,0 +1,211 @@
+#!/usr/bin/env python3
+# build_number.py -- raises arguments.build in satellite_config.hpp once for
+# every build of satellite, and reads the author's rows for the checks.
+#
+#     python3 build_number.py <stamp> [--also <text>] -- <input file> ...   (make, before compiling)
+#     python3 build_number.py <stamp> --verify                              (make, after linking)
+#     python3 build_number.py --print <row name>                            (check.sh)
+#
+# (the author, 2026-09-15) "a build number (start at... 0050) and increase the
+# build number every single time that the application is built -- built right
+# into the make file", kept in satellite_config.hpp as the row
+#     arguments_vector.push_back({"arguments.build", 52, false, false});
+#
+# A BUILD IS A CHANGE TO WHAT SATELLITE IS MADE FROM. The stamp (.satellite_build,
+# not in git) holds the number the last build used and a FINGERPRINT: a hash of
+# every input file's contents (the build row's own number left out), plus the
+# compiler and flags make passes with --also. The number rises only when that
+# fingerprint changes. So a make with nothing to do, a retry after a failed or
+# interrupted build, `make clean`, a touched file, an editor's swap file, or two
+# makes at once never use a second number -- make still rebuilds what is missing.
+# (Reviewed 2026-09-15: the first version compared timestamps and burned numbers
+# in every one of those cases.)
+#
+# WHICH NUMBER A BUILD GETS, when the fingerprint has changed:
+#   - the row equal to the stamp's number: raised by one;
+#   - the row above it: the author set it by hand, and it is used as written;
+#   - the row BELOW it: refused. That is an editor saving an old copy of the
+#     config, and using it would give two builds one number.
+# --verify, after linking, refuses a row that changed while the build ran.
+#
+# THE ROW IS A signed long long int (the author's type), so a number above
+# 9,223,372,036,854,775,807 is refused before anything is written, as is a number
+# written with a leading 0 (C++ reads 0051 as octal, 41), in hex, or with digit
+# separators. Commented-out rows are ignored.
+
+import datetime
+import fcntl
+import glob
+import hashlib
+import os
+import re
+import sys
+import tempfile
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))
+CONFIG = os.path.join(HERE, "satellite_config.hpp")
+LONG_LONG_MAX = 2 ** 63 - 1
+
+# A live row: push_back({"name", <number>, <flag>, <is_flag>}); the number spans group 2.
+ROW = re.compile(r'push_back\(\s*\{\s*"([^"\n]*)"\s*,\s*([^,\n]*?)\s*,\s*(true|false)\s*,\s*(true|false)\s*\}\s*\)')
+DECIMAL = re.compile(r"-?[0-9]+[uUlL]*")
+
+
+def fail(message):
+    sys.exit("build_number.py: satellite_config.hpp: " + message)
+
+
+def comment_spans(text):
+    """Every // and /* */ comment outside a string or character literal."""
+    spans, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c in "\"'":
+            j = i + 1
+            while j < n and text[j] != c and text[j] != "\n":
+                j += 2 if text[j] == "\\" else 1
+            i = j + 1
+        elif text.startswith("//", i):
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            spans.append((i, j))
+            i = j
+        elif text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            j = n if j < 0 else j + 2
+            spans.append((i, j))
+            i = j
+        else:
+            i += 1
+    return spans
+
+
+def live_rows(text):
+    spans = comment_spans(text)
+    rows = []
+    for match in ROW.finditer(text):
+        if any(start <= match.start() < end for start, end in spans):
+            continue
+        line = text.count("\n", 0, match.start()) + 1
+        literal = match.group(2)
+        if not DECIMAL.fullmatch(literal):
+            fail('line %d: %s is written "%s"; write it as plain decimal digits' % (line, match.group(1), literal))
+        digits = literal.rstrip("uUlL")
+        if re.fullmatch(r"-?0[0-9]+", digits):
+            fail("line %d: %s is written %s, which C++ reads as octal; write it without the leading 0"
+                 % (line, match.group(1), digits))
+        if not -LONG_LONG_MAX - 1 <= int(digits) <= LONG_LONG_MAX:
+            fail("line %d: %s is %s, which a signed long long int (the row's number) cannot hold"
+                 % (line, match.group(1), digits))
+        rows.append({"name": match.group(1), "number": int(digits), "span": match.span(2), "suffix": literal[len(digits):],
+                     "flag": match.group(3) == "true", "is_flag": match.group(4) == "true", "line": line})
+    return rows
+
+
+def build_row(rows):
+    found = [row for row in rows if row["name"] == "arguments.build"]
+    if len(found) != 1:
+        fail('needs exactly one live row arguments_vector.push_back({"arguments.build", <number>, false, false}); '
+             "found %d" % len(found))
+    if found[0]["number"] < 0:
+        fail("line %d: arguments.build cannot be negative" % found[0]["line"])
+    return found[0]
+
+
+def read_config():
+    try:
+        with open(CONFIG, encoding="utf-8", newline="") as config:
+            return config.read()
+    except OSError as error:
+        fail("cannot be read: %s" % error.strerror)
+
+
+def write_atomically(path, text):
+    handle, temporary = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(path)), prefix="." + os.path.basename(path) + ".")
+    with os.fdopen(handle, "w", encoding="utf-8", newline="") as out:
+        out.write(text)
+    if os.path.exists(path):
+        os.chmod(temporary, os.stat(path).st_mode & 0o7777)
+    os.replace(temporary, path)
+
+
+def fingerprint(inputs, also, text):
+    digest = hashlib.sha256(also.encode())
+    row = build_row(live_rows(text))
+    config_without_number = text[:row["span"][0]] + "#" + text[row["span"][1]:]
+    for path in sorted({os.path.relpath(os.path.abspath(p), ROOT) for p in inputs}):
+        digest.update(b"\0" + path.encode() + b"\0")
+        path = os.path.join(ROOT, path)
+        if path == CONFIG:
+            digest.update(config_without_number.encode())
+            continue
+        try:
+            with open(path, "rb") as source:
+                digest.update(source.read())
+        except OSError as error:
+            sys.exit("build_number.py: %s: %s" % (path, error.strerror))
+    return digest.hexdigest()
+
+
+def read_stamp(stamp):
+    """(number, fingerprint); a stamp from the first version holds only a number."""
+    try:
+        words = open(stamp).read().split()
+    except (OSError, UnicodeDecodeError):
+        return None, None
+    if not words or not words[0].isdigit():
+        return None, None
+    return int(words[0]), (words[1] if len(words) > 1 else None)
+
+
+def main():
+    arguments = sys.argv[1:]
+    if arguments[:1] == ["--print"] and len(arguments) == 2:
+        for row in live_rows(read_config()):
+            if row["name"] == arguments[1]:
+                print(("true" if row["flag"] else "false") if row["is_flag"] else row["number"])
+                return
+        sys.exit("build_number.py: satellite_config.hpp has no live row %s" % arguments[1])
+    if len(arguments) == 2 and arguments[1] == "--verify":
+        used, _ = read_stamp(arguments[0])
+        row = build_row(live_rows(read_config()))["number"]
+        if used is not None and row != used:
+            fail("arguments.build changed from %d to %d while the build ran (an editor saved an older copy?); "
+                 "the binary may show either number -- run make again" % (used, row))
+        return
+
+    also = ""
+    if len(arguments) >= 3 and arguments[1] == "--also":
+        also = arguments[2]
+        del arguments[1:3]
+    if len(arguments) < 2 or arguments[1] != "--":
+        sys.exit(__doc__ if __doc__ else "usage: see the top of build_number.py")
+    stamp, inputs = arguments[0], arguments[2:]
+    inputs += glob.glob(os.path.join(ROOT, "satellite-numbers", "*", "*.satellite.cpp"))
+
+    with open(stamp + ".lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        text = read_config()
+        row = build_row(live_rows(text))
+        used, recorded = read_stamp(stamp)
+        current = fingerprint(inputs, also, text)
+        if current == recorded and row["number"] == used:
+            return
+        if used is not None and row["number"] < used:
+            fail("arguments.build is %d, but build %d was already used (an editor saved an older copy?); "
+                 "write a number above %d, or delete .satellite_build to start over" % (row["number"], used, used))
+
+        number = row["number"]
+        if used is None or number == used:
+            number += 1
+            if number > LONG_LONG_MAX:
+                fail("arguments.build %d cannot rise: a signed long long int holds nothing above it" % row["number"])
+            text = text[:row["span"][0]] + str(number) + text[row["span"][1]:]
+            write_atomically(CONFIG, text)
+        write_atomically(stamp, "%d %s\n" % (number, fingerprint(inputs, also, text)))
+        print("satellite: BUILD %s (%s)" % (str(number).zfill(4), datetime.date.today().isoformat()))
+
+
+if __name__ == "__main__":
+    main()

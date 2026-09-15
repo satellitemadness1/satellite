@@ -4,9 +4,9 @@
 //     build/race            satellite-004 first, then std::cout
 //     build/race cout-first the other order, because going first can cost a few percent
 
-#include "machine_codes.hpp"
-#include "machine_state.hpp"
-#include "satellite-numbers/call_number.hpp"
+#include "../machine/machine_codes.hpp"
+#include "../machine/machine_state.hpp"
+#include "../../satellite-numbers/call_number.hpp"
 
 #include <chrono>
 #include <cstdio>

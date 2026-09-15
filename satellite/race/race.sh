@@ -1,6 +1,6 @@
 #!/bin/bash
 # Seven runs in each order; the fastest time for each side is compared.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."
 best_satellite=999999999999999 best_cout=999999999999999
 for order in satellite-first cout-first; do
     for run in 1 2 3 4 5 6 7; do

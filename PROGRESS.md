@@ -1,6 +1,7 @@
 # satellite-004 — PROGRESS.md
 
-**satellite 004 revision 02.** Where the work stands, 2026-09-15. Read this first
+**satellite 004 revision 04** (the build number is in `satellite/config/satellite_config.hpp`,
+and `satl --version` shows it). Where the work stands, 2026-09-15. Read this first
 after a break; then PLAN.md (the order of work), DESIGN.md (the standards and
 every measurement) and ERROR.md (every known error).
 
@@ -15,7 +16,9 @@ branch `archive/satellite-003-revision-07`). The next milestone is PLAN M0.5: po
 
 | piece | files | checked by |
 |---|---|---|
-| **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `structured-library.cpp`, `satl_file.*`, `arguments.*`, `machine_state.*`, `machine_codes.hpp`, `version.hpp` | `./check.sh` — 16 passed |
+| **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — 24 passed |
+| **The author's config** — every `return_arguments_vector()` row loaded into `arguments`; the title lines (VERSION 004 REVISION 04 BUILD nnnn) on `--version`, `--help` and every start; the build number raised by every build | `satellite/config/satellite_config.hpp`, `satellite/config/build_number.py` | check.sh |
+| **256 warm threads** — started from `arguments.threads_startup` and parked before the program runs (a requirement for later, the author) | `satellite/threads/startup_threads.*` | check.sh; about 12 ms and 1.7 MB a run |
 | **The number index** — every compiled library loaded once at start-up | `satellite-numbers/call_number.*`, `number_row.hpp` | loads all 24 libraries |
 | **004's word numbers** — 364 words, first-available numbering, frozen (DESIGN §3.2) | `words/make_words.py` → `words/words.tsv`, `words/satellite_words.hpp` | matched 003's words.def row for row; no duplicates; every parent's children exactly 1..n |
 | **satellite_string as char32_t** — strict UTF-8 ↔ char32_t ↔ .sati bit text, `bits_to_cxx_str` | `strings/satellite_string.*` | `python3 strings/check_strings.py` — 30,055 cases agree with Python's UTF-8 codec |
@@ -29,18 +32,19 @@ branch `archive/satellite-003-revision-07`). The next milestone is PLAN M0.5: po
 **Build and check everything:**
 
 ```
-cd satellite-004
-make                                   # interpreter + every numbered library
-./check.sh                             # the runner: 16 checks
+make                                   # interpreter + every numbered library; raises the build number
+./check.sh                             # the runner: 24 checks
 make build/string_cases && python3 strings/check_strings.py   # char32_t conversion against Python
 make build/string_methods && python3 strings/check_string_methods.py   # against 003's satl
-build/satellite-004 --version          # satellite 004 revision 02
+build/satellite-004 --version          # THE SATELLITE PROGRAMMING LANGUAGE / VERSION 004 REVISION 04 BUILD nnnn
 python3 words/make_words.py            # regenerate the word table (needs old_versions/second_satellite/satl)
 ```
 
 ## 2. Decided (by the author unless marked)
 
-- **Version 004 revision 02** (2026-09-15). 003 07 is archived in `old_versions/second_satellite/`.
+- **Version 004 revision 04, build numbers from 0050** (2026-09-15), raised by every
+  build. 003 07 is archived in `old_versions/second_satellite/`.
+- **The sources live under `satellite/`,** one folder a subject (2026-09-15).
 - **Numbering:** 003 06's words minus the 7 GUI words, renumbered once
   first-available, frozen since. Next free: `satellite` 1 25, `satellite.variable`
   1 6 16, string methods 1 6 1 23. (Author delegated the choice.)
@@ -48,9 +52,11 @@ python3 words/make_words.py            # regenerate the word table (needs old_ve
   included (`satellite.variable.string.find(x)`), built as `<numbers>.so`.
 - **Strings are 32 bits a character.** Translating satellite into other languages:
   dropped.
-- **Machine codes 0–19** in `machine_codes.hpp`; a code is added to the list
-  before it is used.
-- **Config values are quoted text, used as ceilings** (DESIGN §1).
+- **Machine codes 0–21** in `satellite/machine/machine_codes.hpp`; a code is added
+  to the list before it is used.
+- **Config values are rows** of `return_arguments_vector()`: a name, a number, a
+  flag, and whether it is a flag (the author, 2026-09-15; DESIGN §1 still says
+  quoted text). Maximums are used as ceilings.
 - **Threads:** 256 started at start-up — 64 search for batches, 192 run them
   (the author wrote 196; 64 + 192 = 256). Target: 1,000,000 threads running.
 - **Machine limits raised by the author** on this machine: `nproc unlimited`,

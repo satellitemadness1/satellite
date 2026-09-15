@@ -11,7 +11,7 @@
 // after its final flush so the last few lines are not missed.
 
 #include "../number_row.hpp"
-#include "../../machine_codes.hpp"
+#include "../../satellite/machine/machine_codes.hpp"
 
 #include <cstdio>
 #include <iostream>

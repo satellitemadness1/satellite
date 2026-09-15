@@ -1,6 +1,6 @@
 # satellite-004 — ERROR.md
 
-Every KNOWN error in satellite 004 revision 02, as of 2026-09-15. An error is
+Every KNOWN error in satellite 004 (revision 02, and revision 04 from 2026-09-15). An error is
 something that gives a wrong answer, a crash, a hang, or a misleading message.
 Choices made on purpose are in DESIGN.md instead, and are not listed here.
 
@@ -12,9 +12,10 @@ the bottom section with the commit or date that fixed it.** Never delete one.
 ## 1. The prototype runner — reproduced by review 2026-09-14, all OPEN
 
 A three-lens review attacked the first prototype, and a second agent reproduced
-each finding (DESIGN §11). PLAN M1 fixes them. Files: `satl_file.cpp`,
-`structured-library.cpp`, `satellite-numbers/call_number.satellite.cpp`,
-`race.cpp`, `race.sh`.
+each finding (DESIGN §11). PLAN M1 fixes them. Files (under `satellite/` since
+2026-09-15): `satellite/satl/satl_file.cpp`, `satellite/structured-library.cpp`,
+`satellite-numbers/call_number.satellite.cpp`, `satellite/race/race.cpp`,
+`satellite/race/race.sh`.
 
 1. **The order of include, main and return is never checked.** A
    `satellite.return(satellite)` on line 1 drops the whole program and exits 0;
@@ -23,8 +24,7 @@ each finding (DESIGN §11). PLAN M1 fixes them. Files: `satl_file.cpp`,
 2. **A directory given as the .satl file** loads as an empty program and reports
    10 (missing include); read errors are never checked, and an unreadable file
    says "missing" (8) with no reason.
-3. **A closed pipe kills the process** (`| head -1`): SIGPIPE, exit 141, nothing
-   on stderr. Fix: ignore SIGPIPE so it becomes display_error (2).
+3. *(fixed 2026-09-15 — moved to Fixed)*
 4. **A refused write names the wrong line** — thousands of bytes after the line
    that first failed, because std::cout buffers ~4 KB. It must say "at or before".
 5. **In --debug, a refused state line is never reported** on the early-return
@@ -54,20 +54,9 @@ each finding (DESIGN §11). PLAN M1 fixes them. Files: `satl_file.cpp`,
 17. **A library's file name is never checked against the numbers it describes:**
     `7.7.so` can register itself as `satellite.console.display 1 5 1`.
 
-## 2. `satellite_config.hpp` — OPEN
+## 2. `satellite_config.hpp` — all fixed
 
-18. **Nothing can read the values.** They are local variables inside
-    `void return_strings()`, which returns nothing, so the vector it builds is
-    thrown away. They belong at the top of the file as
-    `inline constexpr const char *threads_max = "...";`.
-19. **It does not compile if included:** it uses `std::vector` without
-    `#include <vector>`, and has no `#pragma once`.
-20. **`threads_max = "1'000'000"` uses digit separators**, and PLAN M0 says
-    `"1000000"`. Whichever reader M0 builds must accept `'` or refuse it by name —
-    never read it as 1.
-21. **`arguments_satc = "arguments.satc=true"`** holds a whole assignment as text,
-    and uses `true`; PLAN M0 has `satc` as `1` / `0` / a "never" value (D0.1).
-    One of the two has to change.
+*(18–21 moved to Fixed on 2026-09-15.)*
 
 ## 3. Test harnesses — OPEN (they can pass or fail for the wrong reason)
 
@@ -93,4 +82,26 @@ Not 004's errors, but 004 ports this code and must not port these:
 
 ## Fixed
 
-*(nothing yet — move entries here with the commit that fixed them)*
+*(move entries here with the commit that fixed them)*
+
+3. **A closed pipe killed the process** (`| head -1`): SIGPIPE, exit 141, nothing
+   on stderr. Fix: ignore SIGPIPE so it becomes display_error (2).
+   Fixed 2026-09-15 in the build-number commit: `main` ignores SIGPIPE before
+   writing anything. The review found it had got worse: the start-up block made
+   satl die before any program ran when stderr was a pipe nobody read. check.sh
+   now tests that case.
+
+**18–21, `satellite_config.hpp`:** all four fixed 2026-09-15 in the build-number commit. The author rewrote the file
+as `return_arguments_vector()`, rows of {name, number, flag, is_flag}. Claude
+made it compile (the includes, a row struct, a return type), and
+`satellite/arguments/arguments.cpp` loads every row.
+
+18. **`satellite_config.hpp`: nothing could read the values** (local variables of a
+    function that returned nothing).
+19. **`satellite_config.hpp` did not compile if included** (no `<vector>`, no
+    `#pragma once`).
+20. **`threads_max = "1'000'000"` used digit separators.** It is the number row
+    `1000000` now.
+21. **`arguments_satc = "arguments.satc=true"` held a whole assignment as text.**
+    `arguments.satc` is a bool row now. PLAN M0's 1 / 0 / "never" (D0.1) is still
+    open.

@@ -1,6 +1,8 @@
 #include "arguments.hpp"
 
-#include "machine_codes.hpp"
+#include "../machine/machine_codes.hpp"
+#include "../machine/machine_state.hpp"
+#include "../config/satellite_config.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -46,6 +48,8 @@ Argument &Arguments::add(const std::string &name, ArgumentKind kind)
 {
     const auto found = where_.find(name);
     if (found != where_.end()) {
+        if (found->second < facts_start_ && overwritten_.empty())
+            overwritten_ = name; // a config row that gather() would replace
         Argument &existing = entries_[found->second];
         existing = Argument{};
         existing.name = name;
@@ -67,6 +71,11 @@ void Arguments::add_text(const std::string &name, const std::string &value)
 void Arguments::add_count(const std::string &name, unsigned long long int value)
 {
     add(name, ArgumentKind::count).count = value;
+}
+
+void Arguments::add_number(const std::string &name, signed long long int value)
+{
+    add(name, ArgumentKind::number).number = value;
 }
 
 void Arguments::add_flag(const std::string &name, bool value)
@@ -101,14 +110,74 @@ bool Arguments::flag(const std::string &name) const
     return entry != nullptr && entry->kind == ArgumentKind::flag && entry->flag;
 }
 
+signed long long int Arguments::number(const std::string &name) const
+{
+    const Argument *entry = find(name);
+    return entry != nullptr && entry->kind == ArgumentKind::number ? entry->number : 0;
+}
+
 std::string Arguments::text(const std::string &name) const
 {
     const Argument *entry = find(name);
     return entry != nullptr && entry->kind == ArgumentKind::text ? entry->text : std::string();
 }
 
+// The author's rows (satellite_config.hpp): {name, number, flag, is_flag}. A row
+// whose is_flag is true is a flag holding `flag`; any other row is a number
+// holding `number`.
+signed long long int Arguments::gather_config()
+{
+    const auto refuse = [](const std::string &why) {
+        return report_error("satellite_config.hpp: " + why, config_value_not_understood);
+    };
+
+    for (const satellite_argument_row &row : return_arguments_vector()) {
+        bool named = row.name.rfind("arguments.", 0) == 0 && row.name.size() > 10 && row.name.back() != '.' &&
+                     row.name.find("..") == std::string::npos;
+        for (const char character : row.name)
+            if (!((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
+                  (character >= '0' && character <= '9') || character == '_' || character == '.'))
+                named = false;
+        if (!named)
+            return refuse("\"" + row.name +
+                          "\" is not a name arguments can hold (arguments. then words of a-z A-Z 0-9 _ joined by .)");
+        if (find(row.name) != nullptr)
+            return refuse(row.name + " is written twice");
+        if (row.is_flag)
+            add_flag(row.name, row.flag);
+        else
+            add_number(row.name, row.number);
+    }
+
+    // Shown every time satl starts unless the config says false (the author, 2026-09-15).
+    const Argument *startup_display = find("arguments.startup_display");
+    if (startup_display == nullptr)
+        add_flag("arguments.startup_display", true);
+    else if (startup_display->kind != ArgumentKind::flag)
+        return refuse("arguments.startup_display is a bool row (true, true or false, true)");
+
+    // The three numbers the title lines show, and the start-up threads.
+    for (const char *name : {"arguments.version", "arguments.revision", "arguments.build",
+                             "arguments.threads_startup"}) {
+        const Argument *entry = find(name);
+        if (entry == nullptr || entry->kind != ArgumentKind::number)
+            return refuse(std::string(name) + " needs a number row");
+        if (entry->number < 0)
+            return refuse(std::string(name) + " cannot be negative (" + std::to_string(entry->number) + ")");
+    }
+    const Argument *threads_max = find("arguments.threads_max");
+    if (threads_max != nullptr && (threads_max->kind != ArgumentKind::number || threads_max->number < 0))
+        return refuse("arguments.threads_max is a number row that is not negative");
+    return success;
+}
+
 signed long long int Arguments::gather(int argc, char **argv)
 {
+    // Everything added from here on is satl's own: the command line and the
+    // machine. A config row with one of those names is refused, never replaced
+    // behind the author's back (review 2026-09-15).
+    facts_start_ = entries_.size();
+
     // The command line: --debug, and the .satl file to run.
     bool debug_mode = false;
     std::string file;
@@ -152,6 +221,10 @@ signed long long int Arguments::gather(int argc, char **argv)
         add_text("arguments.system.kernel", system.sysname);
         add_text("arguments.system.kernel_version", system.release);
     }
+    if (!overwritten_.empty())
+        return report_error("satellite_config.hpp: " + overwritten_ +
+                                " is filled in by satl itself (the command line or the machine), so it cannot be a row",
+                            config_value_not_understood);
     return success;
 }
 
@@ -162,6 +235,8 @@ std::string describe(const Argument &argument)
         return argument.text;
     case ArgumentKind::count:
         return std::to_string(argument.count);
+    case ArgumentKind::number:
+        return std::to_string(argument.number);
     case ArgumentKind::flag:
         return argument.flag ? "true" : "false";
     case ArgumentKind::size: {

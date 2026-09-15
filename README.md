@@ -1,7 +1,9 @@
 # satellite
 
-**satellite 004 revision 02** — the third satellite, and the one being built from
-here on.
+**satellite 004 revision 04** — the third satellite, and the one being built from
+here on. Its version, revision and build number live in
+`satellite/config/satellite_config.hpp`; `make` raises the build number every time
+it builds.
 
 ```satellite
 satellite.include(satellite)

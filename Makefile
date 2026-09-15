@@ -6,40 +6,74 @@
 #     make race       satellite-004's display against std::cout, 10,000,000 lines
 #     make clean
 #
+# The interpreter's sources are under satellite/ (the author, 2026-09-15), one
+# folder a subject: arguments, config, machine, race, satl, threads, version.
+#
 # DYNAMIC ON PURPOSE. The libraries and the interpreter must share ONE copy of
 # libstdc++, or each would have its own std::cout. The satellite tree links
 # statically; this folder cannot, for that reason.
+#
+# THE BUILD NUMBER (the author, 2026-09-15). A make whose inputs changed -- the
+# files below, every library source, or the compiler and flags -- raises
+# arguments.build in satellite/config/satellite_config.hpp by one BEFORE anything
+# compiles; any other make leaves it alone, even one that rebuilds what is missing.
+# satellite/config/build_number.py says exactly when. Its stamp, .satellite_build
+# (not in git), holds the last build's number and a fingerprint of its inputs.
 
 CXX ?= g++
 CXXFLAGS = -std=c++20 -O2 -Wall -Wextra
 BUILD = build
+BUILD_STAMP = .satellite_build
 
-INTERPRETER_SOURCES = structured-library.cpp arguments.cpp machine_state.cpp satl_file.cpp \
-                      satellite-numbers/call_number.satellite.cpp
-HEADERS = arguments.hpp machine_codes.hpp machine_state.hpp satl_file.hpp version.hpp \
+# The build machine's operating system for the start-up block's third line
+# ("CLANG++ 24 ALMALINUX 10.2"): NAME and VERSION_ID from /etc/os-release, upper
+# case, letters, digits, spaces, dots and dashes only.
+BUILD_OS := $(shell (. /etc/os-release 2>/dev/null && echo "$$NAME $$VERSION_ID" || uname -sr) | tr a-z A-Z | tr -cd 'A-Z0-9 .-')
+OS_DEFINE = -DSATELLITE_BUILD_OS='"$(BUILD_OS)"'
+
+INTERPRETER_SOURCES = satellite/structured-library.cpp satellite/arguments/arguments.cpp \
+                      satellite/machine/machine_state.cpp satellite/satl/satl_file.cpp \
+                      satellite/threads/startup_threads.cpp satellite-numbers/call_number.satellite.cpp
+HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hpp \
+          satellite/machine/machine_codes.hpp satellite/machine/machine_state.hpp \
+          satellite/satl/satl_file.hpp satellite/threads/startup_threads.hpp satellite/version/version.hpp \
           satellite-numbers/call_number.hpp satellite-numbers/number_row.hpp strings/string_method.hpp
+MACHINE_STATE = satellite/machine/machine_state.cpp
+
+# The files the application (the interpreter and its libraries) is made from, by
+# name: never a whole folder, so an editor's swap or lock file is not an input.
+# build_number.py adds every satellite-numbers/*/*.satellite.cpp itself (their
+# names hold brackets and spaces, which make cannot list).
+BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) Makefile satellite/config/build_number.py \
+               words/words.tsv satellite-numbers/build_libraries.py
 
 # Every numbered library is built by satellite-numbers/build_libraries.py, which
 # names each .so by its numbers from words/words.tsv (make cannot: word names have
 # brackets, which make reads as archive members).
 all: $(BUILD)/satellite-004 libraries
 
-libraries:
+# Runs on every make; build_number.py decides whether this make is a build, and
+# rewrites the stamp only when it is -- which is what relinks the interpreter.
+$(BUILD_STAMP): FORCE
+	@python3 satellite/config/build_number.py $@ --also "$(CXX) $(CXXFLAGS) $(BUILD_OS)" -- $(BUILD_INPUTS)
+
+libraries: $(BUILD_STAMP)
 	python3 satellite-numbers/build_libraries.py
 
-$(BUILD)/satellite-004: $(INTERPRETER_SOURCES) $(HEADERS)
+$(BUILD)/satellite-004: $(BUILD_STAMP) $(INTERPRETER_SOURCES) $(HEADERS)
 	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) -I. $(INTERPRETER_SOURCES) -o $@ -ldl
+	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(INTERPRETER_SOURCES) -o $@ -ldl
+	@python3 satellite/config/build_number.py $(BUILD_STAMP) --verify
 
-$(BUILD)/race: race.cpp satellite-numbers/call_number.satellite.cpp machine_state.cpp $(HEADERS)
+$(BUILD)/race: satellite/race/race.cpp satellite-numbers/call_number.satellite.cpp $(MACHINE_STATE) $(HEADERS)
 	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) -I. race.cpp satellite-numbers/call_number.satellite.cpp machine_state.cpp -o $@ -ldl
+	$(CXX) $(CXXFLAGS) satellite/race/race.cpp satellite-numbers/call_number.satellite.cpp $(MACHINE_STATE) -o $@ -ldl
 
-$(BUILD)/string_methods: strings/test_string_methods.cpp strings/satellite_string.cpp satellite-numbers/call_number.satellite.cpp machine_state.cpp $(HEADERS)
+$(BUILD)/string_methods: strings/test_string_methods.cpp strings/satellite_string.cpp satellite-numbers/call_number.satellite.cpp $(MACHINE_STATE) $(HEADERS)
 	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) -I. strings/test_string_methods.cpp strings/satellite_string.cpp satellite-numbers/call_number.satellite.cpp machine_state.cpp -o $@ -ldl
+	$(CXX) $(CXXFLAGS) -I. strings/test_string_methods.cpp strings/satellite_string.cpp satellite-numbers/call_number.satellite.cpp $(MACHINE_STATE) -o $@ -ldl
 
-$(BUILD)/string_cases: strings/string_cases.cpp strings/satellite_string.cpp strings/satellite_string.hpp machine_codes.hpp
+$(BUILD)/string_cases: strings/string_cases.cpp strings/satellite_string.cpp strings/satellite_string.hpp satellite/machine/machine_codes.hpp
 	@mkdir -p $(BUILD)
 	$(CXX) $(CXXFLAGS) strings/string_cases.cpp strings/satellite_string.cpp -o $@
 
@@ -47,9 +81,11 @@ check: all
 	./check.sh
 
 race: all $(BUILD)/race
-	./race.sh
+	./satellite/race/race.sh
 
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all libraries check race clean
+FORCE:
+
+.PHONY: all libraries check race clean FORCE
