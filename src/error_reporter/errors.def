@@ -1574,9 +1574,10 @@ SAT_CODE(1501, ANALYSIS_SUIT_CYCLE, SAT_WARNING,
 // built 2026-09-13. Everything here is found by the loader, before a line of
 // either file resolves, and is reported against the include that named the
 // file -- the one line the person can change.
+// {3} IS ", from the directory of the file that includes it" OR NOTHING --
+// revision 07: a path from `/` was not looked for from any directory.
 SAT_CODE(1601, SPACESHIP_NOT_FOUND, SAT_ERROR,
-         "there is no spaceship `{1}` to include -- satellite looked for {2}, "
-         "from the directory of the file that includes it")
+         "there is no spaceship `{1}` to include -- satellite looked for {2}{3}")
 
 SAT_CODE(1602, SPACESHIP_NAME_TAKEN, SAT_ERROR,
          "the spaceship `{1}` has the name of a {2} this program already "
@@ -1614,6 +1615,6 @@ SAT_CODE(1606, SPACESHIP_TWO_NAMES, SAT_ERROR,
 SAT_CODE(1607, SPACESHIP_PATH_NOT_A_NAME, SAT_ERROR,
          "the path \"{1}\" ends in `{2}`, and a spaceship is named by its file -- "
          "that name has to be letters, digits and _, not starting with a digit, "
-         "and the path needs no backslash")
+         "and the path is written without a backslash or a control character")
 
 #undef SAT_CODE

@@ -199,8 +199,78 @@ void section_paths()
 
     write("paths/missing.satl", program("satellite.include(\"parts/nowhere\")\n", ""));
     ran = run("paths/missing.satl");
-    check(ran.status == 1 && holds(ran.out, "S1601") && holds(ran.out, "parts/nowhere.satl"),
+    check(ran.status == 1 && holds(ran.out, "S1601") && holds(ran.out, "parts/nowhere.satl") &&
+              holds(ran.out, "from the directory of the file that includes it"),
           "a path to no file is S1601, naming the file it looked for: " + ran.out);
+
+    // --- found by the revision 07 review, each fixed and pinned ---------------
+    write("paths/abs_missing.satl", program("satellite.include(\"/nowhere_at_all/ship\")\n", ""));
+    ran = run("paths/abs_missing.satl");
+    check(ran.status == 1 && holds(ran.out, "S1601") && !holds(ran.out, "from the directory"),
+          "S1601 for a path from / does not claim it looked from a directory: " + ran.out);
+
+    // File 0 has a name too: ship.satl including "parts/deep/ship" is two files, one name.
+    write("paths/ship.satl", program("satellite.include(\"parts/deep/ship\")\n", ""));
+    ran = run("paths/ship.satl");
+    check(ran.status == 1 && holds(ran.out, "S1603"),
+          "a spaceship with the same name as the program's own file is S1603: " + ran.out);
+
+    // A symlinked spaceship finds ITS includes beside the real file, not the link.
+    mkdirs("paths/real/deep");
+    mkdirs("paths/linked");
+    write("paths/real/deep/lamp.satl", "satellite.include(\"helper\")\n"
+                                       "satellite.capsule on()\n{\n    helper.who()\n}\n");
+    write("paths/real/deep/helper.satl", "satellite.capsule who()\n{\n    satellite.console.display(\"real helper\")\n}\n");
+    write("paths/linked/helper.satl", "satellite.capsule who()\n{\n    satellite.console.display(\"decoy beside the link\")\n}\n");
+    std::system(("ln -sf ../real/deep/lamp.satl '" + root + "/paths/linked/lamp.satl'").c_str());
+    write("paths/through_link.satl", program("satellite.include(\"linked/lamp\")\n", "    lamp.on()\n"));
+    ran = run("paths/through_link.satl");
+    check(ran.status == 0 && holds(ran.out, "real helper") && !holds(ran.out, "decoy"),
+          "a symlinked spaceship's own includes are beside the real file: " + ran.out);
+
+    // One file through a hard link is one spaceship.
+    mkdirs("paths/hard");
+    std::system(("ln -f '" + root + "/paths/parts/deep/ship.satl' '" + root + "/paths/hard/ship.satl'").c_str());
+    write("paths/hardlink.satl", program("satellite.include(\"parts/deep/ship\")\nsatellite.include(\"hard/ship\")\n",
+                                         "    ship.hello()\n"));
+    ran = run("paths/hardlink.satl");
+    check(ran.status == 0 && count_of(ran.out, "hello from parts/deep/ship") == 1,
+          "one file through a hard link is one spaceship, not S1603: " + ran.out);
+
+    write("paths/parts/satellite.satl", "satellite.capsule.launch loaded()\n{\n    satellite.console.display(\"must not launch\")\n}\n");
+    write("paths/rootword.satl", program("satellite.include(\"parts/satellite\")\n", ""));
+    ran = run("paths/rootword.satl");
+    check(ran.status == 1 && holds(ran.out, "S0241") && !holds(ran.out, "must not launch"),
+          "a spaceship file named satellite can never be reached, so it is refused: " + ran.out);
+
+    // Not a regular file: a link to /dev/zero was read until memory ran out, a FIFO hung.
+    std::system(("ln -sf /dev/zero '" + root + "/paths/zero.satl'").c_str());
+    write("paths/devzero.satl", program("satellite.include(\"zero\")\n", ""));
+    ran = run("paths/devzero.satl");
+    check(ran.status == 1 && holds(ran.out, "S1605") && holds(ran.out, "not a regular file"),
+          "a spaceship that is a device is S1605, not read forever: " + ran.out);
+    std::system(("mkfifo '" + root + "/paths/pipe.satl'").c_str());
+    write("paths/fifo.satl", program("satellite.include(\"pipe\")\n", ""));
+    ran = run("paths/fifo.satl");
+    check(ran.status == 1 && holds(ran.out, "S1605") && holds(ran.out, "not a regular file"),
+          "a spaceship that is a named pipe is S1605, not a hang: " + ran.out);
+
+    // A file that exists and cannot be reached is not "missing".
+    if (geteuid() != 0) {
+        mkdirs("paths/locked");
+        write("paths/locked/ship.satl", "satellite.capsule x()\n{\n}\n");
+        std::system(("chmod 000 '" + root + "/paths/locked'").c_str());
+        write("paths/lockedinc.satl", program("satellite.include(\"locked/ship\")\n", ""));
+        ran = run("paths/lockedinc.satl");
+        std::system(("chmod 755 '" + root + "/paths/locked'").c_str());
+        check(ran.status == 1 && holds(ran.out, "S1605") && holds(ran.out, "Permission denied"),
+              "a spaceship behind a directory with no permission is S1605 with the reason: " + ran.out);
+    }
+
+    // A control byte in a path is refused before it reaches the file system.
+    write("paths/nul.satl", program(std::string("satellite.include(\"parts/deep/ship\0x\")\n", 39), ""));
+    ran = run("paths/nul.satl");
+    check(ran.status == 1 && holds(ran.out, "S1607"), "a NUL byte in a path is S1607, not a truncated path: " + ran.out);
 }
 
 // --- 1: the demonstration, run whole ------------------------------------------
@@ -358,8 +428,8 @@ void section_refusals()
     // spellings, and a number is still not a spaceship.
     write("string.satl", program("satellite.include(42)\n", ""));
     ran = run("string.satl");
-    check(ran.status == 1 && holds(ran.out, "S1604"),
-          "a spaceship named by a number is S1604: " + ran.out);
+    check(ran.status == 1 && holds(ran.out, "string.satl:2:19: error S1604"),
+          "a spaceship named by a number is S1604, with the caret on the number: " + ran.out);
 
     write("members.satl", program("satellite.include(ship)\n",
                                   "    ship.nothing_here()\n"

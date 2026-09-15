@@ -53,6 +53,8 @@ struct LoadedSpaceship {
     std::string path;        // as the including file's directory spells it
     std::string canonical;   // the same file however it was reached
     std::string name;        // `ship`
+    std::string directory;   // where ITS includes are found: the real file's, not a link's
+    unsigned long long device = 0, inode = 0;  // one file however many paths or links reach it
     std::string text;
     words::PathId node = words::kNoPath;  // `satellite.library.ship`
     Parse parsed;

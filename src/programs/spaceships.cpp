@@ -6,6 +6,8 @@
 #include "programs/source_file.hpp"
 #include "satellite_spaceship/shape.hpp"
 
+#include <sys/stat.h>
+
 #include <cerrno>
 #include <climits>
 #include <cstdio>
@@ -19,24 +21,39 @@ namespace satellite {
 
 namespace {
 
-// The directory a file's spaceships are found in -- the part of its path up to
-// and including the last `/`, or nothing for a bare name and for `<prompt>`.
+// The part of a path up to and including its last `/`, or nothing.
+std::string directory_part(const std::string &path)
+{
+    const size_t slash = path.rfind('/');
+    return slash == std::string::npos ? std::string() : path.substr(0, slash + 1);
+}
+
+// The directory file 0's spaceships are found in -- nothing for `<prompt>`. Only
+// file 0 can be the prompt: a spaceship whose path starts with `<` is a real
+// directory (found by review, where "<w>/ship" was read as the prompt).
 std::string directory_of(const std::string &path)
 {
     if (!path.empty() && path.front() == '<')
         return {};
-    const size_t slash = path.rfind('/');
-    return slash == std::string::npos ? std::string() : path.substr(0, slash + 1);
+    return directory_part(path);
 }
 
 // THE SAME FILE HOWEVER IT WAS REACHED. `ship.satl` from `example/host.satl` and
 // `../example/ship.satl` from somewhere else are one spaceship, and a file that
 // includes the file satl was given is file 0 rather than a second copy of it.
-std::string canonical_of(const std::string &path)
+//
+// `error`, when given, is realpath's errno on failure, so a file that is MISSING
+// can be told from one that exists and cannot be reached (revision 07, found by
+// review: a directory without permission and a symlink loop both said "there is
+// no spaceship").
+std::string canonical_of(const std::string &path, int *error = nullptr)
 {
     char resolved[PATH_MAX];
-    if (realpath(path.c_str(), resolved) == nullptr)
+    if (realpath(path.c_str(), resolved) == nullptr) {
+        if (error != nullptr)
+            *error = errno;
         return {};
+    }
     return resolved;
 }
 
@@ -146,7 +163,12 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
     files[0].ast = &out.parsed.ast;
     files[0].path = name;
     const std::string host = canonical_of(name);
-    const std::string host_name = stem_of(name);
+    // THE REAL FILE'S NAME, as its directory already is below -- found by review:
+    // a program run through a link called `other.satl` that includes its own file
+    // was told the file was "already included as the spaceship `other`".
+    const std::string host_name = stem_of(host.empty() ? name : host);
+    struct stat host_facts {};
+    const bool host_known = !host.empty() && stat(host.c_str(), &host_facts) == 0;
 
     // FILE 0's SPACESHIPS ARE BESIDE THE FILE ITSELF, NOT BESIDE A LINK TO IT.
     // `bin/tool.satl` pointing at `src/host.satl` includes `src/ship.satl` --
@@ -165,7 +187,7 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
     for (uint32_t f = 0; f < files.size(); f++) {
         const Ast &ast = *files[f].ast;
         const std::string directory =
-            f == 0 ? first_directory : directory_of(files[f].path);
+            f == 0 ? first_directory : out.ships[f - 1]->directory;
 
         for (NodeIndex node = 1; node < ast.size(); node++) {
             if (ast[node].kind != NodeKind::Include)
@@ -173,7 +195,7 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
             const spaceship::Shape shape = spaceship::shape_of(ast, node);
             if (shape.named == spaceship::Named::NotAName) {
                 problems.push_back(errors::make<errors::Code::SPACESHIP_NOT_A_NAME>(
-                    span_in(ast, node, f)));
+                    span_in(ast, ast[node].a != kNoNode ? ast[node].a : node, f)));
                 continue;
             }
             if (shape.named == spaceship::Named::BadPath) {
@@ -202,10 +224,35 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
             } else {
                 path = directory + ship_name + ".satl";
             }
-            const std::string canonical = canonical_of(path);
+            int missing = 0;
+            const std::string canonical = canonical_of(path, &missing);
             if (canonical.empty()) {
-                problems.push_back(errors::make<errors::Code::SPACESHIP_NOT_FOUND>(
-                    span_in(ast, shape.name, f), ship_name, path));
+                if (missing == ENOENT || missing == ENOTDIR)
+                    problems.push_back(errors::make<errors::Code::SPACESHIP_NOT_FOUND>(
+                        span_in(ast, shape.name, f), ship_name, path,
+                        path.front() == '/' ? "" : ", from the directory of the file that includes it"));
+                else
+                    problems.push_back(errors::make<errors::Code::SPACESHIP_UNREADABLE>(
+                        span_in(ast, shape.name, f), ship_name, path, std::strerror(missing)));
+                continue;
+            }
+
+            // A SPACESHIP IS A REGULAR FILE -- revision 07, found by review: a link
+            // to /dev/zero was read until 36 GB of memory ran out, and a named pipe
+            // with no writer waited forever. Asked before anything opens it.
+            struct stat facts {};
+            if (stat(canonical.c_str(), &facts) != 0 || !S_ISREG(facts.st_mode)) {
+                problems.push_back(errors::make<errors::Code::SPACESHIP_UNREADABLE>(
+                    span_in(ast, shape.name, f), ship_name, path, "it is not a regular file"));
+                continue;
+            }
+
+            // `satellite` IS THE LANGUAGE'S ROOT, so a file called satellite.satl can
+            // never be reached by its name -- found by review, where it loaded and
+            // its launch capsules ran anyway.
+            if (ship_name == "satellite") {
+                problems.push_back(errors::make<errors::Code::PARSE_NAME_IS_LANGUAGE_OWNED>(
+                    span_in(ast, shape.name, f), ship_name, "satellite", "spaceship"));
                 continue;
             }
 
@@ -239,9 +286,16 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
             uint32_t id = 0;
             words::PathId ship_node =
                 static_cast<words::PathId>(words::NodeId::LIBRARY);
-            bool known = canonical == host;
+            // THE SAME FILE BY ITS IDENTITY ON DISK, not only by its resolved
+            // spelling -- a hard link is one file with two names (review, rev 07).
+            const auto same_file = [&](const std::string &other, unsigned long long device,
+                                       unsigned long long inode) {
+                return other == canonical || (device == static_cast<unsigned long long>(facts.st_dev) &&
+                                              inode == static_cast<unsigned long long>(facts.st_ino));
+            };
+            bool known = host_known ? same_file(host, host_facts.st_dev, host_facts.st_ino) : canonical == host;
             for (size_t k = 0; !known && k < out.ships.size(); k++)
-                if (out.ships[k]->canonical == canonical) {
+                if (same_file(out.ships[k]->canonical, out.ships[k]->device, out.ships[k]->inode)) {
                     id = static_cast<uint32_t>(k + 1);
                     ship_node = out.ships[k]->node;
                     known = true;
@@ -264,6 +318,13 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
             // be. (The same file under two paths is `known` above, and fine.)
             if (!known) {
                 bool clash = false;
+                // FILE 0 HAS A NAME TOO -- found by review: `ship.satl` including
+                // "parts/ship" bound `ship` to whichever came first.
+                if (!host.empty() && ship_name == host_name) {
+                    problems.push_back(errors::make<errors::Code::SPACESHIP_TWO_FILES_ONE_NAME>(
+                        span_in(ast, shape.name, f), ship_name, name, path));
+                    continue;
+                }
                 for (const auto &loaded : out.ships)
                     if (loaded->name == ship_name) {
                         problems.push_back(errors::make<errors::Code::SPACESHIP_TWO_FILES_ONE_NAME>(
@@ -291,6 +352,15 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
                 ship->path = path;
                 ship->canonical = canonical;
                 ship->name = ship_name;
+                ship->device = static_cast<unsigned long long>(facts.st_dev);
+                ship->inode = static_cast<unsigned long long>(facts.st_ino);
+                // ITS OWN INCLUDES ARE BESIDE THE REAL FILE, the rule file 0 already
+                // follows -- found by review, where a symlinked spaceship's
+                // includes were looked for beside the link.
+                ship->directory = directory_part(path);
+                if (canonical_of(ship->directory.empty() ? "." : ship->directory) !=
+                    canonical_of(directory_part(canonical)))
+                    ship->directory = directory_part(canonical);
                 if (!read_file(path, ship->text)) {
                     problems.push_back(errors::make<errors::Code::SPACESHIP_UNREADABLE>(
                         span_in(ast, shape.name, f), ship_name, path,

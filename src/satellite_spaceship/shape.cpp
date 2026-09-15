@@ -35,7 +35,9 @@ std::string_view stem_of(std::string_view text)
 
 // A spaceship's name is a name: a letter or `_` first, then letters, digits and
 // `_`. The tree's text of a string keeps its escapes, so a backslash anywhere in
-// the path fails here too -- a path is written plainly or not at all.
+// the path fails here too -- a path is written plainly or not at all. So does a
+// control byte: found by review, a raw NUL in "parts/ship<NUL>x" loaded the
+// file named by the bytes before it.
 bool a_name(std::string_view text)
 {
     if (text.empty())
@@ -57,7 +59,10 @@ Shape spelled_by(const Ast &ast, NodeIndex name)
     if (ast[name].kind == NodeKind::String) {
         out.path = true;
         const std::string_view written = ast.text_of(name);
-        if (!a_name(stem_of(written)) || written.find('\\') != std::string_view::npos)
+        bool plain = written.find('\\') == std::string_view::npos;
+        for (const char c : written)
+            plain = plain && static_cast<unsigned char>(c) >= 0x20 && c != 0x7f;
+        if (!a_name(stem_of(written)) || !plain)
             out.named = Named::BadPath;
     }
     return out;
