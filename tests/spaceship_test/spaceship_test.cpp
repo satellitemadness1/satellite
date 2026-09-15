@@ -108,6 +108,101 @@ Ran repl(const std::string &typed)
 const char *kMain =
     "satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n";
 
+// --- paths: satellite.include("dir/ship") -- 003 revision 07 ------------------
+//
+// The author, 2026-09-15: "satellite.include("dir/dir/file")", the extension
+// optional, "../dir/file and any combination of that, and ../../file", and
+// "relative including, from that files directory". Every clause below runs the
+// real satl from `root`, with spaceships in directories under it.
+void section_paths()
+{
+    const auto mkdirs = [](const std::string &path) { std::system(("mkdir -p '" + root + "/" + path + "'").c_str()); };
+    mkdirs("paths/parts/deep");
+    mkdirs("paths/shared");
+    mkdirs("paths/program");
+    mkdirs("paths/tools");
+
+    write("paths/parts/deep/ship.satl",
+          "satellite.capsule hello()\n{\n    satellite.console.display(\"hello from parts/deep/ship\")\n}\n");
+    write("paths/shared/log.satl",
+          "satellite.capsule note(satellite.variable.string what)\n{\n    satellite.console.display(\"log: \" + what)\n}\n");
+    // A spaceship that includes by a path relative to ITSELF: parts/ is beside shared/.
+    write("paths/parts/crate.satl",
+          "satellite.include(\"../shared/log\")\n"
+          "satellite.capsule.launch loaded(satellite.variable.number n)\n{\n    log.note(\"crate got \" + n)\n}\n");
+    write("paths/tools/ship.satl", "satellite.capsule hello()\n{\n    satellite.console.display(\"tools\")\n}\n");
+
+    const auto program = [](const std::string &top, const std::string &body) {
+        return "satellite.include(satellite)\n" + top + kMain + "{\n" + body +
+               "    satellite.return(satellite)\n}\n";
+    };
+
+    write("paths/program/down.satl", program("satellite.include(\"../parts/deep/ship\")\n", "    ship.hello()\n"));
+    Ran ran = run("paths/program/down.satl");
+    check(ran.status == 0 && holds(ran.out, "hello from parts/deep/ship"),
+          "a path relative to the including file, through .., reaches the spaceship: " + ran.out);
+
+    write("paths/two_up.satl", program("satellite.include(\"parts/deep/ship.satl\")\n", "    ship.hello()\n"));
+    ran = run("paths/two_up.satl");
+    check(ran.status == 0 && holds(ran.out, "hello from parts/deep/ship"),
+          "a path may write .satl, and dir/dir/file reaches it: " + ran.out);
+
+    write("paths/parts/deep/back.satl", program("satellite.include(\"../../shared/log\")\n", "    log.note(\"two up\")\n"));
+    ran = run("paths/parts/deep/back.satl");
+    check(ran.status == 0 && holds(ran.out, "log: two up"), "../../file reaches two directories up: " + ran.out);
+
+    // Run from a DIFFERENT working directory: the path is the including file's, not satl's.
+    Ran elsewhere;
+    {
+        const std::string command = "cd '" + root + "/paths/tools' && SATL_NO_WINDOW=1 '" + satl_path +
+                                    "' ../program/down.satl 2>&1 </dev/null";
+        if (FILE *pipe = popen(command.c_str(), "r")) {
+            char buffer[4096];
+            size_t got = 0;
+            while ((got = std::fread(buffer, 1, sizeof buffer, pipe)) > 0)
+                elsewhere.out.append(buffer, got);
+            const int raw = pclose(pipe);
+            elsewhere.status = WIFEXITED(raw) ? WEXITSTATUS(raw) : -1;
+        }
+    }
+    check(elsewhere.status == 0 && holds(elsewhere.out, "hello from parts/deep/ship"),
+          "the path is relative to the file, however satl was pointed at it: " + elsewhere.out);
+
+    write("paths/program/nested.satl", program("satellite.include(\"../parts/crate\"(5))\n", ""));
+    ran = run("paths/program/nested.satl");
+    check(ran.status == 0 && holds(ran.out, "log: crate got 5"),
+          "a spaceship's own path is relative to ITS directory, and a path takes arguments: " + ran.out);
+
+    write("paths/absolute.satl", program("satellite.include(\"" + root + "/paths/parts/deep/ship\")\n", "    ship.hello()\n"));
+    ran = run("paths/absolute.satl");
+    check(ran.status == 0 && holds(ran.out, "hello from parts/deep/ship"), "a path from / is used as written: " + ran.out);
+
+    write("paths/twice.satl", program("satellite.include(\"parts/deep/ship\")\nsatellite.include(\"../paths/parts/deep/ship.satl\")\n",
+                                      "    ship.hello()\n"));
+    ran = run("paths/twice.satl");
+    check(ran.status == 0 && count_of(ran.out, "hello from parts/deep/ship") == 1,
+          "one file reached by two paths is one spaceship: " + ran.out);
+
+    write("paths/clash.satl", program("satellite.include(\"parts/deep/ship\")\nsatellite.include(\"tools/ship\")\n", ""));
+    ran = run("paths/clash.satl");
+    check(ran.status == 1 && holds(ran.out, "S1603") && holds(ran.out, "tools/ship.satl"),
+          "two different files with one name is S1603, naming both: " + ran.out);
+
+    write("paths/badname.satl", program("satellite.include(\"parts/my-ship\")\n", ""));
+    ran = run("paths/badname.satl");
+    check(ran.status == 1 && holds(ran.out, "S1607") && holds(ran.out, "my-ship"),
+          "a path whose file name is not a name is S1607: " + ran.out);
+
+    write("paths/empty.satl", program("satellite.include(\"parts/\")\n", ""));
+    ran = run("paths/empty.satl");
+    check(ran.status == 1 && holds(ran.out, "S1607"), "a path ending in / names no file, S1607: " + ran.out);
+
+    write("paths/missing.satl", program("satellite.include(\"parts/nowhere\")\n", ""));
+    ran = run("paths/missing.satl");
+    check(ran.status == 1 && holds(ran.out, "S1601") && holds(ran.out, "parts/nowhere.satl"),
+          "a path to no file is S1601, naming the file it looked for: " + ran.out);
+}
+
 // --- 1: the demonstration, run whole ------------------------------------------
 
 void section_demonstration(const std::string &example)
@@ -258,10 +353,13 @@ void section_refusals()
     check(ran.status == 1 && holds(ran.out, "S1602") && holds(ran.out, "capsule"),
           "a spaceship named like the program's own capsule is S1602: " + ran.out);
 
-    write("string.satl", program("satellite.include(\"ship.satl\")\n", ""));
+    // A STRING WAS S1604 UNTIL 003 REVISION 07, when a quoted path became the way
+    // to name a spaceship in another directory; section_paths() proves the
+    // spellings, and a number is still not a spaceship.
+    write("string.satl", program("satellite.include(42)\n", ""));
     ran = run("string.satl");
     check(ran.status == 1 && holds(ran.out, "S1604"),
-          "a spaceship named by a string is S1604: " + ran.out);
+          "a spaceship named by a number is S1604: " + ran.out);
 
     write("members.satl", program("satellite.include(ship)\n",
                                   "    ship.nothing_here()\n"
@@ -546,6 +644,7 @@ int main(int argc, char **argv)
     section_threads_and_printing();
     section_review();
     section_prompt();
+    section_paths();
 
     std::system(("rm -rf '" + root + "'").c_str());
     if (failures != 0) {

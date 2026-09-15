@@ -114,8 +114,11 @@ bool includes_a_spaceship(const Ast &ast)
     for (NodeIndex i = 1; i < ast.size(); i++)
         if (ast[i].kind == NodeKind::Include) {
             const spaceship::Named named = spaceship::shape_of(ast, i).named;
+            // A BAD PATH TOO (revision 07): the loader is where S1607 is said,
+            // and a program that skipped it would be told S0720 instead.
             if (named == spaceship::Named::Spaceship ||
-                named == spaceship::Named::NotAName)
+                named == spaceship::Named::NotAName ||
+                named == spaceship::Named::BadPath)
                 return true;
         }
     return false;
@@ -173,11 +176,32 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
                     span_in(ast, node, f)));
                 continue;
             }
+            if (shape.named == spaceship::Named::BadPath) {
+                const std::string_view written = spaceship::written_of(ast, shape);
+                const size_t slash = written.rfind('/');
+                problems.push_back(errors::make<errors::Code::SPACESHIP_PATH_NOT_A_NAME>(
+                    span_in(ast, shape.name, f), std::string(written),
+                    std::string(slash == std::string_view::npos ? written : written.substr(slash + 1))));
+                continue;
+            }
             if (shape.named != spaceship::Named::Spaceship)
                 continue;
 
+            // THE FILE. A bare name is `<name>.satl` beside the file that wrote the
+            // include. A quoted path (003 revision 07) is joined to that same
+            // directory -- so "parts/ship", "../shared/ship" and "../../ship" are
+            // all relative to the INCLUDING file, whoever included it -- unless it
+            // starts with `/`, and `.satl` is added when it is not written.
             const std::string ship_name(spaceship::name_of(ast, shape));
-            const std::string path = directory + ship_name + ".satl";
+            std::string path;
+            if (shape.path) {
+                std::string written(spaceship::written_of(ast, shape));
+                if (!(written.size() > 5 && written.compare(written.size() - 5, 5, ".satl") == 0))
+                    written += ".satl";
+                path = written.front() == '/' ? written : directory + written;
+            } else {
+                path = directory + ship_name + ".satl";
+            }
             const std::string canonical = canonical_of(path);
             if (canonical.empty()) {
                 problems.push_back(errors::make<errors::Code::SPACESHIP_NOT_FOUND>(
@@ -235,6 +259,22 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
                 }
             }
 
+            // TWO FILES, ONE NAME -- S1603, which only a path can reach: the
+            // spaceship is reached by its name, so the second file could never
+            // be. (The same file under two paths is `known` above, and fine.)
+            if (!known) {
+                bool clash = false;
+                for (const auto &loaded : out.ships)
+                    if (loaded->name == ship_name) {
+                        problems.push_back(errors::make<errors::Code::SPACESHIP_TWO_FILES_ONE_NAME>(
+                            span_in(ast, shape.name, f), ship_name, loaded->path, path));
+                        clash = true;
+                        break;
+                    }
+                if (clash)
+                    continue;
+            }
+
             if (!known) {
                 // THE NODE IS THE PROGRAM'S, SO IT MAY NOT BE ONE FILE 0 ALREADY
                 // USES either -- `satellite.library.<ship>` sits beside file 0's
@@ -279,7 +319,7 @@ bool build_with_spaceships(const std::string &name, Built &out, bool report)
                 seen = seen || each.file == id;
             if (!seen)
                 files[f].ships.push_back(
-                    {id == 0 ? std::string_view(ast.text_of(shape.name))
+                    {id == 0 ? spaceship::name_of(ast, shape)
                              : std::string_view(out.ships[id - 1]->name),
                      ship_node, id});
         }

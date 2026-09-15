@@ -195,6 +195,14 @@ Includes another satellite file, a spaceship. `satellite.include(ship)` loads
 written out, and arguments in brackets -- `ship(5, "five")` -- go to its
 `satellite.capsule.launch` capsules.
 
+A spaceship in another directory is named by its path, in quotes:
+`satellite.include("parts/ship")`, `"../shared/ship.satl"` or
+`"/home/me/ships/ship"`, with arguments as `"parts/ship"(5)`. A path is
+relative to the directory of the file that writes the include, `.satl` is added
+when it is not written, and the spaceship is still named by its file: all of
+those are the spaceship `ship`. Two different files with the same name cannot
+both be included.
+
 What the spaceship declares is reached through its name and never bare:
 `ship.setup()` calls a capsule, `ship.box b` declares one of its spacesuits, and
 `satellite.library.ship.total` reads one of its globals. A file is loaded once

@@ -178,8 +178,11 @@ void section_codes()
     // AND 158 WITH M25's INCLUDE HALF, 2026-09-13: S0246 and S0247 where a
     // launch may not go, S0528-S0530 and S0533 in resolve, S0734 for arguments
     // no launch takes, and the loader's S1601, S1602, S1604, S1605 and S1606.
-    check(kCodeCount == 158,
-          "errors.def has 158 rows -- if that changed on purpose, change it here "
+    // AND 160 AT 003 REVISION 07, 2026-09-15: quoted paths brought back S1603
+    // (two files, one spaceship name) and added S1607 (a path's file name that
+    // is not a name).
+    check(kCodeCount == 160,
+          "errors.def has 160 rows -- if that changed on purpose, change it here "
           "and say so in MILESTONES; a row DELETED is invisible to every "
           "static_assert in codes.hpp");
 

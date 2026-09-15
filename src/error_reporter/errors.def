@@ -1576,22 +1576,28 @@ SAT_CODE(1501, ANALYSIS_SUIT_CYCLE, SAT_WARNING,
 // file -- the one line the person can change.
 SAT_CODE(1601, SPACESHIP_NOT_FOUND, SAT_ERROR,
          "there is no spaceship `{1}` to include -- satellite looked for {2}, "
-         "beside the file that includes it")
+         "from the directory of the file that includes it")
 
 SAT_CODE(1602, SPACESHIP_NAME_TAKEN, SAT_ERROR,
          "the spaceship `{1}` has the name of a {2} this program already "
          "declares, and a name is declared once")
 
-// 1603 IS NOT HERE AND THE GAP IS DELIBERATE. It was written the day the loader
-// was, for two different files with one name, and nothing can produce it: every
-// include looks beside the file that wrote it, and every file after the first
-// was found beside the first, so two files of one name would need two
-// directories. It returns with the first include that can name a directory.
+// 1603 RETURNS WITH PATHS -- 003 revision 07, 2026-09-15. It was written the day
+// the loader was, for two different files with one name, and left out because
+// nothing could produce it: every include looked beside the file that wrote it.
+// A quoted path names a directory, so "parts/ship" and "tools/ship" are two
+// files that would both be the spaceship `ship` -- and a spaceship is reached by
+// its name, so one of them would be unreachable. {2} is the file already loaded
+// under that name, {3} the one this include would add.
+SAT_CODE(1603, SPACESHIP_TWO_FILES_ONE_NAME, SAT_ERROR,
+         "`{1}` is already the spaceship loaded from {2}, and {3} would be a "
+         "second file with the same name -- a spaceship is reached by its name, "
+         "so rename one of the files")
 
 SAT_CODE(1604, SPACESHIP_NOT_A_NAME, SAT_ERROR,
-         "satellite.include names a spaceship by its name -- "
-         "`satellite.include(ship)`, `ship(arguments)` or "
-         "`ship.satl(arguments)` -- and this is not one")
+         "satellite.include names a spaceship by its name or its path -- "
+         "`satellite.include(ship)`, `ship(arguments)`, `ship.satl(arguments)` "
+         "or `\"parts/ship\"(arguments)` -- and this is not one")
 
 SAT_CODE(1605, SPACESHIP_UNREADABLE, SAT_ERROR,
          "the spaceship `{1}` is {2} and could not be read: {3}")
@@ -1600,5 +1606,14 @@ SAT_CODE(1605, SPACESHIP_UNREADABLE, SAT_ERROR,
 SAT_CODE(1606, SPACESHIP_TWO_NAMES, SAT_ERROR,
          "`{1}` is the file already included as the spaceship `{2}`, and a file "
          "is one spaceship with one name")
+
+// THE FILE NAME AT THE END OF A PATH IS THE SPACESHIP'S NAME -- revision 07. So
+// it has to be one: "parts/my-ship" would be reached as `my-ship.setup()`, which
+// is a subtraction. {1} is the path as written, {2} the file name it ends in. A
+// backslash is refused here too: a path is written plainly, never with escapes.
+SAT_CODE(1607, SPACESHIP_PATH_NOT_A_NAME, SAT_ERROR,
+         "the path \"{1}\" ends in `{2}`, and a spaceship is named by its file -- "
+         "that name has to be letters, digits and _, not starting with a digit, "
+         "and the path needs no backslash")
 
 #undef SAT_CODE

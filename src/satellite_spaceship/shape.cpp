@@ -8,17 +8,59 @@ namespace {
 
 // `ship` or `ship.satl`, and which Name node spells the spaceship. The
 // extension is the one member a spaceship's name may carry: `ship.other` is a
-// path, not a file, and is refused rather than read as `ship`.
+// member, not a file, and is refused rather than read as `ship`. A quoted path
+// is the other road to a file, and its String node is the spelling.
 NodeIndex ship_name(const Ast &ast, NodeIndex node)
 {
     if (node == kNoNode)
         return kNoNode;
-    if (ast[node].kind == NodeKind::Name)
+    if (ast[node].kind == NodeKind::Name || ast[node].kind == NodeKind::String)
         return node;
     if (ast[node].kind == NodeKind::Member && ast.text_of(node) == "satl" &&
         ast[node].a != kNoNode && ast[ast[node].a].kind == NodeKind::Name)
         return ast[node].a;
     return kNoNode;
+}
+
+// The file name at the end of a path, less `.satl` when it is written:
+// "../parts/ship.satl" -> "ship". A view into `text`.
+std::string_view stem_of(std::string_view text)
+{
+    const size_t slash = text.rfind('/');
+    std::string_view base = slash == std::string_view::npos ? text : text.substr(slash + 1);
+    if (base.size() > 5 && base.substr(base.size() - 5) == ".satl")
+        base.remove_suffix(5);
+    return base;
+}
+
+// A spaceship's name is a name: a letter or `_` first, then letters, digits and
+// `_`. The tree's text of a string keeps its escapes, so a backslash anywhere in
+// the path fails here too -- a path is written plainly or not at all.
+bool a_name(std::string_view text)
+{
+    if (text.empty())
+        return false;
+    for (size_t i = 0; i < text.size(); i++) {
+        const char c = text[i];
+        const bool letter = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+        if (!letter && !(i > 0 && c >= '0' && c <= '9'))
+            return false;
+    }
+    return true;
+}
+
+Shape spelled_by(const Ast &ast, NodeIndex name)
+{
+    Shape out;
+    out.named = Named::Spaceship;
+    out.name = name;
+    if (ast[name].kind == NodeKind::String) {
+        out.path = true;
+        const std::string_view written = ast.text_of(name);
+        if (!a_name(stem_of(written)) || written.find('\\') != std::string_view::npos)
+            out.named = Named::BadPath;
+    }
+    return out;
 }
 
 } // namespace
@@ -35,11 +77,8 @@ Shape shape_of(const Ast &ast, NodeIndex include)
     }
 
     NodeIndex name = ship_name(ast, what);
-    if (name != kNoNode) {
-        out.named = Named::Spaceship;
-        out.name = name;
-        return out;
-    }
+    if (name != kNoNode)
+        return spelled_by(ast, name);
 
     // A CALL WHOSE TARGET SPELLS A SPACESHIP, AND NO NAMED OPTIONS. `ship(x)`
     // hands `x` to a launch capsule, and a launch is a capsule the program
@@ -47,8 +86,7 @@ Shape shape_of(const Ast &ast, NodeIndex include)
     if (ast[what].kind == NodeKind::Call && ast[what].c == kNoList) {
         name = ship_name(ast, ast[what].a);
         if (name != kNoNode) {
-            out.named = Named::Spaceship;
-            out.name = name;
+            out = spelled_by(ast, name);
             out.call = what;
             out.arguments = ast[what].b;
             return out;
@@ -60,6 +98,13 @@ Shape shape_of(const Ast &ast, NodeIndex include)
 }
 
 std::string_view name_of(const Ast &ast, const Shape &shape)
+{
+    if (shape.name == kNoNode)
+        return std::string_view();
+    return shape.path ? stem_of(ast.text_of(shape.name)) : ast.text_of(shape.name);
+}
+
+std::string_view written_of(const Ast &ast, const Shape &shape)
 {
     return shape.name == kNoNode ? std::string_view() : ast.text_of(shape.name);
 }
