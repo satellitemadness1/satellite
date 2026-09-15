@@ -1,0 +1,298 @@
+# satellite -- what `make startup` measures, and what it measured last time.
+#
+# THE REGISTRY, AND make_support/startup.sh IS ITS ONE CONSUMER. PLAN §9 has
+# said "startup is re-measured every milestone" since the plan was written and
+# nothing implemented it, so M4, M4.5 and M5 each landed without one and a 34x
+# regression sat undiscovered for three milestones (MILESTONES/M6.md §9.1). A
+# rule with no target behind it is a rule nobody runs. This file is the target's
+# data half: adding a command to the measurement is ONE LINE HERE and no edit
+# anywhere else, which is the same arrangement words.def has with the trie and
+# errors.def has with the reporter.
+#
+# ------------------------------------------------------------------------------
+# THE ONE THING TO UNDERSTAND BEFORE READING A NUMBER OUT OF THIS FILE
+# ------------------------------------------------------------------------------
+#
+# A ROW IS NOT COMPARABLE ACROSS LINK MODES. A SHARE IS.
+#
+# 040-sources.mk records the mistake that taught this: satl is shipped static,
+# and timing it against a DYNAMIC `int main(){return 0;}` made satl look 0.9 ms
+# FASTER than an empty program -- a linking difference wearing a performance
+# result's clothes. The rule written down at the time was "both sides static".
+# That is the right instruction and it is not the underlying fact, which was
+# measured on 2026-08-31 while this harness was being built:
+#
+#                     floor    satl --version    satl's own share
+#     dynamic         1.457         1.633              0.176
+#     static          0.568         0.755              0.187
+#     M6's record     0.556         0.724              0.168
+#
+# The two absolute columns differ by 0.9 ms between link modes. THE SHARE DOES
+# NOT -- 0.176 against 0.187, and against the 0.168 M6 recorded statically on a
+# different afternoon. The dynamic loader is a constant this build pays twice,
+# once in the floor and once in satl, so subtracting the floor removes it.
+#
+# So the real rule is BOTH SIDES LINKED THE SAME WAY, and then the share is the
+# number a milestone is answerable for. startup.sh links its floor binary
+# through the same $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) $(LINK_ENV)
+# that 050-build.mk links satl through, so the two sides CANNOT drift apart --
+# the mistake above is not one this harness can make. The ms column below is
+# still recorded, because a person wants to know what a command costs on a
+# machine; it is simply not the column a regression is read from.
+#
+# ------------------------------------------------------------------------------
+# THE FORMAT
+# ------------------------------------------------------------------------------
+#
+# Blank lines and lines beginning with # are ignored. Every other line is
+# fields separated by `|`, and the leading word says which kind:
+#
+#     FLOOR | <ms>              what `int main(){return 0;}` cost last time
+#     ROW   | <ms> | <args>     what `satl <args>` cost last time
+#     <KEY>   <value>           a condition the baseline was taken under
+#
+# `|` AND NOT WHITESPACE, so that the empty args field on the bare `satl` row
+# is visible rather than being a trailing space somebody's editor strips. A ms
+# of `-` means never measured, and startup.sh prints that row with no delta
+# rather than inventing one.
+#
+# ------------------------------------------------------------------------------
+# THE BASELINE
+# ------------------------------------------------------------------------------
+
+DATE    2026-09-06
+LINK    full
+LOAD    1.34
+NOTE    M17 -- hello world. MILESTONES/M17.md §5
+
+# THE ROWS ARE THE COMMANDS THAT COST SOMETHING DIFFERENT, not every command
+# satl has. --version is the row §9.1 says to read -- it does nothing but say
+# what it is, so its share is satl's startup and nothing else. The rest are here
+# because each adds one identifiable piece of work on top of that: the trie
+# walk, reading and lexing a small file, reading and lexing the largest file in
+# the tree, the config reader, and now the whole pipeline.
+#
+# M7 ADDED 0.011 ms TO satl'S OWN SHARE -- 0.179 against M6's 0.168 -- and that
+# is six objects' worth of a larger binary and nothing else. The pass itself
+# does not run unless `--resolve` is asked for, so `--version` cannot be paying
+# for it; what moved is the size of the image the loader maps. MILESTONES/M7.md
+# §8 has the attribution.
+#
+# M8 ADDED 0.018 ms AND IT IS THE SAME FINDING AGAIN, WITH ONE MORE PIECE OF
+# EVIDENCE THAN M7 HAD. Every row moved by about the same amount -- +0.018 to
+# +0.036 -- and the row that moved is the BARE `satl`, which prints its opening
+# and runs no arm at all. So the cost is paid before any command is chosen and
+# cannot be M8's arithmetic. What changed is the image: satl at STATIC=full went
+# from 1,828,776 bytes to 1,887,016, which is +58,240 for six number objects and
+# the command arm.
+#
+# AND THE ARITHMETIC ITSELF IS UNDER THE NOISE, WHICH IS THE ROW PAIR BELOW
+# SAYING SO. `--number 1 + 1` costs 0.214 against `--version`'s 0.204 -- 0.010
+# ms for reading two operands, adding them and printing five lines -- and
+# `1 / 3` costs 0.017 more than that for long division to 34 digits and the one
+# allocation it boxes into. Measured across three runs of the harness on the
+# same build; the spread between runs was 0.027 ms, which is larger than either
+# figure and is why the claim above is about the SHAPE of the table rather than
+# about one row.
+
+# AND SINCE 2026-09-06 A BARE `make startup` IS IN THE BASELINE'S LINK MODE.
+# 048-static.mk's default moved from STATIC=0 to STATIC=full that day, which
+# closes a trap this file could describe and not prevent: the LINK line below
+# has said `full` since M6, while `make startup` inherited STATIC and therefore
+# measured a DYNAMIC build unless somebody thought to pass STATIC=full. The
+# harness caught it every time -- it prints "THE ms COLUMN IS NOT COMPARABLE"
+# and refuses to pretend -- but catching it is not the same as not doing it, and
+# M17 did it first and read a whole dynamic table before noticing. `make startup
+# STATIC=0` is still legal and still says so in its own output.
+
+FLOOR | 0.570
+
+ROW | 0.908 |
+ROW | 0.910 | --version
+ROW | 1.051 | --words
+ROW | 0.984 | --tokens example/hello_world.satl
+ROW | 1.268 | --tokens example/class_test.satl
+ROW | 1.596 | --limits
+ROW | 1.638 | --limits example/satellite_config.ini
+
+# M7's ROWS. `--resolve` is the milestone's consumer and it is the first row here
+# that is a WHOLE PIPELINE -- lex, parse, resolve, and SATC.md §4's reading order
+# around all three -- so it is not comparable to `--tokens`, which stops after
+# the first of them.
+#
+# THEY ARE WARM AND NOT COLD, WHICH IS A PROPERTY OF THE HARNESS AND HAS TO BE
+# KNOWN TO READ THEM. startup.sh runs each command 200 times per batch; the
+# FIRST of those writes a `.satc` and the other 199 read it, so what these two
+# rows measure is a warm run with one cold run's cost averaged into it.
+#
+# AND MILESTONES/M4.5.md §5's CLAUSE IS NOT READ OUT OF THEM. What the skip
+# saves is a trie walk per path, and on a 273-byte program that is far under
+# what a shell loop can see -- §5's own table is what says so, and this file's
+# baseline note says a row is worth recording because a person wants to know
+# what a command costs, not because it proves anything. `satl --resolve` COUNTS
+# the walks instead, exactly, and tests/resolve_test/cache.cpp asserts the
+# count. On example/frames.satl it is 28 walked cold against 14 walked and 14
+# taken warm.
+ROW | 0.999 | --resolve example/hello_world.satl
+ROW | 1.286 | --resolve example/frames.satl
+
+# M8's ROWS. `--number` is the milestone's consumer and it is the one command
+# here that reads nothing from disk -- no file, no `.satc`, no config beyond the
+# lookup every run makes -- so its share over `--version` is arithmetic and the
+# six new objects and nothing else.
+#
+# TWO ROWS BECAUSE THE TWO ANSWERS COST DIFFERENT THINGS. `1 + 1` never leaves
+# DESIGN §8.2's small form: an add and an overflow check, no allocation. `1 / 3`
+# runs long division to division_digits and boxes the result. A single row would
+# average the two and hide which half moved.
+ROW | 0.930 | --number 1 + 1
+ROW | 0.933 | --number 1 / 3
+
+# M9's ROWS. `--compile` and `--call` are the milestone's consumers, and they
+# are the first rows here that go all the way down the pipeline -- lex, parse,
+# resolve, compile -- and the first that then RUN something.
+#
+# NEITHER OF THEM TOUCHES THE `.satc`, WHICH MAKES THEM THE ONLY COLD ROWS IN
+# THIS FILE. Every other file-taking row above is warm: startup.sh runs 200
+# invocations and the first writes a cache the other 199 read.
+# programs/evaluate_commands.cpp is why these two do not -- a tree read from a
+# `.satc` has spans into the cache, where line 11 of hello_world.satl is line
+# 10, and an evaluator can raise a diagnostic at any moment during a run.
+#
+# AND THAT IS WHY THEY COST LESS THAN `--resolve` ON THE SAME FILE, WHICH IS THE
+# ONE RESULT IN THIS TABLE NOBODY WOULD HAVE PREDICTED. `--compile
+# example/frames.satl` is a share of 0.546 and `--resolve example/frames.satl`
+# is 0.635, on the same program, with the compile doing a whole extra pass on
+# top of everything resolve does. The `.satc` is the difference: `--resolve`
+# opens the cache directory, stats a file, reads it or writes it, and hashes the
+# source to name it. Those are syscalls, and the trie walks the cache saves are
+# not -- MILESTONES/M7.md §5 counted them at 28 on this file, which is far under
+# what a shell loop can see. A cache that saves counted work and spends
+# uncounted syscalls can be a net loss on a small program, and this is the first
+# row in this file that shows it.
+#
+# `--call` IS A WHOLE PROGRAM: read, lex, parse, resolve, compile, run the
+# globals, call one capsule, print what it answered -- and it is CHEAPER than
+# `--compile`, because printing one number is less than printing a listing of
+# every op.
+ROW | 1.209 | --compile example/frames.satl
+ROW | 1.225 | --call example/frames.satl factorial 10
+
+# M11's ROWS, AND THE FIRST OF THEM PAYS M10's DEBT. The row for running a
+# program was owed and not taken at M10 -- the acceptance files arrived the same
+# day as the milestone, and two makes colliding on 2026-09-02 is why the harness
+# did not run then. M10's entry predicted where it would land before it was
+# measured: `--call example/frames.satl factorial 10` "does everything a run
+# does EXCEPT start a printer thread and shut it down", so a row near that share
+# would mean the console costs about what making and joining one std::thread
+# costs, and a row well above it would mean the four-step shutdown waits when it
+# should not.
+#
+# MEASURED AT M11: 0.461 AGAINST `--call`'s 0.564, and the prediction holds with
+# room to spare -- `console.satl` is one display and a return where
+# `frames.satl` is a recursion demo, so the smaller program UNDERRUNS the
+# console-less row even while starting a printer thread, draining it and joining
+# it. Nothing in the shutdown waits. That is the claim M10 could not take
+# without this row, taken.
+#
+# `scalars.satl` IS M11's OWN CONSUMER: fourteen displays, three loops, both
+# module constants and a method from each family, over 25 cached dispatch sites.
+# Its 0.811 share is the largest of any row that runs a program, and it sits
+# between `--resolve frames.satl` and `--limits`, which is the right
+# neighbourhood for the biggest program in `example/` that runs.
+#
+# THE M10 PARAGRAPHS THIS SECTION REPLACES carried two more findings, kept in
+# one sentence each rather than lost: the deltas M10 recorded were THREE
+# milestones' worth because M8.5 and M9 landed without running this target
+# (§9's rule going unrun again), and the console's thread provably starts only
+# inside a run -- `Console::the()` is a function-local static reached from
+# run_command.cpp, so the BARE `satl` row, which runs no arm at all, is where a
+# cost paid before a command is chosen would show, and it never has.
+
+ROW | 1.147 | example/console.satl
+ROW | 1.470 | example/scalars.satl
+
+# M12's ROW, AND WHERE IT LANDED IS THE HONEST HALF. `variant.satl` is the
+# milestone's consumer: nine displays, one box through three states, all four
+# `1 6 14` rows and a string method on the way. The guess before measuring was
+# "near console.satl -- one capsule, no loops"; the measurement (2026-09-03,
+# load 1.00) put it at share 0.612, ABOVE `--call factorial`'s 0.562 and well
+# above console.satl's 0.473 -- nine lines through the printer's queue against
+# console.satl's one is most of the difference, and scalars.satl's 0.810 with
+# its three loops stays the biggest program-run row. The shape held; the
+# neighbourhood was misjudged, and the number is what goes in the table.
+ROW | 1.294 | example/variant.satl
+
+# ----------------------------------------------------------------------------
+# M17, 2026-09-06 -- EVERY ROW MOVED, AND SEVEN WERE FLAGGED.
+# ----------------------------------------------------------------------------
+#
+# satl'S OWN SHARE WENT FROM 0.234 TO 0.338, +0.104, AND IT IS REAL. The bare
+# `satl` row and `--version` moved together and by the same amount, which is
+# the signature M7 and M8 both recorded: those two run NO ARM AT ALL, so a cost
+# they pay is paid before a command is chosen and cannot belong to any
+# milestone's feature. Two independent invocations of this harness on the same
+# build gave 0.340 and 0.347 for `--version` -- a spread of 0.007 against a
+# delta of 0.104, so this is not noise. Load was 1.34 and 1.26 against the
+# baseline's 1.00, which is the one confounder not controlled for and is far
+# too small to account for a fifth.
+#
+# IT IS FOUR MILESTONES WIDE AND CANNOT BE ATTRIBUTED TO ONE. M13, M14, M15 and
+# M16 all landed without running this target -- PLAN §9's rule going unrun
+# again, which is the exact failure MILESTONES/M6.md §9.1 records, where a 34x
+# regression sat undiscovered for three milestones. The deltas above are the
+# bill for those four arriving at once. M17 is where it was paid, and M17 is
+# not where it was spent: this milestone added five source files and no module.
+#
+# WHAT IT IS, AS FAR AS THE EVIDENCE GOES: THE IMAGE. `satl` at STATIC=full is
+# 3,837,608 bytes today against the 1,887,016 this file records at M8 -- it has
+# slightly more than DOUBLED, over M9's evaluator and value model, M10's
+# console, M11's scalars, M12's variant, M13's clock and dice, M14's reader,
+# M15's float and M16's containers and search power. That is real code and not
+# a mistake; what it costs is loader time on every run, and the two rows that
+# choose no command are where it shows.
+#
+# AND IT IS NOT THE ONE TRAP 048-static.mk WARNS ABOUT, which was checked
+# rather than assumed. That file's rule is that the static figure "survives
+# only while nothing touches <iostream>, <fstream> or <sstream>" -- an ifstream
+# reader once put 1.4 MB back at M3. `grep -rl` over src/ for all three headers
+# on 2026-09-06 returns NOTHING. The doubling is ordinary growth, and the
+# discipline that avoids the iostreams machinery is still being kept.
+#
+# WHAT IS OWED AND BY WHOM: an attribution finer than "the image", which needs
+# a per-milestone size series this file does not keep. The honest thing at M17
+# is to record the number, name the four milestones it spans, and say that
+# nobody can now separate them -- because that IS the cost of skipping the
+# measurement, stated in the file whose job is to make it visible.
+
+# M17's ROW, AND IT IS THE ONE THIS TABLE WAS ALWAYS GOING TO END UP HOLDING.
+# PLAN §8's M17 entry: "startup is measured again against M1's number here,
+# because this is where DESIGN §3 itself first runs." Hello world is the program
+# the language was described with, so its row is the closest thing this file has
+# to a headline figure -- one capsule, one display, no loops, and a parameter
+# that binds an empty satellite.container.list.
+#
+# FIVE MILESTONES OF DEBT ARE BEING PAID AT ONCE AND THE DELTAS SAY SO. The
+# baseline above is M12's, dated 2026-09-03: M13, M14, M15 and M16 all landed
+# without running this target, which is PLAN §9's rule going unrun again -- the
+# same lapse MILESTONES/M6.md §9.1 records, where a 34x regression sat
+# undiscovered for three milestones because nothing re-measured. So every delta
+# printed against this baseline is FOUR MILESTONES WIDE and not one, and no row
+# below can be attributed to a single milestone's work. That is a property of
+# the gap and not of the measurement, and it is the reason to write the numbers
+# down rather than wait for a clean comparison that will not arrive.
+#
+# WHERE IT LANDED, AGAINST A PREDICTION WRITTEN BEFORE IT WAS TAKEN.
+# MILESTONES/M17.md §5 guessed "at or just under console.satl, since hello
+# world prints one line where console.satl prints one line and does nothing
+# else either". Measured: 0.589 against console.satl's 0.577 -- just OVER
+# rather than just under, by 0.012, which is under the spread between two runs
+# of this harness and therefore not a difference worth a sentence about the
+# parameter. The neighbourhood was right and the sign was wrong, and the sign
+# is the half a prediction is for.
+#
+# WHAT IT SAYS ABOUT M16'S EMPTY LIST -- which is the reason this row is worth
+# having at all -- is that binding it costs nothing measurable. hello world
+# and console.satl are the same program plus one `satellite.container.list`
+# constructed and handed to slot 0, and they are 0.012 apart.
+ROW | 1.159 | example/hello_world.satl

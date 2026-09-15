@@ -1,0 +1,101 @@
+satellite.include(satellite)
+
+// satellite.variable.hex -- M19.5's second half, and DESIGN §8.5's other radix.
+//
+// IT IS STORED AS BITS, FOUR TO A DIGIT, so nothing is lost converting either
+// way and neither spelling is the "real" one. That is the fact everything below
+// leans on, and it is why to_binary() can never fail while to_hex() can.
+//
+// THE WIDTH IS PART OF THE VALUE, exactly as it is for a run of bits: x0009 and
+// x9 are two values. What hex adds is that the letter CASE is *not* part of it
+// -- x00ff and x00FF are one value -- so display prints upper and cannot print
+// back what was written. example/binary.satl is the same tour one radix over.
+//
+// EVERY METHOD IS CALLED ON A NAME, WORD_NUMBERS §1.5's one hop: a selector
+// folds only through a DECLARED name, so the steps are written out.
+
+satellite.capsule show(satellite.variable.hex run)
+{
+    satellite.variable.string written = run.to_string()
+    satellite.variable.number how_wide = run.width()
+    satellite.variable.number how_many = run.digits()
+    satellite.variable.number worth = run.to_number()
+    satellite.variable.string wide_text = how_wide.to_string()
+    satellite.variable.string many_text = how_many.to_string()
+    satellite.variable.string worth_text = worth.to_string()
+    satellite.console.display("  " + written + "   " + wide_text + " bits   " + many_text + " digits   worth " + worth_text)
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("a run of hex digits, and what it is worth:")
+
+    satellite.variable.hex colour = x00FF
+    show(colour)
+
+    // The same VALUE, written narrower. width() and digits() both change and
+    // to_number() does not -- which is what "the width is part of the value"
+    // has to mean if it means anything.
+    satellite.variable.hex short_form = xFF
+    show(short_form)
+
+    satellite.console.display("")
+    satellite.console.display("so they are not the same value:")
+    satellite.console.display("  x00FF == xFF is")
+    satellite.variable.bool alike = colour == short_form
+    satellite.console.display(alike)
+
+    // width() counts BITS and digits() counts DIGITS. Bits, so that the rule
+    // about writing to a file -- the width must be a whole number of bytes --
+    // reads the same sentence on both radices.
+    satellite.console.display("")
+    satellite.console.display("case is not part of the value:")
+    satellite.variable.hex lower = x00ff
+    satellite.console.display("  x00ff displays as")
+    satellite.console.display(lower)
+    satellite.console.display("  x00ff == x00FF is")
+    satellite.variable.bool same_value = lower == colour
+    satellite.console.display(same_value)
+
+    // to_number is what the digits are WORTH, and it is the ONLY conversion to
+    // a number this type has. binary has `as_number` -- the characters read as
+    // an ordinary decimal -- and hex does not, because there is no decimal
+    // number spelled 00FF. The zeros are kept by the VALUE and by width(),
+    // which is where a width can live; a number has none at all, so 007 is 7.
+    satellite.console.display("")
+    satellite.console.display("what the digits are worth:")
+    satellite.variable.number worth = colour.to_number()
+    satellite.variable.string worth_text = worth.to_string()
+    satellite.console.display("  x00FF.to_number()    " + worth_text)
+
+    // The two radices hold the same bits and are still two values, because
+    // they are two types -- nothing in this language converts by itself.
+    satellite.console.display("")
+    satellite.console.display("the same bits, wearing the other radix:")
+    satellite.variable.binary as_bits = colour.to_binary()
+    satellite.variable.string bits_text = as_bits.to_string()
+    satellite.console.display("  x00FF.to_binary()    " + bits_text)
+    satellite.console.display("  and x00FF == that is")
+    satellite.variable.bool crosses = colour == as_bits
+    satellite.console.display(crosses)
+
+    // Writing hex to a file puts the BYTES and not the text. Eight digits is
+    // four bytes; a width that is not a multiple of eight bits is refused
+    // rather than padded, because half a byte has no representation in a file.
+    satellite.console.display("")
+    satellite.console.display("written to a file, digits become bytes:")
+    satellite.variable.hex letters = x41425243
+    satellite.variable.file f = satellite.file.new("hex_example.bin")
+    f.write(letters)
+    f.close()
+
+    satellite.variable.file back = satellite.file.open("hex_example.bin", "read")
+    satellite.variable.string came_back = back.read_all()
+    satellite.variable.string letters_text = letters.to_string()
+    satellite.console.display("  " + letters_text + " -> " + came_back)
+    back.close()
+    satellite.system.delete("hex_example.bin")
+
+    satellite.return(satellite)
+}

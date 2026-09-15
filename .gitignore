@@ -1,121 +1,18 @@
-# Build output. Nothing here is source.
-*.o
-/satl
-/satl.haswell
-/satl-cpu-level
-/satl-term
-.cxxflags-stamp
-.cxxflags-stamp-haswell
-.ldflags-stamp
-
-# The empty program `make startup` measures satl against. A build artefact like
-# the four above and not a source: 067-startup.mk generates `int main(){return
-# 0;}` on the compiler's stdin, so there is no .cpp for this to shadow.
-.startup-floor
-
-# The test binaries, which live BESIDE their sources rather than in a build
-# directory, so this cannot be a directory exclusion -- tests/words_test/ is
-# source and must stay tracked.
-#
-# IGNORE EVERYTHING IN A TEST FOLDER, THEN NAME WHAT IS SOURCE. The other way
-# round -- listing the binaries -- was written first and was wrong: 065-tests.mk
-# builds tests/<name>/<name>, so the pattern would have to repeat every test's
-# name, and the comment above it claimed adding a test needed no edit here while
-# the line below it said otherwise. This way adding a test really does need no
-# edit, which is the same property TESTNAMES has.
-#
-# A test that ever needs a DATA file beside its sources needs a `!` line for it,
-# and that is a real edit. Said here rather than found later, when the file is
-# missing from a fresh clone and the test fails for a reason nothing names.
-/tests/*/*
-!/tests/*/*.cpp
-!/tests/*/*.hpp
-# THREAD.md's evidence -- the programs that crash and hang it cites by path.
-!/tests/thread_test/programs/
-
-# `/prototype/` IS GONE, DELETED 2026-09-09, and the rules that used to be here
-# went with it. They read the same way round as the tests block above -- ignore
-# the folder, name what is source -- and their comment argued that "a citation to
-# a file that is not in the repository is a citation to nothing", because
-# MILESTONES/M3.md §3 and M4.md §3 each cite a draft by path.
-#
-# The author deleted the nine directories anyway; LAYOUT.md's `prototype/`
-# section keeps that argument beside the decision and says where the citations
-# resolve now -- `git show ace359d:prototype/M4/parser.cpp`, ace359d being the
-# last commit that holds them. Nothing is ignored here any more because there is
-# nothing to ignore, and a pattern for a path that cannot exist is a rule nobody
-# can check.
-
-# The benchmark harness under speed_test/, which builds three programs beside
-# their sources -- the same shape as tests/ above and ignored for the same
-# reason. `hello_world.cxx` is the odd name: it is the COMPILED C++ program and
-# not a source, which is worth saying out loud because every other .cxx in the
-# world is a source file and a reader would otherwise assume this one is too.
-/speed_test/speed_test
-/speed_test/hello_world.cxx
-
-# The node table's enumerator, built beside its source by `make nodes` -- the
-# same shape as tests/ and speed_test/ above, ignored for the same reason. Its
-# SOURCE is tracked and deliberately so: help_lines/README.md used to call this
-# program "a throwaway the tree doesn't ship", it was not rebuilt when M19.5
-# appended eight rows, and nodes.tsv quietly stopped being measured. The source
-# belongs in the tree; the binary does not.
-/help_lines/enumerator/enumerate
-
-# The startup probe's binary, built from speed_test/startup_check.cpp into the
-# repository root. Not to be confused with `.startup-floor` above, which is what
-# `make startup` generates and measures AGAINST; this one is the author's own
-# check and its source is tracked.
-/startup_check
-
-# The first satellite, kept beside this one to read and to pull from, and
-# DELIBERATELY NOT IN THIS REPOSITORY'S HISTORY. It is a whole second tree --
-# 371 tracked files, its own build, its own design/, plus built binaries and
-# tarballs -- and committing it here would double the repository to carry a
-# copy of something that already has its own history somewhere else.
-#
-# It is a REFERENCE, not a dependency. Nothing under src/ includes from it,
-# nothing in the build reaches into it, and satl compiles with the folder
-# absent. PLAN_ONE.md cites paths inside it the way it cites a book: if the
-# folder is not there, the citation is still true and you go and find the tree.
-#
-# Trailing slash, so this ignores the DIRECTORY and cannot be satisfied by a
-# file that happens to be called old_versions. Leading slash, so it is anchored
-# at the repository root and an old_versions/ somewhere deeper is still yours to
-# decide about.
-/old_versions/
-
-# Python's bytecode cache, which help_lines/ makes the moment gen.py imports
-# topics.py. Generated, machine-specific, and never worth a diff.
+# satellite 004 -- build output and scratch. Nothing here is source.
+/build/
 __pycache__/
-*.pyc
+*.o
+*.so
 
-# The binary package under distribute/, which is BUILT and not source.
-#
-# distribute/make-package.sh fills enterprise_satellite/ with four compiled
-# programs, the artwork, the examples and the hicolor index.theme, and then
-# writes a tarball beside it. Every one of those is either a build artefact --
-# same category as /satl at the top of this file -- or a COPY of something this
-# repository already tracks somewhere else.
-#
-# THE COPIES ARE THE REASON share/ AND example/ ARE HERE and not just programs/.
-# share/icons and share/applications are copied from satellite_enterprise/icons,
-# and example/ from /example, both by that script and both verified with cmp on
-# the way. Committing the copies would mean two tracked versions of the same
-# eighteen PNGs, which is precisely the drift this file refuses everywhere else.
-# The originals stay tracked; the copies are made on demand.
-#
-# WHAT IS STILL SOURCE, AND IS STILL TRACKED: install-satellite.sh, the ten
-# fragments in install_support/, READ-ME-FIRST.txt, README.md and
-# make-package.sh. Those are the package -- what it ships is regenerated by
-# running it.
-/distribute/enterprise_satellite/programs/
-/distribute/enterprise_satellite/share/
-/distribute/enterprise_satellite/example/
-# Both extensions, and the extracted copy. make-package.sh writes .tar.xz; the
-# .tar.gz is what it wrote before 2026-09-08 and may still be sitting there, and
-# an unpacked package beside its own tarball is the normal state of a directory
-# somebody is testing an install from.
-/distribute/*.tar.gz
-/distribute/*.tar.xz
-/distribute/satellite-*-almalinux10-*/
+# The author's timing test builds beside its source.
+/polymorph/test
+/polymorph/out.txt
+
+# old_versions/second_satellite/ keeps its own .gitignore for 003's build output.
+
+# The first satellite and the prototype, kept on disk to read and DELIBERATELY NOT
+# IN THIS REPOSITORY'S HISTORY -- the second satellite's .gitignore said why: whole
+# trees with their own history elsewhere, 85 MB and 17 MB. old_versions/second_satellite/
+# IS tracked: it was this repository until 2026-09-15.
+/old_versions/first_satellite/
+/old_versions/prototype/

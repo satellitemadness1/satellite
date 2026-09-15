@@ -1,0 +1,359 @@
+// The machine's dispatching arms -- `handlers[path_id]` at run time, in three
+// ops that share one core. See operations.cpp for the rest of the expression
+// half and evaluator/dispatch.hpp for what a Handler is.
+//
+// THREE OPS BECAUSE THERE ARE THREE ANSWERS TO "WHERE DOES A CHANGED RECEIVER
+// GO". op_dispatch is a call on a module path -- `satellite.console.display`
+// -- or a module constant read bare -- `satellite.bool.true` -- and has no
+// receiver anywhere, so its fourth operand is the callee's compiled spelling.
+// op_method and op_method_global are DESIGN §6.4's sugar compiled down:
+// `s.upper()` is `satellite.variable.string.upper(s)` in the table, the
+// receiver rides as argument 0, and the fourth operand is the SLOT the
+// receiver lives in -- which is what a row whose `mutates` flag is set writes
+// the answer back to, and the only thing separating the two method ops is
+// whether that slot is in the frame or among the globals.
+//
+// A MUTATING METHOD'S ANSWER IS ITS RECEIVER'S NEW VALUE -- M11's decision,
+// recorded here because this is the line that enacts it. The handler answers
+// what the receiver became, the core stores that same value into the slot,
+// and the expression's value is the new string -- so `s.append("!")` in
+// statement position mutates and drops the copy, while `t = s.clear()` means
+// what it reads as. One value, two destinations, no second contract.
+
+#include "evaluator/evaluator_internal.hpp"
+
+#include "evaluator/dispatch.hpp"
+#include "satellite_spacesuit/suit_object.hpp"
+
+#include <mutex>
+#include <string>
+
+namespace satellite {
+namespace eval {
+
+namespace {
+
+// Where a changed receiver would be written -- or, for the two Place arms,
+// where the ANSWER goes: M14's `input(prompt, target)` `1 5 4` writes the
+// line it read into a slot the compiler already resolved, and the expression
+// yields nothing. words.def's place list is the declaration; the compiler is
+// what keeps a non-name out of the slot operand, so by the time either Place
+// arm runs, `op.d` names storage the way a method's receiver does.
+// WHERE A MUTATING METHOD PUBLISHES ITS ANSWER BACK TO -- DESIGN §6.4's
+// storage-slot rule, and `Field` is M26's fourth answer to it. A frame slot, a
+// global, and now a FIELD of the spacesuit whose method is running: the object
+// is at slot 0 (resolve puts it there) and the index was decided before the
+// program started, so writing back is two indirections and no lookup.
+enum class Target : uint8_t {
+    None, Local, Global, Field, PlaceLocal, PlaceGlobal
+};
+
+// What the refusal sentences call the callee. op_dispatch compiled its
+// spelling into the text table; the method and place ops read the selector
+// off their own node, because their fourth operand is spent on the slot.
+std::string callee(Machine &m, const Op &op, Target target)
+{
+    if (target == Target::None)
+        return m.program().text(op.d);
+    return std::string(m.text_of(m.here()));
+}
+
+void dispatch(Machine &m, const Op &op, uint32_t step, Target target)
+{
+    if (step == 0) {
+        // ARGUMENTS IN REVERSE SO THEY EVALUATE FORWARDS -- op_call's note.
+        // For a method the compiler put the receiver FIRST in this list, so it
+        // is pushed last, runs first, and sits under its arguments exactly
+        // where DESIGN §6.4's written-out form says it goes.
+        m.again(1);
+        for (uint32_t i = m.program().list_size(op.b); i > 0; i--)
+            m.push(m.program().list_at(op.b, i - 1));
+        return;
+    }
+
+    // THE NAMED VALUES ARE THE LAST ENTRIES OF `op.b` -- M30, compiled there so
+    // they run in written order -- and op_options, which wraps this op, says
+    // how many and what they are called. `count` stays the POSITIONAL count,
+    // so the arity check below means exactly what it meant before.
+    const OpListId named = m.named_here();
+    const uint32_t count = m.program().list_size(op.b) -
+                           (named == kNoOpList ? 0 : m.program().list_size(named));
+    const words::PathId path = op.a;
+
+    // THE INLINE CACHE -- PLAN §2.4. The guard is the receiver's type tag, or
+    // 0 when nothing is bound; at this milestone every site is monomorphic by
+    // construction -- resolve folded the selector through the DECLARED type --
+    // so the cell's whole job is that the second execution of a call site does
+    // no lookup at all, which is what "permanently retires the seven-arm chain
+    // of §1.1" means.
+    Cache &cache = m.cache(op.c);
+    const Handler *handler = nullptr;
+    if (cache.filled) {
+        handler = static_cast<const Handler *>(cache.handler);
+    } else {
+        handler = Handlers::table().find(path);
+        if (handler != nullptr) {
+            cache.handler = handler;
+            cache.guard = 0;
+            cache.filled = true;
+        }
+    }
+
+    if (handler == nullptr) {
+        m.refuse(errors::make<errors::Code::EVAL_NO_HANDLER>(
+            m.span_of(m.here()), callee(m, op, target), "a later milestone"));
+        return;
+    }
+
+    // A METHOD REACHED WITHOUT A RECEIVER IS THE WRITTEN-OUT SPELLING, which
+    // DESIGN §6.4 keeps off the surface: "the right-hand side is NOT surface
+    // syntax -- no program may write it". The compiler cannot enforce that --
+    // it does not know which rows bind a receiver -- so the row itself does,
+    // here, and S0718 says how the method is actually asked.
+    if (handler->binds_receiver && target == Target::None) {
+        m.refuse(errors::make<errors::Code::EVAL_NEEDS_RECEIVER>(
+            m.span_of(m.here()), callee(m, op, target)));
+        return;
+    }
+
+    if (handler->arity != kAnyArity && handler->arity != count) {
+        // THE SENTENCE COUNTS WHAT THE USER WROTE. A receiver-bound row's
+        // arity includes argument 0, and "takes 2 arguments" about a method
+        // the user called with one WRITTEN argument would send them counting
+        // the wrong things -- so the hidden argument comes off both numbers.
+        const uint32_t hidden = handler->binds_receiver ? 1 : 0;
+        m.refuse(errors::make<errors::Code::EVAL_ARGUMENT_COUNT>(
+            m.span_of(m.here()), callee(m, op, target),
+            arity_text(handler->arity - hidden),
+            std::to_string(count > hidden ? count - hidden : 0)));
+        return;
+    }
+
+    if (named != kNoOpList) {
+        for (uint32_t i = 0; i < m.program().list_size(named); i++) {
+            const std::string &name = m.program().text(m.program().list_at(named, i));
+            bool taken = false;
+            for (const char *const *o = handler->options; o && *o && !taken; o++)
+                taken = name == *o;
+            if (taken)
+                continue;
+            std::string offer;
+            for (const char *const *o = handler->options; o && *o; o++)
+                offer += std::string(offer.empty() ? "" : ", ") + "`" + *o + "=`";
+            m.refuse(errors::make<errors::Code::EVAL_NO_SUCH_OPTION_NAME>(
+                m.span_of(m.here()), callee(m, op, target), name,
+                offer.empty() ? std::string("it takes no named options")
+                              : "it takes " + offer));
+            return;
+        }
+    }
+
+    if (handler->mutates && target == Target::None) {
+        // DESIGN §6.4's last line, enforced by the op rather than remembered
+        // by every install site: "a mutating method needs a receiver that
+        // names a storage slot ... there is nowhere to write back."
+        m.refuse(errors::make<errors::Code::EVAL_NOWHERE_TO_WRITE>(
+            m.span_of(m.here()), callee(m, op, target)));
+        return;
+    }
+
+    // --- THE RECEIVER LEAVES ITS STORAGE BEFORE A MUTATING METHOD RUNS -----
+    //
+    // DESIGN §12's in-place fast path needs one thing to be true and it never
+    // was: that the handler holds the ONLY handle to the body. A list is a
+    // `shared_ptr<const List>` and every mutation "is a copy published whole
+    // through the receiver's storage slot" -- which is what makes `b = a` safe
+    // and what makes building a list O(N²), because each append copies N
+    // elements.
+    //
+    // AT THE MOMENT A METHOD RUNS THERE ARE ALWAYS AT LEAST TWO HANDLES: the
+    // storage slot's, and the copy op_local/op_global/op_field pushed onto the
+    // value stack. So `use_count() == 1` was unreachable and no fast path could
+    // ever fire. Clearing the storage here drops it to one -- for a receiver
+    // nothing else shares.
+    //
+    // AND THAT IS EXACTLY THE TEST §12 ASKS FOR, "safe only when the slot's
+    // handle is unshared", made checkable rather than assumed. After `b = a`
+    // the body has three handles (a's slot, b's slot, the stack copy); clearing
+    // a's leaves two, the count is not one, and the copy path runs -- so `b`
+    // cannot see `a`'s append. The invariant is enforced by the refcount
+    // instead of by the type, and it is enforced at the moment it matters.
+    //
+    // §12 ALSO SAYS "only for a frame slot; a field or a global may have a
+    // reader holding a snapshot" -- and a refcount answers that too, because a
+    // reader holding a snapshot IS a handle. So all three targets qualify.
+    //
+    // THE SLOT IS RESTORED BY THE WRITE-BACK BELOW, which every mutating row
+    // already performs. A handler that REFUSES leaves it holding nothing, and
+    // that is safe because `m.refuse()` has already stopped the walk.
+    const bool takes_receiver_out =
+        handler->mutates &&
+        (target == Target::Local || target == Target::Global ||
+         target == Target::Field);
+
+    // --- AND ONCE THERE ARE TWO THREADS, NOBODY ELSE SEES THE GAP ----------
+    //
+    // THREAD.md D2 and D3. Between the take-out above and the write-back below
+    // the slot holds nothing, and a field or a global is a slot another thread
+    // can read: it got S0713, or it took the same body out too and one thread
+    // freed what the other was appending to. So for those two targets the whole
+    // take-out, handler and write-back happens under one hold -- the object's,
+    // or the globals' -- and every other thread's read waits for the write-back.
+    // The fast path is untouched: inside the hold the count is still one.
+    //
+    // A HANDLER CANNOT WAIT ON THIS THREAD'S WALK -- no row calls back into the
+    // machine -- so the hold ends when this function returns, on every path.
+    const bool shared = takes_receiver_out && m.globals()->shared();
+    const suit::SuitObject *object = nullptr;
+    if (shared && target == Target::Field)
+        if (const Sui *held = std::get_if<Sui>(&m.local(0)))
+            object = held->get();
+    suit::HandlerHold object_hold(object);
+    std::unique_lock<std::recursive_mutex> globals_hold;
+    if (shared && target == Target::Global) {
+        // THE ACCESS LIST FIRST, THE MUTEX SECOND -- found by T2's review. The
+        // other order let this thread sleep on `satellite.library`'s entry while
+        // holding the mutex its owner needed for its next write: a hang no wait
+        // check could see, because a mutex is not an edge in the graph.
+        if (!m.take_globals())
+            return;
+        globals_hold = m.globals()->hold();
+    }
+
+    if (takes_receiver_out) {
+        if (target == Target::Local) {
+            m.set_local(op.d, Value::nothing());
+        } else if (target == Target::Global) {
+            m.set_global(op.d, Value::nothing());
+        } else {
+            const Sui *held = std::get_if<Sui>(&m.local(0));
+            if (held != nullptr && *held && op.d < (*held)->fields.size())
+                (*held)->fields[op.d] = Value::nothing();
+        }
+    }
+
+    Value answer;
+    if (!m.call_handler(handler, count, &answer, named)) {
+        // A REFUSAL STOPS THIS WALK AND NOT THE OTHERS. Left empty, a shared
+        // field or global would be a second, false error in whichever thread
+        // read it next -- so the receiver, still on the value stack, goes back.
+        if (shared) {
+            const uint32_t given =
+                named == kNoOpList ? 0 : m.program().list_size(named);
+            Value receiver = m.value_from_top(count + given - 1);
+            if (target == Target::Global)
+                m.set_global(op.d, std::move(receiver));
+            else if (const Sui *held = std::get_if<Sui>(&m.local(0));
+                     held != nullptr && *held && op.d < (*held)->fields.size())
+                (*held)->fields[op.d] = std::move(receiver);
+        }
+        return;
+    }
+
+    m.done();
+
+    if (target == Target::PlaceLocal || target == Target::PlaceGlobal) {
+        // THE WRITE IS SKIPPED WHEN THE ANSWER IS NOTHING, and that is the
+        // interrupt contract rather than a convenience: a Ctrl-C at the
+        // prompt answers nothing and the walk stops at the next boundary --
+        // overwriting the place on the way out would destroy a value the
+        // person cancelled INTO. A real empty line is an empty string, not
+        // nothing, so return-pressed still writes. And the expression yields
+        // nothing always -- "writes a place and returns nothing" -- with
+        // S1003 refusing at compile every position that could read it.
+        if (!answer.is_nothing()) {
+            if (target == Target::PlaceLocal)
+                m.set_local(op.d, std::move(answer));
+            else
+                m.set_global(op.d, std::move(answer));
+        }
+        m.push_value(Value::nothing());
+        return;
+    }
+
+    if (handler->mutates) {
+        if (target == Target::Local) {
+            m.set_local(op.d, answer);
+        } else if (target == Target::Field) {
+            // THE GUARD IS op_field's GUARD AND IS NOT DEFENSIVE. Slot 0 holds
+            // the receiver because a method can only be entered through a call
+            // that pushed one, so a non-suit here is a miscompile rather than a
+            // program's mistake -- and the alternative is dereferencing
+            // whatever is there.
+            // `const Sui *` AND THE MUTATION IS STILL LEGAL, which is
+            // op_field_store's trick one file over: the handle is const, the
+            // object it points at is not. That IS reference semantics -- the
+            // slot is not being rewritten, the thing in it is being changed,
+            // and every other name holding that object sees it.
+            const Sui *held = std::get_if<Sui>(&m.local(0));
+            if (held == nullptr || !*held || op.d >= (*held)->fields.size()) {
+                m.refuse(errors::make<errors::Code::EVAL_NOT_BUILT>(
+                    m.span_of(m.here()),
+                    "a method on a field outside a spacesuit method",
+                    "no milestone -- resolve puts the receiver at slot 0"));
+                return;
+            }
+            (*held)->fields[op.d] = answer;
+        } else {
+            m.set_global(op.d, answer);
+        }
+    }
+    m.push_value(std::move(answer));
+}
+
+} // namespace
+
+// A call given named options -- M30. `a` is the dispatch op it wraps and `b`
+// the names, as text indices. It opens the record before the wrapped op runs
+// and closes it after, and the wrapped op's answer is the answer.
+void op_options(Machine &m, const Op &op, uint32_t step)
+{
+    if (step == 0) {
+        m.again(1);
+        m.open_options(op.a, op.b);
+        m.push(op.a);
+        return;
+    }
+    m.close_options();
+    m.done();
+}
+
+void op_dispatch(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::None);
+}
+
+void op_method(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::Local);
+}
+
+void op_method_global(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::Global);
+}
+
+// A METHOD ON A FIELD OF THE SPACESUIT THIS METHOD BELONGS TO -- M26.
+// `class_dna.append(x)` inside one of the suit's own capsules, which is how
+// every suit in the author's infinity_data_main.satl is written and what a
+// spacesuit is FOR: a list nobody outside can reach, changed by the capsules
+// that own it. Without this the call compiled to a bare dispatch with no
+// receiver and answered S0718 -- "`append` is a method and is asked on a
+// value" -- six frames into the program.
+void op_method_field(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::Field);
+}
+
+void op_place(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::PlaceLocal);
+}
+
+void op_place_global(Machine &m, const Op &op, uint32_t step)
+{
+    dispatch(m, op, step, Target::PlaceGlobal);
+}
+
+} // namespace eval
+} // namespace satellite

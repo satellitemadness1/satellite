@@ -1,0 +1,60 @@
+// M7 -- DESIGN section 7. Every name in this file resolves to a slot, a
+// capsule, or a number in the numbering, and `satl --resolve frames.satl`
+// is what shows which.
+
+satellite.include(satellite)
+
+// The failure section 7.1 records: with one slot per local for the whole
+// program, this returns 1 for EVERY input -- 1, 2, 3, 5 and 10 all yield 1,
+// because the base case's write is the last one standing. A frame per call is
+// what makes it right, and the frame is decided here rather than at run time.
+satellite.capsule factorial(satellite.variable.number of)
+{
+    satellite.statement.if (of < 2)
+    {
+        satellite.return(1)
+    }
+
+    satellite.return(of * factorial(of - 1))
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    announce("this machine says it has:")
+
+    satellite.console.display(arguments.machine.cores)
+    satellite.console.display(arguments.machine.threads)
+
+    satellite.console.display(factorial(10))
+
+    // Section 7.4: this takes a FRESH slot rather than writing over the one
+    // above it, and `--resolve` shows both. A spacesuit is a reference type,
+    // so reusing the slot would leave every handle taken to the first
+    // instance pointing at the second.
+    satellite.variable.number counter = 1
+    satellite.variable.number counter = 2
+
+    satellite.console.display(counter)
+
+    // WORD_NUMBERS section 1.5: the option is a literal, so this is not
+    // sort(direction) at 1 4 2 4 -- it folds to sort_down() at 1 4 2 5 at
+    // resolve, and the .satc still reads "down".
+    satellite.container.list<satellite.variable.number> counts
+    counts.append(counter)
+    counts.sort("down")
+
+    satellite.console.display(counts.size)
+
+    satellite.return(satellite)
+}
+
+// Declared AFTER the capsule that calls it, which is why resolve runs every
+// capsule name before any capsule body -- section 7.3. A single-pass recursive
+// descent parser cannot do this at all, and that is the reason resolve is a
+// separate pass rather than something the parser does on its way past.
+satellite.capsule announce(satellite.variable.string what)
+{
+    satellite.console.display(what)
+
+    satellite.return()
+}

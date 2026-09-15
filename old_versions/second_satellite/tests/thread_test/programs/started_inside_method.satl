@@ -1,0 +1,57 @@
+satellite.include(satellite)
+
+// Found by T2's review: `c.run()` starts the program's FIRST thread from inside
+// a method of `c`, and that thread calls `c.bump()` while run() keeps counting.
+// run() was entered before any thread existed, so it was never put on the
+// access list and the two threads' increments raced. T2: the program is shared
+// from its first line, so run() holds `c` for its whole call -- the worker's
+// bumps wait until run() returns, and the count is exact.
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number count = 0
+    }
+    satellite.public
+    {
+        satellite.capsule bump()
+        {
+            count = count + 1
+        }
+        satellite.capsule run(satellite.variable.thread worker)
+        {
+            worker.start()
+            satellite.variable.number i = 0
+            satellite.statement.for (i = 0; i < 20000; i = i + 1)
+            {
+                count = count + 1
+            }
+        }
+        satellite.capsule get() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(count)
+        }
+    }
+}
+
+satellite.capsule hammer(counter c) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number i = 0
+    satellite.statement.for (i = 0; i < 20000; i = i + 1)
+    {
+        c.bump()
+    }
+    satellite.return(0)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    counter c
+    satellite.variable.thread w = satellite.thread.new(hammer(c))
+    c.run(w)
+    w.join()
+    satellite.variable.number got = c.get()
+    satellite.console.display("count " + got.to_string() + " of 40000")
+    satellite.return(satellite)
+}

@@ -1,0 +1,31 @@
+satellite.include(satellite)
+
+satellite.capsule slow() satellite.returns(satellite.variable.number)
+{
+    satellite.time.sleep(0.2)
+    satellite.return(7)
+}
+
+satellite.capsule starter(satellite.variable.thread t) satellite.returns(satellite.variable.number)
+{
+    t.start()
+    satellite.return(1)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.number round = 0
+    satellite.statement.for (round = 0; round < 300; round = round + 1)
+    {
+        satellite.variable.thread work = satellite.thread.new(slow())
+        satellite.variable.thread a = satellite.thread.new(starter(work))
+        satellite.variable.thread b = satellite.thread.new(starter(work))
+        a.start()
+        b.start()
+        a.join()
+        b.join()
+        work.join()
+    }
+    satellite.console.display("started")
+    satellite.return(satellite)
+}

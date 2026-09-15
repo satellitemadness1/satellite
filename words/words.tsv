@@ -1,0 +1,364 @@
+1	satellite	1
+1 1	satellite.include	1 1
+1 1 0	satellite.include()	1 1 0
+1 1 1	satellite.include(satellite)	1 1 1
+1 1 2	satellite.include(spaceship)	1 1 2
+1 2	satellite.capsule	1 2
+1 2 0	satellite.capsule()	1 2 0
+1 2 1	satellite.capsule.launch	1 2 1
+1 3	satellite.main	1 3
+1 3 0	satellite.main()	1 3 0
+1 4	satellite.container	1 4
+1 4 0	satellite.container()	1 4 0
+1 4 1	satellite.container.map	1 4 1
+1 4 1 0	satellite.container.map()	1 4 1 0
+1 4 1 1	satellite.container.map.set(k, v)	1 4 1 1
+1 4 1 2	satellite.container.map.get(k)	1 4 1 2
+1 4 1 3	satellite.container.map.has(k)	1 4 1 3
+1 4 1 4	satellite.container.map.size	1 4 1 4
+1 4 1 5	satellite.container.map.empty	1 4 1 5
+1 4 1 6	satellite.container.map.clear	1 4 1 6
+1 4 1 7	satellite.container.map.remove(k)	1 4 1 7
+1 4 1 8	satellite.container.map.keys	1 4 1 8
+1 4 1 9	satellite.container.map.values	1 4 1 9
+1 4 1 10	satellite.container.map.search(pattern)	1 4 1 10
+1 4 2	satellite.container.list	1 4 2
+1 4 2 0	satellite.container.list()	1 4 2 0
+1 4 2 1	satellite.container.list.append	1 4 2 1
+1 4 2 2	satellite.container.list.size	1 4 2 2
+1 4 2 3	satellite.container.list.sort()	1 4 2 3
+1 4 2 4	satellite.container.list.sort(direction)	1 4 2 4
+1 4 2 5	satellite.container.list.sort_down()	1 4 2 5
+1 4 2 6	satellite.container.list.sort_down(key)	1 4 2 6
+1 4 2 7	satellite.container.list.sort_up(key)	1 4 2 7
+1 4 2 8	satellite.container.list.contains(x)	1 4 2 8
+1 4 2 9	satellite.container.list.index_of(x)	1 4 2 9
+1 4 2 10	satellite.container.list.empty	1 4 2 10
+1 4 2 11	satellite.container.list.clear	1 4 2 11
+1 4 2 12	satellite.container.list.first	1 4 2 12
+1 4 2 13	satellite.container.list.last	1 4 2 13
+1 4 2 14	satellite.container.list.truncate(n)	1 4 2 14
+1 4 2 15	satellite.container.list.reserve(n)	1 4 2 15
+1 4 2 16	satellite.container.list.remove_first()	1 4 2 16
+1 4 2 17	satellite.container.list.remove_last()	1 4 2 17
+1 4 2 18	satellite.container.list.remove_at(n)	1 4 2 18
+1 4 2 19	satellite.container.list.remove(x)	1 4 2 19
+1 4 2 20	satellite.container.list.insert(n, x)	1 4 2 20
+1 4 2 21	satellite.container.list.join(separator)	1 4 2 21
+1 4 2 22	satellite.container.list.reverse	1 4 2 22
+1 4 2 23	satellite.container.list.sum	1 4 2 23
+1 4 2 24	satellite.container.list.max	1 4 2 24
+1 4 2 25	satellite.container.list.min	1 4 2 25
+1 4 2 26	satellite.container.list.search(pattern)	1 4 2 26
+1 4 3	satellite.container.arguments	1 4 3
+1 4 3 1	satellite.container.arguments.length	1 4 3 1
+1 4 3 2	satellite.container.arguments.count	1 4 3 2
+1 4 3 3	satellite.container.arguments.keys	1 4 3 3
+1 4 3 4	satellite.container.arguments.to_string	1 4 3 4
+1 4 3 5	satellite.container.arguments.lines	1 4 3 5
+1 4 3 6	satellite.container.arguments.has(k)	1 4 3 6
+1 4 3 7	satellite.container.arguments.get(k)	1 4 3 7
+1 4 3 8	satellite.container.arguments.first	1 4 3 8
+1 4 3 9	satellite.container.arguments.last	1 4 3 9
+1 4 3 10	satellite.container.arguments.contains(x)	1 4 3 10
+1 4 4	satellite.container.result	1 4 4
+1 5	satellite.console	1 5
+1 5 0	satellite.console()	1 5 0
+1 5 1	satellite.console.display	1 5 1
+1 5 2	satellite.console.input()	1 5 2
+1 5 3	satellite.console.input(prompt)	1 5 3
+1 5 4	satellite.console.input(prompt, target)	1 5 4
+1 5 5	satellite.console.typed()	1 5 5
+1 5 6	satellite.console.width	1 5 6
+1 5 7	satellite.console.height	1 5 7
+1 5 8	satellite.console.clear()	1 5 8
+1 5 9	satellite.console.home()	1 5 9
+1 6	satellite.variable	1 6
+1 6 0	satellite.variable()	1 6 0
+1 6 1	satellite.variable.string	1 6 1
+1 6 1 0	satellite.variable.string()	1 6 1 0
+1 6 1 1	satellite.variable.string.size	1 6 1 1
+1 6 1 2	satellite.variable.string.empty	1 6 1 2
+1 6 1 3	satellite.variable.string.find(x)	1 6 1 3
+1 6 1 4	satellite.variable.string.contains(x)	1 6 1 4
+1 6 1 5	satellite.variable.string.substring(start, end)	1 6 1 5
+1 6 1 6	satellite.variable.string.starts_with(x)	1 6 1 6
+1 6 1 7	satellite.variable.string.ends_with(x)	1 6 1 7
+1 6 1 8	satellite.variable.string.lower	1 6 1 8
+1 6 1 9	satellite.variable.string.upper	1 6 1 9
+1 6 1 10	satellite.variable.string.split(separator)	1 6 1 10
+1 6 1 11	satellite.variable.string.trim	1 6 1 11
+1 6 1 12	satellite.variable.string.replace(a, b)	1 6 1 12
+1 6 1 13	satellite.variable.string.to_number	1 6 1 13
+1 6 1 14	satellite.variable.string.append(x)	1 6 1 14
+1 6 1 15	satellite.variable.string.clear	1 6 1 15
+1 6 1 16	satellite.variable.string.at(n)	1 6 1 16
+1 6 1 17	satellite.variable.string.resolved	1 6 1 17
+1 6 1 18	satellite.variable.string(x)	1 6 1 18
+1 6 1 19	satellite.variable.string.string	1 6 1 19
+1 6 1 20	satellite.variable.string.number	1 6 1 20
+1 6 1 21	satellite.variable.string.binary	1 6 1 21
+1 6 1 22	satellite.variable.string.hex	1 6 1 22
+1 6 2	satellite.variable.file	1 6 2
+1 6 2 0	satellite.variable.file()	1 6 2 0
+1 6 2 1	satellite.variable.file.new	1 6 2 1
+1 6 2 2	satellite.variable.file.open	1 6 2 2
+1 6 2 3	satellite.variable.file.read_line	1 6 2 3
+1 6 2 4	satellite.variable.file.write_line(s)	1 6 2 4
+1 6 2 5	satellite.variable.file.read_all	1 6 2 5
+1 6 2 6	satellite.variable.file.close	1 6 2 6
+1 6 2 7	satellite.variable.file.exists	1 6 2 7
+1 6 2 8	satellite.variable.file.ok	1 6 2 8
+1 6 2 9	satellite.variable.file.path	1 6 2 9
+1 6 2 10	satellite.variable.file.error	1 6 2 10
+1 6 2 11	satellite.variable.file.write(x)	1 6 2 11
+1 6 3	satellite.variable.time	1 6 3
+1 6 3 0	satellite.variable.time()	1 6 3 0
+1 6 4	satellite.variable.number	1 6 4
+1 6 4 0	satellite.variable.number()	1 6 4 0
+1 6 4 1	satellite.variable.number.shift_left(n)	1 6 4 1
+1 6 4 2	satellite.variable.number.max(a, b)	1 6 4 2
+1 6 4 3	satellite.variable.number.min(a, b)	1 6 4 3
+1 6 4 4	satellite.variable.number.abs(a)	1 6 4 4
+1 6 4 5	satellite.variable.number.clamp(a, low, high)	1 6 4 5
+1 6 4 6	satellite.variable.number.to_string	1 6 4 6
+1 6 4 7	satellite.variable.number.floor	1 6 4 7
+1 6 4 8	satellite.variable.number.ceil	1 6 4 8
+1 6 4 9	satellite.variable.number.round	1 6 4 9
+1 6 4 10	satellite.variable.number.power(a, b)	1 6 4 10
+1 6 4 11	satellite.variable.number.shift_right(n)	1 6 4 11
+1 6 4 12	satellite.variable.number.modulus(a, b)	1 6 4 12
+1 6 4 13	satellite.variable.number.truncate(a)	1 6 4 13
+1 6 4 14	satellite.variable.number.sqrt(a)	1 6 4 14
+1 6 4 15	satellite.variable.number.digits	1 6 4 15
+1 6 4 16	satellite.variable.number(x)	1 6 4 16
+1 6 4 17	satellite.variable.number.string	1 6 4 17
+1 6 4 18	satellite.variable.number.number	1 6 4 18
+1 6 4 19	satellite.variable.number.binary	1 6 4 19
+1 6 4 20	satellite.variable.number.hex	1 6 4 20
+1 6 5	satellite.variable.binary	1 6 5
+1 6 5 0	satellite.variable.binary()	1 6 5 0
+1 6 5 1	satellite.variable.binary.to_number	1 6 5 1
+1 6 5 2	satellite.variable.binary.width	1 6 5 2
+1 6 5 3	satellite.variable.binary.to_string	1 6 5 3
+1 6 5 4	satellite.variable.binary.as_number	1 6 5 4
+1 6 5 5	satellite.variable.binary.digits	1 6 5 5
+1 6 5 6	satellite.variable.binary.to_hex	1 6 5 6
+1 6 5 7	satellite.variable.binary(x)	1 6 5 7
+1 6 5 8	satellite.variable.binary.string	1 6 5 8
+1 6 5 9	satellite.variable.binary.number	1 6 5 9
+1 6 5 10	satellite.variable.binary.binary	1 6 5 10
+1 6 5 11	satellite.variable.binary.hex	1 6 5 11
+1 6 5 12	satellite.variable.binary.clear	1 6 5 12
+1 6 6	satellite.variable.bool	1 6 6
+1 6 7	satellite.variable.date	1 6 7
+1 6 8	satellite.variable.duration	1 6 8
+1 6 9	satellite.variable.expression	1 6 9
+1 6 10	satellite.variable.float	1 6 10
+1 6 10 0	satellite.variable.float()	1 6 10 0
+1 6 10 1	satellite.variable.float.to_string	1 6 10 1
+1 6 10 2	satellite.variable.float.string	1 6 10 2
+1 6 10 3	satellite.variable.float.number	1 6 10 3
+1 6 10 4	satellite.variable.float.binary	1 6 10 4
+1 6 10 5	satellite.variable.float.hex	1 6 10 5
+1 6 11	satellite.variable.hex	1 6 11
+1 6 11 0	satellite.variable.hex()	1 6 11 0
+1 6 11 1	satellite.variable.hex.to_number	1 6 11 1
+1 6 11 2	satellite.variable.hex.width	1 6 11 2
+1 6 11 3	satellite.variable.hex.to_string	1 6 11 3
+1 6 11 4	satellite.variable.hex.digits	1 6 11 4
+1 6 11 5	satellite.variable.hex.to_binary	1 6 11 5
+1 6 11 6	satellite.variable.hex(x)	1 6 11 6
+1 6 11 7	satellite.variable.hex.string	1 6 11 7
+1 6 11 8	satellite.variable.hex.number	1 6 11 8
+1 6 11 9	satellite.variable.hex.binary	1 6 11 9
+1 6 11 10	satellite.variable.hex.hex	1 6 11 10
+1 6 12	satellite.variable.network	1 6 12
+1 6 13	satellite.variable.thread	1 6 13
+1 6 13 0	satellite.variable.thread()	1 6 13 0
+1 6 13 1	satellite.variable.thread.start()	1 6 13 1
+1 6 13 2	satellite.variable.thread.join()	1 6 13 2
+1 6 14	satellite.variable.variant	1 6 14
+1 6 14 0	satellite.variable.variant()	1 6 14 0
+1 6 14 1	satellite.variable.variant.holding	1 6 14 1
+1 6 14 2	satellite.variable.variant.holds(x)	1 6 14 2
+1 6 14 3	satellite.variable.variant.held	1 6 14 3
+1 6 14 4	satellite.variable.variant.clear	1 6 14 4
+1 6 15	satellite.variable.capsule	1 6 16
+1 7	satellite.random	1 7
+1 7 0	satellite.random()	1 7 0
+1 7 1	satellite.random.fast()	1 7 1
+1 7 2	satellite.random.normal()	1 7 2
+1 7 3	satellite.random.ultra()	1 7 3
+1 7 4	satellite.random.fast(digits)	1 7 4
+1 7 5	satellite.random.fast(min, max)	1 7 5
+1 7 6	satellite.random.fast(min, max, step)	1 7 6
+1 7 7	satellite.random.normal(digits)	1 7 7
+1 7 8	satellite.random.normal(min, max)	1 7 8
+1 7 9	satellite.random.normal(min, max, step)	1 7 9
+1 7 10	satellite.random.ultra(digits)	1 7 10
+1 7 11	satellite.random.ultra(min, max)	1 7 11
+1 7 12	satellite.random.ultra(min, max, step)	1 7 12
+1 7 13	satellite.random.seeded(seed)	1 7 13
+1 7 14	satellite.random.seeded(min, max)	1 7 14
+1 7 15	satellite.random.seeded(min, max, step)	1 7 15
+1 7 16	satellite.random.seeded()	1 7 16
+1 8	satellite.file	1 8
+1 8 0	satellite.file()	1 8 0
+1 8 1	satellite.file.new(path)	1 8 1
+1 8 2	satellite.file.open(path, mode)	1 8 2
+1 8 3	satellite.file.clear(path)	1 8 3
+1 8 4	satellite.file.new(path, mode)	1 8 4
+1 8 5	satellite.file.exists(path)	1 8 5
+1 9	satellite.time	1 9
+1 9 0	satellite.time()	1 9 0
+1 9 1	satellite.time.now	1 9 1
+1 9 2	satellite.time.new	1 9 2
+1 9 3	satellite.time.sleep(n)	1 9 3
+1 9 4	satellite.time.sleep(n, unit)	1 9 4
+1 10	satellite.spacesuit	1 10
+1 10 0	satellite.spacesuit()	1 10 0
+1 11	satellite.protected	1 11
+1 11 0	satellite.protected()	1 11 0
+1 12	satellite.public	1 12
+1 12 0	satellite.public()	1 12 0
+1 13	satellite.statement	1 13
+1 13 0	satellite.statement()	1 13 0
+1 13 1	satellite.statement.if	1 13 1
+1 13 2	satellite.statement.for	1 13 2
+1 13 3	satellite.statement.while	1 13 3
+1 13 4	satellite.statement.else	1 13 4
+1 14	satellite.library	1 14
+1 14 0	satellite.library()	1 14 0
+1 14 1	satellite.library.main	1 14 1
+1 14 1 0	satellite.library.main()	1 14 1 0
+1 14 1 1	satellite.library.main.arguments	1 14 1 1
+1 14 1 1 0	satellite.library.main.arguments()	1 14 1 1 0
+1 14 1 1 1	satellite.library.main.arguments.machine	1 14 1 1 1
+1 14 1 1 1 0	satellite.library.main.arguments.machine()	1 14 1 1 1 0
+1 14 1 1 1 1	satellite.library.main.arguments.machine.cores	1 14 1 1 1 1
+1 14 1 1 1 2	satellite.library.main.arguments.machine.cpu	1 14 1 1 1 2
+1 14 1 1 1 3	satellite.library.main.arguments.machine.threads	1 14 1 1 1 3
+1 14 1 1 1 4	satellite.library.main.arguments.machine.architecture	1 14 1 1 1 4
+1 14 1 1 1 5	satellite.library.main.arguments.machine.byte_order	1 14 1 1 1 5
+1 14 1 1 1 6	satellite.library.main.arguments.machine.page_size	1 14 1 1 1 6
+1 14 1 1 1 7	satellite.library.main.arguments.machine.pointer_bits	1 14 1 1 1 7
+1 14 1 1 2	satellite.library.main.arguments.memory	1 14 1 1 2
+1 14 1 1 2 0	satellite.library.main.arguments.memory()	1 14 1 1 2 0
+1 14 1 1 2 1	satellite.library.main.arguments.memory.total	1 14 1 1 2 1
+1 14 1 1 3	satellite.library.main.arguments.username	1 14 1 1 3
+1 14 1 1 4	satellite.library.main.arguments.system	1 14 1 1 4
+1 14 1 1 4 0	satellite.library.main.arguments.system()	1 14 1 1 4 0
+1 14 1 1 4 1	satellite.library.main.arguments.system.name	1 14 1 1 4 1
+1 14 1 1 4 2	satellite.library.main.arguments.system.kernel	1 14 1 1 4 2
+1 14 1 1 4 3	satellite.library.main.arguments.system.kernel_version	1 14 1 1 4 3
+1 14 1 1 4 4	satellite.library.main.arguments.system.distribution	1 14 1 1 4 4
+1 14 1 1 4 5	satellite.library.main.arguments.system.distribution_id	1 14 1 1 4 5
+1 14 1 1 4 6	satellite.library.main.arguments.system.distribution_version	1 14 1 1 4 6
+1 14 1 1 4 7	satellite.library.main.arguments.system.hostname	1 14 1 1 4 7
+1 14 1 1 5	satellite.library.main.arguments.build	1 14 1 1 5
+1 14 1 1 5 0	satellite.library.main.arguments.build()	1 14 1 1 5 0
+1 14 1 1 5 1	satellite.library.main.arguments.build.compiler	1 14 1 1 5 1
+1 14 1 1 5 2	satellite.library.main.arguments.build.compiler_version	1 14 1 1 5 2
+1 14 1 1 5 3	satellite.library.main.arguments.build.standard	1 14 1 1 5 3
+1 14 1 1 5 4	satellite.library.main.arguments.build.flags	1 14 1 1 5 4
+1 14 1 1 5 5	satellite.library.main.arguments.build.make	1 14 1 1 5 5
+1 14 1 1 5 6	satellite.library.main.arguments.build.standard_library	1 14 1 1 5 6
+1 14 1 1 5 7	satellite.library.main.arguments.build.c_library	1 14 1 1 5 7
+1 14 1 1 5 8	satellite.library.main.arguments.build.built	1 14 1 1 5 8
+1 14 1 1 6	satellite.library.main.arguments.interpreter	1 14 1 1 6
+1 14 1 1 6 0	satellite.library.main.arguments.interpreter()	1 14 1 1 6 0
+1 14 1 1 6 1	satellite.library.main.arguments.interpreter.version	1 14 1 1 6 1
+1 14 1 1 6 2	satellite.library.main.arguments.interpreter.library_path	1 14 1 1 6 2
+1 14 1 1 6 3	satellite.library.main.arguments.interpreter.library_path_source	1 14 1 1 6 3
+1 14 1 1 7	satellite.library.main.arguments.process	1 14 1 1 7
+1 14 1 1 7 0	satellite.library.main.arguments.process()	1 14 1 1 7 0
+1 14 1 1 7 1	satellite.library.main.arguments.process.id	1 14 1 1 7 1
+1 14 1 1 7 2	satellite.library.main.arguments.process.parent	1 14 1 1 7 2
+1 14 1 1 8	satellite.library.main.arguments.session	1 14 1 1 8
+1 14 1 1 8 0	satellite.library.main.arguments.session()	1 14 1 1 8 0
+1 14 1 1 8 1	satellite.library.main.arguments.session.shell	1 14 1 1 8 1
+1 14 1 1 8 2	satellite.library.main.arguments.session.terminal	1 14 1 1 8 2
+1 14 1 1 8 3	satellite.library.main.arguments.session.language	1 14 1 1 8 3
+1 14 1 1 8 4	satellite.library.main.arguments.session.home	1 14 1 1 8 4
+1 14 1 1 8 5	satellite.library.main.arguments.session.directory	1 14 1 1 8 5
+1 14 1 1 9	satellite.library.main.arguments.length	1 14 1 1 9
+1 14 2	satellite.library.system	1 14 2
+1 14 2 0	satellite.library.system()	1 14 2 0
+1 14 2 1	satellite.library.system.division_digits	1 14 2 1
+1 14 2 2	satellite.library.system.max_depth	1 14 2 2
+1 14 2 3	satellite.library.system.min_free_mb	1 14 2 3
+1 14 2 4	satellite.library.system.float_digits	1 14 2 4
+1 15	satellite.return	1 15
+1 15 0	satellite.return()	1 15 0
+1 15 1	satellite.return(satellite)	1 15 1
+1 15 2	satellite.return(value)	1 15 2
+1 16	satellite.analyze	1 16
+1 17	satellite.bool	1 17
+1 17 0	satellite.bool()	1 17 0
+1 17 1	satellite.bool.false	1 17 1
+1 17 2	satellite.bool.true	1 17 2
+1 18	satellite.directory	1 18
+1 18 0	satellite.directory()	1 18 0
+1 18 1	satellite.directory.change(d)	1 18 1
+1 18 2	satellite.directory.current()	1 18 2
+1 18 3	satellite.directory.exists(d)	1 18 3
+1 18 4	satellite.directory.list()	1 18 4
+1 18 5	satellite.directory.list(d)	1 18 5
+1 19	satellite.help	1 19
+1 19 0	satellite.help()	1 19 0
+1 19 1	satellite.help(x)	1 19 1
+1 20	satellite.network	1 20
+1 20 0	satellite.network()	1 20 0
+1 20 1	satellite.network.http(port)	1 20 1
+1 20 2	satellite.network.https(host, port)	1 20 2
+1 20 3	satellite.network.new	1 20 3
+1 20 4	satellite.network.open	1 20 4
+1 20 5	satellite.network.receive	1 20 5
+1 20 6	satellite.network.http(host, port)	1 20 6
+1 20 7	satellite.network.https(port, cert, key)	1 20 7
+1 21	satellite.returns	1 21
+1 22	satellite.system	1 22
+1 22 0	satellite.system()	1 22 0
+1 22 1	satellite.system.delete(x)	1 22 1
+1 22 2	satellite.system.environment	1 22 2
+1 22 3	satellite.system.home	1 22 3
+1 22 4	satellite.system.memory	1 22 4
+1 22 4 0	satellite.system.memory()	1 22 4 0
+1 22 4 1	satellite.system.memory.bit	1 22 4 1
+1 22 4 2	satellite.system.memory.frequency	1 22 4 2
+1 22 4 3	satellite.system.memory.main()	1 22 4 3
+1 22 4 4	satellite.system.memory.swap	1 22 4 4
+1 22 4 4 0	satellite.system.memory.swap()	1 22 4 4 0
+1 22 4 4 1	satellite.system.memory.swap.free()	1 22 4 4 1
+1 22 4 4 2	satellite.system.memory.swap.total()	1 22 4 4 2
+1 22 4 4 3	satellite.system.memory.swap.used	1 22 4 4 3
+1 22 4 4 4	satellite.system.memory.swap.free(unit)	1 22 4 4 4
+1 22 4 4 5	satellite.system.memory.swap.total(unit)	1 22 4 4 5
+1 22 4 4 6	satellite.system.memory.swap(unit)	1 22 4 4 6
+1 22 4 4 7	satellite.system.memory.swap.used(unit)	1 22 4 4 7
+1 22 4 5	satellite.system.memory.this	1 22 4 5
+1 22 4 5 0	satellite.system.memory.this()	1 22 4 5 0
+1 22 4 5 1	satellite.system.memory.this.available()	1 22 4 5 1
+1 22 4 5 2	satellite.system.memory.this.free()	1 22 4 5 2
+1 22 4 5 3	satellite.system.memory.this.used	1 22 4 5 3
+1 22 4 5 4	satellite.system.memory.this.available(unit)	1 22 4 5 4
+1 22 4 5 5	satellite.system.memory.this.free(unit)	1 22 4 5 5
+1 22 4 5 6	satellite.system.memory.this.used(unit)	1 22 4 5 6
+1 22 4 6	satellite.system.memory.free()	1 22 4 6
+1 22 4 7	satellite.system.memory.total()	1 22 4 7
+1 22 4 8	satellite.system.memory.used()	1 22 4 8
+1 22 4 9	satellite.system.memory.main(unit)	1 22 4 9
+1 22 4 10	satellite.system.memory.free(unit)	1 22 4 10
+1 22 4 11	satellite.system.memory.total(unit)	1 22 4 11
+1 22 4 12	satellite.system.memory.used(unit)	1 22 4 12
+1 22 5	satellite.system.threshold()	1 22 5
+1 22 6	satellite.system.threshold(n)	1 22 6
+1 22 7	satellite.system.persist()	1 22 7
+1 22 8	satellite.system.persist(x)	1 22 8
+1 22 9	satellite.system.environment(name)	1 22 9
+1 23	satellite.thread	1 23
+1 23 0	satellite.thread()	1 23 0
+1 23 1	satellite.thread.new	1 23 1
+1 24	satellite.constructor	1 25
+1 24 0	satellite.constructor()	1 25 0

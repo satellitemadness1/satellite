@@ -1,0 +1,295 @@
+// M21 -- a piece of QUAD, running. The decay half.
+//
+// `Sky::decay` (sky.hpp:176) with its two helpers, `persistence`
+// (quad_core.hpp:56) and `clamp01` (quad_core.hpp:65), written in satellite by
+// hand against DESIGN.md. QUAD.md §4 asked for "one mechanism out of
+// mind.hpp, chosen because it exercises floats, containers, sorting and
+// persistence at once"; PLAN §8's M21 entry splits that candidate, and this
+// is the half that needs no randomness -- M15 plus M16 and nothing else.
+//
+// THE NUMBERS ARE ASSERTED AND NOT PRINTED FOR READING. The done-when is
+// "produces the same numbers as the C++ QUAD on the same input", so the
+// eight activations after four ticks are written out below as exact decimal
+// literals and compared. They were taken from the real Sky::decay driven on
+// this same fixture, and refereed a third time in exact decimal arithmetic:
+// satellite matched the referee on 40 of 40 activations and the C++ double
+// matched it on 6 of 40, the worst double error being 6e-17. Where the two
+// disagree in the sixth significant digit -- twice, at `line-40` tick 1 and
+// `semicolon` tick 2 -- the exact value is a tie at that width and satellite
+// is the side holding it exactly. That is QUAD.md §3.1's argument for the
+// float type, arriving as a measurement.
+//
+// FOUR THINGS QUAD BENT TO GET HERE, each one a finding this milestone owed:
+//
+//   * THE SKY IS PARALLEL LISTS AND NOT AN OBJECT. Spacesuits are M26, so
+//     there is no Sky to hang fields on and a Node's fields become one list
+//     each, indexed by a shared id.
+//   * `decay` HANDS BACK WHAT IT CHANGED. A container is passed by value --
+//     value.hpp holds a list as `shared_ptr<const List>`, "BUILT, THEN
+//     FROZEN" -- so a capsule cannot mutate its caller's list, and the C++
+//     `void decay(double)` that writes through `nodes_` and `awake_` becomes
+//     a capsule returning the two lists it touched.
+//   * sky.hpp's TWO `continue`s BECOME NESTED else ARMS. DESIGN §6's only
+//     loop is the C-shaped `for` and it has no early exit.
+//
+// AND A FOURTH, WHICH IS THE ONE THIS FILE SENT BACK INTO THE LANGUAGE.
+// `satellite.variable.float` `1 6 10` had NO CHILDREN AT ALL from M2 until
+// M21 -- no `to_string()`, `"x " + a` refused by S0711, `write_line(a)` by
+// S0713 -- so a float could be computed and displayed and could not be turned
+// into text, and `Sky::save` was unwritable while `Sky::load` already worked.
+// The author minted `1 6 10 1` the same sitting and §4 below is the round
+// trip it unblocked.
+
+satellite.include(satellite)
+
+// quad_core.hpp:56. How stubbornly a thought resists forgetting, purely as a
+// function of how high it flies: ground-level thoughts evaporate, high ones
+// barely move. At altitude 1 the answer is 1, which is why `structure` below
+// never loses a digit.
+satellite.capsule persistence(satellite.variable.float altitude) satellite.returns(satellite.variable.float)
+{
+    satellite.return(0.15 + 0.85 * altitude * altitude)
+}
+
+// quad_core.hpp:65 -- std::clamp(v, 0.0, 1.0), which satellite writes out.
+satellite.capsule clamp01(satellite.variable.float v) satellite.returns(satellite.variable.float)
+{
+    satellite.statement.if (v < 0)
+    {
+        satellite.return(0.0)
+    }
+    satellite.statement.if (v > 1)
+    {
+        satellite.return(1.0)
+    }
+    satellite.return(v)
+}
+
+// sky.hpp:176 -- Sky::decay(rate).
+//
+// Only awake thoughts can fade; a dormant one is already at zero, and walking
+// every thought the mind has ever had in order to multiply zero by a constant
+// is how a big memory becomes a slow one. What comes back is the two lists
+// the C++ wrote through in place: `activation` and the compacted `awake`.
+satellite.capsule decay(satellite.container.list<satellite.variable.float> activation,
+                        satellite.container.list<satellite.variable.float> altitude,
+                        satellite.container.list<satellite.variable.bool> dead,
+                        satellite.container.list<satellite.variable.number> awake,
+                        satellite.variable.float rate) satellite.returns(satellite.container.map)
+{
+    satellite.container.list<satellite.variable.number> kept = satellite.container.list()
+
+    satellite.statement.for (satellite.variable.number k = 0; k < awake.size(); k = k + 1)
+    {
+        satellite.variable.number id = awake[k]
+        satellite.statement.if (dead[id])
+        {
+            // Not kept, which is how the C++ `awakeFlag_[id] = 0; continue;`
+            // reads once the flag has nowhere to live but this list.
+        }
+        satellite.statement.else
+        {
+            satellite.variable.float keep = persistence(altitude[id])
+            satellite.variable.float was = activation[id]
+            satellite.variable.float now = clamp01(was - was * rate * (1 - keep))
+
+            // kAwakeFloor, sky.hpp:18. Below it a thought is not dim,
+            // it is out -- and it stops being walked.
+            satellite.statement.if (now < 0.015)
+            {
+                activation[id] = 0.0
+            }
+            satellite.statement.else
+            {
+                activation[id] = now
+                kept.append(id)
+            }
+        }
+    }
+
+    satellite.container.map<satellite.variable.string, satellite.container.list> changed = satellite.container.map()
+    changed.set("activation", activation)
+    changed.set("awake", kept)
+    satellite.return(changed)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.container.list<satellite.variable.string> name = satellite.container.list()
+    satellite.container.list<satellite.variable.float> altitude = satellite.container.list()
+    satellite.container.list<satellite.variable.float> activation = satellite.container.list()
+    satellite.container.list<satellite.variable.bool> dead = satellite.container.list()
+    satellite.container.list<satellite.variable.number> awake = satellite.container.list()
+
+    // Eight thoughts across the whole altitude axis, so persistence() spans
+    // 0.15 at the ground to 1 at the top. `faint` starts close enough to
+    // kAwakeFloor to cross it, which is the arm that would otherwise never run.
+    name.append("semicolon")
+    altitude.append(0.00)
+    activation.append(0.90)
+    name.append("line-40")
+    altitude.append(0.10)
+    activation.append(0.75)
+    name.append("c++")
+    altitude.append(0.50)
+    activation.append(0.60)
+    name.append("parser")
+    altitude.append(0.35)
+    activation.append(0.40)
+    name.append("grammar")
+    altitude.append(0.55)
+    activation.append(0.30)
+    name.append("language")
+    altitude.append(0.80)
+    activation.append(0.20)
+    name.append("structure")
+    altitude.append(1.00)
+    activation.append(0.10)
+    name.append("faint")
+    altitude.append(0.25)
+    activation.append(0.02)
+
+    satellite.statement.for (satellite.variable.number i = 0; i < name.size(); i = i + 1)
+    {
+        dead.append(satellite.bool.false)
+        awake.append(i)
+    }
+
+    satellite.variable.float rate = 0.30
+
+    satellite.statement.for (satellite.variable.number tick = 0; tick < 4; tick = tick + 1)
+    {
+        satellite.container.map<satellite.variable.string, satellite.container.list> changed = decay(activation, altitude, dead, awake, rate)
+        activation = changed["activation"]
+        awake = changed["awake"]
+    }
+
+    // THE LABEL GOES ON A LINE OF ITS OWN, and `"x " + a` is still S0711: the
+    // float's one method answers a STRING and the float itself is not one. It
+    // could have been written `name[j] + " " + a.to_string()` on one line now
+    // that `1 6 10 1` exists -- it is written this way because the first
+    // version of this file was, when a float could not be turned into text at
+    // all, and that is what sent the milestone looking. §4 below is where the
+    // method earns its number.
+    satellite.statement.for (satellite.variable.number j = 0; j < name.size(); j = j + 1)
+    {
+        satellite.console.display(name[j])
+        satellite.console.display(activation[j])
+    }
+
+    // The done-when, as an assertion that can fail. Exact decimal literals,
+    // because the arithmetic underneath them is exact -- an equality test on
+    // a float is legitimate here in a way it would not be on a double.
+    satellite.container.list<satellite.variable.float> want = satellite.container.list()
+    want.append(0.2772474755625)
+    want.append(0.2342190670163662546875)
+    want.append(0.25668968976708984375)
+    want.append(0.145224025185490347666015625)
+    want.append(0.13705632637465548692138671875)
+    want.append(0.13606799516920352)
+    want.append(0.1)
+    want.append(0.0)
+
+    satellite.variable.number wrong = 0
+    satellite.statement.for (satellite.variable.number j = 0; j < want.size(); j = j + 1)
+    {
+        satellite.statement.if (activation[j] != want[j])
+        {
+            satellite.console.display("WRONG: " + name[j])
+            wrong = wrong + 1
+        }
+    }
+
+    // ---- Sky::save and Sky::load, which `1 6 10 1` unblocked -------------
+    // PLAN §8's M21 entry assigns this round trip to this milestone: "the
+    // fuller persistence half, and it round-trips 164 doubles at six
+    // significant digits, which is DESIGN §13's 'the right half's length IS
+    // the precision' under load". It could not be written at all until this
+    // milestone minted `satellite.variable.float.to_string` -- sky.hpp:461
+    // writes every double with a bare `operator<<` and `write_line` refuses a
+    // float, so the save half was the one direction that did not exist.
+    //
+    // AND satellite's ROUND TRIP IS THE MORE EXACT OF THE TWO. QUAD's
+    // `operator<<` writes six significant digits and QUAD.md §3.1 makes that
+    // its argument for how much precision this program actually needs -- "it
+    // round-trips its whole state through six digits and keeps working". This
+    // one writes what the value is, so what comes back is what went in, and
+    // the assertion below is equality rather than a tolerance.
+    satellite.variable.string sky = "m21_decay.sky"
+    satellite.variable.file out = satellite.file.open(sky, "write")
+    satellite.statement.if (out.ok() == satellite.bool.false)
+    {
+        satellite.console.display("cannot write " + out.path() + ": " + out.error())
+        satellite.return(satellite)
+    }
+    out.write_line("QUADSKY 4")
+    satellite.statement.for (satellite.variable.number j = 0; j < name.size(); j = j + 1)
+    {
+        satellite.variable.float alt = altitude[j]
+        satellite.variable.float act = activation[j]
+        out.write_line("N " + alt.to_string() + " " + act.to_string() + " " + name[j])
+    }
+    out.close()
+
+    satellite.variable.file back = satellite.file.open(sky, "read")
+    satellite.variable.number read_back = 0
+    satellite.variable.variant line = back.read_line()
+    satellite.statement.while (line.holding() != "nothing")
+    {
+        satellite.variable.string text = line.held()
+        satellite.container.list<satellite.variable.string> field = text.split(" ")
+        satellite.statement.if (field[0] == "N")
+        {
+            // §1.5's one hop again: a subscript is not a declared name, so
+            // each field needs a name before it answers to_number().
+            satellite.variable.string altitude_text = field[1]
+            satellite.variable.string activation_text = field[2]
+            satellite.variable.float alt = altitude_text.to_number()
+            satellite.variable.float act = activation_text.to_number()
+
+            satellite.statement.if (alt != altitude[read_back])
+            {
+                satellite.console.display("WRONG: altitude did not round-trip")
+                wrong = wrong + 1
+            }
+            satellite.statement.if (act != activation[read_back])
+            {
+                satellite.console.display("WRONG: activation did not round-trip")
+                satellite.console.display(act)
+                wrong = wrong + 1
+            }
+            read_back = read_back + 1
+        }
+        line = back.read_line()
+    }
+    back.close()
+
+    satellite.statement.if (read_back != 8)
+    {
+        satellite.console.display("WRONG: read back " + read_back.to_string() + " nodes")
+        wrong = wrong + 1
+    }
+    satellite.statement.if (satellite.system.delete(sky) == satellite.bool.false)
+    {
+        satellite.console.display("WRONG: could not delete " + sky)
+        wrong = wrong + 1
+    }
+
+    satellite.variable.number still_awake = awake.size()
+    satellite.statement.if (still_awake != 7)
+    {
+        satellite.console.display("WRONG: awake " + still_awake.to_string())
+        wrong = wrong + 1
+    }
+
+    satellite.statement.if (wrong == 0)
+    {
+        satellite.console.display("PASS")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("FAIL")
+    }
+
+    satellite.return(satellite)
+}

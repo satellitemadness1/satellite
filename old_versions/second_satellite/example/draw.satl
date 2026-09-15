@@ -1,0 +1,438 @@
+// M21 -- a piece of QUAD, running. The draw half.
+//
+// `Rack::draw` (rack.hpp:51) and the roulette wheel it turns
+// (`Rng::pick`, quad_core.hpp:90), written in satellite by hand against
+// DESIGN.md. PLAN §8's M21 entry carried this half as its one BLOCKER --
+// *"a seeded draw with no number"* -- and `satellite.random.seeded`
+// `1 7 13`-`1 7 16` is that number, minted here.
+//
+// WHY THIS HALF IS ASSERTED DIFFERENTLY FROM example/decay.satl's. The
+// done-when asks for "the same numbers as the C++ QUAD on the same input",
+// and for a mechanism with a generator in it that is only meaningful where
+// the generators agree -- which they cannot: QUAD's is `std::mt19937` and
+// satellite's is PCG. So the claim splits, and only one half of it is a
+// comparison:
+//
+//   * THE DETERMINISTIC CORE IS COMPARED AND AGREES. The annealing exponent,
+//     the weights, and the wheel's choice for a GIVEN uniform draw are
+//     arithmetic rather than chance. Measured against the real rack.hpp on
+//     the same fixture: all four exponents agree and satellite's are EXACT
+//     where the double's are not -- 4.65 against 4.6500000000000004 -- and
+//     all TWENTY wheel choices are identical.
+//   * THE STREAM IS DEMONSTRATED AND NOT COMPARED. What QUAD needs from a
+//     generator is not any particular sequence but invariant 8: the same seed
+//     replays. quad_core.hpp:77 says why -- "the ability to see it twice is
+//     the difference between science and staring" -- and until `1 7 13` there
+//     was no way to say it in this language at all.
+//
+// AND ONE PLACE WHERE THE DOUBLE IS THE MORE PRECISE OF THE TWO, which is the
+// only such place either half of this milestone found. `settle`'s urgency is
+// a millionth, and a millionth to the 4.65 is about 1.26e-28; `float_digits`
+// is 34 DECIMAL PLACES rather than 34 significant digits, so at that magnitude
+// only SIX significant digits are left, against a double's fifteen. DESIGN
+// §8.6's "R's digit count IS the precision" is exactly this, seen from
+// underneath. It changes no choice here -- that weight is 1.9e-28 of the
+// total, so discarding it entirely would move nothing -- and it is written
+// down because QUAD's weights span 28 orders of magnitude by design and the
+// next mechanism to lean on one might not be so lucky.
+
+satellite.include(satellite)
+
+satellite.capsule clamp01(satellite.variable.number v) satellite.returns(satellite.variable.number)
+{
+    satellite.statement.if (v < 0)
+    {
+        satellite.return(0)
+    }
+    satellite.statement.if (v > 1)
+    {
+        satellite.return(1)
+    }
+    satellite.return(v)
+}
+
+// rack.hpp:42. One dial between a mind that thrashes and a mind that settles:
+// hot flattens the wheel so anything might run, cold sharpens it so only the
+// most urgent does. Simulated annealing, run over meaning.
+satellite.capsule rack_exponent(satellite.variable.number temperature) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number t = clamp01(temperature / 100)
+    satellite.return(0.15 + 4.5 * (1 - t))
+}
+
+// rack.hpp:56-59. pow(max(urgency, 1e-6), exp) for each impulse. The floor is
+// what stops a zero urgency taking the whole wheel out of the running.
+satellite.capsule rack_weights(satellite.container.list<satellite.variable.number> urgency,
+                               satellite.variable.number exponent) satellite.returns(satellite.container.list)
+{
+    satellite.container.list<satellite.variable.number> weights = satellite.container.list()
+    satellite.statement.for (satellite.variable.number i = 0; i < urgency.size(); i = i + 1)
+    {
+        satellite.variable.number u = urgency[i]
+        satellite.variable.number floored = u.max(0.000001)
+        weights.append(floored.power(exponent))
+    }
+    satellite.return(weights)
+}
+
+// quad_core.hpp:90's pick(), with the uniform draw HANDED IN rather than
+// taken. That is what makes the wheel testable against the C++ at all: the
+// arithmetic is the same on both sides once the chance is the same.
+// Answers weights.size() when every weight is zero, which is the caller's
+// signal that nothing here was worth choosing -- QUAD's own words.
+satellite.capsule pick_with(satellite.container.list<satellite.variable.number> weights,
+                            satellite.variable.number unit) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number total = 0
+    satellite.statement.for (satellite.variable.number i = 0; i < weights.size(); i = i + 1)
+    {
+        satellite.statement.if (weights[i] > 0)
+        {
+            total = total + weights[i]
+        }
+    }
+    satellite.statement.if (total <= 0)
+    {
+        satellite.return(weights.size())
+    }
+
+    satellite.variable.number r = unit * total
+    satellite.statement.for (satellite.variable.number i = 0; i < weights.size(); i = i + 1)
+    {
+        satellite.variable.number w = 0
+        satellite.statement.if (weights[i] > 0)
+        {
+            w = weights[i]
+        }
+        satellite.statement.if (r < w)
+        {
+            satellite.return(i)
+        }
+        r = r - w
+    }
+    satellite.variable.number size = weights.size()
+    satellite.return(size - 1)
+}
+
+// rack.hpp:51 -- Rack::draw(rng, temperature), the whole mechanism: weigh the
+// rack, turn the wheel, and TAKE the impulse off it. The removal is why this
+// hands back a map: a container is passed by value (example/decay.satl's
+// second finding), so a capsule cannot shorten its caller's list.
+satellite.capsule rack_draw(satellite.container.list<satellite.variable.string> name,
+                            satellite.container.list<satellite.variable.number> urgency,
+                            satellite.variable.number temperature) satellite.returns(satellite.container.map)
+{
+    satellite.container.map<satellite.variable.string, satellite.container.list> after = satellite.container.map()
+
+    satellite.container.list<satellite.variable.string> chosen = satellite.container.list()
+    satellite.statement.if (name.size() == 0)
+    {
+        // rack.hpp returns std::nullopt here; an empty list is how this says
+        // the same thing, and DESIGN §8.7's `nothing` is the other spelling.
+        after.set("chosen", chosen)
+        after.set("name", name)
+        after.set("urgency", urgency)
+        satellite.return(after)
+    }
+
+    satellite.variable.number exponent = rack_exponent(temperature)
+    satellite.container.list<satellite.variable.number> weights = rack_weights(urgency, exponent)
+
+    // THE ONE LINE THIS MILESTONE EXISTS FOR. Before `1 7 13` there was no
+    // fractional draw in the language at all: the three spinning tiers refuse
+    // a fraction, and dividing one whole draw by another is the thing DESIGN
+    // §11's tiers refuse to pretend to do.
+    satellite.variable.number unit = satellite.random.seeded(0, 1)
+
+    satellite.variable.number k = pick_with(weights, unit)
+    satellite.statement.if (k >= name.size())
+    {
+        k = satellite.random.seeded(0, name.size() - 1, 1)
+    }
+
+    chosen.append(name[k])
+
+    satellite.container.list<satellite.variable.string> kept_name = satellite.container.list()
+    satellite.container.list<satellite.variable.number> kept_urgency = satellite.container.list()
+    satellite.statement.for (satellite.variable.number i = 0; i < name.size(); i = i + 1)
+    {
+        satellite.statement.if (i != k)
+        {
+            kept_name.append(name[i])
+            kept_urgency.append(urgency[i])
+        }
+    }
+
+    after.set("chosen", chosen)
+    after.set("name", kept_name)
+    after.set("urgency", kept_urgency)
+    satellite.return(after)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number wrong = 0
+
+    // ---- 1. the annealing exponent, and it is EXACT -----------------------
+    // The C++ double answers 4.6500000000000004, 3.2999999999999998,
+    // 1.5000000000000002 and 0.14999999999999999 for these four.
+    satellite.container.list<satellite.variable.number> want_exp = satellite.container.list()
+    want_exp.append(4.65)
+    want_exp.append(3.3)
+    want_exp.append(1.5)
+    want_exp.append(0.15)
+
+    satellite.container.list<satellite.variable.number> temperatures = satellite.container.list()
+    temperatures.append(0)
+    temperatures.append(30)
+    temperatures.append(70)
+    temperatures.append(100)
+
+    satellite.statement.for (satellite.variable.number i = 0; i < temperatures.size(); i = i + 1)
+    {
+        satellite.variable.number got = rack_exponent(temperatures[i])
+        satellite.statement.if (got != want_exp[i])
+        {
+            satellite.console.display("WRONG exponent")
+            satellite.console.display(got)
+            wrong = wrong + 1
+        }
+    }
+
+    // and the dial is clamped at both ends, rack.hpp's clamp01
+    satellite.statement.if (rack_exponent(0 - 50) != 4.65)
+    {
+        satellite.console.display("WRONG: temperature below zero")
+        wrong = wrong + 1
+    }
+    satellite.statement.if (rack_exponent(500) != 0.15)
+    {
+        satellite.console.display("WRONG: temperature above a hundred")
+        wrong = wrong + 1
+    }
+
+    // ---- 2. the wheel, against the C++ on the same weights ---------------
+    satellite.container.list<satellite.variable.string> name = satellite.container.list()
+    satellite.container.list<satellite.variable.number> urgency = satellite.container.list()
+    name.append("look")
+    urgency.append(0.90)
+    name.append("pair")
+    urgency.append(0.55)
+    name.append("tear")
+    urgency.append(0.20)
+    name.append("climb")
+    urgency.append(0.05)
+    name.append("settle")
+    urgency.append(0.000001)
+
+    satellite.container.list<satellite.variable.number> units = satellite.container.list()
+    units.append(0)
+    units.append(0.25)
+    units.append(0.5)
+    units.append(0.75)
+    units.append(0.999999)
+
+    // Twenty choices -- five draws at each of four temperatures -- and every
+    // one of them is what rack.hpp chose on the same input.
+    satellite.container.list<satellite.variable.number> want_pick = satellite.container.list()
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(3)
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(3)
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(1)
+    want_pick.append(3)
+    want_pick.append(0)
+    want_pick.append(0)
+    want_pick.append(1)
+    want_pick.append(2)
+    want_pick.append(4)
+
+    satellite.variable.number at = 0
+    satellite.statement.for (satellite.variable.number ti = 0; ti < temperatures.size(); ti = ti + 1)
+    {
+        satellite.variable.number exponent = rack_exponent(temperatures[ti])
+        satellite.container.list<satellite.variable.number> weights = rack_weights(urgency, exponent)
+        satellite.statement.for (satellite.variable.number ui = 0; ui < units.size(); ui = ui + 1)
+        {
+            satellite.variable.number k = pick_with(weights, units[ui])
+            satellite.statement.if (k != want_pick[at])
+            {
+                satellite.console.display("WRONG pick at")
+                satellite.console.display(at)
+                wrong = wrong + 1
+            }
+            at = at + 1
+        }
+    }
+
+    // ---- 2a. the wheel's two edges, and the urgency floor ---------------
+    // ADDED AFTER MUTATION TESTING, because two mutations survived the twenty
+    // choices above: changing the urgency floor from a millionth to a
+    // hundred-thousandth, and changing the wheel's `r < w` to `r <= w`.
+    // Neither is reachable through the fixture -- `settle`'s urgency IS the
+    // floor, so the floor never fires, and no unit lands exactly on a
+    // cumulative boundary. Both are reachable by calling the two capsules
+    // directly, which is what these clauses do.
+
+    // The floor fires on a ZERO urgency, which is what stops one impulse with
+    // no urgency at all from being unpickable forever. rack.hpp:59.
+    satellite.variable.number none_at_all = 0
+    satellite.variable.number lifted = none_at_all.max(0.000001)
+    satellite.statement.if (lifted != 0.000001)
+    {
+        satellite.console.display("WRONG: the urgency floor did not lift zero")
+        wrong = wrong + 1
+    }
+    satellite.statement.if (lifted.power(2.85) != 0.000000000000000007943282347242815)
+    {
+        satellite.console.display("WRONG: the floored weight")
+        satellite.console.display(lifted.power(2.85))
+        wrong = wrong + 1
+    }
+
+    // Two weights asserted outright, which is what "the same numbers" means
+    // for this half. The C++ double answers 0.74061269464291168 and
+    // 0.18198419212137993 for these two; satellite carries them further and
+    // agrees everywhere the double has digits.
+    satellite.variable.number nine = 0.9
+    satellite.statement.if (nine.power(2.85) != 0.7406126946429116808726213519771115)
+    {
+        satellite.console.display("WRONG: look's weight at 2.85")
+        satellite.console.display(nine.power(2.85))
+        wrong = wrong + 1
+    }
+    satellite.variable.number half = 0.55
+    satellite.statement.if (half.power(2.85) != 0.1819841921213799314333145853107405)
+    {
+        satellite.console.display("WRONG: pair's weight at 2.85")
+        wrong = wrong + 1
+    }
+
+    // A ZERO WEIGHT IS SKIPPED AND NOT CHOSEN, which is the whole difference
+    // between `r < w` and `r <= w` at the first position, and the one place
+    // the two spellings disagree.
+    satellite.container.list<satellite.variable.number> edge = satellite.container.list()
+    edge.append(0)
+    edge.append(1)
+    edge.append(1)
+    satellite.statement.if (pick_with(edge, 0) != 1)
+    {
+        satellite.console.display("WRONG: a zero weight was chosen")
+        satellite.console.display(pick_with(edge, 0))
+        wrong = wrong + 1
+    }
+
+    // And an all-zero rack answers size -- QUAD's own signal that nothing
+    // here was worth choosing, quad_core.hpp:90.
+    satellite.container.list<satellite.variable.number> flat = satellite.container.list()
+    flat.append(0)
+    flat.append(0)
+    flat.append(0)
+    satellite.statement.if (pick_with(flat, 0.5) != 3)
+    {
+        satellite.console.display("WRONG: an all-zero rack did not say so")
+        wrong = wrong + 1
+    }
+
+    // ---- 3. QUAD's invariant 8, expressible at last ----------------------
+    // The same seed replays. This is the clause PLAN §8's M21 entry was
+    // blocked on, and the whole of what the fourth tier is for.
+    // AT 95 AND NOT AT A COOL TEMPERATURE, and the first draft of this file
+    // used 40 and passed the replay clause while the clause below it FAILED.
+    // At 40 the exponent is 2.85 and `look` holds 79% of the wheel, so five
+    // draws come out in urgency order whatever the seed is -- a sequence that
+    // would have been identical had the seed been ignored entirely. Hot is
+    // where the wheel is flat enough for the seed to be the thing deciding,
+    // which is the only temperature at which either clause proves anything.
+    satellite.random.seeded(20260911)
+    satellite.container.list<satellite.variable.string> first = satellite.container.list()
+    satellite.container.list<satellite.variable.string> hand = name
+    satellite.container.list<satellite.variable.number> urge = urgency
+    satellite.statement.for (satellite.variable.number i = 0; i < 5; i = i + 1)
+    {
+        satellite.container.map<satellite.variable.string, satellite.container.list> after = rack_draw(hand, urge, 95)
+        satellite.container.list<satellite.variable.string> got = after["chosen"]
+        first.append(got[0])
+        hand = after["name"]
+        urge = after["urgency"]
+    }
+    satellite.console.display("seed 20260911: " + first.join(", "))
+
+    // The rack is empty and a draw on it answers nothing.
+    satellite.container.map<satellite.variable.string, satellite.container.list> empty = rack_draw(hand, urge, 95)
+    satellite.container.list<satellite.variable.string> none = empty["chosen"]
+    satellite.statement.if (none.size() != 0)
+    {
+        satellite.console.display("WRONG: an empty rack drew something")
+        wrong = wrong + 1
+    }
+
+    satellite.random.seeded(20260911)
+    satellite.container.list<satellite.variable.string> again = satellite.container.list()
+    hand = name
+    urge = urgency
+    satellite.statement.for (satellite.variable.number i = 0; i < 5; i = i + 1)
+    {
+        satellite.container.map<satellite.variable.string, satellite.container.list> after = rack_draw(hand, urge, 95)
+        satellite.container.list<satellite.variable.string> got = after["chosen"]
+        again.append(got[0])
+        hand = after["name"]
+        urge = after["urgency"]
+    }
+
+    satellite.statement.if (first.join(", ") != again.join(", "))
+    {
+        satellite.console.display("WRONG: the same seed did not replay")
+        satellite.console.display(again.join(", "))
+        wrong = wrong + 1
+    }
+
+    // A DIFFERENT seed must give a different run, or "replays" would be true
+    // of a generator that ignored its seed entirely.
+    satellite.random.seeded(1)
+    satellite.container.list<satellite.variable.string> other = satellite.container.list()
+    hand = name
+    urge = urgency
+    satellite.statement.for (satellite.variable.number i = 0; i < 5; i = i + 1)
+    {
+        satellite.container.map<satellite.variable.string, satellite.container.list> after = rack_draw(hand, urge, 95)
+        satellite.container.list<satellite.variable.string> got = after["chosen"]
+        other.append(got[0])
+        hand = after["name"]
+        urge = after["urgency"]
+    }
+    satellite.console.display("seed 1:        " + other.join(", "))
+
+    // WHAT IS ASSERTED IS THE PROPERTY AND NOT THE SEQUENCE, deliberately.
+    // Writing `look, pair, tear, climb, settle` in here as an expected value
+    // would pin PCG's exact output into an acceptance program -- and
+    // satellite_random/random.hpp keeps the 32-bit seam generator-agnostic on
+    // purpose, with v1's splitmix32 stub as the receipt that it is
+    // replaceable. A test that froze the stream would make that replaceable
+    // thing unreplaceable. Invariant 8 asks that the same seed replay, not
+    // that it replay any particular thing.
+    satellite.statement.if (other.join(", ") == first.join(", "))
+    {
+        satellite.console.display("WRONG: a different seed replayed anyway")
+        wrong = wrong + 1
+    }
+
+    satellite.statement.if (wrong == 0)
+    {
+        satellite.console.display("PASS")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("FAIL")
+    }
+    satellite.return(satellite)
+}

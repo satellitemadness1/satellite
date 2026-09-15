@@ -1,0 +1,1620 @@
+// Every message satl can say about a program, as data. DESIGN §9 is the
+// specification and this file is the half a compiler can check.
+//
+// THERE IS NO GENERATOR AND NO BUILD STEP. This is an X-macro list, the same
+// mechanism words.def uses and FORMAT/CXX.md §7 describes: a consumer defines
+// SAT_CODE, includes this file, and undefines it again. The enum, the sentence
+// table, the severity table, the arity table, the invariants and
+// `satl --errors` therefore all come from ONE list and cannot drift apart.
+//
+// WHAT THE FIRST SATELLITE DID INSTEAD IS THE REASON THIS FILE EXISTS. DESIGN
+// §9 counts it: 199 `fail()` call sites composing 224 distinct string literals
+// between them, with no codes, no stack and no suggestions. A message that
+// lives at its call site cannot be looked up, cannot be counted, and cannot be
+// found again when somebody wants to know whether two sites say the same thing
+// in two ways. Every row below is one sentence in one place.
+
+// --- how a row is read ------------------------------------------------------
+//
+//     SAT_CODE(number, ident, severity, text)
+//
+// THE NUMBER IS A COLUMN HERE AND IT IS A POSITION IN words.def, and the
+// difference is deliberate rather than an inconsistency between two registries.
+// A word's number is what a program MEANS -- DESIGN §4.3 freezes registration
+// order because inserting a row silently renumbers every sibling and every
+// already-written program with it. An error code is what a PERSON LOOKS UP: it
+// has to survive a row being deleted, has to leave gaps where a milestone
+// reserved a block, and has to be assignable out of order. Those are opposite
+// requirements and they get opposite encodings. What replaces "a number is a
+// position" as the safety net is words_invariants.hpp's trick pointed at this
+// table instead: the numbers must ASCEND, which catches an insertion, and the
+// switch in codes.hpp catches a duplicate as `error: duplicate case value`.
+//
+// `severity` is one of two things:
+//
+//     SAT_ERROR   something is wrong and satl did not do what was asked
+//     SAT_NOTE    a second place worth looking at, or a fact about the first
+//
+// A NOTE IS A ROW HERE AND NOT A STRING AT A CALL SITE, which is the whole
+// argument of this file applied to the half that is easiest to exempt from it.
+// DESIGN §9 asks for "notes carrying their own spans"; a note whose sentence
+// lived beside the error that raises it would be the 224 literals again, at
+// half the volume and with none of the visibility.
+//
+// `text` is the sentence, with `{1}`, `{2}`, `{3}` where the site fills a hole.
+// THE ARITY IS NOT A COLUMN -- it is the highest hole in the text, counted at
+// compile time, and codes.hpp asserts the holes run 1..N with none missing. A
+// column would be a second place the same fact lives, and the one that goes
+// stale is always the column.
+//
+// AND THE ARITY IS CHECKED AT THE CALL SITE, which is the property this whole
+// arrangement is for: errors::make<Code::X>(span, a, b) is a template, so a
+// site that passes two arguments to a three-hole sentence is a compile error
+// naming the code. The first satellite could not have had that check, because
+// the sentence was the argument.
+
+// --- the blocks -------------------------------------------------------------
+//
+// The first two digits say WHO IS COMPLAINING, which is what makes a code worth
+// four digits rather than two. A reader who has S0231 in front of them knows it
+// came from the parser before they look it up, and a milestone that adds codes
+// takes a block instead of taking the next free number and interleaving itself
+// with everybody else.
+//
+//     S01xx   the lexer                     DESIGN §5      M3
+//     S02xx   the parser                    DESIGN §6      M4
+//     S03xx   the `.satc` cache             SATC.md        M4.5
+//     S04xx   the file satl was given                      M5/M10
+//     S05xx   resolve -- names and slots    DESIGN §7      M7
+//     S06xx   numbers                       DESIGN §8.1    M8
+//     S07xx   the evaluator                                M9/M10
+//     S08xx   the machine limits            PLAN §4.5      M6
+//     S09xx   the clock and the dice        DESIGN §11/§13 M13
+//     S10xx   the console's input           DESIGN §10.1   M14
+//     S11xx   satellite.help                DESIGN §4.6    M18
+//     S12xx   files and directories         DESIGN §9      M19
+//     S13xx   the machine's facts           DESIGN §7.7    M20
+//     S14xx   threads                       DESIGN §10.5   M23
+//     S15xx   the analyser -- `satl --check` M26.5
+//     S16xx   another file -- spaceships    PLAN M25       2026-09-13
+//
+// THE THREE ROWS ABOVE WERE ADDED AT M23 AND TWO OF THEM ARE BACKFILL. This
+// list ended at S11xx from M18 until 2026-09-12, while S12xx and S13xx had been
+// sitting three screens down since M19 and M20 -- so the index that exists to
+// stop two milestones reaching for the same number was telling M23 that S12xx
+// was free. It was not; M19 had it. **An index holds no fact of its own and
+// therefore has nothing to check it**, which is MILESTONES/README.md's sentence
+// about its own table, failing here for the third time in this tree (M21.md
+// §3.7 found it in a check's own message and §3.8 in words.def's tallies).
+// Found by M23 doing exactly what this list asks a milestone to do -- reading
+// it to take the next block -- which is the one use that catches it.
+//
+// The reserved blocks are written down and NOT populated. A block reserved in a
+// comment costs nothing and stops the thing this file exists to stop, which is
+// two milestones reaching for the same number on the same day.
+//
+// M6 TOOK S08xx AND NOT S04xx, AND THE PARAGRAPH THAT STOOD HERE ASKED FOR THAT
+// CHECK BY NAME. It said "S08xx being the free one is the answer only until
+// somebody checks whether the machine limits belong beside S04xx -- the file
+// satl was given -- instead." Checked, 2026-08-30, and they do not. S04xx's own
+// block note says what it is: "the command line was well formed and named a
+// file, and the file is where it stopped" -- a file the USER GAVE satl, holding
+// a program the user wrote. A satellite_config.ini is a file satl WENT LOOKING
+// FOR, beside its own binary, holding settings an installer wrote; the ordinary
+// run never names it and never sees it. The first two digits say who is
+// complaining, and the complainer here is the limits reader rather than the arm
+// that opens what it was handed.
+//
+// IT IS OUT OF ORDER WITH THE RESERVATIONS ABOVE, DELIBERATELY. S05, S06 and S07
+// are M7's, M8's and M9's, and M6 lands before all three -- so the block numbers
+// no longer run in the order the milestones do. **S05xx was taken on 2026-08-31
+// and nothing moved to make room for it**, which is the whole of what a
+// reservation buys and is the first time this file has been able to say it
+// happened rather than that it would. That is what a reserved block IS
+// for: this file's whole argument is that a block is taken and written down so
+// that "two milestones reaching for the same number on the same day" cannot
+// happen, and honouring three reservations by taking the fourth number is that
+// working, not a defect in it. A code is a column and not a position (see the
+// paragraph on how a row is read), so nothing about the numbering says the
+// blocks are in build order, and nothing should be inferred from it.
+
+#ifndef SAT_CODE
+#define SAT_CODE(number, ident, severity, text)
+#endif
+
+// The three severities, as values, so the numbers live here and only there --
+// read back as errors::kError, errors::kNote and errors::kWarning. NOT
+// #undef'd at the bottom with the macro above, for that reason.
+#ifndef SAT_ERROR
+#define SAT_ERROR 1
+#endif
+#ifndef SAT_NOTE
+#define SAT_NOTE 0
+#endif
+
+// A WARNING IS A THING THE RUN DOES NOT STOP FOR, and that is the whole of the
+// difference from SAT_ERROR. Added 2026-09-12 for the static analyser, which
+// wants to say "this local is never read" and must not make `--check` exit
+// non-zero for saying it -- an advisory that fails a build is an advisory
+// nobody leaves switched on.
+//
+// IT IS 2 AND NOT -1, and the order of these three numbers means nothing. A
+// NOTE is not "less severe" than a WARNING; a note is a second place worth
+// looking at, attached to something else, while a warning stands on its own.
+// Anything comparing severities with `<` is reading an order that was never
+// declared.
+#ifndef SAT_WARNING
+#define SAT_WARNING 2
+#endif
+
+// --- S01xx -- the lexer -----------------------------------------------------
+//
+// ONE ERROR, AND THAT IS THE LEXER'S DESIGN RATHER THAN AN OMISSION. DESIGN
+// §5.6 says a byte the code table has no entry for becomes a Punct holding that
+// byte rather than an error, "because the lexer's job is to describe the file,
+// and deciding that a character is meaningless is the parser's". So the only
+// thing that can stop a lex is a string literal with no end.
+
+SAT_CODE(101, LEX_UNTERMINATED_STRING, SAT_ERROR,
+         "this `\"` opens a string literal and nothing closes it before the "
+         "end of the line -- put a `\"` where the text is meant to stop")
+
+SAT_CODE(102, LEX_LINE_ENDS_HERE, SAT_NOTE,
+         "the line ends here, and a string literal cannot carry on to the "
+         "next one")
+
+// --- S02xx -- the parser ----------------------------------------------------
+//
+// 200-209 is the cursor and the four loops, 210-219 statements, 220-229 types,
+// 230-239 expressions, 240-249 names. The gaps are on purpose; see the block
+// note above.
+
+SAT_CODE(201, PARSE_EXPECTED_PUNCT, SAT_ERROR,
+         "expected `{1}` {2}, and found {3} instead")
+
+SAT_CODE(202, PARSE_EXPECTED_WORD, SAT_ERROR,
+         "expected {1}, and found {2} instead")
+
+SAT_CODE(203, PARSE_STATEMENT_ALREADY_ENDED, SAT_ERROR,
+         "a statement ends at the end of its line, and {1} is a second one on "
+         "the same line -- put it on a line of its own")
+
+SAT_CODE(204, PARSE_EXPECTED_DECLARATION, SAT_ERROR,
+         "a file holds satellite.include, satellite.capsule, "
+         "satellite.spacesuit and satellite.library.<name>, and {1} is none of "
+         "them")
+
+SAT_CODE(205, PARSE_EXPECTED_STATEMENT, SAT_ERROR,
+         "a block holds statements, and {1} does not begin one")
+
+SAT_CODE(206, PARSE_EXPECTED_SUIT_ITEM, SAT_ERROR,
+         "a spacesuit holds fields, capsules, and satellite.protected or "
+         "satellite.public sections, and {1} is none of them")
+
+SAT_CODE(207, PARSE_EXPECTED_FIELD_OR_CAPSULE, SAT_ERROR,
+         "expected a field or a satellite.capsule, and found {1}")
+
+// SAID RATHER THAN SHOWN BY THE OUTPUT SIMPLY STOPPING. parser.cpp reports at
+// most 20 errors and then leaves the rest of the file unread; without this the
+// twenty-first problem is invisible and the file looks understood.
+SAT_CODE(208, PARSE_TOO_MANY_ERRORS, SAT_NOTE,
+         "{1} problems were reported and the rest of the file was not read -- "
+         "fix these and run it again")
+
+SAT_CODE(210, PARSE_STATEMENT_NEEDS_A_WORD, SAT_ERROR,
+         "satellite.statement is written with one of if, else, while or for "
+         "after it")
+
+// NAMED RATHER THAN LUMPED IN WITH "no such statement", because a stray `else`
+// is a real thing a person writes and the useful sentence is about the `if`
+// and not about the word.
+SAT_CODE(211, PARSE_ELSE_WITHOUT_IF, SAT_ERROR,
+         "this satellite.statement.else has no satellite.statement.if in front "
+         "of it to belong to")
+
+SAT_CODE(212, PARSE_NO_SUCH_STATEMENT, SAT_ERROR,
+         "no statement is spelled `{1}` -- satellite.statement has if, else, "
+         "while and for")
+
+SAT_CODE(213, PARSE_DECLARATION_IN_BLOCK, SAT_ERROR,
+         "satellite.{1} is a declaration and goes at the top of a file, not "
+         "inside a block")
+
+SAT_CODE(214, PARSE_ELSE_NEEDS_A_BLOCK, SAT_ERROR,
+         "satellite.statement.else is followed by a block or by another "
+         "satellite.statement.if, and found {1}")
+
+SAT_CODE(215, PARSE_ASSIGN_TARGET, SAT_ERROR,
+         "the left of an assignment has to name somewhere to write, and {1} "
+         "does not")
+
+SAT_CODE(220, PARSE_NOT_A_TYPE, SAT_ERROR,
+         "satellite.{1} is not a type -- a type path is "
+         "satellite.variable.<name> or satellite.container.<name>")
+
+SAT_CODE(221, PARSE_EXPECTED_TYPE, SAT_ERROR,
+         "a type is satellite.variable.<name>, satellite.container.<name>, "
+         "satellite itself, or the name of a spacesuit -- and {1} is none of "
+         "them")
+
+// `>=` IS ONE TOKEN AND DESIGN §5.5 IS WHY IT STAYS ONE. The lexer matches it
+// greedily and lexer.hpp's split_punct is deliberately never called, so the fix
+// belongs in the program: a space.
+SAT_CODE(222, PARSE_GENERIC_CLOSE_GE, SAT_ERROR,
+         "expected `>` to close the type's arguments and found `>=`, which is "
+         "one token -- write a space between the two characters")
+
+SAT_CODE(230, PARSE_EXPECTED_SUBSCRIPT, SAT_ERROR,
+         "expected an index or a slice inside the brackets, and found {1}")
+
+SAT_CODE(231, PARSE_EXPECTED_EXPRESSION, SAT_ERROR,
+         "expected an expression -- a number, a string, a name, a path, or one "
+         "in brackets -- and found {1}")
+
+// NAMED ARGUMENTS -- M30, 2026-09-12. `display("x", end="")`: a word and `=` at
+// the start of an argument names it. The positional ones come first, because a
+// reader counts positions from the left and a name in the middle would make
+// "the second argument" mean two things; and a name is given once, because the
+// second would silently win.
+SAT_CODE(232, PARSE_POSITIONAL_AFTER_NAMED, SAT_ERROR,
+         "this argument has no name and comes after one that does -- write the "
+         "unnamed arguments first and the named ones after them")
+
+SAT_CODE(233, PARSE_NAMED_TWICE, SAT_ERROR,
+         "`{1}` is already given earlier in this argument list, and an option "
+         "is given once")
+
+SAT_CODE(240, PARSE_NOT_A_LANGUAGE_CAPSULE, SAT_ERROR,
+         "satellite.{1} is not a capsule the language owns -- the one reserved "
+         "capsule name is satellite.main")
+
+SAT_CODE(241, PARSE_NAME_IS_LANGUAGE_OWNED, SAT_ERROR,
+         "the language already owns the name {1} under {2}, so it cannot be a "
+         "{3}'s name")
+
+SAT_CODE(242, PARSE_NAME_ALREADY_DEFINED, SAT_ERROR,
+         "{1} is already the name of something in this program, and a name is "
+         "declared once")
+
+SAT_CODE(243, PARSE_NAME_UNNUMBERABLE, SAT_ERROR,
+         "{1} could not be given a number, which is satl's own limit and not "
+         "anything wrong with this program")
+
+// THE CONSTRUCTOR SECTION'S TWO PLACEMENT RULES -- 2026-09-12, the author's
+// `satellite.constructor(args) { }`. It is a spacesuit's section and nothing
+// else has one; and because every object answers to `.constructor()`, a
+// capsule of that name inside a suit would be a second member nobody could
+// reach, so it is refused where it is written rather than shadowed silently.
+SAT_CODE(244, PARSE_CONSTRUCTOR_OUTSIDE_SPACESUIT, SAT_ERROR,
+         "satellite.constructor is a spacesuit's section and goes inside a "
+         "satellite.spacesuit, beside satellite.protected and satellite.public")
+
+SAT_CODE(245, PARSE_CAPSULE_NAMED_CONSTRUCTOR, SAT_ERROR,
+         "a capsule inside a spacesuit cannot be named `constructor` -- that "
+         "name is the spacesuit's satellite.constructor section, which every "
+         "object answers to as `.constructor()`")
+
+// THE LAUNCH CAPSULE'S TWO PLACEMENT RULES -- 2026-09-13, the author's
+// `satellite.capsule.launch name(args) { }`. A launch runs when its FILE is
+// included, so it belongs to a file and not to a spacesuit; and it is a capsule
+// of the program's own, so it takes a name the program chose.
+SAT_CODE(246, PARSE_LAUNCH_IN_SPACESUIT, SAT_ERROR,
+         "satellite.capsule.launch goes at the top of a file -- a launch runs "
+         "when its file is included, and a spacesuit is not included")
+
+SAT_CODE(247, PARSE_LAUNCH_NEEDS_A_NAME, SAT_ERROR,
+         "a satellite.capsule.launch takes a name of its own, and satellite.{1} "
+         "is the language's")
+
+// The parser's notes. 290-299, at the end of the block rather than beside the
+// errors that raise them, because a note is reused: 290 is attached by nine
+// call sites and belongs to none of them.
+SAT_CODE(290, NOTE_OPENED_HERE, SAT_NOTE,
+         "this `{1}` is the one that is not closed")
+
+SAT_CODE(291, NOTE_FIRST_DECLARED_HERE, SAT_NOTE,
+         "{1} was declared here")
+
+// --- S03xx -- the `.satc` cache ---------------------------------------------
+//
+// SATC.md §4's four ways a cache file can be wrong, plus the sentence all four
+// end with. M4.5 wrote these as string literals and said in its own header that
+// "codes are M5's to design with all of them in view"; this is that.
+//
+// NONE OF THEM CARRIES A SPAN, and the reason is worth stating because the
+// machinery is right here and unused. A `.satc` is not a file the user wrote --
+// read.cpp's own argument -- so what they can act on is the file as a whole,
+// which is exactly what the location line already names. A caret pointing at
+// byte 412 of a generated file tells somebody to read a file that the next
+// sentence tells them to delete.
+
+SAT_CODE(301, SATC_NOT_A_SATC, SAT_ERROR,
+         "this does not begin with a `satc` line, so it is not a `.satc` at all")
+
+SAT_CODE(302, SATC_WRONG_VERSION, SAT_ERROR,
+         "this is version {1} of the `.satc` format and this satl reads "
+         "version {2}, so it was written by a different satl")
+
+SAT_CODE(303, SATC_NO_BLANK_LINE, SAT_ERROR,
+         "this has no blank line after its three header lines, so where the "
+         "header ends cannot be told")
+
+SAT_CODE(304, SATC_DID_NOT_PARSE, SAT_ERROR,
+         "this did not parse: {1}")
+
+SAT_CODE(305, SATC_MARK_WITHOUT_A_NUMBER, SAT_ERROR,
+         "this has a `{1}` with no number after it, which is not something the "
+         "writer can produce")
+
+SAT_CODE(306, SATC_UNKNOWN_PATH, SAT_ERROR,
+         "this names `{1}`, which this satl's numbering does not have")
+
+// M19.6. `0#down` is only meaningful directly after the `(` of the call whose
+// selector it is an option to -- satellite_cache/unnumber.cpp walks back over
+// the word to find where the Mark belongs -- so an option token anywhere else
+// is a file this writer did not produce. Refused rather than guessed at: the
+// whole point of the token is to record a decision, and a decision attached to
+// no call is worse than none.
+SAT_CODE(307, SATC_OPTION_WITHOUT_A_CALL, SAT_ERROR,
+         "this has the option `{1}` where no call's selector comes before it, "
+         "which is not something the writer can produce")
+
+SAT_CODE(390, NOTE_SATC_IGNORED, SAT_NOTE,
+         "it was ignored and the source was read instead, so nothing is wrong "
+         "with your program -- deleting the file is safe, because a `.satc` is "
+         "only a cache")
+
+// --- S04xx -- the file satl was given ---------------------------------------
+//
+// NOT THE COMMAND LINE, which is a different interface and keeps its own words
+// in programs/opening.cpp. A code and a span are for something INSIDE a file;
+// `satl --frobnicate` has no file and no place in one, and giving it a code
+// would be a lookup number for a sentence that already names its own fix.
+// This block is the seam between the two: the command line was well formed and
+// named a file, and the file is where it stopped.
+
+SAT_CODE(401, FILE_UNREADABLE, SAT_ERROR,
+         "this file could not be read -- check the path, and that this user is "
+         "allowed to open it")
+
+// M10's ROW, AND IT IS IN THIS BLOCK RATHER THAN IN S07xx FOR THE REASON THE
+// BLOCK NOTE ABOVE GIVES. The evaluator is not complaining: a file with no
+// `satellite.main` parses, resolves and compiles perfectly, and every capsule
+// in it can be run by `satl --call`. What has gone wrong is one level out --
+// satl was handed a file to RUN and the file is not a program -- which is
+// exactly "the command line was well formed and named a file, and the file is
+// where it stopped".
+//
+// IT CARRIES NO SPAN, WHICH IS THE SECOND ROW IN THIS TREE TO DO SO AND THE
+// FIRST WHERE IT IS THE INTERESTING PART. S0401 has none because the file never
+// opened; this one has none because what is wrong with the file is something
+// that is NOT IN IT, and there is no honest character to put a caret under.
+// Pointing at line 1, or at the last capsule, would be the reporter inventing a
+// place -- and DESIGN §9's carets are worth what they are because they have
+// never done that.
+SAT_CODE(402, FILE_NO_MAIN, SAT_ERROR,
+         "this file declares no `satellite.main`, which is where a program "
+         "starts -- `satl --call` runs one capsule by name instead")
+
+// --- S05xx -- resolve: names and slots ---------------------------------------
+//
+// DESIGN §7 is the specification and PLAN M7 is the milestone. RESERVED SINCE
+// M5 AND POPULATED HERE, which is the reservation mechanism working end to end:
+// M6 landed in between and took S08xx rather than the next free number, so
+// nothing had to move for this block to be taken.
+//
+// 500-509 the pass itself, 510-519 names, 520-529 paths and types, 530-539
+// DESIGN §7.7's arguments object. The gaps are on purpose; see the block note
+// at the top of this file.
+//
+// EVERY ONE OF THESE CARRIES A REAL SPAN, like S02xx and unlike S03xx. Resolve
+// runs over the tree the user's own file produced, so every complaint has a
+// token behind it and the caret lands under the word that is wrong.
+//
+// WHAT IS NOT HERE IS A TYPE ERROR, and the absence is a decision. This pass
+// asks whether a name has somewhere to live and whether a path is a path; what
+// a value IS -- DESIGN §8's model -- arrives at M9, and a milestone that
+// checked `satellite.variable.number x = "a string"` here would be answering a
+// question with a value model it does not have.
+
+// 501 IS A NUMBER THAT MEANT SOMETHING ONCE AND IS NOT REUSED. RESOLVE_TOO_DEEP
+// lived here for one day: M7 bounded the resolver at a fixed 2000 levels, and
+// DESIGN §7.5 -- rewritten 2026-08-31 -- is that the language has no depth limit
+// at all. This block's own note says a code "has to survive a row being deleted,
+// has to leave gaps where a milestone reserved a block, and has to be assignable
+// out of order". This is the first row this file has ever deleted, and the gap it
+// leaves is that property being used rather than described.
+
+SAT_CODE(511, RESOLVE_NO_SUCH_NAME, SAT_ERROR,
+         "nothing called `{1}` is in scope here -- it is not a parameter, not "
+         "a local declared above this line, and not a capsule this file "
+         "declares")
+
+SAT_CODE(512, RESOLVE_PARAMETER_TWICE, SAT_ERROR,
+         "`{1}` names two parameters of this capsule, and a call gives one "
+         "value to each")
+
+// A NAME AND NOT A PATH, which is what makes this the resolver's rather than
+// the parser's. `satellite` alone is a legal expression -- DESIGN §6's
+// `primary` has it, and `satellite.return(satellite)` is the whole reason --
+// so the parser accepts the word in every position a name may take and this is
+// where declaring one is refused.
+SAT_CODE(513, RESOLVE_NAME_IS_RESERVED, SAT_ERROR,
+         "`satellite` is the language's own name and every word in it hangs "
+         "under that one -- so it cannot also be the name of a {1}")
+
+// THE ONE DUPLICATE THE PARSER CANNOT SEE, and it is worth a row of its own for
+// that reason. `define_name()` reports S0242 for a second capsule of the user's
+// own, because the numbering refuses to allocate the name twice -- but
+// `satellite.main` is LOOKED UP rather than defined, so a file with two of them
+// parses clean and has two entry points. Resolve's first pass is the only place
+// that can notice.
+SAT_CODE(514, RESOLVE_CAPSULE_TWICE, SAT_ERROR,
+         "this file declares {1} twice, and a call has to name one of them")
+
+// A NAME DECLARED TWICE INSIDE ONE SPACESUIT -- M26, and S0512 and S0514 above
+// are the same mistake in the two places that already had one.
+//
+// NOT REUSING EITHER IS THE POINT. S0512 is a parameter clashing with a
+// parameter and S0514 a capsule with a capsule; both name the thing they are
+// about, and "declared twice" with no noun is the sentence a reader has to
+// guess at. And DESIGN §7.4 is why this cannot simply be S0501's rebinding: a
+// redeclaration in a BODY takes a FRESH SLOT on purpose -- "a spacesuit is a
+// reference type, so reusing the old slot would leave every handle already
+// taken to the first instance pointing at the second" -- which works because
+// the old slot stays alive for whoever already had it. A suit has ONE storage
+// layout and ONE method table, so two members of one name are two indices
+// nothing can tell apart, and there is nothing for a fresh one to mean.
+SAT_CODE(515, RESOLVE_SUIT_MEMBER_TWICE, SAT_ERROR,
+         "`{1}` is declared twice inside the spacesuit `{2}` -- a spacesuit has "
+         "one name for each of its fields and capsules")
+
+// REACHING A PROTECTED MEMBER FROM OUTSIDE -- M26, and PLAN §8's M26 done-when
+// asks for exactly this sentence: "reaching a protected field from outside is
+// refused BY NAME with M5's caret rather than by silence."
+//
+// IT NAMES THE SUIT AS WELL AS THE MEMBER, because the fix is almost always to
+// move the member into the `satellite.public` block of that suit, and a person
+// with two suits open needs to be told which one.
+SAT_CODE(516, RESOLVE_SUIT_MEMBER_PROTECTED, SAT_ERROR,
+         "`{1}` is inside the `satellite.protected` part of `{2}`, so only "
+         "`{2}`'s own capsules can reach it -- move it to "
+         "`satellite.public`, or add a capsule there that answers it")
+
+// A FIELD REACHED WITH A DOT -- M26, and it is a DIFFERENT refusal from the one
+// above on purpose, because it is refused even when the field is public.
+//
+// DESIGN §12 DEFERS BARE FIELD ACCESS: "accessor methods only. A spacesuit
+// field is reachable from inside the spacesuit and nowhere else, which is what
+// makes `satellite.protected` a statement about the language rather than a
+// comment." So `c.n` is a form the language has decided against rather than a
+// name it could not find -- and S0521's "not a word the language has" would
+// send somebody off to declare one.
+SAT_CODE(517, RESOLVE_NO_BARE_FIELD, SAT_ERROR,
+         "`{1}` is a field of `{2}` and fields are reached from inside the "
+         "spacesuit only -- write a capsule in `{2}` that answers it and call "
+         "that instead")
+
+// A MEMBER THAT IS NEITHER -- M26. The suit is named because the candidate list
+// a reader needs is that suit's members, which is not something S0521's
+// suggester can walk: it searches the frozen trie, and these names were met
+// when the file was parsed.
+SAT_CODE(518, RESOLVE_NO_SUCH_MEMBER, SAT_ERROR,
+         "`{2}` has no `{1}` -- a spacesuit answers only what its own capsules "
+         "and fields are called")
+
+// THE ERROR satellite_cache/paths.cpp NAMES AND DECLINES TO RAISE. Its own
+// comment says a path the numbering cannot account for is "M7's to refuse with
+// M5's did-you-mean over the node the segment failed under", and the cache's
+// job in the meantime is to hand the tree over unchanged. This is that refusal.
+// A SUPERCLASS THAT IS NOT ONE -- M26. `satellite.spacesuit a(b)` where `b` is
+// a capsule, a global, or nothing at all. It is separate from S0522's "not a
+// type the language has" because the position is narrower than a type: only a
+// spacesuit the SAME FILE declares can stand there, so the candidate list is
+// short and nameable, and no `satellite.` path is ever right.
+SAT_CODE(519, RESOLVE_SUIT_NO_SUCH_SUPER, SAT_ERROR,
+         "`{1}` is not a spacesuit this file declares, so `{2}` has nothing to "
+         "extend -- the name in the brackets is another `satellite.spacesuit` "
+         "in this file")
+
+// A SUIT THAT EXTENDS ITSELF, DIRECTLY OR AROUND A CHAIN -- M26, and it is
+// refused rather than broken silently. The M6 draft's pass 2 "breaks
+// inheritance cycles", which is a repair; this language does not repair a
+// program it can name the mistake in. A cycle has no field layout at all --
+// each suit would have to hold the other whole -- so there is nothing to build
+// and nothing to guess at.
+SAT_CODE(520, RESOLVE_SUIT_INHERITANCE_CYCLE, SAT_ERROR,
+         "`{1}` extends itself -- following the brackets from `{1}` leads back "
+         "to `{1}`, and a spacesuit cannot hold a copy of itself")
+
+SAT_CODE(521, RESOLVE_NO_SUCH_WORD, SAT_ERROR,
+         "`{1}` is not a word the language has under {2}")
+
+SAT_CODE(522, RESOLVE_NO_SUCH_TYPE, SAT_ERROR,
+         "`{1}` is not a type the language has under {2}")
+
+// SEPARATE FROM S0521 BECAUSE THE FIX IS DIFFERENT, which is the argument
+// S0809 already makes one block down. A misspelled segment is answered by
+// spelling it right; a shape mismatch is answered by counting the arguments,
+// and the sentence has to say which of the two happened or the reader checks
+// the wrong thing first.
+SAT_CODE(523, RESOLVE_NO_SUCH_SHAPE, SAT_ERROR,
+         "{1} is not written with {2} -- the language has it in {3}")
+
+// WORD_NUMBERS §1.5's FOLD, REFUSED RATHER THAN LEFT TO THE RUNTIME. The legal
+// options are not a table in this file: they are the sibling rows spelled
+// `<word>_<option>`, so this sentence is filled from the numbering and a new
+// option added to words.def is offered here with no edit at all.
+SAT_CODE(524, RESOLVE_NO_SUCH_OPTION, SAT_ERROR,
+         "`{1}` is not an option {2} has -- it has {3}")
+
+// A CONSTRUCTOR THAT DECLARES A RETURN TYPE -- M26, and DESIGN §13 decided it
+// before there was anything to apply it to: "A constructor is the one member
+// forbidden to declare one, since what a constructor produces is the object."
+// PLAN §8's M26 entry says this is the milestone that enforces it.
+//
+// WHAT COUNTS AS THE CONSTRUCTOR CHANGED ON 2026-09-12. M26 read it as the
+// capsule carrying the suit's own name, v1's spelling, and did not run it. The
+// author's `satellite.constructor(args) { }` section replaced that reading the
+// day constructors were built, and a capsule named after its suit is now an
+// ordinary method. The rule itself did not move, so the code did not either.
+SAT_CODE(525, RESOLVE_CONSTRUCTOR_RETURNS, SAT_ERROR,
+         "the satellite.constructor of `{1}` cannot declare `satellite.returns` "
+         "-- what a constructor produces is the object")
+
+// ARGUMENTS WRITTEN ON A DECLARATION THAT HAS NO CONSTRUCTOR TO TAKE THEM --
+// 2026-09-12. `counter tally("hello")` hands "hello" to counter's
+// `satellite.constructor`; `satellite.variable.number n(5)` has nowhere to send
+// the 5, and neither does a spacesuit with no constructor section. The parser
+// cannot tell these apart, because a spacesuit's name is the user's word. An
+// empty `()` is not refused: it hands over nothing, which is what was written.
+SAT_CODE(526, RESOLVE_ARGUMENTS_NOT_A_SPACESUIT, SAT_ERROR,
+         "`{1}` is declared with arguments, and `{2}` has no "
+         "satellite.constructor to take them")
+
+// NAMED ARGUMENTS ON A CAPSULE THE PROGRAM WROTE -- M30, 2026-09-12. An option
+// is something a language word declares it takes; a capsule's parameters have
+// names too, but whether `f(x=1)` should bind by them is a question nobody has
+// decided, and guessing would make it a promise.
+SAT_CODE(527, RESOLVE_OPTION_ON_CAPSULE, SAT_ERROR,
+         "`{1}` is given `{2}=`, and only a word the language owns takes "
+         "named options -- a capsule's arguments go by position")
+
+// A LAUNCH THAT DECLARES A RETURN TYPE -- 2026-09-13. S0525's argument one
+// declaration over: a launch is run by `satellite.include`, and an include is a
+// statement, so nothing is waiting for the answer.
+SAT_CODE(528, RESOLVE_LAUNCH_RETURNS, SAT_ERROR,
+         "the satellite.capsule.launch `{1}` cannot declare `satellite.returns` "
+         "-- it runs when its file is included, and nothing receives what it "
+         "answers")
+
+// A NAME REACHED THROUGH A SPACESHIP -- 2026-09-13. `ship.setup()` and
+// `ship.box b` find what `ship.satl` declares; what they cannot find is
+// something it does not declare, and a global is a third case with its own
+// road, because a global is `satellite.library`'s and the author spells the
+// road `satellite.library.ship.name`.
+SAT_CODE(529, RESOLVE_NO_SUCH_SPACESHIP_MEMBER, SAT_ERROR,
+         "the spaceship `{1}` declares no capsule or spacesuit named `{2}`")
+
+SAT_CODE(530, RESOLVE_SPACESHIP_GLOBAL, SAT_ERROR,
+         "`{2}` is a global of the spaceship `{1}`, and a global is read as "
+         "satellite.library.{1}.{2}")
+
+// DESIGN §7.7's OPEN QUESTION, ANSWERED. "Declaring a parameter named X gets a
+// plain list with no properties, silently. Under §9 that silence is wrong --
+// the language should say so." It is said here, and only where somebody has
+// plainly meant the object: the suggester has to answer with one of the
+// spellings before this is raised, so a parameter that was never trying to be
+// `arguments` is left alone and is an ordinary list.
+//
+// `argv` WAS THIS CODE'S WORKED EXAMPLE UNTIL 2026-09-09 AND IS NOW A SPELLING.
+// The author added it to words.def as §7.7 said only the author could, so a
+// parameter named `argv` gets the object rather than this error. THAT DID NOT
+// MAKE THIS CODE WRONG AND IT WAS NOT DELETED: `argu`, `arrgs` and `argvs` are
+// still near misses and still land here. The sentence below names the accepted
+// spellings from the registry rather than from a list in this file, so the
+// alias row is the whole of the edit -- which is the property that made the
+// reversal one line instead of a sweep.
+SAT_CODE(531, RESOLVE_ALMOST_ARGUMENTS, SAT_ERROR,
+         "satellite.main's parameter is the arguments object when it is named "
+         "{1}, and `{2}` is none of them -- it would be an ordinary list with "
+         "none of the machine's answers on it")
+
+SAT_CODE(532, RESOLVE_NO_SUCH_ARGUMENT_FIELD, SAT_ERROR,
+         "the arguments object has no `{1}` on it -- DESIGN §7.7 lists what it "
+         "holds, and {2} is what this build has")
+
+// AND A NAME THE SPACESHIP DOES DECLARE, WRITTEN WHERE A TYPE GOES -- found by
+// review: `ship.helper h` for a capsule `helper` said ship declares no capsule
+// or spacesuit named `helper`, which was false.
+SAT_CODE(533, RESOLVE_SPACESHIP_NOT_A_TYPE, SAT_ERROR,
+         "`{2}` in the spaceship `{1}` is not a spacesuit, so it cannot be a "
+         "type")
+
+// Resolve's notes. 590-599, at the end of the block rather than beside the
+// errors that raise them -- the arrangement S02xx and S08xx already have, and
+// for the reason errors.def's header gives: a note is reused and belongs to
+// none of the sites that attach it.
+SAT_CODE(590, NOTE_DECLARED_FIRST_HERE, SAT_NOTE,
+         "`{1}` is the one that came first")
+
+// --- S06xx -- numbers --------------------------------------------------------
+//
+// DESIGN §8.1 is the specification and PLAN M8 is the milestone. RESERVED SINCE
+// M5 AND POPULATED HERE, which is the second time this file has been able to say
+// a reservation was honoured end to end: M6 took S08xx rather than the next free
+// number, M7 took S05xx and nothing moved, and this block was waiting where it
+// was written down.
+//
+// 600-609 the arithmetic itself, 610-619 what a number can be written as. The
+// gaps are on purpose; see the block note at the top of this file.
+//
+// THREE ROWS AND NOT THIRTY, AND THE SMALLNESS IS THE MILESTONE. Nothing
+// EXECUTES until M10, so the only site that can raise one of these today is
+// `satl --number`, which is M8's consumer. The evaluator's own arithmetic
+// errors are S07xx and are M9's -- a row added here for a message no site can
+// send would be this file's own argument turned inside out.
+//
+// AND THERE IS NO OVERFLOW ROW, WHICH IS DESIGN §7.5 RATHER THAN AN OMISSION.
+// The language has no limits: a number's size is bounded by memory the way a
+// list's length is, so there is no width at which addition refuses. What ends a
+// runaway is M6's watchdog at MEMORY_MAX, in words and with exit 4, and that is
+// the same sentence a walker filling the heap gets.
+
+SAT_CODE(601, NUMBER_DIVIDE_BY_ZERO, SAT_ERROR,
+         "`{1}` cannot be divided by zero -- every other number has an answer "
+         "and this one has none, so satellite will not invent one")
+
+// 602 AND 603 ARRIVED AT M15 WITH THE OPERATIONS THAT CAN RAISE THEM -- sqrt
+// and power, the class-3 rows DESIGN §8.6 held behind the rounding rule --
+// which is this block's own note working as written: "a row added here for a
+// message no site can send would be this file's argument turned inside out",
+// and now the sites exist. NEITHER PRINTS THE VALUE, which is S0711's rule
+// rather than S0601's: a number in a sentence can be fifty thousand digits,
+// and what a person needs is the fact, not the digits.
+
+SAT_CODE(602, NUMBER_NO_REAL_ROOT, SAT_ERROR,
+         "a square root was asked of a negative number, and no real number "
+         "squares to a negative -- satellite has no imaginary type and will "
+         "not invent one")
+
+SAT_CODE(603, NUMBER_NEGATIVE_FRACTIONAL_POWER, SAT_ERROR,
+         "a negative number was raised to a fractional power -- a real "
+         "answer exists only for some written exponents ((-32)^0.2 is -2, "
+         "(-32)^0.5 is not real), and an answer that comes and goes with the "
+         "spelling of the exponent is not one satellite will stand behind")
+
+SAT_CODE(610, NUMBER_NOT_A_NUMBER, SAT_ERROR,
+         "`{1}` is not a number -- digits, optionally a `.` with more digits, "
+         "and optionally an `e` and an exponent")
+
+SAT_CODE(611, NUMBER_UNKNOWN_OPERATOR, SAT_ERROR,
+         "`{1}` is not an operator satellite has -- the five are `+`, `-`, `*`, "
+         "`/` and `%`")
+
+// 612 IS SPENT AND WILL NOT BE REUSED. It was S0612 NUMBER_OPERATOR_NOT_YET --
+// "`%` is not built yet ... PLAN.md §8 puts it at M15 with the rounding rule it
+// needs" -- and it was written on 2026-08-31 for a claim that turned out to be
+// wrong the same day. DESIGN §8.6 specifies modulus completely and puts it in
+// the class it calls "exact and bounded, never rounds", so `%` was never
+// waiting on M15's rounding rule; `satl --number 7 % 2` answers 1 and the row
+// has no site left to be raised from. Deleted and not repurposed: this file's
+// header says an error code "is what a PERSON LOOKS UP" and "has to survive a
+// row being deleted", and a number that meant two things at two dates is the
+// one thing that property does not survive.
+//
+// So the gap is the mechanism working, and it is the SECOND one this file has
+// left by retiring a row rather than by reserving a block -- S0501 above is the
+// first, deleted the same day and for the neighbouring reason. That one went
+// because DESIGN §7.5 says the language has no depth limit; this one goes
+// because DESIGN §8.6 had already specified the operation the row apologised
+// for. Two gaps in one day is worth noticing: a registry that never loses a row
+// is one whose rows were never checked against the documents they cite.
+
+// --- S07xx -- the evaluator --------------------------------------------------
+//
+// PLAN M9 is the milestone and this is the block reserved for it since M5. THE
+// THIRD RESERVATION HONOURED END TO END, and tests/reporter_test/codes.cpp has
+// been counting: S05xx was claimed by M7 on 2026-08-31, S06xx by M8 the same
+// day, and this is the last one that was being held. Nothing moved to make room
+// for any of the three, which is the whole of what a reservation buys.
+//
+// 700-709 the control stack, 710-719 what a value can be used as, 720-729 what
+// a program named that does not run yet, 730-739 the run stopped from OUTSIDE
+// the program -- M11's decade, and the one whose rows are about nobody's
+// mistake. The gaps are on purpose; see the block note at the top of this
+// file.
+//
+// THE "NOT BUILT YET" ROW IS THE UNUSUAL ONE AND IT IS DELIBERATE. Every other
+// code in this file is about a program that is wrong. S0720 is about a program
+// that is RIGHT and arrived early: DESIGN §6's grammar parses a list literal, a
+// spacesuit and a `satellite.include` today, and M16, M26 and M25 are what make
+// them run. PLAN §8's opening rule is that a milestone is "a thing that works
+// and can be demonstrated", which means every milestone between now and M28
+// ships a language whose grammar is wider than its evaluator. Saying so with a
+// code, a caret and the milestone's number is DESIGN §1.1 -- never do anything
+// behind the user's back -- applied to the gap itself. The first satellite's
+// answer to the same situation was a segfault or a silently wrong value.
+//
+// AND THERE IS NO ROW FOR ARITHMETIC OVERFLOW OR FOR A NUMBER GETTING TOO BIG,
+// which is DESIGN §7.5 for the second time in this file. S06xx's block note
+// already says it about `satellite_number`; it is true here for the same reason
+// and about the same thing. What ends a runaway is memory, and S0701 is the one
+// row in this block that says so -- it is a ceiling on a stack the user set,
+// not a depth the language chose.
+
+SAT_CODE(701, EVAL_TOO_DEEP, SAT_ERROR,
+         "this recursion has filled the control stack -- {1} calls deep, "
+         "holding {2}, and `satellite.library.system.max_depth` is {3}")
+
+SAT_CODE(710, EVAL_NOT_A_CONDITION, SAT_ERROR,
+         "a condition is a `satellite.variable.bool` and this one is {1} -- "
+         "satellite has no truthiness, so a number cannot stand in for a test")
+
+SAT_CODE(711, EVAL_NOT_A_NUMBER, SAT_ERROR,
+         "`{1}` works on two numbers and this one is {2}")
+
+SAT_CODE(712, EVAL_NOT_COMPARABLE, SAT_ERROR,
+         "`{1}` orders numbers, and {2} has no order -- `==` and `!=` work on "
+         "anything, and nothing else does")
+
+// THE NEXT FOUR ARE M11's, THE METHODS' ROWS, and 714 is the one DESIGN asked
+// for by name: §6.4 qualification 3 wants "an undeclared variable" and "a
+// declared variable holding nothing" to read differently, resolve owns the
+// first at compile time, and this block owns the second at run time.
+//
+// 715 AND 716 REFUSE WHERE ANOTHER LANGUAGE WOULD HAND BACK A SENTINEL, and
+// that is a decision, taken at M11 and overrulable in one row each:
+// `"abc".at(9)` could answer something and `"abc".find("z")` could answer -1,
+// and both would be a value quietly meaning "not a value" -- the thing DESIGN
+// §1.1 exists to refuse. A refusal can LOOSEN into an answer later without
+// changing any working program's meaning (M12 made "nothing" a thing a
+// program can ask about, DESIGN §8.7); a sentinel, once a program is written
+// against it, is forever.
+
+SAT_CODE(713, EVAL_WRONG_TYPE, SAT_ERROR,
+         "`{1}` wants {2} and this one is {3}")
+
+SAT_CODE(714, EVAL_HOLDING_NOTHING, SAT_ERROR,
+         "`{1}` was asked of a variable that holds nothing -- a declared "
+         "variable holds nothing until a value is assigned to it")
+
+SAT_CODE(715, EVAL_PAST_THE_END, SAT_ERROR,
+         "`{1}` was asked about position {2} and this string has {3} "
+         "characters -- the first is at 0, the last at one less than the "
+         "count")
+
+SAT_CODE(716, EVAL_NOT_FOUND, SAT_ERROR,
+         "`{1}` does not appear in this string, so `find` has no position to "
+         "answer -- `contains(x)` is the question that answers false instead "
+         "of stopping")
+
+SAT_CODE(717, EVAL_NOWHERE_TO_WRITE, SAT_ERROR,
+         "`{1}` changes its receiver, and this receiver names no place the "
+         "change could be written back to -- DESIGN.md §6.4: a mutating "
+         "method needs a receiver that names a storage slot")
+
+SAT_CODE(718, EVAL_NEEDS_RECEIVER, SAT_ERROR,
+         "`{1}` is a method and is asked on a value -- `my_variable.{1}` -- "
+         "not written out as a path; DESIGN.md §6.4 keeps the long spelling "
+         "off the surface on purpose")
+
+SAT_CODE(719, EVAL_BACKWARDS, SAT_ERROR,
+         "`substring` was asked from {1} to {2}, and a substring runs "
+         "forwards -- the start is never past the end")
+
+SAT_CODE(720, EVAL_NOT_BUILT, SAT_ERROR,
+         "{1} parses and does not run yet -- {2}")
+
+SAT_CODE(721, EVAL_NO_HANDLER, SAT_ERROR,
+         "`{1}` is a path satellite has a number for and nothing behind yet -- "
+         "{2}")
+
+SAT_CODE(722, EVAL_ARGUMENT_COUNT, SAT_ERROR,
+         "`{1}` takes {2} and was given {3}")
+
+// 723 REPLACES A SENTENCE THAT GAVE WRONG ADVICE, WHICH IS WORSE THAN NO
+// SENTENCE. Until M12, a method a declared type does not have -- `box.upper()`
+// on a `variant`, `s.holding()` on a string -- fell into S0720's "name the
+// receiver first", advice that cannot help a receiver that IS a name. The
+// compiler knows the declared type at that arm (resolve's one hop already
+// carried it), so the refusal can say what is true: the type, the word it does
+// not have, and per-type advice in {3} -- the variant's row names its four
+// words and `held()`, because M12 is where a wrong selector became an easy
+// mistake to make. It stays a RUN-time refusal like S0720, for S0720's own
+// reason: a wrong question in a branch that never runs is a program that runs.
+//
+// AND ONE ROW IS CHOSEN BY THE SELECTOR RATHER THAN BY THE TYPE: `as_number`
+// on a `satellite.variable.hex`. M19.5 gave that row to binary `1 6 5 4` and
+// deliberately not to hex, so anyone reaching for it here has almost certainly
+// just read binary's -- and "its methods are the words numbered under that
+// path" answers a question they did not ask. The hex row gives the reason
+// instead: `as_number` reads the characters as an ordinary decimal and `A` to
+// `F` are not decimal digits. The author asked for it by name on 2026-09-09,
+// in the same breath as dropping the row.
+
+SAT_CODE(723, EVAL_NO_SUCH_QUESTION, SAT_ERROR,
+         "`{1}` is not a question a `{2}` answers -- {3}")
+
+// 724 IS THE WRITE-SIDE TWIN OF 721, M15's, and it lives in this decade for
+// the decade's own reason: it is about a program being EARLY rather than
+// wrong. The retune made assignment to a language path mean something
+// (dispatch.hpp's Assigners), four dials accept one today, and a path
+// outside those four gets this sentence -- which can LOOSEN row by row the
+// day a later milestone installs more write rows, exactly as S0721 answers
+// thin out as milestones land handlers.
+SAT_CODE(724, EVAL_NOT_RETUNABLE, SAT_ERROR,
+         "`{1}` is not a place a program can write -- what an assignment to "
+         "a language path can retune are the dials under "
+         "`satellite.library.system`")
+
+// 725 THROUGH 729 ARE M16's, THE CONTAINERS' ROWS, and they are S0715 and
+// S0716's shapes retold for a list and a map: refuse by name where another
+// language would hand back a sentinel, and beside every refusal name the
+// question that answers instead of stopping. 726's second clause is the map's
+// own argument, v1's, kept because it is the reason a miss cannot be nil:
+// `nothing` is a value an entry can legitimately hold (DESIGN §8.7), so
+// "absent" and "present but holding nothing" must never be one answer.
+
+SAT_CODE(725, EVAL_OUTSIDE_THE_LIST, SAT_ERROR,
+         "`{1}` was asked about position {2} and this list has {3} elements "
+         "-- the first is at 0, the last at one less than the count")
+
+SAT_CODE(726, EVAL_NO_SUCH_KEY, SAT_ERROR,
+         "this map holds nothing under {1} -- a missing key is an error "
+         "because `nothing` is a value an entry can legitimately hold, and "
+         "`has(k)` is the question that answers false instead of stopping")
+
+SAT_CODE(727, EVAL_NOT_A_KEY, SAT_ERROR,
+         "a map key is a `satellite.variable.string` or a "
+         "`satellite.variable.number`, and this one is {1} -- DESIGN.md "
+         "§8.4: a key's hash and equality run inside a mutation, so the key "
+         "types are native and closed")
+
+SAT_CODE(728, EVAL_NOT_IN_THE_LIST, SAT_ERROR,
+         "{1} does not appear in this list, so `{2}` has no position to "
+         "answer -- `contains(x)` is the question that answers false instead "
+         "of stopping")
+
+SAT_CODE(729, EVAL_EMPTY_LIST, SAT_ERROR,
+         "`{1}` was asked of an empty list, which has no element to answer "
+         "with -- `empty()` and `size()` are the questions that answer "
+         "instead of stopping")
+
+// AN INTERRUPT IS NOBODY'S MISTAKE AND ITS ROW SAYS WHAT IS TRUE INSTEAD OF
+// WHAT IS WRONG. Everything above the caret's line ran and was drained through
+// the console before this printed; nothing at or after it did. The exit is
+// 130 rather than 1 or 4 -- system_facts/interrupt.hpp owns the number and
+// machine.hpp's Ending note owns the argument that a Ctrl-C is neither a
+// malformed program nor a machine limit.
+SAT_CODE(730, EVAL_INTERRUPTED, SAT_ERROR,
+         "the run stopped here, at the first statement boundary after Ctrl-C "
+         "arrived -- everything before this line ran and nothing at or after "
+         "it did")
+
+// 731 IS S0726 FOR THE OBJECT AND NOT S0726 ITSELF, which is one row for one
+// reason: S0726's sentence says "this map", and sending somebody who asked
+// `arguments.get("machine.thread")` to a map's method table is the mistake
+// `satellite.container.arguments` `1 4 3` exists to prevent -- PLAN M20 mints
+// that type name for exactly this. The advice is the same and so is the
+// argument behind it: a miss cannot answer `nothing`, because two of the
+// object's rows are a later milestone's and refuse, so "absent" and "present
+// and not answering yet" must never be one answer.
+SAT_CODE(731, EVAL_NO_SUCH_ENTRY, SAT_ERROR,
+         "the arguments object holds nothing under {1} -- `keys()` lists every "
+         "name it answers to and `has(k)` is the question that answers false "
+         "instead of stopping")
+
+// AN OPTION THE WORD DOES NOT TAKE -- M30. The handler's own list fills {3}, so
+// a word that gains an option is offered here with no edit to this row.
+SAT_CODE(732, EVAL_NO_SUCH_OPTION_NAME, SAT_ERROR,
+         "`{1}` has no option called `{2}` -- {3}")
+
+// A NUMBER WITH NO BIT PATTERN -- 2026-09-12. A `BitRun` has "no sign and no
+// radix field" (satellite_bits/bits.hpp), so a negative number and a fraction
+// are not narrow cases of a bit run, they are outside the type. Padding a
+// negative into two's complement would invent a width the program never wrote,
+// which is the same objection `to_hex` already makes about three bits.
+SAT_CODE(733, EVAL_NO_BIT_PATTERN, SAT_ERROR,
+         "{1} has no bits -- a bit run holds a whole number of zero or more, "
+         "and this one is {2}")
+
+// ARGUMENTS WITH NOWHERE TO GO -- 2026-09-13. `satellite.include(ship(5))` hands
+// 5 to every satellite.capsule.launch in `ship.satl` whose parameters fit it.
+// An include with arguments that fit none of them is the author's program
+// saying something `ship.satl` cannot hear, which is refused rather than
+// dropped; an include with NO arguments runs the launches that take none and is
+// never refused, because a file included only for its capsules is a real
+// program.
+SAT_CODE(734, EVAL_NO_LAUNCH_FITS, SAT_ERROR,
+         "nothing in the spaceship `{1}` takes {2} -- {3}")
+
+SAT_CODE(790, NOTE_EVAL_DEEPEST_CALL, SAT_NOTE,
+         "the deepest call is here, and the {1} frames under it are not printed")
+
+// --- S08xx -- the machine limits --------------------------------------------
+//
+// PLAN §4.5's satellite_config.ini, refused rather than ignored. M6's done-when
+// asks for "a malformed file refused with a code, a span and a caret", and the
+// whole file is refused on the first problem it holds -- unlike a bad `.satc`,
+// which S0390 says is ignored while the source is read instead. The difference
+// is what the two files ARE: a `.satc` is a cache and deleting it costs nothing,
+// while a config is the only statement of how much of this machine satl may
+// take, and guessing at that would be DESIGN §1.1's "behind their back" with the
+// machine's memory as the stake.
+//
+// EVERY ONE OF THESE CARRIES A REAL SPAN, which is the difference from S03xx one
+// block up. A `.satc` is generated and its span would point a person at a file
+// the next sentence tells them to delete; a satellite_config.ini is TYPED, by an
+// installer or by hand, and the caret lands under the character that is wrong.
+//
+// THE WATCHDOG HAS NO CODE HERE AND THAT IS DELIBERATE. When MEMORY_MAX is
+// crossed satl prints one line of plain words on stderr and goes, which is what
+// M6's done-when asks for. A code is for looking up and a span is for something
+// inside a file; a process that has run out of the memory it was allowed has
+// neither, and rendering `satl: error S08xx:` over it would dress a shutdown up
+// as a diagnostic about a file. programs/opening.cpp already keeps the words for
+// everything that is about the RUN rather than about a file, and this is that.
+
+SAT_CODE(801, CONFIG_NOT_A_SETTING, SAT_ERROR,
+         "a line in this file is `NAME=VALUE`, a `#` comment or blank -- there "
+         "are no [sections] -- and {1} is none of them")
+
+SAT_CODE(802, CONFIG_NO_SUCH_SETTING, SAT_ERROR,
+         "this file has no setting called `{1}` -- `satl --limits` lists every "
+         "one it has")
+
+SAT_CODE(803, CONFIG_SET_TWICE, SAT_ERROR,
+         "{1} is set twice in this file, and a setting is set once")
+
+SAT_CODE(804, CONFIG_NOT_A_NUMBER, SAT_ERROR,
+         "{1} is a whole number and `{2}` is not one")
+
+SAT_CODE(805, CONFIG_NEEDS_A_UNIT, SAT_ERROR,
+         "{1} is an amount of memory and `{2}` says how much without saying of "
+         "what -- write `{2}GiB` for powers of 1024 or `{2}GB` for powers of "
+         "1000, because 61.9 GiB and 64.9 GB are the same memory and a bare "
+         "number cannot say which was meant")
+
+SAT_CODE(806, CONFIG_NO_SUCH_UNIT, SAT_ERROR,
+         "`{1}` is not a unit -- B, KiB, MiB, GiB and TiB are powers of 1024, "
+         "and KB, MB, GB and TB are powers of 1000")
+
+SAT_CODE(807, CONFIG_TOO_SMALL, SAT_ERROR,
+         "{1} is {2} and the smallest it may be is {3}")
+
+SAT_CODE(808, CONFIG_TOO_LARGE, SAT_ERROR,
+         "{1} is {2} and the largest it may be is {3}")
+
+// SEPARATE FROM S0804 BECAUSE THE FIX IS DIFFERENT AND A SENTENCE HAS TO NAME
+// THE FIX. `CORE_COUNT=twelve` is answered by writing a number; `MEMORY_MAX=
+// 61.9GiB` is a number, and what is wrong with it is that a ceiling rounded to
+// a whole byte behind the user's back is one nobody can predict -- so the fix
+// is the next unit down, where the amount they mean is exact. Answering both
+// with "is a whole number" would have been one row saying two things, which is
+// the failure this file exists to make visible rather than one it may commit.
+SAT_CODE(809, CONFIG_NOT_A_WHOLE_AMOUNT, SAT_ERROR,
+         "{1} is a whole number of units and `{2}` is not one -- write the "
+         "next unit down, so that the byte count is exact instead of rounded")
+
+// THE THIRD THING A MACHINE SETTING'S VALUE MAY BE WRONG ABOUT, and it is a
+// different sentence from S0804 for the reason S0809 is: the sentence has to
+// name the fix, and here there are two fixes because there are two things the
+// value is allowed to be. `CORE_COUNT=twelve` could have meant a number or it
+// could have meant the machine, and a message saying only "is a whole number"
+// would send somebody to look up a core count they did not want to write down.
+//
+// {2} IS THE PATH THIS SETTING TAKES AND IT IS NOT A FIXED STRING. Each of the
+// three has exactly one -- DESIGN §7.7's pairing -- so the row is the same
+// sentence with a different answer in it, and config_internal.hpp's kSettings
+// is where the answer comes from. A file that names the WRONG one of the three
+// lands here too, which is right: `CORE_COUNT=arguments.memory.total` is not a
+// core count, and the message names the one that is.
+//
+// This row cannot be raised from example/broken_config.ini -- all three
+// settings are spent there on S0805, S0807 and S0808, and naming one twice
+// raises S0803 instead -- so tests/limits_test raises it from a string, which
+// is that file's own established answer for S0806, S0809 and S0891.
+SAT_CODE(810, CONFIG_NOT_A_FACT, SAT_ERROR,
+         "{1} is a whole number or `{2}`, which is what this machine says -- "
+         "and `{3}` is neither")
+
+SAT_CODE(890, NOTE_CONFIG_SET_HERE, SAT_NOTE,
+         "{1} was set here first")
+
+// The parser's S0208 one registry on, and the same argument: a reader stops
+// after twenty problems, and without this the twenty-first is invisible and the
+// rest of the file looks understood. A config file is a dozen lines and will
+// almost never reach it -- which is exactly when a cap goes unnoticed, so it is
+// said out loud rather than left to a reader who pointed satl at the wrong file.
+SAT_CODE(891, NOTE_CONFIG_TOO_MANY, SAT_NOTE,
+         "{1} problems were reported and the rest of this file was not read -- "
+         "fix these and run it again")
+
+// --- S09xx -- the clock and the dice -----------------------------------------
+//
+// M13's block, taken 2026-09-04. 901-910 are `satellite.random`'s, 920-929
+// `satellite.time`'s; the gap is the same deliberate one every block keeps.
+//
+// SIX OF THESE SENTENCES ARE v1's, PORTED AS ROWS. PLAN M13: "what survives is
+// the argument checking and v1's nine failure texts, reached through
+// handlers[path_id] and reported through M5" -- v1 composed them at its call
+// sites (902 through 908 below, near verbatim), and this file is where they
+// stop being literals somebody has to find twice. 901, 909 and 910 have no v1
+// ancestor because the shapes they refuse were specified 2026-09-04.
+//
+// AN UNKNOWN TIER IS NOT HERE AND MUST NEVER BE. `satellite.random.quick(5)`
+// is M5's did-you-mean over the failing trie level -- S0521/S0523 -- not a
+// tenth row in this block; v1 answered it from one generic "no such module
+// function" and PLAN §7 throws that dispatch away.
+
+// THE AUTHOR'S TEXT, VERBATIM AFTER THE DASH, one text for all three tiers and
+// both spellings (2026-09-04): the zero-argument call `fast()` `1 7 1` and the
+// bare path `satellite.random.fast` fold to the same number, a path is not a
+// value, and the refusal says what to do instead. The answer not taken --
+// inferring the digit count from the assignment's destination -- is recorded
+// in DESIGN §11 so it is not re-proposed.
+SAT_CODE(901, RANDOM_NEEDS_A_SHAPE, SAT_ERROR,
+         "`{1}` draws nothing on its own -- you must supply a digit_count, "
+         "min and max, or min max and step")
+
+SAT_CODE(902, RANDOM_NOT_A_DIGIT_COUNT, SAT_ERROR,
+         "`{1}` wants a whole number of digits, got {2}")
+
+SAT_CODE(903, RANDOM_DIGITS_OUT_OF_RANGE, SAT_ERROR,
+         "`{1}` draws between 0 and {2} digits, not {3}")
+
+SAT_CODE(904, RANDOM_WANTS_NUMBERS, SAT_ERROR,
+         "`{1}` wants {2} `satellite.variable.number` arguments")
+
+// Whole numbers, because the answer is one: there is no uniform draw over the
+// reals between 1 and 100, and quietly rounding the bounds would answer a
+// question nobody asked. v1's argument, travelling with v1's sentence.
+SAT_CODE(905, RANDOM_WANTS_WHOLE_NUMBERS, SAT_ERROR,
+         "`{1}` wants whole numbers, got {2}")
+
+SAT_CODE(906, RANDOM_RANGE_EMPTY, SAT_ERROR,
+         "`{1}` is inclusive at both ends, so {2} to {3} is empty")
+
+SAT_CODE(907, RANDOM_RANGE_TOO_WIDE, SAT_ERROR,
+         "`{1}` spans more than {2} digits")
+
+SAT_CODE(908, RANDOM_COULD_NOT_DRAW, SAT_ERROR,
+         "`{1}` could not draw {2} digits")
+
+SAT_CODE(909, RANDOM_STEP_NOT_A_STEP, SAT_ERROR,
+         "`{1}` steps forward by a whole number of one or more, not {2}")
+
+// THE REFUSAL NAMES THE LAST VALUE THE STEP REACHES -- the author's rule,
+// 2026-09-04, DESIGN §11: `step` must divide `max - min` exactly, so
+// `fast(1, 10, 4)` is refused naming 9, and `fast(1, 9, 4)` is what the
+// program meant or the program is wrong. "Inclusive at both ends" stays true
+// of every range call that answers; a refusal can loosen later, and a draw
+// that silently never says `max` is forever.
+SAT_CODE(910, RANDOM_STEP_MISSES, SAT_ERROR,
+         "`{1}` is inclusive at both ends, and stepping by {2} from {3} lands "
+         "last on {4}, never {5} -- refused rather than quietly never "
+         "answering {5}")
+
+// --- the seeded tier's three, M21 -------------------------------------------
+//
+// S0901 COULD NOT BE REUSED FOR THE BARE SHAPE and that is the whole reason
+// 913 exists: its text names "a digit_count, min and max, or min max and
+// step", and the seeded tier has no digit_count -- the one-argument slot
+// holds its seed. A shared sentence would have told a program to write the
+// one call this tier does not have.
+SAT_CODE(911, RANDOM_NOT_SEEDED, SAT_ERROR,
+         "`{1}` draws from a stream nothing has seeded -- write "
+         "`satellite.random.seeded(seed)` before the first draw")
+
+// A SEED IS NOT A BOUND AND IS CHECKED SEPARATELY. Whole and not negative,
+// because it names a starting point in a sequence rather than a quantity, and
+// a fractional one would have to be rounded to mean anything -- which would
+// make two spellings the same stream and hide a typo in a replay.
+SAT_CODE(912, RANDOM_NOT_A_SEED, SAT_ERROR,
+         "`{1}` wants a whole seed of zero or more, got {2}")
+
+SAT_CODE(913, RANDOM_SEEDED_NEEDS_A_SHAPE, SAT_ERROR,
+         "`{1}` draws nothing on its own -- you must supply a seed, min and "
+         "max, or min max and step")
+
+// THE UNIT IS SECONDS, WHOLE OR FRACTIONAL -- the author, 2026-09-04. One
+// unit always, so there is nothing at a call site to misread, and 0.09 is an
+// exact Number (DESIGN §8.1), so the fraction costs no float. What this row
+// refuses is a LENGTH no wait can be: negative, or wider than the int64
+// nanosecond count the timer runs on. A wrong TYPE is S0713's sentence, not
+// this one's.
+SAT_CODE(920, TIME_NOT_A_LENGTH, SAT_ERROR,
+         "`satellite.time.sleep` waits a number of seconds, and {1} is not a "
+         "length of time it can wait")
+
+// THE UNIT WORD -- `sleep(n, unit)` `1 9 4`, the author, 2026-09-12. A word
+// checked at run time, like file.open's mode, and the sentence names all four.
+SAT_CODE(921, TIME_NO_SUCH_UNIT, SAT_ERROR,
+         "`satellite.time.sleep` counts in \"s\", \"ms\", \"us\" or \"ns\", "
+         "and {1} is none of them")
+
+// --- S10xx -- the console's input --------------------------------------------
+//
+// M14's block, taken 2026-09-04. Three rows, and the interrupted case is
+// DELIBERATELY NOT A FOURTH: a Ctrl-C at the prompt answers nothing and the
+// walk stops itself at the next statement boundary with S0730's own caret --
+// the same shape sleep takes, one mechanism for every blocked wait.
+//
+// 1002 AND 1003 ARE RAISED AT COMPILE TIME, BEFORE THE PROMPT PRINTS, which
+// is PLAN M14's done-when clause 5: a target that cannot receive the line
+// must fail before anybody types an answer that is then thrown away.
+
+// v1's sentence, a row now: "satellite.console.input reached the end of
+// input". End of input is a REAL condition and not a failure of the asking --
+// a program run with its stdin closed reaches it immediately -- and the
+// refusal is what stops that program from looping on empty answers forever,
+// which is M14's clause 6 and §6's do-not-rediscover regression the other
+// way round.
+SAT_CODE(1001, CONSOLE_END_OF_INPUT, SAT_ERROR,
+         "`{1}` reached the end of input -- there is nobody left to answer, "
+         "and a program run with its stdin closed reaches this at once")
+
+SAT_CODE(1002, CONSOLE_TARGET_NOT_A_PLACE, SAT_ERROR,
+         "`{1}` writes its answer into its second argument, so that argument "
+         "has to be a variable -- the only out parameter in the language, and "
+         "deliberately not the start of a general facility")
+
+SAT_CODE(1003, CONSOLE_ANSWER_IS_THE_PLACE, SAT_ERROR,
+         "`{1}` writes a place and yields nothing -- it is a statement of its "
+         "own, and what it read is in the variable it wrote")
+
+// A COLOUR THAT IS NOT xRRGGBB -- M30, display's foreground= and background=,
+// 2026-09-12. Exactly six hex digits: digits() and not width(), which counts
+// bits. xF80 is refused rather than widened, and so is "#FF8800" -- a string.
+// The bare #FF8800 is accepted since 2026-09-13: the lexer reads `#` as `x`
+// (lexical_analyzer/lexer.cpp), so #FFF is xFFF and refused here the same way.
+SAT_CODE(1004, CONSOLE_NOT_A_COLOUR, SAT_ERROR,
+         "`{1}` takes a colour as six hex digits, xRRGGBB like xFF8800 -- "
+         "{2} is not one")
+
+// --- S11xx -- satellite.help ------------------------------------------------
+//
+// THE BLOCK IS SMALL BECAUSE HELP REFUSES IN ONLY THREE WAYS, and all three are
+// about the ARGUMENT rather than about help. `satellite.help` and
+// `satellite.help()` cannot fail: they walk a table that is in the binary.
+//
+// AND ALL THREE ARE DECIDED BY THE COMPILER, WHICH IS WHAT `1 19 1`'s ARGUMENT
+// BEING UNEVALUATED BUYS. words.def's fifth list says the argument is a path or
+// a name and is never run, so whether it is one is known before the program
+// starts -- there is no arrangement of inputs that turns a good ask into a bad
+// one. They are still RUN-time refusals, raised through op_misuse, for the
+// reason S0720 gives and M14's place arguments follow: a mistake in a branch
+// that never runs is a program that runs.
+
+// 1101 IS THE DONE-WHEN'S SECOND SELF-VERIFYING CHECK, AND IT HAD TO BE A NEW
+// CODE. `satellite.help(satellite.network)` refused in plain words before this
+// milestone existed -- with S0721, because the ARGUMENT dispatched and died
+// before help was entered -- and it refused identically for
+// `satellite.help(satellite.console)`, which is built. A check that passes
+// through the wrong mechanism and gives the same answer to the central question
+// help exists to answer is worse than a check that fails, so the sentence that
+// answers it now is its own, says what help is for, and names the one command
+// that lists the alternative.
+SAT_CODE(1101, HELP_NOT_BUILT, SAT_ERROR,
+         "`{1}` is a path satellite has a number for and nothing built behind "
+         "it yet, so there is nothing to tell you about it -- "
+         "`satellite.help()` lists what is built")
+
+// 1102 IS THE BARE WORD, and the author settled its sentence on 2026-09-07
+// along with the decision that quotes are gone: a topic is reached by its path,
+// `satellite.help(satellite.random)`, and `satellite.help()` is how you find
+// the path. So the two things a bare word can be are covered in one sentence --
+// a variable this program declared, or a word of the language somebody left the
+// `satellite.` off.
+SAT_CODE(1102, HELP_NO_SUCH_NAME, SAT_ERROR,
+         "there is no variable with the name `{1}` -- did you mean "
+         "`satellite.{1}`? `satellite.help()` lists the topics")
+
+// 1103 IS EVERYTHING ELSE, and it exists because the argument's grammar is
+// wider than its meaning: `satellite.help("random")` and `satellite.help(1 + 1)`
+// both parse. v1 accepted the quoted form for seven topic pages; this language
+// does not, and a refusal that says what IS accepted is the difference between
+// a rule and a wall.
+SAT_CODE(1103, HELP_NOT_A_TOPIC, SAT_ERROR,
+         "`satellite.help` takes a path or the name of a variable, and {1} is "
+         "neither -- write `satellite.help(satellite.console)` for a topic or "
+         "`satellite.help()` for the list")
+
+// 1104 IS A GLOBAL, AND IT IS ITS OWN SENTENCE BECAUSE 1103'S WAS FALSE ABOUT
+// IT. `satellite.help(satellite.library.n)` got "`n` is neither a path nor the
+// name of a variable" -- and `n` IS the name of a variable, which is the one
+// thing a refusal must not get wrong. Found while probing the shapes after the
+// milestone was otherwise finished.
+//
+// AND THE REASON IS A PROPERTY OF THE LANGUAGE RATHER THAN OF HELP. A global is
+// written `satellite.library.n = 0` and there is no typed form: DESIGN §6's
+// top_level takes `satellite.library.<name>` and S0204 refuses
+// `satellite.variable.number satellite.library.n = 0` outright. So resolve has
+// no declared type to hand over, and `1 19 1`'s argument is a path or a name
+// whose type is known STATICALLY -- help would have to run the program to
+// answer, which is the one thing this row is built not to do.
+SAT_CODE(1104, HELP_GLOBAL_HAS_NO_TYPE, SAT_ERROR,
+         "`{1}` is a global, and a global is declared without a type -- help "
+         "answers for the type a name was declared with, and a global does not "
+         "have one until the program has run")
+
+// --- S12xx -- persistence, files and directories ----------------------------
+//
+// M19's block, taken 2026-09-08. EIGHT ROWS -- seven written up front and 1208
+// added the same day, when a help example ran and 1203 said something false --
+// AND THE SMALLNESS IS THE WHOLE POINT OF THE MODULE: DESIGN §9 makes a failed OPEN a value and not an error,
+// so the commonest thing that goes wrong with a file -- it is not there --
+// raises nothing at all. The handle comes back holding `errno`, `ok` `1 6 2 8`
+// asks, `error` `1 6 2 10` says why, and the program carries on. That is
+// PLAN M19's done-when clause "open a path that does not exist, print the
+// reason, and keep running", and it is the one assertion in the milestone that
+// cannot be faked.
+//
+// SO WHAT IS LEFT IS THE SPLIT v1 DREW AND THIS BLOCK KEEPS: a PROGRAM mistake
+// is an error and a RUNTIME failure is a value. Asking a read-only handle to
+// write is a program that is wrong however the disk behaves; a write that fills
+// the disk is a false the caller can test. Every row below is on the first side
+// of that line, which is why none of them is about a syscall failing.
+//
+// 1201 IS WHY THE MODE WORDS DO NOT NEED TO FOLD. WORD_NUMBERS §1.5's literal
+// fold would have made a bad mode word M5's *suggester*, over siblings named
+// `open_read` and the rest; the author settled on 2026-09-08 that they do not
+// fold, so this is M5's *reporter* instead -- a code, a span and a caret, with
+// all four words named in the sentence rather than one guessed at. It names the
+// four by listing them because there are four, which is a list a reader can act
+// on; a "did you mean" over four candidates is a guess where an enumeration is
+// available.
+//
+// AND THERE IS NO "text" OR "binary" MODE, which v1 refused at length and
+// DESIGN §8.5 now records: a `satellite.variable.string` already holds
+// arbitrary bytes and POSIX has no newline translation to switch off, so the
+// word would arrange nothing while telling a program something had been
+// arranged. A reader who types one lands here and the sentence is the same
+// sentence, deliberately -- there is no special case saying "no such mode, and
+// here is a paragraph", because the four words ARE the answer.
+SAT_CODE(1201, FILE_BAD_MODE, SAT_ERROR,
+         "`{1}` opens a file in one of four modes -- \"read\", \"write\", "
+         "\"append\" or \"read_append\" -- and {2} is not one of them")
+
+// 1202 IS THE MISTAKE FOUR MODES MADE ORDINARY. While every mode went one way,
+// asking a handle for the other direction produced EBADF, and "Bad file
+// descriptor" is the wrong sentence about a descriptor in perfect health --
+// v1's note, and its `readable`/`writable` fields existed for a milestone
+// before anything read them. The direction is checked BEFORE the syscall and
+// the message names the modes that would have worked, because the fix is at the
+// open and not at the call that noticed.
+SAT_CODE(1202, FILE_WRONG_DIRECTION, SAT_ERROR,
+         "`{1}` cannot {2} `{3}`: this `satellite.variable.file` was not opened "
+         "for it -- open it with {4}")
+
+// 1203 IS A CLOSED HANDLE, AND IT IS AN ERROR RATHER THAN A FALSE BECAUSE
+// DESIGN §8's "never silently reopen" leaves nothing else it could be. A
+// program that reads after closing has a mistake in it that no disk state can
+// excuse, and answering false would make it indistinguishable from an empty
+// file. `open` `1 6 2 2` is the spelling that reopens, and the sentence names
+// it so the reader is not left to guess that closing is reversible.
+SAT_CODE(1203, FILE_IS_CLOSED, SAT_ERROR,
+         "`{1}` was asked of a `satellite.variable.file` that is closed -- "
+         "`open` reopens one, and a handle whose open failed answers `ok` false "
+         "rather than raising")
+
+// 1204 IS THE ONE FAILURE IN `satellite.directory` THAT IS AN ERROR AND NOT A
+// VALUE, AND M19 RE-AFFIRMED IT RATHER THAN INHERITING IT. `.list` has nowhere
+// to put bad news: the empty list is already a true answer about an empty
+// directory, so spending it on "there was no directory" makes the two
+// indistinguishable -- the silent wrong answer DESIGN §9 exists to refuse, and
+// the one that survives every other fix. Loud costs a caller one `exists(d)`;
+// quiet costs them a program that lists a mistyped path as empty and does
+// nothing. The sentence names `exists(d)` for exactly that reason.
+SAT_CODE(1204, DIRECTORY_NO_SUCH, SAT_ERROR,
+         "`satellite.directory.list` has no such directory {1} -- "
+         "`satellite.directory.exists` asks that without failing")
+
+SAT_CODE(1205, DIRECTORY_NOT_A_DIRECTORY, SAT_ERROR,
+         "`satellite.directory.list` wants a directory, and {1} is a file")
+
+// 1206 IS A DIRECTORY THAT IS THERE AND CANNOT BE READ, WHICH IS A THIRD THING
+// AND NOT A SHADE OF 1204. `exists` answers TRUE for it -- stat needs only
+// search permission on the parent -- so `exists` is a safe way to ask about
+// ENOENT and is not a promise that `list` will succeed, and a reader who has
+// just been sent to `exists` by 1204 has to be able to find that out here.
+//
+// IT ALSO COVERS A LISTING THAT STOPPED PART WAY, v1's case: a half-read
+// directory is worse than none, because its `.size()` is a number the caller
+// would believe.
+SAT_CODE(1206, DIRECTORY_UNREADABLE, SAT_ERROR,
+         "`satellite.directory.list` cannot read {1}: {2}")
+
+// 1207 IS `satellite.system.delete` REFUSING TO STRINGIFY. v1's note is the
+// argument and it is a sharp one: `to_string(7)` is "7", which is a filename
+// the filesystem would accept, so a number that reached this call by mistake
+// would delete a file named after itself and answer true. A destructive verb
+// gets the strictest argument check in the language, and nil gets its own half
+// of the sentence because the way a program arrives at nil here is almost
+// always a `satellite.variable.file` that was declared and never opened.
+SAT_CODE(1207, DELETE_NOT_A_NAME, SAT_ERROR,
+         "`satellite.system.delete` names what to remove with a "
+         "`satellite.variable.string` path or an open `satellite.variable.file`, "
+         "and {1} is neither -- a declared file holds nothing until "
+         "`satellite.file.open` or `satellite.file.new` gives it a path")
+
+// 1208 IS THE HANDLE THAT NEVER OPENED, AND IT EXISTS BECAUSE 1203'S SENTENCE
+// WAS FALSE ABOUT IT -- the same shape S1104 has beside S1103 one block up, and
+// found the same way: by running the thing and reading what it said.
+//
+// A leftover file from an earlier run made `satellite.file.new` come back
+// EEXIST, and the next line of the program said "`write_line` was asked of a
+// `satellite.variable.file` that is CLOSED" -- about a handle that had never
+// been open, three lines under the call that failed to open it, while the errno
+// explaining the whole thing sat unread in `error`. A message that points away
+// from the answer is worse than a shorter one.
+//
+// SO IT NAMES THE PATH AND CARRIES THE REASON, because the fix is at the
+// constructor and not at the line that noticed. The two states are told apart
+// by `FileHandle::ever_open` and not by whether an errno is held -- a handle
+// that opened, failed one write and was then closed holds an errno and HAS
+// been open, so the obvious derivation is the wrong one.
+SAT_CODE(1208, FILE_NEVER_OPENED, SAT_ERROR,
+         "`{1}` was asked of a `satellite.variable.file` that never opened -- "
+         "`{2}`: {3}. `ok` answers that without stopping, and `error` is this "
+         "same reason")
+
+// --- S13xx -- the machine's facts -------------------------------------------
+//
+// M20. `satellite.system` answers what the machine is, and the one way a
+// program can get that wrong is to name a unit that does not exist.
+//
+// ONE CODE FOR THE WHOLE NAMESPACE, and that is the shape rather than a start.
+// Every other refusal these paths can make is already somebody's: a unit given
+// as a number instead of a string is S0711's wrong type, and a path that is
+// numbered and not built is S0721. What is left is a string that IS a string
+// and is not one of the five words -- which is exactly the shape S1201 has for
+// a file's four modes, one block down, and the sentence is written to match it
+// because the mistake is the same mistake.
+
+// THE FIVE WORDS ARE THE ANSWER, so the message spells all five rather than
+// saying "not a unit" and leaving the reader to find the list. That is S1201's
+// choice and its reason: "the four words ARE the answer".
+//
+// AND IT NAMES THE DEFAULT, because a program that meant megabytes can simply
+// stop passing anything -- which is the fix more often than picking a different
+// word is.
+SAT_CODE(1301, SYSTEM_BAD_UNIT, SAT_ERROR,
+         "`{1}` reports memory in one of five units -- \"b\", \"kb\", \"mb\", "
+         "\"gb\" or \"tb\" -- and {2} is not one of them. Asked with no unit "
+         "it answers in \"mb\"")
+
+// 1302 IS AN ENUMERATION AND NOT A DID-YOU-MEAN, which is M19's decision at
+// S1201 over the four file modes, reached again here over a list of ONE. A
+// suggester guesses where an enumeration is available, and "disabled" is the
+// whole of what this dial accepts besides a number.
+//
+// AND THE NUMBER IS NAMED IN THE SENTENCE, because the mistake it catches is
+// almost always somebody reaching for the off switch: `min_free_mb = 0` is a
+// floor of zero and stays armed, which is the author's decision of
+// 2026-09-11, and the sentence says so where it will be read.
+SAT_CODE(1302, SYSTEM_BAD_DIAL_WORD, SAT_ERROR,
+         "`{1}` takes a whole number of megabytes or the word \"disabled\", "
+         "and {2} is neither -- `0` is a floor of zero and keeps the watch "
+         "armed, so \"disabled\" is how a program stops it")
+
+// --- S14xx -- threads -------------------------------------------------------
+//
+// M23. `satellite.thread.new` packages a call, `start()` runs it and `join()`
+// waits for it, and the five rows below are every way a program can get that
+// sequence wrong that is not already somebody else's.
+//
+// WHAT IS DELIBERATELY NOT HERE IS THE INTERESTING HALF.
+//
+// A CAPSULE THAT REFUSES ON A THREAD RAISES ITS OWN DIAGNOSTIC AND NOT ONE OF
+// THESE. A division by zero inside a threaded capsule is S0705 with S0705's
+// caret pointing at the line that did it -- `join()` re-raises the thread's
+// problem in the joining program rather than wrapping it in a sentence about
+// threads. A wrapper would put the word "thread" in front of every error a
+// program can make and bury the one that matters; the thread is HOW the
+// capsule ran and not WHAT went wrong with it. MILESTONES/M23.md section 2.6.
+//
+// AND THE ARGUMENT COUNT IS S0722, WHICH op_call ALREADY RAISES. Packaging a
+// call checks its arity exactly as performing one does, because it is the same
+// check about the same capsule -- a second code would be a second sentence for
+// one mistake, which is what errors.def's whole shape is against.
+//
+// THERE IS NO CODE FOR "TOO MANY THREADS" AND THERE MUST NOT BE. A ceiling on
+// how many threads a program may start is a limit the language does not have
+// (SCRATCH.md/NO_LIMITS.md), and S1405 below is not one: it reports that the
+// MACHINE refused, with the machine's own reason attached, which is a fact
+// about this computer at this moment rather than a number satellite chose.
+
+// A CALL, AND THE SENTENCE HAS TO SERVE TWO SITES. The compiler raises this
+// when the argument is not a call to a capsule the program declared -- caught
+// before anything runs, which is the place a misuse belongs -- and the handler
+// raises it when the argument is a value of some other type, which is the arm
+// a variable takes. So it names what is wanted and what arrived, in the shape
+// every S07xx type refusal uses, and works from either end.
+//
+// IT NAMES THE FORM RATHER THAN THE TYPE, because `satellite.variable.capsule`
+// is a type nothing can declare yet (M23.md section 4) and telling somebody to
+// reach for it would be advice they cannot take. What they can write is the
+// call, so the call is what the sentence shows.
+SAT_CODE(1401, THREAD_NOT_A_CAPSULE_CALL, SAT_ERROR,
+         "`{1}` runs a capsule of your own on a thread, so what goes inside it "
+         "is a CALL -- `my_capsule()` or `my_capsule(x)` -- and {2} is not "
+         "one. The arguments are worked out now; the capsule is not entered "
+         "until `start()`")
+
+// TWICE IS THE MISTAKE AND NOT THE SECOND CALL'S TIMING. A thread is one
+// activation of one capsule: starting it again would either run the body twice
+// on one handle -- so `join()` could not say which one it waited for -- or
+// silently do nothing, which is the do-it-behind-their-back shape DESIGN
+// section 1.1 refuses. So it refuses, and it says what the handle is for.
+SAT_CODE(1402, THREAD_ALREADY_STARTED, SAT_ERROR,
+         "this thread has already been started, and a thread runs once. "
+         "`satellite.thread.new` is what makes another one")
+
+// JOIN BEFORE START IS ALMOST ALWAYS THE TWO LINES IN THE WRONG ORDER, so the
+// sentence says the order rather than only naming the state.
+SAT_CODE(1403, THREAD_NOT_STARTED, SAT_ERROR,
+         "`join()` waits for a thread that is running, and this one has not "
+         "been started -- `start()` comes first")
+
+// AND THE SECOND JOIN IS A DIFFERENT MISTAKE FROM THE SECOND START, which is
+// why it is a row and not a shared sentence with S1402. Joining twice is
+// usually a `join()` inside a loop that has already run; the answer is still
+// there to be read, so the sentence says so.
+//
+// A WARNING SINCE THREAD.md T1, THE AUTHOR'S DECISION OF 2026-09-13 (Q2). It
+// was a refusal, and two threads joining one thread at once could not be made
+// to refuse exactly -- the second hung inside std::thread::join(). The author's
+// answer: the thread is done, so the second join is done too. It gets the same
+// answer (or the same error) the first did, the run goes on, and the warning is
+// printed and kept in ~/.satl/satellite.log.
+SAT_CODE(1404, THREAD_ALREADY_JOINED, SAT_WARNING,
+         "this thread had already been joined, so this join gave back the same "
+         "answer the first one did -- a thread runs once and is waited for once")
+
+// THE MACHINE SAID NO, AND ITS REASON IS IN THE SENTENCE. `ulimit -u`, a
+// cgroup pids limit, a machine out of memory: all three come back from
+// std::thread's constructor as a std::system_error whose what() names the
+// cause, and a refusal that dropped it would leave a person guessing between
+// three unrelated fixes. This is the one code here that reports a fact about
+// the computer rather than about the program.
+SAT_CODE(1405, THREAD_CANNOT_START, SAT_ERROR,
+         "this machine would not make another thread: {1}. satellite sets no "
+         "ceiling of its own on how many a program may start, so this is the "
+         "operating system's answer and not satellite's")
+
+// ONE FILE HANDLE, MORE THAN ONE THREAD -- THREAD.md D7, the author's decision
+// of 2026-09-13 (Q4): allowed, locked, and written down. Each `read_line` and
+// `write_line` is whole under the handle's lock, so nothing is torn; what no
+// lock can decide is WHICH thread gets the next line, and that is the thing a
+// person should know is happening. Kept in ~/.satl/satellite.log, once per
+// handle, and not printed: the program is doing what it was written to do.
+SAT_CODE(1406, THREAD_SHARED_FILE, SAT_WARNING,
+         "{1} is being used by more than one thread. Each read and write is "
+         "whole, but which thread gets the next line depends on how the "
+         "threads run")
+
+// A JOIN THAT COULD NEVER RETURN -- found by T1's review. A thread joining its
+// own handle, or A joining B while B joins A: each waits for a thread that is
+// waiting for it. THREAD.md §1 says a join always returns, so the wait is
+// refused before it starts instead of hanging the program -- at the moment it
+// would have closed the circle, in the thread that closed it.
+SAT_CODE(1407, THREAD_JOIN_NEVER_RETURNS, SAT_ERROR,
+         "this `join()` would never return: the thread it waits for is this "
+         "thread, or is itself waiting -- through joins, or for something this "
+         "thread holds -- for this one")
+
+// A WAIT ON THE ACCESS LIST THAT WOULD NEVER END -- THREAD.md T2. The thing
+// this thread needs is held by a thread that is waiting, through other waits,
+// for something this thread holds: thread A in `x.m()` calling `y.n()` while
+// thread B in `y.n()` calls `x.m()`. Refused in whichever thread would have
+// closed the circle; the other goes on once this one's walk has ended and let
+// go of what it held.
+SAT_CODE(1408, THREAD_WAIT_NEVER_ENDS, SAT_ERROR,
+         "{1} is in use by another thread that is itself waiting -- for this "
+         "thread to finish, or through other threads for something this thread "
+         "has in use -- so waiting here would never end")
+
+// ---------------------------------------------------------------------------
+// S15xx -- WHAT A PERSON WOULD FIND BY READING THE PROGRAM. M26.5's static
+// analyser, and the first block in this file whose rows are about a program
+// that RUNS.
+//
+// EVERY OTHER DECADE HERE IS ABOUT WORK THAT STOPPED. S03xx is a file that
+// would not open, S05xx a name that would not bind, S07xx a run that was
+// refused -- each one a sentence explaining why satellite did not do what was
+// asked. These rows are the opposite: satellite did exactly what was asked, it
+// worked, and somebody should still look at the line. That is what SAT_WARNING
+// was added for and this is the block that uses it.
+//
+// SO THE SENTENCES SAY WHAT WILL HAPPEN AND NOT WHAT TO DO. A ring of
+// spacesuits is a legitimate thing to build and the author of
+// infinity_data_main.satl built one on purpose, wrote a comment about the
+// price, and was right -- the leak is one object in a program that releases
+// nothing. A code that called that a mistake would be wrong about a real
+// program, and the second time somebody is wrongly warned they stop reading the
+// warnings. DESIGN §1.1 is that satellite never acts behind the user's back; it
+// is not that satellite argues with them.
+//
+// 1500-1509 memory -- what is allocated and not given back
+// 1510-1519 threads -- what two threads reach at once
+// 1520-1529 control flow -- a path that cannot be taken, or cannot be left
+// 1530-1539 a name that is written and never read
+//
+// The gaps are on purpose; see the block note at the top of this file. Three of
+// the four decades are empty today and are reserved rather than renumbered,
+// which is the promise S05xx, S06xx and S07xx were each given and each kept.
+
+// A RING OF SPACESUITS, WHICH IS THE ONE LEAK THIS LANGUAGE CAN HAVE -- M26.5.
+//
+// M26 MADE A SPACESUIT A REFERENCE HELD BY A COUNT, and a count frees
+// everything shaped like a tree and nothing shaped like a ring. If `a` holds
+// `b` and `b` holds `a` then each is holding the other's count above zero, both
+// are unreachable from the program, and neither is ever freed. DESIGN §12
+// defers a cycle collector, so this is not a risk of a leak, it is one -- and
+// it is decidable by reading the declared types, which is why it is the
+// analyser's first row rather than its hardest.
+//
+// IT NAMES THE FIELD AND THEN THE RING. The field is the line somebody can
+// change and is where the caret goes; the ring is the part they cannot see from
+// that line, and a person told only that `infinity_data` leaks has to find the
+// chain themselves in a file that may be two thousand lines long.
+//
+// AND IT IS A WARNING. See this block's note: the specimen this was written
+// against is a deliberate cycle whose author had already reasoned about the
+// cost in a comment above it.
+SAT_CODE(1501, ANALYSIS_SUIT_CYCLE, SAT_WARNING,
+         "`{1}` closes a ring of spacesuits -- {2} -- and satellite frees a "
+         "spacesuit by counting references, so a ring holds itself alive and "
+         "is never freed. Hold one of the links with `.pointer()` if the ring "
+         "should not own itself")
+
+// S16xx -- ANOTHER FILE: `satellite.include(spaceship)`, PLAN M25's first half,
+// built 2026-09-13. Everything here is found by the loader, before a line of
+// either file resolves, and is reported against the include that named the
+// file -- the one line the person can change.
+// {3} IS ", from the directory of the file that includes it" OR NOTHING --
+// revision 07: a path from `/` was not looked for from any directory.
+SAT_CODE(1601, SPACESHIP_NOT_FOUND, SAT_ERROR,
+         "there is no spaceship `{1}` to include -- satellite looked for {2}{3}")
+
+SAT_CODE(1602, SPACESHIP_NAME_TAKEN, SAT_ERROR,
+         "the spaceship `{1}` has the name of a {2} this program already "
+         "declares, and a name is declared once")
+
+// 1603 RETURNS WITH PATHS -- 003 revision 07, 2026-09-15. It was written the day
+// the loader was, for two different files with one name, and left out because
+// nothing could produce it: every include looked beside the file that wrote it.
+// A quoted path names a directory, so "parts/ship" and "tools/ship" are two
+// files that would both be the spaceship `ship` -- and a spaceship is reached by
+// its name, so one of them would be unreachable. {2} is the file already loaded
+// under that name, {3} the one this include would add.
+SAT_CODE(1603, SPACESHIP_TWO_FILES_ONE_NAME, SAT_ERROR,
+         "`{1}` is already the spaceship loaded from {2}, and {3} would be a "
+         "second file with the same name -- a spaceship is reached by its name, "
+         "so rename one of the files")
+
+SAT_CODE(1604, SPACESHIP_NOT_A_NAME, SAT_ERROR,
+         "satellite.include names a spaceship by its name or its path -- "
+         "`satellite.include(ship)`, `ship(arguments)`, `ship.satl(arguments)` "
+         "or `\"parts/ship\"(arguments)` -- and this is not one")
+
+SAT_CODE(1605, SPACESHIP_UNREADABLE, SAT_ERROR,
+         "the spaceship `{1}` is {2} and could not be read: {3}")
+
+// ONE FILE REACHED UNDER TWO NAMES, WHICH ONLY A LINK CAN DO -- found by review.
+SAT_CODE(1606, SPACESHIP_TWO_NAMES, SAT_ERROR,
+         "`{1}` is the file already included as the spaceship `{2}`, and a file "
+         "is one spaceship with one name")
+
+// THE FILE NAME AT THE END OF A PATH IS THE SPACESHIP'S NAME -- revision 07. So
+// it has to be one: "parts/my-ship" would be reached as `my-ship.setup()`, which
+// is a subtraction. {1} is the path as written, {2} the file name it ends in. A
+// backslash is refused here too: a path is written plainly, never with escapes.
+SAT_CODE(1607, SPACESHIP_PATH_NOT_A_NAME, SAT_ERROR,
+         "the path \"{1}\" ends in `{2}`, and a spaceship is named by its file -- "
+         "that name has to be letters, digits and _, not starting with a digit, "
+         "and the path is written without a backslash or a control character")
+
+#undef SAT_CODE

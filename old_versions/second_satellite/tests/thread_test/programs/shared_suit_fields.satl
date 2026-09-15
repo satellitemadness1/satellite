@@ -1,0 +1,52 @@
+satellite.include(satellite)
+
+satellite.spacesuit tally()
+{
+    satellite.protected
+    {
+        satellite.variable.number count = 0
+        satellite.variable.string text = ""
+    }
+    satellite.public
+    {
+        satellite.capsule add()
+        {
+            count = count + 1
+            text = text + "x"
+        }
+        satellite.capsule get() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(count)
+        }
+    }
+}
+
+satellite.capsule hammer(tally t) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number i = 0
+    satellite.statement.for (i = 0; i < 20000; i = i + 1)
+    {
+        t.add()
+    }
+    satellite.return(0)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    tally shared
+    satellite.variable.thread a = satellite.thread.new(hammer(shared))
+    satellite.variable.thread b = satellite.thread.new(hammer(shared))
+    satellite.variable.thread c = satellite.thread.new(hammer(shared))
+    satellite.variable.thread d = satellite.thread.new(hammer(shared))
+    a.start()
+    b.start()
+    c.start()
+    d.start()
+    a.join()
+    b.join()
+    c.join()
+    d.join()
+    satellite.variable.number count = shared.get()
+    satellite.console.display("suit count " + count.to_string() + " of 80000")
+    satellite.return(satellite)
+}

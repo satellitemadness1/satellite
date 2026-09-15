@@ -1,0 +1,72 @@
+#pragma once
+// full list of satellite machine codes (do not use a machine code without adding it to this list...)
+//
+// Every satellite-004 function answers one of these. 0 is success; anything
+// else says what went wrong, or which stage of loading was reached.
+//
+// The author's list, 2026-09-14. 13 was added the same day, for a line the
+// runner has no scenario for yet. 14-19 were added the same night for the
+// satellite_string methods, each matching a refusal 003 06 already makes
+// (satellite_scalars/string_methods.cpp).
+
+namespace satellite004 {
+
+enum MachineCode : signed long long int {
+    success = 0,
+    error = 1,
+    display_error = 2,
+    int_error = 3,
+    string_error = 4,
+    vector_loading_error = 5,
+    number_vector_defined = 6,          // the number index is built
+    satellite_loading_successful = 7,   // end of all loading
+    missing_satl_file = 8,              // cannot run, obviously
+    successfully_loaded_satl_file = 9,  // can run the file
+    satl_file_missing_satellite_include_satellite = 10,
+    satl_file_missing_satellite_main = 11,
+    satl_file_missing_satellite_return_satellite = 12,
+    satl_line_not_understood = 13,      // no scenario for this line yet
+    not_built_yet = 14,                 // the word is numbered, but what it needs does not exist yet
+    text_not_found = 15,                // find: the text is not in the string (003's S0716)
+    position_past_the_end = 16,         // substring / at: past the last character (003's S07xx past-the-end)
+    positions_backwards = 17,           // substring: start is after end (003's backwards refusal)
+    empty_search_text = 18,             // replace: nothing to replace (003 refuses an empty needle)
+    not_a_position = 19,                // a position that is negative
+};
+
+inline const char *machine_code_name(signed long long int code)
+{
+    switch (code) {
+    case success: return "success";
+    case error: return "error";
+    case display_error: return "display_error";
+    case int_error: return "int_error";
+    case string_error: return "string_error";
+    case vector_loading_error: return "vector_loading_error";
+    case number_vector_defined: return "number_vector_defined";
+    case satellite_loading_successful: return "satellite_loading_successful";
+    case missing_satl_file: return "missing_satl_file";
+    case successfully_loaded_satl_file: return "successfully_loaded_satl_file";
+    case satl_file_missing_satellite_include_satellite: return "satl_file_missing_satellite_include_satellite";
+    case satl_file_missing_satellite_main: return "satl_file_missing_satellite_main";
+    case satl_file_missing_satellite_return_satellite: return "satl_file_missing_satellite_return_satellite";
+    case satl_line_not_understood: return "satl_line_not_understood";
+    case not_built_yet: return "not_built_yet";
+    case text_not_found: return "text_not_found";
+    case position_past_the_end: return "position_past_the_end";
+    case positions_backwards: return "positions_backwards";
+    case empty_search_text: return "empty_search_text";
+    case not_a_position: return "not_a_position";
+    }
+    return "not_on_the_list";
+}
+
+// A code that means the program cannot go on. The loading stages (6, 7, 9)
+// are reports, not failures.
+inline bool stops_the_program(signed long long int code)
+{
+    return code != success && code != number_vector_defined &&
+           code != satellite_loading_successful && code != successfully_loaded_satl_file;
+}
+
+} // namespace satellite004

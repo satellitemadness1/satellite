@@ -1,0 +1,3 @@
+satellite.include(satellite)
+satellite.console.display("x")
+satellite.return(satellite)

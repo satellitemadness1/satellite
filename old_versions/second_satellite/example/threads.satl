@@ -1,0 +1,282 @@
+// M23 -- threads. `satellite.thread.new`, `start()` and `join()`.
+//
+// DESIGN §7.1 IS THE DONE-WHEN AND IT IS WRITTEN AS A RECEIPT FOR A FAILURE.
+// The first satellite kept every local in one registry keyed by
+// `<capsule>.<variable>`, and the section records what that cost:
+//
+//     "Concurrency is worse, and would not be seen coming. EIGHT THREADS
+//      running a capsule with NO RECURSION AND NO SHARED STATE produced 1585
+//      WRONG RESULTS OUT OF 1600."
+//
+// So the first thing this file does is run that exact shape and assert the
+// other answer. Eight threads, 200 activations each, 1600 results, and 1600 of
+// them right -- because DESIGN §7.2's frame per call has been the language's
+// shape since M9 and this is the first program that could ever have told.
+//
+// WHAT EACH SECTION PROVES:
+//
+//   §1  the deferred call is DEFERRED. `new` packages and does not enter.
+//   §2  `start()` does not wait and `join()` does.
+//   §3  DESIGN §7.1's 1600, from eight threads at once.
+//   §4  `satellite.library` is ONE variable seen by every thread.
+//   §5  join() answers what the capsule returned.
+//   §6  a thread is a reference type -- two names, one thread.
+//
+// THE REFUSALS ARE NOT HERE AND THAT IS DELIBERATE. S1401 through S1405 each
+// stop the run, so a program cannot demonstrate more than one of them;
+// tests/eval_test's `threads.cpp` raises all five, which is where a refusal
+// belongs when the language has no way to catch one.
+
+satellite.include(satellite)
+
+// §1's witness. Writes its mark into a global so the caller can see WHEN it
+// ran, which is the only way to tell a packaged call from a performed one.
+satellite.capsule leave_a_mark(satellite.variable.string mark)
+{
+    satellite.library.marks = satellite.library.marks + mark
+    satellite.return()
+}
+
+// §3's capsule, and it is DESIGN §7.1's shape exactly: NO RECURSION AND NO
+// SHARED STATE. Every name in here is a local, so every activation needs its
+// own storage, and a language that gave them one slot between them would
+// return the last writer's answer to all of them.
+//
+// THE MULTIPLY IS WHAT MAKES A WRONG ANSWER VISIBLE. If `n` were shared, two
+// threads interleaving would leave `doubled` holding the other thread's
+// number, and 200 activations of 8 threads would agree on almost nothing.
+satellite.capsule count_alone(satellite.variable.number from) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number right = 0
+    satellite.variable.number i = 0
+    satellite.statement.for (i = 0; i < 200; i = i + 1)
+    {
+        satellite.variable.number n = from * 1000 + i
+        satellite.variable.number doubled = n + n
+        satellite.statement.if (doubled == n * 2)
+        {
+            right = right + 1
+        }
+    }
+    satellite.return(right)
+}
+
+// §4's capsule. Reads, adds and writes back a GLOBAL -- which is the one thing
+// DESIGN §7.2 reserves for sharing: "permanent identity, CROSS-THREAD SHARING,
+// lock-free reads and atomic read-modify-write are exactly what globals need".
+//
+// THE ASSERTION IS ON THE TOTAL SINCE THREAD.md T2. At M23 `read, add, write`
+// was three operations another thread could get between, and this section only
+// asserted that the total was not 0. Now the statement puts `satellite.library`
+// on its thread's access list until it ends -- the author's design, 2026-09-13
+// -- so sixteen threads adding one give exactly sixteen.
+satellite.capsule touch_the_global()
+{
+    satellite.library.touched = satellite.library.touched + 1
+    satellite.return()
+}
+
+// §2's and §6's capsule. Sleeps a quarter second, then says it got there.
+//
+// THE GLOBAL IS THE CLOCK, AND IT IS THE CLOCK BECAUSE THE LANGUAGE HAS NO
+// OTHER ONE. `satellite.time.now()` answers an instant and DESIGN §12 defers
+// durations -- "time is an absolute instant only; subtraction yields a number
+// of nanoseconds" -- so `now() - began` is S0711 and a satellite program cannot
+// yet measure how long anything took. What it CAN see is whether something has
+// happened yet, which is the claim §2 actually needs. MILESTONES/M23.md §3.4.
+satellite.capsule slow_answer() satellite.returns(satellite.variable.number)
+{
+    satellite.time.sleep(0.25)
+    satellite.library.arrived = satellite.library.arrived + 1
+    satellite.return(4242)
+}
+
+satellite.library.marks = ""
+satellite.library.touched = 0
+satellite.library.arrived = 0
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.number wrong = 0
+
+    // --- §1 -- the deferred call is deferred -----------------------------
+    //
+    // DESIGN §13: "capsule_name(args) at that position is not performed -- it
+    // is PACKAGED. The handler evaluates the arguments and stores (capsule
+    // number, argument values) for the thread to run later."
+    //
+    // THE ARGUMENT IS EVALUATED AND THE CAPSULE IS NOT ENTERED, and those are
+    // two separate claims that need two separate witnesses. `"A"` is worked
+    // out now; `leave_a_mark` must not have run.
+    satellite.variable.thread packaged = satellite.thread.new(leave_a_mark("A"))
+
+    satellite.statement.if (satellite.library.marks != "")
+    {
+        satellite.console.display("WRONG: new() ran the capsule -- marks is " + satellite.library.marks)
+        wrong = wrong + 1
+    }
+
+    packaged.start()
+    packaged.join()
+
+    satellite.statement.if (satellite.library.marks != "A")
+    {
+        satellite.console.display("WRONG: after join, marks is " + satellite.library.marks)
+        wrong = wrong + 1
+    }
+
+    // --- §2 -- start() does not wait, join() does ------------------------
+    //
+    // `slow_answer` sleeps a quarter second and only then adds one to
+    // `arrived`. So the state of that global is a statement about TIME without
+    // a clock being involved: if it is still 0 on the line after `start()`,
+    // then `start()` did not wait for the sleep; if it is 1 on the line after
+    // `join()`, then `join()` did.
+    //
+    // THE MARGIN IS A QUARTER OF A SECOND AGAINST A FEW MICROSECONDS, which is
+    // what makes this a test rather than a race. A machine under enough load
+    // to spend 250 ms between two statements has bigger problems than this
+    // file, and the failure would be a FALSE ALARM rather than a false pass --
+    // which is the direction a flaky assertion is allowed to point.
+    satellite.variable.thread timed = satellite.thread.new(slow_answer())
+    timed.start()
+    satellite.variable.number during = satellite.library.arrived
+
+    satellite.statement.if (during != 0)
+    {
+        satellite.console.display("WRONG: start() waited for the capsule to finish")
+        wrong = wrong + 1
+    }
+
+    satellite.variable.number answered = timed.join()
+    satellite.variable.number afterwards = satellite.library.arrived
+
+    satellite.statement.if (afterwards != 1)
+    {
+        satellite.console.display("WRONG: join() came back before the capsule did")
+        wrong = wrong + 1
+    }
+
+    // --- §5 -- join() answers what the capsule returned ------------------
+    //
+    // DESIGN gives join() no return value and `example/thread_test.satl`
+    // discards it. The author settled it on 2026-09-12: join() is the one of
+    // the three verbs that HAS an answer, because it is the one that waits
+    // until there is one. MILESTONES/M23.md §2.5.
+    satellite.statement.if (answered != 4242)
+    {
+        satellite.console.display("WRONG: join() answered " + answered.to_string())
+        wrong = wrong + 1
+    }
+
+    // --- §3 -- DESIGN §7.1's 1600 ----------------------------------------
+    //
+    // Eight threads, all live at once -- every one started before any is
+    // joined, which is what makes them concurrent rather than eight
+    // sequential calls wearing threads.
+    satellite.container.list<satellite.variable.thread> crew = satellite.container.list()
+    satellite.variable.number t = 0
+    satellite.statement.for (t = 0; t < 8; t = t + 1)
+    {
+        crew.append(satellite.thread.new(count_alone(t)))
+    }
+    // NAMED OUT OF THE LIST BEFORE IT IS ASKED, AND THE NAME COSTS NOTHING
+    // BECAUSE A THREAD IS A REFERENCE TYPE. `crew[t].start()` is S0720 -- a
+    // selector folds only through a declared name, WORD_NUMBERS §1.5's one hop
+    // -- so every element has to be given a name first. For a list that would
+    // be a copy; for these it is a second name for the same thread, which is
+    // §6's property arriving as a convenience three sections early.
+    satellite.statement.for (t = 0; t < 8; t = t + 1)
+    {
+        satellite.variable.thread member = crew[t]
+        member.start()
+    }
+
+    satellite.variable.number total = 0
+    satellite.statement.for (t = 0; t < 8; t = t + 1)
+    {
+        satellite.variable.thread member = crew[t]
+        total = total + member.join()
+    }
+
+    satellite.statement.if (total != 1600)
+    {
+        satellite.console.display("WRONG: " + (1600 - total).to_string() + " of 1600 came back wrong")
+        wrong = wrong + 1
+    }
+
+    // --- §4 -- one satellite.library, seen by all of them ----------------
+    //
+    // Sixteen threads each adding one to a global, and the total is exactly
+    // sixteen: a thread whose globals were its own copy would leave 0, and a
+    // lost update (THREAD.md D10, before T2) would leave fewer.
+    satellite.container.list<satellite.variable.thread> touchers = satellite.container.list()
+    satellite.statement.for (t = 0; t < 16; t = t + 1)
+    {
+        touchers.append(satellite.thread.new(touch_the_global()))
+    }
+    satellite.statement.for (t = 0; t < 16; t = t + 1)
+    {
+        satellite.variable.thread each = touchers[t]
+        each.start()
+    }
+    satellite.statement.for (t = 0; t < 16; t = t + 1)
+    {
+        satellite.variable.thread each = touchers[t]
+        each.join()
+    }
+
+    // NAMED BEFORE IT IS ASKED, because a selector folds through a DECLARED
+    // name and not through a global's path -- `satellite.library.touched
+    // .to_string()` is S0521. That is the language's one-hop rule and not
+    // this milestone's, and it is written here because this is the file a
+    // reader will copy the idiom out of.
+    satellite.variable.number touched = satellite.library.touched
+
+    satellite.statement.if (touched != 16)
+    {
+        satellite.console.display("WRONG: touched is " + touched.to_string() + " of 16")
+        wrong = wrong + 1
+    }
+
+    // --- §6 -- a thread is a reference type ------------------------------
+    //
+    // DESIGN §8's table calls a file a reference type and means that two names
+    // for one open file ARE one open file. A thread is the same sentence about
+    // a different resource: `also` is not a copy of `one`, it is the same
+    // thread, so starting through one name and joining through the other
+    // reaches the same `pthread_t`.
+    //
+    // EVERY OTHER VALUE IN THE LANGUAGE GOES THE OTHER WAY, which is what
+    // makes this worth asserting rather than assuming -- a list assigned to a
+    // second name is a second list, because value.hpp freezes a container's
+    // body and publishes every mutation whole.
+    satellite.variable.thread one = satellite.thread.new(slow_answer())
+    satellite.variable.thread also = one
+
+    satellite.statement.if ((one == also) == satellite.bool.false)
+    {
+        satellite.console.display("WRONG: two names for one thread compared unequal")
+        wrong = wrong + 1
+    }
+
+    one.start()
+    satellite.variable.number through_the_other = also.join()
+
+    satellite.statement.if (through_the_other != 4242)
+    {
+        satellite.console.display("WRONG: joining through the second name answered " + through_the_other.to_string())
+        wrong = wrong + 1
+    }
+
+    satellite.statement.if (wrong == 0)
+    {
+        satellite.console.display("PASS")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("FAIL")
+    }
+
+    satellite.return(satellite)
+}

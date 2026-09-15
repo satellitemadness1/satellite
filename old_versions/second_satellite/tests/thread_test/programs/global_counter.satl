@@ -1,0 +1,32 @@
+satellite.include(satellite)
+
+satellite.library.n = 0
+
+satellite.capsule bump() satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number i = 0
+    satellite.statement.for (i = 0; i < 20000; i = i + 1)
+    {
+        satellite.library.n = satellite.library.n + 1
+    }
+    satellite.return(0)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.thread a = satellite.thread.new(bump())
+    satellite.variable.thread b = satellite.thread.new(bump())
+    satellite.variable.thread c = satellite.thread.new(bump())
+    satellite.variable.thread d = satellite.thread.new(bump())
+    a.start()
+    b.start()
+    c.start()
+    d.start()
+    a.join()
+    b.join()
+    c.join()
+    d.join()
+    satellite.variable.number got = satellite.library.n
+    satellite.console.display("number " + got.to_string() + " of 80000")
+    satellite.return(satellite)
+}

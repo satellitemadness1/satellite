@@ -1,0 +1,13 @@
+// satellite-004's first program
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("Hello, World!")
+    satellite.console.display("a // inside a string is not a comment") // this one is
+    satellite.console.display(42)
+    satellite.console.display(satellite.bool.true)
+
+    satellite.return(satellite)
+}

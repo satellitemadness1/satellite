@@ -1,0 +1,159 @@
+// M20 -- the machine's facts, in the language.
+//
+// THE ACCEPTANCE PROGRAM, and what it asserts is AGREEMENT. DESIGN.md §7.7
+// says the arguments object, the configuration file and `satellite_string`'s
+// live codes are "three surfaces, one set of facts" and that they "must not be
+// allowed to disagree". PLAN.md §8's M20 entry asks for that sentence turned
+// into something that can FAIL, and these are the lines that do it.
+//
+// THE TWO RESOLUTIONS ARE NOT A DISAGREEMENT AND THE PROGRAM SAYS SO. §7.7
+// settled it on 2026-09-09: `arguments.memory.total` and live code 98 are two
+// surfaces on the COARSE fact and answer whole megabytes;
+// `satellite.system.memory.total("mb")` is the EXACT one and answers
+// 63430.21484375 on this machine. "A program that asserts all three are equal
+// has to say which of the two it is asking for", and the check below says it
+// with `truncate()` rather than by rounding one of them off in silence.
+//
+// AND THE LIVE CODE IS READ RATHER THAN PRINTED, WHICH IS A WORD THIS
+// MILESTONE MINTED. A live code is one stored character that the machine
+// answers at display time, so until `satellite.variable.string.resolved`
+// `1 6 1 17` a program could PRINT `\memtotal` and had no way to get the
+// number into a variable -- `"\memtotal".to_number()` refuses on the
+// placeholder text. The third surface could not be asserted at all, only
+// looked at. MILESTONES/M20.md §2 carries the decision.
+//
+// THE PARAMETER IS CALLED `argz` ON PURPOSE. WORD_NUMBERS §2.3's third alias
+// row is `arg args argz argument arguments argumentz argv` -- one node, seven
+// spellings -- and `argz.machine.threads` answering the machine's thread count
+// is the one line that proves the row is a row and not five words that happen
+// to be registered. It answers 24 here.
+//
+// It prints one PASS. Every check that could be wrong is written as a
+// condition, so a failure says which one.
+
+satellite.include(satellite)
+
+satellite.capsule check(satellite.variable.bool held, satellite.variable.string what)
+{
+    satellite.statement.if (held == satellite.bool.false)
+    {
+        satellite.console.display("FAIL: " + what)
+    }
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> argz)
+{
+    // --- three surfaces, one fact: memory ------------- 1 14 1 1 2 1, 1 22 4 7
+    //
+    // Code 98 is `\memtotal`, which is `facts::mem_total_mb()`; the object's
+    // `memory.total` is the same reader; `satellite.system.memory.total("mb")`
+    // divides the same byte count and keeps the fraction. One fact, read three
+    // ways, and the three lines below are printed before they are compared so
+    // a failure can be read rather than only counted.
+    satellite.variable.string total_code = "\memtotal"
+    satellite.variable.string total_said = total_code.resolved()
+    satellite.variable.number from_code = total_said.to_number()
+    satellite.variable.number from_object = argz.memory.total
+    satellite.variable.number from_system = satellite.system.memory.total("mb")
+    satellite.variable.number floored = from_system.truncate()
+
+    satellite.console.display("memory, code 98:         " + total_said)
+    satellite.console.display("memory, the object:      " + from_object.to_string())
+    satellite.console.display("memory, satellite.system: " + from_system.to_string())
+
+    check(from_code == from_object, "code 98 and arguments.memory.total agree")
+    check(floored == from_object,
+          "and the exact figure is the same number to the megabyte")
+
+    // --- three surfaces, one fact: threads ------------------- 1 14 1 1 1 3
+    //
+    // `cores` has TWO surfaces and not three, which §7.7 was restated to say:
+    // there is no live code for it and minting one would put a row in a
+    // permanent wire format to satisfy a sentence's arithmetic. So the
+    // assertion is over threads, where all three really do exist.
+    satellite.variable.string threads_code = "\threads"
+    satellite.variable.string threads_said = threads_code.resolved()
+    satellite.variable.number threads_from_code = threads_said.to_number()
+
+    // NAMED FIRST, AND THAT IS §1.5's ONE HOP RATHER THAN A STYLE. A selector
+    // folds through a DECLARED name, so `argz.machine.threads.to_string()` is
+    // a method on a fact two members deep and the language says to name the
+    // receiver -- which is this line.
+    satellite.variable.number threads_here = argz.machine.threads
+
+    satellite.console.display("threads, code 97:        " + threads_said)
+    satellite.console.display("threads, the object:     " + threads_here.to_string())
+
+    check(threads_from_code == threads_here,
+          "code 97 and argz.machine.threads agree")
+    check(threads_here > 0, "the machine has threads")
+
+    // --- the ten selectors ------------------------------ 1 4 3 1 .. 1 4 3 10
+    //
+    // TWO CONTAINERS AT ONCE. `length()` is the command line and `count()` is
+    // every entry, which is why they are two words beside `size` rather than
+    // one instead of it.
+    check(argz.length() > 0, "the command line has the program's own name on it")
+    check(argz.count() > argz.length(), "and the object holds more than that")
+    check(argz.first() == argz[0], "first() is position 0, which is the program")
+
+    satellite.container.list<satellite.variable.string> named = argz.keys()
+    check(named.size() == argz.count(), "keys() names every entry")
+    check(argz.has("machine.threads"), "has(k) finds a fact by name")
+    check(argz.has("no.such.fact") == satellite.bool.false,
+          "and answers false rather than stopping")
+    check(argz.get("machine.threads") == threads_here,
+          "get(k) and the path are one fact")
+    check(argz.contains("no-such-word") == satellite.bool.false,
+          "contains(x) looks at the command line")
+
+    satellite.variable.string written = argz.to_string()
+    satellite.variable.string lines = argz.lines()
+    check(written == lines, "to_string() and lines() are one answer")
+    check(written.size() > 0, "and it is the whole object as text")
+
+    // --- the two that answer 0, truthfully -------------- 1 22 4 1, 1 22 4 2
+    //
+    // Both come from SMBIOS type 17 through /sys/firmware/dmi/entries/*/raw,
+    // which the kernel keeps root-only -- v1's comment on the failure path
+    // reads "root-only, which is the usual answer". So an ordinary user is
+    // answered 0, and 0 is TRUTHFUL rather than an error: the path is built,
+    // it asked the machine, and the machine declined to say. Run as root these
+    // two answer the real width and speed, and it is this assertion that would
+    // then need reading rather than the language.
+    check(satellite.system.memory.bit == 0,
+          "memory.bit answers 0 for an ordinary user, which is the true answer")
+    check(satellite.system.memory.frequency == 0,
+          "memory.frequency answers 0 for the same reason")
+
+    // --- the regression floor ------------------- example/full_test.satl:605-613
+    //
+    // v1's five lines, ported. Three of them are spelled without parentheses
+    // here -- `home`, `bit` and `frequency` are plain words in words.def with
+    // no call shape under any of them -- which is a decision this tree already
+    // made and not three rows anybody forgot.
+    satellite.variable.string home = satellite.system.home
+    check(home.size() > 0, "home is a path")
+    check(satellite.system.memory.total("gb") > 0, "memory.total(gb) is positive")
+    check(satellite.system.memory.free("mb") > 0, "memory.free(mb) is positive")
+    check(satellite.system.memory.main("kb") > 0, "memory.main(kb) is positive")
+    // `.this.*` is the running THREAD's stack: Linux accounts an address space
+    // per process, so a heap-per-thread figure would be the same number for
+    // every thread and would answer nothing. This is also the line that needed
+    // a number minted -- `used(unit)` `1 22 4 5 6` did not exist until M20.
+    check(satellite.system.memory.this.used("kb") > 0,
+          "memory.this.used(kb) is positive")
+
+    // --- the whole of it ------------------------------------------- §7.7
+    //
+    // "Displaying it bare prints all of it." Thirty-six lines and the command
+    // line above them, names in the left column, which is the one rendering in
+    // the language that is not a single line.
+    satellite.console.display("")
+    satellite.console.display(argz)
+    satellite.console.display("")
+
+    satellite.console.display("PASS")
+    satellite.return(satellite)
+}

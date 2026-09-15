@@ -1,0 +1,132 @@
+{
+  "1 6": {
+    "query": "satellite.help(satellite.variable)",
+    "prose": "Every kind of value a name can hold. A declaration names the kind first\nand the name second, and the kind never changes afterwards.\n\nA declaration on its own holds nothing. It is the assignment beside it, or\na later one, that puts a value in.",
+    "example": "satellite.variable.string greeting = \"Hello\"\nsatellite.variable.number count = 3\nsatellite.console.display(greeting)\nsatellite.console.display(count)"
+  },
+  "1 6 0": {
+    "query": "satellite.help(satellite.variable)",
+    "prose": "The bare shape. There is no type called `variable`; the word is the family\nand one of the kinds underneath is what you write.\n\nAsking help about the family lists the kinds, and the ones that are built\nare the ones you can declare today.",
+    "example": ""
+  },
+  "1 6 1": {
+    "query": "satellite.help(satellite.variable.string)",
+    "prose": "Text. It is written in double quotes and it can be any length; there is\nno limit here and no separate character type.\n\nIt carries sixteen methods, which are the words underneath. Every one is\ncalled on a declared name rather than on a literal, so give the text a\nname first.",
+    "example": "satellite.variable.string greeting = \"Hello\"\ngreeting.append(\", World!\")\nsatellite.console.display(greeting)"
+  },
+  "1 6 1 0": {
+    "query": "satellite.help(satellite.variable.string)",
+    "prose": "The bare shape, which is how you make an empty string when you have\nnothing to put in it yet.\n\nA declaration with no assignment holds nothing at all, which is not the\nsame as holding an empty string, so write the quotes if empty is what you\nmean.",
+    "example": "satellite.variable.string answer = \"\"\nsatellite.console.display(answer.empty())"
+  },
+  "1 6 1 1": {
+    "query": "satellite.help(satellite.variable.string.size)",
+    "prose": "How many characters the string holds. An empty one answers zero.\n\nIt counts what is there rather than remembering what was put in, so it is\ncorrect after an append or a trim without you doing anything.",
+    "example": "satellite.variable.string greeting = \"Hello\"\nsatellite.console.display(greeting.size())"
+  },
+  "1 6 1 2": {
+    "query": "satellite.help(satellite.variable.string.empty)",
+    "prose": "Answers true when the string holds no characters at all.\n\nIt is the honest test, because this language has no truthiness and an\nempty string is not itself false.",
+    "example": "satellite.variable.string answer = \"\"\nsatellite.statement.if (answer.empty())\n{\n    satellite.console.display(\"nothing was typed\")\n}"
+  },
+  "1 6 1 3": {
+    "query": "satellite.help(satellite.variable.string.find)",
+    "prose": "Answers where a piece of text first appears, counting from zero.\n\nUse it when you need the position. When you only need to know whether the\ntext is in there at all, `contains` says so more plainly.",
+    "example": "satellite.variable.string line = \"bolt,nut,washer\"\nsatellite.console.display(line.find(\"nut\"))"
+  },
+  "1 6 1 4": {
+    "query": "satellite.help(satellite.variable.string.contains)",
+    "prose": "Answers true when the piece of text appears anywhere in the string.\n\nIt is the question you usually mean, and it reads better in a condition\nthan comparing a position against a number.",
+    "example": "satellite.variable.string line = \"bolt,nut,washer\"\nsatellite.statement.if (line.contains(\"nut\"))\n{\n    satellite.console.display(\"found it\")\n}"
+  },
+  "1 6 1 5": {
+    "query": "satellite.help(satellite.variable.string.substring)",
+    "prose": "Hands back the piece between two positions, counting from zero. The first\nposition is included and the second is not, so the difference between them\nis the length you get.\n\nThe string you called it on is unchanged.",
+    "example": "satellite.variable.string greeting = \"Hello, World!\"\nsatellite.console.display(greeting.substring(0, 5))"
+  },
+  "1 6 1 6": {
+    "query": "satellite.help(satellite.variable.string.starts_with)",
+    "prose": "Answers true when the string begins with the text you give it.\n\nIt is the cheap way to sort lines into kinds without picking them apart\nfirst.",
+    "example": "satellite.variable.string line = \"error: something went wrong\"\nsatellite.statement.if (line.starts_with(\"error\"))\n{\n    satellite.console.display(\"that is a complaint\")\n}"
+  },
+  "1 6 1 7": {
+    "query": "satellite.help(satellite.variable.string.ends_with)",
+    "prose": "Answers true when the string finishes with the text you give it.\n\nThe usual use is a file name's ending, since the language has no separate\nidea of an extension.",
+    "example": "satellite.variable.string name = \"program.satl\"\nsatellite.statement.if (name.ends_with(\".satl\"))\n{\n    satellite.console.display(\"that is satellite source\")\n}"
+  },
+  "1 6 1 8": {
+    "query": "satellite.help(satellite.variable.string.lower)",
+    "prose": "Hands back the same text with every letter in lower case, and leaves the\noriginal alone.\n\nUse it on both sides when you want a comparison that ignores case, since\ncomparing strings compares them exactly.",
+    "example": "satellite.variable.string shout = \"HELLO\"\nsatellite.console.display(shout.lower())"
+  },
+  "1 6 1 9": {
+    "query": "satellite.help(satellite.variable.string.upper)",
+    "prose": "Hands back the same text with every letter in upper case, and leaves the\noriginal alone.\n\nIt answers a new string, so assign it or print it; calling it and ignoring\nthe answer changes nothing.",
+    "example": "satellite.variable.string greeting = \"Hello\"\nsatellite.console.display(greeting.upper())\nsatellite.console.display(greeting)"
+  },
+  "1 6 1 10": {
+    "query": "satellite.help(satellite.variable.string.split)",
+    "prose": "Cuts the string wherever the separator appears and hands back the pieces\nas a list of strings.\n\nThe separator itself is not in any of the pieces. This is how a line of\ncomma-separated text becomes something you can walk.",
+    "example": "satellite.variable.string line = \"a,b,c\"\nsatellite.console.display(line.split(\",\"))"
+  },
+  "1 6 1 11": {
+    "query": "satellite.help(satellite.variable.string.trim)",
+    "prose": "Hands back the text with the blank space taken off both ends, and leaves\nwhat is in the middle alone.\n\nIt is the first thing to do to a line somebody typed, because the space\nbefore their answer is not part of it.",
+    "example": "satellite.variable.string typed = \"   Ada   \"\nsatellite.console.display(typed.trim())"
+  },
+  "1 6 1 12": {
+    "query": "satellite.help(satellite.variable.string.replace)",
+    "prose": "Hands back the text with every appearance of the first piece swapped for\nthe second.\n\nIt replaces all of them and not just the first, and the string you called\nit on is unchanged.",
+    "example": "satellite.variable.string line = \"a,b,c\"\nsatellite.console.display(line.replace(\",\", \" and \"))"
+  },
+  "1 6 1 13": {
+    "query": "satellite.help(satellite.variable.string.to_number)",
+    "prose": "Reads the text as a number and hands the number back. It is the other\nhalf of a number's `to_string`.\n\nThe text has to actually be a number. This is what you call on a line the\nperson typed before you can do arithmetic with it.",
+    "example": "satellite.variable.string typed = \"42\"\nsatellite.variable.number n = typed.to_number()\nsatellite.console.display(n * 2)"
+  },
+  "1 6 1 14": {
+    "query": "satellite.help(satellite.variable.string.append)",
+    "prose": "Adds text to the end, and this one changes the string you called it on\nrather than handing back a new one.\n\nIt is the odd one out among the string methods for exactly that reason, so\nyou do not assign its answer to anything.",
+    "example": "satellite.variable.string greeting = \"Hello\"\ngreeting.append(\", World!\")\nsatellite.console.display(greeting)"
+  },
+  "1 6 1 15": {
+    "query": "satellite.help(satellite.variable.string.clear)",
+    "prose": "Empties the string, leaving it holding no characters. Like append, it\nchanges the string you called it on.\n\nAfterwards `empty()` answers true and `size()` answers zero.",
+    "example": "satellite.variable.string greeting = \"Hello\"\ngreeting.clear()\nsatellite.console.display(greeting.empty())"
+  },
+  "1 6 1 16": {
+    "query": "satellite.help(satellite.variable.string.at)",
+    "prose": "Hands back the one character at the position you name, counting from\nzero.\n\nThere is no character type here, so what comes back is a string holding\none character.",
+    "example": "satellite.variable.string greeting = \"Hello\"\nsatellite.console.display(greeting.at(0))"
+  },
+  "1 6 1 17": {
+    "query": "satellite.help(satellite.variable.string.resolved)",
+    "prose": "The string with its live values answered by the machine.\n\nSix escapes are read when they are USED rather than when the file is lexed\n— `\\home`, `\\user`, `\\threads`, `\\memtotal`, `\\memused` and `\\cwd`. Each is\nstored as one character, and `display` asks the machine for it on the way\nto the screen; this is that same question, asked where a program can keep\nthe answer.\n\nEvery other method sees what is stored, which is why `size` counts\n`\"\\threads\"` as one. A string with no live value in it answers itself.",
+    "example": "satellite.variable.string live = \"this machine runs \\threads threads\"\nsatellite.variable.string said = live.resolved()\nsatellite.console.display(said)"
+  },
+  "1 6 1 18": {
+    "query": "satellite.help(satellite.variable.string)",
+    "prose": "`string(x)` -- the value as text, written around it.\n\nThis is the same answer `x.to_string()` gives. It is offered as a word you\nwrap around a value so that a line reads the way you would say it.",
+    "example": "satellite.variable.number count = 42\nsatellite.console.display(string(count))"
+  },
+  "1 6 1 19": {
+    "query": "satellite.help(satellite.variable.string)",
+    "prose": "`.string()` on a string answers the same string.\n\nIt is here so the four conversions exist on every kind. A line that converts\na value it was handed does not have to ask what kind it already was.",
+    "example": "satellite.variable.string name = \"Ada\"\nsatellite.console.display(name.string())"
+  },
+  "1 6 1 20": {
+    "query": "satellite.help(satellite.variable.string)",
+    "prose": "The text read as a number.\n\nThe whole string has to be a number and nothing else -- no spaces around it,\nno words after it. `.trim()` is one dot away if the text has edges.",
+    "example": "satellite.variable.string written = \"42\"\nsatellite.variable.number read = written.number()\nsatellite.console.display(read)"
+  },
+  "1 6 1 21": {
+    "query": "satellite.help(satellite.variable.string)",
+    "prose": "The text as bits.\n\nIf the text is nothing but `0` and `1`, those are the bits. Anything else is\nread as the bytes of the characters -- eight bits each.",
+    "example": "satellite.variable.string written = \"1010\"\nsatellite.console.display(written.binary())"
+  },
+  "1 6 1 22": {
+    "query": "satellite.help(satellite.variable.string)",
+    "prose": "The text as hex.\n\nThe same bits `.binary()` answers, four at a time. A hex run is always a\nwhole number of digits, so the bits are padded on the left to reach four.",
+    "example": "satellite.variable.string written = \"1010\"\nsatellite.console.display(written.hex())"
+  }
+}

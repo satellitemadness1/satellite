@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("before")
+    satellite.variable.string s = "not yet"
+    satellite.return(satellite)
+}

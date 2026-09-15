@@ -1,0 +1,7 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.return(satellite)
+}

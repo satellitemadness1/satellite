@@ -1,0 +1,12 @@
+// this is a comment
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("Hello, World!")
+
+    // this is a comment inside of main
+
+    satellite.return(satellite)
+}

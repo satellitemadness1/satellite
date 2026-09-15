@@ -1,0 +1,327 @@
+{
+  "1 6 6": {
+    "query": "satellite.help(satellite.variable.bool)",
+    "prose": "True or false, and nothing else. It is the only type a condition will\naccept, because this language has no truthiness for anything to fall back\non.\n\nThe two values it can hold are written `satellite.bool.true` and\n`satellite.bool.false`. Note the difference between this path, which is\nthe type, and `satellite.bool`, which is the pair of constants.",
+    "example": "satellite.variable.bool ready = satellite.bool.true\nsatellite.statement.if (ready)\n{\n    satellite.console.display(\"ready\")\n}"
+  },
+  "1 6 10": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "A number with a decimal point, and the arithmetic on it is exact where a\nmachine float is not: a tenth plus two tenths really is three tenths here.\n\nHow many digits a division keeps is a dial you can turn, and a change to\nit is observed by the very next division rather than at the next run.",
+    "example": "satellite.variable.float tenth = 0.1\nsatellite.console.display(tenth + 0.2)"
+  },
+  "1 6 14": {
+    "query": "satellite.help(satellite.variable.variant)",
+    "prose": "One box that can hold any type, one at a time, and can also hold nothing.\n\nIt is what you want when the kind of thing is not known until the program\nruns. Ask it what it is holding before you take the value out.",
+    "example": "satellite.variable.variant box = 5\nsatellite.console.display(box)\nbox = \"Hello\"\nsatellite.console.display(box)"
+  },
+  "1 6 14 0": {
+    "query": "satellite.help(satellite.variable.variant)",
+    "prose": "The bare shape, which is a variant holding nothing.\n\nNothing is a real state here rather than an absence, so a variant that\nhas not been given a value still answers questions about itself.",
+    "example": "satellite.variable.variant box = 5\nbox.clear()\nsatellite.console.display(box.holds(\"nothing\"))"
+  },
+  "1 6 14 1": {
+    "query": "satellite.help(satellite.variable.variant.holding)",
+    "prose": "Answers the name of the type currently in the box, as a string.\n\nA box that has been cleared answers `nothing`, which is a name like any\nother rather than a special case you have to test for separately.",
+    "example": "satellite.variable.variant box = 5\nsatellite.console.display(box.holding())\nbox = \"Hello\"\nsatellite.console.display(box.holding())"
+  },
+  "1 6 14 2": {
+    "query": "satellite.help(satellite.variable.variant.holds)",
+    "prose": "Answers true when the box is holding the type you name.\n\nIt takes the type's name as a string, and `\"nothing\"` is one of the names\nyou can ask about. This is the test to write before taking a value out.",
+    "example": "satellite.variable.variant box = \"Hello\"\nsatellite.console.display(box.holds(\"string\"))\nsatellite.console.display(box.holds(\"nothing\"))"
+  },
+  "1 6 14 3": {
+    "query": "satellite.help(satellite.variable.variant.held)",
+    "prose": "Takes the value out of the box so you can use it as its own type.\n\nAsk `holds` first. Taking out a value of a type you were not expecting is\nthe mistake this pair of methods exists to prevent.",
+    "example": "satellite.variable.variant box = \"Hello\"\nsatellite.variable.string kept = box.held()\nsatellite.console.display(kept.upper())"
+  },
+  "1 6 14 4": {
+    "query": "satellite.help(satellite.variable.variant.clear)",
+    "prose": "Empties the box, leaving it holding nothing.\n\nAfterwards `holding()` answers `nothing` and `holds(\"nothing\")` answers\ntrue.",
+    "example": "satellite.variable.variant box = 5\nbox.clear()\nsatellite.console.display(box.holding())"
+  },
+  "1 6 2": {
+    "query": "satellite.help(satellite.variable.file)",
+    "prose": "A file on disk, held as a value you can read from and write to. It is a\n**reference type**: two names for one open file are two names for one open\nfile, so closing it through either one closes it for both. Every other value\nin the language is copied when you assign it; this one is shared.\n\nYou never declare one and fill it in. `satellite.file.open` and\n`satellite.file.new` are what make one, and both hand you a handle that is\nalready open.\n\n**A file that would not open is a value and not an error.** The handle comes\nback anyway, `ok` answers false, and `error` says why -- so asking whether a\nfile is there never stops the program that asked.",
+    "example": "satellite.variable.file f = satellite.file.open(\"no_such_file\", \"read\")\nsatellite.console.display(f.ok())\nsatellite.console.display(f.error())"
+  },
+  "1 6 2 0": {
+    "query": "satellite.help(satellite.variable.file)",
+    "prose": "The bare shape. A file is written as a type, never called, so this number is\nreserved and nothing reaches it.",
+    "example": ""
+  },
+  "1 6 2 1": {
+    "query": "satellite.help(satellite.variable.file.new)",
+    "prose": "**Numbered, and deliberately empty.** There is one way to make a file and it\nis `satellite.file.new(path)`, the module word. This number exists because the\nlanguage's design once sketched `my_file.new()` as an example of a call that\nwould be confusing, and the example got a number before anyone decided it was\nnot a word.\n\nIt is left unbuilt rather than quietly made an alias, because two spellings\nfor one thing is worse than one spelling and a note saying so.",
+    "example": ""
+  },
+  "1 6 2 2": {
+    "query": "satellite.help(satellite.variable.file.open)",
+    "prose": "Opens a handle again -- one that was closed, or one whose first open failed\nand whose reason has since gone away. It answers true or false.\n\n**It is not the same word as `satellite.file.open`,** which takes a path and\nmakes a handle. This one takes no arguments: it already knows which file it is\nabout, and it reopens it in the mode it was opened with the first time.\n\nA handle that is already open answers true and nothing happens. A reopened\nhandle reads from the beginning again.",
+    "example": "satellite.variable.file f = satellite.file.new(\"reopen_demo.txt\")\nf.write_line(\"one\")\nf.close()\nsatellite.console.display(f.open())\nsatellite.console.display(f.read_line())\nf.close()\nsatellite.system.delete(\"reopen_demo.txt\")"
+  },
+  "1 6 2 3": {
+    "query": "satellite.help(satellite.variable.file.read_line)",
+    "prose": "Reads the next line, **or nothing** when there are no more. The newline\nitself is not part of what you get.\n\nEach call moves forward, so calling it in a loop walks the file. An empty\nline and nothing are two different answers: an empty line is a line that was\nthere and had no characters in it, and nothing means the file ended.\n\nDeclare the variable as a `satellite.variable.variant` if you mean to handle\nthe ending yourself and ask it `holding`. Declare it as a string and the\nprogram stops by name at the line that first uses it after the end, which is\noften exactly what you want.",
+    "example": "satellite.variable.file f = satellite.file.new(\"lines_demo.txt\")\nf.write_line(\"first\")\nf.write_line(\"second\")\nsatellite.variable.variant line = f.read_line()\nsatellite.statement.while (line.holding() != \"nothing\")\n{\n    satellite.console.display(line.held())\n    line = f.read_line()\n}\nf.close()\nsatellite.system.delete(\"lines_demo.txt\")"
+  },
+  "1 6 2 4": {
+    "query": "satellite.help(satellite.variable.file.write_line)",
+    "prose": "Writes the text you give it **and a newline after it**. It answers true, or\nfalse if the write itself failed -- a full disk, for instance.\n\nUse `write` instead when you want exactly the bytes and no newline. The two\nverbs exist so that neither case has to be worked around: a file whose last\nline has no newline, and a line put together from several calls, are both\nwritable.",
+    "example": "satellite.variable.file f = satellite.file.new(\"write_demo.txt\")\nf.write_line(\"a line\")\nf.close()\nsatellite.variable.file back = satellite.file.open(\"write_demo.txt\", \"read\")\nsatellite.console.display(back.read_all())\nback.close()\nsatellite.system.delete(\"write_demo.txt\")"
+  },
+  "1 6 2 5": {
+    "query": "satellite.help(satellite.variable.file.read_all)",
+    "prose": "The whole file, from the beginning, as one string.\n\nIt shares its place in the file with `read_line`, and it leaves that place at\nthe end -- so a `read_line` straight after a `read_all` answers nothing. That\nis the honest report of a file that has just been read from end to end.",
+    "example": "satellite.variable.file f = satellite.file.new(\"all_demo.txt\")\nf.write_line(\"one\")\nf.write_line(\"two\")\nsatellite.variable.string whole = f.read_all()\nsatellite.console.display(whole.size())\nf.close()\nsatellite.system.delete(\"all_demo.txt\")"
+  },
+  "1 6 2 6": {
+    "query": "satellite.help(satellite.variable.file.close)",
+    "prose": "Closes the file and answers whether that worked.\n\n**It answers rather than just happening,** because closing is where writes\nactually reach the disk and where a full disk or a failing drive is reported.\nA program that has written something it cares about should look at what this\nsays.\n\nClosing a file that is already closed is true and does nothing.",
+    "example": "satellite.variable.file f = satellite.file.new(\"close_demo.txt\")\nf.write_line(\"safe\")\nsatellite.console.display(f.close())\nsatellite.system.delete(\"close_demo.txt\")"
+  },
+  "1 6 2 7": {
+    "query": "satellite.help(satellite.variable.file.exists)",
+    "prose": "Whether **this handle's own path** is still there.\n\nIt asks about the name and not about the handle, so a closed handle still\nanswers, and a file that was deleted while you held it open answers false.\n\nTo ask about a path you have no handle for, use `satellite.file.exists`\ninstead.",
+    "example": "satellite.variable.file f = satellite.file.new(\"exists_demo.txt\")\nf.close()\nsatellite.console.display(f.exists())\nsatellite.system.delete(f)\nsatellite.console.display(f.exists())"
+  },
+  "1 6 3": {
+    "query": "satellite.help(satellite.variable.time)",
+    "prose": "A moment, held as a value.\n\n**Not built as a type.** `satellite.time.now()` answers the clock today,\nbut there is no declared time variable to keep one in yet. M29 is the\ncalendar milestone that decides what a time value can be.",
+    "example": ""
+  },
+  "1 6 3 0": {
+    "query": "satellite.help(satellite.variable.time)",
+    "prose": "The bare shape. **Not built** — M29.",
+    "example": ""
+  },
+  "1 6 5": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "A run of bits, written `b1010`. **The width is part of the value**, so\n`b0010` and `b10` are not the same thing -- which is why this is a type of its\nown and not a number written in another base.\n\nIt displays exactly as it was written, leading zeros and all, and `b0010 == b10`\nis false for the same reason. Ask `width()` for how many bits there are,\n`to_number()` for what they are worth, and `as_number()` for the digits read as\nan ordinary decimal.",
+    "example": "satellite.variable.binary bits = b1010\nsatellite.console.display(bits)\nsatellite.console.display(bits.width())\nsatellite.console.display(bits.to_number())"
+  },
+  "1 6 7": {
+    "query": "satellite.help(satellite.variable.date)",
+    "prose": "A calendar date, apart from a moment in time.\n\n**Not built** — M29 is the calendar.",
+    "example": ""
+  },
+  "1 6 8": {
+    "query": "satellite.help(satellite.variable.duration)",
+    "prose": "A length of time rather than a point in it.\n\n**Not built** — M29 is the calendar.",
+    "example": ""
+  },
+  "1 6 9": {
+    "query": "satellite.help(satellite.variable.expression)",
+    "prose": "An expression held as a value, to be evaluated later.\n\n**Not built.** The path is numbered and no milestone has reached it.",
+    "example": ""
+  },
+  "1 6 11": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "A run of hexadecimal digits, written `x00FF`. **The width is part of the\nvalue**, so `x0009` and `x9` are not the same thing -- which is why this is a\ntype of its own and not a number written in another base. It has a second\nspelling, `satellite.variable.hexadecimal`, which is the same node.\n\nIt is stored as bits, four to a digit, so nothing is lost converting either\nway. Both letter cases are accepted and neither is kept: `x00ff` and `x00FF`\nare one value, and it displays in upper case.\n\nAsk `width()` for how many bits there are, `digits()` for how many digits were\nwritten, `to_number()` for what they are worth, and `to_binary()` for the same\nvalue as a run of bits.\n\n**There is no `as_number()` here**, though `satellite.variable.binary` has one.\nThat row reads the characters as an ordinary decimal, and there is no decimal\nnumber spelled `00FF`.",
+    "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour)\nsatellite.console.display(colour.width())\nsatellite.console.display(colour.digits())\nsatellite.console.display(colour.to_number())"
+  },
+  "1 6 12": {
+    "query": "satellite.help(satellite.variable.network)",
+    "prose": "A network connection held as a value.\n\n**Not built** — M27 is the network.",
+    "example": ""
+  },
+  "1 6 15": {
+    "query": "satellite.help(satellite.variable.window)",
+    "prose": "A window on the screen, held as a value.\n\n**Not built** — M24 is windows.",
+    "example": ""
+  },
+  "1 6 16": {
+    "query": "satellite.help(satellite.variable.capsule)",
+    "prose": "A call that has not happened yet -- the capsule to run and the arguments to run it with, worked out and held.\n\nYou do not declare one. `satellite.thread.new(my_capsule(x))` makes one out of the call you write inside it: `x` is worked out there and then, on the thread you are already on, and `my_capsule` is not entered until something says `start()`.",
+    "example": ""
+  },
+  "1 6 13": {
+    "query": "satellite.help(satellite.variable.thread)",
+    "prose": "A line of execution running beside the others. `satellite.thread.new` is what makes one, `start()` sets it going and `join()` waits for it and hands back what the capsule returned.\n\n**A thread is a reference type.** Two names for one thread are one thread, so starting through one name and joining through the other reaches the same thread. Every other value in the language is copied when you assign it; this one is shared, the way an open file is.\n\n**Each thread gets its own variables and shares your `satellite.library`.** Locals live in a frame per call, so two threads running the same capsule never see each other's; a `satellite.library` name is the one thing they both read and write.\n\n**There is no limit on how many you may start.** If the machine will not make another, satellite tells you what the machine said.",
+    "example": "satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)\n{\n    satellite.return(n * 2)\n}\nsatellite.variable.thread t = satellite.thread.new(double_it(21))\nt.start()\nsatellite.console.display(t.join())"
+  },
+  "1 6 13 0": {
+    "query": "satellite.help(satellite.variable.thread)",
+    "prose": "The bare shape. A thread is written as a type, never called, so this number is reserved and nothing reaches it.",
+    "example": ""
+  },
+  "1 6 13 1": {
+    "query": "satellite.help(satellite.variable.thread.start)",
+    "prose": "Sets the thread running and comes straight back -- it does not wait. The next line of your program runs while the capsule runs beside it.\n\nA thread runs once. Starting one that has already been started is refused; `satellite.thread.new` is how you get another.",
+    "example": "satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)\n{\n    satellite.return(n * 2)\n}\nsatellite.variable.thread t = satellite.thread.new(double_it(21))\nt.start()\nsatellite.console.display(\"this printed without waiting\")\nsatellite.console.display(t.join())"
+  },
+  "1 6 13 2": {
+    "query": "satellite.help(satellite.variable.thread.join)",
+    "prose": "Waits for the thread to finish, and answers what its capsule returned.\n\nThis is the only one of the three that has an answer to give, because it is the only one that waits until there is one.\n\n**If the capsule went wrong, join tells you how** -- with its own error and its own line, not a sentence about threads.\n\nYou wait for a thread once. Joining one twice is refused, and so is joining one that was never started.",
+    "example": "satellite.capsule double_it(satellite.variable.number n) satellite.returns(satellite.variable.number)\n{\n    satellite.return(n * 2)\n}\nsatellite.variable.thread t = satellite.thread.new(double_it(21))\nt.start()\nsatellite.console.display(t.join())"
+  },
+  "1 6 2 8": {
+    "query": "satellite.help(satellite.variable.file.ok)",
+    "prose": "Whether the file is open.\n\nThis is the question the whole design of files is built around. Opening a\nfile that is not there does not stop your program -- you get a handle that is\nnot ok, and you decide what to do about it. `error` is the sentence that says\nwhy.",
+    "example": "satellite.variable.file good = satellite.file.new(\"ok_demo.txt\")\nsatellite.console.display(good.ok())\ngood.close()\nsatellite.system.delete(\"ok_demo.txt\")\nsatellite.variable.file bad = satellite.file.open(\"ok_demo.txt\", \"read\")\nsatellite.console.display(bad.ok())"
+  },
+  "1 6 2 9": {
+    "query": "satellite.help(satellite.variable.file.path)",
+    "prose": "The path this handle was opened on, as a string.\n\nIt answers whether or not the file is open, and whether or not the open\nworked -- a handle always knows which file it is about.",
+    "example": "satellite.variable.file f = satellite.file.open(\"nowhere/at/all\", \"read\")\nsatellite.console.display(f.path())"
+  },
+  "1 6 2 10": {
+    "query": "satellite.help(satellite.variable.file.error)",
+    "prose": "Why the last thing that went wrong went wrong, in plain words, or an empty\nstring when nothing has.\n\nIt is the machine's own sentence -- \"No such file or directory\",\n\"Permission denied\" -- so it says something a person can act on rather than a\nnumber they have to look up.\n\nA successful reopen clears it, because a reason that no longer applies is\nworse than no reason.",
+    "example": "satellite.variable.file f = satellite.file.open(\"no_such_file\", \"read\")\nsatellite.console.display(f.error())"
+  },
+  "1 6 2 11": {
+    "query": "satellite.help(satellite.variable.file.write)",
+    "prose": "Writes **exactly** what you give it -- no newline, nothing added. It answers\ntrue, or false if the write failed.\n\nThis is the verb for building a line out of pieces, for writing a file that\nshould not end in a newline, and for writing bytes rather than text.\n`write_line` is the one that adds the newline for you.",
+    "example": "satellite.variable.file f = satellite.file.new(\"exact_demo.txt\")\nf.write(\"one\")\nf.write(\"two\")\nsatellite.console.display(f.read_all())\nf.close()\nsatellite.system.delete(\"exact_demo.txt\")"
+  },
+  "1 6 5 0": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "The bare shape, which is a name declared as a run of bits and given none.\n\nIt holds nothing until something is written into it, the same state every\nother declared type starts in.",
+    "example": "satellite.variable.binary bits = b1010\nsatellite.console.display(bits.width())"
+  },
+  "1 6 5 1": {
+    "query": "satellite.help(satellite.variable.binary.to_number)",
+    "prose": "What the bits are worth. `b1010.to_number()` is 10.\n\nThe width does not survive the trip, because a number has no width to keep it\nin -- `b0011` and `b11` both answer 3. Ask `width()` first if you need it.",
+    "example": "satellite.variable.binary bits = b1010\nsatellite.console.display(bits.to_number())"
+  },
+  "1 6 5 2": {
+    "query": "satellite.help(satellite.variable.binary.width)",
+    "prose": "How many bits were written. `b0011.width()` is 4.\n\nThis is the one question only this type can answer, and the reason a run of\nbits is not just a number: the leading zeros are part of the value, and this\nis what counts them.",
+    "example": "satellite.variable.binary bits = b0011\nsatellite.console.display(bits.width())\nsatellite.console.display(bits.to_number())"
+  },
+  "1 6 5 3": {
+    "query": "satellite.help(satellite.variable.binary.to_string)",
+    "prose": "The bits as text, exactly as `display` would print them -- the leading `b`\nincluded.\n\nUse it to join a run of bits onto a string, since the two types do not add to\neach other.",
+    "example": "satellite.variable.binary bits = b1010\nsatellite.console.display(\"the bits are \" + bits.to_string())"
+  },
+  "1 6 5 4": {
+    "query": "satellite.help(satellite.variable.binary.as_number)",
+    "prose": "The digits read as if they were an ordinary decimal number.\n`b1010.as_number()` is one thousand and ten.\n\nThis is not the value the bits stand for -- `to_number()` is that one, and it\nanswers 10. This row is for when what matters is how the run was spelled.",
+    "example": "satellite.variable.binary bits = b1010\nsatellite.console.display(bits.as_number())\nsatellite.console.display(bits.to_number())"
+  },
+  "1 6 5 5": {
+    "query": "satellite.help(satellite.variable.binary.digits)",
+    "prose": "How many digits were written. `b1010.digits()` is 4.\n\nOn a run of bits this is always the same answer as `width()`, one bit being\none digit. It earns its own name on the other type: `x00FF.width()` is 16 and\n`x00FF.digits()` is 4, so a program handed either radix can ask how many\ncharacters were written without first asking which type it is holding.",
+    "example": "satellite.variable.binary bits = b1010\nsatellite.console.display(bits.digits())\nsatellite.console.display(bits.width())"
+  },
+  "1 6 5 6": {
+    "query": "satellite.help(satellite.variable.binary.to_hex)",
+    "prose": "The same bits, wearing the other radix. `b1010.to_hex()` is `xA`.\n\n**It refuses when the width is not a multiple of four**, because four bits are\none hexadecimal digit and three bits are no digit at all -- padding would write\na bit the program never wrote. `b101.to_hex()` is refused, and `width()` is the\nquestion to ask first.\n\nThe other direction never refuses: every hexadecimal digit has four bits, so\n`satellite.variable.hex.to_binary` always answers.",
+    "example": "satellite.variable.binary bits = b1010\nsatellite.console.display(bits.to_hex())"
+  },
+  "1 6 11 0": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "The bare shape, which is a name declared as a run of hexadecimal digits and\ngiven none.\n\nIt holds nothing until something is written into it, the same state every\nother declared type starts in.",
+    "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.digits())"
+  },
+  "1 6 11 1": {
+    "query": "satellite.help(satellite.variable.hex.to_number)",
+    "prose": "What the digits are worth. `x00FF.to_number()` is 255.\n\nThe width does not survive the trip, because a number has no width to keep it\nin -- `x0009` and `x9` both answer 9. Ask `width()` first if you need it.",
+    "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.to_number())"
+  },
+  "1 6 11 2": {
+    "query": "satellite.help(satellite.variable.hex.width)",
+    "prose": "How many **bits** were written. `x00FF.width()` is 16, not 4.\n\nBits and not digits, so that `width()` means one thing on both radices -- and\nso that `satellite.variable.file.write(x)`'s rule that a width must be a whole\nnumber of bytes reads the same here as it does on a run of bits.\n\n`digits()` is the other question, and it answers 4.",
+    "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.width())\nsatellite.console.display(colour.digits())"
+  },
+  "1 6 11 3": {
+    "query": "satellite.help(satellite.variable.hex.to_string)",
+    "prose": "The characters `display` would print, `x` and all. `x00FF.to_string()` is\n`\"x00FF\"`.\n\nIt matches the display exactly, which is what makes the printed letter case\npredictable: the case a program wrote is not stored, so this and `display` both\nanswer upper.\n\nIt is how a run of digits joins a string, `+` joining two strings and nothing\nelse.",
+    "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(\"colour: \" + colour.to_string())"
+  },
+  "1 6 11 4": {
+    "query": "satellite.help(satellite.variable.hex.digits)",
+    "prose": "How many digits were written. `x00FF.digits()` is 4.\n\nAlways a whole number, never a remainder: a value is built from digits and each\none is four bits, so this is `width()` divided by four exactly.\n\nIt is the question `width()` does not answer, `width()` counting bits.",
+    "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.digits())"
+  },
+  "1 6 11 5": {
+    "query": "satellite.help(satellite.variable.hex.to_binary)",
+    "prose": "The same value, wearing the other radix. `x00FF.to_binary()` is\n`b0000000011111111`.\n\n**It never refuses**, every hexadecimal digit being exactly four bits. The\nother direction can: `satellite.variable.binary.to_hex` needs a width that is a\nmultiple of four.\n\nThe answer is not equal to what it came from -- `x00FF == x00FF.to_binary()` is\nfalse, because two different types are never equal in this language, however\nthey are spelled.",
+    "example": "satellite.variable.hex colour = x00FF\nsatellite.console.display(colour.to_binary())"
+  },
+  "1 6 10 0": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The bare shape. A float is a type rather than a call, so there is nothing\nto construct -- write a value with a point in it.",
+    "example": ""
+  },
+  "1 6 10 1": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The value as text, exactly as `display` would print it.\n\nThis is the float's **only** method, and it is here because a value you can\nsee on the screen and cannot put into a string is a value you cannot write\nto a file. Adding a float to a string does not work and neither does\nhanding one to `write_line` -- this is how you get from the number to the\nline.\n\nReading one back is `to_number` on the string.",
+    "example": "satellite.variable.float activation = 0.4995225\nsatellite.variable.string line = activation.to_string()\nsatellite.console.display(\"wrote \" + line)"
+  },
+  "1 6 5 7": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "`binary(x)` -- the value as bits, written around it.\n\nA number answers the bits it is made of. A hex run answers the bits it\nalready holds. A string answers its digits if they are all `0` and `1`, and\notherwise the bytes of its characters.",
+    "example": "satellite.variable.number count = 42\nsatellite.console.display(binary(count))"
+  },
+  "1 6 5 8": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "The bits as text -- the characters `display` would print, `b` and all.",
+    "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.string())"
+  },
+  "1 6 5 9": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "What the bits mean, as a number.\n\nThe same answer `.to_number()` gives. `b1010` is ten.",
+    "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.number())"
+  },
+  "1 6 5 10": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "`.binary()` on a bit run answers the same bit run, width and all.",
+    "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.binary())"
+  },
+  "1 6 5 11": {
+    "query": "satellite.help(satellite.variable.binary)",
+    "prose": "The bits as hex, four at a time.\n\nA hex digit is exactly four bits, so nothing rounds. A run whose width is not\na multiple of four is padded on the left to reach one.",
+    "example": "satellite.variable.binary flags = b1010\nsatellite.console.display(flags.hex())"
+  },
+  "1 6 5 12": {
+    "query": "satellite.help(satellite.variable.binary.clear)",
+    "prose": "The run, emptied. `bits.clear()` leaves a run of width 0, which displays as `b`\nand nothing else.\n\n**It is the same word as `satellite.variable.string.clear`**, doing the same thing\nto the other type, and it writes back through the name it was called on -- so it\nneeds a receiver that is a variable. `some_call().clear()` is refused, because\nthere is nowhere to write the answer.\n\nEmpty here means a width of 0, not four bits set to zero. The width is part of\nthe value, so `b0000` is a four-bit value that is not empty, exactly as `\"0000\"`\nis a four-character string that is not empty.",
+    "example": "satellite.variable.binary bits = b1010\nbits.clear()\nsatellite.console.display(bits.width())"
+  },
+  "1 6 10 2": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The float as text.\n\nA float always prints with a point -- `4.0` and not `4` -- so a reader of the\noutput can tell which kind answered.",
+    "example": "satellite.variable.float ratio = 1.5\nsatellite.console.display(ratio.string())"
+  },
+  "1 6 11 6": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "`hex(x)` -- the value as hex, written around it.\n\nThe same bits `binary(x)` answers, four to a digit, padded on the left to a\nwhole number of digits.",
+    "example": "satellite.variable.number count = 42\nsatellite.console.display(hex(count))"
+  },
+  "1 6 11 7": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "The hex as text -- the digits with their `x`, written the way the language\nwrites them back.",
+    "example": "satellite.variable.hex mask = x00FF\nsatellite.console.display(mask.string())"
+  },
+  "1 6 11 8": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "What the hex means, as a number.\n\nThe same answer `.to_number()` gives. `x00FF` is 255.",
+    "example": "satellite.variable.hex mask = x00FF\nsatellite.console.display(mask.number())"
+  },
+  "1 6 11 9": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "The hex as bits.\n\nA hex value is stored as bits already, so this never rounds and never fails --\nthe width is always a multiple of four.",
+    "example": "satellite.variable.hex mask = x00FF\nsatellite.console.display(mask.binary())"
+  },
+  "1 6 11 10": {
+    "query": "satellite.help(satellite.variable.hex)",
+    "prose": "`.hex()` on a hex run answers the same hex run, width and all.",
+    "example": "satellite.variable.hex mask = x00FF\nsatellite.console.display(mask.hex())"
+  },
+  "1 6 10 3": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The float as a number, exactly.\n\nNothing is lost and nothing is rounded: a number in satellite is a decimal, so\nit holds the fraction the float held. What the two kinds differ in is how much\nprecision the arithmetic keeps, not what they can hold.",
+    "example": "satellite.variable.float ratio = 1.5\nsatellite.variable.number same = ratio.number()\nsatellite.console.display(same)"
+  },
+  "1 6 10 4": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The float as bits, when it is whole.\n\nA fraction has no bit pattern -- a bit run holds a whole number of zero or\nmore -- so a float with a fraction is refused and a whole one answers.",
+    "example": "satellite.variable.float count = 42\nsatellite.console.display(count.binary())"
+  },
+  "1 6 10 5": {
+    "query": "satellite.help(satellite.variable.float)",
+    "prose": "The float as hex, when it is whole.\n\nThe same bits `.binary()` answers, four to a digit.",
+    "example": "satellite.variable.float count = 42\nsatellite.console.display(count.hex())"
+  }
+}

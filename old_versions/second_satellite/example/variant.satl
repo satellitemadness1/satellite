@@ -1,0 +1,32 @@
+// M12 -- the variant, and what "nothing" is. One box, three states, and a
+// different true answer printed at each: `satl example/variant.satl` prints
+// nine lines and exits 0, and MILESTONES/M12.md §5 is the transcript.
+//
+// THE ORDER THE QUESTIONS ARE FIRST ASKED IS THE NUMBERING. WORD_NUMBERS §1.1
+// walks a real program to assign numbers, and this file is the walk §2.5
+// records: `holding` before `holds` before `held` before `clear`, `1 6 14 1`
+// through `1 6 14 4`, in the order the lines below meet them.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.variant box = 5
+    satellite.console.display(box)
+    satellite.console.display(box.holding())
+
+    box = "Hello, World!"
+    satellite.console.display(box.holding())
+    satellite.console.display(box.holds("string"))
+    satellite.console.display(box.holds("nothing"))
+
+    satellite.variable.string kept = box.held()
+    satellite.console.display(kept.upper())
+
+    box.clear()
+    satellite.console.display(box)
+    satellite.console.display(box.holding())
+    satellite.console.display(box.holds("nothing"))
+
+    satellite.return(satellite)
+}

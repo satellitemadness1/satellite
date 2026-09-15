@@ -1,0 +1,126 @@
+{
+  "1 7": {
+    "query": "satellite.help(satellite.random)",
+    "prose": "Random numbers, in four grades. `fast` is quick and good enough for a\ngame, `normal` is the one to reach for by default, `ultra` is the slowest\nand the most carefully made -- and `seeded` is the odd one out.\n\nThe first three throw work away before they answer, which is the only\ndifference between them, and each takes the same four shapes: bare, a\nnumber of digits, a range, and a range with a step.\n\n`seeded` answers straight away, draws the same sequence every time from\nthe same seed, and is the only one that can give you a fraction.",
+    "example": "satellite.console.display(satellite.random.normal(1, 6))"
+  },
+  "1 7 0": {
+    "query": "satellite.help(satellite.random)",
+    "prose": "The bare shape. There is no call called `random` on its own; pick a grade\nand call that.",
+    "example": ""
+  },
+  "1 7 1": {
+    "query": "satellite.help(satellite.random.fast)",
+    "prose": "The bare shape, and it **draws nothing**. A random number with no bounds\nand no width is not a question with an answer, so calling it refuses and\ntells you the three shapes that do work: a count of digits, a low and a\nhigh, or a low and a high and a step.\n\nThe grade itself is quick, and good enough for a game or a simulation.",
+    "example": "satellite.console.display(satellite.random.fast())",
+    "expect": "refuses"
+  },
+  "1 7 2": {
+    "query": "satellite.help(satellite.random.normal)",
+    "prose": "The bare shape, and it **draws nothing**. A random number with no bounds\nand no width is not a question with an answer, so calling it refuses and\ntells you the three shapes that do work: a count of digits, a low and a\nhigh, or a low and a high and a step.\n\nThe grade itself is the ordinary grade, and the one to use unless you have a reason not to.",
+    "example": "satellite.console.display(satellite.random.normal())",
+    "expect": "refuses"
+  },
+  "1 7 3": {
+    "query": "satellite.help(satellite.random.ultra)",
+    "prose": "The bare shape, and it **draws nothing**. A random number with no bounds\nand no width is not a question with an answer, so calling it refuses and\ntells you the three shapes that do work: a count of digits, a low and a\nhigh, or a low and a high and a step.\n\nThe grade itself is the slowest and most carefully made of the three.",
+    "example": "satellite.console.display(satellite.random.ultra())",
+    "expect": "refuses"
+  },
+  "1 7 4": {
+    "query": "satellite.help(satellite.random.fast)",
+    "prose": "A fast random number with the many digits you ask for.\n\nSince a number here has no width, asking for a hundred digits gives you a\nhundred digits.",
+    "example": "satellite.console.display(satellite.random.fast(20))"
+  },
+  "1 7 5": {
+    "query": "satellite.help(satellite.random.fast)",
+    "prose": "A fast random number between the two bounds you give, both included.",
+    "example": "satellite.console.display(satellite.random.fast(1, 6))"
+  },
+  "1 7 6": {
+    "query": "satellite.help(satellite.random.fast)",
+    "prose": "A fast random number between two bounds that lands on a multiple of the\nstep, so a step of 5 over 0 to 100 answers one of 0, 5, 10 and so on.",
+    "example": "satellite.console.display(satellite.random.fast(0, 100, 5))"
+  },
+  "1 7 7": {
+    "query": "satellite.help(satellite.random.normal)",
+    "prose": "An ordinary-grade random number with as many digits as you ask for.",
+    "example": "satellite.console.display(satellite.random.normal(20))"
+  },
+  "1 7 8": {
+    "query": "satellite.help(satellite.random.normal)",
+    "prose": "An ordinary-grade random number between the two bounds you give, both\nincluded. This is the shape most programs want.",
+    "example": "satellite.console.display(satellite.random.normal(1, 6))"
+  },
+  "1 7 9": {
+    "query": "satellite.help(satellite.random.normal)",
+    "prose": "An ordinary-grade random number between two bounds, landing on a multiple\nof the step.",
+    "example": "satellite.console.display(satellite.random.normal(0, 100, 5))"
+  },
+  "1 7 10": {
+    "query": "satellite.help(satellite.random.ultra)",
+    "prose": "A highest-grade random number with as many digits as you ask for.",
+    "example": "satellite.console.display(satellite.random.ultra(20))"
+  },
+  "1 7 11": {
+    "query": "satellite.help(satellite.random.ultra)",
+    "prose": "A highest-grade random number between the two bounds you give, both\nincluded.",
+    "example": "satellite.console.display(satellite.random.ultra(1, 6))"
+  },
+  "1 7 12": {
+    "query": "satellite.help(satellite.random.ultra)",
+    "prose": "A highest-grade random number between two bounds, landing on a multiple\nof the step.",
+    "example": "satellite.console.display(satellite.random.ultra(0, 100, 5))"
+  },
+  "1 9": {
+    "query": "satellite.help(satellite.time)",
+    "prose": "The clock, and waiting.\n\nTwo of its words are built: asking what time it is now, and sleeping for a\nwhile. Holding a moment in a variable is a later milestone.",
+    "example": "satellite.console.display(satellite.time.now())"
+  },
+  "1 9 0": {
+    "query": "satellite.help(satellite.time)",
+    "prose": "The bare shape. The clock is a module rather than something you\nconstruct; one of the words underneath is what you call.",
+    "example": ""
+  },
+  "1 9 1": {
+    "query": "satellite.help(satellite.time.now)",
+    "prose": "What time it is, read at the moment you ask.\n\nIt is one of the two sources of nondeterminism in the language, the dice\nbeing the other, which is why they were built together and why a program\nthat uses neither runs the same way every time.",
+    "example": "satellite.console.display(satellite.time.now())"
+  },
+  "1 9 2": {
+    "query": "satellite.help(satellite.time.new)",
+    "prose": "Makes a moment of your own rather than reading the clock.\n\n**Not built** — M29 is the calendar milestone that decides what a time\nvalue can be.",
+    "example": ""
+  },
+  "1 9 3": {
+    "query": "satellite.help(satellite.time.sleep)",
+    "prose": "Stops the program for the number of seconds you give, then carries on.\nThe seconds can be a fraction: `0.09` is ninety milliseconds, and the wait\nis exact down to a nanosecond.\n\nCtrl-C still reaches a program that is sleeping, so a long wait is not a\nprogram you have to kill.",
+    "example": "satellite.console.display(\"before\")\nsatellite.time.sleep(0.01)\nsatellite.console.display(\"after\")"
+  },
+  "1 9 4": {
+    "query": "satellite.help(satellite.time.sleep)",
+    "prose": "The same wait, counted in the unit you name: `\"s\"` for seconds, `\"ms\"`\nfor milliseconds, `\"us\"` for microseconds or `\"ns\"` for nanoseconds.\n`satellite.time.sleep(90, \"ms\")` and `satellite.time.sleep(0.09)` wait\nexactly as long. Any other word stops the program and names the four.",
+    "example": "satellite.time.sleep(90, \"ms\")\nsatellite.time.sleep(500, \"us\")\nsatellite.console.display(\"waited\")"
+  },
+  "1 7 13": {
+    "query": "satellite.help(satellite.random.seeded)",
+    "prose": "Sets the seed, and answers nothing.\n\nThe other three grades take their randomness from the kernel and you\ncannot ask them where they are in the sequence. This one starts where you\ntell it to, so **the same seed draws the same numbers in the same order**,\nevery run. That is what you want when you are chasing something that only\nhappens sometimes and need to see it twice.\n\nWrite it once before the first draw. Writing it again starts over.",
+    "example": "satellite.random.seeded(12345)\nsatellite.console.display(satellite.random.seeded(1, 6, 1))"
+  },
+  "1 7 14": {
+    "query": "satellite.help(satellite.random.seeded)",
+    "prose": "A low and a high, inclusive at both ends -- **and this is the one draw in\nthe language that can answer a fraction**.\n\nThe other three grades want whole numbers, because there is no way to pick\nevenly from all the numbers between 1 and 100. This one picks evenly from\nthe numbers your precision can actually hold, which is a question that does\nhave an answer -- so `seeded(0, 1)` is a fraction between zero and one, and\nthe bounds themselves may be fractions too.\n\nAlso spelled `seeded.range(min, max)`. Seed it first or it refuses.",
+    "example": "satellite.random.seeded(12345)\nsatellite.variable.number fraction = satellite.random.seeded(0, 1)\nsatellite.console.display(fraction)"
+  },
+  "1 7 15": {
+    "query": "satellite.help(satellite.random.seeded)",
+    "prose": "A low, a high and a step -- every value the step lands on, and nothing\nbetween them.\n\nThis is how you ask this grade for whole numbers: a step of 1 from 0 to 9\nis the ten integers. The step may be a fraction as well, so 0.25 from 0 to\n1 draws one of five quarters.\n\nThe step has to divide the distance exactly, or the call is refused and\ntells you the last value it would have reached.",
+    "example": "satellite.random.seeded(12345)\nsatellite.console.display(satellite.random.seeded(0, 1, 0.25))"
+  },
+  "1 7 16": {
+    "query": "satellite.help(satellite.random.seeded)",
+    "prose": "The bare shape, and it **draws nothing** -- the three other grades' bare\nshapes do not either. Supply a seed, or a low and a high, or a low and a\nhigh and a step.",
+    "example": "satellite.console.display(satellite.random.seeded())",
+    "expect": "refuses"
+  }
+}
