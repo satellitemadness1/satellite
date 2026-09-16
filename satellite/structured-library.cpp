@@ -11,11 +11,17 @@
 //
 // Start-up reads the author's satellite_config.hpp, parks
 // arguments.threads_startup threads (threads/startup_threads.hpp), loads every compiled library in build/satellite-numbers/ into the
-// number index; then the .satl file is loaded, checked, turned into calls with
-// their functions already chosen, and run. The exit status is the machine code
+// number index; then the .satl file is loaded, checked, TURNED INTO 16-BIT
+// TOKENS (bytecode/bytecode_registry.hpp), turned into calls with their
+// functions already chosen, and run. The exit status is the machine code
 // the program stopped on: 0 when it ran to the end.
+//
+// (the author, 2026-09-16) "First start 256 threads, then load the tiny C++
+// libraries, then convert the .satl to 16-bit." That order is the order below,
+// and the tokens are the first thing built out of a program.
 
 #include "arguments/arguments.hpp"
+#include "bytecode/bytecode_registry.hpp"
 #include "machine/machine_codes.hpp"
 #include "machine/machine_state.hpp"
 #include "../satellite-numbers/call_number.hpp"
@@ -123,6 +129,7 @@ int main(int argc, char **argv)
     NumberIndex index;
     std::string source;
     std::vector<Call> calls;
+    BytecodeRegistry bytecode_registry;
 
     StartupThreads threads;
     threads.start(startup, state);
@@ -137,6 +144,15 @@ int main(int argc, char **argv)
         return static_cast<int>(code);
 
     code = check_satl(source, state);
+    if (stops_the_program(code))
+        return static_cast<int>(code);
+
+    // The program becomes 16-bit tokens here, on the threads that are already
+    // warm, in batches of lines. Nothing has looked at what the program SAYS
+    // yet -- this is the first thing built out of it. A character the registry
+    // has no code for is marked with error_token and does not stop the run
+    // (the lexer never throws), so its code is reported and the run goes on.
+    code = build_bytecode_registry(source, threads, startup, bytecode_registry, state);
     if (stops_the_program(code))
         return static_cast<int>(code);
 

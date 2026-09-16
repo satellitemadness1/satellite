@@ -1,290 +1,287 @@
-REGISTRY.satellite -- every 8-bit code satellite uses, and what it means.
+REGISTRY.satellite -- every code satellite uses, and what it means. 16 bits.
 
 CHARACTERS AND TOKENS ARE TWO ALPHABETS (the author, 2026-09-16).
 
-THE CHARACTERS are codes 0-127 below, and a string is the same at every width:
-an 8-BIT STRING HOLDS ASCII ONLY (the author: "8-bit will be ascii only then"),
-a 16-bit string holds those and every character up to U+FFFF, and a 32-bit string
-holds everything -- each character its own Unicode number above 127. So the
-widths nest: widening a string zero-extends each code, nothing is renumbered,
-and two strings of different widths compare code against code.
+THE CODES ARE 16 BITS, AND THE HIGH BYTE SAYS WHICH (the author, 2026-09-16):
+
+    0000000000000000 - 0000000001111111    0-127    the characters
+    0000000010000000 - 0000000011111111  128-255    kept back, never issued
+    0000000100000000 and up               256 up    the tokens
+
+so a high byte of zero is a character and any other high byte is a token. One
+test, everywhere, forever -- the 8-bit registry's rule, widened. Because 128-255
+are kept back, an 8-bit ASCII string widens into this by zero-extending each
+code, and nothing is renumbered.
+
+THE CHARACTERS are codes 0-127, and a string is the same at every width: an
+8-BIT STRING HOLDS ASCII ONLY (the author: "8-bit will be ascii only then"), a
+16-bit string holds those and every character up to U+FFFF, and a 32-bit string
+holds everything -- each character above 127 its own Unicode number.
 
 THE TOKENS are the stored program's alphabet, never a character and never inside
 a string's value. A string literal's characters travel in the program behind
-string_token, and characters that do not fit behind wide_run.
+string_token.
 
-NEXT (the author, 2026-09-16): the tokens move to 16 bits, so that there is room
-for every token the language will ever need instead of the 70 free codes left
-here, and this registry becomes that list.
+EVERY PAYLOAD TOKEN CARRIES A COUNT, and this is the rule the 8-bit registry did
+not need. At 8 bits a run of characters ended when the high bit flipped. That
+test is arithmetically FALSE at 16 bits: above 127 a character IS its Unicode
+number (satellite_string.cpp:53), so a string holding one wide character carries
+codes indistinguishable from token codes -- QUAD writes " (infinity)  " as one
+literal and would end its own string early. So a count follows every one of
+family 0000100100000000's tokens, and the counted codes are SKIPPED, never
+classified. long_count_token continues a count that does not fit in 16 bits, so
+no literal has a ceiling (DESIGN §1.2 forbids one).
 
-THE HIGH BIT SAYS WHICH: 0xxxxxxx is a character, 1xxxxxxx is a token. One bit
-test, everywhere, forever. 00000000 is nothing, as the author chose, so a
-zeroed or half-written buffer reads as nothing rather than as a row of a's.
-11111111 is kept back: it says the next byte carries the token, which is how
-this list grows past 256 without any of it being rewritten.
+THE HIGH BYTE ALSO NAMES THE FAMILY. 0000001100000000 up is always arithmetic,
+0000100100000000 up is always a literal. One indirect jump classifies a token,
+and a family can grow into its own 255 spare codes without any other code
+moving. The character order moved twice in two days (f90fb12, 1311aec) and cost
+three files each time; the tokens are laid out so that never happens again.
+
+00000000 nothing is reserved, as the author chose, so a zeroed or half-written
+buffer reads as nothing rather than as a row of a's. 1111111111111111 is kept
+back: it says the next code carries the token.
 
 The order of the characters is the author's (2026-09-16), and comparing codes
 sorts text in that order: a before z before A before 0 before ! before space.
 
-ONE FILE, ONE ANSWER. The lexer, the interpreter and the .satc writer all read
-this registry, so none of them can drift about what a code means. Like
-003's words.def, it is exempt from the 300-line rule.
+ROWS MARKED "QUESTION" ARE NOT SETTLED. The author named these tokens on
+2026-09-16; 003's DESIGN.md refuses or leaves open nineteen of them, verified
+file and line by a review the same day. They keep their codes until the author
+rules, and the reason stands beside each one. Nothing may rely on a QUESTION row.
 
-bits        name                         what it is
+ONE FILE, ONE ANSWER. The lexer, the interpreter and the .satc writer all read
+this registry, so none of them can drift about what a code means. Like 003's
+words.def, it is exempt from the 300-line rule.
+
+bits              name                         what it is
 ------------------------------------------------------------------------------
-00000000  nothing                      reserved: nothing is here
-00000001  a                            the letter a
-00000010  b                            the letter b
-00000011  c                            the letter c
-00000100  d                            the letter d
-00000101  e                            the letter e
-00000110  f                            the letter f
-00000111  g                            the letter g
-00001000  h                            the letter h
-00001001  i                            the letter i
-00001010  j                            the letter j
-00001011  k                            the letter k
-00001100  l                            the letter l
-00001101  m                            the letter m
-00001110  n                            the letter n
-00001111  o                            the letter o
-00010000  p                            the letter p
-00010001  q                            the letter q
-00010010  r                            the letter r
-00010011  s                            the letter s
-00010100  t                            the letter t
-00010101  u                            the letter u
-00010110  v                            the letter v
-00010111  w                            the letter w
-00011000  x                            the letter x
-00011001  y                            the letter y
-00011010  z                            the letter z
-00011011  A                            the letter A
-00011100  B                            the letter B
-00011101  C                            the letter C
-00011110  D                            the letter D
-00011111  E                            the letter E
-00100000  F                            the letter F
-00100001  G                            the letter G
-00100010  H                            the letter H
-00100011  I                            the letter I
-00100100  J                            the letter J
-00100101  K                            the letter K
-00100110  L                            the letter L
-00100111  M                            the letter M
-00101000  N                            the letter N
-00101001  O                            the letter O
-00101010  P                            the letter P
-00101011  Q                            the letter Q
-00101100  R                            the letter R
-00101101  S                            the letter S
-00101110  T                            the letter T
-00101111  U                            the letter U
-00110000  V                            the letter V
-00110001  W                            the letter W
-00110010  X                            the letter X
-00110011  Y                            the letter Y
-00110100  Z                            the letter Z
-00110101  0                            the digit 0
-00110110  1                            the digit 1
-00110111  2                            the digit 2
-00111000  3                            the digit 3
-00111001  4                            the digit 4
-00111010  5                            the digit 5
-00111011  6                            the digit 6
-00111100  7                            the digit 7
-00111101  8                            the digit 8
-00111110  9                            the digit 9
-00111111  !                            exclamation_mark
-01000000  @                            at_sign
-01000001  #                            hash_sign
-01000010  $                            dollar_sign
-01000011  %                            percent_sign
-01000100  ^                            caret
-01000101  &                            ampersand
-01000110  *                            star
-01000111  (                            left_parenthesis
-01001000  )                            right_parenthesis
-01001001  -                            minus_sign
-01001010  +                            plus_sign
-01001011  _                            underscore
-01001100  =                            equals_sign
-01001101  [                            left_square_bracket
-01001110  ]                            right_square_bracket
-01001111  {                            left_brace
-01010000  }                            right_brace
-01010001  \                            backslash
-01010010  |                            bar
-01010011  ;                            semicolon
-01010100  :                            colon
-01010101  '                            single_quote
-01010110  "                            double_quote
-01010111  ,                            comma
-01011000  .                            full_stop
-01011001  <                            less_than_sign
-01011010  >                            greater_than_sign
-01011011  /                            slash
-01011100  ?                            question_mark
-01011101  `                            backtick
-01011110  ~                            tilde
-01011111                               space
-01100000  \t                           tab
-01100001  \n                           newline
-01100010  0x01                         start_of_heading (ASCII 0x01)
-01100011  0x02                         start_of_text (ASCII 0x02)
-01100100  0x03                         end_of_text (ASCII 0x03)
-01100101  0x04                         end_of_transmission (ASCII 0x04)
-01100110  0x05                         enquiry (ASCII 0x05)
-01100111  0x06                         acknowledge (ASCII 0x06)
-01101000  0x07                         bell (ASCII 0x07)
-01101001  0x08                         backspace (ASCII 0x08)
-01101010  0x0B                         vertical_tab (ASCII 0x0B)
-01101011  0x0C                         form_feed (ASCII 0x0C)
-01101100  0x0D                         carriage_return (ASCII 0x0D)
-01101101  0x0E                         shift_out (ASCII 0x0E)
-01101110  0x0F                         shift_in (ASCII 0x0F)
-01101111  0x10                         data_link_escape (ASCII 0x10)
-01110000  0x11                         device_control_one (ASCII 0x11)
-01110001  0x12                         device_control_two (ASCII 0x12)
-01110010  0x13                         device_control_three (ASCII 0x13)
-01110011  0x14                         device_control_four (ASCII 0x14)
-01110100  0x15                         negative_acknowledge (ASCII 0x15)
-01110101  0x16                         synchronous_idle (ASCII 0x16)
-01110110  0x17                         end_of_transmission_block (ASCII 0x17)
-01110111  0x18                         cancel (ASCII 0x18)
-01111000  0x19                         end_of_medium (ASCII 0x19)
-01111001  0x1A                         substitute (ASCII 0x1A)
-01111010  0x1B                         escape_character (ASCII 0x1B)
-01111011  0x1C                         file_separator (ASCII 0x1C)
-01111100  0x1D                         group_separator (ASCII 0x1D)
-01111101  0x1E                         record_separator (ASCII 0x1E)
-01111110  0x1F                         unit_separator (ASCII 0x1F)
-01111111  0x7F                         delete_character (ASCII 0x7F)
-10000000  wide_run_token               a count, then that many 2-byte character codes (up to U+FFFF)
-10000001  wide_run_32_token            a count, then that many 4-byte character codes (emoji, rare CJK)
-10000010  left_brace_token             {  opens a body
-10000011  right_brace_token            }  closes a body
-10000100  left_square_bracket_token    [  opens an index
-10000101  right_square_bracket_token   ]  closes an index
-10000110  left_parenthesis_token       (  opens arguments
-10000111  right_parenthesis_token      )  closes arguments
-10001000  plus_token                   +
-10001001  minus_token                  -
-10001010  times_token                  *
-10001011  divide_token                 /
-10001100  modulus_token                %
-10001101  assign_token                 =
-10001110  plus_assign_token            +=
-10001111  minus_assign_token           -=
-10010000  times_assign_token           *=
-10010001  divide_assign_token          /=
-10010010  modulus_assign_token         %=
-10010011  equals_token                 ==
-10010100  not_equals_token             !=
-10010101  less_than_token              <
-10010110  greater_than_token           >
-10010111  less_or_equal_token          <=
-10011000  greater_or_equal_token       >=
-10011001  and_token                    &&
-10011010  or_token                     ||
-10011011  not_token                    !
-10011100  bit_and_token                &
-10011101  bit_or_token                 |
-10011110  bit_exclusive_or_token       ^
-10011111  bit_not_token                ~
-10100000  shift_left_token             <<
-10100001  shift_right_token            >>
-10100010  comma_token                  ,
-10100011  semicolon_token              ;
-10100100  colon_token                  :
-10100101  namespace_token              :: -- namespace::object
-10100110  method_token                 .  the dot that calls a method on something
-10100111  decimal_point_token          .  the dot inside a number, 3.14
-10101000  path_separator_token         /  the slash inside a path
-10101001  escape_token                 \  the escape inside text
-10101010  linux_home_token             ~  the home directory, $HOME
-10101011  double_quote_token           "  a string literal starts or ends
-10101100  single_quote_token           '
-10101101  comment_token                // to the end of the line
-10101110  comment_start_token          /*
-10101111  comment_end_token            */
-10110000  line_end_token               the end of a statement
-10110001  end_of_file_token            always the last token
-10110010  word_number_token            a satellite word follows as its numbers: #1.5.1
-10110011  name_token                   a name the user owns follows, as characters
-10110100  number_token                 a number literal follows, as characters
-10110101  string_token                 a string literal follows, as characters
-10110110  bits_token                   a bits literal follows: x00FF or b1010
-10110111  question_token               ?
-10111000  arrow_token                  ->
-10111001  free                         
-10111010  free                         
-10111011  free                         
-10111100  free                         
-10111101  free                         
-10111110  free                         
-10111111  free                         
-11000000  free                         
-11000001  free                         
-11000010  free                         
-11000011  free                         
-11000100  free                         
-11000101  free                         
-11000110  free                         
-11000111  free                         
-11001000  free                         
-11001001  free                         
-11001010  free                         
-11001011  free                         
-11001100  free                         
-11001101  free                         
-11001110  free                         
-11001111  free                         
-11010000  free                         
-11010001  free                         
-11010010  free                         
-11010011  free                         
-11010100  free                         
-11010101  free                         
-11010110  free                         
-11010111  free                         
-11011000  free                         
-11011001  free                         
-11011010  free                         
-11011011  free                         
-11011100  free                         
-11011101  free                         
-11011110  free                         
-11011111  free                         
-11100000  free                         
-11100001  free                         
-11100010  free                         
-11100011  free                         
-11100100  free                         
-11100101  free                         
-11100110  free                         
-11100111  free                         
-11101000  free                         
-11101001  free                         
-11101010  free                         
-11101011  free                         
-11101100  free                         
-11101101  free                         
-11101110  free                         
-11101111  free                         
-11110000  free                         
-11110001  free                         
-11110010  free                         
-11110011  free                         
-11110100  free                         
-11110101  free                         
-11110110  free                         
-11110111  free                         
-11111000  free                         
-11111001  free                         
-11111010  free                         
-11111011  free                         
-11111100  free                         
-11111101  free                         
-11111110  free                         
-11111111  extend_token                 the next byte carries the token
+0000000000000000  nothing                      reserved: nothing is here
+0000000000000001  a                            the letter a
+0000000000000010  b                            the letter b
+0000000000000011  c                            the letter c
+0000000000000100  d                            the letter d
+0000000000000101  e                            the letter e
+0000000000000110  f                            the letter f
+0000000000000111  g                            the letter g
+0000000000001000  h                            the letter h
+0000000000001001  i                            the letter i
+0000000000001010  j                            the letter j
+0000000000001011  k                            the letter k
+0000000000001100  l                            the letter l
+0000000000001101  m                            the letter m
+0000000000001110  n                            the letter n
+0000000000001111  o                            the letter o
+0000000000010000  p                            the letter p
+0000000000010001  q                            the letter q
+0000000000010010  r                            the letter r
+0000000000010011  s                            the letter s
+0000000000010100  t                            the letter t
+0000000000010101  u                            the letter u
+0000000000010110  v                            the letter v
+0000000000010111  w                            the letter w
+0000000000011000  x                            the letter x
+0000000000011001  y                            the letter y
+0000000000011010  z                            the letter z
+0000000000011011  A                            the letter A
+0000000000011100  B                            the letter B
+0000000000011101  C                            the letter C
+0000000000011110  D                            the letter D
+0000000000011111  E                            the letter E
+0000000000100000  F                            the letter F
+0000000000100001  G                            the letter G
+0000000000100010  H                            the letter H
+0000000000100011  I                            the letter I
+0000000000100100  J                            the letter J
+0000000000100101  K                            the letter K
+0000000000100110  L                            the letter L
+0000000000100111  M                            the letter M
+0000000000101000  N                            the letter N
+0000000000101001  O                            the letter O
+0000000000101010  P                            the letter P
+0000000000101011  Q                            the letter Q
+0000000000101100  R                            the letter R
+0000000000101101  S                            the letter S
+0000000000101110  T                            the letter T
+0000000000101111  U                            the letter U
+0000000000110000  V                            the letter V
+0000000000110001  W                            the letter W
+0000000000110010  X                            the letter X
+0000000000110011  Y                            the letter Y
+0000000000110100  Z                            the letter Z
+0000000000110101  0                            the digit 0
+0000000000110110  1                            the digit 1
+0000000000110111  2                            the digit 2
+0000000000111000  3                            the digit 3
+0000000000111001  4                            the digit 4
+0000000000111010  5                            the digit 5
+0000000000111011  6                            the digit 6
+0000000000111100  7                            the digit 7
+0000000000111101  8                            the digit 8
+0000000000111110  9                            the digit 9
+0000000000111111  !                            exclamation_mark
+0000000001000000  @                            at_sign
+0000000001000001  #                            hash_sign
+0000000001000010  $                            dollar_sign
+0000000001000011  %                            percent_sign
+0000000001000100  ^                            caret
+0000000001000101  &                            ampersand
+0000000001000110  *                            star
+0000000001000111  (                            left_parenthesis
+0000000001001000  )                            right_parenthesis
+0000000001001001  -                            minus_sign
+0000000001001010  +                            plus_sign
+0000000001001011  _                            underscore
+0000000001001100  =                            equals_sign
+0000000001001101  [                            left_square_bracket
+0000000001001110  ]                            right_square_bracket
+0000000001001111  {                            left_brace
+0000000001010000  }                            right_brace
+0000000001010001  \                            backslash
+0000000001010010  |                            bar
+0000000001010011  ;                            semicolon
+0000000001010100  :                            colon
+0000000001010101  '                            single_quote
+0000000001010110  "                            double_quote
+0000000001010111  ,                            comma
+0000000001011000  .                            full_stop
+0000000001011001  <                            less_than_sign
+0000000001011010  >                            greater_than_sign
+0000000001011011  /                            slash
+0000000001011100  ?                            question_mark
+0000000001011101  `                            backtick
+0000000001011110  ~                            tilde
+0000000001011111                               space
+0000000001100000  \t                           tab
+0000000001100001  \n                           newline
+0000000001100010  0x01                         start_of_heading (ASCII 0x01)
+0000000001100011  0x02                         start_of_text (ASCII 0x02)
+0000000001100100  0x03                         end_of_text (ASCII 0x03)
+0000000001100101  0x04                         end_of_transmission (ASCII 0x04)
+0000000001100110  0x05                         enquiry (ASCII 0x05)
+0000000001100111  0x06                         acknowledge (ASCII 0x06)
+0000000001101000  0x07                         bell (ASCII 0x07)
+0000000001101001  0x08                         backspace (ASCII 0x08)
+0000000001101010  0x0B                         vertical_tab (ASCII 0x0B)
+0000000001101011  0x0C                         form_feed (ASCII 0x0C)
+0000000001101100  0x0D                         carriage_return (ASCII 0x0D)
+0000000001101101  0x0E                         shift_out (ASCII 0x0E)
+0000000001101110  0x0F                         shift_in (ASCII 0x0F)
+0000000001101111  0x10                         data_link_escape (ASCII 0x10)
+0000000001110000  0x11                         device_control_one (ASCII 0x11)
+0000000001110001  0x12                         device_control_two (ASCII 0x12)
+0000000001110010  0x13                         device_control_three (ASCII 0x13)
+0000000001110011  0x14                         device_control_four (ASCII 0x14)
+0000000001110100  0x15                         negative_acknowledge (ASCII 0x15)
+0000000001110101  0x16                         synchronous_idle (ASCII 0x16)
+0000000001110110  0x17                         end_of_transmission_block (ASCII 0x17)
+0000000001110111  0x18                         cancel (ASCII 0x18)
+0000000001111000  0x19                         end_of_medium (ASCII 0x19)
+0000000001111001  0x1A                         substitute (ASCII 0x1A)
+0000000001111010  0x1B                         escape_character (ASCII 0x1B)
+0000000001111011  0x1C                         file_separator (ASCII 0x1C)
+0000000001111100  0x1D                         group_separator (ASCII 0x1D)
+0000000001111101  0x1E                         record_separator (ASCII 0x1E)
+0000000001111110  0x1F                         unit_separator (ASCII 0x1F)
+0000000001111111  0x7F                         delete_character (ASCII 0x7F)
+
+-- THE STREAM  (0000000100000000 up)
+0000000100000000  line_end_token               the end of a statement
+0000000100000001  end_of_file_token            always the last token
+0000000100000010  error_token                  the lexer stopped here; an error code follows. The lexer never throws
+0000000100000011  free                         to 0000000111111111, free for this family
+
+-- BRACKETS  (0000001000000000 up)
+0000001000000000  left_brace_token             {  opens a body
+0000001000000001  right_brace_token            }  closes a body
+0000001000000010  left_parenthesis_token       (  opens arguments
+0000001000000011  right_parenthesis_token      )  closes arguments
+0000001000000100  left_square_bracket_token    [  opens an index
+0000001000000101  right_square_bracket_token   ]  closes an index
+0000001000000110  free                         to 0000001011111111, free for this family
+
+-- ARITHMETIC  (0000001100000000 up)
+0000001100000000  plus_token                   +
+0000001100000001  minus_token                  -
+0000001100000010  times_token                  *
+0000001100000011  divide_token                 /  only with whitespace on BOTH sides; a touching / is a path
+0000001100000100  modulus_token                %
+0000001100000101  free                         to 0000001111111111, free for this family
+
+-- ASSIGNMENT  (0000010000000000 up)
+0000010000000000  assign_token                 =
+0000010000000001  plus_assign_token            +=   QUESTION: 003 DESIGN §6 has one assignment form and no compound
+0000010000000010  minus_assign_token           -=   QUESTION: as above
+0000010000000011  times_assign_token           *=   QUESTION: as above
+0000010000000100  divide_assign_token          /=   QUESTION: as above
+0000010000000101  modulus_assign_token         %=   QUESTION: as above
+0000010000000110  free                         to 0000010011111111, free for this family
+
+-- COMPARISON  (0000010100000000 up)
+0000010100000000  equals_token                 ==
+0000010100000001  not_equals_token             !=
+0000010100000010  less_than_token              <
+0000010100000011  greater_than_token           >
+0000010100000100  less_or_equal_token          <=
+0000010100000101  greater_or_equal_token       >=
+0000010100000110  free                         to 0000010111111111, free for this family
+
+-- LOGIC AND BITS  (0000011000000000 up)
+0000011000000000  and_token                    &&   QUESTION: 003 DESIGN §13 leaves && and || open, and may spell them as words
+0000011000000001  or_token                     ||   QUESTION: as above
+0000011000000010  not_token                    !    QUESTION: §13 leaves open whether ! is the negation
+0000011000000011  bit_and_token                &    QUESTION: §6 has no bitwise row; & ends an expression and is reported
+0000011000000100  bit_or_token                 |    QUESTION: as above
+0000011000000101  bit_exclusive_or_token       ^    QUESTION: as above
+0000011000000110  bit_not_token                ~    QUESTION: as above
+0000011000000111  shift_left_token             <<   QUESTION: 003 DESIGN §5.5 refuses << and >> permanently (the author asked for them 2026-09-16)
+0000011000001000  shift_right_token            >>   QUESTION: as above
+0000011000001001  bit_run_join_token           !!   lays two bit runs end to end; DESIGN §6.6's fifth precedence level, decided 2026-09-09
+0000011000001010  free                         to 0000011011111111, free for this family
+
+-- SEPARATORS AND REACH  (0000011100000000 up)
+0000011100000000  comma_token                  ,  between arguments
+0000011100000001  semicolon_token              ;  inside a for
+0000011100000010  colon_token                  :  in for (TYPE name : list), and in a slice
+0000011100000011  namespace_token              :: QUESTION: satellite joins every segment with a dot; no program uses ::
+0000011100000100  method_token                 .  reaches a member; a following ( makes it a call
+0000011100000101  decimal_point_token          .  QUESTION: 003's lexer folds 3.14 into one number, dot included
+0000011100000110  word_separator_token         .  between a word's numbers: #1.5.1
+0000011100000111  path_separator_token         /  QUESTION: a path with a slash is written in quotes, so it travels as characters
+0000011100001000  linux_home_token             ~  QUESTION: 003 spells $HOME as a live CHARACTER code, not a token
+0000011100001001  question_token               ?  QUESTION: no grammar production accepts it
+0000011100001010  arrow_token                  -> QUESTION: a return type is satellite.returns(TYPE)
+0000011100001011  free                         to 0000011111111111, free for this family
+
+-- TEXT AND COMMENTS  (0000100000000000 up)
+0000100000000000  double_quote_token           "  a string literal starts or ends
+0000100000000001  single_quote_token           '  QUESTION: the language has no character type
+0000100000000010  escape_token                 \  QUESTION: an escape lives inside a string's value, which a token may not
+0000100000000011  comment_token                // to the end of the line
+0000100000000100  comment_start_token          /* QUESTION: 003 DESIGN §5.6 has no block comment, on purpose
+0000100000000101  comment_end_token            */ QUESTION: as above
+0000100000000110  free                         to 0000100011111111, free for this family
+
+-- LITERALS AND PAYLOADS -- EVERY ONE CARRIES A COUNT  (0000100100000000 up)
+0000100100000000  word_number_token            a satellite word as its numbers: count, then the numbers
+0000100100000001  name_token                   a name the user owns: count, then that many character codes
+0000100100000010  number_token                 a number literal: count, then that many character codes
+0000100100000011  string_token                 a string literal: count, then that many character codes
+0000100100000100  binary_token                 b11001100 -- count, then that many character codes
+0000100100000101  hexadecimal_token            xFFAAC2985765 -- count, then that many character codes
+0000100100000110  option_token                 0#down -- a folded option; count, then that many character codes
+0000100100000111  string_index_token           the string at this index in the .sati, once the program carries no text
+0000100100001000  wide_run_token               count, then that many characters as their own 16-bit Unicode number
+0000100100001001  wide_run_32_token            count, then that many characters as 32 bits each (emoji, rare CJK)
+0000100100001010  long_count_token             the count that follows continues in the next code: no literal has a ceiling
+0000100100001011  free                         to 0000100111111111, free for this family
+
+-- BATCH MARKS -- .satb, a PROPOSAL against open decision D12.1  (0000101000000000 up)
+0000101000000000  batch_start_token            opens a batch: these calls may run on one pool thread
+0000101000000001  batch_end_token              closes a batch
+0000101000000010  wait_token                   the main thread waits here until everything marked before it has finished
+0000101000000011  batch_size_token             how many commands one batch carries; a count follows
+0000101000000100  free                         to 0000101011111111, free for this family
+
+-- KEPT BACK  (1111111100000000 up)
+1111111111111111  extend_token                 the next code carries the token; kept back so an all-ones buffer is never a token

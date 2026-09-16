@@ -21,6 +21,7 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 | **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — 32 passed |
 | **The author's config** — every `return_arguments_vector()` row loaded into `arguments`; the title lines (VERSION 004 REVISION 04 BUILD nnnn) on `--version`, `--help` and every start; the build number raised by every build | `satellite/config/satellite_config.hpp`, `satellite/config/build_number.py` | check.sh |
 | **256 warm threads** — started from `arguments.threads_startup` and parked before the program runs (a requirement for later, the author) | `satellite/threads/startup_threads.*` | check.sh; about 12 ms and 1.7 MB a run |
+| **The 16-bit tokens** — `REGISTRY.satellite` is the 16-bit list; `bytecode_registry` is the `.satl` as `std::vector<std::vector<std::bitset<16>>>`, one row a source line, built on the warm threads in batches of lines. **The first thing the interpreter builds out of a program** | `REGISTRY.satellite`, `satellite/bytecode/` (`make_token_codes.py` → `token_codes.hpp`, `bytecode_registry.*`), called at `structured-library.cpp:155` | check.sh (32); a 15-check harness in the session scratchpad; `--debug` shows `bytecode_registry(built)` on every run |
 | **satellite_number** — sign bool + `unsigned long long` limbs, one-limb fast path (no allocation), + - * / %, text, digits, bytes | `satellite/satellite_variable_number/` | `python3 .../check_numbers.py build/number_cases` — 477,253 cases against Python |
 | **satellite_string 16/32-bit** — the author's character table; 16 bits a character, 32 only when one is above U+FFFF | `satellite/satellite_variable_string/` | `.../check_strings16.py` — every case agrees with Python; `build/string_table_check` proves the table |
 | **The number index** — every compiled library loaded once at start-up | `satellite-numbers/call_number.*`, `number_row.hpp` | loads all 24 libraries |
@@ -114,10 +115,7 @@ built and check against Python, but the session's limit stopped the rest:
 - **the 23 string-method libraries still use the 32-bit `strings/` string.** They
   move onto the new one, checked against 003's satl, in the same step. `strings/`
   then moves into `satellite/satellite_variable_string/`.
-- **the tokens move to 16 bits** (the author, 2026-09-16), so `REGISTRY.satellite`
-  becomes that list: the stored program's codes are 16-bit, which leaves room for
-  every token the language will need instead of the 70 free 8-bit codes. The
-  characters keep 0-127 in the registry's order at every width.
+- ~~the tokens move to 16 bits~~ **DONE 2026-09-16** — see §6.
 - **an 8-bit string holds ASCII only** (decided 2026-09-16); 16-bit holds up to
   U+FFFF, 32-bit everything. The 8-bit path is not built yet: the committed
   string chooses between 16 and 32.
@@ -128,7 +126,75 @@ built and check against Python, but the session's limit stopped the rest:
 Then the prompt (PLAN M0.5 → M0.6 → M0.7). The prototype's defects (ERROR.md §1)
 are PLAN M1.
 
-## 6. Other notes
+## 6. The 16-bit tokens, 2026-09-16 — and the nineteen rows the author still owes a ruling on
+
+**The layout is the author's, and it is settled.** Codes 0–127 are the characters,
+ASCII only, in his order; **128–255 are kept back and never issued**; **256 is the
+first token**. So the HIGH BYTE says which — zero is a character, anything else is
+a token — which is the 8-bit registry's one-test rule widened, and an 8-bit ASCII
+string widens into it by zero-extending. The high byte also names the family
+(`0000001100000000` up is always arithmetic), so a family grows into its own 255
+spare codes and nothing is ever renumbered. **69 tokens**, in eleven families.
+
+**Two tokens the author added the same day:** `binary_token` (`b11001100`) and
+`hexadecimal_token` (`xFFAAC2985765`), which replace the single `bits_token` — the
+radix stops being a field and becomes the token.
+
+**EVERY PAYLOAD TOKEN CARRIES A COUNT, and this is the one thing the 8-bit design
+could not carry over.** At 8 bits a run of characters ended when the high bit
+flipped. That test is *arithmetically false* at 16 bits: above 127 a character is
+its own Unicode number (`satellite_string.cpp:53`), so a string holding one wide
+character carries codes indistinguishable from token codes. QUAD's `view.hpp:84`
+writes `" ∞  "` as one literal and would have ended its own string early. So a
+count follows every literal marker, the counted codes are SKIPPED and never
+classified, and `long_count_token` continues a count that does not fit in 16 bits
+so no literal has a ceiling (DESIGN §1.2).
+
+**Measured, 2026-09-16, and both numbers went against the first guess:**
+
+- `std::bitset<16>` **is 8 bytes, not 2** — libstdc++ rounds it to an
+  `unsigned long`. A pass over a stored program costs **3.5–5×** the same tokens
+  as `uint16_t` (0.67 ms against 0.18 ms at a million tokens), and 4× the memory.
+  **The author chose it knowing that** — "8 bytes for a 16 bit token is fine" —
+  because `.to_string()` is the sixteen binary digits the registry's own column is
+  written in, and what PLAN M1.5–M3.6's converters print.
+- **One thread per line is 5.6× SLOWER than one thread doing all of it** (227 ms
+  against 40 ms for 100,000 lines, through the real `StartupThreads`): a line
+  costs ~402 ns to tokenise and a recall costs ~12,486 ns. The same 256 threads
+  given **256 batches of lines** run it 27× faster than one thread. This is PLAN
+  M1's "about 400 times slower", now measured rather than quoted.
+
+**THE NINETEEN ROWS MARKED `QUESTION` IN THE REGISTRY.** A review on 2026-09-16
+(eight agents, every claim checked to a file and line) found that of the 57 tokens
+first written down, **nineteen name forms this language cannot emit** — and the
+author named several of them on the same day, so they keep their codes until he
+rules. Each row carries its reason beside it. The list, by why:
+
+| rows | why it is questioned |
+|---|---|
+| `<<` `>>` | 003 DESIGN §5.5: *"There is no `<<` and no `>>`, ever"* — permanent policy, and the property that makes `list<list<string>>` safe. The author asked for both on 2026-09-16 |
+| `/*` `*/` | §5.6: no block comment, *"a form that can be left unclosed is a form that can swallow a file"* |
+| `+=` `-=` `*=` `/=` `%=` | §5.5: the greedy two-character operators are exactly `== <= >= !=`; §6.6: assignment is a statement, not an operator. QUAD wants `+=` (MISSING #12) |
+| `&&` `\|\|` `!` `&` `\|` `^` `~` | §13 leaves open what `&` means **and** whether `!` is the negation — and says the answer may be **words**, not symbols. QUAD wants `&&`/`\|\|` (MISSING #9, promised at M28) |
+| `::` `->` `?` `'` | No grammar production accepts any of them, none appears in any of the 22 example programs. QUAD's 574 `::` all become dotted words; its ~35 ternaries all become `satellite.statement.if` |
+| `\` `/` (path) `.` (decimal) `~` (home) | The registry's **own** rule: a token is *"never a character and never inside a string's value"*, and all four only ever occur inside a literal. 003 spells `$HOME` as a live **character** code, not a token |
+
+**Two additions the review found that the language had already decided and never
+got codes for**, both now in: `bit_run_join_token` (`!!` — DESIGN §6.6, *"A FIFTH
+LEVEL IS DECIDED AND UNBUILT"*, 2026-09-09) and `option_token` (`0#down` —
+SATC.md §1.1, *"a third kind of token since M19.6"*).
+
+**One idea the review killed, and it was mine:** separate `type_open`/`type_close`
+codes for a generic's `<` `>`. Four of five lenses proposed it; `parser_types.cpp:122-127`
+records that the collision it would solve is already unreachable, and §5.5 solved
+it by subtraction years ago.
+
+**Still open, and the author has to take it before the converters are built:** is
+the stored program a token transcription that is re-lexed, or a 16-bit code
+stream? PROGRESS §5 and SATC.md §4 currently say different things, and the answer
+governs whether the writer may record what the parser knew.
+
+## 7. Other notes
 
 - `POLYMORPH/M1.md`–`M7.md` (top folder, uncommitted) hold the earlier
   polymorph discussion; `POLYMORPH/M7.md` still says 342 words — it is 371 in 003,
