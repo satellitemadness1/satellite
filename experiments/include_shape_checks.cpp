@@ -2,6 +2,7 @@
 #include "bytecode/include_shape.hpp"
 #include <cstdio>
 #include <string>
+#include <vector>
 using namespace satellite004;
 
 static int bad = 0;
@@ -71,6 +72,39 @@ int main() {
         std::size_t at = 0;
         const IncludeShape s = include_at(row, at, "main.satl");
         check(s.kind == IncludeShape::Kind::none && at == 0, "a different word answers none and does not move");
+    }
+
+    printf("\nno globals: a file is runnable only with include(satellite), main and return:\n");
+    {   MachineState state; state.debug_mode = false;
+        struct Run { const char *what; const char *src; signed long long int want; };
+        const Run runs[] = {
+            {"a whole program",
+             "satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\nsatellite.return(satellite)\n}\n", success},
+            {"a spaceship: no include(satellite)",
+             "satellite.capsule some_capsule()\n{\nsatellite.return(satellite)\n}\n",
+             satl_file_missing_satellite_include_satellite},
+            {"marked runnable but has no main",
+             "satellite.include(satellite)\nsatellite.return(satellite)\n", satl_file_missing_satellite_main},
+            {"a main that never returns",
+             "satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n}\n",
+             satl_file_missing_satellite_return_satellite},
+            {"an empty file", "", satl_file_missing_satellite_include_satellite},
+            {"a STRING saying satellite.main does not count",
+             "satellite.include(satellite)\nsatellite.console.display(\"satellite.main\")\n",
+             satl_file_missing_satellite_main},
+        };
+        for (const Run &r : runs) {
+            std::vector<std::bitset<16>> row;
+            for (std::string line, rest = r.src; !rest.empty(); ) {
+                const std::size_t nl = rest.find('\n');
+                line = rest.substr(0, nl == std::string::npos ? rest.size() : nl);
+                tokenise_one_line(line, row);
+                if (nl == std::string::npos) break;
+                rest = rest.substr(nl + 1);
+            }
+            const signed long long int got = file_can_run(row, "t.satl", state);
+            check(got == r.want, std::string(r.what) + " -> " + std::to_string(got));
+        }
     }
 
     printf("\n%s\n", bad == 0 ? "all checks passed" : (std::to_string(bad) + " FAILED").c_str());

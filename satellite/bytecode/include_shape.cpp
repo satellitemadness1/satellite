@@ -121,4 +121,46 @@ IncludeShape include_at(const std::vector<std::bitset<16>> &row,
     return shape;
 }
 
+signed long long int file_can_run(const std::vector<std::bitset<16>> &row,
+                                  const std::string &filename,
+                                  MachineState &state)
+{
+    bool marker = false, main = false, returns = false;
+
+    for (std::size_t i = 0; i < row.size(); ) {
+        const Code code = code_at(row, i);
+
+        // A payload's codes are skipped, never classified -- so a STRING that
+        // says "satellite.main" cannot make a file look runnable.
+        if (token::carries_a_count(code)) { std::size_t k = i; text_at(row, k); i = k; continue; }
+
+        if (code == word::code_of(1, 1)) {          // satellite.include
+            std::size_t k = i;
+            const IncludeShape shape = include_at(row, k, filename);
+            if (shape.kind == IncludeShape::Kind::main_marker) marker = true;
+            i = (k > i) ? k : i + 1;
+            continue;
+        }
+        if (code == word::code_of(1, 3)) main = true;      // satellite.main
+        if (code == word::code_of(1, 15)) returns = true;  // satellite.return
+        ++i;
+    }
+
+    if (!marker)
+        return report_error("satl.file(check): " + filename +
+                                " has no satellite.include(satellite), so it is a spaceship and not a program",
+                            satl_file_missing_satellite_include_satellite);
+    if (!main)
+        return report_error("satl.file(check): " + filename +
+                                " has no satellite.main -- there are no globals, so there is nowhere else to begin",
+                            satl_file_missing_satellite_main);
+    if (!returns)
+        return report_error("satl.file(check): " + filename +
+                                " has no satellite.return -- execution ends inside main",
+                            satl_file_missing_satellite_return_satellite);
+
+    state.set("satl.file(runnable): " + filename, success);
+    return success;
+}
+
 } // namespace satellite004

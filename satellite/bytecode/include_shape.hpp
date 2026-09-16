@@ -78,4 +78,27 @@ std::string directory_of(const std::string &path);
 // The file stem: no directory, no .satl. What the spaceship is called.
 std::string stem_of(const std::string &path);
 
+// WHETHER THIS FILE MAY BE RUN, and the machine code saying why not.
+//
+// (the author, 2026-09-16) "Let's refuse to run files that do not have
+// satellite.include(satellite) and satellite.main because THERE ARE NO GLOBALS
+// IN SATELLITE, we begin exe inside of main, and end exe inside of main... the
+// only globals are the includes, other files."
+//
+// So the two rules are one rule. With no globals there is nowhere for a
+// statement outside main to put its result and no moment for it to run in, so a
+// file with no main is not a program at all -- it is a spaceship, which is
+// includable and not runnable. That is also why include(satellite) being
+// "optional" and this refusal are not in conflict: a file need not carry one,
+// and a file you POINT SATL AT must.
+//
+// Answers success, or satl_file_missing_satellite_include_satellite (10),
+// satl_file_missing_satellite_main (11), or
+// satl_file_missing_satellite_return_satellite (12) -- the same three codes the
+// prototype's check_satl answers, so the two paths cannot disagree about what a
+// runnable file is.
+signed long long int file_can_run(const std::vector<std::bitset<16>> &row,
+                                  const std::string &filename,
+                                  MachineState &state);
+
 } // namespace satellite004
