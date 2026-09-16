@@ -1,0 +1,280 @@
+// satellite/satellite_object/satellite_object.cpp -- the methods the author
+// asked to be bolted onto the two classes. The header says why it is a god class
+// on purpose; this file is the part that would be worth objecting to if it did
+// any work, and it does none.
+//
+// EVERY METHOD HERE IS A SWITCH AND A CALL. The switch is on the PAIR of tags as
+// one integer (`pair_of`), and each case calls the one function in the .hpp
+// named after that pair. So this file says WHICH, and a file named
+// number_and_string_add.hpp says WHAT. Adding satellite_float means adding arms
+// to the enum, files named float_and_number_add.hpp and so on, and cases here --
+// and touching no arithmetic that already works.
+//
+// THE CASE LABELS READ LIKE THE FILENAMES, which is the whole reason the author's
+// naming convention is worth keeping: `case pair_of(number, string)` sits
+// directly above a call to `number_and_string_add`, so a reader never has to
+// guess which file a pair went to.
+
+#include "satellite_object.hpp"
+
+#include "bool_and_bool_compare.hpp"
+#include "bool_to_string.hpp"
+#include "bytecode_and_bytecode_join.hpp"
+#include "number_and_number_add.hpp"
+#include "number_and_number_compare.hpp"
+#include "number_and_number_divide.hpp"
+#include "number_and_number_modulus.hpp"
+#include "number_and_number_multiply.hpp"
+#include "number_and_number_power.hpp"
+#include "number_and_number_subtract.hpp"
+#include "number_and_string_add.hpp"
+#include "number_to_binary.hpp"
+#include "number_to_hexadecimal.hpp"
+#include "number_to_string.hpp"
+#include "string_and_number_add.hpp"
+#include "string_and_string_add.hpp"
+#include "string_and_string_compare.hpp"
+#include "string_to_number.hpp"
+
+namespace satellite004 {
+namespace {
+
+using NumberPair = signed long long int (*)(const satellite_number &, const satellite_number &, satellite_number &);
+
+// The six arithmetic methods differ only by which pair function they call and
+// which sign they name in a refusal, so the shape is written once.
+signed long long int run_number_pair(const satelliteObject &left, const satelliteObject &right,
+                                     NumberPair operation, const char *sign,
+                                     satelliteObject &out, std::string &why)
+{
+    satellite_number answer;
+    const signed long long int code = operation(*left.as_number(), *right.as_number(), answer);
+    if (code != success) {
+        why = std::string("the ") + sign + " of " + left.as_number()->to_text() + " and " +
+              right.as_number()->to_text() + " is " +
+              (code == division_by_zero ? "a division by zero"
+                                        : "not a whole number, and there is no satellite_float yet");
+        return code;
+    }
+    out = satelliteObject::of_number(std::move(answer));
+    return success;
+}
+
+// A REFUSAL NAMES BOTH KINDS, because that is what a person fixes. DESIGN 1.1:
+// nothing is converted, so a pair with no scenario stops rather than guessing.
+signed long long int refuse_pair(const satelliteObject &left, const satelliteObject &right,
+                                 const char *sign, std::string &why)
+{
+    why = std::string(sign) + " was given " + left.kind_name() + " and " + right.kind_name() +
+          ", and there is no scenario for that pair";
+    return types_do_not_meet;
+}
+
+// The pairs that refuse by converting nothing say so in the conversion's own
+// words, since "no scenario" would be untrue -- the scenario exists and is a
+// conversion the program has to write out loud.
+signed long long int refuse_conversion(const satelliteObject &left, const satelliteObject &right,
+                                       std::string &why)
+{
+    why = std::string("+ was given ") + left.kind_name() + " and " + right.kind_name() +
+          ", and satellite converts nothing on its own -- write the conversion "
+          "(satellite.variable.number.to_string) out loud";
+    return types_do_not_meet;
+}
+
+} // namespace
+
+const char *satelliteObject::kind_name() const
+{
+    switch (kind()) {
+    case boolean: return "a bool";
+    case number: return "a number";
+    case string: return "a string";
+    case bytecode: return "bytecode";
+    case capsule: return "a capsule";
+    case nothing: break;
+    case how_many_kinds: break;
+    }
+    return "nothing";
+}
+
+// ---------------------------------------------------------------------------
+// `+` -- the one operator with more than one pair, which is 003 DESIGN 6.6's
+// ruling that joining and adding are the same shape.
+// ---------------------------------------------------------------------------
+signed long long int satelliteObject::add(const satelliteObject &other, satelliteObject &out,
+                                          std::string &why) const
+{
+    switch (pair_of(kind(), other.kind())) {
+    case pair_of(number, number):
+        return run_number_pair(*this, other, number_and_number_add, "+", out, why);
+
+    case pair_of(string, string): {
+        satellite_string answer;
+        const signed long long int code = string_and_string_add(*as_string(), *other.as_string(), answer);
+        if (code != success) { why = "the two strings could not be joined"; return code; }
+        out = satelliteObject::of_string(std::move(answer));
+        return success;
+    }
+
+    // BOTH ORDERS, BOTH REFUSING, and each through its own file -- see
+    // number_and_string_add.hpp for why the file exists while it refuses.
+    case pair_of(number, string): {
+        satellite_string answer;
+        const signed long long int code = number_and_string_add(*as_number(), *other.as_string(), answer);
+        if (code != success)
+            return refuse_conversion(*this, other, why);
+        out = satelliteObject::of_string(std::move(answer));
+        return success;
+    }
+    case pair_of(string, number): {
+        satellite_string answer;
+        const signed long long int code = string_and_number_add(*as_string(), *other.as_number(), answer);
+        if (code != success)
+            return refuse_conversion(*this, other, why);
+        out = satelliteObject::of_string(std::move(answer));
+        return success;
+    }
+
+    // THE ARM THAT ONLY EXISTS BECAUSE BYTECODE IS IN THE VARIANT.
+    case pair_of(bytecode, bytecode): {
+        satellite_bytecode answer;
+        const signed long long int code = bytecode_and_bytecode_join(*as_bytecode(), *other.as_bytecode(), answer);
+        if (code != success) { why = "the two runs of codes could not be joined"; return code; }
+        out = satelliteObject::of_bytecode(std::move(answer));
+        return success;
+    }
+
+    default:
+        return refuse_pair(*this, other, "+", why);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The five that are numbers only -- today. Each keeps its own switch rather than
+// sharing one, so that adding a float pair to `*` does not touch `-`.
+// ---------------------------------------------------------------------------
+signed long long int satelliteObject::subtract(const satelliteObject &other, satelliteObject &out,
+                                               std::string &why) const
+{
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_subtract, "-", out, why);
+    return refuse_pair(*this, other, "-", why);
+}
+
+signed long long int satelliteObject::multiply(const satelliteObject &other, satelliteObject &out,
+                                               std::string &why) const
+{
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_multiply, "*", out, why);
+    return refuse_pair(*this, other, "*", why);
+}
+
+signed long long int satelliteObject::divide(const satelliteObject &other, satelliteObject &out,
+                                             std::string &why) const
+{
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_divide, "/", out, why);
+    return refuse_pair(*this, other, "/", why);
+}
+
+signed long long int satelliteObject::modulus(const satelliteObject &other, satelliteObject &out,
+                                              std::string &why) const
+{
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_modulus, "%", out, why);
+    return refuse_pair(*this, other, "%", why);
+}
+
+signed long long int satelliteObject::power(const satelliteObject &other, satelliteObject &out,
+                                            std::string &why) const
+{
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_power, "^", out, why);
+    return refuse_pair(*this, other, "^", why);
+}
+
+// ---------------------------------------------------------------------------
+// One ordering, six spellings read it (expression.cpp decides which may ask).
+// ---------------------------------------------------------------------------
+signed long long int satelliteObject::compare(const satelliteObject &other, int &order,
+                                              std::string &why) const
+{
+    switch (pair_of(kind(), other.kind())) {
+    case pair_of(number, number):
+        order = number_and_number_compare(*as_number(), *other.as_number());
+        return success;
+    case pair_of(string, string):
+        order = string_and_string_compare(*as_string(), *other.as_string());
+        return success;
+    case pair_of(boolean, boolean):
+        order = bool_and_bool_compare(*as_bool(), *other.as_bool());
+        return success;
+    default:
+        return refuse_pair(*this, other, "a comparison", why);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// THE CONVERSIONS. Explicit, never automatic, each through its own file.
+// ---------------------------------------------------------------------------
+signed long long int satelliteObject::to_string(satellite_string &out, std::string &why) const
+{
+    switch (kind()) {
+    case boolean: return bool_to_string(*as_bool(), out);
+    case number: return number_to_string(*as_number(), out);
+    case string: out = *as_string(); return success;
+    case capsule: {
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(as_capsule()->name, out, bad_offset);
+    }
+    case nothing: {
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8("nothing", out, bad_offset);
+    }
+    // BYTECODE AS TEXT IS THE CONVERTERS' JOB, not this one's: PLAN M1.5-M3.6
+    // decides whether a stored program is a token transcription that is re-lexed
+    // or a 16-bit code stream, and printing it before that ruling would be
+    // choosing the answer by accident (PROGRESS 6, still open).
+    case bytecode:
+        why = "bytecode has no text yet -- the converters (PLAN M1.5-M3.6) decide what it reads as";
+        return not_built_yet;
+    case how_many_kinds: break;
+    }
+    why = "there is nothing here to make a string of";
+    return types_do_not_meet;
+}
+
+signed long long int satelliteObject::to_number(satellite_number &out, std::string &why) const
+{
+    switch (kind()) {
+    case number: out = *as_number(); return success;
+    case string: {
+        const signed long long int code = string_to_number(*as_string(), out);
+        if (code != success)
+            why = "that string is not a whole number this can read";
+        return code;
+    }
+    default: break;
+    }
+    why = std::string("a number cannot be made out of ") + kind_name();
+    return types_do_not_meet;
+}
+
+signed long long int satelliteObject::to_binary(satellite_string &out, std::string &why) const
+{
+    if (is_number())
+        return number_to_binary(*as_number(), out);
+    why = std::string("base 2 text cannot be made out of ") + kind_name();
+    return types_do_not_meet;
+}
+
+signed long long int satelliteObject::to_hexadecimal(satellite_string &out, std::string &why) const
+{
+    if (is_number())
+        return number_to_hexadecimal(*as_number(), out);
+    why = std::string("base 16 text cannot be made out of ") + kind_name();
+    return types_do_not_meet;
+}
+
+} // namespace satellite004
