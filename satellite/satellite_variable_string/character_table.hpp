@@ -3,7 +3,7 @@
 // character table for codes 0-127, both ways. Used by satellite_string.cpp only.
 //
 // satellite_string.hpp writes the order in words: 0 NUL; 1-26 a-z; 27-52 A-Z;
-// 53-62 0-9; 63-72 ! @ # $ % ^ & * ( ); 73-94 - + = _ [ ] { } backslash | ; : ' " < > ? , . / ` ~;
+// 53-62 0-9; 63-72 ! @ # $ % ^ & * ( ); 73-94 - + _ = [ ] { } backslash | ; : ' " , . < > / ? ` ~;
 // 95 96 97 space, tab, newline; 98-127 the other 30 ASCII control characters in
 // ASCII order. Every character above ASCII is its own Unicode number, so these
 // two 128-entry arrays are the whole table.
@@ -12,7 +12,7 @@
 // checks both arrays against it, and that code_of and unicode_of undo each other
 // over every Unicode scalar value (and every char32_t); check_strings16.py reads
 // the order from the header's own words and holds every string operation to it.
-// The arrays were generated once from that order (2026-09-15) and are written out
+// The arrays were generated once from that order (2026-09-15; the order re-pointed to REGISTRY.satellite 2026-09-16) and are written out
 // here so a reader can see them.
 
 namespace satellite004 {
@@ -20,22 +20,22 @@ namespace character_table {
 
 // Unicode (ASCII) -> code. Indexed by the character; the comment names each row.
 inline constexpr unsigned char code_of_ascii[128] = {
-      0,  98,  99, 100, 101, 102, 103, 104,  // 0x00-0x07  NUL 0x01-0x07
-    105,  96,  97, 106, 107, 108, 109, 110,  // 0x08-0x0F  0x08 tab newline 0x0B-0x0F
-    111, 112, 113, 114, 115, 116, 117, 118,  // 0x10-0x17  controls
-    119, 120, 121, 122, 123, 124, 125, 126,  // 0x18-0x1F  controls
-     95,  63,  86,  65,  66,  67,  69,  85,  // 0x20-0x27  space ! " # $ % & '
-     71,  72,  70,  74,  90,  73,  91,  92,  // 0x28-0x2F  ( ) * + , - . /
-     53,  54,  55,  56,  57,  58,  59,  60,  // 0x30-0x37  0 1 2 3 4 5 6 7
-     61,  62,  84,  83,  87,  75,  88,  89,  // 0x38-0x3F  8 9 : ; < = > ?
-     64,  27,  28,  29,  30,  31,  32,  33,  // 0x40-0x47  @ A B C D E F G
-     34,  35,  36,  37,  38,  39,  40,  41,  // 0x48-0x4F  H I J K L M N O
-     42,  43,  44,  45,  46,  47,  48,  49,  // 0x50-0x57  P Q R S T U V W
-     50,  51,  52,  77,  81,  78,  68,  76,  // 0x58-0x5F  X Y Z [ backslash ] ^ _
-     93,   1,   2,   3,   4,   5,   6,   7,  // 0x60-0x67  ` a b c d e f g
-      8,   9,  10,  11,  12,  13,  14,  15,  // 0x68-0x6F  h i j k l m n o
-     16,  17,  18,  19,  20,  21,  22,  23,  // 0x70-0x77  p q r s t u v w
-     24,  25,  26,  79,  82,  80,  94, 127,  // 0x78-0x7F  x y z { | } ~ DEL
+       0,   98,   99,  100,  101,  102,  103,  104,  // 0x00-0x07  NUL 0x01 0x02 0x03 0x04 0x05 0x06 0x07
+     105,   96,   97,  106,  107,  108,  109,  110,  // 0x08-0x0F  0x08 tab newline 0x0B 0x0C 0x0D 0x0E 0x0F
+     111,  112,  113,  114,  115,  116,  117,  118,  // 0x10-0x17  0x10 0x11 0x12 0x13 0x14 0x15 0x16 0x17
+     119,  120,  121,  122,  123,  124,  125,  126,  // 0x18-0x1F  0x18 0x19 0x1A 0x1B 0x1C 0x1D 0x1E 0x1F
+      95,   63,   86,   65,   66,   67,   69,   85,  // 0x20-0x27  space ! " # $ % & '
+      71,   72,   70,   74,   87,   73,   88,   91,  // 0x28-0x2F  ( ) * + , - . /
+      53,   54,   55,   56,   57,   58,   59,   60,  // 0x30-0x37  0 1 2 3 4 5 6 7
+      61,   62,   84,   83,   89,   76,   90,   92,  // 0x38-0x3F  8 9 : ; < = > ?
+      64,   27,   28,   29,   30,   31,   32,   33,  // 0x40-0x47  @ A B C D E F G
+      34,   35,   36,   37,   38,   39,   40,   41,  // 0x48-0x4F  H I J K L M N O
+      42,   43,   44,   45,   46,   47,   48,   49,  // 0x50-0x57  P Q R S T U V W
+      50,   51,   52,   77,   81,   78,   68,   75,  // 0x58-0x5F  X Y Z [ backslash ] ^ _
+      93,    1,    2,    3,    4,    5,    6,    7,  // 0x60-0x67  ` a b c d e f g
+       8,    9,   10,   11,   12,   13,   14,   15,  // 0x68-0x6F  h i j k l m n o
+      16,   17,   18,   19,   20,   21,   22,   23,  // 0x70-0x77  p q r s t u v w
+      24,   25,   26,   79,   82,   80,   94,  127,  // 0x78-0x7F  x y z { | } ~ DEL
 };
 
 // Code -> Unicode (ASCII). Indexed by the code: the header's order, written out.
@@ -49,13 +49,13 @@ inline constexpr unsigned char ascii_of_code[128] = {
     0x56, 0x57, 0x58, 0x59, 0x5A, 0x30, 0x31, 0x32,  //  48- 55  V W X Y Z 0 1 2
     0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x21,  //  56- 63  3 4 5 6 7 8 9 !
     0x40, 0x23, 0x24, 0x25, 0x5E, 0x26, 0x2A, 0x28,  //  64- 71  @ # $ % ^ & * (
-    0x29, 0x2D, 0x2B, 0x3D, 0x5F, 0x5B, 0x5D, 0x7B,  //  72- 79  ) - + = _ [ ] {
-    0x7D, 0x5C, 0x7C, 0x3B, 0x3A, 0x27, 0x22, 0x3C,  //  80- 87  } backslash | ; : ' " <
-    0x3E, 0x3F, 0x2C, 0x2E, 0x2F, 0x60, 0x7E, 0x20,  //  88- 95  > ? , . / ` ~ space
-    0x09, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,  //  96-103  tab newline 0x01-0x06
-    0x07, 0x08, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,  // 104-111  0x07 0x08 0x0B-0x10
-    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,  // 112-119  controls
-    0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x7F,  // 120-127  controls, DEL
+    0x29, 0x2D, 0x2B, 0x5F, 0x3D, 0x5B, 0x5D, 0x7B,  //  72- 79  ) - + _ = [ ] {
+    0x7D, 0x5C, 0x7C, 0x3B, 0x3A, 0x27, 0x22, 0x2C,  //  80- 87  } backslash | ; : ' " ,
+    0x2E, 0x3C, 0x3E, 0x2F, 0x3F, 0x60, 0x7E, 0x20,  //  88- 95  . < > / ? ` ~ space
+    0x09, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,  //  96-103  tab newline 0x01 0x02 0x03 0x04 0x05 0x06
+    0x07, 0x08, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,  // 104-111  0x07 0x08 0x0B 0x0C 0x0D 0x0E 0x0F 0x10
+    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,  // 112-119  0x11 0x12 0x13 0x14 0x15 0x16 0x17 0x18
+    0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x7F,  // 120-127  0x19 0x1A 0x1B 0x1C 0x1D 0x1E 0x1F DEL
 };
 
 } // namespace character_table

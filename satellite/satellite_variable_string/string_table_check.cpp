@@ -40,7 +40,7 @@ bool is_scalar_value(char32_t value)
 }
 
 // The header's table, code by code: 0 NUL; 1-26 a-z; 27-52 A-Z; 53-62 0-9;
-// 63-72 ! @ # $ % ^ & * ( ); 73-94 - + = _ [ ] { } \ | ; : ' " < > ? , . / ` ~;
+// 63-72 ! @ # $ % ^ & * ( ); 73-94 - + _ = [ ] { } \ | ; : ' " , . < > / ? ` ~;
 // 95 96 97 space, tab, newline; 98-127 the other 30 controls in ASCII order.
 std::u32string header_order()
 {
@@ -53,7 +53,7 @@ std::u32string header_order()
     for (char32_t c = U'0'; c <= U'9'; c++)
         order += c;
     order += U"!@#$%^&*()";
-    order += U"-+=_[]{}\\|;:'\"<>?,./`~";
+    order += U"-+_=[]{}\\|;:'\",.<>/?`~";
     order += U" \t\n";
     for (char32_t c = 0x01; c <= 0x7F; c++)
         if ((c < 0x20 || c == 0x7F) && c != U'\t' && c != U'\n')

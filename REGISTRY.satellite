@@ -1,9 +1,21 @@
 REGISTRY.satellite -- every 8-bit code satellite uses, and what it means.
 
-THESE ARE FOR 8-BIT STRINGS: the form satellite keeps source and bytecode in.
-A 16-bit or 32-bit satellite_string uses codes 0-127 exactly as they are here,
-and every other character is its own Unicode number. Tokens never appear inside
-a string's value; they belong to the stored program.
+CHARACTERS AND TOKENS ARE TWO ALPHABETS (the author, 2026-09-16).
+
+THE CHARACTERS are codes 0-127 below, and a string is the same at every width:
+an 8-BIT STRING HOLDS ASCII ONLY (the author: "8-bit will be ascii only then"),
+a 16-bit string holds those and every character up to U+FFFF, and a 32-bit string
+holds everything -- each character its own Unicode number above 127. So the
+widths nest: widening a string zero-extends each code, nothing is renumbered,
+and two strings of different widths compare code against code.
+
+THE TOKENS are the stored program's alphabet, never a character and never inside
+a string's value. A string literal's characters travel in the program behind
+string_token, and characters that do not fit behind wide_run.
+
+NEXT (the author, 2026-09-16): the tokens move to 16 bits, so that there is room
+for every token the language will ever need instead of the 70 free codes left
+here, and this registry becomes that list.
 
 THE HIGH BIT SAYS WHICH: 0xxxxxxx is a character, 1xxxxxxx is a token. One bit
 test, everywhere, forever. 00000000 is nothing, as the author chose, so a

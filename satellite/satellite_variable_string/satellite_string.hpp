@@ -12,7 +12,7 @@
 //     27-52    A-Z
 //     53-62    0-9
 //     63-72    ! @ # $ % ^ & * ( )
-//     73-94    - + = _ [ ] { } \ | ; : ' " < > ? , . / ` ~
+//     73-94    - + _ = [ ] { } \ | ; : ' " , . < > / ? ` ~
 //     95 96 97 space, tab, newline
 //     98-127   the other 30 ASCII control characters, in ASCII order
 //              (0x01-0x08, 0x0B-0x1F, 0x7F)
