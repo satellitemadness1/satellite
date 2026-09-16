@@ -5,6 +5,8 @@
 
 #include "word_codes.hpp"
 
+#include <cstdlib>
+
 namespace satellite004 {
 namespace {
 
@@ -15,6 +17,15 @@ const char *const kExtension = ".satl";
 Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at)
 {
     return at < row.size() ? static_cast<Code>(row[at].to_ulong()) : 0;
+}
+
+// The Linux user's home directory, or "" when the machine will not say. The
+// author's arguments.home is meant to be this; until the config row exists this
+// is where it comes from.
+std::string linux_home_directory()
+{
+    const char *home = std::getenv("HOME");
+    return home == nullptr ? std::string() : std::string(home);
 }
 
 bool ends_with_extension(const std::string &path)
@@ -65,9 +76,16 @@ IncludeShape include_at(const std::vector<std::bitset<16>> &row,
     } else if (first == token::string_token) {     // include("dir/file")
         shape.kind = IncludeShape::Kind::quoted_path;
         shape.written = text_at(row, i);
-    } else if (first == token::name_token) {       // include(file) or include(dir/file)
+    } else if (first == token::path_separator_token || first == token::bit_not_token ||
+               first == token::name_token) {
+        // A BARE PATH MAY START WITH ITS MARK. include(/test) and include(~/test)
+        // begin with a slash or a tilde, not a name, and the switch used to fall
+        // straight through them into "a form with no meaning yet" -- found by the
+        // checks, 2026-09-16.
         shape.kind = IncludeShape::Kind::bare_name;
-        shape.written = text_at(row, i);
+        if (first == token::path_separator_token) { shape.written = "/"; ++i; shape.kind = IncludeShape::Kind::bare_path; }
+        else if (first == token::bit_not_token)   { shape.written = "~"; ++i; shape.kind = IncludeShape::Kind::bare_path; }
+        if (code_at(row, i) == token::name_token) shape.written += text_at(row, i);
 
         // A bare PATH is a name, then path_separator_token, then more. The
         // separator is only ever a slash with nothing touching whitespace --
@@ -108,13 +126,42 @@ IncludeShape include_at(const std::vector<std::bitset<16>> &row,
     if (!ends_with_extension(path))
         path += kExtension;
 
-    // RELATIVE TO THE FILE THAT WROTE THE INCLUDE, not to the working
-    // directory. A path from the root is already where it says it is.
-    if (!path.empty() && path[0] == '/') {
-        shape.resolved = path;
+    // FOUR SPELLINGS AND NO PROBING (the author, 2026-09-16). Every one of these
+    // is a RULE: none of them looks at the disk to decide what it means, so a
+    // program means the same thing whatever directory it is run from. The
+    // rejected alternative was "try the cwd, then the root", and its cost is
+    // exactly that -- include(/etc/config) would find a local etc/config on one
+    // machine and the real /etc/config on another, silently.
+    //
+    //   include(test)       ./test.satl      beside the including file
+    //   include(/test)      ./test.satl      A LEADING SLASH IS RELATIVE: the
+    //                                        author, "satellite.include(/test)
+    //                                        would actually just be ./test"
+    //   include(~/test)     $HOME/test.satl  the user's home -- and ~ is the
+    //                                        convention every Unix user knows,
+    //                                        which is why it beats comparing a
+    //                                        path against arguments.home after
+    //                                        the fact
+    //   include(/root/x)    /x.satl          the machine's root, ASKED FOR. The
+    //                                        author chose this spelling knowing
+    //                                        /root is itself a real directory on
+    //                                        Linux; // would have been unambiguous
+    //                                        but the lexer reads it as a comment.
+    const std::string kRootMark = "/root/";
+    const std::string home = linux_home_directory();
+
+    if (path.size() > kRootMark.size() && path.compare(0, kRootMark.size(), kRootMark) == 0) {
+        shape.resolved = path.substr(kRootMark.size() - 1);      // keep the one slash
+    } else if (path.size() > 1 && path[0] == '~' && path[1] == '/') {
+        shape.resolved = home.empty() ? path.substr(2) : home + path.substr(1);
+    } else if (!home.empty() && path.compare(0, home.size(), home) == 0) {
+        shape.resolved = path;                                   // already under home
     } else {
+        std::string relative = path;
+        while (!relative.empty() && relative[0] == '/')
+            relative.erase(0, 1);
         const std::string directory = directory_of(including_file);
-        shape.resolved = directory.empty() ? path : directory + "/" + path;
+        shape.resolved = directory.empty() ? relative : directory + "/" + relative;
     }
 
     shape.name = stem_of(path);

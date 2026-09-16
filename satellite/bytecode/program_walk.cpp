@@ -7,6 +7,7 @@
 #include "../satl/satl_file.hpp"
 
 #include <fstream>
+#include <utility>
 #include <sstream>
 
 namespace satellite004 {
@@ -19,25 +20,10 @@ Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at)
     return at < row.size() ? static_cast<Code>(row[at].to_ulong()) : 0;
 }
 
-// A LEADING SLASH IS TRIED BOTH WAYS, and the author has to settle which it is.
-// 003's rule is the filesystem root -- include("/home/me/ships/ship"). But the
-// author wrote include("/test_dir/final_test_file.satl") and put that file at
-// test_programs/test_dir/, meaning it relative to the program. So the root is
-// tried first, and the main file's own directory second, and whichever exists
-// wins. That is a fallback, which is not a rule; ERROR/PLAN should carry the
-// question until it is answered.
-std::string find_file(const std::string &resolved, const std::string &main_file)
-{
-    std::ifstream first(resolved);
-    if (first)
-        return resolved;
-    if (resolved.empty() || resolved[0] != '/')
-        return resolved;
-    const std::string root = directory_of(main_file);
-    const std::string beside = root.empty() ? resolved.substr(1) : root + resolved;
-    std::ifstream second(beside);
-    return second ? beside : resolved;
-}
+// THE FALLBACK IS GONE, because the leading slash is now a RULE (the author,
+// 2026-09-16): include(/test) is ./test, and only a path under the user's home
+// directory is truly absolute. include_shape.cpp resolves both, so nothing here
+// has to guess which of two places a file might be in.
 
 } // namespace
 
@@ -51,11 +37,14 @@ signed long long int load_program(const std::string &main_file,
     registry.clear();
     filenames.clear();
 
-    std::vector<std::string> waiting{main_file};
+    // Each file waits with the name of the file that asked for it, so a missing
+    // one can say who wanted it.
+    std::vector<std::pair<std::string, std::string>> waiting{{main_file, std::string()}};
     std::vector<std::string> loaded;
 
     while (!waiting.empty()) {
-        const std::string path = waiting.front();
+        const std::string path = waiting.front().first;
+        const std::string asked_by = waiting.front().second;
         waiting.erase(waiting.begin());
 
         bool already = false;
@@ -63,6 +52,15 @@ signed long long int load_program(const std::string &main_file,
         if (already)
             continue;   // a cycle of includes ends here instead of running forever
         loaded.push_back(path);
+
+        // CANNOT LOCATE FILE (the author, 2026-09-16), said before load_satl is
+        // asked, so the message names the file the program meant rather than
+        // whatever the operating system called the failure.
+        std::ifstream there(path);
+        if (!there)
+            return report_error("cannot locate file: " + path +
+                                    (asked_by.empty() ? std::string() : ", included by " + asked_by),
+                                missing_satl_file);
 
         std::string source;
         const signed long long int code = load_satl(path, source, state);
@@ -82,7 +80,7 @@ signed long long int load_program(const std::string &main_file,
             if (shape.kind == IncludeShape::Kind::none ||
                 shape.kind == IncludeShape::Kind::main_marker)
                 continue;
-            waiting.push_back(find_file(shape.resolved, main_file));
+            waiting.push_back({shape.resolved, path});
         }
     }
 
@@ -158,20 +156,66 @@ signed long long int run_body(const BytecodeRegistry &registry,
             std::size_t k = at + 1;
             if (code_at(row, k) == token::left_parenthesis_token) {
                 ++k;
-                if (code_at(row, k) == token::string_token) {
+
+                // THE ARGUMENT CHOOSES THE SCENARIO, which is the design
+                // number_row.hpp already committed to: a library exports one
+                // function per KIND of value, so the kind of the argument --
+                // which its TOKEN already says -- picks which one runs. This is
+                // the smallest thing that is not a value type, and it is the
+                // seam where a real one will go in (PROGRESS §6.5).
+                const Code argument_code = code_at(row, k);
+                const Scenarios *scenarios = library != nullptr ? &library->scenarios : nullptr;
+
+                // THE LIBRARY'S ANSWER IS THE PROGRAM'S ANSWER. A refused write
+                // (/dev/full) answers display_error, and throwing that away was
+                // a real defect -- check.sh caught it the moment this path ran
+                // the checks, 2026-09-16.
+                signed long long int answer = success;
+
+                if (argument_code == token::string_token) {
                     const std::string argument = text_at(row, k);
-                    if (library != nullptr && library->scenarios.text != nullptr)
-                        library->scenarios.text(argument, true);
+                    if (scenarios != nullptr && scenarios->text != nullptr)
+                        answer = scenarios->text(argument, true);
                     else
                         report_error(std::string("satl(run): ") + word::spelling_of(code) +
-                                         " has no library built yet",
-                                     not_built_yet);
+                                         " has no library built yet", not_built_yet);
+                } else if (argument_code == token::number_token) {
+                    const std::string digits = text_at(row, k);
+                    if (scenarios != nullptr && scenarios->count != nullptr) {
+                        unsigned long long int value = 0;
+                        bool whole = !digits.empty();
+                        for (char d : digits) {
+                            if (d < '0' || d > '9') { whole = false; break; }
+                            value = value * 10 + static_cast<unsigned long long int>(d - '0');
+                        }
+                        if (whole)
+                            answer = scenarios->count(value, true);
+                        else
+                            report_error("satl(run): " + digits + " is not a whole number yet",
+                                         not_built_yet);
+                    } else {
+                        report_error(std::string("satl(run): ") + word::spelling_of(code) +
+                                         " has no library built yet", not_built_yet);
+                    }
+                } else if (argument_code == word::code_of(1, 17, 1) ||
+                           argument_code == word::code_of(1, 17, 2)) {
+                    // satellite.bool.false and satellite.bool.true are WORDS,
+                    // so the bool arrives as a code and never as text.
+                    const bool value = argument_code == word::code_of(1, 17, 2);
+                    if (scenarios != nullptr && scenarios->flag != nullptr)
+                        answer = scenarios->flag(value, true);
+                    else
+                        report_error(std::string("satl(run): ") + word::spelling_of(code) +
+                                         " has no library built yet", not_built_yet);
+                    ++k;
                 }
                 while (k < row.size() && code_at(row, k) != token::right_parenthesis_token) {
                     if (token::carries_a_count(code_at(row, k))) { text_at(row, k); continue; }
                     ++k;
                 }
                 if (k < row.size()) ++k;
+                if (stops_the_program(answer))
+                    return answer;
             }
             at = k;
             continue;

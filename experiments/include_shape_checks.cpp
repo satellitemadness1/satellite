@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <cstdlib>
 using namespace satellite004;
 
 static int bad = 0;
@@ -34,7 +35,7 @@ int main() {
         {"satellite.include(test_file)",                    IncludeShape::Kind::bare_name,   "test_programs/test_file.satl",       "test_file"},
         {"satellite.include(\"another_test_file.satl\")",   IncludeShape::Kind::quoted_path, "test_programs/another_test_file.satl", "another_test_file"},
         {"satellite.include(test_dir/test_file)",           IncludeShape::Kind::bare_path,   "test_programs/test_dir/test_file.satl", "test_file"},
-        {"satellite.include(\"/test_dir/final_test_file\")",IncludeShape::Kind::quoted_path, "/test_dir/final_test_file.satl",     "final_test_file"},
+        {"satellite.include(\"/test_dir/final_test_file\")",IncludeShape::Kind::quoted_path, "test_programs/test_dir/final_test_file.satl", "final_test_file"},
     };
     for (const Case &c : cases) {
         const IncludeShape s = one(c.line, "test_programs/hello_world.satl");
@@ -58,6 +59,22 @@ int main() {
     }
     {   const IncludeShape s = one("satellite.include(\"parts/ship\"(1, \"two\"))", "main.satl");
         check(s.resolved == "parts/ship.satl", "arguments after the path do not disturb it");
+    }
+
+    printf("\na leading slash is RELATIVE, and only the home directory is absolute:\n");
+    {   const IncludeShape s = one("satellite.include(/test)", "main.satl");
+        check(s.resolved == "test.satl", "include(/test) is ./test -- the filesystem root is never reached");
+    }
+    {   const IncludeShape s = one("satellite.include(\"/a/b/c\")", "parts/ship.satl");
+        check(s.resolved == "parts/a/b/c.satl", "and a deeper one lands beside the file that wrote it");
+    }
+    {   const char *home = std::getenv("HOME");
+        if (home != nullptr && home[0] != 0) {
+            const std::string line = std::string("satellite.include(\"") + home + "/ships/ship\")";
+            const IncludeShape s = one(line, "anywhere/main.satl");
+            check(s.resolved == std::string(home) + "/ships/ship.satl",
+                  "a path under the user's HOME is left alone -- the one absolute form");
+        }
     }
 
     printf("\nthe whitespace sensitivity of the unquoted path:\n");

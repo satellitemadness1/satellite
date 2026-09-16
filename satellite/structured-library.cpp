@@ -23,6 +23,7 @@
 #include "arguments/arguments.hpp"
 #include "bytecode/bytecode_registry.hpp"
 #include "bytecode/function_table.hpp"
+#include "bytecode/program_walk.hpp"
 #include "machine/machine_codes.hpp"
 #include "machine/machine_state.hpp"
 #include "../satellite-numbers/call_number.hpp"
@@ -128,8 +129,6 @@ int main(int argc, char **argv)
     // Declared BEFORE the threads, so they are destroyed after the threads have
     // run every queued job and stopped: a job may point into them (PLAN M7).
     NumberIndex index;
-    std::string source;
-    std::vector<Call> calls;
     BytecodeRegistry bytecode_registry;
     BytecodeFilenames bytecode_filenames;
     FunctionTable functions;
@@ -149,28 +148,47 @@ int main(int argc, char **argv)
 
     state.set("satellite(loading)", satellite_loading_successful);
 
-    code = load_satl(arguments.text("arguments.file"), source, state);
+    // THE PROGRAM IS 16-BIT TOKENS, AND THAT IS WHAT RUNS (the author,
+    // 2026-09-16: "we specifically build this into the interpreter"). The main
+    // .satl and every file its includes name become one row each, tokenised on
+    // the threads that are already warm; then main is walked straight out of
+    // those codes. No tree is built and nothing is allocated to run a line.
+    code = load_program(arguments.text("arguments.file"), threads, startup,
+                        bytecode_registry, bytecode_filenames, state);
     if (stops_the_program(code))
         return static_cast<int>(code);
 
-    code = check_satl(source, state);
+    // No globals: a file must say it is runnable and must have a main to begin
+    // in and a return to end in.
+    code = file_can_run(bytecode_registry.front(), bytecode_filenames.front(), state);
     if (stops_the_program(code))
         return static_cast<int>(code);
 
-    // The program becomes 16-bit tokens here, on the threads that are already
-    // warm, in batches of lines. Nothing has looked at what the program SAYS
-    // yet -- this is the first thing built out of it. A character the registry
-    // has no code for is marked with error_token and does not stop the run
-    // (the lexer never throws), so its code is reported and the run goes on.
-    code = build_bytecode_registry(arguments.text("arguments.file"), source, threads, startup,
-                                   bytecode_registry, bytecode_filenames, state);
+    // THE CHECKER IS OWED, AND IT IS THE NEXT PIECE. check.sh asserts "nothing
+    // ran before the refusal", and the prototype earned that by choosing every
+    // call's function up front (compile_satl). This path discovers as it goes,
+    // so four of check.sh's 32 now fail: a line with no scenario, "a" + "b", a
+    // number too large, and nothing-ran-first. They fail HONESTLY -- the
+    // programs they check really are unchecked here, and the bytecode has no
+    // pre-pass yet.
+    //
+    // compile_satl cannot be borrowed for the verdict: it is the PROTOTYPE's
+    // checker and refuses a user's own capsule and every include spelling past
+    // the first, so it rejected test_programs/hello_world.satl outright (13).
+    // The check belongs on the bytecode, walking every capsule body before main
+    // is entered, and that is PLAN work rather than a five-line change.
+    const CapsuleTable capsules = capsules_in(bytecode_registry);
+    code = run_main(bytecode_registry, capsules, functions, state);
     if (stops_the_program(code))
         return static_cast<int>(code);
 
-    code = compile_satl(source, index, calls, state);
-    if (stops_the_program(code))
-        return static_cast<int>(code);
-
-    code = run_calls(calls, state);
+    // A REFUSED WRITE IS ONLY REFUSED AT THE FLUSH. std::cout buffers, so
+    // writing to a full disk succeeds line by line and fails once, here --
+    // which is why run_calls ended the same way (satl_file.cpp:211). Without
+    // this the program exits 0 having printed nothing, silently.
+    std::cout.flush();
+    if (!std::cout)
+        return static_cast<int>(report_error("satl.run(error): the output refused the last lines",
+                                             display_error));
     return static_cast<int>(code);
 }
