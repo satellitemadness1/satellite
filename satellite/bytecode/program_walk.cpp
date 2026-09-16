@@ -188,6 +188,31 @@ static signed long long int check_statement(const std::vector<std::bitset<16>> &
                 value = value * 10 + static_cast<unsigned long long int>(d - '0');
             }
         }
+        // AN ARGUMENT SHAPE WITH NO SCENARIO IS REFUSED, NOT SKIPPED. Three
+        // shapes can run today -- a string, a whole number, and the two bool
+        // words -- because number_row.hpp exports one function per KIND of
+        // value and there is no value type yet to hold anything else.
+        //
+        // A NESTED CALL IS THE ONE THAT BITES: display(string.upper("x")) used
+        // to be accepted here and then do NOTHING, exit 0, no output and no
+        // error (found by running it, 2026-09-16). Its result has to become the
+        // argument, which means evaluating inner to outer and putting the answer
+        // somewhere -- and that somewhere is the value type this does not have.
+        // Until then it is refused in as many words.
+        const bool a_bool = first == word::code_of(1, 17, 1) || first == word::code_of(1, 17, 2);
+        const bool nothing_at_all = first == token::right_parenthesis_token;
+        const bool a_nested_call = word::is_word_code(first) &&
+                                   code_at(row, k + 1) == token::left_parenthesis_token;
+        if (!a_bool && !nothing_at_all && !a_nested_call &&
+            first != token::string_token && first != token::number_token) {
+            why = spelling + " was given " +
+                  (word::is_word_code(first) ? std::string(word::spelling_of(first)) + " -- a word as an argument"
+                                             : std::string("something")) +
+                  ", and there is no value type to carry it yet";
+            while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+            return satl_line_not_understood;
+        }
+
         if (scenarios == nullptr ||
             (first == token::string_token && scenarios->text == nullptr) ||
             (first == token::number_token && scenarios->count == nullptr)) {
@@ -237,6 +262,90 @@ signed long long int check_program(const BytecodeRegistry &registry,
 
 namespace {
 
+// ONE ARGUMENT, EVALUATED. `at` is left past whatever was read. A call runs here
+// -- inner before outer, which is what makes display(display("x")) work -- and
+// answers its machine code as a count.
+Value evaluate(const std::vector<std::bitset<16>> &row,
+               std::size_t &at,
+               const CapsuleTable &capsules,
+               const FunctionTable &functions,
+               MachineState &state);
+
+// A word's call: its arguments, its scenario, its answer.
+Value call_word(const std::vector<std::bitset<16>> &row,
+                std::size_t &at,
+                const CapsuleTable &capsules,
+                const FunctionTable &functions,
+                MachineState &state)
+{
+    const Code code = code_at(row, at);
+    const NumberRow *library = functions[code];
+    const Scenarios *scenarios = library != nullptr ? &library->scenarios : nullptr;
+    ++at;
+
+    Value argument;
+    if (code_at(row, at) == token::left_parenthesis_token) {
+        ++at;
+        if (code_at(row, at) != token::right_parenthesis_token)
+            argument = evaluate(row, at, capsules, functions, state);
+        while (at < row.size() && code_at(row, at) != token::right_parenthesis_token) ++at;
+        if (at < row.size()) ++at;
+    }
+
+    signed long long int answer = success;
+    if (scenarios != nullptr) {
+        if (argument.kind == Value::Kind::text && scenarios->text != nullptr)
+            answer = scenarios->text(argument.text, true);
+        else if (argument.kind == Value::Kind::count && scenarios->count != nullptr)
+            answer = scenarios->count(argument.count, true);
+        else if (argument.kind == Value::Kind::flag && scenarios->flag != nullptr)
+            answer = scenarios->flag(argument.flag, true);
+    }
+    if (stops_the_program(answer))
+        state.set("satl(run): " + std::string(word::spelling_of(code)) + " refused", answer);
+
+    Value result;
+    result.kind = Value::Kind::count;
+    result.count = static_cast<unsigned long long int>(answer);
+    return result;
+}
+
+Value evaluate(const std::vector<std::bitset<16>> &row,
+               std::size_t &at,
+               const CapsuleTable &capsules,
+               const FunctionTable &functions,
+               MachineState &state)
+{
+    const Code code = code_at(row, at);
+    Value value;
+
+    if (code == token::string_token) {
+        value.kind = Value::Kind::text;
+        value.text = text_at(row, at);
+        return value;
+    }
+    if (code == token::number_token) {
+        const std::string digits = text_at(row, at);
+        value.kind = Value::Kind::count;
+        for (char d : digits) {
+            if (d < '0' || d > '9') break;
+            value.count = value.count * 10 + static_cast<unsigned long long int>(d - '0');
+        }
+        return value;
+    }
+    if (code == word::code_of(1, 17, 1) || code == word::code_of(1, 17, 2)) {
+        value.kind = Value::Kind::flag;
+        value.flag = code == word::code_of(1, 17, 2);
+        ++at;
+        return value;
+    }
+    if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token)
+        return call_word(row, at, capsules, functions, state);
+
+    ++at;
+    return value;
+}
+
 // One body, to its closing brace. Recurses into a capsule a line calls, which
 // is where a program's own depth comes from -- and the walker keeps its own
 // position, never a copy of the program.
@@ -259,74 +368,15 @@ signed long long int run_body(const BytecodeRegistry &registry,
             return success;
         }
 
-        // A word of the language: its code IS the function table's index.
+        // A word of the language: its code IS the function table's index, and
+        // its arguments are evaluated inner to outer.
         if (word::is_word_code(code)) {
-            const NumberRow *library = functions[code];
-            std::size_t k = at + 1;
-            if (code_at(row, k) == token::left_parenthesis_token) {
-                ++k;
-
-                // THE ARGUMENT CHOOSES THE SCENARIO, which is the design
-                // number_row.hpp already committed to: a library exports one
-                // function per KIND of value, so the kind of the argument --
-                // which its TOKEN already says -- picks which one runs. This is
-                // the smallest thing that is not a value type, and it is the
-                // seam where a real one will go in (PROGRESS §6.5).
-                const Code argument_code = code_at(row, k);
-                const Scenarios *scenarios = library != nullptr ? &library->scenarios : nullptr;
-
-                // THE LIBRARY'S ANSWER IS THE PROGRAM'S ANSWER. A refused write
-                // (/dev/full) answers display_error, and throwing that away was
-                // a real defect -- check.sh caught it the moment this path ran
-                // the checks, 2026-09-16.
-                signed long long int answer = success;
-
-                if (argument_code == token::string_token) {
-                    const std::string argument = text_at(row, k);
-                    if (scenarios != nullptr && scenarios->text != nullptr)
-                        answer = scenarios->text(argument, true);
-                    else
-                        report_error(std::string("satl(run): ") + word::spelling_of(code) +
-                                         " has no library built yet", not_built_yet);
-                } else if (argument_code == token::number_token) {
-                    const std::string digits = text_at(row, k);
-                    if (scenarios != nullptr && scenarios->count != nullptr) {
-                        unsigned long long int value = 0;
-                        bool whole = !digits.empty();
-                        for (char d : digits) {
-                            if (d < '0' || d > '9') { whole = false; break; }
-                            value = value * 10 + static_cast<unsigned long long int>(d - '0');
-                        }
-                        if (whole)
-                            answer = scenarios->count(value, true);
-                        else
-                            report_error("satl(run): " + digits + " is not a whole number yet",
-                                         not_built_yet);
-                    } else {
-                        report_error(std::string("satl(run): ") + word::spelling_of(code) +
-                                         " has no library built yet", not_built_yet);
-                    }
-                } else if (argument_code == word::code_of(1, 17, 1) ||
-                           argument_code == word::code_of(1, 17, 2)) {
-                    // satellite.bool.false and satellite.bool.true are WORDS,
-                    // so the bool arrives as a code and never as text.
-                    const bool value = argument_code == word::code_of(1, 17, 2);
-                    if (scenarios != nullptr && scenarios->flag != nullptr)
-                        answer = scenarios->flag(value, true);
-                    else
-                        report_error(std::string("satl(run): ") + word::spelling_of(code) +
-                                         " has no library built yet", not_built_yet);
-                    ++k;
-                }
-                while (k < row.size() && code_at(row, k) != token::right_parenthesis_token) {
-                    if (token::carries_a_count(code_at(row, k))) { text_at(row, k); continue; }
-                    ++k;
-                }
-                if (k < row.size()) ++k;
-                if (stops_the_program(answer))
-                    return answer;
-            }
+            std::size_t k = at;
+            const Value answer = call_word(row, k, capsules, functions, state);
             at = k;
+            if (answer.kind == Value::Kind::count &&
+                stops_the_program(static_cast<signed long long int>(answer.count)))
+                return static_cast<signed long long int>(answer.count);
             continue;
         }
 

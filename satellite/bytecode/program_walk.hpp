@@ -35,6 +35,31 @@
 
 namespace satellite004 {
 
+// WHAT AN ARGUMENT IS WORTH. The author, 2026-09-16:
+// "satellite.console.display(satellite.console.display(\"Hello, World!\")) is
+// correct satellite code, and it should work" -- so a call is an argument, its
+// answer becomes the outer call's argument, and something has to carry that
+// answer between them. This is that something.
+//
+// ONE KIND PER SCENARIO, on purpose. number_row.hpp has a library export one
+// function per KIND of value (text / count / flag), so a Value's Kind is what
+// chooses which one runs. It is deliberately not a variant of every satellite
+// type yet: satellite_number and satellite_string go in here when the libraries
+// take them, and Kind is the seam they arrive at.
+//
+// A CALL ANSWERS ITS MACHINE CODE, as a count. display("x") prints and answers
+// 0, so display(display("x")) prints x and then prints 0. That is the honest
+// reading of what a word returns today -- satellite.returns(TYPE) exists as a
+// word and nothing declares one yet.
+struct Value {
+    enum class Kind { nothing, text, count, flag };
+
+    Kind kind = Kind::nothing;
+    std::string text;
+    unsigned long long int count = 0;
+    bool flag = false;
+};
+
 // Where a capsule's body begins: which row, and the code just past its `{`.
 struct CapsuleSite {
     std::size_t row = 0;
