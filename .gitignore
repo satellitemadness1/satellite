@@ -13,9 +13,27 @@ __pycache__/
 
 # old_versions/second_satellite/ keeps its own .gitignore for 003's build output.
 
-# The first satellite and the prototype, kept on disk to read and DELIBERATELY NOT
-# IN THIS REPOSITORY'S HISTORY -- the second satellite's .gitignore said why: whole
-# trees with their own history elsewhere, 85 MB and 17 MB. old_versions/second_satellite/
-# IS tracked: it was this repository until 2026-09-15.
+# The first satellite is kept on disk to read and DELIBERATELY NOT IN THIS
+# REPOSITORY'S HISTORY -- the second satellite's .gitignore said why: a whole tree
+# with its own history elsewhere, 85 MB. old_versions/second_satellite/ IS
+# tracked: it was this repository until 2026-09-15.
 /old_versions/first_satellite/
-/old_versions/prototype/
+
+# THE PROTOTYPE IS TRACKED FROM 2026-09-16 (the author: "we can add prototype to
+# the git now, i've added a readme file with it that explains what prototype is").
+# It was excluded on the same "its own history elsewhere" grounds as
+# first_satellite, and that reason did not hold: there is no .git inside it and no
+# copy anywhere on disk, so it was in NO version control at all -- 307 files that
+# one rm would have ended. Its __readme__ is the thing to read first, and it is an
+# instruction, not a description: DO NOT PULL CODE FROM IT.
+#
+# ONLY ITS SOURCE IS TRACKED. 15.22 MB of the 17 MB was build output; *.o above
+# takes the object files, and these take the eight test executables, which have no
+# extension and would otherwise slip through. What is left is 0.70 MB of .cpp,
+# .hpp and Makefiles.
+/old_versions/prototype/*/test_lexer
+/old_versions/prototype/*/test_parser
+/old_versions/prototype/*/test_error_reporter
+/old_versions/prototype/*/test_resolver
+/old_versions/prototype/*/test_m[0-9]
+/old_versions/prototype/*/test_m[0-9][0-9]
