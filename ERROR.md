@@ -138,3 +138,39 @@ made it compile (the includes, a row struct, a return type), and
 21. **`arguments_satc = "arguments.satc=true"` held a whole assignment as text.**
     `arguments.satc` is a bool row now. PLAN M0's 1 / 0 / "never" (D0.1) is still
     open.
+
+## The walker recurses on the C++ stack, and 200,000 deep segfaults
+
+**Found 2026-09-16 by the author asking "your building another tree walking ast
+aren't you?"** — and measured rather than argued:
+
+```
+depth   1000  exit 0
+depth  20000  exit 0
+depth 200000  Segmentation fault (139)
+```
+
+`satellite.console.display(` nested 200,000 deep, in a program that is otherwise
+correct satellite.
+
+**It is not an AST, and that part of the design holds.** Nothing is allocated per
+node, there is no `Node`, no pointer, no tree: the program stays one flat
+`std::vector<std::bitset<16>>` and a call is a POSITION in it.
+
+**But the walk is recursive, and the C++ call stack is what holds the nesting.**
+`evaluate()` → `call_word()` → `evaluate()` in
+`satellite/bytecode/program_walk.cpp`, and `run_body()` recursing into a capsule
+has the same shape, so a deep chain of capsule calls dies the same way.
+
+**THIS BREAKS A STANDING RULE, in the author's own words: the language has no
+limits, a crash is not a limit, and a bound is never the fix — THE WALKER KEEPS
+ITS OWN STACK.** Raising the thread stack size would be exactly the bound the
+rule refuses.
+
+**The fix is the rule:** an explicit stack the walker owns — frames of
+`{row, position, the argument being built}` pushed and popped in a loop, with no
+C++ recursion anywhere in `evaluate`, `call_word` or `run_body`. Then depth is
+bounded by memory, which is the only bound satellite accepts (DESIGN §7.5).
+
+Until then the depth that works is large but real, and it is a defect rather
+than a limit.
