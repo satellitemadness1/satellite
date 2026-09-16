@@ -1,0 +1,8 @@
+satellite.include(satellite)
+satellite.include(sub/one)
+
+satellite.capsule satellite.main()
+{
+    deep()
+    satellite.return(satellite)
+}

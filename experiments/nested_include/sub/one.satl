@@ -1,0 +1,6 @@
+satellite.include(two)
+
+satellite.capsule one_capsule()
+{
+    satellite.return()
+}
