@@ -18,7 +18,7 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 | piece | files | checked by |
 |---|---|---|
-| **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — 32 passed |
+| **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — **28 passed, 4 failed** (see §6.6) |
 | **The author's config** — every `return_arguments_vector()` row loaded into `arguments`; the title lines (VERSION 004 REVISION 04 BUILD nnnn) on `--version`, `--help` and every start; the build number raised by every build | `satellite/config/satellite_config.hpp`, `satellite/config/build_number.py` | check.sh |
 | **256 warm threads** — started from `arguments.threads_startup` and parked before the program runs (a requirement for later, the author) | `satellite/threads/startup_threads.*` | check.sh; about 12 ms and 1.7 MB a run |
 | **The 16-bit tokens** — `REGISTRY.satellite` is the 16-bit list; `bytecode_registry` is the program as `std::vector<std::vector<std::bitset<16>>>`, **one row a FILE** — the main `.satl` and every spaceship it includes — built on the warm threads in batches of lines. **The first thing the interpreter builds out of a program** | `REGISTRY.satellite`, `satellite/bytecode/` (`make_token_codes.py` → `token_codes.hpp`, `bytecode_registry.*`), called at `structured-library.cpp:155` | check.sh (32); `experiments/bytecode_registry_checks.cpp` — 19 checks; `--debug` shows `bytecode_registry(built)` on every run |
@@ -38,7 +38,7 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 ```
 make                                   # interpreter + every numbered library; raises the build number
-./check.sh                             # the runner: 32 checks
+./check.sh                             # 32 checks; 28 pass, 4 fail on purpose (§6.6)
 make build/string_cases && python3 strings/check_strings.py   # char32_t conversion against Python
 make build/string_methods && python3 strings/check_string_methods.py   # against 003's satl
 build/satellite-004 --version          # THE SATELLITE PROGRAMMING LANGUAGE / VERSION 004 REVISION 04 BUILD nnnn
@@ -289,6 +289,50 @@ about two milestones. **Keep SATC.md §2's header**: a word's code is its row in
 3. **The value type.** `display(42)` still has nowhere to put its argument. `Call`'s
    `kind`/`text`/`count`/`flag` wants to become one type over `satellite_number` and
    `satellite_string`. This is the real next piece.
+
+## 6.6 The interpreter runs the bytecode, and check.sh is 28/32 ON PURPOSE
+
+`ca8d060`, 2026-09-16, the author: "we specifically build this into the interpreter...
+Can you just make it work?" `structured-library.cpp` is now `load_program` →
+`file_can_run` → `capsules_in` → `run_main`. `satl test_programs/hello_world.satl`
+prints four lines; `satl examples/hello_world.satl` prints all four of its own,
+including `42` and `true`. `std::vector<Call>` no longer runs anything.
+
+**THE FOUR FAILING CHECKS ARE A NAMED DEBT, NOT AN UNNOTICED REGRESSION:**
+
+```
+FAIL  a line with no scenario -> wanted 13, got 0
+FAIL  nothing ran before the refusal -> wanted , got before
+FAIL  "some" + "str" (no scenario yet) -> wanted 4, got 0
+FAIL  a number too large -> wanted 3, got 0
+```
+
+All four are one gap: **the prototype checked the whole program before running any
+of it; this path discovers as it goes.** `compile_satl` cannot be borrowed for the
+verdict — tried, and it refused `test_programs/hello_world.satl` outright with 13,
+because it is the prototype's checker and knows neither a user's own capsule nor any
+include spelling past the first. **THE NEXT PIECE IS A PRE-PASS OVER THE BYTECODE**,
+walking every capsule body before main is entered; it buys all four back and retires
+the duplicate path at the same time.
+
+**The argument chooses the scenario** — `string_token` → `text`, `number_token` →
+`count`, and `satellite.bool.true/false` arrive as word codes `1 17 2` / `1 17 1` and
+pick `flag`. That is the smallest thing that is not a value type, and the seam a real
+one goes into.
+
+**Four include spellings, no probing** (the author): `include(test)` and
+`include(/test)` are both `./test` — a leading slash is RELATIVE; `include(~/test)` is
+the home directory; `include(/root/x)` reaches the machine's root, asked for. The
+rejected alternative was "try the cwd, then the root", whose cost is that the same
+program run from two directories loads two different files, silently. `//` would have
+been unambiguous but the lexer reads it as a comment. `include(/test)` did not parse
+at all before — a leading slash is a `path_separator_token`.
+
+**Two real defects the checks caught, both fixed:** the library's answer was thrown
+away (a refused write answered `display_error` and the walker ignored it), and a
+refused write is only refused **at the flush** — `/dev/full` succeeds line by line and
+fails once at the end, so without the flush check the program exited 0 having printed
+nothing.
 
 ## 7. Other notes
 
