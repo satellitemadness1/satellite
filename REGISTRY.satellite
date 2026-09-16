@@ -1,0 +1,278 @@
+REGISTRY.satellite -- every 8-bit code satellite uses, and what it means.
+
+THESE ARE FOR 8-BIT STRINGS: the form satellite keeps source and bytecode in.
+A 16-bit or 32-bit satellite_string uses codes 0-127 exactly as they are here,
+and every other character is its own Unicode number. Tokens never appear inside
+a string's value; they belong to the stored program.
+
+THE HIGH BIT SAYS WHICH: 0xxxxxxx is a character, 1xxxxxxx is a token. One bit
+test, everywhere, forever. 00000000 is nothing, as the author chose, so a
+zeroed or half-written buffer reads as nothing rather than as a row of a's.
+11111111 is kept back: it says the next byte carries the token, which is how
+this list grows past 256 without any of it being rewritten.
+
+The order of the characters is the author's (2026-09-16), and comparing codes
+sorts text in that order: a before z before A before 0 before ! before space.
+
+ONE FILE, ONE ANSWER. The lexer, the interpreter and the .satc writer all read
+this registry, so none of them can drift about what a code means. Like
+003's words.def, it is exempt from the 300-line rule.
+
+bits        name                         what it is
+------------------------------------------------------------------------------
+00000000  nothing                      reserved: nothing is here
+00000001  a                            the letter a
+00000010  b                            the letter b
+00000011  c                            the letter c
+00000100  d                            the letter d
+00000101  e                            the letter e
+00000110  f                            the letter f
+00000111  g                            the letter g
+00001000  h                            the letter h
+00001001  i                            the letter i
+00001010  j                            the letter j
+00001011  k                            the letter k
+00001100  l                            the letter l
+00001101  m                            the letter m
+00001110  n                            the letter n
+00001111  o                            the letter o
+00010000  p                            the letter p
+00010001  q                            the letter q
+00010010  r                            the letter r
+00010011  s                            the letter s
+00010100  t                            the letter t
+00010101  u                            the letter u
+00010110  v                            the letter v
+00010111  w                            the letter w
+00011000  x                            the letter x
+00011001  y                            the letter y
+00011010  z                            the letter z
+00011011  A                            the letter A
+00011100  B                            the letter B
+00011101  C                            the letter C
+00011110  D                            the letter D
+00011111  E                            the letter E
+00100000  F                            the letter F
+00100001  G                            the letter G
+00100010  H                            the letter H
+00100011  I                            the letter I
+00100100  J                            the letter J
+00100101  K                            the letter K
+00100110  L                            the letter L
+00100111  M                            the letter M
+00101000  N                            the letter N
+00101001  O                            the letter O
+00101010  P                            the letter P
+00101011  Q                            the letter Q
+00101100  R                            the letter R
+00101101  S                            the letter S
+00101110  T                            the letter T
+00101111  U                            the letter U
+00110000  V                            the letter V
+00110001  W                            the letter W
+00110010  X                            the letter X
+00110011  Y                            the letter Y
+00110100  Z                            the letter Z
+00110101  0                            the digit 0
+00110110  1                            the digit 1
+00110111  2                            the digit 2
+00111000  3                            the digit 3
+00111001  4                            the digit 4
+00111010  5                            the digit 5
+00111011  6                            the digit 6
+00111100  7                            the digit 7
+00111101  8                            the digit 8
+00111110  9                            the digit 9
+00111111  !                            exclamation_mark
+01000000  @                            at_sign
+01000001  #                            hash_sign
+01000010  $                            dollar_sign
+01000011  %                            percent_sign
+01000100  ^                            caret
+01000101  &                            ampersand
+01000110  *                            star
+01000111  (                            left_parenthesis
+01001000  )                            right_parenthesis
+01001001  -                            minus_sign
+01001010  +                            plus_sign
+01001011  _                            underscore
+01001100  =                            equals_sign
+01001101  [                            left_square_bracket
+01001110  ]                            right_square_bracket
+01001111  {                            left_brace
+01010000  }                            right_brace
+01010001  \                            backslash
+01010010  |                            bar
+01010011  ;                            semicolon
+01010100  :                            colon
+01010101  '                            single_quote
+01010110  "                            double_quote
+01010111  ,                            comma
+01011000  .                            full_stop
+01011001  <                            less_than_sign
+01011010  >                            greater_than_sign
+01011011  /                            slash
+01011100  ?                            question_mark
+01011101  `                            backtick
+01011110  ~                            tilde
+01011111                               space
+01100000  \t                           tab
+01100001  \n                           newline
+01100010  0x01                         start_of_heading (ASCII 0x01)
+01100011  0x02                         start_of_text (ASCII 0x02)
+01100100  0x03                         end_of_text (ASCII 0x03)
+01100101  0x04                         end_of_transmission (ASCII 0x04)
+01100110  0x05                         enquiry (ASCII 0x05)
+01100111  0x06                         acknowledge (ASCII 0x06)
+01101000  0x07                         bell (ASCII 0x07)
+01101001  0x08                         backspace (ASCII 0x08)
+01101010  0x0B                         vertical_tab (ASCII 0x0B)
+01101011  0x0C                         form_feed (ASCII 0x0C)
+01101100  0x0D                         carriage_return (ASCII 0x0D)
+01101101  0x0E                         shift_out (ASCII 0x0E)
+01101110  0x0F                         shift_in (ASCII 0x0F)
+01101111  0x10                         data_link_escape (ASCII 0x10)
+01110000  0x11                         device_control_one (ASCII 0x11)
+01110001  0x12                         device_control_two (ASCII 0x12)
+01110010  0x13                         device_control_three (ASCII 0x13)
+01110011  0x14                         device_control_four (ASCII 0x14)
+01110100  0x15                         negative_acknowledge (ASCII 0x15)
+01110101  0x16                         synchronous_idle (ASCII 0x16)
+01110110  0x17                         end_of_transmission_block (ASCII 0x17)
+01110111  0x18                         cancel (ASCII 0x18)
+01111000  0x19                         end_of_medium (ASCII 0x19)
+01111001  0x1A                         substitute (ASCII 0x1A)
+01111010  0x1B                         escape_character (ASCII 0x1B)
+01111011  0x1C                         file_separator (ASCII 0x1C)
+01111100  0x1D                         group_separator (ASCII 0x1D)
+01111101  0x1E                         record_separator (ASCII 0x1E)
+01111110  0x1F                         unit_separator (ASCII 0x1F)
+01111111  0x7F                         delete_character (ASCII 0x7F)
+10000000  wide_run_token               a count, then that many 2-byte character codes (up to U+FFFF)
+10000001  wide_run_32_token            a count, then that many 4-byte character codes (emoji, rare CJK)
+10000010  left_brace_token             {  opens a body
+10000011  right_brace_token            }  closes a body
+10000100  left_square_bracket_token    [  opens an index
+10000101  right_square_bracket_token   ]  closes an index
+10000110  left_parenthesis_token       (  opens arguments
+10000111  right_parenthesis_token      )  closes arguments
+10001000  plus_token                   +
+10001001  minus_token                  -
+10001010  times_token                  *
+10001011  divide_token                 /
+10001100  modulus_token                %
+10001101  assign_token                 =
+10001110  plus_assign_token            +=
+10001111  minus_assign_token           -=
+10010000  times_assign_token           *=
+10010001  divide_assign_token          /=
+10010010  modulus_assign_token         %=
+10010011  equals_token                 ==
+10010100  not_equals_token             !=
+10010101  less_than_token              <
+10010110  greater_than_token           >
+10010111  less_or_equal_token          <=
+10011000  greater_or_equal_token       >=
+10011001  and_token                    &&
+10011010  or_token                     ||
+10011011  not_token                    !
+10011100  bit_and_token                &
+10011101  bit_or_token                 |
+10011110  bit_exclusive_or_token       ^
+10011111  bit_not_token                ~
+10100000  shift_left_token             <<
+10100001  shift_right_token            >>
+10100010  comma_token                  ,
+10100011  semicolon_token              ;
+10100100  colon_token                  :
+10100101  namespace_token              :: -- namespace::object
+10100110  method_token                 .  the dot that calls a method on something
+10100111  decimal_point_token          .  the dot inside a number, 3.14
+10101000  path_separator_token         /  the slash inside a path
+10101001  escape_token                 \  the escape inside text
+10101010  linux_home_token             ~  the home directory, $HOME
+10101011  double_quote_token           "  a string literal starts or ends
+10101100  single_quote_token           '
+10101101  comment_token                // to the end of the line
+10101110  comment_start_token          /*
+10101111  comment_end_token            */
+10110000  line_end_token               the end of a statement
+10110001  end_of_file_token            always the last token
+10110010  word_number_token            a satellite word follows as its numbers: #1.5.1
+10110011  name_token                   a name the user owns follows, as characters
+10110100  number_token                 a number literal follows, as characters
+10110101  string_token                 a string literal follows, as characters
+10110110  bits_token                   a bits literal follows: x00FF or b1010
+10110111  question_token               ?
+10111000  arrow_token                  ->
+10111001  free                         
+10111010  free                         
+10111011  free                         
+10111100  free                         
+10111101  free                         
+10111110  free                         
+10111111  free                         
+11000000  free                         
+11000001  free                         
+11000010  free                         
+11000011  free                         
+11000100  free                         
+11000101  free                         
+11000110  free                         
+11000111  free                         
+11001000  free                         
+11001001  free                         
+11001010  free                         
+11001011  free                         
+11001100  free                         
+11001101  free                         
+11001110  free                         
+11001111  free                         
+11010000  free                         
+11010001  free                         
+11010010  free                         
+11010011  free                         
+11010100  free                         
+11010101  free                         
+11010110  free                         
+11010111  free                         
+11011000  free                         
+11011001  free                         
+11011010  free                         
+11011011  free                         
+11011100  free                         
+11011101  free                         
+11011110  free                         
+11011111  free                         
+11100000  free                         
+11100001  free                         
+11100010  free                         
+11100011  free                         
+11100100  free                         
+11100101  free                         
+11100110  free                         
+11100111  free                         
+11101000  free                         
+11101001  free                         
+11101010  free                         
+11101011  free                         
+11101100  free                         
+11101101  free                         
+11101110  free                         
+11101111  free                         
+11110000  free                         
+11110001  free                         
+11110010  free                         
+11110011  free                         
+11110100  free                         
+11110101  free                         
+11110110  free                         
+11110111  free                         
+11111000  free                         
+11111001  free                         
+11111010  free                         
+11111011  free                         
+11111100  free                         
+11111101  free                         
+11111110  free                         
+11111111  extend_token                 the next byte carries the token
