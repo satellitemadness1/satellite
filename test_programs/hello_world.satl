@@ -1,11 +1,29 @@
 
 satellite.include(satellite)
 
+// these are the options I want include to take in...
+
+satellite.include(test_file)
+satellite.include("another_test_file.satl")
+
+// another option:
+satellite.include(test_dir/test_file)
+
+// another option:
+satellite.include("/test_dir/final_test_file.satl")
+
 satellite.capsule satellite.main()
 {
     satellite.console.display("hello, world!")
 
+    some_capsule()
+
+    some_function()
+
+    final_test_capsule()
+
     satellite.return(satellite)
 }
 
-// and add a comment, we have to strip out comments...
+// and add a comment, we have to strip out comments... like this:
+

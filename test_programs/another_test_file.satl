@@ -1,0 +1,7 @@
+
+satellite.capsule some_function()
+{
+    satellite.console.display("another test completed!")
+
+    satellite.return()
+}
