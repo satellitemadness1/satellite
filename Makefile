@@ -39,13 +39,14 @@ OS_DEFINE = -DSATELLITE_BUILD_OS='"$(BUILD_OS)"'
 INTERPRETER_SOURCES = satellite/structured-library.cpp satellite/arguments/arguments.cpp \
                       satellite/machine/machine_state.cpp satellite/satl/satl_file.cpp \
                       satellite/threads/startup_threads.cpp satellite/bytecode/bytecode_registry.cpp \
-                      satellite/bytecode/function_table.cpp \
+                      satellite/bytecode/function_table.cpp satellite/bytecode/include_shape.cpp \
                       satellite-numbers/call_number.satellite.cpp
 HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hpp \
           satellite/machine/machine_codes.hpp satellite/machine/machine_state.hpp \
           satellite/satl/satl_file.hpp satellite/threads/startup_threads.hpp satellite/version/version.hpp \
           satellite/bytecode/bytecode_registry.hpp satellite/bytecode/token_codes.hpp \
           satellite/bytecode/word_codes.hpp satellite/bytecode/function_table.hpp \
+          satellite/bytecode/include_shape.hpp \
           satellite-numbers/call_number.hpp satellite-numbers/number_row.hpp strings/string_method.hpp
 MACHINE_STATE = satellite/machine/machine_state.cpp
 
