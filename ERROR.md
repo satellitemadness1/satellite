@@ -78,6 +78,39 @@ Not 004's errors, but 004 ports this code and must not port these:
     `satellite.directory.change`, so a kept `ship` can become another file.
 27. S0734's caret sits on `satellite`, not on the argument.
 
+## 5. satellite_number and satellite_string — OPEN (built 2026-09-15, not yet reviewed)
+
+Found by the two builders themselves; no adversarial reviewer has run yet.
+
+28. **`satellite_number x = -1;` compiles and holds 18,446,744,073,709,551,615.**
+    The one-argument constructor takes an `unsigned long long int` and is not
+    `explicit`, so a signed literal converts silently under `-Wall -Wextra`.
+    `from_signed(-1)` is right. Make the constructor explicit, or add a signed one.
+29. **`to_text` is quadratic:** 7.7 s for a 1,000,000-digit number (`from_text`
+    1.2 s, `digits()` 0.8 s). Multiply and divide are schoolbook, with no
+    Karatsuba or divide-and-conquer.
+30. **Running out of memory throws `std::bad_alloc`, not a machine code,** and
+    leaves a number valid but changed (the basic guarantee). No out-of-memory
+    code is on the list.
+31. **The speed bar is missed in places.** `i = i + 1` is 0.92 ns (clang) and
+    1.00 ns (g++) against 0.61 / 0.33 ns for C++ that refuses to wrap — ×1.49 and
+    ×3.0; the author's plain C++ loop folds to one multiplication, so no loop can
+    come within ×1.05 of it. satellite_string: decoding ASCII ×1.022, encoding
+    ×1.068, the wide path ×1.19–×1.24 of plain C++.
+32. **`satellite_number.hpp` exposes GCC/clang-only features** to every file that
+    includes it: `[[gnu::always_inline]]` and `unsigned __int128`.
+
+## 6. The toolchain on this machine — OPEN
+
+33. **g++ 17.0.0 (experimental) miscompiles at -O2:** a reserve + nested
+    push_back loop followed by `std::vector<char> out(text.size())` read
+    `text.size()` as 0. Found while building satellite_string; the code was
+    written differently to avoid it.
+34. **g++ here is configured `--with-arch=native`,** so it builds for this
+    machine's AVX2 by default while clang builds for baseline x86-64. A g++-built
+    satellite would die with an illegal instruction on an older CPU, which
+    matters for the distribute package.
+
 ---
 
 ## Fixed

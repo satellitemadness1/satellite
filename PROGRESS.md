@@ -7,8 +7,10 @@ every measurement) and ERROR.md (every known error).
 
 **2026-09-15: satellite 004 is the top of the repository.** satellite 003 revision 07
 moved, unchanged, to `old_versions/second_satellite/` (tag `satellite-003-revision-07`,
-branch `archive/satellite-003-revision-07`). The next milestone is PLAN M0.5: port
-`make_support/` and the installer.
+branch `archive/satellite-003-revision-07`). Since then: revision 04 with build
+numbers, the author's config rows, 256 warm threads, every source under
+`satellite/`, and satellite_number and satellite_string (section 5 says what is
+owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 ---
 
@@ -16,9 +18,11 @@ branch `archive/satellite-003-revision-07`). The next milestone is PLAN M0.5: po
 
 | piece | files | checked by |
 |---|---|---|
-| **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — 24 passed |
+| **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — 32 passed |
 | **The author's config** — every `return_arguments_vector()` row loaded into `arguments`; the title lines (VERSION 004 REVISION 04 BUILD nnnn) on `--version`, `--help` and every start; the build number raised by every build | `satellite/config/satellite_config.hpp`, `satellite/config/build_number.py` | check.sh |
 | **256 warm threads** — started from `arguments.threads_startup` and parked before the program runs (a requirement for later, the author) | `satellite/threads/startup_threads.*` | check.sh; about 12 ms and 1.7 MB a run |
+| **satellite_number** — sign bool + `unsigned long long` limbs, one-limb fast path (no allocation), + - * / %, text, digits, bytes | `satellite/satellite_variable_number/` | `python3 .../check_numbers.py build/number_cases` — 477,253 cases against Python |
+| **satellite_string 16/32-bit** — the author's character table; 16 bits a character, 32 only when one is above U+FFFF | `satellite/satellite_variable_string/` | `.../check_strings16.py` — every case agrees with Python; `build/string_table_check` proves the table |
 | **The number index** — every compiled library loaded once at start-up | `satellite-numbers/call_number.*`, `number_row.hpp` | loads all 24 libraries |
 | **004's word numbers** — 364 words, first-available numbering, frozen (DESIGN §3.2) | `words/make_words.py` → `words/words.tsv`, `words/satellite_words.hpp` | matched 003's words.def row for row; no duplicates; every parent's children exactly 1..n |
 | **satellite_string as char32_t** — strict UTF-8 ↔ char32_t ↔ .sati bit text, `bits_to_cxx_str` | `strings/satellite_string.*` | `python3 strings/check_strings.py` — 30,055 cases agree with Python's UTF-8 codec |
@@ -33,7 +37,7 @@ branch `archive/satellite-003-revision-07`). The next milestone is PLAN M0.5: po
 
 ```
 make                                   # interpreter + every numbered library; raises the build number
-./check.sh                             # the runner: 24 checks
+./check.sh                             # the runner: 32 checks
 make build/string_cases && python3 strings/check_strings.py   # char32_t conversion against Python
 make build/string_methods && python3 strings/check_string_methods.py   # against 003's satl
 build/satellite-004 --version          # THE SATELLITE PROGRAMMING LANGUAGE / VERSION 004 REVISION 04 BUILD nnnn
@@ -50,9 +54,11 @@ python3 words/make_words.py            # regenerate the word table (needs old_ve
   1 6 16, string methods 1 6 1 23. (Author delegated the choice.)
 - **Every word is a library** in a folder named by the exact word, arguments
   included (`satellite.variable.string.find(x)`), built as `<numbers>.so`.
-- **Strings are 32 bits a character.** Translating satellite into other languages:
-  dropped.
-- **Machine codes 0–21** in `satellite/machine/machine_codes.hpp`; a code is added
+- **A string is 16 bits a character** (the author, 2026-09-15), and 32 only when it
+  holds a character above U+FFFF. Codes 0–127 are every ASCII character once, in
+  the author's order. An 8-bit path is still open. Translating satellite into
+  other languages: dropped.
+- **Machine codes 0–23** in `satellite/machine/machine_codes.hpp`; a code is added
   to the list before it is used.
 - **Config values are rows** of `return_arguments_vector()`: a name, a number, a
   flag, and whether it is a flag (the author, 2026-09-15; DESIGN §1 still says
@@ -101,11 +107,24 @@ session's scratchpad so they survive it.
 
 ## 5. Next
 
-The author's order (2026-09-14): **satellite_string (done) → satellite_number →
-spacesuits**, because nothing can be tested without them. So next is PLAN M4,
-`satellite_number` (DESIGN §4): limbs of `unsigned long long`, a sign bool, digit
-count and byte size as satellite_numbers, small numbers inline. Then the four
-string words waiting on it. The prototype's defects (ERROR.md §1) are PLAN M1.
+**Owed on satellite_number and satellite_string (2026-09-15).** Both types are
+built and check against Python, but the session's limit stopped the rest:
+- **nobody has tried to break them.** Four adversarial reviewers and the
+  migration never ran (workflow `wf_2846936f-fc6`, agents killed by the limit).
+- **the 23 string-method libraries still use the 32-bit `strings/` string.** They
+  move onto the new one, checked against 003's satl, in the same step. `strings/`
+  then moves into `satellite/satellite_variable_string/`.
+- **an 8-bit fast path is undecided.** The author asked whether to add one
+  (1 byte a character for ASCII and Latin-1, then 16, then 32); measured: 99% of
+  real source files fit 8 bits, and English text would stay its UTF-8 size
+  instead of doubling. It changes the 23 libraries, so it should be settled
+  before they move.
+- **the races miss ×1.05 in places** (ERROR.md §5), and the four string words
+  waiting on satellite_number (`to_number`, `number`, `binary`, `hex`) are not
+  built.
+
+Then the prompt (PLAN M0.5 → M0.6 → M0.7). The prototype's defects (ERROR.md §1)
+are PLAN M1.
 
 ## 6. Other notes
 

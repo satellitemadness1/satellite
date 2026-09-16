@@ -2,7 +2,12 @@
 #
 #     make            the interpreter and every numbered library
 #     make check      run the example programs and check their machine codes
-#     make build/string_cases build/string_methods   the string harnesses (strings/check_*.py)
+#     make build/string_cases build/string_methods   the 32-bit string harnesses (strings/check_*.py)
+#     make build/number_cases   satellite_number's harness (satellite/satellite_variable_number/check_numbers.py)
+#     make number-race          the M4 race: i = i + 1 against signed long long int
+#     make build/string16_cases build/string_table_check   satellite_string's checks
+#                               (python3 satellite/satellite_variable_string/check_strings16.py)
+#     make build/string_race    satellite_string's speed against plain C++
 #     make race       satellite-004's display against std::cout, 10,000,000 lines
 #     make clean
 #
@@ -77,6 +82,41 @@ $(BUILD)/string_cases: strings/string_cases.cpp strings/satellite_string.cpp str
 	@mkdir -p $(BUILD)
 	$(CXX) $(CXXFLAGS) strings/string_cases.cpp strings/satellite_string.cpp -o $@
 
+# satellite.variable.number and satellite.variable.string: their own harnesses,
+# checked against Python. They are not the application, so they do not depend on
+# the build stamp and building one does not raise the build number.
+NUMBER = satellite/satellite_variable_number
+NUMBER_SOURCES = $(NUMBER)/satellite_number.cpp $(NUMBER)/satellite_number_divide.cpp $(NUMBER)/satellite_number_text.cpp
+NUMBER_HEADERS = $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp satellite/machine/machine_codes.hpp
+
+$(BUILD)/number_cases: $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
+	@mkdir -p $(BUILD)
+	$(CXX) $(CXXFLAGS) $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) -o $@
+
+$(BUILD)/number_race: $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
+	@mkdir -p $(BUILD)
+	$(CXX) $(CXXFLAGS) $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) -o $@
+
+number-race: $(BUILD)/number_race
+	./$(NUMBER)/number_race.sh
+
+STRING16 = satellite/satellite_variable_string
+STRING16_SOURCES = $(STRING16)/satellite_string.cpp $(STRING16)/satellite_string.hpp $(STRING16)/string_overwrite.hpp \
+                   $(STRING16)/character_table.hpp $(STRING16)/conversion_loops.hpp satellite/machine/machine_codes.hpp
+
+$(BUILD)/string16_cases: $(STRING16)/string16_cases.cpp $(STRING16_SOURCES)
+	@mkdir -p $(BUILD)
+	$(CXX) $(CXXFLAGS) $(STRING16)/string16_cases.cpp $(STRING16)/satellite_string.cpp -o $@
+
+$(BUILD)/string_table_check: $(STRING16)/string_table_check.cpp $(STRING16_SOURCES)
+	@mkdir -p $(BUILD)
+	$(CXX) $(CXXFLAGS) $(STRING16)/string_table_check.cpp $(STRING16)/satellite_string.cpp -o $@
+
+$(BUILD)/string_race: $(STRING16)/string_race.cpp $(STRING16)/plain_conversions.hpp $(STRING16)/plain_like_satellite.hpp \
+                      $(STRING16_SOURCES) strings/satellite_string.cpp strings/satellite_string.hpp
+	@mkdir -p $(BUILD)
+	$(CXX) $(CXXFLAGS) $(STRING16)/string_race.cpp $(STRING16)/satellite_string.cpp strings/satellite_string.cpp -o $@
+
 check: all
 	./check.sh
 
@@ -88,4 +128,4 @@ clean:
 
 FORCE:
 
-.PHONY: all libraries check race clean FORCE
+.PHONY: all libraries check race number-race clean FORCE
