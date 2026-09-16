@@ -145,13 +145,21 @@ made it compile (the includes, a row struct, a return type), and
 aren't you?"** — and measured rather than argued:
 
 ```
-depth   1000  exit 0
-depth  20000  exit 0
-depth 200000  Segmentation fault (139)
+depth  25000  exit 0
+depth  30000  Segmentation fault (139)
 ```
 
-`satellite.console.display(` nested 200,000 deep, in a program that is otherwise
-correct satellite.
+`satellite.console.display(` nested, in a program that is otherwise correct
+satellite. **The ceiling is between 25,000 and 30,000**, not the 200,000 this
+entry first said — narrowed 2026-09-16 by bisecting.
+
+**AND THE STACK IS NOT A PORTION OF RAM, which is the whole point.** `ulimit -s`
+is 8192 KB — **8 MB, a fixed reservation**, independent of this machine's 61 GB.
+The program dies at ~27,000 deep with **48 GB sitting unused**: about 280 bytes
+of C++ stack per level. A stack the walker owned would be a heap vector bounded
+by those 48 GB at roughly 32 bytes a frame — over a billion levels instead of
+27,000, on the same machine. That is four orders of magnitude, and it is the
+difference between a bound and a limit.
 
 **It is not an AST, and that part of the design holds.** Nothing is allocated per
 node, there is no `Node`, no pointer, no tree: the program stays one flat
