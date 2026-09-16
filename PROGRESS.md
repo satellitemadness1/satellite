@@ -234,6 +234,62 @@ the stored program a token transcription that is re-lexed, or a 16-bit code
 stream? PROGRESS §5 and SATC.md §4 currently say different things, and the answer
 governs whether the writer may record what the parser knew.
 
+## 6.5 The bytecode path RUNS a whole program (2026-09-16, later the same day)
+
+`752d4e6`, `378e13f`, `878b63b`, `d8eeab2`, `2118359`. `experiments/program_run.cpp`
+on `test_programs/hello_world.satl`:
+
+```
+loaded 5 files, one row each: hello_world 223 codes, test_file 54, another_test_file 59,
+                              test_dir/test_file 34, test_dir/final_test_file 57
+5 capsules, found by NAME       satellite.main row 0 body 128, some_capsule row 1 body 20, ...
+running satellite.main:
+hello, world! / some test complete! / another test completed! / final test completed!
+```
+
+- **`FunctionTable`** — `table[code - 4096]`, one subtraction and one load. 4096 pointers,
+  32 KB, read-only after start-up so any number of threads dispatch without a lock.
+  24 of 364 words have a library; `NumberIndex::find()` is now start-up only, which is
+  what `call_number.hpp` always promised.
+- **`CapsuleTable`** — a user's capsule by NAME, because a name a user invents has no
+  number. **THERE IS NO BODY** (the author saw it first): a `CapsuleSite` is two
+  integers, `{which row, where the brace was}`. Calling one moves the walker's position.
+  Nothing is allocated to run a line — the whole difference from 003's tree.
+- **`include_shape`** — the author's five spellings, told apart by the first code after
+  the `(`. The **unquoted path** `include(dir/file)` is new in 004 (003 required quotes)
+  and is whitespace-sensitive: `dir / file` with spaces is *division*.
+- **A cwd for every file** — each file's includes resolve against **its own** directory.
+  `experiments/nested_include/` proves it with a decoy `two.satl` that must lose.
+- **`file_can_run`** — refuses a file with no `include(satellite)`, no `main`, or no
+  `return`, codes 10/11/12, matching the prototype's `check_satl` so the two cannot
+  disagree. **There are no globals** (the author): execution begins and ends inside main,
+  and the only globals are the includes. A *string* saying `satellite.main` does not
+  count — a payload's codes are skipped, never classified.
+- **A C++ file carries byte for byte** — six real sources round-tripped, including
+  `bytecode_registry.cpp` itself (braces, quotes, `'\\'`, `//`). This settles
+  POLYMORPH/M6's *"needs a closing marker nothing in C++ can contain"*: a **count** needs
+  no marker, so `foreign_text_token` needs no code.
+
+**RECOMMENDED, NOT YET APPLIED TO PLAN.md — three files collapse to one.** `.satc` is
+superseded (the bytecode IS the numbered program, one code a word); `.sati` is superseded
+(strings are 16-bit codes inline, counted — **D3.1 dies with it**); `.satb` survives as
+*work* but not as a *file*, because combine's marks live in the bytecode and the registry
+already reserves `batch_start`/`batch_end`/`wait`/`batch_size`. M1/M2/M3 + M1.5–M3.6 →
+about two milestones. **Keep SATC.md §2's header**: a word's code is its row in
+`words.tsv`, so the word-list digest matters *more* now, not less.
+
+**Owed, smallest first:**
+1. **The leading-slash rule is a FALLBACK, not a rule.** `find_file()` tries the
+   filesystem root, then the main file's directory, because the author wrote
+   `include("/test_dir/final_test_file.satl")` and put the file under
+   `test_programs/test_dir/`. Either `/` is the filesystem root (003's rule) or it is the
+   program's own root (a new rule). Nothing else in the include path is a guess.
+2. **Two implementations of "runnable".** `satl_file.cpp:118` and `file_can_run()` both
+   decide it, with the same codes. Two will drift.
+3. **The value type.** `display(42)` still has nowhere to put its argument. `Call`'s
+   `kind`/`text`/`count`/`flag` wants to become one type over `satellite_number` and
+   `satellite_string`. This is the real next piece.
+
 ## 7. Other notes
 
 - `POLYMORPH/M1.md`–`M7.md` (top folder, uncommitted) hold the earlier
