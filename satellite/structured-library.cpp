@@ -22,6 +22,7 @@
 
 #include "arguments/arguments.hpp"
 #include "bytecode/bytecode_registry.hpp"
+#include "bytecode/function_table.hpp"
 #include "machine/machine_codes.hpp"
 #include "machine/machine_state.hpp"
 #include "../satellite-numbers/call_number.hpp"
@@ -131,6 +132,7 @@ int main(int argc, char **argv)
     std::vector<Call> calls;
     BytecodeRegistry bytecode_registry;
     BytecodeFilenames bytecode_filenames;
+    FunctionTable functions;
 
     StartupThreads threads;
     threads.start(startup, state);
@@ -138,6 +140,13 @@ int main(int argc, char **argv)
     code = index.load(numbers_folder(), state);
     if (stops_the_program(code))
         return static_cast<int>(code);
+    // A word's 16-bit code straight to its library: table[code], one load, no
+    // search. call_number.hpp promises a name is never looked up while a
+    // program runs, and this is how that is kept now a word is a code.
+    code = functions.build(index, state);
+    if (stops_the_program(code))
+        return static_cast<int>(code);
+
     state.set("satellite(loading)", satellite_loading_successful);
 
     code = load_satl(arguments.text("arguments.file"), source, state);

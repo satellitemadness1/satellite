@@ -103,4 +103,19 @@ std::string row_as_bits(const std::vector<std::bitset<16>> &row);
 // How many codes the registry holds, counting every row's tokens and payloads.
 unsigned long long int codes_in(const BytecodeRegistry &registry);
 
+// READING A ROW BACK. Every [COUNTED] token is followed by a count and then
+// that many codes, and these two are the only places that rule is implemented,
+// so nothing else has to know how a count is spelled.
+
+// The count at `at` (which must be a [COUNTED] token's position), and moves
+// `at` to the first code of the payload. Answers 0 and does not move for
+// anything else, so a caller can ask without checking first.
+unsigned long long int count_at(const std::vector<std::bitset<16>> &row, std::size_t &at);
+
+// The payload at `at` as text -- the argument a library is handed. `at` must be
+// the [COUNTED] token itself, and it is moved PAST the whole payload, so a
+// walker can carry straight on. Characters above 127 come back through their
+// wide runs, so a string with an emoji in it survives the trip.
+std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at);
+
 } // namespace satellite004

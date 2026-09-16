@@ -1,0 +1,11 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("hello, world!")
+
+    satellite.return(satellite)
+}
+
+// and add a comment, we have to strip out comments...

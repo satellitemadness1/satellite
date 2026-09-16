@@ -4,6 +4,7 @@
 #include "bytecode_registry.hpp"
 
 #include "../satellite_variable_string/character_table.hpp"
+#include "word_codes.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -198,6 +199,32 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
             continue;
         }
 
+        // A WORD OF THE LANGUAGE, as one code. satellite.console.display is
+        // 4163, not name . name . name, and the code IS the index into the
+        // function table -- which is what the 4096 range is for.
+        //
+        // LONGEST FIRST, and only a whole path counts. `my_list.append` is not a
+        // word (the method needs the variable's declared type, which is PLAN
+        // M1's job), and `satellite.console` inside `satellite.console.display`
+        // must not win, so the dotted run is read once and then shortened a
+        // segment at a time until one matches or none does.
+        if (identifier_start(c)) {
+            std::size_t run = line.i;
+            while (run < n && (identifier_body(text[run]) ||
+                               (text[run] == '.' && run + 1 < n && identifier_start(text[run + 1]))))
+                ++run;
+            const std::size_t before = line.i;
+            for (std::size_t stop = run; stop > line.i; ) {
+                const std::string_view path = text.substr(line.i, stop - line.i);
+                const Code code = word::code_of_spelling(path);
+                if (code != 0) { line.put(code); line.i = stop; break; }
+                const std::size_t dot = path.rfind('.');
+                if (dot == std::string_view::npos) break;
+                stop = line.i + dot;
+            }
+            if (line.i != before) continue;
+        }
+
         // A name -- or a bits literal, which is b then 0/1 and x then hex.
         if (identifier_start(c)) {
             std::size_t k = line.i;
@@ -373,6 +400,75 @@ std::string row_as_bits(const std::vector<std::bitset<16>> &row)
         if (!out.empty()) out += ' ';
         out += code.to_string();
     }
+    return out;
+}
+
+unsigned long long int count_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
+{
+    if (at >= row.size()) return 0;
+    const Code marker = static_cast<Code>(row[at].to_ulong());
+    if (!token::carries_a_count(marker)) return 0;
+
+    // Least significant 16 bits first, each extra chunk announced by
+    // long_count_token -- the other half of put_payload's writing.
+    std::size_t i = at + 1;
+    unsigned long long int value = 0;
+    int shift = 0;
+    while (i < row.size() && static_cast<Code>(row[i].to_ulong()) == token::long_count_token) {
+        if (++i >= row.size()) break;
+        value |= static_cast<unsigned long long int>(row[i].to_ulong()) << shift;
+        shift += 16;
+        ++i;
+    }
+    if (i < row.size()) {
+        value |= static_cast<unsigned long long int>(row[i].to_ulong()) << shift;
+        ++i;
+    }
+    at = i;
+    return value;
+}
+
+std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
+{
+    std::size_t i = at;
+    const unsigned long long int count = count_at(row, i);
+    const std::size_t stop = std::min(row.size(), i + static_cast<std::size_t>(count));
+
+    std::string out;
+    out.reserve(static_cast<std::size_t>(count));
+    while (i < stop) {
+        const Code code = static_cast<Code>(row[i].to_ulong());
+        if (code == token::wide_run_token || code == token::wide_run_32_token) {
+            const bool wide32 = code == token::wide_run_32_token;
+            std::size_t k = i;
+            const unsigned long long int run = count_at(row, k);
+            for (unsigned long long int w = 0; w < run && k < stop; ++w) {
+                std::uint32_t value = static_cast<std::uint32_t>(row[k].to_ulong());
+                ++k;
+                if (wide32 && k < stop) { value = (value << 16) | static_cast<std::uint32_t>(row[k].to_ulong()); ++k; }
+                // Back to UTF-8, which is what a library's std::string holds.
+                if (value < 0x80) { out += static_cast<char>(value); }
+                else if (value < 0x800) {
+                    out += static_cast<char>(0xC0 | (value >> 6));
+                    out += static_cast<char>(0x80 | (value & 0x3F));
+                } else if (value < 0x10000) {
+                    out += static_cast<char>(0xE0 | (value >> 12));
+                    out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
+                    out += static_cast<char>(0x80 | (value & 0x3F));
+                } else {
+                    out += static_cast<char>(0xF0 | (value >> 18));
+                    out += static_cast<char>(0x80 | ((value >> 12) & 0x3F));
+                    out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
+                    out += static_cast<char>(0x80 | (value & 0x3F));
+                }
+            }
+            i = k;
+            continue;
+        }
+        if (code < 128) out += static_cast<char>(character_table::ascii_of_code[code]);
+        ++i;
+    }
+    at = stop;
     return out;
 }
 
