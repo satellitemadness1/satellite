@@ -21,7 +21,7 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 | **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — 32 passed |
 | **The author's config** — every `return_arguments_vector()` row loaded into `arguments`; the title lines (VERSION 004 REVISION 04 BUILD nnnn) on `--version`, `--help` and every start; the build number raised by every build | `satellite/config/satellite_config.hpp`, `satellite/config/build_number.py` | check.sh |
 | **256 warm threads** — started from `arguments.threads_startup` and parked before the program runs (a requirement for later, the author) | `satellite/threads/startup_threads.*` | check.sh; about 12 ms and 1.7 MB a run |
-| **The 16-bit tokens** — `REGISTRY.satellite` is the 16-bit list; `bytecode_registry` is the `.satl` as `std::vector<std::vector<std::bitset<16>>>`, one row a source line, built on the warm threads in batches of lines. **The first thing the interpreter builds out of a program** | `REGISTRY.satellite`, `satellite/bytecode/` (`make_token_codes.py` → `token_codes.hpp`, `bytecode_registry.*`), called at `structured-library.cpp:155` | check.sh (32); a 15-check harness in the session scratchpad; `--debug` shows `bytecode_registry(built)` on every run |
+| **The 16-bit tokens** — `REGISTRY.satellite` is the 16-bit list; `bytecode_registry` is the program as `std::vector<std::vector<std::bitset<16>>>`, **one row a FILE** — the main `.satl` and every spaceship it includes — built on the warm threads in batches of lines. **The first thing the interpreter builds out of a program** | `REGISTRY.satellite`, `satellite/bytecode/` (`make_token_codes.py` → `token_codes.hpp`, `bytecode_registry.*`), called at `structured-library.cpp:155` | check.sh (32); `experiments/bytecode_registry_checks.cpp` — 19 checks; `--debug` shows `bytecode_registry(built)` on every run |
 | **satellite_number** — sign bool + `unsigned long long` limbs, one-limb fast path (no allocation), + - * / %, text, digits, bytes | `satellite/satellite_variable_number/` | `python3 .../check_numbers.py build/number_cases` — 477,253 cases against Python |
 | **satellite_string 16/32-bit** — the author's character table; 16 bits a character, 32 only when one is above U+FFFF | `satellite/satellite_variable_string/` | `.../check_strings16.py` — every case agrees with Python; `build/string_table_check` proves the table |
 | **The number index** — every compiled library loaded once at start-up | `satellite-numbers/call_number.*`, `number_row.hpp` | loads all 24 libraries |
@@ -140,7 +140,15 @@ spare codes and nothing is ever renumbered. **69 tokens**, in eleven families.
 `hexadecimal_token` (`xFFAAC2985765`), which replace the single `bits_token` — the
 radix stops being a field and becomes the token.
 
-**EVERY PAYLOAD TOKEN CARRIES A COUNT, and this is the one thing the 8-bit design
+**ONE ROW A FILE, NOT A LINE** (the author, 2026-09-16): *"the reason for the second
+vector is we have to take in other satellite files, like other includes"*. Row 0 is the
+main `.satl`; every spaceship taken in by `satellite.include()` gets a row behind it,
+and the row's INDEX is which file it is. Statements are found INSIDE a row by
+`line_end_token`, which is the reason that token exists at all. Nothing records a
+file's NAME yet — a name belongs beside the registry, not inside it, and PLAN M1 is
+where that gets settled.
+
+**EVERY [COUNTED] TOKEN CARRIES A COUNT, and this is the one thing the 8-bit design
 could not carry over.** At 8 bits a run of characters ended when the high bit
 flipped. That test is *arithmetically false* at 16 bits: above 127 a character is
 its own Unicode number (`satellite_string.cpp:53`), so a string holding one wide
@@ -149,6 +157,15 @@ writes `" ∞  "` as one literal and would have ended its own string early. So a
 count follows every literal marker, the counted codes are SKIPPED and never
 classified, and `long_count_token` continues a count that does not fit in 16 bits
 so no literal has a ceiling (DESIGN §1.2).
+
+**Which tokens are counted is NOT a family test, and making it one was a defect the
+checks caught.** A family says what a token MEANS; carrying a count is what it does
+STRUCTURALLY, and the two do not line up — `error_token` is in the stream family and
+is counted, `comment_token` is in the text family and is a marker only. Testing the
+family let a reader walk into a payload's length as though it were a token. The rows
+marked `[COUNTED]` in the registry are the list, and `carries_a_count()` is generated
+from them. (A comment's text is not stored at all, which is 003 DESIGN §5.6 exactly:
+`//` is discarded in the lexer. PLAN M1.5 already says comments do not round-trip.)
 
 **Measured, 2026-09-16, and both numbers went against the first guess:**
 

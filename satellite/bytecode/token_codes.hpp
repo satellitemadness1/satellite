@@ -16,16 +16,40 @@ inline constexpr bool is_token(Code code) { return (code >> 8) != 0; }
 inline constexpr bool is_character(Code code) { return (code >> 8) == 0; }
 inline constexpr Code family_of(Code code) { return static_cast<Code>(code >> 8); }
 
-// A payload token is followed by a count and then that many codes, which
-// are SKIPPED and never classified (REGISTRY.satellite: "EVERY PAYLOAD
-// TOKEN CARRIES A COUNT"). The count continues into the next code when it
-// is long_count_token, so no literal has a ceiling.
-inline constexpr Code kPayloadFamily = 0x09;
-inline constexpr bool carries_a_count(Code code) { return family_of(code) == kPayloadFamily; }
+// A COUNTED token is followed by a count and then that many codes, which
+// are SKIPPED and never classified. The count continues into the next code
+// when that code is long_count_token, so no literal has a ceiling.
+//
+// THIS IS NOT A FAMILY TEST, and it used to be, which was a defect. A family
+// says what a token MEANS; carrying a count is what it does STRUCTURALLY,
+// and the two do not line up -- error_token is in the stream family and IS
+// counted, comment_token is in the text family and is a marker only. Testing
+// the family let a reader walk into a payload's length as though it were a
+// token (found by the checks, 2026-09-16). The rows marked [COUNTED] in
+// REGISTRY.satellite are the list, and this switch is generated from them.
+inline constexpr bool carries_a_count(Code code)
+{
+    switch (code) {
+    case 0x0102:  // error_token
+    case 0x0900:  // word_number_token
+    case 0x0901:  // name_token
+    case 0x0902:  // number_token
+    case 0x0903:  // string_token
+    case 0x0904:  // binary_token
+    case 0x0905:  // hexadecimal_token
+    case 0x0906:  // option_token
+    case 0x0907:  // string_index_token
+    case 0x0908:  // wide_run_token
+    case 0x0909:  // wide_run_32_token
+        return true;
+    default:
+        return false;
+    }
+}
 
 inline constexpr Code line_end_token = 0x0100;  // the end of a statement
 inline constexpr Code end_of_file_token = 0x0101;  // always the last token
-inline constexpr Code error_token = 0x0102;  // the lexer stopped here; an error code follows. The lexer never throws
+inline constexpr Code error_token = 0x0102;  // [COUNTED] the character the lexer had no code for. The lexer never throws
 inline constexpr Code left_brace_token = 0x0200;  // {  opens a body
 inline constexpr Code right_brace_token = 0x0201;  // }  closes a body
 inline constexpr Code left_parenthesis_token = 0x0202;  // (  opens arguments
@@ -73,19 +97,19 @@ inline constexpr Code arrow_token = 0x070A;  // -> QUESTION: a return type is sa
 inline constexpr Code double_quote_token = 0x0800;  // "  a string literal starts or ends
 inline constexpr Code single_quote_token = 0x0801;  // '  QUESTION: the language has no character type
 inline constexpr Code escape_token = 0x0802;  // \  QUESTION: an escape lives inside a string's value, which a token may not
-inline constexpr Code comment_token = 0x0803;  // // to the end of the line
+inline constexpr Code comment_token = 0x0803;  // // to the end of the line -- a MARKER only: the text is not stored (003 DESIGN 5.6)
 inline constexpr Code comment_start_token = 0x0804;  // /* QUESTION: 003 DESIGN §5.6 has no block comment, on purpose
 inline constexpr Code comment_end_token = 0x0805;  // */ QUESTION: as above
-inline constexpr Code word_number_token = 0x0900;  // a satellite word as its numbers: count, then the numbers
-inline constexpr Code name_token = 0x0901;  // a name the user owns: count, then that many character codes
-inline constexpr Code number_token = 0x0902;  // a number literal: count, then that many character codes
-inline constexpr Code string_token = 0x0903;  // a string literal: count, then that many character codes
-inline constexpr Code binary_token = 0x0904;  // b11001100 -- count, then that many character codes
-inline constexpr Code hexadecimal_token = 0x0905;  // xFFAAC2985765 -- count, then that many character codes
-inline constexpr Code option_token = 0x0906;  // 0#down -- a folded option; count, then that many character codes
-inline constexpr Code string_index_token = 0x0907;  // the string at this index in the .sati, once the program carries no text
-inline constexpr Code wide_run_token = 0x0908;  // count, then that many characters as their own 16-bit Unicode number
-inline constexpr Code wide_run_32_token = 0x0909;  // count, then that many characters as 32 bits each (emoji, rare CJK)
+inline constexpr Code word_number_token = 0x0900;  // [COUNTED] a satellite word as its numbers: count, then the numbers
+inline constexpr Code name_token = 0x0901;  // [COUNTED] a name the user owns: count, then that many character codes
+inline constexpr Code number_token = 0x0902;  // [COUNTED] a number literal: count, then that many character codes
+inline constexpr Code string_token = 0x0903;  // [COUNTED] a string literal: count, then that many character codes
+inline constexpr Code binary_token = 0x0904;  // [COUNTED] b11001100 -- count, then that many character codes
+inline constexpr Code hexadecimal_token = 0x0905;  // [COUNTED] xFFAAC2985765 -- count, then that many character codes
+inline constexpr Code option_token = 0x0906;  // [COUNTED] 0#down -- a folded option; count, then that many character codes
+inline constexpr Code string_index_token = 0x0907;  // [COUNTED] the string at this index in the .sati, once the program carries no text
+inline constexpr Code wide_run_token = 0x0908;  // [COUNTED] count, then that many characters as their own 16-bit Unicode number
+inline constexpr Code wide_run_32_token = 0x0909;  // [COUNTED] count, then that many characters as 32 bits each (emoji, rare CJK)
 inline constexpr Code long_count_token = 0x090A;  // the count that follows continues in the next code: no literal has a ceiling
 inline constexpr Code batch_start_token = 0x0A00;  // opens a batch: these calls may run on one pool thread
 inline constexpr Code batch_end_token = 0x0A01;  // closes a batch

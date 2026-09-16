@@ -165,8 +165,10 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
         const char c = text[line.i];
         if (blank(c)) { ++line.i; continue; }
 
-        // A comment runs to the end of the line and carries its own text.
-        if (line.two_ahead("//")) { line.put_payload(token::comment_token, line.i + 2, n); break; }
+        // A comment runs to the end of the line and is a MARKER ONLY: 003's
+        // DESIGN §5.6 discards the text before the parser, so the stored
+        // program never carries it and M1.5's converter cannot bring it back.
+        if (line.two_ahead("//")) { line.put(token::comment_token); break; }
 
         // A string literal: its characters travel behind string_token, counted.
         if (c == '"') {
@@ -240,22 +242,26 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
         const Code single = one_character_token(c);
         if (single != 0) { line.put(single); ++line.i; continue; }
 
-        // The lexer never throws: it marks the character and carries on.
-        line.put(token::error_token);
+        // The lexer never throws: it marks the character and carries on. The
+        // character travels as error_token's counted payload, so a reader skips
+        // it like any other and can say WHICH character it was.
         std::size_t k = line.i;
-        Line::character_codes(one_character(text, k), row);
+        one_character(text, k);
+        line.put_payload(token::error_token, line.i, k);
         line.i = k;
     }
 
     line.put(token::line_end_token);
 }
 
-signed long long int build_bytecode_registry(const std::string &source,
-                                             StartupThreads &threads,
-                                             unsigned long long int batches,
-                                             BytecodeRegistry &registry,
-                                             MachineState &state)
+void add_file_to_bytecode_registry(const std::string &source,
+                                   StartupThreads &threads,
+                                   unsigned long long int batches,
+                                   BytecodeRegistry &registry)
 {
+    registry.emplace_back();
+    std::vector<std::bitset<16>> &file = registry.back();
+
     // WHERE the lines are, never copies of them. Copying 100,000 lines into
     // std::strings cost 45 of the 47 ms this used to take (measured
     // 2026-09-16): one allocation a line, on one thread, before any batch
@@ -269,40 +275,77 @@ signed long long int build_bytecode_registry(const std::string &source,
         if (stop == std::string_view::npos) break;
         from = stop + 1;
     }
-
-    registry.assign(lines.size(), {});
     if (lines.empty()) {
-        registry.push_back({std::bitset<16>(token::end_of_file_token)});
-        state.set("bytecode_registry(built): 1 row, an empty program", success);
-        return success;
+        file.push_back(std::bitset<16>(token::end_of_file_token));
+        return;
     }
 
     // BATCHES OF LINES, NEVER ONE LINE EACH -- the header says why, with the
     // measurement. A batch is never smaller than one line.
-    const unsigned long long int jobs = std::max<unsigned long long int>(1, std::min<unsigned long long int>(batches, lines.size()));
+    const unsigned long long int jobs =
+        std::max<unsigned long long int>(1, std::min<unsigned long long int>(batches, lines.size()));
     const std::size_t per = (lines.size() + jobs - 1) / jobs;
+
+    // ONE BATCH WRITES STRAIGHT INTO THE ROW. Laying pieces end to end costs a
+    // copy of the whole file (37 MB on 100,000 lines), and there is nothing to
+    // lay out when there is one piece. This is the common case -- a program is
+    // usually one modest file -- so it is worth the branch.
+    if (jobs == 1) {
+        std::size_t characters = 1;
+        for (const std::string_view &line : lines) characters += line.size() + 8;
+        file.reserve(characters);
+        for (const std::string_view &line : lines) tokenise_one_line(line, file);
+        file.push_back(std::bitset<16>(token::end_of_file_token));
+        return;
+    }
+
+    // EACH BATCH FILLS ITS OWN PIECE, and the pieces are laid end to end in
+    // order afterwards. A file is ONE row, so the batches cannot all push into
+    // it at once; and a piece of ~400 lines is one allocation where a row a
+    // line was 100,000 of them.
+    std::vector<std::vector<std::bitset<16>>> pieces(static_cast<std::size_t>(jobs));
     std::atomic<unsigned long long int> finished{0};
 
     for (unsigned long long int job = 0; job < jobs; ++job) {
         threads.submit([&, job] {
             const std::size_t start = static_cast<std::size_t>(job) * per;
             const std::size_t stop = std::min(lines.size(), start + per);
-            for (std::size_t l = start; l < stop; ++l) tokenise_one_line(lines[l], registry[l]);
+            std::vector<std::bitset<16>> &piece = pieces[static_cast<std::size_t>(job)];
+            std::size_t characters = 0;
+            for (std::size_t l = start; l < stop; ++l) characters += lines[l].size() + 8;
+            piece.reserve(characters);
+            for (std::size_t l = start; l < stop; ++l) tokenise_one_line(lines[l], piece);
             finished.fetch_add(1, std::memory_order_release);
         });
     }
     while (finished.load(std::memory_order_acquire) < jobs) std::this_thread::yield();
 
-    // The last row ends the file, so a reader that has a row has a statement.
-    registry.back().push_back(std::bitset<16>(token::end_of_file_token));
+    std::size_t total = 1;
+    for (const std::vector<std::bitset<16>> &piece : pieces) total += piece.size();
+    file.reserve(total);
+    for (const std::vector<std::bitset<16>> &piece : pieces)
+        file.insert(file.end(), piece.begin(), piece.end());
+
+    // A row is a whole file, so its last code says so.
+    file.push_back(std::bitset<16>(token::end_of_file_token));
+}
+
+signed long long int build_bytecode_registry(const std::string &source,
+                                             StartupThreads &threads,
+                                             unsigned long long int batches,
+                                             BytecodeRegistry &registry,
+                                             MachineState &state)
+{
+    registry.clear();
+    add_file_to_bytecode_registry(source, threads, batches, registry);
 
     unsigned long long int errors = 0;
     for (const std::vector<std::bitset<16>> &row : registry)
         for (const std::bitset<16> &code : row)
             if (static_cast<Code>(code.to_ulong()) == token::error_token) ++errors;
 
-    state.set("bytecode_registry(built): " + std::to_string(registry.size()) + " rows, " +
-                  std::to_string(codes_in(registry)) + " codes, " + std::to_string(jobs) + " batches",
+    state.set("bytecode_registry(built): " + std::to_string(registry.size()) + " file" +
+                  (registry.size() == 1 ? "" : "s") + ", " + std::to_string(codes_in(registry)) + " codes",
               success);
     // REPORTED, NEVER FATAL. The lexer never throws (DESIGN §5.6): a character
     // with no code is marked in the stream with error_token and the conversion

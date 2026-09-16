@@ -188,7 +188,7 @@ bits              name                         what it is
 -- THE STREAM  (0000000100000000 up)
 0000000100000000  line_end_token               the end of a statement
 0000000100000001  end_of_file_token            always the last token
-0000000100000010  error_token                  the lexer stopped here; an error code follows. The lexer never throws
+0000000100000010  error_token                  [COUNTED] the character the lexer had no code for. The lexer never throws
 0000000100000011  free                         to 0000000111111111, free for this family
 
 -- BRACKETS  (0000001000000000 up)
@@ -257,22 +257,22 @@ bits              name                         what it is
 0000100000000000  double_quote_token           "  a string literal starts or ends
 0000100000000001  single_quote_token           '  QUESTION: the language has no character type
 0000100000000010  escape_token                 \  QUESTION: an escape lives inside a string's value, which a token may not
-0000100000000011  comment_token                // to the end of the line
+0000100000000011  comment_token                // to the end of the line -- a MARKER only: the text is not stored (003 DESIGN 5.6)
 0000100000000100  comment_start_token          /* QUESTION: 003 DESIGN §5.6 has no block comment, on purpose
 0000100000000101  comment_end_token            */ QUESTION: as above
 0000100000000110  free                         to 0000100011111111, free for this family
 
--- LITERALS AND PAYLOADS -- EVERY ONE CARRIES A COUNT  (0000100100000000 up)
-0000100100000000  word_number_token            a satellite word as its numbers: count, then the numbers
-0000100100000001  name_token                   a name the user owns: count, then that many character codes
-0000100100000010  number_token                 a number literal: count, then that many character codes
-0000100100000011  string_token                 a string literal: count, then that many character codes
-0000100100000100  binary_token                 b11001100 -- count, then that many character codes
-0000100100000101  hexadecimal_token            xFFAAC2985765 -- count, then that many character codes
-0000100100000110  option_token                 0#down -- a folded option; count, then that many character codes
-0000100100000111  string_index_token           the string at this index in the .sati, once the program carries no text
-0000100100001000  wide_run_token               count, then that many characters as their own 16-bit Unicode number
-0000100100001001  wide_run_32_token            count, then that many characters as 32 bits each (emoji, rare CJK)
+-- LITERALS AND PAYLOADS -- [COUNTED] means a count follows, then that many codes  (0000100100000000 up)
+0000100100000000  word_number_token            [COUNTED] a satellite word as its numbers: count, then the numbers
+0000100100000001  name_token                   [COUNTED] a name the user owns: count, then that many character codes
+0000100100000010  number_token                 [COUNTED] a number literal: count, then that many character codes
+0000100100000011  string_token                 [COUNTED] a string literal: count, then that many character codes
+0000100100000100  binary_token                 [COUNTED] b11001100 -- count, then that many character codes
+0000100100000101  hexadecimal_token            [COUNTED] xFFAAC2985765 -- count, then that many character codes
+0000100100000110  option_token                 [COUNTED] 0#down -- a folded option; count, then that many character codes
+0000100100000111  string_index_token           [COUNTED] the string at this index in the .sati, once the program carries no text
+0000100100001000  wide_run_token               [COUNTED] count, then that many characters as their own 16-bit Unicode number
+0000100100001001  wide_run_32_token            [COUNTED] count, then that many characters as 32 bits each (emoji, rare CJK)
 0000100100001010  long_count_token             the count that follows continues in the next code: no literal has a ceiling
 0000100100001011  free                         to 0000100111111111, free for this family
 

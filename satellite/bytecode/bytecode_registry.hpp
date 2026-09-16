@@ -11,9 +11,19 @@
 // before anything looks at what the program says. REGISTRY.satellite is the one
 // definition of every code, and token_codes.hpp is generated from it.
 //
-// ONE ROW A SOURCE LINE, and the row is that line's tokens. A row always ends
-// with line_end_token; the last row of the file ends with end_of_file_token, so
-// a reader that has a row has a whole statement and never has to look back.
+// ONE ROW A FILE, AND THE ROW IS THAT WHOLE FILE'S TOKENS. (the author,
+// 2026-09-16) "The reason for the second vector is we have to take in other
+// satellite files, like other includes, so that's why that's that." So row 0 is
+// the main .satl and every spaceship it includes gets a row of its own, in the
+// order they were taken in.
+//
+// Statements are found INSIDE a row, by line_end_token, which every line ends
+// with; a row's last code is end_of_file_token. This is why line_end_token is a
+// token at all -- with a row a file, nothing else says where a line stopped.
+//
+// A row a file is also much cheaper than a row a line: one allocation for a
+// 100,000-line program instead of 100,001, which was most of what the first
+// version of this spent its time on.
 //
 // std::bitset<16> IS 8 BYTES, NOT 2, and the author chose it knowing that
 // (measured 2026-09-16: elements 8 bytes apart, 4x uint16_t; a pass over a
@@ -44,10 +54,20 @@
 
 namespace satellite004 {
 
-// One row a source line; each row is that line's 16-bit tokens.
+// One row a FILE; each row is that whole file's 16-bit tokens.
 using BytecodeRegistry = std::vector<std::vector<std::bitset<16>>>;
 
-// Turns `source` into `registry`, one row a line, on `threads` in batches.
+// Appends one row -- this file, tokenised on `threads` in batches of lines.
+// The row the main .satl goes in first; a spaceship taken in by
+// satellite.include() adds its own row behind it, and the row's INDEX is which
+// file it is. Nothing here records the file's NAME: a name belongs beside the
+// registry, not inside it, and PLAN M1 is where that is settled.
+void add_file_to_bytecode_registry(const std::string &source,
+                                   StartupThreads &threads,
+                                   unsigned long long int batches,
+                                   BytecodeRegistry &registry);
+
+// Clears `registry` and puts `source` in as its first row -- the main program.
 //
 // ALWAYS ANSWERS success, because the lexer never throws (DESIGN §5.6). A
 // character the registry has no code for is marked in the stream with

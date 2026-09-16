@@ -45,9 +45,20 @@ int main() {
         "satellite.console.display(42)\n";
     BytecodeRegistry reg;
     check(build_bytecode_registry(src, threads, 256, reg, state) == success, "built with no error token");
-    check(reg.size() == 5, "5 rows for 4 lines and a trailing newline, got " + std::to_string(reg.size()));
-    for (size_t i = 0; i < reg.size() && i < 3; ++i)
-        printf("    row %zu: %s\n", i, row_as_bits(reg[i]).substr(0, 120).c_str());
+    check(reg.size() == 1, "ONE row: one file, got " + std::to_string(reg.size()));
+    {   bool clean = false; std::vector<Code> ts = tokens_of(reg[0], clean);
+        check(clean, "the whole file walks cleanly as one row");
+        size_t line_ends = 0;
+        for (Code c : ts) if (c == token::line_end_token) ++line_ends;
+        check(line_ends == 5, "5 line_end_tokens inside the one row, got " + std::to_string(line_ends));
+        check(ts.back() == token::end_of_file_token, "the row's last code is end_of_file_token");
+        printf("    row 0 begins: %s\n", row_as_bits(reg[0]).substr(0, 120).c_str());
+    }
+    {   BytecodeRegistry two;
+        build_bytecode_registry("satellite.include(satellite)\n", threads, 256, two, state);
+        add_file_to_bytecode_registry("// a spaceship\nx = 1\n", threads, 256, two);
+        check(two.size() == 2, "a second file adds a second row, got " + std::to_string(two.size()));
+    }
 
     printf("\nthe count invariant:\n");
     {   // QUAD's own literal: a wide character INSIDE a string.

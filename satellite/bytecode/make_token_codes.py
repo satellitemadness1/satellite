@@ -72,13 +72,32 @@ def main():
            'inline constexpr bool is_character(Code code) { return (code >> 8) == 0; }',
            'inline constexpr Code family_of(Code code) { return static_cast<Code>(code >> 8); }',
            '',
-           '// A payload token is followed by a count and then that many codes, which',
-           '// are SKIPPED and never classified (REGISTRY.satellite: "EVERY PAYLOAD',
-           '// TOKEN CARRIES A COUNT"). The count continues into the next code when it',
-           '// is long_count_token, so no literal has a ceiling.',
-           'inline constexpr Code kPayloadFamily = 0x09;',
-           'inline constexpr bool carries_a_count(Code code) { return family_of(code) == kPayloadFamily; }',
-           '']
+           '// A COUNTED token is followed by a count and then that many codes, which',
+           '// are SKIPPED and never classified. The count continues into the next code',
+           '// when that code is long_count_token, so no literal has a ceiling.',
+           '//',
+           '// THIS IS NOT A FAMILY TEST, and it used to be, which was a defect. A family',
+           '// says what a token MEANS; carrying a count is what it does STRUCTURALLY,',
+           '// and the two do not line up -- error_token is in the stream family and IS',
+           '// counted, comment_token is in the text family and is a marker only. Testing',
+           '// the family let a reader walk into a payload\'s length as though it were a',
+           '// token (found by the checks, 2026-09-16). The rows marked [COUNTED] in',
+           '// REGISTRY.satellite are the list, and this switch is generated from them.',
+           'inline constexpr bool carries_a_count(Code code)',
+           '{',
+           '    switch (code) {']
+    by_name = {name: code for code, name, _ in tokens}
+    counted = [name for _, name, what in tokens if what.startswith("[COUNTED]")]
+    if not counted:
+        sys.exit("make_token_codes.py: REGISTRY.satellite marked no rows [COUNTED]")
+    for name in counted:
+        out.append('    case 0x%04X:  // %s' % (by_name[name], name))
+    out += ['        return true;',
+            '    default:',
+            '        return false;',
+            '    }',
+            '}',
+            '']
     for code, name, what in tokens:
         out.append('inline constexpr Code %s = 0x%04X;  // %s' % (name, code, what[:88]))
     out += ['',
