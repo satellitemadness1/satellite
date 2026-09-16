@@ -182,3 +182,23 @@ bounded by memory, which is the only bound satellite accepts (DESIGN §7.5).
 
 Until then the depth that works is large but real, and it is a defect rather
 than a limit.
+
+**DECIDED, THE AUTHOR, 2026-09-16: LEAVE IT. ~27,000 IS ENOUGH.** In his words:
+"we are never going to program 1,000 ever... so leave it". This entry stays open
+as a KNOWN and ACCEPTED depth, not as work owed.
+
+**What was weighed.** The depth that matters is not nested parentheses — nobody
+writes 20,000 of those — it is a capsule that calls ITSELF, because `run_body()`
+recurses too. A tree walk or a graph traversal can reach a few thousand levels,
+and QUAD's sky is a graph. Against that: 27,000 is an order of magnitude past any
+recursion a person writes, and the fix is a real rewrite of the walker.
+
+**It also cannot be reached today.** satellite has no variables, no arithmetic
+and no working `if`, so a terminating recursive capsule cannot be written at all.
+
+**What would reopen it:** a real program that actually runs out — generated code
+rather than written code is the likely source, since QUAD writes satellite. If
+that ever happens the fix is known and is the rule itself: explicit frames of
+`{row, position, the argument being built}` pushed and popped in a loop, no C++
+recursion in `evaluate`, `call_word` or `run_body`. Raising `ulimit -s` is not the
+fix; it only picks a different number.
