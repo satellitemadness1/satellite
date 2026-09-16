@@ -114,11 +114,13 @@ built and check against Python, but the session's limit stopped the rest:
 - **the 23 string-method libraries still use the 32-bit `strings/` string.** They
   move onto the new one, checked against 003's satl, in the same step. `strings/`
   then moves into `satellite/satellite_variable_string/`.
-- **an 8-bit fast path is undecided.** The author asked whether to add one
-  (1 byte a character for ASCII and Latin-1, then 16, then 32); measured: 99% of
-  real source files fit 8 bits, and English text would stay its UTF-8 size
-  instead of doubling. It changes the 23 libraries, so it should be settled
-  before they move.
+- **the tokens move to 16 bits** (the author, 2026-09-16), so `REGISTRY.satellite`
+  becomes that list: the stored program's codes are 16-bit, which leaves room for
+  every token the language will need instead of the 70 free 8-bit codes. The
+  characters keep 0-127 in the registry's order at every width.
+- **an 8-bit string holds ASCII only** (decided 2026-09-16); 16-bit holds up to
+  U+FFFF, 32-bit everything. The 8-bit path is not built yet: the committed
+  string chooses between 16 and 32.
 - **the races miss ×1.05 in places** (ERROR.md §5), and the four string words
   waiting on satellite_number (`to_number`, `number`, `binary`, `hex`) are not
   built.
