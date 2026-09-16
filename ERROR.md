@@ -196,9 +196,52 @@ recursion a person writes, and the fix is a real rewrite of the walker.
 **It also cannot be reached today.** satellite has no variables, no arithmetic
 and no working `if`, so a terminating recursive capsule cannot be written at all.
 
+> **THAT LAST PARAGRAPH STOPPED BEING TRUE ON 2026-09-16.** satellite now has
+> variables (`satellite.variable.number n = 34587`), all six arithmetic
+> operations wired to their tokens, comparisons, and
+> `satellite.statement.while`. A capsule that calls itself with a decreasing
+> number and stops at zero is now writable, so the depth is reachable by a
+> program a person could actually write. The author's ruling above still stands
+> — ~27,000 is accepted, not owed — but the reason it was unreachable is gone,
+> and `satellite.statement.if` is the only piece still missing before a
+> recursion can choose to stop. Re-read this entry when `if` lands.
+
 **What would reopen it:** a real program that actually runs out — generated code
 rather than written code is the likely source, since QUAD writes satellite. If
 that ever happens the fix is known and is the rule itself: explicit frames of
 `{row, position, the argument being built}` pushed and popped in a loop, no C++
 recursion in `evaluate`, `call_word` or `run_body`. Raising `ulimit -s` is not the
 fix; it only picks a different number.
+
+## An operator with no meaning cuts an expression in half, silently — OPEN
+
+**Found 2026-09-16 by five adversarial agents in their own worktrees, and it
+survived a skeptic who set out to refute it** (reset to the right baseline,
+rebuilt, confirmed `check.sh` was green first, then reproduced every case).
+
+```
+satellite.variable.number n = 1 & 2
+satellite.console.display(n)              prints 1, exit 0, nothing on stderr
+```
+
+`evaluate_at` ends an expression on ANY code whose `precedence_of` is 0
+(`expression.cpp`), and `&` `|` `&&` `<<` `!!` `~` all have no case — they are the
+rows REGISTRY.satellite marks QUESTION, because §13 never decided what they mean.
+So the expression stops there and **the left half is answered as though it were
+the whole thing.** `n` is left holding 1.
+
+**The half that is fixed, and why the other half was missed.** `call_word` now
+refuses when an expression does not reach its own `)`, so
+`display(1 & 2)` is caught. `run_assignment` and `run_while` call
+`past_the_statement` unconditionally and check nothing — so a wrong value reaches
+a VARIABLE and a LOOP BOUND, which are worse than a wrong printed line because
+nothing shows. The three lines that fix `call_word` are the three lines both need.
+
+**What makes it reachable rather than theoretical:** `token_codes.hpp` states the
+intended behaviour in its own words — `bit_and_token ... & ends an expression and
+is reported`. It ends the expression. It is not reported.
+
+**Not reachable through a touching operator any more.** `(a + b)/2`, `6/3` and
+`6/2` were part of the same finding and are now refused, because the author's
+whitespace rule (2026-09-16) gave the touching slash its own token. That fix was
+incidental to this one and does not cover `&` `|` `<<` `!!`.

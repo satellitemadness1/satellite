@@ -8,6 +8,11 @@
 //                                    agree; allocations counts operator new during
 //                                    all three (0 is required on the fast path)
 //   divide A B       -> "<quotient> <remainder>" or "22 division_by_zero"
+//   power A B        -> a ^ b, or "<code> <name>"; also checks power(a,b,a) and
+//                       power(a,b,b) -- out aliasing either input -- agree with it
+//   radix A R        -> the magnitude in base R (2 or 16), AND read back: a case
+//                       that does not round-trip answers round_trip_broke
+//   fromradix :HEX R -> "ok <to_text>" or "3 <bad_offset>"; hostile text at a radix
 //   compare A B      -> -1, 0 or 1 (and all six operators must agree with it)
 //   negate A         -> -a
 //   text :HEX        -> "ok <to_text>" or "3 <bad_offset>"; HEX is the raw bytes
@@ -119,6 +124,17 @@ std::string answer(const std::vector<std::string> &word)
             return "ok " + out.to_text() + (out.negative() ? " negative" : "");
         return out == satellite_number(12345) ? std::to_string(code) + " " + std::to_string(offset) : "touched";
     }
+    // fromradix :HEX R -- hostile text at a radix, as `text` does for decimal.
+    // out must be untouched on a refusal, which is what the 54321 proves.
+    if (operation == "fromradix" && word.size() == 3 && word[1][0] == ':') {
+        satellite_number out(54321);
+        std::size_t offset = 999;
+        const unsigned int base = (unsigned int)std::strtoul(word[2].c_str(), nullptr, 10);
+        const signed long long int code = satellite_number::from_radix_text(hex_to_bytes(word[1].substr(1)), base, out, offset);
+        if (code == success)
+            return "ok " + out.to_text() + (out.negative() ? " negative" : "");
+        return out == satellite_number(54321) ? std::to_string(code) + " " + std::to_string(offset) : "touched";
+    }
     if (operation == "signed" && word.size() == 2)
         return satellite_number::from_signed(std::strtoll(word[1].c_str(), nullptr, 10)).to_text();
     if (operation == "make" && word.size() == 3) {
@@ -145,6 +161,37 @@ std::string answer(const std::vector<std::string> &word)
             if (satellite_number::divide(a, b, same, same) != success)
                 return std::to_string(division_by_zero) + " division_by_zero";
             return same.to_text();
+        }
+        // power, with its two aliasing cases checked in the same breath: the
+        // answer written over the base and over the exponent must both agree
+        // with the answer written somewhere fresh. power() takes its copies
+        // first for exactly this, and an aliasing bug is invisible otherwise.
+        if (operation == "power") {
+            satellite_number out(777);
+            const signed long long int code = satellite_number::power(a, b, out);
+            if (code != success)
+                return std::to_string(code) + " " + machine_code_name(code);
+            satellite_number over_base(a), over_exponent(b);
+            satellite_number::power(over_base, b, over_base);
+            satellite_number::power(a, over_exponent, over_exponent);
+            if (over_base != out || over_exponent != out)
+                return "aliasing_disagrees " + out.to_text() + " " + over_base.to_text() + " " + over_exponent.to_text();
+            return out.to_text();
+        }
+        // radix A R -- the magnitude in base R, and straight back again, so
+        // every case checks the round trip as well as the spelling.
+        if (operation == "radix") {
+            const unsigned int base = (unsigned int)std::strtoul(word[2].c_str(), nullptr, 10);
+            const std::string text = a.to_radix_text(base);
+            if (text.empty())
+                return "empty";
+            satellite_number back(54321);
+            std::size_t offset = 999;
+            if (satellite_number::from_radix_text(text, base, back, offset) != success)
+                return "back_refused " + text;
+            if (back != a)
+                return "round_trip_broke " + text + " " + back.to_text();
+            return text;
         }
         if (operation == "divide_inputs") {
             satellite_number a2(a), b2(b);

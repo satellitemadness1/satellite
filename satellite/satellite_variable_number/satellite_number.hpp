@@ -195,6 +195,36 @@ public:
     static signed long long int divide(const satellite_number &dividend, const satellite_number &divisor,
                                        satellite_number &quotient, satellite_number &remainder);
 
+    // base to the power of exponent, by squaring. Either argument may be `out`.
+    //
+    // A NEGATIVE EXPONENT IS NOT AN ERROR, IT IS A FRACTION: 2 ^ -1 is exactly
+    // 1/2, which a WHOLE number cannot hold, so it answers answer_is_not_whole
+    // (24) rather than truncating to 0 behind the program's back. The two cases
+    // that ARE whole are answered: |base| of 1 (1 ^ -n is 1, -1 ^ -n is +/-1),
+    // and a base of 0, which is division_by_zero (22). 003 DESIGN §8.6 is why
+    // this is a seam and not a wall -- there, power returns a FLOAT precisely
+    // because its answer depends on the exponent's value and not its type.
+    //
+    // 0 ^ 0 is 1, which is the convention every library takes and the one the
+    // squaring loop produces on its own.
+    //
+    // NO CEILING ON THE EXPONENT, on purpose (DESIGN: a bound is never the fix).
+    // 2 ^ 10000000000 is a number of 1.25 GB and this will try to build it; it
+    // ends in std::bad_alloc, which is the machine's limit being reached and
+    // reported, not the language's.
+    static signed long long int power(const satellite_number &base, const satellite_number &exponent,
+                                      satellite_number &out);
+
+    // The magnitude in base 2 or base 16, WITHOUT the b or x the lexer strips:
+    // "1100", "FFAA". Hex digits are upper case. A negative number leads with '-'.
+    // Zero is "0". Any other radix answers "".
+    std::string to_radix_text(unsigned int radix) const;
+
+    // The way back. As from_text: the digits of that radix and nothing else, an
+    // optional leading '-', and out is untouched on int_error (3).
+    static signed long long int from_radix_text(const std::string &text, unsigned int radix,
+                                                satellite_number &out, std::size_t &bad_offset);
+
     // -1, 0 or 1.
     [[gnu::always_inline]] static int compare(const satellite_number &left, const satellite_number &right)
     {

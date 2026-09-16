@@ -1,0 +1,53 @@
+// The six fast paths, reached through their tokens, and the two things that
+// separate satellite_number from a machine integer: no size limit, and no
+// silent truncation.
+//
+// Every answer here was checked against Python (check_numbers.py runs the same
+// operations over 482,465 cases). This file is the interpreter's end of it: the
+// arithmetic is proven elsewhere, and what this proves is that a `+` in a
+// program reaches it.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number my_number = 34587
+    satellite.console.display(my_number)
+
+    satellite.console.display(2 + 3)
+    satellite.console.display(10 - 4)
+    satellite.console.display(6 * 7)
+    satellite.console.display(20 / 3)
+    satellite.console.display(20 % 3)
+    satellite.console.display(2 ^ 10)
+
+    // 003 DESIGN §6.6: * / % tighter than + -, all left-associative, and `^`
+    // right-associative so 2 ^ 3 ^ 2 is 2 ^ 9.
+    satellite.console.display(2 + 3 * 4)
+    satellite.console.display(10 - 3 - 2)
+    satellite.console.display(2 ^ 3 ^ 2)
+
+    // Truncation toward zero, and the remainder taking the dividend's sign.
+    satellite.console.display(-7 / 2)
+    satellite.console.display(-7 % 2)
+
+    // NO SIZE LIMIT. Both of these are past an unsigned long long and neither
+    // is rounded, wrapped or refused.
+    satellite.console.display(99999999999999999999999 + 1)
+    satellite.console.display(2 ^ 200)
+
+    // b and x literals, converted by the same fast path the decimal one uses.
+    satellite.console.display(b1100 + xFF)
+
+    // A loop that counts with the arithmetic it is testing.
+    satellite.variable.number counter = 0
+    satellite.variable.number total = 0
+    satellite.statement.while(counter < 1000)
+    {
+        total = total + counter
+        counter = counter + 1
+    }
+    satellite.console.display(total)
+
+    satellite.return(satellite)
+}

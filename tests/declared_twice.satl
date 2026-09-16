@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number a = 1
+    satellite.variable.number a = 2
+    satellite.return(satellite)
+}

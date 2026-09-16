@@ -18,11 +18,12 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 | piece | files | checked by |
 |---|---|---|
-| **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — **28 passed, 4 failed** (see §6.6) |
+| **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — **41 passed, 0 failed** (§6.6 says how the four were retired) |
 | **The author's config** — every `return_arguments_vector()` row loaded into `arguments`; the title lines (VERSION 004 REVISION 04 BUILD nnnn) on `--version`, `--help` and every start; the build number raised by every build | `satellite/config/satellite_config.hpp`, `satellite/config/build_number.py` | check.sh |
 | **256 warm threads** — started from `arguments.threads_startup` and parked before the program runs (a requirement for later, the author) | `satellite/threads/startup_threads.*` | check.sh; about 12 ms and 1.7 MB a run |
+| **Arithmetic** — `satellite.variable.number n = 34587`, `+ - * / % ^`, comparisons, assignment, `while`, per-capsule frames. Every math sign needs a space on both sides; a touching `/` between digits is a fraction | `satellite/bytecode/expression.*`, `program_check.cpp`, `program_walk.cpp`, `satellite/satellite_variable_number/number_arithmetic.hpp` | `./check.sh` 41/41; 482,465 cases against Python (§6.7) |
 | **The 16-bit tokens** — `REGISTRY.satellite` is the 16-bit list; `bytecode_registry` is the program as `std::vector<std::vector<std::bitset<16>>>`, **one row a FILE** — the main `.satl` and every spaceship it includes — built on the warm threads in batches of lines. **The first thing the interpreter builds out of a program** | `REGISTRY.satellite`, `satellite/bytecode/` (`make_token_codes.py` → `token_codes.hpp`, `bytecode_registry.*`), called at `structured-library.cpp:155` | check.sh (32); `experiments/bytecode_registry_checks.cpp` — 19 checks; `--debug` shows `bytecode_registry(built)` on every run |
-| **satellite_number** — sign bool + `unsigned long long` limbs, one-limb fast path (no allocation), + - * / %, text, digits, bytes | `satellite/satellite_variable_number/` | `python3 .../check_numbers.py build/number_cases` — 477,253 cases against Python |
+| **satellite_number** — sign bool + `unsigned long long` limbs, one-limb fast path (no allocation), + - * / %, text, digits, bytes | `satellite/satellite_variable_number/` | `python3 .../check_numbers.py build/number_cases` — 482,465 cases against Python (power and both radixes added 2026-09-16) |
 | **satellite_string 16/32-bit** — the author's character table; 16 bits a character, 32 only when one is above U+FFFF | `satellite/satellite_variable_string/` | `.../check_strings16.py` — every case agrees with Python; `build/string_table_check` proves the table |
 | **The number index** — every compiled library loaded once at start-up | `satellite-numbers/call_number.*`, `number_row.hpp` | loads all 24 libraries |
 | **004's word numbers** — 364 words, first-available numbering, frozen (DESIGN §3.2) | `words/make_words.py` → `words/words.tsv`, `words/satellite_words.hpp` | matched 003's words.def row for row; no duplicates; every parent's children exactly 1..n |
@@ -38,7 +39,7 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 ```
 make                                   # interpreter + every numbered library; raises the build number
-./check.sh                             # 32 checks; 28 pass, 4 fail on purpose (§6.6)
+./check.sh                             # 41 checks, all pass since 2026-09-16 (§6.7)
 make build/string_cases && python3 strings/check_strings.py   # char32_t conversion against Python
 make build/string_methods && python3 strings/check_string_methods.py   # against 003's satl
 build/satellite-004 --version          # THE SATELLITE PROGRAMMING LANGUAGE / VERSION 004 REVISION 04 BUILD nnnn
@@ -333,6 +334,76 @@ away (a refused write answered `display_error` and the walker ignored it), and a
 refused write is only refused **at the flush** — `/dev/full` succeeds line by line and
 fails once at the end, so without the flush check the program exited 0 having printed
 nothing.
+
+## 6.7 ARITHMETIC RUNS, 2026-09-16 — the tokens reach satellite_number
+
+`satellite.variable.number my_number = 34587` declares, `+ - * / % ^` all run, and
+the author's own `test_programs/hello_world.satl` — the while loop counting to
+99,999 — runs end to end. **check.sh is 41/41**, the first time it has been green:
+the four failing "on purpose" are retired, two by the new pre-pass checker and two
+because `satellite_number` abolished the thing they asserted.
+
+| piece | file |
+|---|---|
+| **power**, by squaring over the exponent's LIMBS, and base 2 / base 16 text | `satellite/satellite_variable_number/satellite_number_power.cpp` |
+| **the six fast paths the tokens call** — add, subtract, multiply, divide, power, modulus | `.../number_arithmetic.hpp` |
+| **the conversion fast paths** — number ↔ text in all three radixes | `.../number_conversions.hpp` |
+| **the value type PROGRESS §6.5 said was owed** — holds a `satellite_number`, not a 64-bit count | `satellite/bytecode/value.hpp` |
+| **the token → fast path wiring**, precedence climbing over 003 §6.6 | `satellite/bytecode/expression.cpp/.hpp` |
+| **the pre-pass checker** — every capsule body judged before main is entered | `satellite/bytecode/program_check.cpp` |
+| declarations, assignment, `while`, per-capsule frames | `satellite/bytecode/program_walk.cpp` |
+
+**The author's four rulings, all 2026-09-16, all in the registry:**
+
+- **EVERY math operation is written `space sign space`.** *"Literally every math
+  operation, ANY math operation has to have spacebar(sign)spacebar"*. This was
+  already the rule for `/` alone; generalising it is what frees the touching
+  spelling of each sign.
+- **A touching `/` between two digits is a FRACTION.** `5/4` now answers
+  `fraction_token` and refuses by name (`not_built_yet`) instead of meaning
+  anything. `dir/file` is still a path — the digits on both sides are the test.
+- **`^` is power**, and it has its own `power_token` in the arithmetic family.
+  `bit_exclusive_or_token` keeps its code and no spelling reaches it.
+- **`.power()` is an alias for `^`** — *"so .power() becomes something you can
+  call on that object"*.
+
+**OWED, AND THE FIRST THING TO PICK UP:**
+
+1. **`satellite/bytecode/number_methods.cpp/.hpp` IS WRITTEN AND NOT WIRED.** It is
+   in the tree, in no Makefile line, referenced by nothing — dead code, on purpose
+   and committed so it is not lost. It holds `.power()` and the rest of
+   `1 6 4 n` as names bound to the fast paths. What it still needs: the Makefile
+   rows, and a branch in `one_operand` that reads `name . name (` off a declared
+   variable. **Either finish it or delete it — do not leave it a third session.**
+2. **`n = 1 & 2` silently answers 1** (ERROR.md, verified). `run_assignment` and
+   `run_while` need the same three lines `call_word` already has.
+3. **`satellite.statement.if`** is the missing half of `while`.
+
+**MEASURED, AND THE FIRST TWO NUMBERS I GAVE THE AUTHOR WERE WRONG — both are
+corrected here.** Against **CPython 3.12**, which is the fair comparison (both are
+bytecode interpreters; `python3` on this machine is **PyPy**, a JIT, and racing it
+means nothing):
+
+| | 004 | CPython 3.12 |
+|---|---|---|
+| start-up | **14.7 ms** | 15.1 ms |
+| display, a line | 648 ns | 559 ns |
+| `i = i + 1`, an iteration | 458 ns | 87 ns |
+
+**004 beats CPython to start** — while parking 256 threads and `dlopen`ing 24
+libraries — and ties it on display. The whole gap is arithmetic, and it is one
+thing: CPython resolves a local to an array slot (`LOAD_FAST`); 004 rebuilds a
+`std::string` from 16-bit codes for every name and hashes it into a map, on every
+evaluation. **That is the object model's work** (the author: *"the next thing we
+are doing after this is the satellite object model"*), and it is where the ~5×
+is.
+
+*Two corrections worth keeping so they are not repeated: 003's start-up is
+**2.2 ms**, not the 268 ms first reported — that was the prompt waiting on stdin,
+and every timing needs `stdin` closed. And "004 displays 6.9× faster than 003"
+was measured on a file of 100,000 separate `display` statements, so it was mostly
+003's PARSE cost, not its display. A display race must put ONE statement in a
+loop.*
 
 ## 7. Other notes
 

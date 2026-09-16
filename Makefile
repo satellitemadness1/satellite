@@ -40,7 +40,12 @@ INTERPRETER_SOURCES = satellite/structured-library.cpp satellite/arguments/argum
                       satellite/machine/machine_state.cpp satellite/satl/satl_file.cpp \
                       satellite/threads/startup_threads.cpp satellite/bytecode/bytecode_registry.cpp \
                       satellite/bytecode/function_table.cpp satellite/bytecode/include_shape.cpp \
-                      satellite/bytecode/program_walk.cpp \
+                      satellite/bytecode/program_walk.cpp satellite/bytecode/program_check.cpp \
+                      satellite/bytecode/expression.cpp \
+                      satellite/satellite_variable_number/satellite_number.cpp \
+                      satellite/satellite_variable_number/satellite_number_divide.cpp \
+                      satellite/satellite_variable_number/satellite_number_text.cpp \
+                      satellite/satellite_variable_number/satellite_number_power.cpp \
                       satellite-numbers/call_number.satellite.cpp
 HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hpp \
           satellite/machine/machine_codes.hpp satellite/machine/machine_state.hpp \
@@ -48,6 +53,11 @@ HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hp
           satellite/bytecode/bytecode_registry.hpp satellite/bytecode/token_codes.hpp \
           satellite/bytecode/word_codes.hpp satellite/bytecode/function_table.hpp \
           satellite/bytecode/include_shape.hpp satellite/bytecode/program_walk.hpp \
+          satellite/bytecode/expression.hpp satellite/bytecode/value.hpp \
+          satellite/satellite_variable_number/satellite_number.hpp \
+          satellite/satellite_variable_number/satellite_number_limbs.hpp \
+          satellite/satellite_variable_number/number_arithmetic.hpp \
+          satellite/satellite_variable_number/number_conversions.hpp \
           satellite-numbers/call_number.hpp satellite-numbers/number_row.hpp strings/string_method.hpp
 MACHINE_STATE = satellite/machine/machine_state.cpp
 
@@ -92,8 +102,11 @@ $(BUILD)/string_cases: strings/string_cases.cpp strings/satellite_string.cpp str
 # checked against Python. They are not the application, so they do not depend on
 # the build stamp and building one does not raise the build number.
 NUMBER = satellite/satellite_variable_number
-NUMBER_SOURCES = $(NUMBER)/satellite_number.cpp $(NUMBER)/satellite_number_divide.cpp $(NUMBER)/satellite_number_text.cpp
-NUMBER_HEADERS = $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp satellite/machine/machine_codes.hpp
+NUMBER_SOURCES = $(NUMBER)/satellite_number.cpp $(NUMBER)/satellite_number_divide.cpp \
+                 $(NUMBER)/satellite_number_text.cpp $(NUMBER)/satellite_number_power.cpp
+NUMBER_HEADERS = $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
+                 $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp \
+                 satellite/machine/machine_codes.hpp
 
 $(BUILD)/number_cases: $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
 	@mkdir -p $(BUILD)

@@ -9,6 +9,12 @@
 // satellite_string methods, each matching a refusal 003 06 already makes
 // (satellite_scalars/string_methods.cpp). 20 and 21 were added 2026-09-15, when
 // the interpreter first read satellite_config.hpp and started its threads.
+//
+// 24-27 were added 2026-09-16, when the arithmetic tokens were wired to
+// satellite_number's fast paths. 24 is the one to read twice: `2 ^ -1` is a real
+// answer that a WHOLE number cannot hold, and saying so is not the same as
+// calling it an error. It is the seam satellite.variable.float (003 DESIGN §8.6,
+// a bool and two satellite_numbers) arrives at, and the seam a fraction would.
 
 namespace satellite004 {
 
@@ -37,6 +43,10 @@ enum MachineCode : signed long long int {
     thread_start_error = 21,            // the machine refused a start-up thread (the rest stay warm)
     division_by_zero = 22,              // satellite_number: a divisor of 0
     command_line_not_understood = 23,   // satl was given words it does not take (PLAN M0.5)
+    answer_is_not_whole = 24,           // the answer exists but is not a whole number: 2 ^ -1 is 1/2
+    name_not_declared = 25,             // a name used before any satellite.variable line declared it
+    name_declared_twice = 26,           // a second satellite.variable line for a name already in this capsule
+    types_do_not_meet = 27,             // an operator given two kinds it has no scenario for: "a" - "b"
 };
 
 inline const char *machine_code_name(signed long long int code)
@@ -66,6 +76,10 @@ inline const char *machine_code_name(signed long long int code)
     case thread_start_error: return "thread_start_error";
     case division_by_zero: return "division_by_zero";
     case command_line_not_understood: return "command_line_not_understood";
+    case answer_is_not_whole: return "answer_is_not_whole";
+    case name_not_declared: return "name_not_declared";
+    case name_declared_twice: return "name_declared_twice";
+    case types_do_not_meet: return "types_do_not_meet";
     }
     return "not_on_the_list";
 }

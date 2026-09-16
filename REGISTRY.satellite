@@ -219,12 +219,26 @@ bits              name                         what it is
 0000001000000110  free                         to 0000001011111111, free for this family
 
 -- ARITHMETIC  (0000001100000000 up)
-0000001100000000  plus_token                   +
-0000001100000001  minus_token                  -
-0000001100000010  times_token                  *
-0000001100000011  divide_token                 /  only with whitespace on BOTH sides; a touching / is a path
-0000001100000100  modulus_token                %
-0000001100000101  free                         to 0000001111111111, free for this family
+-- EVERY ARITHMETIC TOKEN NEEDS WHITESPACE ON BOTH SIDES (the author, 2026-09-16):
+-- "Literally every math operation, ANY math operation has to have spacebar(sign)spacebar".
+-- This was already the rule for / alone; it is now the rule for all six, which is
+-- what frees the TOUCHING spelling of each to mean something else. A touching /
+-- between two numbers is a FRACTION (the author, same day): "when you encounter
+-- number/number with NO space -- that becomes a fraction". So the tight rows below
+-- are not errors-in-waiting, they are the reserved half of each operator.
+0000001100000000  plus_token                   +  with whitespace on BOTH sides
+0000001100000001  minus_token                  -  with whitespace on BOTH sides
+0000001100000010  times_token                  *  with whitespace on BOTH sides
+0000001100000011  divide_token                 /  with whitespace on BOTH sides; a touching / is a path or a fraction
+0000001100000100  modulus_token                %  with whitespace on BOTH sides
+0000001100000101  power_token                  ^  with whitespace on BOTH sides. The author ruled ^ is power, 2026-09-16
+0000001100000110  tight_plus_token             +  touching: not an operation. Reserved
+0000001100000111  tight_minus_token            -  touching: the UNARY minus, which is how -5 is written
+0000001100001000  tight_times_token            *  touching: not an operation. Reserved
+0000001100001001  fraction_token               /  touching, between two numbers: 5/4 is a fraction (not built yet)
+0000001100001010  tight_modulus_token          %  touching: not an operation. Reserved
+0000001100001011  tight_power_token            ^  touching: not an operation. Reserved
+0000001100001100  free                         to 0000001111111111, free for this family
 
 -- ASSIGNMENT  (0000010000000000 up)
 0000010000000000  assign_token                 =
@@ -250,7 +264,7 @@ bits              name                         what it is
 0000011000000010  not_token                    !    QUESTION: §13 leaves open whether ! is the negation
 0000011000000011  bit_and_token                &    QUESTION: §6 has no bitwise row; & ends an expression and is reported
 0000011000000100  bit_or_token                 |    QUESTION: as above
-0000011000000101  bit_exclusive_or_token       ^    QUESTION: as above
+0000011000000101  bit_exclusive_or_token       ^    ANSWERED 2026-09-16: ^ is POWER (see the arithmetic family). No spelling reaches this code; kept because a code is never reused
 0000011000000110  bit_not_token                ~    QUESTION: as above
 0000011000000111  shift_left_token             <<   QUESTION: 003 DESIGN §5.5 refuses << and >> permanently (the author asked for them 2026-09-16)
 0000011000001000  shift_right_token            >>   QUESTION: as above

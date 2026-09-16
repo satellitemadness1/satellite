@@ -26,8 +26,10 @@
 // result and no moment to run in, and file_can_run() refuses such a file.
 
 #include "bytecode_registry.hpp"
+#include "expression.hpp"
 #include "function_table.hpp"
 #include "include_shape.hpp"
+#include "value.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -35,30 +37,22 @@
 
 namespace satellite004 {
 
-// WHAT AN ARGUMENT IS WORTH. The author, 2026-09-16:
-// "satellite.console.display(satellite.console.display(\"Hello, World!\")) is
-// correct satellite code, and it should work" -- so a call is an argument, its
-// answer becomes the outer call's argument, and something has to carry that
-// answer between them. This is that something.
-//
-// ONE KIND PER SCENARIO, on purpose. number_row.hpp has a library export one
-// function per KIND of value (text / count / flag), so a Value's Kind is what
-// chooses which one runs. It is deliberately not a variant of every satellite
-// type yet: satellite_number and satellite_string go in here when the libraries
-// take them, and Kind is the seam they arrive at.
-//
-// A CALL ANSWERS ITS MACHINE CODE, as a count. display("x") prints and answers
-// 0, so display(display("x")) prints x and then prints 0. That is the honest
-// reading of what a word returns today -- satellite.returns(TYPE) exists as a
-// word and nothing declares one yet.
-struct Value {
-    enum class Kind { nothing, text, count, flag };
+// WHAT AN ARGUMENT IS WORTH is now value.hpp's Value, and it holds a
+// satellite_number rather than an `unsigned long long int` count. The author,
+// 2026-09-16: "satellite.console.display(satellite.console.display(\"Hello,
+// World!\")) is correct satellite code, and it should work" -- so a call is an
+// argument, its answer becomes the outer call's argument, and Value carries that
+// answer between them. expression.hpp is where an expression made of those
+// values is worked out, and where a token reaches a fast path.
 
-    Kind kind = Kind::nothing;
-    std::string text;
-    unsigned long long int count = 0;
-    bool flag = false;
-};
+// Reading one row, shared by the walker and the checker so the two cannot
+// disagree about where a statement or a body ends -- which is the defect
+// PROGRESS §6.5 lists as "two implementations of runnable", kept from happening
+// twice.
+token::Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at);
+std::size_t past_the_statement(const std::vector<std::bitset<16>> &row, std::size_t at);
+std::size_t past_matching_brace(const std::vector<std::bitset<16>> &row, std::size_t from);
+std::size_t brace_after(const std::vector<std::bitset<16>> &row, std::size_t at);
 
 // Where a capsule's body begins: which row, and the code just past its `{`.
 struct CapsuleSite {

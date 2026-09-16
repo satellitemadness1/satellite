@@ -56,11 +56,18 @@ inline constexpr Code left_parenthesis_token = 0x0202;  // (  opens arguments
 inline constexpr Code right_parenthesis_token = 0x0203;  // )  closes arguments
 inline constexpr Code left_square_bracket_token = 0x0204;  // [  opens an index
 inline constexpr Code right_square_bracket_token = 0x0205;  // ]  closes an index
-inline constexpr Code plus_token = 0x0300;  // +
-inline constexpr Code minus_token = 0x0301;  // -
-inline constexpr Code times_token = 0x0302;  // *
-inline constexpr Code divide_token = 0x0303;  // /  only with whitespace on BOTH sides; a touching / is a path
-inline constexpr Code modulus_token = 0x0304;  // %
+inline constexpr Code plus_token = 0x0300;  // +  with whitespace on BOTH sides
+inline constexpr Code minus_token = 0x0301;  // -  with whitespace on BOTH sides
+inline constexpr Code times_token = 0x0302;  // *  with whitespace on BOTH sides
+inline constexpr Code divide_token = 0x0303;  // /  with whitespace on BOTH sides; a touching / is a path or a fraction
+inline constexpr Code modulus_token = 0x0304;  // %  with whitespace on BOTH sides
+inline constexpr Code power_token = 0x0305;  // ^  with whitespace on BOTH sides. The author ruled ^ is power, 2026-09-16
+inline constexpr Code tight_plus_token = 0x0306;  // +  touching: not an operation. Reserved
+inline constexpr Code tight_minus_token = 0x0307;  // -  touching: the UNARY minus, which is how -5 is written
+inline constexpr Code tight_times_token = 0x0308;  // *  touching: not an operation. Reserved
+inline constexpr Code fraction_token = 0x0309;  // /  touching, between two numbers: 5/4 is a fraction (not built yet)
+inline constexpr Code tight_modulus_token = 0x030A;  // %  touching: not an operation. Reserved
+inline constexpr Code tight_power_token = 0x030B;  // ^  touching: not an operation. Reserved
 inline constexpr Code assign_token = 0x0400;  // =
 inline constexpr Code plus_assign_token = 0x0401;  // +=   QUESTION: 003 DESIGN §6 has one assignment form and no compound
 inline constexpr Code minus_assign_token = 0x0402;  // -=   QUESTION: as above
@@ -78,7 +85,7 @@ inline constexpr Code or_token = 0x0601;  // ||   QUESTION: as above
 inline constexpr Code not_token = 0x0602;  // !    QUESTION: §13 leaves open whether ! is the negation
 inline constexpr Code bit_and_token = 0x0603;  // &    QUESTION: §6 has no bitwise row; & ends an expression and is reported
 inline constexpr Code bit_or_token = 0x0604;  // |    QUESTION: as above
-inline constexpr Code bit_exclusive_or_token = 0x0605;  // ^    QUESTION: as above
+inline constexpr Code bit_exclusive_or_token = 0x0605;  // ^    ANSWERED 2026-09-16: ^ is POWER (see the arithmetic family). No spelling reaches th
 inline constexpr Code bit_not_token = 0x0606;  // ~    QUESTION: as above
 inline constexpr Code shift_left_token = 0x0607;  // <<   QUESTION: 003 DESIGN §5.5 refuses << and >> permanently (the author asked for them 
 inline constexpr Code shift_right_token = 0x0608;  // >>   QUESTION: as above
@@ -117,7 +124,7 @@ inline constexpr Code wait_token = 0x0A02;  // the main thread waits here until 
 inline constexpr Code batch_size_token = 0x0A03;  // how many commands one batch carries; a count follows
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
-inline constexpr int kTokenCount = 69;
+inline constexpr int kTokenCount = 76;
 
 } // namespace token
 } // namespace satellite004

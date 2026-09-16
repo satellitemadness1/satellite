@@ -93,6 +93,53 @@ def unary(a):
     cases.append((f"text :{str(a).encode().hex()}", text_answer(str(a).encode()), "exact"))
 
 
+# power, whose answer Python gives exactly with ** -- except at a negative
+# exponent, where Python answers a FLOAT and satellite answers a machine code.
+# The three cases that stay whole are worked out here rather than asked of **.
+def power_expected(a, b):
+    if b >= 0:
+        return str(a ** b)
+    if a == 0:
+        return "22 division_by_zero"          # 1/0, said as the sharper of the two
+    if a == 1:
+        return "1"
+    if a == -1:
+        return "-1" if b % 2 else "1"
+    return "24 answer_is_not_whole"           # a real answer a WHOLE number cannot hold
+
+
+def power_cases():
+    bases = [0, 1, -1, 2, -2, 3, -3, 7, -7, 10, -10, 123456789, -123456789,
+             LIMB - 1, -(LIMB - 1), LIMB, LIMB + 1, -(LIMB + 1), 2 ** 128 - 1, -(2 ** 128)]
+    exponents = list(range(0, 34)) + [40, 63, 64, 65, 100, 127, 128, 200, 1000]
+    for a in bases:
+        for b in exponents:
+            # Keep the ANSWER a sane size -- this is the referee's budget, not a
+            # limit on satellite: 2 ^ 1000 is checked, 2 ^ 1000000 is not asked for.
+            if abs(a) > 1 and b * abs(a).bit_length() > 30000:
+                continue
+            cases.append((f"power {a} {b}", power_expected(a, b), "exact"))
+    for a in [0, 1, -1, 2, -2, 10, LIMB]:
+        for b in [-1, -2, -3, -63, -64, -100]:
+            cases.append((f"power {a} {b}", power_expected(a, b), "exact"))
+    # AN EXPONENT OF MORE THAN ONE LIMB, which only |base| <= 1 can survive: it
+    # walks the whole squaring loop over two limbs and must still answer.
+    for b in [LIMB, LIMB + 5, 2 ** 128 + 1]:
+        for a in [0, 1, -1]:
+            cases.append((f"power {a} {b}", power_expected(a, b), "exact"))
+        for a in [1, -1]:
+            cases.append((f"power {a} {-b}", power_expected(a, -b), "exact"))
+
+
+# base 2 and base 16: the spelling Python gives, and the harness also reads every
+# one of them back, so each case is a round trip as well as a comparison.
+def radix_cases(values):
+    for a in values:
+        for base, spelling in ((2, "b"), (16, "X")):
+            cases.append((f"radix {a} {base}",
+                          ("-" if a < 0 else "") + format(abs(a), spelling), "exact"))
+
+
 def knuth_add_back_cases(rng, count):
     # With divisor limbs (v2, v1, v0 = 2^64 - 1), v2 >= 2^63, and dividend
     # (q + 1) * (v2 * 2^64 + v1) * 2^64, the two-limb estimate is exactly q + 1 and
@@ -159,6 +206,41 @@ def build_cases():
                "\u22121".encode(), b"9" * 20, b"-" + b"9" * 40, b"0" * 50 + b"1", b"-" + b"0" * 30, b"12a", b"\x00"]
     for raw in hostile:
         cases.append((f"text :{raw.hex()}", text_answer(raw), "exact"))
+    power_cases()
+
+    # radix: the same edge values the rest of the file uses, plus bit lengths
+    # that are NOT a multiple of 4, which is where a hex top digit goes wrong.
+    radix_values = sorted(set(signed + [2 ** k + rng.randrange(2 ** k) for k in (1, 3, 5, 7, 13, 61, 62, 63, 65, 127, 129, 255)]))
+    radix_values += [-n for n in radix_values if n > 0]
+    for _ in range(2000):
+        radix_values.append(random_number())
+    radix_cases(radix_values)
+
+    # Hostile text at a radix, as `text` does for decimal. b and x prefixes are
+    # NOT accepted here on purpose: the lexer strips them before this ever sees
+    # the digits, so a prefix reaching from_radix_text means something is wrong.
+    radix_hostile = [(b"", 2), (b"-", 2), (b"", 16), (b"-", 16), (b"2", 2), (b"12", 2), (b"-2", 2),
+                     (b"g", 16), (b"G", 16), (b"0x10", 16), (b"b1100", 2), (b"xFF", 16), (b" 1", 2),
+                     (b"1 ", 2), (b"1\x000", 2), (b"-0", 2), (b"-0", 16), (b"000", 2), (b"0", 16),
+                     (b"ff", 16), (b"FF", 16), (b"fF", 16), (b"+1", 2), (b"--1", 16), (b"1.0", 16)]
+    for raw, base in radix_hostile:
+        text = raw.decode("latin-1")
+        digits = "0123456789ABCDEF"[:base]
+        body = text[1:] if text[:1] == "-" else text
+        if body and all(c.upper() in digits for c in body):
+            value = int(body, base) * (-1 if text[:1] == "-" else 1)
+            expected = "ok " + str(value) + (" negative" if value < 0 else "")
+        else:
+            bad = 1 if text[:1] == "-" else 0
+            while bad < len(text) and text[bad].upper() in digits:
+                bad += 1
+            expected = f"3 {bad}"
+        cases.append((f"fromradix :{raw.hex()} {base}", expected, "exact"))
+    # A radix this does not handle answers nothing at all -- base 10 included,
+    # because decimal has its own to_text() and does not come through here.
+    for base in (0, 1, 8, 10, 32):
+        cases.append((f"radix 255 {base}", "empty", "exact"))
+
     for value in [-2 ** 63, -2 ** 63 + 1, -1, 0, 1, 2 ** 63 - 1]:
         cases.append((f"signed {value}", str(value), "exact"))
     for magnitude in [0, 1, LIMB - 1]:

@@ -52,8 +52,34 @@ $interpreter tests/missing_return.satl > /dev/null 2>&1; expect "missing return"
 $interpreter tests/not_understood.satl > build/nu.out 2>&1; code=$?
 expect "a line with no scenario" 13 $code
 expect "nothing ran before the refusal" "" "$(grep -x before build/nu.out)"
-$interpreter tests/two_strings.satl > /dev/null 2>&1; expect "\"some\" + \"str\" (no scenario yet)" 4 $?
-$interpreter tests/big_number.satl > /dev/null 2>&1; expect "a number too large" 3 $?
+# THESE TWO CHANGED ON 2026-09-16, WHEN THE ARITHMETIC TOKENS WERE WIRED TO
+# satellite_number's FAST PATHS, and they changed from "refuses" to "answers".
+# Both used to assert a refusal, and both refusals were placeholders for work
+# that had not been done -- the rows read "(no scenario yet)" and "a number too
+# large" in a language whose whole number type cannot BE too large. They are kept
+# as checks of the ANSWER, not deleted, so the behaviour stays pinned:
+#   + joins two strings (003 DESIGN §6.6, the author at M19)
+#   a literal of 23 digits is held exactly, not refused and not truncated
+expect "\"some\" + \"str\" joins them" "somestr" "$($interpreter tests/two_strings.satl 2>/dev/null)"
+expect "a 23-digit number is held exactly" "99999999999999999999999" "$($interpreter tests/big_number.satl 2>/dev/null)"
+
+# THE SIX FAST PATHS, REACHED THROUGH THEIR TOKENS. The arithmetic itself is
+# proven against Python over 482,465 cases (check_numbers.py); what this proves
+# is that a `+` in a program reaches it, with 003 DESIGN §6.6's precedence.
+# Python is the authority for every line, and writes them here itself.
+wanted_math=$(python3 -c "
+for n in (34587, 2+3, 10-4, 6*7, 20//3, 20%3, 2**10, 2+3*4, 10-3-2, 2**(3**2), -3, -1,
+          99999999999999999999999+1, 2**200, 0b1100+0xFF, sum(range(1000))): print(n)")
+expect "the six fast paths through their tokens" "$wanted_math" "$($interpreter tests/arithmetic.satl 2>/dev/null)"
+$interpreter tests/arithmetic.satl > /dev/null 2>&1; expect "tests/arithmetic.satl runs" 0 $?
+$interpreter tests/divide_by_zero.satl > /dev/null 2>&1; expect "a divisor of zero" 22 $?
+$interpreter tests/negative_exponent.satl > /dev/null 2>&1; expect "2 ^ -1 is not a whole number" 24 $?
+$interpreter tests/undeclared.satl > build/un.out 2>&1; expect "a name nothing declared" 25 $?
+expect "nothing ran before THAT refusal" "" "$(grep -x before build/un.out)"
+$interpreter tests/declared_twice.satl > /dev/null 2>&1; expect "a name declared twice" 26 $?
+$interpreter tests/kinds_do_not_meet.satl > /dev/null 2>&1; expect "\"n = \" + 4 converts nothing" 27 $?
+expect "a declaration inside a loop runs every turn" "0|1|10|11|20|21" \
+       "$($interpreter tests/loop_declaration.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 $interpreter examples/hello_world.satl > /dev/full 2> /dev/null; expect "output refused (/dev/full)" 2 $?
 
 mkdir -p build/alone && cp $interpreter build/alone/satellite-004

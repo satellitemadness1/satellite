@@ -122,6 +122,35 @@ const TwoCharacter kTwoCharacter[] = {
     {"/*", token::comment_start_token},   {"*/", token::comment_end_token},
 };
 
+// The six the author's rule covers, spaced and touching. 0 for anything else.
+// Kept as two functions rather than a table so the registry's own names appear
+// in the source and a reader can grep either spelling.
+Code arithmetic_character(char c)
+{
+    switch (c) {
+    case '+': return token::plus_token;
+    case '-': return token::minus_token;
+    case '*': return token::times_token;
+    case '/': return token::divide_token;
+    case '%': return token::modulus_token;
+    case '^': return token::power_token;
+    default: return 0;
+    }
+}
+
+Code tight_arithmetic_character(char c)
+{
+    switch (c) {
+    case '+': return token::tight_plus_token;
+    case '-': return token::tight_minus_token;   // -5: the unary minus
+    case '*': return token::tight_times_token;
+    case '/': return token::fraction_token;      // handled above; here for completeness
+    case '%': return token::tight_modulus_token;
+    case '^': return token::tight_power_token;
+    default: return 0;
+    }
+}
+
 Code one_character_token(char c)
 {
     switch (c) {
@@ -131,10 +160,11 @@ Code one_character_token(char c)
     case ')': return token::right_parenthesis_token;
     case '[': return token::left_square_bracket_token;
     case ']': return token::right_square_bracket_token;
-    case '+': return token::plus_token;
-    case '-': return token::minus_token;
-    case '*': return token::times_token;
-    case '%': return token::modulus_token;
+    // + - * / % ^ ARE NOT HERE. They are the author's six arithmetic
+    // characters and the whitespace rule above claims every one of them, spaced
+    // or touching, before this is ever reached. `^` in particular no longer
+    // reaches bit_exclusive_or_token: the author ruled on 2026-09-16 that `^` is
+    // power, and the registry row says so.
     case '=': return token::assign_token;
     case '<': return token::less_than_token;
     case '>': return token::greater_than_token;
@@ -145,7 +175,6 @@ Code one_character_token(char c)
     case '!': return token::not_token;
     case '&': return token::bit_and_token;
     case '|': return token::bit_or_token;
-    case '^': return token::bit_exclusive_or_token;
     case '~': return token::bit_not_token;
     case '?': return token::question_token;
     case '\'': return token::single_quote_token;
@@ -246,25 +275,52 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
             continue;
         }
 
-        // A slash is division ONLY with whitespace on both sides (the author,
-        // 2026-09-16); a slash touching anything is a path separator.
-        if (c == '/') {
-            const bool before = line.i > 0 && blank(text[line.i - 1]);
-            const bool after = line.i + 1 < n && blank(text[line.i + 1]);
-            line.put((before && after) ? token::divide_token : token::path_separator_token);
-            ++line.i;
-            continue;
-        }
-
-        bool matched = false;
+        // THE TWO-CHARACTER OPERATORS ARE TRIED FIRST, and they have to be: the
+        // arithmetic rule below looks at the character AFTER the sign, and in
+        // `a += b` that character is `=`, not a blank -- so without this the
+        // rule would read `+=` as a touching plus and then a lone `=`. Longest
+        // match first is the lexer's existing discipline (// and /* before /),
+        // and this is the same discipline applied one step earlier.
+        bool matched_pair = false;
         for (const TwoCharacter &pair : kTwoCharacter) {
             if (!line.two_ahead(pair.spelling)) continue;
             line.put(pair.code);
             line.i += 2;
-            matched = true;
+            matched_pair = true;
             break;
         }
-        if (matched) continue;
+        if (matched_pair) continue;
+
+        // EVERY ARITHMETIC OPERATION NEEDS WHITESPACE ON BOTH SIDES (the author,
+        // 2026-09-16): "Literally every math operation, ANY math operation has to
+        // have spacebar(sign)spacebar". This used to be the rule for `/` alone;
+        // generalising it is what frees the TOUCHING spelling of each character:
+        //
+        //     5 / 4   division          5/4   a FRACTION (the author, same day)
+        //     5 - 4   subtraction       -5    the unary minus
+        //     dir/file                        still a path, because neither side is a digit
+        //
+        // A touching `/` is a fraction only BETWEEN TWO DIGITS; anywhere else it
+        // stays the path separator, so include(dir/file) is untouched.
+        if (arithmetic_character(c) != 0) {
+            const bool before = line.i > 0 && blank(text[line.i - 1]);
+            const bool after = line.i + 1 < n && blank(text[line.i + 1]);
+            if (before && after) {
+                line.put(arithmetic_character(c));
+                ++line.i;
+                continue;
+            }
+            if (c == '/') {
+                const bool digits_both_sides = line.i > 0 && a_digit(text[line.i - 1]) &&
+                                               line.i + 1 < n && a_digit(text[line.i + 1]);
+                line.put(digits_both_sides ? token::fraction_token : token::path_separator_token);
+                ++line.i;
+                continue;
+            }
+            line.put(tight_arithmetic_character(c));
+            ++line.i;
+            continue;
+        }
 
         const Code single = one_character_token(c);
         if (single != 0) { line.put(single); ++line.i; continue; }
