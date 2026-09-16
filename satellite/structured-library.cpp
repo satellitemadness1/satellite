@@ -178,6 +178,11 @@ int main(int argc, char **argv)
     // The check belongs on the bytecode, walking every capsule body before main
     // is entered, and that is PLAN work rather than a five-line change.
     const CapsuleTable capsules = capsules_in(bytecode_registry);
+    // NOTHING RUNS BEFORE THE WHOLE PROGRAM IS CHECKED.
+    code = check_program(bytecode_registry, capsules, functions, state);
+    if (stops_the_program(code))
+        return static_cast<int>(code);
+
     code = run_main(bytecode_registry, capsules, functions, state);
     if (stops_the_program(code))
         return static_cast<int>(code);

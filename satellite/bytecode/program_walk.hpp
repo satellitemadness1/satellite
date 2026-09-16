@@ -57,6 +57,25 @@ signed long long int load_program(const std::string &main_file,
 // in here too, under "satellite.main".
 CapsuleTable capsules_in(const BytecodeRegistry &registry);
 
+// NOTHING RUNS BEFORE THE WHOLE PROGRAM IS CHECKED. Every capsule body is
+// walked and every statement in it judged BEFORE main is entered, so a program
+// that cannot finish does not half-print first -- which check.sh asserts in as
+// many words ("nothing ran before the refusal").
+//
+// Written fresh against the bytecode rather than borrowed (the author,
+// 2026-09-16: "forget the prototype, just use 003 or preferably make everything
+// new"). The prototype's compile_satl could not do this job: it knows neither a
+// user's own capsule nor any include spelling past the first, and refused a
+// working program outright.
+//
+// Answers success, or satl_line_not_understood (13) for a statement there is no
+// scenario for, string_error (4) for an argument that is an expression, or
+// int_error (3) for a number too large to hold.
+signed long long int check_program(const BytecodeRegistry &registry,
+                                   const CapsuleTable &capsules,
+                                   const FunctionTable &functions,
+                                   MachineState &state);
+
 // Runs satellite.main's body, and whatever it calls. Answers success, or the
 // machine code the program stopped on.
 signed long long int run_main(const BytecodeRegistry &registry,

@@ -15,10 +15,14 @@ namespace {
 
 using token::Code;
 
-Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at)
+} // namespace
+
+static Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at)
 {
     return at < row.size() ? static_cast<Code>(row[at].to_ulong()) : 0;
 }
+
+namespace {
 
 // THE FALLBACK IS GONE, because the leading slash is now a RULE (the author,
 // 2026-09-16): include(/test) is ./test, and only a path under the user's home
@@ -124,6 +128,111 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry)
         }
     }
     return table;
+}
+
+// One statement of a body, judged without running it. `at` is left on the code
+// after the statement. See the header for which code means what.
+static signed long long int check_statement(const std::vector<std::bitset<16>> &row,
+                                            std::size_t &at,
+                                            const CapsuleTable &capsules,
+                                            const FunctionTable &functions,
+                                            std::string &why)
+{
+    const Code code = code_at(row, at);
+
+    if (code == word::code_of(1, 15)) {            // satellite.return
+        while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+        return success;
+    }
+
+    if (word::is_word_code(code)) {
+        const std::string spelling = word::spelling_of(code);
+        std::size_t k = at + 1;
+
+        // A WORD NOT FOLLOWED BY ( IS NOT A CALL. `satellite.variable.string s`
+        // is a declaration, and there is no scenario for one yet.
+        if (code_at(row, k) != token::left_parenthesis_token) {
+            why = spelling + " is not a call, and there is no scenario for it yet";
+            while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+            return satl_line_not_understood;
+        }
+
+        ++k;
+        const Code first = code_at(row, k);
+        const NumberRow *library = functions[code];
+        const Scenarios *scenarios = library != nullptr ? &library->scenarios : nullptr;
+
+        // What stands between ( and ) decides which scenario runs, so what is
+        // THERE is what gets judged.
+        std::size_t after = k;
+        if (token::carries_a_count(first)) text_at(row, after);
+        else ++after;
+        const bool one_thing = code_at(row, after) == token::right_parenthesis_token;
+
+        if (first == token::string_token && !one_thing) {
+            why = spelling + " was given an expression, and there is no scenario for one yet";
+            while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+            return string_error;
+        }
+        if (first == token::number_token) {
+            std::size_t digits_at = k;
+            const std::string digits = text_at(row, digits_at);
+            unsigned long long int value = 0;
+            for (char d : digits) {
+                if (d < '0' || d > '9') break;
+                if (value > (0xFFFFFFFFFFFFFFFFull - static_cast<unsigned long long int>(d - '0')) / 10) {
+                    why = digits + " is too large to hold";
+                    while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+                    return int_error;
+                }
+                value = value * 10 + static_cast<unsigned long long int>(d - '0');
+            }
+        }
+        if (scenarios == nullptr ||
+            (first == token::string_token && scenarios->text == nullptr) ||
+            (first == token::number_token && scenarios->count == nullptr)) {
+            why = spelling + " has no library built for that kind of value yet";
+            while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+            return not_built_yet;
+        }
+        while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+        return success;
+    }
+
+    if (code == token::name_token) {               // a capsule the user owns
+        std::size_t k = at;
+        const std::string name = text_at(row, k);
+        if (capsules.find(name) == capsules.end()) {
+            why = "no capsule named " + name;
+            while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+            return satl_line_not_understood;
+        }
+        while (at < row.size() && code_at(row, at) != token::line_end_token) ++at;
+        return success;
+    }
+
+    ++at;
+    return success;
+}
+
+signed long long int check_program(const BytecodeRegistry &registry,
+                                   const CapsuleTable &capsules,
+                                   const FunctionTable &functions,
+                                   MachineState &state)
+{
+    for (const std::pair<const std::string, CapsuleSite> &entry : capsules) {
+        const std::vector<std::bitset<16>> &row = registry[entry.second.row];
+        for (std::size_t at = entry.second.body; at < row.size(); ) {
+            if (code_at(row, at) == token::right_brace_token) break;
+            std::string why;
+            const signed long long int code = check_statement(row, at, capsules, functions, why);
+            if (stops_the_program(code))
+                return report_error("satl(check): in " + entry.first + ", " + why, code);
+            if (at < row.size() && code_at(row, at) == token::line_end_token) ++at;
+        }
+    }
+    state.set("program(checked): " + std::to_string(capsules.size()) + " capsules", success);
+    return success;
 }
 
 namespace {
