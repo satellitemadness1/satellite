@@ -254,12 +254,15 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
     line.put(token::line_end_token);
 }
 
-void add_file_to_bytecode_registry(const std::string &source,
+void add_file_to_bytecode_registry(const std::string &filename,
+                                   const std::string &source,
                                    StartupThreads &threads,
                                    unsigned long long int batches,
-                                   BytecodeRegistry &registry)
+                                   BytecodeRegistry &registry,
+                                   BytecodeFilenames &filenames)
 {
     registry.emplace_back();
+    filenames.push_back(filename);
     std::vector<std::bitset<16>> &file = registry.back();
 
     // WHERE the lines are, never copies of them. Copying 100,000 lines into
@@ -330,14 +333,17 @@ void add_file_to_bytecode_registry(const std::string &source,
     file.push_back(std::bitset<16>(token::end_of_file_token));
 }
 
-signed long long int build_bytecode_registry(const std::string &source,
+signed long long int build_bytecode_registry(const std::string &filename,
+                                             const std::string &source,
                                              StartupThreads &threads,
                                              unsigned long long int batches,
                                              BytecodeRegistry &registry,
+                                             BytecodeFilenames &filenames,
                                              MachineState &state)
 {
     registry.clear();
-    add_file_to_bytecode_registry(source, threads, batches, registry);
+    filenames.clear();
+    add_file_to_bytecode_registry(filename, source, threads, batches, registry, filenames);
 
     unsigned long long int errors = 0;
     for (const std::vector<std::bitset<16>> &row : registry)

@@ -43,8 +43,8 @@ int main() {
         "satellite.include(satellite)\n"
         "satellite.console.display(\"Hello, World!\")\n"
         "satellite.console.display(42)\n";
-    BytecodeRegistry reg;
-    check(build_bytecode_registry(src, threads, 256, reg, state) == success, "built with no error token");
+    BytecodeRegistry reg; BytecodeFilenames names;
+    check(build_bytecode_registry("hello_world.satl", src, threads, 256, reg, names, state) == success, "built with no error token");
     check(reg.size() == 1, "ONE row: one file, got " + std::to_string(reg.size()));
     {   bool clean = false; std::vector<Code> ts = tokens_of(reg[0], clean);
         check(clean, "the whole file walks cleanly as one row");
@@ -54,10 +54,12 @@ int main() {
         check(ts.back() == token::end_of_file_token, "the row's last code is end_of_file_token");
         printf("    row 0 begins: %s\n", row_as_bits(reg[0]).substr(0, 120).c_str());
     }
-    {   BytecodeRegistry two;
-        build_bytecode_registry("satellite.include(satellite)\n", threads, 256, two, state);
-        add_file_to_bytecode_registry("// a spaceship\nx = 1\n", threads, 256, two);
+    {   BytecodeRegistry two; BytecodeFilenames names2;
+        build_bytecode_registry("main.satl", "satellite.include(satellite)\n", threads, 256, two, names2, state);
+        add_file_to_bytecode_registry("parts/ship.satl", "// a spaceship\nx = 1\n", threads, 256, two, names2);
         check(two.size() == 2, "a second file adds a second row, got " + std::to_string(two.size()));
+        check(names2.size() == two.size(), "the filenames stay row for row with the registry");
+        check(names2[0] == "main.satl" && names2[1] == "parts/ship.satl", "and in the order they were taken in");
     }
 
     printf("\nthe count invariant:\n");
@@ -103,11 +105,11 @@ int main() {
 
     printf("\nthe race, 100,000 lines:\n");
     std::string many; for (int i = 0; i < 100000; ++i) many += "    satellite.console.display(\"Hello, World!\")\n";
-    BytecodeRegistry big;
+    BytecodeRegistry big; BytecodeFilenames bignames;
     auto t0 = std::chrono::steady_clock::now();
-    build_bytecode_registry(many, threads, 256, big, state);
+    build_bytecode_registry("many.satl", many, threads, 256, big, bignames, state);
     double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-    printf("    %zu rows, %llu codes, %.1f ms (%.1f MB as bitset<16>)\n",
+    printf("    %zu files, %llu codes, %.1f ms (%.1f MB as bitset<16>)\n",
            big.size(), codes_in(big), ms, codes_in(big) * 8 / 1048576.0);
 
     printf("\n%s\n", failures == 0 ? "all checks passed" : (std::to_string(failures) + " FAILED").c_str());

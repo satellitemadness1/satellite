@@ -140,6 +140,29 @@ spare codes and nothing is ever renumbered. **69 tokens**, in eleven families.
 `hexadecimal_token` (`xFFAAC2985765`), which replace the single `bits_token` — the
 radix stops being a field and becomes the token.
 
+**EVERY `satellite.something.something` HAS ITS OWN 16-BIT CODE, 4096-8191** (the
+author, 2026-09-16). 4096 is reserved and no word has it; the words run from 4097,
+364 of them today, leaving 3731 for the ones a user defines. **4096 and not lower
+because the eleven token families reach 3071** — a range starting at 1024 would have
+moved seven of them.
+
+**TWO NUMBERS, ONE TABLE — and the author named the risk himself:** *"so really
+everything has two different numbers, this is a new set we must maintain… the number
+inside of the interpreter, and the number inside of a .sat file."* They cannot be the
+same number (a path is a tree of any depth, a code is flat and fixed width), but only
+one is maintained: **a word's code is 4097 plus its ROW in `words/words.tsv`**, which
+is already the authority (DESIGN §3.2). `make_word_codes.py` generates the header, so
+nothing is hand-assigned and the two cannot disagree. Appending a word is safe;
+inserting one shifts every code after it, and SATC.md §2's word-list digest is what
+makes that loud rather than silent.
+
+`word::code_of(1, 5, 1)` → `4163` is the conversion, and `word::numbers_of(code)` is
+the way back for whatever writes a `.sat` file out again. **A `.sat` file stores a
+word as `int int int int`** (the author) and the interpreter holds the one code.
+`code_of()` answers `0` — the registry's own *nothing* — for a word with no code, and
+the caller then writes `word_number_token` and the numbers, which has no ceiling. So
+the range is a fast path and never a limit.
+
 **ONE ROW A FILE, NOT A LINE** (the author, 2026-09-16): *"the reason for the second
 vector is we have to take in other satellite files, like other includes"*. Row 0 is the
 main `.satl`; every spaceship taken in by `satellite.include()` gets a row behind it,

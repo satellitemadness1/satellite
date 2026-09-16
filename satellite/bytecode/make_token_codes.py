@@ -39,8 +39,12 @@ def main():
     with open(REGISTRY, encoding="utf-8") as handle:
         text = handle.read()
 
+    # 4096..8191 is the WORD range, and word_codes.hpp owns it. Its rows are
+    # prose ("the first word"), not identifiers, so they would not compile here
+    # even if they belonged -- which they do not: a word's code comes from
+    # words.tsv, never from this file.
     tokens = [(code, name, what) for code, name, what in rows(text)
-              if code >= 256 and name != "free"]
+              if code >= 256 and name != "free" and not (4096 <= code <= 8191)]
     if not tokens:
         sys.exit("make_token_codes.py: REGISTRY.satellite defined no tokens")
 

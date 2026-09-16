@@ -44,6 +44,7 @@ HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hp
           satellite/machine/machine_codes.hpp satellite/machine/machine_state.hpp \
           satellite/satl/satl_file.hpp satellite/threads/startup_threads.hpp satellite/version/version.hpp \
           satellite/bytecode/bytecode_registry.hpp satellite/bytecode/token_codes.hpp \
+          satellite/bytecode/word_codes.hpp \
           satellite-numbers/call_number.hpp satellite-numbers/number_row.hpp strings/string_method.hpp
 MACHINE_STATE = satellite/machine/machine_state.cpp
 

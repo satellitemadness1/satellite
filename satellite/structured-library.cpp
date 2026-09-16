@@ -130,6 +130,7 @@ int main(int argc, char **argv)
     std::string source;
     std::vector<Call> calls;
     BytecodeRegistry bytecode_registry;
+    BytecodeFilenames bytecode_filenames;
 
     StartupThreads threads;
     threads.start(startup, state);
@@ -152,7 +153,8 @@ int main(int argc, char **argv)
     // yet -- this is the first thing built out of it. A character the registry
     // has no code for is marked with error_token and does not stop the run
     // (the lexer never throws), so its code is reported and the run goes on.
-    code = build_bytecode_registry(source, threads, startup, bytecode_registry, state);
+    code = build_bytecode_registry(arguments.text("arguments.file"), source, threads, startup,
+                                   bytecode_registry, bytecode_filenames, state);
     if (stops_the_program(code))
         return static_cast<int>(code);
 
