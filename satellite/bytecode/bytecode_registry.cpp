@@ -369,16 +369,20 @@ void add_file_to_bytecode_registry(const std::string &filename,
     filenames.push_back(filename);
     std::vector<std::bitset<16>> &file = registry.back();
 
-    // WHERE the lines are, never copies of them. Copying 100,000 lines into
-    // std::strings cost 45 of the 47 ms this used to take (measured
-    // 2026-09-16): one allocation a line, on one thread, before any batch
-    // starts. The jobs read straight out of `source`, which outlives them.
-    std::vector<std::string_view> lines;
+    // THE LINES AS STRINGS (the author, 2026-09-16): "the program is returned in
+    // a std::vector<std::vector<std::string>> if it isn't programmed like that --
+    // make it like that". They were string_views into `source` before, and that
+    // is a real cost paid on purpose: copying 100,000 lines into std::strings was
+    // measured at 45 of the 47 ms this used to take, one allocation a line. His
+    // design hands each thread a string of its own, so each thread owns what it
+    // reads and nothing it reads can move under it.
+    std::vector<std::string> lines;
     const std::string_view whole(source);
     std::size_t from = 0;
     while (from <= whole.size()) {
         const std::size_t stop = whole.find('\n', from);
-        lines.push_back(whole.substr(from, (stop == std::string_view::npos ? whole.size() : stop) - from));
+        const std::string_view line = whole.substr(from, (stop == std::string_view::npos ? whole.size() : stop) - from);
+        lines.emplace_back(line);
         if (stop == std::string_view::npos) break;
         from = stop + 1;
     }
@@ -387,15 +391,10 @@ void add_file_to_bytecode_registry(const std::string &filename,
         return;
     }
 
-    // THE CASCADE, THEN THE WARM THREADS (the author, 2026-09-16). Main starts
-    // ONE thread; that thread converts a line and starts the thread that
-    // converts the next, down the front of the file. Everything behind the
-    // cascade goes to the 256 that are already parked.
-    //
-    // 256 DEEP, which is his "main is assured that it receives the first 256
-    // lines". cascade_convert.hpp says why it is bounded there and not run to
-    // the end of the file.
-    cascade_convert(lines, file, threads, 256, batches);
+    // A THREAD FOR EACH LINE (the author). cascade_convert.hpp holds the design
+    // and what 200,000 threads cost.
+    (void)batches;
+    convert_a_thread_for_each_line(lines, file, threads);
     file.push_back(std::bitset<16>(token::end_of_file_token));
 }
 

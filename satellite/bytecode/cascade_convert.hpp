@@ -1,66 +1,59 @@
 #pragma once
-// satellite/bytecode/cascade_convert.hpp -- THE CASCADE. A thread converts a
-// line and starts a thread that converts a line.
+// satellite/bytecode/cascade_convert.hpp -- A THREAD FOR EACH LINE.
 //
-// (the author, 2026-09-16) "there are 256 threads, so we start a thread, it
-// starts a thread and converts a piece, then main starts the next thread, every
-// thread that it starts does this: converts a line and starts a thread that
-// converts a line... so we gang on the entire file, while main is assured that
-// it receives the first 256 lines... then the 256 warm threads continue
-// conversion... so this has to work over multiple files and stuff, so the entire
-// program is converted, until the entire program is converted".
+// (the author, 2026-09-16) "First main calculates the line count of the program
+// as the program is returned in a std::vector<std::vector<std::string>> if it
+// isn't programmed like that -- make it like that. Main creates a thread for each
+// line, gives it a string, and that thread returns it's single line."
 //
-// THE TWO HALVES, AND EACH IS FOR A DIFFERENT THING:
+// And: "let's keep our design of loading the entire program into 16-bit before we
+// run anything... that will simplify this... so for each line, create a thread,
+// it converts 1 line and returns that 1 line."
 //
-//   THE CASCADE covers the FRONT of a file. Main starts one thread; that thread
-//   converts line 0 and starts the thread that converts line 1, which starts the
-//   thread that converts line 2. Each converts BEFORE it spawns, so a line is
-//   ready as early as it can be -- spawning first would put a thread start in
-//   front of the conversion it is waiting on.
+// SO THIS IS THE WHOLE DESIGN, AND IT IS DELIBERATELY SIMPLE. No cascade of
+// threads starting threads, no watermark, no running while converting. The entire
+// program is loaded, every line gets a thread, every thread converts its one line
+// and hands it back, and nothing runs until all of them have.
 //
-//   THE WARM THREADS cover the REST. They are already parked, so handing them a
-//   batch costs a recall and never a thread start, and PROGRESS already measured
-//   256 batches at 27x one thread on 100,000 lines.
+// WHY IT IS BUILT FOR A PROGRAM THAT DOES NOT EXIST YET. The author: "I have had
+// programs that are 13k, but this is designed for AI -- the AI is going to be...
+// at least 200,000 lines minimum, so this process will pay off". QUAD writes
+// satellite, and a 200,000-line program is the case this is for, not a 200-line
+// one.
 //
-// WHY THE CASCADE STOPS. It is bounded by `cascade_depth` -- the author's "main
-// is assured that it receives the first 256 lines" -- because a cascade that ran
-// the whole way would hold one live thread per line, and a thread costs 34.3 KB
-// (DESIGN §13). A 100,000-line file would be 3.4 GB of threads. The front of the
-// file is where the latency matters, and that is exactly what it covers.
+// THE NUMBERS FOR 200,000 THREADS, on this machine, so they are written down
+// somewhere other than a message: a thread costs 34.3 KB (8.3 KB program + 26 KB
+// kernel), so 200,000 of them is about 6.9 GB of 61 GB. `ulimit -u` is 252,845
+// and TasksMax is `max`, so the count fits. A thread START is about 28,254 ns,
+// so creating 200,000 is about 5.6 s of creation on the thread doing the
+// creating -- that is the cost to watch, not the memory.
 //
-// EVERY LINE GETS ITS OWN PIECE, so no two threads write to one vector and
-// nothing needs a lock. The pieces are laid end to end IN ORDER afterwards,
-// which is what keeps the author's "the step can never go out of order" true by
-// construction rather than by a check: order is the piece's index, not the order
-// the threads happened to finish in.
-//
-// OVER MULTIPLE FILES: this converts ONE file. load_program calls it once a
-// file, walking the include tree, so the whole program is converted by the same
-// machinery -- the cascade runs again at the front of each file.
+// ORDER CANNOT GO WRONG. Every line converts into its OWN piece and the pieces
+// are laid end to end BY INDEX, never by the order the threads finished in.
 
 #include "../threads/startup_threads.hpp"
 
-#include <atomic>
 #include <bitset>
 #include <cstddef>
-#include <string_view>
+#include <string>
 #include <vector>
 
 namespace satellite004 {
 
-// Converts every line into `file`, in order. `cascade_depth` lines go through
-// the cascade; the rest go to the warm threads in batches.
+// THE PROGRAM AS TEXT: one vector a file, one string a line (the author).
+using ProgramText = std::vector<std::vector<std::string>>;
+
+// Every line in the program, so main can say how many threads it is about to
+// make before it makes them.
+std::size_t lines_in(const ProgramText &text);
+
+// One thread a line. Each converts its own line into its own piece; the pieces
+// are laid into `file` in order afterwards.
 //
-// `codes_final`, when given, is raised as each line's codes are appended: every
-// code below it is final and safe to read while later lines are still arriving.
-// That is the author's "the thread that gets line 2 is handing it to main", and
-// the reason `file` is reserved up front -- storage that never moves is what
-// makes reading it while it grows safe at all.
-void cascade_convert(const std::vector<std::string_view> &lines,
-                     std::vector<std::bitset<16>> &file,
-                     StartupThreads &threads,
-                     std::size_t cascade_depth,
-                     unsigned long long int batches,
-                     std::atomic<std::size_t> *codes_final = nullptr);
+// `threads` is the warm pool, used only when a line's own thread cannot be
+// started -- the machine refusing a thread must not lose a line.
+void convert_a_thread_for_each_line(const std::vector<std::string> &lines,
+                                    std::vector<std::bitset<16>> &file,
+                                    StartupThreads &threads);
 
 } // namespace satellite004
