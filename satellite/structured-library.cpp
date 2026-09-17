@@ -115,17 +115,24 @@ int main(int argc, char **argv)
     // The start-up threads, warm before anything else loads (the author, 2026-09-15).
     // Never more than arguments.threads_max; a refused thread is reported, and the
     // program still runs on the threads that started.
-    unsigned long long int startup = static_cast<unsigned long long int>(arguments.number("arguments.threads_startup"));
+    satellite_number asked = arguments.number("arguments.threads_startup");
     if (arguments.find("arguments.threads_max") != nullptr &&
-        startup > static_cast<unsigned long long int>(arguments.number("arguments.threads_max"))) {
-        const unsigned long long int threads_max = static_cast<unsigned long long int>(arguments.number("arguments.threads_max"));
+        satellite_number::compare(asked, arguments.number("arguments.threads_max")) > 0) {
+        const satellite_number &threads_max = arguments.number("arguments.threads_max");
         // Shown every time, not only in debug mode: the author asked for more threads than start.
-        report_error("threads.startup(capped): arguments.threads_startup " + std::to_string(startup) +
-                         " is more than arguments.threads_max " + std::to_string(threads_max) + ", so " +
-                         std::to_string(threads_max) + " threads start",
+        report_error("threads.startup(capped): arguments.threads_startup " + asked.to_text() +
+                         " is more than arguments.threads_max " + threads_max.to_text() + ", so " +
+                         threads_max.to_text() + " threads start",
                      success);
-        startup = threads_max;
+        asked = threads_max;
     }
+    // THE ROW IS A satellite_number AND A THREAD IS COUNTED BY THE MACHINE. A
+    // maximum is a ceiling, never an instruction (DESIGN §1.2): a row longer than
+    // an unsigned long long is more threads than any machine can start, so it asks
+    // for all it can count, and StartupThreads reports the machine's refusal the
+    // way it reports any count the machine will not give. Both rows are checked
+    // not negative in gather_config, so a one-limb value is the count itself.
+    const unsigned long long int startup = asked.fits_one_limb() ? asked.limb(0) : ~0ull;
 
     // Declared BEFORE the threads, so they are destroyed after the threads have
     // run every queued job and stopped: a job may point into them (PLAN M7).

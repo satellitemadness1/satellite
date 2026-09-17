@@ -28,10 +28,13 @@
 #     config, and using it would give two builds one number.
 # --verify, after linking, refuses a row that changed while the build ran.
 #
-# THE ROW IS A signed long long int (the author's type), so a number above
-# 9,223,372,036,854,775,807 is refused before anything is written, as is a number
-# written with a leading 0 (C++ reads 0051 as octal, 41), in hex, or with digit
-# separators. Commented-out rows are ignored.
+# THE ROW IS A satellite_number (the author, 2026-09-16: "just make everything a
+# satellite number"), so it has no ceiling -- but a C++ INTEGER LITERAL does. A row
+# may be written plain (94) up to 9,223,372,036,854,775,807, or in quotes ("94",
+# "99999999999999999999999999") at any length; a plain number past that is refused
+# with the advice to quote it, as is a plain number with a leading 0 (C++ reads
+# 0051 as octal, 41), in hex, or with digit separators. Inside quotes a leading 0
+# is only a digit. Commented-out rows are ignored.
 
 import datetime
 import fcntl
@@ -50,6 +53,7 @@ LONG_LONG_MAX = 2 ** 63 - 1
 # A live row: push_back({"name", <number>, <flag>, <is_flag>}); the number spans group 2.
 ROW = re.compile(r'push_back\(\s*\{\s*"([^"\n]*)"\s*,\s*([^,\n]*?)\s*,\s*(true|false)\s*,\s*(true|false)\s*\}\s*\)')
 DECIMAL = re.compile(r"-?[0-9]+[uUlL]*")
+QUOTED = re.compile(r'"(-?[0-9]+)"')
 
 
 def fail(message):
@@ -89,16 +93,21 @@ def live_rows(text):
             continue
         line = text.count("\n", 0, match.start()) + 1
         literal = match.group(2)
-        if not DECIMAL.fullmatch(literal):
-            fail('line %d: %s is written "%s"; write it as plain decimal digits' % (line, match.group(1), literal))
-        digits = literal.rstrip("uUlL")
-        if re.fullmatch(r"-?0[0-9]+", digits):
-            fail("line %d: %s is written %s, which C++ reads as octal; write it without the leading 0"
-                 % (line, match.group(1), digits))
-        if not -LONG_LONG_MAX - 1 <= int(digits) <= LONG_LONG_MAX:
-            fail("line %d: %s is %s, which a signed long long int (the row's number) cannot hold"
-                 % (line, match.group(1), digits))
-        rows.append({"name": match.group(1), "number": int(digits), "span": match.span(2), "suffix": literal[len(digits):],
+        quoted = QUOTED.fullmatch(literal)
+        if quoted:
+            digits = quoted.group(1)
+        else:
+            if not DECIMAL.fullmatch(literal):
+                fail('line %d: %s is written %s; write it as decimal digits, in quotes when there are many'
+                     % (line, match.group(1), literal))
+            digits = literal.rstrip("uUlL")
+            if re.fullmatch(r"-?0[0-9]+", digits):
+                fail("line %d: %s is written %s, which C++ reads as octal; write it without the leading 0"
+                     % (line, match.group(1), digits))
+            if not -LONG_LONG_MAX - 1 <= int(digits) <= LONG_LONG_MAX:
+                fail('line %d: %s is %s, longer than a C++ integer can be written; write it in quotes: "%s"'
+                     % (line, match.group(1), digits, digits))
+        rows.append({"name": match.group(1), "number": int(digits), "span": match.span(2), "quoted": bool(quoted),
                      "flag": match.group(3) == "true", "is_flag": match.group(4) == "true", "line": line})
     return rows
 
@@ -199,9 +208,10 @@ def main():
         number = row["number"]
         if used is None or number == used:
             number += 1
-            if number > LONG_LONG_MAX:
-                fail("arguments.build %d cannot rise: a signed long long int holds nothing above it" % row["number"])
-            text = text[:row["span"][0]] + str(number) + text[row["span"][1]:]
+            # Written back the way it was written, and quoted once it outgrows a
+            # C++ integer: the row is a satellite_number, so it never stops rising.
+            written = '"%d"' % number if row["quoted"] or number > LONG_LONG_MAX else str(number)
+            text = text[:row["span"][0]] + written + text[row["span"][1]:]
             write_atomically(CONFIG, text)
         write_atomically(stamp, "%d %s\n" % (number, fingerprint(inputs, also, text)))
         print("satellite: BUILD %s (%s)" % (str(number).zfill(4), datetime.date.today().isoformat()))

@@ -25,9 +25,9 @@
 
 namespace satellite004 {
 
-inline std::string padded(signed long long int number, std::string::size_type width)
+inline std::string padded(const satellite_number &number, std::string::size_type width)
 {
-    std::string digits = std::to_string(number);
+    std::string digits = number.to_text();
     if (digits.size() < width)
         digits.insert(0, width - digits.size(), '0');
     return digits;

@@ -73,9 +73,9 @@ void Arguments::add_count(const std::string &name, unsigned long long int value)
     add(name, ArgumentKind::count).count = value;
 }
 
-void Arguments::add_number(const std::string &name, signed long long int value)
+void Arguments::add_number(const std::string &name, satellite_number value)
 {
-    add(name, ArgumentKind::number).number = value;
+    add(name, ArgumentKind::number).number = std::move(value);
 }
 
 void Arguments::add_flag(const std::string &name, bool value)
@@ -110,10 +110,11 @@ bool Arguments::flag(const std::string &name) const
     return entry != nullptr && entry->kind == ArgumentKind::flag && entry->flag;
 }
 
-signed long long int Arguments::number(const std::string &name) const
+const satellite_number &Arguments::number(const std::string &name) const
 {
+    static const satellite_number zero;
     const Argument *entry = find(name);
-    return entry != nullptr && entry->kind == ArgumentKind::number ? entry->number : 0;
+    return entry != nullptr && entry->kind == ArgumentKind::number ? entry->number : zero;
 }
 
 std::string Arguments::text(const std::string &name) const
@@ -143,10 +144,18 @@ signed long long int Arguments::gather_config()
                           "\" is not a name arguments can hold (arguments. then words of a-z A-Z 0-9 _ joined by .)");
         if (find(row.name) != nullptr)
             return refuse(row.name + " is written twice");
-        if (row.is_flag)
+        if (row.is_flag) {
             add_flag(row.name, row.flag);
-        else
-            add_number(row.name, row.number);
+            continue;
+        }
+        // THE DIGITS BECOME A satellite_number HERE, and nowhere earlier: the row
+        // kept them as text, so a number of any length arrives whole.
+        satellite_number value;
+        std::size_t bad_offset = 0;
+        if (satellite_number::from_text(row.number.digits, value, bad_offset) != success)
+            return refuse(row.name + " is written \"" + row.number.digits +
+                          "\", which is not a whole number (digits only, in quotes when there are many)");
+        add_number(row.name, std::move(value));
     }
 
     // Shown every time satl starts unless the config says false (the author, 2026-09-15).
@@ -162,12 +171,27 @@ signed long long int Arguments::gather_config()
         const Argument *entry = find(name);
         if (entry == nullptr || entry->kind != ArgumentKind::number)
             return refuse(std::string(name) + " needs a number row");
-        if (entry->number < 0)
-            return refuse(std::string(name) + " cannot be negative (" + std::to_string(entry->number) + ")");
+        if (entry->number.negative())
+            return refuse(std::string(name) + " cannot be negative (" + entry->number.to_text() + ")");
     }
     const Argument *threads_max = find("arguments.threads_max");
-    if (threads_max != nullptr && (threads_max->kind != ArgumentKind::number || threads_max->number < 0))
+    if (threads_max != nullptr && (threads_max->kind != ArgumentKind::number || threads_max->number.negative()))
         return refuse("arguments.threads_max is a number row that is not negative");
+
+    // INFINITY'S TWO DIGIT COUNTS (the author, 2026-09-16): 4096 held, 32 shown,
+    // "both digits configurable". A missing row takes the author's default, as
+    // arguments.startup_display does; a row that is there must be a count of at
+    // least one digit, because a multiplier with no digits cannot hold x2.
+    for (const auto &[name, fallback] : {std::pair<const char *, unsigned long long int>{"arguments.infinity", 4096},
+                                         std::pair<const char *, unsigned long long int>{"arguments.infinity_display", 32}}) {
+        const Argument *entry = find(name);
+        if (entry == nullptr) {
+            add_number(name, satellite_number(fallback));
+            continue;
+        }
+        if (entry->kind != ArgumentKind::number || entry->number.negative() || entry->number.is_zero())
+            return refuse(std::string(name) + " is a number row of at least 1 digit");
+    }
     return success;
 }
 
@@ -236,7 +260,7 @@ std::string describe(const Argument &argument)
     case ArgumentKind::count:
         return std::to_string(argument.count);
     case ArgumentKind::number:
-        return std::to_string(argument.number);
+        return argument.number.to_text();
     case ArgumentKind::flag:
         return argument.flag ? "true" : "false";
     case ArgumentKind::size: {

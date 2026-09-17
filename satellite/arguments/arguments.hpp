@@ -6,8 +6,9 @@
 //
 //     text   a string         arguments.system.hostname   "siege3"
 //     count  a whole number   arguments.machine.threads   24
-//     number a signed whole number, as satellite_config.hpp writes one
-//                             arguments.threads_startup   256
+//     number a satellite_number, as satellite_config.hpp writes one -- any number
+//            of digits (the author, 2026-09-16: "just make everything a
+//            satellite number")    arguments.threads_startup   1024
 //     flag   true or false    arguments.debug_mode        true
 //     size   an amount of memory or disk, as a long double plus its unit:
 //            "bytes", "kilobytes", "megabytes", "gigabytes" or "terabytes"
@@ -16,6 +17,8 @@
 // digits here, against double's 15), it holds every 64-bit byte count exactly,
 // and dividing by 1024 is exact too. Measured 2026-09-14: the largest 64-bit
 // count went to terabytes and back unchanged, where a double was off by one.
+
+#include "../satellite_variable_number/satellite_number.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -30,7 +33,7 @@ struct Argument {
     ArgumentKind kind = ArgumentKind::text;
     std::string text;
     unsigned long long int count = 0;
-    signed long long int number = 0;
+    satellite_number number;
     bool flag = false;
     long double size = 0.0L;
     std::string unit;              // only for a size
@@ -49,13 +52,14 @@ public:
 
     void add_text(const std::string &name, const std::string &value);
     void add_count(const std::string &name, unsigned long long int value);
-    void add_number(const std::string &name, signed long long int value);
+    void add_number(const std::string &name, satellite_number value);
     void add_flag(const std::string &name, bool value);
     void add_bytes(const std::string &name, unsigned long long int bytes);
 
     const Argument *find(const std::string &name) const;
     bool flag(const std::string &name) const;
-    signed long long int number(const std::string &name) const;
+    // The row's satellite_number, or 0 when there is no number row of that name.
+    const satellite_number &number(const std::string &name) const;
     std::string text(const std::string &name) const;
     const std::vector<Argument> &all() const { return entries_; }
 
