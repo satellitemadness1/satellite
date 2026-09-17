@@ -1,9 +1,10 @@
 # satellite-004 — PROGRESS.md
 
 **satellite 004 revision 04** (the build number is in `satellite/config/satellite_config.hpp`,
-and `satl --version` shows it). Where the work stands, 2026-09-15. Read this first
-after a break; then PLAN.md (the order of work), DESIGN.md (the standards and
-every measurement) and ERROR.md (every known error).
+and `satl --version` shows it). Where the work stands, 2026-09-16. Read this first
+after a break; then **MILESTONES.md (everything not built, one milestone each)**,
+PLAN.md (the order of work), DESIGN.md (the standards and every measurement) and
+ERROR.md (every known error).
 
 **2026-09-15: satellite 004 is the top of the repository.** satellite 003 revision 07
 moved, unchanged, to `old_versions/second_satellite/` (tag `satellite-003-revision-07`,
