@@ -2,7 +2,7 @@
 // satellite/bytecode/value.hpp -- where a capsule's variables live, and the one
 // name the walker knows the object model by.
 //
-// WHAT CHANGED, 2026-09-16: `Value` IS `satelliteValue` NOW. This file used to
+// WHAT CHANGED, 2026-09-16: `Value` IS `satelliteObject` NOW. This file used to
 // define its own value type -- a Kind enum beside a std::string, a
 // satellite_number and a bool, all three always present. The object model
 // replaces it (satellite_object/satellite_value.hpp), and this file keeps only
@@ -10,7 +10,7 @@
 // running body holds them in.
 //
 // THE ALIAS IS DELIBERATE AND IS NOT A TRANSITION SHIM. `Value` is what the
-// walker calls what an expression is worth, and satelliteValue is what the
+// walker calls what an expression is worth, and satelliteObject is what the
 // object model calls it. Both names are right in their own file, and one
 // `using` is cheaper than renaming the word `Value` through every line of
 // expression.cpp and program_walk.cpp -- where it reads correctly already.
@@ -46,7 +46,7 @@
 
 namespace satellite004 {
 
-using Value = satelliteValue;
+using Value = satelliteObject;
 
 struct Variable {
     token::Code declared = 0;   // the word code of satellite.variable.number, .string, ...

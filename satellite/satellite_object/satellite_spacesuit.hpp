@@ -1,74 +1,72 @@
 #pragma once
-// satellite/satellite_object/satellite_spacesuit.hpp -- THE CLASS AND THE
-// INSTANCE, which are two things and not one.
+// satellite/satellite_object/satellite_spacesuit.hpp -- THE SPACESUIT: a variant
+// over the two kinds there are.
 //
-// (the author, 2026-09-16) "this is our spacesuit, and a user defined spacesuit,
-// NOT something else, this is satelliteSpacesuit not satelliteObject!"
+// (the author, 2026-09-16) "there is another class, a satelliteSpacesuit and it
+// is just std::variant<satelliteObject, satelliteUserDefinedObject> and then we
+// begin to build fast paths with that."
 //
-// He was right, and the split runs deeper than the name. What was written first
-// held the class's field NAMES and one instance's field VALUES in a single
-// struct -- so every instance of a class carried its own copy of the layout. The
-// language's own vocabulary says they are two words, and 003 had already built
-// them as two structs (src/satellite_spacesuit/suit_object.hpp):
+// TWO LAYERS, ONE SHAPE:
 //
-//     satelliteSpacesuit   the CLASS. One per `satellite.spacesuit` the user
-//                          declares. Shared by every instance, never copied.
-//                          003 calls this `Layout`.
-//     satelliteObject      ONE INSTANCE. A pointer to its spacesuit, and a flat
-//                          vector of its own field values. 003 calls this
-//                          `SuitObject`.
+//     satelliteObject     the one WE hand design -- a variant over every built-in
+//                         type: satelliteCapsule, satellite_number,
+//                         satellite_string, satellite_bytecode, the bool, and
+//                         satellite_time and satellite_file when they are built.
+//     satelliteSpacesuit  a variant over the TWO KINDS of spacesuit: one of ours,
+//                         or one the user defined.
 //
-// FIELDS ARE A FLAT VECTOR INDEXED BY SLOT, NOT A MAP, and this is the decision
-// worth defending hardest. A map from name to value PER INSTANCE is what makes
-// an interpreter slow: 004 already loses 5x to CPython on `i = i + 1` for that
-// exact reason -- it rebuilds a std::string from 16-bit codes and hashes it on
-// every evaluation, where CPython indexes an array slot. A class's field names
-// are the same for every instance of it, so the NAME is resolved ONCE to a slot
-// and the slot is an integer from then on. `slot_of` is the slow way in and
-// belongs at check time; `field_at` is what runs in a loop.
+// A variant, a Kind that is its index, `pair_of` for the switch, and pair files
+// named for what they join. Nothing new to learn at the second layer -- which is
+// the author's "it's just more templates built out of our fast paths of
+// functions that we defined then".
 //
-// THE SPACESUIT IS A BARE POINTER AND THAT IS SAFE, for 003's reason exactly: it
-// points into the compiled program, which outlives every value in the run. A
-// shared_ptr there would be a refcount on something that cannot die first.
+// A SPACESUIT IS JUST A COLLECTION OF BYTECODE (the author, and this file is
+// built on that line). satelliteUserDefinedObject holds `body` -- the codes its
+// declaration is made of -- and nothing here re-derives what the registry
+// already has.
 //
-// OWED, AND NAMED SO IT IS NOT DISCOVERED LATER:
-//   - THREADS. 003's SuitObject carries a recursive_mutex and a thread access
-//     list (THREAD.md D1, D2) because two threads sharing one object wrote one
-//     Value at once and freed a string twice. 004's walker is single-threaded
-//     today, so nothing is built here yet -- but 256 threads are already warm
-//     and this is where that bill arrives.
-//   - DEEP CHAINS DESTRUCT RECURSIVELY. A chain of objects each holding the next
-//     is a linked list, and freeing a long one recurses once per object. 003 hit
-//     this and answered it with a staged burial (value.hpp's `Burial`). Not
-//     built here; it is the same shape of hazard as the walker's own depth.
+// THE USER-DEFINED ARM IS A HANDLE AND THE HAND-DESIGNED ONE IS NOT, which is
+// one difference from the author's line and it is worth the sentence. A
+// satelliteUserDefinedObject holds satelliteObjects as fields, so putting it in
+// the variant directly is a type that contains itself; and DESIGN 7.4 wants it
+// by reference anyway -- "a spacesuit is a reference type", which M26 built as a
+// capsule mutating one and the CALLER SEEING IT. So the arm is
+// std::shared_ptr<satelliteUserDefinedObject>. A built-in has no such need: a
+// number IS its value.
 
-#include "satellite_value.hpp"
+#include "satellite_object.hpp"
 
 #include <cstddef>
-#include <memory>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace satellite004 {
 
 // ---------------------------------------------------------------------------
-// THE CLASS. `satellite.spacesuit` is word `1 10` and `satellite.class` is the
-// author's second spelling of it (2026-09-09).
+// ONE THEY INSERT THE PIECES INTO (the author). Its codes, its fields, and the
+// spots for satelliteCapsule.
 // ---------------------------------------------------------------------------
-struct satelliteSpacesuit {
+//
+// FIELDS ARE TWO PARALLEL VECTORS, name beside value, and the name is resolved
+// ONCE to a slot. A map per instance is what makes an interpreter slow -- 004
+// already loses 5x to CPython on `i = i + 1` for that exact reason -- so the
+// string compare happens in `slot_of` and everything on a hot path holds the
+// integer instead.
+struct satelliteUserDefinedObject {
     std::string name;
-    std::vector<std::string> field_names;    // the layout: name -> slot
-    std::vector<bool> field_is_public;       // satellite.protected / satellite.public
-    std::vector<satelliteCapsule> capsules;  // the methods -- "spots for satelliteCapsule"
+    satellite_bytecode body;                 // a spacesuit is just a collection of bytecode
+    std::vector<std::string> field_names;    // name -> slot
+    std::vector<satelliteObject> fields;     // one per name, same order
+    std::vector<satelliteCapsule> capsules;  // the spots for methods
 
-    satelliteSpacesuit() = default;
-    explicit satelliteSpacesuit(std::string its_name) : name(std::move(its_name)) {}
+    satelliteUserDefinedObject() = default;
+    explicit satelliteUserDefinedObject(std::string its_name) : name(std::move(its_name)) {}
 
-    std::size_t fields() const { return field_names.size(); }
+    std::size_t how_many_fields() const { return field_names.size(); }
     std::size_t how_many_capsules() const { return capsules.size(); }
 
-    // THE STRING COMPARE HAPPENS HERE AND NOWHERE ELSE. npos for a name this
-    // spacesuit does not declare.
+    // THE STRING COMPARE HAPPENS HERE AND NOWHERE ELSE.
     std::size_t slot_of(const std::string &field) const
     {
         for (std::size_t i = 0; i < field_names.size(); ++i)
@@ -77,9 +75,22 @@ struct satelliteSpacesuit {
         return (std::size_t)-1;
     }
 
-    bool is_public(std::size_t slot) const
+    // The fast way in: an integer index, no compare and no hash.
+    const satelliteObject *field_at(std::size_t slot) const
     {
-        return slot < field_is_public.size() && field_is_public[slot];
+        return slot < fields.size() ? &fields[slot] : nullptr;
+    }
+    satelliteObject *field_at(std::size_t slot)
+    {
+        return slot < fields.size() ? &fields[slot] : nullptr;
+    }
+
+    // Answers the slot it went into, so whatever is building keeps the integer.
+    std::size_t insert_field(std::string field, satelliteObject held)
+    {
+        field_names.push_back(std::move(field));
+        fields.push_back(std::move(held));
+        return field_names.size() - 1;
     }
 
     const satelliteCapsule *capsule_of(const std::string &its_name) const
@@ -89,67 +100,65 @@ struct satelliteSpacesuit {
                 return &capsules[i];
         return nullptr;
     }
-
-    // Declaring a field. Answers the slot, so whatever is building the class
-    // keeps the integer and never looks the name up again.
-    std::size_t declare_field(std::string field, bool public_field)
-    {
-        field_names.push_back(std::move(field));
-        field_is_public.push_back(public_field);
-        return field_names.size() - 1;
-    }
-    void declare_capsule(satelliteCapsule its_capsule) { capsules.push_back(std::move(its_capsule)); }
+    void insert_capsule(satelliteCapsule its_capsule) { capsules.push_back(std::move(its_capsule)); }
 };
 
-// ---------------------------------------------------------------------------
-// ONE INSTANCE. "what a constructor produces is the object" -- DESIGN 13.
-// ---------------------------------------------------------------------------
-//
-// NOT const BEHIND ITS HANDLE, which is DESIGN 7.4's requirement and not a
-// convenience: a spacesuit is a reference type, so a method that changes a field
-// changes it for every name that holds the object.
-struct satelliteObject {
-    const satelliteSpacesuit *suit = nullptr;   // the class, pointed at, never copied
-    std::vector<satelliteValue> fields;         // this instance's own values, by slot
-
-    satelliteObject() = default;
-
-    // An instance of `its_suit`, every field `nothing` until something writes
-    // it. The fields are sized from the class, so a slot is always in range.
-    explicit satelliteObject(const satelliteSpacesuit *its_suit)
-        : suit(its_suit), fields(its_suit == nullptr ? 0 : its_suit->fields())
-    {
-    }
-
-    const std::string &class_name() const
-    {
-        static const std::string none;
-        return suit == nullptr ? none : suit->name;
-    }
-
-    // THE FAST WAY IN: an integer index, no compare and no hash.
-    const satelliteValue *field_at(std::size_t slot) const
-    {
-        return slot < fields.size() ? &fields[slot] : nullptr;
-    }
-    satelliteValue *field_at(std::size_t slot)
-    {
-        return slot < fields.size() ? &fields[slot] : nullptr;
-    }
-
-    // The slow way, for a name met for the first time. npos if this object's
-    // spacesuit does not declare it.
-    std::size_t slot_of(const std::string &field) const
-    {
-        return suit == nullptr ? (std::size_t)-1 : suit->slot_of(field);
-    }
-};
-
-// One new object of a spacesuit, as the handle every value holds. This is the
-// only place an instance is made, so the refcount begins in one place.
-inline SpacesuitHandle make_object(const satelliteSpacesuit *suit)
+inline UserDefinedHandle make_user_defined(std::string name)
 {
-    return std::make_shared<satelliteObject>(suit);
+    return std::make_shared<satelliteUserDefinedObject>(std::move(name));
+}
+
+// ---------------------------------------------------------------------------
+// THE SPACESUIT. Same shape as satelliteObject, one layer up.
+// ---------------------------------------------------------------------------
+class satelliteSpacesuit {
+public:
+    using Held = std::variant<satelliteObject,   // 0  one we hand design
+                              UserDefinedHandle  // 1  one they defined
+                              // APPEND HERE, NEVER INSERT ABOVE -- Kind is the index.
+                              >;
+
+    enum Kind : std::size_t {
+        hand_designed = 0,
+        user_defined = 1,
+        how_many_kinds = 2
+    };
+
+    static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
+
+    Held held;
+
+    satelliteSpacesuit() = default;
+    satelliteSpacesuit(satelliteObject from) : held(std::move(from)) {}
+    satelliteSpacesuit(UserDefinedHandle from) : held(std::move(from)) {}
+
+    static satelliteSpacesuit of_object(satelliteObject from) { return satelliteSpacesuit(std::move(from)); }
+    static satelliteSpacesuit of_user_defined(UserDefinedHandle from)
+    {
+        return satelliteSpacesuit(std::move(from));
+    }
+
+    Kind kind() const { return static_cast<Kind>(held.index()); }
+    bool is_hand_designed() const { return held.index() == hand_designed; }
+    bool is_user_defined() const { return held.index() == user_defined; }
+
+    const satelliteObject *as_object() const { return std::get_if<satelliteObject>(&held); }
+    satelliteObject *as_object() { return std::get_if<satelliteObject>(&held); }
+    const UserDefinedHandle *as_user_defined() const { return std::get_if<UserDefinedHandle>(&held); }
+    UserDefinedHandle *as_user_defined() { return std::get_if<UserDefinedHandle>(&held); }
+
+    const char *kind_name() const
+    {
+        return is_user_defined() ? "an object" : (as_object() != nullptr ? as_object()->kind_name() : "nothing");
+    }
+};
+
+// The pair of tags as one integer, exactly as satelliteObject's `pair_of` -- so a
+// fast path between two spacesuits is named and found the same way as one
+// between two built-ins.
+inline constexpr std::size_t suit_pair_of(satelliteSpacesuit::Kind left, satelliteSpacesuit::Kind right)
+{
+    return (std::size_t)left * (std::size_t)satelliteSpacesuit::how_many_kinds + (std::size_t)right;
 }
 
 } // namespace satellite004

@@ -1,5 +1,5 @@
 #pragma once
-// satellite/satellite_object/satellite_value.hpp -- WHAT ONE EXPRESSION IS
+// satellite/satellite_object/satellite_object.hpp -- WHAT ONE EXPRESSION IS
 // WORTH. The variant every value in the language is an arm of.
 //
 // (the author, 2026-09-16) "2 main classes for the satellite object model...
@@ -25,10 +25,13 @@
 //   spaceship   A FILE that is included, `satellite.include(spaceship)`, `1 1 2`.
 //               A different thing again, and nothing here.
 //
-// A VALUE IS NOT AN OBJECT, which is why this class is satelliteValue and not
-// satelliteObject: a number is a value and it is not an instance of anything.
-// 003 called this exact type `Value` (src/satellite_value/value.hpp, sixteen
-// arms since M26), and this is that type rebuilt on 004's number and string.
+// satelliteObject IS THE ONE WE HAND DESIGN (the author): "satelliteObject
+// which is satelliteCapsule, satellite_number satellite_string
+// satellite_bytecode, satellite_bool, satellite_time, satellite_file, and any
+// other variable we have". Every built-in type of the language is an arm of it.
+// 003 called this same type `Value` (src/satellite_value/value.hpp, sixteen arms
+// since M26); satellite_time and satellite_file are two of the arms it already
+// had and 004 has not built yet.
 //
 // RESOURCE MANAGEMENT IS NOT A CONCERN (the author): "We don't need to be
 // careful and be picky about a 70 byte object, or a 20 byte object... I have 64
@@ -55,24 +58,22 @@
 
 namespace satellite004 {
 
-// ONE INSTANCE OF A SPACESUIT, declared here and defined in
-// satellite_spacesuit.hpp -- because it holds satelliteValues and this file is
-// what defines those. A std::shared_ptr of an incomplete type is complete, so
-// the variant below is satisfied by the handle alone. That is exactly how 003
-// ties the same knot: value.hpp forward-declares `struct SuitObject;` and holds
-// `using Sui = std::shared_ptr<suit::SuitObject>`.
-struct satelliteObject;
+// A SPACESUIT THE USER DEFINED, declared here and defined in
+// satellite_spacesuit.hpp -- because its fields are satelliteObjects and this
+// file is what defines those. A std::shared_ptr of an incomplete type is
+// complete, so the variant below is satisfied by the handle alone.
+struct satelliteUserDefinedObject;
 
 // THE HANDLE, AND IT IS THE AUTHOR'S OWN RULING RATHER THAN A C++ WORKAROUND.
 // DESIGN 7.4: "a spacesuit is a reference type", and M26 built it that way --
 // a capsule handed a spacesuit mutates it and the CALLER SEES THE MUTATION. So
-// two names holding one object hold ONE object. Storing the instance inline
-// would make `b = a` copy it, which is the opposite behaviour, decided by
-// accident. M26 also chose the counting: refcount now, `.pointer()` as the weak
-// reference, a cycle collector as its own milestone.
-using SpacesuitHandle = std::shared_ptr<satelliteObject>;
+// two names holding one of them hold ONE of them. Storing it inline would make
+// `b = a` copy it, which is the opposite behaviour, decided by accident. M26
+// also chose the counting: refcount now, `.pointer()` as the weak reference, a
+// cycle collector as its own milestone.
+using UserDefinedHandle = std::shared_ptr<satelliteUserDefinedObject>;
 
-class satelliteValue {
+class satelliteObject {
 public:
     // EVERY ARM, IN ORDER. The order IS the Kind below.
     using Held = std::variant<std::monostate,    // 0  nothing
@@ -81,7 +82,7 @@ public:
                               satellite_string,  // 3  satellite.variable.string
                               satellite_bytecode,// 4  the numbered program
                               satelliteCapsule,  // 5  a capsule as a value
-                              SpacesuitHandle    // 6  one object of a spacesuit
+                              UserDefinedHandle    // 6  one object of a spacesuit
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. The author has named three:
@@ -97,7 +98,7 @@ public:
         string = 3,
         bytecode = 4,
         capsule = 5,
-        object = 6,
+        user_defined = 6,
         how_many_kinds = 7
     };
 
@@ -105,33 +106,33 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<number, Held>, satellite_number>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<string, Held>, satellite_string>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<bytecode, Held>, satellite_bytecode>, "");
-    static_assert(std::is_same_v<std::variant_alternative_t<object, Held>, SpacesuitHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<user_defined, Held>, UserDefinedHandle>, "");
 
     Held held;
 
-    satelliteValue() = default;
-    satelliteValue(bool from) : held(from) {}
-    satelliteValue(satellite_number from) : held(std::move(from)) {}
-    satelliteValue(satellite_string from) : held(std::move(from)) {}
-    satelliteValue(satellite_bytecode from) : held(std::move(from)) {}
-    satelliteValue(satelliteCapsule from) : held(std::move(from)) {}
-    satelliteValue(SpacesuitHandle from) : held(std::move(from)) {}
+    satelliteObject() = default;
+    satelliteObject(bool from) : held(from) {}
+    satelliteObject(satellite_number from) : held(std::move(from)) {}
+    satelliteObject(satellite_string from) : held(std::move(from)) {}
+    satelliteObject(satellite_bytecode from) : held(std::move(from)) {}
+    satelliteObject(satelliteCapsule from) : held(std::move(from)) {}
+    satelliteObject(UserDefinedHandle from) : held(std::move(from)) {}
 
-    static satelliteValue of_nothing() { return satelliteValue(); }
-    static satelliteValue of_bool(bool from) { return satelliteValue(from); }
-    static satelliteValue of_number(satellite_number from) { return satelliteValue(std::move(from)); }
-    static satelliteValue of_string(satellite_string from) { return satelliteValue(std::move(from)); }
-    static satelliteValue of_bytecode(satellite_bytecode from) { return satelliteValue(std::move(from)); }
-    static satelliteValue of_capsule(satelliteCapsule from) { return satelliteValue(std::move(from)); }
-    static satelliteValue of_object(SpacesuitHandle from) { return satelliteValue(std::move(from)); }
+    static satelliteObject of_nothing() { return satelliteObject(); }
+    static satelliteObject of_bool(bool from) { return satelliteObject(from); }
+    static satelliteObject of_number(satellite_number from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_string(satellite_string from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_bytecode(satellite_bytecode from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_capsule(satelliteCapsule from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_user_defined(UserDefinedHandle from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
-    static satelliteValue of_code(signed long long int code)
+    static satelliteObject of_code(signed long long int code)
     {
-        return satelliteValue(satellite_number::from_signed(code));
+        return satelliteObject(satellite_number::from_signed(code));
     }
     // UTF-8 straight in, for the one place a literal arrives as bytes: the
     // lexer's counted payload. Answers string_error (4) with the bad offset.
-    static signed long long int of_utf8(const std::string &utf8, satelliteValue &out, std::size_t &bad_offset);
+    static signed long long int of_utf8(const std::string &utf8, satelliteObject &out, std::size_t &bad_offset);
 
     // WHICH ARM: one integer, and the test is one compare.
     Kind kind() const { return static_cast<Kind>(held.index()); }
@@ -141,7 +142,7 @@ public:
     bool is_string() const { return held.index() == string; }
     bool is_bytecode() const { return held.index() == bytecode; }
     bool is_capsule() const { return held.index() == capsule; }
-    bool is_object() const { return held.index() == object; }
+    bool is_user_defined() const { return held.index() == user_defined; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -150,13 +151,13 @@ public:
     const satellite_string *as_string() const { return std::get_if<satellite_string>(&held); }
     const satellite_bytecode *as_bytecode() const { return std::get_if<satellite_bytecode>(&held); }
     const satelliteCapsule *as_capsule() const { return std::get_if<satelliteCapsule>(&held); }
-    const SpacesuitHandle *as_object() const { return std::get_if<SpacesuitHandle>(&held); }
+    const UserDefinedHandle *as_user_defined() const { return std::get_if<UserDefinedHandle>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }
     satellite_bytecode *as_bytecode() { return std::get_if<satellite_bytecode>(&held); }
     satelliteCapsule *as_capsule() { return std::get_if<satelliteCapsule>(&held); }
-    SpacesuitHandle *as_object() { return std::get_if<SpacesuitHandle>(&held); }
+    UserDefinedHandle *as_user_defined() { return std::get_if<UserDefinedHandle>(&held); }
 
     // The name of the arm, for a refusal a person has to act on.
     const char *kind_name() const;
@@ -175,15 +176,15 @@ public:
     // number_and_string_add.hpp -- which is where the work is and where it
     // inlines. This class chooses; those files act.
     // -----------------------------------------------------------------------
-    signed long long int add(const satelliteValue &other, satelliteValue &out, std::string &why) const;
-    signed long long int subtract(const satelliteValue &other, satelliteValue &out, std::string &why) const;
-    signed long long int multiply(const satelliteValue &other, satelliteValue &out, std::string &why) const;
-    signed long long int divide(const satelliteValue &other, satelliteValue &out, std::string &why) const;
-    signed long long int modulus(const satelliteValue &other, satelliteValue &out, std::string &why) const;
-    signed long long int power(const satelliteValue &other, satelliteValue &out, std::string &why) const;
+    signed long long int add(const satelliteObject &other, satelliteObject &out, std::string &why) const;
+    signed long long int subtract(const satelliteObject &other, satelliteObject &out, std::string &why) const;
+    signed long long int multiply(const satelliteObject &other, satelliteObject &out, std::string &why) const;
+    signed long long int divide(const satelliteObject &other, satelliteObject &out, std::string &why) const;
+    signed long long int modulus(const satelliteObject &other, satelliteObject &out, std::string &why) const;
+    signed long long int power(const satelliteObject &other, satelliteObject &out, std::string &why) const;
 
     // -1, 0 or 1 through `order`. Refuses a pair with no ordering.
-    signed long long int compare(const satelliteValue &other, int &order, std::string &why) const;
+    signed long long int compare(const satelliteObject &other, int &order, std::string &why) const;
 
     // THE CONVERSIONS, explicit and never automatic (DESIGN 1.1).
     signed long long int to_string(satellite_string &out, std::string &why) const;
@@ -207,16 +208,25 @@ public:
     // the default would quietly have become whatever std::shared_ptr's == does,
     // which happens to be right today and would not be if a deep compare were
     // ever bolted on.
-    friend bool operator==(const satelliteValue &l, const satelliteValue &r);
-    friend bool operator!=(const satelliteValue &l, const satelliteValue &r) { return !(l == r); }
+    friend bool operator==(const satelliteObject &l, const satelliteObject &r);
+    friend bool operator!=(const satelliteObject &l, const satelliteObject &r) { return !(l == r); }
 };
 
 // THE PAIR OF TAGS AS ONE INTEGER, which is what every binary method switches
 // on. Dense, fits a switch, and the case labels read like the filenames:
 // `case pair_of(number, string):` sits above the call to number_and_string_add.
-inline constexpr std::size_t pair_of(satelliteValue::Kind left, satelliteValue::Kind right)
+// THE ARM BY ITS C++ TYPE, which is what lets object_pair.hpp be a template at
+// all: `as_number()` names the arm in the function's name, `arm_of<satellite_number>`
+// names it in a type parameter, and a template can only do the second.
+template <typename Arm>
+inline const Arm *arm_of(const satelliteObject &value)
 {
-    return (std::size_t)left * (std::size_t)satelliteValue::how_many_kinds + (std::size_t)right;
+    return std::get_if<Arm>(&value.held);
+}
+
+inline constexpr std::size_t pair_of(satelliteObject::Kind left, satelliteObject::Kind right)
+{
+    return (std::size_t)left * (std::size_t)satelliteObject::how_many_kinds + (std::size_t)right;
 }
 
 } // namespace satellite004
