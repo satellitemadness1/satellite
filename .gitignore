@@ -37,3 +37,7 @@ __pycache__/
 /old_versions/prototype/*/test_resolver
 /old_versions/prototype/*/test_m[0-9]
 /old_versions/prototype/*/test_m[0-9][0-9]
+
+# The 16-bit bytecode saved beside a program (arguments.sate). A build
+# artifact of a run, never a source: the .satl is what is edited.
+*.sate

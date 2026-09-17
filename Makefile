@@ -41,7 +41,7 @@ INTERPRETER_SOURCES = satellite/structured-library.cpp satellite/arguments/argum
                       satellite/threads/startup_threads.cpp satellite/bytecode/bytecode_registry.cpp \
                       satellite/bytecode/function_table.cpp satellite/bytecode/include_shape.cpp \
                       satellite/bytecode/program_walk.cpp satellite/bytecode/program_check.cpp \
-                      satellite/bytecode/expression.cpp \
+                      satellite/bytecode/expression.cpp satellite/bytecode/sate_file.cpp \
                       satellite/satellite_object/satellite_object.cpp \
                       satellite/satellite_object/str_add_str.cpp \
                       satellite/satellite_object/str_minus_str.cpp \
@@ -63,6 +63,7 @@ HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hp
           satellite/bytecode/word_codes.hpp satellite/bytecode/function_table.hpp \
           satellite/bytecode/include_shape.hpp satellite/bytecode/program_walk.hpp \
           satellite/bytecode/expression.hpp satellite/bytecode/value.hpp \
+          satellite/bytecode/sate_file.hpp \
           satellite/satellite_variable_number/satellite_number.hpp \
           satellite/satellite_variable_number/satellite_number_limbs.hpp \
           satellite/satellite_variable_number/number_arithmetic.hpp \
