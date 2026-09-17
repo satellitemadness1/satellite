@@ -40,6 +40,21 @@ $(BUILD)/exit_status_cases: $(MACHINE)/exit_status_cases.cpp $(MACHINE)/exit_sta
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(MACHINE)/exit_status_cases.cpp $(MACHINE)/machine_state.cpp -o $@
 
+# A [COUNTED] token's count, written by put_count and read by count_at, over counts
+# no program could carry (bytecode/count_cases.cpp). check.sh runs it, and refuses
+# one older than these prerequisites. Under -fsanitize=undefined: a shift past 63
+# gives the right answer here by luck, and only the sanitizer says so.
+#
+# NOT satellite_config.hpp, which it never includes: a make that raises the build
+# number rewrites that row while this links, so it came out older than the header
+# after most builds, and check.sh called it stale.
+COUNT_CASES_SOURCES = $(BYTECODE)/count_cases.cpp $(BYTECODE)/bytecode_registry.cpp $(BYTECODE)/cascade_convert.cpp \
+                      $(SATELLITE)/threads/startup_threads.cpp $(MACHINE)/machine_state.cpp
+$(BUILD)/count_cases: $(COUNT_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) -fsanitize=undefined -fno-sanitize-recover=undefined $(LDFLAGS) \
+	    $(COUNT_CASES_SOURCES) -o $@
+
 # The build fingerprint's inputs, one a line: check.sh compares them with the
 # headers the compiler says satl and satl-term are made from.
 build-inputs:

@@ -103,14 +103,25 @@ std::string row_as_bits(const std::vector<std::bitset<16>> &row);
 // How many codes the registry holds, counting every row's tokens and payloads.
 unsigned long long int codes_in(const BytecodeRegistry &registry);
 
+// How many characters the lexer had no code for: each is an error_token, and one
+// is counted only where a token stands, never inside a payload or its count.
+unsigned long long int characters_with_no_code(const BytecodeRegistry &registry);
+
 // READING A ROW BACK. Every [COUNTED] token is followed by a count and then
 // that many codes, and these two are the only places that rule is implemented,
-// so nothing else has to know how a count is spelled.
+// so nothing else has to know how a count is spelled. put_count, below them,
+// is where a payload's count is written.
 
 // The count at `at` (which must be a [COUNTED] token's position), and moves
 // `at` to the first code of the payload. Answers 0 and does not move for
 // anything else, so a caller can ask without checking first.
 unsigned long long int count_at(const std::vector<std::bitset<16>> &row, std::size_t &at);
+
+// WRITING ONE, the other half: the count of `written` codes into row[at], the
+// blank code a writer left there, spreading into extra codes when one is not
+// enough. Every payload's count goes through it except wide_run_token's count of
+// 1, which character_codes writes itself: 1 can never be long_count_token.
+void put_count(std::vector<std::bitset<16>> &row, std::size_t at, unsigned long long int written);
 
 // The payload at `at` as text -- the argument a library is handed. `at` must be
 // the [COUNTED] token itself, and it is moved PAST the whole payload, so a

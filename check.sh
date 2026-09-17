@@ -153,6 +153,65 @@ wanted_chain="87|87|87|1010111|1010111|57|87|87|1010111|0|4|100|87!|87x"
 expect "aliases, conversions and chained methods" "$wanted_chain" \
        "$("$interpreter" tests/chain.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 expect "a 23-digit number is held exactly" "99999999999999999999999" "$("$interpreter" tests/big_number.satl 2>/dev/null)"
+# A STRING AMONG AN INCLUDE'S ARGUMENTS IS SKIPPED WHOLE on the way to its `)`. A literal of
+# 515 codes has count 0x0203, which is `)`, and the scan stopped on it; the file check then
+# walked the payload, where U+10901's low half is name_token, and a valid program was refused
+# with 11 (the count review, 2026-09-17). The paddings reach 515 codes however many codes a
+# character above U+FFFF takes, and the last string holds U+0203 itself.
+mkdir -p build/include_515
+echo '// a spaceship' > build/include_515/ship.satl
+python3 -c "
+texts = ['a' * pad + chr(0x10901) for pad in range(509, 515)] + [chr(0x203) + 'bc' + chr(0x10903)]
+for n, text in enumerate(texts):
+    open('build/include_515/main_%d.satl' % n, 'w', encoding='utf-8').write('''satellite.include(satellite)
+satellite.include(ship(\"%s\"))
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(\"ran\")
+    satellite.return(satellite)
+}
+''' % text)"
+ran=""
+for n in 0 1 2 3 4 5 6; do ran="$ran$("$interpreter" build/include_515/main_$n.satl 2>/dev/null) $?|"; done
+expect "a string of 515 codes among an include's arguments" "ran 0|ran 0|ran 0|ran 0|ran 0|ran 0|ran 0|" "$ran"
+# A COUNT OF EXACTLY 2314 IS 0x090A, WHICH IS long_count_token, and a literal that long
+# swallowed the rest of its file: main ended in "no satellite.return", a capsule after it
+# in "could not be read" (the wide-strings review, 2026-09-17). These literals are 2313,
+# 2314 and 2315 codes, in main and in a capsule after it. build/count_cases proves the
+# counts no program could carry -- a long count whose last chunk is 0x090A is 151 million.
+python3 -c "
+for codes in (2313, 2314, 2315):
+    literal = 'a' * (codes - 1) + 'b'
+    open('build/count_%d.satl' % codes, 'w').write('''satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.string s = \"%s\"
+    satellite.console.display(s.find(\"b\"))
+    helper()
+    satellite.return(satellite)
+}
+
+satellite.capsule helper()
+{
+    satellite.variable.string t = \"%s\"
+    satellite.console.display(t.find(\"b\"))
+}
+''' % (literal, literal))"
+for codes in 2313 2314 2315; do
+    expect "a literal of exactly $codes codes, in main and in a capsule after it" "$((codes - 1))|$((codes - 1))" \
+           "$("$interpreter" build/count_$codes.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+done
+# `make` alone does not rebuild it, and an old one reports on sources it was not built from
+# (the count review, 2026-09-17). make -q only asks; it builds nothing.
+if [ ! -x build/count_cases ]; then expect "build/count_cases is built (make build/count_cases)" built missing
+elif ! make -sq build/count_cases 2>/dev/null; then
+    expect "build/count_cases is as new as its sources (make build/count_cases)" current stale
+else
+    build/count_cases > build/count_cases.out 2>&1; code=$?
+    expect "every count put_count writes, count_at reads: $(tail -1 build/count_cases.out)" 0 $code
+fi
 
 # THE SIX FAST PATHS, REACHED THROUGH THEIR TOKENS. The arithmetic itself is
 # proven against Python over 482,465 cases (check_numbers.py); what this proves

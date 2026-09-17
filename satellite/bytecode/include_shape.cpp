@@ -113,8 +113,14 @@ IncludeShape include_at(const std::vector<std::bitset<16>> &row,
 
     // Past the closing parenthesis, whatever else stood inside it (arguments to
     // the spaceship's launch capsules are 003's `include(ship(1, "two"))`, and
-    // reading them is the walker's job, not this one's).
-    while (i < row.size() && code_at(row, i) != token::right_parenthesis_token) ++i;
+    // reading them is the walker's job, not this one's). A string among them is
+    // skipped whole: its count or a code inside it can be 0x0203 itself -- a
+    // literal of 515 codes is one -- and stopping there handed file_can_run the
+    // middle of a payload to walk (found by the count review, 2026-09-17).
+    while (i < row.size() && code_at(row, i) != token::right_parenthesis_token) {
+        if (token::carries_a_count(code_at(row, i))) { text_at(row, i); continue; }
+        ++i;
+    }
     if (i < row.size()) ++i;
     at = i;
 

@@ -84,22 +84,7 @@ struct Line {
         put(0); // filled in below, once the codes are counted
         std::size_t k = from;
         while (k < to) character_codes(one_character(text, k), row);
-        const std::size_t written = row.size() - count_at - 1;
-        if (written <= 0xFFFFull) { row[count_at] = std::bitset<16>(static_cast<Code>(written)); return; }
-
-        // A count past 65535 needs extra codes, so the payload shifts along to
-        // make room for them. Rare by construction: it is a literal of more
-        // than 65,535 codes, and it must still have no ceiling (DESIGN §1.2).
-        std::vector<std::bitset<16>> chunks;
-        unsigned long long int n = written;
-        while (n > 0xFFFFull) {
-            chunks.push_back(std::bitset<16>(token::long_count_token));
-            chunks.push_back(std::bitset<16>(static_cast<Code>(n & 0xFFFFull)));
-            n >>= 16;
-        }
-        chunks.push_back(std::bitset<16>(static_cast<Code>(n)));
-        row.erase(row.begin() + static_cast<long>(count_at));
-        row.insert(row.begin() + static_cast<long>(count_at), chunks.begin(), chunks.end());
+        put_count(row, count_at, row.size() - count_at - 1);
     }
 
     bool two_ahead(const char *pair) const
@@ -422,10 +407,7 @@ signed long long int build_bytecode_registry(const std::string &filename,
     filenames.clear();
     add_file_to_bytecode_registry(filename, source, threads, batches, registry, filenames);
 
-    unsigned long long int errors = 0;
-    for (const std::vector<std::bitset<16>> &row : registry)
-        for (const std::bitset<16> &code : row)
-            if (static_cast<Code>(code.to_ulong()) == token::error_token) ++errors;
+    const unsigned long long int errors = characters_with_no_code(registry);
 
     state.set("bytecode_registry(built): " + std::to_string(registry.size()) + " file" +
                   (registry.size() == 1 ? "" : "s") + ", " + std::to_string(codes_in(registry)) + " codes",
@@ -466,16 +448,46 @@ unsigned long long int count_at(const std::vector<std::bitset<16>> &row, std::si
     int shift = 0;
     while (i < row.size() && static_cast<Code>(row[i].to_ulong()) == token::long_count_token) {
         if (++i >= row.size()) break;
-        value |= static_cast<unsigned long long int>(row[i].to_ulong()) << shift;
+        if (shift < 64) value |= static_cast<unsigned long long int>(row[i].to_ulong()) << shift;
         shift += 16;
         ++i;
     }
     if (i < row.size()) {
-        value |= static_cast<unsigned long long int>(row[i].to_ulong()) << shift;
+        // put_count ends a 64-bit count whose top chunk is 0x090A with a 0 at shift
+        // 64: nothing to add, and a shift that far is undefined.
+        if (shift < 64) value |= static_cast<unsigned long long int>(row[i].to_ulong()) << shift;
         ++i;
     }
     at = i;
     return value;
+}
+
+void put_count(std::vector<std::bitset<16>> &row, std::size_t at, unsigned long long int written)
+{
+    // A COUNT EQUAL TO long_count_token IS WRITTEN LONG. 2314 is 0x090A, and count_at
+    // reads any code equal to it as "more follows" -- so a literal of exactly 2314
+    // codes swallowed the rest of its row, and the program ended in a refusal that
+    // named the wrong thing (found by the wide-strings review, 2026-09-17). The same
+    // is true of a long count's LAST chunk. Either way it goes out as
+    // long_count_token, 0x090A, and then a 0 that ends it.
+    if (written <= 0xFFFFull && written != token::long_count_token) {
+        row[at] = std::bitset<16>(static_cast<Code>(written));
+        return;
+    }
+
+    // A count past 65535 needs extra codes, so the payload shifts along to
+    // make room for them. Rare by construction: it is a literal of more
+    // than 65,535 codes, and it must still have no ceiling (DESIGN §1.2).
+    std::vector<std::bitset<16>> chunks;
+    unsigned long long int n = written;
+    while (n > 0xFFFFull || n == token::long_count_token) {
+        chunks.push_back(std::bitset<16>(token::long_count_token));
+        chunks.push_back(std::bitset<16>(static_cast<Code>(n & 0xFFFFull)));
+        n >>= 16;
+    }
+    chunks.push_back(std::bitset<16>(static_cast<Code>(n)));
+    row.erase(row.begin() + static_cast<long>(at));
+    row.insert(row.begin() + static_cast<long>(at), chunks.begin(), chunks.end());
 }
 
 std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
@@ -527,6 +539,22 @@ unsigned long long int codes_in(const BytecodeRegistry &registry)
     unsigned long long int total = 0;
     for (const std::vector<std::bitset<16>> &row : registry) total += row.size();
     return total;
+}
+
+unsigned long long int characters_with_no_code(const BytecodeRegistry &registry)
+{
+    // AT A TOKEN'S POSITION ONLY. Comparing every code counted counts: a literal of
+    // exactly 258 codes has count 0x0102, which is error_token, and was reported as
+    // a character with no code (found by the count review, 2026-09-17).
+    unsigned long long int errors = 0;
+    for (const std::vector<std::bitset<16>> &row : registry)
+        for (std::size_t i = 0; i < row.size(); ) {
+            const Code code = static_cast<Code>(row[i].to_ulong());
+            if (code == token::error_token) ++errors;
+            if (token::carries_a_count(code)) { text_at(row, i); continue; }
+            ++i;
+        }
+    return errors;
 }
 
 } // namespace satellite004

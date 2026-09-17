@@ -55,22 +55,8 @@ static void carry(const std::string &text, std::vector<std::bitset<16>> &row)
         }
     }
 
-    const std::size_t n = row.size() - count_at - 1;
-    if (n <= 0xFFFFu) {
-        row[count_at] = std::bitset<16>(static_cast<std::uint16_t>(n));
-        return;
-    }
-    // The same long-count spelling put_payload writes, so no file has a ceiling.
-    std::vector<std::bitset<16>> chunks;
-    unsigned long long int m = n;
-    while (m > 0xFFFFull) {
-        chunks.push_back(std::bitset<16>(token::long_count_token));
-        chunks.push_back(std::bitset<16>(static_cast<std::uint16_t>(m & 0xFFFFull)));
-        m >>= 16;
-    }
-    chunks.push_back(std::bitset<16>(static_cast<std::uint16_t>(m)));
-    row.erase(row.begin() + static_cast<long>(count_at));
-    row.insert(row.begin() + static_cast<long>(count_at), chunks.begin(), chunks.end());
+    // The same count put_payload writes, so no file has a ceiling.
+    put_count(row, count_at, row.size() - count_at - 1);
 }
 
 int main(int argc, char **argv)

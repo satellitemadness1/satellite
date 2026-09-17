@@ -7,9 +7,10 @@
 # beside its own. So they are built together and installed together.
 .DEFAULT_GOAL := all
 
-# The two harnesses check.sh runs are built too, so ./check.sh works after a plain
+# The three harnesses check.sh runs are built too, so ./check.sh works after a plain
 # make or an install. They do not depend on the build stamp and raise no number.
-ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases
+ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases \
+              $(BUILD)/count_cases
 ifeq ($(HAVE_WINDOW),yes)
   ALL_TARGETS += $(BUILD)/satl-term
 endif
