@@ -16,16 +16,30 @@ rather than guessing.
 
 # Part 1 — PLAN.md's milestones, with what is actually true now
 
-## M0.5 — port the build, the installer and satl-term — **THE VERY NEXT ONE**
+## M0.5 — port the build, the installer and satl-term — **BUILT 2026-09-17**
 
-PLAN.md calls it "the very next milestone" and it has not moved. The build port,
-the installer, and satl-term. **Nothing in Part 2 unblocks it and it unblocks
-nothing** — it is simply owed, and it is the one the author named first.
+Built in `71f7836`, `5fc0c7d` and `a4ac456`; PROGRESS.md's M0.5 row says what it is
+and how it is checked. `make` builds `build/satl`, its libraries and
+`build/satl-term`; `make test` runs check.sh, `satellite_enterprise/check_install.sh`
+and the string checks. What is still the author's:
+
+- **D0.5.1** where 004 installs, and whether its window keeps
+  `org.satellite.terminal`. Until then `install.sh --root <folder>` only.
+- **D0.5.2** taken as PLAN recommends: a code below 0 or above 254 exits 255,
+  and 255 is never given to a code.
+- **Readings to confirm:** `satl --debug` alone is bare `satl`; `--debug` twice is
+  `--debug`; `build/satellite-004` stays a link to `build/satl` so the `satl`
+  alias keeps working.
+- **Found by the review, left to the author:** `shown()` does not escape a
+  backslash, so a name holding the text `\x1b` prints like one holding ESC; a
+  satl-term tab running a 003 satl names 003's exit status with 004's
+  machine-code names; satl holds its output until a run ends (DESIGN §8), so a
+  satl-term tab shows nothing from a long program and loses it on Ctrl-C.
 
 ## M0.6 / M0.7 — the prompt, in satl and then in satl-term
 
 `satellite.directory.change` and `.list` come with M0.6. M0.7 is the same prompt
-inside satl-term. Both wait on M0.5.
+inside satl-term. M0.5 is built, so both can start.
 
 ## M1, M2, M3 — the `.satc`, the `.satb`, the `.sati`
 
