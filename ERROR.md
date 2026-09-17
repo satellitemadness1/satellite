@@ -268,3 +268,29 @@ is reported`. It ends the expression. It is not reported.
 `6/2` were part of the same finding and are now refused, because the author's
 whitespace rule (2026-09-16) gave the touching slash its own token. That fix was
 incidental to this one and does not cover `&` `|` `<<` `!!`.
+
+## A string's last code, or a stray character's, was read as a word — FIXED 2026-09-17
+
+**Fixed** in the commit that added this entry. A [COUNTED] token is followed by a
+count and that many codes, and a character's own number can be any 16 bits, so a
+walker that steps one code at a time lands inside a payload and reads it as
+structure. The count review had found three such readers (2314 = long_count_token,
+515 = `)`, 258 = error_token; fixed the commit before). A sweep of every walker
+(workflow wf_3e492290-2c1: one lens reading each loop, one fuzzing about 75,000
+generated programs through satl against Python, a skeptic per finding) found three
+more:
+
+- **`load_program`'s include scan.** U+1002 is 0x1002, `satellite.include`'s code.
+  `"ဂ"("other")` -- or a stray `ဂ("other")` -- loaded other.satl, whose capsules then
+  replaced the program's own; with no such file it was refused as a missing include (8).
+- **`capsules_in`.** U+1006 is 0x1006, `satellite.capsule`'s code. A stray
+  `ဆ satellite.main` on a line of its own made the capsule after it main: its output,
+  exit 0. `"ဆ" greet` replaced the capsule the user wrote with a loop body.
+- **The lexer's look-back for a method name** read the last CODE, not the last token.
+  U+0704 is 0x0704, `method_token`, so `"܄"str` made `str` a method code the check
+  never looks at: "before" printed, then 13.
+
+Each fires as well for the character above U+FFFF whose low half is that code
+(U+11002, U+11006, U+10704). The two scans now skip a payload whole, as every other
+walker does, and the lexer remembers the last token it put. check.sh has each case
+beside the neighbours one character either side that never collided.

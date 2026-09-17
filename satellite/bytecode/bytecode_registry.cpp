@@ -50,7 +50,13 @@ struct Line {
     std::vector<std::bitset<16>> &row;
     std::size_t i = 0;
 
-    void put(Code code) { row.push_back(std::bitset<16>(code)); }
+    // THE LAST TOKEN PUT, NOT THE LAST CODE. After a literal, row.back() is its
+    // payload's last code, and a character's own number can be any 16 bits: "܄"str
+    // ended in 0x0704, which IS method_token, so `str` became a method code the check
+    // never looks at (the payload sweep, 2026-09-17). put_payload sets it to its marker.
+    Code last_token = 0;
+
+    void put(Code code) { row.push_back(std::bitset<16>(code)); last_token = code; }
 
     // One character of a payload: ASCII in the author's order, anything above
     // 127 behind wide_run_token so it can never be read as a token.
@@ -92,6 +98,7 @@ struct Line {
         std::size_t k = from;
         while (k < to) character_codes(one_character(text, k), row);
         put_count(row, count_at, row.size() - count_at - 1);
+        last_token = marker;
     }
 
     bool two_ahead(const char *pair) const
@@ -279,7 +286,7 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
             // the ordinary position, `s.find("x")` is the method. The lexer does
             // not know the receiver's TYPE -- that is the object model's job --
             // and it does not have to: it only has to know this is a member name.
-            if (!row.empty() && static_cast<Code>(row.back().to_ulong()) == token::method_token) {
+            if (line.last_token == token::method_token) {
                 const Code method = token::method_code_of(text.substr(line.i, length));
                 if (method != 0) { line.put(method); line.i = k; continue; }
             }

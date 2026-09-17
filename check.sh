@@ -212,6 +212,150 @@ else
     build/count_cases > build/count_cases.out 2>&1; code=$?
     expect "every count put_count writes, count_at reads: $(tail -1 build/count_cases.out)" 0 $code
 fi
+
+# A PAYLOAD'S CODES ARE NEVER READ AS TOKENS. A character's own number can be any 16 bits,
+# so a string's last code can equal a word's or a token's (the payload sweep, 2026-09-17).
+# Each case has neighbours one character either side that never collided, and a character
+# above U+FFFF whose low half is the same code.
+#
+# U+1002 is 0x1002, satellite.include's code: load_program read "ဂ"("include_code_other"),
+# in a capsule nothing calls, as an include, loaded build/include_code_other.satl and ran
+# ITS main.
+python3 -c "
+open('build/include_code_other.satl', 'w').write('''satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(\"the wrong program\")
+    satellite.return(satellite)
+}
+''')
+for code in (0x1001, 0x1002, 0x1003, 0x11002):
+    open('build/include_code_%x.satl' % code, 'w', encoding='utf-8').write('''satellite.include(satellite)
+
+satellite.capsule never_called()
+{
+    satellite.console.display(\"%s\"(\"include_code_other\"))
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(\"mine\")
+    satellite.return(satellite)
+}
+''' % chr(code))"
+for code in 1001 1002 1003 11002; do
+    output=$("$interpreter" build/include_code_$code.satl 2>/dev/null); code_run=$?
+    expect "a string ending in U+$code before ( is not satellite.include" "mine|0" "$output|$code_run"
+done
+# U+1006 is 0x1006, satellite.capsule's code: capsules_in made the while body after
+# "ဆ"satellite.main a second main, the only one checked and the one that ran ("never",
+# 0); "ဆ" greet replaced the capsule the user wrote. Both lines are refused as they run.
+python3 -c "
+for tag, ch in (('1005', 'စ'), ('1006', 'ဆ'), ('1007', 'ဇ'), ('11006', '\U00011006')):
+    open('build/capsule_word_%s.satl' % tag, 'w', encoding='utf-8').write('''satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(\"before\")
+    satellite.console.display(\"%s\"satellite.main)
+    satellite.statement.while(1 == 2)
+    {
+        satellite.console.display(\"never\")
+    }
+    satellite.return(satellite)
+}
+''' % ch)
+    open('build/capsule_name_%s.satl' % tag, 'w', encoding='utf-8').write('''satellite.include(satellite)
+
+satellite.capsule greet()
+{
+    satellite.console.display(\"hello\")
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string greet = \"x\"
+    greet()
+    satellite.console.display(\"%s\" greet)
+    satellite.statement.while(1 == 2)
+    {
+        satellite.console.display(\"never\")
+    }
+    satellite.return(satellite)
+}
+''' % ch)"
+for tag in 1005 1006 1007 11006; do
+    output=$("$interpreter" build/capsule_word_$tag.satl 2>/dev/null); code_run=$?
+    expect "a word touching a string ending in U+$tag is not satellite.capsule" "before|13" "$output|$code_run"
+    expect "a name touching a string ending in U+$tag does not replace a capsule" "hello" \
+           "$("$interpreter" build/capsule_name_$tag.satl 2>/dev/null)"
+done
+# The same two scans, reached by a STRAY character outside a string, which satl accepts:
+# it is error_token with the character as its payload. `ဆ satellite.main` on a line of its
+# own made the next capsule main ("OTHER", 0), and `ဂ("stray_theirs")` in main loaded a file
+# nothing includes, whose helper replaced the program's own (the payload sweep's fuzzing,
+# 2026-09-17). é and the neighbours U+1003 and U+1007 never collided.
+python3 -c "
+open('build/stray_theirs.satl', 'w').write('''satellite.capsule helper()
+{
+    satellite.console.display(\"THEIRS\")
+}
+''')
+for tag, ch in (('e9', 'é'), ('1003', 'ဃ'), ('1002', 'ဂ'), ('11002', '\U00011002'),
+                ('1007', 'ဇ'), ('1006', 'ဆ'), ('11006', '\U00011006')):
+    open('build/stray_include_%s.satl' % tag, 'w', encoding='utf-8').write('''satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    %s(\"stray_theirs\")
+    helper()
+    satellite.return(satellite)
+}
+
+satellite.capsule helper()
+{
+    satellite.console.display(\"MINE\")
+}
+''' % ch)
+    open('build/stray_main_%s.satl' % tag, 'w', encoding='utf-8').write('''satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(\"MAIN\")
+    satellite.return(satellite)
+}
+%s satellite.main
+satellite.capsule other()
+{
+    satellite.console.display(\"OTHER\")
+}
+''' % ch)"
+for tag in e9 1003 1002 11002 1007 1006 11006; do
+    output=$("$interpreter" build/stray_include_$tag.satl 2>/dev/null); code_run=$?
+    expect "a stray U+$tag before (\"stray_theirs\") includes nothing" "MINE|0" "$output|$code_run"
+    output=$("$interpreter" build/stray_main_$tag.satl 2>/dev/null); code_run=$?
+    expect "a stray U+$tag before satellite.main does not make the next capsule main" "MAIN|0" "$output|$code_run"
+done
+# U+0704 is 0x0704, method_token: the lexer looked back at the last CODE, so after "܄" a
+# name became a method code the check never sees -- "before" printed and the run died on
+# 13. Each is refused by the check, as U+0703's is, before anything runs.
+python3 -c "
+for tag, literal in (('0703', '\"܃\"str'), ('0704', '\"܄\"str'), ('0704_spaced', '\"܄\" str'),
+                     ('0704_find', '\"܄\"find'), ('0704_stray', '܄str'), ('10704', '\"\U00010704\"str')):
+    open('build/period_in_a_payload_%s.satl' % tag, 'w', encoding='utf-8').write('''satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(\"before\")
+    satellite.console.display(%s)
+    satellite.return(satellite)
+}
+''' % literal)"
+for tag in 0703 0704 0704_spaced 0704_find 0704_stray 10704; do
+    output=$("$interpreter" build/period_in_a_payload_$tag.satl 2>/dev/null); code_run=$?
+    expect "a name after U+$tag is still a name, refused before anything runs" "|25" "$output|$code_run"
+done
 # A character above U+FFFF is 40000 and two codes, in a string as in the bytecode (the author,
 # 2026-09-17: "40000 is not a smile... its the 16-bit value for wide"). Positions count characters.
 wanted_wide=$(python3 -c "

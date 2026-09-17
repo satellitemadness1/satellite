@@ -160,6 +160,11 @@ signed long long int load_program(const std::string &main_file,
         // globals, so nothing else in it can run before main does.
         const std::vector<std::bitset<16>> &row = registry.back();
         for (std::size_t i = 0; i < row.size(); ) {
+            // A PAYLOAD'S CODES ARE SKIPPED, NEVER CLASSIFIED. A character's own number
+            // can be any 16 bits: "ဂ" ends in 0x1002, which is satellite.include's code,
+            // and "ဂ"("other") loaded other.satl, whose main then ran instead of this
+            // program's (the payload sweep, 2026-09-17).
+            if (token::carries_a_count(code_at(row, i))) { text_at(row, i); continue; }
             if (code_at(row, i) != word::code_of(1, 1)) { ++i; continue; }
             std::size_t k = i;
             const IncludeShape shape = include_at(row, k, path);
@@ -181,9 +186,13 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry)
     CapsuleTable table;
     for (std::size_t r = 0; r < registry.size(); ++r) {
         const std::vector<std::bitset<16>> &row = registry[r];
-        for (std::size_t i = 0; i < row.size(); ++i) {
-            if (code_at(row, i) != word::code_of(1, 2))   // satellite.capsule
-                continue;
+        for (std::size_t i = 0; i < row.size(); ) {
+            // A PAYLOAD'S CODES ARE SKIPPED, as in load_program's include scan: a string
+            // ending in U+1006 ends in 0x1006, satellite.capsule's code, and a word or a
+            // name touching it made the next body a capsule -- a second satellite.main,
+            // the only one checked and the one that ran (the payload sweep, 2026-09-17).
+            if (token::carries_a_count(code_at(row, i))) { text_at(row, i); continue; }
+            if (code_at(row, i) != word::code_of(1, 2)) { ++i; continue; }   // satellite.capsule
 
             // The name is the next code: a word (satellite.main) or a name the
             // user owns. Then its arguments, then the `{` its body opens with.
@@ -195,6 +204,7 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry)
             } else if (code_at(row, k) == token::name_token) {
                 name = text_at(row, k);
             } else {
+                ++i;
                 continue;
             }
 
@@ -203,11 +213,10 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry)
                 if (token::carries_a_count(code_at(row, k))) { text_at(row, k); continue; }
                 ++k;
             }
-            if (code_at(row, k) != token::left_brace_token)
-                continue;
+            if (code_at(row, k) != token::left_brace_token) { ++i; continue; }
 
             table[name] = CapsuleSite{r, k + 1};
-            i = k;
+            i = k + 1;
         }
     }
     return table;
