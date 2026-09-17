@@ -235,6 +235,15 @@ $interpreter examples/hello_world.satl > /dev/full 2> /dev/null; expect "output 
 
 mkdir -p build/alone && cp $interpreter build/alone/satl
 build/alone/satl examples/hello_world.satl > /dev/null 2>&1; expect "no libraries beside the interpreter" 5 $?
+# A satl deeper than the kernel can name (ERROR #8): refused with 5 and the reason, and
+# never the libraries of the folder it was started in -- this folder holds a working set.
+rm -rf build/deep && mkdir -p build/deep
+deep_result=$(top=$PWD; libraries=$(dirname "$interpreter")/satellite-numbers; name=$(printf 'd%.0s' $(seq 100))
+    cd build/deep && for i in $(seq 45); do mkdir "$name" && cd "$name" || exit; done
+    cp "$interpreter" satl && cp -r "$libraries" satellite-numbers && cp "$top/examples/hello_world.satl" .
+    ./satl hello_world.satl > run.out 2>&1; echo "$?|$(grep -c 'satl cannot read its own path (/proc/self/exe: File name too long)' run.out)")
+expect "a satl deeper than 4,096 bytes refuses, and loads nothing from the current folder" "5|1" "$deep_result"
+rm -rf build/deep
 
 $interpreter --debug examples/hello_world.satl > build/debug.out 2>&1; code=$?
 expect "--debug runs" 0 $code

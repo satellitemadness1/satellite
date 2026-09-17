@@ -21,9 +21,7 @@ each finding (DESIGN §11). PLAN M1 fixes them. Files (under `satellite/` since
    `satellite.return(satellite)` on line 1 drops the whole program and exits 0;
    a display above `satellite.main(` still runs; unbalanced or backwards braces
    are accepted; `satellite.capsule satellite.main(` with no `)` counts as main.
-2. **A directory given as the .satl file** loads as an empty program and reports
-   10 (missing include); read errors are never checked, and an unreadable file
-   says "missing" (8) with no reason.
+2. *(fixed 2026-09-17, PLAN M0.5 — moved to Fixed)*
 3. *(fixed 2026-09-15 — moved to Fixed)*
 4. **A refused write names the wrong line** — thousands of bytes after the line
    that first failed, because std::cout buffers ~4 KB. It must say "at or before".
@@ -31,11 +29,8 @@ each finding (DESIGN §11). PLAN M1 fixes them. Files (under `satellite/` since
    paths (display_machine_state's code is thrown away).
 6. **An empty numbers folder** is "defined" (6), and the program then fails as 13
    instead of vector_loading_error (5).
-7. **Exit codes are cut to 8 bits:** a machine code of 256 or -256 exits 0
-   (success) after printing an error; 4294967298 exits 2.
-8. **Libraries load from the CURRENT directory** when `/proc/self/exe` cannot be
-   read (e.g. a path longer than PATH_MAX): another folder's code runs, and under
-   ASan dlopen hung.
+7. *(fixed 2026-09-17, PLAN M0.5 — moved to Fixed)*
+8. *(fixed 2026-09-17, PLAN M0.5 — moved to Fixed)*
 9. **race.sh prints a passing ratio when a run fails** (a -1 ns time counts as the
    fastest), and race.cpp loads `build/satellite-numbers` relative to the cwd.
 10. **Every `*.so` directory entry is loaded as a library** — a directory, a
@@ -116,6 +111,24 @@ Found by the two builders themselves; no adversarial reviewer has run yet.
 ## Fixed
 
 *(move entries here with the commit that fixed them)*
+
+**2, 7 and 8 — fixed 2026-09-17 by PLAN M0.5**, each with a check in check.sh:
+
+2. **A directory given as the .satl file** loaded as an empty program and reported
+   10 (missing include), and an unreadable file said "missing" (8) with no reason.
+   `load_program` now refuses anything that is not a regular file by name --
+   "cannot run examples: it is a directory" -- and says why a file could not be
+   read ("Permission denied"). A FIFO and /dev/zero are refused the same way
+   instead of blocking or reading forever. Still 8, `missing_satl_file`.
+7. **Exit codes were cut to 8 bits:** 256 exited 0. `machine/exit_status.hpp`:
+   a code outside 1-254 exits 255 with the whole code on stderr, and 255 is
+   never given to a code (D0.5.2). No program can stop on 256 yet, so
+   `build/exit_status_cases` proves 0, 1, 255, 256, -1 and 4294967298.
+8. **Libraries loaded from the CURRENT directory** when `/proc/self/exe` could
+   not be read. `numbers_folder()` grows its buffer until the path fits, and a
+   path the kernel will not give (a satl deeper than 4,096 bytes) is refused
+   with 5 and the reason; check.sh plants a working set of libraries in the
+   current folder to prove none is loaded.
 
 3. **A closed pipe killed the process** (`| head -1`): SIGPIPE, exit 141, nothing
    on stderr. Fix: ignore SIGPIPE so it becomes display_error (2).

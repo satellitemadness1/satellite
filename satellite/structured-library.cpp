@@ -44,6 +44,7 @@
 #include <string>
 #include <vector>
 
+#include <cerrno>
 #include <climits>
 #include <csignal>
 #include <cstring>
@@ -51,15 +52,30 @@
 
 namespace {
 
-// The folder the libraries were built into: satellite-numbers/ beside this executable.
+// The folder the libraries were built into: satellite-numbers/ beside this
+// executable -- build/satl's, or an installed satl's (PLAN M0.5: the three are
+// built into one folder and installed as one folder).
+//
+// NEVER THE CURRENT DIRECTORY (ERROR #8). This used to fall back to
+// "satellite-numbers" when /proc/self/exe could not be read, which ran whatever
+// libraries the folder satl was started in held. It also read into PATH_MAX
+// bytes and took a full buffer as the whole path. Now the buffer grows until the
+// path fits, and a path the kernel will not give -- a satl installed deeper than
+// it can name, ENAMETOOLONG -- answers empty, with errno saying why.
 std::string numbers_folder()
 {
-    char path[PATH_MAX];
-    const ssize_t length = readlink("/proc/self/exe", path, sizeof path - 1);
-    if (length <= 0)
-        return "satellite-numbers";
-    std::string executable(path, static_cast<size_t>(length));
-    return executable.substr(0, executable.rfind('/')) + "/satellite-numbers";
+    std::string path(PATH_MAX, '\0');
+    for (;;) {
+        const ssize_t length = readlink("/proc/self/exe", path.data(), path.size());
+        if (length <= 0)
+            return std::string();
+        if (static_cast<std::size_t>(length) < path.size()) {
+            path.resize(static_cast<std::size_t>(length));
+            break;
+        }
+        path.resize(path.size() * 2);
+    }
+    return path.substr(0, path.rfind('/')) + "/satellite-numbers";
 }
 
 // Every argument, one line each, while debug mode is on.
@@ -157,7 +173,12 @@ signed long long int run_satl(int argc, char **argv)
     StartupThreads threads;
     threads.start_in_background(startup);
 
-    code = index.load(numbers_folder(), state);
+    const std::string folder = numbers_folder();
+    if (folder.empty())
+        return report_error(std::string("vector.number.index(error): satl cannot read its own path (/proc/self/exe: ") +
+                                std::strerror(errno) + "), so it cannot find the satellite-numbers/ beside it",
+                            vector_loading_error);
+    code = index.load(folder, state);
     if (stops_the_program(code))
         return code;
     // A word's 16-bit code straight to its library: table[code], one load, no
