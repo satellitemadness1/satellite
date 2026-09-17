@@ -405,6 +405,77 @@ was measured on a file of 100,000 separate `display` statements, so it was mostl
 003's PARSE cost, not its display. A display race must put ONE statement in a
 loop.*
 
+## 6.8 THE OBJECT MODEL RUNS THE INTERPRETER, 2026-09-16 — and the three words
+
+`e21522b` built the classes, `d0cce17` wired them in. **check.sh is 41/41**, and
+the language's own 16/32-bit string reaches the interpreter for the first time:
+`"wide: ∞ é 日本語"` and emoji past U+FFFF round-trip through `satellite_string`
+instead of `std::string`.
+
+**THE AUTHOR CAUGHT A NAMING ERROR THAT WAS THREE THINGS UNDER ONE NAME** —
+*"this is our spacesuit… this is satelliteSpacesuit not satelliteObject!"* He was
+right, and 003 had already settled it. The language's own vocabulary:
+
+| the word | what it is | the type |
+|---|---|---|
+| **spacesuit** | THE CLASS. `satellite.spacesuit` is word `1 10` in words.tsv; `satellite.class` is the author's second spelling (2026-09-09). DESIGN §13: *"Reference semantics"* | `satelliteSpacesuit` (003's `Layout`) |
+| **object** | ONE INSTANCE. **Not a word of the language** — in neither words.tsv nor REGISTRY.satellite — but the author's own prose: DESIGN §13's *"what a constructor produces is the object"*, M26's `object_name.pointer()` | `satelliteObject` (003's `SuitObject`) |
+| **spaceship** | a FILE that is included, `1 1 2`. A different thing again | — |
+
+**A VALUE IS NOT AN OBJECT**, which is why the variant is `satelliteValue` and
+not `satelliteObject`: a number is a value and it is an instance of nothing. 003
+called this exact type `Value` (`src/satellite_value/value.hpp`, sixteen arms
+since M26); this is that type rebuilt on 004's number and string.
+
+**THE CLASS AND THE INSTANCE WERE ONE STRUCT, AND THAT WAS THE REAL DEFECT** —
+not the name. Every instance carried its own copy of its class's field NAMES.
+Split the way 003 splits them: the spacesuit holds the layout and is shared, the
+object holds a bare pointer to it and a flat `vector<satelliteValue>` indexed by
+slot. **That is what keeps a field read an integer index** instead of the string
+hash that already costs 004 ×5 against CPython (§6.7).
+
+**The object arm is a `shared_ptr`, and that is the author's ruling and not a C++
+workaround.** DESIGN §7.4 says a spacesuit is a reference type; M26 built it that
+way — a capsule handed one mutates it and the caller sees the mutation. Storing
+the instance inline would make `b = a` copy it, deciding the opposite by
+accident. *(It also does not compile: `std::variant` needs complete types.)*
+
+**ONE FUNCTION, ONE FILE, NAMED FOR ITS PAIR** (the author): nineteen headers —
+`number_and_number_add.hpp`, `number_and_string_add.hpp`,
+`bytecode_and_bytecode_join.hpp`, `number_to_string.hpp`. `expression.cpp` gave
+up its token → fast path table; `satelliteValue::add` decides on the PAIR of
+kinds through a `case pair_of(number, string):` that reads like the filename.
+**That file is the grammar now; the object model is the meaning.**
+
+**Keeping `satellite_bytecode` in the variant was the author's call and it cost
+nothing** — the object is 80 bytes with the arm and 80 without, because every arm
+is a handle. It also bought `bytecode_and_bytecode_join`, a fast path that had
+nowhere to live before: QUAD writes satellite, and joining runs of codes without
+going out to text and re-lexing is what that needs.
+
+**`strings/string_method.hpp`'s `satellite_string` is now `satellite_string32`.**
+Two string types had shared one name in one namespace since 2026-09-15 and
+nothing had ever included both — the object model does, so it became a compile
+error instead of a trap. §5's owed migration is unchanged; the two are just
+tellable apart while it is done.
+
+**OWED, AND THE FIRST IS THE ONE THAT MATTERS:**
+
+1. **NOTHING CAN DECLARE A SPACESUIT YET.** The classes are built and the value
+   type runs the interpreter, but `satellite.spacesuit` has no parse rule in
+   004 — no lexer shape, no `capsules_in` sibling, no constructor. **The object
+   model is the machine; the grammar is not written.** 003's
+   `parser_declarations.cpp` and `resolve.cpp` are the port.
+2. `satellite/bytecode/number_methods.cpp` **is still dead code, third session.**
+   It is now one hop from real: its methods are `satelliteValue`'s pair files
+   already. Either finish it or delete it.
+3. **`n = 1 & 2` still silently answers 1** (ERROR.md). `run_assignment` and
+   `run_while` need the three lines `call_word` has.
+4. **`satellite.statement.if`** is the missing half of `while`.
+5. Threads: 003's `SuitObject` carries a mutex and an access list (THREAD.md
+   D1/D2) because two threads sharing one object freed a string twice. 004's
+   walker is single-threaded, and 256 threads are already warm.
+
 ## 7. Other notes
 
 - `POLYMORPH/M1.md`–`M7.md` (top folder, uncommitted) hold the earlier
