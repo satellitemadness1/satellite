@@ -1,78 +1,52 @@
-// satellite/bytecode/cascade_convert.cpp -- the header says whose design this is
-// and what 200,000 threads cost.
+// satellite/bytecode/cascade_convert.cpp -- the header says whose design this is.
 
 #include "cascade_convert.hpp"
 
 #include "bytecode_registry.hpp"
 
-#include <atomic>
-#include <thread>
-#include <vector>
+#include <algorithm>
+#include <condition_variable>
+#include <mutex>
 
 namespace satellite004 {
 
-std::size_t lines_in(const ProgramText &text)
-{
-    std::size_t count = 0;
-    for (const std::vector<std::string> &file : text)
-        count += file.size();
-    return count;
-}
-
-void convert_a_thread_for_each_line(const std::vector<std::string> &lines,
-                                    std::vector<std::bitset<16>> &file,
-                                    StartupThreads &threads)
+void convert_every_line(const std::vector<std::string> &lines,
+                        std::vector<std::bitset<16>> &file,
+                        StartupThreads &threads,
+                        unsigned long long int thread_count)
 {
     if (lines.empty())
         return;
 
-    // ONE PIECE A LINE. Sized before any thread starts, so no thread ever grows
-    // this vector and no two threads ever touch the same element -- which is
-    // what makes the whole thing need no lock at all.
-    std::vector<std::vector<std::bitset<16>>> pieces(lines.size());
+    // One chunk a thread, never more chunks than lines.
+    const std::size_t chunks = static_cast<std::size_t>(
+        std::max<unsigned long long int>(1, std::min<unsigned long long int>(thread_count, lines.size())));
+    const std::size_t per = (lines.size() + chunks - 1) / chunks;
 
-    // ONE THREAD A LINE (the author). Held so they can be joined: the author's
-    // own words are "join all of them", and a detached thread would leave main
-    // with nothing to wait on but a counter.
-    std::vector<std::thread> made;
-    made.reserve(lines.size());
+    std::vector<std::vector<std::bitset<16>>> pieces(chunks);
+    std::mutex mutex;
+    std::condition_variable finished;
+    std::size_t left = chunks;
 
-    std::atomic<std::size_t> refused{0};
-    for (std::size_t i = 0; i < lines.size(); ++i) {
-        try {
-            made.emplace_back([&lines, &pieces, i] { tokenise_one_line(lines[i], pieces[i]); });
-        } catch (const std::system_error &) {
-            // THE MACHINE REFUSING A THREAD MUST NOT LOSE A LINE. At 200,000
-            // lines this is a real possibility and the answer is not to fail:
-            // the line goes to the warm pool, which is already parked and needs
-            // no new thread at all.
-            refused.fetch_add(1);
-            threads.submit([&lines, &pieces, i] { tokenise_one_line(lines[i], pieces[i]); });
-        }
+    for (std::size_t chunk = 0; chunk < chunks; ++chunk) {
+        const std::size_t from = chunk * per;
+        const std::size_t stop = std::min(lines.size(), from + per);
+        threads.submit([&, chunk, from, stop] {
+            std::vector<std::bitset<16>> &piece = pieces[chunk];
+            for (std::size_t i = from; i < stop; ++i)
+                tokenise_one_line(lines[i], piece);
+            std::lock_guard<std::mutex> lock(mutex);
+            if (--left == 0)
+                finished.notify_one();
+        });
     }
 
-    // JOIN ALL OF THEM (the author: "we will just make this simpler than it has
-    // to be hard, so we wait for all 32 threads to return").
-    for (std::thread &one : made)
-        one.join();
-
-    // The refused lines went to the pool, which is not joined -- submitting a
-    // job and waiting for it is what `warm()` cannot tell us, so a second pass
-    // over the pieces is the honest wait. Empty only while its line is unread.
-    if (refused.load() != 0) {
-        bool waiting = true;
-        while (waiting) {
-            waiting = false;
-            for (std::size_t i = 0; i < lines.size() && !waiting; ++i)
-                if (pieces[i].empty() && !lines[i].empty())
-                    waiting = true;
-            if (waiting)
-                std::this_thread::yield();
-        }
+    // EVERY LINE BEFORE A SINGLE LINE RUNS (the author).
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        finished.wait(lock, [&] { return left == 0; });
     }
 
-    // LAID BY INDEX, so the order is the program's and never the order the
-    // threads happened to finish in.
     std::size_t codes = 1;
     for (const std::vector<std::bitset<16>> &piece : pieces)
         codes += piece.size();

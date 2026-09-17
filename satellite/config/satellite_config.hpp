@@ -53,10 +53,10 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 4, false, false});
-    arguments_vector.push_back({"arguments.build", 90, false, false});
+    arguments_vector.push_back({"arguments.build", 91, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
-    arguments_vector.push_back({"arguments.threads_startup", 256, false, false});
+    arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});
     arguments_vector.push_back({"arguments.file_size_max_bytes", 549755813888, false, false}); // 512 gigabyte file_size maximum
 
     return(arguments_vector);

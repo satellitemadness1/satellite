@@ -391,10 +391,10 @@ void add_file_to_bytecode_registry(const std::string &filename,
         return;
     }
 
-    // A THREAD FOR EACH LINE (the author). cascade_convert.hpp holds the design
-    // and what 200,000 threads cost.
-    (void)batches;
-    convert_a_thread_for_each_line(lines, file, threads);
+    // EVERY LINE ON THE 1024 WARM THREADS, IN ANY ORDER, BEFORE ANYTHING RUNS
+    // (the author). cascade_convert.hpp holds the design. `batches` is the number
+    // of warm threads, which is arguments.threads_startup.
+    convert_every_line(lines, file, threads, batches);
     file.push_back(std::bitset<16>(token::end_of_file_token));
 }
 
