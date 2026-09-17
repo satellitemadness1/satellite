@@ -82,7 +82,9 @@ def code_of(unicode):
 
 def shown(text):
     codes = [code_of(ord(c)) for c in text]
-    return "codes=%s fast=%d" % (",".join("%x" % c for c in codes) or "-", all(ord(c) <= 0xFFFF for c in text))
+    # fast() is ALWAYS true since the author's 16-bit-only ruling (2026-09-16):
+    # there is one path, so there is nothing for it to report.
+    return "codes=%s fast=1" % (",".join("%x" % c for c in codes) or "-")
 
 
 def hex_or_dash(data):
@@ -107,11 +109,34 @@ def case(kind, line, want):
 
 
 def decode_answer(data):
+    """What satellite_string answers for these bytes.
+
+    SIXTEEN BITS ONLY (the author, 2026-09-16): a character above U+FFFF is
+    refused with string_error at the byte its sequence STARTS on, exactly as an
+    invalid sequence is, and what came before it is kept. Python can hold those
+    characters, so this model refuses them where satellite does rather than
+    agreeing with Python -- which is the whole reason this file exists.
+
+    WHICHEVER COMES FIRST WINS. Bytes can hold both faults -- an emoji at byte 1
+    and an invalid sequence at byte 5 -- and Python's decoder only ever reports
+    the second, because the first is perfectly good UTF-8 to it. Taking the
+    earlier offset is what makes the two agree.
+    """
     try:
         text = data.decode("utf-8", "strict")
-        return "ok %s utf8=%s" % (shown(text), hex_or_dash(data))
+        invalid_at = None
     except UnicodeDecodeError as error:
-        return "bad %d %s" % (error.start, shown(data[:error.start].decode("utf-8", "strict")))
+        text = data[:error.start].decode("utf-8", "strict")
+        invalid_at = error.start
+    for index, character in enumerate(text):
+        if ord(character) > 0xFFFF:
+            at = len(text[:index].encode())     # the byte its 4-byte sequence starts on
+            if invalid_at is None or at < invalid_at:
+                return "bad %d %s" % (at, shown(text[:index]))
+            break
+    if invalid_at is not None:
+        return "bad %d %s" % (invalid_at, shown(text))
+    return "ok %s utf8=%s" % (shown(text), hex_or_dash(data))
 
 
 for data in utf8_cases:
@@ -122,20 +147,48 @@ for cps in encode_cases:
         refused = int(old_answer.split()[1])
         want = "bad %d %s" % (refused, shown("".join(chr(c) for c in cps[:refused])))
     else:
-        text = "".join(chr(c) for c in cps)
-        want = "ok fast=%d utf8=%s" % (all(c <= 0xFFFF for c in cps), hex_or_dash(text.encode()))
+        # A code above U+FFFF is refused now, at the index it sits on.
+        above = next((i for i, c in enumerate(cps) if c > 0xFFFF), None)
+        if above is not None:
+            want = "bad %d %s" % (above, shown("".join(chr(c) for c in cps[:above])))
+        else:
+            text = "".join(chr(c) for c in cps)
+            want = "ok fast=1 utf8=%s" % hex_or_dash(text.encode())
     case("C append_code", "C " + ",".join("%x" % c for c in cps), want)
+# THE BIT CASES CAME FROM THE .sati FORMAT, which was 32 bits a character and is
+# superseded (the author, 2026-09-16: one file, and it is the bytecode). They are
+# kept as a decoder check, with the same 16-bit rule applied: a group holding a
+# code above 0xFFFF is refused, at that group's bit offset.
 for bits, want in bit_cases:
+    if want.startswith("ok") and len(want.split(None, 1)) > 1:
+        codes = [int(c, 16) for c in want.split(None, 1)[1].split(",") if c]
+        above = next((i for i, c in enumerate(codes) if c > 0xFFFF), None)
+        if above is not None:
+            want = "bad %d" % (above * 32)
     case("B bits", "B " + bits, want)
 
 # ---- the new cases ----
-E, R, W = chr(0x1F30D), chr(0x1F680), chr(0x10FFFF)   # two emoji and the last character: wide
+# THE WIDE CHARACTERS ARE GONE FROM THE POOL (the author, 2026-09-16: 16-bit
+# only). E, R and W used to be two emoji and U+10FFFF, and every text built from
+# them tested the 32-bit path. That path does not exist, so a string holding one
+# cannot be made at all -- feeding one to `clear` or `append` would be testing a
+# string that cannot exist rather than testing anything.
+#
+# They are replaced by the characters at the NEW edge: three bytes of UTF-8, at
+# and just under U+FFFF, which is now the widest thing this type holds. The
+# refusal of anything above it is checked where refusals are checked -- in the
+# decode and append_code cases, which cover 0x10000..0x10FFFF in full.
+E, R, W = chr(0x4F60), chr(0x597D), chr(0xFFFF)       # two CJK characters and the last 16-bit one
 pool = ["", "a", "b", "z", "A", "0", "!", " ", "\t", "\n", chr(0), chr(0x7F), chr(0x80), "hello", "Hello, World!",
         chr(0x43C) + chr(0x438) + chr(0x440), chr(0x4F60) + chr(0x597D), chr(0xFFFF), chr(0xE000), chr(0x7FF) + chr(0x800),
-        chr(0x10000), E, "a" + R + "b", "ab" + E + "cd" + R, "wide at the end " + W, E + " wide at the start",
-        chr(0xFFFF) + chr(0x10000), "ab", "abc"]
+        E, "a" + R + "b", "ab" + E + "cd" + R, "wide at the end " + W, E + " wide at the start",
+        chr(0xFFFE) + chr(0xFFFF), "ab", "abc"]
 rng = random.Random(16)
-valid = [b.decode() for b in utf8_cases if old["python_answer"](b).startswith("ok")]
+# THE TEXTS EVERY LATER TEST IS BUILT FROM. Chosen with decode_answer and not
+# with Python's own decoder, because since the 16-bit-only ruling those differ:
+# a text holding an emoji decodes in Python and is REFUSED by satellite, so
+# feeding one to `clear` or `append` would be testing a string that cannot exist.
+valid = [b.decode() for b in utf8_cases if decode_answer(b).startswith("ok")]
 extra = rng.sample(valid, 300)
 
 
@@ -161,7 +214,7 @@ def compare_answer(left, right):
 
 
 compare_pairs = [(l, r) for l in pool for r in pool] + [(rng.choice(valid), rng.choice(valid)) for _ in range(1000)]
-compare_pairs += [("a" + E, "ab"), (chr(0xFFFF), chr(0x10000)), (chr(0x10000), chr(0xFFFF)), ("abc", "ab"), ("", E)]
+compare_pairs += [("a" + E, "ab"), (chr(0xFFFE), chr(0xFFFF)), (chr(0xFFFF), chr(0xFFFE)), ("abc", "ab"), ("", E)]
 by_code = [chr(ASCII_OF_CODE[code]) for code in range(128)]
 compare_pairs += [(by_code[k], by_code[k + 1]) for k in range(127)] + [(by_code[k + 1], by_code[k]) for k in range(127)]
 for left, right in compare_pairs:
@@ -199,9 +252,9 @@ for text in pool + extra[:40]:
 # of them with one byte overwritten, so a refusal lands inside and after a run.
 
 
-def a_character():                                    # any width, never a surrogate
+def a_character():                 # anything this type can hold: never a surrogate, never above 0xFFFF
     return chr(rng.choice([rng.randint(0, 0x7F), rng.randint(0x80, 0x7FF), rng.randint(0x800, 0xD7FF),
-                           rng.randint(0xE000, 0xFFFF), rng.randint(0x10000, 0x10FFFF)]))
+                           rng.randint(0xE000, 0xFFFF)]))
 
 
 def long_text():
