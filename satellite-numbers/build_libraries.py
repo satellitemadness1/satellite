@@ -63,7 +63,7 @@ FLAGS = [*CXXFLAGS, "-shared", "-fPIC", *LDFLAGS]
 BUILT_WITH = os.path.join(OUT, ".built_with")
 ENVIRONMENT = {name: value for name, value in os.environ.items() if name != "LD_RUN_PATH"}
 SHARED_HEADERS = [os.path.join(HERE, "number_row.hpp"), os.path.join(ROOT, "satellite", "machine", "machine_codes.hpp"),
-                  os.path.join(ROOT, "strings", "string_method.hpp")]
+                  os.path.join(ROOT, "strings", "string_method.hpp"), os.path.join(HERE, "directory_words.hpp")]
 
 
 def folder_of(path):

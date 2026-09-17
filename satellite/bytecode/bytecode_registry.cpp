@@ -185,6 +185,47 @@ Code one_character_token(char c)
 
 } // namespace
 
+// THE CODE FOR A WORD WRITTEN `path(...)`, whose row carries the shape: 0 when no
+// row does, or when more than one could be meant. Empty brackets ask for the
+// `path()` row; anything else asks for the row with ONE parameter, whatever that
+// parameter is called -- `(d)`, `(x)`, `(value)` are all one argument. A path with
+// several one-parameter rows is left alone rather than guessed at.
+token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_t run)
+{
+    std::size_t at = run;
+    while (at < text.size() && (text[at] == ' ' || text[at] == '\t')) ++at;
+    if (at >= text.size() || text[at] != '(')
+        return 0;
+    std::size_t inside = at + 1;
+    while (inside < text.size() && (text[inside] == ' ' || text[inside] == '\t')) ++inside;
+
+    const std::string path(text.substr(from, run - from));
+    if (inside < text.size() && text[inside] == ')')
+        return word::code_of_spelling(path + "()");
+
+    const std::string opened = path + "(";
+    std::size_t low = 0, high = word::kSpelledWordCount;
+    while (low < high) {
+        const std::size_t middle = low + (high - low) / 2;
+        if (std::string_view(word::kSpelledWords[middle].path) < std::string_view(opened)) low = middle + 1;
+        else high = middle;
+    }
+    token::Code only = 0;
+    for (std::size_t row = low; row < word::kSpelledWordCount; ++row) {
+        const std::string_view spelling(word::kSpelledWords[row].path);
+        if (spelling.compare(0, opened.size(), opened) != 0)
+            break;
+        if (spelling.size() == opened.size() + 1)           // the `path()` row: these brackets are not empty
+            continue;
+        if (spelling.find(',') != std::string_view::npos)   // two parameters or more
+            continue;
+        if (only != 0)
+            return 0;                                       // two rows could be meant: say nothing
+        only = word::kSpelledWords[row].code;
+    }
+    return only;
+}
+
 void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
 {
     Line line{text, row};
@@ -240,7 +281,7 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
             continue;
         }
 
-        // A WORD OF THE LANGUAGE, as one code. satellite.console.display is
+// A WORD OF THE LANGUAGE, as one code. satellite.console.display is
         // 4163, not name . name . name, and the code IS the index into the
         // function table -- which is what the 4096 range is for.
         //
@@ -255,6 +296,21 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
                                (text[run] == '.' && run + 1 < n && identifier_start(text[run + 1]))))
                 ++run;
             const std::size_t before = line.i;
+            // A WORD WHOSE ROW SPELLS ITS ARGUMENT SHAPE is matched here, BEFORE
+            // the shortening below: `satellite.directory.list()` and `list(d)`
+            // are two rows over one path (WORD_NUMBERS §1.3), so the plain path
+            // matches neither, and the shortening would take
+            // `satellite.directory` and leave `.list()` to be read as a name.
+            // Which of the two is meant is decided by the brackets that follow,
+            // and the arguments inside them are lexed exactly as they always are.
+            // THE WHOLE PATH FIRST, exactly as it is written: `satellite.main`
+            // is a row of its own and must not become `satellite.main()`, or a
+            // program's own `satellite.capsule satellite.main()` line stops
+            // being the shape that declares main.
+            const Code whole = word::code_of_spelling(text.substr(line.i, run - line.i));
+            if (whole != 0) { line.put(whole); line.i = run; continue; }
+            const Code shaped = shaped_word_code(text, line.i, run);
+            if (shaped != 0) { line.put(shaped); line.i = run; continue; }
             for (std::size_t stop = run; stop > line.i; ) {
                 const std::string_view path = text.substr(line.i, stop - line.i);
                 const Code code = word::code_of_spelling(path);

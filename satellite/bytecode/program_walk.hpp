@@ -102,4 +102,19 @@ signed long long int run_main(const BytecodeRegistry &registry,
                               const FunctionTable &functions,
                               MachineState &state);
 
+// ONE TYPED LINE, tokenised as row 0 of its own registry: the prompt's way in
+// (PLAN M0.6). The same six shapes a capsule's body has, checked and then run --
+// no wrapper around the line, no second reader, and nothing kept between lines
+// but the number index, the working directory and the history.
+//
+// A typed line has no capsules to call and no variables that outlive it: both
+// tables are made here and destroyed with the line. Blocks are refused at the
+// prompt until M6 gives them somewhere to live.
+signed long long int check_typed_line(const BytecodeRegistry &registry,
+                                      const FunctionTable &functions,
+                                      MachineState &state);
+signed long long int run_typed_line(const BytecodeRegistry &registry,
+                                    const FunctionTable &functions,
+                                    MachineState &state);
+
 } // namespace satellite004

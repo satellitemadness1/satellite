@@ -12,11 +12,30 @@
 
 #include "../strings/string_method.hpp"
 
+#include <csignal>
 #include <string>
+#include <vector>
 
 namespace satellite004 {
 
 inline constexpr unsigned int kMaxDepth = 16;
+
+// WHAT A DIRECTORY WORD ANSWERS (PLAN M0.6). `satellite.directory.change(d)` is
+// a VALUE and never an error -- true or false -- and `list()` answers the names
+// it read. A name is BYTES both ways: a POSIX name is arbitrary bytes, and 004's
+// strings refuse anything that is not UTF-8, so a path that could not be a
+// satellite string still reaches the system call that takes it.
+struct DirectoryReply {
+    signed long long int code = 0;             // success, or why it could not
+    bool flag = false;                         // change(d): moved or not
+    std::vector<std::string> names;            // list(): the entries, sorted, `.` and `..` dropped
+    std::string reason;                        // the system's own word for a failure
+};
+
+// `given` is false for `list()`, which reads the working directory. `stop` is the
+// session's Ctrl-C flag, read between entries so a listing of a million names can
+// stop and answer `interrupted`; null when nothing can interrupt this call.
+using DirectoryScenario = DirectoryReply (*)(const std::string &path, bool given, const volatile sig_atomic_t *stop);
 
 struct Scenarios {
     // The most likely scenario: display a string.
@@ -26,6 +45,11 @@ struct Scenarios {
     signed long long int (*size)(long double value, const std::string &unit, bool endline) = nullptr;
     // A method of satellite.variable.string (1 6 1 n): see strings/string_method.hpp.
     StringMethod string_method = nullptr;
+
+    // APPENDED LAST, AND EVERY NEW SCENARIO MUST BE: a library built before this
+    // field existed still describes itself correctly, because everything it fills
+    // in is still where it was. satellite.directory's three words (PLAN M0.6).
+    DirectoryScenario directory = nullptr;
 };
 
 struct LibraryRow {

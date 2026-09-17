@@ -70,6 +70,14 @@ $(BUILD)/prompt_reader: $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) $(PROMPT_H
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) -o $@
 
+# satellite.directory's three words with no interpreter around them: the header all
+# three libraries are built from (PLAN M0.6). It takes the room to work in, so the
+# checks never write beside the tree.
+$(BUILD)/directory_cases: $(SATELLITE)/satl/directory_cases.cpp $(NUMBERS)/directory_words.hpp $(NUMBERS)/number_row.hpp \
+                          $(MACHINE)/machine_codes.hpp
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(SATELLITE)/satl/directory_cases.cpp -o $@
+
 # The build fingerprint's inputs, one a line: check.sh compares them with the
 # headers the compiler says satl and satl-term are made from.
 build-inputs:

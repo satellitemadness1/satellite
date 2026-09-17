@@ -70,8 +70,11 @@ expect "--run runs the file" "0|$wanted" "$code|$(cat build/run.out)"
 expect "... and says a file goes after it" 1 "$(grep -c -- '--run needs the file to run after it' build/cl.err)"
 "$interpreter" --run "" > /dev/null 2> build/cl.err; expect "--run \"\" is a file with no name" 8 $?
 expect "... and says the name is empty" 1 "$(grep -c 'cannot locate file: (an empty name)' build/cl.err)"
-"$interpreter" --repl > /dev/null 2> build/cl.err; expect "--repl is not built yet" 14 $?
-expect "... and says the prompt lands at M0.6" 1 "$(grep -c 'the prompt is not built yet -- it lands at M0.6' build/cl.err)"
+# --repl IS THE SESSION NOW (M0.6), so it READS: given nothing to read it ends at
+# once, and given a line it runs it. Never without a pipe here -- a bare --repl
+# would wait for this script's own terminal.
+"$interpreter" --repl < /dev/null > build/repl.out 2> build/cl.err; expect "--repl with nothing to read ends with 0" 0 $?
+expect "... and says no prompt text to something that is not a terminal" 0 "$(grep -c 'satl>' build/repl.out)"
 "$interpreter" --repl extra > /dev/null 2>&1; expect "--repl with another word is refused" 23 $?
 for word in -- -x.satl --rum -; do
     "$interpreter" "$word" x.satl > /dev/null 2>&1; expect "\"$word\" is not a word satl takes" 23 $?
@@ -226,6 +229,28 @@ for harness in prompt_cases prompt_reader; do
         expect "the prompt at a real terminal: $(grep -c '^ok' build/check_prompt.out) checks on the screen (build/check_prompt.out)" 0 $code
     fi
 done
+
+# M0.6's SESSION: `satl --repl`, satellite.directory's three words and the table.
+# directory_cases checks the header all three libraries are built from, with no
+# interpreter around it; check_session.py types at a real satl through a pty.
+if [ ! -x build/directory_cases ]; then expect "build/directory_cases is built (make)" built missing
+elif ! make -sq build/directory_cases 2>/dev/null; then
+    expect "build/directory_cases is as new as its sources (make build/directory_cases)" current stale
+else
+    timeout 300 build/directory_cases "${TMPDIR:-/tmp}" > build/directory_cases.out 2>&1; code=$?
+    expect "satellite.directory's words: $(grep -c '^ok' build/directory_cases.out) cases (build/directory_cases.out)" 0 $code
+fi
+SATL="$interpreter" timeout 600 python3 -u satellite/satl/check_session.py > build/check_session.out 2>&1; code=$?
+expect "satl --repl at a real terminal: $(grep -c '^ok' build/check_session.out) checks (build/check_session.out)" 0 $code
+# The prompt's own refusals, from a pipe: each says which spelling it refused, and the
+# session goes on to the line after them.
+printf 'satellite.include(satellite)\n{\nsatellite.capsule satellite.main()\nsatellite.return(satellite)\nsatellite.help(x)\nsatellite.console.display("after them all")\n' | \
+    "$interpreter" --repl > build/repl_refusals.out 2>&1
+expect "the five spellings and help are refused by name, and the line after them still runs" "1|1|1|1|1|1" \
+       "$(grep -c 'a session has already taken satellite in' build/repl_refusals.out)|$(grep -c 'a block has nowhere to live' build/repl_refusals.out)|$(grep -c 'a capsule belongs to a program' build/repl_refusals.out)|$(grep -c 'nothing here to return from' build/repl_refusals.out)|$(grep -c 'satellite.help is not built yet' build/repl_refusals.out)|$(grep -c '^after them all$' build/repl_refusals.out)"
+# A brace inside a string is text and not a block: the refusals are read from the CODES.
+printf 'satellite.console.display("{ not a block }")\n' | "$interpreter" --repl 2>/dev/null | grep -q '{ not a block }'
+expect "a brace inside a string literal is not a block" 0 $?
 
 # A PAYLOAD'S CODES ARE NEVER READ AS TOKENS. A character's own number can be any 16 bits,
 # so a string's last code can equal a word's or a token's (the payload sweep, 2026-09-17).

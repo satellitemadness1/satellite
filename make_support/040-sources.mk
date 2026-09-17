@@ -9,6 +9,9 @@
 INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(ARGUMENTS)/arguments.cpp $(ARGUMENTS)/command_line.cpp \
                       $(MACHINE)/machine_state.cpp $(SATELLITE)/satl/satl_file.cpp \
+                      $(SATELLITE)/satl/session.cpp $(SATELLITE)/satl/listing.cpp \
+                      $(PROMPT)/raw_mode.cpp $(PROMPT)/keys.cpp $(PROMPT)/editor.cpp \
+                      $(PROMPT)/history.cpp $(PROMPT)/render.cpp $(PROMPT)/line_reader.cpp \
                       $(SATELLITE)/threads/startup_threads.cpp \
                       $(BYTECODE)/bytecode_registry.cpp $(BYTECODE)/cascade_convert.cpp \
                       $(BYTECODE)/function_table.cpp $(BYTECODE)/include_shape.cpp \
@@ -25,6 +28,9 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
 
 HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(SATELLITE)/config/satellite_config.hpp \
           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
+          $(MACHINE)/stop_flag.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp \
+          $(PROMPT)/raw_mode.hpp $(PROMPT)/keys.hpp $(PROMPT)/editor.hpp $(PROMPT)/history.hpp \
+          $(PROMPT)/render.hpp $(PROMPT)/line_reader.hpp $(NUMBERS)/directory_words.hpp \
           $(SATELLITE)/satl/satl_file.hpp $(SATELLITE)/threads/startup_threads.hpp \
           $(VERSION_DIR)/version.hpp $(VERSION_DIR)/title_lines.hpp \
           $(BYTECODE)/bytecode_registry.hpp $(BYTECODE)/token_codes.hpp \

@@ -1,0 +1,247 @@
+// The prompt's session. See session.hpp.
+
+#include "session.hpp"
+
+#include "listing.hpp"
+
+#include "../bytecode/bytecode_registry.hpp"
+#include "../bytecode/program_walk.hpp"
+#include "../bytecode/word_codes.hpp"
+#include "../machine/machine_codes.hpp"
+#include "../machine/machine_state.hpp"
+#include "../machine/shown.hpp"
+#include "../machine/stop_flag.hpp"
+#include "../prompt/line_reader.hpp"
+#include "../prompt/raw_mode.hpp"
+#include "../prompt/render.hpp"
+
+#include <csignal>
+#include <iostream>
+#include <string>
+#include <unistd.h>
+
+namespace satellite004 {
+
+namespace {
+
+using token::Code;
+
+// The session's own Ctrl-C flag. A library reads it between entries through
+// stop_flag(); the handler is the only thing that writes it.
+volatile sig_atomic_t asked_to_stop = 0;
+volatile sig_atomic_t presses = 0;
+
+void on_interrupt(int)
+{
+    asked_to_stop = 1;
+    // Read, added to, then written: `++` on a volatile is deprecated in C++20 and
+    // means exactly this, which is the same one instruction a handler may use.
+    // THE SECOND PRESS DOES NOT WAIT TO BE NOTICED. A line that is not looking at
+    // the flag -- anything but a listing, today -- would otherwise hold the
+    // session open with no way out but another terminal.
+    presses = presses + 1;
+    if (presses >= 2) {
+        prompt::restore_terminal();
+        _exit(static_cast<int>(interrupted));
+    }
+}
+
+void on_hangup(int)
+{
+    prompt::restore_terminal();
+    _exit(128 + SIGHUP);   // the status a shell gives for a closed terminal
+}
+
+// SA_RESTART ON PURPOSE: a listing's getdents must not fail half way through
+// because a key was pressed. The flag is what stops the work, and the reader's
+// own wait is ppoll, which answers EINTR whatever SA_RESTART says.
+void watch_for_keys()
+{
+    struct sigaction action{};
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = SA_RESTART;
+    action.sa_handler = on_interrupt;
+    sigaction(SIGINT, &action, nullptr);
+    action.sa_handler = on_hangup;
+    sigaction(SIGHUP, &action, nullptr);
+}
+
+std::string without_spaces_around(const std::string &line)
+{
+    std::size_t first = 0, last = line.size();
+    while (first < last && (line[first] == ' ' || line[first] == '\t' || line[first] == '\r')) ++first;
+    while (last > first && (line[last - 1] == ' ' || line[last - 1] == '\t' || line[last - 1] == '\r')) --last;
+    return line.substr(first, last - first);
+}
+
+// REFUSED BY NAME AND NEVER SKIPPED (ERROR #1's shape, PLAN M0.6). Each of these
+// is a whole program's spelling, or a block, and a typed line is neither. They
+// are found by CODE, so a brace inside a string literal is text and not a brace.
+signed long long int refuse_by_name(const std::vector<std::bitset<16>> &row, MachineState &state)
+{
+    struct Refused { Code code; const char *why; signed long long int answer; };
+    const Refused list[] = {
+        {token::left_brace_token, "a block has nowhere to live at the prompt: one statement a line until M6",
+         satl_line_not_understood},
+        {token::right_brace_token, "a block has nowhere to live at the prompt: one statement a line until M6",
+         satl_line_not_understood},
+        {word::code_of(1, 1), "a session has already taken satellite in", satl_line_not_understood},
+        {word::code_of(1, 1, 1), "a session has already taken satellite in", satl_line_not_understood},
+        {word::code_of(1, 2), "a capsule belongs to a program, not to a line", satl_line_not_understood},
+        {word::code_of(1, 15), "there is nothing here to return from", satl_line_not_understood},
+        {word::code_of(1, 15, 1), "there is nothing here to return from", satl_line_not_understood},
+        {word::code_of(1, 19), "satellite.help is not built yet", not_built_yet},
+        {word::code_of(1, 19, 1), "satellite.help is not built yet", not_built_yet},
+    };
+
+    for (std::size_t at = 0; at < row.size(); ) {
+        const Code code = code_at(row, at);
+        if (code == token::end_of_file_token)
+            break;
+        for (const Refused &refused : list)
+            if (code == refused.code && refused.code != 0)
+                return report_error(std::string("satl(prompt): ") + refused.why, refused.answer);
+        if (token::carries_a_count(code)) { text_at(row, at); continue; }
+        ++at;
+    }
+    (void)state;
+    return success;
+}
+
+// A WHOLE LINE THAT IS ONE LISTING, decided on the compiled line and never on its
+// text (PLAN M0.6): the statement is exactly `1 18 4` or `1 18 5` with nothing
+// after it. That is the one line whose answer would otherwise be thrown away, so
+// it is the one line that draws the table.
+bool is_one_listing(const std::vector<std::bitset<16>> &row, std::string &path, bool &given, Code &word_code)
+{
+    const Code code = code_at(row, 0);
+    if (code != word::code_of(1, 18, 4) && code != word::code_of(1, 18, 5))
+        return false;
+    std::size_t at = 1;
+    if (code_at(row, at) != token::left_parenthesis_token)
+        return false;
+    ++at;
+    given = false;
+    if (code_at(row, at) == token::string_token) {
+        path = text_at(row, at);
+        given = true;
+    }
+    if (code_at(row, at) != token::right_parenthesis_token)
+        return false;
+    ++at;
+    const Code after = code_at(row, at);
+    if (after != token::line_end_token && after != token::end_of_file_token && after != token::comment_token)
+        return false;
+    word_code = code;
+    return true;
+}
+
+signed long long int draw_the_listing(const std::string &path, bool given, Code word_code,
+                                      const FunctionTable &functions)
+{
+    const NumberRow *library = functions[word_code];
+    if (library == nullptr || library->scenarios.directory == nullptr)
+        return report_error(std::string("satl(prompt): ") + word::spelling_of(word_code) +
+                                " has no library built for it yet",
+                            not_built_yet);
+
+    const DirectoryReply reply = library->scenarios.directory(path, given, &asked_to_stop);
+    if (stops_the_program(reply.code))
+        return report_error(std::string("satl(prompt): ") + word::spelling_of(word_code) + " " +
+                                shown(given ? path : std::string(".")) +
+                                (reply.reason.empty() ? std::string() : ": " + reply.reason),
+                            reply.code);
+
+    std::cout << listing_table(given ? path : std::string("."), reply.names);
+    return success;
+}
+
+// ONE TYPED LINE, from its text to its answer.
+signed long long int run_one_line(const std::string &line, const FunctionTable &functions,
+                                  StartupThreads &threads, unsigned long long int batches, MachineState &state)
+{
+    BytecodeRegistry registry;
+    BytecodeFilenames filenames;
+    build_bytecode_registry("<typed>", line, threads, batches, registry, filenames, state);
+    if (registry.empty())
+        return success;
+
+    const signed long long int refused = refuse_by_name(registry.front(), state);
+    if (stops_the_program(refused))
+        return refused;
+
+    // NOTHING RUNS BEFORE THE LINE IS JUDGED, which is what a file gets too.
+    const signed long long int checked = check_typed_line(registry, functions, state);
+    if (stops_the_program(checked))
+        return checked;
+
+    std::string path;
+    bool given = false;
+    Code word_code = 0;
+    if (is_one_listing(registry.front(), path, given, word_code))
+        return draw_the_listing(path, given, word_code, functions);
+
+    return run_typed_line(registry, functions, state);
+}
+
+} // namespace
+
+signed long long int run_session(const Arguments &arguments, const FunctionTable &functions,
+                                 StartupThreads &threads, MachineState &state)
+{
+    prompt::LineReader reader;
+    stop_flag() = &asked_to_stop;
+    watch_for_keys();
+
+    const unsigned long long int batches = arguments.number("arguments.threads_startup").fits_one_limb()
+                                               ? arguments.number("arguments.threads_startup").limb(0)
+                                               : 1;
+    if (reader.interactive())
+        std::cout << "One statement a line. exit, quit or Ctrl-D leaves.\n";
+
+    signed long long int first_failure = success;
+    std::string line;
+    for (;;) {
+        // FLUSHED BEFORE THE PROMPT IS DRAWN, and cleared if a write was refused:
+        // one refused write would otherwise fail every later line, and the
+        // renderer's first draw clears the row it starts on (render.hpp).
+        std::cout.flush();
+        if (!std::cout) {
+            std::cout.clear();
+            report_error("satl(prompt): the output refused a line", display_error);
+            if (first_failure == success)
+                first_failure = display_error;
+        }
+
+        const prompt::LineStatus status = reader.read("satl> ", line);
+        if (status == prompt::LineStatus::EndOfFile)
+            break;
+        if (status == prompt::LineStatus::Interrupted) {
+            reader.discard_pending();   // the rest of a pasted block is not the person's next wish
+            continue;
+        }
+
+        const std::string typed = without_spaces_around(line);
+        if (typed.empty())
+            continue;
+        reader.remember(line);
+        if (typed == "exit" || typed == "quit")
+            break;
+
+        asked_to_stop = 0;
+        presses = 0;
+        const signed long long int answer = run_one_line(line, functions, threads, batches, state);
+        if (stops_the_program(answer) && first_failure == success)
+            first_failure = answer;
+    }
+
+    std::cout.flush();
+    stop_flag() = nullptr;
+    // A PERSON HAS ALREADY SEEN EVERY REFUSAL, so leaving is 0 for them: `exit`
+    // after a line that was refused is not itself a failure, and satl-term closes
+    // a tab on 0. D0.6.2's "the first failing line's code" is about PIPED input,
+    // where nobody watched it go by and the status is the only word about it.
+    return reader.interactive() ? success : first_failure;
+}
+
+} // namespace satellite004

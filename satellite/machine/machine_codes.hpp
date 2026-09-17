@@ -51,6 +51,15 @@ enum MachineCode : signed long long int {
     name_not_declared = 25,             // a name used before any satellite.variable line declared it
     name_declared_twice = 26,           // a second satellite.variable line for a name already in this capsule
     types_do_not_meet = 27,             // an operator given two kinds it has no scenario for: "a" - "b"
+    directory_not_found = 28,           // change / list: nothing is at that path (PLAN M0.6)
+    not_a_directory = 29,               // something is there, and it is not a directory
+    directory_unreadable = 30,          // it IS a directory and its entries cannot be read; the reason is said
+    path_holds_a_nul = 31,              // a path with a NUL in it: c_str() would act on the part before it
+
+    // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
+    // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
+    // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
+    interrupted = 130,                  // Ctrl-C stopped a line between entries
 };
 
 inline const char *machine_code_name(signed long long int code)
@@ -84,6 +93,11 @@ inline const char *machine_code_name(signed long long int code)
     case name_not_declared: return "name_not_declared";
     case name_declared_twice: return "name_declared_twice";
     case types_do_not_meet: return "types_do_not_meet";
+    case directory_not_found: return "directory_not_found";
+    case not_a_directory: return "not_a_directory";
+    case directory_unreadable: return "directory_unreadable";
+    case path_holds_a_nul: return "path_holds_a_nul";
+    case interrupted: return "interrupted";
     }
     return "not_on_the_list";
 }

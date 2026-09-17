@@ -37,6 +37,7 @@
 #include "machine/machine_state.hpp"
 #include "../satellite-numbers/call_number.hpp"
 #include "satl/satl_file.hpp"
+#include "satl/session.hpp"
 #include "threads/startup_threads.hpp"
 #include "version/version.hpp"
 
@@ -126,10 +127,6 @@ signed long long int run_satl(int argc, char **argv)
     if (arguments.flag("arguments.startup_display"))
         std::cerr << startup_block(arguments);
 
-    // THE PROMPT IS M0.6. Said after the start-up block, so a satl-term prompt
-    // tab shows which satl answered, and then holds on the code.
-    if (command_line.command == Command::repl)
-        return report_error("satl --repl: the prompt is not built yet -- it lands at M0.6", not_built_yet);
     state.debug_mode = arguments.flag("arguments.debug_mode");
     state.set("satellite " + version_line(arguments) + " (starting)", success);
     state.set("arguments(gathered)", success);
@@ -193,6 +190,14 @@ signed long long int run_satl(int argc, char **argv)
     code = threads.wait_until_warm(state);
     if (stops_the_program(code))
         return code;
+
+    // THE PROMPT (PLAN M0.6), and everything it needs is now up: the index is
+    // loaded, the function table is built, and the threads that tokenise a typed
+    // line are warm. There is no file to load and no main to find -- a typed line
+    // is its own row, checked and walked by the same two functions a capsule's
+    // body is (session.hpp).
+    if (command_line.command == Command::repl)
+        return run_session(arguments, functions, threads, state);
 
     state.set("satellite(loading)", satellite_loading_successful);
 

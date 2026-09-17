@@ -10,6 +10,8 @@
 
 #include "expression.hpp"
 
+#include "../machine/stop_flag.hpp"
+
 #include "word_codes.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 #include "../satellite_object/fast_paths.hpp"
@@ -533,6 +535,40 @@ signed long long int display_a_number(const Scenarios &scenarios, const satellit
     return not_built_yet;
 }
 
+// A DIRECTORY WORD ANSWERS A VALUE, where every other word so far answers a
+// machine code (number_row.hpp): `change(d)` is true or false and is never an
+// error, and `list()` is names. The names have nowhere to go inside a program
+// until satellite has a list type (MILESTONES M14); at the PROMPT they are drawn
+// as the table, which the session does with the library's own answer rather than
+// through 003's one-shot global request (PLAN M0.6).
+Value call_directory_word(token::Code code, const Scenarios &scenarios, const Value &argument,
+                          ExpressionContext &context)
+{
+    const std::string spelling(word::spelling_of(code));
+    std::string path;
+    const bool given = !argument.is_nothing();
+    if (given && !argument.is_string()) {
+        context.refuse(types_do_not_meet,
+                       spelling + " takes a directory written as a string, and was given " + argument.kind_name());
+        return Value();
+    }
+    if (given)
+        path = argument.text_utf8();
+
+    const DirectoryReply reply = scenarios.directory(path, given, stop_flag());
+    if (stops_the_program(reply.code)) {
+        context.refuse(reply.code, spelling + (reply.reason.empty() ? std::string() : ": " + reply.reason));
+        return Value();
+    }
+    if (code == word::code_of(1, 18, 1))
+        return Value::of_bool(reply.flag);
+
+    context.refuse(not_built_yet, spelling + " read " + std::to_string(reply.names.size()) +
+                                      " names, and satellite has no list type built yet to hold them "
+                                      "(MILESTONES M14) -- at the prompt the same line draws the table");
+    return Value();
+}
+
 Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     const Code code = code_at(row, at);
@@ -566,6 +602,8 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         context.refuse(not_built_yet, std::string(word::spelling_of(code)) + " has no library built yet");
         return Value();
     }
+    if (scenarios->directory != nullptr)
+        return call_directory_word(code, *scenarios, argument, context);
     // A VALUE LEAVES AS BYTES HERE, and only here: a library's text scenario
     // takes a std::string (number_row.hpp), so the satellite_string goes back
     // out through to_utf8 at the boundary and nowhere inside the interpreter.

@@ -371,6 +371,26 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
 
 } // namespace
 
+signed long long int check_typed_line(const BytecodeRegistry &registry,
+                                      const FunctionTable &functions,
+                                      MachineState &state)
+{
+    static const CapsuleTable none;
+    DeclaredNames declared;
+    const std::vector<std::bitset<16>> &row = registry.front();
+    for (std::size_t at = 0; at < row.size() && code_at(row, at) != token::end_of_file_token; ) {
+        const std::size_t was = at;
+        std::string why;
+        const signed long long int stopped = check_statement(row, at, none, functions, declared, why);
+        if (stops_the_program(stopped))
+            return report_error("satl(prompt): " + why, stopped);
+        if (at <= was)                  // a statement must always move forward
+            ++at;
+    }
+    (void)state;
+    return success;
+}
+
 signed long long int check_program(const BytecodeRegistry &registry,
                                    const CapsuleTable &capsules,
                                    const FunctionTable &functions,

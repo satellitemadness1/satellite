@@ -458,6 +458,15 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
 } // namespace
 
+signed long long int run_typed_line(const BytecodeRegistry &registry,
+                                   const FunctionTable &functions,
+                                   MachineState &state)
+{
+    static const CapsuleTable none;   // a typed line stands alone: there are no capsules around it
+    VariableTable variables;          // and no name outlives the line that wrote it, until M6
+    return run_statements(registry, none, functions, 0, 0, variables, state);
+}
+
 signed long long int run_main(const BytecodeRegistry &registry,
                               const CapsuleTable &capsules,
                               const FunctionTable &functions,

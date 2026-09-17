@@ -10,6 +10,7 @@
 import fcntl, os, pty, re, select, signal, struct, subprocess, sys, termios, time, unicodedata
 
 READER = os.environ.get('PROMPT_READER', 'build/prompt_reader')   # another build's reader, to mutate it
+READER_ARGS = [READER]   # check_session.py drives `satl --repl` through the same terminal
 failed = 0
 
 
@@ -116,7 +117,7 @@ class Terminal:
         pid, fd = pty.fork()
         if pid == 0:
             fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack('HHHH', height, width, 0, 0))
-            os.execv(READER, [READER])
+            os.execv(READER_ARGS[0], READER_ARGS)
             os._exit(127)
         self.pid, self.fd, self.raw = pid, fd, bytearray()
         self.screen = Screen(width, height)
