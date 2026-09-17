@@ -23,7 +23,8 @@ satellite.capsule satellite.main()
     satellite.console.display(flags.bin)
     satellite.console.display(my_number.hex)
 
-    // Arithmetic reads a binary by its worth, as a b literal always did.
+    // Arithmetic reads a binary by its worth, as a b literal always did -- but a
+    // minus in front keeps it a binary, with its sign (the author, 2026-09-17).
     satellite.console.display(my_number + 1)
     satellite.console.display(-b0101)
 

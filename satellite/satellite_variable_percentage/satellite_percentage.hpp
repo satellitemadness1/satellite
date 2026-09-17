@@ -23,6 +23,13 @@
 // ROUNDED HALF AWAY FROM ZERO at the 33rd digit, which is "rounds up" the way a
 // person means it: a 33rd digit of 5 or more carries into the 32nd, 4 or less is
 // dropped, and a negative percentage rounds the same distance the other way.
+//
+// A PERCENTAGE KEEPS A SIGN (the author, 2026-09-17: "keep a sign with all of these
+// things a satellite.variable.bool with percentages and with infinities keep
+// satellite.variable.bool with them"). It always had one -- -50% is a percentage,
+// and `200 - -50%` grows 200 by half -- and the sign is the bool `scaled` carries,
+// satellite_number's own "the sign is carried as a bool with the object". One bool,
+// read by negative(), the same way satellite_binary_number keeps its sign.
 
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../machine/machine_codes.hpp"
@@ -35,6 +42,9 @@ struct satellite_percentage {
     static constexpr unsigned int kDigits = 32;   // the author: "let's just keep 32 digit precision"
 
     satellite_number scaled;   // the percentage times 10^32: 50% holds 50 * 10^32
+
+    // The sign, a bool held with the value: the one scaled carries.
+    bool negative() const { return scaled.negative(); }
 
     // 10^32, which is 1% scaled -- and 100 of them, which is 100%, the whole.
     static const satellite_number &unit()
@@ -121,7 +131,7 @@ struct satellite_percentage {
     // with the zeros after the last one that matters left off.
     std::string to_text() const
     {
-        const bool below_zero = scaled.negative();
+        const bool below_zero = negative();
         std::string digits = (below_zero ? -scaled : scaled).to_text();
         if (digits.size() <= kDigits)
             digits.insert(0, kDigits + 1 - digits.size(), '0');

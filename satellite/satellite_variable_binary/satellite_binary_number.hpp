@@ -19,6 +19,17 @@
 // THE BITS ARE A satellite_number, so a binary has no ceiling on its length
 // (DESIGN 1.2) and everything that asks what it is WORTH -- arithmetic, `.number`,
 // `.hex` -- reaches the number hub in one step with nothing re-parsed.
+//
+// A BINARY KEEPS A SIGN (the author, 2026-09-17: "give it a different number and
+// keep a sign with all of these things a satellite.variable.bool with percentages
+// and with infinities keep satellite.variable.bool with them"). -b0101 is a
+// binary, not a refusal and not the number -5: it displays as -b0101, is worth -5,
+// and keeps its width. The sign is the bool the bits' satellite_number already
+// carries -- the author's own rule for that type, "the sign is carried as a bool
+// with the object" -- so there is one bool and nothing to keep in step with it.
+// negative() reads it. Zero is never negative, as for satellite_number: -b0000 is
+// b0000. If the author wants the sign as a field of its own beside `width`, that
+// is this struct and nothing that reads it.
 
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../machine/machine_codes.hpp"
@@ -28,8 +39,14 @@
 namespace satellite004 {
 
 struct satellite_binary_number {
-    satellite_number bits;              // what the bits are worth
+    satellite_number bits;              // what the bits are worth, sign and all: -b0101 holds -5
     unsigned long long int width = 0;   // how many digits were written, leading zeros included
+
+    // The sign, a bool held with the value: the one bits carries.
+    bool negative() const { return bits.negative(); }
+
+    // The same bits and width with the sign turned over: -b0101 from b0101.
+    satellite_binary_number negated() const { return satellite_binary_number{-bits, width}; }
 
     // The digits of a literal, with no b on them. Only 0 and 1; anything else,
     // or no digits at all, is int_error (3) and `out` is untouched.
@@ -50,24 +67,29 @@ struct satellite_binary_number {
         return success;
     }
 
-    // The digits exactly as written, WITHOUT the b: "00101010". The leading
+    // The digits exactly as written, WITHOUT the b: "00101010", and "-0101" for
+    // -b0101, the sign in front as a number's base 2 text has it. The leading
     // zeros come back from the width, which is the whole reason it is kept.
-    std::string digits() const
-    {
-        std::string text = bits.to_radix_text(2);
-        if (text.size() < width)
-            text.insert(0, static_cast<std::size_t>(width - text.size()), '0');
-        return text;
-    }
+    std::string digits() const { return (negative() ? "-" : "") + unsigned_digits(); }
 
-    // What `satellite.console.display` prints: the b and the digits, exactly as
-    // the program wrote them.
-    std::string written() const { return "b" + digits(); }
+    // What `satellite.console.display` prints: the sign, the b and the digits,
+    // exactly as the program wrote them.
+    std::string written() const { return (negative() ? "-b" : "b") + unsigned_digits(); }
 
-    // BITS AND WIDTH, both (003 DESIGN 8.5): `b0010 == b10` is false.
+    // BITS, SIGN AND WIDTH, all (003 DESIGN 8.5): `b0010 == b10` is false, and so
+    // is `-b0010 == b0010`.
     friend bool operator==(const satellite_binary_number &l, const satellite_binary_number &r)
     {
         return l.width == r.width && l.bits == r.bits;
+    }
+
+private:
+    std::string unsigned_digits() const
+    {
+        std::string text = (negative() ? -bits : bits).to_radix_text(2);
+        if (text.size() < width)
+            text.insert(0, static_cast<std::size_t>(width - text.size()), '0');
+        return text;
     }
 };
 

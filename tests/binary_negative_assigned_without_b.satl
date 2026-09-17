@@ -1,4 +1,4 @@
-// -b0101 is the number -5, not a binary, so a binary given it is refused before anything runs.
+// The b is required on every value a binary is given, a minus and brackets or not.
 
 satellite.include(satellite)
 
@@ -6,6 +6,6 @@ satellite.capsule satellite.main()
 {
     satellite.variable.binary my_number = b0010
     satellite.console.display("before")
-    my_number = -(b0101)
+    my_number = (- 1111)
     satellite.return(satellite)
 }

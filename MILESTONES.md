@@ -124,6 +124,12 @@ can, and give an error on what we can't"*. **An infinity carries a multiplier wi
   default 4096) and **`arguments.infinity_display`** (default 32 -- a name proposed
   after `arguments.startup_display`, the author's to change).
 
+- **An infinity keeps a sign, as a bool** (the author, 2026-09-17: *"give it a different number and keep a sign with all of these things a satellite.variable.bool with percentages and with infinities keep satellite.variable.bool with them"*) --
+  so there is a negative infinity, and its sign is held with it the way a binary's
+  and a percentage's are. Recorded here with M11 unbuilt; how the sign and the
+  multiplier's own sign meet (`-infinity` against `infinityx-1`) is a question for
+  the author when M11 is built.
+
 **Depends on M20**, because the multiplier is a `satellite_float`. Neither row is
 added yet: `satellite_config.hpp`'s rows are the author's, and they go in with M11.
 
@@ -248,6 +254,12 @@ were not. **The same three lines fix both.**
 the width grows to fit, the left operand's type wins, `!!` joins, indexing counts
 from the right -- are not built; today arithmetic reads a binary by worth and
 answers a number. That is the author's to schedule, not to be decided in passing.
+
+**A binary keeps a sign** (the author, 2026-09-17: *"give it a different number and keep a sign with all of these things a satellite.variable.bool with percentages and with infinities keep satellite.variable.bool with them"*). `-b0101` is a binary --
+displayed `-b0101`, worth -5, width 4, `.bin` `-0101`, not equal to `b0101` -- where
+the commit before (`be4869b`) had refused a minus in a binary as having no spelling.
+`= -1010` is `ERROR: expected -b1010`. The sign is the bool the bits'
+`satellite_number` already carries, so there is one bool; `-b0000` is `b0000`.
 
 `satellite.variable.float` `1 6 10` and
 `satellite.variable.hex` `1 6 11` are numbered already. **Decided 2026-08-27:** a float is a bool and

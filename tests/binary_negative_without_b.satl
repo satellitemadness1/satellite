@@ -1,4 +1,5 @@
-// A binary has no minus sign: -1010 can never be stored in one, and is refused before anything runs.
+// A binary keeps its sign, and a minus does not hide a missing b: -1010 is
+// ERROR: expected -b1010, before anything runs.
 
 satellite.include(satellite)
 

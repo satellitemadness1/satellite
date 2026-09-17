@@ -358,11 +358,11 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     if (code == token::tight_minus_token || code == token::minus_token) {
         ++at;
         const Value inner = one_operand(row, at, context);
-        // A binary is negated by what it is worth, as it is added by what it is
-        // worth (satellite_object.cpp, read_by_worth): -b1010 is -10, as it was
-        // when a b literal was a number.
+        // A binary KEEPS ITS SIGN and stays a binary (the author, 2026-09-17: "keep
+        // a sign with all of these things"): -b1010 is -b1010, worth -10, width 4.
+        // It was the number -10 until then.
         if (const satellite_binary_number *bits = inner.as_binary())
-            return Value::of_number(-bits->bits);
+            return Value::of_binary(bits->negated());
         // -50% is a percentage below zero: `200 - -50%` grows 200 by half.
         if (const satellite_percentage *percent = inner.as_percentage())
             return Value::of_percentage(satellite_percentage{-percent->scaled});

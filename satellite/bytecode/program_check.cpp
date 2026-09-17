@@ -71,27 +71,22 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
     // A BRACKET IS NOT A VALUE, so `= (10101010)` is judged by what is inside it.
     // Without this the brackets hid the mistake and the program ran first.
     //
-    // A MINUS SIGN IS NEVER A BINARY'S. -b1010 is the number -10 (a binary is
-    // negated by what it is worth, expression.cpp), and only a b literal makes a
-    // binary, so a value that starts with a minus can never be stored in one. It
-    // is refused here rather than after the program has printed (the review of
-    // ab01a74, 2026-09-17: `= -1010` got past this check). There is no spelling
-    // to suggest -- b1010 would be a different value -- so the sentence says why.
-    std::string minus;
+    // A MINUS SIGN IS PART OF THE VALUE, as it is for a percentage: a binary keeps
+    // its sign (the author, 2026-09-17: "give it a different number and keep a
+    // sign"), so -b1010 declares, and `= -1010` is ERROR: expected -b1010. Each
+    // minus turns the suggestion over, as it would the value. (For one commit the
+    // minus was refused outright -- "a binary has no minus sign" -- which is what
+    // that ruling answered.)
+    bool below_zero = false;
     for (;; ++at) {
-        const Code sign = code_at(row, at);
-        if (sign == token::tight_minus_token || sign == token::minus_token)
-            minus += '-';
-        else if (sign != token::left_parenthesis_token)
+        const Code ahead = code_at(row, at);
+        if (ahead == token::tight_minus_token || ahead == token::minus_token)
+            below_zero = !below_zero;
+        else if (ahead != token::left_parenthesis_token)
             break;
     }
+    const std::string sign = below_zero ? "-" : "";
     const Code code = code_at(row, at);
-    if (!minus.empty() && (code == token::number_token || code == token::binary_token)) {
-        std::size_t k = at;
-        const std::string written = (code == token::binary_token ? "b" : "") + text_at(row, k);
-        why = "ERROR: " + minus + written + " is not binary -- a binary has no minus sign";
-        return types_do_not_meet;
-    }
     if (code != token::number_token && code != token::name_token)
         return success;
     std::size_t k = at;
@@ -102,12 +97,12 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
     // answer was `expected b0` -- a real binary, and the wrong one.
     if (code == token::number_token && entered == "0" && code_at(row, k) == token::binary_token) {
         std::size_t digits = k;
-        why = "ERROR: expected b" + text_at(row, digits);
+        why = "ERROR: expected " + sign + "b" + text_at(row, digits);
         return types_do_not_meet;
     }
     if (code == token::number_token && entered == "0" && code_at(row, k) == token::hexadecimal_token) {
         std::size_t digits = k;
-        why = "ERROR: 0x" + text_at(row, digits) + " is not binary -- binary is b and then 0s and 1s, like b1010";
+        why = "ERROR: " + sign + "0x" + text_at(row, digits) + " is not binary -- binary is b and then 0s and 1s, like b1010";
         return types_do_not_meet;
     }
 
@@ -115,8 +110,8 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
     for (const char c : entered) only_bits = only_bits && (c == '0' || c == '1');
 
     if (code == token::number_token) {
-        why = only_bits ? "ERROR: expected b" + entered
-                        : "ERROR: " + entered + " is not binary -- binary is b and then 0s and 1s, like b1010";
+        why = only_bits ? "ERROR: expected " + sign + "b" + entered
+                        : "ERROR: " + sign + entered + " is not binary -- binary is b and then 0s and 1s, like b1010";
         return types_do_not_meet;
     }
 
@@ -126,7 +121,7 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
     for (std::size_t i = 1; i < entered.size(); ++i)
         if (entered[i] < '0' || entered[i] > '9')
             return success;
-    why = "ERROR: " + entered + " is not binary -- a binary digit is 0 or 1";
+    why = "ERROR: " + sign + entered + " is not binary -- a binary digit is 0 or 1";
     return types_do_not_meet;
 }
 

@@ -103,7 +103,7 @@ expect "... before anything runs, and says how to write it" "1|" \
 # satellite.variable.binary (the author, 2026-09-16): written with its b, and shown
 # exactly as written -- b and leading zeros -- because the width is part of the value.
 expect "satellite.variable.binary my_number = b10101010" \
-       "b10101010|b0010|b0000|170|b10101010|0000|AA|171|-5|3|false|true|3|true" \
+       "b10101010|b0010|b0000|170|b10101010|0000|AA|171|-b0101|3|false|true|3|true" \
        "$($interpreter tests/binary.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 $interpreter tests/binary.satl > /dev/null 2>&1; expect "tests/binary.satl runs" 0 $?
 # "if the user doesn't enter "b" ... spit out an ERROR: expected "b"+whatever they entered"
@@ -121,12 +121,17 @@ expect "... is still ERROR: expected b10101010, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected b10101010 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
 $interpreter tests/binary_0b.satl > build/binary_b.out 2>&1; expect "0b10101010, the C spelling" 27 $?
 expect "... is told ERROR: expected b10101010, not b0" 1 "$(grep -c 'ERROR: expected b10101010 ' build/binary_b.out)"
-$interpreter tests/binary_with_minus.satl > build/binary_b.out 2>&1; expect "a binary given -1010" 27 $?
-expect "... is told a binary has no minus sign, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*ERROR: -1010 is not binary -- a binary has no minus sign ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
-$interpreter tests/binary_assigned_with_minus.satl > build/binary_b.out 2>&1; expect "a binary given -(b0101)" 27 $?
-expect "... is told -b0101 is not binary, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*ERROR: -b0101 is not binary' build/binary_b.out)|$(grep -x before build/binary_b.out)"
+# A binary keeps a sign (the author, 2026-09-17: "give it a different number and keep a
+# sign with all of these things"): -b0101 is a binary, worth -5, width kept.
+expect "a binary below zero: shown, worth, converted, compared, turned over, given" \
+       "-b0101|-5|-0101|-b0101|-5|-4|true|false|true|b0101|b0101|b0000|-b0011|-3" \
+       "$($interpreter tests/binary_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+$interpreter tests/binary_negative_without_b.satl > build/binary_b.out 2>&1; expect "a binary given -1010" 27 $?
+expect "... says ERROR: expected -b1010, before anything runs" "1|" \
+       "$(grep -c 'satl(check).*ERROR: expected -b1010 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
+$interpreter tests/binary_negative_assigned_without_b.satl > build/binary_b.out 2>&1; expect "a binary given (- 1111)" 27 $?
+expect "... says ERROR: expected -b1111, before anything runs" "1|" \
+       "$(grep -c 'satl(check).*ERROR: expected -b1111 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
 # satellite.variable.percentage (the author, 2026-09-17): 32 digits after the point,
 # rounded half away from zero there. Python's decimal module is the authority.
 wanted_percentage=$(python3 -c "
