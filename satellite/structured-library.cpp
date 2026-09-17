@@ -134,8 +134,13 @@ int main(int argc, char **argv)
     BytecodeFilenames bytecode_filenames;
     FunctionTable functions;
 
+    // THE TOPOLOGY (the author, 2026-09-16): main starts ONE thread, and that one
+    // starts the 256. Main does not wait for them -- it loads the number index
+    // and builds the function table while they come up, which is the first time
+    // this interpreter does two things at once. Parking 256 costs ~12 ms and
+    // neither of those two jobs needs a thread.
     StartupThreads threads;
-    threads.start(startup, state);
+    threads.start_in_background(startup);
 
     code = index.load(numbers_folder(), state);
     if (stops_the_program(code))
@@ -144,6 +149,12 @@ int main(int argc, char **argv)
     // search. call_number.hpp promises a name is never looked up while a
     // program runs, and this is how that is kept now a word is a code.
     code = functions.build(index, state);
+    if (stops_the_program(code))
+        return static_cast<int>(code);
+
+    // The threads are needed from here: load_program tokenises on them. This is
+    // where main pays whatever is LEFT of the 12 ms, which is usually none of it.
+    code = threads.wait_until_warm(state);
     if (stops_the_program(code))
         return static_cast<int>(code);
 

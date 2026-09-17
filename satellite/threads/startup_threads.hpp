@@ -21,6 +21,7 @@
 #include "../machine/machine_state.hpp"
 
 #include <condition_variable>
+#include <string>
 #include <deque>
 #include <functional>
 #include <mutex>
@@ -42,6 +43,25 @@ public:
     // success, or thread_start_error when the machine started fewer.
     signed long long int start(unsigned long long int count, MachineState &state);
 
+    // THE AUTHOR'S TOPOLOGY, 2026-09-16: "we are going to have the main thread,
+    // after it starts 1 thread, that 1 thread starts 256 threads". Main asks and
+    // is free the same instant; the one thread it started does the 256.
+    //
+    // WHY IT IS WORTH A THREAD TO START THREADS. Parking 256 costs about 12 ms,
+    // and main has real work waiting -- the number index and the function table,
+    // which need no thread at all. Overlapping the two is the first place this
+    // interpreter does two things at once.
+    //
+    // IT REPORTS NOTHING. MachineState is not thread-safe and main writes to it
+    // throughout, so the starter records what happened and wait_until_warm says
+    // it on the CALLING thread. A pool that raced the state it reported through
+    // would be a poor advertisement for the parallel machine.
+    void start_in_background(unsigned long long int count);
+
+    // Waits for start_in_background, then reports on THIS thread and answers the
+    // code it would have answered. Safe to call when nothing was started.
+    signed long long int wait_until_warm(MachineState &state);
+
     // Hands a job to one parked thread; with no warm thread, runs it here.
     void submit(std::function<void()> job);
 
@@ -50,6 +70,7 @@ public:
 
 private:
     void park_and_run();
+    void start_quietly(unsigned long long int count);   // no state: see start_in_background
 
     mutable std::mutex mutex_;
     std::condition_variable work_arrived_;
@@ -58,6 +79,14 @@ private:
     std::vector<std::thread> threads_;
     unsigned long long int parked_count_ = 0;
     bool stopping_ = false;
+
+    // What the background starter found, read only after it is joined.
+    std::thread starter_;
+    unsigned long long int asked_for_ = 0;
+    unsigned long long int warm_count_ = 0;
+    signed long long int start_code_ = 0;
+    std::string refusal_;
+    long double milliseconds_ = 0;
 };
 
 } // namespace satellite004

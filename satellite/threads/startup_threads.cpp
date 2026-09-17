@@ -14,6 +14,16 @@ namespace satellite004 {
 
 StartupThreads::~StartupThreads()
 {
+    // THE STARTER IS JOINED FIRST, AND FORGETTING IT WAS A REAL CRASH. main can
+    // return before it ever waits -- `index.load` refusing with no libraries is
+    // the path check.sh walks -- and destroying a joinable std::thread calls
+    // std::terminate. That turned a clean refusal of 5 into SIGABRT, 134.
+    //
+    // It is joined BEFORE `stopping_` is set, because it is still filling
+    // threads_ and waiting for them to park: stopping them underneath it would
+    // have it waiting on a count that no longer moves.
+    if (starter_.joinable())
+        starter_.join();
     {
         std::lock_guard<std::mutex> lock(mutex_);
         stopping_ = true;
@@ -40,40 +50,61 @@ void StartupThreads::park_and_run()
     }
 }
 
-signed long long int StartupThreads::start(unsigned long long int count, MachineState &state)
+// The thread-starting work, with nothing said about it. Every number it finds is
+// kept for wait_until_warm to report on the caller's thread.
+void StartupThreads::start_quietly(unsigned long long int count)
 {
     const auto began = std::chrono::steady_clock::now();
-    signed long long int code = success;
-    std::string refusal;
+    asked_for_ = count;
+    start_code_ = success;
     for (unsigned long long int started = 0; started < count; started++) {
         try {
             threads_.emplace_back(&StartupThreads::park_and_run, this);
         } catch (const std::exception &refused) {
-            refusal = refused.what();
-            code = thread_start_error;
+            refusal_ = refused.what();
+            start_code_ = thread_start_error;
             break;
         }
     }
 
-    unsigned long long int warm_count = 0;
     {
         std::unique_lock<std::mutex> lock(mutex_);
         parked_.wait(lock, [this] { return parked_count_ == threads_.size(); });
-        warm_count = parked_count_;
+        warm_count_ = parked_count_;
     }
-    const long double milliseconds =
+    milliseconds_ =
         std::chrono::duration<long double, std::milli>(std::chrono::steady_clock::now() - began).count();
+}
 
-    if (code != success)
-        report_error("threads.startup(refused): the machine started " + std::to_string(warm_count) + " of " +
-                         std::to_string(count) + " threads (" + refusal + "); those " +
-                         std::to_string(warm_count) + " are warm",
-                     code);
+void StartupThreads::start_in_background(unsigned long long int count)
+{
+    // ONE THREAD, and it is the only one main starts. It starts the rest.
+    starter_ = std::thread(&StartupThreads::start_quietly, this, count);
+}
+
+signed long long int StartupThreads::wait_until_warm(MachineState &state)
+{
+    if (starter_.joinable())
+        starter_.join();
+
+    if (start_code_ != success)
+        report_error("threads.startup(refused): the machine started " + std::to_string(warm_count_) + " of " +
+                         std::to_string(asked_for_) + " threads (" + refusal_ + "); those " +
+                         std::to_string(warm_count_) + " are warm",
+                     start_code_);
     char time[64];
-    std::snprintf(time, sizeof time, "%.3Lf", milliseconds);
-    state.set("threads.startup(warm): " + std::to_string(warm_count) + " threads parked in " + time + " ms",
+    std::snprintf(time, sizeof time, "%.3Lf", milliseconds_);
+    state.set("threads.startup(warm): " + std::to_string(warm_count_) + " threads parked in " + time + " ms",
               success);
-    return code;
+    return start_code_;
+}
+
+// The straight-through form: start them and wait, on this thread. Kept because a
+// caller with nothing else to do should not have to know about the topology.
+signed long long int StartupThreads::start(unsigned long long int count, MachineState &state)
+{
+    start_quietly(count);
+    return wait_until_warm(state);
 }
 
 void StartupThreads::submit(std::function<void()> job)
