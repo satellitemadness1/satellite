@@ -96,13 +96,14 @@ session's scratchpad so they survive it.
 
 ## 4. Open decisions (the author's)
 
-- **D0.1** which value of `arguments.satc` / `satb` means "never build".
-- **D1.1** with `satc = 0`, run line 1 before the whole file is converted?
-- **D3.1** does satellite_string become 32 bits a character everywhere, or only in
-  the .sati — and store the .sati bits as binary (4 bytes a character) instead of
-  `0`/`1` text (32 bytes a character, ×20 the UTF-8, measured)?
-- **D9.1–D9.3** polymorph: what "re-included into the individual capsules" means,
-  what `args` are passed to, a class declared twice.
+- ~~**D0.1**~~ and ~~**D1.1**~~ **ANSWERED 2026-09-16: DEAD** -- *"we threw away satc and
+  satb in favor of all 16-bit"* (MILESTONES.md).
+- ~~**D3.1**~~ **ANSWERED 2026-09-16:** *"32-bits only when we use the number 40000 as a
+  16-bit code"*. Everything is 16 bits; `wide_token` (40000) says the next two codes are
+  one 32-bit integer. Owed: the lexer's `wide_run_32_token` path gives way to it.
+- **D9.1–D9.2** polymorph: what "re-included into the individual capsules" means,
+  what `args` are passed to. ~~**D9.3**~~ **ANSWERED 2026-09-16:** *"a class declared
+  twice is an ERROR: name collision"*.
 - **D11.1** infinity's arithmetic.
 - **D12.1** the parallel-group syntax in the numbered file.
 - **Adopt TBB for the runners?** and record it in DESIGN §13.

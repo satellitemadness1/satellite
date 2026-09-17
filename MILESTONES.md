@@ -89,9 +89,10 @@ already names that shape of bug — fix before anything depends on it.
 ## M9 — polymorph
 
 `POLYMORPH/M1.md`–`M7.md` hold the discussion; it is uncommitted and `M7.md`
-still says 342 words (it is 364). **Three of the author's decisions are open:**
+still says 342 words (it is 364). **Two of the author's decisions are open:**
 D9.1 what "re-included into the individual capsules" means, D9.2 what `args` are
-passed to, D9.3 a class declared twice. Blocked by M8.
+passed to. **D9.3 is answered** (2026-09-16): *"a class declared twice is an ERROR:
+name collision"*. Blocked by M8.
 
 ## M10 — `satellite.cxx() { C++ }`
 
@@ -416,8 +417,9 @@ so the idea is not lost, not because it is owed.
 |---|---|---|
 | ~~**D0.1**~~ | ~~which value of `arguments.satc` / `satb` means "never build"~~ **ANSWERED 2026-09-16: DEAD.** *"we threw away satc and satb in favor of all 16-bit"* | — |
 | ~~**D1.1**~~ | ~~with `satc = 0`, run line 1 before the file is converted?~~ **ANSWERED: DEAD**, same reason — there is no `.satc` | — |
-| **D3.1** | 32 bits a character everywhere, or only in the `.sati`? | **dies if M3 is collapsed** |
-| **D9.1–3** | polymorph: re-inclusion, `args`, a class declared twice | M9 |
+| ~~**D3.1**~~ | ~~32 bits a character everywhere, or only in the `.sati`?~~ **ANSWERED 2026-09-16:** *"32-bits only when we use the number 40000 as a 16-bit code"* -- everything is 16 bits, and a code of 40000 (`wide_token`) says the next two codes are one 32-bit integer. **Owed:** the lexer still writes a character above U+FFFF behind `wide_run_32_token` (`bytecode_registry.cpp` `character_codes`, read back by `text_at`), which this ruling retires in favour of `wide_token` | — |
+| **D9.1–2** | polymorph: re-inclusion, `args` | M9 |
+| ~~**D9.3**~~ | ~~a class declared twice~~ **ANSWERED 2026-09-16:** *"a class declared twice is an ERROR: name collision"* | — |
 | **D11.1** | infinity's arithmetic | M11 |
 | **D12.1** | the parallel-group syntax in the numbered file | M12 |
 | — | adopt TBB for the runners? | M12 |
