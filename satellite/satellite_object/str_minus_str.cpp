@@ -1,24 +1,17 @@
 // satellite/satellite_object/str_minus_str.cpp -- str_add_str.cpp's shape, with
 // the operation changed. The author asked for it by name.
 //
-// WHAT `-` MEANS ON TWO STRINGS IS A DECISION AND IT IS MINE UNTIL THE AUTHOR
-// TAKES IT. Nothing in DESIGN gives the minus sign a meaning over strings, so
-// this file chose the one that makes `-` the inverse of `+`: **every occurrence
-// of the right string is removed from the left**, so
+// WHAT `-` MEANS ON TWO STRINGS IS THE AUTHOR'S RULING (2026-09-17): "minus takes
+// away the smallest string", the FIRST occurrence of the string after the minus.
+// string_and_string_subtract.hpp holds the ruling, its examples and the walk; this
+// file is the variant layer around it, as str_add_str.cpp is around joining.
 //
-//     ("a" + "b") - "b"   is "a"
-//     "banana" - "an"     is "ba"      (both occurrences go)
-//
-// The alternative worth naming is "remove the FIRST occurrence only", which
-// makes `-` the exact inverse of one `+` and leaves `"banana" - "an"` as "bana".
-// Changing the ruling is this one loop and nothing else in the interpreter.
-//
-// A RIGHT STRING THAT IS EMPTY REMOVES NOTHING rather than looping forever,
-// which is the same refusal 003 makes for an empty needle (empty_search_text,
-// 18) -- but here it is an answer and not a refusal, because subtracting nothing
-// from something is that something.
+// It replaces this file's own first guess, which took away EVERY occurrence and
+// was never reachable: satelliteObject::subtract had no string arm until the
+// ruling, so `"a" - "b"` was refused (27).
 
 #include "fast_paths.hpp"
+#include "string_and_string_subtract.hpp"
 
 namespace satellite004 {
 
@@ -29,28 +22,10 @@ signed long long int str_minus_str(const satelliteObject &left, const satelliteO
     if (l == nullptr || r == nullptr)
         return types_do_not_meet;
 
-    const std::size_t taken = r->units();
     satellite_string answer;
-    if (taken == 0) {
-        out = satelliteObject::of_string(*l);
-        return success;
-    }
-
-    // Character by character, units compared from each character's start -- the
-    // same walk and the same reason as str_find_str.cpp.
-    const std::size_t units = l->units();
-    for (std::size_t at = 0; at < units; ) {
-        if (at + taken <= units &&
-            std::char_traits<char16_t>::compare(l->unit_data() + at, r->unit_data(), taken) == 0) {
-            at += taken;                              // skip it: this is the removal
-            continue;
-        }
-        std::size_t width = 0;
-        const signed long long int held = answer.append_code(l->code_at_unit(at, width));
-        if (held != success)
-            return held;
-        at += width;
-    }
+    const signed long long int code = string_and_string_subtract(*l, *r, answer);
+    if (code != success)
+        return code;
     out = satelliteObject::of_string(std::move(answer));
     return success;
 }

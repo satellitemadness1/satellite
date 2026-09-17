@@ -35,6 +35,7 @@
 #include "string_and_number_add.hpp"
 #include "string_and_string_add.hpp"
 #include "string_and_string_compare.hpp"
+#include "string_and_string_subtract.hpp"
 #include "string_to_number.hpp"
 
 namespace satellite004 {
@@ -243,8 +244,9 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
 }
 
 // ---------------------------------------------------------------------------
-// The five that are numbers only -- today. Each keeps its own switch rather than
-// sharing one, so that adding a float pair to `*` does not touch `-`.
+// The five that are numbers only -- today, and `-`, which also takes a string
+// from a string. Each keeps its own switch rather than sharing one, so that
+// adding a float pair to `*` does not touch `-`.
 // ---------------------------------------------------------------------------
 signed long long int satelliteObject::subtract(const satelliteObject &other, satelliteObject &out,
                                                std::string &why) const
@@ -255,6 +257,15 @@ signed long long int satelliteObject::subtract(const satelliteObject &other, sat
         return worth_of(*this).subtract(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_subtract, "-", out, why);
+    // THE FIRST OCCURRENCE OF THE RIGHT STRING IS TAKEN AWAY (the author, 2026-09-17:
+    // "minus takes away the smallest string", "first occurrence").
+    if (pair_of(kind(), other.kind()) == pair_of(string, string)) {
+        satellite_string answer;
+        const signed long long int code = string_and_string_subtract(*as_string(), *other.as_string(), answer);
+        if (code != success) { why = "the string could not be taken away"; return code; }
+        out = satelliteObject::of_string(std::move(answer));
+        return success;
+    }
     return refuse_pair(*this, other, "-", why);
 }
 

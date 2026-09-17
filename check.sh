@@ -232,6 +232,22 @@ print('1001110001000000 0000000000000001 1111011000000000' in ' '.join(codes), '
 # D3.1 retired wide_run_32_token: nothing writes it and nothing reads it, so nothing names it.
 expect "nothing names the retired wide_run_32_token" "" \
        "$(grep -rln 'token::wide_run_32_token' satellite experiments --include='*.cpp' --include='*.hpp')"
+# A string minus a string takes away the FIRST occurrence of the right one (the author,
+# 2026-09-17: "minus takes away the smallest string", "first occurrence"). Python's
+# str.replace(right, '', 1) is the same rule, and writes every line.
+wanted_minus=$(python3 -c "
+s = 'a\U0001F600b鱀c\U00019C40d\U0001F600'
+for left, right in (('dfksjghjfff', 'fff'), ('abcab', 'ab'), ('banana', 'an'), ('fff', 'dfksjghjfff'), ('abc', '')):
+    print(left.replace(right, '', 1))
+print('[' + 'abc'.replace('abc', '', 1) + ']')
+print(('a' + 'b').replace('b', '', 1))
+print('x-y-z'.replace('-', '', 1))
+for right in ('\U0001F600', '鱀', '\U00019C40'):
+    print(s.replace(right, '', 1))
+for left, right in (('\U0001F600a', 'a'), ('\U0001F600ba', 'a'), ('\U0001F600', 'a'), ('\U00029C40a鱀', '\U00019C40')):
+    print(left.replace(right, '', 1))")
+expect "a string minus a string takes away the first occurrence" "$wanted_minus" \
+       "$("$interpreter" tests/string_minus.satl 2>/dev/null)"
 
 # THE SIX FAST PATHS, REACHED THROUGH THEIR TOKENS. The arithmetic itself is
 # proven against Python over 482,465 cases (check_numbers.py); what this proves

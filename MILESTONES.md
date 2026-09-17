@@ -230,6 +230,14 @@ number where a string is expected is *"just convert the number to the string and
 run that piece, obviously the programmer meant convert to string, but record the
 warning in satellite.log"*. The warning needs M5.
 
+**Answered and built: a string minus a string** (the author, 2026-09-17): *"minus
+takes away the smallest string"*, `"dfksjghjfff" - "fff"` is `dfksjghj`; asked which
+copy goes when there are two, *"first occurrence"*; and *"minus - fff"*, the string
+after the minus is the one taken away. So `"abcab" - "ab"` is `cab` and
+`"fff" - "dfksjghjfff"` is `fff`. Nothing to take away is an answer, not a refusal.
+Until this ruling `-` on two strings was refused (27): `str_minus_str.cpp` had been
+written, taking away EVERY occurrence, and nothing dispatched to it.
+
 ## M17 — the number methods, and `number_methods.cpp`'s fourth session
 
 `satellite/bytecode/number_methods.cpp` has been written, unwired, in no Makefile
