@@ -66,6 +66,12 @@ expect "\"some\" + \"str\" joins them" "somestr" "$($interpreter tests/two_strin
 expect "s.find() on a literal and on an object" "6|0|6" \
        "$($interpreter tests/find.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 $interpreter tests/find_no_object.satl > /dev/null 2>&1; expect "s.find(no object) is refused" 25 $?
+# Aliases collapse at the lexer (to_string/str/string are ONE code); conversions
+# go through satellite_number as the hub; and a chain is a loop, so `s.bin.find(x)`
+# is two turns of it (the author, 2026-09-16: "so we can string operations together").
+wanted_chain="87|87|87|1010111|1010111|57|87|87|1010111|0|4|100|87!|87x"
+expect "aliases, conversions and chained methods" "$wanted_chain" \
+       "$($interpreter tests/chain.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 expect "a 23-digit number is held exactly" "99999999999999999999999" "$($interpreter tests/big_number.satl 2>/dev/null)"
 
 # THE SIX FAST PATHS, REACHED THROUGH THEIR TOKENS. The arithmetic itself is

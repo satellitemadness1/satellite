@@ -193,6 +193,38 @@ bool refuse_if_reserved(Code code, std::size_t &at, ExpressionContext &context)
 
 Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int lowest, ExpressionContext &context);
 
+// A METHOD'S SPELLING, for a refusal a person has to act on. One name a TOKEN and
+// not one a spelling, because the aliases collapsed at the lexer: `to_string`,
+// `str` and `string` are one code by the time anything here sees them, so a
+// refusal names the one the language thinks in.
+const char *spelling_of_method(Code method)
+{
+    switch (method) {
+    case token::find_token: return "find";
+    case token::replace_token: return "replace";
+    case token::add_token: return "add";
+    case token::to_string_token: return "to_string";
+    case token::to_number_token: return "number";
+    case token::to_binary_token: return "binary";
+    case token::to_hexadecimal_token: return "hex";
+    default: return "that method";
+    }
+}
+
+// A CONVERSION, OR nullptr FOR AN OPERATION. The whole difference between the two
+// halves of a chain segment: a conversion changes what the receiver IS, an
+// operation does something WITH it.
+ObjectConversion conversion_of(Code method)
+{
+    switch (method) {
+    case token::to_string_token: return object_to_string;
+    case token::to_number_token: return object_to_number;
+    case token::to_binary_token: return object_to_binary;
+    case token::to_hexadecimal_token: return object_to_hexadecimal;
+    default: return nullptr;
+    }
+}
+
 // A METHOD ON A DECLARED NAME -- `s.find("str")`. The author's design, 2026-09-16,
 // and the three tokens he named are the trigger: period, method name, `(`.
 //
@@ -209,54 +241,103 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
 // on anything else it is a refusal naming what it got. That is the object model's
 // one hop: the variable's value knows its own kind, so the method resolves
 // against that and nothing else.
-Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, const Value &receiver,
+Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, const Value &start,
                   const std::string &name, ExpressionContext &context)
 {
-    const Code method = code_at(row, at + 1);
-    const char *spelling = method == token::find_token ? "find"
-                         : method == token::replace_token ? "replace" : "that method";
-    at += 2;
+    Value receiver = start;
 
-    if (code_at(row, at) != token::left_parenthesis_token) {
-        context.refuse(satl_line_not_understood,
-                       name + "." + spelling + " is a method and needs a ( after it");
-        return Value();
-    }
-    ++at;
-    Value argument;
-    if (code_at(row, at) != token::right_parenthesis_token)
-        argument = evaluate_at(row, at, 1, context);
-    if (context.code != success)
-        return Value();
-    if (code_at(row, at) != token::right_parenthesis_token) {
-        context.refuse(satl_line_not_understood,
-                       name + "." + spelling + " was given something it could not read to the end of");
-        return Value();
-    }
-    ++at;
+    // THE LOOP IS WHAT MAKES THEM STRING TOGETHER (the author, 2026-09-16: "so we
+    // can string operations together"). One turn is one `.segment`, the answer
+    // becomes the next turn's receiver, and `s.bin.find("1010111")` is two turns
+    // with nothing in this file knowing that pairing exists. A chain of any
+    // length costs one local.
+    while (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1))) {
+        const Code method = code_at(row, at + 1);
+        const char *spelling = spelling_of_method(method);
+        at += 2;
 
-    Value answer;
-    signed long long int code = not_built_yet;
-    if (method == token::find_token)
-        code = str_find_str(receiver, argument, answer);
+        // A CONVERSION MAY BE WRITTEN WITH OR WITHOUT PARENTHESES, which is the
+        // author's own spelling in both shapes: `n.to_string()` has them and
+        // `s.bin.find(...)` does not. An OPERATION always has them, because it
+        // takes an argument.
+        const ObjectConversion conversion = conversion_of(method);
+        bool had_parentheses = false;
+        bool had_argument = false;
+        Value argument;
+        if (code_at(row, at) == token::left_parenthesis_token) {
+            had_parentheses = true;
+            ++at;
+            if (code_at(row, at) != token::right_parenthesis_token) {
+                argument = evaluate_at(row, at, 1, context);
+                had_argument = true;
+            }
+            if (context.code != success)
+                return Value();
+            if (code_at(row, at) != token::right_parenthesis_token) {
+                context.refuse(satl_line_not_understood,
+                               name + "." + spelling + " was given something it could not read to the end of");
+                return Value();
+            }
+            ++at;
+        }
 
-    if (code == types_do_not_meet) {
-        context.refuse(code, std::string(spelling) + " was written on " + receiver.kind_name() +
-                                 " and given " + argument.kind_name() + ", and there is no scenario for that");
-        return Value();
+        Value answer;
+        signed long long int code = not_built_yet;
+
+        if (conversion != nullptr) {
+            if (had_argument) {
+                context.refuse(satl_line_not_understood,
+                               std::string(spelling) + " is a conversion and takes no argument");
+                return Value();
+            }
+            code = conversion(receiver, answer);
+            if (code == types_do_not_meet) {
+                context.refuse(code, std::string(spelling) + " was written on " + receiver.kind_name() +
+                                         ", and there is no conversion from that");
+                return Value();
+            }
+            if (code == int_error) {
+                context.refuse(code, name + "." + spelling + ": that text is not a whole number this can read");
+                return Value();
+            }
+        } else {
+            if (!had_parentheses) {
+                context.refuse(satl_line_not_understood,
+                               name + "." + spelling + " takes an argument and needs a ( after it");
+                return Value();
+            }
+            if (method == token::find_token)
+                code = str_find_str(receiver, argument, answer);
+            else if (method == token::add_token) {
+                // `.add` IS `+`, and it is the object model's own add -- so it
+                // joins two strings and sums two numbers without this file
+                // knowing which, exactly as the operator does.
+                std::string why;
+                code = receiver.add(argument, answer, why);
+                if (code != success && code != text_not_found) {
+                    context.refuse(code, why);
+                    return Value();
+                }
+            }
+            if (code == types_do_not_meet) {
+                context.refuse(code, std::string(spelling) + " was written on " + receiver.kind_name() +
+                                         " and given " + argument.kind_name() + ", and there is no scenario for that");
+                return Value();
+            }
+            // NOT FOUND IS A REFUSAL AND NOT -1 (003's S0716, machine code 15).
+            if (code == text_not_found) {
+                context.refuse(code, name + "." + spelling + " did not find it");
+                return Value();
+            }
+        }
+
+        if (code != success) {
+            context.refuse(code, std::string("satellite.variable.string.") + spelling + " is not built yet");
+            return Value();
+        }
+        receiver = std::move(answer);
     }
-    // NOT FOUND IS A REFUSAL AND NOT -1 (003's S0716, machine code 15). A language
-    // whose numbers have no ceiling should not borrow a sentinel from one whose
-    // numbers do.
-    if (code == text_not_found) {
-        context.refuse(code, name + "." + spelling + " did not find it");
-        return Value();
-    }
-    if (code != success) {
-        context.refuse(code, std::string("satellite.variable.string.") + spelling + " is not built yet");
-        return Value();
-    }
-    return answer;
+    return receiver;
 }
 
 // A literal, a name, a call, a bracketed expression, or a unary operator.

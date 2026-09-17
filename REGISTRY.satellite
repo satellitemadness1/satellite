@@ -318,7 +318,12 @@ bits              name                         what it is
 -- THE WORDS  (0001000000000000 up)
 0000101100000000  find_token                   find  [METHOD] object.find(x) -- where x sits inside the receiver
 0000101100000001  replace_token                replace  [METHOD] object.replace(a, b)
-0000101100000010  free                         to 0000101111111111, free for this family
+0000101100000010  to_string_token              to_string/str/string  [METHOD] the receiver as base-10 text
+0000101100000011  to_number_token              number/as_number/to_number  [METHOD] the receiver as a whole number
+0000101100000100  to_binary_token              binary/bin/as_binary  [METHOD] the receiver as base-2 text
+0000101100000101  to_hexadecimal_token         hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
+0000101100000110  add_token                    add  [METHOD] object.add(x)
+0000101100000111  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

@@ -113,8 +113,20 @@ def main():
     # string compare. The rows marked [METHOD] are the list; the word before the
     # mark is the spelling the lexer matches, and it is matched ONLY straight
     # after a method_token, so a variable may still be named `find`.
-    methods = [(name, what.split()[0]) for _, name, what in tokens
-               if "[METHOD]" in what]
+    # ALIASES ARE A LEXER TABLE, NOT A DISPATCH CONCERN (the author, 2026-09-16:
+    # "these are just one command and aliases by the way"). A [METHOD] row's
+    # spelling field may hold several spellings separated by `/`, and EVERY ONE
+    # OF THEM LEXES TO THE SAME CODE -- so `n.to_string()`, `n.str()` and
+    # `n.string()` are one token before anything downstream sees them, and
+    # nothing after the lexer ever learns there were three spellings. That is
+    # 003's own rule for `satellite.class` aliasing `satellite.spacesuit`:
+    # "the parser never learns there were two spellings".
+    methods = []
+    for _, name, what in tokens:
+        if "[METHOD]" not in what:
+            continue
+        for spelling in what.split()[0].split("/"):
+            methods.append((name, spelling))
     out += ['',
             '// GENERATED from the [METHOD] rows. Answers 0 for a name that is not a',
             '// method of the language -- a user\'s own method keeps name_token.',
@@ -129,7 +141,7 @@ def main():
             '// its own: every method name shares the high byte.',
             'inline constexpr bool is_method_code(Code code)',
             '{',
-            '    return %s;' % (' || '.join('code == %s' % name for name, _ in methods) if methods else 'false'),
+            '    return %s;' % (' || '.join('code == %s' % n for n in dict.fromkeys(n for n, _ in methods)) if methods else 'false'),
             '}',
             '']
     out += ['',

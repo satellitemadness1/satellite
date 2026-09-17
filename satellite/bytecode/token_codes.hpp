@@ -125,6 +125,11 @@ inline constexpr Code wait_token = 0x0A02;  // the main thread waits here until 
 inline constexpr Code batch_size_token = 0x0A03;  // how many commands one batch carries; a count follows
 inline constexpr Code find_token = 0x0B00;  // find  [METHOD] object.find(x) -- where x sits inside the receiver
 inline constexpr Code replace_token = 0x0B01;  // replace  [METHOD] object.replace(a, b)
+inline constexpr Code to_string_token = 0x0B02;  // to_string/str/string  [METHOD] the receiver as base-10 text
+inline constexpr Code to_number_token = 0x0B03;  // number/as_number/to_number  [METHOD] the receiver as a whole number
+inline constexpr Code to_binary_token = 0x0B04;  // binary/bin/as_binary  [METHOD] the receiver as base-2 text
+inline constexpr Code to_hexadecimal_token = 0x0B05;  // hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
+inline constexpr Code add_token = 0x0B06;  // add  [METHOD] object.add(x)
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
 // GENERATED from the [METHOD] rows. Answers 0 for a name that is not a
@@ -133,6 +138,19 @@ inline constexpr Code method_code_of(std::string_view spelling)
 {
     if (spelling == "find") return find_token;
     if (spelling == "replace") return replace_token;
+    if (spelling == "to_string") return to_string_token;
+    if (spelling == "str") return to_string_token;
+    if (spelling == "string") return to_string_token;
+    if (spelling == "number") return to_number_token;
+    if (spelling == "as_number") return to_number_token;
+    if (spelling == "to_number") return to_number_token;
+    if (spelling == "binary") return to_binary_token;
+    if (spelling == "bin") return to_binary_token;
+    if (spelling == "as_binary") return to_binary_token;
+    if (spelling == "hex") return to_hexadecimal_token;
+    if (spelling == "as_hex") return to_hexadecimal_token;
+    if (spelling == "to_hex") return to_hexadecimal_token;
+    if (spelling == "add") return add_token;
     return 0;
 }
 
@@ -140,11 +158,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token;
 }
 
 
-inline constexpr int kTokenCount = 78;
+inline constexpr int kTokenCount = 83;
 
 } // namespace token
 } // namespace satellite004

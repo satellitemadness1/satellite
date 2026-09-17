@@ -29,4 +29,14 @@ signed long long int num_add_num(const satelliteObject &left, const satelliteObj
 signed long long int num_sub_num(const satelliteObject &left, const satelliteObject &right, satelliteObject &out);
 signed long long int num_div_num(const satelliteObject &left, const satelliteObject &right, satelliteObject &out);
 
+// THE CONVERSIONS, every one through satellite_number as the hub -- see
+// object_convert.cpp for why that is N and not N x N. One argument, because a
+// conversion has no right-hand side.
+using ObjectConversion = signed long long int (*)(const satelliteObject &, satelliteObject &);
+
+signed long long int object_to_string(const satelliteObject &from, satelliteObject &out);
+signed long long int object_to_number(const satelliteObject &from, satelliteObject &out);
+signed long long int object_to_binary(const satelliteObject &from, satelliteObject &out);
+signed long long int object_to_hexadecimal(const satelliteObject &from, satelliteObject &out);
+
 } // namespace satellite004

@@ -49,6 +49,7 @@ INTERPRETER_SOURCES = satellite/structured-library.cpp satellite/arguments/argum
                       satellite/satellite_object/num_add_num.cpp \
                       satellite/satellite_object/num_sub_num.cpp \
                       satellite/satellite_object/num_div_num.cpp \
+                      satellite/satellite_object/object_convert.cpp \
                       satellite/satellite_variable_number/satellite_number.cpp \
                       satellite/satellite_variable_number/satellite_number_divide.cpp \
                       satellite/satellite_variable_number/satellite_number_text.cpp \
