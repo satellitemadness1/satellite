@@ -41,6 +41,21 @@ and the string checks. What is still the author's:
 `satellite.directory.change` and `.list` come with M0.6. M0.7 is the same prompt
 inside satl-term. M0.5 is built, so both can start.
 
+**M0.6's terminal layer is built (`28364f2`):** `satellite/prompt/`, 003's line
+editor ported with PLAN's changes and reviewed; PROGRESS.md's row says what it is
+and how it is checked. It is not in satl yet. The session that runs a line, the
+directory libraries and the table are not started: by PLAN's rule they wait on
+the author's pseudocode (D0.6.4). What the port chose, each one line to reverse:
+- a pasted block's lines run one after another, as if typed, and its unfinished
+  last line waits at the prompt (rather than all of it held until Enter);
+- a piped line is split at `\n` only and keeps a `\r`, for the statement reader to judge;
+- keys typed while a line runs are read and dropped (D0.6.5 as PLAN recommends), a
+  paste among them whole; when the reader still holds keys typed before the run,
+  nothing is dropped;
+- a resize assumes the terminal reflows the line (VTE, Konsole, kitty; xterm does not);
+- the prompt's first draw clears the row it starts on, so the session ends its own
+  output with a newline before a prompt.
+
 ## M1, M2, M3 — the `.satc`, the `.satb`, the `.sati`
 
 **PROGRESS §6.5 RECOMMENDS COLLAPSING ALL THREE AND IT IS NOT YET APPLIED TO
