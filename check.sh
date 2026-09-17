@@ -89,6 +89,17 @@ $interpreter tests/undeclared.satl > build/un.out 2>&1; expect "a name nothing d
 expect "nothing ran before THAT refusal" "" "$(grep -x before build/un.out)"
 $interpreter tests/declared_twice.satl > /dev/null 2>&1; expect "a name declared twice" 26 $?
 $interpreter tests/kinds_do_not_meet.satl > /dev/null 2>&1; expect "\"n = \" + 4 converts nothing" 27 $?
+# ERROR.md: an expression that stops early is refused, not half-stored. `&` has no
+# meaning yet, and `n = 1 & 2` used to store 1 and `while(n < 3 & 1)` ran as `n < 3`.
+$interpreter tests/unread_assignment.satl > build/unread.out 2>&1; expect "n = 1 & 2 is refused, not stored as 1" 13 $?
+expect "... and nothing was displayed" "" "$(grep -x 1 build/unread.out)"
+$interpreter tests/unread_while.satl > build/unread.out 2>&1; expect "while(n < 3 & 1) is refused, not run as n < 3" 13 $?
+expect "... and the loop never counted to 3" "" "$(grep -x 3 build/unread.out)"
+expect "a trailing comment still ends a value" 8 "$($interpreter tests/comment_after_value.satl 2>/dev/null)"
+$interpreter tests/unread_trailing.satl > build/unread.out 2>&1; expect "n = 5 6 is refused, not stored as 5" 13 $?
+$interpreter tests/compound_assign.satl > build/unread.out 2>&1; expect "n += 1 is refused until += is built, not skipped" 14 $?
+expect "... before anything runs, and says how to write it" "1|" \
+       "$(grep -c 'n += ... is not built yet -- write n = n + ...' build/unread.out)|$(grep -x before build/unread.out)"
 # satellite.variable.binary (the author, 2026-09-16): written with its b, and shown
 # exactly as written -- b and leading zeros -- because the width is part of the value.
 expect "satellite.variable.binary my_number = b10101010" \

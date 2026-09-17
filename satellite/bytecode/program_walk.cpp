@@ -33,6 +33,22 @@ namespace {
 
 using token::Code;
 
+// AN EXPRESSION MUST BE READ TO ITS END (ERROR.md). evaluate_expression stops on
+// any code it has no meaning for -- `&` `|` `<<` `!!` are REGISTRY.satellite's
+// QUESTION rows -- and hands back the half it read, so `n = 1 & 2` stored 1 and
+// `while(n < 3 & 1)` ran as `while(n < 3)`, both without a word. call_word
+// already refused this; a variable and a loop bound need it more, because a
+// wrong value there prints nothing at all. A trailing comment is the line's end.
+bool read_to_the_end(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    const Code code = code_at(row, at);
+    return code == token::line_end_token || code == token::comment_token || code == token::end_of_file_token;
+}
+
+const char *const kNotReadToTheEnd =
+    "could not be read to the end -- it stops at something with no meaning there yet "
+    "(& | << >> !! are undecided), so the part before it is not the whole value";
+
 } // namespace
 
 Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at)
@@ -214,10 +230,17 @@ signed long long int run_while(const BytecodeRegistry &registry,
     for (;;) {
         std::size_t here = condition_at;
         ExpressionContext context{variables, functions, state};
-        if (code_at(row, here) == token::left_parenthesis_token) ++here;
+        const bool opened = code_at(row, here) == token::left_parenthesis_token;
+        if (opened) ++here;
         const Value holds = evaluate_expression(row, here, context);
         if (context.code != success)
             return report_error("satl(run): in satellite.statement.while, " + context.why, context.code);
+        // The condition's own `)`, then the line's end -- nothing between.
+        bool closed = true;
+        if (opened) closed = code_at(row, here++) == token::right_parenthesis_token;
+        if (!closed || !read_to_the_end(row, here))
+            return report_error(std::string("satl(run): satellite.statement.while's condition ") + kNotReadToTheEnd,
+                                satl_line_not_understood);
         if (!holds.is_bool())
             return report_error(std::string("satl(run): satellite.statement.while was given ") +
                                     holds.kind_name() + " and needs a true or false",
@@ -279,6 +302,10 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     if (context.code != success) {
         at = past_the_statement(row, at);
         return report_error("satl(run): in " + name + " = ..., " + context.why, context.code);
+    }
+    if (!read_to_the_end(row, at)) {
+        at = past_the_statement(row, at);
+        return report_error("satl(run): " + name + " = ... " + kNotReadToTheEnd, satl_line_not_understood);
     }
 
     // THE DECLARED TYPE OUTLIVES THE LINE THAT WROTE IT. `n = "text"` on a

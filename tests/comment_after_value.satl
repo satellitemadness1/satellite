@@ -1,0 +1,16 @@
+// A trailing comment is the end of the line, so a value followed by one is read
+// whole -- the check that refuses `n = 1 & 2` must not refuse this.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 5 // five
+    n = n + 1 // six
+    satellite.statement.while(n < 8) // two more turns
+    {
+        n = n + 1
+    }
+    satellite.console.display(n)
+    satellite.return(satellite)
+}

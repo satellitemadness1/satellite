@@ -213,7 +213,17 @@ that ever happens the fix is known and is the rule itself: explicit frames of
 recursion in `evaluate`, `call_word` or `run_body`. Raising `ulimit -s` is not the
 fix; it only picks a different number.
 
-## An operator with no meaning cuts an expression in half, silently — OPEN
+## An operator with no meaning cuts an expression in half, silently — FIXED 2026-09-17
+
+**Fixed:** `run_assignment` and `run_while` now refuse an expression that does not
+reach the line's end (a trailing `//` comment counts as the end) with
+`satl_line_not_understood` (13): `n = 1 & 2`, `while(n < 3 & 1)` and `n = 5 6` are all
+refused. The same sweep found `n += 1` skipped without a word for every type; the
+checker now refuses it by name before anything runs (`not_built_yet`, 14). Checked by
+tests/unread_*.satl, compound_assign.satl and comment_after_value.satl, and by every
+tracked program giving the same exit code and output before and after.
+
+What the entry said while it was open:
 
 **Found 2026-09-16 by five adversarial agents in their own worktrees, and it
 survived a skeptic who set out to refute it** (reset to the right baseline,

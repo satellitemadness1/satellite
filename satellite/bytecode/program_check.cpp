@@ -110,6 +110,38 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
     return types_do_not_meet;
 }
 
+// AFTER A DECLARED NAME, ONLY `=` -- or the line's end, for a declaration with no
+// value yet. `n += 1` was a line the walker skipped without a word: n kept its
+// value and the program exited 0, because run_assignment read anything that was
+// not `=` as "a declaration with no value" (found by the binary review,
+// 2026-09-16, and true of every type). `+=` and its family are real tokens with
+// no scenario, so they are not_built_yet by name; anything else is not a
+// statement a name can start. `k` is the code straight after the name.
+signed long long int after_the_name(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                    const std::string &name, bool declaring, std::string &why)
+{
+    const Code code = code_at(row, k);
+    if (code == token::assign_token)
+        return success;
+    const bool ends = code == token::line_end_token || code == token::comment_token ||
+                      code == token::end_of_file_token;
+    if (ends && declaring)
+        return success;
+
+    const char *sign = code == token::plus_assign_token ? "+"
+                     : code == token::minus_assign_token ? "-"
+                     : code == token::times_assign_token ? "*"
+                     : code == token::divide_assign_token ? "/"
+                     : code == token::modulus_assign_token ? "%" : nullptr;
+    if (sign != nullptr) {
+        why = name + " " + sign + "= ... is not built yet -- write " + name + " = " + name + " " + sign + " ...";
+        return not_built_yet;
+    }
+    why = ends ? name + " on its own line does nothing -- give it a value with ="
+               : name + " is followed by something that is not = , and there is no statement of that shape";
+    return satl_line_not_understood;
+}
+
 // Every name a statement USES as a value -- so a name with no declaration is
 // caught before anything runs. A name followed by `(` is a capsule and is
 // checked against the capsule table instead.
@@ -222,6 +254,8 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             at = stop;
             return name_declared_twice;
         }
+        const signed long long int shaped = after_the_name(row, k, name, true, why);
+        if (shaped != success) { at = stop; return shaped; }
         if (code == word::code_of(1, 6, 5) && code_at(row, k) == token::assign_token) {
             const signed long long int written = binary_is_written_with_b(row, k + 1, declared, why);
             if (written != success) { at = stop; return written; }
@@ -255,6 +289,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             why = name + " has no satellite.variable line declaring it";
             at = stop;
             return name_not_declared;
+        }
+        if (code_at(row, k) != token::left_parenthesis_token) {
+            const signed long long int shaped = after_the_name(row, k, name, false, why);
+            if (shaped != success) { at = stop; return shaped; }
         }
         // The b is required on every value a binary is GIVEN, not only the first.
         if (found != declared.end() && found->second == word::code_of(1, 6, 5) &&

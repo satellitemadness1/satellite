@@ -1,0 +1,15 @@
+// ERROR.md: a while condition that stops early. `n < 3 & 1` used to run as
+// `n < 3`, so the loop counted to 3 and nothing said a word.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 0
+    satellite.statement.while(n < 3 & 1)
+    {
+        n = n + 1
+    }
+    satellite.console.display(n)
+    satellite.return(satellite)
+}
