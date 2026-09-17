@@ -20,7 +20,22 @@
 # and every word with arguments has brackets in its name.
 #
 # Rebuilds only what changed (the source or a shared header is newer than the
-# .so), all at once on every hardware thread.
+# .so), all at once on every hardware thread -- AND EVERY LIBRARY WHEN THE COMPILER
+# OR FLAGS CHANGED (PLAN M0.5). make hands this script its own CXX, CXXFLAGS and
+# LDFLAGS as SATELLITE_CXX, SATELLITE_CXXFLAGS and SATELLITE_LDFLAGS
+# (make_support/050-build.mk), and build/satellite-numbers/.built_with records the
+# command the libraries there were built with. Before M0.5 it read CXX from the
+# environment, hardcoded -O2 and rebuilt on times only, so satl and its libraries
+# could come from two compilers with nothing saying so.
+#
+# LD_RUN_PATH IS NEVER PASSED TO THE COMPILER: GNU ld writes it into a library as
+# an RPATH naming directories in one home (make_support/048-link.mk).
+#
+# A LIBRARY IS WRITTEN BESIDE ITS NAME AND RENAMED INTO IT, so a satl starting
+# while this runs never dlopens half a file; and a .so no word in words.tsv names
+# any more is removed, because satl loads every .so in the folder.
+#
+# Silent when there was nothing to build, so a second `make` says nothing.
 #
 # Run from satellite-004:  python3 satellite-numbers/build_libraries.py
 # Written 2026-09-14.
@@ -29,14 +44,19 @@ import concurrent.futures
 import glob
 import os
 import re
+import shlex
 import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OUT = os.path.join(ROOT, "build", "satellite-numbers")
-CXX = os.environ.get("CXX", "g++")
-FLAGS = ["-std=c++20", "-O2", "-Wall", "-Wextra", "-shared", "-fPIC"]
+CXX = os.environ.get("SATELLITE_CXX") or os.environ.get("CXX") or "c++"
+CXXFLAGS = shlex.split(os.environ.get("SATELLITE_CXXFLAGS", "-std=c++20 -O2 -Wall -Wextra"))
+LDFLAGS = shlex.split(os.environ.get("SATELLITE_LDFLAGS", ""))
+FLAGS = [*CXXFLAGS, "-shared", "-fPIC", *LDFLAGS]
+BUILT_WITH = os.path.join(OUT, ".built_with")
+ENVIRONMENT = {name: value for name, value in os.environ.items() if name != "LD_RUN_PATH"}
 SHARED_HEADERS = [os.path.join(HERE, "number_row.hpp"), os.path.join(ROOT, "satellite", "machine", "machine_codes.hpp"),
                   os.path.join(ROOT, "strings", "string_method.hpp")]
 
@@ -69,20 +89,51 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     newest_header = max(os.path.getmtime(h) for h in SHARED_HEADERS)
 
+    command = shlex.join([CXX, *FLAGS])
+    try:
+        with open(BUILT_WITH) as recorded:
+            same_compiler = recorded.read() == command
+    except OSError:
+        same_compiler = False
+    if not same_compiler:
+        # Recorded as unknown FIRST, so an interrupted rebuild is a rebuild again.
+        if os.path.exists(BUILT_WITH):
+            os.remove(BUILT_WITH)
+
+    wanted = {os.path.basename(target) for _, _, target in jobs}
+    for stale in sorted(set(os.listdir(OUT)) - wanted):
+        if stale.endswith(".so") or stale.endswith(".so.tmp"):
+            os.remove(os.path.join(OUT, stale))
+            print(f"build_libraries.py: removed {stale}, which no word in words/words.tsv names")
+
     def build(job):
         folder, source, target = job
-        if os.path.exists(target) and os.path.getmtime(target) >= max(os.path.getmtime(source), newest_header):
-            return folder, None
-        result = subprocess.run([CXX, *FLAGS, source, "-o", target], capture_output=True, text=True)
-        return folder, (result.stderr.strip() or None) if result.returncode != 0 or result.stderr.strip() else None
+        if same_compiler and os.path.exists(target) and \
+                os.path.getmtime(target) >= max(os.path.getmtime(source), newest_header):
+            return folder, False, None
+        temporary = target + ".tmp"
+        result = subprocess.run([CXX, *FLAGS, source, "-o", temporary], capture_output=True, text=True,
+                                env=ENVIRONMENT)
+        if result.returncode == 0:
+            os.replace(temporary, target)
+        elif os.path.exists(temporary):
+            os.remove(temporary)
+        problem = result.stderr.strip() or ("exit status %d" % result.returncode if result.returncode else None)
+        return folder, True, problem
 
-    failed = 0
+    failed = built = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as pool:
-        for folder, problem in pool.map(build, jobs):
+        for folder, compiled, problem in pool.map(build, jobs):
+            built += compiled
             if problem:
                 failed += 1
                 print(f"--- {folder}\n{problem}")
-    print(f"{len(jobs)} libraries, {failed} with errors or warnings")
+    if not failed:
+        with open(BUILT_WITH, "w") as record:
+            record.write(command)
+    if built or failed:
+        print(f"{len(jobs)} libraries, {built} built{'' if same_compiler else ' (a different compiler or flags)'}, "
+              f"{failed} with errors or warnings")
     sys.exit(1 if failed else 0)
 
 

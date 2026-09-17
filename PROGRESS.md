@@ -32,7 +32,8 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 | **004's word numbers** — 364 words, first-available numbering, frozen (DESIGN §3.2) | `words/make_words.py` → `words/words.tsv`, `words/satellite_words.hpp` | matched 003's words.def row for row; no duplicates; every parent's children exactly 1..n |
 | **satellite_string as char32_t** — strict UTF-8 ↔ char32_t ↔ .sati bit text, `bits_to_cxx_str` | `strings/satellite_string.*` | `python3 strings/check_strings.py` — 30,055 cases agree with Python's UTF-8 codec |
 | **satellite_string's 23 words, one library each** (`1 6 1 0` .. `1 6 1 22`), behaviour ported from 003 06 | `strings/string_method.hpp`, `satellite-numbers/<exact word>/<exact word>.satellite.cpp` | `python3 strings/check_string_methods.py` — 44 cases match 003's real satl, plus 4 Unicode |
-| **The library builder** — names each .so by its numbers from words.tsv | `satellite-numbers/build_libraries.py` | 24 libraries, 0 warnings |
+| **The library builder** — names each .so by its numbers from words.tsv, with make's compiler and flags; a different compiler or flags rebuilds every library; a .so no word names is removed | `satellite-numbers/build_libraries.py` | 24 libraries, 0 warnings |
+| **PLAN M0.5 — the build, `satl`, satl-term and the installer** (2026-09-17). The Makefile is an index over `make_support/` fragments, 003's shape; objects under `build/objects/` with real header dependencies; `build/satl` (was `build/satellite-004`, now a link), `build/satellite-numbers/`, `build/satl-term`; no RPATH on anything linked. The command line: `satl`, `--run <file> [words]`, `<file> [words]`, `--repl` (14 until M0.6), `--debug` first, `--version`/`--help` alone, every word after the file the program's (`arguments.program`, `argument_N`, `length`, `session.directory`); anything else 23. A code outside 1–254 exits 255 (D0.5.2). A word that is not text is shown escaped in every message. satl-term ported from 003 with 004's title lines and codes. `satellite_enterprise/install.sh --root <folder>` only | `Makefile`, `make_support/`, `satellite/arguments/command_line.*`, `satellite/machine/{exit_status,shown}.hpp`, `satellite/version/title_lines.hpp`, `satl-term/`, `satellite_enterprise/` | `make test`; check.sh (126); `SATL=<root>/satl ./check.sh` after an install |
 | `satellite.console.display` library `1 5 1` | `satellite-numbers/satellite.console.display/` | `make race` — ×1.065 of std::cout today; ×1.002 with `write`/`put` (confirmed, not yet applied: ERROR.md / PLAN M1) |
 
 **Waiting on other types** (answer machine code 14 `not_built_yet`):
@@ -43,11 +44,13 @@ model, a binary included; these are the numbered LIBRARIES of the same names.)
 **Build and check everything:**
 
 ```
-make                                   # interpreter + every numbered library; raises the build number
-./check.sh                             # 41 checks, all pass since 2026-09-16 (§6.7)
+make                                   # build/satl + every numbered library + build/satl-term; raises the build number
+make test                              # check.sh and the three string checks, every one run even when one fails
+./check.sh                             # the checks alone; SATL=<folder>/satl ./check.sh checks an installed satl
 make build/string_cases && python3 strings/check_strings.py   # char32_t conversion against Python
 make build/string_methods && python3 strings/check_string_methods.py   # against 003's satl
-build/satellite-004 --version          # THE SATELLITE PROGRAMMING LANGUAGE / VERSION 004 REVISION 04 BUILD nnnn
+build/satl --version                   # THE SATELLITE PROGRAMMING LANGUAGE / VERSION 004 REVISION 04 BUILD nnnn
+sh satellite_enterprise/install.sh --root <folder>   # satl, satellite-numbers/ and satl-term, proven by a run
 python3 words/make_words.py            # regenerate the word table (needs old_versions/second_satellite/satl)
 ```
 

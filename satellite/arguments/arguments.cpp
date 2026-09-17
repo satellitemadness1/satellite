@@ -195,24 +195,35 @@ signed long long int Arguments::gather_config()
     return success;
 }
 
-signed long long int Arguments::gather(int argc, char **argv)
+signed long long int Arguments::gather(const CommandLine &command_line)
 {
     // Everything added from here on is satl's own: the command line and the
     // machine. A config row with one of those names is refused, never replaced
     // behind the author's back (review 2026-09-15).
     facts_start_ = entries_.size();
 
-    // The command line: --debug, and the .satl file to run.
-    bool debug_mode = false;
-    std::string file;
-    for (int i = 1; i < argc; i++) {
-        if (std::strcmp(argv[i], "--debug") == 0)
-            debug_mode = true;
-        else if (file.empty())
-            file = argv[i];
+    // THE COMMAND LINE (PLAN M0.5), with 003's names: the file is
+    // arguments.program, every word after it is arguments.argument_1 onwards in
+    // the order it was typed, and arguments.length counts them all, the program
+    // included -- so `satl prog.satl a b` is 3. arguments.file is the same file
+    // under the name the interpreter reads it by.
+    add_flag("arguments.debug_mode", command_line.debug);
+    add_text("arguments.file", command_line.file);
+    add_text("arguments.program", command_line.file);
+    for (std::size_t i = 0; i < command_line.words.size(); i++)
+        add_text("arguments.argument_" + std::to_string(i + 1), command_line.words[i]);
+    add_count("arguments.length", command_line.words.size() + 1);
+
+    // THE DIRECTORY SATL STARTED IN, read once. M0.6's satellite.directory.change
+    // never moves it (PLAN M0.5). Any length: getcwd(nullptr, 0) sizes its own
+    // buffer. Empty when the machine cannot say -- a directory deleted under the
+    // shell -- and the program still runs.
+    if (char *directory = getcwd(nullptr, 0)) {
+        add_text("arguments.session.directory", directory);
+        std::free(directory);
+    } else {
+        add_text("arguments.session.directory", "");
     }
-    add_flag("arguments.debug_mode", debug_mode);
-    add_text("arguments.file", file);
 
     // The machine.
     const long threads = sysconf(_SC_NPROCESSORS_ONLN);

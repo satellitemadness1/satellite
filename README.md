@@ -56,10 +56,17 @@ Revision 02 is early. What runs:
 and every measurement behind them, and [ERROR.md](ERROR.md) for every known error.
 
 ```
-make                     # the interpreter and every numbered library
-./check.sh               # the runner's checks
-build/satellite-004 --version
+make                                  # build/satl, every numbered library and build/satl-term
+make test                             # check.sh and the string checks
+build/satl examples/hello_world.satl  # run a program; build/satl --help lists every way
+build/satl-term examples/hello_world.satl
+sh satellite_enterprise/install.sh --root <folder>   # satl, its libraries and satl-term, into <folder>
 ```
+
+**004's interpreter is `satl`** (`build/satellite-004` is a link to it). It is
+not installed anywhere by `make`, and where 004 installs is not decided yet, so
+the installer takes only a `--root` and refuses 003's `~/.satl` and `/usr/local`.
+The word `satl` on a PATH is still satellite 003's.
 
 ## The earlier satellites
 

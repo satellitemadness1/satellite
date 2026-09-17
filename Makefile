@@ -1,168 +1,52 @@
-# satellite-004 -- its own build, into build/, separate from the satellite tree's.
+# satellite 004 -- the build.
 #
-#     make            the interpreter and every numbered library
-#     make check      run the example programs and check their machine codes
-#     make build/string_cases build/string_methods   the 32-bit string harnesses (strings/check_*.py)
-#     make build/number_cases   satellite_number's harness (satellite/satellite_variable_number/check_numbers.py)
-#     make number-race          the M4 race: i = i + 1 against signed long long int
-#     make build/string16_cases build/string_table_check   satellite_string's checks
-#                               (python3 satellite/satellite_variable_string/check_strings16.py)
-#     make build/string_race    satellite_string's speed against plain C++
-#     make race       satellite-004's display against std::cout, 10,000,000 lines
+#     make                 build/satl, every numbered library and build/satl-term
+#     make test            check.sh and the string checks
+#     make check           check.sh alone
 #     make clean
 #
-# The interpreter's sources are under satellite/ (the author, 2026-09-15), one
-# folder a subject: arguments, config, machine, race, satl, threads, version.
+# THIS FILE IS AN INDEX, the same kind 003's is (PLAN M0.5): the build is the
+# fragments under make_support/, included in the order they are numbered. Ported
+# from 003 revision 07 (old_versions/second_satellite/make_support/) on
+# 2026-09-17, keeping the numbers and the reasons, not the contents -- 004 builds
+# a different program.
 #
-# DYNAMIC ON PURPOSE. The libraries and the interpreter must share ONE copy of
-# libstdc++, or each would have its own std::cout. The satellite tree links
-# statically; this folder cannot, for that reason.
+# WHERE TO LOOK, by what you want to change:
 #
-# THE BUILD NUMBER (the author, 2026-09-15). A make whose inputs changed -- the
-# files below, every library source, or the compiler and flags -- raises
-# arguments.build in satellite/config/satellite_config.hpp by one BEFORE anything
-# compiles; any other make leaves it alone, even one that rebuilds what is missing.
-# satellite/config/build_number.py says exactly when. Its stamp, .satellite_build
-# (not in git), holds the last build's number and a fingerprint of its inputs.
+#     how many recipes run at once ........ 005-jobs.mk
+#     a compiler or a warning flag ........ 010-compiler.mk
+#     the build number and what it covers  020-version.mk
+#     a new source directory .............. 030-directories.mk
+#     what satl is compiled from .......... 040-sources.mk
+#     satl-term and whether it is built ... 047-window.mk
+#     what a link is allowed to record .... 048-link.mk
+#     a new binary ........................ 050-build.mk
+#     how a .cpp becomes a .o ............. 060-compile.mk
+#     a test, a harness or a race ......... 065-tests.mk
+#     what `make clean` removes ........... 070-clean.mk
+#
+# NOT PORTED from 003, and why: 045 (the haswell pair and satl-cpu-level --
+# 004 builds one satl), 048's STATIC (004 is dynamic on purpose: satl and every
+# library must share ONE libstdc++, or each has its own std::cout -- DESIGN §3.4),
+# 067 (003's start-up rows are 003 commands) and 080 (a bare `make` installs
+# nothing while D0.5.1, where 004 installs, is open).
+#
+# ORDER IS LOAD-BEARING in two places: 047 sets HAVE_WINDOW before 050 tests it
+# with an ifeq, which make evaluates as it reads; and 050 is the first fragment
+# that declares a target, which is what makes `all` the default goal.
+#
+# NAMED ONE BY ONE, never $(wildcard make_support/*.mk): a wildcard sorts 100-
+# before 020- and takes in an editor's backup. The paths are relative, so make
+# runs from this directory.
 
-CXX ?= g++
-CXXFLAGS = -std=c++20 -O2 -Wall -Wextra
-BUILD = build
-BUILD_STAMP = .satellite_build
-
-# The build machine's operating system for the start-up block's third line
-# ("CLANG++ 24 ALMALINUX 10.2"): NAME and VERSION_ID from /etc/os-release, upper
-# case, letters, digits, spaces, dots and dashes only.
-BUILD_OS := $(shell (. /etc/os-release 2>/dev/null && echo "$$NAME $$VERSION_ID" || uname -sr) | tr a-z A-Z | tr -cd 'A-Z0-9 .-')
-OS_DEFINE = -DSATELLITE_BUILD_OS='"$(BUILD_OS)"'
-
-INTERPRETER_SOURCES = satellite/structured-library.cpp satellite/arguments/arguments.cpp \
-                      satellite/machine/machine_state.cpp satellite/satl/satl_file.cpp \
-                      satellite/threads/startup_threads.cpp satellite/bytecode/bytecode_registry.cpp satellite/bytecode/cascade_convert.cpp \
-                      satellite/bytecode/function_table.cpp satellite/bytecode/include_shape.cpp \
-                      satellite/bytecode/program_walk.cpp satellite/bytecode/program_check.cpp \
-                      satellite/bytecode/expression.cpp satellite/bytecode/sate_file.cpp \
-                      satellite/satellite_object/satellite_object.cpp \
-                      satellite/satellite_object/str_add_str.cpp \
-                      satellite/satellite_object/str_minus_str.cpp \
-                      satellite/satellite_object/str_find_str.cpp \
-                      satellite/satellite_object/num_add_num.cpp \
-                      satellite/satellite_object/num_sub_num.cpp \
-                      satellite/satellite_object/num_div_num.cpp \
-                      satellite/satellite_object/object_convert.cpp \
-                      satellite/satellite_object/object_percentage.cpp \
-                      satellite/satellite_variable_number/satellite_number.cpp \
-                      satellite/satellite_variable_number/satellite_number_divide.cpp \
-                      satellite/satellite_variable_number/satellite_number_text.cpp \
-                      satellite/satellite_variable_number/satellite_number_power.cpp \
-                      satellite/satellite_variable_string/satellite_string.cpp \
-                      satellite-numbers/call_number.satellite.cpp
-HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hpp \
-          satellite/machine/machine_codes.hpp satellite/machine/machine_state.hpp \
-          satellite/satl/satl_file.hpp satellite/threads/startup_threads.hpp satellite/version/version.hpp \
-          satellite/bytecode/bytecode_registry.hpp satellite/bytecode/token_codes.hpp \
-          satellite/bytecode/word_codes.hpp satellite/bytecode/function_table.hpp \
-          satellite/bytecode/include_shape.hpp satellite/bytecode/program_walk.hpp \
-          satellite/bytecode/expression.hpp satellite/bytecode/value.hpp \
-          satellite/bytecode/sate_file.hpp satellite/bytecode/cascade_convert.hpp \
-          satellite/satellite_variable_number/satellite_number.hpp \
-          satellite/satellite_variable_number/satellite_number_limbs.hpp \
-          satellite/satellite_variable_number/number_arithmetic.hpp \
-          satellite/satellite_variable_number/number_conversions.hpp \
-          satellite/satellite_variable_string/satellite_string.hpp \
-          satellite/satellite_variable_binary/satellite_binary_number.hpp \
-          satellite/satellite_variable_percentage/satellite_percentage.hpp \
-          satellite/satellite_object/satellite_object.hpp satellite/satellite_object/satellite_spacesuit.hpp \
-          satellite/satellite_object/satellite_bytecode.hpp satellite/satellite_object/satellite_capsule.hpp \
-          satellite/satellite_object/fast_paths.hpp satellite/satellite_object/object_pair.hpp \
-          $(wildcard satellite/satellite_object/*_and_*.hpp) $(wildcard satellite/satellite_object/*_to_*.hpp) \
-          satellite-numbers/call_number.hpp satellite-numbers/number_row.hpp strings/string_method.hpp
-MACHINE_STATE = satellite/machine/machine_state.cpp
-
-# The files the application (the interpreter and its libraries) is made from, by
-# name: never a whole folder, so an editor's swap or lock file is not an input.
-# build_number.py adds every satellite-numbers/*/*.satellite.cpp itself (their
-# names hold brackets and spaces, which make cannot list).
-BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) Makefile satellite/config/build_number.py \
-               words/words.tsv satellite-numbers/build_libraries.py
-
-# Every numbered library is built by satellite-numbers/build_libraries.py, which
-# names each .so by its numbers from words/words.tsv (make cannot: word names have
-# brackets, which make reads as archive members).
-all: $(BUILD)/satellite-004 libraries
-
-# Runs on every make; build_number.py decides whether this make is a build, and
-# rewrites the stamp only when it is -- which is what relinks the interpreter.
-$(BUILD_STAMP): FORCE
-	@python3 satellite/config/build_number.py $@ --also "$(CXX) $(CXXFLAGS) $(BUILD_OS)" -- $(BUILD_INPUTS)
-
-libraries: $(BUILD_STAMP)
-	python3 satellite-numbers/build_libraries.py
-
-$(BUILD)/satellite-004: $(BUILD_STAMP) $(INTERPRETER_SOURCES) $(HEADERS)
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(INTERPRETER_SOURCES) -o $@ -ldl
-	@python3 satellite/config/build_number.py $(BUILD_STAMP) --verify
-
-$(BUILD)/race: satellite/race/race.cpp satellite-numbers/call_number.satellite.cpp $(MACHINE_STATE) $(HEADERS)
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) satellite/race/race.cpp satellite-numbers/call_number.satellite.cpp $(MACHINE_STATE) -o $@ -ldl
-
-$(BUILD)/string_methods: strings/test_string_methods.cpp strings/satellite_string.cpp satellite-numbers/call_number.satellite.cpp $(MACHINE_STATE) $(HEADERS)
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) -I. strings/test_string_methods.cpp strings/satellite_string.cpp satellite-numbers/call_number.satellite.cpp $(MACHINE_STATE) -o $@ -ldl
-
-$(BUILD)/string_cases: strings/string_cases.cpp strings/satellite_string.cpp strings/satellite_string.hpp satellite/machine/machine_codes.hpp
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) strings/string_cases.cpp strings/satellite_string.cpp -o $@
-
-# satellite.variable.number and satellite.variable.string: their own harnesses,
-# checked against Python. They are not the application, so they do not depend on
-# the build stamp and building one does not raise the build number.
-NUMBER = satellite/satellite_variable_number
-NUMBER_SOURCES = $(NUMBER)/satellite_number.cpp $(NUMBER)/satellite_number_divide.cpp \
-                 $(NUMBER)/satellite_number_text.cpp $(NUMBER)/satellite_number_power.cpp
-NUMBER_HEADERS = $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
-                 $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp \
-                 satellite/machine/machine_codes.hpp
-
-$(BUILD)/number_cases: $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) -o $@
-
-$(BUILD)/number_race: $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) -o $@
-
-number-race: $(BUILD)/number_race
-	./$(NUMBER)/number_race.sh
-
-STRING16 = satellite/satellite_variable_string
-STRING16_SOURCES = $(STRING16)/satellite_string.cpp $(STRING16)/satellite_string.hpp $(STRING16)/string_overwrite.hpp \
-                   $(STRING16)/character_table.hpp $(STRING16)/conversion_loops.hpp satellite/machine/machine_codes.hpp
-
-$(BUILD)/string16_cases: $(STRING16)/string16_cases.cpp $(STRING16_SOURCES)
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) $(STRING16)/string16_cases.cpp $(STRING16)/satellite_string.cpp -o $@
-
-$(BUILD)/string_table_check: $(STRING16)/string_table_check.cpp $(STRING16_SOURCES)
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) $(STRING16)/string_table_check.cpp $(STRING16)/satellite_string.cpp -o $@
-
-$(BUILD)/string_race: $(STRING16)/string_race.cpp $(STRING16)/plain_conversions.hpp $(STRING16)/plain_like_satellite.hpp \
-                      $(STRING16_SOURCES) strings/satellite_string.cpp strings/satellite_string.hpp
-	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) $(STRING16)/string_race.cpp $(STRING16)/satellite_string.cpp strings/satellite_string.cpp -o $@
-
-check: all
-	./check.sh
-
-race: all $(BUILD)/race
-	./satellite/race/race.sh
-
-clean:
-	rm -rf $(BUILD)
-
-FORCE:
-
-.PHONY: all libraries check race number-race clean FORCE
+include make_support/005-jobs.mk
+include make_support/010-compiler.mk
+include make_support/020-version.mk
+include make_support/030-directories.mk
+include make_support/040-sources.mk
+include make_support/047-window.mk
+include make_support/048-link.mk
+include make_support/050-build.mk
+include make_support/060-compile.mk
+include make_support/065-tests.mk
+include make_support/070-clean.mk

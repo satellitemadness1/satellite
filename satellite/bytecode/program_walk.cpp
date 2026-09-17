@@ -24,9 +24,13 @@
 #include "word_codes.hpp"
 #include "../satl/satl_file.hpp"
 
+#include <cerrno>
+#include <cstring>
 #include <fstream>
 #include <utility>
 #include <sstream>
+
+#include <sys/stat.h>
 
 namespace satellite004 {
 namespace {
@@ -120,10 +124,28 @@ signed long long int load_program(const std::string &main_file,
         // CANNOT LOCATE FILE (the author, 2026-09-16), said before load_satl is
         // asked, so the message names the file the program meant rather than
         // whatever the operating system called the failure.
+        //
+        // ONLY A REGULAR FILE IS A PROGRAM (PLAN M0.5, DESIGN §9). A directory
+        // opens and reads as nothing, which surfaced as "missing include" (10)
+        // about a file that was never a program; a FIFO blocks the open until
+        // something writes to it, and /dev/zero reads until memory runs out. A
+        // symlink is followed, so a link to a program runs it. Each refusal says
+        // which of those it was.
+        const std::string by = asked_by.empty() ? std::string() : ", included by " + asked_by;
+        struct stat about;
+        if (stat(path.c_str(), &about) != 0)
+            return report_error((errno == ENOENT || errno == ENOTDIR ? "cannot locate file: " + path
+                                                                     : "cannot locate file: " + path + " (" +
+                                                                           std::strerror(errno) + ")") + by,
+                                missing_satl_file);
+        if (!S_ISREG(about.st_mode))
+            return report_error("cannot run " + path + by + ": " +
+                                    (S_ISDIR(about.st_mode) ? "it is a directory" : "it is not a regular file") +
+                                    ", and a program is a .satl file",
+                                missing_satl_file);
         std::ifstream there(path);
         if (!there)
-            return report_error("cannot locate file: " + path +
-                                    (asked_by.empty() ? std::string() : ", included by " + asked_by),
+            return report_error("cannot read file: " + path + " (" + std::strerror(errno) + ")" + by,
                                 missing_satl_file);
 
         std::string source;

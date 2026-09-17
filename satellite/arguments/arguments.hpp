@@ -18,6 +18,7 @@
 // and dividing by 1024 is exact too. Measured 2026-09-14: the largest 64-bit
 // count went to terabytes and back unchanged, where a double was off by one.
 
+#include "command_line.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
 
 #include <string>
@@ -48,7 +49,7 @@ public:
 
     // Fill every entry from the command line and the machine. Answers a
     // machine code; the program can still run if a fact could not be read.
-    signed long long int gather(int argc, char **argv);
+    signed long long int gather(const CommandLine &command_line);
 
     void add_text(const std::string &name, const std::string &value);
     void add_count(const std::string &name, unsigned long long int value);

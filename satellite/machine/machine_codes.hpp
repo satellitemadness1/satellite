@@ -16,6 +16,10 @@
 // calling it an error. It is the seam satellite.variable.float (003 DESIGN §8.6,
 // a bool and two satellite_numbers) arrives at, and the seam a fraction would.
 
+// 255 IS NEVER GIVEN TO A CODE (PLAN D0.5.2). An exit status holds 8 bits, so a
+// code outside 1-254 -- 256, -1, 4294967298 -- exits 255 with the whole code on
+// stderr (exit_status.hpp). A code cut to 8 bits would let 256 exit 0.
+
 namespace satellite004 {
 
 enum MachineCode : signed long long int {

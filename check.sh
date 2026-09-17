@@ -1,8 +1,13 @@
 #!/bin/bash
-# Runs satellite-004 on every example and test, and checks the machine code
+# Runs satl (satellite 004) on every example and test, and checks the machine code
 # (the exit status) and, where it matters, the output.
+#
+#     ./check.sh                      checks build/satl
+#     SATL=<path>/satl ./check.sh     checks that satl instead -- an installed copy
+#                                     (PLAN M0.5); the libraries beside it are its own
+# SATL is read from where check.sh was STARTED, before it moves to its own folder.
+interpreter=$(realpath -s "${SATL:-$(dirname "$0")/build/satl}")
 cd "$(dirname "$0")"
-interpreter=build/satellite-004
 passed=0 failed=0
 
 expect() {   # expect <description> <wanted code> <actual code>
@@ -45,7 +50,63 @@ expect "stderr a pipe nobody reads: the program still runs" 0 $?
 $interpreter examples/hello_world.satl --version > /dev/null 2>&1; expect "a --version after the file is not satl's" 0 $?
 
 $interpreter build/no_such_file.satl > /dev/null 2>&1; expect "missing file" 8 $?
-$interpreter > /dev/null 2>&1; expect "no file named" 8 $?
+
+# SATL'S COMMAND LINE (PLAN M0.5): arguments/command_line.hpp has the rules.
+$interpreter > build/bare.out 2> build/bare.err; code=$?
+expect "bare satl is not an error (it was 8 before M0.5)" 0 $code
+expect "bare satl shows the title lines, then how to start" "$title|1" \
+       "$(head -2 build/bare.out)|$(grep -c '^    satl <file.satl> \[words...\] ' build/bare.out)"
+expect "bare satl writes nothing on stderr" 0 "$(wc -c < build/bare.err)"
+$interpreter --debug > /dev/null 2>&1; expect "satl --debug alone is bare satl" 0 $?
+$interpreter -h > /dev/null 2>&1; expect "-h" 0 $?
+$interpreter --debug --help > /dev/null 2> build/cl.err; expect "--debug --help is refused" 23 $?
+expect "... by name" 1 "$(grep -c 'is the whole command line, and --debug came before it' build/cl.err)"
+$interpreter --help extra > /dev/null 2>&1; expect "--help with another word is refused" 23 $?
+$interpreter --run examples/hello_world.satl > build/run.out 2>/dev/null; code=$?
+expect "--run runs the file" "0|$wanted" "$code|$(cat build/run.out)"
+$interpreter --run > /dev/null 2> build/cl.err; expect "--run with no file is refused" 23 $?
+expect "... and says a file goes after it" 1 "$(grep -c -- '--run needs the file to run after it' build/cl.err)"
+$interpreter --run "" > /dev/null 2>&1; expect "--run \"\" is a file with no name" 8 $?
+$interpreter --repl > /dev/null 2> build/cl.err; expect "--repl is not built yet" 14 $?
+expect "... and says the prompt lands at M0.6" 1 "$(grep -c 'the prompt is not built yet -- it lands at M0.6' build/cl.err)"
+$interpreter --repl extra > /dev/null 2>&1; expect "--repl with another word is refused" 23 $?
+for word in -- -x.satl --rum -; do
+    $interpreter "$word" x.satl > /dev/null 2>&1; expect "\"$word\" is not a word satl takes" 23 $?
+done
+$interpreter —run examples/hello_world.satl > /dev/null 2>&1; expect "—run with an em dash is a file name, and missing" 8 $?
+cp examples/hello_world.satl build/-x.satl && (cd build && $interpreter --run -x.satl > /dev/null 2>&1); \
+    expect "--run -x.satl runs a file whose name begins with -" 0 $?
+$interpreter --debug examples/hello_world.satl --version --debug --repl "" > build/words.out 2>&1; code=$?
+expect "every word after the file is the program's" 0 $code
+expect "... kept in order as arguments.argument_1 onwards, and counted with the program" \
+       "arguments.program = examples/hello_world.satl|arguments.argument_1 = --version|arguments.argument_2 = --debug|arguments.argument_3 = --repl|arguments.argument_4 = |arguments.length = 5" \
+       "$(grep -E '^\[satellite\] arguments\.(program|argument_[0-9]+|length) = ' build/words.out | sed 's/^\[satellite\] //; s/ (machine_code: 0 success)$//' | tr '\n' '|' | sed 's/|$//')"
+expect "arguments.session.directory is where satl started" 1 \
+       "$(grep -cxF "[satellite] arguments.session.directory = $PWD (machine_code: 0 success)" build/words.out)"
+# DESIGN §9: a word that is not text never reaches the terminal raw -- ESC ] 2 ; BEL
+# would retitle it. Shown escaped under --debug and in every refusal.
+$interpreter --debug examples/hello_world.satl $'\e]2;title\a' $'\xff' > build/hostile.out 2>&1
+expect "an escape sequence as a program word is shown as text" 1 \
+       "$(grep -cF 'arguments.argument_1 = \x1b]2;title\x07 (machine_code' build/hostile.out)"
+expect "... invalid UTF-8 too" 1 "$(grep -cF 'arguments.argument_2 = \xff (machine_code' build/hostile.out)"
+$interpreter $'\e]2;title\a.satl' > build/hostile.out 2>&1; expect "an escape sequence as the file" 8 $?
+expect "... is named, escaped, and no ESC or BEL byte is written" "1|0" \
+       "$(grep -cF 'cannot locate file: \x1b]2;title\x07.satl' build/hostile.out)|$(tr -cd '\033\007' < build/hostile.out | wc -c)"
+$interpreter examples > build/hostile.out 2>&1; expect "a directory as the file" 8 $?
+expect "... says it is a directory" 1 "$(grep -c 'cannot run examples: it is a directory' build/hostile.out)"
+ln -sfn ../examples/hello_world.satl build/link_to_hello.satl
+$interpreter build/link_to_hello.satl > /dev/null 2>&1; expect "a symlink to a program runs it" 0 $?
+if [ "$(id -u)" != 0 ]; then
+    cp examples/hello_world.satl build/unreadable.satl && chmod 000 build/unreadable.satl
+    $interpreter build/unreadable.satl > build/hostile.out 2>&1; expect "an unreadable file" 8 $?
+    expect "... says why" 1 "$(grep -c 'cannot read file: build/unreadable.satl (Permission denied)' build/hostile.out)"
+    rm -f build/unreadable.satl
+fi
+# A machine code an exit status cannot hold exits 255, never cut to 8 bits (256 would exit 0).
+build/exit_status_cases > build/exit_status.out 2> build/exit_status.err; code=$?
+expect "exit statuses for 0, 1, 255, 256, -1, 4294967298 ... ($(grep -c '^ok' build/exit_status.out) cases)" 0 $code
+expect "... a code that does not fit is written in full on stderr" 1 \
+       "$(grep -c 'machine code 4294967298 does not fit an exit status, which holds 1 to 254, so satl exits 255' build/exit_status.err)"
 $interpreter tests/missing_include.satl > /dev/null 2>&1; expect "missing include" 10 $?
 $interpreter tests/missing_main.satl > /dev/null 2>&1; expect "missing main" 11 $?
 $interpreter tests/missing_return.satl > /dev/null 2>&1; expect "missing return" 12 $?
@@ -172,8 +233,8 @@ expect "a declaration inside a loop runs every turn" "0|1|10|11|20|21" \
        "$($interpreter tests/loop_declaration.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 $interpreter examples/hello_world.satl > /dev/full 2> /dev/null; expect "output refused (/dev/full)" 2 $?
 
-mkdir -p build/alone && cp $interpreter build/alone/satellite-004
-build/alone/satellite-004 examples/hello_world.satl > /dev/null 2>&1; expect "no libraries beside the interpreter" 5 $?
+mkdir -p build/alone && cp $interpreter build/alone/satl
+build/alone/satl examples/hello_world.satl > /dev/null 2>&1; expect "no libraries beside the interpreter" 5 $?
 
 $interpreter --debug examples/hello_world.satl > build/debug.out 2>&1; code=$?
 expect "--debug runs" 0 $code

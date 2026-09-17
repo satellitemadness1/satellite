@@ -18,51 +18,28 @@
 // as 12345. VERSION is the language, REVISION is this build of it, and BUILD
 // counts every build. satellite 003 revision 07 (old_versions/second_satellite/)
 // is a different program with its own numbers.
+//
+// satl-term shows the same lines through title_lines.hpp, which needs no
+// satellite_number (PLAN M0.5).
 
 #include "../arguments/arguments.hpp"
+#include "title_lines.hpp"
 
 #include <string>
 
 namespace satellite004 {
 
-inline std::string padded(const satellite_number &number, std::string::size_type width)
-{
-    std::string digits = number.to_text();
-    if (digits.size() < width)
-        digits.insert(0, width - digits.size(), '0');
-    return digits;
-}
-
 inline std::string version_line(const Arguments &arguments)
 {
-    return "VERSION " + padded(arguments.number("arguments.version"), 3) + " REVISION " +
-           padded(arguments.number("arguments.revision"), 2) + " BUILD " +
-           padded(arguments.number("arguments.build"), 4);
-}
-
-// What built this binary: the compiler from its own macros, and the build
-// machine's operating system from /etc/os-release, which the Makefile passes as
-// SATELLITE_BUILD_OS. "CLANG++ 24 ALMALINUX 10.2".
-inline std::string compiler_line()
-{
-#if defined(__clang__)
-    std::string compiler = "CLANG++ " + std::to_string(__clang_major__);
-#elif defined(__GNUC__)
-    std::string compiler = "G++ " + std::to_string(__GNUC__);
-#else
-    std::string compiler = "AN UNKNOWN COMPILER";
-#endif
-#ifdef SATELLITE_BUILD_OS
-    return compiler + " " + SATELLITE_BUILD_OS;
-#else
-    return compiler + " (build system not recorded)";
-#endif
+    return version_line_of(arguments.number("arguments.version").to_text(),
+                           arguments.number("arguments.revision").to_text(),
+                           arguments.number("arguments.build").to_text());
 }
 
 // --version: the three lines.
 inline std::string title_lines(const Arguments &arguments)
 {
-    return "THE SATELLITE PROGRAMMING LANGUAGE\n" + version_line(arguments) + "\n" + compiler_line() + "\n";
+    return title_lines_of(version_line(arguments));
 }
 
 // Every start (unless arguments.startup_display is false) and --help: the three
