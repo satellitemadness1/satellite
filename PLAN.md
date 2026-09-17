@@ -10,7 +10,35 @@ entries are cleared.
 satl-term) → M0.6 and M0.7 (the prompt) → M0 onwards. The prompt comes before
 `satellite_number`, which PROGRESS.md had as next.
 
-## M0.5 — port the build, the installer and satl-term *(the very next milestone)*
+---
+
+**REWORKED 2026-09-17, because the plan stopped describing the program.** The
+author: *"our plan doesn't match our 16-bit bytecode reality ... we are not really
+building a session loop... we are just building fast paths for various token
+combinations and calling those fast paths"*, and then: *"some milestones must be
+impossible now, and need to be reworked"*.
+
+What changed under this file, in his own rulings: **there is no `.satc`, no
+`.satb` and no `.sati`** (D0.1, 2026-09-16: *"we threw away satc and satb in
+favor of all 16-bit"*), and **there is no parser** -- a `.satl` is lexed straight
+into 16-bit codes, checked, and walked. So four milestones here had no subject
+left, and two described work that was already built by another route.
+
+**Every milestone below now says which it is:** BUILT, DEAD, or still owed. A
+milestone struck through is one whose subject no longer exists -- its live parts
+are named where they went, and nothing is deleted silently. Work that lost its
+milestone entirely is listed at the end of this file, under **WITHOUT A
+MILESTONE**, for the author to place.
+
+**MILESTONES.md carries everything that is not in this file** -- M13 upward, and
+the debt found while building. It was audited the same day (`bc14937`).
+
+## M0.5 — port the build, the installer and satl-term — **BUILT 2026-09-17**
+
+**Built in `71f7836`, `5fc0c7d`, `a4ac456`, `6ea6f01`**; PROGRESS.md's row says
+what it is and how it is checked, and MILESTONES M0.5 holds what is left to the
+author (D0.5.1, where 004 installs). The text below is the record of what was
+decided, kept as written.
 
 (author, 2026-09-15) On 2026-09-15 satellite 004 moved to the top of the
 repository, and satellite 003 revision 07 went, unchanged, into
@@ -185,7 +213,26 @@ installs (recommended):
 - **D0.5.2** The status a code outside 1–255 exits with. Recommended: 255, never
   given to any code.
 
-## M0.6 — the prompt in satl, with `satellite.directory.change` and `.list` *(after M0.5)*
+## M0.6 — the prompt in satl, with `satellite.directory.change` and `.list` — **BUILT 2026-09-17**
+
+**Built in `28364f2` (the terminal layer) and `29319d8` (the session, the three
+directory words and the table).** `satl --repl` reads a line with its own editor,
+tokenises it with the lexer a `.satl` gets, judges it with the checker a capsule's
+body gets, and walks it with `run_statements` -- no wrapper, no second runner.
+
+**What M0.6 still owes**, all named in PROGRESS: `list()` inside a PROGRAM answers
+`not_built_yet` until satellite has a list type (MILESTONES M14); the listing's
+order is the bytes' where 003's was its character table's (a library cannot reach
+the language's string yet -- MILESTONES M21); and the 100,000-entry race below has
+not been run.
+
+**One thing this milestone changed that was not in its plan:** a word whose row
+spells its arguments (`satellite.directory.list()` and `list(d)` are two rows over
+one path) never lexed at all, because no dotted path matches either. The lexer now
+tries the whole path first, then the path plus the shape of the brackets that
+follow. 332 shaped rows were waiting on it.
+
+The text below is the record of what was decided, kept as written.
 
 (author, 2026-09-15) "Build the prompt as the next milestone. Build it partly in
 satl-term as much as you can and put the rest of the prompt in satl, or design
@@ -312,20 +359,25 @@ no `[entry]`; the build has no warnings; both races pass; and 003's install
 hashes the same.
 
 **Decisions:**
-- **D0.6.1** Does a typed line go through `.satc` / `.satb` / `.sati`?
-  Recommended: no — a typed line is already its own numbered form.
-- **D0.6.2** From a pipe: no banner and no prompt text (recommended). And the
-  session's status at the end of piped input: the first failing line's code, or 0.
+- ~~**D0.6.1** Does a typed line go through `.satc` / `.satb` / `.sati`?~~
+  **DEAD**: there are no such files. A typed line becomes registry codes, exactly
+  as a file does.
+- ~~**D0.6.2**~~ **TAKEN, both halves:** from a pipe there is no banner and no
+  prompt text; the status is the FIRST failing line's code. At a terminal `exit`
+  is 0, because the person has already seen every refusal.
 - **D0.6.3** Names that are not UTF-8, or hold control bytes, shown as `\xNN` and
   `\\`, so the shown form is exact. How such a name is typed back is decided when
   M6 puts names into strings.
-- **D0.6.4** Which parts of M0.6 the author writes pseudocode for.
+- ~~**D0.6.4** Which parts of M0.6 the author writes pseudocode for.~~
+  **ANSWERED 2026-09-17:** *"you write the session and directory code"*. None.
 - **D0.6.5** Keys typed while a line runs. 003 throws them away on purpose
   (`TCSAFLUSH`, `raw_mode.cpp:85-87`); a shell keeps them. Recommended: 003's.
-- **D0.6.6** Build `current()` `1 18 2` and `exists(d)` `1 18 3` here too? They
-  share `change`'s code, and the author named only `change` and `list`.
-- **D0.6.7** Keep 003's table `type` column, which reads up to 64 KB of every file
-  in a directory in order to list it?
+- ~~**D0.6.6**~~ **TAKEN: not built.** `current()` `1 18 2` and `exists(d)`
+  `1 18 3` are numbered and answer `not_built_yet`; the author named `change` and
+  `list`, and a word built for symmetry is a word designed by symmetry.
+- ~~**D0.6.7**~~ **TAKEN: no.** The `type` column is what the system knows --
+  dir, file, link, fifo, sock, dev -- and never reads a file to guess. Reversing
+  it is one function in `satl/listing.cpp`.
 
 **Entries:**
 - **Typed (DESIGN §9):** `!@#$%^&*()`; `poly.#@($*&$&$`; an empty line; one
@@ -367,7 +419,7 @@ hashes the same.
   `display` and `list()`. No library is mapped from that folder
   (`/proc/<pid>/maps`), and `satellite.log` is still written where it was.
 
-## M0.7 — the prompt in satl-term *(after M0.6)*
+## M0.7 — the prompt in satl-term *(THE NEXT MILESTONE: M0.6 is built)*
 
 (author) "as much as you can" in satl-term. M0.6's prompt already runs in a
 satl-term tab, through the pty. This milestone moves into the window everything
@@ -457,6 +509,35 @@ warnings; no `[entry]`.
 
 ---
 
+## M0.8 — the prompt's second half: blocks, kept variables, `run <file>` *(NEW)*
+
+**Added 2026-09-17 in the rework**, because old M6 owned this and M6 is dead. M0.6
+runs ONE statement a line and refuses a block by name; these three are what turns
+that into a prompt a person can work in, and each is a shape the walker already
+has inside a capsule:
+
+- **A block that is typed over several lines.** `satellite.statement.while(x)`
+  and a `{` at the prompt must keep reading until the braces balance, which is
+  what the line reader's prompt-per-line already allows for (003 changed the
+  prompt text under the cursor as the depth changed; M0.6 dropped that and left
+  the hook).
+- **Variables that outlive their line.** A typed line is walked with a fresh
+  `VariableTable` today, so `satellite.variable.number n = 1` is forgotten
+  immediately. The session keeps one table for as long as it lives -- and that is
+  the first place "there are no globals" has to be answered for a PROMPT, where
+  there is no capsule to be inside.
+- **`run <file>`**, so a session can run a program without leaving.
+
+**Done when** a `while` block typed at the prompt runs, a variable declared on one
+line is still there on the next, `run` runs a file and reports its code, and none
+of the three changes what a `.satl` file does.
+
+**Entries:** a block left unclosed at the end of input; `}` with nothing open; a
+variable declared twice; a name the file's own `main` also uses; `run` of a
+missing file, a directory, and a file that fails half way.
+
+---
+
 ## How a milestone is done
 
 (author) "Instead of testing our programs, we will define entries with each of
@@ -477,7 +558,10 @@ rendered screen; satl-term entries use headless mutter and XTest (TERM.md).
 
 ---
 
-## The shape of a run (author, 2026-09-14)
+## The shape of a run
+
+**THE AUTHOR'S FIRST SHAPE, 2026-09-14, kept because it is where the numbering
+came from** -- and superseded by his own ruling two days later:
 
 ```
 source .satl ──24 threads──▶ .satc ──combine──▶ .satb ──▶ .sati
@@ -485,41 +569,71 @@ source .satl ──24 threads──▶ .satc ──combine──▶ .satb ──
                              run these in parallel     32 bits per character
 ```
 
-- **If there is no `.satc`, make it. If there is no `.satb`, make it.** The
-  main thread runs "as fast as it can" meanwhile.
-- **Once a `.satb` exists, the 256 start-up threads stay dormant** until the
-  program reaches a batch the `.satb` marks.
-- **`arguments.satc` and `arguments.satb` choose when the files are built**
-  (M0).
+**THE SHAPE THAT RUNS, since 2026-09-16** (the author: *"we threw away satc and
+satb in favor of all 16-bit"*, and *"first start 256 threads, then load the tiny
+C++ libraries, then convert the .satl to 16-bit"*):
+
+```
+source .satl ──256 warm threads, batches of lines──▶ bytecode registry
+                                                    one row a FILE, 16 bits a code
+                                                            │
+                     every statement judged ◀───────────────┤  program_check.cpp
+                                                            │
+                     walked where it stands ◀───────────────┘  program_walk.cpp
+                          six shapes, a call is a POSITION, nothing allocated
+```
+
+- **There is no intermediate file to build or to be stale.** The registry IS the
+  numbered program: a word is one code, a string is codes inline and counted, and
+  combine's marks have rows reserved in it (`batch_start`, `batch_end`, `wait`,
+  `batch_size`).
+- **`.sate` is the one file**, and it is the registry written out. It is written
+  today and not yet read back (MILESTONES M31).
+- **The threads are warm before anything loads**, and they tokenise in batches of
+  lines -- 256 batches of a 100,000-line program in 1.5 ms, 27x one thread.
+- **A typed line takes the same three steps** (M0.6), which is what proves there
+  is one runner and not two.
 
 ---
 
-## What exists now
+## What exists now (2026-09-17)
 
-The prototype (2026-09-14):
-- `satellite/structured-library.cpp`, `satellite/arguments/`, `satellite/machine/`,
-  `satellite/satl/` (moved under `satellite/` on 2026-09-15)
-- the number index in `satellite-numbers/call_number.satellite.cpp`
-- one library, `satellite.console.display`
-- `check.sh` (24 checks) and `satellite/race/race.sh`
+PROGRESS.md is the full list, row by row, with how each is checked. In short:
 
-It runs `satellite.console.display` with a string, a whole number or a bool.
-The review proved 17 defects (DESIGN §11). Its speed is in DESIGN §12:
-`display` about **119 times faster than 003 06's**, and ×1.002 of C++ with
-`write`/`put`.
+- **The program as 16-bit codes:** `satellite/bytecode/` -- the registry (one row
+  a file, tokenised on the warm threads), the function table (a word's code IS
+  the index into it), the checker, the walker, the expression fast paths, and
+  `.sate`.
+- **The types:** `satellite_number` (checked against Python), the author's 16-bit
+  `satellite_string` with a wide character as 40000 and two codes,
+  `satellite_binary_number`, `satellite_percentage`, and the object model
+  (`satelliteObject`, `satelliteSpacesuit`) with reference semantics.
+- **27 numbered libraries**, built by `satellite-numbers/build_libraries.py` from
+  `words/words.tsv` -- `satellite.console.display`, the 23 string methods, and
+  `satellite.directory`'s three.
+- **satl and satl-term:** the build is an index over `make_support/` fragments,
+  `build/satl` and `build/satl-term`, and `satellite_enterprise/install.sh`.
+- **The prompt:** the terminal layer (`satellite/prompt/`) and the session
+  (`satellite/satl/session.cpp`), which runs a typed line out of the bytecode.
+- **The checks:** `make test` -- check.sh (183), the installer's 14, the string
+  checks, and the harnesses each of those drive.
 
-**003 already writes `.satc` files and never reads them while running.**
-`satl --satc` writes `~/.satl/cache/<name>.<hash>.satc`, but a traced ordinary
-`satl` run touched a `.satc` or the cache folder 0 times (measured). 004 puts
-the file into the run.
+**The prototype that this file was written against is retired.** `compile_satl`,
+`check_satl` and `run_calls` in `satellite/satl/satl_file.cpp` are no longer
+called by anything; only `load_satl`, which reads a file, survives.
 
 ---
 
-## M0 — `satellite_config.hpp` and the `arguments` values
+## M0 — `satellite_config.hpp` and the `arguments` values — **BUILT**
 
 The file is in the satellite-004 folder, written by the author. **Every value is
 quoted text, turned into a `satellite_number` at start-up, and used as a
-ceiling** (DESIGN §1). The author's values:
+ceiling** (DESIGN §1). Built: `satellite/config/satellite_config.hpp` is read by
+the interpreter AND by the build (`build_number.py` is the one reader), every
+row shows under `--debug`, and `build/arguments_cases` proves no name satl fills
+in can be a row. A row of a million nines is accepted and capped by what the
+machine allows; a row written `-1ULL`, `-4u` or `-9223372036854775808` is refused
+before anything compiles.
 
 | name | value | meaning |
 |---|---|---|
@@ -528,110 +642,76 @@ ceiling** (DESIGN §1). The author's values:
 | `threads_startup` | `"256"` | the pool started first, then recalled |
 | `file_size_max_bytes` | the same as `object_bytes_max` | |
 | `max_memory_bytes` | `"61847529062"` | 64 GB less 10% |
-| `satc` | `1` | build the `.satc` before running |
-| `satb` | `1` | build the `.satb` before running |
+| ~~`satc`~~ | ~~`1`~~ | **DEAD with the file (D0.1)** |
+| ~~`satb`~~ | ~~`1`~~ | **DEAD with the file (D0.1)** |
 
-They are also readable from a program through the special `arguments`
-variable. (author) `arguments.satc` and `arguments.satb` choose when each file
-is built:
-- **`1`:** build it before anything runs (the default).
-- **`0` (false):** build it while the program runs.
-- **A special value:** never build it, so satellite-004 runs as a plain
-  interpreter.
+~~**Decision D0.1:** which value means "never".~~ **ANSWERED 2026-09-16:** there
+is no `.satc` and no `.satb` to never build. `arguments.sate` took their place as
+the one flag about the one file.
 
-**Decision D0.1:** which value means "never". The author first said `3`, then
-"we need a special value for this."
+**What this milestone still owes:** nothing. Its entries live in check.sh.
 
-**Done when** the Makefile and the interpreter both read the file; each value
-shows under `--debug`; and a value of a million nines is accepted and capped by
-what the machine really allows.
+## ~~M1 — the `.satc`, built by 24 threads~~ — **DEAD; what it was for is BUILT**
 
-**Entries:**
-- a value that is not a number, a negative value, an empty value
-- a million nines
-- `satc` set to `0`, `1` and the "never" value
+**There is no `.satc`.** What this milestone existed to produce -- the program as
+numbers, made by many threads -- is the bytecode registry, and it is built:
+`add_file_to_bytecode_registry` cuts a file into batches of lines across the warm
+threads (a recall costs ~12.5 µs, so one thread per line would be ~400x slower --
+DESIGN §6, now measured: 227 ms against 40 ms for 100,000 lines on one thread, and
+1.5 ms on 256).
 
-## M1 — the `.satc`, built by 24 threads *(the first thing to build)*
+Its parts, and where they went:
+- **The word table** (BUILT 2026-09-14): `words/make_words.py` → `words.tsv`,
+  364 words numbered first-available, and `word_codes.hpp` generated from it.
+- **Strings**: not `char32_t` in the language any more -- `satellite_string` is
+  the author's 16-bit table, a wide character being 40000 and two codes (D3.1).
+- **A method written on a variable** (`my_list.append`) still needs the
+  variable's declared type: that is the selector, and it lexes through the
+  `.find(` trigger rather than waiting for a resolver.
+- **The prototype's defects** in the loader and the library path are NOT fixed
+  here any more; they are MILESTONES M26, re-run one at a time on 2026-09-17.
+- ~~**Decision D1.1**~~ **DEAD**: there is no `.satc` to run ahead of.
 
-- **The word table: BUILT 2026-09-14** (`words/make_words.py`,
-  `words/satellite_words.hpp`). It holds 364 words numbered first-available
-  (DESIGN §3.2), generated from 003's registry so no number can drift. Six
-  numbers are held inline, and deeper commands go in `longer`.
-- **Strings as `char32_t`: BUILT 2026-09-14** (`strings/satellite_string.*`),
-  ahead of M3. 30,055 cases agree with Python's strict UTF-8 decoder.
-- **24 threads convert the program.** One job per file (the main `.satl` and
-  every spaceship), each file cut into large pieces so every recall carries
-  real work. A recall costs about 12.5 µs, so one thread per line would be
-  about 400 times slower (DESIGN §6).
-- **The format is 003's SATC.md, ported:** `#1.5.1("Hello, World!")`, with a
-  header recording the word-list version and the source file's size and time,
-  so a stale `.satc` is rebuilt and never believed.
-- **Full `satellite.` paths are numbered from the text alone.** A method
-  written on a variable (`my_list.append`) needs that variable's declared type
-  first, which is why 003's `.satc` leaves those words un-numbered until the
-  names are resolved. 004 does the same.
-- **The prototype's defects** in the code that carries over — the loader, exit
-  statuses, SIGPIPE, the library path — are fixed here (DESIGN §11).
+**Owed, and it is the one live thing left in this milestone:** a stale-input
+guard. A `.satc` carried a header so it could not be believed after the word list
+changed; the registry is built fresh every run, so nothing can go stale -- but
+`.sate` (M3.6, MILESTONES M31) will need exactly that header when it is read
+back.
 
-**Race:** time to a finished `.satc` for a 10-line file, a 100,000-line file
-and 100 spaceships, against converting on one thread and against 003's
-`satl --satc`.
+## M1.5 / M2.5 / M3.5 — the converters — **ONE converter, over the registry**
 
-**Decision D1.1:** with `satc = 0`, the program starts before the `.satc` is
-finished. A mistake on line 50 is then found after lines 1–49 have run. 003
-checks everything first.
+(author, 2026-09-16) *"We just convert `.satc` back into `.satl`, that is the
+whole milestone."* With the three files dead there are not four converters: there
+is **one**, and its input is the registry's codes.
 
-**Entries:**
-- a stale `.satc` (the source changed)
-- a `.satc` from another word-list version
-- a truncated or hand-edited `.satc`
-- a `.satc` that is a directory, or unwritable
-- 100 spaceships
-- DESIGN §9's list
+- **Half of it exists.** `bytecode_text()` prints a row as sixteen binary digits a
+  code -- REGISTRY.satellite's own first column, and the reason a row is
+  `std::bitset<16>` rather than `uint16_t`.
+- **Codes become spellings** out of `words.tsv`, so `4163` comes back as
+  `satellite.console.display`, and a payload comes back as the literal it holds.
+- **Combine's marks come back as comments** (what M2.5 was for): where the main
+  thread waits, which codes are one batch, and the batch size chosen. `--plain`
+  drops them, and that output must equal the unmarked program's.
+- **Comments and spacing do not come back, and this says so rather than
+  pretending:** `//` never reaches the registry (003 DESIGN §5.6).
 
-## M1.5 — the `.satc` converter: numbers back into `.satl` *(after M1)*
+**Done when** the second pass is identical: `.satl` → codes → `.satl'` → codes',
+and the two code streams are equal. The source round-trip is normalised; the
+numbered one is exact, and the exact one is asserted.
 
-(author, 2026-09-16) "We just convert `.satc` back into `.satl`, that is the
-whole milestone." Every file in the pipeline is text so that a person can read
-it; this is the other half of that promise, a file that reads *back*. It is also
-how every later milestone gets checked — a converter that returns the program
-you wrote is proof the numbering did not lose it.
+**Blocked only by M24** (MILESTONES) for what it may RECORD from a stored
+program, not for what it may print from a live registry.
 
-- **`satl --satl <file>`** reads a `.satc` and writes `.satl` source. **One
-  program serves all four converters** (M1.5, M2.5, M3.5, M3.6) and chooses its
-  reader from the extension.
-- **The header decides whether it may run at all.** SATC.md §2: a `.satc` is
-  meaningless except against the numbering that produced it. A word-list digest
-  the converter does not have is refused in plain words. It must never print a
-  word whose number it guessed.
-- **Numbers become spellings** out of `words/words.tsv`, so `#1.5.1` comes back
-  as `satellite.console.display`.
-- **A method left un-numbered** — M1 leaves `my_list.append` waiting on the
-  variable's declared type — comes back exactly as the `.satc` carries it.
+**Entries:** a word deeper than six numbers; a payload holding `"`, `\` and a
+newline; a code no word has; a 100 MB literal; an empty program; DESIGN §9's list.
 
-**Comments and spacing do not come back, and this milestone says so rather than
-pretending.** `//` never reaches the parser (003's DESIGN §5.6), so it is not in
-the file to recover. What comes back is the program, normalised.
+## M2 — satellite combine — **the marks live in the bytecode, not in a file**
 
-**Done when the second pass is byte-identical:** `.satl` → `.satc` → `.satl′` →
-`.satc′`, and `.satc` equals `.satc′`. The source round-trip is normalised; the
-numbered round-trip is exact, and the exact one is what gets asserted.
+(author) *"It's just a .satc file with marks."* There is no file, so combine
+marks the REGISTRY: rows are reserved for it already (`batch_start`, `batch_end`,
+`wait`, `batch_size`). Everything else about this milestone stands as written.
 
-**No race.** Nothing here is on a speed path.
-
-**Entries:**
-- a `.satc` from another word-list version, and one with no header at all
-- a truncated `.satc`, and one hand-edited into nonsense
-- a word deeper than six numbers (DESIGN §3.3)
-- a `#1.5` path beside a `1.5` that is the number one-and-a-half (SATC.md §1.1.1)
-- an un-numbered method on a variable
-- 100 spaceships, and an empty program
-- DESIGN §9's list
-
-## M2 — the `.satb`: satellite combine
-
-(author) "It's just a .satc file with marks." Combine studies the numbered
-program and marks:
+Combine studies the numbered program and marks:
 - **where the main thread must wait:** input, random, time, file writes, and
   anything depending on the line before;
 - **where commands can run in parallel,** such as independent loop iterations
@@ -647,8 +727,8 @@ Combine is conservative: what it cannot prove independent stays in order.
 - **An error inside a batch** is reported for the earliest failing iteration,
   exactly as one thread would report it.
 
-**Done when** every program in the entries gives byte-identical output with
-`satb = 1` and with the "never" value.
+**Done when** every program in the entries gives byte-identical output with the
+marks and without them.
 
 **Entries:**
 - a loop writing a shared total
@@ -657,116 +737,55 @@ Combine is conservative: what it cannot prove independent stays in order.
 - an error in iteration 700,001 of 1,000,000
 - a `polymorph` inside a loop
 
-## M2.5 — the `.satb` converter: combine's marks, made readable *(after M2)*
+## ~~M3 — the `.sati`: strings as bits~~ — **DEAD, and D3.1 answered**
 
-The `.satb` is the `.satc` with marks, so this is M1.5's reader plus the marks —
-and the marks are the point. **Combine decides what runs in parallel, and today
-a person has no way to see why it decided that.** This converter is that way.
+~~Every string in the program turned into bits, 32 per character, so the numbered
+file carries no text at all.~~
 
-- **The program comes back as `.satl`,** exactly as in M1.5.
-- **Every mark comes back as a comment** the source ignores: where the main
-  thread waits and what it waits on, which lines are one batch, and the batch
-  size combine chose. A reader can then check a wait against DESIGN §13's rules
-  by eye, which is the only review combine's conservatism will ever get.
-- **`--plain` drops the marks,** and that output must equal M1.5's for the same
-  program. That equality is the test that the marks changed nothing but marks.
+**ANSWERED 2026-09-16** (the author: *"32-bits only when we use the number 40000
+as a 16-bit code"*). A string is 16-bit codes INLINE in the registry, counted,
+with the author's character table; a character above U+FFFF is `wide_token`
+(40000) and two codes. There is no `.sati`, and **D3.1 died with it** -- built
+2026-09-17, checked by `check_strings16.py` against Python over 3,075 wide cases.
 
-**Done when** the marks explain every decision M2's own entries produce — the
-shared total, two names for one spacesuit, `console.input`, the `polymorph` in a
-loop — and `--plain` matches M1.5 byte for byte.
+~~**M3.5 — the `.sati` converter**~~ **DEAD with it.** What a person reads a
+string back from is the registry, and that is the one converter above.
 
-**Entries:**
-- a `.satb` whose marks contradict each other (two batches over one line)
-- a mark naming a line that does not exist
-- a batch size of `0`, and one larger than the loop it marks
-- a `.satb` with no marks at all
-- M2's entries, converted and read back
+## M3.6 — the `.sate` converter — **unblocked: `.sate` is defined and written**
 
-## M3 — the `.sati`: strings as bits
+(author, 2026-09-16) The author named a fifth file, `.sate`, and the same day said
+*"there is no `.sate` yet"*. There is now: `sate_file.hpp` writes the registry out,
+`arguments.sate` asks for it, and saving is a side effect of a run rather than a
+pass of its own.
 
-(author) Every string in the program is turned into its bits, **32 bits per
-character**, so the numbered file carries no text at all. One program,
-`bits_to_cxx_str.cpp`, turns a bit sequence back into the C++ string a library
-takes. This is the step before satellite someday compiles to bytecode in one
-pass.
-- **32 bits a character is UTF-32,** which C++ already has as `char32_t` and
-  `std::u32string`. Every character has the same width, but plain English text
-  becomes 4 times larger.
-- **To stay within ×1.05,** each string is turned back once, when the `.sati`
-  is loaded, never on every library call.
+**What it holds** is the codes and the file names beside them -- the numbered
+program, nothing re-derived. **What it does not have yet is a reader**
+(MILESTONES M31), and this converter is the reader's twin: read a `.sate`, print
+`.satl`, re-convert, and prove nothing was lost.
 
-**Race:** 10,000,000 `display` calls of a string that came from a `.sati`,
-against `std::cout`.
+**It needs the header M1 used to carry:** a `.sate` is meaningless against a
+different word list, so it records the word-list digest and refuses one it does
+not have, in plain words, rather than printing a word whose number it guessed.
 
-**Decision D3.1:** does `satellite.variable.string` itself become 32 bits a
-character everywhere (the author: "we are going to have to rebuild
-satellite_strings into sequences of bits"), or only inside the file?
+**Entries:** the converter's list above, against a `.sate` -- plus a truncated
+one, one from another word list, and one that is a directory.
 
-**Entries:**
-- an empty string
-- a string with `"`, `\` and a newline
-- every Unicode plane
-- an invalid UTF-8 byte in the source
-- a 100 MB string literal
-
-## M3.5 — the `.sati` converter: bits back into text *(after M3)*
-
-The `.sati` carries every string as bits, 32 to a character, and nothing in the
-tree turns a file of them back. `bits_to_cxx_str.cpp` (M3) turns one sequence
-into a C++ string; this turns a whole file into source.
-
-- **Bits → characters → a string literal,** with `"`, `\` and newline escaped
-  again, so what comes out is something the lexer would accept.
-- **It checks as it reads.** A bit run that is not a multiple of 32, or a value
-  that is not a Unicode scalar, is refused and named — never printed as a
-  replacement character. A converter that quietly repairs is a converter that
-  hides a broken writer.
-- **Decision D3.1 changes this milestone's size, not its shape.** If the `.sati`
-  becomes binary at 4 bytes a character, the reader changes and the output does
-  not.
-
-**Done when** every string in M3's entries comes back as the literal that was
-written, and re-converting that source gives the same `.sati`.
-
-**Entries:**
-- an empty string, and a string of one character
-- `"`, `\` and a real newline inside a literal
-- a character from every Unicode plane, and an unpaired surrogate value
-- a bit run of 31 bits, and one of 33
-- a 100 MB string literal
-
-## M3.6 — the `.sate` converter *(blocked: `.sate` is not defined yet)*
-
-(author, 2026-09-16) The author named a fifth file, `.sate` — the one that runs —
-and the same day said "there is no `.sate` yet". **Nothing in the tree defines
-it**, so this milestone is written down and left blocked on purpose rather than
-guessed at.
-
-**Before it can start** three things have to be decided: what a `.sate` holds
-that a `.sati` does not, whether it is still text a person can read, and whether
-it replaces the earlier files or follows them. "Not in this plan yet" already
-names the candidate — the single compile to bytecode the author expects to
-replace `.satc`, `.satb` and `.sati` someday — and `.sate` may be that thing
-arriving early.
-
-**When it starts it is M1.5 again:** read the file, write `.satl`, re-convert,
-and prove nothing was lost.
-
-**Entries:** M1.5's list, against whatever a `.sate` turns out to be.
-
-## M4 — `satellite_number`
+## M4 — `satellite_number` — **BUILT**
 
 DESIGN §4: limbs laid side by side, the sign as a bool, and the digit count and
-byte size each as a `satellite_number`. Small numbers stay inline; the largest
-digit count comes from M0.
+byte size each as a `satellite_number`. Small numbers stay inline. Built in
+`satellite/satellite_variable_number/`, with division, text and power in their
+own files, and checked against Python over 477,253 cases
+(`number_cases`/`check` in check.sh). `satellite.variable.binary` and
+`.percentage` came with it, each keeping its sign.
 
-**Race:** a million `i = i + 1` against a C++ `long long`. 003 06 spends 283 ns
-a line on this loop.
+**The race is still owed, and it is the one that matters:** a million
+`i = i + 1` against a C++ `long long`. What is measured today is that satellite
+loses about 5x to CPython on that loop, which is the number M13's position and
+M12's watching both have to move.
 
-**Entries:**
-- 0, −0, and the largest `unsigned long long int` + 1
-- 27 nines, and the maximum number of digits
-- hostile text as a number
+**Entries:** 0, −0, the largest `unsigned long long int` + 1; 27 nines and the
+maximum number of digits; hostile text as a number. All in the harnesses.
 
 ## M5 — names and `satellite.log`
 
@@ -780,40 +799,52 @@ DESIGN §7:
 - machine-code bytes as a name
 - one name declared as both an object and a class
 
-## M6 — the parser, ported from 003 06 with fast paths
+## ~~M6 — the parser, ported from 003 06 with fast paths~~ — **DEAD; there is no parser**
 
-003's parser and resolver come across one part at a time, rewritten around the
-number table and likely scenarios: variables, expressions (DESIGN §5), `if` /
-`for` / `while`, capsules and calls. Every walker keeps its own stack.
+**Nothing was ported and nothing is owed under this heading.** A `.satl` is lexed
+straight into 16-bit codes (`bytecode_registry.cpp`), every statement is judged by
+`program_check.cpp` before anything runs, and `program_walk.cpp` walks it: six
+shapes, a call is a POSITION rather than an object, and an expression reaches its
+fast path through a switch on the token (`expression.cpp`). Variables,
+expressions, `while`, capsules and calls all run. M0.6 put a TYPED line through
+the same three steps, which is what proves there is one runner.
 
-This is also where selectors written on a variable get their numbers in the
-`.satc` (M1).
+**What this milestone named that is still owed has moved:**
+- `if` and `for` have no shape yet -- only `while` does. **No milestone owns
+  them** (see WITHOUT A MILESTONE).
+- Blocks, kept variables and `run <file>` **at the prompt** are M0.8, added below.
+- A kept include keeping its canonical path after a `change` (ERROR #26) belongs
+  with includes, and **no milestone owns it**.
+- The 1,000,000-iteration loop race against C++ is owed, and is M4's race above.
 
-**At the prompt (from M0.6):** a kept include keeps the canonical path it first
-resolved to, and is never resolved again from its text after a
-`satellite.directory.change` (ERROR #26). Blocks, kept variables and `run <file>`
-come to the prompt here.
+## ~~M7 — the runtime that runs a `.satb`~~ — **DEAD as written; the runtime runs**
 
-**Race:** a 1,000,000-iteration loop that displays, against the same loop in
-C++.
+There is no `.satb` to run. The main thread runs the numbered program at full
+speed today, and `satellite.thread.new` taking a thread from the pool is a word
+with no library yet (MILESTONES M25).
 
-## M7 — the runtime that runs a `.satb`
+**What is still owed is the POOL doing work,** and it belongs with combine (M2)
+and M12: the 256 threads are warm at start-up and tokenise the program, then stay
+parked -- nothing has ever handed them a marked batch to run, because nothing
+marks batches yet.
 
-- **The main thread runs the numbered program at full speed.**
-- **The 256 pool threads** stay dormant until a marked batch is reached.
-- **A `.satb` still being built** (`satb = 0`) is used only for the parts it
-  has finished; **the main thread never waits for combine.**
-- **`satellite.thread.new` takes its thread from the pool.**
-
-**Race:** a splittable 1,000,000-iteration loop on the pool against the same
-loop in C++ on 24 threads. Also, start 1,000,000 threads doing math (the
-author's target; 32.7 GB measured).
+**Race, when it lands:** a splittable 1,000,000-iteration loop on the pool
+against the same loop in C++ on 24 threads. (Starting 1,000,000 threads doing
+math is the author's target and is NOT run on this machine -- a 200k busy-wait
+test froze it on 2026-09-16.)
 
 ## M8 — user-defined classes (spacesuits)
 
 As 003 06 has them: fields, capsules, `satellite.protected`, `satellite.public`
 and `satellite.constructor`. Every library is reachable from their capsules,
 and a spacesuit inside a spacesuit takes the slower path.
+
+**The machine is built and the grammar is not** -- MILESTONES M8 holds the detail
+and the exact seam (`satellite.spacesuit my_class` already lexes as a declaration
+and is refused in one branch of `check_statement`). **It does not wait on M6:**
+there is no parser to port. MILESTONES M35 is the author's 2026-09-17 sketch --
+a spacesuit naming its supertype, and `satellite.protected(args)` taking
+arguments -- and it waits on three rulings, not on code.
 
 ## M9 — polymorph
 
@@ -871,11 +902,13 @@ parallel_start:                    -- a group that ends at the first empty line
 #1.1.1(args)
 ```
 
-**Decision D12.1, with three problems to weigh:**
-- **An empty line cannot end the group in a `.sati`,** which is written "with
-  the spacing removed".
-- **The inline `.` already means "method on"** (`my_list.append`) and sits inside
-  every number (`#1.5.1`), so `a(x).#1.6.1.1()` could be read two ways.
+**Decision D12.1 — and two of its three problems died with the files.** The group
+is CODES in the registry now, not lines in a text file, and rows are already
+reserved for it (`batch_start`, `batch_end`, `wait`, `batch_size`):
+- ~~An empty line cannot end the group in a `.sati`~~ -- there is no `.sati`, and
+  a code marks the end.
+- ~~The inline `.` could be read two ways~~ -- there is no text form to be
+  ambiguous.
 - **One cheap command per line costs about 12,500 ns** to hand to a thread
   against about 28 ns to run, so three such commands in parallel are about
   400× slower. Every line in a group must be a big unit: a range of loop
@@ -901,6 +934,68 @@ entries; the guarded fallback keeps output byte-identical when iteration
 
 ## Not in this plan yet
 
-`satellite.access` (ACCESS_PLAN.md), the network (003's M27), and the single
-compile to bytecode that the author expects to replace `.satc`, `.satb` and
-`.sati` someday. (The prompt and satl-term moved into M0.5–M0.7 on 2026-09-15.)
+`satellite.access` (ACCESS_PLAN.md) -- now MILESTONES M34, with the register of
+every object name and its type behind it -- and the network (003's M27).
+
+~~The single compile to bytecode that the author expects to replace `.satc`,
+`.satb` and `.sati` someday.~~ **It arrived, and it is what runs:** the 16-bit
+registry replaced all three on 2026-09-16, which is why four milestones above are
+struck. (The prompt and satl-term moved into M0.5-M0.7 on 2026-09-15.)
+
+---
+
+## WITHOUT A MILESTONE — the red notes (2026-09-17)
+
+**Work this rework found with no milestone to live in.** Each one was real before
+the rework and is real after it; what it lost was its owner, because the milestone
+that owned it described a file or a pass that no longer exists. They are listed
+for the author to place -- nothing here was invented to fill a gap, and nothing
+was quietly folded into a milestone it does not belong to.
+
+**1. `if` and `for` have no shape.** The walker has six shapes and `while` is the
+only one that branches or loops. Old M6 owned "variables, expressions, `if` /
+`for` / `while`, capsules and calls"; five of those are built and these two were
+never written. They are one shape each in `program_check.cpp` and
+`program_walk.cpp`. **This is the largest hole in the language today.**
+
+**2. A kept include's canonical path (ERROR #26).** An include must keep the path
+it first resolved to and never be resolved again from its text -- or a
+`satellite.directory.change` at the prompt silently changes which file a program
+includes. Old M6 carried it "at the prompt (from M0.6)"; M0.6 built the `change`
+that makes it reachable, and no milestone owns the fix.
+
+**3. Entries, as this file defines them.** "How a milestone is done" says each
+milestone has an `entries/M0.5.sh` script that writes an `[entry]` block to
+`satellite.log` for anything handled wrongly, until M5 builds `write_entry`.
+**No `entries/` folder exists.** check.sh, the harnesses and the pty checks do
+the work, and they answer exit statuses rather than writing entries. Either M5
+adopts them, or the method changes to match what is actually run.
+
+**4. Two documents still describe the dead files.** DESIGN.md §14 is titled "The
+files: `.satc`, `.satb`, `.sati`" and describes all three as the shape of a run;
+README.md's third bullet tells a reader the same. PLAN.md and MILESTONES.md were
+reworked today; **those two were not, and I did not touch them without your say-so.**
+DESIGN.md is the standards document, so it is the one that matters.
+
+**5. Minting a word number.** M35 needs `satellite.supertype`, which does not
+exist in `words.tsv`, and its shape (`satellite.supertype.<a name the user
+chose>`) is unlike every path in the table. The numbering is yours and is frozen;
+no milestone covers adding to it, and M25's "340 words numbered and not built" is
+about the other direction.
+
+**6. Giving the parked threads work.** 256 threads are warm and tokenise the
+program, then park for the rest of the run. M2 marks batches and M12 finds more of
+them while running, but neither says "hand a marked batch to a parked thread and
+collect its buffer" -- that was M7's, and M7 described a `.satb` runtime. The
+rework filed it under M2/M12; it is thin there, and it is the whole point of the
+pool.
+
+**7. `.sate`'s header.** A stored program is meaningless against a different word
+list. M1 carried that rule for the `.satc`; M3.6 and MILESTONES M31 now mention
+it, but no milestone owns writing the digest into the file that already exists.
+
+**Decisions waiting on you, gathered from the rework:** what `&` `|` `^` `<<`
+`>>` `!!` `~` mean (the nineteen QUESTION rows, MILESTONES M24); whether an
+unknown escape is refused (ERROR #16 is half fixed); whether a stored program may
+be re-lexed (M24's other half); and M35's three -- the supertype's meaning,
+`satellite.protected(args)`, and the word number in 5 above.
