@@ -1,0 +1,49 @@
+// satellite.variable.binary (the author, 2026-09-16): "satellite.variable.binary
+// my_number = b10101010 and "b" is the designation for binary".
+//
+// A binary displays exactly as it was written, b and leading zeros and all: the
+// width is part of the value (003 DESIGN 8.5, the author's ruling).
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary my_number = b10101010
+    satellite.console.display(my_number)
+
+    // The leading zeros are the value's own.
+    satellite.variable.binary flags = b0010
+    satellite.console.display(flags)
+    flags = b0000
+    satellite.console.display(flags)
+
+    // What the bits are worth, and the other conversions.
+    satellite.console.display(my_number.number)
+    satellite.console.display(my_number.string)
+    satellite.console.display(flags.bin)
+    satellite.console.display(my_number.hex)
+
+    // Arithmetic reads a binary by its worth, as a b literal always did.
+    satellite.console.display(my_number + 1)
+    satellite.console.display(-b0101)
+
+    // A number variable given a binary keeps what it is worth.
+    satellite.variable.number worth = b0011
+    satellite.console.display(worth)
+
+    // Bits AND width: b0010 is not b10.
+    satellite.console.display(b0010 == b10)
+    satellite.console.display(b0010 == b0010)
+
+    // A binary meets a number by what it is worth, as a b literal did before it
+    // was a type -- this loop ran then and must still run.
+    satellite.variable.number counter = 0
+    satellite.statement.while(counter < b0011)
+    {
+        counter = counter + 1
+    }
+    satellite.console.display(counter)
+    satellite.console.display(b1010 == 10)
+
+    satellite.return(satellite)
+}

@@ -17,6 +17,11 @@
 // four lines and then a refusal. What it does not buy is catching `1 + "a"` in an
 // unrun branch, and this file does not pretend to.
 //
+// ONE TYPE RULE IS CHECKED HERE, and only because it is a SPELLING and not a
+// type: a satellite.variable.binary given digits with no b in front of them
+// (the author, 2026-09-16). The b is visible in the text, so it needs nothing to
+// run -- see binary_is_written_with_b.
+//
 // THE DECLARED NAMES ARE TRACKED PER CAPSULE, which is the same rule run_body
 // enforces by handing each body its own table: there are no globals, so a name
 // declared in one capsule is not declared in another.
@@ -26,13 +31,84 @@
 #include "word_codes.hpp"
 
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 
 namespace satellite004 {
 namespace {
 
 using token::Code;
-using DeclaredNames = std::unordered_set<std::string>;
+// Each declared name and the word that declared it -- the TYPE is kept so that a
+// later `bits = 1010` can be judged by the same rule as the declaration was.
+using DeclaredNames = std::unordered_map<std::string, Code>;
+
+// A BINARY IS WRITTEN WITH ITS b (the author, 2026-09-16): "if the user doesn't
+// enter "b" and enters satellite.variable.binary just require them to enter the
+// b, spit out an ERROR: expected "b"+whatever they entered".
+//
+// `at` is the first code of the value, straight after the `=`. A bare number
+// there is the mistake, and the answer is what they wrote with a b in front:
+//
+//     satellite.variable.binary my_number = 10101010
+//     ERROR: expected b10101010
+//
+// THE SUGGESTION IS NOT QUOTED, though the author's sentence quotes the b. In
+// satellite a quote makes a STRING, so `expected "b10101010"` would point at the
+// one spelling that is still wrong. If the author wants the quotes, it is this
+// one string.
+//
+// ONLY THE FIRST VALUE IS JUDGED, which is the author's case -- the value they
+// entered. `bits = b1010 * 2` is not this mistake (the 2 is a count, not bits)
+// and is left to the walker, which refuses the number the arithmetic answers.
+//
+// DIGITS THAT ARE NOT ALL 0 AND 1 GET THEIR OWN SENTENCE, because `expected b12`
+// would send a person to write b12, which is not binary either. The same goes
+// for `b12` itself: the lexer makes a NAME of it (b and 0s and 1s is the only
+// binary it knows), and "b12 has no satellite.variable line" is true and useless.
+signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>> &row, std::size_t at,
+                                              const DeclaredNames &declared, std::string &why)
+{
+    // A BRACKET IS NOT A VALUE, so `= (10101010)` is judged by what is inside it.
+    // Without this the brackets hid the mistake and the program ran first.
+    while (code_at(row, at) == token::left_parenthesis_token)
+        ++at;
+    const Code code = code_at(row, at);
+    if (code != token::number_token && code != token::name_token)
+        return success;
+    std::size_t k = at;
+    const std::string entered = text_at(row, k);
+
+    // 0b10101010 AND 0x1F, the C and Python spellings. The lexer reads the 0 as a
+    // number and the rest as a b or x literal of its own, so without this the
+    // answer was `expected b0` -- a real binary, and the wrong one.
+    if (code == token::number_token && entered == "0" && code_at(row, k) == token::binary_token) {
+        std::size_t digits = k;
+        why = "ERROR: expected b" + text_at(row, digits);
+        return types_do_not_meet;
+    }
+    if (code == token::number_token && entered == "0" && code_at(row, k) == token::hexadecimal_token) {
+        std::size_t digits = k;
+        why = "ERROR: 0x" + text_at(row, digits) + " is not binary -- binary is b and then 0s and 1s, like b1010";
+        return types_do_not_meet;
+    }
+
+    bool only_bits = true;
+    for (const char c : entered) only_bits = only_bits && (c == '0' || c == '1');
+
+    if (code == token::number_token) {
+        why = only_bits ? "ERROR: expected b" + entered
+                        : "ERROR: " + entered + " is not binary -- binary is b and then 0s and 1s, like b1010";
+        return types_do_not_meet;
+    }
+
+    // A NAME: only `b` and then digits, and only when nothing declared it.
+    if (declared.find(entered) != declared.end() || entered.size() < 2 || entered[0] != 'b')
+        return success;
+    for (std::size_t i = 1; i < entered.size(); ++i)
+        if (entered[i] < '0' || entered[i] > '9')
+            return success;
+    why = "ERROR: " + entered + " is not binary -- a binary digit is 0 or 1";
+    return types_do_not_meet;
+}
 
 // Every name a statement USES as a value -- so a name with no declaration is
 // caught before anything runs. A name followed by `(` is a capsule and is
@@ -132,17 +208,23 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // Python. The string joined the list on 2026-09-16, when satelliteObject
         // made satellite_string the interpreter's own string -- before that a
         // declaration of one would have been a declaration that did nothing.
-        if (code != word::code_of(1, 6, 4) && code != word::code_of(1, 6, 1)) {
+        // satellite.variable.binary (1 6 5) joined the same day, as the arm
+        // satellite_binary_number.
+        if (code != word::code_of(1, 6, 4) && code != word::code_of(1, 6, 1) && code != word::code_of(1, 6, 5)) {
             why = std::string(word::spelling_of(code)) + " " + name +
-                  " is a declaration, and only satellite.variable.number and "
-                  "satellite.variable.string are built yet";
+                  " is a declaration, and only satellite.variable.number, satellite.variable.string and "
+                  "satellite.variable.binary are built yet";
             at = stop;
             return satl_line_not_understood;
         }
-        if (!declared.insert(name).second) {
+        if (!declared.emplace(name, code).second) {
             why = name + " is declared twice in the same capsule";
             at = stop;
             return name_declared_twice;
+        }
+        if (code == word::code_of(1, 6, 5) && code_at(row, k) == token::assign_token) {
+            const signed long long int written = binary_is_written_with_b(row, k + 1, declared, why);
+            if (written != success) { at = stop; return written; }
         }
         const signed long long int held = names_in_statement(row, k, stop, declared, capsules, functions, why);
         at = stop;
@@ -168,10 +250,17 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         const std::string name = text_at(row, k);
         const std::size_t stop = past_the_statement(row, at);
         // `name(` is a capsule call; `name =` is an assignment to a declared name.
-        if (code_at(row, k) != token::left_parenthesis_token && declared.find(name) == declared.end()) {
+        const DeclaredNames::const_iterator found = declared.find(name);
+        if (code_at(row, k) != token::left_parenthesis_token && found == declared.end()) {
             why = name + " has no satellite.variable line declaring it";
             at = stop;
             return name_not_declared;
+        }
+        // The b is required on every value a binary is GIVEN, not only the first.
+        if (found != declared.end() && found->second == word::code_of(1, 6, 5) &&
+            code_at(row, k) == token::assign_token) {
+            const signed long long int written = binary_is_written_with_b(row, k + 1, declared, why);
+            if (written != success) { at = stop; return written; }
         }
         const signed long long int held = names_in_statement(row, at, stop, declared, capsules, functions, why);
         at = stop;

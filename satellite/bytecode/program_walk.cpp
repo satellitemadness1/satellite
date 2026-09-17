@@ -7,6 +7,7 @@
 //
 //     satellite.return(...)                      ends the body
 //     satellite.variable.number <name> = <expr>  declares, and gives a value
+//                                                (.string and .binary the same)
 //     <name> = <expr>                            gives a value to one declared
 //     satellite.statement.while(<expr>) { ... }  runs the body while it holds
 //     <word>(<expr>)                             a word of the language
@@ -283,8 +284,18 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // THE DECLARED TYPE OUTLIVES THE LINE THAT WROTE IT. `n = "text"` on a
     // number is refused rather than quietly making n a string (value.hpp).
     const Code holds = declared != 0 ? declared : found->second.declared;
+
+    // A NUMBER VARIABLE GIVEN A BINARY KEEPS WHAT IT IS WORTH, which is what
+    // `satellite.variable.number n = b1010` did when a b literal was a number, so
+    // declaring binary a type of its own did not take that program away. The
+    // other direction is refused below: a binary is written with its b (the
+    // author), and program_check.cpp says so before anything runs.
+    if (holds == word::code_of(1, 6, 4) && value.is_binary())
+        value = Value::of_number(value.as_binary()->bits);
+
     if ((holds == word::code_of(1, 6, 4) && !value.is_number()) ||
-        (holds == word::code_of(1, 6, 1) && !value.is_string())) {
+        (holds == word::code_of(1, 6, 1) && !value.is_string()) ||
+        (holds == word::code_of(1, 6, 5) && !value.is_binary())) {
         at = past_the_statement(row, at);
         return report_error(std::string("satl(run): ") + name + " was declared " +
                                 word::spelling_of(holds) + " and was given " + value.kind_name(),

@@ -1,0 +1,10 @@
+// A bracket is not a value: the missing b is found inside it, before anything runs.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.binary my_number = (10101010)
+    satellite.return(satellite)
+}

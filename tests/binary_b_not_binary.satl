@@ -1,0 +1,9 @@
+// b12 lexes as a name, and "b12 has no satellite.variable line" would not help.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary my_number = b12
+    satellite.return(satellite)
+}

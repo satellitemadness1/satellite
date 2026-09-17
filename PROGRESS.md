@@ -25,6 +25,7 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 | **Arithmetic** — `satellite.variable.number n = 34587`, `+ - * / % ^`, comparisons, assignment, `while`, per-capsule frames. Every math sign needs a space on both sides; a touching `/` between digits is a fraction | `satellite/bytecode/expression.*`, `program_check.cpp`, `program_walk.cpp`, `satellite/satellite_variable_number/number_arithmetic.hpp` | `./check.sh` 41/41; 482,465 cases against Python (§6.7) |
 | **The 16-bit tokens** — `REGISTRY.satellite` is the 16-bit list; `bytecode_registry` is the program as `std::vector<std::vector<std::bitset<16>>>`, **one row a FILE** — the main `.satl` and every spaceship it includes — built on the warm threads in batches of lines. **The first thing the interpreter builds out of a program** | `REGISTRY.satellite`, `satellite/bytecode/` (`make_token_codes.py` → `token_codes.hpp`, `bytecode_registry.*`), called at `structured-library.cpp:155` | check.sh (32); `experiments/bytecode_registry_checks.cpp` — 19 checks; `--debug` shows `bytecode_registry(built)` on every run |
 | **satellite_number** — sign bool + `unsigned long long` limbs, one-limb fast path (no allocation), + - * / %, text, digits, bytes | `satellite/satellite_variable_number/` | `python3 .../check_numbers.py build/number_cases` — 482,465 cases against Python (power and both radixes added 2026-09-16) |
+| **satellite.variable.binary** — `b10101010` declares, and displays exactly as written, b and leading zeros (the width is part of the value, 003 DESIGN 8.5). Written without its b it is refused before anything runs: `ERROR: expected b10101010` (the author, 2026-09-16). Arithmetic and orderings read it by worth and answer a number, which departs on purpose from 8.5's decided-and-unbuilt `+` rulings | `satellite/satellite_variable_binary/satellite_binary_number.hpp`, arm 7 of `satelliteObject`, `program_check.cpp` `binary_is_written_with_b` | `./check.sh` (tests/binary*.satl) |
 | **satellite_string 16/32-bit** — the author's character table; 16 bits a character, 32 only when one is above U+FFFF | `satellite/satellite_variable_string/` | `.../check_strings16.py` — every case agrees with Python; `build/string_table_check` proves the table |
 | **The number index** — every compiled library loaded once at start-up | `satellite-numbers/call_number.*`, `number_row.hpp` | loads all 24 libraries |
 | **004's word numbers** — 364 words, first-available numbering, frozen (DESIGN §3.2) | `words/make_words.py` → `words/words.tsv`, `words/satellite_words.hpp` | matched 003's words.def row for row; no duplicates; every parent's children exactly 1..n |
@@ -35,6 +36,8 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 **Waiting on other types** (answer machine code 14 `not_built_yet`):
 `to_number`, `number`, `binary`, `hex`, and `string(x)` for anything but a string.
+(`.bin`, `.number`, `.string` and `.hex` on a declared name run through the object
+model, a binary included; these are the numbered LIBRARIES of the same names.)
 
 **Build and check everything:**
 

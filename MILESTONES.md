@@ -235,10 +235,17 @@ value reaches a **variable** and a **loop bound**, where nothing shows.
 `call_word` was fixed to demand its own `)`. `run_assignment` and `run_while`
 were not. **The same three lines fix both.**
 
-## M20 — satellite_float, and binary and hex as their own types
+## M20 — satellite_float, and hex as its own type
 
-All three are numbered already: `satellite.variable.float` `1 6 10`,
-`satellite.variable.hex` `1 6 11`. **Decided 2026-08-27:** a float is a bool and
+**Binary is built** (2026-09-16): `satellite.variable.binary` `1 6 5` is
+`satellite_binary_number`, arm 7 of `satelliteObject`, width kept. **Owed on it:**
+003 DESIGN 8.5's DECIDED AND UNBUILT rulings -- `+` on bit runs answers a bit run,
+the width grows to fit, the left operand's type wins, `!!` joins, indexing counts
+from the right -- are not built; today arithmetic reads a binary by worth and
+answers a number. That is the author's to schedule, not to be decided in passing.
+
+`satellite.variable.float` `1 6 10` and
+`satellite.variable.hex` `1 6 11` are numbered already. **Decided 2026-08-27:** a float is a bool and
 two `satellite_number`s — left of the point exact and unbounded, right of it
 bounded, because repeated multiplication grows digits downward.
 

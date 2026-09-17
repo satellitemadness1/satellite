@@ -10,12 +10,12 @@
 // built, float_to_binary.hpp goes in beside these and nothing already written
 // has to move.
 //
-// number -> string, base 2, WITHOUT the leading b the lexer strips. b1100 reads
-// as 12 and 12 writes back as "1100", so the two round-trip.
+// number -> string, base 2, WITHOUT a leading b: 12 writes as "1100".
 //
-// WHEN satellite_binary_number IS BUILT this file is where it lands: the arm
-// changes, the name does not, and every caller is already writing the word
-// 'binary' at the place the new type belongs.
+// A satellite.variable.binary DOES NOT COME HERE, because a number has no width
+// and the trip would turn b0011 into "11". Its `.bin` answers its own digits,
+// leading zeros kept -- object_convert.cpp's binary branch and
+// satelliteObject::to_binary.
 
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../satellite_variable_string/satellite_string.hpp"

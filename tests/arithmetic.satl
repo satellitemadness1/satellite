@@ -36,7 +36,8 @@ satellite.capsule satellite.main()
     satellite.console.display(99999999999999999999999 + 1)
     satellite.console.display(2 ^ 200)
 
-    // b and x literals, converted by the same fast path the decimal one uses.
+    // An x literal is a number in base 16. A b literal is a satellite.variable.binary,
+    // and + reads it by what its bits are worth, so this is still 12 + 255.
     satellite.console.display(b1100 + xFF)
 
     // A loop that counts with the arithmetic it is testing.

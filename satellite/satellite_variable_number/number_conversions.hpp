@@ -7,14 +7,17 @@
 // strings with a function, create fast paths for conversion and tokens, and then
 // wire the tokens into the interpreter."
 //
-// THREE RADIXES BECAUSE THE LEXER ALREADY WRITES THREE TOKENS. A program can
-// spell a number `34587`, `b1100` or `xFFAA`, and bytecode_registry.cpp turns
-// those into number_token, binary_token and hexadecimal_token -- each carrying
-// its digits as a counted payload, WITHOUT the leading b or x, which the lexer
-// strips at line 241. So the interpreter has a text and a radix, and needs
-// exactly one function to get a value: that is `from_token_text` below, and it
-// is why the token codes are what choose the radix rather than the text being
-// sniffed for a prefix.
+// THE LEXER WRITES THREE TOKENS, AND TWO OF THEM ARE NUMBERS. A program can
+// spell `34587`, `b1100` or `xFFAA`, and bytecode_registry.cpp turns those into
+// number_token, binary_token and hexadecimal_token -- each carrying its digits as
+// a counted payload, WITHOUT the leading b or x, which the lexer strips. The
+// number and the hex go through `from_token_text` below, and the token code is
+// what chooses the radix rather than the text being sniffed for a prefix.
+//
+// binary_token DOES NOT COME HERE ANY MORE (2026-09-16): a b literal is a
+// satellite.variable.binary, its width kept, and expression.cpp builds it with
+// satellite_binary_number::from_digits. Base 2 stays in this file because a
+// NUMBER still converts to and from base-2 text (`.bin`).
 //
 // THE WAY BACK MATTERS AS MUCH AS THE WAY IN, and for a reason that is not
 // symmetry: satellite.console.display's library takes a std::string or an

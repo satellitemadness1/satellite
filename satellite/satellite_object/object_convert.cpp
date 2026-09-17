@@ -20,6 +20,11 @@
 // string_to_binary function is ever written. N types cost N conversions in and N
 // out, not N x N.
 //
+// THE ONE EXCEPTION IS A satellite.variable.binary's OWN TEXT. Its `.bin` and
+// `.string` do not go round the hub, because the hub is a number and a number
+// has no width: b0011 would come back as "11". Its `.number` and `.hex` do go
+// through, and lose the width exactly as 003 DESIGN 8.5 says a conversion must.
+//
 // EVERY ONE IS EXPLICIT AT THE SOURCE LEVEL. DESIGN 1.1 says nothing is converted
 // on its own, and nothing here breaks that: a program reaches these by WRITING
 // `.bin`, and an operator never calls them. The author's "we auto convert" is
@@ -41,6 +46,9 @@ namespace {
 signed long long int reach_the_number(const satelliteObject &from, satellite_number &out)
 {
     if (const satellite_number *held = from.as_number()) { out = *held; return success; }
+    // A binary is already a number underneath, so it reaches the hub in one step
+    // and nothing is re-read -- only the width is left behind.
+    if (const satellite_binary_number *held = from.as_binary()) { out = held->bits; return success; }
     if (const satellite_string *text = from.as_string())
         return string_to_number(*text, out);
     return types_do_not_meet;
@@ -58,7 +66,10 @@ signed long long int object_to_string(const satelliteObject &from, satelliteObje
         code = number_to_string(*held, text);
     else if (const bool *held = from.as_bool())
         code = bool_to_string(*held, text);
-    else
+    else if (const satellite_binary_number *held = from.as_binary()) {
+        std::size_t bad_offset = 0;       // "b00101010": exactly what display prints
+        code = satellite_string::from_utf8(held->written(), text, bad_offset);
+    } else
         return types_do_not_meet;
     if (code != success)
         return code;
@@ -78,6 +89,19 @@ signed long long int object_to_number(const satelliteObject &from, satelliteObje
 
 signed long long int object_to_binary(const satelliteObject &from, satelliteObject &out)
 {
+    // A BINARY IS NOT SENT ROUND THE HUB, because the hub has no width and the
+    // trip would turn b0011 into "11". Its own digits are the answer, the b off
+    // them as number_to_binary leaves it off.
+    if (const satellite_binary_number *held = from.as_binary()) {
+        satellite_string text;
+        std::size_t bad_offset = 0;
+        const signed long long int code = satellite_string::from_utf8(held->digits(), text, bad_offset);
+        if (code != success)
+            return code;
+        out = satelliteObject::of_string(std::move(text));
+        return success;
+    }
+
     satellite_number value;                       // hop one: reach the hub
     const signed long long int code = reach_the_number(from, value);
     if (code != success)

@@ -94,12 +94,12 @@ bool holds(int order, Code op)
     }
 }
 
-// The radix a literal token already decided. The lexer strips the b and the x
-// (bytecode_registry.cpp:241), so the digits never carry a prefix and this is
-// the only thing that knows which base they are in.
+// The radix a number literal's token already decided. The lexer strips the x
+// (bytecode_registry.cpp), so the digits never carry a prefix and this is the
+// only thing that knows which base they are in. binary_token is not here: a b
+// literal is a satellite.variable.binary now and never becomes a bare number.
 unsigned int radix_of(Code marker)
 {
-    if (marker == token::binary_token) return fast::kBinary;
     if (marker == token::hexadecimal_token) return fast::kHexadecimal;
     return fast::kDecimal;
 }
@@ -358,6 +358,11 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     if (code == token::tight_minus_token || code == token::minus_token) {
         ++at;
         const Value inner = one_operand(row, at, context);
+        // A binary is negated by what it is worth, as it is added by what it is
+        // worth (satellite_object.cpp, read_by_worth): -b1010 is -10, as it was
+        // when a b literal was a number.
+        if (const satellite_binary_number *bits = inner.as_binary())
+            return Value::of_number(-bits->bits);
         if (!inner.is_number()) {
             if (context.code == success)
                 context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name());
@@ -403,9 +408,24 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         return held;
     }
 
-    // THE THREE NUMBER LITERALS, THROUGH ONE CONVERSION FAST PATH. 34587, b1100
-    // and xFFAA differ only by the radix their token names.
-    if (code == token::number_token || code == token::binary_token || code == token::hexadecimal_token) {
+    // A BINARY LITERAL IS A satellite.variable.binary, its width kept: b0010 is
+    // four bits and displays as b0010, not as 2 (003 DESIGN 8.5, the author's
+    // ruling). The lexer only makes binary_token out of b and 0s and 1s, so
+    // from_digits refusing here would mean the lexer and this disagree.
+    if (code == token::binary_token) {
+        const std::string digits = text_at(row, at);
+        satellite_binary_number bits;
+        const signed long long int held = satellite_binary_number::from_digits(digits, bits);
+        if (held != success) {
+            context.refuse(held, "b" + digits + " is not binary this can read");
+            return Value();
+        }
+        return Value::of_binary(std::move(bits));
+    }
+
+    // THE TWO NUMBER LITERALS, THROUGH ONE CONVERSION FAST PATH. 34587 and xFFAA
+    // differ only by the radix their token names.
+    if (code == token::number_token || code == token::hexadecimal_token) {
         const unsigned int radix = radix_of(code);
         const std::string digits = text_at(row, at);
         satellite_number value;
@@ -535,6 +555,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         answer = scenarios->text(argument.text_utf8(), true);
     else if (argument.is_number())
         answer = display_a_number(*scenarios, *argument.as_number());
+    // A binary leaves as the text it was written as, b and leading zeros and all.
+    else if (argument.is_binary() && scenarios->text != nullptr)
+        answer = scenarios->text(argument.as_binary()->written(), true);
     else if (argument.is_bool() && scenarios->flag != nullptr)
         answer = scenarios->flag(*argument.as_bool(), true);
     else {

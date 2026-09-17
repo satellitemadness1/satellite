@@ -82,6 +82,42 @@ signed long long int refuse_conversion(const satelliteObject &left, const satell
     return types_do_not_meet;
 }
 
+// A BINARY IN ARITHMETIC AND IN AN ORDERING IS READ BY WHAT ITS BITS ARE WORTH,
+// and an arithmetic answer is a number. That is exactly what `b1100 + xFF` and
+// `counter < b0011` did before satellite.variable.binary was a type of its own --
+// the literal was a number in base 2 then, and check.sh pins the 267 -- so making
+// it a type changed what a binary DISPLAYS and nothing it computes. Only against a
+// number or another binary: a binary met by a string is refused as the pair it
+// really is, naming both kinds.
+//
+// THIS DEPARTS FROM RULINGS THE AUTHOR HAS ALREADY MADE, on purpose and for now.
+// 003 DESIGN 8.5 records them as DECIDED AND UNBUILT (2026-09-09): `+` on two bit
+// runs ADDS and answers a bit run, THE WIDTH GROWS TO FIT and never wraps, and
+// with mixed types THE LEFT OPERAND'S TYPE WINS -- so `b1100 + xFF` would be
+// `b100001011`, not 267. The same section says why they were not built then: the
+// author, "we are doing just too much at one time", and binary arithmetic decided
+// in the margin of another milestone "is how it comes out inconsistent". When
+// they are built, read_by_worth's callers wrap the answer back up as a binary of
+// the left operand's type; nothing else here moves.
+//
+// ONE WART, NAMED: `b0010 == 2` and `b10 == 2` are both true while `b0010 == b10`
+// is false (width), because a binary meets a number by worth and a binary by
+// bits and width. 8.5 says different arms never compare EQUAL, which would end it
+// -- and would also refuse what `while(counter < b0011)` did before this type.
+bool read_by_worth(const satelliteObject &left, const satelliteObject &right)
+{
+    const bool left_binary = left.is_binary();
+    const bool right_binary = right.is_binary();
+    return (left_binary || right_binary) && (left_binary || left.is_number()) &&
+           (right_binary || right.is_number());
+}
+
+satelliteObject worth_of(const satelliteObject &value)
+{
+    const satellite_binary_number *held = value.as_binary();
+    return held != nullptr ? satelliteObject::of_number(held->bits) : value;
+}
+
 } // namespace
 
 // A LITERAL ARRIVES AS UTF-8 BYTES and becomes a satellite_string here -- the
@@ -123,6 +159,8 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     case satelliteObject::capsule: return *l.as_capsule() == *r.as_capsule();
     // IDENTITY, NOT CONTENTS: the same object, or not the same object.
     case satelliteObject::user_defined: return *l.as_user_defined() == *r.as_user_defined();
+    // BITS AND WIDTH: `b0010` is not `b10` (satellite_binary_number.hpp).
+    case satelliteObject::binary: return *l.as_binary() == *r.as_binary();
     case satelliteObject::how_many_kinds: break;
     }
     return false;
@@ -137,6 +175,7 @@ const char *satelliteObject::kind_name() const
     case bytecode: return "bytecode";
     case capsule: return "a capsule";
     case user_defined: return "an object";
+    case binary: return "a binary";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -150,6 +189,9 @@ const char *satelliteObject::kind_name() const
 signed long long int satelliteObject::add(const satelliteObject &other, satelliteObject &out,
                                           std::string &why) const
 {
+    if (read_by_worth(*this, other))
+        return worth_of(*this).add(worth_of(other), out, why);
+
     switch (pair_of(kind(), other.kind())) {
     case pair_of(number, number):
         return run_number_pair(*this, other, number_and_number_add, "+", out, why);
@@ -202,6 +244,8 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
 signed long long int satelliteObject::subtract(const satelliteObject &other, satelliteObject &out,
                                                std::string &why) const
 {
+    if (read_by_worth(*this, other))
+        return worth_of(*this).subtract(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_subtract, "-", out, why);
     return refuse_pair(*this, other, "-", why);
@@ -210,6 +254,8 @@ signed long long int satelliteObject::subtract(const satelliteObject &other, sat
 signed long long int satelliteObject::multiply(const satelliteObject &other, satelliteObject &out,
                                                std::string &why) const
 {
+    if (read_by_worth(*this, other))
+        return worth_of(*this).multiply(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_multiply, "*", out, why);
     return refuse_pair(*this, other, "*", why);
@@ -218,6 +264,8 @@ signed long long int satelliteObject::multiply(const satelliteObject &other, sat
 signed long long int satelliteObject::divide(const satelliteObject &other, satelliteObject &out,
                                              std::string &why) const
 {
+    if (read_by_worth(*this, other))
+        return worth_of(*this).divide(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_divide, "/", out, why);
     return refuse_pair(*this, other, "/", why);
@@ -226,6 +274,8 @@ signed long long int satelliteObject::divide(const satelliteObject &other, satel
 signed long long int satelliteObject::modulus(const satelliteObject &other, satelliteObject &out,
                                               std::string &why) const
 {
+    if (read_by_worth(*this, other))
+        return worth_of(*this).modulus(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_modulus, "%", out, why);
     return refuse_pair(*this, other, "%", why);
@@ -234,6 +284,8 @@ signed long long int satelliteObject::modulus(const satelliteObject &other, sate
 signed long long int satelliteObject::power(const satelliteObject &other, satelliteObject &out,
                                             std::string &why) const
 {
+    if (read_by_worth(*this, other))
+        return worth_of(*this).power(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_power, "^", out, why);
     return refuse_pair(*this, other, "^", why);
@@ -245,6 +297,11 @@ signed long long int satelliteObject::power(const satelliteObject &other, satell
 signed long long int satelliteObject::compare(const satelliteObject &other, int &order,
                                               std::string &why) const
 {
+    // A binary against a number, by worth (read_by_worth says why). Two binaries
+    // keep their own case below, where the width counts.
+    if (read_by_worth(*this, other) && !(is_binary() && other.is_binary()))
+        return worth_of(*this).compare(worth_of(other), order, why);
+
     switch (pair_of(kind(), other.kind())) {
     case pair_of(number, number):
         order = number_and_number_compare(*as_number(), *other.as_number());
@@ -255,6 +312,19 @@ signed long long int satelliteObject::compare(const satelliteObject &other, int 
     case pair_of(boolean, boolean):
         order = bool_and_bool_compare(*as_bool(), *other.as_bool());
         return success;
+    // BY WORTH, AND THEN BY WIDTH, so `==` on two binaries is bits AND width
+    // (003 DESIGN 8.5: `b0010 == b10` is false). `<` orders by worth, and only
+    // two binaries of equal worth are ordered by width -- `b10 < b0010` -- because
+    // one integer answers all six comparisons and it cannot be 0 for two values
+    // that are not equal.
+    case pair_of(binary, binary): {
+        const satellite_binary_number &left = *as_binary();
+        const satellite_binary_number &right = *other.as_binary();
+        order = number_and_number_compare(left.bits, right.bits);
+        if (order == 0 && left.width != right.width)
+            order = left.width < right.width ? -1 : 1;
+        return success;
+    }
     default:
         return refuse_pair(*this, other, "a comparison", why);
     }
@@ -269,6 +339,11 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
     case boolean: return bool_to_string(*as_bool(), out);
     case number: return number_to_string(*as_number(), out);
     case string: out = *as_string(); return success;
+    // The b and the digits, exactly what display prints (003 DESIGN 8.5).
+    case binary: {
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(as_binary()->written(), out, bad_offset);
+    }
     case capsule: {
         std::size_t bad_offset = 0;
         return satellite_string::from_utf8(as_capsule()->name, out, bad_offset);
@@ -300,6 +375,7 @@ signed long long int satelliteObject::to_number(satellite_number &out, std::stri
 {
     switch (kind()) {
     case number: out = *as_number(); return success;
+    case binary: out = as_binary()->bits; return success;   // what the bits are worth; the width does not survive
     case string: {
         const signed long long int code = string_to_number(*as_string(), out);
         if (code != success)
@@ -316,6 +392,10 @@ signed long long int satelliteObject::to_binary(satellite_string &out, std::stri
 {
     if (is_number())
         return number_to_binary(*as_number(), out);
+    if (is_binary()) {                     // the digits as written: the width is kept
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(as_binary()->digits(), out, bad_offset);
+    }
     why = std::string("base 2 text cannot be made out of ") + kind_name();
     return types_do_not_meet;
 }
@@ -324,6 +404,8 @@ signed long long int satelliteObject::to_hexadecimal(satellite_string &out, std:
 {
     if (is_number())
         return number_to_hexadecimal(*as_number(), out);
+    if (is_binary())
+        return number_to_hexadecimal(as_binary()->bits, out);
     why = std::string("base 16 text cannot be made out of ") + kind_name();
     return types_do_not_meet;
 }

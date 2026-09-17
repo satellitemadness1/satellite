@@ -46,6 +46,7 @@
 
 #include "satellite_bytecode.hpp"
 #include "satellite_capsule.hpp"
+#include "../satellite_variable_binary/satellite_binary_number.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../satellite_variable_string/satellite_string.hpp"
 #include "../machine/machine_codes.hpp"
@@ -82,12 +83,16 @@ public:
                               satellite_string,  // 3  satellite.variable.string
                               satellite_bytecode,// 4  the numbered program
                               satelliteCapsule,  // 5  a capsule as a value
-                              UserDefinedHandle    // 6  one object of a spacesuit
+                              UserDefinedHandle,   // 6  one object of a spacesuit
+                              satellite_binary_number // 7  satellite.variable.binary
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
-                              // Bin, Hex, Arg, Thr. The author has named three:
-                              // 7  satellite_float
-                              // 8  satellite_binary_number
+                              // Bin, Hex, Arg, Thr. The author named three, and
+                              // they take their numbers in the order they are
+                              // BUILT, not the order they were named in:
+                              // satellite_binary_number was asked for first
+                              // (2026-09-16) and is 7, so the other two follow it.
+                              // 8  satellite_float
                               // 9  satellite_hexadecimal_number
                               >;
 
@@ -99,7 +104,8 @@ public:
         bytecode = 4,
         capsule = 5,
         user_defined = 6,
-        how_many_kinds = 7
+        binary = 7,
+        how_many_kinds = 8
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -107,6 +113,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<string, Held>, satellite_string>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<bytecode, Held>, satellite_bytecode>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<user_defined, Held>, UserDefinedHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<binary, Held>, satellite_binary_number>, "");
 
     Held held;
 
@@ -117,6 +124,7 @@ public:
     satelliteObject(satellite_bytecode from) : held(std::move(from)) {}
     satelliteObject(satelliteCapsule from) : held(std::move(from)) {}
     satelliteObject(UserDefinedHandle from) : held(std::move(from)) {}
+    satelliteObject(satellite_binary_number from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -125,6 +133,7 @@ public:
     static satelliteObject of_bytecode(satellite_bytecode from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_capsule(satelliteCapsule from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_user_defined(UserDefinedHandle from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_binary(satellite_binary_number from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -143,6 +152,7 @@ public:
     bool is_bytecode() const { return held.index() == bytecode; }
     bool is_capsule() const { return held.index() == capsule; }
     bool is_user_defined() const { return held.index() == user_defined; }
+    bool is_binary() const { return held.index() == binary; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -152,12 +162,14 @@ public:
     const satellite_bytecode *as_bytecode() const { return std::get_if<satellite_bytecode>(&held); }
     const satelliteCapsule *as_capsule() const { return std::get_if<satelliteCapsule>(&held); }
     const UserDefinedHandle *as_user_defined() const { return std::get_if<UserDefinedHandle>(&held); }
+    const satellite_binary_number *as_binary() const { return std::get_if<satellite_binary_number>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }
     satellite_bytecode *as_bytecode() { return std::get_if<satellite_bytecode>(&held); }
     satelliteCapsule *as_capsule() { return std::get_if<satelliteCapsule>(&held); }
     UserDefinedHandle *as_user_defined() { return std::get_if<UserDefinedHandle>(&held); }
+    satellite_binary_number *as_binary() { return std::get_if<satellite_binary_number>(&held); }
 
     // The name of the arm, for a refusal a person has to act on.
     const char *kind_name() const;

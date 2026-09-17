@@ -1,0 +1,9 @@
+// 12 with a b in front is still not binary, so this is not "expected b12".
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary my_number = 12
+    satellite.return(satellite)
+}

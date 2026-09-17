@@ -89,6 +89,27 @@ $interpreter tests/undeclared.satl > build/un.out 2>&1; expect "a name nothing d
 expect "nothing ran before THAT refusal" "" "$(grep -x before build/un.out)"
 $interpreter tests/declared_twice.satl > /dev/null 2>&1; expect "a name declared twice" 26 $?
 $interpreter tests/kinds_do_not_meet.satl > /dev/null 2>&1; expect "\"n = \" + 4 converts nothing" 27 $?
+# satellite.variable.binary (the author, 2026-09-16): written with its b, and shown
+# exactly as written -- b and leading zeros -- because the width is part of the value.
+expect "satellite.variable.binary my_number = b10101010" \
+       "b10101010|b0010|b0000|170|b10101010|0000|AA|171|-5|3|false|true|3|true" \
+       "$($interpreter tests/binary.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+$interpreter tests/binary.satl > /dev/null 2>&1; expect "tests/binary.satl runs" 0 $?
+# "if the user doesn't enter "b" ... spit out an ERROR: expected "b"+whatever they entered"
+$interpreter tests/binary_without_b.satl > build/binary_b.out 2>&1; expect "a binary with no b" 27 $?
+expect "a binary with no b says ERROR: expected b10101010" 1 "$(grep -c 'ERROR: expected b10101010 ' build/binary_b.out)"
+expect "nothing ran before the missing b" "" "$(grep -x before build/binary_b.out)"
+$interpreter tests/binary_assigned_without_b.satl > build/binary_b.out 2>&1; expect "a binary given a value with no b" 27 $?
+expect "... and says ERROR: expected b1111" 1 "$(grep -c 'ERROR: expected b1111 ' build/binary_b.out)"
+$interpreter tests/binary_digits_not_binary.satl > build/binary_b.out 2>&1; expect "a binary given 12" 27 $?
+expect "... is told 12 is not binary, not to write b12" 1 "$(grep -c 'ERROR: 12 is not binary' build/binary_b.out)"
+$interpreter tests/binary_b_not_binary.satl > build/binary_b.out 2>&1; expect "a binary given b12" 27 $?
+expect "... is told b12 is not binary" 1 "$(grep -c 'ERROR: b12 is not binary' build/binary_b.out)"
+$interpreter tests/binary_in_brackets.satl > build/binary_b.out 2>&1; expect "a binary with no b inside brackets" 27 $?
+expect "... is still ERROR: expected b10101010, before anything runs" "1|" \
+       "$(grep -c 'satl(check).*ERROR: expected b10101010 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
+$interpreter tests/binary_0b.satl > build/binary_b.out 2>&1; expect "0b10101010, the C spelling" 27 $?
+expect "... is told ERROR: expected b10101010, not b0" 1 "$(grep -c 'ERROR: expected b10101010 ' build/binary_b.out)"
 expect "a declaration inside a loop runs every turn" "0|1|10|11|20|21" \
        "$($interpreter tests/loop_declaration.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 $interpreter examples/hello_world.satl > /dev/full 2> /dev/null; expect "output refused (/dev/full)" 2 $?
