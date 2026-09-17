@@ -41,6 +41,7 @@ using character_table::code_of_ascii;
 using conversion_loops::decode;
 using conversion_loops::encode;
 using conversion_loops::stopped;
+using conversion_loops::write_utf8;
 
 // What this type can hold: not a surrogate and not above 0x10FFFF.
 bool is_the_code_of_a_character(char32_t code)
@@ -52,24 +53,6 @@ bool is_the_code_of_a_character(char32_t code)
 bool goes_wide(char32_t code)
 {
     return code > 0xFFFF || code == satellite_string::kWide;
-}
-
-// One Unicode number as UTF-8, for the slower path's wide characters.
-void append_utf8(std::string &out, char32_t value)
-{
-    if (value < 0x800) {
-        out += static_cast<char>(0xC0 | (value >> 6));
-        out += static_cast<char>(0x80 | (value & 0x3F));
-    } else if (value < 0x10000) {
-        out += static_cast<char>(0xE0 | (value >> 12));
-        out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
-        out += static_cast<char>(0x80 | (value & 0x3F));
-    } else {
-        out += static_cast<char>(0xF0 | (value >> 18));
-        out += static_cast<char>(0x80 | ((value >> 12) & 0x3F));
-        out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
-        out += static_cast<char>(0x80 | (value & 0x3F));
-    }
 }
 
 } // namespace
@@ -131,22 +114,43 @@ std::string satellite_string::to_utf8() const
     if (wide_count_ == 0) [[likely]]
         return encode(narrow16_.data(), narrow16_.size());
 
-    // THE SLOWER PATH: the runs between wide characters go through the fast encoder
-    // whole, and each wide character is written on its own. A 40000 found from the
-    // start of a character is always a marker, so the search is safe.
+    // THE SLOWER PATH, STILL ONE STRING: sized once for the most the units can need --
+    // 3 bytes a unit, and a wide character's 3 units are at most 4 -- and written in
+    // place. The runs between wide characters go through the fast writer whole, and
+    // each wide character is written on its own. A 40000 found from the start of a
+    // character is always a marker, so the search is safe. Building a std::string for
+    // each run and appending it was x2.73 of plain C++ on text with emoji (string_race,
+    // 2026-09-17).
     std::string out;
+    const char16_t *const units = narrow16_.data();
     const std::size_t count = narrow16_.size();
-    std::size_t k = 0;
-    while (k < count) {
-        const char16_t *const found = std::char_traits<char16_t>::find(narrow16_.data() + k, count - k, kWide);
-        const std::size_t marker = found == nullptr ? count : static_cast<std::size_t>(found - narrow16_.data());
-        if (marker > k)
-            out += encode(narrow16_.data() + k, marker - k);
-        if (marker == count)
-            break;
-        append_utf8(out, (static_cast<char32_t>(narrow16_[marker + 1]) << 16) | narrow16_[marker + 2]);
-        k = marker + 3;
-    }
+    overwrite_string(out, count * 3, [&](char *const first, std::size_t) {
+        char *write = first;
+        std::size_t k = 0;
+        while (k < count) {
+            const char16_t *const found = std::char_traits<char16_t>::find(units + k, count - k, kWide);
+            const std::size_t marker = found == nullptr ? count : static_cast<std::size_t>(found - units);
+            write_utf8<char16_t, false>(units, marker, k, write);
+            if (marker == count)
+                break;
+            // Above U+FFFF, or U+9C40 itself: its number is the two units after the marker.
+            const char32_t c = (static_cast<char32_t>(units[marker + 1]) << 16) | units[marker + 2];
+            if (c < 0x10000) {
+                write[0] = static_cast<char>(0xE0 | (c >> 12));
+                write[1] = static_cast<char>(0x80 | ((c >> 6) & 0x3F));
+                write[2] = static_cast<char>(0x80 | (c & 0x3F));
+                write += 3;
+            } else {
+                write[0] = static_cast<char>(0xF0 | (c >> 18));
+                write[1] = static_cast<char>(0x80 | ((c >> 12) & 0x3F));
+                write[2] = static_cast<char>(0x80 | ((c >> 6) & 0x3F));
+                write[3] = static_cast<char>(0x80 | (c & 0x3F));
+                write += 4;
+            }
+            k = marker + 3;
+        }
+        return static_cast<std::size_t>(write - first);
+    });
     return out;
 }
 

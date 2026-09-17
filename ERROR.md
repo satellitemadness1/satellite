@@ -90,8 +90,10 @@ Found by the two builders themselves; no adversarial reviewer has run yet.
 31. **The speed bar is missed in places.** `i = i + 1` is 0.92 ns (clang) and
     1.00 ns (g++) against 0.61 / 0.33 ns for C++ that refuses to wrap — ×1.49 and
     ×3.0; the author's plain C++ loop folds to one multiplication, so no loop can
-    come within ×1.05 of it. satellite_string: decoding ASCII ×1.022, encoding
-    ×1.068, the wide path ×1.19–×1.24 of plain C++.
+    come within ×1.05 of it. satellite_string (string_race, 2026-09-17, best of six
+    cold runs): ASCII and all-16-bit text within the noise of plain C++; text with
+    emoji decodes ×1.12 and encodes ×1.83 of the fastest plain C++ loop (it was ×2.65
+    until to_utf8's wide path stopped building a string for every run).
 32. **`satellite_number.hpp` exposes GCC/clang-only features** to every file that
     includes it: `[[gnu::always_inline]]` and `unsigned __int128`.
 
