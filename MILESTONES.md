@@ -346,6 +346,22 @@ order, then it has to convert"* — so when the watermark is behind, main conver
 the line itself rather than waiting. That makes the pipeline an optimisation that
 can never deadlock, which is the right shape.
 
+**THE CHECKER GETS ITS OWN THREAD — ANSWERED 2026-09-16, and it is the ruling
+that unblocks this milestone.** The author: *"Checking goes in a separate 1/256
+threads, and so that means 250 or so threads are available for conversion..
+checking reports into satellite.log with warnings, and dies at that"*.
+
+This was the one conflict: `check_program` walks every capsule before main runs,
+which is what makes check.sh's *"nothing ran before the refusal"* true, and
+running at the watermark would lose it. The answer is neither of the two options
+put to him — **the checker RACES the runner.** One thread of the 256 follows the
+watermark and checks; the rest convert; main runs. Checking a statement is
+cheaper than running one, so the checker stays ahead in practice, and when it
+finds something it writes the warning and kills the program.
+
+**It needs `satellite.log`, which is M5 and not built.** M5 therefore comes
+before this, or a minimal log lands with it.
+
 ## M30 — the lookahead: running paths in parallel
 
 **The author:** *"eventually we will build some logic that looks ahead at paths
@@ -398,8 +414,8 @@ so the idea is not lost, not because it is owed.
 
 | | what | blocks |
 |---|---|---|
-| **D0.1** | which value of `arguments.satc` / `satb` means "never build" | M1 |
-| **D1.1** | with `satc = 0`, run line 1 before the file is converted? | M1 |
+| ~~**D0.1**~~ | ~~which value of `arguments.satc` / `satb` means "never build"~~ **ANSWERED 2026-09-16: DEAD.** *"we threw away satc and satb in favor of all 16-bit"* | — |
+| ~~**D1.1**~~ | ~~with `satc = 0`, run line 1 before the file is converted?~~ **ANSWERED: DEAD**, same reason — there is no `.satc` | — |
 | **D3.1** | 32 bits a character everywhere, or only in the `.sati`? | **dies if M3 is collapsed** |
 | **D9.1–3** | polymorph: re-inclusion, `args`, a class declared twice | M9 |
 | **D11.1** | infinity's arithmetic | M11 |
