@@ -130,6 +130,7 @@ inline constexpr Code to_number_token = 0x0B03;  // number/as_number/to_number  
 inline constexpr Code to_binary_token = 0x0B04;  // binary/bin/as_binary  [METHOD] the receiver as base-2 text
 inline constexpr Code to_hexadecimal_token = 0x0B05;  // hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
 inline constexpr Code add_token = 0x0B06;  // add  [METHOD] object.add(x)
+inline constexpr Code wide_token = 0x9C40;  // RESERVED (the author, 2026-09-16): the next TWO codes are one 32-bit integer
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
 // GENERATED from the [METHOD] rows. Answers 0 for a name that is not a
@@ -162,7 +163,7 @@ inline constexpr bool is_method_code(Code code)
 }
 
 
-inline constexpr int kTokenCount = 83;
+inline constexpr int kTokenCount = 84;
 
 } // namespace token
 } // namespace satellite004

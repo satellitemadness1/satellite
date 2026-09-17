@@ -330,6 +330,9 @@ bits              name                         what it is
 0001111111111111  the last word                to here: 4096 codes, words ONLY, nothing else is ever put here
 
 -- FREE  (0010000000000000 up)
+1001110001000000  wide_token                   RESERVED (the author, 2026-09-16): the next TWO codes are one 32-bit integer
+1001110001000001  free                         to 1001110011111111, free beside the wide token
+
 0010000000000000  free                         to 1111111011111111, unclaimed
 
 -- KEPT BACK  (1111111100000000 up)
