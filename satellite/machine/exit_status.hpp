@@ -29,7 +29,7 @@ inline int exit_status_of(signed long long int code)
     if (code >= 0 && code < status_for_a_code_that_does_not_fit)
         return static_cast<int>(code);
     report_error("satl(exit): machine code " + std::to_string(code) +
-                     " does not fit an exit status, which holds 1 to 254, so satl exits 255",
+                     " does not fit an exit status (0 to 254 exit as themselves), so satl exits 255",
                  code);
     return status_for_a_code_that_does_not_fit;
 }

@@ -1,7 +1,7 @@
 # satellite 004 -- the checks, the harnesses and the races.
 #
 #     make check        check.sh: every example and test, and satl's command line
-#     make test         check.sh and the string checks, all of them even when one fails
+#     make test         check.sh, the installer's checks and the string checks, all even when one fails
 #     make race         satellite.console.display against std::cout, 10,000,000 lines
 #     make number-race  i = i + 1 against signed long long int
 #
@@ -15,12 +15,13 @@
 
 STRING_HARNESSES = $(BUILD)/string_cases $(BUILD)/string_methods $(BUILD)/string16_cases $(BUILD)/string_table_check
 
-check: all $(BUILD)/exit_status_cases
+check: all
 	./check.sh
 
-test: all $(BUILD)/exit_status_cases $(STRING_HARNESSES)
+test: all $(STRING_HARNESSES)
 	@failed=0; \
 	 ./check.sh || failed=1; \
+	 sh satellite_enterprise/check_install.sh || failed=1; \
 	 python3 $(STRINGS32)/check_strings.py || failed=1; \
 	 python3 $(STRINGS32)/check_string_methods.py || failed=1; \
 	 python3 $(STRING16)/check_strings16.py || failed=1; \
@@ -35,16 +36,21 @@ number-race: $(BUILD)/number_race
 # The exit status of a machine code that does not fit 8 bits (machine/exit_status.hpp):
 # no program can stop on 256 yet, so the mapping is checked here, and check.sh runs it.
 $(BUILD)/exit_status_cases: $(MACHINE)/exit_status_cases.cpp $(MACHINE)/exit_status.hpp $(MACHINE)/machine_state.cpp \
-                            $(MACHINE)/machine_codes.hpp $(MACHINE)/shown.hpp
+                            $(MACHINE)/machine_state.hpp $(MACHINE)/machine_codes.hpp $(MACHINE)/shown.hpp
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(MACHINE)/exit_status_cases.cpp $(MACHINE)/machine_state.cpp -o $@
+
+# The build fingerprint's inputs, one a line: check.sh compares them with the
+# headers the compiler says satl and satl-term are made from.
+build-inputs:
+	@printf '%s\n' $(BUILD_INPUTS)
 
 $(BUILD)/race: $(SATELLITE)/race/race.cpp $(NUMBERS)/call_number.satellite.cpp $(MACHINE)/machine_state.cpp $(HEADERS)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(SATELLITE)/race/race.cpp $(NUMBERS)/call_number.satellite.cpp \
 	    $(MACHINE)/machine_state.cpp -o $@ -ldl
 
-$(BUILD)/string_methods: $(STRINGS32)/test_string_methods.cpp $(STRINGS32)/satellite_string.cpp \
+$(BUILD)/string_methods: $(STRINGS32)/test_string_methods.cpp $(STRINGS32)/satellite_string.cpp $(STRINGS32)/satellite_string.hpp \
                          $(NUMBERS)/call_number.satellite.cpp $(MACHINE)/machine_state.cpp $(HEADERS)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) -I. $(STRINGS32)/test_string_methods.cpp $(STRINGS32)/satellite_string.cpp \
@@ -61,6 +67,14 @@ NUMBER_SOURCES = $(NUMBER)/satellite_number.cpp $(NUMBER)/satellite_number_divid
                  $(NUMBER)/satellite_number_text.cpp $(NUMBER)/satellite_number_power.cpp
 NUMBER_HEADERS = $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
                  $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp $(MACHINE)/machine_codes.hpp
+
+# Every name satl fills in is refused as a config row, and a real gather adds no
+# name outside that list (arguments.cpp filled_in_by_satl). check.sh runs it.
+ARGUMENTS_CASES_SOURCES = $(ARGUMENTS)/arguments_cases.cpp $(ARGUMENTS)/arguments.cpp $(ARGUMENTS)/command_line.cpp \
+                          $(MACHINE)/machine_state.cpp $(NUMBER_SOURCES)
+$(BUILD)/arguments_cases: $(ARGUMENTS_CASES_SOURCES) $(HEADERS)
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(ARGUMENTS_CASES_SOURCES) -o $@
 
 $(BUILD)/number_cases: $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
 	@mkdir -p $(BUILD)
@@ -87,4 +101,4 @@ $(BUILD)/string_race: $(STRING16)/string_race.cpp $(STRING16)/plain_conversions.
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STRING16)/string_race.cpp $(STRING16)/satellite_string.cpp \
 	    $(STRINGS32)/satellite_string.cpp -o $@
 
-.PHONY: check test race number-race
+.PHONY: check test race number-race build-inputs

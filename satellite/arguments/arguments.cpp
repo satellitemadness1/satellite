@@ -144,6 +144,11 @@ signed long long int Arguments::gather_config()
                           "\" is not a name arguments can hold (arguments. then words of a-z A-Z 0-9 _ joined by .)");
         if (find(row.name) != nullptr)
             return refuse(row.name + " is written twice");
+        // REFUSED BY NAME, NOT BY WHAT THIS RUN FILLED IN (review of M0.5): a row
+        // named arguments.argument_3 was a config value on a run given two words
+        // and a refusal on a run given three.
+        if (filled_in_by_satl(row.name))
+            return refuse(row.name + " is filled in by satl itself (the command line or the machine), so it cannot be a row");
         if (row.is_flag) {
             add_flag(row.name, row.flag);
             continue;
@@ -261,6 +266,24 @@ signed long long int Arguments::gather(const CommandLine &command_line)
                                 " is filled in by satl itself (the command line or the machine), so it cannot be a row",
                             config_value_not_understood);
     return success;
+}
+
+bool filled_in_by_satl(const std::string &name)
+{
+    // Every name gather() can add, including the ones it adds only when the
+    // machine answers (statvfs, uname). arguments_cases.cpp checks that a real
+    // gather adds nothing outside this list.
+    static const char *const names[] = {
+        "arguments.debug_mode", "arguments.file", "arguments.program", "arguments.length",
+        "arguments.session.directory", "arguments.machine.threads", "arguments.machine.cores",
+        "arguments.machine.page_size", "arguments.memory.total", "arguments.disk.total", "arguments.disk.free",
+        "arguments.username", "arguments.system.hostname", "arguments.system.kernel", "arguments.system.kernel_version"};
+    for (const char *filled : names)
+        if (name == filled)
+            return true;
+    const std::string numbered = "arguments.argument_";
+    return name.size() > numbered.size() && name.compare(0, numbered.size(), numbered) == 0 &&
+           name.find_first_not_of("0123456789", numbered.size()) == std::string::npos;
 }
 
 std::string describe(const Argument &argument)

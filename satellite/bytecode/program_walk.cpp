@@ -132,20 +132,21 @@ signed long long int load_program(const std::string &main_file,
         // symlink is followed, so a link to a program runs it. Each refusal says
         // which of those it was.
         const std::string by = asked_by.empty() ? std::string() : ", included by " + asked_by;
+        const std::string named = path.empty() ? std::string("(an empty name)") : path;
         struct stat about;
         if (stat(path.c_str(), &about) != 0)
-            return report_error((errno == ENOENT || errno == ENOTDIR ? "cannot locate file: " + path
-                                                                     : "cannot locate file: " + path + " (" +
+            return report_error((errno == ENOENT || errno == ENOTDIR ? "cannot locate file: " + named
+                                                                     : "cannot locate file: " + named + " (" +
                                                                            std::strerror(errno) + ")") + by,
                                 missing_satl_file);
         if (!S_ISREG(about.st_mode))
-            return report_error("cannot run " + path + by + ": " +
+            return report_error("cannot run " + named + by + ": " +
                                     (S_ISDIR(about.st_mode) ? "it is a directory" : "it is not a regular file") +
                                     ", and a program is a .satl file",
                                 missing_satl_file);
         std::ifstream there(path);
         if (!there)
-            return report_error("cannot read file: " + path + " (" + std::strerror(errno) + ")" + by,
+            return report_error("cannot read file: " + named + " (" + std::strerror(errno) + ")" + by,
                                 missing_satl_file);
 
         std::string source;

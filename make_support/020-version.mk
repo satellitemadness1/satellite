@@ -20,7 +20,10 @@ BUILD_STAMP = .satellite_build
 BUILD_OS := $(shell (. /etc/os-release 2>/dev/null && echo "$$NAME $$VERSION_ID" || uname -sr) | tr a-z A-Z | tr -cd 'A-Z0-9 .-')
 OS_DEFINE = -DSATELLITE_BUILD_OS='"$(BUILD_OS)"'
 
-# What the fingerprint is told about the compiler: the same string the old
-# Makefile passed, so moving to these fragments raised the number once (the
-# Makefile itself is an input) and not for a different compiler description.
-BUILD_DESCRIPTION = $(CXX) $(CXXFLAGS) $(BUILD_OS)
+# What the fingerprint is told about the compiler and the links. EVERY FLAG THAT
+# CHANGES A BINARY IS IN IT (review of M0.5): LDFLAGS and the window's pkg-config
+# flags relinked satl, satl-term and every library under the same number before.
+# CXX_VERSION is the compiler's own first line, because clang-current is a symlink
+# repointed at each rebuilt clang -- the same CXX string, a different compiler.
+CXX_VERSION := $(shell $(CXX) --version 2>/dev/null | head -n 1)
+BUILD_DESCRIPTION = $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(BUILD_OS) | $(LDFLAGS) | $(WINDOW_CFLAGS) | $(WINDOW_LIBS)

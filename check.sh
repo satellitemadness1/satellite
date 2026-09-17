@@ -17,23 +17,25 @@ expect() {   # expect <description> <wanted code> <actual code>
 
 # The author's rows, read by the same reader the build uses (build_number.py).
 config_row() { python3 satellite/config/build_number.py --print "arguments.$1"; }
+# Zeros in front, never printf %04d, which stops at 2^63-1 (a quoted row has no ceiling).
+padded() { p=$1; while [ ${#p} -lt "$2" ]; do p=0$p; done; printf '%s' "$p"; }
 title="THE SATELLITE PROGRAMMING LANGUAGE
-VERSION $(printf %03d "$(config_row version)") REVISION $(printf %02d "$(config_row revision)") BUILD $(printf %04d "$(config_row build)")"
+VERSION $(padded "$(config_row version)" 3) REVISION $(padded "$(config_row revision)" 2) BUILD $(padded "$(config_row build)" 4)"
 compiler_line='^(CLANG\+\+|G\+\+) [0-9]+ [A-Z0-9 .-]+$'
 rule=---------------------------------------------------------------
 
-expect "--version shows the title lines" "$title" "$($interpreter --version | head -2)"
-expect "--version's third line names the compiler and system" 1 "$($interpreter --version | sed -n 3p | grep -cE "$compiler_line")"
-expect "--version is three lines" 3 "$($interpreter --version | wc -l)"
-expect "-V shows the title lines" "$title" "$($interpreter -V | head -2)"
-expect "--help starts with the start-up block" "$rule" "$($interpreter --help | sed -n 4p)"
-$interpreter --version > /dev/full 2> build/full.err; code=$?
+expect "--version shows the title lines" "$title" "$("$interpreter" --version | head -2)"
+expect "--version's third line names the compiler and system" 1 "$("$interpreter" --version | sed -n 3p | grep -cE "$compiler_line")"
+expect "--version is three lines" 3 "$("$interpreter" --version | wc -l)"
+expect "-V shows the title lines" "$title" "$("$interpreter" -V | head -2)"
+expect "--help starts with the start-up block" "$rule" "$("$interpreter" --help | sed -n 4p)"
+"$interpreter" --version > /dev/full 2> build/full.err; code=$?
 expect "--version into /dev/full" 2 $code
 expect "--version into /dev/full says why" 1 "$(grep -c 'machine_code: 2 display_error' build/full.err)"
-$interpreter --version extra > /dev/null 2> build/extra.err; code=$?
+"$interpreter" --version extra > /dev/null 2> build/extra.err; code=$?
 expect "--version with another word is refused" 23 $code
 
-$interpreter examples/hello_world.satl > build/hello.out 2> build/hello.err; code=$?
+"$interpreter" examples/hello_world.satl > build/hello.out 2> build/hello.err; code=$?
 expect "hello_world.satl runs" 0 $code
 wanted=$'Hello, World!\na // inside a string is not a comment\n42\ntrue'
 expect "hello_world.satl output" "$wanted" "$(cat build/hello.out)"
@@ -45,38 +47,39 @@ if [ "$(config_row startup_display)" = true ]; then
 else
     expect "arguments.startup_display is false: nothing on stderr" 0 "$(wc -c < build/hello.err)"
 fi
-python3 -c "import os, subprocess, sys; r, w = os.pipe(); os.close(r); sys.exit(subprocess.run(['$interpreter', 'examples/hello_world.satl'], stderr=w, stdout=subprocess.DEVNULL).returncode & 255)"
+python3 -c "import os, subprocess, sys; r, w = os.pipe(); os.close(r); sys.exit(subprocess.run([sys.argv[1], 'examples/hello_world.satl'], stderr=w, stdout=subprocess.DEVNULL).returncode & 255)" "$interpreter"
 expect "stderr a pipe nobody reads: the program still runs" 0 $?
-$interpreter examples/hello_world.satl --version > /dev/null 2>&1; expect "a --version after the file is not satl's" 0 $?
+"$interpreter" examples/hello_world.satl --version > /dev/null 2>&1; expect "a --version after the file is not satl's" 0 $?
 
-$interpreter build/no_such_file.satl > /dev/null 2>&1; expect "missing file" 8 $?
+"$interpreter" build/no_such_file.satl > /dev/null 2>&1; expect "missing file" 8 $?
 
 # SATL'S COMMAND LINE (PLAN M0.5): arguments/command_line.hpp has the rules.
-$interpreter > build/bare.out 2> build/bare.err; code=$?
+"$interpreter" > build/bare.out 2> build/bare.err; code=$?
 expect "bare satl is not an error (it was 8 before M0.5)" 0 $code
 expect "bare satl shows the title lines, then how to start" "$title|1" \
        "$(head -2 build/bare.out)|$(grep -c '^    satl <file.satl> \[words...\] ' build/bare.out)"
 expect "bare satl writes nothing on stderr" 0 "$(wc -c < build/bare.err)"
-$interpreter --debug > /dev/null 2>&1; expect "satl --debug alone is bare satl" 0 $?
-$interpreter -h > /dev/null 2>&1; expect "-h" 0 $?
-$interpreter --debug --help > /dev/null 2> build/cl.err; expect "--debug --help is refused" 23 $?
+"$interpreter" --debug > /dev/null 2>&1; expect "satl --debug alone is bare satl" 0 $?
+"$interpreter" -h > /dev/null 2>&1; expect "-h" 0 $?
+"$interpreter" --debug --help > /dev/null 2> build/cl.err; expect "--debug --help is refused" 23 $?
 expect "... by name" 1 "$(grep -c 'is the whole command line, and --debug came before it' build/cl.err)"
-$interpreter --help extra > /dev/null 2>&1; expect "--help with another word is refused" 23 $?
-$interpreter --run examples/hello_world.satl > build/run.out 2>/dev/null; code=$?
+"$interpreter" --help extra > /dev/null 2>&1; expect "--help with another word is refused" 23 $?
+"$interpreter" --run examples/hello_world.satl > build/run.out 2>/dev/null; code=$?
 expect "--run runs the file" "0|$wanted" "$code|$(cat build/run.out)"
-$interpreter --run > /dev/null 2> build/cl.err; expect "--run with no file is refused" 23 $?
+"$interpreter" --run > /dev/null 2> build/cl.err; expect "--run with no file is refused" 23 $?
 expect "... and says a file goes after it" 1 "$(grep -c -- '--run needs the file to run after it' build/cl.err)"
-$interpreter --run "" > /dev/null 2>&1; expect "--run \"\" is a file with no name" 8 $?
-$interpreter --repl > /dev/null 2> build/cl.err; expect "--repl is not built yet" 14 $?
+"$interpreter" --run "" > /dev/null 2> build/cl.err; expect "--run \"\" is a file with no name" 8 $?
+expect "... and says the name is empty" 1 "$(grep -c 'cannot locate file: (an empty name)' build/cl.err)"
+"$interpreter" --repl > /dev/null 2> build/cl.err; expect "--repl is not built yet" 14 $?
 expect "... and says the prompt lands at M0.6" 1 "$(grep -c 'the prompt is not built yet -- it lands at M0.6' build/cl.err)"
-$interpreter --repl extra > /dev/null 2>&1; expect "--repl with another word is refused" 23 $?
+"$interpreter" --repl extra > /dev/null 2>&1; expect "--repl with another word is refused" 23 $?
 for word in -- -x.satl --rum -; do
-    $interpreter "$word" x.satl > /dev/null 2>&1; expect "\"$word\" is not a word satl takes" 23 $?
+    "$interpreter" "$word" x.satl > /dev/null 2>&1; expect "\"$word\" is not a word satl takes" 23 $?
 done
-$interpreter —run examples/hello_world.satl > /dev/null 2>&1; expect "—run with an em dash is a file name, and missing" 8 $?
-cp examples/hello_world.satl build/-x.satl && (cd build && $interpreter --run -x.satl > /dev/null 2>&1); \
+"$interpreter" —run examples/hello_world.satl > /dev/null 2>&1; expect "—run with an em dash is a file name, and missing" 8 $?
+cp examples/hello_world.satl build/-x.satl && (cd build && "$interpreter" --run -x.satl > /dev/null 2>&1); \
     expect "--run -x.satl runs a file whose name begins with -" 0 $?
-$interpreter --debug examples/hello_world.satl --version --debug --repl "" > build/words.out 2>&1; code=$?
+"$interpreter" --debug examples/hello_world.satl --version --debug --repl "" > build/words.out 2>&1; code=$?
 expect "every word after the file is the program's" 0 $code
 expect "... kept in order as arguments.argument_1 onwards, and counted with the program" \
        "arguments.program = examples/hello_world.satl|arguments.argument_1 = --version|arguments.argument_2 = --debug|arguments.argument_3 = --repl|arguments.argument_4 = |arguments.length = 5" \
@@ -85,20 +88,20 @@ expect "arguments.session.directory is where satl started" 1 \
        "$(grep -cxF "[satellite] arguments.session.directory = $PWD (machine_code: 0 success)" build/words.out)"
 # DESIGN §9: a word that is not text never reaches the terminal raw -- ESC ] 2 ; BEL
 # would retitle it. Shown escaped under --debug and in every refusal.
-$interpreter --debug examples/hello_world.satl $'\e]2;title\a' $'\xff' > build/hostile.out 2>&1
+"$interpreter" --debug examples/hello_world.satl $'\e]2;title\a' $'\xff' > build/hostile.out 2>&1
 expect "an escape sequence as a program word is shown as text" 1 \
        "$(grep -cF 'arguments.argument_1 = \x1b]2;title\x07 (machine_code' build/hostile.out)"
 expect "... invalid UTF-8 too" 1 "$(grep -cF 'arguments.argument_2 = \xff (machine_code' build/hostile.out)"
-$interpreter $'\e]2;title\a.satl' > build/hostile.out 2>&1; expect "an escape sequence as the file" 8 $?
+"$interpreter" $'\e]2;title\a.satl' > build/hostile.out 2>&1; expect "an escape sequence as the file" 8 $?
 expect "... is named, escaped, and no ESC or BEL byte is written" "1|0" \
        "$(grep -cF 'cannot locate file: \x1b]2;title\x07.satl' build/hostile.out)|$(tr -cd '\033\007' < build/hostile.out | wc -c)"
-$interpreter examples > build/hostile.out 2>&1; expect "a directory as the file" 8 $?
+"$interpreter" examples > build/hostile.out 2>&1; expect "a directory as the file" 8 $?
 expect "... says it is a directory" 1 "$(grep -c 'cannot run examples: it is a directory' build/hostile.out)"
 ln -sfn ../examples/hello_world.satl build/link_to_hello.satl
-$interpreter build/link_to_hello.satl > /dev/null 2>&1; expect "a symlink to a program runs it" 0 $?
+"$interpreter" build/link_to_hello.satl > /dev/null 2>&1; expect "a symlink to a program runs it" 0 $?
 if [ "$(id -u)" != 0 ]; then
     cp examples/hello_world.satl build/unreadable.satl && chmod 000 build/unreadable.satl
-    $interpreter build/unreadable.satl > build/hostile.out 2>&1; expect "an unreadable file" 8 $?
+    "$interpreter" build/unreadable.satl > build/hostile.out 2>&1; expect "an unreadable file" 8 $?
     expect "... says why" 1 "$(grep -c 'cannot read file: build/unreadable.satl (Permission denied)' build/hostile.out)"
     rm -f build/unreadable.satl
 fi
@@ -106,11 +109,27 @@ fi
 build/exit_status_cases > build/exit_status.out 2> build/exit_status.err; code=$?
 expect "exit statuses for 0, 1, 255, 256, -1, 4294967298 ... ($(grep -c '^ok' build/exit_status.out) cases)" 0 $code
 expect "... a code that does not fit is written in full on stderr" 1 \
-       "$(grep -c 'machine code 4294967298 does not fit an exit status, which holds 1 to 254, so satl exits 255' build/exit_status.err)"
-$interpreter tests/missing_include.satl > /dev/null 2>&1; expect "missing include" 10 $?
-$interpreter tests/missing_main.satl > /dev/null 2>&1; expect "missing main" 11 $?
-$interpreter tests/missing_return.satl > /dev/null 2>&1; expect "missing return" 12 $?
-$interpreter tests/not_understood.satl > build/nu.out 2>&1; code=$?
+       "$(grep -c 'machine code 4294967298 does not fit an exit status (0 to 254 exit as themselves), so satl exits 255' build/exit_status.err)"
+expect "... and satl's main returns through exit_status_of, the one place a code becomes a status" 1 \
+       "$(grep -cF 'return satellite004::exit_status_of(run_satl(argc, argv));' satellite/structured-library.cpp)"
+# A config row may never hold a name satl fills in, however many words a run has.
+build/arguments_cases > build/arguments_cases.out 2>&1; code=$?
+expect "names satl fills in are refused as rows, and gather adds no other ($(grep -c '^ok' build/arguments_cases.out) cases)" 0 $code
+# Every header satl and satl-term are compiled from is a build input, or an edit to it
+# makes a different binary under the same build number (review of M0.5).
+expect "every header the compiler reads is in the build fingerprint" "" "$(make -s --no-print-directory build-inputs | python3 -c "
+import glob, os, sys
+inputs = set(line.strip() for line in sys.stdin)
+missing = set()
+for d in glob.glob('build/objects/**/*.d', recursive=True):
+    for word in open(d).read().split():
+        if word.endswith(('.hpp', '.h')) and not word.startswith('/') and os.path.normpath(word) not in inputs:
+            missing.add(os.path.normpath(word))
+print(' '.join(sorted(missing)))")"
+"$interpreter" tests/missing_include.satl > /dev/null 2>&1; expect "missing include" 10 $?
+"$interpreter" tests/missing_main.satl > /dev/null 2>&1; expect "missing main" 11 $?
+"$interpreter" tests/missing_return.satl > /dev/null 2>&1; expect "missing return" 12 $?
+"$interpreter" tests/not_understood.satl > build/nu.out 2>&1; code=$?
 expect "a line with no scenario" 13 $code
 expect "nothing ran before the refusal" "" "$(grep -x before build/nu.out)"
 # THESE TWO CHANGED ON 2026-09-16, WHEN THE ARITHMETIC TOKENS WERE WIRED TO
@@ -121,19 +140,19 @@ expect "nothing ran before the refusal" "" "$(grep -x before build/nu.out)"
 # as checks of the ANSWER, not deleted, so the behaviour stays pinned:
 #   + joins two strings (003 DESIGN §6.6, the author at M19)
 #   a literal of 23 digits is held exactly, not refused and not truncated
-expect "\"some\" + \"str\" joins them" "somestr" "$($interpreter tests/two_strings.satl 2>/dev/null)"
+expect "\"some\" + \"str\" joins them" "somestr" "$("$interpreter" tests/two_strings.satl 2>/dev/null)"
 # `.find(` -- period + the method's own 16-bit code + `(` (the author, 2026-09-16).
 # A quoted argument and an object argument both work; an undeclared one is 25.
 expect "s.find() on a literal and on an object" "6|0|6" \
-       "$($interpreter tests/find.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
-$interpreter tests/find_no_object.satl > /dev/null 2>&1; expect "s.find(no object) is refused" 25 $?
+       "$("$interpreter" tests/find.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+"$interpreter" tests/find_no_object.satl > /dev/null 2>&1; expect "s.find(no object) is refused" 25 $?
 # Aliases collapse at the lexer (to_string/str/string are ONE code); conversions
 # go through satellite_number as the hub; and a chain is a loop, so `s.bin.find(x)`
 # is two turns of it (the author, 2026-09-16: "so we can string operations together").
 wanted_chain="87|87|87|1010111|1010111|57|87|87|1010111|0|4|100|87!|87x"
 expect "aliases, conversions and chained methods" "$wanted_chain" \
-       "$($interpreter tests/chain.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
-expect "a 23-digit number is held exactly" "99999999999999999999999" "$($interpreter tests/big_number.satl 2>/dev/null)"
+       "$("$interpreter" tests/chain.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+expect "a 23-digit number is held exactly" "99999999999999999999999" "$("$interpreter" tests/big_number.satl 2>/dev/null)"
 
 # THE SIX FAST PATHS, REACHED THROUGH THEIR TOKENS. The arithmetic itself is
 # proven against Python over 482,465 cases (check_numbers.py); what this proves
@@ -142,55 +161,55 @@ expect "a 23-digit number is held exactly" "99999999999999999999999" "$($interpr
 wanted_math=$(python3 -c "
 for n in (34587, 2+3, 10-4, 6*7, 20//3, 20%3, 2**10, 2+3*4, 10-3-2, 2**(3**2), -3, -1,
           99999999999999999999999+1, 2**200, 0b1100+0xFF, sum(range(1000))): print(n)")
-expect "the six fast paths through their tokens" "$wanted_math" "$($interpreter tests/arithmetic.satl 2>/dev/null)"
-$interpreter tests/arithmetic.satl > /dev/null 2>&1; expect "tests/arithmetic.satl runs" 0 $?
-$interpreter tests/divide_by_zero.satl > /dev/null 2>&1; expect "a divisor of zero" 22 $?
-$interpreter tests/negative_exponent.satl > /dev/null 2>&1; expect "2 ^ -1 is not a whole number" 24 $?
-$interpreter tests/undeclared.satl > build/un.out 2>&1; expect "a name nothing declared" 25 $?
+expect "the six fast paths through their tokens" "$wanted_math" "$("$interpreter" tests/arithmetic.satl 2>/dev/null)"
+"$interpreter" tests/arithmetic.satl > /dev/null 2>&1; expect "tests/arithmetic.satl runs" 0 $?
+"$interpreter" tests/divide_by_zero.satl > /dev/null 2>&1; expect "a divisor of zero" 22 $?
+"$interpreter" tests/negative_exponent.satl > /dev/null 2>&1; expect "2 ^ -1 is not a whole number" 24 $?
+"$interpreter" tests/undeclared.satl > build/un.out 2>&1; expect "a name nothing declared" 25 $?
 expect "nothing ran before THAT refusal" "" "$(grep -x before build/un.out)"
-$interpreter tests/declared_twice.satl > /dev/null 2>&1; expect "a name declared twice" 26 $?
-$interpreter tests/kinds_do_not_meet.satl > /dev/null 2>&1; expect "\"n = \" + 4 converts nothing" 27 $?
+"$interpreter" tests/declared_twice.satl > /dev/null 2>&1; expect "a name declared twice" 26 $?
+"$interpreter" tests/kinds_do_not_meet.satl > /dev/null 2>&1; expect "\"n = \" + 4 converts nothing" 27 $?
 # ERROR.md: an expression that stops early is refused, not half-stored. `&` has no
 # meaning yet, and `n = 1 & 2` used to store 1 and `while(n < 3 & 1)` ran as `n < 3`.
-$interpreter tests/unread_assignment.satl > build/unread.out 2>&1; expect "n = 1 & 2 is refused, not stored as 1" 13 $?
+"$interpreter" tests/unread_assignment.satl > build/unread.out 2>&1; expect "n = 1 & 2 is refused, not stored as 1" 13 $?
 expect "... and nothing was displayed" "" "$(grep -x 1 build/unread.out)"
-$interpreter tests/unread_while.satl > build/unread.out 2>&1; expect "while(n < 3 & 1) is refused, not run as n < 3" 13 $?
+"$interpreter" tests/unread_while.satl > build/unread.out 2>&1; expect "while(n < 3 & 1) is refused, not run as n < 3" 13 $?
 expect "... and the loop never counted to 3" "" "$(grep -x 3 build/unread.out)"
-expect "a trailing comment still ends a value" 8 "$($interpreter tests/comment_after_value.satl 2>/dev/null)"
-$interpreter tests/unread_trailing.satl > build/unread.out 2>&1; expect "n = 5 6 is refused, not stored as 5" 13 $?
-$interpreter tests/compound_assign.satl > build/unread.out 2>&1; expect "n += 1 is refused until += is built, not skipped" 14 $?
+expect "a trailing comment still ends a value" 8 "$("$interpreter" tests/comment_after_value.satl 2>/dev/null)"
+"$interpreter" tests/unread_trailing.satl > build/unread.out 2>&1; expect "n = 5 6 is refused, not stored as 5" 13 $?
+"$interpreter" tests/compound_assign.satl > build/unread.out 2>&1; expect "n += 1 is refused until += is built, not skipped" 14 $?
 expect "... before anything runs, and says how to write it" "1|" \
        "$(grep -c 'n += ... is not built yet -- write n = n + ...' build/unread.out)|$(grep -x before build/unread.out)"
 # satellite.variable.binary (the author, 2026-09-16): written with its b, and shown
 # exactly as written -- b and leading zeros -- because the width is part of the value.
 expect "satellite.variable.binary my_number = b10101010" \
        "b10101010|b0010|b0000|170|b10101010|0000|AA|171|-b0101|3|false|true|3|true" \
-       "$($interpreter tests/binary.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
-$interpreter tests/binary.satl > /dev/null 2>&1; expect "tests/binary.satl runs" 0 $?
+       "$("$interpreter" tests/binary.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+"$interpreter" tests/binary.satl > /dev/null 2>&1; expect "tests/binary.satl runs" 0 $?
 # "if the user doesn't enter "b" ... spit out an ERROR: expected "b"+whatever they entered"
-$interpreter tests/binary_without_b.satl > build/binary_b.out 2>&1; expect "a binary with no b" 27 $?
+"$interpreter" tests/binary_without_b.satl > build/binary_b.out 2>&1; expect "a binary with no b" 27 $?
 expect "a binary with no b says ERROR: expected b10101010" 1 "$(grep -c 'ERROR: expected b10101010 ' build/binary_b.out)"
 expect "nothing ran before the missing b" "" "$(grep -x before build/binary_b.out)"
-$interpreter tests/binary_assigned_without_b.satl > build/binary_b.out 2>&1; expect "a binary given a value with no b" 27 $?
+"$interpreter" tests/binary_assigned_without_b.satl > build/binary_b.out 2>&1; expect "a binary given a value with no b" 27 $?
 expect "... and says ERROR: expected b1111" 1 "$(grep -c 'ERROR: expected b1111 ' build/binary_b.out)"
-$interpreter tests/binary_digits_not_binary.satl > build/binary_b.out 2>&1; expect "a binary given 12" 27 $?
+"$interpreter" tests/binary_digits_not_binary.satl > build/binary_b.out 2>&1; expect "a binary given 12" 27 $?
 expect "... is told 12 is not binary, not to write b12" 1 "$(grep -c 'ERROR: 12 is not binary' build/binary_b.out)"
-$interpreter tests/binary_b_not_binary.satl > build/binary_b.out 2>&1; expect "a binary given b12" 27 $?
+"$interpreter" tests/binary_b_not_binary.satl > build/binary_b.out 2>&1; expect "a binary given b12" 27 $?
 expect "... is told b12 is not binary" 1 "$(grep -c 'ERROR: b12 is not binary' build/binary_b.out)"
-$interpreter tests/binary_in_brackets.satl > build/binary_b.out 2>&1; expect "a binary with no b inside brackets" 27 $?
+"$interpreter" tests/binary_in_brackets.satl > build/binary_b.out 2>&1; expect "a binary with no b inside brackets" 27 $?
 expect "... is still ERROR: expected b10101010, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected b10101010 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
-$interpreter tests/binary_0b.satl > build/binary_b.out 2>&1; expect "0b10101010, the C spelling" 27 $?
+"$interpreter" tests/binary_0b.satl > build/binary_b.out 2>&1; expect "0b10101010, the C spelling" 27 $?
 expect "... is told ERROR: expected b10101010, not b0" 1 "$(grep -c 'ERROR: expected b10101010 ' build/binary_b.out)"
 # A binary keeps a sign (the author, 2026-09-17: "give it a different number and keep a
 # sign with all of these things"): -b0101 is a binary, worth -5, width kept.
 expect "a binary below zero: shown, worth, converted, compared, turned over, given" \
        "-b0101|-5|-0101|-b0101|-5|-4|true|false|true|b0101|b0101|b0000|-b0011|-3" \
-       "$($interpreter tests/binary_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
-$interpreter tests/binary_negative_without_b.satl > build/binary_b.out 2>&1; expect "a binary given -1010" 27 $?
+       "$("$interpreter" tests/binary_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+"$interpreter" tests/binary_negative_without_b.satl > build/binary_b.out 2>&1; expect "a binary given -1010" 27 $?
 expect "... says ERROR: expected -b1010, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected -b1010 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
-$interpreter tests/binary_negative_assigned_without_b.satl > build/binary_b.out 2>&1; expect "a binary given (- 1111)" 27 $?
+"$interpreter" tests/binary_negative_assigned_without_b.satl > build/binary_b.out 2>&1; expect "a binary given (- 1111)" 27 $?
 expect "... says ERROR: expected -b1111, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected -b1111 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
 # satellite.variable.percentage (the author, 2026-09-17): 32 digits after the point,
@@ -211,29 +230,29 @@ for line in (pct('50'), pct('33.333333333333333333333333333333335'), pct('100000
              pct(F(100, 3)), pct(F(200, 3)), 10 * 50 // 100):
     print(line)")
 expect "satellite.variable.percentage: literals, rounding and every pair" "$wanted_percentage" \
-       "$($interpreter tests/percentage.satl 2>/dev/null)"
-$interpreter tests/percentage.satl > /dev/null 2>&1; expect "tests/percentage.satl runs" 0 $?
-$interpreter tests/percentage_without_percent.satl > build/percentage.out 2>&1; expect "a percentage with no %" 27 $?
+       "$("$interpreter" tests/percentage.satl 2>/dev/null)"
+"$interpreter" tests/percentage.satl > /dev/null 2>&1; expect "tests/percentage.satl runs" 0 $?
+"$interpreter" tests/percentage_without_percent.satl > build/percentage.out 2>&1; expect "a percentage with no %" 27 $?
 expect "... says ERROR: expected 50%, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected 50% ' build/percentage.out)|$(grep -x before build/percentage.out)"
-$interpreter tests/percentage_not_whole.satl > build/percentage.out 2>&1; expect "3 * 50% is not whole" 24 $?
+"$interpreter" tests/percentage_not_whole.satl > build/percentage.out 2>&1; expect "3 * 50% is not whole" 24 $?
 expect "... and says so" 1 "$(grep -c '3 \* 50% is not a whole number' build/percentage.out)"
-$interpreter tests/percentage_number_second.satl > build/percentage.out 2>&1; expect "50% + 5 is refused" 27 $?
+"$interpreter" tests/percentage_number_second.satl > build/percentage.out 2>&1; expect "50% + 5 is refused" 27 $?
 expect "... and says to put the number first" 1 "$(grep -c 'the number goes first -- 5 + 50%' build/percentage.out)"
 expect "a percentage below zero: -50%, (- 25%) and -(-12.5%)" "-50%|-25%|12.5%" \
-       "$($interpreter tests/percentage_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
-$interpreter tests/percentage_negative_without_percent.satl > build/percentage.out 2>&1; expect "a percentage given -50" 27 $?
+       "$("$interpreter" tests/percentage_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+"$interpreter" tests/percentage_negative_without_percent.satl > build/percentage.out 2>&1; expect "a percentage given -50" 27 $?
 expect "... says ERROR: expected -50%, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected -50% ' build/percentage.out)|$(grep -x before build/percentage.out)"
-$interpreter tests/percentage_negative_assigned_without_percent.satl > build/percentage.out 2>&1
+"$interpreter" tests/percentage_negative_assigned_without_percent.satl > build/percentage.out 2>&1
 expect "a percentage given (- 25)" 27 $?
 expect "... says ERROR: expected -25%, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected -25% ' build/percentage.out)|$(grep -x before build/percentage.out)"
 expect "a declaration inside a loop runs every turn" "0|1|10|11|20|21" \
-       "$($interpreter tests/loop_declaration.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
-$interpreter examples/hello_world.satl > /dev/full 2> /dev/null; expect "output refused (/dev/full)" 2 $?
+       "$("$interpreter" tests/loop_declaration.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+"$interpreter" examples/hello_world.satl > /dev/full 2> /dev/null; expect "output refused (/dev/full)" 2 $?
 
-mkdir -p build/alone && cp $interpreter build/alone/satl
+mkdir -p build/alone && cp "$interpreter" build/alone/satl
 build/alone/satl examples/hello_world.satl > /dev/null 2>&1; expect "no libraries beside the interpreter" 5 $?
 # A satl deeper than the kernel can name (ERROR #8): refused with 5 and the reason, and
 # never the libraries of the folder it was started in -- this folder holds a working set.
@@ -241,11 +260,11 @@ rm -rf build/deep && mkdir -p build/deep
 deep_result=$(top=$PWD; libraries=$(dirname "$interpreter")/satellite-numbers; name=$(printf 'd%.0s' $(seq 100))
     cd build/deep && for i in $(seq 45); do mkdir "$name" && cd "$name" || exit; done
     cp "$interpreter" satl && cp -r "$libraries" satellite-numbers && cp "$top/examples/hello_world.satl" .
-    ./satl hello_world.satl > run.out 2>&1; echo "$?|$(grep -c 'satl cannot read its own path (/proc/self/exe: File name too long)' run.out)")
+    timeout 30 ./satl hello_world.satl > run.out 2>&1; echo "$?|$(grep -c 'satl cannot read its own path (/proc/self/exe: File name too long)' run.out)")
 expect "a satl deeper than 4,096 bytes refuses, and loads nothing from the current folder" "5|1" "$deep_result"
 rm -rf build/deep
 
-$interpreter --debug examples/hello_world.satl > build/debug.out 2>&1; code=$?
+"$interpreter" --debug examples/hello_world.satl > build/debug.out 2>&1; code=$?
 expect "--debug runs" 0 $code
 expect "--debug shows the index being defined" 1 "$(grep -c 'vector.number.index(defined) (machine_code: 6 number_vector_defined)' build/debug.out)"
 expect "--debug shows memory as a size" 1 "$(grep -cE '^\[satellite\] arguments.memory.total = [0-9.]+ (kilo|mega|giga|tera)?bytes' build/debug.out)"

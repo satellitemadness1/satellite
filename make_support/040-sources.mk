@@ -34,7 +34,8 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(SATELLITE)/
           $(BYTECODE)/sate_file.hpp $(BYTECODE)/cascade_convert.hpp \
           $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
           $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp \
-          $(STRING16)/satellite_string.hpp \
+          $(STRING16)/satellite_string.hpp $(STRING16)/character_table.hpp \
+          $(STRING16)/conversion_loops.hpp $(STRING16)/string_overwrite.hpp \
           $(BINARY)/satellite_binary_number.hpp \
           $(PERCENTAGE)/satellite_percentage.hpp \
           $(OBJECT)/satellite_object.hpp $(OBJECT)/satellite_spacesuit.hpp \

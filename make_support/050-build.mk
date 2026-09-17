@@ -7,13 +7,19 @@
 # beside its own. So they are built together and installed together.
 .DEFAULT_GOAL := all
 
-ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite-004
+# The two harnesses check.sh runs are built too, so ./check.sh works after a plain
+# make or an install. They do not depend on the build stamp and raise no number.
+ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases
 ifeq ($(HAVE_WINDOW),yes)
   ALL_TARGETS += $(BUILD)/satl-term
 endif
 
+# WITHOUT THE WINDOW, AN EARLIER satl-term IS REMOVED: the three are one set, and
+# a satl-term from an older build would run the newer satl beside it and be
+# installed with it.
 all: $(ALL_TARGETS)
 ifneq ($(HAVE_WINDOW),yes)
+	@if [ -e $(BUILD)/satl-term ]; then rm -f $(BUILD)/satl-term && echo "removed $(BUILD)/satl-term, which an earlier build made"; fi
 	@echo "note: satl-term not built -- pkg-config finds no $(WINDOW_PKGS). satl is unaffected."
 endif
 
@@ -25,23 +31,28 @@ $(BUILD_STAMP): FORCE
 
 $(LINK_STAMP): FORCE
 	@mkdir -p $(BUILD)
-	@printf '%s' '$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS)' | cmp -s - $@ || \
-	    printf '%s' '$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS)' > $@
+	@printf '%s' '$(LINK_ENV) $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(LDFLAGS)' | cmp -s - $@ || \
+	    printf '%s' '$(LINK_ENV) $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(LDFLAGS)' > $@
 
 # THE NUMBER THE BINARY SHOWS IS CHECKED AGAINST THE ROW, after every link. A
 # dependency that misses the rows (060-compile.mk's ROW_READERS) would leave the
 # old number compiled in with nothing saying so; this says so and fails.
-# --verify refuses a row that an editor changed while the build ran.
+# --verify refuses a row that an editor changed while the build ran. THE LINKS
+# DEPEND ON THE BUILD STAMP, so this runs after every raise, not only when an
+# object changed; the row is padded in the shell, because printf %04d stops at
+# 2^63-1 and a row in quotes has no ceiling (review of M0.5).
 define shows_the_build_row
 @python3 $(SATELLITE)/config/build_number.py $(BUILD_STAMP) --verify
 @row=$$(python3 $(SATELLITE)/config/build_number.py --print arguments.build) && \
- shown=$$($(1) --version | sed -n 2p) && \
- case "$$shown" in *" BUILD $$(printf %04d "$$row")") ;; \
+ want=$$row && while [ $${#want} -lt 4 ]; do want=0$$want; done && \
+ lines=$$($(1) --version) || { echo "$(1) --version failed" >&2; rm -f $(1); exit 1; }; \
+ shown=$$(printf '%s\n' "$$lines" | sed -n 2p); \
+ case "$$shown" in *" BUILD $$want") ;; \
  *) echo "$(1) shows \"$$shown\" but arguments.build is $$row: an object that reads the rows was not rebuilt (060-compile.mk ROW_READERS)" >&2; \
     rm -f $(1); exit 1 ;; esac
 endef
 
-$(BUILD)/satl: $(INTERPRETER_OBJECTS) $(LINK_STAMP)
+$(BUILD)/satl: $(INTERPRETER_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(INTERPRETER_OBJECTS) -o $@ -ldl
 	$(call shows_the_build_row,$@)
 
@@ -57,15 +68,17 @@ $(BUILD)/satellite-004: FORCE | $(BUILD)/satl
 # name(member) as an archive. It is handed THIS make's compiler and flags, and
 # rebuilds every library when they differ from what built the ones there, so satl
 # and its libraries never come from two compilers without anything saying so.
+# SATELLITE_JOBS is this make's -j: `make -j4` compiles four libraries at once.
 libraries: $(BUILD_STAMP) $(LINK_STAMP)
-	@SATELLITE_CXX="$(CXX)" SATELLITE_CXXFLAGS="$(CXXFLAGS)" SATELLITE_LDFLAGS="$(LDFLAGS)" \
+	@SATELLITE_CXX="$(CXX)" SATELLITE_CXX_VERSION="$(CXX_VERSION)" SATELLITE_CXXFLAGS="$(CXXFLAGS)" \
+	    SATELLITE_LDFLAGS="$(LDFLAGS)" SATELLITE_JOBS="$(patsubst -j%,%,$(filter -j%,$(MAKEFLAGS)))" \
 	    $(LINK_ENV) python3 $(NUMBERS)/build_libraries.py
 
 # $(WINDOW_LIBS) AFTER the objects: a linker resolves an -l only against the
 # symbols it has already been asked for.
 ifeq ($(HAVE_WINDOW),yes)
 
-$(BUILD)/satl-term: $(TERM_OBJECTS) $(LINK_STAMP)
+$(BUILD)/satl-term: $(TERM_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(TERM_OBJECTS) -o $@ $(WINDOW_LIBS)
 	$(call shows_the_build_row,$@)
 

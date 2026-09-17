@@ -14,8 +14,16 @@ DEPENDENCY_FLAGS = -MMD -MP
 COMPILE_STAMP = $(BUILD)/.compile-flags
 $(COMPILE_STAMP): FORCE
 	@mkdir -p $(BUILD)
-	@printf '%s' '$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS)' | cmp -s - $@ || \
-	    printf '%s' '$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS)' > $@
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE)' > $@
+
+# The window's own stamp, so gtk's include paths appearing or vanishing recompiles
+# the window and not all of satl.
+TERM_COMPILE_STAMP = $(BUILD)/.compile-flags-window
+$(TERM_COMPILE_STAMP): FORCE
+	@mkdir -p $(BUILD)
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS)' > $@
 
 # ORDER-ONLY ON THE BUILD STAMP: every object waits until build_number.py has
 # decided this build's number and written it into satellite_config.hpp, so none is
@@ -26,7 +34,7 @@ $(OBJECTS)/%.o: %.cpp $(COMPILE_STAMP) | $(BUILD_STAMP)
 
 # THE WINDOW'S OBJECTS, which need gtk's include paths. The shorter stem wins, so
 # this rule, and not the one above, compiles satl-term/*.cpp.
-$(OBJECTS)/$(TERM_DIR)/%.o: $(TERM_DIR)/%.cpp $(COMPILE_STAMP) | $(BUILD_STAMP)
+$(OBJECTS)/$(TERM_DIR)/%.o: $(TERM_DIR)/%.cpp $(TERM_COMPILE_STAMP) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS) $(DEPENDENCY_FLAGS) -c $< -o $@
 

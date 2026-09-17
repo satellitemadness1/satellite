@@ -11,14 +11,15 @@ proof=$(mktemp -d -- "$root/.satellite-004-proof.XXXXXX") || die "cannot write i
 trap 'rm -rf -- "$proof"' EXIT
 cp -- "$repo/examples/hello_world.satl" "$proof/hello_world.satl"
 
-if "$root/satl" "$proof/hello_world.satl" > "$proof/out" 2> "$proof/err" < /dev/null; then
+# --run, because a root named -x makes the proof's path begin with -x (review of M0.5).
+if "$root/satl" --run "$proof/hello_world.satl" > "$proof/out" 2> "$proof/err" < /dev/null; then
     proof_status=0
 else
     proof_status=$?
 fi
 proof_out=$(cat -- "$proof/out")
 if [ "$proof_status" != 0 ] || [ "$proof_out" != "$hello_wanted" ]; then
-    printf '%s\n' "--- what $root/satl wrote on stdout:" "$proof_out" "--- and on stderr:" >&2
+    printf '%s\n' "--- what the installed satl wrote on stdout:" "$(shown "$proof_out")" "--- and on stderr:" >&2
     cat -- "$proof/err" >&2
     die "the installed satl did not run examples/hello_world.satl as it should (exit status $proof_status). The files are in place; the install is NOT proven"
 fi
@@ -30,8 +31,8 @@ trap - EXIT
 
 libraries=$(ls -- "$root/satellite-numbers" | grep -c '\.so$' || :)
 printf '\n%s\n\n' "$title"
-printf 'installed into %s:\n' "$root"
-printf '    satl                  the interpreter -- run it by its path: %s/satl <file.satl>\n' "$root"
+printf 'installed into %s:\n' "$(shown "$root")"
+printf '    satl                  the interpreter -- run it by its path: %s/satl <file.satl>\n' "$(shown "$root")"
 printf '    satellite-numbers/    %s libraries\n' "$libraries"
 if [ "$with_window" = yes ]; then
     printf '    satl-term             the window, which runs the satl beside it\n'
@@ -42,7 +43,7 @@ printf '    %s   the record of what this installer put there\n' "$record_name"
 # satl expecting 004.
 word=$(command -v satl 2>/dev/null || :)
 if [ -n "$word" ]; then
-    printf '\nthe word satl still runs %s, which this installer did not touch.\n' "$word"
+    printf '\nthe word satl still runs %s, which this installer did not touch.\n' "$(shown "$word")"
 else
     printf '\nthe word satl runs nothing on this PATH; this installer did not add it.\n'
 fi

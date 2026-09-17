@@ -275,9 +275,12 @@ int main(int argc, char **argv)
             if (args.size() < 2)
                 return usage_error("--nice needs a number after it");
 
-            char *rest = nullptr;
-            const long n = strtol(args[1].c_str(), &rest, 10);
-            if (args[1].empty() || *rest != '\0' || n < -20 || n > 19)
+            // An optional minus, then digits only, as --size takes digits only (004).
+            const std::string digits = args[1].rfind('-', 0) == 0 ? args[1].substr(1) : args[1];
+            const long n = digits.empty() || digits.size() > 2 ||
+                                   digits.find_first_not_of("0123456789") != std::string::npos
+                               ? 99 : strtol(args[1].c_str(), nullptr, 10);
+            if (n < -20 || n > 19)
                 return usage_error("--nice wants a number from -20 to 19, and "
                                    "got " + args[1]);
 
@@ -297,6 +300,11 @@ int main(int argc, char **argv)
             return usage_error("unknown option " + flag);
         }
     }
+
+    // AN EMPTY FILE NAME IS REFUSED (004). child.cpp reads an empty file as "the
+    // prompt", so `satl-term "" words` opened a prompt and dropped the words.
+    if (!args.empty() && args[0].empty())
+        return usage_error("the file name is empty");
 
     if (!args.empty()) {
         child_file = args[0];

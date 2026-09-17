@@ -44,6 +44,9 @@
 #     060-install-tree.sh ... the copy, the rename and the record
 #     080-report.sh ......... the proof and the title lines
 #
+# check_install.sh beside this file runs the installer against the refusals and
+# failures a review found; make test runs it.
+#
 # NOT PORTED from 003: 040-machine.sh (the Enterprise Linux checks and the
 # --system prefix), 070-desktop.sh (the ~/.local links, launcher, icons and .satl
 # type) and 075-system.sh -- a 004 launcher under org.satellite.terminal would
@@ -51,6 +54,9 @@
 # as it is.
 
 set -eu
+# An exported CDPATH makes `cd dir` print where it went, which $(cd ... && pwd)
+# would capture as part of the path.
+unset CDPATH
 
 self=$0
 here=$(dirname -- "$self")

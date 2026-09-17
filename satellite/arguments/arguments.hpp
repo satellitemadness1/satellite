@@ -76,4 +76,9 @@ private:
 // "24", "true", "62.5 gigabytes", or the text itself.
 std::string describe(const Argument &argument);
 
+// Whether satl fills this name in itself -- from the command line or the machine
+// -- on SOME run, so satellite_config.hpp may never hold it. arguments.argument_3
+// is satl's whether or not this run was given three words.
+bool filled_in_by_satl(const std::string &name);
+
 } // namespace satellite004

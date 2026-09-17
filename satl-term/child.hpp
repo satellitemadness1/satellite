@@ -35,8 +35,10 @@ namespace satellite {
 // pointer it will be handed, so the caller's state reaches the answer without
 // this file having to know what that state is.
 //
-// FALSE MEANS THE INTERPRETER COULD NOT BE FOUND BESIDE US, and nothing was
-// spawned. It is said on stderr here, for the person who typed `satl-term` in a
+// FALSE MEANS THIS BINARY COULD NOT READ ITS OWN PATH (/proc/self/exe), so there
+// is nowhere to look for satl, and nothing was spawned. (004: a satl that is
+// simply not beside it is TRUE here, and the spawn callback reports it.) It is
+// said on stderr here, for the person who typed `satl-term` in a
 // shell; putting it on the SCREEN is the caller's, because a message to the
 // person looking at the window belongs with the policy that holds the window
 // open to show it.

@@ -90,8 +90,8 @@ std::string usage_lines()
            "    arguments.argument_1 ... and arguments.length.\n"
            "\n"
            "    satl exits with the machine code the program stopped on, 0 when it ran\n"
-           "    to the end. A code outside 1 to 254 exits 255 and is written in full\n"
-           "    on stderr.\n";
+           "    to the end. A code below 0 or above 254 exits 255 and is written in\n"
+           "    full on stderr.\n";
 }
 
 } // namespace satellite004

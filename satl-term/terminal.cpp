@@ -18,6 +18,7 @@
 #include "terminal.hpp"
 #include "child.hpp"
 #include "../satellite/machine/machine_codes.hpp"
+#include "../satellite/machine/shown.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -131,7 +132,11 @@ void apply_font(VteTerminal *terminal)
 // talking about itself, and none of it is for the program.
 void say(VteTerminal *terminal, const std::string &line)
 {
-    const std::string text = "\r\n" + line + "\r\n";
+    // shown() (004): a file name or a spawn error can hold ESC or BEL -- a folder
+    // named with them, or a program picked in File > Open -- and this is the
+    // window talking, so it says them as text (DESIGN §9). No line said here
+    // carries a control byte of its own.
+    const std::string text = "\r\n" + satellite004::shown(line) + "\r\n";
     vte_terminal_feed(terminal, text.c_str(), (gssize)text.size());
 }
 
@@ -228,7 +233,7 @@ void on_spawn_done(VteTerminal *terminal, GPid, GError *error, gpointer user_dat
     session->child_alive = false;
 
     fprintf(stderr, "satl-term: failed to spawn the interpreter: %s\n",
-            error->message);
+            satellite004::shown(error->message).c_str());
     say(terminal, std::string("[satl-term] could not start the interpreter: ") +
                       error->message);
     hold_open(session);
@@ -252,7 +257,7 @@ void start_child(Session *session,
         return;
 
     session->child_alive = false;
-    say(terminal, "[satl-term] cannot find satl beside me.");
+    say(terminal, "[satl-term] cannot read my own path on disk, so I cannot find the satl beside me.");
     hold_open(session);
 }
 
