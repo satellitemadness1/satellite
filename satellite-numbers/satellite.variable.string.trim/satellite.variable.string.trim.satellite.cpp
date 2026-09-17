@@ -15,7 +15,7 @@ namespace {
 
 using namespace satellite004;
 
-signed long long int method(satellite_string &self, const StringArguments &/* arguments */, StringAnswer &answer)
+signed long long int method(satellite_string32 &self, const StringArguments &/* arguments */, StringAnswer &answer)
 {
     auto blank = [](char32_t c) { return c == U' ' || c == U'\t' || c == U'\r' || c == U'\n'; };
     size_t first = 0, last = self.text.size();

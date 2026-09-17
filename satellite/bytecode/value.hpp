@@ -1,31 +1,36 @@
 #pragma once
-// satellite/bytecode/value.hpp -- what one expression is worth, and where a
-// capsule's variables live.
+// satellite/bytecode/value.hpp -- where a capsule's variables live, and the one
+// name the walker knows the object model by.
 //
-// THIS IS THE VALUE TYPE PROGRESS §6.5 SAID WAS OWED, and it was owed as the
-// third of three things: "`display(42)` still has nowhere to put its argument.
-// `Call`'s kind/text/count/flag wants to become one type over satellite_number
-// and satellite_string. This is the real next piece."
+// WHAT CHANGED, 2026-09-16: `Value` IS `satelliteValue` NOW. This file used to
+// define its own value type -- a Kind enum beside a std::string, a
+// satellite_number and a bool, all three always present. The object model
+// replaces it (satellite_object/satellite_value.hpp), and this file keeps only
+// what is about the WALKER rather than about values: a variable, and the table a
+// running body holds them in.
 //
-// WHAT CHANGED FROM THE PLACEHOLDER. The old Value had a `count`, an
-// `unsigned long long int`, because a library scenario takes one. That made the
-// interpreter's idea of a number 64 bits wide while satellite.variable.number
-// had no width at all, and it is why `display(99999999999999999999999)` answered
-// "a number too large" (check.sh) in a language whose whole number type cannot
-// BE too large. The count is gone; `number` is a satellite_number, and the
-// narrowing to an unsigned long long happens at the one place it must -- the
-// call into a library -- and nowhere else.
+// THE ALIAS IS DELIBERATE AND IS NOT A TRANSITION SHIM. `Value` is what the
+// walker calls what an expression is worth, and satelliteValue is what the
+// object model calls it. Both names are right in their own file, and one
+// `using` is cheaper than renaming the word `Value` through every line of
+// expression.cpp and program_walk.cpp -- where it reads correctly already.
 //
-// A MACHINE CODE IS A NUMBER TOO. A word answers its machine code as a value, so
-// display(display("x")) prints x and then prints 0 -- that is unchanged, it is
-// just carried in a satellite_number now, built by from_signed().
+// WHAT THE NEW TYPE BUYS THE WALKER, beyond the arms it did not have:
+//   - A STRING IS A satellite_string, not a std::string of UTF-8 bytes. The
+//     language's own 16/32-bit string with the author's character table reaches
+//     the interpreter for the first time; UTF-8 is now only a doorway, at the
+//     literal coming in (`of_utf8`) and at a library's text scenario going out
+//     (`text_utf8`).
+//   - ONE PLACE DECIDES WHAT TWO KINDS DO. `left.add(right, out, why)` routes on
+//     the pair of tags to a one-function-one-file header. expression.cpp no
+//     longer carries a branch per pair.
 //
 // THERE ARE NO GLOBALS (the author, 2026-09-16): "we begin exe inside of main,
 // and end exe inside of main... the only globals are the includes, other files".
 // So a VariableTable belongs to ONE running body and is created by run_body when
 // that body starts. A capsule cannot see its caller's variables, because it is
-// handed a different table -- and that is the rule being enforced by
-// construction rather than by a check that could be forgotten.
+// handed a different table -- enforced by construction rather than by a check
+// that could be forgotten.
 //
 // A VARIABLE REMEMBERS THE WORD THAT DECLARED IT. `satellite.variable.number n`
 // stores the code of satellite.variable.number beside the value, so a later
@@ -34,57 +39,14 @@
 // survives past the line that wrote it.
 
 #include "token_codes.hpp"
-#include "../satellite_variable_number/satellite_number.hpp"
+#include "../satellite_object/satellite_spacesuit.hpp"
 
 #include <string>
 #include <unordered_map>
 
 namespace satellite004 {
 
-struct Value {
-    enum class Kind { nothing, text, flag, number };
-
-    Kind kind = Kind::nothing;
-    std::string text;
-    satellite_number number;
-    bool flag = false;
-
-    static Value of_text(std::string from)
-    {
-        Value value;
-        value.kind = Kind::text;
-        value.text = std::move(from);
-        return value;
-    }
-    static Value of_number(satellite_number from)
-    {
-        Value value;
-        value.kind = Kind::number;
-        value.number = std::move(from);
-        return value;
-    }
-    static Value of_flag(bool from)
-    {
-        Value value;
-        value.kind = Kind::flag;
-        value.flag = from;
-        return value;
-    }
-    // A machine code, as the value a word's call is worth.
-    static Value of_code(signed long long int code) { return of_number(satellite_number::from_signed(code)); }
-
-    // The name of the kind, for a refusal a person has to act on.
-    const char *kind_name() const
-    {
-        switch (kind) {
-        case Kind::text: return "a string";
-        case Kind::flag: return "a bool";
-        case Kind::number: return "a number";
-        case Kind::nothing: break;
-        }
-        return "nothing";
-    }
-};
+using Value = satelliteValue;
 
 struct Variable {
     token::Code declared = 0;   // the word code of satellite.variable.number, .string, ...

@@ -42,10 +42,12 @@ INTERPRETER_SOURCES = satellite/structured-library.cpp satellite/arguments/argum
                       satellite/bytecode/function_table.cpp satellite/bytecode/include_shape.cpp \
                       satellite/bytecode/program_walk.cpp satellite/bytecode/program_check.cpp \
                       satellite/bytecode/expression.cpp \
+                      satellite/satellite_object/satellite_value.cpp \
                       satellite/satellite_variable_number/satellite_number.cpp \
                       satellite/satellite_variable_number/satellite_number_divide.cpp \
                       satellite/satellite_variable_number/satellite_number_text.cpp \
                       satellite/satellite_variable_number/satellite_number_power.cpp \
+                      satellite/satellite_variable_string/satellite_string.cpp \
                       satellite-numbers/call_number.satellite.cpp
 HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hpp \
           satellite/machine/machine_codes.hpp satellite/machine/machine_state.hpp \
@@ -58,6 +60,10 @@ HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hp
           satellite/satellite_variable_number/satellite_number_limbs.hpp \
           satellite/satellite_variable_number/number_arithmetic.hpp \
           satellite/satellite_variable_number/number_conversions.hpp \
+          satellite/satellite_variable_string/satellite_string.hpp \
+          satellite/satellite_object/satellite_value.hpp satellite/satellite_object/satellite_spacesuit.hpp \
+          satellite/satellite_object/satellite_bytecode.hpp satellite/satellite_object/satellite_capsule.hpp \
+          $(wildcard satellite/satellite_object/*_and_*.hpp) $(wildcard satellite/satellite_object/*_to_*.hpp) \
           satellite-numbers/call_number.hpp satellite-numbers/number_row.hpp strings/string_method.hpp
 MACHINE_STATE = satellite/machine/machine_state.cpp
 

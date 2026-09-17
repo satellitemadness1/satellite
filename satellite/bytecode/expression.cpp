@@ -11,7 +11,6 @@
 #include "expression.hpp"
 
 #include "word_codes.hpp"
-#include "../satellite_variable_number/number_arithmetic.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 
 #include <utility>
@@ -48,20 +47,13 @@ int precedence_of(Code op)
     }
 }
 
-// THE WIRING ITSELF: a token to one of the six fast paths. nullptr for the
-// comparisons, which answer a flag rather than a number and are done below.
-fast::Operation fast_path_of(Code op)
-{
-    switch (op) {
-    case token::plus_token: return fast::add;
-    case token::minus_token: return fast::subtract;
-    case token::times_token: return fast::multiply;
-    case token::divide_token: return fast::divide;
-    case token::modulus_token: return fast::modulus;
-    case token::power_token: return fast::power;
-    default: return nullptr;
-    }
-}
+// THE TOKEN -> FAST PATH TABLE USED TO BE HERE AND IS NOW IN THE OBJECT MODEL.
+// It was a switch from `plus_token` to `number_fast_path::add`, which only ever
+// worked because both sides of `+` were known to be numbers. satelliteValue::add
+// decides that on the PAIR of kinds instead, and reaches
+// number_and_number_add.hpp through a case label that reads like the filename.
+// So this file kept the precedence and gave up the dispatch, which is the split
+// the header describes: this file is the grammar, that one is the meaning.
 
 const char *spelling_of(Code op)
 {
@@ -111,49 +103,55 @@ unsigned int radix_of(Code marker)
     return fast::kDecimal;
 }
 
+// THE OBJECT MODEL DECIDES WHAT TWO KINDS DO, and this function only chooses
+// which of its methods to ask. Every branch that used to be here -- two numbers,
+// two strings, two bools -- is now a `case pair_of(...)` in
+// satellite_object/satellite_value.cpp, sitting above a call to the header named
+// for that pair. Adding satellite_float changes those files and not this one.
 Value apply(Code op, const Value &left, const Value &right, ExpressionContext &context)
 {
-    // TWO NUMBERS: the six fast paths, and the one comparison they all come off.
-    if (left.kind == Value::Kind::number && right.kind == Value::Kind::number) {
-        if (precedence_of(op) <= 2 && precedence_of(op) >= 1)
-            return Value::of_flag(holds(fast::compare(left.number, right.number), op));
-        satellite_number answer;
-        const signed long long int code = fast_path_of(op)(left.number, right.number, answer);
-        if (code != success) {
-            context.refuse(code, std::string("the ") + spelling_of(op) + " of " + left.number.to_text() +
-                                     " and " + right.number.to_text() + " is " +
-                                     (code == division_by_zero ? "a division by zero"
-                                                               : "not a whole number, and there is no float yet"));
+    std::string why;
+
+    // THE COMPARISONS, which all come off one ordering.
+    //
+    // AN ORDERING ON TWO BOOLS IS STILL REFUSED, and it is refused HERE rather
+    // than in the object model, because the object model's job is to say how two
+    // bools ORDER (false before true) and this file's job is to say which
+    // spellings may ask. `a < b` on two bools means nothing in this language;
+    // `a == b` does.
+    if (precedence_of(op) >= 1 && precedence_of(op) <= 2) {
+        if (an_ordering(op) && left.is_bool() && right.is_bool()) {
+            context.refuse(types_do_not_meet,
+                           std::string(spelling_of(op)) + " was given two bools, and only == and != order those");
             return Value();
         }
-        return Value::of_number(std::move(answer));
-    }
-
-    // TWO STRINGS. `+` joins them -- 003 DESIGN §6.6, the author at M19: "it is
-    // one operator over two types and not a second meaning for the character:
-    // addition and joining are the same shape". == and != compare them. An
-    // ordering does too, by the same byte order a sort would use.
-    if (left.kind == Value::Kind::text && right.kind == Value::Kind::text) {
-        if (op == token::plus_token)
-            return Value::of_text(left.text + right.text);
-        if (op == token::equals_token || op == token::not_equals_token || an_ordering(op)) {
-            const int order = left.text.compare(right.text);
-            return Value::of_flag(holds(order < 0 ? -1 : (order > 0 ? 1 : 0), op));
+        int order = 0;
+        const signed long long int code = left.compare(right, order, why);
+        if (code != success) {
+            context.refuse(code, why);
+            return Value();
         }
+        return Value::of_bool(holds(order, op));
     }
 
-    // TWO BOOLS: only the two that mean something on them.
-    if (left.kind == Value::Kind::flag && right.kind == Value::Kind::flag &&
-        (op == token::equals_token || op == token::not_equals_token))
-        return Value::of_flag(holds(left.flag == right.flag ? 0 : 1, op));
-
-    // NOTHING IS CONVERTED (DESIGN §1.1). `"n = " + 4` is refused here and not
-    // quietly turned into "n = 4": a program that wants that writes the
-    // conversion out loud, which is what satellite.variable.number.to_string is
-    // for. The refusal names both kinds, because that is what a person fixes.
-    context.refuse(types_do_not_meet, std::string(spelling_of(op)) + " was given " + left.kind_name() +
-                                          " and " + right.kind_name() + ", and there is no scenario for that pair");
-    return Value();
+    Value answer;
+    signed long long int code = satl_line_not_understood;
+    switch (op) {
+    case token::plus_token: code = left.add(right, answer, why); break;
+    case token::minus_token: code = left.subtract(right, answer, why); break;
+    case token::times_token: code = left.multiply(right, answer, why); break;
+    case token::divide_token: code = left.divide(right, answer, why); break;
+    case token::modulus_token: code = left.modulus(right, answer, why); break;
+    case token::power_token: code = left.power(right, answer, why); break;
+    default:
+        why = std::string(spelling_of(op)) + " is not an operator this can work out";
+        break;
+    }
+    if (code != success) {
+        context.refuse(code, why);
+        return Value();
+    }
+    return answer;
 }
 
 // THE RESERVED HALF OF EACH OPERATOR, refused in its own words. The author's
@@ -212,22 +210,22 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     if (code == token::tight_minus_token || code == token::minus_token) {
         ++at;
         const Value inner = one_operand(row, at, context);
-        if (inner.kind != Value::Kind::number) {
+        if (!inner.is_number()) {
             if (context.code == success)
                 context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name());
             return Value();
         }
-        return Value::of_number(-inner.number);
+        return Value::of_number(-*inner.as_number());
     }
     if (code == token::not_token) {
         ++at;
         const Value inner = one_operand(row, at, context);
-        if (inner.kind != Value::Kind::flag) {
+        if (!inner.is_bool()) {
             if (context.code == success)
                 context.refuse(types_do_not_meet, std::string("a ! was put in front of ") + inner.kind_name());
             return Value();
         }
-        return Value::of_flag(!inner.flag);
+        return Value::of_bool(!*inner.as_bool());
     }
 
     if (refuse_if_reserved(code, at, context))
@@ -241,8 +239,21 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         return inside;
     }
 
-    if (code == token::string_token)
-        return Value::of_text(text_at(row, at));
+    // A STRING LITERAL BECOMES A satellite_string HERE, which is the one doorway
+    // UTF-8 comes in through. Strict: a bad sequence is string_error (4) naming
+    // the byte, rather than a string standing for bytes that could not be read.
+    if (code == token::string_token) {
+        const std::string utf8 = text_at(row, at);
+        Value held;
+        std::size_t bad_offset = 0;
+        const signed long long int made = Value::of_utf8(utf8, held, bad_offset);
+        if (made != success) {
+            context.refuse(made, "that string holds a byte at " + std::to_string(bad_offset) +
+                                     " that is not part of any character");
+            return Value();
+        }
+        return held;
+    }
 
     // THE THREE NUMBER LITERALS, THROUGH ONE CONVERSION FAST PATH. 34587, b1100
     // and xFFAA differ only by the radix their token names.
@@ -260,7 +271,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
 
     if (code == word::code_of(1, 17, 1) || code == word::code_of(1, 17, 2)) {
         ++at;
-        return Value::of_flag(code == word::code_of(1, 17, 2));
+        return Value::of_bool(code == word::code_of(1, 17, 2));
     }
 
     if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token)
@@ -365,12 +376,15 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         context.refuse(not_built_yet, std::string(word::spelling_of(code)) + " has no library built yet");
         return Value();
     }
-    if (argument.kind == Value::Kind::text && scenarios->text != nullptr)
-        answer = scenarios->text(argument.text, true);
-    else if (argument.kind == Value::Kind::number)
-        answer = display_a_number(*scenarios, argument.number);
-    else if (argument.kind == Value::Kind::flag && scenarios->flag != nullptr)
-        answer = scenarios->flag(argument.flag, true);
+    // A VALUE LEAVES AS BYTES HERE, and only here: a library's text scenario
+    // takes a std::string (number_row.hpp), so the satellite_string goes back
+    // out through to_utf8 at the boundary and nowhere inside the interpreter.
+    if (argument.is_string() && scenarios->text != nullptr)
+        answer = scenarios->text(argument.text_utf8(), true);
+    else if (argument.is_number())
+        answer = display_a_number(*scenarios, *argument.as_number());
+    else if (argument.is_bool() && scenarios->flag != nullptr)
+        answer = scenarios->flag(*argument.as_bool(), true);
     else {
         context.refuse(not_built_yet, std::string(word::spelling_of(code)) + " has no scenario for " +
                                           argument.kind_name());

@@ -1,4 +1,4 @@
-// satellite-004/strings/test_string_methods.cpp -- calls the satellite_string
+// satellite-004/strings/test_string_methods.cpp -- calls the satellite_string32
 // method libraries through the real number index, one case per input line, and
 // prints each answer the way 003's `display` prints it, so check_string_methods.py
 // can compare 004 with 003 line for line. Not part of the interpreter.
@@ -21,15 +21,15 @@
 
 using namespace satellite004;
 
-static satellite_string from_utf8(const std::string &text)
+static satellite_string32 from_utf8(const std::string &text)
 {
-    satellite_string s;
+    satellite_string32 s;
     size_t bad = 0;
     utf8_to_char32(text, s.text, bad);
     return s;
 }
 
-static std::string to_utf8(const satellite_string &s)
+static std::string to_utf8(const satellite_string32 &s)
 {
     std::string out;
     size_t bad = 0;
@@ -65,7 +65,7 @@ int main()
             std::cout << "NO SUCH METHOD " << field[0] << "\n";
             continue;
         }
-        satellite_string self = from_utf8(field[1]);
+        satellite_string32 self = from_utf8(field[1]);
         StringArguments arguments;
         const std::vector<std::string> texts = split(field[2], '|');  // first part is the count
         const long count = std::atol(texts[0].c_str());

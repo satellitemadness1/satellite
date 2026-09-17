@@ -217,11 +217,11 @@ signed long long int run_while(const BytecodeRegistry &registry,
         const Value holds = evaluate_expression(row, here, context);
         if (context.code != success)
             return report_error("satl(run): in satellite.statement.while, " + context.why, context.code);
-        if (holds.kind != Value::Kind::flag)
+        if (!holds.is_bool())
             return report_error(std::string("satl(run): satellite.statement.while was given ") +
                                     holds.kind_name() + " and needs a true or false",
                                 types_do_not_meet);
-        if (!holds.flag)
+        if (!*holds.as_bool())
             return success;
 
         // THE BODY SHARES THIS BODY'S VARIABLES. A while is not a capsule: the
@@ -283,7 +283,7 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // THE DECLARED TYPE OUTLIVES THE LINE THAT WROTE IT. `n = "text"` on a
     // number is refused rather than quietly making n a string (value.hpp).
     const Code holds = declared != 0 ? declared : found->second.declared;
-    if (holds == word::code_of(1, 6, 4) && value.kind != Value::Kind::number) {
+    if (holds == word::code_of(1, 6, 4) && !value.is_number()) {
         at = past_the_statement(row, at);
         return report_error(std::string("satl(run): ") + name + " was declared satellite.variable.number and was given " +
                                 value.kind_name(),

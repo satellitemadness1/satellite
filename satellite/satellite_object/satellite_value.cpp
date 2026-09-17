@@ -1,4 +1,4 @@
-// satellite/satellite_object/satellite_object.cpp -- the methods the author
+// satellite/satellite_object/satellite_value.cpp -- the methods the author
 // asked to be bolted onto the two classes. The header says why it is a god class
 // on purpose; this file is the part that would be worth objecting to if it did
 // any work, and it does none.
@@ -15,7 +15,7 @@
 // directly above a call to `number_and_string_add`, so a reader never has to
 // guess which file a pair went to.
 
-#include "satellite_object.hpp"
+#include "satellite_spacesuit.hpp"
 
 #include "bool_and_bool_compare.hpp"
 #include "bool_to_string.hpp"
@@ -43,9 +43,9 @@ using NumberPair = signed long long int (*)(const satellite_number &, const sate
 
 // The six arithmetic methods differ only by which pair function they call and
 // which sign they name in a refusal, so the shape is written once.
-signed long long int run_number_pair(const satelliteObject &left, const satelliteObject &right,
+signed long long int run_number_pair(const satelliteValue &left, const satelliteValue &right,
                                      NumberPair operation, const char *sign,
-                                     satelliteObject &out, std::string &why)
+                                     satelliteValue &out, std::string &why)
 {
     satellite_number answer;
     const signed long long int code = operation(*left.as_number(), *right.as_number(), answer);
@@ -56,13 +56,13 @@ signed long long int run_number_pair(const satelliteObject &left, const satellit
                                         : "not a whole number, and there is no satellite_float yet");
         return code;
     }
-    out = satelliteObject::of_number(std::move(answer));
+    out = satelliteValue::of_number(std::move(answer));
     return success;
 }
 
 // A REFUSAL NAMES BOTH KINDS, because that is what a person fixes. DESIGN 1.1:
 // nothing is converted, so a pair with no scenario stops rather than guessing.
-signed long long int refuse_pair(const satelliteObject &left, const satelliteObject &right,
+signed long long int refuse_pair(const satelliteValue &left, const satelliteValue &right,
                                  const char *sign, std::string &why)
 {
     why = std::string(sign) + " was given " + left.kind_name() + " and " + right.kind_name() +
@@ -73,7 +73,7 @@ signed long long int refuse_pair(const satelliteObject &left, const satelliteObj
 // The pairs that refuse by converting nothing say so in the conversion's own
 // words, since "no scenario" would be untrue -- the scenario exists and is a
 // conversion the program has to write out loud.
-signed long long int refuse_conversion(const satelliteObject &left, const satelliteObject &right,
+signed long long int refuse_conversion(const satelliteValue &left, const satelliteValue &right,
                                        std::string &why)
 {
     why = std::string("+ was given ") + left.kind_name() + " and " + right.kind_name() +
@@ -84,7 +84,51 @@ signed long long int refuse_conversion(const satelliteObject &left, const satell
 
 } // namespace
 
-const char *satelliteObject::kind_name() const
+// A LITERAL ARRIVES AS UTF-8 BYTES and becomes a satellite_string here -- the
+// one door between the lexer's counted payload and the language's own string.
+// Strict: a bad sequence answers string_error (4) and `out` is untouched, so a
+// program never holds a string standing for bytes that could not be read.
+signed long long int satelliteValue::of_utf8(const std::string &utf8, satelliteValue &out,
+                                             std::size_t &bad_offset)
+{
+    satellite_string held;
+    const signed long long int code = satellite_string::from_utf8(utf8, held, bad_offset);
+    if (code != success)
+        return code;
+    out = satelliteValue::of_string(std::move(held));
+    return success;
+}
+
+// THE WAY BACK OUT, for the one place a value leaves as bytes: a numbered
+// library's `text` scenario takes a std::string (number_row.hpp).
+std::string satelliteValue::text_utf8() const
+{
+    const satellite_string *held = as_string();
+    return held == nullptr ? std::string() : held->to_utf8();
+}
+
+// Arm by arm; the header says why this is not std::variant's own. Two values of
+// different kinds are never the same value -- nothing is converted to find out
+// (DESIGN 1.1), so `4` and `"4"` are simply not equal.
+bool operator==(const satelliteValue &l, const satelliteValue &r)
+{
+    if (l.kind() != r.kind())
+        return false;
+    switch (l.kind()) {
+    case satelliteValue::nothing: return true;
+    case satelliteValue::boolean: return *l.as_bool() == *r.as_bool();
+    case satelliteValue::number: return number_and_number_compare(*l.as_number(), *r.as_number()) == 0;
+    case satelliteValue::string: return string_and_string_compare(*l.as_string(), *r.as_string()) == 0;
+    case satelliteValue::bytecode: return *l.as_bytecode() == *r.as_bytecode();
+    case satelliteValue::capsule: return *l.as_capsule() == *r.as_capsule();
+    // IDENTITY, NOT CONTENTS: the same object, or not the same object.
+    case satelliteValue::object: return *l.as_object() == *r.as_object();
+    case satelliteValue::how_many_kinds: break;
+    }
+    return false;
+}
+
+const char *satelliteValue::kind_name() const
 {
     switch (kind()) {
     case boolean: return "a bool";
@@ -92,6 +136,11 @@ const char *satelliteObject::kind_name() const
     case string: return "a string";
     case bytecode: return "bytecode";
     case capsule: return "a capsule";
+    // AN OBJECT NAMES ITS SPACESUIT, because "an object" alone tells a person
+    // nothing they can act on and the class is what they wrote.
+    case object: return as_object() != nullptr && *as_object() != nullptr
+                            ? (*as_object())->class_name().c_str()
+                            : "an object";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -102,7 +151,7 @@ const char *satelliteObject::kind_name() const
 // `+` -- the one operator with more than one pair, which is 003 DESIGN 6.6's
 // ruling that joining and adding are the same shape.
 // ---------------------------------------------------------------------------
-signed long long int satelliteObject::add(const satelliteObject &other, satelliteObject &out,
+signed long long int satelliteValue::add(const satelliteValue &other, satelliteValue &out,
                                           std::string &why) const
 {
     switch (pair_of(kind(), other.kind())) {
@@ -113,7 +162,7 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         satellite_string answer;
         const signed long long int code = string_and_string_add(*as_string(), *other.as_string(), answer);
         if (code != success) { why = "the two strings could not be joined"; return code; }
-        out = satelliteObject::of_string(std::move(answer));
+        out = satelliteValue::of_string(std::move(answer));
         return success;
     }
 
@@ -124,7 +173,7 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         const signed long long int code = number_and_string_add(*as_number(), *other.as_string(), answer);
         if (code != success)
             return refuse_conversion(*this, other, why);
-        out = satelliteObject::of_string(std::move(answer));
+        out = satelliteValue::of_string(std::move(answer));
         return success;
     }
     case pair_of(string, number): {
@@ -132,7 +181,7 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         const signed long long int code = string_and_number_add(*as_string(), *other.as_number(), answer);
         if (code != success)
             return refuse_conversion(*this, other, why);
-        out = satelliteObject::of_string(std::move(answer));
+        out = satelliteValue::of_string(std::move(answer));
         return success;
     }
 
@@ -141,7 +190,7 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         satellite_bytecode answer;
         const signed long long int code = bytecode_and_bytecode_join(*as_bytecode(), *other.as_bytecode(), answer);
         if (code != success) { why = "the two runs of codes could not be joined"; return code; }
-        out = satelliteObject::of_bytecode(std::move(answer));
+        out = satelliteValue::of_bytecode(std::move(answer));
         return success;
     }
 
@@ -154,7 +203,7 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
 // The five that are numbers only -- today. Each keeps its own switch rather than
 // sharing one, so that adding a float pair to `*` does not touch `-`.
 // ---------------------------------------------------------------------------
-signed long long int satelliteObject::subtract(const satelliteObject &other, satelliteObject &out,
+signed long long int satelliteValue::subtract(const satelliteValue &other, satelliteValue &out,
                                                std::string &why) const
 {
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -162,7 +211,7 @@ signed long long int satelliteObject::subtract(const satelliteObject &other, sat
     return refuse_pair(*this, other, "-", why);
 }
 
-signed long long int satelliteObject::multiply(const satelliteObject &other, satelliteObject &out,
+signed long long int satelliteValue::multiply(const satelliteValue &other, satelliteValue &out,
                                                std::string &why) const
 {
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -170,7 +219,7 @@ signed long long int satelliteObject::multiply(const satelliteObject &other, sat
     return refuse_pair(*this, other, "*", why);
 }
 
-signed long long int satelliteObject::divide(const satelliteObject &other, satelliteObject &out,
+signed long long int satelliteValue::divide(const satelliteValue &other, satelliteValue &out,
                                              std::string &why) const
 {
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -178,7 +227,7 @@ signed long long int satelliteObject::divide(const satelliteObject &other, satel
     return refuse_pair(*this, other, "/", why);
 }
 
-signed long long int satelliteObject::modulus(const satelliteObject &other, satelliteObject &out,
+signed long long int satelliteValue::modulus(const satelliteValue &other, satelliteValue &out,
                                               std::string &why) const
 {
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -186,7 +235,7 @@ signed long long int satelliteObject::modulus(const satelliteObject &other, sate
     return refuse_pair(*this, other, "%", why);
 }
 
-signed long long int satelliteObject::power(const satelliteObject &other, satelliteObject &out,
+signed long long int satelliteValue::power(const satelliteValue &other, satelliteValue &out,
                                             std::string &why) const
 {
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -197,7 +246,7 @@ signed long long int satelliteObject::power(const satelliteObject &other, satell
 // ---------------------------------------------------------------------------
 // One ordering, six spellings read it (expression.cpp decides which may ask).
 // ---------------------------------------------------------------------------
-signed long long int satelliteObject::compare(const satelliteObject &other, int &order,
+signed long long int satelliteValue::compare(const satelliteValue &other, int &order,
                                               std::string &why) const
 {
     switch (pair_of(kind(), other.kind())) {
@@ -218,7 +267,7 @@ signed long long int satelliteObject::compare(const satelliteObject &other, int 
 // ---------------------------------------------------------------------------
 // THE CONVERSIONS. Explicit, never automatic, each through its own file.
 // ---------------------------------------------------------------------------
-signed long long int satelliteObject::to_string(satellite_string &out, std::string &why) const
+signed long long int satelliteValue::to_string(satellite_string &out, std::string &why) const
 {
     switch (kind()) {
     case boolean: return bool_to_string(*as_bool(), out);
@@ -239,13 +288,22 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
     case bytecode:
         why = "bytecode has no text yet -- the converters (PLAN M1.5-M3.6) decide what it reads as";
         return not_built_yet;
+    // AN OBJECT PRINTS ITSELF THROUGH A CAPSULE ITS SPACESUIT DECLARES, and that
+    // capsule is the user's to write. Inventing a spelling here would give every
+    // class one the author never chose.
+    case object:
+        why = "an object of " + (as_object() != nullptr && *as_object() != nullptr
+                                     ? (*as_object())->class_name()
+                                     : std::string("a spacesuit")) +
+              " has no to_string capsule, and satellite does not invent one";
+        return not_built_yet;
     case how_many_kinds: break;
     }
     why = "there is nothing here to make a string of";
     return types_do_not_meet;
 }
 
-signed long long int satelliteObject::to_number(satellite_number &out, std::string &why) const
+signed long long int satelliteValue::to_number(satellite_number &out, std::string &why) const
 {
     switch (kind()) {
     case number: out = *as_number(); return success;
@@ -261,7 +319,7 @@ signed long long int satelliteObject::to_number(satellite_number &out, std::stri
     return types_do_not_meet;
 }
 
-signed long long int satelliteObject::to_binary(satellite_string &out, std::string &why) const
+signed long long int satelliteValue::to_binary(satellite_string &out, std::string &why) const
 {
     if (is_number())
         return number_to_binary(*as_number(), out);
@@ -269,7 +327,7 @@ signed long long int satelliteObject::to_binary(satellite_string &out, std::stri
     return types_do_not_meet;
 }
 
-signed long long int satelliteObject::to_hexadecimal(satellite_string &out, std::string &why) const
+signed long long int satelliteValue::to_hexadecimal(satellite_string &out, std::string &why) const
 {
     if (is_number())
         return number_to_hexadecimal(*as_number(), out);

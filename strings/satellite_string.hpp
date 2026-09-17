@@ -9,7 +9,7 @@
 //
 // THE THREE FORMS AND WHERE EACH LIVES:
 //   std::string     UTF-8 bytes -- what the .satl source file and the terminal hold
-//   std::u32string  char32_t    -- what a satellite_string IS while running
+//   std::u32string  char32_t    -- what a satellite_string32 IS while running
 //   bits text       "0100..."   -- what a .sati file holds, 32 '0'/'1' per character
 //
 // EVERY CONVERSION IS STRICT and answers a machine code: success, or

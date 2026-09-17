@@ -1,4 +1,4 @@
-// satellite-004/strings/string_cases.cpp -- the test harness for satellite_string.
+// satellite-004/strings/string_cases.cpp -- the test harness for satellite_string32.
 // check_strings.py feeds it one case per line and compares every answer with
 // Python's own strict UTF-8 codec. Not part of the interpreter.
 //

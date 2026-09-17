@@ -15,7 +15,7 @@ namespace {
 
 using namespace satellite004;
 
-signed long long int method(satellite_string &self, const StringArguments &arguments, StringAnswer &answer)
+signed long long int method(satellite_string32 &self, const StringArguments &arguments, StringAnswer &answer)
 {
     if (arguments.strings.size() < 1)
         return error;
@@ -24,7 +24,7 @@ signed long long int method(satellite_string &self, const StringArguments &argum
     answer.list.clear();
     if (separator.empty()) {
         for (char32_t c : self.text)
-            answer.list.push_back(satellite_string{std::u32string(1, c)});
+            answer.list.push_back(satellite_string32{std::u32string(1, c)});
         return success;
     }
     size_t at = 0;
@@ -32,10 +32,10 @@ signed long long int method(satellite_string &self, const StringArguments &argum
         const size_t next = self.text.find(separator, at);
         if (next == std::u32string::npos)
             break;
-        answer.list.push_back(satellite_string{self.text.substr(at, next - at)});
+        answer.list.push_back(satellite_string32{self.text.substr(at, next - at)});
         at = next + separator.size();
     }
-    answer.list.push_back(satellite_string{self.text.substr(at)});
+    answer.list.push_back(satellite_string32{self.text.substr(at)});
     return success;
 }
 

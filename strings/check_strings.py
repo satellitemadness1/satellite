@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# satellite-004/strings/check_strings.py -- proves satellite_string against Python.
+# satellite-004/strings/check_strings.py -- proves satellite_string32 against Python.
 #
-# Every UTF-8 case is decoded twice: by satellite_string (through build/string_cases)
+# Every UTF-8 case is decoded twice: by satellite_string32 (through build/string_cases)
 # and by Python's strict codec. They must agree on valid/invalid, on every code
 # point, and on the byte offset where an invalid sequence starts. Cases: every
 # edge of the Unicode table, several scripts, known-bad sequences, and 30,000

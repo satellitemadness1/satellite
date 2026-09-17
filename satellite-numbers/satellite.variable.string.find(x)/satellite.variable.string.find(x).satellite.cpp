@@ -15,7 +15,7 @@ namespace {
 
 using namespace satellite004;
 
-signed long long int method(satellite_string &self, const StringArguments &arguments, StringAnswer &answer)
+signed long long int method(satellite_string32 &self, const StringArguments &arguments, StringAnswer &answer)
 {
     if (arguments.strings.size() < 1)
         return error;
