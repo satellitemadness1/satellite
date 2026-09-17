@@ -56,6 +56,25 @@ the author's pseudocode (D0.6.4). What the port chose, each one line to reverse:
 - the prompt's first draw clears the row it starts on, so the session ends its own
   output with a newline before a prompt.
 
+**AND THE SESSION IS BUILT (`29319d8`):** `satl --repl` runs a typed line out of
+the bytecode -- tokenised by the lexer a `.satl` uses, judged by the checker a
+capsule's body uses, walked by `run_statements`. `satellite.directory.change(d)`,
+`list()` and `list(d)` are built, and a bare listing line draws the table.
+PROGRESS.md's row says what it is and how it is checked. What M0.6 still owes:
+`list()` inside a PROGRAM answers `not_built_yet` until there is a list type
+(M14); the listing's order is the bytes' where 003's was its character table's
+(M21, and a library cannot reach the language's string yet); the 100,000-entry
+race has not been run; and M0.7 is the same prompt inside satl-term.
+
+What the session chose, each one line to reverse:
+- from a pipe the status is the first failing line's code, and at a terminal
+  `exit` is 0 -- a person has already seen every refusal (D0.6.2's other half);
+- the table's `type` column is what the system knows (dir, file, link, fifo, sock,
+  dev) and never reads a file to guess (D0.6.7 answered: 003 read up to 64 KB of
+  every file to say "text");
+- `current()` `1 18 2` and `exists(d)` `1 18 3` are NOT built (D0.6.6): the author
+  named `change` and `list`.
+
 ## M1, M2, M3 — the `.satc`, the `.satb`, the `.sati`
 
 **PROGRESS §6.5 RECOMMENDS COLLAPSING ALL THREE AND IT IS NOT YET APPLIED TO
@@ -536,3 +555,72 @@ hops through functions that already existed and are already checked, and no
 
 The only genuine combination work left is **M13's position**, and that is one more
 field on the state the loop already carries.
+
+---
+
+# Part 3 — asked for on 2026-09-17, after the prompt
+
+## M34 — the names a session has used, `satellite.access` and `satellite.help`
+
+(the author, 2026-09-17) *"there is satellite.access(object_name) so before we do
+this, we need to keep a list of the names of every object that we use and their
+type, this is used by satellite.help(object_name) to bring up the methods on that
+type, this logic we are keeping from 003. the satellite.help(object_name) code
+doesn't necessarily need to be fast, but it needs to be coded in a way that we can
+work on it, so anytime we add a type, then that type's methods need to be
+registered within some directory structure"*
+
+**The register comes first, and it is one list: every object name in use and the
+type it is.** `satellite.access(object_name)` reaches an object by its name;
+`satellite.help(object_name)` reads the same register, finds the object's TYPE and
+shows that type's methods. 003's logic is kept.
+
+**A type's methods are registered where the type is added,** so adding a type is
+adding its methods -- never a second list somewhere else to keep in step. Help may
+be slow; it must be easy to work on.
+
+**What 004 has already, and what is missing.** `words/words.tsv` numbers every
+method of every type, and `satellite-numbers/<the word>/` is the directory
+structure the author asks for -- one folder a method, named as the word is
+written. What does not exist is the run-time register: the walker's
+`VariableTable` is made per body and holds a name's value and the word that
+declared it (`value.hpp`), and nothing outlives the line or the capsule. The
+milestone is that register, `access`, and `help` reading it.
+
+**Decisions:** whether the register is per session, per capsule or per program;
+whether `help` with no argument lists the types; what `access` answers for a name
+nothing declared. `satellite.help` is `1 19`, `satellite.access` is numbered in
+words.tsv, and the prompt refuses `help` by name until this lands (M0.6).
+
+## M35 — a spacesuit takes a supertype, and `satellite.protected` takes arguments
+
+(the author, 2026-09-17) *"when a user defines a type, they should almost be able
+to do this"*:
+
+```
+satellite.spacesuit my_class_name(satellite.variable.string)
+{
+    satellite.protected
+    {
+        satellite.supertype.parameter = some_object
+```
+
+*"where the word parameter would be something like "value" or "option" so then
+satellite.protected(args) would take arguments where it didn't used to take
+arguments"*
+
+**Three things, and the third is the one that changes a grammar that exists.**
+A spacesuit names its SUPERTYPE in its brackets (`satellite.variable.string`
+above); inside `satellite.protected` a line gives the supertype's own parameter a
+value (`satellite.supertype.parameter = some_object`, where `parameter` is a name
+like `value` or `option`); and `satellite.protected` GAINS ARGUMENTS --
+`satellite.protected(args)` -- where today it takes none.
+
+**M8 is where the machine for this already is** (MILESTONES M8: "the machine is
+built, the grammar is not"): `satelliteSpacesuit` carries a user-defined type's
+fields today, and the grammar that declares one is what is owed. This milestone is
+that grammar plus the supertype, and it lands after M6's parser work.
+
+**Decisions:** what `satellite.protected(args)` takes, exactly; whether a
+supertype must be a built type or may be another spacesuit; what
+`satellite.supertype.<name>` is when the supertype has no such parameter.
