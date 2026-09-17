@@ -10,7 +10,7 @@
 # The three harnesses check.sh runs are built too, so ./check.sh works after a plain
 # make or an install. They do not depend on the build stamp and raise no number.
 ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases \
-              $(BUILD)/count_cases
+              $(BUILD)/count_cases $(BUILD)/prompt_cases $(BUILD)/prompt_reader
 ifeq ($(HAVE_WINDOW),yes)
   ALL_TARGETS += $(BUILD)/satl-term
 endif

@@ -55,6 +55,21 @@ $(BUILD)/count_cases: $(COUNT_CASES_SOURCES) $(filter-out $(SATELLITE)/config/sa
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) -fsanitize=undefined -fno-sanitize-recover=undefined $(LDFLAGS) \
 	    $(COUNT_CASES_SOURCES) -o $@
 
+# satellite/prompt, M0.6's terminal layer, alone: its cases with no terminal, and a
+# reader with no language behind it, which check_prompt.py types at through a real
+# terminal. check.sh runs both. They join satl when the session reads its lines.
+PROMPT_SOURCES = $(PROMPT)/raw_mode.cpp $(PROMPT)/keys.cpp $(PROMPT)/editor.cpp $(PROMPT)/history.cpp \
+                 $(PROMPT)/render.cpp $(PROMPT)/line_reader.cpp
+PROMPT_HEADERS = $(PROMPT_SOURCES:.cpp=.hpp) $(MACHINE)/shown.hpp
+
+$(BUILD)/prompt_cases: $(PROMPT)/prompt_cases.cpp $(PROMPT_SOURCES) $(PROMPT_HEADERS)
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROMPT)/prompt_cases.cpp $(PROMPT_SOURCES) -o $@
+
+$(BUILD)/prompt_reader: $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) $(PROMPT_HEADERS)
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) -o $@
+
 # The build fingerprint's inputs, one a line: check.sh compares them with the
 # headers the compiler says satl and satl-term are made from.
 build-inputs:

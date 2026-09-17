@@ -212,6 +212,20 @@ else
     build/count_cases > build/count_cases.out 2>&1; code=$?
     expect "every count put_count writes, count_at reads: $(tail -1 build/count_cases.out)" 0 $code
 fi
+# M0.6's terminal layer alone (satellite/prompt): keys, the editor, cells and the piped
+# reader with no terminal; then the reader typed at through a real pty (pty.fork()) and
+# checked on the screen a person would see. Stale harnesses are refused as above.
+for harness in prompt_cases prompt_reader; do
+    if [ ! -x build/$harness ]; then expect "build/$harness is built (make build/$harness)" built missing
+    elif ! make -sq build/$harness 2>/dev/null; then expect "build/$harness is as new as its sources (make build/$harness)" current stale
+    elif [ $harness = prompt_cases ]; then
+        timeout 120 build/prompt_cases > build/prompt_cases.out 2>&1; code=$?
+        expect "the prompt with no terminal: $(grep -c '^ok' build/prompt_cases.out) cases (build/prompt_cases.out)" 0 $code
+    else
+        timeout 600 python3 -u satellite/prompt/check_prompt.py > build/check_prompt.out 2>&1; code=$?
+        expect "the prompt at a real terminal: $(grep -c '^ok' build/check_prompt.out) checks on the screen (build/check_prompt.out)" 0 $code
+    fi
+done
 
 # A PAYLOAD'S CODES ARE NEVER READ AS TOKENS. A character's own number can be any 16 bits,
 # so a string's last code can equal a word's or a token's (the payload sweep, 2026-09-17).
