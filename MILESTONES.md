@@ -134,9 +134,13 @@ numbered file. The measurements are already in: a thread costs 34.3 KB, math
 stops speeding up at 24 threads, one recall is 12,486 ns against 28 ns a command,
 so threads take BATCHES and never single commands.
 
-**Also here: adopt TBB, or not.** Measured 9× faster than our own pool on a small
-loop repeated 10,000 times, equal on one huge loop. Recommended, not decided, and
-DESIGN §13 is where the answer goes.
+**TBB IS NOT ADOPTED** (the author, 2026-09-16): *"we are not adopting TBB for the
+runners, they are just one line per thread at 1024 threads.... we are doing
+something different later after the 1024 threads are done, we keep the 1024
+threads warm for now... they just... don't do anything just yet"*. The measurement
+(9× our own pool on a small loop repeated 10,000 times, equal on one huge loop)
+stays in DESIGN §13 as a measurement, not a recommendation. The 1024 warm threads
+convert the program and then wait; what runs on them next is the author's.
 
 ---
 
@@ -452,9 +456,9 @@ so the idea is not lost, not because it is owed.
 | ~~**D9.3**~~ | ~~a class declared twice~~ **ANSWERED 2026-09-16:** *"a class declared twice is an ERROR: name collision"* | — |
 | ~~**D11.1**~~ | ~~infinity's arithmetic~~ **ANSWERED 2026-09-16:** *"we answer what we can, and give an error on what we can't"* -- an infinity carries a `satellite_float` multiplier (`infinity + infinity` is `infinityx2`, `infinity - 50%` is `infinityx0.5`), its digits set by `arguments.infinity`, default 4096, displayed rounded to `arguments.infinity_display` digits, default 32. See M11 | — |
 | **D12.1** | the parallel-group syntax in the numbered file | M12 |
-| — | adopt TBB for the runners? | M12 |
-| — | the leading-slash rule: filesystem root, or program root? | M8 |
-| — | a number argument where a string is expected | M16 |
+| — | ~~adopt TBB for the runners?~~ **ANSWERED 2026-09-16: NO.** The 1024 threads convert one line each and then stay warm, doing nothing yet; *"we are doing something different later"*. See M12 | — |
+| — | ~~the leading-slash rule: filesystem root, or program root?~~ **ANSWERED 2026-09-16:** *"program root first, then filesystem root when it's not found, and if it's not found in either, we report file not found, and we keep a cwd for files that are included... so the files directory becomes the cwd for each file"*. (The author wrote it as D12.1; D12.1 is the parallel-group syntax and is still open.) | — |
+| — | ~~a number argument where a string is expected~~ **ANSWERED 2026-09-16:** *"just convert the number to the string and run that piece, obviously the programmer meant convert to string, but record the warning in satellite.log"*. The warning needs `satellite.log`, which is M5 | M16, M5 |
 
 **Decided and NOT owed, so nobody reopens it:** the walker's ~27,000 recursion
 depth. The author accepted it on 2026-09-16 — it is an order of magnitude past

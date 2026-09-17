@@ -113,7 +113,13 @@ session's scratchpad so they survive it.
   `arguments.infinity` digits (default 4096) and displayed rounded to
   `arguments.infinity_display` digits (default 32); both configurable (MILESTONES M11).
 - **D12.1** the parallel-group syntax in the numbered file.
-- **Adopt TBB for the runners?** and record it in DESIGN §13.
+- ~~**Adopt TBB for the runners?**~~ **ANSWERED 2026-09-16: NO.** The 1024 threads convert
+  one line each and stay warm, doing nothing yet; *"we are doing something different later"*.
+- ~~**The leading-slash rule**~~ **ANSWERED 2026-09-16:** program root first, then the
+  filesystem root, then file not found; every included file's cwd is its own directory.
+- ~~**A number where a string is expected**~~ **ANSWERED 2026-09-16:** converted to the
+  string and run, *"obviously the programmer meant convert to string"*, with a warning
+  in satellite.log (M5).
 - One more thing to remove from 004's words that the author could not remember.
 
 ## 5. Next
@@ -289,7 +295,8 @@ about two milestones. **Keep SATC.md §2's header**: a word's code is its row in
 `words.tsv`, so the word-list digest matters *more* now, not less.
 
 **Owed, smallest first:**
-1. **The leading-slash rule is a FALLBACK, not a rule.** `find_file()` tries the
+1. **ANSWERED 2026-09-16 (§4): program root, then filesystem root, then file not found.**
+   What this item said before the ruling: **the leading-slash rule is a FALLBACK, not a rule.** `find_file()` tries the
    filesystem root, then the main file's directory, because the author wrote
    `include("/test_dir/final_test_file.satl")` and put the file under
    `test_programs/test_dir/`. Either `/` is the filesystem root (003's rule) or it is the
