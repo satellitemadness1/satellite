@@ -1,0 +1,10 @@
+// "😀" holds no "a", though its high half is 1, the code of "a": find refuses (15).
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "😀"
+    satellite.console.display(s.find("a"))
+    satellite.return(satellite)
+}

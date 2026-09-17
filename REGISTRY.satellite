@@ -17,9 +17,10 @@ are kept back, an 8-bit ASCII string widens into this by zero-extending each
 code, and nothing is renumbered.
 
 THE CHARACTERS are codes 0-127, and a string is the same at every width: an
-8-BIT STRING HOLDS ASCII ONLY (the author: "8-bit will be ascii only then"), a
-16-bit string holds those and every character up to U+FFFF, and a 32-bit string
-holds everything -- each character above 127 its own Unicode number.
+8-BIT STRING HOLDS ASCII ONLY (the author: "8-bit will be ascii only then"), and a
+16-bit string holds everything -- each character above 127 its own Unicode number,
+except a wide one: above U+FFFF, or U+9C40 itself, it is 40000 and then its number
+in two codes (D3.1, the author 2026-09-17: "its the 16-bit value for wide").
 
 THE TOKENS are the stored program's alphabet, never a character and never inside
 a string's value. A string literal's characters travel in the program behind
@@ -304,7 +305,7 @@ bits              name                         what it is
 0000100100000110  option_token                 [COUNTED] 0#down -- a folded option; count, then that many character codes
 0000100100000111  string_index_token           [COUNTED] the string at this index in the .sati, once the program carries no text
 0000100100001000  wide_run_token               [COUNTED] count, then that many characters as their own 16-bit Unicode number
-0000100100001001  wide_run_32_token            [COUNTED] count, then that many characters as 32 bits each (emoji, rare CJK)
+0000100100001001  wide_run_32_token            [COUNTED] RETIRED by D3.1 (2026-09-16): nothing writes it; a character above U+FFFF is wide_token and two codes
 0000100100001010  long_count_token             the count that follows continues in the next code: no literal has a ceiling
 0000100100001011  percentage_token             [COUNTED] 50% 12.5% 1000000000000% -- count, then the digits before the % (the author, 2026-09-17)
 0000100100001100  free                         to 0000100111111111, free for this family
@@ -331,7 +332,7 @@ bits              name                         what it is
 0001111111111111  the last word                to here: 4096 codes, words ONLY, nothing else is ever put here
 
 -- FREE  (0010000000000000 up)
-1001110001000000  wide_token                   RESERVED (the author, 2026-09-16): the next TWO codes are one 32-bit integer
+1001110001000000  wide_token                   the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U+FFFF inside a payload (D3.1)
 1001110001000001  free                         to 1001110011111111, free beside the wide token
 
 0010000000000000  free                         to 1111111011111111, unclaimed

@@ -48,8 +48,7 @@ static void carry(const std::string &text, std::vector<std::bitset<16>> &row)
             row.push_back(std::bitset<16>(1));
             row.push_back(std::bitset<16>(static_cast<std::uint16_t>(v)));
         } else {
-            row.push_back(std::bitset<16>(token::wide_run_32_token));
-            row.push_back(std::bitset<16>(1));
+            row.push_back(std::bitset<16>(token::wide_token));   // D3.1: 40000, then one 32-bit integer in two codes
             row.push_back(std::bitset<16>(static_cast<std::uint16_t>(v >> 16)));
             row.push_back(std::bitset<16>(static_cast<std::uint16_t>(v & 0xFFFFu)));
         }

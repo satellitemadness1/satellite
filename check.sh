@@ -212,6 +212,26 @@ else
     build/count_cases > build/count_cases.out 2>&1; code=$?
     expect "every count put_count writes, count_at reads: $(tail -1 build/count_cases.out)" 0 $code
 fi
+# A character above U+FFFF is 40000 and two codes, in a string as in the bytecode (the author,
+# 2026-09-17: "40000 is not a smile... its the 16-bit value for wide"). Positions count characters.
+wanted_wide=$(python3 -c "
+s = 'a\U0001F600b\u9C40c\U00019C40d'
+for line in (s, s.find('b'), s.find('\u9C40'), s.find('\U00019C40'), s.find('d'), s + '\U0001F680', 'true', 'true',
+             '\U0001F600a'.find('a'), '\U0001F600ba'.find('a')):
+    print(line)")
+expect "wide characters in a string: held, found by character, joined, compared" "$wanted_wide" \
+       "$("$interpreter" tests/wide_characters.satl 2>/dev/null)"
+# In the bytecode too: the program's .sate holds U+1F600 as 40000, 0x0001, 0xF600, and no
+# code is the retired wide_run_32_token (the wide-strings review, 2026-09-17).
+expect "a wide character in the bytecode is 40000 and two codes" "True False" \
+       "$(python3 -c "
+codes = open('tests/wide_characters.sate').read().split()
+print('1001110001000000 0000000000000001 1111011000000000' in ' '.join(codes), '0000100100001001' in codes)")"
+"$interpreter" tests/find_wide_high_half.satl > /dev/null 2>&1; expect "find never matches a wide character's high half" 15 $?
+"$interpreter" tests/find_wide_low_half.satl > /dev/null 2>&1; expect "find never starts at a wide character's low half" 15 $?
+# D3.1 retired wide_run_32_token: nothing writes it and nothing reads it, so nothing names it.
+expect "nothing names the retired wide_run_32_token" "" \
+       "$(grep -rln 'token::wide_run_32_token' satellite experiments --include='*.cpp' --include='*.hpp')"
 
 # THE SIX FAST PATHS, REACHED THROUGH THEIR TOKENS. The arithmetic itself is
 # proven against Python over 482,465 cases (check_numbers.py); what this proves

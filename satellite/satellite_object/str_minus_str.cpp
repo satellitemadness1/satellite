@@ -29,22 +29,27 @@ signed long long int str_minus_str(const satelliteObject &left, const satelliteO
     if (l == nullptr || r == nullptr)
         return types_do_not_meet;
 
-    const std::size_t taken = r->size();
+    const std::size_t taken = r->units();
     satellite_string answer;
     if (taken == 0) {
         out = satelliteObject::of_string(*l);
         return success;
     }
 
-    for (std::size_t at = 0; at < l->size(); ) {
-        bool matches = at + taken <= l->size();
-        for (std::size_t k = 0; matches && k < taken; ++k)
-            matches = l->code_at_unchecked(at + k) == r->code_at_unchecked(k);
-        if (matches) { at += taken; continue; }      // skip it: this is the removal
-        const signed long long int held = answer.append_code(l->code_at_unchecked(at));
+    // Character by character, units compared from each character's start -- the
+    // same walk and the same reason as str_find_str.cpp.
+    const std::size_t units = l->units();
+    for (std::size_t at = 0; at < units; ) {
+        if (at + taken <= units &&
+            std::char_traits<char16_t>::compare(l->unit_data() + at, r->unit_data(), taken) == 0) {
+            at += taken;                              // skip it: this is the removal
+            continue;
+        }
+        std::size_t width = 0;
+        const signed long long int held = answer.append_code(l->code_at_unit(at, width));
         if (held != success)
             return held;
-        ++at;
+        at += width;
     }
     out = satelliteObject::of_string(std::move(answer));
     return success;

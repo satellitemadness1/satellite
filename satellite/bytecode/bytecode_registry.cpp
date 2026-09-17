@@ -54,6 +54,14 @@ struct Line {
 
     // One character of a payload: ASCII in the author's order, anything above
     // 127 behind wide_run_token so it can never be read as a token.
+    //
+    // ABOVE U+FFFF, 40000 AND THEN ONE 32-BIT INTEGER IN TWO CODES (the author's
+    // D3.1, 2026-09-16: "32-bits only when we use the number 40000 as a 16-bit
+    // code"). wide_token is the only way 32 bits appear in the program; the
+    // wide_run_32_token this used to write is retired and nothing writes it.
+    // A character whose OWN value is 40000 (U+9C40) still travels behind
+    // wide_run_token as any other, so inside a payload the marker cannot be
+    // mistaken for it.
     static void character_codes(std::uint32_t c, std::vector<std::bitset<16>> &out)
     {
         if (c < 128) { out.push_back(std::bitset<16>(character_table::code_of_ascii[c])); return; }
@@ -63,8 +71,7 @@ struct Line {
             out.push_back(std::bitset<16>(static_cast<Code>(c)));
             return;
         }
-        out.push_back(std::bitset<16>(token::wide_run_32_token));
-        out.push_back(std::bitset<16>(1));
+        out.push_back(std::bitset<16>(token::wide_token));
         out.push_back(std::bitset<16>(static_cast<Code>(c >> 16)));
         out.push_back(std::bitset<16>(static_cast<Code>(c & 0xFFFFu)));
     }
@@ -490,6 +497,29 @@ void put_count(std::vector<std::bitset<16>> &row, std::size_t at, unsigned long 
     row.insert(row.begin() + static_cast<long>(at), chunks.begin(), chunks.end());
 }
 
+namespace {
+
+// One Unicode number back to UTF-8, which is what a library's std::string holds.
+void append_utf8(std::string &out, std::uint32_t value)
+{
+    if (value < 0x80) { out += static_cast<char>(value); }
+    else if (value < 0x800) {
+        out += static_cast<char>(0xC0 | (value >> 6));
+        out += static_cast<char>(0x80 | (value & 0x3F));
+    } else if (value < 0x10000) {
+        out += static_cast<char>(0xE0 | (value >> 12));
+        out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (value & 0x3F));
+    } else {
+        out += static_cast<char>(0xF0 | (value >> 18));
+        out += static_cast<char>(0x80 | ((value >> 12) & 0x3F));
+        out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (value & 0x3F));
+    }
+}
+
+} // namespace
+
 std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
 {
     std::size_t i = at;
@@ -500,30 +530,19 @@ std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
     out.reserve(static_cast<std::size_t>(count));
     while (i < stop) {
         const Code code = static_cast<Code>(row[i].to_ulong());
-        if (code == token::wide_run_token || code == token::wide_run_32_token) {
-            const bool wide32 = code == token::wide_run_32_token;
+        // 40000: the two codes after it are one 32-bit character (D3.1).
+        if (code == token::wide_token) {
+            if (i + 2 < stop)
+                append_utf8(out, (static_cast<std::uint32_t>(row[i + 1].to_ulong()) << 16) |
+                                     static_cast<std::uint32_t>(row[i + 2].to_ulong()));
+            i += 3;
+            continue;
+        }
+        if (code == token::wide_run_token) {
             std::size_t k = i;
             const unsigned long long int run = count_at(row, k);
-            for (unsigned long long int w = 0; w < run && k < stop; ++w) {
-                std::uint32_t value = static_cast<std::uint32_t>(row[k].to_ulong());
-                ++k;
-                if (wide32 && k < stop) { value = (value << 16) | static_cast<std::uint32_t>(row[k].to_ulong()); ++k; }
-                // Back to UTF-8, which is what a library's std::string holds.
-                if (value < 0x80) { out += static_cast<char>(value); }
-                else if (value < 0x800) {
-                    out += static_cast<char>(0xC0 | (value >> 6));
-                    out += static_cast<char>(0x80 | (value & 0x3F));
-                } else if (value < 0x10000) {
-                    out += static_cast<char>(0xE0 | (value >> 12));
-                    out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
-                    out += static_cast<char>(0x80 | (value & 0x3F));
-                } else {
-                    out += static_cast<char>(0xF0 | (value >> 18));
-                    out += static_cast<char>(0x80 | ((value >> 12) & 0x3F));
-                    out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
-                    out += static_cast<char>(0x80 | (value & 0x3F));
-                }
-            }
+            for (unsigned long long int w = 0; w < run && k < stop; ++w, ++k)
+                append_utf8(out, static_cast<std::uint32_t>(row[k].to_ulong()));
             i = k;
             continue;
         }

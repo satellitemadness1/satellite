@@ -1,28 +1,27 @@
 // satellite/satellite_variable_string/satellite_string.cpp -- satellite.variable.string:
-// sixteen bits a character, with the author's table (character_table.hpp).
-// satellite_string.hpp is the contract; this file keeps it.
+// sixteen bits a character with the author's table (character_table.hpp), and
+// 40000 for a character that needs more. satellite_string.hpp is the contract;
+// this file keeps it.
 //
-// SIXTEEN BITS AND ONLY SIXTEEN (the author, 2026-09-16): "we are going to get
-// rid of the 32-bit strings, and have 16-bit only". There was a char32_t path
-// that a string moved onto the moment it met a character above U+FFFF, and every
-// function in this file had two halves because of it. It is gone, and so are the
-// two halves: one storage, one loop, and at(n) is one index with nothing to test.
+// TWO PATHS, AND THE FIRST IS THE ONE THAT MATTERS (the author, 2026-09-15): "we
+// just check if it fits into the 16-bit fast path first thing we do". Every
+// function here asks wide_count_ first. At zero -- every ASCII and every 16-bit
+// text -- it does exactly what the 16-bit-only string did: one index, one
+// std::char_traits call, one loop. Only a string holding a wide character walks.
 //
-// A CHARACTER ABOVE U+FFFF IS REFUSED BY NAME, never mangled. from_utf8 answers
-// string_error (4) at the byte its sequence starts on -- the same refusal, at the
-// same offset, that an invalid sequence gets. The decoder already stopped there
-// to widen; now that stop is the answer.
-//
-// DECODING IS ONE PASS. from_utf8 decodes straight into char16_t. The rules are
-// the Unicode standard's Table 3-7, written out per sequence length; every
-// refusal is string_error at the byte where the bad sequence STARTS
-// (check_strings16.py holds it to Python).
+// DECODING IS ONE PASS. from_utf8 decodes straight into char16_t. The decoder
+// stops on a character that must go wide (above U+FFFF, or U+9C40, whose number is
+// the wide value itself); this file writes its three units and hands the decoder
+// back the rest. The rules are the Unicode standard's Table 3-7, written out per
+// sequence length; every refusal is string_error at the byte where the bad
+// sequence STARTS (check_strings16.py holds it to Python).
 //
 // SPEED: conversion_loops.hpp says how, string_race.cpp measures it.
 //
-// MEMORY. A decoded string keeps the capacity it was sized to -- one character a
-// byte -- so text of 2- and 3-byte characters holds up to 2 or 3 times what it
-// uses until it is changed or dropped. That is the price of one pass.
+// MEMORY. A decoded string keeps the capacity it was sized to -- one unit a byte
+// -- so text of 2- and 3-byte characters holds up to 2 or 3 times what it uses
+// until it is changed or dropped. That is the price of one pass. A wide character
+// is 3 units for 3 or 4 bytes, so the size never has to grow while decoding.
 
 #include "satellite_string.hpp"
 
@@ -43,11 +42,34 @@ using conversion_loops::decode;
 using conversion_loops::encode;
 using conversion_loops::stopped;
 
-// What this type can hold: not a surrogate, not above 0x10FFFF, and -- the
-// author's ruling -- not above 0xFFFF either.
+// What this type can hold: not a surrogate and not above 0x10FFFF.
 bool is_the_code_of_a_character(char32_t code)
 {
-    return code <= 0xFFFF && (code < 0xD800 || code > 0xDFFF);
+    return code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF);
+}
+
+// Whether a code is stored as 40000 and two units rather than as itself.
+bool goes_wide(char32_t code)
+{
+    return code > 0xFFFF || code == satellite_string::kWide;
+}
+
+// One Unicode number as UTF-8, for the slower path's wide characters.
+void append_utf8(std::string &out, char32_t value)
+{
+    if (value < 0x800) {
+        out += static_cast<char>(0xC0 | (value >> 6));
+        out += static_cast<char>(0x80 | (value & 0x3F));
+    } else if (value < 0x10000) {
+        out += static_cast<char>(0xE0 | (value >> 12));
+        out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (value & 0x3F));
+    } else {
+        out += static_cast<char>(0xF0 | (value >> 18));
+        out += static_cast<char>(0x80 | ((value >> 12) & 0x3F));
+        out += static_cast<char>(0x80 | ((value >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (value & 0x3F));
+    }
 }
 
 } // namespace
@@ -67,27 +89,79 @@ signed long long int satellite_string::from_utf8(const std::string &utf8, satell
     const std::size_t size = utf8.size();
     const unsigned char *const bytes = reinterpret_cast<const unsigned char *>(utf8.data());
     std::size_t at = 0;
+    std::size_t wide = 0;
     stopped stop = stopped::at_the_end;
     overwrite_string(out.narrow16_, size, [&](char16_t *const first, std::size_t) {
         char16_t *write = first;
-        stop = decode<char16_t, true>(bytes, size, at, write);
+        for (;;) {
+            stop = decode<char16_t, true>(bytes, size, at, write);
+            if (stop != stopped::at_a_wide_character)
+                break;
+            // THE DECODER CHECKED THE SEQUENCE BEFORE IT STOPPED, so it is a whole
+            // valid character of 3 bytes (U+9C40) or 4 (above U+FFFF).
+            const unsigned char b0 = bytes[at];
+            char32_t code;
+            if (b0 >= 0xF0) {
+                code = ((b0 & 0x07u) << 18) | ((bytes[at + 1] & 0x3Fu) << 12) | ((bytes[at + 2] & 0x3Fu) << 6) |
+                       (bytes[at + 3] & 0x3Fu);
+                at += 4;
+            } else {
+                code = ((b0 & 0x0Fu) << 12) | ((bytes[at + 1] & 0x3Fu) << 6) | (bytes[at + 2] & 0x3Fu);
+                at += 3;
+            }
+            write[0] = kWide;
+            write[1] = static_cast<char16_t>(code >> 16);
+            write[2] = static_cast<char16_t>(code & 0xFFFFu);
+            write += 3;
+            ++wide;
+        }
         return static_cast<std::size_t>(write - first);
     });
+    out.wide_count_ = wide;
 
     if (stop == stopped::at_the_end)
         return success;
-
-    // A CHARACTER ABOVE U+FFFF IS NOW A REFUSAL AND NOT A REASON TO WIDEN. The
-    // decoder stops at the same place it always did; what changed is the answer.
-    // `out` holds the characters before it, which is what from_utf8 has always
-    // promised for a refusal.
+    // `out` holds the characters before the bad sequence, wide ones counted.
     bad_offset = at;
     return string_error;
 }
 
 std::string satellite_string::to_utf8() const
 {
-    return encode(narrow16_.data(), narrow16_.size());
+    if (wide_count_ == 0) [[likely]]
+        return encode(narrow16_.data(), narrow16_.size());
+
+    // THE SLOWER PATH: the runs between wide characters go through the fast encoder
+    // whole, and each wide character is written on its own. A 40000 found from the
+    // start of a character is always a marker, so the search is safe.
+    std::string out;
+    const std::size_t count = narrow16_.size();
+    std::size_t k = 0;
+    while (k < count) {
+        const char16_t *const found = std::char_traits<char16_t>::find(narrow16_.data() + k, count - k, kWide);
+        const std::size_t marker = found == nullptr ? count : static_cast<std::size_t>(found - narrow16_.data());
+        if (marker > k)
+            out += encode(narrow16_.data() + k, marker - k);
+        if (marker == count)
+            break;
+        append_utf8(out, (static_cast<char32_t>(narrow16_[marker + 1]) << 16) | narrow16_[marker + 2]);
+        k = marker + 3;
+    }
+    return out;
+}
+
+std::size_t satellite_string::unit_of(std::size_t character) const
+{
+    std::size_t unit = 0;
+    for (std::size_t c = 0; c < character; ++c)
+        unit += narrow16_[unit] == kWide ? 3 : 1;
+    return unit;
+}
+
+char32_t satellite_string::code_at_walking(std::size_t index) const
+{
+    std::size_t width = 0;
+    return code_at_unit(unit_of(index), width);
 }
 
 signed long long int satellite_string::code_at(std::size_t index, char32_t &code) const
@@ -100,20 +174,29 @@ signed long long int satellite_string::code_at(std::size_t index, char32_t &code
 
 void satellite_string::append(const satellite_string &other)
 {
-    narrow16_.append(other.narrow16_);   // safe when `other` is *this
+    const std::size_t wide = other.wide_count_;   // read first: `other` may be *this
+    narrow16_.append(other.narrow16_);            // safe when `other` is *this
+    wide_count_ += wide;
 }
 
 signed long long int satellite_string::append_code(char32_t code)
 {
     if (!is_the_code_of_a_character(code))
         return string_error;
-    narrow16_.push_back(static_cast<char16_t>(code));
+    if (!goes_wide(code)) [[likely]] {
+        narrow16_.push_back(static_cast<char16_t>(code));
+        return success;
+    }
+    const char16_t units[3] = {kWide, static_cast<char16_t>(code >> 16), static_cast<char16_t>(code & 0xFFFFu)};
+    narrow16_.append(units, 3);
+    ++wide_count_;
     return success;
 }
 
 void satellite_string::clear()
 {
     narrow16_.clear();
+    wide_count_ = 0;
 }
 
 signed long long int satellite_string::substring(std::size_t start, std::size_t end, satellite_string &out) const
@@ -122,23 +205,53 @@ signed long long int satellite_string::substring(std::size_t start, std::size_t 
         return positions_backwards;
     if (end > size())
         return position_past_the_end;
-    if (&out == this) {
-        out.narrow16_.resize(end);
-        out.narrow16_.erase(0, start);
-        return success;
+
+    std::size_t first = start, last = end, wide = 0;
+    if (wide_count_ != 0) {
+        // Characters to units, and the wide characters between them counted, in one walk.
+        first = unit_of(start);
+        last = first;
+        for (std::size_t c = start; c < end; ++c) {
+            const bool is_wide = narrow16_[last] == kWide;
+            wide += is_wide;
+            last += is_wide ? 3 : 1;
+        }
     }
-    out.narrow16_.assign(narrow16_, start, end - start);
+    if (&out == this) {
+        out.narrow16_.resize(last);
+        out.narrow16_.erase(0, first);
+    } else {
+        out.narrow16_.assign(narrow16_, first, last - first);
+    }
+    out.wide_count_ = wide;
     return success;
 }
 
 int satellite_string::compare(const satellite_string &left, const satellite_string &right)
 {
-    const std::size_t left_size = left.size(), right_size = right.size();
-    const std::size_t common = left_size < right_size ? left_size : right_size;
-    const int order = std::char_traits<char16_t>::compare(left.narrow16_.data(), right.narrow16_.data(), common);
-    if (order != 0)
-        return order < 0 ? -1 : 1;
-    return left_size < right_size ? -1 : left_size > right_size ? 1 : 0;
+    if (left.wide_count_ == 0 && right.wide_count_ == 0) [[likely]] {
+        // Every unit is a whole character and its code, so unit order is code order.
+        const std::size_t left_size = left.narrow16_.size(), right_size = right.narrow16_.size();
+        const std::size_t common = left_size < right_size ? left_size : right_size;
+        const int order = std::char_traits<char16_t>::compare(left.narrow16_.data(), right.narrow16_.data(), common);
+        if (order != 0)
+            return order < 0 ? -1 : 1;
+        return left_size < right_size ? -1 : left_size > right_size ? 1 : 0;
+    }
+
+    // THE SLOWER PATH COMPARES CODES, NOT UNITS: a wide character's first unit is
+    // 40000, which would sort it below U+FFFF when its code is above it.
+    std::size_t l = 0, r = 0, left_width = 0, right_width = 0;
+    const std::size_t left_units = left.narrow16_.size(), right_units = right.narrow16_.size();
+    while (l < left_units && r < right_units) {
+        const char32_t a = left.code_at_unit(l, left_width);
+        const char32_t b = right.code_at_unit(r, right_width);
+        if (a != b)
+            return a < b ? -1 : 1;
+        l += left_width;
+        r += right_width;
+    }
+    return l < left_units ? 1 : r < right_units ? -1 : 0;
 }
 
 } // namespace satellite004

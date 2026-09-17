@@ -11,8 +11,8 @@
 #
 # THE CASES: every case of strings/check_strings.py (30,055: its section that
 # builds them is executed as written, so they are the same cases, same seed),
-# each checked for more than before -- the codes, fast() true exactly when every
-# character is <= U+FFFF, and to_utf8 byte-identical -- then append, s.append(s),
+# each checked for more than before -- the codes, fast() true exactly when no
+# character goes wide, and to_utf8 byte-identical -- then append, s.append(s),
 # substring (into a fresh, a fast and a wide string, and into itself), clear,
 # code_at, compare in code order, and decoding into a string already in use.
 # It also runs build/string_table_check.
@@ -80,11 +80,19 @@ def code_of(unicode):
     return CODE_OF_ASCII[unicode] if unicode < 128 else unicode
 
 
+# WHAT GOES WIDE (the author, 2026-09-17): "strings have a wide character to store
+# extra strings but 40000 is not a smile... its the 16-bit value for wide", "or a
+# chinese character no". A character above U+FFFF is stored as 40000 and two
+# units, and so is U+9C40, whose own number is 40000 -- so a string is on the fast
+# path exactly when it holds neither. Codes, size() and positions never see the
+# units: they count characters, which is what Python's str does too.
+def goes_wide(unicode):
+    return unicode > 0xFFFF or unicode == 40000
+
+
 def shown(text):
     codes = [code_of(ord(c)) for c in text]
-    # fast() is ALWAYS true since the author's 16-bit-only ruling (2026-09-16):
-    # there is one path, so there is nothing for it to report.
-    return "codes=%s fast=1" % (",".join("%x" % c for c in codes) or "-")
+    return "codes=%s fast=%d" % (",".join("%x" % c for c in codes) or "-", not any(goes_wide(ord(c)) for c in text))
 
 
 def hex_or_dash(data):
@@ -109,34 +117,11 @@ def case(kind, line, want):
 
 
 def decode_answer(data):
-    """What satellite_string answers for these bytes.
-
-    SIXTEEN BITS ONLY (the author, 2026-09-16): a character above U+FFFF is
-    refused with string_error at the byte its sequence STARTS on, exactly as an
-    invalid sequence is, and what came before it is kept. Python can hold those
-    characters, so this model refuses them where satellite does rather than
-    agreeing with Python -- which is the whole reason this file exists.
-
-    WHICHEVER COMES FIRST WINS. Bytes can hold both faults -- an emoji at byte 1
-    and an invalid sequence at byte 5 -- and Python's decoder only ever reports
-    the second, because the first is perfectly good UTF-8 to it. Taking the
-    earlier offset is what makes the two agree.
-    """
     try:
         text = data.decode("utf-8", "strict")
-        invalid_at = None
+        return "ok %s utf8=%s" % (shown(text), hex_or_dash(data))
     except UnicodeDecodeError as error:
-        text = data[:error.start].decode("utf-8", "strict")
-        invalid_at = error.start
-    for index, character in enumerate(text):
-        if ord(character) > 0xFFFF:
-            at = len(text[:index].encode())     # the byte its 4-byte sequence starts on
-            if invalid_at is None or at < invalid_at:
-                return "bad %d %s" % (at, shown(text[:index]))
-            break
-    if invalid_at is not None:
-        return "bad %d %s" % (invalid_at, shown(text))
-    return "ok %s utf8=%s" % (shown(text), hex_or_dash(data))
+        return "bad %d %s" % (error.start, shown(data[:error.start].decode("utf-8", "strict")))
 
 
 for data in utf8_cases:
@@ -147,48 +132,23 @@ for cps in encode_cases:
         refused = int(old_answer.split()[1])
         want = "bad %d %s" % (refused, shown("".join(chr(c) for c in cps[:refused])))
     else:
-        # A code above U+FFFF is refused now, at the index it sits on.
-        above = next((i for i, c in enumerate(cps) if c > 0xFFFF), None)
-        if above is not None:
-            want = "bad %d %s" % (above, shown("".join(chr(c) for c in cps[:above])))
-        else:
-            text = "".join(chr(c) for c in cps)
-            want = "ok fast=1 utf8=%s" % hex_or_dash(text.encode())
+        text = "".join(chr(c) for c in cps)
+        want = "ok fast=%d utf8=%s" % (not any(goes_wide(c) for c in cps), hex_or_dash(text.encode()))
     case("C append_code", "C " + ",".join("%x" % c for c in cps), want)
-# THE BIT CASES CAME FROM THE .sati FORMAT, which was 32 bits a character and is
-# superseded (the author, 2026-09-16: one file, and it is the bytecode). They are
-# kept as a decoder check, with the same 16-bit rule applied: a group holding a
-# code above 0xFFFF is refused, at that group's bit offset.
 for bits, want in bit_cases:
-    if want.startswith("ok") and len(want.split(None, 1)) > 1:
-        codes = [int(c, 16) for c in want.split(None, 1)[1].split(",") if c]
-        above = next((i for i, c in enumerate(codes) if c > 0xFFFF), None)
-        if above is not None:
-            want = "bad %d" % (above * 32)
     case("B bits", "B " + bits, want)
 
 # ---- the new cases ----
-# THE WIDE CHARACTERS ARE GONE FROM THE POOL (the author, 2026-09-16: 16-bit
-# only). E, R and W used to be two emoji and U+10FFFF, and every text built from
-# them tested the 32-bit path. That path does not exist, so a string holding one
-# cannot be made at all -- feeding one to `clear` or `append` would be testing a
-# string that cannot exist rather than testing anything.
-#
-# They are replaced by the characters at the NEW edge: three bytes of UTF-8, at
-# and just under U+FFFF, which is now the widest thing this type holds. The
-# refusal of anything above it is checked where refusals are checked -- in the
-# decode and append_code cases, which cover 0x10000..0x10FFFF in full.
-E, R, W = chr(0x4F60), chr(0x597D), chr(0xFFFF)       # two CJK characters and the last 16-bit one
+E, R, W = chr(0x1F30D), chr(0x1F680), chr(0x10FFFF)   # two emoji and the last character: wide
 pool = ["", "a", "b", "z", "A", "0", "!", " ", "\t", "\n", chr(0), chr(0x7F), chr(0x80), "hello", "Hello, World!",
         chr(0x43C) + chr(0x438) + chr(0x440), chr(0x4F60) + chr(0x597D), chr(0xFFFF), chr(0xE000), chr(0x7FF) + chr(0x800),
-        E, "a" + R + "b", "ab" + E + "cd" + R, "wide at the end " + W, E + " wide at the start",
-        chr(0xFFFE) + chr(0xFFFF), "ab", "abc"]
+        chr(0x10000), E, "a" + R + "b", "ab" + E + "cd" + R, "wide at the end " + W, E + " wide at the start",
+        chr(0xFFFF) + chr(0x10000), "ab", "abc",
+        # 40000 is wide, never a character: U+9C40 goes wide, and U+19C40's LOW half
+        # is 40000, which nothing may read as a marker.
+        chr(0x9C40), chr(0x19C40), "a" + chr(0x9C40) + "b" + chr(0x19C40) + "c", chr(0x9C3F) + chr(0x9C40) + chr(0x9C41)]
 rng = random.Random(16)
-# THE TEXTS EVERY LATER TEST IS BUILT FROM. Chosen with decode_answer and not
-# with Python's own decoder, because since the 16-bit-only ruling those differ:
-# a text holding an emoji decodes in Python and is REFUSED by satellite, so
-# feeding one to `clear` or `append` would be testing a string that cannot exist.
-valid = [b.decode() for b in utf8_cases if decode_answer(b).startswith("ok")]
+valid = [b.decode() for b in utf8_cases if old["python_answer"](b).startswith("ok")]
 extra = rng.sample(valid, 300)
 
 
@@ -199,6 +159,10 @@ def utf8_hex(text):
 for text in pool + extra:
     case("AA s.append(s)", "AA " + utf8_hex(text), shown(text + text))
     case("K clear", "K " + utf8_hex(text), "cleared size=0 empty=1 fast=1 then " + shown("a"))
+    # A moved-from string is an empty one, wide count and all (the wide-strings review).
+    case("V moved from", "V " + utf8_hex(text),
+         "moved size=0 empty=1 fast=1 then size=1 past=16 assigned size=0 empty=1 fast=1 then size=1 past=16 taker %s %s"
+         % (shown(text), shown(text)))
 for left in pool:
     for right in pool:
         case("A append", "A %s %s" % (utf8_hex(left), utf8_hex(right)), shown(left + right))
@@ -214,7 +178,11 @@ def compare_answer(left, right):
 
 
 compare_pairs = [(l, r) for l in pool for r in pool] + [(rng.choice(valid), rng.choice(valid)) for _ in range(1000)]
-compare_pairs += [("a" + E, "ab"), (chr(0xFFFE), chr(0xFFFF)), (chr(0xFFFF), chr(0xFFFE)), ("abc", "ab"), ("", E)]
+compare_pairs += [("a" + E, "ab"), (chr(0xFFFF), chr(0x10000)), (chr(0x10000), chr(0xFFFF)), ("abc", "ab"), ("", E)]
+# A wide character against a 16-bit one ABOVE 40000: by units 40000 would sort first,
+# by code the wide character does -- and code order is the contract.
+compare_pairs += [(chr(0xFF00), E), (E, chr(0xFF00)), (chr(0x9C40), chr(0x9C41)), (chr(0x9C41), chr(0x9C40)),
+                  (chr(0x9C3F), chr(0x9C40)), ("a" + chr(0xFFFD), "a" + chr(0x10000)), (chr(0x19C40), chr(0x19C41))]
 by_code = [chr(ASCII_OF_CODE[code]) for code in range(128)]
 compare_pairs += [(by_code[k], by_code[k + 1]) for k in range(127)] + [(by_code[k + 1], by_code[k]) for k in range(127)]
 for left, right in compare_pairs:
@@ -252,9 +220,9 @@ for text in pool + extra[:40]:
 # of them with one byte overwritten, so a refusal lands inside and after a run.
 
 
-def a_character():                 # anything this type can hold: never a surrogate, never above 0xFFFF
+def a_character():                                    # any width, never a surrogate
     return chr(rng.choice([rng.randint(0, 0x7F), rng.randint(0x80, 0x7FF), rng.randint(0x800, 0xD7FF),
-                           rng.randint(0xE000, 0xFFFF)]))
+                           rng.randint(0xE000, 0xFFFF), rng.randint(0x10000, 0x10FFFF), 0x9C40, 0x19C40]))
 
 
 def long_text():
@@ -278,7 +246,7 @@ for data in long_bytes:
     case("U decode, long", "U " + hex_or_dash(data), decode_answer(data))
 for text in long_texts[:500]:
     case("C append_code, long", "C " + (",".join("%x" % ord(c) for c in text) or "-"),
-         "ok fast=%d utf8=%s" % (all(ord(c) <= 0xFFFF for c in text), utf8_hex(text)))
+         "ok fast=%d utf8=%s" % (not any(goes_wide(ord(c)) for c in text), utf8_hex(text)))
 for _ in range(1000):
     left, right = rng.choice(long_texts), rng.choice(long_texts)
     case("A append, long", "A %s %s" % (utf8_hex(left), utf8_hex(right)), shown(left + right))

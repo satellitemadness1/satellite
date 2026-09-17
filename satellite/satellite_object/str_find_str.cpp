@@ -31,18 +31,25 @@ signed long long int str_find_str(const satelliteObject &left, const satelliteOb
     if (haystack == nullptr || needle == nullptr)
         return types_do_not_meet;
 
-    const std::size_t wanted = needle->size();
-    if (wanted > haystack->size())
+    if (needle->size() > haystack->size())
         return text_not_found;
 
-    for (std::size_t at = 0; at + wanted <= haystack->size(); ++at) {
-        bool matches = true;
-        for (std::size_t k = 0; matches && k < wanted; ++k)
-            matches = haystack->code_at_unchecked(at + k) == needle->code_at_unchecked(k);
-        if (matches) {
-            out = satelliteObject::of_number(satellite_number((unsigned long long int)at));
+    // CHARACTER BY CHARACTER, comparing UNITS from the start of each one. A needle is
+    // whole characters, so its units match the haystack's from a character's start
+    // exactly when its characters do -- a wide character's 40000 and both halves
+    // included. Starting anywhere else could meet a low half that is itself 40000
+    // (satellite_string.hpp), which is why the walk never does. The answer is the
+    // CHARACTER position, as it always was.
+    const std::size_t wanted = needle->units();
+    const std::size_t units = haystack->units();
+    for (std::size_t unit = 0, character = 0; unit + wanted <= units; ++character) {
+        if (std::char_traits<char16_t>::compare(haystack->unit_data() + unit, needle->unit_data(), wanted) == 0) {
+            out = satelliteObject::of_number(satellite_number((unsigned long long int)character));
             return success;
         }
+        std::size_t width = 0;
+        haystack->code_at_unit(unit, width);
+        unit += width;
     }
     return text_not_found;
 }

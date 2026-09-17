@@ -26,6 +26,9 @@
 //                               -> cleared size=.. empty=.. fast=.. then codes=.. fast=..
 //   P <utf8> <index>            code_at -> ok <code hex>  |  bad <machine code>
 //   M <utf8 left> <utf8 right>  compare and the operators -> compare=.. equal=.. not_equal=.. less=..
+//   V <utf8>                    moved from, by construction and by assignment (into a string holding
+//                               the same text), then append_code(1); the taker also moved into itself
+//                               -> moved size=.. empty=.. fast=.. then size=.. past=<code_at(1)> assigned ... taker ..
 
 #include "satellite_string.hpp"
 
@@ -36,6 +39,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace satellite004;
@@ -204,6 +208,25 @@ int main()
             std::cout << "cleared size=" << s.size() << " empty=" << s.empty() << " fast=" << s.fast();
             s.append_code(1);
             std::cout << " then " << shown(s) << "\n";
+        } else if (kind == "V") {
+            // A MOVED-FROM STRING IS AN EMPTY ONE. Read with size() and one code_at
+            // and not with shown(), which walks to size() and would never stop if
+            // the count were wrong.
+            // `assigned` already holds the text, wide characters and all, so a move that
+            // added counts instead of taking one shows; `taker` is moved into itself,
+            // which keeps it (the count review, 2026-09-17).
+            satellite_string s = made(first), t = made(first), taker = std::move(s), assigned = made(first);
+            assigned = std::move(t);
+            satellite_string &same = taker;
+            taker = std::move(same);
+            char32_t code = 0;
+            for (satellite_string *moved : {&s, &t}) {
+                std::cout << (moved == &s ? "moved size=" : " assigned size=") << moved->size()
+                          << " empty=" << moved->empty() << " fast=" << moved->fast();
+                moved->append_code(1);
+                std::cout << " then size=" << moved->size() << " past=" << moved->code_at(1, code);
+            }
+            std::cout << " taker " << shown(taker) << " " << shown(assigned) << "\n";
         } else if (kind == "P") {
             char32_t code = 0;
             const signed long long int answer = made(first).code_at(position(second), code);

@@ -27,7 +27,7 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 | **satellite_number** — sign bool + `unsigned long long` limbs, one-limb fast path (no allocation), + - * / %, text, digits, bytes | `satellite/satellite_variable_number/` | `python3 .../check_numbers.py build/number_cases` — 482,465 cases against Python (power and both radixes added 2026-09-16) |
 | **satellite.variable.binary** — `b10101010` declares, and displays exactly as written, b and leading zeros (the width is part of the value, 003 DESIGN 8.5). Written without its b it is refused before anything runs: `ERROR: expected b10101010` (the author, 2026-09-16). It keeps a sign (the author, 2026-09-17: *"keep a sign with all of these things"*): `-b0101` displays `-b0101` and is worth -5; `= -1010` is `ERROR: expected -b1010`. Arithmetic and orderings read it by worth and answer a number, which departs on purpose from 8.5's decided-and-unbuilt `+` rulings | `satellite/satellite_variable_binary/satellite_binary_number.hpp`, arm 7 of `satelliteObject`, `program_check.cpp` `binary_is_written_with_b` | `./check.sh` (tests/binary*.satl) |
 | **satellite.variable.percentage** — `50%`, `12.5%`, `1000000000000%` (the author, 2026-09-17), 004's first word of its own (`1 6 16`, code 4461, appended through `words/words_004.tsv`). Held as a whole number of 10^-32 percents, rounded half away from zero at the 33rd digit. `200 * 50%` 100, `200 - 50%` 100, `200 + 50%` 300, `200 / 50%` 400, `50% * 50%` 25%, `50% / 4` 12.5%; a non-whole number answer is refused (24) until satellite_float. Written without its % it is refused before anything runs: `ERROR: expected 50%`, and `-50` is `ERROR: expected -50%`. Its sign is a bool held with it, `negative()` (the author, 2026-09-17) | `satellite/satellite_variable_percentage/satellite_percentage.hpp`, arm 8 of `satelliteObject`, `satellite_object/object_percentage.cpp` and nine `*_and_percentage_*` / `percentage_and_*` headers, `percentage_token` in REGISTRY.satellite | `./check.sh` — every line of tests/percentage.satl worked out by Python's decimal module |
-| **satellite_string 16/32-bit** — the author's character table; 16 bits a character, 32 only when one is above U+FFFF | `satellite/satellite_variable_string/` | `.../check_strings16.py` — every case agrees with Python; `build/string_table_check` proves the table |
+| **satellite_string** — the author's character table; 16 bits a character, and a wide character (above U+FFFF, or U+9C40 itself) is 40000 and then its number in two 16-bit units (D3.1, the author 2026-09-17: *"its the 16-bit value for wide"*) | `satellite/satellite_variable_string/` | `.../check_strings16.py` — every case agrees with Python; `build/string_table_check` proves the table |
 | **The number index** — every compiled library loaded once at start-up | `satellite-numbers/call_number.*`, `number_row.hpp` | loads all 24 libraries |
 | **004's word numbers** — 364 words, first-available numbering, frozen (DESIGN §3.2) | `words/make_words.py` → `words/words.tsv`, `words/satellite_words.hpp` | matched 003's words.def row for row; no duplicates; every parent's children exactly 1..n |
 | **satellite_string as char32_t** — strict UTF-8 ↔ char32_t ↔ .sati bit text, `bits_to_cxx_str` | `strings/satellite_string.*` | `python3 strings/check_strings.py` — 30,055 cases agree with Python's UTF-8 codec |
@@ -64,8 +64,9 @@ python3 words/make_words.py            # regenerate the word table (needs old_ve
   1 6 16, string methods 1 6 1 23. (Author delegated the choice.)
 - **Every word is a library** in a folder named by the exact word, arguments
   included (`satellite.variable.string.find(x)`), built as `<numbers>.so`.
-- **A string is 16 bits a character** (the author, 2026-09-15), and 32 only when it
-  holds a character above U+FFFF. Codes 0–127 are every ASCII character once, in
+- **A string is 16 bits a character** (the author, 2026-09-15). A character above
+  U+FFFF is 40000 and then its number in two 16-bit units, and so is U+9C40, whose own
+  number is 40000 (D3.1, 2026-09-17). Codes 0–127 are every ASCII character once, in
   the author's order. An 8-bit path is still open. Translating satellite into
   other languages: dropped.
 - **Machine codes 0–23** in `satellite/machine/machine_codes.hpp`; a code is added
@@ -107,7 +108,8 @@ session's scratchpad so they survive it.
   satb in favor of all 16-bit"* (MILESTONES.md).
 - ~~**D3.1**~~ **ANSWERED 2026-09-16:** *"32-bits only when we use the number 40000 as a
   16-bit code"*. Everything is 16 bits; `wide_token` (40000) says the next two codes are
-  one 32-bit integer. Owed: the lexer's `wide_run_32_token` path gives way to it.
+  one 32-bit integer. The lexer writes a character above U+FFFF as `wide_token` and two
+  codes, and `wide_run_32_token` is retired; a string holds it the same way (2026-09-17).
 - **D9.1–D9.2** polymorph: what "re-included into the individual capsules" means,
   what `args` are passed to. ~~**D9.3**~~ **ANSWERED 2026-09-16:** *"a class declared
   twice is an ERROR: name collision"*.
@@ -136,9 +138,9 @@ built and check against Python, but the session's limit stopped the rest:
   move onto the new one, checked against 003's satl, in the same step. `strings/`
   then moves into `satellite/satellite_variable_string/`.
 - ~~the tokens move to 16 bits~~ **DONE 2026-09-16** — see §6.
-- **an 8-bit string holds ASCII only** (decided 2026-09-16); 16-bit holds up to
-  U+FFFF, 32-bit everything. The 8-bit path is not built yet: the committed
-  string chooses between 16 and 32.
+- **an 8-bit string holds ASCII only** (decided 2026-09-16); 16-bit holds everything,
+  a character above U+FFFF as 40000 and two units (D3.1). The 8-bit path is not built
+  yet.
 - **the races miss ×1.05 in places** (ERROR.md §5), and the four string words
   waiting on satellite_number (`to_number`, `number`, `binary`, `hex`) are not
   built.

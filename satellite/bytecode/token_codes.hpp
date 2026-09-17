@@ -118,7 +118,7 @@ inline constexpr Code hexadecimal_token = 0x0905;  // [COUNTED] xFFAAC2985765 --
 inline constexpr Code option_token = 0x0906;  // [COUNTED] 0#down -- a folded option; count, then that many character codes
 inline constexpr Code string_index_token = 0x0907;  // [COUNTED] the string at this index in the .sati, once the program carries no text
 inline constexpr Code wide_run_token = 0x0908;  // [COUNTED] count, then that many characters as their own 16-bit Unicode number
-inline constexpr Code wide_run_32_token = 0x0909;  // [COUNTED] count, then that many characters as 32 bits each (emoji, rare CJK)
+inline constexpr Code wide_run_32_token = 0x0909;  // [COUNTED] RETIRED by D3.1 (2026-09-16): nothing writes it; a character above U+FFFF is w
 inline constexpr Code long_count_token = 0x090A;  // the count that follows continues in the next code: no literal has a ceiling
 inline constexpr Code percentage_token = 0x090B;  // [COUNTED] 50% 12.5% 1000000000000% -- count, then the digits before the % (the author, 2
 inline constexpr Code batch_start_token = 0x0A00;  // opens a batch: these calls may run on one pool thread
@@ -132,7 +132,7 @@ inline constexpr Code to_number_token = 0x0B03;  // number/as_number/to_number  
 inline constexpr Code to_binary_token = 0x0B04;  // binary/bin/as_binary  [METHOD] the receiver as base-2 text
 inline constexpr Code to_hexadecimal_token = 0x0B05;  // hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
 inline constexpr Code add_token = 0x0B06;  // add  [METHOD] object.add(x)
-inline constexpr Code wide_token = 0x9C40;  // RESERVED (the author, 2026-09-16): the next TWO codes are one 32-bit integer
+inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
 // GENERATED from the [METHOD] rows. Answers 0 for a name that is not a

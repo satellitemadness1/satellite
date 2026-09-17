@@ -9,8 +9,9 @@
 // DESIGN 6.6 and the author at M19: `+` over two strings is one operator over
 // two types, not a second meaning for the character.
 //
-// CANNOT REFUSE. append() widens to 32 bits only if the right side holds a
-// character above U+FFFF, so joining two fast strings stays on the fast path.
+// CANNOT REFUSE. append() copies the right side's units, wide characters and all
+// (40000 and two units each), so joining two strings with none stays on the fast
+// path.
 
 #include "../satellite_variable_string/satellite_string.hpp"
 #include "../machine/machine_codes.hpp"

@@ -1,0 +1,12 @@
+// "𩱀a鱀" holds no U+19C40, though its units from the first low half on spell one:
+// U+29C40's low half is 40000, then "a" is 1, then U+9C40's marker is 40000 again.
+// find starts only where a character starts, so it refuses (15).
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "𩱀a鱀"
+    satellite.console.display(s.find("𙱀"))
+    satellite.return(satellite)
+}

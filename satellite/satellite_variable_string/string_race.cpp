@@ -120,11 +120,14 @@ bool race_text(const char *title, const std::string &text)
     std::u32string plain32, wide;
     std::string back, encoded;
     signed long long int code = success;
+    // One walk over the units, never code_at_unchecked(k): on a wide string that
+    // walks from the front for every k, and the check would never finish.
     const auto satellite_right = [&] {
         bool right = satellite.size() == units32.size();
-        for (std::size_t k = 0; right && k < units32.size(); k++)
-            right = satellite_string::unicode_of(satellite.code_at_unchecked(k)) == units32[k];
-        return right;
+        std::size_t unit = 0, width = 0;
+        for (std::size_t k = 0; right && k < units32.size(); k++, unit += width)
+            right = satellite_string::unicode_of(satellite.code_at_unit(unit, width)) == units32[k];
+        return right && unit == satellite.units();
     };
     satellite_string::from_utf8(text, satellite, bad);
     std::printf("%s: %.1f MB, %zu bytes not ASCII, %zu characters, satellite fast(): %s\n", title, text.size() / 1e6,

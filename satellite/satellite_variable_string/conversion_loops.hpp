@@ -45,7 +45,8 @@ using character_table::code_of_ascii;
 enum class stopped { at_the_end, at_a_bad_sequence, at_a_wide_character };
 
 // Decodes bytes[at, size) into `write`. With stop_before_wide (the char16_t
-// pass) it stops at a well-formed 4-byte sequence and leaves `at` on its first
+// pass) it stops at a wide character -- a well-formed 4-byte sequence, or U+9C40's
+// 3 bytes, whose value is the wide marker itself -- and leaves `at` on its first
 // byte; otherwise it decodes it. On a bad sequence `at` is that sequence's first
 // byte. `write` is left one past the last code written.
 template <typename Code, bool stop_before_wide>
@@ -95,7 +96,11 @@ stopped decode(const unsigned char *const bytes, const std::size_t size, std::si
             const unsigned char b1 = bytes[at + 1], b2 = bytes[at + 2];
             const unsigned char low = b0 == 0xE0 ? 0xA0 : 0x80, high = b0 == 0xED ? 0x9F : 0xBF;
             if (b1 < low || b1 > high || (b2 & 0xC0) != 0x80) { why = stopped::at_a_bad_sequence; break; }
-            *write++ = static_cast<Code>(((b0 & 0x0Fu) << 12) | ((b1 & 0x3Fu) << 6) | (b2 & 0x3Fu));
+            const Code three = static_cast<Code>(((b0 & 0x0Fu) << 12) | ((b1 & 0x3Fu) << 6) | (b2 & 0x3Fu));
+            // U+9C40 IS 40000, THE 16-BIT VALUE FOR WIDE (the author, 2026-09-17), so a
+            // 16-bit string stores it wide too and the caller writes it.
+            if (stop_before_wide && three == 40000) { why = stopped::at_a_wide_character; break; }
+            *write++ = three;
             at += 3;
         } else {                                            // F0 90..BF, F1..F3 80..BF, F4 80..8F; then 80..BF 80..BF
             if (b0 > 0xF4 || size - at < 4) { why = stopped::at_a_bad_sequence; break; }
