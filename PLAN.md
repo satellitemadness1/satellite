@@ -952,11 +952,14 @@ that owned it described a file or a pass that no longer exists. They are listed
 for the author to place -- nothing here was invented to fill a gap, and nothing
 was quietly folded into a milestone it does not belong to.
 
-**1. `if` and `for` have no shape.** The walker has six shapes and `while` is the
-only one that branches or loops. Old M6 owned "variables, expressions, `if` /
-`for` / `while`, capsules and calls"; five of those are built and these two were
-never written. They are one shape each in `program_check.cpp` and
-`program_walk.cpp`. **This is the largest hole in the language today.**
+**1. ~~`if` and~~ `for` has no shape.** ~~The walker has six shapes and `while` is
+the only one that branches or loops.~~ **`if` and `else` were built the same day**
+(`run_if` is `run_while` without the loop) -- so what is left of this note is
+`for` `1 13 2`, which is not a condition problem: its condition is the same code,
+and what it needs is its FORM ruled (three parts like C, a range, or 003's).
+`satellite.statement.switch` is the author's to number, 2026-09-17, and
+`satellite.statement.finally(optional_condition) { code }` has neither a number
+nor a milestone.
 
 **2. A kept include's canonical path (ERROR #26).** An include must keep the path
 it first resolved to and never be resolved again from its text -- or a

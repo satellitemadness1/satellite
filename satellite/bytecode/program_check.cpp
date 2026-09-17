@@ -251,6 +251,49 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         return success;
     }
 
+    // satellite.statement.if -- the same shape as while below, judged the same way.
+    if (code == word::code_of(1, 13, 1)) {
+        const std::size_t stop = past_the_statement(row, at);
+        const signed long long int held =
+            names_in_statement(row, at + 1, stop, declared, capsules, functions, why);
+        if (held != success) { at = stop; return held; }
+        const std::size_t brace = brace_after(row, stop);
+        if (code_at(row, brace) != token::left_brace_token) {
+            why = "satellite.statement.if has no body";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        at = brace;                 // left ON the brace, as while is: the loop counts it
+        return success;
+    }
+
+    // satellite.statement.else, which has no condition of its own. A REAL ONE
+    // FOLLOWS AN if's `}` -- looking back one code refuses one standing alone here,
+    // where nothing has run yet, instead of at the moment the walker reaches it.
+    // (A `}` that closed a while's body slips through this and is refused when it
+    // runs; both say the same sentence.)
+    if (code == word::code_of(1, 13, 4)) {
+        std::size_t back = at;
+        while (back > 0 && code_at(row, back - 1) == token::line_end_token) --back;
+        if (back == 0 || code_at(row, back - 1) != token::right_brace_token) {
+            why = "satellite.statement.else with no satellite.statement.if before it";
+            at = past_the_statement(row, at);
+            return satl_line_not_understood;
+        }
+        const std::size_t after_else = brace_after(row, at + 1);
+        if (code_at(row, after_else) == word::code_of(1, 13, 1)) {
+            at = after_else;        // else written onto another if: that if is the statement
+            return success;
+        }
+        if (code_at(row, after_else) != token::left_brace_token) {
+            why = "satellite.statement.else has no body";
+            at = at + 1;
+            return satl_line_not_understood;
+        }
+        at = after_else;
+        return success;
+    }
+
     if (code == word::code_of(1, 13, 3)) {               // satellite.statement.while
         const std::size_t stop = past_the_statement(row, at);
         const signed long long int held =

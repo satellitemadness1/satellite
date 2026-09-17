@@ -1,0 +1,10 @@
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.statement.if(5)
+    {
+        satellite.console.display("x")
+    }
+}
+satellite.return(satellite)

@@ -143,6 +143,24 @@ expect "nothing ran before the refusal" "" "$(grep -x before build/nu.out)"
 # as checks of the ANSWER, not deleted, so the behaviour stays pinned:
 #   + joins two strings (003 DESIGN §6.6, the author at M19)
 #   a literal of 23 digits is held exactly, not refused and not truncated
+# satellite.statement.if and .else (2026-09-17). The author: "satellite.statement.if
+# is just (condition) { call_to_whatever_runs_code } which we have kinda just built
+# the thing that runs code" -- so it is run_while without the loop, and the checks
+# are while's: the condition through the same evaluator, the body through
+# run_statements, sharing this body's variables.
+expect "if, else, else-if, and an if inside a while" "five|not six|more than four|6|one|0|1" \
+       "$("$interpreter" tests/if_else.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+"$interpreter" tests/if_no_body.satl > build/if.out 2>&1; expect "an if with no body is refused" 13 $?
+expect "... by the CHECK, with nothing run before it" "" "$(grep -x before build/if.out)"
+"$interpreter" tests/else_with_no_if.satl > build/if.out 2>&1; expect "an else with no if before it is refused" 13 $?
+expect "... by the check too, and says so" 1 \
+       "$(grep -c 'satellite.statement.else with no satellite.statement.if before it' build/if.out)"
+# A CONDITION'S TYPE IS A RUN-TIME FACT, for an if exactly as for a while: the
+# checker does not evaluate, so `if(5)` is refused where it runs, after the line
+# above it has printed. Pinned here so the two never drift apart.
+"$interpreter" tests/if_not_a_condition.satl > build/if.out 2>&1; expect "if(5) is refused: a number is not a condition" 27 $?
+expect "... and says what it was given" 1 \
+       "$(grep -c 'satellite.statement.if was given a number and needs a true or false' build/if.out)"
 expect "\"some\" + \"str\" joins them" "somestr" "$("$interpreter" tests/two_strings.satl 2>/dev/null)"
 # `.find(` -- period + the method's own 16-bit code + `(` (the author, 2026-09-16).
 # A quoted argument and an object argument both work; an undeclared one is 25.

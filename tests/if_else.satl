@@ -1,0 +1,66 @@
+satellite.include(satellite)
+
+// satellite.statement.if and satellite.statement.else: the condition through the
+// same evaluator a while's goes through, the body through run_statements.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 5
+
+    satellite.statement.if(n == 5)
+    {
+        satellite.console.display("five")
+    }
+
+    satellite.statement.if(n == 6)
+    {
+        satellite.console.display("SIX IS WRONG")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("not six")
+    }
+
+    satellite.statement.if(n < 5)
+    {
+        satellite.console.display("LESS IS WRONG")
+    }
+    satellite.statement.else satellite.statement.if(n > 4)
+    {
+        satellite.console.display("more than four")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("THE LAST ELSE IS WRONG")
+    }
+
+    // The body shares this body's variables, as a while's does.
+    satellite.statement.if(n > 0)
+    {
+        n = n + 1
+    }
+    satellite.console.display(n)
+
+    // An if inside a while, and a while inside an if.
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 3)
+    {
+        satellite.statement.if(i == 1)
+        {
+            satellite.console.display("one")
+        }
+        i = i + 1
+    }
+
+    satellite.statement.if(i == 3)
+    {
+        satellite.variable.number j = 0
+        satellite.statement.while(j < 2)
+        {
+            satellite.console.display(j)
+            j = j + 1
+        }
+    }
+}
+
+satellite.return(satellite)

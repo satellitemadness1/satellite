@@ -240,6 +240,28 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 // THE CONDITION IS RE-READ FROM THE SAME POSITION EVERY TURN, which is the whole
 // loop: the walker keeps a position, so going round again is assigning one
 // integer, not rebuilding anything. Nothing is allocated per iteration.
+// `satellite.statement.if(<expr>) { ... }`, with every `satellite.statement.else`
+// that follows it -- including `else` written straight onto another `if`.
+//
+// IT IS run_while WITHOUT THE LOOP, which is the whole of the author's point
+// (2026-09-17): *"satellite.statement.if is just (condition) { call_to_whatever
+// runs_code } which we have kinda just built the thing that runs code"*. The
+// condition goes through evaluate_expression and must answer a bool; the body is
+// run_statements at the code past the `{`, sharing this body's variables.
+//
+// `may_run` IS FALSE FOR A BRANCH THE CHAIN HAS ALREADY DECIDED AGAINST, and it
+// carries one rule with it: a branch that will not run does not EVALUATE its
+// condition either. A condition may call a word, and a call that a person can see
+// did not happen must not happen.
+signed long long int run_if(const BytecodeRegistry &registry,
+                            const CapsuleTable &capsules,
+                            const FunctionTable &functions,
+                            std::size_t which_row,
+                            std::size_t &at,
+                            VariableTable &variables,
+                            MachineState &state,
+                            bool may_run);
+
 signed long long int run_while(const BytecodeRegistry &registry,
                                const CapsuleTable &capsules,
                                const FunctionTable &functions,
@@ -288,6 +310,80 @@ signed long long int run_while(const BytecodeRegistry &registry,
         if (stops_the_program(code))
             return code;
     }
+}
+
+signed long long int run_if(const BytecodeRegistry &registry,
+                            const CapsuleTable &capsules,
+                            const FunctionTable &functions,
+                            std::size_t which_row,
+                            std::size_t &at,
+                            VariableTable &variables,
+                            MachineState &state,
+                            bool may_run)
+{
+    const std::vector<std::bitset<16>> &row = registry[which_row];
+    const std::size_t condition_at = at + 1;
+    const std::size_t after = past_the_statement(row, at);
+    const std::size_t brace = brace_after(row, after);
+    if (code_at(row, brace) != token::left_brace_token) {
+        at = after;
+        return report_error("satl(run): satellite.statement.if has no body", satl_line_not_understood);
+    }
+    const std::size_t past = past_matching_brace(row, brace);
+    at = past;
+
+    bool held = false;
+    if (may_run) {
+        std::size_t here = condition_at;
+        ExpressionContext context{variables, functions, state};
+        const bool opened = code_at(row, here) == token::left_parenthesis_token;
+        if (opened) ++here;
+        const Value holds = evaluate_expression(row, here, context);
+        if (context.code != success)
+            return report_error("satl(run): in satellite.statement.if, " + context.why, context.code);
+        bool closed = true;
+        if (opened) closed = code_at(row, here++) == token::right_parenthesis_token;
+        if (!closed || !read_to_the_end(row, here))
+            return report_error(std::string("satl(run): satellite.statement.if's condition ") + kNotReadToTheEnd,
+                                satl_line_not_understood);
+        if (!holds.is_bool())
+            return report_error(std::string("satl(run): satellite.statement.if was given ") + holds.kind_name() +
+                                    " and needs a true or false",
+                                types_do_not_meet);
+        held = *holds.as_bool();
+        if (held) {
+            const signed long long int code =
+                run_statements(registry, capsules, functions, which_row, brace + 1, variables, state);
+            if (stops_the_program(code))
+                return code;
+        }
+    }
+
+    // THE else IS THIS STATEMENT'S, and it is stepped over whether it runs or
+    // not: leaving it for run_statements would make it a statement of its own,
+    // which is what "an else with no if before it" means.
+    std::size_t next = past;
+    while (code_at(row, next) == token::line_end_token) ++next;
+    if (code_at(row, next) != word::code_of(1, 13, 4))
+        return success;
+
+    const std::size_t after_else = brace_after(row, next + 1);
+    const bool run_the_else = may_run && !held;
+    if (code_at(row, after_else) == word::code_of(1, 13, 1)) {   // else written onto another if
+        std::size_t chained = after_else;
+        const signed long long int code =
+            run_if(registry, capsules, functions, which_row, chained, variables, state, run_the_else);
+        at = chained;
+        return code;
+    }
+    if (code_at(row, after_else) != token::left_brace_token) {
+        at = next + 1;
+        return report_error("satl(run): satellite.statement.else has no body", satl_line_not_understood);
+    }
+    at = past_matching_brace(row, after_else);
+    if (!run_the_else)
+        return success;
+    return run_statements(registry, capsules, functions, which_row, after_else + 1, variables, state);
 }
 
 // `satellite.variable.number <name> = <expr>`, and `<name> = <expr>`.
@@ -386,6 +482,23 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         if (code == word::code_of(1, 15)) {          // satellite.return
             state.set("satellite.return", success);
             return success;
+        }
+
+        if (code == word::code_of(1, 13, 1)) {       // satellite.statement.if
+            const signed long long int stopped =
+                run_if(registry, capsules, functions, which_row, at, variables, state, true);
+            if (stops_the_program(stopped))
+                return stopped;
+            continue;
+        }
+
+        // AN else REACHED AS A STATEMENT IS ONE NO if CLAIMED: a real one is
+        // stepped over by the if above it. The checker refuses it first, so
+        // nothing has run by the time anyone sees this.
+        if (code == word::code_of(1, 13, 4)) {
+            at = past_the_statement(row, at);
+            return report_error("satl(run): satellite.statement.else with no satellite.statement.if before it",
+                                satl_line_not_understood);
         }
 
         if (code == word::code_of(1, 13, 3)) {       // satellite.statement.while
