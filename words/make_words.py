@@ -135,28 +135,57 @@ def main():
     old_of["satellite"] = [1]
 
     # 004's own words, appended in the order they were added (see the header).
-    taken = {tuple(numbers) for _, numbers in kept}
+    #
+    # THE FILE IS TYPED BY HAND, so every row is checked against the table it joins
+    # (the review of ab01a74, 2026-09-17, found each of these getting through):
+    #   - numbers, a tab, and a path with no blanks at either end -- an empty path
+    #     or an editor's trailing space was a second word with a code of its own;
+    #   - the parent NUMBERS must be the word the PATH names as its parent, so
+    #     `1 5 10 satellite.variable.foo` is refused: 1 5 is satellite.console, and
+    #     that one mistyped digit is what this file exists to stop. An argument
+    #     form sits under the word itself (string(x) is under string), as in 003;
+    #   - nothing goes under a bare shape -- `number()` holds no words;
+    #   - a bare shape keeps 0, and only a bare shape does: in 003's table the last
+    #     number is 0 exactly when the path is its parent's and then (). 004 had
+    #     refused every 0, and told the author to write 1 instead.
+    # Codes already given out are not guarded here: an insert still moves every
+    # code after it, and SATC.md section 2's word-list digest is what makes that
+    # loud, where files are read back (PROGRESS.md).
+    def refuse(why):
+        sys.exit(f"make_words.py: words_004.tsv line {line_number}: {why}")
+
+    taken = {tuple(numbers): path for path, numbers in kept}
     paths = {path for path, _ in kept}
     added = os.path.join(HERE, "words_004.tsv")
     for line_number, line in enumerate(open(added, encoding="utf-8") if os.path.exists(added) else [], 1):
         if not line.strip():
             continue
         fields = line.rstrip("\n").split("\t")
-        if len(fields) != 2:
-            sys.exit(f"make_words.py: words_004.tsv line {line_number}: write numbers, a tab, then the path")
+        if len(fields) != 2 or not re.fullmatch(r"[0-9]+(?: [0-9]+)*", fields[0]) or \
+                not fields[1] or fields[1] != fields[1].strip():
+            refuse("write numbers, a tab, then the path")
         numbers, path = [int(n) for n in fields[0].split()], fields[1]
         parent = tuple(numbers[:-1])
         under = [n[-1] for n in taken if len(n) == len(numbers) and n[:-1] == parent and n[-1] != 0]
         if path in paths or tuple(numbers) in taken:
-            sys.exit(f"make_words.py: words_004.tsv line {line_number}: {path} {fields[0]} is already a word")
+            refuse(f"{path} {fields[0]} is already a word")
         if parent not in taken:
-            sys.exit(f"make_words.py: words_004.tsv line {line_number}: {path} has no parent word {' '.join(map(str, parent))}")
-        if numbers[-1] != max(under, default=0) + 1:
-            sys.exit(f"make_words.py: words_004.tsv line {line_number}: {path} must take the next free number, "
-                     f"{' '.join(map(str, list(parent) + [max(under, default=0) + 1]))}")
+            refuse(f"{path} has no parent word {' '.join(map(str, parent))}")
+        if taken[parent].endswith(")"):
+            refuse(f"{path} cannot go under {taken[parent]}, which holds no words")
+        bare = re.sub(r"\(.*\)$", "", path)
+        if taken[parent] not in (bare.rpartition(".")[0], bare):
+            refuse(f"{path} is numbered under {' '.join(map(str, parent))}, which is {taken[parent]}")
+        if numbers[-1] == 0 and path != taken[parent] + "()":
+            refuse(f"{path} is not a bare shape, so it cannot keep 0 -- only {taken[parent]}() does")
+        if numbers[-1] != 0 and path == taken[parent] + "()":
+            refuse(f"{path} is a bare shape, which keeps 0: {' '.join(map(str, parent))} 0")
+        if numbers[-1] != 0 and numbers[-1] != max(under, default=0) + 1:
+            refuse(f"{path} must take the next free number, "
+                   f"{' '.join(map(str, list(parent) + [max(under, default=0) + 1]))}")
         kept.append((path, numbers))
         old_of[path] = []
-        taken.add(tuple(numbers))
+        taken[tuple(numbers)] = path
         paths.add(path)
     # the next free number under every kept word: one past what it hands out today
     children = {}

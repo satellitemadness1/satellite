@@ -179,6 +179,24 @@ expect "--debug shows arguments.threads_startup from the config" 1 "$(grep -c "^
 # two digit counts are rows: 4096 held, 32 shown, "both digits configurable".
 expect "--debug shows arguments.infinity from the config" 1 "$(grep -c "^\[satellite\] arguments.infinity = $(config_row infinity) " build/debug.out)"
 expect "--debug shows arguments.infinity_display from the config" 1 "$(grep -c "^\[satellite\] arguments.infinity_display = $(config_row infinity_display) " build/debug.out)"
+# A negative row must reach C++ negative (the review of b68d1a7, 2026-09-17): -1ULL and
+# -4u are unsigned there and -9223372036854775808 has no literal, so the reader the
+# build uses refuses all three before anything compiles. -1 and the quoted row still read.
+row_read() { python3 -c "
+import sys; sys.path.insert(0, 'satellite/config'); import build_number
+try: print(build_number.live_rows('arguments_vector.push_back({\"arguments.magic\", %s, false, false});' % sys.argv[1])[0]['number'])
+except SystemExit as refusal: print('refused:', str(refusal).split('; ')[-1])" "$1" 2>/dev/null; }
+expect "a config row written -1ULL is refused" "refused: write it without the u" "$(row_read -1ULL)"
+expect "a config row written -4u is refused" "refused: write it without the u" "$(row_read -4u)"
+expect "a config row written -9223372036854775808 is refused" 'refused: write it in quotes: "-9223372036854775808"' \
+       "$(row_read -9223372036854775808)"
+expect "a config row written -1, -9223372036854775807 or quoted still reads" "-1|-9223372036854775807|-9223372036854775808" \
+       "$(row_read -1)|$(row_read -9223372036854775807)|$(row_read '"-9223372036854775808"')"
+# words_004.tsv is typed by hand, so make_words.py refuses a row it cannot trust --
+# checked through the real script and 003's real satl, which is gitignored.
+python3 words/check_make_words.py > build/check_make_words.out 2>&1; code=$?
+if [ $code = 2 ]; then echo "  skip  make_words.py's checks: no 003 satl at old_versions/second_satellite/satl"
+else expect "make_words.py against rows typed by hand: $(tail -1 build/check_make_words.out) (build/check_make_words.out)" 0 $code; fi
 expect "the start-up threads are warm" 1 "$(grep -cE "^\[satellite\] threads.startup\(warm\): $(config_row threads_startup) threads parked in [0-9.]+ ms" build/debug.out)"
 
 echo "$passed passed, $failed failed"

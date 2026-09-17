@@ -30,7 +30,8 @@
 #
 # THE ROW IS A satellite_number (the author, 2026-09-16: "just make everything a
 # satellite number"), so it has no ceiling -- but a C++ INTEGER LITERAL does. A row
-# may be written plain (94) up to 9,223,372,036,854,775,807, or in quotes ("94",
+# may be written plain (94) from -9,223,372,036,854,775,807 up to
+# 9,223,372,036,854,775,807, a negative one with no u, or in quotes ("94",
 # "99999999999999999999999999") at any length; a plain number past that is refused
 # with the advice to quote it, as is a plain number with a leading 0 (C++ reads
 # 0051 as octal, 41), in hex, or with digit separators. Inside quotes a leading 0
@@ -104,7 +105,17 @@ def live_rows(text):
             if re.fullmatch(r"-?0[0-9]+", digits):
                 fail("line %d: %s is written %s, which C++ reads as octal; write it without the leading 0"
                      % (line, match.group(1), digits))
-            if not -LONG_LONG_MAX - 1 <= int(digits) <= LONG_LONG_MAX:
+            # A NEGATIVE ROW MUST KEEP ITS MINUS IN C++ TOO (the review of b68d1a7,
+            # 2026-09-17). The row's constructor takes any integer type since that
+            # commit, so -1ULL and -4u are unsigned there and arrived as
+            # 18446744073709551615 and 4294967292, with this script reading -1 and -4
+            # and no check refusing either. -9223372036854775808 has no literal at
+            # all: it is 9223372036854775808 negated, too large to be signed, so the
+            # same happened -- it reads in quotes.
+            if digits.startswith("-") and re.search("[uU]", literal):
+                fail("line %d: %s is written %s, which C++ reads as unsigned, losing the minus; write it without the u"
+                     % (line, match.group(1), literal))
+            if not -LONG_LONG_MAX <= int(digits) <= LONG_LONG_MAX:
                 fail('line %d: %s is %s, longer than a C++ integer can be written; write it in quotes: "%s"'
                      % (line, match.group(1), digits, digits))
         rows.append({"name": match.group(1), "number": int(digits), "span": match.span(2), "quoted": bool(quoted),
