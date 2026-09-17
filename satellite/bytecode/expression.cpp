@@ -12,6 +12,7 @@
 
 #include "word_codes.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
+#include "../satellite_object/fast_paths.hpp"
 
 #include <utility>
 
@@ -192,6 +193,72 @@ bool refuse_if_reserved(Code code, std::size_t &at, ExpressionContext &context)
 
 Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int lowest, ExpressionContext &context);
 
+// A METHOD ON A DECLARED NAME -- `s.find("str")`. The author's design, 2026-09-16,
+// and the three tokens he named are the trigger: period, method name, `(`.
+//
+// WHAT IS IN THE PARENTHESES IS JUST AN EXPRESSION, and that is why the "look for
+// quotes" step he described does not need a step of its own. The evaluator
+// already tells the two apart, because the LEXER did: a quoted literal arrived as
+// string_token with its characters counted behind it, and a bare name arrived as
+// name_token. So `s.find("x")` evaluates a string, `s.find(other)` looks `other`
+// up as a variable, and `s.find(nothing_declared)` is name_not_declared (25) --
+// which is his "no object? ERROR", in the words a person can act on, with no code
+// written here to produce it.
+//
+// THE RECEIVER'S ARM CHOOSES THE FAST PATH. `find` on a string is str_find_str;
+// on anything else it is a refusal naming what it got. That is the object model's
+// one hop: the variable's value knows its own kind, so the method resolves
+// against that and nothing else.
+Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, const Value &receiver,
+                  const std::string &name, ExpressionContext &context)
+{
+    const Code method = code_at(row, at + 1);
+    const char *spelling = method == token::find_token ? "find"
+                         : method == token::replace_token ? "replace" : "that method";
+    at += 2;
+
+    if (code_at(row, at) != token::left_parenthesis_token) {
+        context.refuse(satl_line_not_understood,
+                       name + "." + spelling + " is a method and needs a ( after it");
+        return Value();
+    }
+    ++at;
+    Value argument;
+    if (code_at(row, at) != token::right_parenthesis_token)
+        argument = evaluate_at(row, at, 1, context);
+    if (context.code != success)
+        return Value();
+    if (code_at(row, at) != token::right_parenthesis_token) {
+        context.refuse(satl_line_not_understood,
+                       name + "." + spelling + " was given something it could not read to the end of");
+        return Value();
+    }
+    ++at;
+
+    Value answer;
+    signed long long int code = not_built_yet;
+    if (method == token::find_token)
+        code = str_find_str(receiver, argument, answer);
+
+    if (code == types_do_not_meet) {
+        context.refuse(code, std::string(spelling) + " was written on " + receiver.kind_name() +
+                                 " and given " + argument.kind_name() + ", and there is no scenario for that");
+        return Value();
+    }
+    // NOT FOUND IS A REFUSAL AND NOT -1 (003's S0716, machine code 15). A language
+    // whose numbers have no ceiling should not borrow a sentinel from one whose
+    // numbers do.
+    if (code == text_not_found) {
+        context.refuse(code, name + "." + spelling + " did not find it");
+        return Value();
+    }
+    if (code != success) {
+        context.refuse(code, std::string("satellite.variable.string.") + spelling + " is not built yet");
+        return Value();
+    }
+    return answer;
+}
+
 // A literal, a name, a call, a bracketed expression, or a unary operator.
 Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
@@ -289,6 +356,10 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             context.refuse(name_not_declared, name + " has no satellite.variable line declaring it");
             return Value();
         }
+        // THE THREE TOKENS TOGETHER (the author): a period, a method's own code,
+        // and a `(`. call_method above says what happens then.
+        if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
+            return call_method(row, at, found->second.value, name, context);
         return found->second.value;
     }
 

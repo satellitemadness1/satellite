@@ -66,6 +66,7 @@ def main():
            '// 2026-09-16). is_token() is the one test, and it is the high byte.',
            '',
            '#include <cstdint>',
+           '#include <string_view>',
            '',
            'namespace satellite004 {',
            'namespace token {',
@@ -104,6 +105,33 @@ def main():
             '']
     for code, name, what in tokens:
         out.append('inline constexpr Code %s = 0x%04X;  // %s' % (name, code, what[:88]))
+
+    # THE METHOD NAMES -- the author, 2026-09-16: "we make find_token, so when we
+    # have period token and find_token together with parentheses token, with all
+    # of those tokens it triggers a detailed code". A method's NAME gets its own
+    # 16-bit code, so recognising `.find(` is two integer compares and not a
+    # string compare. The rows marked [METHOD] are the list; the word before the
+    # mark is the spelling the lexer matches, and it is matched ONLY straight
+    # after a method_token, so a variable may still be named `find`.
+    methods = [(name, what.split()[0]) for _, name, what in tokens
+               if "[METHOD]" in what]
+    out += ['',
+            '// GENERATED from the [METHOD] rows. Answers 0 for a name that is not a',
+            '// method of the language -- a user\'s own method keeps name_token.',
+            'inline constexpr Code method_code_of(std::string_view spelling)',
+            '{']
+    for name, spelling in methods:
+        out.append('    if (spelling == "%s") return %s;' % (spelling, name))
+    out += ['    return 0;',
+            '}',
+            '',
+            '// True for a code that names a method. One compare, because the family is',
+            '// its own: every method name shares the high byte.',
+            'inline constexpr bool is_method_code(Code code)',
+            '{',
+            '    return %s;' % (' || '.join('code == %s' % name for name, _ in methods) if methods else 'false'),
+            '}',
+            '']
     out += ['',
             'inline constexpr int kTokenCount = %d;' % len(tokens),
             '',

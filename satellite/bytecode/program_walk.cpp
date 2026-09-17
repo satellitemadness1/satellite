@@ -283,10 +283,11 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // THE DECLARED TYPE OUTLIVES THE LINE THAT WROTE IT. `n = "text"` on a
     // number is refused rather than quietly making n a string (value.hpp).
     const Code holds = declared != 0 ? declared : found->second.declared;
-    if (holds == word::code_of(1, 6, 4) && !value.is_number()) {
+    if ((holds == word::code_of(1, 6, 4) && !value.is_number()) ||
+        (holds == word::code_of(1, 6, 1) && !value.is_string())) {
         at = past_the_statement(row, at);
-        return report_error(std::string("satl(run): ") + name + " was declared satellite.variable.number and was given " +
-                                value.kind_name(),
+        return report_error(std::string("satl(run): ") + name + " was declared " +
+                                word::spelling_of(holds) + " and was given " + value.kind_name(),
                             types_do_not_meet);
     }
     variables[name] = Variable{holds, std::move(value)};

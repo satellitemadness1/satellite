@@ -1,0 +1,10 @@
+// "no object? ERROR" (the author). The name in the parentheses is not a string
+// and was never declared, so the pre-pass refuses it by name before main runs.
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.string s = "hello world"
+    satellite.console.display(s.find(no_such_object))
+    satellite.return(satellite)
+}

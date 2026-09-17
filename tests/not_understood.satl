@@ -1,8 +1,21 @@
+// A line the interpreter has no scenario for, and NOTHING RUNS BEFORE IT:
+// check.sh asserts both, so the "before" above it must never reach the screen.
+//
+// REBASED 2026-09-16, and the rebase is the point. This file used to declare a
+// satellite.variable.string, which was refused because the string was not built.
+// satelliteObject made it the interpreter's own string that day, so the line
+// started working and this check went green for the wrong reason -- it was
+// asserting an ABSENCE, and the absence was filled in.
+//
+// satellite.variable.float is the next unbuilt type along (word 1 6 10, and
+// DESIGN has it decided: a bool and two satellite_numbers). When the float is
+// built this file goes red again, and the fix is the same one: move it to
+// whatever is still unbuilt, not to delete the check.
 satellite.include(satellite)
 
 satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
 {
     satellite.console.display("before")
-    satellite.variable.string s = "not yet"
+    satellite.variable.float f = 1
     satellite.return(satellite)
 }

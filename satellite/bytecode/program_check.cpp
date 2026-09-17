@@ -127,9 +127,15 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         std::size_t k = at + 1;
         const std::string name = text_at(row, k);
         const std::size_t stop = past_the_statement(row, at);
-        if (code != word::code_of(1, 6, 4)) {
+        // satellite.variable.number (1 6 4) and satellite.variable.string (1 6 1):
+        // both types the object model carries as arms and both checked against
+        // Python. The string joined the list on 2026-09-16, when satelliteObject
+        // made satellite_string the interpreter's own string -- before that a
+        // declaration of one would have been a declaration that did nothing.
+        if (code != word::code_of(1, 6, 4) && code != word::code_of(1, 6, 1)) {
             why = std::string(word::spelling_of(code)) + " " + name +
-                  " is a declaration, and only satellite.variable.number is built yet";
+                  " is a declaration, and only satellite.variable.number and "
+                  "satellite.variable.string are built yet";
             at = stop;
             return satl_line_not_understood;
         }

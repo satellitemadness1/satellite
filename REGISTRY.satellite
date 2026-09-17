@@ -316,6 +316,10 @@ bits              name                         what it is
 0000101000000100  free                         to 0000101011111111, free for this family
 
 -- THE WORDS  (0001000000000000 up)
+0000101100000000  find_token                   find  [METHOD] object.find(x) -- where x sits inside the receiver
+0000101100000001  replace_token                replace  [METHOD] object.replace(a, b)
+0000101100000010  free                         to 0000101111111111, free for this family
+
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it
 0001111111111111  the last word                to here: 4096 codes, words ONLY, nothing else is ever put here

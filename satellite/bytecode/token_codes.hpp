@@ -6,6 +6,7 @@
 // 2026-09-16). is_token() is the one test, and it is the high byte.
 
 #include <cstdint>
+#include <string_view>
 
 namespace satellite004 {
 namespace token {
@@ -122,9 +123,28 @@ inline constexpr Code batch_start_token = 0x0A00;  // opens a batch: these calls
 inline constexpr Code batch_end_token = 0x0A01;  // closes a batch
 inline constexpr Code wait_token = 0x0A02;  // the main thread waits here until everything marked before it has finished
 inline constexpr Code batch_size_token = 0x0A03;  // how many commands one batch carries; a count follows
+inline constexpr Code find_token = 0x0B00;  // find  [METHOD] object.find(x) -- where x sits inside the receiver
+inline constexpr Code replace_token = 0x0B01;  // replace  [METHOD] object.replace(a, b)
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
-inline constexpr int kTokenCount = 76;
+// GENERATED from the [METHOD] rows. Answers 0 for a name that is not a
+// method of the language -- a user's own method keeps name_token.
+inline constexpr Code method_code_of(std::string_view spelling)
+{
+    if (spelling == "find") return find_token;
+    if (spelling == "replace") return replace_token;
+    return 0;
+}
+
+// True for a code that names a method. One compare, because the family is
+// its own: every method name shares the high byte.
+inline constexpr bool is_method_code(Code code)
+{
+    return code == find_token || code == replace_token;
+}
+
+
+inline constexpr int kTokenCount = 78;
 
 } // namespace token
 } // namespace satellite004

@@ -61,6 +61,11 @@ expect "nothing ran before the refusal" "" "$(grep -x before build/nu.out)"
 #   + joins two strings (003 DESIGN §6.6, the author at M19)
 #   a literal of 23 digits is held exactly, not refused and not truncated
 expect "\"some\" + \"str\" joins them" "somestr" "$($interpreter tests/two_strings.satl 2>/dev/null)"
+# `.find(` -- period + the method's own 16-bit code + `(` (the author, 2026-09-16).
+# A quoted argument and an object argument both work; an undeclared one is 25.
+expect "s.find() on a literal and on an object" "6|0|6" \
+       "$($interpreter tests/find.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+$interpreter tests/find_no_object.satl > /dev/null 2>&1; expect "s.find(no object) is refused" 25 $?
 expect "a 23-digit number is held exactly" "99999999999999999999999" "$($interpreter tests/big_number.satl 2>/dev/null)"
 
 # THE SIX FAST PATHS, REACHED THROUGH THEIR TOKENS. The arithmetic itself is

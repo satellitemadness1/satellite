@@ -259,6 +259,26 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
             std::size_t k = line.i;
             while (k < n && identifier_body(text[k])) ++k;
             const std::size_t length = k - line.i;
+
+            // THE AUTHOR'S `.find(` TRIGGER, 2026-09-16: "we simply create the
+            // syntax token period_token... then we make find_token, so when we
+            // have period token and find_token together with parentheses token,
+            // with all of those tokens it triggers a detailed code". method_token
+            // IS the period token and always was; this is the other half. A
+            // method's NAME now has its own 16-bit code, so recognising `.find(`
+            // is two integer compares instead of rebuilding a std::string from
+            // codes and comparing it -- the same cost the CPython race found.
+            //
+            // ONLY STRAIGHT AFTER A PERIOD, which is what keeps `find` usable as
+            // an ordinary name: `satellite.variable.number find = 5` is a name in
+            // the ordinary position, `s.find("x")` is the method. The lexer does
+            // not know the receiver's TYPE -- that is the object model's job --
+            // and it does not have to: it only has to know this is a member name.
+            if (!row.empty() && static_cast<Code>(row.back().to_ulong()) == token::method_token) {
+                const Code method = token::method_code_of(text.substr(line.i, length));
+                if (method != 0) { line.put(method); line.i = k; continue; }
+            }
+
             Code marker = token::name_token;
             std::size_t from = line.i;
             if (length > 1 && (c == 'b' || c == 'x')) {
