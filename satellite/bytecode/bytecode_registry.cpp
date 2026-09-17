@@ -2,6 +2,7 @@
 // The header says why the rows are bitset<16> and why the threads get batches.
 
 #include "bytecode_registry.hpp"
+#include "cascade_convert.hpp"
 
 #include "../satellite_variable_string/character_table.hpp"
 #include "word_codes.hpp"
@@ -386,53 +387,15 @@ void add_file_to_bytecode_registry(const std::string &filename,
         return;
     }
 
-    // BATCHES OF LINES, NEVER ONE LINE EACH -- the header says why, with the
-    // measurement. A batch is never smaller than one line.
-    const unsigned long long int jobs =
-        std::max<unsigned long long int>(1, std::min<unsigned long long int>(batches, lines.size()));
-    const std::size_t per = (lines.size() + jobs - 1) / jobs;
-
-    // ONE BATCH WRITES STRAIGHT INTO THE ROW. Laying pieces end to end costs a
-    // copy of the whole file (37 MB on 100,000 lines), and there is nothing to
-    // lay out when there is one piece. This is the common case -- a program is
-    // usually one modest file -- so it is worth the branch.
-    if (jobs == 1) {
-        std::size_t characters = 1;
-        for (const std::string_view &line : lines) characters += line.size() + 8;
-        file.reserve(characters);
-        for (const std::string_view &line : lines) tokenise_one_line(line, file);
-        file.push_back(std::bitset<16>(token::end_of_file_token));
-        return;
-    }
-
-    // EACH BATCH FILLS ITS OWN PIECE, and the pieces are laid end to end in
-    // order afterwards. A file is ONE row, so the batches cannot all push into
-    // it at once; and a piece of ~400 lines is one allocation where a row a
-    // line was 100,000 of them.
-    std::vector<std::vector<std::bitset<16>>> pieces(static_cast<std::size_t>(jobs));
-    std::atomic<unsigned long long int> finished{0};
-
-    for (unsigned long long int job = 0; job < jobs; ++job) {
-        threads.submit([&, job] {
-            const std::size_t start = static_cast<std::size_t>(job) * per;
-            const std::size_t stop = std::min(lines.size(), start + per);
-            std::vector<std::bitset<16>> &piece = pieces[static_cast<std::size_t>(job)];
-            std::size_t characters = 0;
-            for (std::size_t l = start; l < stop; ++l) characters += lines[l].size() + 8;
-            piece.reserve(characters);
-            for (std::size_t l = start; l < stop; ++l) tokenise_one_line(lines[l], piece);
-            finished.fetch_add(1, std::memory_order_release);
-        });
-    }
-    while (finished.load(std::memory_order_acquire) < jobs) std::this_thread::yield();
-
-    std::size_t total = 1;
-    for (const std::vector<std::bitset<16>> &piece : pieces) total += piece.size();
-    file.reserve(total);
-    for (const std::vector<std::bitset<16>> &piece : pieces)
-        file.insert(file.end(), piece.begin(), piece.end());
-
-    // A row is a whole file, so its last code says so.
+    // THE CASCADE, THEN THE WARM THREADS (the author, 2026-09-16). Main starts
+    // ONE thread; that thread converts a line and starts the thread that
+    // converts the next, down the front of the file. Everything behind the
+    // cascade goes to the 256 that are already parked.
+    //
+    // 256 DEEP, which is his "main is assured that it receives the first 256
+    // lines". cascade_convert.hpp says why it is bounded there and not run to
+    // the end of the file.
+    cascade_convert(lines, file, threads, 256, batches);
     file.push_back(std::bitset<16>(token::end_of_file_token));
 }
 
