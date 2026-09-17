@@ -16,6 +16,7 @@
 // guess which file a pair went to.
 
 #include "satellite_object.hpp"
+#include "fast_paths.hpp"
 
 #include "bool_and_bool_compare.hpp"
 #include "bool_to_string.hpp"
@@ -161,6 +162,7 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     case satelliteObject::user_defined: return *l.as_user_defined() == *r.as_user_defined();
     // BITS AND WIDTH: `b0010` is not `b10` (satellite_binary_number.hpp).
     case satelliteObject::binary: return *l.as_binary() == *r.as_binary();
+    case satelliteObject::percentage: return *l.as_percentage() == *r.as_percentage();
     case satelliteObject::how_many_kinds: break;
     }
     return false;
@@ -176,6 +178,7 @@ const char *satelliteObject::kind_name() const
     case capsule: return "a capsule";
     case user_defined: return "an object";
     case binary: return "a binary";
+    case percentage: return "a percentage";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -189,6 +192,8 @@ const char *satelliteObject::kind_name() const
 signed long long int satelliteObject::add(const satelliteObject &other, satelliteObject &out,
                                           std::string &why) const
 {
+    if (is_percentage() || other.is_percentage())
+        return percentage_operation('+', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).add(worth_of(other), out, why);
 
@@ -244,6 +249,8 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
 signed long long int satelliteObject::subtract(const satelliteObject &other, satelliteObject &out,
                                                std::string &why) const
 {
+    if (is_percentage() || other.is_percentage())
+        return percentage_operation('-', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).subtract(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -254,6 +261,8 @@ signed long long int satelliteObject::subtract(const satelliteObject &other, sat
 signed long long int satelliteObject::multiply(const satelliteObject &other, satelliteObject &out,
                                                std::string &why) const
 {
+    if (is_percentage() || other.is_percentage())
+        return percentage_operation('*', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).multiply(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -264,6 +273,8 @@ signed long long int satelliteObject::multiply(const satelliteObject &other, sat
 signed long long int satelliteObject::divide(const satelliteObject &other, satelliteObject &out,
                                              std::string &why) const
 {
+    if (is_percentage() || other.is_percentage())
+        return percentage_operation('/', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).divide(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -274,6 +285,8 @@ signed long long int satelliteObject::divide(const satelliteObject &other, satel
 signed long long int satelliteObject::modulus(const satelliteObject &other, satelliteObject &out,
                                               std::string &why) const
 {
+    if (is_percentage() || other.is_percentage())
+        return percentage_operation('%', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).modulus(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -284,6 +297,8 @@ signed long long int satelliteObject::modulus(const satelliteObject &other, sate
 signed long long int satelliteObject::power(const satelliteObject &other, satelliteObject &out,
                                             std::string &why) const
 {
+    if (is_percentage() || other.is_percentage())
+        return percentage_operation('^', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).power(worth_of(other), out, why);
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
@@ -297,6 +312,8 @@ signed long long int satelliteObject::power(const satelliteObject &other, satell
 signed long long int satelliteObject::compare(const satelliteObject &other, int &order,
                                               std::string &why) const
 {
+    if (is_percentage() || other.is_percentage())
+        return percentage_compare(*this, other, order, why);
     // A binary against a number, by worth (read_by_worth says why). Two binaries
     // keep their own case below, where the width counts.
     if (read_by_worth(*this, other) && !(is_binary() && other.is_binary()))
@@ -339,6 +356,10 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
     case boolean: return bool_to_string(*as_bool(), out);
     case number: return number_to_string(*as_number(), out);
     case string: out = *as_string(); return success;
+    case percentage: {                     // "50%": exactly what display prints
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(as_percentage()->written(), out, bad_offset);
+    }
     // The b and the digits, exactly what display prints (003 DESIGN 8.5).
     case binary: {
         std::size_t bad_offset = 0;

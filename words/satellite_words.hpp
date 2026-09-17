@@ -379,6 +379,7 @@ inline constexpr WordRow kWords[] = {
     {"satellite.thread.new", {1, 23, 1, 0, 0, 0}, 3},
     {"satellite.constructor", {1, 24, 0, 0, 0, 0}, 2},
     {"satellite.constructor()", {1, 24, 0, 0, 0, 0}, 3},
+    {"satellite.variable.percentage", {1, 6, 16, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -436,7 +437,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.console.display", {1, 5, 1, 1, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},
-    {"satellite.variable", {1, 6, 16, 0, 0, 0, 0}, 3},
+    {"satellite.variable", {1, 6, 17, 0, 0, 0, 0}, 3},
     {"satellite.variable.string", {1, 6, 1, 23, 0, 0, 0}, 4},
     {"satellite.variable.string.size", {1, 6, 1, 1, 1, 0, 0}, 5},
     {"satellite.variable.string.empty", {1, 6, 1, 2, 1, 0, 0}, 5},
@@ -598,6 +599,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.thread", {1, 23, 2, 0, 0, 0, 0}, 3},
     {"satellite.thread.new", {1, 23, 1, 1, 0, 0, 0}, 4},
     {"satellite.constructor", {1, 24, 1, 0, 0, 0, 0}, 3},
+    {"satellite.variable.percentage", {1, 6, 16, 1, 0, 0, 0}, 4},
 };
 
 } // namespace satellite004

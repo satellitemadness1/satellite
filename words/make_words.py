@@ -26,6 +26,16 @@
 # wrong library. The rows are read from 003's own compiled registry by walking
 # `satl --words`, which answers from the words.def the binary was built from.
 #
+# 004'S OWN WORDS ARE APPENDED, NEVER MIXED IN. words_004.tsv, next to this script,
+# lists every word 004 added after the renumbering -- `numbers<TAB>path`, in the
+# order they were added -- and they go on the END of words.tsv, after every word
+# that came from 003. That is not tidiness: a word's 16-bit code is 4097 plus its
+# ROW (satellite/bytecode/make_word_codes.py), so a word inserted anywhere else
+# would move the code of every word after it. Each one must take the NEXT FREE
+# number under its parent -- first available, the author's scheme -- and anything
+# else stops this script rather than writing a table with a gap or a clash. The
+# first was satellite.variable.percentage, 1 6 16 (the author, 2026-09-17).
+#
 # WRITES, next to this script:
 #   words_003.tsv        every 003 06 word and its number, for reference (371 rows)
 #   words.tsv            004's words: numbers <TAB> path <TAB> 003's number
@@ -123,6 +133,31 @@ def main():
         old_of[path] = numbers
     kept.insert(0, ("satellite", [1]))
     old_of["satellite"] = [1]
+
+    # 004's own words, appended in the order they were added (see the header).
+    taken = {tuple(numbers) for _, numbers in kept}
+    paths = {path for path, _ in kept}
+    added = os.path.join(HERE, "words_004.tsv")
+    for line_number, line in enumerate(open(added, encoding="utf-8") if os.path.exists(added) else [], 1):
+        if not line.strip():
+            continue
+        fields = line.rstrip("\n").split("\t")
+        if len(fields) != 2:
+            sys.exit(f"make_words.py: words_004.tsv line {line_number}: write numbers, a tab, then the path")
+        numbers, path = [int(n) for n in fields[0].split()], fields[1]
+        parent = tuple(numbers[:-1])
+        under = [n[-1] for n in taken if len(n) == len(numbers) and n[:-1] == parent and n[-1] != 0]
+        if path in paths or tuple(numbers) in taken:
+            sys.exit(f"make_words.py: words_004.tsv line {line_number}: {path} {fields[0]} is already a word")
+        if parent not in taken:
+            sys.exit(f"make_words.py: words_004.tsv line {line_number}: {path} has no parent word {' '.join(map(str, parent))}")
+        if numbers[-1] != max(under, default=0) + 1:
+            sys.exit(f"make_words.py: words_004.tsv line {line_number}: {path} must take the next free number, "
+                     f"{' '.join(map(str, list(parent) + [max(under, default=0) + 1]))}")
+        kept.append((path, numbers))
+        old_of[path] = []
+        taken.add(tuple(numbers))
+        paths.add(path)
     # the next free number under every kept word: one past what it hands out today
     children = {}
     for path, new in kept:

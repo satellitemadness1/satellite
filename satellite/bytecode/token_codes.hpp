@@ -42,6 +42,7 @@ inline constexpr bool carries_a_count(Code code)
     case 0x0907:  // string_index_token
     case 0x0908:  // wide_run_token
     case 0x0909:  // wide_run_32_token
+    case 0x090B:  // percentage_token
         return true;
     default:
         return false;
@@ -67,7 +68,7 @@ inline constexpr Code tight_plus_token = 0x0306;  // +  touching: not an operati
 inline constexpr Code tight_minus_token = 0x0307;  // -  touching: the UNARY minus, which is how -5 is written
 inline constexpr Code tight_times_token = 0x0308;  // *  touching: not an operation. Reserved
 inline constexpr Code fraction_token = 0x0309;  // /  touching, between two numbers: 5/4 is a fraction (not built yet)
-inline constexpr Code tight_modulus_token = 0x030A;  // %  touching: not an operation. Reserved
+inline constexpr Code tight_modulus_token = 0x030A;  // %  touching: not an operation. Reserved -- except straight after a number's digits, wher
 inline constexpr Code tight_power_token = 0x030B;  // ^  touching: not an operation. Reserved
 inline constexpr Code assign_token = 0x0400;  // =
 inline constexpr Code plus_assign_token = 0x0401;  // +=   QUESTION: 003 DESIGN §6 has one assignment form and no compound
@@ -119,6 +120,7 @@ inline constexpr Code string_index_token = 0x0907;  // [COUNTED] the string at t
 inline constexpr Code wide_run_token = 0x0908;  // [COUNTED] count, then that many characters as their own 16-bit Unicode number
 inline constexpr Code wide_run_32_token = 0x0909;  // [COUNTED] count, then that many characters as 32 bits each (emoji, rare CJK)
 inline constexpr Code long_count_token = 0x090A;  // the count that follows continues in the next code: no literal has a ceiling
+inline constexpr Code percentage_token = 0x090B;  // [COUNTED] 50% 12.5% 1000000000000% -- count, then the digits before the % (the author, 2
 inline constexpr Code batch_start_token = 0x0A00;  // opens a batch: these calls may run on one pool thread
 inline constexpr Code batch_end_token = 0x0A01;  // closes a batch
 inline constexpr Code wait_token = 0x0A02;  // the main thread waits here until everything marked before it has finished
@@ -163,7 +165,7 @@ inline constexpr bool is_method_code(Code code)
 }
 
 
-inline constexpr int kTokenCount = 84;
+inline constexpr int kTokenCount = 85;
 
 } // namespace token
 } // namespace satellite004

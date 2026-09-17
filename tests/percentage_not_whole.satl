@@ -1,0 +1,9 @@
+// 3 * 50% is 1.5, and a number holds whole numbers until satellite_float lands.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(3 * 50%)
+    satellite.return(satellite)
+}

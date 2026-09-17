@@ -17,10 +17,11 @@
 // four lines and then a refusal. What it does not buy is catching `1 + "a"` in an
 // unrun branch, and this file does not pretend to.
 //
-// ONE TYPE RULE IS CHECKED HERE, and only because it is a SPELLING and not a
-// type: a satellite.variable.binary given digits with no b in front of them
-// (the author, 2026-09-16). The b is visible in the text, so it needs nothing to
-// run -- see binary_is_written_with_b.
+// TWO TYPE RULES ARE CHECKED HERE, and only because each is a SPELLING and not a
+// type: a satellite.variable.binary given digits with no b in front of them (the
+// author, 2026-09-16), and a satellite.variable.percentage given digits with no %
+// after them. The b and the % are visible in the text, so neither needs anything
+// to run -- see binary_is_written_with_b and percentage_is_written_with_percent.
 //
 // THE DECLARED NAMES ARE TRACKED PER CAPSULE, which is the same rule run_body
 // enforces by handing each body its own table: there are no globals, so a name
@@ -107,6 +108,23 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
         if (entered[i] < '0' || entered[i] > '9')
             return success;
     why = "ERROR: " + entered + " is not binary -- a binary digit is 0 or 1";
+    return types_do_not_meet;
+}
+
+// A PERCENTAGE IS WRITTEN WITH ITS %, by the same rule as a binary's b (the
+// author's for binary, 2026-09-16, applied here on 2026-09-17 because a
+// percentage has the same shape of mistake): `satellite.variable.percentage p = 50`
+// is ERROR: expected 50%. The % is in the text, so nothing has to run to see it
+// is missing. Only the first value, inside any brackets, as for binary.
+signed long long int percentage_is_written_with_percent(const std::vector<std::bitset<16>> &row, std::size_t at,
+                                                        std::string &why)
+{
+    while (code_at(row, at) == token::left_parenthesis_token)
+        ++at;
+    if (code_at(row, at) != token::number_token)
+        return success;
+    std::size_t k = at;
+    why = "ERROR: expected " + text_at(row, k) + "%";
     return types_do_not_meet;
 }
 
@@ -242,10 +260,11 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // declaration of one would have been a declaration that did nothing.
         // satellite.variable.binary (1 6 5) joined the same day, as the arm
         // satellite_binary_number.
-        if (code != word::code_of(1, 6, 4) && code != word::code_of(1, 6, 1) && code != word::code_of(1, 6, 5)) {
+        if (code != word::code_of(1, 6, 4) && code != word::code_of(1, 6, 1) && code != word::code_of(1, 6, 5) &&
+            code != word::code_of(1, 6, 16)) {
             why = std::string(word::spelling_of(code)) + " " + name +
-                  " is a declaration, and only satellite.variable.number, satellite.variable.string and "
-                  "satellite.variable.binary are built yet";
+                  " is a declaration, and only satellite.variable.number, .string, .binary and "
+                  ".percentage are built yet";
             at = stop;
             return satl_line_not_understood;
         }
@@ -258,6 +277,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (shaped != success) { at = stop; return shaped; }
         if (code == word::code_of(1, 6, 5) && code_at(row, k) == token::assign_token) {
             const signed long long int written = binary_is_written_with_b(row, k + 1, declared, why);
+            if (written != success) { at = stop; return written; }
+        }
+        if (code == word::code_of(1, 6, 16) && code_at(row, k) == token::assign_token) {
+            const signed long long int written = percentage_is_written_with_percent(row, k + 1, why);
             if (written != success) { at = stop; return written; }
         }
         const signed long long int held = names_in_statement(row, k, stop, declared, capsules, functions, why);
@@ -298,6 +321,11 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (found != declared.end() && found->second == word::code_of(1, 6, 5) &&
             code_at(row, k) == token::assign_token) {
             const signed long long int written = binary_is_written_with_b(row, k + 1, declared, why);
+            if (written != success) { at = stop; return written; }
+        }
+        if (found != declared.end() && found->second == word::code_of(1, 6, 16) &&
+            code_at(row, k) == token::assign_token) {
+            const signed long long int written = percentage_is_written_with_percent(row, k + 1, why);
             if (written != success) { at = stop; return written; }
         }
         const signed long long int held = names_in_statement(row, at, stop, declared, capsules, functions, why);

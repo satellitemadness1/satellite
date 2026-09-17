@@ -66,7 +66,10 @@ signed long long int object_to_string(const satelliteObject &from, satelliteObje
         code = number_to_string(*held, text);
     else if (const bool *held = from.as_bool())
         code = bool_to_string(*held, text);
-    else if (const satellite_binary_number *held = from.as_binary()) {
+    else if (const satellite_percentage *held = from.as_percentage()) {
+        std::size_t bad_offset = 0;       // "50%": exactly what display prints
+        code = satellite_string::from_utf8(held->written(), text, bad_offset);
+    } else if (const satellite_binary_number *held = from.as_binary()) {
         std::size_t bad_offset = 0;       // "b00101010": exactly what display prints
         code = satellite_string::from_utf8(held->written(), text, bad_offset);
     } else

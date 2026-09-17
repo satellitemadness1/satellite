@@ -40,4 +40,12 @@ signed long long int object_to_number(const satelliteObject &from, satelliteObje
 signed long long int object_to_binary(const satelliteObject &from, satelliteObject &out);
 signed long long int object_to_hexadecimal(const satelliteObject &from, satelliteObject &out);
 
+// A PERCENTAGE MEETING A NUMBER OR A PERCENTAGE under + - * / (object_percentage.cpp).
+// `sign` is the operator's own character, so a refusal can name it. A binary is
+// handed over already read by its worth, as every arithmetic reads it.
+signed long long int percentage_operation(char sign, const satelliteObject &left, const satelliteObject &right,
+                                          satelliteObject &out, std::string &why);
+signed long long int percentage_compare(const satelliteObject &left, const satelliteObject &right, int &order,
+                                        std::string &why);
+
 } // namespace satellite004

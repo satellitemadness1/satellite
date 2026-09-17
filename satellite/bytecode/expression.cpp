@@ -363,6 +363,9 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // when a b literal was a number.
         if (const satellite_binary_number *bits = inner.as_binary())
             return Value::of_number(-bits->bits);
+        // -50% is a percentage below zero: `200 - -50%` grows 200 by half.
+        if (const satellite_percentage *percent = inner.as_percentage())
+            return Value::of_percentage(satellite_percentage{-percent->scaled});
         if (!inner.is_number()) {
             if (context.code == success)
                 context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name());
@@ -421,6 +424,21 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             return Value();
         }
         return Value::of_binary(std::move(bits));
+    }
+
+    // A PERCENTAGE LITERAL -- 50%, 12.5%, 1000000000000% -- is a
+    // satellite.variable.percentage (the author, 2026-09-17), kept to 32 digits
+    // after the point and rounded there. The lexer made the token only out of a
+    // number's digits with a % pressed against them.
+    if (code == token::percentage_token) {
+        const std::string digits = text_at(row, at);
+        satellite_percentage percent;
+        const signed long long int held = satellite_percentage::from_digits(digits, percent);
+        if (held != success) {
+            context.refuse(held, digits + "% is not a percentage this can read");
+            return Value();
+        }
+        return Value::of_percentage(std::move(percent));
     }
 
     // THE TWO NUMBER LITERALS, THROUGH ONE CONVERSION FAST PATH. 34587 and xFFAA
@@ -558,6 +576,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // A binary leaves as the text it was written as, b and leading zeros and all.
     else if (argument.is_binary() && scenarios->text != nullptr)
         answer = scenarios->text(argument.as_binary()->written(), true);
+    // A percentage leaves as its digits and its %: 50%, 12.5%.
+    else if (argument.is_percentage() && scenarios->text != nullptr)
+        answer = scenarios->text(argument.as_percentage()->written(), true);
     else if (argument.is_bool() && scenarios->flag != nullptr)
         answer = scenarios->flag(*argument.as_bool(), true);
     else {

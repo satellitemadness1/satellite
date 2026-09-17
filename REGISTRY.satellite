@@ -236,7 +236,7 @@ bits              name                         what it is
 0000001100000111  tight_minus_token            -  touching: the UNARY minus, which is how -5 is written
 0000001100001000  tight_times_token            *  touching: not an operation. Reserved
 0000001100001001  fraction_token               /  touching, between two numbers: 5/4 is a fraction (not built yet)
-0000001100001010  tight_modulus_token          %  touching: not an operation. Reserved
+0000001100001010  tight_modulus_token          %  touching: not an operation. Reserved -- except straight after a number's digits, where 50% is percentage_token
 0000001100001011  tight_power_token            ^  touching: not an operation. Reserved
 0000001100001100  free                         to 0000001111111111, free for this family
 
@@ -306,7 +306,8 @@ bits              name                         what it is
 0000100100001000  wide_run_token               [COUNTED] count, then that many characters as their own 16-bit Unicode number
 0000100100001001  wide_run_32_token            [COUNTED] count, then that many characters as 32 bits each (emoji, rare CJK)
 0000100100001010  long_count_token             the count that follows continues in the next code: no literal has a ceiling
-0000100100001011  free                         to 0000100111111111, free for this family
+0000100100001011  percentage_token             [COUNTED] 50% 12.5% 1000000000000% -- count, then the digits before the % (the author, 2026-09-17)
+0000100100001100  free                         to 0000100111111111, free for this family
 
 -- BATCH MARKS -- .satb, a PROPOSAL against open decision D12.1  (0000101000000000 up)
 0000101000000000  batch_start_token            opens a batch: these calls may run on one pool thread

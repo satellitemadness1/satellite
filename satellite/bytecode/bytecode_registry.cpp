@@ -224,6 +224,18 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
         if (a_digit(c)) {
             std::size_t k = line.i;
             while (k < n && (a_digit(text[k]) || (text[k] == '.' && k + 1 < n && a_digit(text[k + 1])))) ++k;
+
+            // A PERCENTAGE IS A NUMBER WITH A % TOUCHING IT (the author,
+            // 2026-09-17: "take 1% and 100% as meaning a percentage"). The
+            // whitespace rule is what frees the spelling: `5 % 3` is modulus
+            // because it is spaced, so a % pressed against a number's digits is
+            // not an operation -- unless something name-like follows it, where
+            // `5%3` stays the touching modulus the rule refuses by name.
+            if (k < n && text[k] == '%' && (k + 1 >= n || !identifier_body(text[k + 1]))) {
+                line.put_payload(token::percentage_token, line.i, k);
+                line.i = k + 1;
+                continue;
+            }
             line.put_payload(token::number_token, line.i, k);
             line.i = k;
             continue;

@@ -120,6 +120,33 @@ $interpreter tests/binary_in_brackets.satl > build/binary_b.out 2>&1; expect "a 
 expect "... is still ERROR: expected b10101010, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected b10101010 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
 $interpreter tests/binary_0b.satl > build/binary_b.out 2>&1; expect "0b10101010, the C spelling" 27 $?
+# satellite.variable.percentage (the author, 2026-09-17): 32 digits after the point,
+# rounded half away from zero there. Python's decimal module is the authority.
+wanted_percentage=$(python3 -c "
+from decimal import Decimal, getcontext, ROUND_HALF_UP
+from fractions import Fraction as F
+getcontext().prec = 300
+def pct(value):
+    d = (Decimal(value.numerator) / Decimal(value.denominator)) if isinstance(value, F) else Decimal(value)
+    text = format(d.quantize(Decimal(1).scaleb(-32), rounding=ROUND_HALF_UP), 'f')
+    return (text.rstrip('0').rstrip('.') if '.' in text else text) + '%'
+for line in (pct('50'), pct('33.333333333333333333333333333333335'), pct('1000000000000'), pct('12.5'),
+             pct('100.000000000000000000000000000000004'), pct('0.000000000000000000000000000000005'),
+             200 * 50 // 100, 5 * 1000000000000 // 100, 50 * 200 // 100, 200 * (100 - 50) // 100,
+             200 * (100 + 50) // 100, 200 * 100 // 50,
+             pct('75'), pct('-25'), pct(F(50 * 50, 100)), pct(F(50, 4)), pct('-50'), 'true', 'true', pct('50'),
+             pct(F(100, 3)), pct(F(200, 3)), 10 * 50 // 100):
+    print(line)")
+expect "satellite.variable.percentage: literals, rounding and every pair" "$wanted_percentage" \
+       "$($interpreter tests/percentage.satl 2>/dev/null)"
+$interpreter tests/percentage.satl > /dev/null 2>&1; expect "tests/percentage.satl runs" 0 $?
+$interpreter tests/percentage_without_percent.satl > build/percentage.out 2>&1; expect "a percentage with no %" 27 $?
+expect "... says ERROR: expected 50%, before anything runs" "1|" \
+       "$(grep -c 'satl(check).*ERROR: expected 50% ' build/percentage.out)|$(grep -x before build/percentage.out)"
+$interpreter tests/percentage_not_whole.satl > build/percentage.out 2>&1; expect "3 * 50% is not whole" 24 $?
+expect "... and says so" 1 "$(grep -c '3 \* 50% is not a whole number' build/percentage.out)"
+$interpreter tests/percentage_number_second.satl > build/percentage.out 2>&1; expect "50% + 5 is refused" 27 $?
+expect "... and says to put the number first" 1 "$(grep -c 'the number goes first -- 5 + 50%' build/percentage.out)"
 expect "... is told ERROR: expected b10101010, not b0" 1 "$(grep -c 'ERROR: expected b10101010 ' build/binary_b.out)"
 expect "a declaration inside a loop runs every turn" "0|1|10|11|20|21" \
        "$($interpreter tests/loop_declaration.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"

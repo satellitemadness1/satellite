@@ -50,6 +50,7 @@ INTERPRETER_SOURCES = satellite/structured-library.cpp satellite/arguments/argum
                       satellite/satellite_object/num_sub_num.cpp \
                       satellite/satellite_object/num_div_num.cpp \
                       satellite/satellite_object/object_convert.cpp \
+                      satellite/satellite_object/object_percentage.cpp \
                       satellite/satellite_variable_number/satellite_number.cpp \
                       satellite/satellite_variable_number/satellite_number_divide.cpp \
                       satellite/satellite_variable_number/satellite_number_text.cpp \
@@ -70,6 +71,7 @@ HEADERS = satellite/arguments/arguments.hpp satellite/config/satellite_config.hp
           satellite/satellite_variable_number/number_conversions.hpp \
           satellite/satellite_variable_string/satellite_string.hpp \
           satellite/satellite_variable_binary/satellite_binary_number.hpp \
+          satellite/satellite_variable_percentage/satellite_percentage.hpp \
           satellite/satellite_object/satellite_object.hpp satellite/satellite_object/satellite_spacesuit.hpp \
           satellite/satellite_object/satellite_bytecode.hpp satellite/satellite_object/satellite_capsule.hpp \
           satellite/satellite_object/fast_paths.hpp satellite/satellite_object/object_pair.hpp \

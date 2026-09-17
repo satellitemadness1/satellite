@@ -48,6 +48,7 @@
 #include "satellite_capsule.hpp"
 #include "../satellite_variable_binary/satellite_binary_number.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
+#include "../satellite_variable_percentage/satellite_percentage.hpp"
 #include "../satellite_variable_string/satellite_string.hpp"
 #include "../machine/machine_codes.hpp"
 
@@ -84,16 +85,18 @@ public:
                               satellite_bytecode,// 4  the numbered program
                               satelliteCapsule,  // 5  a capsule as a value
                               UserDefinedHandle,   // 6  one object of a spacesuit
-                              satellite_binary_number // 7  satellite.variable.binary
+                              satellite_binary_number, // 7  satellite.variable.binary
+                              satellite_percentage     // 8  satellite.variable.percentage
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
-                              // Bin, Hex, Arg, Thr. The author named three, and
-                              // they take their numbers in the order they are
-                              // BUILT, not the order they were named in:
-                              // satellite_binary_number was asked for first
-                              // (2026-09-16) and is 7, so the other two follow it.
-                              // 8  satellite_float
-                              // 9  satellite_hexadecimal_number
+                              // Bin, Hex, Arg, Thr. Arms take their numbers in
+                              // the order they are BUILT, not the order they
+                              // were named in: binary was asked for first
+                              // (2026-09-16) and is 7, percentage next
+                              // (2026-09-17) and is 8, so the author's other two
+                              // follow them.
+                              // 9   satellite_float
+                              // 10  satellite_hexadecimal_number
                               >;
 
     enum Kind : std::size_t {
@@ -105,7 +108,8 @@ public:
         capsule = 5,
         user_defined = 6,
         binary = 7,
-        how_many_kinds = 8
+        percentage = 8,
+        how_many_kinds = 9
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -114,6 +118,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<bytecode, Held>, satellite_bytecode>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<user_defined, Held>, UserDefinedHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<binary, Held>, satellite_binary_number>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<percentage, Held>, satellite_percentage>, "");
 
     Held held;
 
@@ -125,6 +130,7 @@ public:
     satelliteObject(satelliteCapsule from) : held(std::move(from)) {}
     satelliteObject(UserDefinedHandle from) : held(std::move(from)) {}
     satelliteObject(satellite_binary_number from) : held(std::move(from)) {}
+    satelliteObject(satellite_percentage from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -134,6 +140,7 @@ public:
     static satelliteObject of_capsule(satelliteCapsule from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_user_defined(UserDefinedHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_binary(satellite_binary_number from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_percentage(satellite_percentage from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -153,6 +160,7 @@ public:
     bool is_capsule() const { return held.index() == capsule; }
     bool is_user_defined() const { return held.index() == user_defined; }
     bool is_binary() const { return held.index() == binary; }
+    bool is_percentage() const { return held.index() == percentage; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -163,6 +171,7 @@ public:
     const satelliteCapsule *as_capsule() const { return std::get_if<satelliteCapsule>(&held); }
     const UserDefinedHandle *as_user_defined() const { return std::get_if<UserDefinedHandle>(&held); }
     const satellite_binary_number *as_binary() const { return std::get_if<satellite_binary_number>(&held); }
+    const satellite_percentage *as_percentage() const { return std::get_if<satellite_percentage>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }
@@ -170,6 +179,7 @@ public:
     satelliteCapsule *as_capsule() { return std::get_if<satelliteCapsule>(&held); }
     UserDefinedHandle *as_user_defined() { return std::get_if<UserDefinedHandle>(&held); }
     satellite_binary_number *as_binary() { return std::get_if<satellite_binary_number>(&held); }
+    satellite_percentage *as_percentage() { return std::get_if<satellite_percentage>(&held); }
 
     // The name of the arm, for a refusal a person has to act on.
     const char *kind_name() const;

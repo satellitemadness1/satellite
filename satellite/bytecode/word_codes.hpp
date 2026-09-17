@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 364;
+inline constexpr unsigned int kWordsInTable = 365;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -114,6 +114,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301060D00000000ULL, 4273},  // 1 6 13 -- satellite.variable.thread
     {0x0301060E00000000ULL, 4277},  // 1 6 14 -- satellite.variable.variant
     {0x0301060F00000000ULL, 4283},  // 1 6 15 -- satellite.variable.capsule
+    {0x0301061000000000ULL, 4461},  // 1 6 16 -- satellite.variable.percentage
     {0x0301070000000000ULL, 4285},  // 1 7 0 -- satellite.random()
     {0x0301070100000000ULL, 4286},  // 1 7 1 -- satellite.random.fast()
     {0x0301070200000000ULL, 4287},  // 1 7 2 -- satellite.random.normal()
@@ -788,6 +789,7 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.thread.new", {1, 23, 1, 0, 0, 0, 0}, 3},
     {"satellite.constructor", {1, 24, 0, 0, 0, 0, 0}, 2},
     {"satellite.constructor()", {1, 24, 0, 0, 0, 0, 0}, 3},
+    {"satellite.variable.percentage", {1, 6, 16, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1125,6 +1127,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.number.string", 4231},
     {"satellite.variable.number.to_string", 4220},
     {"satellite.variable.number.truncate(a)", 4227},
+    {"satellite.variable.percentage", 4461},
     {"satellite.variable.string", 4174},
     {"satellite.variable.string()", 4175},
     {"satellite.variable.string(x)", 4193},

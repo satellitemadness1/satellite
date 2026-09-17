@@ -7,7 +7,7 @@
 //
 //     satellite.return(...)                      ends the body
 //     satellite.variable.number <name> = <expr>  declares, and gives a value
-//                                                (.string and .binary the same)
+//                                                (.string .binary .percentage the same)
 //     <name> = <expr>                            gives a value to one declared
 //     satellite.statement.while(<expr>) { ... }  runs the body while it holds
 //     <word>(<expr>)                             a word of the language
@@ -322,7 +322,8 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
 
     if ((holds == word::code_of(1, 6, 4) && !value.is_number()) ||
         (holds == word::code_of(1, 6, 1) && !value.is_string()) ||
-        (holds == word::code_of(1, 6, 5) && !value.is_binary())) {
+        (holds == word::code_of(1, 6, 5) && !value.is_binary()) ||
+        (holds == word::code_of(1, 6, 16) && !value.is_percentage())) {
         at = past_the_statement(row, at);
         return report_error(std::string("satl(run): ") + name + " was declared " +
                                 word::spelling_of(holds) + " and was given " + value.kind_name(),

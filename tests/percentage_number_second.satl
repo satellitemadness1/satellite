@@ -1,0 +1,9 @@
+// 50% + 5 has no reading: a percentage goes onto a number, so the number goes first.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(50% + 5)
+    satellite.return(satellite)
+}
