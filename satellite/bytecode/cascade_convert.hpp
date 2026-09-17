@@ -40,6 +40,7 @@
 
 #include "../threads/startup_threads.hpp"
 
+#include <atomic>
 #include <bitset>
 #include <cstddef>
 #include <string_view>
@@ -49,10 +50,17 @@ namespace satellite004 {
 
 // Converts every line into `file`, in order. `cascade_depth` lines go through
 // the cascade; the rest go to the warm threads in batches.
+//
+// `codes_final`, when given, is raised as each line's codes are appended: every
+// code below it is final and safe to read while later lines are still arriving.
+// That is the author's "the thread that gets line 2 is handing it to main", and
+// the reason `file` is reserved up front -- storage that never moves is what
+// makes reading it while it grows safe at all.
 void cascade_convert(const std::vector<std::string_view> &lines,
                      std::vector<std::bitset<16>> &file,
                      StartupThreads &threads,
                      std::size_t cascade_depth,
-                     unsigned long long int batches);
+                     unsigned long long int batches,
+                     std::atomic<std::size_t> *codes_final = nullptr);
 
 } // namespace satellite004
