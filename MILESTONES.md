@@ -204,10 +204,11 @@ at `1 6 1 n` — so none of this is a design question:
 
 Each is one registry row, one `str_*.cpp`, one dispatch line.
 
-**Open, and one ruling covers both:** the author asked for
-`string_object.replace(number1, number2)` and `string_object.find(number)`. A
-number where a string is expected is either a refusal or an implied
-`.to_string()`, and DESIGN §1.1 says nothing converts on its own.
+**Answered, and one ruling covers both** (the author, 2026-09-16): for
+`string_object.replace(number1, number2)` and `string_object.find(number)`, a
+number where a string is expected is *"just convert the number to the string and
+run that piece, obviously the programmer meant convert to string, but record the
+warning in satellite.log"*. The warning needs M5.
 
 ## M17 — the number methods, and `number_methods.cpp`'s fourth session
 
