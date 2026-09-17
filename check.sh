@@ -406,6 +406,26 @@ expect "the six fast paths through their tokens" "$wanted_math" "$("$interpreter
 "$interpreter" tests/negative_exponent.satl > /dev/null 2>&1; expect "2 ^ -1 is not a whole number" 24 $?
 "$interpreter" tests/undeclared.satl > build/un.out 2>&1; expect "a name nothing declared" 25 $?
 expect "nothing ran before THAT refusal" "" "$(grep -x before build/un.out)"
+# A STRAY CHARACTER AT A LINE'S START IS ONE CODE, and the check and the run agree on what
+# follows it. A no-break space pasted as indentation has no code (error_token): the run
+# stepped over it and ran the rest of the line, while the check skipped the whole line --
+# so a declaration after it was never seen (25 for a declared n), and `undeclared = 5`
+# after it ran past the check and failed with "before" on the screen (the payload sweep,
+# 2026-09-17). A stray `)` split the same way.
+python3 -c "
+head = 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n'
+tail = '    satellite.return(satellite)\n}\n'
+for name, body in (('declared', ' satellite.variable.number n = 5\n    satellite.console.display(n)\n'),
+                   ('undeclared', '    satellite.console.display(\"before\")\n undeclared = 5\n'),
+                   ('paren', '    satellite.console.display(\"before\")\n    ) undeclared = 5\n')):
+    open('build/stray_%s.satl' % name, 'w', encoding='utf-8').write(head + body + tail)"
+output=$("$interpreter" build/stray_declared.satl 2>/dev/null); code_run=$?
+expect "a no-break space before a declaration does not hide it" "5|0" "$output|$code_run"
+for name in undeclared paren; do
+    "$interpreter" build/stray_$name.satl > build/stray.out 2>&1; code_run=$?
+    expect "a stray character before an undeclared name ($name) is refused by the check, before anything runs" \
+           "25|1|" "$code_run|$(grep -c 'satl(check).*undeclared has no satellite.variable line' build/stray.out)|$(grep -x before build/stray.out)"
+done
 "$interpreter" tests/declared_twice.satl > /dev/null 2>&1; expect "a name declared twice" 26 $?
 "$interpreter" tests/kinds_do_not_meet.satl > /dev/null 2>&1; expect "\"n = \" + 4 converts nothing" 27 $?
 # ERROR.md: an expression that stops early is refused, not half-stored. `&` has no

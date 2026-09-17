@@ -294,3 +294,25 @@ Each fires as well for the character above U+FFFF whose low half is that code
 (U+11002, U+11006, U+10704). The two scans now skip a payload whole, as every other
 walker does, and the lexer remembers the last token it put. check.sh has each case
 beside the neighbours one character either side that never collided.
+
+## The check and the run disagreed about a stray code at a line's start — FIXED 2026-09-17
+
+**Fixed** in the commit that added this entry. Found by the same sweep's skeptics. A
+statement the check had no shape for -- one starting with a character that has no
+code, a `)`, a string -- was skipped WHOLE by the check, while the run stepped over
+that one code and ran the rest of the line. So a no-break space pasted as indentation
+hid the declaration after it (a declared `n` was refused with 25, "no
+satellite.variable line declaring it"), and `undeclared = 5` after one ran past the
+check: "before" printed, then 25 at run time, breaking "nothing runs before a
+refusal". The check now steps over the one code, as the run does. A comment line
+still passes: its token steps to the line's end.
+
+## A character with no code, outside a string, is accepted without a word — OPEN
+
+**The author's call.** `é` on a line of its own runs and exits 0, and so does a
+no-break space used as indentation. The lexer writes `error_token` for the character
+and nothing ever reports one: the check steps over it, as the run does. That silence
+is what turned the payload readers above into wrong answers instead of refusals. Two
+readings, neither decided: a no-break space (and the other Unicode spaces) is
+whitespace; or any character with no code is refused by name before anything runs,
+e.g. `U+00A0 has no meaning in a program` (13). Found by the payload sweep, 2026-09-17.

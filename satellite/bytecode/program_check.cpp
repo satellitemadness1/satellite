@@ -358,7 +358,14 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         return held;
     }
 
-    at = past_the_statement(row, at);
+    // ONE CODE, NOT THE LINE: run_statements steps over only this code (its payload
+    // with it) and reads the rest of the line as a statement, so the check judges that
+    // same statement. Skipping the line let a stray character before a declaration hide
+    // it -- a no-break space pasted as indentation made a declared n "not declared" --
+    // and let `undeclared = 5` after one run past the check (the payload sweep,
+    // 2026-09-17). A comment line still passes: its token steps to the line's end.
+    if (token::carries_a_count(code)) { text_at(row, at); return success; }
+    ++at;
     return success;
 }
 
