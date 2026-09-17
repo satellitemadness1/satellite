@@ -1,0 +1,10 @@
+// A binary has no minus sign: -1010 can never be stored in one, and is refused before anything runs.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.binary my_number = -1010
+    satellite.return(satellite)
+}

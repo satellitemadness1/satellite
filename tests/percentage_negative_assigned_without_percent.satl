@@ -1,0 +1,11 @@
+// The % is required on every value a percentage is given, a minus and brackets or not.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.percentage share = 50%
+    satellite.console.display("before")
+    share = (- 25)
+    satellite.return(satellite)
+}

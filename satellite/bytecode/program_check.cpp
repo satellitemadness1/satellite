@@ -70,9 +70,28 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
 {
     // A BRACKET IS NOT A VALUE, so `= (10101010)` is judged by what is inside it.
     // Without this the brackets hid the mistake and the program ran first.
-    while (code_at(row, at) == token::left_parenthesis_token)
-        ++at;
+    //
+    // A MINUS SIGN IS NEVER A BINARY'S. -b1010 is the number -10 (a binary is
+    // negated by what it is worth, expression.cpp), and only a b literal makes a
+    // binary, so a value that starts with a minus can never be stored in one. It
+    // is refused here rather than after the program has printed (the review of
+    // ab01a74, 2026-09-17: `= -1010` got past this check). There is no spelling
+    // to suggest -- b1010 would be a different value -- so the sentence says why.
+    std::string minus;
+    for (;; ++at) {
+        const Code sign = code_at(row, at);
+        if (sign == token::tight_minus_token || sign == token::minus_token)
+            minus += '-';
+        else if (sign != token::left_parenthesis_token)
+            break;
+    }
     const Code code = code_at(row, at);
+    if (!minus.empty() && (code == token::number_token || code == token::binary_token)) {
+        std::size_t k = at;
+        const std::string written = (code == token::binary_token ? "b" : "") + text_at(row, k);
+        why = "ERROR: " + minus + written + " is not binary -- a binary has no minus sign";
+        return types_do_not_meet;
+    }
     if (code != token::number_token && code != token::name_token)
         return success;
     std::size_t k = at;
@@ -116,15 +135,26 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
 // percentage has the same shape of mistake): `satellite.variable.percentage p = 50`
 // is ERROR: expected 50%. The % is in the text, so nothing has to run to see it
 // is missing. Only the first value, inside any brackets, as for binary.
+//
+// A MINUS SIGN IS PART OF THE VALUE, so `p = -50` is ERROR: expected -50% (the
+// review of ab01a74, 2026-09-17: the - was not skipped, so the program printed
+// first and was refused at run time). -50% is a real percentage, and the
+// suggestion keeps the sign: each minus turns it over, as it would the value.
 signed long long int percentage_is_written_with_percent(const std::vector<std::bitset<16>> &row, std::size_t at,
                                                         std::string &why)
 {
-    while (code_at(row, at) == token::left_parenthesis_token)
-        ++at;
+    bool below_zero = false;
+    for (;; ++at) {
+        const Code code = code_at(row, at);
+        if (code == token::tight_minus_token || code == token::minus_token)
+            below_zero = !below_zero;
+        else if (code != token::left_parenthesis_token)
+            break;
+    }
     if (code_at(row, at) != token::number_token)
         return success;
     std::size_t k = at;
-    why = "ERROR: expected " + text_at(row, k) + "%";
+    why = "ERROR: expected " + std::string(below_zero ? "-" : "") + text_at(row, k) + "%";
     return types_do_not_meet;
 }
 

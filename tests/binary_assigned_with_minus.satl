@@ -1,0 +1,11 @@
+// -b0101 is the number -5, not a binary, so a binary given it is refused before anything runs.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary my_number = b0010
+    satellite.console.display("before")
+    my_number = -(b0101)
+    satellite.return(satellite)
+}

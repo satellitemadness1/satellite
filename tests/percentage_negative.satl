@@ -1,0 +1,15 @@
+// A percentage below zero is written with its minus AND its %, and declares --
+// the minus is part of the value, so the check for a missing % reads past it.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.percentage below = -50%
+    satellite.console.display(below)
+    below = (- 25%)
+    satellite.console.display(below)
+    satellite.variable.percentage over = -(-12.5%)
+    satellite.console.display(over)
+    satellite.return(satellite)
+}
