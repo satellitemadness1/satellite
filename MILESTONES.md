@@ -7,6 +7,14 @@ do"*, then swept comprehensively against PLAN.md, ERROR.md, PROGRESS.md,
 
 **Read PROGRESS.md first** — it is what IS built. This file is only the debt.
 
+**AUDITED 2026-09-17, against what the bytecode actually does.** This file was
+written while PLAN's shape was still the plan -- three stored files, a parser, a
+prototype runner -- and several entries described work that cannot be done because
+its subject no longer exists. Each one was RUN rather than reasoned about, and the
+entries now say fixed, dead or still real: M1/M2/M3 dead, M6/M7 built, M19 fixed,
+M26 re-run one defect at a time, M24 narrowed, M8 and M35 cut loose from a parser
+that was never written.
+
 **The numbering continues PLAN.md's.** M0–M12 are PLAN's own and keep their
 numbers and meanings; M13 up are new, most of them found while building the
 object model on 2026-09-16. Where a decision is still the author's it says so
@@ -75,25 +83,29 @@ What the session chose, each one line to reverse:
 - `current()` `1 18 2` and `exists(d)` `1 18 3` are NOT built (D0.6.6): the author
   named `change` and `list`.
 
-## M1, M2, M3 — the `.satc`, the `.satb`, the `.sati`
+## ~~M1, M2, M3 — the `.satc`, the `.satb`, the `.sati`~~ — **DEAD, and the author said so**
 
-**PROGRESS §6.5 RECOMMENDS COLLAPSING ALL THREE AND IT IS NOT YET APPLIED TO
-PLAN.md.** The bytecode registry already IS the numbered program, one code a
-word, so `.satc` is superseded; strings are 16-bit codes inline and counted, so
-`.sati` is superseded **and D3.1 dies with it**; `.satb` survives as *work* but
-not as a *file*, because combine's marks live in the bytecode and the registry
-already reserves `batch_start`/`batch_end`/`wait`/`batch_size`.
+(the author, 2026-09-16, D0.1) *"we threw away satc and satb in favor of all
+16-bit"*. The bytecode registry IS the numbered program, one code a word, and a
+string is 16-bit codes inline and counted. There is no `.satc`, no `.satb` and no
+`.sati` to build, and D3.1 died with them.
 
-**This is a decision the author has to take before the converters are built**, and
-it is worth taking early: it turns M1 + M2 + M3 + M1.5 + M2.5 + M3.5 into about
-two milestones.
+**What survives is work, not files:** combine's marks, which live in the bytecode
+(`batch_start`/`batch_end`/`wait`/`batch_size` are reserved rows already) and
+belong to M12; and the ONE file that does exist, `.sate`, which M31 makes
+runnable.
 
-## M1.5 / M2.5 / M3.5 / M3.6 — the converters
+## M1.5 / M2.5 / M3.5 / M3.6 — the converters — **now ONE converter**
 
-Numbers and marks and bits back into readable `.satl`. **Blocked by M24** (below):
-until the author rules whether a stored program is a token transcription that is
-re-lexed or a 16-bit code stream, a converter cannot know what it may record.
-M3.6 is blocked twice over — `.sate` is not defined yet.
+With the three files dead, there are not four converters to write: there is one,
+from the registry's 16-bit codes back to readable `.satl`. Half of it exists --
+`bytecode_text()` already prints a row as sixteen binary digits a code, which is
+REGISTRY.satellite's own first column and the reason a row is `std::bitset<16>`.
+M3.6 died with `.sati`.
+
+**Still blocked by M24** only for what it may RECORD: a converter that prints a
+stored program has to know whether that program is a transcription to re-lex or a
+code stream.
 
 Already known: comments do not round-trip. `//` is discarded in the lexer
 (003 DESIGN §5.6), so a comment is a marker with no text.
@@ -103,18 +115,30 @@ Already known: comments do not round-trip. `//` is discarded in the lexer
 Not started. The testing method in PROGRESS §2 depends on it: *"done when a run
 writes no `[entry]` to satellite.log"*.
 
-## M6 / M7 — the parser and the runtime
+## ~~M6 / M7 — the parser and the runtime~~ — **BUILT, and there is no parser**
 
-**Built, but not the way PLAN describes.** There is no `.satb` to run and no
-ported recursive-descent parser: the bytecode registry is lexed directly and
-`program_walk.cpp` walks it. PLAN's text should be rewritten to match what runs,
-or it will read as owed work forever.
+There is no `.satb` to run and no recursive-descent parser to port: the registry
+is lexed directly, `program_check.cpp` judges every statement and
+`program_walk.cpp` walks it, six shapes and their fast paths. M0.6 (2026-09-17)
+put a TYPED line through the same three -- lexer, checker, walker -- which is the
+proof that there is one runner and not two.
+
+**NOTHING ELSE MAY DEPEND ON "M6's parser work", and entries that did have been
+corrected** (M8, M35): what those milestones actually need is one more statement
+shape in the checker and the walker. What is still owed under this heading is only
+the GRAMMAR that has no shape yet -- blocks that are not `while` bodies, and the
+declarations M8 describes.
 
 ## M8 — user-defined classes (spacesuits) — **the machine is built, the grammar is not**
 
 `satelliteSpacesuit` and `satelliteUserDefinedObject` exist and compile.
-**Nothing can declare one**: `satellite.spacesuit` has no parse rule in 004 — no
-lexer shape, no sibling to `capsules_in`, no constructor.
+**Nothing can declare one yet, and the seam is exact** (checked 2026-09-17):
+`satellite.spacesuit my_class` ALREADY lexes as a word followed by a name -- the
+declaration shape -- and is refused in ONE place, `check_statement`'s declaration
+branch: *"satellite.spacesuit my_class is a declaration, and only
+satellite.variable.number, .string, .binary and .percentage are built yet"*. The
+grammar is that branch, its twin in `run_assignment`, and a sibling of
+`capsules_in` scanning for word `1 10`. No parser is in the way.
 
 **Build the author's model** (2026-09-16, and he was right against an argument):
 a spacesuit is just a collection of bytecode, so it reuses what already runs —
@@ -293,14 +317,18 @@ The missing half of `while`, which runs. ERROR.md's depth entry asks in as many
 words to be re-read when this lands, because a recursive capsule cannot choose to
 stop until it does.
 
-## M19 — `n = 1 & 2` answers 1, silently — **the worst item in this file**
+## ~~M19 — `n = 1 & 2` answers 1, silently~~ — **FIXED**
 
-**ERROR.md, open, reproduced by running it.** `evaluate_at` ends an expression on
-any code whose precedence is 0, and `&` `|` `&&` `<<` `!!` `~` have none. A wrong
-value reaches a **variable** and a **loop bound**, where nothing shows.
+It was the worst item in this file and it is done: `read_to_the_end`
+(`program_walk.cpp`) makes a variable's value and a loop's bound demand the whole
+expression, as `call_word` already did. Run today, `satellite.variable.number n =
+1 & 2` answers *"could not be read to the end -- it stops at something with no
+meaning there yet (& | << >> !! are undecided)"* and machine code 13, where it
+used to store 1 and say nothing.
 
-`call_word` was fixed to demand its own `)`. `run_assignment` and `run_while`
-were not. **The same three lines fix both.**
+**What is left is not a defect but a ruling:** what `&` `|` `^` `<<` `>>` `!!`
+`~` are to MEAN. They keep their registry rows and their QUESTION marks until the
+author says (M24's list).
 
 ## M20 — satellite_float, and hex as its own type
 
@@ -363,10 +391,12 @@ by a session limit and never ran.
 
 ## M24 — the stored program: transcription, or code stream
 
-**PROGRESS §6, open, the author's.** Is a `.sat` file a token transcription that
-is re-lexed, or a 16-bit code stream? PROGRESS §5 and SATC.md §4 say different
-things, and the answer governs whether the writer may record what the parser knew.
-**This blocks every converter.**
+**PROGRESS §6, open, the author's** -- and NARROWER than it was. There is one
+stored file now, `.sate`, and it holds the registry's codes, so the code-stream
+half is already real in what is written. What is still undecided is whether a
+stored program may be RE-LEXED as a transcription, which is what a converter needs
+to know before it records anything. M31 (running a `.sate`) settles it in
+practice.
 
 With it: **the nineteen registry rows marked QUESTION**, which name forms this
 language cannot emit — `<<` `>>`, `/* */`, `+= -= *= /= %=`, `&& || ! & | ^ ~`,
@@ -389,17 +419,26 @@ author could not remember.
 
 ## M26 — the prototype's seventeen defects
 
-ERROR.md §1, all OPEN, all reproduced by review. They are the prototype runner's,
-and PLAN M1 is where PROGRESS says they get fixed — but the prototype path is
-mostly retired now, so **each needs re-checking against the bytecode path before
-it is fixed or struck**. The ones that certainly still bite:
+ERROR.md §1 was written against the prototype runner, which is retired. **Every
+one was re-run against the bytecode path on 2026-09-17**, and the list is now:
 
-- **#7 exit codes are cut to 8 bits** — a machine code of 256 exits 0
-- **#11 no ABI check at load**, and **#10 every `*.so` entry is loaded**
-- **#13 a byte-order mark or CR-only line endings** give a misleading 10
-- **#14 whitespace inside brackets is rejected** — `display( 42 )`
-- **#16 unknown escapes are accepted** — `"a\qb"` displays `aqb`
+**Fixed, and struck:**
+- ~~#7 exit codes cut to 8 bits~~ — `exit_status_of` (M0.5), checked by
+  `build/exit_status_cases`
+- ~~#13, the byte-order mark half~~ — a file starting with a BOM runs
+- ~~#14 whitespace inside brackets~~ — `display( 42 )` prints 42
+
+**Still real, one with a new face:**
+- **#13, the CR-only half** — and the symptom MOVED: a file whose lines end in CR
+  alone is now read as ONE line, so `satellite.return` looks like a call and the
+  answer is 14 *"has no library built for it yet"*. Misleading in a new way.
+- **#10 every `*.so` in the folder is loaded** and **#11 no ABI check at load**
 - **#17 a library's file name is never checked against the numbers it describes**
+
+**Half done, and the rest is a ruling:**
+- **#16 unknown escapes** — `"a\qb"` no longer displays `aqb`: the backslash is
+  kept, so nothing is silently dropped. Whether an unknown escape should be
+  REFUSED (PLAN M0.6 says so) is the author's.
 
 ## M27 — the test harnesses can pass for the wrong reason
 
@@ -619,7 +658,8 @@ like `value` or `option`); and `satellite.protected` GAINS ARGUMENTS --
 **M8 is where the machine for this already is** (MILESTONES M8: "the machine is
 built, the grammar is not"): `satelliteSpacesuit` carries a user-defined type's
 fields today, and the grammar that declares one is what is owed. This milestone is
-that grammar plus the supertype, and it lands after M6's parser work.
+that grammar plus the supertype. **It does NOT wait on "M6's parser work"** --
+there is no parser (M6/M7 above): what it waits on is the three decisions below.
 
 **Decisions:** what `satellite.protected(args)` takes, exactly; whether a
 supertype must be a built type or may be another spacesuit; what
