@@ -104,7 +104,11 @@ session's scratchpad so they survive it.
 - **D9.1–D9.2** polymorph: what "re-included into the individual capsules" means,
   what `args` are passed to. ~~**D9.3**~~ **ANSWERED 2026-09-16:** *"a class declared
   twice is an ERROR: name collision"*.
-- **D11.1** infinity's arithmetic.
+- ~~**D11.1**~~ **ANSWERED 2026-09-16:** *"we answer what we can, and give an error on what we
+  can't"*. An infinity carries a `satellite_float` multiplier -- `infinity + infinity` is
+  `infinityx2`, `infinity - 50%` is `infinityx0.5` -- one float for going up or down, kept to
+  `arguments.infinity` digits (default 4096) and displayed rounded to
+  `arguments.infinity_display` digits (default 32); both configurable (MILESTONES M11).
 - **D12.1** the parallel-group syntax in the numbered file.
 - **Adopt TBB for the runners?** and record it in DESIGN §13.
 - One more thing to remove from 004's words that the author could not remember.

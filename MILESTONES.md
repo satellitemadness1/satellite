@@ -102,7 +102,30 @@ closing marker, so `foreign_text_token` needs no code.
 
 ## M11 — `satellite.infinity`
 
-Not started. **D11.1 is open:** what infinity's arithmetic is.
+Not started. **D11.1 is answered** (the author, 2026-09-16): *"we answer what we
+can, and give an error on what we can't"*. **An infinity carries a multiplier with it:**
+
+- `infinity + infinity` displays **`infinityx2`**, and the infinity *"just carries
+  an "x2" with it unless it goes away or causes an error"*.
+- `infinity - 50%` is **`infinityx0.5`** -- *"unless the infinity is definitely
+  reduced to nothing"*.
+- What satellite does not know the answer to is an ERROR, never a guess.
+- **The multiplier is ONE `satellite_float`, for going up or down** -- *"it will
+  carry around a satellite float"*, *"an infinity will come with a single satellite
+  float for going up or down"*, *"so we will have extreme precision for our
+  infinities"*. `x2` and `x0.5` are the same number moving, not two fields. How many digits
+  it keeps is a new config row, **`arguments.infinity`**, a digit count held as a
+  `satellite_number` so the user can enter anything; **the default is 4096**.
+- **Held to 4096 digits, DISPLAYED rounded to 32, and BOTH are configurable** --
+  *"that is 4096 digits in precision by default, but displayed as a rounded thing...
+  we round to 32 digits"*, *"both digits configurable"*. The rounding is the
+  display's only; the multiplier keeps every digit it holds. Two rows, both digit
+  counts held as `satellite_number`s: `arguments.infinity` (the author's name,
+  default 4096) and **`arguments.infinity_display`** (default 32 -- a name proposed
+  after `arguments.startup_display`, the author's to change).
+
+**Depends on M20**, because the multiplier is a `satellite_float`. Neither row is
+added yet: `satellite_config.hpp`'s rows are the author's, and they go in with M11.
 
 ## M12 — finding more batches while the program runs
 
@@ -420,7 +443,7 @@ so the idea is not lost, not because it is owed.
 | ~~**D3.1**~~ | ~~32 bits a character everywhere, or only in the `.sati`?~~ **ANSWERED 2026-09-16:** *"32-bits only when we use the number 40000 as a 16-bit code"* -- everything is 16 bits, and a code of 40000 (`wide_token`) says the next two codes are one 32-bit integer. **Owed:** the lexer still writes a character above U+FFFF behind `wide_run_32_token` (`bytecode_registry.cpp` `character_codes`, read back by `text_at`), which this ruling retires in favour of `wide_token` | — |
 | **D9.1–2** | polymorph: re-inclusion, `args` | M9 |
 | ~~**D9.3**~~ | ~~a class declared twice~~ **ANSWERED 2026-09-16:** *"a class declared twice is an ERROR: name collision"* | — |
-| **D11.1** | infinity's arithmetic | M11 |
+| ~~**D11.1**~~ | ~~infinity's arithmetic~~ **ANSWERED 2026-09-16:** *"we answer what we can, and give an error on what we can't"* -- an infinity carries a `satellite_float` multiplier (`infinity + infinity` is `infinityx2`, `infinity - 50%` is `infinityx0.5`), its digits set by `arguments.infinity`, default 4096, displayed rounded to `arguments.infinity_display` digits, default 32. See M11 | — |
 | **D12.1** | the parallel-group syntax in the numbered file | M12 |
 | — | adopt TBB for the runners? | M12 |
 | — | the leading-slash rule: filesystem root, or program root? | M8 |
