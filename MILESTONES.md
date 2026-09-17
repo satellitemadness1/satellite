@@ -316,6 +316,84 @@ binary.
 
 ---
 
+# Part 3 — the parallel machine, and the rest of 2026-09-16's session
+
+The cascade landed (`75a5b43`) and `.sate` landed (`da4f3e3`). These are what the
+author described that is NOT yet built.
+
+## M29 — converting ahead WHILE running
+
+**The author:** *"the main thread, after it starts 1 thread, that 1 thread starts
+256 threads, the main thread will be converting the first line of code into
+16-bits, then running it, after it has run the next line, the thread that gets
+line 2 is handing it to main"*.
+
+Today `load_program` converts the WHOLE program before `run_main` starts. The
+cascade made conversion parallel; it did not make it overlap with execution.
+
+**What it needs, and most of it exists.** `cascade_convert` already counts
+finished lines in an atomic — that counter IS the watermark. The walker starts
+when line 1 is ready and may walk as far as the watermark says.
+
+**The hard part is not the threading, it is the unit.** The walker runs
+STATEMENTS and the watermark counts LINES, and a statement can span lines (a
+`while` and its body). So the watermark has to mean "every code up to here is
+final", and the walker has to refuse to step past it rather than read a half-
+converted row.
+
+**The author's own fallback is already stated:** *"if main gets pieces out of
+order, then it has to convert"* — so when the watermark is behind, main converts
+the line itself rather than waiting. That makes the pipeline an optimisation that
+can never deadlock, which is the right shape.
+
+## M30 — the lookahead: running paths in parallel
+
+**The author:** *"eventually we will build some logic that looks ahead at paths
+that it can... run in parallel, but until we build that, we are just saving the
+16-bit conversion"*.
+
+This is the one that makes satellite parallel rather than its CONVERSION
+parallel. Converting a line is pure and independent; running one is not — line 2
+may read what line 1 wrote. So this milestone is a DEPENDENCY analysis: which
+statements touch which names, and which runs of statements touch nothing in
+common.
+
+**Do not start this before M29.** Overlapping conversion with execution is safe
+and is worth having on its own; overlapping execution with execution changes what
+programs mean, and needs the analysis first.
+
+The registry already reserves `batch_start`, `batch_end`, `wait` and `batch_size`
+for exactly these marks — so where the answer is written down is already decided.
+
+## M31 — running a `.sate` without its `.satl`
+
+`.sate` is written and never read. A program saved as bytecode should run from
+the bytecode: it is the numbered program, so nothing needs re-lexing.
+
+**This is what makes `.sate` worth writing at all,** and it is small — the
+registry is already exactly what the file holds. It also answers half of M24
+(transcription or code stream) by making the code-stream half real.
+
+## M32 — `satellite_time`
+
+The author named it as an arm of `satelliteObject`: *"satelliteCapsule,
+satellite_number satellite_string satellite_bytecode, satellite_bool,
+satellite_time, satellite_file, and any other variable we have"*. 003 had it
+(`Time`, eight bytes, an instant in nanoseconds). `satellite_file` is M15; this
+is its sibling and is much smaller.
+
+## M33 — the step as a JUMP, not only a front
+
+`arguments.magic` exists and the cascade covers the front of a file. The author's
+other shape — *"one of the level 3 threads just jumps onto line say pick a magic
+number... so it starts converting at line 5"* — is a STRIDED start: threads
+beginning at different offsets rather than one chain from line 0.
+
+Worth doing only if M29 shows the front-loaded cascade leaves threads idle. Filed
+so the idea is not lost, not because it is owed.
+
+---
+
 # The author's open decisions — not milestones, but they block them
 
 | | what | blocks |
