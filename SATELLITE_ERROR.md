@@ -150,6 +150,23 @@ renumber.** Same rule as the word table, for the same reason.
 | **S0722** | `REGISTER_NOT_WRITTEN` | 32 `config_file_unwritable` | `config/rebuild.hpp` |
 | **S0723** | `REGISTER_IS_STALE` | *(notice — the run carries on)* | `structured-library.cpp` |
 | **S0724** | `REGISTER_NOT_READABLE` | *(notice — the run carries on)* | `structured-library.cpp` |
+| **S0725** | `NO_THREAD_CEILING_STATED` | 36 `machine_fact_not_read` | `config/run_config.hpp` |
+| **S0726** | `CAP_ABOVE_THE_CEILING` | 37 `setting_out_of_range` | `config/run_config.hpp` |
+| **S0727** | `MACHINE_CONF_NOT_WRITTEN` | 38 `machine_conf_unwritable` | `config/run_config.hpp` |
+| **S0401** | `LINE_NOT_UNDERSTOOD` | 13 `satl_line_not_understood` | `machine/s_codes.hpp` |
+| **S0402** | `NOT_BUILT_YET` | 14 `not_built_yet` | `machine/s_codes.hpp` |
+| **S0501** | `NAME_NOT_DECLARED` | 25 `name_not_declared` | `machine/s_codes.hpp` |
+| **S0502** | `NAME_DECLARED_TWICE` | 26 `name_declared_twice` | `machine/s_codes.hpp` |
+| **S0601** | `TYPES_DO_NOT_MEET` | 27 `types_do_not_meet` | `machine/s_codes.hpp` |
+| **S0728** | `SETTING_IS_NOT_A_FLAG` | 34 `setting_is_not_a_flag` | `machine/s_codes.hpp` |
+| **S0729** | `WORD_TAKES_NO_ASSIGNMENT` | 35 `word_takes_no_assignment` | `machine/s_codes.hpp` |
+| **S0730** | `CONFIG_FILE_UNREADABLE` | 33 `config_file_unreadable` | `machine/s_codes.hpp` |
+| **S0801** | `DIVISION_BY_ZERO` | 22 `division_by_zero` | `machine/s_codes.hpp` |
+| **S0802** | `ANSWER_IS_NOT_WHOLE` | 24 `answer_is_not_whole` | `machine/s_codes.hpp` |
+
+**S0000 `REFUSED` IS THE FALLBACK AND IS NOT A FAILURE.** A machine code with no S-code yet still reports with the file, the line and the caret; S0000 says the number is owed rather than pretending the refusal is nameless.
+
+**003'S STRING REFUSALS ARE DELIBERATELY UNASSIGNED.** 003 numbered them in S07xx, which is 004's *settings* block. Taking 003's number puts a string error in the settings block; taking a 004 number breaks the promise that a person moving between them reads one number. **Red note: the author picks.**
 
 **S0724 IS THE FIRST REPORT IN 004 WITH A WORKING CARET.** A damaged
 `features = bZZZZ` prints the row and points at it, which is Part 3's `syntax:`
@@ -184,15 +201,21 @@ likeliest to meet them:
 
 ## Phase 0 — the position
 
-- **E1** — Record a byte offset per token, or re-tokenise one line at report time; pick the second unless the first is free.
-- **E2** — `line_of(row, at)`: count `line_end_token` before `at`.
-- **E3** — `source_line(file, n)`: re-read the file, answer that line's text.
-- **E4** — `column_of(row, at)`: the caret's position inside that text.
+**E1-E6 ARE DONE, 2026-09-18 (`bb64597`, `8c1593c`).** `satellite/machine/source_position.hpp` and `s_codes.hpp`. The `syntax:` row and the caret are filled in, in both halves of the interpreter.
+
+- **E1** — ~~Record a byte offset per token, or re-tokenise one line at report time; pick the second.~~ **Done, and the second — with the LEXER'S OWN offsets.** `tokenise_one_line` takes an optional `offsets` vector and fills it index for index with the row. Every path that runs a program passes `nullptr`; the reporter passes a vector, for one line, after something has already failed. Re-deriving the splitting rules in the reporter was the version that would have drifted.
+- **E2** — ~~`line_of(row, at)`.~~ **Done earlier** — `statement_ring.hpp` already had it, for the same reason it exists at all.
+- **E3** — ~~`source_line(file, n)`.~~ **Done** — one `open` and one `getline`, showing what the person ACTUALLY TYPED.
+- **E4** — ~~`column_of(row, at)`.~~ **Done, and it is exact rather than estimated.** The row is every line tokenised one after another, so the tokens between a line's start and `at` are index for index the tokens `tokenise_one_line` makes from that line's text. It is the same lexer answering the same question a second time.
 
 ## Phase 1 — the seam
 
-- **E5** — `raise(CriticalReport)`: one call that renders, prints and answers the machine code.
-- **E6** — A report knows its file and position from `ExpressionContext`, so a caller passes neither.
+- **E5** — ~~`raise(CriticalReport)`.~~ **Done**, plus `raise_at()`, which is the one every caller uses.
+- **E6** — ~~A report knows its file and position, so a caller passes neither.~~ **Done** — a caller passes the row it is walking and a position, and nothing else. `state.program` and `state.program_files` are two pointers set once after load; the ROW FINDS ITS OWN INDEX BY ADDRESS, because half the walker's functions are handed one row and not which row it is, and threading an index through all of them for a path that runs once a run is a cost on the hot path for a benefit that is not on it.
+
+**NOTHING WAS ADDED TO THE HOT PATH.** No field on a token, no store per statement, nothing kept in memory against the possibility of an error. A refusal carries its own position (`ExpressionContext::refused_at`), written once, on the refusal.
+
+**`stage` SAYS WHICH HALF REFUSED, AND IT IS NOT DECORATION.** `satl(check)` means NOTHING RAN; `satl(run)` means it got this far and stopped. That is the first thing a person needs, before the S-code and before the line.
 
 ## Phase 2 — the refusals, one at a time
 

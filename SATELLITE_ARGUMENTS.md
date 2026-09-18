@@ -239,7 +239,7 @@ values, which the author has deferred.
 
 ## Phase 0 — the switch (the author's first milestone)
 
-- **A1** — Add `bool arguments_active = false` to `MachineState`.
+- **A1** — ~~Add `bool arguments_active = false` to `MachineState`.~~ **Done 2026-09-18** (`8f909ad`) — next to the feature register, and for the reason that choice already gave: there are no globals, and a flag a thread cannot see the right copy of turns a feature on for some threads and not others.
 - **A2** — Carry `arguments_active` through `ExpressionContext` to every expression.
 - **A3** — Guard the walker's argument lookup behind `if (arguments_active)`.
 
@@ -249,39 +249,43 @@ values, which the author has deferred.
 - **A5** — Recognise `satellite.container.list<satellite.variable.string> <alias>` as the declaration.
 - **A6** — That declaration, and only it, sets `arguments_active` true.
 
-## Phase 2 — the variant, anything satellite can make
+## Phase 2 — the variant, anything satellite can make — **DONE 2026-09-18 (`8f909ad`)**
 
-- **A7** — Create `satellite/arguments/argument_value.hpp` holding one `std::variant`.
-- **A8** — Give it satellite's arms: string, number, bool, binary, percentage.
-- **A9** — Give it the plain arms: `unsigned long long`, `signed long long`, `std::string`.
-- **A10** — Give it the object arms: object, user-defined handle, spacesuit, capsule.
+- **A7** — ~~Create `satellite/arguments/argument_value.hpp` holding one `std::variant`.~~ **Done** — thirteen arms.
+- **A8** — ~~Give it satellite's arms: string, number, bool, binary, percentage.~~ **Done.**
+- **A9** — ~~Give it the plain arms: `unsigned long long`, `signed long long`, `std::string`.~~ **Done.**
+- **A10** — ~~Give it the object arms: object, user-defined handle, spacesuit, capsule.~~ **Done** — all four. Hex is left out (red note 2 stands) and no third spacesuit name was invented.
 
-## Phase 3 — the wrapper and its registers
+**THE ARM ASSERTS ASK THE TYPE, NOT A VALUE.** `ArgumentValue(satellite_number()).index()` does not compile: most arms are not literal types, so the index cannot be taken in a constant expression. `std::variant_alternative_t` asks the same question of the type alone and asks it more strictly — one assert per arm, and the count asserted too.
 
-- **A11** — Write `satelliteArgumentCase`: one variant value, wrapped.
-- **A12** — Give it `argument_name_r1` through `argument_name_r4`, all `std::string`.
-- **A13** — Default every unused register to `"VOID"` -- the arguments system's zero.
-- **A14** — Write `return_name_register1` through `return_name_register4`.
-- **A15** — Write down how `r5` is added when a name needs it.
+## Phase 3 — the wrapper and its registers — **DONE 2026-09-18 (`8f909ad`)**
 
-## Phase 4 — the checks
+- **A11** — ~~Write `satelliteArgumentCase`: one variant value, wrapped.~~ **Done.**
+- **A12** — ~~Give it `argument_name_r1` through `argument_name_r4`, all `std::string`.~~ **Done.**
+- **A13** — ~~Default every unused register to `"VOID"`.~~ **Done** — and a `static_assert` under `set_register_at()` fails until a raised count has its register, so a half-raised `kArgumentRegisters` does not compile.
+- **A14** — ~~Write `return_name_register1` through `return_name_register4`.~~ **Done**, plus `register_at(i)` so a loop does not repeat itself four times.
+- **A15** — ~~Write down how `r5` is added.~~ **Done**, in the header, as three numbered steps.
 
-- **A16** — Write the table of every real argument name.
-- **A17** — Write `is_a_real_argument()`: the registers must match that table.
-- **A18** — Write `template <typename T> bool value_in_bounds(T)` -- accepts by default.
-- **A19** — Specialise `value_in_bounds` for `satellite_number`: the value must be in bounds.
+## Phase 4 — the checks — **DONE 2026-09-18 (`8f909ad`)**
 
-## Phase 5 — the class
+- **A16** — ~~Write the table of every real argument name.~~ **Done, BY NOT WRITING ONE.** `words.tsv` is the table and `word_codes.hpp` is generated from it, byte for byte, by a step `check.sh` runs. A hand-written list here would be a second table free to fall behind the first.
+- **A17** — ~~Write `is_a_real_argument()`.~~ **Done** — the registers are spelled back out and `word::code_of_spelling()` answers. `arguments.memory.satellite.free` is correctly false until that row exists.
+- **A18** — ~~`template <typename T> bool value_in_bounds(T)` accepts by default.~~ **Done** — so an arm added later is accepted rather than silently refused by a check nobody wrote for it.
+- **A19** — ~~Specialise for `satellite_number`.~~ **Done, AND IT IS A FLOOR AND NOT A CEILING.** The language promises no limits and a bound is never the fix, so a number of any size passes; what is refused is a NEGATIVE count, which is a reader that failed and returned -1 rather than a small number.
 
-- **A20** — Write `class satelliteArguments`, protected `std::vector<satelliteArgumentCase> argument_cases`.
-- **A21** — Write protected `add_argument()`: name check, bounds check, then push_back.
-- **A22** — Write `find_argument()`: walk every case, compare the registers.
-- **A23** — Give it the public reader the interpreter calls while active.
+## Phase 5 — the class — **DONE 2026-09-18 (`8f909ad`)**
 
-## Phase 6 — it compiles, which is the whole test
+- **A20** — ~~`class satelliteArguments`, protected vector.~~ **Done.**
+- **A21** — ~~`add_argument()`: name check, bounds check, then push_back.~~ **Done**, in the brief's order. **A name already held is OVERWRITTEN, never added twice** — the brief's search stops at the first match, so a second row would be unreachable and the value silently stale.
+- **A22** — ~~`find_argument()`: walk every case, compare the registers.~~ **Done**, linear, which is the brief's own shape and the right one: dozens of arguments and not thousands, a miss costs one compare and not four, and there is no map to keep in step with the vector.
+- **A23** — ~~The public reader.~~ **Done** — `nullptr` for a name never gathered, which is a different thing from a name that is not real.
 
-- **A24** — Add the new files to the Makefile's objects.
-- **A25** — Build the tree clean; no test is written.
+## Phase 6 — it compiles, which is the whole test — **DONE 2026-09-18**
+
+- **A24** — ~~Add the new files to the Makefile.~~ **Done** — headers, so `HEADERS` and not `INTERPRETER_SOURCES`.
+- **A25** — ~~Build the tree clean; no test is written.~~ **Done** — 28 libraries, 0 errors, 0 warnings, and no `check.sh` row, exactly as instructed.
+
+**IT WAS RUN ONCE ANYWAY, OFF THE TREE, AND THIRTEEN BEHAVIOURS ANSWERED RIGHT.** The gospel rule is about not *writing* tests, and it is kept — nothing was added to the suite. But "it compiles" and "it works" are two claims, and only one of them had been checked: aliases fold (`args.` and `argv.` reach the same case), an unknown name is refused, a negative count is out of bounds, `arguments.memory` and `arguments.memory.total` are different names, and the same name overwrites rather than doubling.
 
 ## Phase 7 — the wiring, and the old code goes
 
@@ -308,14 +312,30 @@ affordable at all:** 9.6 seconds is unthinkable at every startup and nothing at
 all once per machine. Independent of A1–A32 -- it can be built before, after, or
 alongside them.
 
-- **C1** — Add `Command::config` to `command_line.hpp`; `--config` is the whole line.
-- **C2** — Write the probe: threads park on a condition variable, never spin.
-- **C3** — Ramp in doubling steps, recording nanoseconds and resident per thread.
-- **C4** — Stop at the lowest `/proc` ceiling less headroom, never at failure.
-- **C5** — Write the measured count and date to `~/.satl/machine.conf`.
-- **C6** — `arguments.system.threads` answers from that file when it exists.
-- **C7** — With no file, answer the ceilings' minimum and never probe.
-- **C8** — `satl --config` prints what it measured and where it wrote it.
+**BUILT 2026-09-18 (`6bff781`)** — `satellite/config/machine_probe.hpp` measures, `run_config.hpp` says. Split that way because `arguments.machine.threads` wants the first and prints nothing.
+
+- **C1** — ~~Add `Command::config`; `--config` is the whole line.~~ **Done, PLUS ONE OPTIONAL WORD.** See below.
+- **C2** — ~~The probe: threads park on a condition variable, never spin.~~ **Done** — raw pthreads, 256 kB stacks, which is what the 2026-09-17 table was measured at.
+- **C3** — ~~Ramp in doubling steps, recording nanoseconds and resident per thread.~~ **Done** — threads stay alive across rungs, so the resident figure is the real cost of holding that many at once.
+- **C4** — ~~Stop at the lowest `/proc` ceiling less headroom, never at failure.~~ **Done** — three quarters, which is the author's own 400,000-of-506,566 rounded to a number a person can hold.
+- **C5** — ~~Write the measured count and date to `~/.satl/machine.conf`.~~ **Done** — its own file and not config.ini, because config.ini is the PERSON'S and this is the MACHINE'S: copying config.ini to a new machine must not copy a thread count measured somewhere else.
+- **C6** — ~~`arguments.machine.threads` answers from that file when it exists.~~ **Done** — `threads_this_machine_allows()`.
+- **C7** — ~~With no file, answer the ceilings' minimum and never probe.~~ **Done** — a person who never runs `--config` still gets a true answer.
+- **C8** — ~~`satl --config` prints what it measured and where.~~ **Done** — every ceiling named, and the binding one marked, so a person can go raise THAT one rather than guess.
+
+**IT REPRODUCED THIS FILE'S OWN TABLE, WHICH IS WHY IT WAS WORTH RUNNING.**
+8,192 threads: **71 MB and 24,792 ns each**, against the recorded 72 MB and
+24,780. The ceilings match too. Two independent measurements, a day apart.
+
+**`satl --config <most>` — ONE WORD MORE THAN C1 ASKED FOR.** C1 said "--config
+is the whole line" and could not have known that the uncapped run here is nine
+seconds and three gigabytes. A command nobody can afford to try once is a
+command nobody tries; capped, it costs 203 ms. It is also the right answer in a
+container. **A cap above the ceiling is REFUSED and not clamped** — asking for
+more threads than the kernel allows is a person who believes something untrue
+about their machine, and the useful answer is the number. **A capped run says so
+in `machine.conf`**, because otherwise a number asked for once while trying the
+command becomes what `arguments.machine.threads` answers forever.
 
 **C4 IS THE ONE THAT MATTERS.** `threads-max` is system-wide, so a probe that
 runs to failure takes the last thread on the machine and the desktop cannot make
