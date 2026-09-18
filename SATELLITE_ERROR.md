@@ -199,6 +199,58 @@ table already said.
 machinery proven on a value the reporter already has in hand — no line number, no
 re-read, no column arithmetic. The program-source version is still owed.
 
+## Proposed, 2026-09-18 — SEVERITY IN THE NUMBER ITSELF. Not built.
+
+The author: *"S00 is stuff that doesn't stop the interpreter, so you have 99
+warnings to use, then S01 stops the interpreter on something stupid, then S02 is
+a little bit more serious"* — the number ordered by **how bad it is**, rather
+than by which part of the interpreter it came from.
+
+**It is a good idea and it is worth writing down before it is lost.** Today's
+blocks say WHERE a refusal came from; this says WHAT IT COSTS YOU, and the second
+is what a person wants first. `S0xx` and you can carry on; `S9xx` and you cannot.
+
+| band | means |
+|---|---|
+| `S0xx` | a warning — **the run carries on**. 99 of them, S000 the least important |
+| `S1xx` | stops, and it is something simple: a typo, a missing line |
+| `S2xx`–`S7xx` | stops, escalating |
+| `S8xx` | stops, and something is wrong beyond the program |
+| `S9xx` | the interpreter itself is in trouble |
+
+**WHAT IT WOULD COST, measured 2026-09-18 rather than guessed:** eight live call
+sites (`structured-library.cpp` ×3, `rebuild.hpp`, `run_config.hpp` ×3,
+`include_shape.cpp`), every row in `s_codes.hpp`, three comments in `check.sh`,
+one in `065-config.sh`, and one in a test program. **That is small.** What is
+not small is that `S0721` is in the author's own first sketch of the report, and
+`S0716` is 003's number for `text_not_found` which 004 deliberately kept so a
+person moving between them reads one number. **Severity ordering and 003
+compatibility cannot both be true**, and that is the real decision — not the
+renumbering, which is an afternoon.
+
+## Recorded and DELIBERATELY NOT BUILT — the interpreter that checks itself
+
+The author, same message: *"999 is like, the machine code is corrupted that the
+interpreter consists of, so we do a scan of the interpreter itself... we check
+for certain functions and certain compiled C++, like an anti virus but for the
+interpreter, we are feature creepin' HARD"* — and then, unprompted: *"maybe
+that's taking the error thing a bit too far"*.
+
+**He is right, and the reason is worth keeping so nobody re-proposes it.** A
+checksum of satl's own code that refuses to run when it does not match is an
+antivirus, and every antivirus's real cost is its FALSE POSITIVES. This one's
+false positive is *"your interpreter will not start"* — and the things that would
+trigger it are all legitimate: a rebuild, a different compiler, a distribution's
+patched libstdc++, a static build against a different libc,
+`LD_RUN_PATH` baking a different RPATH. Satellite already builds four ways on
+this machine alone.
+
+**The useful 5% of it, if it is ever wanted:** satl already knows its own build
+fingerprint (`020-version.mk`, `arguments.build`), and `--version` could print a
+hash of the binary it is running. That is *reporting* what you have, which is
+useful in a bug report, rather than *refusing* what you have, which is the part
+that bites. One is a line in the report; the other is a project.
+
 ## Owed — the refusals that exist and have no S-code yet
 
 Each of these already answers a machine code and already prints the one-line
