@@ -36,6 +36,25 @@ struct MachineState {
     // and nothing writes it again.
     FeatureRegister features;
 
+    // SATELLITE_ARGUMENTS A1 -- THE ARGUMENTS SWITCH, AND IT IS THE AUTHOR'S OWN
+    // FIRST MILESTONE. The brief: "when the arguments variable is turned on, it
+    // trips a satellite.variable.bool that is special and while turned on, the
+    // interpreter has to run the special code for arguments, and when it's not
+    // turned on... then we skip looking for arguments in the interpreter -- this
+    // slows down the interpreter by like 3nanoseconds while it checks if
+    // arguments is turned on or not".
+    //
+    // RULING R1: a C++ bool, not a satellite variable. The brief writes
+    // `satellite.variable.bool arguments_active`, but a satellite bool lives in a
+    // VariableTable and costs a hash lookup per statement; a bool here costs the
+    // three nanoseconds the brief budgets. The NAME is the brief's, unchanged.
+    //
+    // It is a bool and not a FeatureRegister bit because the two are turned on by
+    // different things at different times: a bit is composed by `satl --rebuild`
+    // and fixed before the program starts, and this is tripped by the DECLARATION
+    // inside the program being read (A6).
+    bool arguments_active = false;
+
     // Record a new state and, in debug mode, display it. Answers the code, so
     // a caller can write `return state.set("...", code);`.
     signed long long int set(const std::string &state, signed long long int machine_code)
