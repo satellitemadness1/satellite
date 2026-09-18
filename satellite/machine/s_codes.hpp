@@ -82,6 +82,37 @@ inline SCode s_code_for(signed long long int machine_code)
                 "execution ends inside main, and the file has to say so. "
                 "Add this as the last line:\n\n    satellite.return(satellite)"};
 
+    // S00xx -- STARTING UP.
+    case error:
+        return {"S0001", "REFUSED_WITHOUT_A_REASON",
+                "something refused and answered the general code rather than one of its own. This is "
+                "the interpreter failing to say what went wrong, so the S-code is worth reporting as "
+                "a bug in satellite itself."};
+    case vector_loading_error:
+        return {"S0002", "LIBRARIES_NOT_LOADED",
+                "the numbered libraries under satellite-numbers/ could not be read, so most words of "
+                "the language have nothing behind them. satl --rebuild reports what it found."};
+
+    // S01xx -- THE COMMAND LINE.
+    case command_line_not_understood:
+        return {"S0101", "COMMAND_LINE_NOT_UNDERSTOOD",
+                "satl was given words it does not take. satl --help lists every way to start it."};
+
+    case missing_satl_file:
+        return {"S0204", "FILE_NOT_FOUND",
+                "satl was told to run a file that is not there. Check the path, and that the name "
+                "ends .satl."};
+
+    // S03xx -- READING WHAT IS WRITTEN: a number or some text that cannot be read.
+    case int_error:
+        return {"S0301", "NUMBER_NOT_READ",
+                "this is not a number satellite can read. A number is an optional '-' then digits, "
+                "with no spaces, separators or decimal point."};
+    case string_error:
+        return {"S0302", "TEXT_NOT_UTF8",
+                "these bytes are not valid UTF-8. satellite's strings hold text, so bytes that "
+                "stand for no character are refused rather than carried."};
+
     case name_not_declared:
         return {"S0501", "NAME_NOT_DECLARED",
                 "this name was used and no satellite.variable line ever declared it. A name has to "
@@ -135,6 +166,77 @@ inline SCode s_code_for(signed long long int machine_code)
     case not_a_position:
         return {"S0905", "NOT_A_POSITION",
                 "a position or a line number below zero. Lines count from 1, and nothing counts below zero."};
+    case config_value_not_understood:
+        return {"S0731", "CONFIG_VALUE_NOT_UNDERSTOOD",
+                "a row in satellite_config.hpp cannot mean what its name asks."};
+    case machine_fact_not_read:
+        return {"S0732", "MACHINE_FACT_NOT_READ",
+                "this machine does not state the fact that was asked for. It is refused rather than "
+                "answered as 0 or \"\", because either of those is something a program would use."};
+    case setting_out_of_range:
+        return {"S0733", "SETTING_OUT_OF_RANGE",
+                "a number satl was given is past what this machine allows."};
+    case machine_conf_unwritable:
+        return {"S0734", "MACHINE_CONF_NOT_WRITTEN",
+                "~/.satl/machine.conf could not be written, so satl keeps answering from the /proc "
+                "ceilings. That answer is still true -- it is the ceiling rather than the measurement."};
+
+    // S09xx -- STRINGS. See the note in Part 4 about this block and files.
+    case text_not_found:
+        return {"S0906", "TEXT_NOT_FOUND",
+                "the text looked for is not in this string."};
+    case position_past_the_end:
+        return {"S0907", "POSITION_PAST_THE_END",
+                "this position is past the last character of the string."};
+    case positions_backwards:
+        return {"S0908", "POSITIONS_BACKWARDS",
+                "the start of this range is after its end."};
+    case empty_search_text:
+        return {"S0909", "EMPTY_SEARCH_TEXT",
+                "there is nothing to look for -- an empty search matches everywhere and means nothing."};
+
+    // S10xx -- INPUT AND THE CONSOLE.
+    case display_error:
+        return {"S1002", "DISPLAY_REFUSED",
+                "the output refused the line. A satellite program writing into a pipe whose reader "
+                "has gone is the usual way this happens."};
+    case interrupted:
+        return {"S1001", "INTERRUPTED",
+                "Ctrl-C stopped this between statements. satl exits 130, which is 128 + SIGINT -- "
+                "what a shell and 003 both answer."};
+
+    // S11xx -- THREADS AND MEMORY.
+    case thread_start_error:
+        return {"S1101", "THREAD_NOT_STARTED",
+                "the machine refused a thread. satl --config says how many this machine allows."};
+
+    // S12xx -- DIRECTORIES AND THE FILES A PROGRAM OPENS.
+    case directory_not_found:
+        return {"S1201", "DIRECTORY_NOT_FOUND", "nothing is at that path."};
+    case not_a_directory:
+        return {"S1202", "NOT_A_DIRECTORY", "something is at that path and it is not a directory."};
+    case directory_unreadable:
+        return {"S1203", "DIRECTORY_UNREADABLE",
+                "it is a directory and its entries could not be read."};
+    case path_holds_a_nul:
+        return {"S1204", "PATH_HOLDS_A_NUL",
+                "this path has a NUL in it, so the system would only ever see the part before it."};
+    case file_not_found:
+        return {"S1205", "FILE_NOT_THERE", "no file is at that path."};
+    case file_already_there:
+        return {"S1206", "FILE_ALREADY_THERE",
+                "satellite.file.new refuses to clobber a file that is already there. Use "
+                "satellite.file.open to work on it, or satellite.file.clear to empty it."};
+    case not_a_file:
+        return {"S1207", "NOT_A_FILE",
+                "something is at that path and it is not an ordinary file -- a FIFO, a device or a socket."};
+    case file_unreadable:
+        return {"S1208", "FILE_UNREADABLE", "the file is there and could not be read."};
+    case file_not_text:
+        return {"S1209", "FILE_NOT_TEXT",
+                "this is a text file and the bytes given are not text. A lone carriage return is "
+                "refused too, so a handle never writes a file it would refuse to open."};
+
     default:
         break;
     }

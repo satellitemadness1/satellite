@@ -20,6 +20,7 @@
 #include "../satellite/machine/machine_codes.hpp"
 
 #include <pwd.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 #include <fstream>
@@ -180,6 +181,211 @@ inline FactReply answer_directory()
     std::string said;
     if (working_directory(said) == false)
         return could_not_read("a working directory", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+// ---------------------------------------------------------------------------
+// THE REST OF THE FREE ONES. Each is a uname field, a sysconf call, a getenv or
+// a compiler macro -- nothing here opens anything that is not already open.
+// ---------------------------------------------------------------------------
+
+// `uname` gives five of the words in one call. A field the system left empty is
+// a field this refuses, rather than answering "".
+inline bool uname_field(int which, std::string &out)
+{
+    struct utsname said {};
+    if (uname(&said) != 0) return false;
+    const char *field = nullptr;
+    switch (which) {
+    case 0: field = said.nodename; break;   // system.hostname
+    case 1: field = said.sysname;  break;   // system.kernel
+    case 2: field = said.release;  break;   // system.kernel_version
+    case 3: field = said.machine;  break;   // machine.architecture
+    case 4: field = said.version;  break;   // system.name
+    default: return false;
+    }
+    if (field == nullptr || field[0] == '\0') return false;
+    out = field;
+    return true;
+}
+
+// A named value out of /etc/os-release: NAME, ID, VERSION_ID. Quotes stripped,
+// because the file writes them and nobody wants them in a string.
+inline bool os_release(const char *key, std::string &out)
+{
+    std::ifstream file("/etc/os-release");
+    if (!file.is_open()) return false;
+    const std::string wanted = std::string(key) + "=";
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.compare(0, wanted.size(), wanted) != 0) continue;
+        std::string value = line.substr(wanted.size());
+        if (value.size() >= 2 && value.front() == '"' && value.back() == '"')
+            value = value.substr(1, value.size() - 2);
+        if (value.empty()) return false;
+        out = value;
+        return true;
+    }
+    return false;
+}
+
+// The first "model name" in /proc/cpuinfo -- what a person calls their CPU.
+inline bool cpu_model(std::string &out)
+{
+    std::ifstream file("/proc/cpuinfo");
+    if (!file.is_open()) return false;
+    std::string line;
+    while (std::getline(file, line)) {
+        const std::size_t colon = line.find(':');
+        if (colon == std::string::npos) continue;
+        std::string key = line.substr(0, colon);
+        while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) key.pop_back();
+        if (key != "model name") continue;
+        std::string value = line.substr(colon + 1);
+        std::size_t from = value.find_first_not_of(" \t");
+        if (from == std::string::npos) return false;
+        out = value.substr(from);
+        return true;
+    }
+    return false;
+}
+
+// An environment variable, refused when it is unset or empty. A daemon started
+// with a scrubbed environment has none of these, which is a real state and not a
+// reason to answer "".
+inline bool from_environment(const char *name, std::string &out)
+{
+    const char *said = std::getenv(name);
+    if (said == nullptr || said[0] == '\0') return false;
+    out = said;
+    return true;
+}
+
+// WHICH WAY ROUND THIS MACHINE STORES A NUMBER, asked of the machine rather than
+// of a macro, so it is true for whatever this was compiled on.
+inline bool byte_order(std::string &out)
+{
+    const unsigned int one = 1u;
+    unsigned char first = 0;
+    __builtin_memcpy(&first, &one, 1);
+    out = (first == 1) ? "little" : "big";
+    return true;
+}
+
+inline FactReply answer_hostname()
+{
+    std::string said;
+    if (uname_field(0, said) == false) return could_not_read("a hostname", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_kernel()
+{
+    std::string said;
+    if (uname_field(1, said) == false) return could_not_read("a kernel name", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_kernel_version()
+{
+    std::string said;
+    if (uname_field(2, said) == false) return could_not_read("a kernel version", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_architecture()
+{
+    std::string said;
+    if (uname_field(3, said) == false) return could_not_read("an architecture", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_distribution()
+{
+    std::string said;
+    if (os_release("NAME", said) == false) return could_not_read("NAME in /etc/os-release", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_distribution_id()
+{
+    std::string said;
+    if (os_release("ID", said) == false) return could_not_read("ID in /etc/os-release", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_distribution_version()
+{
+    std::string said;
+    if (os_release("VERSION_ID", said) == false)
+        return could_not_read("VERSION_ID in /etc/os-release", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_cpu()
+{
+    std::string said;
+    if (cpu_model(said) == false) return could_not_read("a model name in /proc/cpuinfo", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_byte_order()
+{
+    std::string said;
+    byte_order(said);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_page_size()
+{
+    const long said = sysconf(_SC_PAGESIZE);
+    if (said <= 0) return could_not_read("a page size", machine_fact_not_read);
+    return a_count(static_cast<unsigned long long int>(said));
+}
+
+// HOW WIDE A POINTER IS ON THIS BUILD. sizeof, not a guess: a 32-bit build on a
+// 64-bit machine answers 32, which is the true answer for the interpreter that
+// is actually running.
+inline FactReply answer_pointer_bits()
+{
+    return a_count(static_cast<unsigned long long int>(sizeof(void *) * 8));
+}
+
+inline FactReply answer_process_id()
+{
+    return a_count(static_cast<unsigned long long int>(getpid()));
+}
+
+inline FactReply answer_process_parent()
+{
+    return a_count(static_cast<unsigned long long int>(getppid()));
+}
+
+inline FactReply answer_shell()
+{
+    std::string said;
+    if (from_environment("SHELL", said) == false) return could_not_read("$SHELL", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_terminal()
+{
+    std::string said;
+    if (from_environment("TERM", said) == false) return could_not_read("$TERM", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_language()
+{
+    std::string said;
+    if (from_environment("LANG", said) == false) return could_not_read("$LANG", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_home()
+{
+    std::string said;
+    if (from_environment("HOME", said) == false) return could_not_read("$HOME", machine_fact_not_read);
     return some_text(std::move(said));
 }
 

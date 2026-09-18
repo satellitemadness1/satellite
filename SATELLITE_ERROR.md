@@ -137,7 +137,7 @@ renumber.** Same rule as the word table, for the same reason.
 | **S06xx** | types: two kinds that do not meet |
 | **S07xx** | settings and arguments |
 | **S08xx** | numbers: division by zero, an answer that is not whole |
-| **S09xx** | strings, binary, percentage |
+| **S09xx** | **files** (S0901–S0905, built first), then strings, binary, percentage |
 | **S10xx** | input and the console |
 | **S11xx** | threads and memory |
 | **S12xx** | directories and files a program opens |
@@ -173,6 +173,22 @@ file, and a line that is MISSING has no position to point at — so they take
 line could not is **room to print the exact line to type**. S0201 is the
 commonest mistake in the language and its old message said what was wrong
 without ever saying what to do about it.
+
+**S09xx DRIFTED, AND IT IS RECORDED RATHER THAN REPAIRED.** The block was
+written for strings; the file work landed S0901–S0905 in it before anything
+string-shaped was numbered. **Renumbering them is refused by this file's own
+rule** — never renumber, because a number a person has written down has to keep
+meaning what it meant, and those five are already in `check.sh`. So the block
+holds both, files first, and the strings continue from S0906. The cost is that
+S09xx no longer says one thing; the cost of the alternative is a number that
+changed meaning.
+
+**EVERY REFUSAL IN 004 NOW HAS AN S-CODE, as of 2026-09-18.** Every machine code
+that means a failure has a row in `s_codes.hpp`. The six without one —
+`success`, `error`'s successes, `number_vector_defined`,
+`satellite_loading_successful`, `successfully_loaded_satl_file`,
+`display_error`'s siblings — are reports and not failures, which Part 2's own
+table already said.
 
 **S0000 `REFUSED` IS THE FALLBACK AND IS NOT A FAILURE.** A machine code with no S-code yet still reports with the file, the line and the caret; S0000 says the number is owed rather than pretending the refusal is nameless.
 
