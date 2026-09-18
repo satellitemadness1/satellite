@@ -1,12 +1,13 @@
-// satellite.library.main.arguments.machine.threads  `1 14 1 1 1 3` -- how many threads this machine allows.
+// satellite.library.main.arguments.threads  `1 14 1 1 14` -- how many threads this machine allows.
 //
-// SATELLITE_ARGUMENTS Phase C. The reader and the answer are in
-// satellite-numbers/machine_facts.hpp, shared because each library is compiled
-// from exactly one .cpp -- and because this word has aliases that must not be
-// able to answer anything different.
+// AN ALIAS OF `arguments.machine.threads`, on the author's word (2026-09-18):
+// *"let's use the longer choice for each one, can we have an alias for them
+// though?"* The LONG name is the word; this is a second way to write it.
 //
-// READ EVERY TIME, NEVER CACHED. A machine fact a minute old is a wrong answer
-// wearing a right answer's face.
+// AN ALIAS IS A SECOND ROW AND A SECOND .so, because a code is one number and
+// one library -- but it is NEVER a second copy of the answer. Both point at
+// machine_facts.hpp's answer_threads(), so the two cannot answer differently,
+// which is the only way an alias really goes wrong.
 
 #include "../machine_facts.hpp"
 #include "../../satellite/config/machine_probe.hpp"
@@ -27,14 +28,13 @@ inline satellite004::FactReply answer_threads()
 extern "C" signed long long int satellite_number_describe(satellite004::LibraryRow *row)
 {
     if (row == nullptr) return satellite004::error;
-    row->name = "satellite.library.main.arguments.machine.threads";
+    row->name = "satellite.library.main.arguments.threads";
     row->numbers[0] = 1;
     row->numbers[1] = 14;
     row->numbers[2] = 1;
     row->numbers[3] = 1;
-    row->numbers[4] = 1;
-    row->numbers[5] = 3;
-    row->depth = 6;
+    row->numbers[4] = 14;
+    row->depth = 5;
     row->scenarios.fact = &answer_threads;
     return satellite004::success;
 }

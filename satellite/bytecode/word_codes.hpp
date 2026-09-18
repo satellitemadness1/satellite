@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 370;
+inline constexpr unsigned int kWordsInTable = 376;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -365,6 +365,12 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x05010E0101090000ULL, 4381},  // 1 14 1 1 9 -- satellite.library.main.arguments.length
     {0x05010E01010A0000ULL, 4462},  // 1 14 1 1 10 -- satellite.library.main.arguments.access
     {0x05010E01010B0000ULL, 4463},  // 1 14 1 1 11 -- satellite.library.main.arguments.history
+    {0x05010E01010C0000ULL, 4467},  // 1 14 1 1 12 -- satellite.library.main.arguments.directory
+    {0x05010E01010D0000ULL, 4468},  // 1 14 1 1 13 -- satellite.library.main.arguments.cores
+    {0x05010E01010E0000ULL, 4469},  // 1 14 1 1 14 -- satellite.library.main.arguments.threads
+    {0x05010E01010F0000ULL, 4470},  // 1 14 1 1 15 -- satellite.library.main.arguments.user
+    {0x05010E0101100000ULL, 4471},  // 1 14 1 1 16 -- satellite.library.main.arguments.ram
+    {0x05010E0101110000ULL, 4472},  // 1 14 1 1 17 -- satellite.library.main.arguments.dir
     {0x0501160404000000ULL, 4428},  // 1 22 4 4 0 -- satellite.system.memory.swap()
     {0x0501160404010000ULL, 4429},  // 1 22 4 4 1 -- satellite.system.memory.swap.free()
     {0x0501160404020000ULL, 4430},  // 1 22 4 4 2 -- satellite.system.memory.swap.total()
@@ -800,6 +806,12 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.file.open(path)", {1, 8, 6, 0, 0, 0, 0}, 3},
     {"satellite.library.main.arguments.memory.free", {1, 14, 1, 1, 2, 2, 0}, 6},
     {"satellite.library.main.arguments.memory.used", {1, 14, 1, 1, 2, 3, 0}, 6},
+    {"satellite.library.main.arguments.directory", {1, 14, 1, 1, 12, 0, 0}, 5},
+    {"satellite.library.main.arguments.cores", {1, 14, 1, 1, 13, 0, 0}, 5},
+    {"satellite.library.main.arguments.threads", {1, 14, 1, 1, 14, 0, 0}, 5},
+    {"satellite.library.main.arguments.user", {1, 14, 1, 1, 15, 0, 0}, 5},
+    {"satellite.library.main.arguments.ram", {1, 14, 1, 1, 16, 0, 0}, 5},
+    {"satellite.library.main.arguments.dir", {1, 14, 1, 1, 17, 0, 0}, 5},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -924,6 +936,9 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.library.main.arguments.build.make", 4361},
     {"satellite.library.main.arguments.build.standard", 4359},
     {"satellite.library.main.arguments.build.standard_library", 4362},
+    {"satellite.library.main.arguments.cores", 4468},
+    {"satellite.library.main.arguments.dir", 4472},
+    {"satellite.library.main.arguments.directory", 4467},
     {"satellite.library.main.arguments.history", 4463},
     {"satellite.library.main.arguments.interpreter", 4365},
     {"satellite.library.main.arguments.interpreter()", 4366},
@@ -949,6 +964,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.library.main.arguments.process()", 4371},
     {"satellite.library.main.arguments.process.id", 4372},
     {"satellite.library.main.arguments.process.parent", 4373},
+    {"satellite.library.main.arguments.ram", 4471},
     {"satellite.library.main.arguments.session", 4374},
     {"satellite.library.main.arguments.session()", 4375},
     {"satellite.library.main.arguments.session.directory", 4380},
@@ -965,6 +981,8 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.library.main.arguments.system.kernel", 4349},
     {"satellite.library.main.arguments.system.kernel_version", 4350},
     {"satellite.library.main.arguments.system.name", 4348},
+    {"satellite.library.main.arguments.threads", 4469},
+    {"satellite.library.main.arguments.user", 4470},
     {"satellite.library.main.arguments.username", 4345},
     {"satellite.library.system", 4382},
     {"satellite.library.system()", 4383},

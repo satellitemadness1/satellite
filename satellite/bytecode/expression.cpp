@@ -807,6 +807,39 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     }
     if (scenarios->directory != nullptr)
         return call_directory_word(code, *scenarios, argument, context);
+
+    // A FACT, WRITTEN WITH ITS BRACKETS. `arguments.memory()` is the author's own
+    // spelling in the second brief -- "arguments.memory() (alias of
+    // arguments.memory.total())" -- and it reaches HERE rather than the bare-word
+    // arm above, because brackets make it a call. Same answer either way.
+    //
+    // IT TAKES NOTHING, and says so when given something: a fact is what the
+    // machine has, so there is nothing to hand it.
+    if (scenarios->fact != nullptr) {
+        if (!arguments.empty()) {
+            context.refuse(satl_line_not_understood,
+                           std::string(word::spelling_of(code)) +
+                               " is a fact about this machine and takes nothing");
+            return Value();
+        }
+        const FactReply said = scenarios->fact();
+        if (said.code != success) {
+            context.refuse(said.code, std::string(word::spelling_of(code)) + " could not be read" +
+                                          (said.reason.empty() ? "" : " -- " + said.reason));
+            return Value();
+        }
+        if (said.is_text == true) {
+            Value made;
+            std::size_t bad = 0;
+            const signed long long int built = Value::of_utf8(said.text, made, bad);
+            if (built != success) {
+                context.refuse(built, std::string(word::spelling_of(code)) + " answered bytes that are not text");
+                return Value();
+            }
+            return made;
+        }
+        return Value::of_number(satellite_number(said.count));
+    }
     // A VALUE LEAVES AS BYTES HERE, and only here: a library's text scenario
     // takes a std::string (number_row.hpp), so the satellite_string goes back
     // out through to_utf8 at the boundary and nowhere inside the interpreter.

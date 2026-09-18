@@ -385,6 +385,12 @@ inline constexpr WordRow kWords[] = {
     {"satellite.file.open(path)", {1, 8, 6, 0, 0, 0}, 3},
     {"satellite.library.main.arguments.memory.free", {1, 14, 1, 1, 2, 2}, 6},
     {"satellite.library.main.arguments.memory.used", {1, 14, 1, 1, 2, 3}, 6},
+    {"satellite.library.main.arguments.directory", {1, 14, 1, 1, 12, 0}, 5},
+    {"satellite.library.main.arguments.cores", {1, 14, 1, 1, 13, 0}, 5},
+    {"satellite.library.main.arguments.threads", {1, 14, 1, 1, 14, 0}, 5},
+    {"satellite.library.main.arguments.user", {1, 14, 1, 1, 15, 0}, 5},
+    {"satellite.library.main.arguments.ram", {1, 14, 1, 1, 16, 0}, 5},
+    {"satellite.library.main.arguments.dir", {1, 14, 1, 1, 17, 0}, 5},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -531,7 +537,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.statement.else", {1, 13, 4, 1, 0, 0, 0}, 4},
     {"satellite.library", {1, 14, 3, 0, 0, 0, 0}, 3},
     {"satellite.library.main", {1, 14, 1, 2, 0, 0, 0}, 4},
-    {"satellite.library.main.arguments", {1, 14, 1, 1, 12, 0, 0}, 5},
+    {"satellite.library.main.arguments", {1, 14, 1, 1, 18, 0, 0}, 5},
     {"satellite.library.main.arguments.machine", {1, 14, 1, 1, 1, 8, 0}, 6},
     {"satellite.library.main.arguments.machine.cores", {1, 14, 1, 1, 1, 1, 1}, 7},
     {"satellite.library.main.arguments.machine.cpu", {1, 14, 1, 1, 1, 2, 1}, 7},
@@ -609,6 +615,12 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 1, 0}, 6},
     {"satellite.library.main.arguments.memory.free", {1, 14, 1, 1, 2, 2, 1}, 7},
     {"satellite.library.main.arguments.memory.used", {1, 14, 1, 1, 2, 3, 1}, 7},
+    {"satellite.library.main.arguments.directory", {1, 14, 1, 1, 12, 1, 0}, 6},
+    {"satellite.library.main.arguments.cores", {1, 14, 1, 1, 13, 1, 0}, 6},
+    {"satellite.library.main.arguments.threads", {1, 14, 1, 1, 14, 1, 0}, 6},
+    {"satellite.library.main.arguments.user", {1, 14, 1, 1, 15, 1, 0}, 6},
+    {"satellite.library.main.arguments.ram", {1, 14, 1, 1, 16, 1, 0}, 6},
+    {"satellite.library.main.arguments.dir", {1, 14, 1, 1, 17, 1, 0}, 6},
 };
 
 } // namespace satellite004

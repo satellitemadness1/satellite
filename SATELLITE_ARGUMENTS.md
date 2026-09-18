@@ -678,7 +678,47 @@ Red notes. None of them blocks A1–A25.
 
 ## From the second brief, 2026-09-18
 
-5. **`arguments.threads` or `arguments.machine.threads`? `arguments.cores` or
+5. ~~**`arguments.threads` or `arguments.machine.threads`?**~~ **CLOSED
+   2026-09-18 BY THE AUTHOR: the long one, and the short one as an alias.** His
+   words: *"let's set it to arguments.machine then, and let's use the longer
+   choice for each one, can we have an alias for them though?"* So
+   `arguments.machine.cores` and `arguments.machine.threads` are the words, and
+   `arguments.cores` / `arguments.threads` answer the same thing. Both are built
+   and both were checked against each other. The old text is kept below for the
+   record.
+
+   **HOW AN ALIAS IS BUILT HERE, so the next one is a diff and not a decision.**
+   An alias is a second ROW in `words_004.tsv` and a second `.so`, because a code
+   is one number and one library. What it is **never** is a second copy of the
+   answer: every answer lives once, in `machine_facts.hpp`, and both libraries
+   point at it. That is the only way an alias can really go wrong — answering a
+   different number from the word it aliases — and it is designed out rather than
+   tested for.
+
+   **THE ALIASES THAT EXIST**, all verified equal to their canonical word:
+
+   | alias | is | answers here |
+   |---|---|---|
+   | `arguments.cores` | `arguments.machine.cores` | 24 |
+   | `arguments.threads` | `arguments.machine.threads` | 506,566 |
+   | `arguments.user` | `arguments.username` | madness |
+   | `arguments.memory` | `arguments.memory.total` | 66509373440 |
+   | `arguments.memory()` | `arguments.memory.total` | 66509373440 |
+   | `arguments.ram` | `arguments.memory.total` | 66509373440 |
+   | `arguments.dir` | `arguments.directory` | the working directory |
+
+   `arguments.memory()` is the author's own spelling from the second brief and it
+   reaches a **different code path** — brackets make it a call, so it is answered
+   in `call_word` rather than the bare-word arm. Both give the same number, and a
+   fact given an argument is refused, because a fact is what the machine has and
+   there is nothing to hand it.
+
+   **STILL THE AUTHOR'S:** *"can we alias them as arguments.direct_variable for
+   the arguments?"* — read here as **"give the deep names a short, direct
+   spelling"**, which is the table above. If `arguments.direct_variable` was
+   meant as a literal word of its own, say so and it is one more row.
+
+5b. **The original note, kept:** **`arguments.threads` or `arguments.machine.threads`? `arguments.cores` or
    `arguments.machine.cores`?** The second brief writes the short pair; the word
    table carries the long pair, at `1 14 1 1 1 3` and `1 14 1 1 1 1`. Unlike red
    note 1 these do **not** agree, so one of the two is an alias and the author

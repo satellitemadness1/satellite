@@ -368,3 +368,9 @@
 1 8 6	satellite.file.open(path)	
 1 14 1 1 2 2	satellite.library.main.arguments.memory.free	
 1 14 1 1 2 3	satellite.library.main.arguments.memory.used	
+1 14 1 1 12	satellite.library.main.arguments.directory	
+1 14 1 1 13	satellite.library.main.arguments.cores	
+1 14 1 1 14	satellite.library.main.arguments.threads	
+1 14 1 1 15	satellite.library.main.arguments.user	
+1 14 1 1 16	satellite.library.main.arguments.ram	
+1 14 1 1 17	satellite.library.main.arguments.dir	

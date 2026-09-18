@@ -1,4 +1,4 @@
-// satellite.library.main.arguments.machine.cores  `1 14 1 1 1 1` -- how many cores this machine will schedule on right now.
+// satellite.library.main.arguments.directory  `1 14 1 1 12` -- the directory this interpreter is in now.
 //
 // SATELLITE_ARGUMENTS Phase C. The reader and the answer are in
 // satellite-numbers/machine_facts.hpp, shared because each library is compiled
@@ -13,14 +13,13 @@
 extern "C" signed long long int satellite_number_describe(satellite004::LibraryRow *row)
 {
     if (row == nullptr) return satellite004::error;
-    row->name = "satellite.library.main.arguments.machine.cores";
+    row->name = "satellite.library.main.arguments.directory";
     row->numbers[0] = 1;
     row->numbers[1] = 14;
     row->numbers[2] = 1;
     row->numbers[3] = 1;
-    row->numbers[4] = 1;
-    row->numbers[5] = 1;
-    row->depth = 6;
-    row->scenarios.fact = &satellite004::machine_facts::answer_cores;
+    row->numbers[4] = 12;
+    row->depth = 5;
+    row->scenarios.fact = &satellite004::machine_facts::answer_directory;
     return satellite004::success;
 }

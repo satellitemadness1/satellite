@@ -117,5 +117,71 @@ inline FactReply some_text(std::string value)
     return reply;
 }
 
+// ---------------------------------------------------------------------------
+// THE ANSWERS THEMSELVES, SO AN ALIAS CANNOT DRIFT FROM WHAT IT ALIASES.
+//
+// The author, 2026-09-18: *"let's use the longer choice for each one, can we
+// have an alias for them though?"* -- so `arguments.machine.cores` is the name
+// and `arguments.cores` is a second way to write it. An alias is a second word
+// ROW and a second `.so`, because a code is one number and one library; what it
+// must NOT be is a second copy of the answer. These functions are the one copy,
+// and every library -- canonical or alias -- is a dozen lines pointing here.
+//
+// So an alias cannot answer a different number from the word it aliases, which
+// is the only way an alias can really go wrong.
+// ---------------------------------------------------------------------------
+
+inline FactReply answer_memory_total()
+{
+    unsigned long long int said = 0;
+    if (meminfo_bytes("MemTotal:", said) == false)
+        return could_not_read("MemTotal in /proc/meminfo", machine_fact_not_read);
+    return a_count(said);
+}
+
+inline FactReply answer_memory_free()
+{
+    unsigned long long int said = 0;
+    if (meminfo_bytes("MemAvailable:", said) == false)
+        return could_not_read("MemAvailable in /proc/meminfo", machine_fact_not_read);
+    return a_count(said);
+}
+
+inline FactReply answer_memory_used()
+{
+    unsigned long long int whole = 0, spare = 0;
+    if (meminfo_bytes("MemTotal:", whole) == false || meminfo_bytes("MemAvailable:", spare) == false)
+        return could_not_read("MemTotal and MemAvailable in /proc/meminfo", machine_fact_not_read);
+    // TOTAL LESS MemAvailable, NOT TOTAL LESS MemFree. MemFree leaves out the
+    // page cache, which the kernel hands back the moment anything wants it -- so
+    // `free` off MemFree reads as almost nothing on a machine that is perfectly
+    // healthy, and `used` off it reads as almost everything.
+    return a_count(spare > whole ? 0 : whole - spare);
+}
+
+inline FactReply answer_cores()
+{
+    unsigned long long int said = 0;
+    if (cores_online(said) == false)
+        return could_not_read("a count of online processors", machine_fact_not_read);
+    return a_count(said);
+}
+
+inline FactReply answer_username()
+{
+    std::string said;
+    if (username(said) == false)
+        return could_not_read("a passwd entry for this user", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_directory()
+{
+    std::string said;
+    if (working_directory(said) == false)
+        return could_not_read("a working directory", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
 } // namespace machine_facts
 } // namespace satellite004
