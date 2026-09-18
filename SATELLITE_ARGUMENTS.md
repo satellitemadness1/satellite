@@ -289,6 +289,29 @@ values, which the author has deferred.
 
 ## Phase 7 — the wiring, and the old code goes
 
+**A26–A32 WERE BLOCKED AND ARE NOW UNBLOCKED (`62e7e7d`, 2026-09-18).** The
+milestones assumed the old store and the new class name the same things. They do
+not, and the number is decisive: **a real gather produces 29 names and only 11
+are words in `words.tsv`.** The other eighteen — `arguments.file`,
+`arguments.debug_mode`, `arguments.threads_startup`, `arguments.argument_1`,
+`arguments.version`, `arguments.disk.free` and twelve more — have no row, so
+`is_a_real_argument()` refused every one. A straight swap would have dropped
+`arguments.file`, which is how satl knows what to run, and **satl would not have
+started**.
+
+`ArgumentOrigin` is the fix: `word` keeps the word-table check, `satl` does not,
+because the language has no word for a config row and is not supposed to.
+Nothing became unchecked — a config row is checked by `gather_config()` against
+the author's own `return_arguments_vector()`, and a fact satl fills in by
+`filled_in_by_satl()`, which `arguments_cases.cpp` already pins to what
+`gather()` really adds.
+
+**Measured through the real gather into the real `add_argument()`: 29 gathered →
+29 held, 11 words, 18 satl's, 0 refused.** `arguments_a_program_can_read()`
+answers the eleven, which is what the `arguments` variable should expose — a
+program has no business reading `arguments.threads_startup`.
+
+
 The author, 2026-09-17: *"then just wiring it into the interpreter as a single
 step, remove any other arguments code that we have, except the code we need for
 the wiring."* Readers move first, then the duplicate store is deleted -- in that
