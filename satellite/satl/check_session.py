@@ -58,6 +58,12 @@ check(t.wait_for(lambda t: t.raw.count(b'alpha') >= 2), 'list(d) lists somewhere
 t.at_prompt()
 t.type(b'satellite.console.display("half a line')
 t.type(b'\x03')
+# WAIT FOR THE PROMPT THE INTERRUPT DREW, exactly as every other step here waits.
+# Typing straight after the Ctrl-C raced D0.6.5, which DROPS keys that arrive
+# while a line is still being dealt with: the next line was eaten and the check
+# failed 3 times in 5 under load (2026-09-17). at_prompt() cannot pass early --
+# the row still holds the half-typed line until the interrupt abandons it.
+t.at_prompt()
 t.type(b'satellite.console.display("after the interrupt")\r')
 check(t.wait_for('after the interrupt') and not t.screen.shows('half a line"satellite'),
       'Ctrl-C while typing abandons the line, and the next line is whole')
