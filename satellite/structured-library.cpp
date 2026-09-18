@@ -33,6 +33,7 @@
 #include "bytecode/function_table.hpp"
 #include "bytecode/program_walk.hpp"
 #include "bytecode/word_counts.hpp"
+#include "bytecode/statement_ring.hpp"
 #include "config/config_file.hpp"
 #include "config/feature_register.hpp"
 #include "config/feature_switch.hpp"
@@ -370,6 +371,15 @@ signed long long int run_satl(int argc, char **argv)
         std::cerr << "\nsatl: per-word call counts (features." << feature_facts()[
             static_cast<unsigned>(Feature::word_counts)].name << ")\n";
         std::cerr << word_counts_table(word_counts());
+        std::cerr.flush();
+    }
+
+    // THE `statements` BIT'S ANSWER. Printed after the run whether it stopped or
+    // finished, because "what was it doing" is the same question either way --
+    // and on a failure it is the whole point of having kept them.
+    if (features.on(Feature::statements)) {
+        std::cerr << "\nsatl: the statement ring (features.statements)\n";
+        std::cerr << statement_ring_table(statement_ring(), bytecode_registry, bytecode_filenames, 12);
         std::cerr.flush();
     }
 

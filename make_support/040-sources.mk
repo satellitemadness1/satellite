@@ -37,7 +37,8 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(SATELLITE)/
           $(SATELLITE)/satl/satl_file.hpp $(SATELLITE)/threads/startup_threads.hpp \
           $(VERSION_DIR)/version.hpp $(VERSION_DIR)/title_lines.hpp \
           $(BYTECODE)/bytecode_registry.hpp $(BYTECODE)/token_codes.hpp \
-          $(BYTECODE)/word_codes.hpp $(BYTECODE)/word_counts.hpp $(BYTECODE)/function_table.hpp \
+          $(BYTECODE)/word_codes.hpp $(BYTECODE)/word_counts.hpp $(BYTECODE)/statement_ring.hpp \
+          $(BYTECODE)/function_table.hpp \
           $(BYTECODE)/include_shape.hpp $(BYTECODE)/program_walk.hpp \
           $(BYTECODE)/expression.hpp $(BYTECODE)/value.hpp \
           $(BYTECODE)/sate_file.hpp $(BYTECODE)/cascade_convert.hpp \

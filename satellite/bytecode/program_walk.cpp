@@ -29,6 +29,8 @@
 
 #include "program_walk.hpp"
 
+#include "statement_ring.hpp"
+
 #include "word_codes.hpp"
 #include "../satl/satl_file.hpp"
 
@@ -868,6 +870,22 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         if (code == token::right_brace_token)
             return success;
         if (code == token::line_end_token) { ++at; continue; }
+
+        // THE `statements` BIT. Recorded here and nowhere else: this is the top
+        // of the one loop every statement passes through, so one site records
+        // everything and there is no second place to keep in step.
+        //
+        // AFTER the two steps above, so a `}` and a bare line end are not counted
+        // as statements -- a person reading the ring wants the lines they wrote.
+        //
+        // A POSITION, NOT A LINE. Counting line_end_tokens is O(n) and this is
+        // per statement; statement_ring.hpp says why the counting waits for the
+        // report. NOT HOISTED YET -- M35 and F5b are where RunPlan::plain gets a
+        // loop with this line compiled out.
+        if (state.features.on(Feature::statements)) {
+            statement_ring().ready();
+            statement_ring().saw(which_row, at);
+        }
 
         if (code == word::code_of(1, 15)) {          // satellite.return
             state.set("satellite.return", success);
