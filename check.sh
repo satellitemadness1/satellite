@@ -181,6 +181,39 @@ expect "... by the CHECK, with nothing run before it" "" "$(grep -x before build
 # FLATTENED FIRST: the refusal is a full report now and a report wraps at eighty
 # columns, so this sentence arrives split across two lines. The assertion is
 # about the words, not where the report chose to break them.
+# satellite.feedback CANNOT BE USED TO FLOOD ANYBODY, and the proof is run rather
+# than argued: 50,000 identical calls in a loop must cost one line.
+#
+# The author asked for "a system that you cannot BOMB with
+# satellite.feedback({"something_in_a_loop"})". The answer is that the word never
+# touches a network -- so the last row here asserts that satl links NOTHING that
+# could reach one, which is the property the whole design rests on.
+cat > build/feedback_bomb.satl <<'BOMB_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.feedback("a real thing a person typed")
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 50000)
+    {
+        satellite.feedback("BOMB")
+        i = i + 1
+    }
+    satellite.console.display("done")
+}
+satellite.return(satellite)
+BOMB_EOF
+rm -f "$CHECK_HOME/.satl/feedback.txt"
+HOME="$CHECK_HOME" "$interpreter" build/feedback_bomb.satl > build/feedback.out 2>&1
+expect "50,002 feedback calls run, and the loop is not refused" "0|done" \
+       "$?|$(tail -1 build/feedback.out)"
+expect "... and 50,000 identical ones cost ONE line" 2 \
+       "$(wc -l < "$CHECK_HOME/.satl/feedback.txt" 2>/dev/null || echo 0)"
+expect "... the book holds what was typed and nothing about the machine" "1|0|0" \
+       "$(grep -c 'a real thing a person typed' "$CHECK_HOME/.satl/feedback.txt")|$(grep -c "$(whoami)" "$CHECK_HOME/.satl/feedback.txt")|$(grep -c 'feedback_bomb.satl' "$CHECK_HOME/.satl/feedback.txt")"
+expect "satl links nothing that can reach a network" 0 \
+       "$(nm -D "$interpreter" 2>/dev/null | grep -icE 'socket|connect|getaddrinfo|SSL_|curl_')"
+
 # THE EXAMPLE IN `satl --help` IS EXTRACTED FROM THE REAL OUTPUT AND RUN.
 #
 # There are no users yet -- satellite is pre-release -- so the first program a

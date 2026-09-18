@@ -391,6 +391,9 @@ inline constexpr WordRow kWords[] = {
     {"satellite.library.main.arguments.user", {1, 14, 1, 1, 15, 0}, 5},
     {"satellite.library.main.arguments.ram", {1, 14, 1, 1, 16, 0}, 5},
     {"satellite.library.main.arguments.dir", {1, 14, 1, 1, 17, 0}, 5},
+    {"satellite.feedback", {1, 25, 0, 0, 0, 0}, 2},
+    {"satellite.feedback()", {1, 25, 0, 0, 0, 0}, 3},
+    {"satellite.feedback(x)", {1, 25, 1, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -412,7 +415,7 @@ struct NextFree {
 };
 
 inline constexpr NextFree kNextFree[] = {
-    {"satellite", {1, 25, 0, 0, 0, 0, 0}, 2},
+    {"satellite", {1, 26, 0, 0, 0, 0, 0}, 2},
     {"satellite.include", {1, 1, 3, 0, 0, 0, 0}, 3},
     {"satellite.capsule", {1, 2, 2, 0, 0, 0, 0}, 3},
     {"satellite.capsule.launch", {1, 2, 1, 1, 0, 0, 0}, 4},
@@ -621,6 +624,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.library.main.arguments.user", {1, 14, 1, 1, 15, 1, 0}, 6},
     {"satellite.library.main.arguments.ram", {1, 14, 1, 1, 16, 1, 0}, 6},
     {"satellite.library.main.arguments.dir", {1, 14, 1, 1, 17, 1, 0}, 6},
+    {"satellite.feedback", {1, 25, 2, 0, 0, 0, 0}, 3},
 };
 
 } // namespace satellite004

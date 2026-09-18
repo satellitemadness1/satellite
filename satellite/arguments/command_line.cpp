@@ -71,6 +71,12 @@ signed long long int read_command_line(int argc, char **argv, CommandLine &into)
         }
         return success;
     }
+    if (word == "--feedback") {
+        if (i + 1 < argc)
+            return refuse("--feedback takes no other words, and \"" + std::string(argv[i + 1]) + "\" was given");
+        into.command = Command::feedback;
+        return success;
+    }
     if (word == "--repl") {
         if (i + 1 < argc)
             return refuse("--repl takes no other words, and \"" + std::string(argv[i + 1]) + "\" was given");
@@ -112,6 +118,7 @@ std::string usage_lines()
            "    satl --repl                           the prompt: type a line, see it run\n"
            "    satl --rebuild                        compose every setting into one binary\n"
            "    satl --config [most]                  measure what this machine can do, once\n"
+           "    satl --feedback                       show what satellite.feedback has kept here\n"
            "    satl --version, -V                    the version, revision and build\n"
            "    satl --help, -h                       this\n"
            "\n"

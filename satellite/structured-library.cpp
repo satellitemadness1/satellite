@@ -39,6 +39,7 @@
 #include "config/feature_switch.hpp"
 #include "config/rebuild.hpp"
 #include "config/run_config.hpp"
+#include "config/run_feedback.hpp"
 #include "machine/s_codes.hpp"
 #include "machine/critical_report.hpp"
 #include "machine/exit_status.hpp"
@@ -142,6 +143,11 @@ signed long long int run_satl(int argc, char **argv)
     // bearing on it at all.
     if (command_line.command == Command::config)
         return run_config(command_line.most);
+
+    // `satl --feedback`, and it reads config.ini for nothing at all: the book is
+    // its own file and the command only prints it.
+    if (command_line.command == Command::feedback)
+        return run_feedback();
 
     // THE LASTING SETTINGS, AND SAYING SO WHEN THEY ARE NOT THERE. Checked here
     // and not above, so `satl --version`, `satl --help` and a bare `satl` stay

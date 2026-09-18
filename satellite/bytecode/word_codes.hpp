@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 376;
+inline constexpr unsigned int kWordsInTable = 379;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -77,6 +77,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0201160000000000ULL, 4417},  // 1 22 -- satellite.system
     {0x0201170000000000ULL, 4456},  // 1 23 -- satellite.thread
     {0x0201180000000000ULL, 4459},  // 1 24 -- satellite.constructor
+    {0x0201190000000000ULL, 4473},  // 1 25 -- satellite.feedback
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -190,6 +191,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301170000000000ULL, 4457},  // 1 23 0 -- satellite.thread()
     {0x0301170100000000ULL, 4458},  // 1 23 1 -- satellite.thread.new
     {0x0301180000000000ULL, 4460},  // 1 24 0 -- satellite.constructor()
+    {0x0301190000000000ULL, 4474},  // 1 25 0 -- satellite.feedback()
+    {0x0301190100000000ULL, 4475},  // 1 25 1 -- satellite.feedback(x)
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -812,6 +815,9 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.library.main.arguments.user", {1, 14, 1, 1, 15, 0, 0}, 5},
     {"satellite.library.main.arguments.ram", {1, 14, 1, 1, 16, 0, 0}, 5},
     {"satellite.library.main.arguments.dir", {1, 14, 1, 1, 17, 0, 0}, 5},
+    {"satellite.feedback", {1, 25, 0, 0, 0, 0, 0}, 2},
+    {"satellite.feedback()", {1, 25, 0, 0, 0, 0, 0}, 3},
+    {"satellite.feedback(x)", {1, 25, 1, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -904,6 +910,9 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.directory.exists(d)", 4401},
     {"satellite.directory.list()", 4402},
     {"satellite.directory.list(d)", 4403},
+    {"satellite.feedback", 4473},
+    {"satellite.feedback()", 4474},
+    {"satellite.feedback(x)", 4475},
     {"satellite.file", 4302},
     {"satellite.file()", 4303},
     {"satellite.file.clear(path)", 4306},
