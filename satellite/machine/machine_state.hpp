@@ -6,9 +6,20 @@
 
 #include "../config/feature_register.hpp"
 
+#include <bitset>
 #include <string>
+#include <vector>
 
 namespace satellite004 {
+
+// THE SAME TWO ALIASES bytecode_registry.hpp DEFINES, REPEATED HERE ON PURPOSE.
+// That header includes THIS one, so this one cannot include it back, and a
+// typedef declared twice to the same type is legal C++ exactly so this is
+// possible. If either alias ever changes shape, both have to move -- which is
+// why they are named here rather than spelled as a raw vector nobody would
+// recognise as the program.
+using BytecodeRegistry = std::vector<std::vector<std::bitset<16>>>;
+using BytecodeFilenames = std::vector<std::string>;
 
 signed long long int display_machine_state(const std::string &current_machine_state,
                                            signed long long int machine_code_input);
@@ -54,6 +65,24 @@ struct MachineState {
     // and fixed before the program starts, and this is tripped by the DECLARATION
     // inside the program being read (A6).
     bool arguments_active = false;
+
+    // THE PROGRAM ITSELF, so a refusal can say WHERE. SATELLITE_ERROR E6.
+    //
+    // Pointers and not copies: these are the loaded program and its file names,
+    // set once after load and never written again, and the report reads them on
+    // a path that has already failed.
+    //
+    // ON MachineState BECAUSE THE WALKER ALREADY CARRIES IT. Half the walker's
+    // functions take `registry` and half take one row, and threading two more
+    // parameters through every one of them to serve a path that runs at most
+    // once per run would be a cost paid on the hot path for a benefit that is
+    // not on it. `MachineState &state` was already there.
+    //
+    // NULLPTR IS A REAL STATE and every reader checks: satl runs a line from the
+    // prompt with no file behind it at all, and a report then has a position and
+    // no source to show for it.
+    const BytecodeRegistry *program = nullptr;
+    const BytecodeFilenames *program_files = nullptr;
 
     // Record a new state and, in debug mode, display it. Answers the code, so
     // a caller can write `return state.set("...", code);`.

@@ -29,6 +29,8 @@
 
 #include "program_walk.hpp"
 
+#include "../machine/s_codes.hpp"
+
 #include "statement_ring.hpp"
 
 #include "word_codes.hpp"
@@ -454,7 +456,9 @@ signed long long int run_while(const BytecodeRegistry &registry,
         if (opened) ++here;
         const Value holds = evaluate_expression(row, here, context);
         if (context.code != success)
-            return report_error("satl(run): in satellite.statement.while, " + context.why, context.code);
+            return raise_at(context.code, context.why, "satellite.statement.while",
+                            state, row,
+                            context.placed ? context.refused_at : at);
         // The condition's own `)`, then the line's end -- nothing between.
         bool closed = true;
         if (opened) closed = code_at(row, here++) == token::right_parenthesis_token;
@@ -506,7 +510,9 @@ signed long long int run_if(const BytecodeRegistry &registry,
         if (opened) ++here;
         const Value holds = evaluate_expression(row, here, context);
         if (context.code != success)
-            return report_error("satl(run): in satellite.statement.if, " + context.why, context.code);
+            return raise_at(context.code, context.why, "satellite.statement.if",
+                            state, row,
+                            context.placed ? context.refused_at : at);
         bool closed = true;
         if (opened) closed = code_at(row, here++) == token::right_parenthesis_token;
         if (!closed || !read_to_the_end(row, here))
@@ -608,7 +614,9 @@ signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
     ExpressionContext context{variables, functions, state};
     answer = evaluate_expression(row, at, context);
     if (context.code != success)
-        return report_error("satl(run): in satellite.statement.for, " + context.why, context.code);
+        return raise_at(context.code, context.why, "satellite.statement.for",
+                        state, row,
+                        context.placed ? context.refused_at : at);
     if (at != parts.closing)
         return report_error(std::string("satl(run): satellite.statement.for's third part ") + kNotReadToTheEnd,
                             satl_line_not_understood);
@@ -666,7 +674,9 @@ signed long long int run_for(const BytecodeRegistry &registry,
     ExpressionContext opening{variables, functions, state};
     Value start = evaluate_expression(row, k, opening);
     if (opening.code != success)
-        return report_error("satl(run): in satellite.statement.for, " + opening.why, opening.code);
+        return raise_at(opening.code, opening.why, "satellite.statement.for",
+                        state, row,
+                        opening.placed ? opening.refused_at : k);
     if (k != parts.condition - 1)
         return report_error(std::string("satl(run): satellite.statement.for's first part ") + kNotReadToTheEnd,
                             satl_line_not_understood);
@@ -694,7 +704,9 @@ signed long long int run_for(const BytecodeRegistry &registry,
         ExpressionContext turn{variables, functions, state};
         const Value holds = evaluate_expression(row, here, turn);
         if (turn.code != success) {
-            stopped = report_error("satl(run): in satellite.statement.for, " + turn.why, turn.code);
+            stopped = raise_at(turn.code, turn.why, "satellite.statement.for",
+                               state, row,
+                               turn.placed ? turn.refused_at : here);
             break;
         }
         if (here != parts.step - 1) {
@@ -765,8 +777,10 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     ExpressionContext context{variables, functions, state};
     Value value = evaluate_expression(row, at, context);
     if (context.code != success) {
+        const std::size_t blame = context.placed ? context.refused_at : at;
         at = past_the_statement(row, at);
-        return report_error("satl(run): in " + name + " = ..., " + context.why, context.code);
+        return raise_at(context.code, context.why, name + " = ...",
+                        state, row, blame);
     }
     if (!read_to_the_end(row, at)) {
         at = past_the_statement(row, at);
@@ -833,7 +847,9 @@ signed long long int run_setting_assignment(const std::vector<std::bitset<16>> &
     ExpressionContext context{variables, functions, state};
     Value value = evaluate_expression(row, at, context);
     if (context.code != success)
-        return report_error("satl(run): in " + spelling + " = ..., " + context.why, context.code);
+        return raise_at(context.code, context.why, spelling + " = ...",
+                        state, row,
+                        context.placed ? context.refused_at : at);
     if (!read_to_the_end(row, at))
         return report_error("satl(run): " + spelling + " = ... " + kNotReadToTheEnd, satl_line_not_understood);
 
@@ -961,7 +977,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             call_word(row, k, context);
             at = past_the_statement(row, k);
             if (context.code != success)
-                return report_error("satl(run): " + context.why, context.code);
+                return raise_at(context.code, context.why, std::string(),
+                                state, row,
+                                context.placed ? context.refused_at : at);
             continue;
         }
 

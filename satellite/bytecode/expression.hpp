@@ -66,12 +66,35 @@ struct ExpressionContext {
     signed long long int code = success;  // the FIRST refusal; success while none
     std::string why;                      // and what to say about it
 
+    // WHERE IT WENT WRONG, for the caret. SATELLITE_ERROR E6.
+    //
+    // RECORDED ON THE REFUSAL AND NEVER PER TOKEN. A position kept as the
+    // expression walks would be a store on the hottest path in the language, to
+    // be read only on a path that has already failed -- so the refusal carries
+    // its own position instead, and a refusal costs one more store than it did.
+    //
+    // `placed` false means the refusal did not say where, and the caller falls
+    // back to the statement's own position: the right LINE, and a caret under
+    // the start of the statement rather than under the operator. Better than
+    // nothing, and it never claims a place it does not have.
+    std::size_t refused_at = 0;
+    bool placed = false;
+
     void refuse(signed long long int stopped_on, std::string reason)
     {
         if (code != success)              // the first refusal is the true one
             return;
         code = stopped_on;
         why = std::move(reason);
+    }
+
+    void refuse(signed long long int stopped_on, std::string reason, std::size_t at)
+    {
+        if (code != success)
+            return;
+        refused_at = at;
+        placed = true;
+        refuse(stopped_on, std::move(reason));
     }
 };
 

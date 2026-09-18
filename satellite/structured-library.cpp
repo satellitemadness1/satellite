@@ -317,6 +317,14 @@ signed long long int run_satl(int argc, char **argv)
     if (stops_the_program(code))
         return code;
 
+    // WHAT A REPORT READS TO SAY WHERE. SATELLITE_ERROR E6: set once, here,
+    // after the program is loaded and before anything runs, and never written
+    // again. Both outlive the run -- they are this function's own locals and the
+    // walker returns into it -- so the pointers cannot dangle while a report
+    // could still be raised.
+    state.program = &bytecode_registry;
+    state.program_files = &bytecode_filenames;
+
     // THE ONE FILE (the author, 2026-09-16). `.satc`, `.satb` and `.sati` are
     // skipped: the 16-bit bytecode is already the numbered program, already
     // carries its strings inline and counted, and already reserves combine's

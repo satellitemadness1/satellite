@@ -634,7 +634,12 @@ expect "... says ERROR: expected 50%, before anything runs" "1|" \
 "$interpreter" tests/percentage_not_whole.satl > build/percentage.out 2>&1; expect "3 * 50% is not whole" 24 $?
 expect "... and says so" 1 "$(grep -c '3 \* 50% is not a whole number' build/percentage.out)"
 "$interpreter" tests/percentage_number_second.satl > build/percentage.out 2>&1; expect "50% + 5 is refused" 27 $?
-expect "... and says to put the number first" 1 "$(grep -c 'the number goes first -- 5 + 50%' build/percentage.out)"
+# NEWLINES FLATTENED BEFORE THE GREP. The refusal is a full report now (S0601,
+# with the file, the line and a caret), and a report WRAPS at eighty columns --
+# so a sentence this used to find on one line can arrive split across two. The
+# assertion is about the words, not about where the report chose to break them.
+expect "... and says to put the number first" 1 \
+       "$(tr '\n' ' ' < build/percentage.out | grep -c 'the number goes first -- 5 + 50%')"
 expect "a percentage below zero: -50%, (- 25%) and -(-12.5%)" "-50%|-25%|12.5%" \
        "$("$interpreter" tests/percentage_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 "$interpreter" tests/percentage_negative_without_percent.satl > build/percentage.out 2>&1; expect "a percentage given -50" 27 $?

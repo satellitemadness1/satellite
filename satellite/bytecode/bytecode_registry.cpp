@@ -226,13 +226,33 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
     return only;
 }
 
-void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
+void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
+                       std::vector<std::size_t> *offsets)
 {
     Line line{text, row};
     const std::size_t n = text.size();
     row.reserve(n + 8); // one code a character, plus the line's own markers
 
+    // WHERE EACH CODE'S TOKEN BEGAN, kept only when somebody asks for it.
+    //
+    // THIS IS WHAT PUTS A CARET UNDER THE RIGHT CHARACTER, and it is nullptr on
+    // every path that runs a program -- the reporter passes a vector, once, for
+    // the one line it re-read after something already went wrong. SATELLITE_ERROR
+    // E1 offered "record a byte offset per token" or "re-tokenise one line at
+    // report time" and recommended the second; this is the second, done with the
+    // lexer's OWN offsets rather than a second copy of its splitting rules, which
+    // is the part that would have drifted.
+    //
+    // PADDED AT THE TOP OF EACH TURN rather than the bottom, because the body
+    // below is all `continue` and `break` -- one place, and no way to miss a push.
+    // A payload's codes carry their MARKER's offset, so the vector stays index
+    // for index with `row` and a caret under a string points at its opening quote.
+    std::size_t token_began = 0;
+
     while (line.i < n) {
+        if (offsets != nullptr)
+            while (offsets->size() < row.size()) offsets->push_back(token_began);
+        token_began = line.i;
         const char c = text[line.i];
         if (blank(c)) { ++line.i; continue; }
 
@@ -422,7 +442,11 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row)
         line.i = k;
     }
 
+    if (offsets != nullptr)
+        while (offsets->size() < row.size()) offsets->push_back(token_began);
     line.put(token::line_end_token);
+    if (offsets != nullptr)
+        offsets->push_back(n);   // the line end sits past the last character
 }
 
 void add_file_to_bytecode_registry(const std::string &filename,

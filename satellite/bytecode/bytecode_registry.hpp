@@ -93,7 +93,12 @@ signed long long int build_bytecode_registry(const std::string &filename,
 
 // One line, alone and on this thread. The unit every batch runs, and what the
 // tests drive directly.
-void tokenise_one_line(std::string_view line, std::vector<std::bitset<16>> &row);
+// `offsets`, when given, is filled index for index with `row`: the byte offset in
+// `line` where each code's TOKEN began. Only the error reporter asks for it, on
+// one line, after something has already failed -- see source_position.hpp. Every
+// other caller passes nothing and pays one null test a token.
+void tokenise_one_line(std::string_view line, std::vector<std::bitset<16>> &row,
+                       std::vector<std::size_t> *offsets = nullptr);
 
 // Every code of `row` as sixteen binary digits, space separated -- the form
 // REGISTRY.satellite's first column is written in, and what M1.5's converter

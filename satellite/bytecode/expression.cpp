@@ -112,7 +112,11 @@ unsigned int radix_of(Code marker)
 // two strings, two bools -- is now a `case pair_of(...)` in
 // satellite_object/satellite_value.cpp, sitting above a call to the header named
 // for that pair. Adding satellite_float changes those files and not this one.
-Value apply(Code op, const Value &left, const Value &right, ExpressionContext &context)
+// `op_at` IS WHERE THE OPERATOR IS, and it is carried in for one reason: the
+// caret. `"a" - "b"` is the refusal a person meets most, and a report that
+// points at the `-` says which operation was asked for -- where a caret on the
+// start of the statement leaves them to find it on a line that may hold three.
+Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, ExpressionContext &context)
 {
     std::string why;
 
@@ -126,13 +130,14 @@ Value apply(Code op, const Value &left, const Value &right, ExpressionContext &c
     if (precedence_of(op) >= 1 && precedence_of(op) <= 2) {
         if (an_ordering(op) && left.is_bool() && right.is_bool()) {
             context.refuse(types_do_not_meet,
-                           std::string(spelling_of(op)) + " was given two bools, and only == and != order those");
+                           std::string(spelling_of(op)) + " was given two bools, and only == and != order those",
+                           op_at);
             return Value();
         }
         int order = 0;
         const signed long long int code = left.compare(right, order, why);
         if (code != success) {
-            context.refuse(code, why);
+            context.refuse(code, why, op_at);
             return Value();
         }
         return Value::of_bool(holds(order, op));
@@ -152,7 +157,7 @@ Value apply(Code op, const Value &left, const Value &right, ExpressionContext &c
         break;
     }
     if (code != success) {
-        context.refuse(code, why);
+        context.refuse(code, why, op_at);
         return Value();
     }
     return answer;
@@ -359,6 +364,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     // would read it. §6.6's rule is followed as written rather than carved out
     // for the one operator it predates.
     if (code == token::tight_minus_token || code == token::minus_token) {
+        const std::size_t sign_at = at;
         ++at;
         const Value inner = one_operand(row, at, context);
         // A binary KEEPS ITS SIGN and stays a binary (the author, 2026-09-17: "keep
@@ -371,17 +377,20 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             return Value::of_percentage(satellite_percentage{-percent->scaled});
         if (!inner.is_number()) {
             if (context.code == success)
-                context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name());
+                context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name(),
+                               sign_at);
             return Value();
         }
         return Value::of_number(-*inner.as_number());
     }
     if (code == token::not_token) {
+        const std::size_t not_at = at;
         ++at;
         const Value inner = one_operand(row, at, context);
         if (!inner.is_bool()) {
             if (context.code == success)
-                context.refuse(types_do_not_meet, std::string("a ! was put in front of ") + inner.kind_name());
+                context.refuse(types_do_not_meet, std::string("a ! was put in front of ") + inner.kind_name(),
+                               not_at);
             return Value();
         }
         return Value::of_bool(!*inner.as_bool());
@@ -501,10 +510,11 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     if (code == token::name_token) {
         std::size_t k = at;
         const std::string name = text_at(row, k);
+        const std::size_t name_at = at;   // text_at walked past it; the caret wants the name
         at = k;
         const VariableTable::const_iterator found = context.variables.find(name);
         if (found == context.variables.end()) {
-            context.refuse(name_not_declared, name + " has no satellite.variable line declaring it");
+            context.refuse(name_not_declared, name + " has no satellite.variable line declaring it", name_at);
             return Value();
         }
         // THE THREE TOKENS TOGETHER (the author): a period, a method's own code,
@@ -536,6 +546,7 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
         const int level = precedence_of(op);
         if (level == 0 || level < lowest)
             break;
+        const std::size_t op_at = at;
         ++at;
         // LEFT-ASSOCIATIVE at level + 1, so a - b - c is (a - b) - c. Power is
         // the exception and climbs at its OWN level, which is what makes
@@ -544,7 +555,7 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
         const Value right = evaluate_at(row, at, next, context);
         if (context.code != success)
             return Value();
-        left = apply(op, left, right, context);
+        left = apply(op, op_at, left, right, context);
     }
     return left;
 }
