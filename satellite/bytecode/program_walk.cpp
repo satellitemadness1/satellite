@@ -76,7 +76,7 @@ Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at)
 std::size_t past_the_statement(const std::vector<std::bitset<16>> &row, std::size_t at)
 {
     while (at < row.size() && code_at(row, at) != token::line_end_token) {
-        if (token::carries_a_count(code_at(row, at))) { text_at(row, at); continue; }
+        if (token::carries_a_count(code_at(row, at))) { skip_payload(row, at); continue; }
         ++at;
     }
     return at < row.size() ? at + 1 : at;
@@ -92,7 +92,7 @@ std::size_t past_matching_brace(const std::vector<std::bitset<16>> &row, std::si
     std::size_t at = from;
     while (at < row.size()) {
         const Code code = code_at(row, at);
-        if (token::carries_a_count(code)) { text_at(row, at); continue; }
+        if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
         if (code == token::left_brace_token) ++depth;
         else if (code == token::right_brace_token && --depth == 0) return at + 1;
         ++at;
@@ -124,7 +124,7 @@ ForHeader for_header(const std::vector<std::bitset<16>> &row, std::size_t at)
     unsigned int semicolons = 0;
     while (k < row.size()) {
         const Code code = code_at(row, k);
-        if (token::carries_a_count(code)) { text_at(row, k); continue; }
+        if (token::carries_a_count(code)) { skip_payload(row, k); continue; }
         if (code == token::line_end_token || code == token::end_of_file_token)
             return ForHeader();                     // the brackets never closed on this line
         if (code == token::left_parenthesis_token) {
@@ -344,7 +344,7 @@ signed long long int load_program(const std::string &main_file,
             // can be any 16 bits: "ဂ" ends in 0x1002, which is satellite.include's code,
             // and "ဂ"("other") loaded other.satl, whose main then ran instead of this
             // program's (the payload sweep, 2026-09-17).
-            if (token::carries_a_count(code_at(row, i))) { text_at(row, i); continue; }
+            if (token::carries_a_count(code_at(row, i))) { skip_payload(row, i); continue; }
             if (code_at(row, i) != word::code_of(1, 1)) { ++i; continue; }
             std::size_t k = i;
             const IncludeShape shape = include_at(row, k, path);
@@ -371,7 +371,7 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry)
             // ending in U+1006 ends in 0x1006, satellite.capsule's code, and a word or a
             // name touching it made the next body a capsule -- a second satellite.main,
             // the only one checked and the one that ran (the payload sweep, 2026-09-17).
-            if (token::carries_a_count(code_at(row, i))) { text_at(row, i); continue; }
+            if (token::carries_a_count(code_at(row, i))) { skip_payload(row, i); continue; }
             if (code_at(row, i) != word::code_of(1, 2)) { ++i; continue; }   // satellite.capsule
 
             // The name is the next code: a word (satellite.main) or a name the
@@ -390,7 +390,7 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry)
 
             while (k < row.size() && code_at(row, k) != token::left_brace_token &&
                    code_at(row, k) != token::right_brace_token) {
-                if (token::carries_a_count(code_at(row, k))) { text_at(row, k); continue; }
+                if (token::carries_a_count(code_at(row, k))) { skip_payload(row, k); continue; }
                 ++k;
             }
             if (code_at(row, k) != token::left_brace_token) { ++i; continue; }
@@ -1094,7 +1094,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             continue;
         }
 
-        if (token::carries_a_count(code)) { std::size_t k = at; text_at(row, k); at = k; continue; }
+        if (token::carries_a_count(code)) { std::size_t k = at; skip_payload(row, k); at = k; continue; }
         ++at;
     }
     return success;

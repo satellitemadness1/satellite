@@ -132,6 +132,11 @@ void put_count(std::vector<std::bitset<16>> &row, std::size_t at, unsigned long 
 // the [COUNTED] token itself, and it is moved PAST the whole payload, so a
 // walker can carry straight on. Characters above 127 come back through their
 // wide runs, so a string with an emoji in it survives the trip.
+// Move `at` past a counted payload without building its text. Exactly what
+// text_at() does to `at`, and nothing else -- for the callers that dropped the
+// string on the floor. See the note above its definition.
+void skip_payload(const std::vector<std::bitset<16>> &row, std::size_t &at);
+
 std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at);
 
 } // namespace satellite004

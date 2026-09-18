@@ -643,11 +643,36 @@ each one.
   what the design says, but **it is not an optimisation and must not be recorded
   as one.**
 
-  **WHERE THE TIME ACTUALLY IS, and this is what F6 should chase instead:** 470 ns
-  a statement is enormous next to any branch. It is going into the per-statement
-  work — the variable table's hash lookup, `satellite_number`'s allocation, the
-  `Value` copies — and none of that is visible from the feature register. **The
-  next person to optimise this should profile before touching a branch.**
+  **WHERE THE TIME ACTUALLY IS — PROFILED 2026-09-18, NOT GUESSED.** gprof, a
+  40,000-turn loop, 200,000 statements. valgrind/callgrind dies on this CPU;
+  `make OPT="-O2 -pg" LDFLAGS="-pg"` is what works.
+
+  | calls per 200,000 statements | what |
+  |---|---|
+  | **1,680,028** | `std::variant` `_M_reset` — **25% of the run** |
+  | **560,134** | **`text_at`** — builds a `std::string` a character at a time — **25%** |
+  | 560,134 | `count_at` (inside `text_at`) |
+  | 1,000,015 | `refuse_if_reserved` — five a statement |
+  | 640,034 | `word::code_of` |
+  | **400,005** | `unordered_map<std::string, Variable>::find` — **ten a statement** |
+  | **160,014** | **`satellite_number::from_text`** — every number literal is re-parsed **from text on every evaluation** |
+
+  **Three things that table says, and none of them is a branch:**
+  1. **A name is rebuilt as a `std::string` and re-hashed every time it is
+     touched.** `VariableTable` is `unordered_map<std::string, Variable>`, so
+     `a = a + 1` costs three string builds and three hashes. Resolving a name to
+     a SLOT once, at check time, is the single biggest win available and it is
+     a real milestone rather than a tweak.
+  2. **`1` is parsed from text every time it is evaluated.** A literal's worth
+     never changes; converting it once at load is free after that.
+  3. **The variant's destructor is a visit.** Ten arms, and `_M_reset` is the
+     top entry.
+
+  **SEVEN `text_at` CALLS BUILT A STRING AND THREW IT AWAY**, purely to move a
+  cursor past a payload. `skip_payload()` does that arithmetic and nothing else.
+  Kept for being obviously less work — **not measured, and not claimed as a
+  speed-up**: the machine ran at load average 6 and a 1% effect cannot be
+  resolved through that.
 
   **AND F6's CHOSEN PROGRAM DOES NOT RUN.** `experiments/energy/release.satl`
   exits 13: it needs `satellite.container.list`, which is numbered and unbuilt.
