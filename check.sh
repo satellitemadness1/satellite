@@ -313,6 +313,126 @@ HOME="$CHECK_HOME" "$interpreter" build/braced_bomb.satl > build/braced_bomb.out
 expect "50,000 feedback calls through a LIST cost two lines" "0|done|2" \
        "$?|$(tail -1 build/braced_bomb.out)|$(wc -l < "$CHECK_HOME/.satl/feedback.txt")"
 
+# `a[n]` AND `a[n] = v`, INCLUDING LISTS INSIDE LISTS (the author, 2026-09-18:
+# "we must build it to be able to access lists inside of lists").
+#
+# COUNTING FROM 1, because a file's lines already do and one bracket cannot have
+# two rules.
+cat > build/list_index.satl <<'IDX_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list names = {"one", "two", "three"}
+    satellite.console.display(names[1])
+    names[2] = "CHANGED"
+    satellite.console.display(names)
+
+    satellite.container.list grid = {{1, 2}, {3, 4}}
+    satellite.console.display(grid[2][1])
+    grid[2][1] = 99
+    satellite.console.display(grid)
+
+    satellite.variable.number k = 1
+    names[k + 1] = "computed"
+    satellite.container.list p = {2, 1}
+    satellite.console.display(names[p[1]])
+    satellite.return(satellite)
+}
+IDX_EOF
+HOME="$CHECK_HOME" "$interpreter" build/list_index.satl > build/list_index.out 2>&1
+expect "a[n], a[n] = v, a[i][j] = v, and an index that is itself an index" \
+       'one|{"one", "CHANGED", "three"}|3|{{1, 2}, {99, 4}}|computed' \
+       "$(tail -5 build/list_index.out | tr '\n' '|' | sed 's/|$//')"
+
+# `b = a` COPIES. A LIST IS A VALUE, not a reference -- 003 §12's ruling, and the
+# answer to red note 8, which `a[n] = v` is what made askable.
+cat > build/list_copy.satl <<'COPY_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list a = {"first", "second"}
+    satellite.container.list b = a
+    b[1] = "b changed this"
+    satellite.console.display(a[1])
+    satellite.console.display(b[1])
+    satellite.return(satellite)
+}
+COPY_EOF
+HOME="$CHECK_HOME" "$interpreter" build/list_copy.satl > build/list_copy.out 2>&1
+expect "b = a COPIES a list: writing through b leaves a alone" 'first|b changed this' \
+       "$(tail -2 build/list_copy.out | tr '\n' '|' | sed 's/|$//')"
+
+# COPY-ON-WRITE IS ACTUALLY FIRING, AND THIS IS THE ROW THAT CANNOT BE REPLACED
+# BY READING THE CODE.
+#
+# 003 wrote this same fast path and it was DEAD for months: `use_count() == 1`
+# was never true, because a copy of the handle was always live, so every write
+# quietly copied the whole list and only a benchmark ever said so (`19526c9`).
+# Nothing about the OUTPUT differs between the two -- a copying implementation is
+# perfectly correct and perfectly quadratic.
+#
+# So this measures SCALING rather than seconds: the same 50,000 writes into a
+# 1,000-item list and an 8,000-item list. In place, both take the same time. If
+# the write ever starts copying again, the second is eight times the first, and
+# this row fails on a machine of any speed under any load.
+python3 - <<'GEN_EOF'
+for n in (1000, 8000):
+    items = ", ".join(str(i) for i in range(1, n + 1))
+    open(f"build/list_cow_{n}.satl", "w").write(f'''satellite.include(satellite)
+satellite.capsule satellite.main()
+{{
+    satellite.container.list big = {{{items}}}
+    satellite.statement.for(satellite.variable.number i = 0; i < 50000; i++)
+    {{
+        big[{n // 2}] = i
+    }}
+    satellite.console.display(big[{n // 2}])
+    satellite.return(satellite)
+}}
+''')
+GEN_EOF
+cow_small=$( { TIMEFORMAT=%R; time HOME="$CHECK_HOME" "$interpreter" build/list_cow_1000.satl > /dev/null 2>&1; } 2>&1 )
+cow_big=$(   { TIMEFORMAT=%R; time HOME="$CHECK_HOME" "$interpreter" build/list_cow_8000.satl > /dev/null 2>&1; } 2>&1 )
+# Four times, against a list eight times bigger, is still far under what copying
+# costs and far over the noise of a loaded machine.
+expect "a write into a list does not copy it (8x the items, not 8x the time: ${cow_small}s vs ${cow_big}s)" \
+       "in place" \
+       "$(awk -v s="$cow_small" -v b="$cow_big" 'BEGIN { print (b < s * 4 + 0.05) ? "in place" : "COPYING: " b "s vs " s "s" }')"
+
+# THE REFUSALS. Each one is a sentence a person can act on, and the index rules
+# are the file's: count from 1, and say how many there are.
+list_says() {
+    cat > build/list_bad.satl <<BAD_EOF
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list a = {"one", "two"}
+$1
+    satellite.return(satellite)
+}
+BAD_EOF
+    HOME="$CHECK_HOME" "$interpreter" build/list_bad.satl > build/list_bad.out 2>&1
+    # THE REPORT WRAPS AT 80 COLUMNS, so a sentence is matched with the
+    # newlines flattened -- otherwise a message that is right fails a test
+    # because of where it happened to break.
+    printf '%s|%s' "$?" "$(tr '\n' ' ' < build/list_bad.out | grep -c "$2")"
+}
+expect "reading past the end names the size and says counting from 1" "47|1" \
+       "$(list_says '    satellite.console.display(a[5])' 'the list holds 2 items, counting from 1')"
+expect "writing past the end says the list does not grow" "47|1" \
+       "$(list_says '    a[5] = "x"' 'Writing past the end does not make the list longer')"
+expect "item 0 is past the end, because items count from 1" "47|1" \
+       "$(list_says '    satellite.console.display(a[0])' 'counting from 1')"
+expect "a negative index says items count from 1" "19|1" \
+       "$(list_says '    satellite.console.display(a[-1])' 'items count from 1')"
+expect "an index that is not a number says so" "27|1" \
+       "$(list_says '    satellite.console.display(a["two"])' 'takes an item number, and was given a string')"
+expect "[ ] on something with no items says what it is" "27|1" \
+       "$(list_says '    satellite.variable.number n = 4
+    satellite.console.display(n[1])' 'is a number, and \[ \] reads a line of a file or an item of a list')"
+expect "a list given to a number name is refused" "27|1" \
+       "$(list_says '    satellite.variable.number bad = {1, 2}' 'was given a list')"
+
 # THE EXAMPLE IN `satl --help` IS EXTRACTED FROM THE REAL OUTPUT AND RUN.
 #
 # There are no users yet -- satellite is pre-release -- so the first program a

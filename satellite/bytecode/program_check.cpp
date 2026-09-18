@@ -308,6 +308,12 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
 signed long long int a_call_to_its_end(const std::vector<std::bitset<16>> &row, std::size_t k,
                                        const std::string &name, std::string &why)
 {
+    // WHAT THE RUN ENDED ON, which is the whole of how `a[1] = x` is told from
+    // `f.size = 3`. Both are a name, a run of somethings, and an `=`. The first
+    // is an assignment into a list and the second is giving a value to a call's
+    // answer, which is meaningless -- and the difference is only that one ended
+    // on `]` and the other on a method.
+    bool ended_on_an_index = false;
     for (;;) {
         std::size_t close = k, count = 0;
         if (code_at(row, k) == token::method_token && token::is_method_code(code_at(row, k + 1))) {
@@ -316,17 +322,23 @@ signed long long int a_call_to_its_end(const std::vector<std::bitset<16>> &row, 
                 if (!brackets_at(row, k, close, count)) break;
                 k = close + 1;
             }
+            ended_on_an_index = false;
             continue;
         }
         if (code_at(row, k) == token::left_square_bracket_token) {
             if (!brackets_at(row, k, close, count)) break;
             k = close + 1;
+            ended_on_an_index = true;
             continue;
         }
         break;
     }
     const Code code = code_at(row, k);
     if (code == token::line_end_token || code == token::comment_token || code == token::end_of_file_token)
+        return success;
+    // `a[i] = v`, and `a[i][j] = v` (the author, 2026-09-18). The walker's
+    // run_indexed_assignment does the work; here it is only a shape to allow.
+    if (code == token::assign_token && ended_on_an_index)
         return success;
     why = name + " is followed by something that is not a method call -- a call's answer cannot be given a "
                  "value, a bracket must close on its line, and one statement is one line";
@@ -573,11 +585,15 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // satellite.variable.file (1 6 2) and satellite.variable.bool (1 6 6) joined on
         // 2026-09-18 with the file type (SATELLITE_FILE_OPERATIONS FO-1, FO-2): most
         // of a file's words answer true or false, and a program has to keep them.
+        // satellite.container.list (1 4 2) joined on 2026-09-18, with the braced
+        // literal and `a[n]`. It is the first declaration word outside
+        // satellite.variable, which is why the test below names two families.
         if (code != word::code_of(1, 6, 4) && code != word::code_of(1, 6, 1) && code != word::code_of(1, 6, 5) &&
-            code != word::code_of(1, 6, 16) && code != word::code_of(1, 6, 2) && code != word::code_of(1, 6, 6)) {
+            code != word::code_of(1, 6, 16) && code != word::code_of(1, 6, 2) && code != word::code_of(1, 6, 6) &&
+            code != word::code_of(1, 4, 2)) {
             why = std::string(word::spelling_of(code)) + " " + name +
                   " is a declaration, and only satellite.variable.number, .string, .binary, "
-                  ".percentage, .file and .bool are built yet";
+                  ".percentage, .file, .bool and satellite.container.list are built yet";
             at = stop;
             return satl_line_not_understood;
         }

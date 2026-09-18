@@ -19,6 +19,7 @@
 #include "../satellite_object/fast_paths.hpp"
 #include "../satellite_object/satellite_list.hpp"
 
+#include <limits>
 #include <utility>
 
 namespace satellite004 {
@@ -401,6 +402,65 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
 }
 
 // A literal, a name, a call, a bracketed expression, or a unary operator.
+// WHICH ITEM A NUMBER NAMES, refused in the same words a file's line is.
+//
+// ONE SET OF RULES FOR ONE BRACKET. A file's line and a list's item are reached
+// by the same `[ ]`, so they count the same way (from 1), refuse a negative the
+// same way, and say "counting from 1" in the same sentence. Two rules for one
+// bracket would be the language contradicting itself in the space of one line.
+bool position_of(const Value &index, unsigned long long int &out, const std::string &what,
+                 std::size_t where, ExpressionContext &context)
+{
+    const satellite_number *number = index.as_number();
+    if (number == nullptr) {
+        context.refuse(types_do_not_meet, what + "[...] takes an item number, and was given " + index.kind_name(),
+                       where);
+        return false;
+    }
+    if (number->negative()) {
+        context.refuse(not_a_position, what + "[" + fast::to_text(*number) + "] -- items count from 1", where);
+        return false;
+    }
+    // TOO LARGE TO BE ANY POSITION is not an error of its own: it is a position
+    // no list has, and `item_at` says so in the words that name the size.
+    out = fast::fits_a_count(*number) ? fast::as_count(*number) : 0;
+    if (out == 0 && !fast::fits_a_count(*number))
+        out = std::numeric_limits<unsigned long long int>::max();
+    return true;
+}
+
+// ONE `[n]` APPLIED TO WHATEVER THE LAST ONE ANSWERED. This is the whole of
+// nesting: `a[1][2]` is this twice, and neither call knows it is in a chain.
+Value index_into(const Value &current, const Value &index, const std::string &what, std::size_t where,
+                 ExpressionContext &context)
+{
+    if (const ListHandle *handle = current.as_list()) {
+        unsigned long long int position = 0;
+        if (!position_of(index, position, what, where, context))
+            return Value();
+        const satelliteList *list = handle->get();
+        const satelliteObject *item = list == nullptr ? nullptr : item_at(*list, position);
+        if (item == nullptr) {
+            const std::size_t held = list == nullptr ? 0 : list->items.size();
+            context.refuse(line_past_the_end,
+                           what + "[" + std::to_string(position) + "]: " +
+                               (held == 0 ? std::string("the list is empty")
+                                          : "there is no such item -- the list holds " + std::to_string(held) +
+                                                (held == 1 ? " item" : " items") + ", counting from 1"),
+                           where);
+            return Value();
+        }
+        return *item;
+    }
+    if (satellite_file *file = current.as_file())
+        return read_file_line(*file, index, what, context);
+
+    context.refuse(types_do_not_meet, what + " is " + current.kind_name() +
+                                          ", and [ ] reads a line of a file or an item of a list",
+                   where);
+    return Value();
+}
+
 Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     const Code code = code_at(row, at);
@@ -672,40 +732,43 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             context.refuse(name_not_declared, name + " has no satellite.variable line declaring it", name_at);
             return Value();
         }
-        // `f[n]` -- LINE n OF A FILE, counting from 1 (the author, 2026-09-18: "we'll
-        // build it so you can iterate over the lines as if they were objects"). A
-        // list will read the same way when M14 builds one; until then a file is the
-        // only thing with lines to read.
+        // `f[n]` -- LINE n OF A FILE, and `a[n]` -- ITEM n OF A LIST, both
+        // counting from 1 (the author, 2026-09-18: "we'll build it so you can
+        // iterate over the lines as if they were objects").
+        //
+        // A LOOP AND NOT ONE BRACKET, so `a[1][2]` reads the item of an item.
+        // The author asked for it in the same breath as the index itself: "we
+        // must build it to be able to access lists inside of lists". It costs a
+        // while instead of an if, because each step just indexes whatever the
+        // last one answered -- a list of lists is not a second kind of thing.
         if (code_at(row, at) == token::left_square_bracket_token) {
-            const std::size_t opened_at = at;
-            ++at;
-            const Value index = evaluate_at(row, at, 1, context);
-            if (context.code != success)
-                return Value();
-            if (code_at(row, at) != token::right_square_bracket_token) {
-                context.refuse(satl_line_not_understood, name + "[...] was given something it could not read to the end of",
-                               opened_at);
-                return Value();
+            Value current = found->second.value;
+            std::string what = name;
+            while (code_at(row, at) == token::left_square_bracket_token) {
+                const std::size_t opened_at = at;
+                ++at;
+                const Value index = evaluate_at(row, at, 1, context);
+                if (context.code != success)
+                    return Value();
+                if (code_at(row, at) != token::right_square_bracket_token) {
+                    context.refuse(satl_line_not_understood,
+                                   what + "[...] was given something it could not read to the end of", opened_at);
+                    return Value();
+                }
+                ++at;
+                if (current.is_nothing()) {
+                    context.refuse(satl_line_not_understood, name + " has no value yet -- give it one with = before "
+                                                                 "reading an item of it", opened_at);
+                    return Value();
+                }
+                current = index_into(current, index, what, opened_at, context);
+                if (context.code != success)
+                    return Value();
+                what += "[...]";
             }
-            ++at;
-            satellite_file *file = found->second.value.as_file();
-            if (found->second.value.is_nothing()) {
-                context.refuse(satl_line_not_understood, name + " has no value yet -- give it one with = before reading "
-                                                             "a line of it", opened_at);
-                return Value();
-            }
-            if (file == nullptr) {
-                context.refuse(not_built_yet, name + " is " + found->second.value.kind_name() +
-                                                  ", and [ ] reads a line of a file -- a list's [ ] is MILESTONES M14",
-                               opened_at);
-                return Value();
-            }
-            Value line = read_file_line(*file, index, name, context);
-            if (context.code != success)
-                return Value();
             if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
-                return call_method(row, at, line, name, context);
-            return line;
+                return call_method(row, at, current, name, context);
+            return current;
         }
         // THE THREE TOKENS TOGETHER (the author): a period, a method's own code,
         // and a `(`. call_method above says what happens then.
@@ -966,6 +1029,79 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     if (stops_the_program(answer))
         context.refuse(answer, std::string(word::spelling_of(code)) + " refused");
     return Value::of_code(answer);
+}
+
+// `a[i] = v`, AND `a[i][j] = v`, WITH COPY-ON-WRITE ALONG THE WHOLE PATH.
+//
+// IT LIVES BESIDE index_into ON PURPOSE. Reading `a[i]` and writing `a[i]` must
+// agree about what `i` means -- counting from 1, what a bad index says, which
+// kinds have a `[ ]` at all -- and the way to keep two functions agreeing is to
+// let them call the same one (position_of) from the same file. The walker parses
+// the statement and hands the pieces here.
+//
+// `root` IS A REFERENCE INTO THE VARIABLE TABLE, never a copy, and the whole
+// copy-on-write scheme depends on that. satellite_list.hpp says why at length.
+signed long long int write_through_index(Value &root, const std::vector<Value> &indices, Value value,
+                                         const std::string &name, std::size_t where, ExpressionContext &context)
+{
+    Value *target = &root;
+    std::string what = name;
+
+    for (std::size_t step = 0; step < indices.size(); ++step) {
+        if (target->is_nothing()) {
+            context.refuse(satl_line_not_understood,
+                           name + " has no value yet -- give it one with = before changing an item of it", where);
+            return context.code;
+        }
+        // A FILE'S LINES ARE NOT WRITTEN THIS WAY. `f[2] = "x"` looks like it
+        // should work and must not quietly do nothing: a file has its own words
+        // for changing a line, and `[ ]` on a file reads.
+        if (target->is_file()) {
+            context.refuse(types_do_not_meet,
+                           what + "[...] = ... -- a file's line is not written with [ ], and " + name +
+                               " is a file (SATELLITE_FILE_OPERATIONS Part 3 lists what a file does)",
+                           where);
+            return context.code;
+        }
+        ListHandle *handle = target->as_list();
+        if (handle == nullptr) {
+            context.refuse(types_do_not_meet,
+                           what + " is " + target->kind_name() + ", and [ ] = ... changes an item of a list", where);
+            return context.code;
+        }
+
+        unsigned long long int position = 0;
+        if (!position_of(indices[step], position, what, where, context))
+            return context.code;
+
+        // MADE WRITABLE BEFORE THE ITEM IS FOUND, not after: the clone moves the
+        // items, so a pointer taken first would point into the old vector.
+        satelliteList &body = about_to_change(*handle);
+        satelliteObject *item = item_at(body, position);
+        if (item == nullptr) {
+            const std::size_t held = body.items.size();
+            // THE LIST DOES NOT GROW HERE, and this says so rather than leaving a
+            // person to guess. Growing on a write to one past the end is a real
+            // design -- it is just not one anybody has chosen, and choosing it in
+            // an error path is how a language gets a rule nobody meant.
+            context.refuse(line_past_the_end,
+                           what + "[" + std::to_string(position) + "] = ...: " +
+                               (held == 0 ? std::string("the list is empty")
+                                          : "there is no such item -- the list holds " + std::to_string(held) +
+                                                (held == 1 ? " item" : " items") + ", counting from 1") +
+                               ". Writing past the end does not make the list longer",
+                           where);
+            return context.code;
+        }
+
+        if (step + 1 == indices.size()) {
+            *item = std::move(value);
+            return success;
+        }
+        target = item;
+        what += "[" + std::to_string(position) + "]";
+    }
+    return success;
 }
 
 Value evaluate_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)

@@ -816,7 +816,8 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
         (holds == word::code_of(1, 6, 5) && !value.is_binary()) ||
         (holds == word::code_of(1, 6, 16) && !value.is_percentage()) ||
         (holds == word::code_of(1, 6, 2) && !value.is_file()) ||
-        (holds == word::code_of(1, 6, 6) && !value.is_bool())) {
+        (holds == word::code_of(1, 6, 6) && !value.is_bool()) ||
+        (holds == word::code_of(1, 4, 2) && !value.is_list())) {
         at = past_the_statement(row, at);
         return report_error(std::string("satl(run): ") + name + " was declared " +
                                 word::spelling_of(holds) + " and was given " + value.kind_name(),
@@ -824,6 +825,94 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     }
     variables[name] = Variable{holds, std::move(value)};
     at = past_the_statement(row, at);
+    return success;
+}
+
+// `<name>[i] = <expr>`, and `<name>[i][j] = <expr>` (the author, 2026-09-18:
+// "we must build it to be able to access lists inside of lists").
+//
+// `at` IS ON THE FIRST `[`. Every index is worked out first and the value last,
+// which is the order they are written in and the order a person would expect a
+// refusal in: `a[nope] = 1` complains about `nope` before anything else.
+//
+// THE WALK ITSELF IS write_through_index, IN expression.cpp, so that reading
+// `a[i]` and writing `a[i]` cannot come to disagree about what `i` means.
+// IS THERE AN `=` AFTER THE BRACKETS? `at` is on the first `[`; this looks past
+// every balanced `[...]` group and answers what it finds, without moving `at`.
+//
+// IT COUNTS DEPTH RATHER THAN FINDING THE NEXT `]`, because an index is a whole
+// expression and may hold brackets of its own: `a[b[1]] = x` is two groups, not
+// one, and a scan for the first `]` would stop inside the inner one and see `]`
+// where it wanted `=`.
+bool assign_after_the_brackets(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    while (code_at(row, at) == token::left_square_bracket_token) {
+        std::size_t depth = 0;
+        while (at < row.size()) {
+            const Code code = code_at(row, at);
+            if (code == token::line_end_token || code == token::end_of_file_token) return false;
+            if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
+            if (code == token::left_square_bracket_token) ++depth;
+            else if (code == token::right_square_bracket_token && --depth == 0) { ++at; break; }
+            ++at;
+        }
+        if (depth != 0) return false;        // never closed on this line
+    }
+    return code_at(row, at) == token::assign_token;
+}
+
+signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &row,
+                                            std::size_t &at,
+                                            const std::string &name,
+                                            const FunctionTable &functions,
+                                            VariableTable &variables,
+                                            MachineState &state)
+{
+    const std::size_t opened_at = at;
+    const VariableTable::iterator found = variables.find(name);
+    if (found == variables.end()) {
+        at = past_the_statement(row, at);
+        return report_error("satl(run): " + name + " has no satellite.variable line declaring it", name_not_declared);
+    }
+
+    ExpressionContext context{variables, functions, state};
+    std::vector<Value> indices;
+    while (code_at(row, at) == token::left_square_bracket_token) {
+        ++at;
+        indices.push_back(evaluate_expression(row, at, context));
+        if (context.code != success)
+            break;
+        if (code_at(row, at) != token::right_square_bracket_token) {
+            context.refuse(satl_line_not_understood,
+                           name + "[...] was given something it could not read to the end of", opened_at);
+            break;
+        }
+        ++at;
+    }
+
+    // A GUARD, AND IT IS NAMED AS ONE because it cannot fire today: the caller
+    // only reaches this function when assign_after_the_brackets() has already
+    // found the `=`. It is here so that a future caller which has not made that
+    // check refuses rather than reading a value from wherever `at` happens to
+    // stop -- and it is NOT presented as the message a person will meet, because
+    // claiming a refusal that never runs is how dead code gets believed.
+    if (context.code == success && code_at(row, at) != token::assign_token)
+        context.refuse(satl_line_not_understood,
+                       name + "[...] needs an = and a value after it", opened_at);
+
+    if (context.code == success) {
+        ++at;
+        Value value = evaluate_expression(row, at, context);
+        if (context.code == success && !read_to_the_end(row, at))
+            context.refuse(satl_line_not_understood, name + "[...] = ... " + kNotReadToTheEnd, opened_at);
+        if (context.code == success)
+            write_through_index(found->second.value, indices, std::move(value), name, opened_at, context);
+    }
+
+    const std::size_t blame = context.placed ? context.refused_at : opened_at;
+    at = past_the_statement(row, at);
+    if (context.code != success)
+        return raise_at(context.code, context.why, name + "[...] = ...", state, row, blame);
     return success;
 }
 
@@ -1051,6 +1140,23 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             // A METHOD CALL STANDING ALONE (FO-1): worked out as an expression and
             // its answer let go. The expression must reach the line's end, for the
             // same reason an assignment's must.
+            // `a[i] = v` IS AN ASSIGNMENT, NOT AN EXPRESSION STANDING ALONE, and
+            // the two start identically -- so which it is can only be told by
+            // looking past the brackets for an `=`. Without this, `a[1] = "x"`
+            // was read as the expression `a[1]`, whose value was thrown away,
+            // and the `= "x"` then failed as "not read to the end": a refusal
+            // that names the wrong half of the line.
+            if (code_at(row, k) == token::left_square_bracket_token &&
+                assign_after_the_brackets(row, k)) {
+                std::size_t b = k;
+                const signed long long int stopped =
+                    run_indexed_assignment(row, b, name, functions, variables, state);
+                at = b;
+                if (stops_the_program(stopped))
+                    return stopped;
+                continue;
+            }
+
             if (code_at(row, k) == token::method_token || code_at(row, k) == token::left_square_bracket_token) {
                 ExpressionContext context{variables, functions, state};
                 std::size_t e = at;

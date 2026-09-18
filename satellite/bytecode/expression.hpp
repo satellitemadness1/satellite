@@ -117,4 +117,13 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
 // larger than one limb. See number_conversions.hpp.
 signed long long int display_a_number(const Scenarios &scenarios, const satellite_number &value);
 
+// `a[i] = v` and `a[i][j] = v`, the indices already worked out by the walker.
+//
+// `root` MUST BE THE VARIABLE'S OWN OBJECT, reached as a reference through the
+// VariableTable. A copy here does not fail, it silently makes every write a full
+// copy of the list -- satellite_object/satellite_list.hpp says why, and says how
+// 003 lost months to exactly that.
+signed long long int write_through_index(Value &root, const std::vector<Value> &indices, Value value,
+                                         const std::string &name, std::size_t where, ExpressionContext &context);
+
 } // namespace satellite004

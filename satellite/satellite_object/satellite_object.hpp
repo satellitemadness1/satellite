@@ -218,6 +218,12 @@ public:
     // which keeps this header free of the type that contains it.
     const ListHandle *as_list() const { return std::get_if<ListHandle>(&held); }
 
+    // THE WRITABLE HANDLE, and the reason it must be reached through a REFERENCE
+    // to the object and never a copy is in satellite_list.hpp: copy-on-write asks
+    // `use_count() == 1`, and a copy taken on the way here makes that answer no
+    // every time. 003 built exactly that and it was dead code for months.
+    ListHandle *as_list() { return std::get_if<ListHandle>(&held); }
+
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }
     satellite_bytecode *as_bytecode() { return std::get_if<satellite_bytecode>(&held); }

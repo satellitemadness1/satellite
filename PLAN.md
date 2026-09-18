@@ -997,21 +997,31 @@ pool.
 list. M1 carried that rule for the `.satc`; M3.6 and MILESTONES M31 now mention
 it, but no milestone owns writing the digest into the file that already exists.
 
-**8. Does `b = a` on a list share it or copy it? (2026-09-18)** The braced list
-`{a, b}` was built the day it was asked for, and its arm is a
-`std::shared_ptr` — but **only because a list may hold a list**, which is the
-same wall the spacesuit hit, and not because assignment was decided to alias.
+**8. ~~Does `b = a` on a list share it or copy it?~~ CLOSED the same day
+(2026-09-18): it COPIES.** You asked for `a[n] = v` hours after the literal
+landed, which is what made the question askable — and answerable, because a
+program can finally tell the difference.
 
-**Nothing can tell the difference yet.** 004 has no word that changes a list once
-it is made, so a shared list and a copied one behave identically in every program
-that can be written today. **The moment `satellite.container.list` gets an
-append, it matters**, and 003 already ruled: §12 made containers copy-on-write,
-with the `use_count() == 1` check that `19526c9` later had to split in two.
+**A list is a VALUE**, the opposite of a spacesuit (DESIGN 7.4) and of a file.
+That is 003 §12 carried forward rather than a new decision:
 
-It is left undone rather than guessed, because the cost of guessing wrong is a
-language where assignment sometimes aliases — the one bug a person cannot see in
-their own code. `satellite/satellite_object/satellite_list.hpp` carries the note
-at the code.
+    b = a
+    b[1] = "changed"      -- a[1] is untouched
+
+The `shared_ptr` is copy-on-write, not aliasing: `b = a` on a million items costs
+a pointer, and the vector is copied only when one of them is written to while the
+other still holds it. **Measured, because 003's version of this fast path was
+dead code for months** — 50,000 writes into a 1,000-item list and into an
+8,000-item one take the same time, and check.sh asserts that ratio so it cannot
+rot back.
+
+**What is still owed on lists:** every word in `words.tsv` under
+`satellite.container.list` — `append`, `size`, `sort`, `contains`, `first`,
+`last`, `remove_at` and the rest (`1 4 2 1` … `1 4 2 18`). A list can be made,
+read, and changed item by item; it cannot yet grow or shrink. **Writing past the
+end deliberately does NOT grow it** — growing on a write to one-past-the-end is a
+real design, just not one anybody has chosen, and choosing it inside an error
+path is how a language gets a rule nobody meant.
 
 **A second, smaller one in the same place:** a list handed to a word that takes
 text reads back as what was typed — `{1, "two"}`, strings keeping their quotes so
