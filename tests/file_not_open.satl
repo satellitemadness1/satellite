@@ -1,6 +1,6 @@
 satellite.include(satellite)
 
-// A question asked of a file that did not open stops the program (S0903) rather
+// A question asked of a file that did not open stops the program (S503) rather
 // than answering 0 as though the file were empty.
 satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
 {

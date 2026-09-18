@@ -81,7 +81,7 @@ inline signed long long int run_config(unsigned long long int cap = 0)
 
     if (lowest == 0) {
         CriticalReport none;
-        none.code = "S0725";
+        none.code = "S710";
         none.name = "NO_THREAD_CEILING_STATED";
         none.description =
             "satl --config could not read a single thread ceiling from this system, so it has no "
@@ -102,7 +102,7 @@ inline signed long long int run_config(unsigned long long int cap = 0)
 
     if (cap != 0 && cap > lowest) {
         CriticalReport too_many;
-        too_many.code = "S0726";
+        too_many.code = "S711";
         too_many.name = "CAP_ABOVE_THE_CEILING";
         too_many.description =
             "satl --config was asked to probe " + grouped(cap) + " threads and this machine's "
@@ -143,7 +143,7 @@ inline signed long long int run_config(unsigned long long int cap = 0)
 
     if (write_machine_conf(result) == false) {
         CriticalReport not_written;
-        not_written.code = "S0727";
+        not_written.code = "S014";
         not_written.name = "MACHINE_CONF_NOT_WRITTEN";
         not_written.description =
             "satl --config measured " + grouped(result.measured) + " threads and could not save it, "

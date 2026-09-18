@@ -7,7 +7,7 @@
 //     --------------------------------------------------------------------------------
 //     SATELLITE CRITICAL ERROR REPORT
 //     --------------------------------------------------------------------------------
-//     S0721: BASIC_ERROR_NAME
+//     S010: BASIC_ERROR_NAME
 //     FULL_ERROR_DESCRIPTION_HERE
 //
 //     directory: path
@@ -49,7 +49,7 @@ namespace satellite004 {
 inline constexpr std::size_t kReportWidth = 80;
 
 struct CriticalReport {
-    std::string code;          // "S0721" -- SATELLITE_ERROR.md owns the number
+    std::string code;          // "S010" -- SATELLITE_ERROR.md owns the number
     std::string name;          // "CONFIG_FILE_MISSING" -- short, shouted, no spaces
     std::string description;   // the sentence a person reads first; may be several lines
 

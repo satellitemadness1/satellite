@@ -14,7 +14,7 @@ passed=0 failed=0
 #
 # satl reads $HOME/.satl/config.ini at start-up (satellite/config/config_file.hpp)
 # and everything in it changes what a run does -- a feature turned on prints a
-# profile, a missing file prints S0721, a stale register prints S0723. All three
+# profile, a missing file prints S010, a stale register prints S011. All three
 # land on stderr, and this suite counts stderr lines.
 #
 # FOUND BY BREAKING IT, 2026-09-18. `word_counts = true` was left on in the
@@ -25,7 +25,7 @@ passed=0 failed=0
 #
 # --rebuild MAKES THE FILE, rather than this script writing one. The register's
 # width grows every time a feature is added, so a config.ini written here as fixed
-# text would go stale and raise the very S0723 this is avoiding; the binary is the
+# text would go stale and raise the very S011 this is avoiding; the binary is the
 # thing that knows how wide its register is. It also runs BEFORE the missing-file
 # notice by design, so this first call is quiet on a home with nothing in it.
 CHECK_HOME=$PWD/build/check-home
@@ -33,7 +33,7 @@ rm -rf -- "$CHECK_HOME"
 mkdir -p -- "$CHECK_HOME/.satl"
 export HOME=$CHECK_HOME
 "$interpreter" --rebuild > build/check-home-rebuild.out 2>&1 ||
-    echo "  note  --rebuild could not write $CHECK_HOME/.satl/config.ini; the suite may see S0721"
+    echo "  note  --rebuild could not write $CHECK_HOME/.satl/config.ini; the suite may see S010"
 
 expect() {   # expect <description> <wanted code> <actual code>
     if [ "$2" = "$3" ]; then passed=$((passed + 1)); echo "  ok    $1 -> $3";
@@ -383,7 +383,7 @@ expect "... after the line that was there printed" 1 "$(grep -cx 'the only line'
 expect "a method after a word's call runs: new(...).append, open(...).append, open(...).size" 2 \
        "$("$interpreter" "$file_room/file_word_chain.satl" 2>/dev/null)"
 "$interpreter" "$file_room/file_not_open.satl" > build/file_not_open.out 2>&1
-expect "a question to a file that did not open stops the program (S0903)" 45 $?
+expect "a question to a file that did not open stops the program (S503)" 45 $?
 expect "... after saying it is not ok, and without answering 0" "false" "$(grep -x -e false -e 0 build/file_not_open.out)"
 "$interpreter" "$file_room/file_wrong_count.satl" > build/file_count.out 2>&1
 expect "a file method given the wrong number of arguments is refused" 13 $?
@@ -692,7 +692,7 @@ expect "... says ERROR: expected 50%, before anything runs" "1|" \
 "$interpreter" tests/percentage_not_whole.satl > build/percentage.out 2>&1; expect "3 * 50% is not whole" 24 $?
 expect "... and says so" 1 "$(grep -c '3 \* 50% is not a whole number' build/percentage.out)"
 "$interpreter" tests/percentage_number_second.satl > build/percentage.out 2>&1; expect "50% + 5 is refused" 27 $?
-# NEWLINES FLATTENED BEFORE THE GREP. The refusal is a full report now (S0601,
+# NEWLINES FLATTENED BEFORE THE GREP. The refusal is a full report now (S301,
 # with the file, the line and a caret), and a report WRAPS at eighty columns --
 # so a sentence this used to find on one line can arrive split across two. The
 # assertion is about the words, not about where the report chose to break them.

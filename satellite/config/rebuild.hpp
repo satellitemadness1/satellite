@@ -167,7 +167,7 @@ inline signed long long int run_rebuild()
     const signed long long int wrote = config_file::write_value(kRegisterKey, value, why);
     if (wrote != success) {
         CriticalReport failed;
-        failed.code = "S0722";
+        failed.code = "S015";
         failed.name = "REGISTER_NOT_WRITTEN";
         failed.description =
             "satl --rebuild composed the feature register and could not save it, so the next run "

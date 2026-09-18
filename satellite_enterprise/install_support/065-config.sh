@@ -72,7 +72,7 @@ SATELLITE_CONFIG_INI
     # THE TEMPLATE ABOVE DELIBERATELY DOES NOT CARRY A `features =` LINE. It is
     # fixed text and the register's width grows every time a feature is added, so
     # a template that held one would go stale the first time somebody added a bit
-    # -- and a stale register is exactly what S0723 exists to complain about. So
+    # -- and a stale register is exactly what S011 exists to complain about. So
     # the installer does not write the value, it asks the binary to write it, and
     # the binary is the thing that knows how wide it is.
     #

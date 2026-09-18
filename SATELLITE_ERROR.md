@@ -123,24 +123,42 @@ against the tree on 2026-09-18 rather than guessed.
 
 # Part 4 — the S-code register
 
-Blocks, so a number never has to move. **Add at the end of a block; never
-renumber.** Same rule as the word table, for the same reason.
+**THE NUMBER SAYS HOW BAD IT IS.** The author, 2026-09-18: *"S00 is stuff that
+doesn't stop the interpreter, so you have 99 warnings to use, then S01 stops the
+interpreter on something stupid, then S02 is a little bit more serious"* — and
+*"we don't fill every single one out, we guess what each error is... in
+severity"*. So `Sxxx`, 000 to 999, and **the hundreds digit is the severity**.
 
-| block | what it is for |
-|---|---|
-| **S00xx** | starting up: config, libraries, the machine |
-| **S01xx** | the command line |
-| **S02xx** | reading a file: it is not there, not readable, not satellite |
-| **S03xx** | the lexer: a character or a token that cannot be read |
-| **S04xx** | the checker: shapes refused before anything runs |
-| **S05xx** | names: declared twice, never declared, out of scope |
-| **S06xx** | types: two kinds that do not meet |
-| **S07xx** | settings and arguments |
-| **S08xx** | numbers: division by zero, an answer that is not whole |
-| **S09xx** | **files** (S0901–S0905, built first), then strings, binary, percentage |
-| **S10xx** | input and the console |
-| **S11xx** | threads and memory |
-| **S12xx** | directories and files a program opens |
+| band | means | exits |
+|---|---|---|
+| **S0xx** | a WARNING — **the run carries on** | 0 |
+| **S1xx** | stops, and it is something simple: a missing line, a typo, a word satl does not take | |
+| **S2xx** | stops: a NAME — not declared, declared twice, not built yet | |
+| **S3xx** | stops: what two things ARE — types that do not meet | |
+| **S4xx** | stops: arithmetic and positions | |
+| **S5xx** | stops: files and directories | |
+| **S6xx** | stops: the settings | |
+| **S7xx** | stops: the machine could not answer | |
+| **S8xx** | stops: something outside the program — Ctrl-C, a closed pipe | |
+| **S9xx** | **satl itself is in trouble** | |
+| **S999** | **the top of the scale: no memory** | 48 |
+
+**S999 IS "NO MEMORY" AND NOT "NO LIBRARIES", ON THE AUTHOR'S OWN CORRECTION**
+mid-sentence: *"999 will be... cannot load the C++ libraries, that is the worst
+possible error, well, the worst possible error is that we cannot set the memory
+for them"*. He is right, and the difference is exact: **a library that will not
+load leaves an interpreter that runs and cannot do everything; no memory leaves
+no interpreter.** So `S980` is a library that loaded and did not describe itself,
+`S901` is libraries that did not load, and `S999` is the one above them.
+
+**GAPS ARE LEFT ON PURPOSE.** `S101`, `S110`, `S120`, `S130`, `S140` — a band is
+filled at its tens, so a refusal added beside an existing one has somewhere
+obvious to go without renumbering anything.
+
+**WHAT THIS COST, AND IT IS WORTH SAYING PLAINLY: 003 COMPATIBILITY.** The old
+scheme put `text_not_found` at 003's own `S0716` so a person moving between the
+two read one number. Severity ordering and that promise cannot both be true, and
+the author chose severity. `S0716` is now `S420`.
 
 ## Assigned
 

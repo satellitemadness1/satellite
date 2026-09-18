@@ -21,7 +21,7 @@
 //     S04xx  the checker: shapes refused before anything runs
 //     S05xx  names: declared twice, never declared, out of scope
 //     S06xx  types: two kinds that do not meet
-//     S07xx  settings and arguments        (S0721-S0727 already assigned)
+//     S07xx  settings and arguments        (S010-S014 already assigned)
 //     S08xx  numbers: division by zero, an answer that is not whole
 //     S09xx  files: the two file refusals that stop a program (2026-09-18)
 //
@@ -56,11 +56,11 @@ inline SCode s_code_for(signed long long int machine_code)
 {
     switch (machine_code) {
     case satl_line_not_understood:
-        return {"S0401", "LINE_NOT_UNDERSTOOD",
+        return {"S110", "LINE_NOT_UNDERSTOOD",
                 "satellite has no scenario for this line -- it is spelled in a shape the language "
                 "does not have a meaning for."};
     case not_built_yet:
-        return {"S0402", "NOT_BUILT_YET",
+        return {"S210", "NOT_BUILT_YET",
                 "this word is numbered in the language and the library behind it does not exist "
                 "yet. The word is right; there is nothing yet to run."};
     // S02xx -- READING A FILE: it is not there, not readable, not satellite.
@@ -68,113 +68,129 @@ inline SCode s_code_for(signed long long int machine_code)
     // carry no caret. What they carry instead is the exact line to type, which
     // is the only thing a person wants when a file is refused before it runs.
     case satl_file_missing_satellite_include_satellite:
-        return {"S0201", "FILE_HAS_NO_INCLUDE",
+        return {"S101", "FILE_HAS_NO_INCLUDE",
                 "a program's first line is satellite.include(satellite). Without it the file is a "
                 "SPACESHIP -- something another file includes -- and satl will not start it. "
                 "Add this as the first line:\n\n    satellite.include(satellite)"};
     case satl_file_missing_satellite_main:
-        return {"S0202", "FILE_HAS_NO_MAIN",
+        return {"S102", "FILE_HAS_NO_MAIN",
                 "there are no globals in satellite, so a statement outside a capsule has nowhere to "
                 "put its result and no moment to run in -- which means there is nowhere to begin. "
                 "Add:\n\n    satellite.capsule satellite.main()\n    {\n        ...\n    }"};
     case satl_file_missing_satellite_return_satellite:
-        return {"S0203", "FILE_HAS_NO_RETURN",
+        return {"S103", "FILE_HAS_NO_RETURN",
                 "execution ends inside main, and the file has to say so. "
                 "Add this as the last line:\n\n    satellite.return(satellite)"};
 
     // S00xx -- STARTING UP.
     case error:
-        return {"S0001", "REFUSED_WITHOUT_A_REASON",
+        return {"S910", "REFUSED_WITHOUT_A_REASON",
                 "something refused and answered the general code rather than one of its own. This is "
                 "the interpreter failing to say what went wrong, so the S-code is worth reporting as "
                 "a bug in satellite itself."};
+    // S9xx -- SATL ITSELF IS IN TROUBLE, and S999 is the top of the whole scale.
+    // The author, 2026-09-18: *"999 will be... cannot load the C++ libraries,
+    // that is the worst possible error, well, the worst possible error is that we
+    // cannot set the memory for them"*. He corrected himself mid-sentence and the
+    // correction is right: a library that will not load leaves an interpreter
+    // that runs and cannot do everything. NO MEMORY leaves no interpreter.
+    case out_of_memory:
+        return {"S999", "OUT_OF_MEMORY",
+                "the machine would not give satl the memory it asked for. This is the top of the "
+                "scale because it is the one failure where nothing else can be attempted -- a report "
+                "itself needs memory. Nothing was left half-written: satl stops here."};
+    case libraries_not_understood:
+        return {"S980", "LIBRARY_NOT_UNDERSTOOD",
+                "a numbered library loaded and did not describe itself. The .so is there and is not "
+                "the one this satl was built against -- a rebuild of satellite-numbers/ is what fixes "
+                "it, and `satl --rebuild` says what was found."};
     case vector_loading_error:
-        return {"S0002", "LIBRARIES_NOT_LOADED",
+        return {"S901", "LIBRARIES_NOT_LOADED",
                 "the numbered libraries under satellite-numbers/ could not be read, so most words of "
                 "the language have nothing behind them. satl --rebuild reports what it found."};
 
     // S01xx -- THE COMMAND LINE.
     case command_line_not_understood:
-        return {"S0101", "COMMAND_LINE_NOT_UNDERSTOOD",
+        return {"S130", "COMMAND_LINE_NOT_UNDERSTOOD",
                 "satl was given words it does not take. satl --help lists every way to start it."};
 
     case missing_satl_file:
-        return {"S0204", "FILE_NOT_FOUND",
+        return {"S140", "FILE_NOT_FOUND",
                 "satl was told to run a file that is not there. Check the path, and that the name "
                 "ends .satl."};
 
     // S03xx -- READING WHAT IS WRITTEN: a number or some text that cannot be read.
     case int_error:
-        return {"S0301", "NUMBER_NOT_READ",
+        return {"S120", "NUMBER_NOT_READ",
                 "this is not a number satellite can read. A number is an optional '-' then digits, "
                 "with no spaces, separators or decimal point."};
     case string_error:
-        return {"S0302", "TEXT_NOT_UTF8",
+        return {"S121", "TEXT_NOT_UTF8",
                 "these bytes are not valid UTF-8. satellite's strings hold text, so bytes that "
                 "stand for no character are refused rather than carried."};
 
     case name_not_declared:
-        return {"S0501", "NAME_NOT_DECLARED",
+        return {"S201", "NAME_NOT_DECLARED",
                 "this name was used and no satellite.variable line ever declared it. A name has to "
                 "be given a type before it can hold anything."};
     case name_declared_twice:
-        return {"S0502", "NAME_DECLARED_TWICE",
+        return {"S202", "NAME_DECLARED_TWICE",
                 "this name already has a satellite.variable line in this capsule. One name, one "
                 "declaration -- the second would quietly replace the first."};
     case types_do_not_meet:
-        return {"S0601", "TYPES_DO_NOT_MEET",
+        return {"S301", "TYPES_DO_NOT_MEET",
                 "this operator has no scenario for the two kinds it was given. Nothing was guessed "
                 "at, because a guess here is an answer that is wrong and does not say so."};
     case division_by_zero:
-        return {"S0801", "DIVISION_BY_ZERO",
+        return {"S401", "DIVISION_BY_ZERO",
                 "a divisor worked out to 0. There is no number this could answer, so it answers "
                 "nothing rather than something."};
     case answer_is_not_whole:
-        return {"S0802", "ANSWER_IS_NOT_WHOLE",
+        return {"S402", "ANSWER_IS_NOT_WHOLE",
                 "the answer exists and is not a whole number -- 2 ^ -1 is one half. "
                 "satellite.variable.number holds whole numbers, so this has nowhere to go."};
     case setting_is_not_a_flag:
-        return {"S0728", "SETTING_IS_NOT_A_FLAG",
+        return {"S310", "SETTING_IS_NOT_A_FLAG",
                 "this setting is true or false and was given something that is neither."};
     case word_takes_no_assignment:
-        return {"S0729", "WORD_TAKES_NO_ASSIGNMENT",
+        return {"S220", "WORD_TAKES_NO_ASSIGNMENT",
                 "this word is not a setting and not a variable, so there is nothing for an `=` to "
                 "write to."};
     case config_file_unreadable:
-        return {"S0730", "CONFIG_FILE_UNREADABLE",
+        return {"S013", "CONFIG_FILE_UNREADABLE",
                 "config.ini is there and could not be read. Every setting still has its built-in "
                 "default, so satl runs -- it is running on defaults and not on your settings."};
     case config_file_unwritable:
-        return {"S0722", "REGISTER_NOT_WRITTEN",
+        return {"S015", "REGISTER_NOT_WRITTEN",
                 "a setting could not be saved, so it holds for this run and is gone at the end of it."};
     case line_past_the_end:
-        return {"S0901", "LINE_PAST_THE_END",
+        return {"S501", "LINE_PAST_THE_END",
                 "a line was read by its number and the file has no line with that number. Lines "
                 "count from 1, and the last one is the file's size."};
     case file_has_no_lines:
-        return {"S0902", "FILE_HAS_NO_LINES",
+        return {"S502", "FILE_HAS_NO_LINES",
                 "a word about lines was used on a binary file, and a binary file is bytes, not lines."};
     case file_not_open:
-        return {"S0903", "FILE_NOT_OPEN",
+        return {"S503", "FILE_NOT_OPEN",
                 "a question was asked of a file that is not open -- closed, or never opened because the "
                 "open or new failed. Its answer would have been made up, so nothing was answered. Ask "
                 "the file's ok first; its error says why it is not open."};
     case file_unwritable:
-        return {"S0904", "FILE_NOT_SAVED",
+        return {"S504", "FILE_NOT_SAVED",
                 "changes to a file could not be put on the disk. The file on the disk is as it was before "
                 "them -- a save is whole or not at all."};
     case not_a_position:
-        return {"S0905", "NOT_A_POSITION",
+        return {"S410", "NOT_A_POSITION",
                 "a position or a line number below zero. Lines count from 1, and nothing counts below zero."};
     case config_value_not_understood:
-        return {"S0731", "CONFIG_VALUE_NOT_UNDERSTOOD",
+        return {"S601", "CONFIG_VALUE_NOT_UNDERSTOOD",
                 "a row in satellite_config.hpp cannot mean what its name asks."};
     case machine_fact_not_read:
-        return {"S0732", "MACHINE_FACT_NOT_READ",
+        return {"S701", "MACHINE_FACT_NOT_READ",
                 "this machine does not state the fact that was asked for. It is refused rather than "
                 "answered as 0 or \"\", because either of those is something a program would use."};
     case setting_out_of_range:
-        return {"S0733", "SETTING_OUT_OF_RANGE",
+        return {"S610", "SETTING_OUT_OF_RANGE",
                 "a number satl was given is past what this machine allows."};
     case machine_conf_unwritable:
         return {"S0734", "MACHINE_CONF_NOT_WRITTEN",
@@ -183,57 +199,57 @@ inline SCode s_code_for(signed long long int machine_code)
 
     // S09xx -- STRINGS. See the note in Part 4 about this block and files.
     case text_not_found:
-        return {"S0906", "TEXT_NOT_FOUND",
+        return {"S420", "TEXT_NOT_FOUND",
                 "the text looked for is not in this string."};
     case position_past_the_end:
-        return {"S0907", "POSITION_PAST_THE_END",
+        return {"S411", "POSITION_PAST_THE_END",
                 "this position is past the last character of the string."};
     case positions_backwards:
-        return {"S0908", "POSITIONS_BACKWARDS",
+        return {"S412", "POSITIONS_BACKWARDS",
                 "the start of this range is after its end."};
     case empty_search_text:
-        return {"S0909", "EMPTY_SEARCH_TEXT",
+        return {"S421", "EMPTY_SEARCH_TEXT",
                 "there is nothing to look for -- an empty search matches everywhere and means nothing."};
 
     // S10xx -- INPUT AND THE CONSOLE.
     case display_error:
-        return {"S1002", "DISPLAY_REFUSED",
+        return {"S820", "DISPLAY_REFUSED",
                 "the output refused the line. A satellite program writing into a pipe whose reader "
                 "has gone is the usual way this happens."};
     case interrupted:
-        return {"S1001", "INTERRUPTED",
+        return {"S810", "INTERRUPTED",
                 "Ctrl-C stopped this between statements. satl exits 130, which is 128 + SIGINT -- "
                 "what a shell and 003 both answer."};
 
     // S11xx -- THREADS AND MEMORY.
     case thread_start_error:
-        return {"S1101", "THREAD_NOT_STARTED",
+        return {"S720", "THREAD_NOT_STARTED",
                 "the machine refused a thread. satl --config says how many this machine allows."};
 
     // S12xx -- DIRECTORIES AND THE FILES A PROGRAM OPENS.
     case directory_not_found:
-        return {"S1201", "DIRECTORY_NOT_FOUND", "nothing is at that path."};
+        return {"S520", "DIRECTORY_NOT_FOUND", "nothing is at that path."};
     case not_a_directory:
-        return {"S1202", "NOT_A_DIRECTORY", "something is at that path and it is not a directory."};
+        return {"S521", "NOT_A_DIRECTORY", "something is at that path and it is not a directory."};
     case directory_unreadable:
-        return {"S1203", "DIRECTORY_UNREADABLE",
+        return {"S522", "DIRECTORY_UNREADABLE",
                 "it is a directory and its entries could not be read."};
     case path_holds_a_nul:
-        return {"S1204", "PATH_HOLDS_A_NUL",
+        return {"S523", "PATH_HOLDS_A_NUL",
                 "this path has a NUL in it, so the system would only ever see the part before it."};
     case file_not_found:
-        return {"S1205", "FILE_NOT_THERE", "no file is at that path."};
+        return {"S510", "FILE_NOT_THERE", "no file is at that path."};
     case file_already_there:
-        return {"S1206", "FILE_ALREADY_THERE",
+        return {"S511", "FILE_ALREADY_THERE",
                 "satellite.file.new refuses to clobber a file that is already there. Use "
                 "satellite.file.open to work on it, or satellite.file.clear to empty it."};
     case not_a_file:
-        return {"S1207", "NOT_A_FILE",
+        return {"S512", "NOT_A_FILE",
                 "something is at that path and it is not an ordinary file -- a FIFO, a device or a socket."};
     case file_unreadable:
-        return {"S1208", "FILE_UNREADABLE", "the file is there and could not be read."};
+        return {"S513", "FILE_UNREADABLE", "the file is there and could not be read."};
     case file_not_text:
-        return {"S1209", "FILE_NOT_TEXT",
+        return {"S514", "FILE_NOT_TEXT",
                 "this is a text file and the bytes given are not text. A lone carriage return is "
                 "refused too, so a handle never writes a file it would refuse to open."};
 
@@ -242,9 +258,9 @@ inline SCode s_code_for(signed long long int machine_code)
     }
     // THE FALLBACK IS NOT A FAILURE. A refusal with no S-code yet is still worth
     // reporting with everything else this file gathers -- the file, the line and
-    // the caret -- and S0000 says plainly that the number is owed rather than
+    // the caret -- and S000 says plainly that the number is owed rather than
     // pretending the refusal is nameless.
-    return {"S0000", "REFUSED", ""};
+    return {"S000", "REFUSED", ""};
 }
 
 // E5 -- ONE CALL THAT RENDERS, PRINTS AND ANSWERS THE MACHINE CODE.

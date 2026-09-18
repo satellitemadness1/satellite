@@ -85,6 +85,13 @@ enum MachineCode : signed long long int {
     file_has_no_lines = 46,             // a line word on a binary file
     line_past_the_end = 47,             // f[n] with n below 1 or past the last line
 
+    // 48-49 ARE THE TOP OF THE SCALE, 2026-09-18. The author: *"the worst
+    // possible error is that we cannot set the memory for them"*. These are the
+    // two ways the INTERPRETER fails rather than the program -- and until now the
+    // first of them was not a code at all, it was std::terminate and a core dump.
+    out_of_memory = 48,                 // the machine would not give satl memory; S999
+    libraries_not_understood = 49,      // a numbered library loaded and does not describe itself; S980
+
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
     // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
@@ -133,6 +140,8 @@ inline const char *machine_code_name(signed long long int code)
     case machine_fact_not_read: return "machine_fact_not_read";
     case setting_out_of_range: return "setting_out_of_range";
     case machine_conf_unwritable: return "machine_conf_unwritable";
+    case out_of_memory: return "out_of_memory";
+    case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";
     case file_already_there: return "file_already_there";
     case not_a_file: return "not_a_file";

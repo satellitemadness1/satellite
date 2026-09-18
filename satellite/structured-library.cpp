@@ -39,6 +39,7 @@
 #include "config/feature_switch.hpp"
 #include "config/rebuild.hpp"
 #include "config/run_config.hpp"
+#include "machine/s_codes.hpp"
 #include "machine/critical_report.hpp"
 #include "machine/exit_status.hpp"
 #include "machine/machine_codes.hpp"
@@ -56,6 +57,8 @@
 #include <cerrno>
 #include <climits>
 #include <csignal>
+#include <cstdlib>
+#include <new>
 #include <cstring>
 #include <unistd.h>
 
@@ -152,7 +155,7 @@ signed long long int run_satl(int argc, char **argv)
     if (!config_file::exists()) {
         const std::string where = config_file::path();
         CriticalReport missing;
-        missing.code = "S0721";
+        missing.code = "S010";
         missing.name = "CONFIG_FILE_MISSING";
         missing.description =
             "no config.ini, so every setting is its built-in default. satl --rebuild writes one";
@@ -175,7 +178,7 @@ signed long long int run_satl(int argc, char **argv)
     // wants no noise; a damaged one is a thing somebody has to fix.
     if (reading.unreadable) {
         CriticalReport damaged;
-        damaged.code = "S0724";
+        damaged.code = "S012";
         damaged.name = "REGISTER_NOT_READABLE";
         damaged.description =
             "config.ini has a feature register and it is not a binary satl can read, so this run "
@@ -196,7 +199,7 @@ signed long long int run_satl(int argc, char **argv)
     // owed the reason rather than left to find it.
     if (reading.disagrees) {
         CriticalReport stale;
-        stale.code = "S0723";
+        stale.code = "S011";
         stale.name = "REGISTER_IS_STALE";
         stale.description =
             "a setting changed since satl --rebuild last ran, so this run uses the saved register "
@@ -412,6 +415,51 @@ signed long long int run_satl(int argc, char **argv)
     return code;
 }
 
+namespace {
+
+// THE PARACHUTE, AND THE REASON S999 NEEDS ONE.
+//
+// S999 is "the machine would not give satl memory", and reporting it MEANS
+// ALLOCATING: the report builds strings, the renderer wraps them, iostreams want
+// a buffer. So the one failure at the top of the scale is the one where the
+// reporter is likeliest to fail too, and a report that throws while reporting an
+// out-of-memory is a core dump where a sentence should be.
+//
+// So a block is taken at start-up and handed back the moment `new` first fails.
+// 64 KiB is far more than the report needs and small enough that nobody notices
+// it; what it buys is that the whole way down -- the S-code, the sentence, the
+// flush -- runs in memory that was already ours.
+//
+// TOUCHED, NOT JUST ASKED FOR. Linux hands out address space and no pages until
+// something writes to them (SATELLITE_ARGUMENTS measured exactly this with
+// threads), so a block that is never written is a block that is not really there
+// when it is wanted. One pass writing a byte a page makes it real.
+constexpr std::size_t kParachuteBytes = 64 * 1024;
+char *parachute = nullptr;
+
+void take_the_parachute()
+{
+    parachute = static_cast<char *>(std::malloc(kParachuteBytes));
+    if (parachute == nullptr)
+        return;                      // no memory even now; the handler copes
+    for (std::size_t at = 0; at < kParachuteBytes; at += 4096)
+        parachute[at] = 1;           // make the pages real, not promised
+}
+
+// `new` failed. Give the block back and let the throw happen, so the catch in
+// main() reports through the ordinary path with room to do it in.
+void out_of_memory_handler()
+{
+    if (parachute != nullptr) {
+        std::free(parachute);
+        parachute = nullptr;
+        return;                      // one more try, now that there is room
+    }
+    std::set_new_handler(nullptr);   // nothing left to give: let it throw
+}
+
+} // namespace
+
 int main(int argc, char **argv)
 {
     std::ios::sync_with_stdio(false);
@@ -421,5 +469,22 @@ int main(int argc, char **argv)
     // any program ran, found by review 2026-09-15).
     std::signal(SIGPIPE, SIG_IGN);
 
-    return satellite004::exit_status_of(run_satl(argc, argv));
+    take_the_parachute();
+    std::set_new_handler(&out_of_memory_handler);
+
+    try {
+        return satellite004::exit_status_of(run_satl(argc, argv));
+    } catch (const std::bad_alloc &) {
+        // S999, THE TOP OF THE SCALE. Before this, an allocation that failed was
+        // std::terminate and a core dump -- the one failure a person could learn
+        // nothing at all from.
+        satellite004::CriticalReport report;
+        const satellite004::SCode named = satellite004::s_code_for(satellite004::out_of_memory);
+        report.code = named.code;
+        report.name = named.name;
+        report.description = named.means;
+        report.notes.push_back("machine code 48 out_of_memory -- satl exits with this.");
+        satellite004::print_critical(report);
+        return satellite004::exit_status_of(satellite004::out_of_memory);
+    }
 }

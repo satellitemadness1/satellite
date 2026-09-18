@@ -227,7 +227,7 @@ signed long long int file_can_run(const std::vector<std::bitset<16>> &row,
         ++i;
     }
 
-    // THE THREE FILE-SHAPE REFUSALS, AS REPORTS. SATELLITE_ERROR S0201-S0203.
+    // THE THREE FILE-SHAPE REFUSALS, AS REPORTS. SATELLITE_ERROR S101-S103.
     //
     // NO CARET, AND THAT IS NOT A GAP. These are about a whole file -- a line
     // that is MISSING has no position to point at -- so raise() is the right
