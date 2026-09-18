@@ -30,6 +30,7 @@
 #include "program_walk.hpp"
 
 #include "word_codes.hpp"
+#include "../machine/s_codes.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -577,7 +578,13 @@ signed long long int check_program(const BytecodeRegistry &registry,
             const signed long long int code_of_line =
                 check_statement(row, at, capsules, functions, declared, ending, why);
             if (stops_the_program(code_of_line))
-                return report_error("satl(check): in " + entry.first + ", " + why, code_of_line);
+                // THE STATEMENT'S OWN START, AND NOT WHERE `at` ENDED UP. A
+                // refusal leaves `at` wherever check_statement stopped reading,
+                // which is not reliably the thing that was wrong -- so the caret
+                // goes under the start of the statement, which always is. The
+                // LINE is exact either way, and that is what a person looks for
+                // first.
+                return raise_at(code_of_line, why, entry.first, state, row, was, "satl(check)");
             if (at <= was)                  // a statement must always move forward
                 ++at;
         }

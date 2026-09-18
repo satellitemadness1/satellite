@@ -126,12 +126,21 @@ inline signed long long int raise(const CriticalReport &report, signed long long
 //
 // `doing` is what the interpreter was in the middle of -- "satellite.statement.if",
 // "my_name = ..." -- which is the one thing the position cannot say.
+//
+// `stage` IS WHICH HALF OF THE INTERPRETER REFUSED, and it carries more than it
+// looks like. "satl(check)" means NOTHING RAN: every capsule was walked and
+// judged before main was entered, so a program that cannot finish did not half
+// print first. "satl(run)" means it got as far as this line and stopped there.
+// A person reading a report needs that before they need anything else -- it is
+// the difference between "my program is wrong" and "my program did half a job"
+// -- and check.sh asserts on it in a dozen places for the same reason.
 inline signed long long int raise_at(signed long long int machine_code,
                                      const std::string &why,
                                      const std::string &doing,
                                      const MachineState &state,
                                      const std::vector<std::bitset<16>> &row,
-                                     std::size_t at)
+                                     std::size_t at,
+                                     const char *stage = "satl(run)")
 {
     const SCode named = s_code_for(machine_code);
     CriticalReport report;
@@ -144,6 +153,8 @@ inline signed long long int raise_at(signed long long int machine_code,
     report.description = why;
     if (!doing.empty())
         report.description = "in " + doing + ", " + report.description;
+    if (stage != nullptr && stage[0] != '\0')
+        report.description = std::string(stage) + ": " + report.description;
 
     // THE PROGRAM COMES OFF MachineState AND THE ROW NAMES ITSELF. A caller
     // passes what it has in its hand -- the row it is walking and the position

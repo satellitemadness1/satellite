@@ -178,8 +178,11 @@ expect "if, else, else-if, and an if inside a while" "five|not six|more than fou
 "$interpreter" tests/if_no_body.satl > build/if.out 2>&1; expect "an if with no body is refused" 13 $?
 expect "... by the CHECK, with nothing run before it" "" "$(grep -x before build/if.out)"
 "$interpreter" tests/else_with_no_if.satl > build/if.out 2>&1; expect "an else with no if before it is refused" 13 $?
+# FLATTENED FIRST: the refusal is a full report now and a report wraps at eighty
+# columns, so this sentence arrives split across two lines. The assertion is
+# about the words, not where the report chose to break them.
 expect "... by the check too, and says so" 1 \
-       "$(grep -c 'satellite.statement.else with no satellite.statement.if before it' build/if.out)"
+       "$(tr '\n' ' ' < build/if.out | grep -c 'satellite.statement.else with no satellite.statement.if before it')"
 # A CONDITION'S TYPE IS A RUN-TIME FACT, for an if exactly as for a while: the
 # checker does not evaluate, so `if(5)` is refused where it runs, after the line
 # above it has printed. Pinned here so the two never drift apart.
@@ -584,19 +587,19 @@ expect "satellite.variable.binary my_number = b10101010" \
 "$interpreter" tests/binary.satl > /dev/null 2>&1; expect "tests/binary.satl runs" 0 $?
 # "if the user doesn't enter "b" ... spit out an ERROR: expected "b"+whatever they entered"
 "$interpreter" tests/binary_without_b.satl > build/binary_b.out 2>&1; expect "a binary with no b" 27 $?
-expect "a binary with no b says ERROR: expected b10101010" 1 "$(grep -c 'ERROR: expected b10101010 ' build/binary_b.out)"
+expect "a binary with no b says ERROR: expected b10101010" 1 "$(grep -c 'ERROR: expected b10101010$' build/binary_b.out)"
 expect "nothing ran before the missing b" "" "$(grep -x before build/binary_b.out)"
 "$interpreter" tests/binary_assigned_without_b.satl > build/binary_b.out 2>&1; expect "a binary given a value with no b" 27 $?
-expect "... and says ERROR: expected b1111" 1 "$(grep -c 'ERROR: expected b1111 ' build/binary_b.out)"
+expect "... and says ERROR: expected b1111" 1 "$(grep -c 'ERROR: expected b1111$' build/binary_b.out)"
 "$interpreter" tests/binary_digits_not_binary.satl > build/binary_b.out 2>&1; expect "a binary given 12" 27 $?
 expect "... is told 12 is not binary, not to write b12" 1 "$(grep -c 'ERROR: 12 is not binary' build/binary_b.out)"
 "$interpreter" tests/binary_b_not_binary.satl > build/binary_b.out 2>&1; expect "a binary given b12" 27 $?
 expect "... is told b12 is not binary" 1 "$(grep -c 'ERROR: b12 is not binary' build/binary_b.out)"
 "$interpreter" tests/binary_in_brackets.satl > build/binary_b.out 2>&1; expect "a binary with no b inside brackets" 27 $?
 expect "... is still ERROR: expected b10101010, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*ERROR: expected b10101010 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
+       "$(grep -c 'satl(check).*ERROR: expected b10101010$' build/binary_b.out)|$(grep -x before build/binary_b.out)"
 "$interpreter" tests/binary_0b.satl > build/binary_b.out 2>&1; expect "0b10101010, the C spelling" 27 $?
-expect "... is told ERROR: expected b10101010, not b0" 1 "$(grep -c 'ERROR: expected b10101010 ' build/binary_b.out)"
+expect "... is told ERROR: expected b10101010, not b0" 1 "$(grep -c 'ERROR: expected b10101010$' build/binary_b.out)"
 # A binary keeps a sign (the author, 2026-09-17: "give it a different number and keep a
 # sign with all of these things"): -b0101 is a binary, worth -5, width kept.
 expect "a binary below zero: shown, worth, converted, compared, turned over, given" \
@@ -604,10 +607,10 @@ expect "a binary below zero: shown, worth, converted, compared, turned over, giv
        "$("$interpreter" tests/binary_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 "$interpreter" tests/binary_negative_without_b.satl > build/binary_b.out 2>&1; expect "a binary given -1010" 27 $?
 expect "... says ERROR: expected -b1010, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*ERROR: expected -b1010 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
+       "$(grep -c 'satl(check).*ERROR: expected -b1010$' build/binary_b.out)|$(grep -x before build/binary_b.out)"
 "$interpreter" tests/binary_negative_assigned_without_b.satl > build/binary_b.out 2>&1; expect "a binary given (- 1111)" 27 $?
 expect "... says ERROR: expected -b1111, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*ERROR: expected -b1111 ' build/binary_b.out)|$(grep -x before build/binary_b.out)"
+       "$(grep -c 'satl(check).*ERROR: expected -b1111$' build/binary_b.out)|$(grep -x before build/binary_b.out)"
 # satellite.variable.percentage (the author, 2026-09-17): 32 digits after the point,
 # rounded half away from zero there. Python's decimal module is the authority.
 wanted_percentage=$(python3 -c "
@@ -630,7 +633,7 @@ expect "satellite.variable.percentage: literals, rounding and every pair" "$want
 "$interpreter" tests/percentage.satl > /dev/null 2>&1; expect "tests/percentage.satl runs" 0 $?
 "$interpreter" tests/percentage_without_percent.satl > build/percentage.out 2>&1; expect "a percentage with no %" 27 $?
 expect "... says ERROR: expected 50%, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*ERROR: expected 50% ' build/percentage.out)|$(grep -x before build/percentage.out)"
+       "$(grep -c 'satl(check).*ERROR: expected 50%$' build/percentage.out)|$(grep -x before build/percentage.out)"
 "$interpreter" tests/percentage_not_whole.satl > build/percentage.out 2>&1; expect "3 * 50% is not whole" 24 $?
 expect "... and says so" 1 "$(grep -c '3 \* 50% is not a whole number' build/percentage.out)"
 "$interpreter" tests/percentage_number_second.satl > build/percentage.out 2>&1; expect "50% + 5 is refused" 27 $?
@@ -644,11 +647,11 @@ expect "a percentage below zero: -50%, (- 25%) and -(-12.5%)" "-50%|-25%|12.5%" 
        "$("$interpreter" tests/percentage_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 "$interpreter" tests/percentage_negative_without_percent.satl > build/percentage.out 2>&1; expect "a percentage given -50" 27 $?
 expect "... says ERROR: expected -50%, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*ERROR: expected -50% ' build/percentage.out)|$(grep -x before build/percentage.out)"
+       "$(grep -c 'satl(check).*ERROR: expected -50%$' build/percentage.out)|$(grep -x before build/percentage.out)"
 "$interpreter" tests/percentage_negative_assigned_without_percent.satl > build/percentage.out 2>&1
 expect "a percentage given (- 25)" 27 $?
 expect "... says ERROR: expected -25%, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*ERROR: expected -25% ' build/percentage.out)|$(grep -x before build/percentage.out)"
+       "$(grep -c 'satl(check).*ERROR: expected -25%$' build/percentage.out)|$(grep -x before build/percentage.out)"
 expect "a declaration inside a loop runs every turn" "0|1|10|11|20|21" \
        "$("$interpreter" tests/loop_declaration.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 "$interpreter" examples/hello_world.satl > /dev/full 2> /dev/null; expect "output refused (/dev/full)" 2 $?
