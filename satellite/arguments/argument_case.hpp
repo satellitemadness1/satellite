@@ -48,6 +48,29 @@ inline const std::string &argument_register_void()
 // half-raised count does not compile.
 inline constexpr std::size_t kArgumentRegisters = 4;
 
+// WHERE A NAME CAME FROM, AND IT IS NOT A DETAIL -- IT IS THE DIFFERENCE BETWEEN
+// THE TWO THINGS `arguments` HOLDS. Measured against the tree 2026-09-18: a real
+// gather produces 29 names and only 11 of them are words in `words.tsv`.
+//
+//   word   the LANGUAGE has this name. `arguments.memory.total` is `1 14 1 1 2 1`
+//          and a program can read it. The word table is the authority and a name
+//          it does not have is a typo.
+//   satl   SATL fills this in, and the language has no word for it.
+//          `arguments.threads_startup` is a config.ini row; `arguments.file` is
+//          what satl was told to run; `arguments.argument_1` exists only on a run
+//          that was given a word. None of them are words and none of them are
+//          mistakes, and `arguments.file` in particular is how the interpreter
+//          knows what to run -- refusing it stops satl from starting at all.
+//
+// SO THE WORD-TABLE CHECK APPLIES TO `word` AND NOT TO `satl`. That is the whole
+// reason this enum exists, and SATELLITE_ARGUMENTS A26-A32 cannot be done
+// without it: those milestones move the old store's readers onto this class, and
+// the old store is eighteen-twenty-ninths names this class would have refused.
+//
+// THE DEFAULT IS `word`, so nothing that does not say otherwise gets a weaker
+// check than it had.
+enum class ArgumentOrigin { word, satl };
+
 // ONE ARGUMENT: a value out of the one variant, and the registers that name it.
 // The vector inside satelliteArguments holds THESE and not bare satelliteObjects
 // (ruling R2) -- the brief's literal field was std::vector<satelliteObject>, but
@@ -60,8 +83,9 @@ public:
     // arguments.memory.total  ->  r1 "memory", r2 "total", r3/r4 VOID.
     // The leading "arguments" is not a register: every argument has it, so
     // storing it four hundred times says nothing. from_name() below strips it.
-    explicit satelliteArgumentCase(const std::string &dotted_name, ArgumentValue value_input)
-        : value_(std::move(value_input))
+    explicit satelliteArgumentCase(const std::string &dotted_name, ArgumentValue value_input,
+                                   ArgumentOrigin origin_input = ArgumentOrigin::word)
+        : value_(std::move(value_input)), origin_(origin_input)
     {
         set_name(dotted_name);
     }
@@ -121,6 +145,13 @@ public:
     {
         return "satellite.library.main." + full_name();
     }
+
+    ArgumentOrigin origin() const { return origin_; }
+    void set_origin(ArgumentOrigin to) { origin_ = to; }
+
+    // Whether a PROGRAM may read this name. Only a word of the language can be
+    // written in a program, so this is exactly `origin() == word`.
+    bool a_program_can_read_it() const { return origin_ == ArgumentOrigin::word; }
 
     const ArgumentValue &value() const { return value_; }
     ArgumentValue &value() { return value_; }
@@ -194,6 +225,7 @@ private:
     std::string argument_name_r4 = argument_register_void();
 
     ArgumentValue value_;
+    ArgumentOrigin origin_ = ArgumentOrigin::word;
 };
 
 } // namespace satellite004

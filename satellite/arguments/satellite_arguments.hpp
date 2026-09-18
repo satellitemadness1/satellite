@@ -55,12 +55,28 @@ namespace satellite004 {
 inline bool is_a_real_argument(const satelliteArgumentCase &argument_case)
 {
     if (argument_case.depth() == 0) return false;   // bare `arguments` names no value
+
+    // A NAME SATL FILLS IN IS NOT CHECKED AGAINST THE WORD TABLE, because the
+    // language has no word for it and is not supposed to. `arguments.file`,
+    // `arguments.threads_startup`, `arguments.argument_1` -- eighteen of the
+    // twenty-nine a real gather produces. What checks THOSE is the thing that
+    // produces them: a config row is checked by `gather_config()` against the
+    // author's own `return_arguments_vector()`, and a fact satl fills in is
+    // checked by `filled_in_by_satl()`, which `arguments_cases.cpp` already
+    // asserts stays in step with what `gather()` really adds.
+    //
+    // SO NOTHING IS UNCHECKED. It is checked somewhere else, by the code that
+    // knows what it means -- which is why this is a narrowing of THIS check and
+    // not a hole in it.
+    if (argument_case.origin() == ArgumentOrigin::satl) return true;
+
     return word::code_of_spelling(argument_case.word_table_name()) != 0;
 }
 
-inline bool is_a_real_argument(const std::string &dotted_name)
+inline bool is_a_real_argument(const std::string &dotted_name,
+                               ArgumentOrigin origin = ArgumentOrigin::word)
 {
-    satelliteArgumentCase named(dotted_name, ArgumentValue{});
+    satelliteArgumentCase named(dotted_name, ArgumentValue{}, origin);
     return is_a_real_argument(named);
 }
 
@@ -142,9 +158,30 @@ public:
     // The brief's own add, made public so a gatherer outside the class can feed
     // it (R6: the machine readers become the feeders). The protected one below
     // is the brief's literal signature and both run the same two checks.
-    bool add_argument(const std::string &dotted_name, ArgumentValue value_input)
+    bool add_argument(const std::string &dotted_name, ArgumentValue value_input,
+                      ArgumentOrigin origin = ArgumentOrigin::word)
     {
-        return add_argument(satelliteArgumentCase(dotted_name, std::move(value_input)));
+        return add_argument(satelliteArgumentCase(dotted_name, std::move(value_input), origin));
+    }
+
+    // The same, spelled so the call site says which kind it is adding. A gatherer
+    // reading config.ini or the command line writes this one and a reader of the
+    // code can see, without looking anything up, that no word is being claimed.
+    bool add_satl_argument(const std::string &dotted_name, ArgumentValue value_input)
+    {
+        return add_argument(dotted_name, std::move(value_input), ArgumentOrigin::satl);
+    }
+
+    // Every name a PROGRAM may read: the words, and not what satl filled in for
+    // itself. This is what the `arguments` variable answers from once A26-A32
+    // point the readers at it.
+    std::vector<const satelliteArgumentCase *> arguments_a_program_can_read() const
+    {
+        std::vector<const satelliteArgumentCase *> readable;
+        for (const satelliteArgumentCase &argument_case : argument_cases)
+            if (argument_case.a_program_can_read_it())
+                readable.push_back(&argument_case);
+        return readable;
     }
 
 protected:
