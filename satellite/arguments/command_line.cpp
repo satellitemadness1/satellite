@@ -42,6 +42,15 @@ signed long long int read_command_line(int argc, char **argv, CommandLine &into)
         into.command = word == "--version" || word == "-V" ? Command::version : Command::help;
         return success;
     }
+    if (word == "--rebuild") {
+        // THE WHOLE COMMAND LINE, like --version, and for a plainer reason:
+        // it takes nothing, it runs once, and a word after it is a word somebody
+        // meant for something else.
+        if (i + 1 < argc)
+            return refuse("--rebuild takes no other words, and \"" + std::string(argv[i + 1]) + "\" was given");
+        into.command = Command::rebuild;
+        return success;
+    }
     if (word == "--repl") {
         if (i + 1 < argc)
             return refuse("--repl takes no other words, and \"" + std::string(argv[i + 1]) + "\" was given");
@@ -81,6 +90,7 @@ std::string usage_lines()
            "    satl --run <file> [words...]          the same; the file may begin with -\n"
            "    satl --debug <file.satl> [words...]   run it, showing every state and argument\n"
            "    satl --repl                           the prompt (not built yet: M0.6)\n"
+           "    satl --rebuild                        compose every setting into one binary\n"
            "    satl --version, -V                    the version, revision and build\n"
            "    satl --help, -h                       this\n"
            "\n"

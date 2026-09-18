@@ -27,7 +27,8 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(NUMBERS)/call_number.satellite.cpp
 
 HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(SATELLITE)/config/satellite_config.hpp \
-          $(SATELLITE)/config/config_file.hpp $(MACHINE)/critical_report.hpp \
+          $(SATELLITE)/config/config_file.hpp $(SATELLITE)/config/feature_register.hpp \
+          $(SATELLITE)/config/rebuild.hpp $(MACHINE)/critical_report.hpp \
           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
           $(MACHINE)/stop_flag.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp \
           $(PROMPT)/raw_mode.hpp $(PROMPT)/keys.hpp $(PROMPT)/editor.hpp $(PROMPT)/history.hpp \

@@ -67,6 +67,24 @@ SATELLITE_CONFIG_INI
         rm -f -- "$_config.installing" 2> /dev/null
         step "could not write $_config; satl will use its built-in defaults"
     fi
+    # AND THEN COMPOSE THE REGISTER, by running the satl just installed.
+    #
+    # THE TEMPLATE ABOVE DELIBERATELY DOES NOT CARRY A `features =` LINE. It is
+    # fixed text and the register's width grows every time a feature is added, so
+    # a template that held one would go stale the first time somebody added a bit
+    # -- and a stale register is exactly what S0723 exists to complain about. So
+    # the installer does not write the value, it asks the binary to write it, and
+    # the binary is the thing that knows how wide it is.
+    #
+    # RUN AS THE PERSON WHOSE CONFIG IT IS, with HOME pointed at their home, so a
+    # --system install under sudo composes $SUDO_USER's register and not root's.
+    if [ -x "$root/satl" ]; then
+        if HOME=$_config_home "$root/satl" --rebuild > /dev/null 2>&1; then
+            step "composed the feature register with $root/satl --rebuild"
+        else
+            step "could not run $root/satl --rebuild; run it yourself to compose the feature register"
+        fi
+    fi
     unset _config_dir _config
 fi
 unset _config_home _sudo_home

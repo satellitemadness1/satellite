@@ -58,8 +58,14 @@ reported through*. A bug goes in ERROR.md; the shape it is told in goes here.
 - **`CriticalReport` carries** `code`, `name`, `description`, `directory`,
   `syntax`, `caret_at`, `caret_note`, and `notes` — the author's "anything else"
   room, kept last.
-- **One caller exists**: `S0721 CONFIG_FILE_MISSING`, in
-  `structured-library.cpp`, raised when `$HOME/.satl/config.ini` is absent.
+- **Four callers exist**: `S0721`–`S0724`, all of them about config.ini and the
+  feature register. Part 4's table says where each one lives.
+- **THE FEATURE REGISTER IS BUILT** —
+  [satellite/config/feature_register.hpp](satellite/config/feature_register.hpp),
+  fourteen bits, and `satl --rebuild`
+  ([config/rebuild.hpp](satellite/config/rebuild.hpp)) composes them into one
+  binary in config.ini. **F1–F4 of Part 12 are done**; F5, the split walker that
+  makes the features free, is the optimisation the author is milestoning himself.
 - **Everything else still reports the old way** — `report_error()` in
   `machine/machine_state.cpp`, one line to stderr:
   `[satellite] satl(run): ... (machine_code: 34 setting_is_not_a_flag)`.
@@ -141,6 +147,14 @@ renumber.** Same rule as the word table, for the same reason.
 | S-code | name | machine code | where |
 |---|---|---|---|
 | **S0721** | `CONFIG_FILE_MISSING` | *(notice — the run carries on)* | `structured-library.cpp` |
+| **S0722** | `REGISTER_NOT_WRITTEN` | 32 `config_file_unwritable` | `config/rebuild.hpp` |
+| **S0723** | `REGISTER_IS_STALE` | *(notice — the run carries on)* | `structured-library.cpp` |
+| **S0724** | `REGISTER_NOT_READABLE` | *(notice — the run carries on)* | `structured-library.cpp` |
+
+**S0724 IS THE FIRST REPORT IN 004 WITH A WORKING CARET.** A damaged
+`features = bZZZZ` prints the row and points at it, which is Part 3's `syntax:`
+machinery proven on a value the reporter already has in hand — no line number, no
+re-read, no column arithmetic. The program-source version is still owed.
 
 ## Owed — the refusals that exist and have no S-code yet
 
@@ -576,10 +590,10 @@ each one.
 
 ## Phase F — the register
 
-- **F1** — `FeatureRegister`: one `uint64_t`, one named bit per feature, **append-only**, with the rule written above it.
-- **F2** — Read it from config.ini at start-up: one value, one parse.
-- **F3** — `satl --rebuild`: compose the settings into the binary, write it, print what it turned on.
-- **F4** — Fold `arguments.access` in as bit 0, so there is one mechanism and not two (rule 5).
+- **F1** — ~~`FeatureRegister`: one `uint64_t`, one named bit per feature, **append-only**.~~ **Done 2026-09-18** — `satellite/config/feature_register.hpp`, fourteen bits.
+- **F2** — ~~Read it from config.ini at start-up: one value, one parse.~~ **Done** — `start_register()`, and it answers three ways rather than two (absent / unreadable / read), because Part 7's rule 3 says a section that could not be gathered must not print as empty.
+- **F3** — ~~`satl --rebuild`: compose the settings into the binary, write it, print what it turned on.~~ **Done** — and it names every feature that is turned on and **not built yet**, which only belongs in a once-per-machine step.
+- **F4** — ~~Fold `arguments.access` in as bit 0.~~ **Done** — bit 0, and red note 14 is closed: **both spellings live.** The named keys are what a person edits and what a program writes; `features` is the one value satl reads and is DERIVED from them. So `arguments.access` keeps working exactly as built, and `--rebuild` is what makes the fast value out of it.
 - **F5** — **Split the walker**: `run_statements_plain` and `run_statements_watched`, chosen once. **This is the milestone the 0.225 ns depends on.**
 - **F6** — Re-measure with a real program after F5. `experiments/energy/release.satl` is about a million statements a second and is the shape that would show any regression.
 - **F7** — §A of the report prints the register as bits AND as names (rule 4).

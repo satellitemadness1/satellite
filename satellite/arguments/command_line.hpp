@@ -8,6 +8,7 @@
 //     satl [--debug] --run <file> [words...] run <file>
 //     satl [--debug] <file> [words...]       the same, when <file> does not begin with -
 //     satl [--debug] --repl                  the prompt (M0.6); until then 14 not_built_yet
+//     satl --rebuild                         compose every setting into one binary and save it
 //
 // --debug IS THE ONLY OPTION AND IT COMES BEFORE THE COMMAND WORD. --version and
 // --help are the whole command line. After the file EVERY word is the program's,
@@ -26,7 +27,9 @@
 
 namespace satellite004 {
 
-enum class Command { opening, version, help, run, repl };
+// APPENDED, NEVER INSERTED -- `rebuild` is 2026-09-18's and goes on the end for
+// the same reason a word code does: nothing here should renumber when one is added.
+enum class Command { opening, version, help, run, repl, rebuild };
 
 struct CommandLine {
     Command command = Command::opening;

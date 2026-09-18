@@ -33,6 +33,8 @@
 #include "bytecode/function_table.hpp"
 #include "bytecode/program_walk.hpp"
 #include "config/config_file.hpp"
+#include "config/feature_register.hpp"
+#include "config/rebuild.hpp"
 #include "machine/critical_report.hpp"
 #include "machine/exit_status.hpp"
 #include "machine/machine_codes.hpp"
@@ -122,6 +124,12 @@ signed long long int run_satl(int argc, char **argv)
         return success;
     }
 
+    // `satl --rebuild`, BEFORE THE CONFIG NOTICE BELOW. It is the command that
+    // FIXES a missing config.ini, so telling somebody to reinstall on their way
+    // into it would be advice against the thing they are already doing.
+    if (command_line.command == Command::rebuild)
+        return run_rebuild();
+
     // THE LASTING SETTINGS, AND SAYING SO WHEN THEY ARE NOT THERE. Checked here
     // and not above, so `satl --version`, `satl --help` and a bare `satl` stay
     // quiet: those three answer a question about satl itself and do not run a
@@ -149,6 +157,52 @@ signed long long int run_satl(int argc, char **argv)
         print_critical(missing);
     }
 
+    // THE ONE VALUE, READ ONCE. This is the whole per-run cost of the feature
+    // system: one line out of config.ini and one integer. Everything that hangs
+    // off it -- the last-known store, the frame stack, the statement ring --
+    // tests THIS, and SATELLITE_ERROR Part 10 measured what that costs.
+    const RegisterReading reading = start_register();
+    const FeatureRegister features = reading.features;
+
+    // THE KEY IS THERE AND CANNOT BE READ, which is not the same as absent and
+    // must not print as it (Part 7, rule 3). A fresh install has no register and
+    // wants no noise; a damaged one is a thing somebody has to fix.
+    if (reading.unreadable) {
+        CriticalReport damaged;
+        damaged.code = "S0724";
+        damaged.name = "REGISTER_NOT_READABLE";
+        damaged.description =
+            "config.ini has a feature register and it is not a binary satl can read, so this run "
+            "is using the built-in default for every feature. Run satl --rebuild to write a good "
+            "one from your settings.";
+        damaged.directory = config_file::path();
+        damaged.syntax = std::string(kRegisterKey) + " = " + reading.said;
+        damaged.caret_at = std::string(kRegisterKey).size() + 3;
+        damaged.caret_note = "a satellite binary was expected here -- b then 1s and 0s, as "
+                             "satl --rebuild writes it";
+        print_critical(damaged);
+    }
+
+    // SOMEBODY CHANGED A SETTING AND HAS NOT REBUILT, which is the one trap this
+    // design has: the named keys are what a person edits and what a program
+    // writes, and `features` is what satl READS. They can disagree, and a person
+    // whose `arguments.access = satellite.bool.false` seemed to do nothing is
+    // owed the reason rather than left to find it.
+    if (reading.disagrees) {
+        CriticalReport stale;
+        stale.code = "S0723";
+        stale.name = "REGISTER_IS_STALE";
+        stale.description =
+            "A setting in config.ini is not what the saved feature register says, so this run is "
+            "using the register and not the setting. Run satl --rebuild to compose them again.";
+        stale.directory = config_file::path();
+        stale.notes.push_back(
+            "The named keys -- access, history, trace -- are what you edit and what a program "
+            "writes. `features` is the single value satl reads, and --rebuild is what makes one "
+            "out of the others. This run carries on with the register as it was saved.");
+        print_critical(stale);
+    }
+
     MachineState state;
     code = arguments.gather(command_line);
     if (stops_the_program(code))
@@ -159,6 +213,23 @@ signed long long int run_satl(int argc, char **argv)
     state.debug_mode = arguments.flag("arguments.debug_mode");
     state.set("satellite " + version_line(arguments) + " (starting)", success);
     state.set("arguments(gathered)", success);
+
+    // THE REGISTER, SPELLED OUT -- SATELLITE_ERROR Part 10's rule 4. A run
+    // gathered with half the features off has holes in it, and a person reading
+    // the output has no way to tell a section that was empty from one that was
+    // never collected. So the bits AND the names, whenever anything is on.
+    if (state.debug_mode) {
+        state.set(std::string("features = ") + written(features) +
+                      (reading.found      ? " (from config.ini)"
+                       : reading.unreadable ? " (built-in defaults; the saved one could not be read)"
+                                            : " (built-in defaults; none saved)"),
+                  success);
+        for (unsigned i = 0; i < kFeatureCount; ++i)
+            if (features.on(static_cast<Feature>(i)))
+                state.set(std::string("features.") + feature_facts()[i].name + " = true" +
+                              (feature_facts()[i].built ? "" : " (listed, NOT BUILT YET)"),
+                          success);
+    }
     if (state.debug_mode)
         display_arguments(arguments, state);
 

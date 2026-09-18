@@ -107,7 +107,9 @@ inline bool exists()
 // THE LAST ONE WINS. A file with two `access =` rows is not rejected: it is read
 // the way a person reading it top to bottom would read it, and write_flag()
 // leaves exactly one behind anyway.
-inline bool read_flag(const std::string &key, bool &value)
+// The general reader: the text on the right of `key =`, whatever it is.
+// read_flag() is this with the two words understood.
+inline bool read_value(const std::string &key, std::string &value)
 {
     const std::string where = path();
     if (where.empty())
@@ -126,15 +128,24 @@ inline bool read_flag(const std::string &key, bool &value)
             continue;
         if (trimmed(clean.substr(0, equals)) != key)
             continue;
-        const std::string said = trimmed(clean.substr(equals + 1));
+        value = trimmed(clean.substr(equals + 1));
+        found = true;   // the LAST one wins; see below
+    }
+    return found;
+}
+
+inline bool read_flag(const std::string &key, bool &value)
+{
+    std::string said;
+    if (read_value(key, said)) {
         // `true` AND `false` AND NOTHING ELSE IS TRUE. A row saying `yes` or `1`
         // is a row somebody meant as true, and reading it as false would be the
         // quiet kind of wrong -- so anything that is not literally `false` and
         // not empty reads as true, and the writer only ever writes the two words.
         value = !(said == "false" || said.empty());
-        found = true;
+        return true;
     }
-    return found;
+    return false;
 }
 
 // Write `key = value`, keeping every other line of the file exactly as it was.
@@ -149,7 +160,7 @@ inline bool read_flag(const std::string &key, bool &value)
 // program that rewrote it into a canonical form would throw away notes the
 // person left. That is the reason the parser above ignores what it cannot read
 // rather than refusing it.
-inline signed long long int write_flag(const std::string &key, bool value, std::string &why)
+inline signed long long int write_value(const std::string &key, const std::string &value, std::string &why)
 {
     const std::string where = path();
     if (where.empty()) {
@@ -177,13 +188,13 @@ inline signed long long int write_flag(const std::string &key, bool value, std::
                     lines.push_back(line);
                     continue;
                 }
-                lines.push_back(key + " = " + (value ? "true" : "false"));
+                lines.push_back(key + " = " + value);
                 replaced = true;
             }
         }
     }
     if (!replaced)
-        lines.push_back(key + " = " + (value ? "true" : "false"));
+        lines.push_back(key + " = " + value);
 
     // WRITTEN TO A TEMPORARY AND RENAMED, so a config.ini is never half a file.
     // rename(2) within one directory is atomic: a reader either sees all of the
@@ -209,6 +220,13 @@ inline signed long long int write_flag(const std::string &key, bool value, std::
         return config_file_unwritable;
     }
     return success;
+}
+
+// The two words understood. `true` and `false` are the only things written, so
+// the forgiving read above never has to guess about a row this wrote.
+inline signed long long int write_flag(const std::string &key, bool value, std::string &why)
+{
+    return write_value(key, value ? "true" : "false", why);
 }
 
 } // namespace satellite004::config_file
