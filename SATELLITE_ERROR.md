@@ -5,8 +5,10 @@ built, and what each unbuilt piece costs.
 
 Written 2026-09-18 from the author's briefs, which are kept whole in Parts 1 and 7.
 
-**PART 7 IS THE BIG ONE** — the full report: thirteen sections holding everything
-the interpreter knows, four of which need nothing built. Its milestones are Part 8.
+**PART 7 IS THE FULL REPORT** — thirteen sections holding everything the interpreter
+knows, four of which need nothing built. **PART 10 IS THE FEATURE REGISTER** — one
+binary and `satl --rebuild`, measured, and the reason the whole system is free when
+it is off. **PART 11 IS WHAT WE ARE NOT DOING.**
 
 **THIS IS NOT `ERROR.md`.** That file is the list of *bugs in 004* — things that
 give a wrong answer, and where they are. This one is the *machinery a failure is
@@ -373,9 +375,242 @@ these cost almost nothing more.
 
 ---
 
-# Part 9 — left to the author
+---
 
-Red notes. None of them blocks E1–E6 or R1–R6.
+# Part 10 — THE FEATURE REGISTER: one binary, and `satl --rebuild`
+
+The author, 2026-09-18:
+
+> those are things that we actually have to build that will also slow down the
+> interpreter slightly, we just have to hide all of them behind
+> satellite.variable.bool's so it only slows the interpreter down by a nanosecond
+> while it checks all of the values, we could technically hide all of these into
+> something that we build -- a satellite.variable.binary where each value in the
+> width is a feature, then we can just scan this single binary and it flips on or
+> off all of the features, this is how we'll keep the interpreter really fast!
+
+> so we do this... satl --rebuild is the command to rebuild the arguments string,
+> so we have to set the arguments how we want them, then run satl --rebuild to
+> rebuild the binary string that is stored inside of config.ini, it saves it and
+> then it just loads that single value...
+
+**THE IDEA IS RIGHT AND THE REASON IS NOT THE ONE IT LOOKS LIKE.** Measured
+2026-09-18, clang 24, -O2, this machine, 2,000,000,000 statements, all eight
+features OFF (the common case), two runs agreeing to the third digit:
+
+| how the eight features are gated | ns per statement | over the floor |
+|---|---|---|
+| **no gates at all** (the floor) | **0.224** | — |
+| eight separate `bool`s | 1.81 | +1.59 |
+| **one bitmask, eight bit tests** | **1.84** | **+1.62** |
+| one bitmask, **one** test per statement | 0.72 | +0.50 |
+| **split loop, tested ONCE on entry** | **0.225** | **+0.001** |
+
+Read the middle row twice. **A bitmask tested bit by bit is not faster than eight
+separate bools** — 1.84 against 1.81, which is noise. It cannot be: either way
+the processor runs eight compare-and-branches, and a branch that is always false
+is already free to predict. Scanning one binary instead of eight bools does not
+remove the eight tests; it only changes where the bits are stored.
+
+**WHAT THE ONE BINARY ACTUALLY BUYS IS THE ROW BELOW IT.** Because all eight
+features live in ONE value, one test can gate ALL of them:
+
+```
+    if (flags != 0) { ... the eight checks ... }
+```
+
+That is 0.72 ns against 1.84 — **two and a half times cheaper**, and it gets
+cheaper the more features are added, because the number of tests stops growing
+with the number of features. **That is the author's idea, and it is a good one.**
+
+**AND THE LAST ROW IS THE ONE TO BUILD.** Hoist the test out of the loop
+entirely: two walker loops, one plain and one instrumented, chosen ONCE.
+
+```
+    if (flags == 0) run_statements_plain(...);     // no check in the loop at all
+    else            run_statements_watched(...);
+```
+
+**0.225 ns against the 0.224 ns floor — the features cost NOTHING when they are
+off.** Not a nanosecond, not a branch: the checks are not in the compiled loop.
+
+At a billion statements that is the difference between **1.6 seconds of pure
+overhead and none**. For a language whose client reads corpora, that is the whole
+argument.
+
+## 10.1 — `satl --rebuild`, which is exactly the right shape
+
+The author's command is what makes the split affordable, because it moves every
+cost to a moment nobody is timing:
+
+1. A person sets the features they want — settings, the way `arguments.access`
+   already works.
+2. **`satl --rebuild`** composes them into ONE binary and writes it to
+   `config.ini` as a single value.
+3. Start-up reads **that one value** — one parse, one integer, once per run.
+4. The walker branches on it **once** and then runs a loop with no checks in it.
+
+So the per-run cost of the whole debug system, with everything off, is: one line
+read from config.ini, and one integer compare. **And the per-statement cost is
+zero.**
+
+**`--rebuild` IS ALLOWED TO BE SLOW, AND THAT IS THE POINT.** The author:
+*"this way it remains fast, and the --rebuild takes a long time only, that is
+what is slow"*. Nothing it does is on any path a person waits on twice, so it may
+do work that would be unthinkable per run — validate every bit against the
+setting it came from, walk every library and check the features it claims,
+re-measure the machine, write a human-readable table of what it turned on. **A
+step that runs once per machine has no budget**, and the only mistake available
+is putting something in start-up that belongs here.
+
+**AND IT IS THE SECOND COMMAND OF THAT SHAPE, WHICH MEANS IT IS A PATTERN.**
+SATELLITE_ARGUMENTS Phase 8 has `satl --config`: a thread probe that takes 9.6
+seconds and is *"unthinkable at every startup and nothing at all once per
+machine"*. Same argument, same answer, and the two are siblings — `--config`
+measures what the MACHINE can do, `--rebuild` composes what the PERSON asked for.
+They write to the same config.ini and should agree about how: whether they are
+one command with two halves, or two commands, is red note 13.
+
+## 10.2 — The rules the register has to keep
+
+1. **A BIT'S MEANING NEVER MOVES. APPEND ONLY.** This is the words.tsv rule
+   again, and it bites harder here: a `config.ini` written by an older build
+   holds a number, and if bit 5 stopped meaning "trace" and started meaning "dump
+   memory", that old number silently turns on the wrong feature. A bit is
+   retired by being **abandoned**, never reused.
+2. **THE FAST PATH IS A `uint64_t`; THE SATELLITE VALUE IS A BINARY.** satellite
+   has no limits and `satellite.variable.binary` is any width — but the walker's
+   one compare has to be a register compare, not a bignum compare. So: 64 bits
+   for the features the WALKER tests, and the satellite-visible binary may be
+   wider for everything else. If 64 is ever not enough for hot features, a second
+   word is one more compare, not a redesign.
+3. **READ-ONLY AFTER START-UP, OR IT IS A DATA RACE.** `arguments.threads_startup`
+   is 1,024 threads. A flag a running program can flip is a value 1,024 threads
+   read while one writes. Either the register is fixed once at start-up — which
+   is what `--rebuild` naturally gives — or every read is atomic and the split
+   loop above is impossible.
+4. **THE REPORT PRINTS THE REGISTER, SPELLED OUT.** A report gathered with half
+   the features off is a report with holes in it, and a person reading it has no
+   way to tell a section that was empty from a section that was never collected.
+   §A of Part 7 carries the register as bits AND as names.
+5. **`arguments.access` IS ALREADY A SETTING AND HAS TO BECOME BIT 0.** It is
+   built, it lasts in config.ini, and it is the valve for the last-known store.
+   Either `--rebuild` folds it into the register, or there are two mechanisms for
+   one job — which is the thing R6 of SATELLITE_ARGUMENTS refused for arguments
+   and should refuse here.
+
+---
+
+# Part 11 — WHAT WE ARE NOT DOING
+
+The author asked: *"tell me about what we are not doing"*. Honestly, then —
+fourteen things, with the ones that are nearly free marked, because those are the
+ones being left on the table for no reason.
+
+## 11.1 — A defect in this file's own plan
+
+**THE `syntax:` ROW CAN LIE, AND PART 3 IS WHY.** Part 3 recommends re-reading
+the source file at report time rather than keeping the text. That is right for
+cost and it has a hole nobody has closed: **if the file changed since it was
+loaded, the line printed under `syntax:` is not the line that ran.** A person
+editing while a long program runs gets a caret pointing at the wrong code, and
+nothing says so. The fix is small — hash or stat the file at load, check it at
+report time, and say "the file changed since this ran" instead of printing a line
+that is not true. **It is written here because it is my own plan's flaw, found
+while answering this question rather than by somebody debugging at 3am.**
+
+## 11.2 — The ones that are nearly free
+
+Each of these is cheap *because* something already planned is being built, and
+each costs nothing when its bit is off.
+
+| what | why it is nearly free |
+|---|---|
+| **Per-word call counts** — how many times each of 367 words ran | The word's code IS an array index (`function_table.hpp`). One `++counts[code]` |
+| **Coverage** — which statements never ran at all | One bit per statement position; the statement ring already walks there |
+| **Watchpoints** — stop when a named variable changes | The last-known store (§F) already intercepts every write |
+| **The reproduction command** — the exact line to run it again, with the cwd | Every piece is already in `Arguments` |
+| **Timing per capsule** — where the time went | The frame stack (R7) is already push/pop; a clock read is one instruction |
+| **`satellite.assert(x)`** — a program raises its own report | The report exists; this is a word and a library |
+
+## 11.3 — The ones that are real work, and worth it
+
+- **A STEP DEBUGGER.** Break at a line, step one statement, look. The walker
+  already keeps a position and the frame stack gives the rest. This is the single
+  biggest debugging win not in Parts 5 or 8, and it is *reachable* — most of its
+  machinery is being built for the report anyway.
+- **A POST-MORTEM PROMPT.** 004 already has `--repl`. Dropping into it **at the
+  point of failure, with that frame's variables loaded**, turns every crash into
+  an investigation instead of a report to read. The two pieces exist separately
+  and have never been joined.
+- **DETERMINISTIC REPLAY.** Record what came in — `console.input`, file reads,
+  the random seed, the clock — so a failing run can be run again identically. For
+  a language with 1,024 threads and a PCG generator this is the difference
+  between a bug that is fixed and a bug that is "not reproducible".
+- **A THREAD SECTION.** Part 7's §K counts threads. It does not say **what each
+  one is doing**, who is waiting on whom, or which of them was the one that
+  failed. With threads as the point of the language, a report with a thread
+  *count* is half a report.
+- **MEMORY ACCOUNTING — WHAT IS HOLDING IT.** Not how much this process uses
+  (§K), but **which variables and which structures**. On 2026-09-17 a queue took
+  5.9 GB in 48 seconds and finding it took a measurement rig; a report that named
+  the biggest holder would have said it outright.
+- **A STREAMING TRACE.** The statement ring (§G) keeps the last N for a crash. A
+  trace writes **all** of them to a file as they happen, which is the other
+  question — not "what was it doing when it died" but "what did it actually do".
+  Different bit, different cost, same collection point.
+- **WHAT KILLED IT.** If the OOM killer took the process, or a signal did, the
+  report should say so rather than not existing. `/proc/self/status` and a
+  handler; related to R15 and red note 7.
+- **A STABLE, PARSEABLE FORM.** R17 proposes `--report-diff`. Diffing only works
+  if the report has a fixed order and a machine-readable shape — decided now, or
+  every tool built on it later fights the formatting.
+
+---
+
+# Part 12 — the milestones for Parts 10 and 11
+
+**F1–F8 are the feature register.** They come first: every debug feature below
+hides behind it, and building the features before the register means retro-fitting
+each one.
+
+## Phase F — the register
+
+- **F1** — `FeatureRegister`: one `uint64_t`, one named bit per feature, **append-only**, with the rule written above it.
+- **F2** — Read it from config.ini at start-up: one value, one parse.
+- **F3** — `satl --rebuild`: compose the settings into the binary, write it, print what it turned on.
+- **F4** — Fold `arguments.access` in as bit 0, so there is one mechanism and not two (rule 5).
+- **F5** — **Split the walker**: `run_statements_plain` and `run_statements_watched`, chosen once. **This is the milestone the 0.225 ns depends on.**
+- **F6** — Re-measure with a real program after F5. `experiments/energy/release.satl` is about a million statements a second and is the shape that would show any regression.
+- **F7** — §A of the report prints the register as bits AND as names (rule 4).
+- **F8** — The register is fixed after start-up; a program that tries to write one says so (rule 3).
+
+## Phase G — the nearly-free ones (11.2)
+
+- **G1** — Per-word call counts: `++counts[code]`, and a report section ordered by count.
+- **G2** — Coverage: one bit per statement, and a section naming statements that never ran.
+- **G3** — Watchpoints, off the last-known store's write path.
+- **G4** — The reproduction command line, in the report.
+- **G5** — Timing per capsule, off the frame stack.
+- **G6** — `satellite.assert(x)`: a word, a library, and the report it raises.
+
+## Phase H — the real work (11.3)
+
+- **H1** — The file-changed check (11.1). **Small, and it closes a hole this file opened.**
+- **H2** — What killed it: signal, OOM killer, exit status.
+- **H3** — The thread section: what each thread was doing.
+- **H4** — Memory accounting: which variables hold the most.
+- **H5** — The streaming trace, its own bit.
+- **H6** — A stable, parseable report form, and `--report-diff` on top of it.
+- **H7** — Deterministic replay: record the inputs and the seed.
+- **H8** — The step debugger: break, step, inspect.
+- **H9** — The post-mortem prompt: `--repl` at the point of failure, that frame loaded.
+
+---
+
+# Part 13 — left to the author
+
+Red notes. None of them blocks E1–E6, R1–R6 or F1–F5.
 
 1. **Does a NOTICE use the same block as a failure?** S0721 is not fatal and
    prints the identical frame. A person may read two rules of dashes as "this run
@@ -427,3 +662,37 @@ Red notes. None of them blocks E1–E6 or R1–R6.
    `PWD`, `SHELL`, `TERM`, `LANG`, `SATELLITE_*`. The author should say whether
    that list is right before it ships, because adding to it later is easy and
    taking something out of a report somebody already pasted is impossible.
+
+## From the feature-register brief, 2026-09-18
+
+10. **How many bits does the WALKER get?** Rule 2 of 10.2 puts the hot features
+    in one `uint64_t` so the split test is a register compare, and leaves the
+    satellite-visible value a full-width binary. Sixty-four hot features is a lot
+    — Phases G and H together want about fifteen — but the number has to be said
+    out loud once, because a 65th hot feature is a second compare in the branch
+    that Part 10 measured at 0.001 ns, and nobody should discover that by adding
+    one.
+11. **Can a program turn a feature on mid-run?** Rule 3 says no, and says why:
+    1,024 threads reading a value one thread writes is a data race, and the split
+    walker is impossible if the answer can change inside the loop. But it forbids
+    something genuinely useful — `satellite.trace_on()` around one suspect
+    capsule. A middle answer exists: the register is fixed, and the SPLIT is
+    re-chosen at a capsule boundary, where no loop is in flight. That is a real
+    design and it is not free, so it is the author's.
+12. **What does `--rebuild` do with a bit this build does not know?** A newer
+    config.ini read by an older satl holds bits with no meaning here. Ignore them
+    silently, refuse, or say so and carry on — and the same question upside down
+    for an older file read by a newer satl, which is the ordinary case after
+    every upgrade.
+13. **Is `--rebuild` the same command as `--config`?** They are siblings: both
+    run once per machine, both may be slow, both write config.ini. `--config`
+    measures what the MACHINE can do (the 9.6-second thread probe,
+    SATELLITE_ARGUMENTS Phase 8); `--rebuild` composes what the PERSON asked for.
+    One command with two halves is fewer things to explain; two commands let a
+    person recompose their features without re-probing threads for ten seconds.
+14. **Which bit is `arguments.access`?** Rule 5 says it becomes bit 0, because it
+    is already built, already lasting, and already the valve for the last-known
+    store — and two mechanisms for one job is what R6 of SATELLITE_ARGUMENTS
+    refused. But it ships TODAY as a `flag_setting` library, so folding it in is
+    a change to something that works, and the author should say whether the
+    setting stays the spelling with the register behind it, or is replaced.
