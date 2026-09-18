@@ -65,6 +65,12 @@ enum MachineCode : signed long long int {
     setting_is_not_a_flag = 34,         // a true/false setting was given something that is not one
     word_takes_no_assignment = 35,      // `<word> = ...` for a word that is not a setting
 
+    // 36-38 WERE ADDED 2026-09-18 for `satl --config`, which is the first thing
+    // satl does that ASKS THE MACHINE A QUESTION and can be told nothing.
+    machine_fact_not_read = 36,         // /proc or sysconf states nothing where a fact was expected
+    setting_out_of_range = 37,          // a number satl was given is past what the machine allows
+    machine_conf_unwritable = 38,       // $HOME/.satl/machine.conf could not be written
+
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
     // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
@@ -110,6 +116,9 @@ inline const char *machine_code_name(signed long long int code)
     case config_file_unreadable: return "config_file_unreadable";
     case setting_is_not_a_flag: return "setting_is_not_a_flag";
     case word_takes_no_assignment: return "word_takes_no_assignment";
+    case machine_fact_not_read: return "machine_fact_not_read";
+    case setting_out_of_range: return "setting_out_of_range";
+    case machine_conf_unwritable: return "machine_conf_unwritable";
     case interrupted: return "interrupted";
     }
     return "not_on_the_list";

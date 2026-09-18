@@ -101,10 +101,10 @@ inline const std::array<FeatureFact, kFeatureCount> &feature_facts()
         {"access",            true,  true,  "keep the last known name, type and value of everything"},
         {"history",           false, false, "write every value a name ever held to disk"},
         {"frames",            false, false, "keep a frame stack, so every frame's variables can be read"},
-        {"statements",        false, false, "the statement ring: the last N statements run"},
+        {"statements",        true,  false, "the statement ring: the last N statements run"},   // program_walk.cpp
         {"trace",             false, false, "stream every statement to a file as it happens"},
         {"coverage",          false, false, "which statements ran, and which never did"},
-        {"word_counts",       false, false, "how many times each word ran"},
+        {"word_counts",       true,  false, "how many times each word ran"},   // expression.cpp, call_word
         {"capsule_timing",    false, false, "where the time went, per capsule"},
         {"watchpoints",       false, false, "stop when a named variable changes"},
         {"memory_accounting", false, false, "which variables are holding the memory"},

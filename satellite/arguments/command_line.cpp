@@ -3,6 +3,7 @@
 #include "../machine/machine_codes.hpp"
 #include "../machine/machine_state.hpp"
 
+#include <cstdlib>
 #include <cstring>
 
 namespace satellite004 {
@@ -51,6 +52,25 @@ signed long long int read_command_line(int argc, char **argv, CommandLine &into)
         into.command = Command::rebuild;
         return success;
     }
+    if (word == "--config") {
+        // ONE OPTIONAL WORD, AND THAT IS THE ONLY COMMAND HERE THAT TAKES ONE.
+        // `satl --config` probes what the machine allows less headroom; `satl
+        // --config 8192` probes exactly that many. The cap is there because the
+        // uncapped run is nine seconds and three gigabytes on this machine, and
+        // a command nobody can afford to try once is a command nobody tries.
+        if (i + 2 < argc)
+            return refuse("--config takes at most one number, and \"" + std::string(argv[i + 2]) + "\" came after it");
+        into.command = Command::config;
+        if (i + 1 < argc) {
+            const std::string most = argv[i + 1];
+            if (most.empty() || most.find_first_not_of("0123456789") != std::string::npos)
+                return refuse("--config takes a count of threads, and \"" + most + "\" is not one");
+            into.most = std::strtoull(most.c_str(), nullptr, 10);
+            if (into.most == 0)
+                return refuse("--config 0 probes nothing -- leave the number off to probe what this machine allows");
+        }
+        return success;
+    }
     if (word == "--repl") {
         if (i + 1 < argc)
             return refuse("--repl takes no other words, and \"" + std::string(argv[i + 1]) + "\" was given");
@@ -91,6 +111,7 @@ std::string usage_lines()
            "    satl --debug <file.satl> [words...]   run it, showing every state and argument\n"
            "    satl --repl                           the prompt (not built yet: M0.6)\n"
            "    satl --rebuild                        compose every setting into one binary\n"
+           "    satl --config [most]                  measure what this machine can do, once\n"
            "    satl --version, -V                    the version, revision and build\n"
            "    satl --help, -h                       this\n"
            "\n"

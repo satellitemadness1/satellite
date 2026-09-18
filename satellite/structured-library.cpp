@@ -38,6 +38,7 @@
 #include "config/feature_register.hpp"
 #include "config/feature_switch.hpp"
 #include "config/rebuild.hpp"
+#include "config/run_config.hpp"
 #include "machine/critical_report.hpp"
 #include "machine/exit_status.hpp"
 #include "machine/machine_codes.hpp"
@@ -132,6 +133,12 @@ signed long long int run_satl(int argc, char **argv)
     // into it would be advice against the thing they are already doing.
     if (command_line.command == Command::rebuild)
         return run_rebuild();
+
+    // `satl --config`, for the same reason and one more: it writes machine.conf
+    // and reads nothing out of config.ini, so a missing config.ini has no
+    // bearing on it at all.
+    if (command_line.command == Command::config)
+        return run_config(command_line.most);
 
     // THE LASTING SETTINGS, AND SAYING SO WHEN THEY ARE NOT THERE. Checked here
     // and not above, so `satl --version`, `satl --help` and a bare `satl` stay

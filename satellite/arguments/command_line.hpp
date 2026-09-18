@@ -9,6 +9,7 @@
 //     satl [--debug] <file> [words...]       the same, when <file> does not begin with -
 //     satl [--debug] --repl                  the prompt (M0.6); until then 14 not_built_yet
 //     satl --rebuild                         compose every setting into one binary and save it
+//     satl --config [most]                   measure what this machine can do, once
 //
 // --debug IS THE ONLY OPTION AND IT COMES BEFORE THE COMMAND WORD. --version and
 // --help are the whole command line. After the file EVERY word is the program's,
@@ -29,13 +30,17 @@ namespace satellite004 {
 
 // APPENDED, NEVER INSERTED -- `rebuild` is 2026-09-18's and goes on the end for
 // the same reason a word code does: nothing here should renumber when one is added.
-enum class Command { opening, version, help, run, repl, rebuild };
+enum class Command { opening, version, help, run, repl, rebuild, config };
 
 struct CommandLine {
     Command command = Command::opening;
     bool debug = false;
     std::string file;                  // Command::run only
     std::vector<std::string> words;    // Command::run only: the program's own, in order
+
+    // Command::config only: the most threads to probe, or 0 for the machine's
+    // own ceiling less headroom. See run_config.hpp for why the cap exists.
+    unsigned long long int most = 0;
 };
 
 // Answers success, or command_line_not_understood once it has said why on stderr.
