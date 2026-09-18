@@ -451,6 +451,28 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
     }
 
     if (word::is_word_code(code)) {
+        // A WORD FOLLOWED BY `=` IS A SETTING BEING WRITTEN -- the third shape a
+        // statement can start with, checked here so the walker's arm for it is
+        // ever reached. The checker runs first and refuses what it has no shape
+        // for, so a shape added to program_walk.cpp and not to this file is a
+        // shape no program can get to.
+        //
+        // THE LIBRARY DECIDES WHETHER THE WORD IS A SETTING, the same way
+        // expression.cpp decides it: `flag_setting` filled in. A word with `=`
+        // after it and no setting library falls through to the refusal below and
+        // is told it is not a call -- which is true, and is what it was told
+        // before settings existed.
+        if (code_at(row, at + 1) == token::assign_token) {
+            const NumberRow *library = functions[code];
+            if (library != nullptr && library->scenarios.flag_setting != nullptr) {
+                const std::size_t stop = past_the_statement(row, at);
+                const signed long long int held =
+                    names_in_statement(row, at, stop, declared, capsules, functions, why);
+                at = stop;
+                return held;
+            }
+        }
+
         // A WORD NOT FOLLOWED BY ( IS NOT A CALL, and with a name after it, it
         // was a declaration above. Anything else has no shape yet.
         if (code_at(row, at + 1) != token::left_parenthesis_token) {

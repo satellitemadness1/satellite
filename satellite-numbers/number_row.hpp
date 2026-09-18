@@ -37,6 +37,23 @@ struct DirectoryReply {
 // stop and answer `interrupted`; null when nothing can interrupt this call.
 using DirectoryScenario = DirectoryReply (*)(const std::string &path, bool given, const volatile sig_atomic_t *stop);
 
+// WHAT A SETTING ANSWERS -- a word a program can both read and write.
+//
+// ONE FUNCTION POINTER AND NOT TWO, with `writing` choosing which way it runs.
+// A getter and a setter as separate fields would let a library fill in one and
+// leave the other null, and a setting that can be read and not written is a
+// half-built word that nothing in the row would say was half-built. One pointer
+// cannot be half-filled.
+struct SettingReply {
+    signed long long int code = 0;   // success, or why it could not
+    bool flag = false;               // what it says now -- after a write, what was written
+    std::string reason;              // the system's own word for a failure, empty on success
+};
+
+// `writing` false reads and ignores `value`; true writes `value` and answers it
+// back, so a caller never has to read again to know what it has.
+using FlagSettingScenario = SettingReply (*)(bool writing, bool value);
+
 struct Scenarios {
     // The most likely scenario: display a string.
     signed long long int (*text)(const std::string &text, bool endline) = nullptr;
@@ -50,6 +67,12 @@ struct Scenarios {
     // field existed still describes itself correctly, because everything it fills
     // in is still where it was. satellite.directory's three words (PLAN M0.6).
     DirectoryScenario directory = nullptr;
+
+    // APPENDED LAST AGAIN -- THE SETTING, 2026-09-18, AND THE FIRST SCENARIO
+    // THAT ANSWERS A VALUE INSTEAD OF CONSUMING ONE. Every scenario above takes
+    // what a program hands it and reports how it went; `arguments.access` is
+    // read as well as written, so it is the shape none of them has.
+    FlagSettingScenario flag_setting = nullptr;
 };
 
 struct LibraryRow {

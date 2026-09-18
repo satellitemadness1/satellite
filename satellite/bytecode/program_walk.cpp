@@ -797,6 +797,61 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     return success;
 }
 
+// `<word> = <expr>` -- a setting being written. `arguments.access = true`.
+//
+// THE THIRD THING A STATEMENT CAN START WITH. Until this, a word at the start of
+// a line was a declaration (`<word> <name>`) or a call (`<word>(`), and those
+// two were told apart by the token after the word. A setting is the third, told
+// apart the same way: the token after it is `=`.
+//
+// IT IS NOT run_assignment(). That one writes a VariableTable entry and its
+// whole job is the declared type outliving the line -- there is no declaration
+// here, no name, and nothing in the table. The two share the shape `x = expr`
+// and nothing else.
+signed long long int run_setting_assignment(const std::vector<std::bitset<16>> &row,
+                                            std::size_t &at,
+                                            Code code,
+                                            const FunctionTable &functions,
+                                            VariableTable &variables,
+                                            MachineState &state)
+{
+    const std::string spelling = word::spelling_of(code);
+    const NumberRow *library = functions[code];
+
+    // REFUSED BEFORE THE RIGHT-HAND SIDE IS EVALUATED, and that order is the
+    // point: `arguments.machine.cores = satellite.console.input("n")` must not
+    // ask a person for a number and THEN say the word cannot be written.
+    if (library == nullptr || library->scenarios.flag_setting == nullptr)
+        return report_error("satl(run): " + spelling + " is not a setting a program can write to",
+                            word_takes_no_assignment);
+
+    ++at;                                   // past the word
+    ++at;                                   // past the `=`
+
+    ExpressionContext context{variables, functions, state};
+    Value value = evaluate_expression(row, at, context);
+    if (context.code != success)
+        return report_error("satl(run): in " + spelling + " = ..., " + context.why, context.code);
+    if (!read_to_the_end(row, at))
+        return report_error("satl(run): " + spelling + " = ... " + kNotReadToTheEnd, satl_line_not_understood);
+
+    // A TRUE/FALSE SETTING TAKES TRUE OR FALSE AND NOTHING ELSE. 1 and 0 are not
+    // quietly taken for them: the author's own spelling is
+    // `satellite.variable.bool history_valve = true/false`, and a number that
+    // silently meant true would make `arguments.access = 2` a line with no
+    // meaning that ran anyway.
+    if (!value.is_bool())
+        return report_error("satl(run): " + spelling + " is true or false, and was given " + value.kind_name(),
+                            setting_is_not_a_flag);
+
+    const SettingReply said = library->scenarios.flag_setting(true, *value.as_bool());
+    if (said.code != success)
+        return report_error("satl(run): " + spelling + " could not be written" +
+                                (said.reason.empty() ? "" : " -- " + said.reason),
+                            said.code);
+    return success;
+}
+
 signed long long int run_statements(const BytecodeRegistry &registry,
                                     const CapsuleTable &capsules,
                                     const FunctionTable &functions,
@@ -860,6 +915,21 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             at = k;
             const signed long long int stopped =
                 run_assignment(row, at, code, name, functions, variables, state);
+            if (stops_the_program(stopped))
+                return stopped;
+            continue;
+        }
+
+        // A WORD FOLLOWED BY `=` IS A SETTING BEING WRITTEN, and this test comes
+        // before the call below for the reason the declaration test comes before
+        // it too: `arguments.access = true` is a word, so the call arm would
+        // take it, call it with no argument, and skip past the `= true` without
+        // a word said.
+        if (word::is_word_code(code) && code_at(row, at + 1) == token::assign_token) {
+            std::size_t k = at;
+            const signed long long int stopped =
+                run_setting_assignment(row, k, code, functions, variables, state);
+            at = past_the_statement(row, k);
             if (stops_the_program(stopped))
                 return stopped;
             continue;

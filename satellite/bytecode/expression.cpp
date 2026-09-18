@@ -465,6 +465,35 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token)
         return call_word(row, at, context);
 
+    // A SETTING READ BY ITS BARE NAME -- `arguments.access`, no parentheses.
+    //
+    // THIS IS WHY THE TEST ABOVE IS NOT ENOUGH. Every other word in the language
+    // is a CALL and a call is spelled with brackets, so `is_word_code` and a `(`
+    // told words apart from everything else with no list of types. A setting is
+    // the first word that is a VALUE, and a value has no brackets -- so it looks
+    // like a word the expression reader has no arm for, and before this it was
+    // one.
+    //
+    // THE LIBRARY DECIDES, NOT A LIST OF CODES HERE. A word is a setting exactly
+    // when its library filled in `flag_setting`, which keeps this arm from
+    // becoming the hand-written table of names that the code-is-the-index
+    // dispatch exists to avoid. A word with no library falls through to the
+    // refusals below and still says `not_built_yet` with its own name.
+    if (word::is_word_code(code)) {
+        const NumberRow *library = context.functions[code];
+        if (library != nullptr && library->scenarios.flag_setting != nullptr) {
+            const SettingReply said = library->scenarios.flag_setting(false, false);
+            ++at;
+            if (said.code != success) {
+                context.refuse(said.code, std::string(word::spelling_of(code)) +
+                                              " could not be read" +
+                                              (said.reason.empty() ? "" : " -- " + said.reason));
+                return Value();
+            }
+            return Value::of_bool(said.flag);
+        }
+    }
+
     // A NAME IS A VARIABLE, and a name with no declaration is name_not_declared
     // (25) rather than a silent nothing -- which is what 003 does and what a
     // person can act on.

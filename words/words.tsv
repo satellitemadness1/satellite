@@ -363,3 +363,5 @@
 1 24	satellite.constructor	1 25
 1 24 0	satellite.constructor()	1 25 0
 1 6 16	satellite.variable.percentage	
+1 14 1 1 10	satellite.library.main.arguments.access	
+1 14 1 1 11	satellite.library.main.arguments.history	

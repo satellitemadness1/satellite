@@ -56,6 +56,15 @@ enum MachineCode : signed long long int {
     directory_unreadable = 30,          // it IS a directory and its entries cannot be read; the reason is said
     path_holds_a_nul = 31,              // a path with a NUL in it: c_str() would act on the part before it
 
+    // 32-35 WERE ADDED 2026-09-18, for the first setting a program can WRITE.
+    // `arguments.access = true` is not a call and not a variable: it is a word
+    // that remembers, so it needs the two ways writing fails (the file, and the
+    // kind) and the two ways the word is wrong.
+    config_file_unwritable = 32,        // $HOME/.satl/config.ini could not be written; the reason is said
+    config_file_unreadable = 33,        // it exists and could not be read
+    setting_is_not_a_flag = 34,         // a true/false setting was given something that is not one
+    word_takes_no_assignment = 35,      // `<word> = ...` for a word that is not a setting
+
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
     // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
@@ -97,6 +106,10 @@ inline const char *machine_code_name(signed long long int code)
     case not_a_directory: return "not_a_directory";
     case directory_unreadable: return "directory_unreadable";
     case path_holds_a_nul: return "path_holds_a_nul";
+    case config_file_unwritable: return "config_file_unwritable";
+    case config_file_unreadable: return "config_file_unreadable";
+    case setting_is_not_a_flag: return "setting_is_not_a_flag";
+    case word_takes_no_assignment: return "word_takes_no_assignment";
     case interrupted: return "interrupted";
     }
     return "not_on_the_list";

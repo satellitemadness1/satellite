@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 365;
+inline constexpr unsigned int kWordsInTable = 367;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -362,6 +362,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x05010E0101070000ULL, 4370},  // 1 14 1 1 7 -- satellite.library.main.arguments.process
     {0x05010E0101080000ULL, 4374},  // 1 14 1 1 8 -- satellite.library.main.arguments.session
     {0x05010E0101090000ULL, 4381},  // 1 14 1 1 9 -- satellite.library.main.arguments.length
+    {0x05010E01010A0000ULL, 4462},  // 1 14 1 1 10 -- satellite.library.main.arguments.access
+    {0x05010E01010B0000ULL, 4463},  // 1 14 1 1 11 -- satellite.library.main.arguments.history
     {0x0501160404000000ULL, 4428},  // 1 22 4 4 0 -- satellite.system.memory.swap()
     {0x0501160404010000ULL, 4429},  // 1 22 4 4 1 -- satellite.system.memory.swap.free()
     {0x0501160404020000ULL, 4430},  // 1 22 4 4 2 -- satellite.system.memory.swap.total()
@@ -790,6 +792,8 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.constructor", {1, 24, 0, 0, 0, 0, 0}, 2},
     {"satellite.constructor()", {1, 24, 0, 0, 0, 0, 0}, 3},
     {"satellite.variable.percentage", {1, 6, 16, 0, 0, 0, 0}, 3},
+    {"satellite.library.main.arguments.access", {1, 14, 1, 1, 10, 0, 0}, 5},
+    {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 0, 0}, 5},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -902,6 +906,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.library.main()", 4330},
     {"satellite.library.main.arguments", 4331},
     {"satellite.library.main.arguments()", 4332},
+    {"satellite.library.main.arguments.access", 4462},
     {"satellite.library.main.arguments.build", 4355},
     {"satellite.library.main.arguments.build()", 4356},
     {"satellite.library.main.arguments.build.built", 4364},
@@ -912,6 +917,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.library.main.arguments.build.make", 4361},
     {"satellite.library.main.arguments.build.standard", 4359},
     {"satellite.library.main.arguments.build.standard_library", 4362},
+    {"satellite.library.main.arguments.history", 4463},
     {"satellite.library.main.arguments.interpreter", 4365},
     {"satellite.library.main.arguments.interpreter()", 4366},
     {"satellite.library.main.arguments.interpreter.library_path", 4368},
