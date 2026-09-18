@@ -159,6 +159,8 @@ inline constexpr Code sort_token = 0x0B1E;  // sort  [METHOD] object.sort() -- t
 inline constexpr Code by_name_token = 0x0B1F;  // by_name  [METHOD] object.sort().by_name() -- ordered A to Z, ALWAYS; .reverse() is how y
 inline constexpr Code by_value_token = 0x0B20;  // by_value  [METHOD] object.sort().by_value() -- smallest first, ALWAYS; .reverse() is how
 inline constexpr Code reverse_token = 0x0B21;  // reverse  [METHOD] object.reverse() -- a list, a string, a number, a binary or a hex, bac
+inline constexpr Code keys_token = 0x0B22;  // keys  [METHOD] index.keys -- every key, as a list, IN THE ORDER THEY WERE PUT IN (words.
+inline constexpr Code values_token = 0x0B23;  // values  [METHOD] index.values -- every value, as a list, in the same order as .keys (wor
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
@@ -209,6 +211,8 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "by_name") return by_name_token;
     if (spelling == "by_value") return by_value_token;
     if (spelling == "reverse") return reverse_token;
+    if (spelling == "keys") return keys_token;
+    if (spelling == "values") return values_token;
     return 0;
 }
 
@@ -216,11 +220,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token;
 }
 
 
-inline constexpr int kTokenCount = 112;
+inline constexpr int kTokenCount = 114;
 
 } // namespace token
 } // namespace satellite004

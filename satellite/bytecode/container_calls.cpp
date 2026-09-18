@@ -6,6 +6,9 @@
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
 #include "../satellite_object/string_and_string_compare.hpp"
+#include "../satellite_object/fast_paths.hpp"
+#include "type_shape.hpp"
+#include "word_codes.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 
 #include <algorithm>
@@ -28,6 +31,20 @@ const char *name_of(token::Code method)
     case token::by_name_token: return "by_name";
     case token::by_value_token: return "by_value";
     case token::reverse_token: return "reverse";
+    case token::first_token: return "first";
+    case token::last_token: return "last";
+    case token::empty_token: return "empty";
+    case token::clear_token: return "clear";
+    case token::insert_token: return "insert";
+    case token::remove_token: return "remove";
+    case token::remove_at_token: return "remove_at";
+    case token::remove_first_token: return "remove_first";
+    case token::remove_last_token: return "remove_last";
+    case token::index_of_token: return "index_of";
+    case token::truncate_token: return "truncate";
+    case token::search_token: return "search";
+    case token::keys_token: return "keys";
+    case token::values_token: return "values";
     default: return "that";
     }
 }
@@ -92,6 +109,36 @@ bool all_comparable(const std::vector<satelliteObject> &items, std::string &why)
     return true;
 }
 
+
+// THE ONES A DICT HAS NO MEANING FOR. Every one of these names a POSITION, and
+// an index has no positions -- it has keys. Refusing is better than inventing an
+// order for them to count along, because the order a dict keeps is the order
+// things were PUT IN, and `remove_at(2)` against that would quietly depend on
+// the history of the program rather than on anything visible in the line.
+bool a_position_method(token::Code method)
+{
+    return method == token::insert_token || method == token::remove_at_token ||
+           method == token::truncate_token || method == token::index_of_token ||
+           method == token::search_token || method == token::append_token;
+}
+
+// TAKE AN ENTRY OUT OF AN INDEX, keeping the insertion order of the rest.
+//
+// THE POSITIONS AFTER IT ALL MOVE, so the lookup table has to be repaired --
+// every entry after the hole is now one place earlier. Doing it here, once, is
+// what keeps `where` and `entries` from silently disagreeing; an index whose
+// table points one past itself answers the WRONG VALUE for a key rather than
+// failing, which is the worst way for this to break.
+void take_entry_out(satelliteIndex &index, std::size_t at)
+{
+    std::string key_name;
+    if (key_name_of(index.entries[at].first, key_name))
+        index.where.erase(key_name);
+    index.entries.erase(index.entries.begin() + static_cast<std::ptrdiff_t>(at));
+    for (std::pair<const std::string, std::size_t> &row : index.where)
+        if (row.second > at) --row.second;
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -106,10 +153,22 @@ Value reverse_of(const Value &receiver, bool &handled, std::string &why)
     // order -- where reversing UTF-8 bytes would give a string that is not text
     // at all. This is the whole reason the language has its own string type.
     if (const satellite_string *text = receiver.as_string()) {
+        // WALKED ONCE FORWARD, THEN WRITTEN BACWARDS. Indexing it from the end
+        // instead -- code_at_unchecked(n) for n = size-1 down to 0 -- is O(1) per
+        // character only while the string is narrow; the moment it holds ONE wide
+        // character every index walks from the start, and reversing a name with
+        // an accent in it becomes quadratic. The units are the storage, so one
+        // pass over them is one pass over the string whatever it holds.
+        std::vector<char32_t> codes;
+        codes.reserve(text->size());
+        for (std::size_t unit = 0; unit < text->units(); ) {
+            std::size_t width = 1;
+            codes.push_back(text->code_at_unit(unit, width));
+            unit += width;
+        }
         satellite_string out;
-        for (std::size_t at = text->size(); at > 0; --at) {
-            const signed long long int put = out.append_code(text->code_at_unchecked(at - 1));
-            if (put != success) {
+        for (std::size_t at = codes.size(); at > 0; --at) {
+            if (out.append_code(codes[at - 1]) != success) {
                 why = "a character in it could not be written back";
                 handled = false;
                 return Value();
@@ -168,7 +227,7 @@ Value reverse_of(const Value &receiver, bool &handled, std::string &why)
 // ---------------------------------------------------------------------------
 // A LIST'S AND AN INDEX'S METHODS.
 // ---------------------------------------------------------------------------
-Value call_container_method(token::Code method, Value &receiver, Value *home,
+Value call_container_method(token::Code method, Value &receiver, Value *home, const TypeShape *shape,
                             const std::vector<Value> &arguments, bool had_parentheses,
                             const std::string &name, ExpressionContext &context)
 {
@@ -176,11 +235,37 @@ Value call_container_method(token::Code method, Value &receiver, Value *home,
     const bool is_index = receiver.is_index();
 
     // HOW MANY ARGUMENTS, said before anything is done with them.
-    const std::size_t wanted = (method == token::append_token || method == token::contains_token) ? 1 : 0;
+    const int arity = container_arity(method);
+    if (arity < 0) {
+        context.refuse(types_do_not_meet,
+                       what + " -- a container has no " + name_of(method) +
+                           " (a list and an index have .append, .size, .empty, .first, .last, .contains, "
+                           ".index_of, .search, .insert, .remove, .remove_at, .remove_first, .remove_last, "
+                           ".clear, .truncate, .keys, .values, .sort().by_name(), .sort().by_value() and .reverse())");
+        return Value();
+    }
+    // A DICT HAS NO POSITIONS, so the methods that count along one are refused
+    // rather than given an order to count along.
+    if (is_index && a_position_method(method)) {
+        context.refuse(types_do_not_meet,
+                       what + " -- an index has keys and not positions" +
+                           (method == token::append_token
+                                ? std::string(": write ") + name + "[key] = value"
+                                : std::string(", so nothing counts along it. Take its keys first: ") + name +
+                                      ".keys." + name_of(method) + "(...)"));
+        return Value();
+    }
+    if ((method == token::keys_token || method == token::values_token) && !is_index) {
+        context.refuse(types_do_not_meet,
+                       what + " -- .keys and .values are an index's; a list already IS its items");
+        return Value();
+    }
+    const std::size_t wanted = static_cast<std::size_t>(arity);
     if (arguments.size() != wanted) {
         context.refuse(satl_line_not_understood,
-                       what + " takes " + std::to_string(wanted) + (wanted == 1 ? " argument" : " arguments") +
-                           ", and was given " + std::to_string(arguments.size()));
+                       what + " takes " + std::to_string(wanted) +
+                           (wanted == 1 ? " argument" : " arguments") + ", and was given " +
+                           std::to_string(arguments.size()));
         return Value();
     }
     if (wanted > 0 && !had_parentheses) {
@@ -192,41 +277,259 @@ Value call_container_method(token::Code method, Value &receiver, Value *home,
     // -----------------------------------------------------------------------
     // THE ONE THAT CHANGES THE NAME.
     // -----------------------------------------------------------------------
-    case token::append_token: {
-        if (is_index) {
-            // AN INDEX IS NOT APPENDED TO, and saying which spelling to use is
-            // worth more than a bare refusal: appending would have to invent a
-            // key, and a key is the one thing a program must say out loud.
-            context.refuse(types_do_not_meet,
-                           what + " -- an index is filled by its key: write " + name + "[key] = value");
-            return Value();
-        }
+    case token::append_token:
+    case token::clear_token:
+    case token::insert_token:
+    case token::remove_token:
+    case token::remove_at_token:
+    case token::remove_first_token:
+    case token::remove_last_token:
+    case token::truncate_token: {
+        // A METHOD THAT CHANGES SOMETHING NEEDS SOMETHING TO CHANGE.
+        // `{1, 2}.append(3)` is a list nothing is holding: the append would be
+        // perfectly correct and then thrown away, which is a line that does
+        // nothing -- the worst thing a language can let a person write.
         if (home == nullptr) {
-            // `{1, 2}.append(3)` -- a list nothing is holding. The append would
-            // be correct and then thrown away, which is a line that does nothing.
             context.refuse(satl_line_not_understood,
-                           what + " changes a list, and this one has no name to change -- "
-                                  "append to a name that was declared");
+                           what + " changes a container, and this one has no name to change");
             return Value();
         }
+
+        // AN INDEX'S MUTATORS, on its entries in insertion order.
+        if (IndexHandle *keys = home->as_index()) {
+            satelliteIndex &body = about_to_change(*keys);
+            const std::size_t held = body.entries.size();
+            if (method == token::clear_token) {
+                body.entries.clear();
+                body.where.clear();
+                return *home;
+            }
+            if (held == 0) {
+                context.refuse(line_past_the_end, what + ": the index is empty");
+                return Value();
+            }
+            if (method == token::remove_first_token) { take_entry_out(body, 0); return *home; }
+            if (method == token::remove_last_token) { take_entry_out(body, held - 1); return *home; }
+            // `.remove(key)` -- BY KEY, because that is the only thing an index
+            // is asked about. `.contains` reads the keys too, so the pair agree.
+            std::string key_name;
+            if (!key_name_of(arguments.front(), key_name)) {
+                context.refuse(types_do_not_meet,
+                               what + " was given " + arguments.front().kind_name() +
+                                   " as a key, and a key must be a number, a string, a bool, a binary or a percentage");
+                return Value();
+            }
+            for (std::size_t at = 0; at < body.entries.size(); ++at) {
+                std::string here;
+                if (key_name_of(body.entries[at].first, here) && here == key_name) {
+                    take_entry_out(body, at);
+                    return *home;
+                }
+            }
+            context.refuse(text_not_found, what + ": there is no such key in it");
+            return Value();
+        }
+
         ListHandle *handle = home->as_list();
         if (handle == nullptr) {
-            context.refuse(types_do_not_meet, what + " is a list's, and " + name + " is " + home->kind_name());
+            context.refuse(types_do_not_meet, what + " is a container's, and " + name + " is " + home->kind_name());
             return Value();
         }
-        about_to_change(*handle).items.push_back(arguments.front());
-        return *home;
+        satelliteList &body = about_to_change(*handle);
+        const std::size_t held = body.items.size();
+
+        // WHAT GOES IN MUST FIT WHAT THE NAME PROMISED. The same test
+        // write_through_index makes for `a[1] = x`, made here for `a.append(x)`
+        // and `a.insert(n, x)` -- two doors into one list, and locking one of
+        // them is worth nothing.
+        if (method == token::append_token || method == token::insert_token) {
+            const Value &going_in = method == token::append_token ? arguments.front() : arguments[1];
+            std::string unfit;
+            if (shape != nullptr && shape->word != 0 && !shape->parameters.empty() &&
+                !value_fits(shape->parameters[0], going_in, unfit)) {
+                context.refuse(types_do_not_meet, what + ": " + unfit);
+                return Value();
+            }
+        }
+
+        if (method == token::append_token) {
+            body.items.push_back(arguments.front());
+            return *home;
+        }
+        if (method == token::clear_token) {
+            body.items.clear();
+            return *home;
+        }
+
+        // THE ONES THAT NAME A POSITION. `.insert` may name one PAST the last
+        // item -- inserting at size + 1 is appending, and refusing it would make
+        // a loop that fills a list from the end stop one short for no reason.
+        if (method == token::insert_token || method == token::remove_at_token || method == token::truncate_token) {
+            const satellite_number *number = arguments.front().as_number();
+            if (number == nullptr) {
+                context.refuse(types_do_not_meet,
+                               what + " takes an item number, and was given " + arguments.front().kind_name());
+                return Value();
+            }
+            if (number->negative()) {
+                context.refuse(not_a_position, what + " was given " + fast::to_text(*number) +
+                                                   ", and items count from 1");
+                return Value();
+            }
+            const unsigned long long int position = fast::fits_a_count(*number) ? fast::as_count(*number) : 0;
+
+            if (method == token::truncate_token) {
+                // KEEPING MORE THAN THERE ARE CHANGES NOTHING and is not an
+                // error, which is what a file's truncate does. `truncate(0)`
+                // empties it, and that is the one place 0 is a real answer
+                // rather than a position.
+                if (position < held)
+                    body.items.resize(static_cast<std::size_t>(position));
+                return *home;
+            }
+            const unsigned long long int most = method == token::insert_token ? held + 1 : held;
+            if (position == 0 || position > most) {
+                context.refuse(line_past_the_end,
+                               what + "(" + std::to_string(position) + "): " +
+                                   (held == 0 ? std::string("the list is empty")
+                                              : "the list holds " + std::to_string(held) +
+                                                    (held == 1 ? " item" : " items") + ", counting from 1") +
+                                   (method == token::insert_token
+                                        ? ", so a new one goes in at 1 to " + std::to_string(most)
+                                        : ""));
+                return Value();
+            }
+            const std::size_t where = static_cast<std::size_t>(position - 1);
+            if (method == token::insert_token)
+                body.items.insert(body.items.begin() + static_cast<std::ptrdiff_t>(where), arguments[1]);
+            else
+                body.items.erase(body.items.begin() + static_cast<std::ptrdiff_t>(where));
+            return *home;
+        }
+
+        // THE ONES THAT NAME NOTHING, on an empty list.
+        if (held == 0) {
+            context.refuse(line_past_the_end, what + ": the list is empty");
+            return Value();
+        }
+        if (method == token::remove_first_token) { body.items.erase(body.items.begin()); return *home; }
+        if (method == token::remove_last_token) { body.items.pop_back(); return *home; }
+
+        // `.remove(x)` -- THE FIRST ITEM THAT IS x, and a refusal when there is
+        // none. Quietly doing nothing is the alternative, and it is worse: a
+        // program that removes the wrong thing tells you, and a program that
+        // removes nothing does not. `.contains(x)` is how you ask first.
+        for (std::size_t at = 0; at < body.items.size(); ++at) {
+            if (body.items[at] == arguments.front()) {
+                body.items.erase(body.items.begin() + static_cast<std::ptrdiff_t>(at));
+                return *home;
+            }
+        }
+        context.refuse(text_not_found, what + ": there is no such item in it -- " + name +
+                                           ".contains(x) asks before removing");
+        return Value();
     }
 
     // -----------------------------------------------------------------------
     // THE ONES THAT ANSWER A VALUE.
     // -----------------------------------------------------------------------
+    // AN INDEX ANSWERS FROM ITS OWN COUNT, never by copying every key out to
+    // measure the copy. items_of() builds a vector for the methods that walk one,
+    // and `.size` does not walk anything.
     case token::size_token: {
+        if (const IndexHandle *keys = receiver.as_index()) {
+            const satelliteIndex *held = keys->get();
+            return a_count(held == nullptr ? 0 : held->entries.size());
+        }
         std::vector<satelliteObject> borrowed;
         return a_count(items_of(receiver, borrowed)->size());
     }
 
+    case token::empty_token: {
+        std::vector<satelliteObject> borrowed;
+        return Value::of_bool(items_of(receiver, borrowed)->empty());
+    }
+
+    // `.first` AND `.last` ARE `a[1]` AND `a[a.size]`, said in a word. On an
+    // index they are the first and last KEY IN INSERTION ORDER, which is the
+    // only order a dict has -- and the order it prints in, so what you read here
+    // is what you saw.
+    case token::first_token:
+    case token::last_token: {
+        std::vector<satelliteObject> borrowed;
+        const std::vector<satelliteObject> *items = items_of(receiver, borrowed);
+        if (items->empty()) {
+            context.refuse(line_past_the_end,
+                           what + ": " + (is_index ? "the index is empty" : "the list is empty"));
+            return Value();
+        }
+        return method == token::first_token ? items->front() : items->back();
+    }
+
+    // `.keys` AND `.values`, AS LISTS, IN INSERTION ORDER -- and the two line up
+    // index for index, so `k.keys[2]` and `k.values[2]` are one entry. That is
+    // the whole reason they are not two independently-ordered answers.
+    case token::keys_token:
+    case token::values_token: {
+        std::vector<satelliteObject> out;
+        const satelliteIndex *held = receiver.as_index()->get();
+        if (held != nullptr) {
+            out.reserve(held->entries.size());
+            for (const std::pair<satelliteObject, satelliteObject> &entry : held->entries)
+                out.push_back(method == token::keys_token ? entry.first : entry.second);
+        }
+        return Value::of_list(make_list(std::move(out)));
+    }
+
+    // `.index_of(x)` -- WHERE x IS, COUNTING FROM 1, and 0 when it is nowhere.
+    // 0 is a real answer here rather than a refusal, and that is a file's own
+    // rule kept: 0 is not a position, so it cannot be confused with one.
+    case token::index_of_token: {
+        std::vector<satelliteObject> borrowed;
+        const std::vector<satelliteObject> *items = items_of(receiver, borrowed);
+        for (std::size_t at = 0; at < items->size(); ++at)
+            if ((*items)[at] == arguments.front())
+                return a_count(at + 1);
+        return a_count(0);
+    }
+
+    // `.search(x)` -- WHERE AN ITEM CONTAINS x, where `.index_of` wants it to BE
+    // x. A file searches the text of a line; a list searches the text an item
+    // reads as, so `{12, 345}.search(4)` finds 345 at 2.
+    case token::search_token: {
+        std::vector<satelliteObject> borrowed;
+        const std::vector<satelliteObject> *items = items_of(receiver, borrowed);
+        satellite_string needle;
+        std::string why;
+        if (arguments.front().to_string(needle, why) != success) {
+            context.refuse(types_do_not_meet,
+                           what + " looks for what an item READS as, and was given " +
+                               arguments.front().kind_name() + ", which has no text");
+            return Value();
+        }
+        for (std::size_t at = 0; at < items->size(); ++at) {
+            satellite_string text;
+            if ((*items)[at].to_string(text, why) != success)
+                continue;                       // an item with no text contains nothing
+            Value found;
+            if (str_find_str(Value::of_string(text), Value::of_string(needle), found) == success)
+                return a_count(at + 1);
+        }
+        return a_count(0);
+    }
+
     case token::contains_token: {
+        // AN INDEX ASKS ITS HASH TABLE, which is the entire reason it has one.
+        // Copying every key into a vector and walking it made a hash-table
+        // lookup cost O(n) plus a full copy -- on the container whose whole
+        // point is that asking is cheap.
+        if (const IndexHandle *keys = receiver.as_index()) {
+            const satelliteIndex *held = keys->get();
+            std::string key_name;
+            if (held == nullptr || !key_name_of(arguments.front(), key_name))
+                return Value::of_bool(false);   // a key it could never hold is a key it does not hold
+            return Value::of_bool(value_at(*held, key_name) != nullptr);
+        }
         std::vector<satelliteObject> borrowed;
         const std::vector<satelliteObject> *items = items_of(receiver, borrowed);
         for (const satelliteObject &item : *items)

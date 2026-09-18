@@ -72,6 +72,72 @@
 
 namespace satellite004 {
 
+// HOW MANY ARGUMENTS EACH CONTAINER METHOD TAKES, AND WHICH METHODS THERE ARE.
+// -1 means "not a container method at all".
+//
+// IT IS IN THE HEADER SO THE CHECKER AND THE WALKER READ THE SAME LIST. The
+// checker kept its own hand-written set of container methods and it went stale
+// the moment this file grew: `n.first` was refused before the program ran as
+// "not built for satellite.container.list yet" while container_calls.cpp had
+// implemented it. That is the third time in this session a second hand-kept list
+// has contradicted the first (the two feedback spellings, then the checker's
+// type words), so this one is asked rather than copied.
+//
+// It mirrors file_method_arity deliberately: a method spelled the same on a file
+// and on a list must take the same arguments, or a person has to remember which
+// receiver they are holding.
+inline int container_arity(token::Code method)
+{
+    switch (method) {
+    case token::insert_token: return 2;
+    case token::append_token:
+    case token::contains_token:
+    case token::index_of_token:
+    case token::search_token:
+    case token::remove_token:
+    case token::remove_at_token:
+    case token::truncate_token: return 1;
+    case token::size_token:
+    case token::empty_token:
+    case token::first_token:
+    case token::last_token:
+    case token::clear_token:
+    case token::remove_first_token:
+    case token::remove_last_token:
+    case token::keys_token:
+    case token::values_token:
+    case token::sort_token:
+    case token::by_name_token:
+    case token::by_value_token:
+    case token::reverse_token: return 0;
+    default: return -1;
+    }
+}
+
+// THE ONES THAT CHANGE THE CONTAINER. Everything else answers a new value, and
+// the header above says why the line is drawn here: a statement that is nothing
+// but `names.clear` has to mean the list emptied, or it is a line that does
+// nothing.
+//
+// IN THE HEADER because one_operand reads it too: a chain ending in one of these
+// is walked a SECOND time, by reference, so `grid[1].append(3)` reaches the real
+// item instead of a copy of it. Reading is left on the copy, which is what stops
+// a read from cloning a shared list.
+inline bool changes_a_container(token::Code method)
+{
+    switch (method) {
+    case token::append_token:
+    case token::clear_token:
+    case token::insert_token:
+    case token::remove_token:
+    case token::remove_at_token:
+    case token::remove_first_token:
+    case token::remove_last_token:
+    case token::truncate_token: return true;
+    default: return false;
+    }
+}
+
 // A LIST'S OR AN INDEX'S METHOD. `home` is the variable's own object when the
 // receiver came straight from a name, and nullptr otherwise -- `.append` needs
 // it, because a list is a value and appending to a copy changes nothing.
@@ -80,7 +146,14 @@ namespace satellite004 {
 // asks `use_count() == 1`, and a copy on the way here makes that answer no every
 // time, so every append would copy the whole list -- the quadratic append 003
 // shipped for months. satellite_list.hpp tells that story.
-Value call_container_method(token::Code method, Value &receiver, Value *home,
+// `shape` IS WHAT THE NAME WAS DECLARED AS, or nullptr when the receiver has no
+// declaration to answer to. It is here because a type between < and > that is
+// enforced on `a[1] = x` and NOT on `a.append(x)` is not a type, it is a
+// decoration -- and that is exactly what shipped for an hour:
+// `satellite.container.list<satellite.variable.number> ns` took ns.append("zoe")
+// and refused ns[1] = "zoe", which is the same wrong value arriving by two doors
+// with only one of them locked.
+Value call_container_method(token::Code method, Value &receiver, Value *home, const TypeShape *shape,
                             const std::vector<Value> &arguments, bool had_parentheses,
                             const std::string &name, ExpressionContext &context);
 

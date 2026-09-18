@@ -30,6 +30,7 @@
 #include "program_walk.hpp"
 
 #include "file_calls.hpp"
+#include "container_calls.hpp"
 #include "word_codes.hpp"
 #include "../machine/s_codes.hpp"
 
@@ -280,9 +281,11 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
     // this list because it is not a container's: it is on every type that has an
     // order -- a string, a number, a binary -- so it is allowed on anything here
     // and refused at the value, where the kind is actually known.
-    const bool of_a_container = method == token::append_token || method == token::size_token ||
-                                method == token::contains_token || method == token::sort_token ||
-                                method == token::by_name_token || method == token::by_value_token;
+    // ASKED, NEVER COPIED: container_arity IS the list of container methods, and
+    // it lives beside the code that implements them (container_calls.hpp). The
+    // hand-written set that used to be here went stale the same afternoon it was
+    // written, refusing `n.first` before the program ran while the walker had it.
+    const bool of_a_container = container_arity(method) >= 0;
     const bool a_container = declared_as == word::code_of(1, 4, 2) || declared_as == word::code_of(1, 4, 5) ||
                              declared_as == word::code_of(1, 4, 6);
     if (method == token::reverse_token)

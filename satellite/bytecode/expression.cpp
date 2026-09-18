@@ -139,6 +139,21 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
                            op_at);
             return Value();
         }
+        // TWO CONTAINERS ARE EQUAL OR NOT, AND HAVE NO ORDER. `{1,2} < {3}` means
+        // nothing -- is a list ordered by length, by its first item, by its
+        // text? Every answer is a guess -- while `{1,2} == {1,2}` has exactly one
+        // right answer, which satellite_object.cpp gives.
+        if ((left.is_list() && right.is_list()) || (left.is_index() && right.is_index())) {
+            if (an_ordering(op)) {
+                context.refuse(types_do_not_meet,
+                               std::string(spelling_of(op)) + " was given two " +
+                                   (left.is_list() ? "lists" : "indexes") +
+                                   ", and only == and != compare those -- there is no order between two containers",
+                               op_at);
+                return Value();
+            }
+            return Value::of_bool((left == right) == (op == token::equals_token));
+        }
         // TWO FILES ARE THE SAME FILE OR NOT, and have no order: == and != ask
         // whether two names hold ONE handle (satellite_object.cpp's identity).
         if (left.is_file() && right.is_file()) {
@@ -266,7 +281,8 @@ ObjectConversion conversion_of(Code method)
 // one hop: the variable's value knows its own kind, so the method resolves
 // against that and nothing else.
 Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, const Value &start,
-                  const std::string &name, ExpressionContext &context, Value *home = nullptr)
+                  const std::string &name, ExpressionContext &context, Value *home = nullptr,
+                  const TypeShape *shape = nullptr)
 {
     // NOTHING IS COPIED WHILE THE CHAIN IS STILL ON THE VARIABLE, and that one
     // sentence is the difference between an append that is instant and one that
@@ -357,7 +373,8 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // A LIST'S AND AN INDEX'S OWN METHODS (container_calls.cpp).
         if ((*live).is_list() || (*live).is_index()) {
             const bool changes_it = method == token::append_token;
-            Value answer = call_container_method(method, (*live), on_the_name ? live : nullptr, arguments,
+            Value answer = call_container_method(method, (*live), on_the_name ? live : nullptr,
+                                                        on_the_name ? shape : nullptr, arguments,
                                                         had_parentheses, name, context);
             if (context.code != success)
                 return Value();
@@ -488,11 +505,17 @@ bool position_of(const Value &index, unsigned long long int &out, const std::str
         context.refuse(not_a_position, what + "[" + fast::to_text(*number) + "] -- items count from 1", where);
         return false;
     }
-    // TOO LARGE TO BE ANY POSITION is not an error of its own: it is a position
-    // no list has, and `item_at` says so in the words that name the size.
-    out = fast::fits_a_count(*number) ? fast::as_count(*number) : 0;
-    if (out == 0 && !fast::fits_a_count(*number))
-        out = std::numeric_limits<unsigned long long int>::max();
+    // TOO LARGE TO BE ANY POSITION IS SAID AS THAT, rather than being turned
+    // into the largest number there is and reported as one. It used to become
+    // 18446744073709551615 and the refusal printed it, so a person who typed
+    // more digits than a machine has was told about a number they never wrote.
+    if (!fast::fits_a_count(*number)) {
+        context.refuse(line_past_the_end,
+                       what + "[" + fast::to_text(*number) + "]: that is more items than anything could hold",
+                       where);
+        return false;
+    }
+    out = fast::as_count(*number);
     return true;
 }
 
@@ -558,6 +581,109 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
     return Value();
 }
 
+// A METHOD MAY FOLLOW A LITERAL, NOT ONLY A NAME.
+//
+// `"abc".reverse()` and `123.reverse()` and `{1, 2}.size` all failed with "could
+// not be read to the end of" -- every literal branch below answered its value
+// and returned, so the `.` after it was a token nothing expected. A method on a
+// NAME worked, so the gap was invisible until somebody wrote the obvious thing:
+// the author asked for `.reverse()` on strings and numbers, and
+// `"abc".reverse()` is how a person would first try it.
+//
+// `home` IS nullptr HERE AND MUST BE. A literal has no name, so nothing can be
+// changed in place -- `{1, 2}.append(3)` is refused for exactly that reason, and
+// container_calls.cpp says so in its own words rather than silently appending to
+// something about to be thrown away.
+Value maybe_a_method(const std::vector<std::bitset<16>> &row, std::size_t &at, Value value,
+                     const char *what, ExpressionContext &context)
+{
+    if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
+        return call_method(row, at, value, what, context);
+    return value;
+}
+
+// THE SLOT AT `a[i][j]`, AS SOMETHING THAT CAN BE CHANGED.
+//
+// WHY THIS EXISTS: `grid[1].append(3)` was refused -- "this one has no name to
+// change" -- so a list inside a list could never be appended to, in a language
+// whose whole container design is "any container with any container". The read
+// path hands a method a COPY of the item, and appending to a copy changes
+// nothing, so refusing was right and the refusal was the symptom.
+//
+// IT IS ONLY EVER CALLED WHEN THE CHAIN REALLY ENDS IN A MUTATOR, and that
+// matters: descending makes every handle on the way unique (copy-on-write), so
+// doing it on a READ would clone a shared list every time anybody looked at an
+// item of it. The caller checks the method first and walks this way only then.
+//
+// Answers nullptr and refuses through `context` when the path does not lead to a
+// slot; `inner` is left pointing at the shape the final slot was declared with,
+// so a method writing into it can be held to the same type `a[i][j] = v` is.
+Value *slot_through_index(Value &root, const std::vector<Value> &indices, const std::string &name,
+                          std::size_t where, const TypeShape *shape, const TypeShape **inner,
+                          ExpressionContext &context)
+{
+    static const TypeShape kAnything;
+    Value *target = &root;
+    const TypeShape *here = shape != nullptr ? shape : &kAnything;
+    std::string what = name;
+
+    for (std::size_t step = 0; step < indices.size(); ++step) {
+        if (target->is_nothing()) {
+            context.refuse(satl_line_not_understood,
+                           name + " has no value yet -- give it one with = before changing an item of it", where);
+            return nullptr;
+        }
+        if (IndexHandle *keys = target->as_index()) {
+            std::string key_name;
+            if (!key_name_of(indices[step], key_name)) {
+                context.refuse(types_do_not_meet,
+                               what + ": the key is " + std::string(indices[step].kind_name()) +
+                                   ", and a key must be a number, a string, a bool, a binary or a percentage",
+                               where);
+                return nullptr;
+            }
+            satelliteIndex &body = about_to_change(*keys);
+            satelliteObject *found = value_at(body, key_name);
+            if (found == nullptr) {
+                context.refuse(line_past_the_end, what + ": there is no such key in it", where);
+                return nullptr;
+            }
+            here = (here->word == word::code_of(1, 4, 5) && here->parameters.size() > 1)
+                       ? &here->parameters[1] : &kAnything;
+            target = found;
+            what += "[key]";
+            continue;
+        }
+        ListHandle *handle = target->as_list();
+        if (handle == nullptr) {
+            context.refuse(types_do_not_meet,
+                           what + " is " + target->kind_name() + ", and [ ] reaches into a list or an index", where);
+            return nullptr;
+        }
+        unsigned long long int position = 0;
+        if (!position_of(indices[step], position, what, where, context))
+            return nullptr;
+        satelliteList &body = about_to_change(*handle);
+        satelliteObject *item = item_at(body, position);
+        if (item == nullptr) {
+            const std::size_t held = body.items.size();
+            context.refuse(line_past_the_end,
+                           what + "[" + std::to_string(position) + "]: " +
+                               (held == 0 ? std::string("the list is empty")
+                                          : "there is no such item -- the list holds " + std::to_string(held) +
+                                                (held == 1 ? " item" : " items") + ", counting from 1"),
+                           where);
+            return nullptr;
+        }
+        here = (here->word == word::code_of(1, 4, 2) && !here->parameters.empty())
+                   ? &here->parameters[0] : &kAnything;
+        target = item;
+        what += "[" + std::to_string(position) + "]";
+    }
+    *inner = here;
+    return target;
+}
+
 Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     const Code code = code_at(row, at);
@@ -613,7 +739,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         Value inside = evaluate_at(row, at, 1, context);
         if (code_at(row, at) == token::right_parenthesis_token)
             ++at;
-        return inside;
+        return maybe_a_method(row, at, std::move(inside), "that value", context);
     }
 
     // A BRACE WHERE A VALUE BELONGS IS A LIST (the author, 2026-09-18: "we need
@@ -640,7 +766,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // may be empty is what makes a loop that fills one legal to write.
         if (code_at(row, at) == token::right_brace_token) {
             ++at;
-            return Value::of_list(make_list());
+            return maybe_a_method(row, at, Value::of_list(make_list()), "that list", context);
         }
         for (;;) {
             Value item = evaluate_at(row, at, 1, context);
@@ -673,7 +799,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                            brace_at);
             return Value();
         }
-        return Value::of_list(make_list(std::move(items)));
+        return maybe_a_method(row, at, Value::of_list(make_list(std::move(items))), "that list", context);
     }
 
     // A STRING LITERAL BECOMES A satellite_string HERE, which is the one doorway
@@ -689,7 +815,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                                      " that is not part of any character");
             return Value();
         }
-        return held;
+        return maybe_a_method(row, at, std::move(held), "that string", context);
     }
 
     // A BINARY LITERAL IS A satellite.variable.binary, its width kept: b0010 is
@@ -704,7 +830,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             context.refuse(held, "b" + digits + " is not binary this can read");
             return Value();
         }
-        return Value::of_binary(std::move(bits));
+        return maybe_a_method(row, at, Value::of_binary(std::move(bits)), "that binary", context);
     }
 
     // A PERCENTAGE LITERAL -- 50%, 12.5%, 1000000000000% -- is a
@@ -719,7 +845,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             context.refuse(held, digits + "% is not a percentage this can read");
             return Value();
         }
-        return Value::of_percentage(std::move(percent));
+        return maybe_a_method(row, at, Value::of_percentage(std::move(percent)), "that percentage", context);
     }
 
     // THE TWO NUMBER LITERALS, THROUGH ONE CONVERSION FAST PATH. 34587 and xFFAA
@@ -733,7 +859,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             context.refuse(held, digits + " is not a number this can read");
             return Value();
         }
-        return Value::of_number(std::move(value));
+        return maybe_a_method(row, at, Value::of_number(std::move(value)), "that number", context);
     }
 
     if (code == word::code_of(1, 17, 1) || code == word::code_of(1, 17, 2)) {
@@ -841,6 +967,12 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         if (code_at(row, at) == token::left_square_bracket_token) {
             Value current = found->second.value;
             std::string what = name;
+            // KEPT SO A MUTATOR AT THE END OF THE CHAIN CAN BE WALKED AGAIN,
+            // this time reaching the real slot rather than a copy of it. Reading
+            // is done on the copy, which is what keeps a read from cloning a
+            // shared list.
+            std::vector<Value> used;
+            const std::size_t chain_at = at;
             while (code_at(row, at) == token::left_square_bracket_token) {
                 const std::size_t opened_at = at;
                 ++at;
@@ -858,13 +990,44 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                                                                  "reading an item of it", opened_at);
                     return Value();
                 }
+                used.push_back(index);
                 current = index_into(current, index, what, opened_at, context);
                 if (context.code != success)
                     return Value();
                 what += "[...]";
             }
-            if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
+            if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1))) {
+                // A MUTATOR AT THE END OF A CHAIN GETS THE REAL SLOT.
+                // `grid[1].append(3)` has to change grid, and `current` above is
+                // a copy -- so the path is walked a second time, by reference,
+                // and ONLY when the method really changes something.
+                if (container_arity(code_at(row, at + 1)) >= 0 && changes_a_container(code_at(row, at + 1))) {
+                    const VariableTable::iterator writable = context.variables.find(name);
+                    if (writable != context.variables.end()) {
+                        // LET GO OF THE ITEM WE READ BEFORE WALKING TO IT AGAIN.
+                        //
+                        // `current` holds a handle to the very item about to be
+                        // changed, so copy-on-write sees use_count() == 2 and
+                        // clones the whole inner list -- on EVERY append.
+                        // Measured: 10,000 nested appends 1.569s, 40,000 appends
+                        // 23.667s. Fifteen times the work for four times the
+                        // appends, which is the same quadratic trap as the outer
+                        // .append and as 003's, arrived at by a third route.
+                        //
+                        // ONE LINE FIXES IT AND NOTHING SAYS SO IF IT IS REMOVED:
+                        // the output is identical either way.
+                        current = Value();
+                        const TypeShape *inner = nullptr;
+                        Value *slot = slot_through_index(writable->second.value, used, name, chain_at,
+                                                         &writable->second.shape, &inner, context);
+                        if (context.code != success)
+                            return Value();
+                        if (slot != nullptr)
+                            return call_method(row, at, *slot, name, context, slot, inner);
+                    }
+                }
                 return call_method(row, at, current, name, context);
+            }
             return current;
         }
         // THE THREE TOKENS TOGETHER (the author): a period, a method's own code,
@@ -876,7 +1039,8 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             {
                 const VariableTable::iterator writable = context.variables.find(name);
                 Value *home = writable == context.variables.end() ? nullptr : &writable->second.value;
-                return call_method(row, at, found->second.value, name, context, home);
+                const TypeShape *shape = writable == context.variables.end() ? nullptr : &writable->second.shape;
+                return call_method(row, at, found->second.value, name, context, home, shape);
             }
         return found->second.value;
     }
@@ -1190,13 +1354,19 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
             // in: an index that has already taken a key of the wrong type cannot
             // be un-taken, and the entry would sit there for the rest of the run.
             std::string unfit;
-            if (here->word != 0 && !here->parameters.empty() &&
+            if (here->word == word::code_of(1, 4, 5) && !here->parameters.empty() &&
                 !value_fits(here->parameters[0], indices[step], unfit)) {
                 context.refuse(types_do_not_meet,
                                "the key does not fit: " + unfit, where);
                 return context.code;
             }
-            const TypeShape *inside = (here->word != 0 && here->parameters.size() > 1)
+            // A `multiple<A, B>` NAME CONSTRAINS ITSELF, NOT WHAT IS INSIDE IT.
+            // Its parameters are the types the NAME may hold; reading them as an
+            // index's <key, value> made `multiple<list, number> m = {1, 2}` then
+            // `m[1] = "text"` refuse, because parameters[0] (a list) was being
+            // asked to describe an item.
+            const bool a_plain_index = here->word == word::code_of(1, 4, 5);
+            const TypeShape *inside = (a_plain_index && here->parameters.size() > 1)
                                           ? &here->parameters[1] : &kAnything;
 
             std::string key_name;
@@ -1261,7 +1431,8 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
         }
 
         // THE ITEM'S OWN SHAPE, for a list declared `<of what>`.
-        const TypeShape *inside_list = (here->word != 0 && !here->parameters.empty())
+        // The same rule for a list: only a DECLARED LIST says what its items are.
+        const TypeShape *inside_list = (here->word == word::code_of(1, 4, 2) && !here->parameters.empty())
                                            ? &here->parameters[0] : &kAnything;
         if (step + 1 == indices.size()) {
             std::string unfit;

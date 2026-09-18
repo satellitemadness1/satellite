@@ -254,6 +254,16 @@ const char *method_spelling(Code method)
     case token::error_text_token: return "error";
     case token::path_token: return "path";
     case token::exists_token: return "exists";
+    // THE SIX ADDED WITH THE CONTAINERS (2026-09-18). They belong here even
+    // though no file has them, because this function is what every REFUSAL calls
+    // to name a method -- so a missing row does not break a call, it makes the
+    // refusal say "that method" and leaves a person hunting the line themselves.
+    case token::sort_token: return "sort";
+    case token::by_name_token: return "by_name";
+    case token::by_value_token: return "by_value";
+    case token::reverse_token: return "reverse";
+    case token::keys_token: return "keys";
+    case token::values_token: return "values";
     default: return "that method";
     }
 }

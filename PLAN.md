@@ -1030,41 +1030,76 @@ than refused, on the grounds that it is not an invention: it is the syntax you
 wrote the same day. Say if a list should refuse to print instead, as bytecode and
 a spacesuit do.
 
-**9. `.reverse()` ON A FLOAT — YOUR RULE IS RECORDED AND CANNOT BE BUILT YET
-(2026-09-18).** You asked for something specific and unlike every other type:
+**9. `.reverse()` ON A FLOAT — DECIDED 2026-09-18, AND STILL NOT BUILDABLE.**
 
-> *"float reverse exchanges the decimal numbers for the whole numbers, and
-> float_object.reverse().reverse() will be the only command you can reverse
-> TWICE, it shall switch the numbers, AND reverse the numbers if you reverse it
-> twice"*
+Your rule, and your answer to the one question it left open:
 
-**There is no float in 004.** `satellite_float` is listed as arm 12 of
-`satelliteObject` and has never been built; `4 / 3` still answers *"not a whole
-number, and there is no satellite_float yet"*. So `.reverse()` was built for a
-string, a number and a binary, and a float's reverse waits for the float.
+    12.34.reverse()              ->  34.12     the parts change places
+    12.34.reverse().reverse()    ->  21.43     DECIDED: parts back where they
+                                               started, each part's digits reversed
 
-**The first half is clear** — `12.34.reverse()` is `34.12`: the part after the
-point and the part before it change places.
+**There is no float in 004.** `satellite_float` is arm 12 of `satelliteObject`
+and has never been built; `4 / 3` still answers *"not a whole number, and there
+is no satellite_float yet"*. `.reverse()` is built for a string, a number and a
+binary (`71ca51c`); the float's waits for the type, which is its own milestone
+and not a method.
 
-**The second half needs one more sentence from you before it can be built**, and
-it is worth getting right because `.reverse().reverse()` is an identity on every
-other type — reverse a string twice and you have the string back. A float is the
-one place you are asking it NOT to be, so which of these it is cannot be guessed
-from the first reverse:
+**THE PART THAT NEEDS SAYING BEFORE ANYBODY BUILDS IT:** this makes `.reverse()`
+the one method in the language that is **not a function of its receiver**. Every
+other reverse is: give it `34.12` and it can only answer one thing. Here, `34.12`
+must answer `12.34` when it is a fresh value and `21.43` when it is the result of
+a previous `.reverse()` — the same input, two answers.
 
-    12.34.reverse()              ->  34.12      (agreed: the parts change places)
-    12.34.reverse().reverse()    ->  21.43   ?  (parts swapped back, digits reversed)
-                                 ->  43.21   ?  (parts stay swapped, digits reversed)
+There are only two honest ways to build that, and they behave differently:
 
-Say which and it is a small function. Everything around it is built: the method
-token exists, the chain already works, and `reverse_of` in
-`satellite/bytecode/container_calls.cpp` has an arm waiting.
+  **(a) THE CHAIN IS READ, NOT THE VALUE.** `call_method` already walks
+  `.reverse().reverse()` as two segments of one chain and can see the second
+  before it runs the first. So the pair is recognised as one operation. Then:
 
-**A smaller one beside it:** a number ending in zero loses it — `120.reverse()`
-is `21`, not `021` — because `021` IS `21` and a number that remembered a leading
-zero would be a string wearing a number's name. A binary keeps its width, so
-`b1010.reverse()` is `b0101`. Say if you want the number to behave like the
-binary.
+      x = 12.34
+      satellite.console.display(x.reverse().reverse())   -- 21.43
+      y = x.reverse()                                    -- 34.12
+      satellite.console.display(y.reverse())             -- 12.34, NOT 21.43
+
+  ...because `y.reverse()` is a chain of one. Splitting a line in two changes
+  what it means, which is a thing a person will hit and have to be told.
+
+  **(b) THE VALUE REMEMBERS.** A float carries a "reversed once" mark, so `y`
+  above answers `21.43` too. That keeps the two spellings equal — and puts a
+  hidden bit inside a number, which then has to be defined for every other
+  operation: does `y + 0` still remember? does storing it in a list? An invisible
+  flag on a value is the kind of thing that is right for a week.
+
+**(a) is the one to build** unless you say otherwise: it is honest about being a
+spelling rather than a property of the number, and it cannot leak into
+arithmetic. The cost is the two-line difference above, which is worth writing
+into HELP.md when the float lands.
+
+**A smaller one already built, for contrast:** a whole number ending in zero
+loses it — `120.reverse()` is `21`, not `021` — because `021` IS `21`, and a
+number that remembered a leading zero would be a string wearing a number's name.
+A binary keeps its width, so `b1010.reverse()` is `b0101`. Say if you want the
+number to behave like the binary.
+
+**10. `.reverse()` ON AN INDEX ANSWERS ITS KEYS, AND THROWS THE VALUES AWAY
+(2026-09-18).** `scores.reverse()` gives a LIST of the keys in the other order,
+not an index with its entries reversed:
+
+    scores = {"zoe": 10, "alice": 20}
+    scores.reverse()      ->  {"alice", "zoe"}        a list of keys
+                          ->  {"alice": 20, "zoe": 10} ?  an index, reversed
+
+**The first is what is built**, and it follows a rule that is already there:
+`.size`, `.contains`, `.first`, `.last` and `.sort().by_name()` all treat an
+index as its KEYS, because a key is the thing a program asks an index about. But
+it is the one place where the answer QUIETLY LOSES something — the values are
+simply gone, and nothing says so.
+
+The other reading is defensible: an index remembers insertion order, so reversing
+that order and keeping the pairs is a thing a person might mean.
+
+**Say which**, and if it is the second, `.keys.reverse()` stays as the way to get
+the list.
 
 **Decisions waiting on you, gathered from the rework:** what `&` `|` `^` `<<`
 `>>` `!!` `~` mean (the nineteen QUESTION rows, MILESTONES M24); whether an

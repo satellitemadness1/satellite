@@ -636,7 +636,280 @@ expect "append is linear, not quadratic (4x the appends: ${ap_small}s -> ${ap_bi
 
 expect "an index says how to fill it rather than refusing .append bare" "27|1" \
        "$(index_says '    satellite.container.index s
-    s.append(1)' 'an index is filled by its key')"
+    s.append(1)' 'an index has keys and not positions')"
+# THE REST OF THE CONTAINER METHODS (the author, 2026-09-18: "ready 21.43 to
+# finish the methods?"). Semantics settled against the FILE versions, which
+# already had all of these: a method spelled the same on a file and on a list
+# takes the same arguments and means the same thing.
+#
+# THE MUTATORS ANSWER THE CONTAINER, not a bool and not the removed item, so they
+# read left to right like .append already did. To have the item, read it on the
+# line before -- `gone = names.first` then `names.remove_first()`.
+#
+# `.insert(size + 1, x)` IS AN APPEND, which is what satellite_file::insert does
+# in its own first line. It is the last step of every loop that fills a list in
+# order, and refusing it would make the file's promise false in the one place it
+# is tested hardest.
+cat > build/list_rest.satl <<'REST_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list n = {"a", "b", "c", "d"}
+    satellite.console.display(n.first)
+    satellite.console.display(n.last)
+    satellite.console.display(n.empty)
+    satellite.console.display(n.index_of("c"))
+    satellite.console.display(n.index_of("zz"))
+    n.insert(2, "NEW")
+    satellite.console.display(n)
+    n.insert(6, "ATEND")
+    satellite.console.display(n)
+    n.remove_at(1)
+    n.remove("c")
+    satellite.console.display(n)
+    n.remove_first()
+    n.remove_last()
+    satellite.console.display(n)
+    n.truncate(1)
+    satellite.console.display(n)
+    n.clear
+    satellite.console.display(n)
+    satellite.console.display(n.empty)
+    satellite.container.list s = {12, 345, 67}
+    satellite.console.display(s.search(4))
+    satellite.return(satellite)
+}
+REST_EOF
+HOME="$CHECK_HOME" "$interpreter" build/list_rest.satl > build/list_rest.out 2>&1
+expect "first, last, empty, index_of, insert (incl. at size+1 = append), remove_at, remove, remove_first/last, truncate, clear, search" \
+       'a|d|false|3|0|{"a", "NEW", "b", "c", "d"}|{"a", "NEW", "b", "c", "d", "ATEND"}|{"NEW", "b", "d", "ATEND"}|{"b", "d"}|{"b"}|{}|true|2' \
+       "$(tail -13 build/list_rest.out | tr '\n' '|' | sed 's/|$//')"
+
+# AN INDEX'S OWN METHODS. .keys and .values line up entry for entry and both come
+# back IN INSERTION ORDER, which is the only order a dict has -- and the order it
+# prints in, so what you read is what you saw. Removing a key keeps the rest in
+# order, which is the part a rebuilt lookup table gets wrong.
+cat > build/index_rest.satl <<'IREST_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.index<satellite.variable.string, satellite.variable.number> k
+    k["zoe"] = 1
+    k["al"] = 2
+    k["bo"] = 3
+    satellite.console.display(k.keys)
+    satellite.console.display(k.values)
+    satellite.console.display(k.first)
+    satellite.console.display(k.last)
+    satellite.console.display(k.empty)
+    k.remove("al")
+    satellite.console.display(k)
+    satellite.console.display(k["bo"])
+    k.remove_first()
+    satellite.console.display(k)
+    k.clear
+    satellite.console.display(k.empty)
+    satellite.return(satellite)
+}
+IREST_EOF
+HOME="$CHECK_HOME" "$interpreter" build/index_rest.satl > build/index_rest.out 2>&1
+expect "an index: keys and values aligned in insertion order, first, last, remove by key keeps the order, clear" \
+       '{"zoe", "al", "bo"}|{1, 2, 3}|zoe|bo|false|{"zoe": 1, "bo": 3}|3|{"bo": 3}|true' \
+       "$(tail -9 build/index_rest.out | tr '\n' '|' | sed 's/|$//')"
+
+# TWO CONTAINERS ARE EQUAL WHEN THEY HOLD EQUAL THINGS.
+#
+# THIS ARM SAID "THE SAME LIST OR NOT THE SAME LIST" UNTIL RED NOTE 8 CLOSED, and
+# the note it carried gave the reason: while nothing had decided whether `b = a`
+# shares or copies, a deep compare would have answered a question still open.
+# It is answered now -- a list is a VALUE -- and identity became WRONG the moment
+# it was: `{1,2} == {1,2}` was refused, and `g.contains({1,2})` answered false on
+# a list that plainly held it, because copy-on-write clones on every write by
+# design and a clone is a different address.
+#
+# AN INDEX IGNORES ORDER FOR ==, as python's dict does: insertion order is what an
+# index REMEMBERS, not what it IS. It still PRINTS in that order, so two equal
+# indexes can print differently -- exactly as python's do.
+cat > build/container_equal.satl <<'EQ_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display({1, 2} == {1, 2})
+    satellite.console.display({1, 2} == {1, 3})
+    satellite.console.display({1, 2} == {1, 2, 3})
+    satellite.console.display({{1}, {2}} == {{1}, {2}})
+    satellite.container.list g = {{1, 2}, {3}}
+    satellite.console.display(g.contains({1, 2}))
+    satellite.console.display(g.index_of({3}))
+    satellite.container.index a
+    a["x"] = 1
+    a["y"] = 2
+    satellite.container.index b
+    b["y"] = 2
+    b["x"] = 1
+    satellite.console.display(a == b)
+    satellite.console.display(a)
+    satellite.console.display(b)
+    satellite.return(satellite)
+}
+EQ_EOF
+HOME="$CHECK_HOME" "$interpreter" build/container_equal.satl > build/container_equal.out 2>&1
+expect "two containers are equal by what they HOLD; an index ignores order for == and still prints in it" \
+       'true|false|false|true|true|2|true|{"x": 1, "y": 2}|{"y": 2, "x": 1}' \
+       "$(tail -9 build/container_equal.out | tr '\n' '|' | sed 's/|$//')"
+
+# THE TYPE BETWEEN < AND > IS ENFORCED ON EVERY DOOR INTO THE CONTAINER.
+#
+# `.append` WAS THE DOOR THAT WAS LEFT OPEN. For an hour,
+# `satellite.container.list<satellite.variable.number> a` took `a.append("zoe")`
+# while refusing `a[1] = "zoe"` -- the same value, the same name, two opposite
+# answers. Worse, it was self-contradicting: the program built a list its own
+# declaration rejects, so a later innocent `a = a` refused and pointed at the
+# WRONG statement.
+say_no() {
+    cat > build/ctype.satl <<CT_EOF
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+$1
+    satellite.return(satellite)
+}
+CT_EOF
+    HOME="$CHECK_HOME" "$interpreter" build/ctype.satl > build/ctype.out 2>&1
+    printf '%s|%s' "$?" "$(tr '\n' ' ' < build/ctype.out | grep -c "$2")"
+}
+expect "append is refused by the declared item type, like a[n] = v is" "27|1" \
+       "$(say_no '    satellite.container.list<satellite.variable.number> a = {1, 2}
+    a.append("zoe")' 'it holds a string')"
+expect "insert is refused by it too" "27|1" \
+       "$(say_no '    satellite.container.list<satellite.variable.number> a = {1, 2}
+    a.insert(1, "zoe")' 'it holds a string')"
+expect "a multiple<a, b> does not read its types as a container's items" "0|1" \
+       "$(say_no '    satellite.container.multiple<satellite.container.list, satellite.variable.number> m = {1, 2}
+    m[1] = "text"
+    satellite.console.display(m)' '{"text", 2}')"
+
+# THE REFUSALS THE REST OF THE METHODS MAKE.
+expect "a position method on an index says an index has keys, not positions" "27|1" \
+       "$(say_no '    satellite.container.index s
+    s.remove_at(1)' 'an index has keys and not positions')"
+expect "insert past size+1 names the range a new item may go in" "47|1" \
+       "$(say_no '    satellite.container.list a = {1}
+    a.insert(9, 2)' 'a new one goes in at 1 to 2')"
+expect "remove of something absent says so instead of doing nothing" "15|1" \
+       "$(say_no '    satellite.container.list a = {1}
+    a.remove(2)' 'there is no such item in it')"
+expect "first on an empty list says the list is empty" "47|1" \
+       "$(say_no '    satellite.container.list a = {}
+    satellite.console.display(a.first)' 'the list is empty')"
+expect "a mutator with no name to change is refused" "13|1" \
+       "$(say_no '    satellite.console.display({1, 2}.clear)' 'has no name to change')"
+expect "a position larger than anything says THAT, not a 20-digit number" "47|1" \
+       "$(say_no '    satellite.container.list a = {1}
+    satellite.console.display(a[99999999999999999999])' 'more items than anything could hold')"
+expect "ordering two lists is refused; only == and != compare them" "27|1" \
+       "$(say_no '    satellite.console.display({1} < {2})' 'there is no order between two containers')"
+
+# A METHOD MAY FOLLOW A LITERAL, NOT ONLY A NAME.
+#
+# `"abc".reverse()` FAILED WITH "could not be read to the end of" until this was
+# built, and that is the first thing a person would type after being told the
+# language has .reverse() for strings. Every literal branch in one_operand
+# answered its value and returned, so the `.` after it was a token nothing
+# expected -- invisible while every test called methods on names.
+cat > build/literal_methods.satl <<'LIT_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("abc".reverse())
+    satellite.console.display(123.reverse())
+    satellite.console.display(b1010.reverse())
+    satellite.console.display({3, 1, 2}.size)
+    satellite.console.display({3, 1, 2}.sort().by_value())
+    satellite.console.display({1, 2}.contains(2))
+    satellite.console.display((1 + 2).reverse())
+    satellite.console.display("abc".reverse().reverse())
+    satellite.return(satellite)
+}
+LIT_EOF
+HOME="$CHECK_HOME" "$interpreter" build/literal_methods.satl > build/literal_methods.out 2>&1
+expect "a method reads off a literal: a string, a number, a binary, a braced list and a bracketed sum" \
+       'cba|321|b0101|3|{1, 2, 3}|true|3|abc' \
+       "$(tail -8 build/literal_methods.out | tr '\n' '|' | sed 's/|$//')"
+# ...and a literal still has no name, so nothing that CHANGES one may be called
+# on it -- the append would be correct and then thrown away.
+expect "a mutator on a literal is refused, because there is nothing to change" "13|1" \
+       "$(say_no '    satellite.console.display({1, 2}.clear)' 'has no name to change')"
+# A MUTATOR REACHES INTO A NESTED CONTAINER (the author's "any container with
+# any container"). `grid[1].append(3)` was refused -- "this one has no name to
+# change" -- so a list inside a list could never be appended to at all.
+#
+# THE READ PATH HANDS A METHOD A COPY, which is why refusing was right and the
+# refusal was the symptom. A chain that ENDS IN A MUTATOR is now walked a second
+# time by reference; a chain that does not is left on the copy, so reading an
+# item never clones a shared list.
+cat > build/nested_mutate.satl <<'NM_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list g = {{1, 2}, {3}}
+    g[1].append(99)
+    satellite.console.display(g)
+    g[2].insert(1, 0)
+    satellite.console.display(g)
+    g[1].remove_last()
+    satellite.console.display(g)
+    satellite.container.index<satellite.variable.string, satellite.container.list> teams
+    teams["red"] = {"ann"}
+    teams["red"].append("bo")
+    satellite.console.display(teams)
+    satellite.console.display(teams["red"].size)
+    satellite.container.list a = {{1}}
+    satellite.container.list b = a
+    b[1].append(2)
+    satellite.console.display(a)
+    satellite.console.display(b)
+    satellite.return(satellite)
+}
+NM_EOF
+HOME="$CHECK_HOME" "$interpreter" build/nested_mutate.satl > build/nested_mutate.out 2>&1
+expect "append, insert and remove reach a list inside a list and inside an index -- and a copy is still a copy" \
+       '{{1, 2, 99}, {3}}|{{1, 2, 99}, {0, 3}}|{{1, 2}, {0, 3}}|{"red": {"ann", "bo"}}|2|{{1}}|{{1, 2}}' \
+       "$(tail -7 build/nested_mutate.out | tr '\n' '|' | sed 's/|$//')"
+
+# A NESTED APPEND IS NOT QUADRATIC EITHER, AND IT WAS -- for the THIRD time in
+# this file, by a third route.
+#
+# The read walk left a live handle on the very item about to be changed, so
+# copy-on-write saw use_count() == 2 and cloned the whole inner list on every
+# append: 10,000 nested appends 1.569s, 40,000 appends 23.667s. Fifteen times the
+# work for four times the appends. One line -- letting go of the read copy before
+# walking to the slot -- took 40,000 to 0.090s.
+#
+# NOTHING ABOUT THE OUTPUT DIFFERS between the two versions. This row is the only
+# thing that would say so.
+for size in 10000 40000; do
+  {
+    echo 'satellite.include(satellite)'
+    echo 'satellite.capsule satellite.main()'
+    echo '{'
+    echo '    satellite.container.list g = {{}}'
+    echo "    satellite.statement.for(satellite.variable.number i = 0; i < $size; i++)"
+    echo '    {'
+    echo '        g[1].append(i)'
+    echo '    }'
+    echo '    satellite.console.display(g[1].size)'
+    echo '    satellite.return(satellite)'
+    echo '}'
+  } > "build/nested_append_$size.satl"
+done
+na_small=$( { TIMEFORMAT=%R; time HOME="$CHECK_HOME" "$interpreter" build/nested_append_10000.satl > build/na_small.out 2>&1; } 2>&1 )
+na_big=$(   { TIMEFORMAT=%R; time HOME="$CHECK_HOME" "$interpreter" build/nested_append_40000.satl > build/na_big.out 2>&1; } 2>&1 )
+expect "40,000 nested appends all landed" "40000" "$(tail -1 build/na_big.out)"
+expect "a nested append is linear too (4x the appends: ${na_small}s -> ${na_big}s)" "linear" \
+       "$(awk -v s="$na_small" -v b="$na_big" 'BEGIN { print (b < s * 8 + 0.05) ? "linear" : "QUADRATIC: " b "s vs " s "s" }')"
+
+
 
 
 # THE EXAMPLE IN `satl --help` IS EXTRACTED FROM THE REAL OUTPUT AND RUN.

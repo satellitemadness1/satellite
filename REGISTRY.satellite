@@ -352,6 +352,8 @@ bits              name                         what it is
 0000101100011111  by_name_token                by_name  [METHOD] object.sort().by_name() -- ordered A to Z, ALWAYS; .reverse() is how you get Z to A (the author, 2026-09-18)
 0000101100100000  by_value_token               by_value  [METHOD] object.sort().by_value() -- smallest first, ALWAYS; .reverse() is how you get largest first (the author, 2026-09-18)
 0000101100100001  reverse_token                reverse  [METHOD] object.reverse() -- a list, a string, a number, a binary or a hex, back to front (the author, 2026-09-18)
+0000101100100010  keys_token                   keys  [METHOD] index.keys -- every key, as a list, IN THE ORDER THEY WERE PUT IN (words.tsv already numbers satellite.container.map.keys 1 4 1 8)
+0000101100100011  values_token                 values  [METHOD] index.values -- every value, as a list, in the same order as .keys (words.tsv already numbers satellite.container.map.values 1 4 1 9)
 0000101100011110  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code

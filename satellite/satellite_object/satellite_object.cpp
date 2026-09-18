@@ -170,18 +170,46 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     case satelliteObject::percentage: return *l.as_percentage() == *r.as_percentage();
     // IDENTITY, as for an object: the same open file, or not.
     case satelliteObject::file: return l.as_file() == r.as_file();
-    // A LIST IS THE SAME LIST WHEN IT IS THE SAME LIST, and this is the arm most
-    // likely to be "fixed" into a deep compare by somebody who has not read
-    // satellite_list.hpp. It must not be, yet: the list arm is a handle only
-    // because a list may hold a list, and NOTHING has decided whether `b = a`
-    // shares or copies (003 §12 says copy-on-write; 004 has no word that can
-    // tell). A deep compare would answer `true` for two lists that a later
-    // append pulls apart, which is a wrong answer decided today for a question
-    // that is still open.
-    case satelliteObject::list: return *l.as_list() == *r.as_list();
-    // AN INDEX, THE SAME WAY AND FOR THE SAME REASON as a list: the same index,
-    // or not the same index. See the note above before deepening either.
-    case satelliteObject::index: return *l.as_index() == *r.as_index();
+    // TWO LISTS ARE EQUAL WHEN THEY HOLD EQUAL ITEMS. This arm said "the same
+    // list, or not the same list" until red note 8 was closed, and the note it
+    // carried explained why: while nothing had decided whether `b = a` shares or
+    // copies, a deep compare would have been an answer to a question still open.
+    //
+    // THAT QUESTION IS ANSWERED NOW -- a list is a VALUE, `b = a` copies
+    // (satellite_list.hpp) -- and identity became the wrong answer the moment it
+    // was. `{1, 2} == {1, 2}` was refused and `g.contains({1, 2})` answered
+    // false on a list that plainly held it, because the copy-on-write clone the
+    // language makes on every write is a different address by design.
+    case satelliteObject::list: {
+        const satelliteList *left = l.as_list()->get();
+        const satelliteList *right = r.as_list()->get();
+        if (left == right) return true;                  // the same list, or both empty
+        const std::size_t how_many = left == nullptr ? 0 : left->items.size();
+        if (how_many != (right == nullptr ? 0 : right->items.size())) return false;
+        for (std::size_t at = 0; at < how_many; ++at)
+            if (!(left->items[at] == right->items[at])) return false;
+        return true;
+    }
+    // AN INDEX IS EQUAL WHEN IT HOLDS THE SAME KEYS AND THE SAME VALUES, AND
+    // THE ORDER DOES NOT COUNT. That is python's rule for a dict and it is the
+    // right one: insertion order is what the index REMEMBERS, not what it IS, so
+    // two indexes filled with the same pairs in different orders are the same
+    // answer to every question a program can ask of them -- while still printing
+    // differently, exactly as python's do.
+    case satelliteObject::index: {
+        const satelliteIndex *left = l.as_index()->get();
+        const satelliteIndex *right = r.as_index()->get();
+        if (left == right) return true;
+        const std::size_t how_many = left == nullptr ? 0 : left->entries.size();
+        if (how_many != (right == nullptr ? 0 : right->entries.size())) return false;
+        for (std::size_t at = 0; at < how_many; ++at) {
+            std::string key_name;
+            if (!key_name_of(left->entries[at].first, key_name)) return false;
+            const satelliteObject *theirs = value_at(*right, key_name);
+            if (theirs == nullptr || !(*theirs == left->entries[at].second)) return false;
+        }
+        return true;
+    }
     case satelliteObject::how_many_kinds: break;
     }
     return false;
