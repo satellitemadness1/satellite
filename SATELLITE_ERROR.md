@@ -619,7 +619,39 @@ each one.
 - **F4** — ~~Fold `arguments.access` in as bit 0.~~ **Done** — bit 0, and red note 14 is closed: **both spellings live.** The named keys are what a person edits and what a program writes; `features` is the one value satl reads and is DERIVED from them. So `arguments.access` keeps working exactly as built, and `--rebuild` is what makes the fast value out of it.
 - **F5** — ~~**Split the walker**~~ **SUPERSEDED 2026-09-18 by the author's switch hierarchy, and built as F5a.** F5 said two loops, plain and instrumented. He generalised it: *"BUILD A SWITCH-BASED HIERARCHY ... switch statements inside of other switch statements ... for now, we just wrap the entire interpreter in a switch hierarchy and we end up running the exact same interpreter that we have, just encompassed by switch statements"*. A hierarchy is two loops with room for eight, so F5 is its first case rather than a rival.
 - **F5a** — ~~The hierarchy, wrapping `run_main`: eight leaves, all calling the same interpreter.~~ **Done** — `satellite/config/feature_switch.hpp`. See Part 14.
-- **F5b** — Give `RunPlan::plain` a walker with no feature tests compiled into it. **The author is milestoning the interpreter's own optimisation (MILESTONES M35); this is the leaf it lands in.** As of 2026-09-18 there is one gated site to hoist: the `word_counts` test in `call_word`.
+- **F5b** — ~~Give `RunPlan::plain` a loop with no feature tests compiled into it.~~
+  **MEASURED 2026-09-18 AND NOT WORTH BUILDING.** The two gated sites were
+  compiled out entirely (`if (false)`) and the tree rebuilt and timed against a
+  10,000,000-statement program:
+
+  | | run 1 | run 2 | run 3 | |
+  |---|---|---|---|---|
+  | both tests present, bits off | 4.79 s | 4.84 s | 4.67 s | |
+  | **both tests compiled OUT** | 4.96 s | 4.94 s | 4.81 s | **slower** |
+
+  Compiling them out measured SLOWER than leaving them in, which is how noise
+  answers: the run-to-run spread is ±0.17 s and the whole effect is smaller than
+  that. **A statement costs about 470 ns; two predictable branches cost about
+  one.** F5b would buy 0.2% of one percent, in exchange for templating the
+  interpreter across two translation units.
+
+  **THE SAME MEASUREMENT KILLED A SECOND IDEA.** `add`, `subtract`, `multiply`,
+  `divide`, `modulus` and `power` reached their number fast path THIRD, behind a
+  percentage test and a by-worth test. Hoisting it to first — which is the
+  author's own design order — measured 4.82 / 4.77 / 4.86 / 4.85: noise again.
+  The hoist was kept anyway, because it costs nothing and it makes the code say
+  what the design says, but **it is not an optimisation and must not be recorded
+  as one.**
+
+  **WHERE THE TIME ACTUALLY IS, and this is what F6 should chase instead:** 470 ns
+  a statement is enormous next to any branch. It is going into the per-statement
+  work — the variable table's hash lookup, `satellite_number`'s allocation, the
+  `Value` copies — and none of that is visible from the feature register. **The
+  next person to optimise this should profile before touching a branch.**
+
+  **AND F6's CHOSEN PROGRAM DOES NOT RUN.** `experiments/energy/release.satl`
+  exits 13: it needs `satellite.container.list`, which is numbered and unbuilt.
+  The measurements above use a purpose-built arithmetic loop instead. **The author is milestoning the interpreter's own optimisation (MILESTONES M35); this is the leaf it lands in.** As of 2026-09-18 there is one gated site to hoist: the `word_counts` test in `call_word`.
 - **F9** — ~~The register has to reach the places that test it.~~ **Done 2026-09-18** — `FeatureRegister features` on `MachineState`, which SATELLITE_ARGUMENTS A1 already chose for the reason it gives: there are no globals, and a register a thread cannot see the right copy of turns features on for some threads and not others. `MachineState &state` was already threaded everywhere, so nothing new is passed.
 - **F6** — Re-measure with a real program after F5. `experiments/energy/release.satl` is about a million statements a second and is the shape that would show any regression.
 - **F7** — §A of the report prints the register as bits AND as names (rule 4).

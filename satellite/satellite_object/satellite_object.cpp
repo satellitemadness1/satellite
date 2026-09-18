@@ -196,15 +196,21 @@ const char *satelliteObject::kind_name() const
 signed long long int satelliteObject::add(const satelliteObject &other, satelliteObject &out,
                                           std::string &why) const
 {
+    // THE FAST PATH FIRST, which is the author's own design order: "we build all
+    // the fast paths ... THEN we at last build the slower all encompassing" one.
+    // Two numbers is the commonest thing this language does, and it was reaching
+    // its fast path THIRD -- behind a percentage test and a by-worth test that
+    // are both false whenever both sides are numbers. Hoisting is behaviour-
+    // identical for exactly that reason: read_by_worth() needs one side BINARY,
+    // and is_percentage() needs one side a percentage.
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_add, "+", out, why);
     if (is_percentage() || other.is_percentage())
         return percentage_operation('+', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).add(worth_of(other), out, why);
 
     switch (pair_of(kind(), other.kind())) {
-    case pair_of(number, number):
-        return run_number_pair(*this, other, number_and_number_add, "+", out, why);
-
     case pair_of(string, string): {
         satellite_string answer;
         const signed long long int code = string_and_string_add(*as_string(), *other.as_string(), answer);
@@ -254,12 +260,19 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
 signed long long int satelliteObject::subtract(const satelliteObject &other, satelliteObject &out,
                                                std::string &why) const
 {
+    // THE FAST PATH FIRST, which is the author's own design order: "we build all
+    // the fast paths ... THEN we at last build the slower all encompassing" one.
+    // Two numbers is the commonest thing this language does, and it was reaching
+    // its fast path THIRD -- behind a percentage test and a by-worth test that
+    // are both false whenever both sides are numbers. Hoisting is behaviour-
+    // identical for exactly that reason: read_by_worth() needs one side BINARY,
+    // and is_percentage() needs one side a percentage.
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_subtract, "-", out, why);
     if (is_percentage() || other.is_percentage())
         return percentage_operation('-', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).subtract(worth_of(other), out, why);
-    if (pair_of(kind(), other.kind()) == pair_of(number, number))
-        return run_number_pair(*this, other, number_and_number_subtract, "-", out, why);
     // THE FIRST OCCURRENCE OF THE RIGHT STRING IS TAKEN AWAY (the author, 2026-09-17:
     // "minus takes away the smallest string", "first occurrence").
     if (pair_of(kind(), other.kind()) == pair_of(string, string)) {
@@ -275,48 +288,76 @@ signed long long int satelliteObject::subtract(const satelliteObject &other, sat
 signed long long int satelliteObject::multiply(const satelliteObject &other, satelliteObject &out,
                                                std::string &why) const
 {
+    // THE FAST PATH FIRST, which is the author's own design order: "we build all
+    // the fast paths ... THEN we at last build the slower all encompassing" one.
+    // Two numbers is the commonest thing this language does, and it was reaching
+    // its fast path THIRD -- behind a percentage test and a by-worth test that
+    // are both false whenever both sides are numbers. Hoisting is behaviour-
+    // identical for exactly that reason: read_by_worth() needs one side BINARY,
+    // and is_percentage() needs one side a percentage.
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_multiply, "*", out, why);
     if (is_percentage() || other.is_percentage())
         return percentage_operation('*', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).multiply(worth_of(other), out, why);
-    if (pair_of(kind(), other.kind()) == pair_of(number, number))
-        return run_number_pair(*this, other, number_and_number_multiply, "*", out, why);
     return refuse_pair(*this, other, "*", why);
 }
 
 signed long long int satelliteObject::divide(const satelliteObject &other, satelliteObject &out,
                                              std::string &why) const
 {
+    // THE FAST PATH FIRST, which is the author's own design order: "we build all
+    // the fast paths ... THEN we at last build the slower all encompassing" one.
+    // Two numbers is the commonest thing this language does, and it was reaching
+    // its fast path THIRD -- behind a percentage test and a by-worth test that
+    // are both false whenever both sides are numbers. Hoisting is behaviour-
+    // identical for exactly that reason: read_by_worth() needs one side BINARY,
+    // and is_percentage() needs one side a percentage.
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_divide, "/", out, why);
     if (is_percentage() || other.is_percentage())
         return percentage_operation('/', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).divide(worth_of(other), out, why);
-    if (pair_of(kind(), other.kind()) == pair_of(number, number))
-        return run_number_pair(*this, other, number_and_number_divide, "/", out, why);
     return refuse_pair(*this, other, "/", why);
 }
 
 signed long long int satelliteObject::modulus(const satelliteObject &other, satelliteObject &out,
                                               std::string &why) const
 {
+    // THE FAST PATH FIRST, which is the author's own design order: "we build all
+    // the fast paths ... THEN we at last build the slower all encompassing" one.
+    // Two numbers is the commonest thing this language does, and it was reaching
+    // its fast path THIRD -- behind a percentage test and a by-worth test that
+    // are both false whenever both sides are numbers. Hoisting is behaviour-
+    // identical for exactly that reason: read_by_worth() needs one side BINARY,
+    // and is_percentage() needs one side a percentage.
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_modulus, "%", out, why);
     if (is_percentage() || other.is_percentage())
         return percentage_operation('%', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).modulus(worth_of(other), out, why);
-    if (pair_of(kind(), other.kind()) == pair_of(number, number))
-        return run_number_pair(*this, other, number_and_number_modulus, "%", out, why);
     return refuse_pair(*this, other, "%", why);
 }
 
 signed long long int satelliteObject::power(const satelliteObject &other, satelliteObject &out,
                                             std::string &why) const
 {
+    // THE FAST PATH FIRST, which is the author's own design order: "we build all
+    // the fast paths ... THEN we at last build the slower all encompassing" one.
+    // Two numbers is the commonest thing this language does, and it was reaching
+    // its fast path THIRD -- behind a percentage test and a by-worth test that
+    // are both false whenever both sides are numbers. Hoisting is behaviour-
+    // identical for exactly that reason: read_by_worth() needs one side BINARY,
+    // and is_percentage() needs one side a percentage.
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_power, "^", out, why);
     if (is_percentage() || other.is_percentage())
         return percentage_operation('^', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
         return worth_of(*this).power(worth_of(other), out, why);
-    if (pair_of(kind(), other.kind()) == pair_of(number, number))
-        return run_number_pair(*this, other, number_and_number_power, "^", out, why);
     return refuse_pair(*this, other, "^", why);
 }
 
