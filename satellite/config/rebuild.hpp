@@ -147,6 +147,12 @@ inline signed long long int run_rebuild()
             asked_for_but_unbuilt.push_back(feature_facts()[i].name);
 
     std::cout << "\n    " << kRegisterKey << " = " << value << "\n";
+    // THE SAME REGISTER AS A NUMBER, so there is something to pass along. The
+    // author, 2026-09-18: *"so the user can paste specific numbers between each
+    // other"*. Both spellings are read back, so either can be pasted into
+    // config.ini and either means the same thing.
+    std::cout << "    " << kRegisterKey << " = " << as_number(made)
+              << "        (the same register, as a number -- either spelling is read)\n";
     std::cout << "    " << kFeatureCount << " features, "
               << (made.any() ? "some ON" : "all off") << "\n";
 

@@ -170,6 +170,46 @@ inline std::string written(const FeatureRegister &reg)
     return out;
 }
 
+// THE SAME REGISTER AS A PLAIN NUMBER, so a person can pass one around.
+//
+// The author, 2026-09-18: *"Should we make it an signed long long int so the user
+// can paste specific numbers between each other?"* and *"then you can just in the
+// switch statements, if it's this number, do this, and if it's this number, do
+// this"*.
+//
+// **YES TO THE NUMBER, NO TO THE SIGN, AND THE SIGN IS THE ONLY DISAGREEMENT.**
+// A number is much easier to pass than fourteen digits of binary -- "run it with
+// 8193" against "run it with b10000000000001" -- and it makes the switch cases
+// READ as numbers, which is the author's second sentence exactly. All of that
+// works, and it works better unsigned:
+//
+//   * **BIT 63 MAKES A SIGNED VALUE NEGATIVE.** With 64 features the top bit is
+//     the sign bit, so a register with it set prints as
+//     `-9223372036854775808`. That is the opposite of easy to paste, and it is a
+//     number a person would reasonably think was an error message.
+//   * **SHIFTING INTO THE SIGN BIT IS A TRAP** that C++20 only recently made
+//     well-defined, and `1 << 63` on a signed type is a line every reviewer has
+//     to stop at forever.
+//   * **IT IS NOT FASTER EITHER WAY.** The author's reason was speed -- *"so we
+//     can work with it extremely fast and don't have to read it"* -- and that is
+//     already true: signed and unsigned are the same register and the same
+//     instructions. Nothing is read either way; the value is loaded once at
+//     start-up and tested from a register after that.
+//
+// So: unsigned inside, and a decimal spelling for people. 0 to
+// 18446744073709551615, never a minus sign.
+//
+// AND THE AUTHOR'S "SMALLEST NUMBER" INSTINCT IS ALREADY BUILT, which is worth
+// saying because it was a good one: *"the least significant bit is the most
+// common option, then the number will stay smaller"*. `access` is bit 0, so the
+// ordinary register is `1` -- one character to pass along. The Feature enum is in
+// roughly that order and new features go on the end, which keeps common ones low
+// by construction.
+inline std::string as_number(const FeatureRegister &reg)
+{
+    return std::to_string(reg.bits);
+}
+
 // Read `b1011...` back. Answers false for anything that is not that shape, and
 // the caller then says so rather than running on a register it invented.
 //
@@ -181,6 +221,31 @@ inline std::string written(const FeatureRegister &reg)
 // their own settings. See red note 12: the author may want this to speak up.
 inline bool read_written(const std::string &text, FeatureRegister &into)
 {
+    // A PLAIN NUMBER IS ACCEPTED TOO, which is the author's pasteable form. A
+    // person handed "8193" can put it straight in config.ini or on a command line
+    // and it means what the binary would have meant.
+    //
+    // NO MINUS SIGN, and it is refused rather than folded: a negative register is
+    // not a register with the top bits set, it is somebody pasting the wrong
+    // thing, and reading it as 2^63 would silently turn on the highest feature
+    // there is.
+    if (!text.empty() && text[0] >= '0' && text[0] <= '9') {
+        std::uint64_t value = 0;
+        for (const char c : text) {
+            if (c < '0' || c > '9')
+                return false;
+            const std::uint64_t digit = static_cast<std::uint64_t>(c - '0');
+            // A number past 64 bits is a number that was not a register.
+            if (value > (~0ull - digit) / 10u)
+                return false;
+            value = value * 10u + digit;
+        }
+        FeatureRegister made;
+        made.bits = value;
+        into = made;
+        return true;
+    }
+
     if (text.size() < 2 || (text[0] != 'b' && text[0] != 'B'))
         return false;
     FeatureRegister made = FeatureRegister::defaults();

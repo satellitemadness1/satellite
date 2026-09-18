@@ -795,3 +795,165 @@ is a build failure now instead of a silent one.
 identity test compared md5s across eight leaves and all eight matched — because
 the program failed to run and every output was empty. `d41d8cd98f00` is the md5
 of nothing. The test only became a test once the program produced seven lines.
+
+---
+
+# Part 15 — the author's rulings, 2026-09-18
+
+Answers to Part 13. The questions are kept above; these are the decisions.
+
+## The severity policy, and it is the one that governs the rest
+
+The author, in two sentences that look opposed and are not:
+
+> let's not make more things fatal, let's make less things fatal and only use
+> fatal when we absolutely have to use it
+
+> But we kinda want to crash the interpreter, provide information, we don't want
+> it to operate incorrectly, we are trying to build a precision tool here, we need
+> this to run exactly correctly in case someone uses it inside of a data center
+
+**They are about different things, and reading them together is the policy.**
+
+- **"Fatal" is about the FRAME, not the stopping.** Do not invent new categories
+  of alarm, do not dress a notice as a catastrophe, do not print a wall of dashes
+  at somebody because a file was missing. Fewer things should LOOK fatal.
+- **"Crash" is about CORRECTNESS.** A program whose meaning is not certain must
+  stop, because running it wrong is worse than not running it. *"we don't want it
+  to operate incorrectly ... in case someone uses it inside of a data center"*.
+
+So: **stop readily, alarm rarely.** A refusal is ordinary and is reported in
+ordinary words; the eighty-column report is for the times a person needs
+everything.
+
+**AND THERE IS EXACTLY ONE KIND OF RECOVERY, NAMED BY THE AUTHOR.** He has
+*"only written once 'keep running'"*, and it is the obvious typo:
+
+> we only keep running when the code that is typed is incredibly obvious, such as
+> satellite.variable.binary my_number = 110101001111 -- here the user forgot the
+> "b", which that is okay, we can pick it back up, but other than that, let's
+> crash the interpreter on just about anything other than typos that we know what
+> the user meant, we use aliases to keep the code going
+
+**The test is "do we KNOW what they meant", not "can we guess".** A binary
+declaration given digits that are all 0 and 1 has one possible reading. `"a" + 5`
+has two and the language refuses it today, rightly. **Recovery needs a reason it
+could not have meant anything else** — and every recovery is warned about, never
+silent, because a silent fix is the interpreter operating incorrectly with a
+smile.
+
+> the last thing users want is a picky interpreter that just crashes on
+> everything, and they have to learn this new system -- this system was designed
+> to do two things at the same time -- the ease of use of something like python,
+> and the power of C++ at the exact same time, that is the purpose of the project
+
+**That is this project's "C with Classes" sentence, and it is written here so the
+error system can be measured against it.** Ease is not leniency about meaning; it
+is aliases, spellings, and a refusal that says what to type instead.
+
+## Note by note
+
+**1. Does a notice use the same frame as a failure? — ANSWERED: fewer fatal
+things.** S0721 (config.ini missing) keeps running and should not look like a
+catastrophe. **Do not** add a second scary frame; make the notice quieter. A
+missing config is one ordinary line, and the eighty-column report is kept for
+what deserves it.
+
+**2. Do both numbers show? — THE AUTHOR LEFT IT TO ME.** *"report is something
+that you made, so you decide that one"*. **Both, in the header row.** The S-code
+is what a person searches for and the machine code is what `echo $?` gives them;
+a report showing one of the two makes the other look unrelated.
+
+**3. How many reports does one run print? — ANSWERED: track them.** *"this is
+going to require some tracking so we are not reporting the exact same thing
+twice"*. **Same S-code at the same file and line is reported ONCE**, and the
+repeats are counted: `(this happened 40,199 more times)` at the end. The key is
+the three together — the same code at a different line is a different event.
+
+**4. Is `Sxxxx` enough? — ANSWERED: yes, and the author asked me to decide the
+scheme.** *"there isn't going to be more than... 9999 errors!! Just use every
+single number! ... You actually designed these errors, so you tell me that one!"*
+
+**My answer: keep the blocks, and here is why it is not waste.** A block is not
+a reservation that throws numbers away — every number in a block still gets used,
+in order, as errors are added. What the block buys is that **the number itself
+says where to look before anybody looks anything up**: `S07xx` is settings,
+`S05xx` is names, `S08xx` is arithmetic. A person pasting "S0723" into a message
+has already told you which part of the interpreter they were in.
+
+Sequential numbering makes `S0341` and `S0342` neighbours that have nothing to do
+with each other, and the only way to learn what one is, is a table. With 9999
+numbers and perhaps 150 ever needed, density is the one thing this design can
+afford to spend. **And 003 already did this** -- S0714, S0723, S1001 -- so it is
+the scheme a person moving between the two already knows.
+
+**If a block ever fills**, it continues in the first free range and Part 4 records
+where it went. A full block is a good problem and it is one line to answer.
+
+**5 and 6. The statement ring — THE AUTHOR ASKED WHAT A RING IS, WHICH MEANS THE
+NOTE WAS BADLY WRITTEN.** *"I don't know what you mean by 'What is N for the
+statement ring'? what do you mean by 'ring'?? If you mean the encompassing switch
+hierarchy..."*
+
+**It is not the switch hierarchy.** Said plainly:
+
+> A **ring buffer** is a fixed-size list that overwrites its own oldest entry when
+> it is full. Keep 256 of them and you always have the most recent 256 and never
+> any more, with no allocation and no growth.
+>
+> The **statement ring** is §G of Part 7: remember the last N statements the
+> program ran, so that when it stops, the report can show **what it was doing just
+> before**. That is the difference between "it crashed" and "it crashed on line
+> 412, having just gone round this loop 40,000 times".
+
+**Why N is a question at all:** the ring is written **once per statement**, which
+is the hottest path in the language, and it holds N entries in memory forever. The
+switch hierarchy costs nothing because it is taken once; the ring is the opposite
+kind of thing, which is why it needed a number and the hierarchy did not.
+
+**Proposed N: 256.** One entry is a file, a line and a word code -- 16 bytes -- so
+256 is **4 KB, one page, allocated once at start-up and never grown**. It is deep
+enough to show a loop's shape and the path into it, and small enough that the
+answer to "does it cost anything" is measurable rather than argued. Overridable
+from config.ini; the author may want 1,024.
+
+**7. SIGSEGV. — Standing, and it agrees with the severity policy:** write only
+what needs no pointer chased -- §A identity, §B arguments, §C the failure, §L the
+config -- and say the rest was skipped. Walking a corrupt frame stack inside the
+handler turns one crash into two and loses the report.
+
+**8. Who cleans `~/.satl/reports/`? — ANSWERED: I do, and from the start.** The
+author: *"We clean .satl/reports/ both of us ... So currently you have to clean
+it, because it's too long for me to read"*.
+
+**Note for whoever builds R4: the folder does not exist yet** -- `report_file` is
+a bit with no behaviour, so there is nothing to clean today. The rule is written
+now so it is built in rather than retro-fitted: **keep the newest 50 and delete
+the rest on every write**, and a report is one file per failure, named by time and
+S-code. An unbounded folder is the console queue with a slower fuse.
+
+**9. Which environment variables? — the author asked what I propose.** The list
+was `HOME PATH PWD SHELL TERM LANG SATELLITE_*`. **Four to add, and two of them
+matter much more than the rest:**
+
+| add | why |
+|---|---|
+| **`LD_LIBRARY_PATH`** | **satl `dlopen`s its own libraries.** This variable changes WHICH `.so` files a run loads, so it can make two identical satl binaries behave differently. A report that does not name it cannot explain that |
+| **`LD_PRELOAD`** | the same, and worse: it can replace functions inside the interpreter. It is the first thing to suspect in a "works on my machine" that nothing else explains |
+| `USER` / `LOGNAME` | satl already reads the real user from `getpwuid`. Keeping the environment's copy too is worth it precisely when **they disagree** -- which is what `sudo` looks like |
+| `TZ` | every time in the report means something different without it |
+
+**And the allowlist stays an allowlist.** These are named, one at a time, and
+nothing is swept: a report is made to be pasted into a bug entry, and `environ`
+holds tokens and keys. Adding a name later is easy; taking one out of a report
+somebody already pasted is impossible.
+
+**Shell commands in the prompt is a different feature**, and a real one -- but it
+belongs in the prompt's own milestone, not the error system's. It also brings a
+question this file has no opinion on yet: a language that can run shell commands
+is a language whose programs can do anything the person can, and that is a
+decision about satellite rather than about reports.
+
+**10-14.** Unchanged: 64 hot bits; mid-run flips still the author's (note 11);
+unknown bits dropped silently; `--rebuild` and `--config` stay two commands;
+`arguments.access` is bit 0 and both spellings live.

@@ -1084,7 +1084,45 @@ whether `help` with no argument lists the types; what `access` answers for a nam
 nothing declared. `satellite.help` is `1 19`, `satellite.access` is numbered in
 words.tsv, and the prompt refuses `help` by name until this lands (M0.6).
 
+### ANSWERED 2026-09-18 — they are TWO things, and the milestone had them as one
+
+(the author) *"satellite.access is different from satellite.help, I want to build
+two different things there, access is a little bit of info about the object, the
+objects value and type only, whereas satellite.help is information on that type,
+but we can combine them so access also displays whatever help has for that type,
+that would work... so we'll have access as that, but then satellite.help will
+still be the help system, whereas access is just info on that type, help is more
+detailed info on that type"*
+
+| | what it answers | about |
+|---|---|---|
+| **`satellite.access(name)`** | the **value** and the **type**. A little bit of info | the OBJECT |
+| **`satellite.help(name)`** | the type's methods, and everything else known about it | the TYPE |
+
+**One register feeds both**, which is why they were written as one milestone and
+is the only thing that was right about doing so: `access` reads a name out of the
+last-known store and answers its value and type; `help` takes that type and shows
+what the type can do. **`access` may also print what `help` would** -- the author
+allows it -- so a person who asks about a name gets the object AND the type
+without asking twice.
+
+**AND `access` IS ALREADY HALF BUILT.** `satellite.library.main.arguments.access`
+-- bit 0 of the feature register, `249d748` -- is the VALVE that decides whether
+the last-known store is kept at all. The store is what this milestone builds; the
+switch for it already exists, lasts in config.ini, and defaults to on.
+
 ## M35 — a spacesuit takes a supertype, and `satellite.protected` takes arguments
+
+> **SPLIT 2026-09-18 BY THE AUTHOR, AND ONLY THE FIRST HALF IS OWED.**
+>
+> *"Well right now I Don't think satellite.protected needs arguments just yet,
+> just leave it marked down as it's own milestone and we'll just never get to
+> it... but a spacesuit still has to take a supertype, that is certain."*
+>
+> So: **a spacesuit taking a supertype is CERTAIN and is this milestone.**
+> `satellite.protected` taking arguments is **parked** -- kept written down,
+> deliberately not scheduled, and explicitly not blocking the supertype.
+> Two things in one heading was why they looked like one job.
 
 (the author, 2026-09-17) *"when a user defines a type, they should almost be able
 to do this"*:
