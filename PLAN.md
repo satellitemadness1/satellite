@@ -1030,6 +1030,42 @@ than refused, on the grounds that it is not an invention: it is the syntax you
 wrote the same day. Say if a list should refuse to print instead, as bytecode and
 a spacesuit do.
 
+**9. `.reverse()` ON A FLOAT — YOUR RULE IS RECORDED AND CANNOT BE BUILT YET
+(2026-09-18).** You asked for something specific and unlike every other type:
+
+> *"float reverse exchanges the decimal numbers for the whole numbers, and
+> float_object.reverse().reverse() will be the only command you can reverse
+> TWICE, it shall switch the numbers, AND reverse the numbers if you reverse it
+> twice"*
+
+**There is no float in 004.** `satellite_float` is listed as arm 12 of
+`satelliteObject` and has never been built; `4 / 3` still answers *"not a whole
+number, and there is no satellite_float yet"*. So `.reverse()` was built for a
+string, a number and a binary, and a float's reverse waits for the float.
+
+**The first half is clear** — `12.34.reverse()` is `34.12`: the part after the
+point and the part before it change places.
+
+**The second half needs one more sentence from you before it can be built**, and
+it is worth getting right because `.reverse().reverse()` is an identity on every
+other type — reverse a string twice and you have the string back. A float is the
+one place you are asking it NOT to be, so which of these it is cannot be guessed
+from the first reverse:
+
+    12.34.reverse()              ->  34.12      (agreed: the parts change places)
+    12.34.reverse().reverse()    ->  21.43   ?  (parts swapped back, digits reversed)
+                                 ->  43.21   ?  (parts stay swapped, digits reversed)
+
+Say which and it is a small function. Everything around it is built: the method
+token exists, the chain already works, and `reverse_of` in
+`satellite/bytecode/container_calls.cpp` has an arm waiting.
+
+**A smaller one beside it:** a number ending in zero loses it — `120.reverse()`
+is `21`, not `021` — because `021` IS `21` and a number that remembered a leading
+zero would be a string wearing a number's name. A binary keeps its width, so
+`b1010.reverse()` is `b0101`. Say if you want the number to behave like the
+binary.
+
 **Decisions waiting on you, gathered from the rework:** what `&` `|` `^` `<<`
 `>>` `!!` `~` mean (the nineteen QUESTION rows, MILESTONES M24); whether an
 unknown escape is refused (ERROR #16 is half fixed); whether a stored program may

@@ -276,6 +276,25 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
                                        method == token::to_string_token || method == token::to_number_token ||
                                        method == token::to_binary_token || method == token::to_hexadecimal_token;
 
+    // A CONTAINER'S OWN METHODS (the author, 2026-09-18). `.reverse()` is not in
+    // this list because it is not a container's: it is on every type that has an
+    // order -- a string, a number, a binary -- so it is allowed on anything here
+    // and refused at the value, where the kind is actually known.
+    const bool of_a_container = method == token::append_token || method == token::size_token ||
+                                method == token::contains_token || method == token::sort_token ||
+                                method == token::by_name_token || method == token::by_value_token;
+    const bool a_container = declared_as == word::code_of(1, 4, 2) || declared_as == word::code_of(1, 4, 5) ||
+                             declared_as == word::code_of(1, 4, 6);
+    if (method == token::reverse_token)
+        return success;                  // every type with an order has one
+    if (a_container) {
+        if (of_a_container || of_a_string_or_number) return success;
+        why = spelling + " is not built for " + word::spelling_of(declared_as) +
+              " yet -- a container has .append, .size, .contains, .sort().by_name(), "
+              ".sort().by_value() and .reverse()";
+        return not_built_yet;
+    }
+
     if (declared_as != word::code_of(1, 6, 2)) {
         if (of_a_string_or_number) return success;
         why = spelling + " is not built for " + word::spelling_of(declared_as) + " yet -- so far it is a file's";

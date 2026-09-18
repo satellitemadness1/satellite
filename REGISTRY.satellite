@@ -329,7 +329,7 @@ bits              name                         what it is
 0000101100001000  insert_token                 insert  [METHOD] object.insert(n, x) -- x becomes line n and the rest move down; lines count from 1 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
 0000101100001001  index_of_token               index_of  [METHOD] object.index_of(x) -- the number of the first line that IS x, or 0 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
 0000101100001010  search_token                 search  [METHOD] object.search(x) -- the number of the first line that CONTAINS x, or 0 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
-0000101100001011  contains_token               contains  [METHOD] object.contains(x) -- whether any line is x (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001011  contains_token               contains/contain  [METHOD] object.contains(x) -- whether any line is x (a file), any item is x (a list), any key is x (an index). `contain` is the author's alias, 2026-09-18
 0000101100001100  remove_at_token              remove_at  [METHOD] object.remove_at(n) -- takes line n out (SATELLITE_FILE_OPERATIONS, 2026-09-18)
 0000101100001101  remove_token                 remove  [METHOD] object.remove(x) -- takes out the first line that is x (SATELLITE_FILE_OPERATIONS, 2026-09-18)
 0000101100001110  remove_first_token           remove_first  [METHOD] object.remove_first() (SATELLITE_FILE_OPERATIONS, 2026-09-18)
@@ -348,6 +348,10 @@ bits              name                         what it is
 0000101100011011  error_text_token             error  [METHOD] object.error -- why the last thing failed, in words (SATELLITE_FILE_OPERATIONS, 2026-09-18)
 0000101100011100  path_token                   path  [METHOD] object.path -- the path the file was opened on (SATELLITE_FILE_OPERATIONS, 2026-09-18)
 0000101100011101  exists_token                 exists  [METHOD] object.exists -- whether the handle's path is still a file (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011110  sort_token                   sort  [METHOD] object.sort() -- the receiver, to be ordered by the .by_name() or .by_value() that follows (the author, 2026-09-18)
+0000101100011111  by_name_token                by_name  [METHOD] object.sort().by_name() -- ordered A to Z, ALWAYS; .reverse() is how you get Z to A (the author, 2026-09-18)
+0000101100100000  by_value_token               by_value  [METHOD] object.sort().by_value() -- smallest first, ALWAYS; .reverse() is how you get largest first (the author, 2026-09-18)
+0000101100100001  reverse_token                reverse  [METHOD] object.reverse() -- a list, a string, a number, a binary or a hex, back to front (the author, 2026-09-18)
 0000101100011110  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code

@@ -11,6 +11,7 @@
 #include "expression.hpp"
 
 #include "file_calls.hpp"
+#include "container_calls.hpp"
 #include "../machine/stop_flag.hpp"
 
 #include "word_codes.hpp"
@@ -265,13 +266,34 @@ ObjectConversion conversion_of(Code method)
 // one hop: the variable's value knows its own kind, so the method resolves
 // against that and nothing else.
 Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, const Value &start,
-                  const std::string &name, ExpressionContext &context)
+                  const std::string &name, ExpressionContext &context, Value *home = nullptr)
 {
-    Value receiver = start;
+    // NOTHING IS COPIED WHILE THE CHAIN IS STILL ON THE VARIABLE, and that one
+    // sentence is the difference between an append that is instant and one that
+    // is quadratic.
+    //
+    // `Value (*live) = start;` USED TO BE THE FIRST LINE HERE, and it made
+    // 20,000 appends take THIRTEEN TIMES what 5,000 did -- copy-on-write asks
+    // `use_count() == 1`, and that copy made the answer no on every single call,
+    // so each append duplicated the whole list. It is precisely the bug 003
+    // shipped for months (satellite_list.hpp tells that story), rebuilt here by
+    // accident and caught only by measuring it.
+    //
+    // So `held` stays EMPTY until a method answers something new, and `live`
+    // points at the variable's own object until then. `on_the_name` is what
+    // `.append` needs: a list is a value, so appending anywhere but the
+    // variable itself changes a copy nobody will ever read.
+    Value held;
+    Value *live = home;
+    bool on_the_name = home != nullptr;
+    if (live == nullptr) {
+        held = start;
+        live = &held;
+    }
 
     // THE LOOP IS WHAT MAKES THEM STRING TOGETHER (the author, 2026-09-16: "so we
     // can string operations together"). One turn is one `.segment`, the answer
-    // becomes the next turn's receiver, and `s.bin.find("1010111")` is two turns
+    // becomes the next turn's (*live), and `s.bin.find("1010111")` is two turns
     // with nothing in this file knowing that pairing exists. A chain of any
     // length costs one local.
     while (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1))) {
@@ -310,19 +332,61 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             ++at;
         }
 
-        // A FILE ANSWERS ITS OWN METHODS (file_calls.cpp). The receiver is a
+        // `.reverse()` ON A STRING, A NUMBER OR A BINARY -- one command on every
+        // type that has an order (the author, 2026-09-18). Asked before the
+        // container branch because none of these is a container, and before the
+        // string/number branch because that one answers "not built for" first.
+        if (method == token::reverse_token && !(*live).is_list() && !(*live).is_index() &&
+            !(*live).is_file()) {
+            bool handled = false;
+            std::string why;
+            Value answer = reverse_of((*live), handled, why);
+            if (!handled) {
+                context.refuse(types_do_not_meet,
+                               name + ".reverse() was written on " + (*live).kind_name() +
+                                   (why.empty() ? std::string(", and that has no order to reverse")
+                                                : ", and " + why));
+                return Value();
+            }
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
+            continue;
+        }
+
+        // A LIST'S AND AN INDEX'S OWN METHODS (container_calls.cpp).
+        if ((*live).is_list() || (*live).is_index()) {
+            const bool changes_it = method == token::append_token;
+            Value answer = call_container_method(method, (*live), on_the_name ? live : nullptr, arguments,
+                                                        had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            // A METHOD THAT ANSWERED SOMETHING NEW takes the chain off the
+            // variable; one that changed it in place leaves the chain where it
+            // is, so `names.append("a").append("b")` really appends twice.
+            if (!changes_it) {
+                held = std::move(answer);
+                live = &held;
+                on_the_name = false;
+            }
+            continue;
+        }
+
+        // A FILE ANSWERS ITS OWN METHODS (file_calls.cpp). The (*live) is a
         // handle, so the method acts on the one open file every name for it shares.
-        if (satellite_file *file = receiver.as_file()) {
+        if (satellite_file *file = (*live).as_file()) {
             Value answer = call_file_method(method, *file, arguments, had_parentheses, name, context);
             if (context.code != success)
                 return Value();
-            receiver = std::move(answer);
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
             continue;
         }
 
         // A NAME DECLARED WITH NO VALUE YET, said as that: `satellite.variable.file f`
         // and then `f.append("x")` is not a method that is missing.
-        if (receiver.is_nothing()) {
+        if ((*live).is_nothing()) {
             context.refuse(satl_line_not_understood, name + " has no value yet -- give it one with = before calling ." +
                                                          spelling + " on it");
             return Value();
@@ -331,7 +395,7 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // THE REST ARE THE STRING'S AND THE NUMBER'S, which take one argument or none.
         // A file's method names on anything else are not built for it yet.
         if (conversion == nullptr && method != token::find_token && method != token::add_token) {
-            context.refuse(not_built_yet, name + "." + spelling + " is not built for " + receiver.kind_name() +
+            context.refuse(not_built_yet, name + "." + spelling + " is not built for " + (*live).kind_name() +
                                               " yet -- so far it is a file's");
             return Value();
         }
@@ -352,9 +416,9 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                                std::string(spelling) + " is a conversion and takes no argument");
                 return Value();
             }
-            code = conversion(receiver, answer);
+            code = conversion((*live), answer);
             if (code == types_do_not_meet) {
-                context.refuse(code, std::string(spelling) + " was written on " + receiver.kind_name() +
+                context.refuse(code, std::string(spelling) + " was written on " + (*live).kind_name() +
                                          ", and there is no conversion from that");
                 return Value();
             }
@@ -369,20 +433,20 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 return Value();
             }
             if (method == token::find_token)
-                code = str_find_str(receiver, argument, answer);
+                code = str_find_str((*live), argument, answer);
             else if (method == token::add_token) {
                 // `.add` IS `+`, and it is the object model's own add -- so it
                 // joins two strings and sums two numbers without this file
                 // knowing which, exactly as the operator does.
                 std::string why;
-                code = receiver.add(argument, answer, why);
+                code = (*live).add(argument, answer, why);
                 if (code != success && code != text_not_found) {
                     context.refuse(code, why);
                     return Value();
                 }
             }
             if (code == types_do_not_meet) {
-                context.refuse(code, std::string(spelling) + " was written on " + receiver.kind_name() +
+                context.refuse(code, std::string(spelling) + " was written on " + (*live).kind_name() +
                                          " and given " + argument.kind_name() + ", and there is no scenario for that");
                 return Value();
             }
@@ -397,9 +461,11 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             context.refuse(code, std::string("satellite.variable.string.") + spelling + " is not built yet");
             return Value();
         }
-        receiver = std::move(answer);
+        held = std::move(answer);
+        live = &held;
+        on_the_name = false;
     }
-    return receiver;
+    return *live;
 }
 
 // A literal, a name, a call, a bracketed expression, or a unary operator.
@@ -804,7 +870,14 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // THE THREE TOKENS TOGETHER (the author): a period, a method's own code,
         // and a `(`. call_method above says what happens then.
         if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
-            return call_method(row, at, found->second.value, name, context);
+            // THE VARIABLE'S OWN OBJECT, so `names.append("x")` changes names
+            // rather than a copy of it. `find` is a const_iterator, so the
+            // non-const one is taken here and nowhere else.
+            {
+                const VariableTable::iterator writable = context.variables.find(name);
+                Value *home = writable == context.variables.end() ? nullptr : &writable->second.value;
+                return call_method(row, at, found->second.value, name, context, home);
+            }
         return found->second.value;
     }
 

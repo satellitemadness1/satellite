@@ -532,6 +532,112 @@ expect "multiple<a, b> refuses a third type" "27|1" \
        "$(index_says '    satellite.container.multiple<satellite.variable.string, satellite.variable.number> x = {1, 2}' 'this name takes')"
 expect "multiple with one type is refused as saying nothing" "13|1" \
        "$(index_says '    satellite.container.multiple<satellite.variable.string> x = "a"' 'takes two or more types')"
+# THE CONTAINER METHODS (the author, 2026-09-18): .append, .size, .contains and
+# .contain as an alias, and sort as `.sort().by_name()` / `.sort().by_value()`
+# with `.reverse()` in place of the old .sort("up") / .sort("down").
+#
+# `.sort().by_value()` ORDERS BY WHAT THINGS ARE WORTH, not by how they read:
+# {30, 4, 100, 2} sorts to {2, 4, 30, 100}, where sorting the TEXT would give
+# {100, 2, 30, 4}. That row is here because the wrong one looks plausible.
+#
+# `.sort()` DOES NOT REORDER THE NAME -- the last row checks names is untouched
+# after being sorted, which is what makes
+# `satellite.console.display(names.sort().by_name())` safe to write.
+cat > build/list_methods.satl <<'MET_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list names = {"zoe", "alice", "bob"}
+    names.append("carol")
+    satellite.console.display(names)
+    satellite.console.display(names.size)
+    satellite.console.display(names.contains("bob"))
+    satellite.console.display(names.contain("nope"))
+    satellite.console.display(names.sort().by_name())
+    satellite.console.display(names.sort().by_name().reverse())
+    satellite.container.list nums = {30, 4, 100, 2}
+    satellite.console.display(nums.sort().by_value())
+    satellite.console.display(nums.sort().by_value().reverse())
+    satellite.console.display(names)
+    satellite.return(satellite)
+}
+MET_EOF
+HOME="$CHECK_HOME" "$interpreter" build/list_methods.satl > build/list_methods.out 2>&1
+expect "append changes the name; size, contains and its .contain alias; by_name is A-Z and by_value is by worth" \
+       '{"zoe", "alice", "bob", "carol"}|4|true|false|{"alice", "bob", "carol", "zoe"}|{"zoe", "carol", "bob", "alice"}|{2, 4, 30, 100}|{100, 30, 4, 2}|{"zoe", "alice", "bob", "carol"}' \
+       "$(tail -9 build/list_methods.out | tr '\n' '|' | sed 's/|$//')"
+
+# `.reverse()` ON EVERY TYPE THAT HAS AN ORDER (the author: "add .reverse()
+# anywhere we can reverse something, strings, numbers, binary numbers hex").
+#
+# THE SECOND ROW IS THE ONE WORTH KEEPING: "hello" with accents reverses BY
+# CHARACTER, not by byte. Reversing the UTF-8 bytes would answer something that
+# is not text at all, and that is the whole reason the language carries its own
+# 16/32-bit string rather than a std::string of bytes.
+cat > build/reverse_all.satl <<'REV_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "hello"
+    satellite.console.display(s.reverse())
+    satellite.variable.string u = "héllo→"
+    satellite.console.display(u.reverse())
+    satellite.variable.number n = 12345
+    satellite.console.display(n.reverse())
+    satellite.variable.number neg = -123
+    satellite.console.display(neg.reverse())
+    satellite.variable.number z = 120
+    satellite.console.display(z.reverse())
+    satellite.variable.binary b = b1010
+    satellite.console.display(b.reverse())
+    satellite.console.display(s.reverse().reverse())
+    satellite.return(satellite)
+}
+REV_EOF
+HOME="$CHECK_HOME" "$interpreter" build/reverse_all.satl > build/reverse_all.out 2>&1
+expect "reverse: a string BY CHARACTER, a number's digits, a sign that stays, a binary's width kept" \
+       'olleh|→olléh|54321|-321|21|b0101|hello' \
+       "$(tail -7 build/reverse_all.out | tr '\n' '|' | sed 's/|$//')"
+
+# APPEND IS NOT QUADRATIC, AND THIS ROW EXISTS BECAUSE IT WAS.
+#
+# The first version of .append took 0.588s for 5,000 appends and 7.647s for
+# 20,000 -- THIRTEEN times the work for four times the appends. The cause was one
+# line, `Value receiver = start;` at the top of call_method: copy-on-write asks
+# `use_count() == 1`, and that copy made the answer no every single time, so
+# every append duplicated the whole list. It is exactly the bug 003 shipped for
+# months, rebuilt here by accident and found only by measuring.
+#
+# NOTHING ABOUT THE OUTPUT DIFFERS between the two. After the fix, 100,000
+# appends take 0.26s.
+for size in 25000 100000; do
+  {
+    echo 'satellite.include(satellite)'
+    echo 'satellite.capsule satellite.main()'
+    echo '{'
+    echo '    satellite.container.list big = {}'
+    echo "    satellite.statement.for(satellite.variable.number i = 0; i < $size; i++)"
+    echo '    {'
+    echo '        big.append(i)'
+    echo '    }'
+    echo '    satellite.console.display(big.size)'
+    echo '    satellite.return(satellite)'
+    echo '}'
+  } > "build/list_append_$size.satl"
+done
+ap_small=$( { TIMEFORMAT=%R; time HOME="$CHECK_HOME" "$interpreter" build/list_append_25000.satl > build/ap_small.out 2>&1; } 2>&1 )
+ap_big=$(   { TIMEFORMAT=%R; time HOME="$CHECK_HOME" "$interpreter" build/list_append_100000.satl > build/ap_big.out 2>&1; } 2>&1 )
+expect "100,000 appends all landed" "100000" "$(tail -1 build/ap_big.out)"
+# Four times the appends inside eight times the time is linear with room to
+# spare, and nowhere near the sixteen times a copying append costs.
+expect "append is linear, not quadratic (4x the appends: ${ap_small}s -> ${ap_big}s)" \
+       "linear" \
+       "$(awk -v s="$ap_small" -v b="$ap_big" 'BEGIN { print (b < s * 8 + 0.05) ? "linear" : "QUADRATIC: " b "s vs " s "s" }')"
+
+expect "an index says how to fill it rather than refusing .append bare" "27|1" \
+       "$(index_says '    satellite.container.index s
+    s.append(1)' 'an index is filled by its key')"
+
 
 # THE EXAMPLE IN `satl --help` IS EXTRACTED FROM THE REAL OUTPUT AND RUN.
 #
