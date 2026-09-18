@@ -39,6 +39,7 @@
 // for adding one.
 
 #include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -144,13 +145,103 @@ inline std::string render(const CriticalReport &report)
     return out;
 }
 
+// THE SAME THING IS NOT SAID TWICE.
+//
+// The author, 2026-09-18: *"this is going to require some tracking so we are not
+// reporting the exact same thing twice"*. A refusal inside a loop is one mistake
+// that happens forty thousand times, and forty thousand copies of one report
+// scroll the useful part off the screen -- which is the console queue's lesson
+// with a terminal instead of memory.
+//
+// THE KEY IS THE THREE TOGETHER: the S-code, the file and the line. The same code
+// at a DIFFERENT line is a different mistake and is said; the same code at the
+// same line is the same mistake and is counted. That is why the key is not just
+// the code -- one `types_do_not_meet` silencing every later one would hide real
+// faults.
+//
+// NOT LOCKED, AND THAT IS TRUE TODAY AND WILL NOT ALWAYS BE. Nothing reports from
+// a worker thread yet; the walker is one thread and every raise below comes from
+// it. When a thread can raise one, this needs a mutex -- said here rather than
+// found when two reports interleave into one unreadable line.
+struct ReportTally {
+    std::vector<std::string> keys;
+    std::vector<std::uint64_t> counts;
+
+    // Answers whether this is the FIRST time -- the caller prints only then.
+    bool first_time(const CriticalReport &report)
+    {
+        const std::string key = report.code + "\n" + report.directory + "\n" + report.syntax;
+        for (std::size_t i = 0; i < keys.size(); ++i)
+            if (keys[i] == key) {
+                ++counts[i];
+                return false;
+            }
+        keys.push_back(key);
+        counts.push_back(1);
+        return true;
+    }
+
+    // What was held back, said once at the end. Empty when nothing repeated.
+    std::string repeats() const
+    {
+        std::string out;
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            if (counts[i] < 2)
+                continue;
+            const std::string::size_type first_break = keys[i].find('\n');
+            out += "[satellite] " + keys[i].substr(0, first_break) + " happened " +
+                   std::to_string(counts[i]) + " times in all; it was reported once\n";
+        }
+        return out;
+    }
+};
+
+inline ReportTally &report_tally()
+{
+    static ReportTally one;
+    return one;
+}
+
 // TO stderr, BECAUSE A REPORT IS NOT THE PROGRAM'S OUTPUT. A satellite program
 // piped into another program must not have this land in the pipe: the reader on
 // the far side is expecting what `display` wrote, and a report in that stream is
 // a report that corrupts the thing it was trying to explain.
 inline void print_critical(const CriticalReport &report)
 {
+    if (!report_tally().first_time(report))
+        return;                     // said once; the tally counts the rest
     std::cerr << render(report);
+    std::cerr.flush();
+}
+
+// ONE LINE, FOR THE THINGS THAT ARE NOT CATASTROPHES.
+//
+// The author's severity ruling, 2026-09-18: *"let's not make more things fatal,
+// let's make less things fatal and only use fatal when we absolutely have to use
+// it"*. Two rules of eighty dashes is an alarm, and an alarm spent on a missing
+// config file is an alarm nobody reads the next time.
+//
+// SO THE FRAME IS EARNED RATHER THAN DEFAULT. A notice says its code, its name
+// and its sentence on one line and gets out of the way; `print_critical` is for
+// a failure a person needs everything about. Both carry the S-code, so the
+// quieter one is still searchable and still leads to the same entry.
+//
+// **THIS IS ABOUT THE FRAME AND NOT ABOUT STOPPING.** The same ruling says a
+// program whose meaning is unclear must stop -- *"we don't want it to operate
+// incorrectly ... in case someone uses it inside of a data center"*. Stop
+// readily, alarm rarely: a refusal can end the run and still be one line.
+inline void print_notice(const CriticalReport &report)
+{
+    if (!report_tally().first_time(report))
+        return;                     // said once; the tally counts the rest
+    std::cerr << "[satellite] " << report.code;
+    if (!report.name.empty())
+        std::cerr << " " << report.name;
+    if (!report.description.empty())
+        std::cerr << ": " << report.description;
+    if (!report.directory.empty())
+        std::cerr << " (" << report.directory << ")";
+    std::cerr << "\n";
     std::cerr.flush();
 }
 

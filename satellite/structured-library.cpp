@@ -147,16 +147,12 @@ signed long long int run_satl(int argc, char **argv)
         missing.code = "S0721";
         missing.name = "CONFIG_FILE_MISSING";
         missing.description =
-            "satl could not find the file it keeps its lasting settings in. Please reinstall "
-            "satellite, or create a config.ini at the path below. This run carries on with the "
-            "built-in default for every setting, so nothing is lost except what you had changed.";
+            "no config.ini, so every setting is its built-in default. satl --rebuild writes one";
         missing.directory = where.empty() ? std::string("$HOME is not set, so there is no ~/.satl")
                                           : where;
-        missing.notes.push_back(
-            "A setting is written by a program -- satellite.library.main.arguments.access = "
-            "satellite.bool.true -- and writing one creates this file, so running any program "
-            "that sets a setting is the third way to fix this.");
-        print_critical(missing);
+        // A NOTICE AND NOT A REPORT, on the author's severity ruling. The run
+        // carries on and nothing is lost, so it does not get two rules of dashes.
+        print_notice(missing);
     }
 
     // THE ONE VALUE, READ ONCE. This is the whole per-run cost of the feature
@@ -195,14 +191,10 @@ signed long long int run_satl(int argc, char **argv)
         stale.code = "S0723";
         stale.name = "REGISTER_IS_STALE";
         stale.description =
-            "A setting in config.ini is not what the saved feature register says, so this run is "
-            "using the register and not the setting. Run satl --rebuild to compose them again.";
+            "a setting changed since satl --rebuild last ran, so this run uses the saved register "
+            "and not the setting. satl --rebuild composes them again";
         stale.directory = config_file::path();
-        stale.notes.push_back(
-            "The named keys -- access, history, trace -- are what you edit and what a program "
-            "writes. `features` is the single value satl reads, and --rebuild is what makes one "
-            "out of the others. This run carries on with the register as it was saved.");
-        print_critical(stale);
+        print_notice(stale);
     }
 
     MachineState state;
@@ -380,6 +372,10 @@ signed long long int run_satl(int argc, char **argv)
         std::cerr << word_counts_table(word_counts());
         std::cerr.flush();
     }
+
+    // WHAT WAS HELD BACK, SAID ONCE. Anything reported more than once printed
+    // the first time and was counted after that; this is the count.
+    std::cerr << report_tally().repeats();
 
     // A REFUSED WRITE IS ONLY REFUSED AT THE FLUSH. std::cout buffers, so
     // writing to a full disk succeeds line by line and fails once, here --
