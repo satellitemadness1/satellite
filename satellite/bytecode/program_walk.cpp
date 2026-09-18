@@ -43,6 +43,7 @@
 #include <sstream>
 
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace satellite004 {
 namespace {
@@ -273,6 +274,13 @@ signed long long int load_program(const std::string &main_file,
     registry.clear();
     filenames.clear();
 
+    // WHERE RELATIVE NAMES START FROM, fixed now and never again (file_calls.cpp).
+    if (program_start_directory().empty()) {
+        std::vector<char> here(4096);
+        while (getcwd(here.data(), here.size()) == nullptr && errno == ERANGE) here.resize(here.size() * 2);
+        if (here.front() == '/') program_start_directory() = here.data();
+    }
+
     // Each file waits with the name of the file that asked for it, so a missing
     // one can say who wanted it.
     std::vector<std::pair<std::string, std::string>> waiting{{main_file, std::string()}};
@@ -322,6 +330,10 @@ signed long long int load_program(const std::string &main_file,
         if (stops_the_program(code))
             return code;
 
+        // THE COPY THAT RUNS (the author, 2026-09-18): the file is read once, here,
+        // and a report quotes this copy -- so a program may rewrite its own .satl
+        // while it runs and nothing it is doing changes (source_position.hpp).
+        loaded_sources()[path] = source;
         add_file_to_bytecode_registry(path, source, threads, batches, registry, filenames);
 
         // Only the includes are read out of a file at load time. There are no
@@ -458,7 +470,7 @@ signed long long int run_while(const BytecodeRegistry &registry,
         if (context.code != success)
             return raise_at(context.code, context.why, "satellite.statement.while",
                             state, row,
-                            context.placed ? context.refused_at : at);
+                            context.placed ? context.refused_at : condition_at);
         // The condition's own `)`, then the line's end -- nothing between.
         bool closed = true;
         if (opened) closed = code_at(row, here++) == token::right_parenthesis_token;
@@ -512,7 +524,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
         if (context.code != success)
             return raise_at(context.code, context.why, "satellite.statement.if",
                             state, row,
-                            context.placed ? context.refused_at : at);
+                            context.placed ? context.refused_at : condition_at);
         bool closed = true;
         if (opened) closed = code_at(row, here++) == token::right_parenthesis_token;
         if (!closed || !read_to_the_end(row, here))
@@ -802,7 +814,9 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     if ((holds == word::code_of(1, 6, 4) && !value.is_number()) ||
         (holds == word::code_of(1, 6, 1) && !value.is_string()) ||
         (holds == word::code_of(1, 6, 5) && !value.is_binary()) ||
-        (holds == word::code_of(1, 6, 16) && !value.is_percentage())) {
+        (holds == word::code_of(1, 6, 16) && !value.is_percentage()) ||
+        (holds == word::code_of(1, 6, 2) && !value.is_file()) ||
+        (holds == word::code_of(1, 6, 6) && !value.is_bool())) {
         at = past_the_statement(row, at);
         return report_error(std::string("satl(run): ") + name + " was declared " +
                                 word::spelling_of(holds) + " and was given " + value.kind_name(),
@@ -868,6 +882,41 @@ signed long long int run_setting_assignment(const std::vector<std::bitset<16>> &
                                 (said.reason.empty() ? "" : " -- " + said.reason),
                             said.code);
     return success;
+}
+
+// THE FILES A BODY HELD ARE SAVED AND CLOSED WHEN THE BODY ENDS, AND A SAVE THAT
+// FAILS IS SAID (the review, 2026-09-18). A handle's own end saves it too, but a
+// destructor has no one to tell: a program whose file had become read-only printed
+// `true` for its append, exited 0, and the line was never on the disk. That broke
+// SATELLITE_FILE_OPERATIONS 3.1's promise that a user who forgets close loses
+// nothing -- they lost it, silently.
+//
+// A FILE HELD BY ANOTHER NAME IS LEFT TO THAT NAME'S END: the count of names for it
+// in this table is compared with the handle's own count, and only a file every one
+// of whose holders is ending here is closed here. `stopped` is the body's own
+// answer: a failed save becomes the answer only when the body had none.
+signed long long int close_files(VariableTable &variables, signed long long int stopped)
+{
+    std::unordered_map<const satellite_file *, long> held_here;
+    for (const std::pair<const std::string, Variable> &entry : variables)
+        if (const FileHandle *handle = std::get_if<FileHandle>(&entry.second.value.held))
+            if (*handle != nullptr) ++held_here[handle->get()];
+    signed long long int answer = stopped;
+    for (const std::pair<const std::string, Variable> &entry : variables) {
+        const FileHandle *handle = std::get_if<FileHandle>(&entry.second.value.held);
+        if (handle == nullptr || *handle == nullptr) continue;
+        const std::unordered_map<const satellite_file *, long>::iterator counted = held_here.find(handle->get());
+        if (counted == held_here.end() || handle->use_count() != counted->second) continue;
+        held_here.erase(counted);
+        satellite_file &file = **handle;
+        if (!file.ok() || file.close()) continue;
+        const signed long long int code =
+            report_error("satl(end): the changes to " + file.path() + " could not be saved when " + entry.first +
+                             " went out of use -- " + file.error(),
+                         file_unwritable);
+        if (!stops_the_program(answer)) answer = code;
+    }
+    return answer;
 }
 
 signed long long int run_statements(const BytecodeRegistry &registry,
@@ -971,21 +1020,53 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
         // A word of the language: its code IS the function table's index, and
         // its arguments are evaluated inner to outer.
+        //
+        // THROUGH THE WHOLE EXPRESSION READER, AND READ TO THE END (the review,
+        // 2026-09-18): this arm called call_word and then skipped to the next line,
+        // so `satellite.file.open("t.se").append("x")` opened the file and dropped
+        // the append without a word, and anything after a word's `)` was never
+        // looked at. A refusal is placed on the statement's own start when it did
+        // not say where -- `at` had already moved to the NEXT line.
         if (word::is_word_code(code)) {
             ExpressionContext context{variables, functions, state};
+            const std::size_t started = at;
             std::size_t k = at;
-            call_word(row, k, context);
+            evaluate_expression(row, k, context);
             at = past_the_statement(row, k);
             if (context.code != success)
                 return raise_at(context.code, context.why, std::string(),
                                 state, row,
-                                context.placed ? context.refused_at : at);
+                                context.placed ? context.refused_at : started);
+            if (!read_to_the_end(row, k))
+                return raise_at(satl_line_not_understood,
+                                std::string(word::spelling_of(code)) + "(...) " + kNotReadToTheEnd, std::string(),
+                                state, row, k);
             continue;
         }
 
         if (code == token::name_token) {
             std::size_t k = at;
             const std::string name = text_at(row, k);
+
+            // A METHOD CALL STANDING ALONE (FO-1): worked out as an expression and
+            // its answer let go. The expression must reach the line's end, for the
+            // same reason an assignment's must.
+            if (code_at(row, k) == token::method_token || code_at(row, k) == token::left_square_bracket_token) {
+                ExpressionContext context{variables, functions, state};
+                std::size_t e = at;
+                evaluate_expression(row, e, context);
+                if (context.code != success) {
+                    const std::size_t blame = context.placed ? context.refused_at : at;
+                    at = past_the_statement(row, e);
+                    return raise_at(context.code, context.why, name, state, row, blame);
+                }
+                if (!read_to_the_end(row, e)) {
+                    at = past_the_statement(row, e);
+                    return report_error("satl(run): " + name + "... " + kNotReadToTheEnd, satl_line_not_understood);
+                }
+                at = past_the_statement(row, e);
+                continue;
+            }
 
             // A name followed by `(` is a capsule; a name followed by `=` is an
             // assignment. Nothing else is a statement a name can start.
@@ -998,8 +1079,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                 }
                 // A NEW TABLE, so the capsule cannot see this body's variables.
                 VariableTable theirs;
-                const signed long long int stopped =
-                    run_statements(registry, capsules, functions, found->second.row, found->second.body, theirs, state);
+                const signed long long int stopped = close_files(
+                    theirs,
+                    run_statements(registry, capsules, functions, found->second.row, found->second.body, theirs, state));
                 if (stops_the_program(stopped))
                     return stopped;
                 continue;
@@ -1026,7 +1108,7 @@ signed long long int run_typed_line(const BytecodeRegistry &registry,
 {
     static const CapsuleTable none;   // a typed line stands alone: there are no capsules around it
     VariableTable variables;          // and no name outlives the line that wrote it, until M6
-    return run_statements(registry, none, functions, 0, 0, variables, state);
+    return close_files(variables, run_statements(registry, none, functions, 0, 0, variables, state));
 }
 
 signed long long int run_main(const BytecodeRegistry &registry,
@@ -1039,7 +1121,8 @@ signed long long int run_main(const BytecodeRegistry &registry,
         return report_error("satl(run): no satellite.main to begin in",
                             satl_file_missing_satellite_main);
     VariableTable variables;   // main's own, and the program's only frame to start
-    return run_statements(registry, capsules, functions, main->second.row, main->second.body, variables, state);
+    return close_files(variables,
+                       run_statements(registry, capsules, functions, main->second.row, main->second.body, variables, state));
 }
 
 } // namespace satellite004

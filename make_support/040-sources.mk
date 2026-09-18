@@ -17,6 +17,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/function_table.cpp $(BYTECODE)/include_shape.cpp \
                       $(BYTECODE)/program_walk.cpp $(BYTECODE)/program_check.cpp \
                       $(BYTECODE)/expression.cpp $(BYTECODE)/sate_file.cpp \
+                      $(BYTECODE)/file_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
                       $(OBJECT)/satellite_object.cpp \
                       $(OBJECT)/str_add_str.cpp $(OBJECT)/str_minus_str.cpp $(OBJECT)/str_find_str.cpp \
                       $(OBJECT)/num_add_num.cpp $(OBJECT)/num_sub_num.cpp $(OBJECT)/num_div_num.cpp \
@@ -44,6 +45,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(BYTECODE)/function_table.hpp \
           $(BYTECODE)/include_shape.hpp $(BYTECODE)/program_walk.hpp \
           $(BYTECODE)/expression.hpp $(BYTECODE)/value.hpp \
+          $(BYTECODE)/file_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
           $(BYTECODE)/sate_file.hpp $(BYTECODE)/cascade_convert.hpp \
           $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
           $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp \

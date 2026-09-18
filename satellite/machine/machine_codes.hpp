@@ -71,6 +71,20 @@ enum MachineCode : signed long long int {
     setting_out_of_range = 37,          // a number satl was given is past what the machine allows
     machine_conf_unwritable = 38,       // $HOME/.satl/machine.conf could not be written
 
+    // 39-47 WERE ADDED 2026-09-18 for satellite.variable.file (SATELLITE_FILE_OPERATIONS
+    // Part 3.7). A HANDLE HOLDS these -- a file that would not open is a value, not an
+    // error -- so only line_past_the_end (`f[n]` past the last line) and
+    // file_has_no_lines ever stop a program.
+    file_not_found = 39,                // open: nothing is at that path, and open never creates
+    file_already_there = 40,            // new: something is at that path, and new never clobbers
+    not_a_file = 41,                    // something is there, and it is a directory or not a regular file
+    file_unreadable = 42,               // it is a file and could not be read; the reason is said
+    file_not_text = 43,                 // "text" was asked for and the bytes are not UTF-8 text
+    file_unwritable = 44,               // a save or a make could not write; the reason is said
+    file_not_open = 45,                 // a word used on a handle that is closed or never opened
+    file_has_no_lines = 46,             // a line word on a binary file
+    line_past_the_end = 47,             // f[n] with n below 1 or past the last line
+
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
     // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
@@ -119,6 +133,15 @@ inline const char *machine_code_name(signed long long int code)
     case machine_fact_not_read: return "machine_fact_not_read";
     case setting_out_of_range: return "setting_out_of_range";
     case machine_conf_unwritable: return "machine_conf_unwritable";
+    case file_not_found: return "file_not_found";
+    case file_already_there: return "file_already_there";
+    case not_a_file: return "not_a_file";
+    case file_unreadable: return "file_unreadable";
+    case file_not_text: return "file_not_text";
+    case file_unwritable: return "file_unwritable";
+    case file_not_open: return "file_not_open";
+    case file_has_no_lines: return "file_has_no_lines";
+    case line_past_the_end: return "line_past_the_end";
     case interrupted: return "interrupted";
     }
     return "not_on_the_list";

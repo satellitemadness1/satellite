@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A method written after a word's call runs (the review, 2026-09-18: the append was
+// dropped without a word).
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.file.new("chain.se").append("one")
+    satellite.file.open("chain.se").append("two")
+    satellite.console.display(satellite.file.open("chain.se").size)
+    satellite.return(satellite)
+}

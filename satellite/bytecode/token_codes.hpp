@@ -132,6 +132,29 @@ inline constexpr Code to_number_token = 0x0B03;  // number/as_number/to_number  
 inline constexpr Code to_binary_token = 0x0B04;  // binary/bin/as_binary  [METHOD] the receiver as base-2 text
 inline constexpr Code to_hexadecimal_token = 0x0B05;  // hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
 inline constexpr Code add_token = 0x0B06;  // add  [METHOD] object.add(x)
+inline constexpr Code append_token = 0x0B07;  // append  [METHOD] object.append(x) -- a new last line (a file); a new last item (a list) 
+inline constexpr Code insert_token = 0x0B08;  // insert  [METHOD] object.insert(n, x) -- x becomes line n and the rest move down; lines c
+inline constexpr Code index_of_token = 0x0B09;  // index_of  [METHOD] object.index_of(x) -- the number of the first line that IS x, or 0 (S
+inline constexpr Code search_token = 0x0B0A;  // search  [METHOD] object.search(x) -- the number of the first line that CONTAINS x, or 0 
+inline constexpr Code contains_token = 0x0B0B;  // contains  [METHOD] object.contains(x) -- whether any line is x (SATELLITE_FILE_OPERATION
+inline constexpr Code remove_at_token = 0x0B0C;  // remove_at  [METHOD] object.remove_at(n) -- takes line n out (SATELLITE_FILE_OPERATIONS, 
+inline constexpr Code remove_token = 0x0B0D;  // remove  [METHOD] object.remove(x) -- takes out the first line that is x (SATELLITE_FILE_
+inline constexpr Code remove_first_token = 0x0B0E;  // remove_first  [METHOD] object.remove_first() (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+inline constexpr Code remove_last_token = 0x0B0F;  // remove_last  [METHOD] object.remove_last() (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+inline constexpr Code truncate_token = 0x0B10;  // truncate  [METHOD] object.truncate(n) -- keeps the first n lines (SATELLITE_FILE_OPERATI
+inline constexpr Code clear_token = 0x0B11;  // clear  [METHOD] object.clear -- no lines; the file stays (SATELLITE_FILE_OPERATIONS, 202
+inline constexpr Code size_token = 0x0B12;  // size  [METHOD] object.size -- how many lines (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+inline constexpr Code empty_token = 0x0B13;  // empty  [METHOD] object.empty -- whether there are none (SATELLITE_FILE_OPERATIONS, 2026-
+inline constexpr Code first_token = 0x0B14;  // first  [METHOD] object.first -- the first line (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+inline constexpr Code last_token = 0x0B15;  // last  [METHOD] object.last -- the last line (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+inline constexpr Code save_token = 0x0B16;  // save  [METHOD] object.save -- every change on the disk now, whole or not at all (SATELLI
+inline constexpr Code read_all_token = 0x0B17;  // read_all  [METHOD] object.read_all -- the whole file as one string (SATELLITE_FILE_OPERA
+inline constexpr Code close_token = 0x0B18;  // close  [METHOD] object.close -- saves, then closes (SATELLITE_FILE_OPERATIONS, 2026-09-1
+inline constexpr Code open_token = 0x0B19;  // open  [METHOD] object.open -- opens a closed file handle again (SATELLITE_FILE_OPERATION
+inline constexpr Code ok_token = 0x0B1A;  // ok  [METHOD] object.ok -- whether the file is open (SATELLITE_FILE_OPERATIONS, 2026-09-1
+inline constexpr Code error_text_token = 0x0B1B;  // error  [METHOD] object.error -- why the last thing failed, in words (SATELLITE_FILE_OPER
+inline constexpr Code path_token = 0x0B1C;  // path  [METHOD] object.path -- the path the file was opened on (SATELLITE_FILE_OPERATIONS
+inline constexpr Code exists_token = 0x0B1D;  // exists  [METHOD] object.exists -- whether the handle's path is still a file (SATELLITE_F
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
@@ -154,6 +177,29 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "as_hex") return to_hexadecimal_token;
     if (spelling == "to_hex") return to_hexadecimal_token;
     if (spelling == "add") return add_token;
+    if (spelling == "append") return append_token;
+    if (spelling == "insert") return insert_token;
+    if (spelling == "index_of") return index_of_token;
+    if (spelling == "search") return search_token;
+    if (spelling == "contains") return contains_token;
+    if (spelling == "remove_at") return remove_at_token;
+    if (spelling == "remove") return remove_token;
+    if (spelling == "remove_first") return remove_first_token;
+    if (spelling == "remove_last") return remove_last_token;
+    if (spelling == "truncate") return truncate_token;
+    if (spelling == "clear") return clear_token;
+    if (spelling == "size") return size_token;
+    if (spelling == "empty") return empty_token;
+    if (spelling == "first") return first_token;
+    if (spelling == "last") return last_token;
+    if (spelling == "save") return save_token;
+    if (spelling == "read_all") return read_all_token;
+    if (spelling == "close") return close_token;
+    if (spelling == "open") return open_token;
+    if (spelling == "ok") return ok_token;
+    if (spelling == "error") return error_text_token;
+    if (spelling == "path") return path_token;
+    if (spelling == "exists") return exists_token;
     return 0;
 }
 
@@ -161,11 +207,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token;
 }
 
 
-inline constexpr int kTokenCount = 85;
+inline constexpr int kTokenCount = 108;
 
 } // namespace token
 } // namespace satellite004

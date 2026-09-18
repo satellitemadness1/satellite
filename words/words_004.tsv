@@ -1,3 +1,4 @@
 1 6 16	satellite.variable.percentage
 1 14 1 1 10	satellite.library.main.arguments.access
 1 14 1 1 11	satellite.library.main.arguments.history
+1 8 6	satellite.file.open(path)

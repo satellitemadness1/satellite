@@ -78,6 +78,19 @@ $(BUILD)/directory_cases: $(SATELLITE)/satl/directory_cases.cpp $(NUMBERS)/direc
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(SATELLITE)/satl/directory_cases.cpp -o $@
 
+# satellite.variable.file's handle with no interpreter around it (SATELLITE_FILE_OPERATIONS
+# Part 3): the list of lines, the endings, strict UTF-8 and the two saves. It takes the
+# room to work in, as directory_cases does. satellite_string.cpp is linked because a
+# file's idea of UTF-8 text is the language's own from_utf8.
+FILE_CASES_SOURCES = $(SATELLITE)/satellite_variable_file/file_cases.cpp \
+                     $(SATELLITE)/satellite_variable_file/satellite_file.cpp $(STRING16)/satellite_string.cpp
+FILE_CASES_HEADERS = $(SATELLITE)/satellite_variable_file/satellite_file.hpp $(STRING16)/satellite_string.hpp \
+                     $(STRING16)/string_overwrite.hpp $(STRING16)/character_table.hpp \
+                     $(STRING16)/conversion_loops.hpp $(MACHINE)/machine_codes.hpp
+$(BUILD)/file_cases: $(FILE_CASES_SOURCES) $(FILE_CASES_HEADERS)
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_CASES_SOURCES) -o $@
+
 # The build fingerprint's inputs, one a line: check.sh compares them with the
 # headers the compiler says satl and satl-term are made from.
 build-inputs:

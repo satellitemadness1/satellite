@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A question asked of a file that did not open stops the program (S0903) rather
+// than answering 0 as though the file were empty.
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.file f = satellite.file.open("no_such_file.se")
+    satellite.console.display(f.ok)
+    satellite.console.display(f.search("x"))
+    satellite.return(satellite)
+}

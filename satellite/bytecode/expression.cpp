@@ -10,6 +10,7 @@
 
 #include "expression.hpp"
 
+#include "file_calls.hpp"
 #include "../machine/stop_flag.hpp"
 
 #include "word_codes.hpp"
@@ -134,6 +135,17 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
                            op_at);
             return Value();
         }
+        // TWO FILES ARE THE SAME FILE OR NOT, and have no order: == and != ask
+        // whether two names hold ONE handle (satellite_object.cpp's identity).
+        if (left.is_file() && right.is_file()) {
+            if (an_ordering(op)) {
+                context.refuse(types_do_not_meet,
+                               std::string(spelling_of(op)) + " was given two files, and only == and != compare those",
+                               op_at);
+                return Value();
+            }
+            return Value::of_bool((left == right) == (op == token::equals_token));
+        }
         int order = 0;
         const signed long long int code = left.compare(right, order, why);
         if (code != success) {
@@ -215,7 +227,7 @@ const char *spelling_of_method(Code method)
     case token::to_number_token: return "number";
     case token::to_binary_token: return "binary";
     case token::to_hexadecimal_token: return "hex";
-    default: return "that method";
+    default: return method_spelling(method);
     }
 }
 
@@ -270,14 +282,20 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // takes an argument.
         const ObjectConversion conversion = conversion_of(method);
         bool had_parentheses = false;
-        bool had_argument = false;
-        Value argument;
+        // THE ARGUMENTS ARE A LIST, divided by commas at their own depth
+        // (2026-09-18): a file's `insert(n, x)` and `replace(a, b)` are the first
+        // methods that take two. The methods that take one still refuse two below.
+        std::vector<Value> arguments;
         if (code_at(row, at) == token::left_parenthesis_token) {
             had_parentheses = true;
             ++at;
             if (code_at(row, at) != token::right_parenthesis_token) {
-                argument = evaluate_at(row, at, 1, context);
-                had_argument = true;
+                for (;;) {
+                    arguments.push_back(evaluate_at(row, at, 1, context));
+                    if (context.code != success || code_at(row, at) != token::comma_token)
+                        break;
+                    ++at;
+                }
             }
             if (context.code != success)
                 return Value();
@@ -288,6 +306,39 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             }
             ++at;
         }
+
+        // A FILE ANSWERS ITS OWN METHODS (file_calls.cpp). The receiver is a
+        // handle, so the method acts on the one open file every name for it shares.
+        if (satellite_file *file = receiver.as_file()) {
+            Value answer = call_file_method(method, *file, arguments, had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            receiver = std::move(answer);
+            continue;
+        }
+
+        // A NAME DECLARED WITH NO VALUE YET, said as that: `satellite.variable.file f`
+        // and then `f.append("x")` is not a method that is missing.
+        if (receiver.is_nothing()) {
+            context.refuse(satl_line_not_understood, name + " has no value yet -- give it one with = before calling ." +
+                                                         spelling + " on it");
+            return Value();
+        }
+
+        // THE REST ARE THE STRING'S AND THE NUMBER'S, which take one argument or none.
+        // A file's method names on anything else are not built for it yet.
+        if (conversion == nullptr && method != token::find_token && method != token::add_token) {
+            context.refuse(not_built_yet, name + "." + spelling + " is not built for " + receiver.kind_name() +
+                                              " yet -- so far it is a file's");
+            return Value();
+        }
+        if (arguments.size() > 1) {
+            context.refuse(satl_line_not_understood, name + "." + spelling + " takes one argument, and was given " +
+                                                         std::to_string(arguments.size()));
+            return Value();
+        }
+        const bool had_argument = !arguments.empty();
+        const Value argument = had_argument ? arguments.front() : Value();
 
         Value answer;
         signed long long int code = not_built_yet;
@@ -472,8 +523,18 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         return Value::of_bool(code == word::code_of(1, 17, 2));
     }
 
-    if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token)
-        return call_word(row, at, context);
+    // A WORD'S ANSWER CAN BE CALLED ON, as a name's can (the review, 2026-09-18):
+    // `satellite.file.open("t.se").append("x")` was dropped after the word without
+    // a word said, because nothing here looked for the `.` after the `)`.
+    if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
+        const std::string spelled(word::spelling_of(code));
+        Value answer = call_word(row, at, context);
+        if (context.code != success)
+            return Value();
+        if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
+            return call_method(row, at, answer, spelled.substr(0, spelled.find('(')), context);
+        return answer;
+    }
 
     // A SETTING READ BY ITS BARE NAME -- `arguments.access`, no parentheses.
     //
@@ -516,6 +577,41 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         if (found == context.variables.end()) {
             context.refuse(name_not_declared, name + " has no satellite.variable line declaring it", name_at);
             return Value();
+        }
+        // `f[n]` -- LINE n OF A FILE, counting from 1 (the author, 2026-09-18: "we'll
+        // build it so you can iterate over the lines as if they were objects"). A
+        // list will read the same way when M14 builds one; until then a file is the
+        // only thing with lines to read.
+        if (code_at(row, at) == token::left_square_bracket_token) {
+            const std::size_t opened_at = at;
+            ++at;
+            const Value index = evaluate_at(row, at, 1, context);
+            if (context.code != success)
+                return Value();
+            if (code_at(row, at) != token::right_square_bracket_token) {
+                context.refuse(satl_line_not_understood, name + "[...] was given something it could not read to the end of",
+                               opened_at);
+                return Value();
+            }
+            ++at;
+            satellite_file *file = found->second.value.as_file();
+            if (found->second.value.is_nothing()) {
+                context.refuse(satl_line_not_understood, name + " has no value yet -- give it one with = before reading "
+                                                             "a line of it", opened_at);
+                return Value();
+            }
+            if (file == nullptr) {
+                context.refuse(not_built_yet, name + " is " + found->second.value.kind_name() +
+                                                  ", and [ ] reads a line of a file -- a list's [ ] is MILESTONES M14",
+                               opened_at);
+                return Value();
+            }
+            Value line = read_file_line(*file, index, name, context);
+            if (context.code != success)
+                return Value();
+            if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
+                return call_method(row, at, line, name, context);
+            return line;
         }
         // THE THREE TOKENS TOGETHER (the author): a period, a method's own code,
         // and a `(`. call_method above says what happens then.
@@ -629,11 +725,20 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     const Scenarios *scenarios = library != nullptr ? &library->scenarios : nullptr;
     ++at;
 
-    Value argument;
+    // THE ARGUMENTS ARE A LIST (2026-09-18), divided by commas at their own depth:
+    // `satellite.file.new(path, "text")` is the first word a program can call with
+    // two. A library still takes one, and says so below when it is given more.
+    std::vector<Value> arguments;
     if (code_at(row, at) == token::left_parenthesis_token) {
         ++at;
-        if (code_at(row, at) != token::right_parenthesis_token)
-            argument = evaluate_at(row, at, 1, context);
+        if (code_at(row, at) != token::right_parenthesis_token) {
+            for (;;) {
+                arguments.push_back(evaluate_at(row, at, 1, context));
+                if (context.code != success || code_at(row, at) != token::comma_token)
+                    break;
+                ++at;
+            }
+        }
         // AN EXPRESSION MUST REACH ITS OWN `)`. Skipping whatever is left over
         // is what let `display(5 -4)` print 5 and exit 0: the evaluator stopped
         // at the touching minus, and the skip swallowed `-4` without a word.
@@ -649,6 +754,18 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     }
     if (context.code != success)
         return Value();
+
+    // satellite.file's words answer a HANDLE, which no library can (file_calls.hpp).
+    if (is_file_word(code))
+        return call_file_word(code, arguments, row, context);
+
+    if (arguments.size() > 1) {
+        context.refuse(satl_line_not_understood, std::string(word::spelling_of(code)) +
+                                                     " takes one argument, and was given " +
+                                                     std::to_string(arguments.size()));
+        return Value();
+    }
+    const Value argument = arguments.empty() ? Value() : arguments.front();
 
     signed long long int answer = success;
     if (scenarios == nullptr) {

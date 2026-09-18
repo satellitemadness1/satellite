@@ -23,6 +23,7 @@
 //     S06xx  types: two kinds that do not meet
 //     S07xx  settings and arguments        (S0721-S0727 already assigned)
 //     S08xx  numbers: division by zero, an answer that is not whole
+//     S09xx  files: the two file refusals that stop a program (2026-09-18)
 //
 // 003'S NUMBERS ARE NOT PORTED WHOLESALE. Where a 004 refusal IS 003's refusal
 // it takes 003's number so a person moving between them reads one number; where
@@ -96,6 +97,25 @@ inline SCode s_code_for(signed long long int machine_code)
     case config_file_unwritable:
         return {"S0722", "REGISTER_NOT_WRITTEN",
                 "a setting could not be saved, so it holds for this run and is gone at the end of it."};
+    case line_past_the_end:
+        return {"S0901", "LINE_PAST_THE_END",
+                "a line was read by its number and the file has no line with that number. Lines "
+                "count from 1, and the last one is the file's size."};
+    case file_has_no_lines:
+        return {"S0902", "FILE_HAS_NO_LINES",
+                "a word about lines was used on a binary file, and a binary file is bytes, not lines."};
+    case file_not_open:
+        return {"S0903", "FILE_NOT_OPEN",
+                "a question was asked of a file that is not open -- closed, or never opened because the "
+                "open or new failed. Its answer would have been made up, so nothing was answered. Ask "
+                "the file's ok first; its error says why it is not open."};
+    case file_unwritable:
+        return {"S0904", "FILE_NOT_SAVED",
+                "changes to a file could not be put on the disk. The file on the disk is as it was before "
+                "them -- a save is whole or not at all."};
+    case not_a_position:
+        return {"S0905", "NOT_A_POSITION",
+                "a position or a line number below zero. Lines count from 1, and nothing counts below zero."};
     default:
         break;
     }

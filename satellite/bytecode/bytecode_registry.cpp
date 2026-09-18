@@ -190,6 +190,27 @@ Code one_character_token(char c)
 // `path()` row; anything else asks for the row with ONE parameter, whatever that
 // parameter is called -- `(d)`, `(x)`, `(value)` are all one argument. A path with
 // several one-parameter rows is left alone rather than guessed at.
+// HOW MANY ARGUMENTS the brackets opened just before `inside` hold: the commas
+// at their own depth, plus one. A comma inside a string or inside nested
+// brackets is not one of theirs. The brackets are known not to be empty.
+static std::size_t arguments_in(std::string_view text, std::size_t inside)
+{
+    std::size_t depth = 1, commas = 0;
+    for (std::size_t k = inside; k < text.size(); ++k) {
+        const char c = text[k];
+        if (c == '"') {
+            ++k;
+            while (k < text.size() && text[k] != '"') k += (text[k] == '\\' && k + 1 < text.size()) ? 2 : 1;
+            continue;
+        }
+        if (c == '/' && k + 1 < text.size() && text[k + 1] == '/') break;   // the rest is a comment
+        if (c == '(' || c == '[') ++depth;
+        else if ((c == ')' || c == ']') && --depth == 0) break;
+        else if (c == ',' && depth == 1) ++commas;
+    }
+    return commas + 1;
+}
+
 token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_t run)
 {
     std::size_t at = run;
@@ -203,6 +224,14 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
     if (inside < text.size() && text[inside] == ')')
         return word::code_of_spelling(path + "()");
 
+    // THE ROW WITH AS MANY PARAMETERS AS THE CALL HAS ARGUMENTS WINS (2026-09-18).
+    // Until then every non-empty call took the ONE-parameter row, so
+    // `satellite.file.new("x", "text")` lexed as `new(path)` and its second argument
+    // was refused as something that could not be read. Counting the call's own
+    // commas chooses `new(path, mode)`. When no row has that many parameters, the
+    // one-parameter rule below still answers, so a call with too many arguments is
+    // refused by the word and not turned into a name.
+    const std::size_t given = arguments_in(text, inside);
     const std::string opened = path + "(";
     std::size_t low = 0, high = word::kSpelledWordCount;
     while (low < high) {
@@ -210,20 +239,28 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
         if (std::string_view(word::kSpelledWords[middle].path) < std::string_view(opened)) low = middle + 1;
         else high = middle;
     }
-    token::Code only = 0;
+    token::Code only = 0, exact = 0;
+    bool only_twice = false, exact_twice = false;
     for (std::size_t row = low; row < word::kSpelledWordCount; ++row) {
         const std::string_view spelling(word::kSpelledWords[row].path);
         if (spelling.compare(0, opened.size(), opened) != 0)
             break;
         if (spelling.size() == opened.size() + 1)           // the `path()` row: these brackets are not empty
             continue;
-        if (spelling.find(',') != std::string_view::npos)   // two parameters or more
-            continue;
-        if (only != 0)
-            return 0;                                       // two rows could be meant: say nothing
-        only = word::kSpelledWords[row].code;
+        std::size_t parameters = 1;
+        for (const char c : spelling) parameters += (c == ',') ? 1 : 0;
+        if (parameters == given) {
+            exact_twice = exact_twice || exact != 0;
+            exact = word::kSpelledWords[row].code;
+        }
+        if (parameters == 1) {
+            only_twice = only_twice || only != 0;
+            only = word::kSpelledWords[row].code;
+        }
     }
-    return only;
+    if (exact != 0)
+        return exact_twice ? 0 : exact;                     // two rows could be meant: say nothing
+    return only_twice ? 0 : only;
 }
 
 void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,

@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 367;
+inline constexpr unsigned int kWordsInTable = 368;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -138,6 +138,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301080300000000ULL, 4306},  // 1 8 3 -- satellite.file.clear(path)
     {0x0301080400000000ULL, 4307},  // 1 8 4 -- satellite.file.new(path, mode)
     {0x0301080500000000ULL, 4308},  // 1 8 5 -- satellite.file.exists(path)
+    {0x0301080600000000ULL, 4464},  // 1 8 6 -- satellite.file.open(path)
     {0x0301090000000000ULL, 4310},  // 1 9 0 -- satellite.time()
     {0x0301090100000000ULL, 4311},  // 1 9 1 -- satellite.time.now
     {0x0301090200000000ULL, 4312},  // 1 9 2 -- satellite.time.new
@@ -794,6 +795,7 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.percentage", {1, 6, 16, 0, 0, 0, 0}, 3},
     {"satellite.library.main.arguments.access", {1, 14, 1, 1, 10, 0, 0}, 5},
     {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 0, 0}, 5},
+    {"satellite.file.open(path)", {1, 8, 6, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -892,6 +894,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.file.exists(path)", 4308},
     {"satellite.file.new(path)", 4304},
     {"satellite.file.new(path, mode)", 4307},
+    {"satellite.file.open(path)", 4464},
     {"satellite.file.open(path, mode)", 4305},
     {"satellite.help", 4404},
     {"satellite.help()", 4405},

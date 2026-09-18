@@ -164,6 +164,8 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     // BITS AND WIDTH: `b0010` is not `b10` (satellite_binary_number.hpp).
     case satelliteObject::binary: return *l.as_binary() == *r.as_binary();
     case satelliteObject::percentage: return *l.as_percentage() == *r.as_percentage();
+    // IDENTITY, as for an object: the same open file, or not.
+    case satelliteObject::file: return l.as_file() == r.as_file();
     case satelliteObject::how_many_kinds: break;
     }
     return false;
@@ -180,6 +182,7 @@ const char *satelliteObject::kind_name() const
     case user_defined: return "an object";
     case binary: return "a binary";
     case percentage: return "a percentage";
+    case file: return "a file";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -397,6 +400,11 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
     case user_defined:
         why = "an object has no to_string capsule, and satellite does not invent one";
         return not_built_yet;
+    // A FILE'S TEXT IS read_all, and its name is path -- two different strings, so
+    // `.string` choosing one of them would be a guess.
+    case file:
+        why = "a file has two strings, its text (read_all) and its name (path) -- write the one you mean";
+        return types_do_not_meet;
     case how_many_kinds: break;
     }
     why = "there is nothing here to make a string of";

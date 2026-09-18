@@ -47,6 +47,7 @@
 #include "satellite_bytecode.hpp"
 #include "satellite_capsule.hpp"
 #include "../satellite_variable_binary/satellite_binary_number.hpp"
+#include "../satellite_variable_file/satellite_file.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../satellite_variable_percentage/satellite_percentage.hpp"
 #include "../satellite_variable_string/satellite_string.hpp"
@@ -75,6 +76,11 @@ struct satelliteUserDefinedObject;
 // cycle collector as its own milestone.
 using UserDefinedHandle = std::shared_ptr<satelliteUserDefinedObject>;
 
+// A FILE IS A REFERENCE TOO (003's rule, and M15's warning that it is "the first
+// arm to come off const, because a file is not a value"): two names for one open
+// file are two names for ONE file, so the arm is a handle and a copy shares it.
+using FileHandle = std::shared_ptr<satellite_file>;
+
 class satelliteObject {
 public:
     // EVERY ARM, IN ORDER. The order IS the Kind below.
@@ -86,17 +92,19 @@ public:
                               satelliteCapsule,  // 5  a capsule as a value
                               UserDefinedHandle,   // 6  one object of a spacesuit
                               satellite_binary_number, // 7  satellite.variable.binary
-                              satellite_percentage     // 8  satellite.variable.percentage
+                              satellite_percentage,    // 8  satellite.variable.percentage
+                              FileHandle               // 9  satellite.variable.file (2026-09-18)
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
                               // the order they are BUILT, not the order they
                               // were named in: binary was asked for first
                               // (2026-09-16) and is 7, percentage next
-                              // (2026-09-17) and is 8, so the author's other two
-                              // follow them.
-                              // 9   satellite_float
-                              // 10  satellite_hexadecimal_number
+                              // (2026-09-17) and is 8, and the file was built
+                              // next (2026-09-18, for the storyline generator)
+                              // and is 9 -- so the author's other two follow it.
+                              // 10  satellite_float
+                              // 11  satellite_hexadecimal_number
                               >;
 
     enum Kind : std::size_t {
@@ -109,7 +117,8 @@ public:
         user_defined = 6,
         binary = 7,
         percentage = 8,
-        how_many_kinds = 9
+        file = 9,
+        how_many_kinds = 10
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -119,6 +128,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<user_defined, Held>, UserDefinedHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<binary, Held>, satellite_binary_number>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<percentage, Held>, satellite_percentage>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<file, Held>, FileHandle>, "");
 
     Held held;
 
@@ -131,6 +141,7 @@ public:
     satelliteObject(UserDefinedHandle from) : held(std::move(from)) {}
     satelliteObject(satellite_binary_number from) : held(std::move(from)) {}
     satelliteObject(satellite_percentage from) : held(std::move(from)) {}
+    satelliteObject(FileHandle from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -141,6 +152,7 @@ public:
     static satelliteObject of_user_defined(UserDefinedHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_binary(satellite_binary_number from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_percentage(satellite_percentage from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_file(FileHandle from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -161,6 +173,7 @@ public:
     bool is_user_defined() const { return held.index() == user_defined; }
     bool is_binary() const { return held.index() == binary; }
     bool is_percentage() const { return held.index() == percentage; }
+    bool is_file() const { return held.index() == file; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -172,6 +185,13 @@ public:
     const UserDefinedHandle *as_user_defined() const { return std::get_if<UserDefinedHandle>(&held); }
     const satellite_binary_number *as_binary() const { return std::get_if<satellite_binary_number>(&held); }
     const satellite_percentage *as_percentage() const { return std::get_if<satellite_percentage>(&held); }
+    // THE FILE ITSELF, or nullptr: through the handle, so a const value still
+    // reaches a file that can change -- which is what a reference type is.
+    satellite_file *as_file() const
+    {
+        const FileHandle *handle = std::get_if<FileHandle>(&held);
+        return handle != nullptr ? handle->get() : nullptr;
+    }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }

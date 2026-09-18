@@ -341,6 +341,61 @@ else
     timeout 300 build/directory_cases "${TMPDIR:-/tmp}" > build/directory_cases.out 2>&1; code=$?
     expect "satellite.directory's words: $(grep -c '^ok' build/directory_cases.out) cases (build/directory_cases.out)" 0 $code
 fi
+# satellite.variable.file's handle with no interpreter around it (SATELLITE_FILE_OPERATIONS
+# Part 3): lines from 1, the endings a file had, strict UTF-8, and the two saves, in a
+# folder it makes inside $TMPDIR and removes.
+if [ ! -x build/file_cases ]; then expect "build/file_cases is built (make)" built missing
+elif ! make -sq build/file_cases 2>/dev/null; then
+    expect "build/file_cases is as new as its sources (make build/file_cases)" current stale
+else
+    timeout 300 build/file_cases "${TMPDIR:-/tmp}" > build/file_cases.out 2>&1; code=$?
+    expect "satellite.variable.file's handle: $(grep -c '^ok' build/file_cases.out) cases (build/file_cases.out)" 0 $code
+fi
+# satellite.variable.file IN A PROGRAM (2026-09-18, SATELLITE_FILE_OPERATIONS FO-1 to
+# FO-4 and 3.8). Each program is copied into a scratch folder and run there, because a
+# relative path is the folder of the .satl that wrote it -- so what they make lands
+# there and nowhere in the tree.
+expect "a method call standing alone runs, and its answer is let go" "line_1" \
+       "$("$interpreter" tests/method_statement.satl 2>/dev/null)"
+file_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_files.XXXXXX")
+cp tests/file_list.satl tests/file_self_edit.satl tests/file_snapshot.satl tests/file_past_the_end.satl \
+   tests/file_word_chain.satl tests/file_not_open.satl tests/file_wrong_count.satl tests/file_unsaved.satl "$file_room/"
+expect "a file is a list of lines counting from 1 (the author's example)" \
+       "line_1|line_3|line_4|3|2|3|0|true|true|line_1|line_4|line_3|2|false|false|false|true" \
+       "$("$interpreter" "$file_room/file_list.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+expect "... and the handle still open at the end was saved: line 1 removed" "line_3|line_4" \
+       "$(tr '\n' '|' < "$file_room/demo.se" | sed 's/|$//')"
+expect "a program raises the number in its own source: this run says 1" "RUN 1" \
+       "$("$interpreter" "$file_room/file_self_edit.satl" 2>/dev/null)"
+expect "... the next run says 2" "RUN 2" "$("$interpreter" "$file_room/file_self_edit.satl" 2>/dev/null)"
+expect "... and the source on the disk now says 3" 1 \
+       "$(grep -c '^    satellite.variable.number ds_build = 3$' "$file_room/file_self_edit.satl")"
+"$interpreter" "$file_room/file_snapshot.satl" > build/file_snapshot.out 2>&1
+expect "a program that rewrote its own line 10 and then failed on it stops there" 22 $?
+expect "... and the report quotes line 10 as it was LOADED" 1 \
+       "$(grep -c 'syntax: satellite.console.display(1 / 0)' build/file_snapshot.out)"
+expect "... while the disk has the rewritten line" 1 \
+       "$(grep -cx '    satellite.console.display(2)' "$file_room/file_snapshot.satl")"
+"$interpreter" "$file_room/file_past_the_end.satl" > build/file_past.out 2>&1
+expect "reading a line past the end stops the program" 47 $?
+expect "... after the line that was there printed" 1 "$(grep -cx 'the only line' build/file_past.out)"
+# THE REVIEW'S FINDINGS, 2026-09-18, each pinned so it cannot come back.
+expect "a method after a word's call runs: new(...).append, open(...).append, open(...).size" 2 \
+       "$("$interpreter" "$file_room/file_word_chain.satl" 2>/dev/null)"
+"$interpreter" "$file_room/file_not_open.satl" > build/file_not_open.out 2>&1
+expect "a question to a file that did not open stops the program (S0903)" 45 $?
+expect "... after saying it is not ok, and without answering 0" "false" "$(grep -x -e false -e 0 build/file_not_open.out)"
+"$interpreter" "$file_room/file_wrong_count.satl" > build/file_count.out 2>&1
+expect "a file method given the wrong number of arguments is refused" 13 $?
+expect "... by the CHECK, with nothing run before it" "" "$(grep -x before build/file_count.out)"
+printf 'kept\n' > "$file_room/read_only.se"; chmod 444 "$file_room/read_only.se"
+if [ "$(id -u)" = 0 ]; then expect "a save that cannot land at the end is said (skipped: root writes anyway)" 0 0
+else
+    "$interpreter" "$file_room/file_unsaved.satl" > build/file_unsaved.out 2>&1
+    expect "a save that cannot land at the end of the run is said, and the run exits 44" 44 $?
+    expect "... and the file is as it was" "kept" "$(cat "$file_room/read_only.se")"
+fi
+rm -rf -- "$file_room"
 SATL="$interpreter" timeout 600 python3 -u satellite/satl/check_session.py > build/check_session.out 2>&1; code=$?
 expect "satl --repl at a real terminal: $(grep -c '^ok' build/check_session.out) checks (build/check_session.out)" 0 $code
 # The prompt's own refusals, from a pipe: each says which spelling it refused, and the

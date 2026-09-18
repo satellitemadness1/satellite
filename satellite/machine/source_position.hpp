@@ -17,12 +17,16 @@
 //   WHICH LINE   a count of line_end_tokens before the position. Already built,
 //                in statement_ring.hpp, for the same reason it is built at all:
 //                O(n) is unthinkable per statement and nothing at all per report.
-//   WHICH TEXT   RE-READ THE FILE. The registry holds codes and should keep
-//                holding codes -- "a row stays nothing but codes and a name never
-//                has to be spelled in tokens to be carried". One open and one
-//                getline on a path that is already failing costs nothing, and it
-//                shows what the person ACTUALLY TYPED rather than a
-//                reconstruction from tokens that would differ in its spacing.
+//   WHICH TEXT   THE COPY THAT WAS LOADED (2026-09-18), and the file itself only
+//                for a program that was never loaded. The registry holds codes
+//                and should keep holding codes -- "a row stays nothing but codes
+//                and a name never has to be spelled in tokens to be carried" --
+//                so the text comes from loaded_sources() below. It used to be a
+//                re-read of the file, which is wrong the moment a program edits
+//                its own source: the report would show the NEW line under the
+//                caret of the OLD one. The author, 2026-09-18: "it has to grab a
+//                copy of the file, leave the file alone, and run the copy while
+//                having the ability to edit it's own source".
 //   WHICH COLUMN the one real piece of work, and it is done by re-tokenising the
 //                single line just re-read, with the lexer handing out its own
 //                byte offsets. See tokenise_one_line's `offsets`.
@@ -41,17 +45,53 @@
 #include <cstddef>
 #include <fstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace satellite004 {
 
+// THE PROGRAM AS IT WAS LOADED, one entry a file, keyed by the name the registry's
+// BytecodeFilenames holds for it. load_program() fills it before anything runs and
+// nothing writes it after, so what a report shows is what RAN -- whatever has
+// happened to the files on the disk since, including the program rewriting its
+// own source (SATELLITE_FILE_OPERATIONS; DYNAMIC_STORYLINE_GENERATOR DS-2).
+inline std::unordered_map<std::string, std::string> &loaded_sources()
+{
+    static std::unordered_map<std::string, std::string> sources;
+    return sources;
+}
+
+// THE DIRECTORY satl WAS IN WHEN IT LOADED THE PROGRAM, absolute. A program's
+// file names are kept as they were written (often relative), so a folder worked
+// out from one is joined to THIS, not to whatever the working directory is by the
+// time a file word runs (satellite.directory.change moves it). load_program sets
+// it once; empty at the prompt, where paths are the working directory's.
+inline std::string &program_start_directory()
+{
+    static std::string start;
+    return start;
+}
+
 // E3 -- ONE LINE OF A FILE, AS THE PERSON WROTE IT. 1-based, to match line_of()
-// and to match what every editor calls that line. Answers "" when the file
-// cannot be re-read, which is a real state: it was read once at load and a
-// program can run long enough for somebody to move it.
+// and to match what every editor calls that line. From the loaded copy when there
+// is one; otherwise the file is re-read, and "" when it cannot be, which is a
+// real state for a file that was never loaded as a program.
 inline std::string source_line(const std::string &filename, std::size_t line)
 {
     if (filename.empty() || line == 0) return std::string();
+    const std::unordered_map<std::string, std::string>::const_iterator loaded = loaded_sources().find(filename);
+    if (loaded != loaded_sources().end()) {
+        const std::string &source = loaded->second;
+        std::size_t start = 0;
+        for (std::size_t n = 1; n < line; ++n) {
+            const std::size_t end = source.find('\n', start);
+            if (end == std::string::npos) return std::string();
+            start = end + 1;
+        }
+        std::size_t end = source.find('\n', start);
+        if (end == std::string::npos) end = source.size();
+        return source.substr(start, end - start);
+    }
     std::ifstream file(filename);
     if (!file.is_open()) return std::string();
     std::string text;

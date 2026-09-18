@@ -382,6 +382,7 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.percentage", {1, 6, 16, 0, 0, 0}, 3},
     {"satellite.library.main.arguments.access", {1, 14, 1, 1, 10, 0}, 5},
     {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 0}, 5},
+    {"satellite.file.open(path)", {1, 8, 6, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -514,7 +515,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.variant.clear", {1, 6, 14, 4, 1, 0, 0}, 5},
     {"satellite.variable.capsule", {1, 6, 15, 1, 0, 0, 0}, 4},
     {"satellite.random", {1, 7, 17, 0, 0, 0, 0}, 3},
-    {"satellite.file", {1, 8, 6, 0, 0, 0, 0}, 3},
+    {"satellite.file", {1, 8, 7, 0, 0, 0, 0}, 3},
     {"satellite.time", {1, 9, 5, 0, 0, 0, 0}, 3},
     {"satellite.time.now", {1, 9, 1, 1, 0, 0, 0}, 4},
     {"satellite.time.new", {1, 9, 2, 1, 0, 0, 0}, 4},

@@ -29,6 +29,7 @@
 
 #include "program_walk.hpp"
 
+#include "file_calls.hpp"
 #include "word_codes.hpp"
 #include "../machine/s_codes.hpp"
 
@@ -211,6 +212,111 @@ signed long long int after_the_name(const std::vector<std::bitset<16>> &row, std
     return satl_line_not_understood;
 }
 
+// THE BRACKETS THAT OPEN AT `open` -- a `(` or a `[` -- and how many arguments
+// they hold: 0 for empty ones, otherwise the commas at their own depth plus one.
+// `close` is left on the bracket that closes them. False when they never close on
+// this line. A payload is skipped, never read, so a comma or a bracket inside a
+// string is not one of theirs.
+bool brackets_at(const std::vector<std::bitset<16>> &row, std::size_t open, std::size_t &close, std::size_t &count)
+{
+    std::size_t depth = 0, commas = 0;
+    bool any = false;
+    std::size_t at = open;
+    while (at < row.size()) {
+        const Code code = code_at(row, at);
+        if (token::carries_a_count(code)) { any = true; text_at(row, at); continue; }
+        if (code == token::line_end_token || code == token::end_of_file_token) break;
+        if (code == token::left_parenthesis_token || code == token::left_square_bracket_token) {
+            if (depth > 0) any = true;
+            ++depth;
+        } else if (code == token::right_parenthesis_token || code == token::right_square_bracket_token) {
+            if (--depth == 0) { close = at; count = any ? commas + 1 : 0; return true; }
+        } else {
+            any = true;
+            if (code == token::comma_token && depth == 1) ++commas;
+        }
+        ++at;
+    }
+    close = at;
+    count = 0;
+    return false;
+}
+
+// A METHOD ON A DECLARED NAME, judged by the name's declared TYPE -- which the
+// checker has, since DeclaredNames keeps the declaring word (the review,
+// 2026-09-18: `n.append("x")` on a number and `f.replace(1)` on a file passed the
+// check and were refused after earlier lines had printed). `k` is the code after
+// the name. Only the first method is judged: what a method answers is a run-time
+// fact, so a chain's later segments are left to the walker.
+signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                      const std::string &name, Code declared_as, std::string &why)
+{
+    if (code_at(row, k) != token::method_token || !token::is_method_code(code_at(row, k + 1)))
+        return success;
+    const Code method = code_at(row, k + 1);
+    const std::string spelling = std::string(name) + "." + method_spelling(method);
+    const int arity = file_method_arity(method);
+    const bool of_a_string_or_number = method == token::find_token || method == token::add_token ||
+                                       method == token::to_string_token || method == token::to_number_token ||
+                                       method == token::to_binary_token || method == token::to_hexadecimal_token;
+
+    if (declared_as != word::code_of(1, 6, 2)) {
+        if (of_a_string_or_number) return success;
+        why = spelling + " is not built for " + word::spelling_of(declared_as) + " yet -- so far it is a file's";
+        return not_built_yet;
+    }
+    if (arity < 0) {
+        why = spelling + " -- a file has no " + method_spelling(method) +
+              " (SATELLITE_FILE_OPERATIONS Part 3 lists what a file does)";
+        return types_do_not_meet;
+    }
+    std::size_t close = k + 2, given = 0;
+    const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+    if (bracketed && !brackets_at(row, k + 2, close, given)) {
+        why = spelling + "( is never closed on its line";
+        return satl_line_not_understood;
+    }
+    if (given != static_cast<std::size_t>(arity) || (arity > 0 && !bracketed)) {
+        why = spelling + " takes " + std::to_string(arity) + (arity == 1 ? " argument" : " arguments") +
+              (bracketed ? ", and was given " + std::to_string(given) : ", in brackets after it");
+        return satl_line_not_understood;
+    }
+    return success;
+}
+
+// WHAT A METHOD-CALL STATEMENT MAY BE, WHOLE (the review: `f.size = 3`, `f.`,
+// `f[` and `f.append("x") f.append("y")` passed the check and failed after
+// earlier lines had printed). From `k`, any run of `.method`, `.method(...)` and
+// `[...]`, and then the line's end: nothing a call answers can be given a value,
+// and one statement is one line.
+signed long long int a_call_to_its_end(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                       const std::string &name, std::string &why)
+{
+    for (;;) {
+        std::size_t close = k, count = 0;
+        if (code_at(row, k) == token::method_token && token::is_method_code(code_at(row, k + 1))) {
+            k += 2;
+            if (code_at(row, k) == token::left_parenthesis_token) {
+                if (!brackets_at(row, k, close, count)) break;
+                k = close + 1;
+            }
+            continue;
+        }
+        if (code_at(row, k) == token::left_square_bracket_token) {
+            if (!brackets_at(row, k, close, count)) break;
+            k = close + 1;
+            continue;
+        }
+        break;
+    }
+    const Code code = code_at(row, k);
+    if (code == token::line_end_token || code == token::comment_token || code == token::end_of_file_token)
+        return success;
+    why = name + " is followed by something that is not a method call -- a call's answer cannot be given a "
+                 "value, a bracket must close on its line, and one statement is one line";
+    return satl_line_not_understood;
+}
+
 // Every name a statement USES as a value -- so a name with no declaration is
 // caught before anything runs. A name followed by `(` is a capsule and is
 // checked against the capsule table instead.
@@ -236,6 +342,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             } else if (declared.find(name) == declared.end()) {
                 why = name + " has no satellite.variable line declaring it";
                 return name_not_declared;
+            } else {
+                const signed long long int judged = method_on_a_name(row, k, name, declared.find(name)->second, why);
+                if (judged != success) return judged;
             }
             at = k;
             continue;
@@ -244,10 +353,32 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // A WORD USED AS A CALL MUST HAVE A LIBRARY. A word with none is
         // not_built_yet (14) with its own name, which is what 003 did and what a
         // person can act on (function_table.hpp).
+        // satellite.file's words are the object model's and have none (file_calls.hpp).
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
-            functions[code] == nullptr) {
+            functions[code] == nullptr && !is_file_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
+        }
+
+        // HOW MANY ARGUMENTS A WORD WAS GIVEN, judged here and not after the lines
+        // above it have run (the review, 2026-09-18). A file word takes its own
+        // count; a library takes one -- call_word hands it one value, and
+        // `satellite.variable.string.replace("a", "b")` lexed to a two-parameter row
+        // with a library once the lexer began counting commas.
+        if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
+            std::size_t close = at + 1, given = 0;
+            if (brackets_at(row, at + 1, close, given)) {
+                if (is_file_word(code) && given != file_word_arity(code)) {
+                    why = file_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
+                    return satl_line_not_understood;
+                }
+                if (!is_file_word(code) && given > 1) {
+                    const std::string spelled(word::spelling_of(code));
+                    why = spelled.substr(0, spelled.find('(')) + " takes one argument, and was given " +
+                          std::to_string(given);
+                    return satl_line_not_understood;
+                }
+            }
         }
 
         if (token::carries_a_count(code)) { text_at(row, at); continue; }
@@ -423,11 +554,14 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // declaration of one would have been a declaration that did nothing.
         // satellite.variable.binary (1 6 5) joined the same day, as the arm
         // satellite_binary_number.
+        // satellite.variable.file (1 6 2) and satellite.variable.bool (1 6 6) joined on
+        // 2026-09-18 with the file type (SATELLITE_FILE_OPERATIONS FO-1, FO-2): most
+        // of a file's words answer true or false, and a program has to keep them.
         if (code != word::code_of(1, 6, 4) && code != word::code_of(1, 6, 1) && code != word::code_of(1, 6, 5) &&
-            code != word::code_of(1, 6, 16)) {
+            code != word::code_of(1, 6, 16) && code != word::code_of(1, 6, 2) && code != word::code_of(1, 6, 6)) {
             why = std::string(word::spelling_of(code)) + " " + name +
-                  " is a declaration, and only satellite.variable.number, .string, .binary and "
-                  ".percentage are built yet";
+                  " is a declaration, and only satellite.variable.number, .string, .binary, "
+                  ".percentage, .file and .bool are built yet";
             at = stop;
             return satl_line_not_understood;
         }
@@ -482,6 +616,14 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             return satl_line_not_understood;
         }
         const std::size_t stop = past_the_statement(row, at);
+        // A WORD'S CALL MAY BE CALLED ON (`satellite.file.open("t.se").append("x")`)
+        // and must then reach the line's end, as a name's method call must.
+        std::size_t close = at + 1, count = 0;
+        if (brackets_at(row, at + 1, close, count)) {
+            const signed long long int shaped =
+                a_call_to_its_end(row, close + 1, std::string(word::spelling_of(code)) + "(...)", why);
+            if (shaped != success) { at = stop; return shaped; }
+        }
         const signed long long int held = names_in_statement(row, at, stop, declared, capsules, functions, why);
         at = stop;
         return held;
@@ -498,8 +640,18 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             at = stop;
             return name_not_declared;
         }
-        if (code_at(row, k) != token::left_parenthesis_token) {
+        // A METHOD CALL IS A STATEMENT OF ITS OWN (SATELLITE_FILE_OPERATIONS FO-1):
+        // `my_file.append("line_1")` does its work and its answer is not kept. So is
+        // one on a line read by number, `my_file[2].find("x")`. Everything else a
+        // name can start is `=` or a capsule's `(`.
+        const bool a_method_call = code_at(row, k) == token::method_token ||
+                                   code_at(row, k) == token::left_square_bracket_token;
+        if (code_at(row, k) != token::left_parenthesis_token && !a_method_call) {
             const signed long long int shaped = after_the_name(row, k, name, false, why);
+            if (shaped != success) { at = stop; return shaped; }
+        }
+        if (a_method_call && found != declared.end()) {
+            const signed long long int shaped = a_call_to_its_end(row, k, name, why);
             if (shaped != success) { at = stop; return shaped; }
         }
         // The b is required on every value a binary is GIVEN, not only the first.

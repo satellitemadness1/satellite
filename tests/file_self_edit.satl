@@ -1,0 +1,16 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.number ds_build = 1
+    // The storyline generator's run number (DYNAMIC_STORYLINE_GENERATOR DS-2): the
+    // program raises the number in its OWN source, and the copy that is running
+    // is not changed by it -- so this run says 1 and the next one says 2.
+    satellite.variable.number next = ds_build + 1
+    satellite.variable.file me = satellite.file.open("file_self_edit.satl")
+    satellite.variable.number at = me.search("satellite.variable.number ds_build = ")
+    me.replace(at, "    satellite.variable.number ds_build = " + next.string)
+    me.close()
+    satellite.console.display("RUN " + ds_build.string)
+    satellite.return(satellite)
+}

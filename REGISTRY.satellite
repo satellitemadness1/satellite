@@ -325,7 +325,30 @@ bits              name                         what it is
 0000101100000100  to_binary_token              binary/bin/as_binary  [METHOD] the receiver as base-2 text
 0000101100000101  to_hexadecimal_token         hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
 0000101100000110  add_token                    add  [METHOD] object.add(x)
-0000101100000111  free                         to 0000101111111111, free for this family
+0000101100000111  append_token                 append  [METHOD] object.append(x) -- a new last line (a file); a new last item (a list) (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001000  insert_token                 insert  [METHOD] object.insert(n, x) -- x becomes line n and the rest move down; lines count from 1 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001001  index_of_token               index_of  [METHOD] object.index_of(x) -- the number of the first line that IS x, or 0 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001010  search_token                 search  [METHOD] object.search(x) -- the number of the first line that CONTAINS x, or 0 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001011  contains_token               contains  [METHOD] object.contains(x) -- whether any line is x (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001100  remove_at_token              remove_at  [METHOD] object.remove_at(n) -- takes line n out (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001101  remove_token                 remove  [METHOD] object.remove(x) -- takes out the first line that is x (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001110  remove_first_token           remove_first  [METHOD] object.remove_first() (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001111  remove_last_token            remove_last  [METHOD] object.remove_last() (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010000  truncate_token               truncate  [METHOD] object.truncate(n) -- keeps the first n lines (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010001  clear_token                  clear  [METHOD] object.clear -- no lines; the file stays (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010010  size_token                   size  [METHOD] object.size -- how many lines (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010011  empty_token                  empty  [METHOD] object.empty -- whether there are none (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010100  first_token                  first  [METHOD] object.first -- the first line (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010101  last_token                   last  [METHOD] object.last -- the last line (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010110  save_token                   save  [METHOD] object.save -- every change on the disk now, whole or not at all (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010111  read_all_token               read_all  [METHOD] object.read_all -- the whole file as one string (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011000  close_token                  close  [METHOD] object.close -- saves, then closes (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011001  open_token                   open  [METHOD] object.open -- opens a closed file handle again (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011010  ok_token                     ok  [METHOD] object.ok -- whether the file is open (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011011  error_text_token             error  [METHOD] object.error -- why the last thing failed, in words (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011100  path_token                   path  [METHOD] object.path -- the path the file was opened on (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011101  exists_token                 exists  [METHOD] object.exists -- whether the handle's path is still a file (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011110  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it
