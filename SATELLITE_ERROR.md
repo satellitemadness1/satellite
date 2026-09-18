@@ -153,6 +153,9 @@ renumber.** Same rule as the word table, for the same reason.
 | **S0725** | `NO_THREAD_CEILING_STATED` | 36 `machine_fact_not_read` | `config/run_config.hpp` |
 | **S0726** | `CAP_ABOVE_THE_CEILING` | 37 `setting_out_of_range` | `config/run_config.hpp` |
 | **S0727** | `MACHINE_CONF_NOT_WRITTEN` | 38 `machine_conf_unwritable` | `config/run_config.hpp` |
+| **S0201** | `FILE_HAS_NO_INCLUDE` | 10 `satl_file_missing_satellite_include_satellite` | `machine/s_codes.hpp` |
+| **S0202** | `FILE_HAS_NO_MAIN` | 11 `satl_file_missing_satellite_main` | `machine/s_codes.hpp` |
+| **S0203** | `FILE_HAS_NO_RETURN` | 12 `satl_file_missing_satellite_return_satellite` | `machine/s_codes.hpp` |
 | **S0401** | `LINE_NOT_UNDERSTOOD` | 13 `satl_line_not_understood` | `machine/s_codes.hpp` |
 | **S0402** | `NOT_BUILT_YET` | 14 `not_built_yet` | `machine/s_codes.hpp` |
 | **S0501** | `NAME_NOT_DECLARED` | 25 `name_not_declared` | `machine/s_codes.hpp` |
@@ -163,6 +166,13 @@ renumber.** Same rule as the word table, for the same reason.
 | **S0730** | `CONFIG_FILE_UNREADABLE` | 33 `config_file_unreadable` | `machine/s_codes.hpp` |
 | **S0801** | `DIVISION_BY_ZERO` | 22 `division_by_zero` | `machine/s_codes.hpp` |
 | **S0802** | `ANSWER_IS_NOT_WHOLE` | 24 `answer_is_not_whole` | `machine/s_codes.hpp` |
+
+**S0201–S0203 CARRY NO CARET, AND THAT IS NOT A GAP.** They are about a whole
+file, and a line that is MISSING has no position to point at — so they take
+`raise()` and not `raise_at()`. What the report gives them that the old single
+line could not is **room to print the exact line to type**. S0201 is the
+commonest mistake in the language and its old message said what was wrong
+without ever saying what to do about it.
 
 **S0000 `REFUSED` IS THE FALLBACK AND IS NOT A FAILURE.** A machine code with no S-code yet still reports with the file, the line and the caret; S0000 says the number is owed rather than pretending the refusal is nameless.
 

@@ -63,6 +63,25 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S0402", "NOT_BUILT_YET",
                 "this word is numbered in the language and the library behind it does not exist "
                 "yet. The word is right; there is nothing yet to run."};
+    // S02xx -- READING A FILE: it is not there, not readable, not satellite.
+    // These three are about a WHOLE FILE and have no position in it, so they
+    // carry no caret. What they carry instead is the exact line to type, which
+    // is the only thing a person wants when a file is refused before it runs.
+    case satl_file_missing_satellite_include_satellite:
+        return {"S0201", "FILE_HAS_NO_INCLUDE",
+                "a program's first line is satellite.include(satellite). Without it the file is a "
+                "SPACESHIP -- something another file includes -- and satl will not start it. "
+                "Add this as the first line:\n\n    satellite.include(satellite)"};
+    case satl_file_missing_satellite_main:
+        return {"S0202", "FILE_HAS_NO_MAIN",
+                "there are no globals in satellite, so a statement outside a capsule has nowhere to "
+                "put its result and no moment to run in -- which means there is nowhere to begin. "
+                "Add:\n\n    satellite.capsule satellite.main()\n    {\n        ...\n    }"};
+    case satl_file_missing_satellite_return_satellite:
+        return {"S0203", "FILE_HAS_NO_RETURN",
+                "execution ends inside main, and the file has to say so. "
+                "Add this as the last line:\n\n    satellite.return(satellite)"};
+
     case name_not_declared:
         return {"S0501", "NAME_NOT_DECLARED",
                 "this name was used and no satellite.variable line ever declared it. A name has to "

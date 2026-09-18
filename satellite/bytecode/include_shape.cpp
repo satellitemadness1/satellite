@@ -3,6 +3,8 @@
 
 #include "include_shape.hpp"
 
+#include "../machine/s_codes.hpp"
+
 #include "word_codes.hpp"
 
 #include <cstdlib>
@@ -174,6 +176,32 @@ IncludeShape include_at(const std::vector<std::bitset<16>> &row,
     return shape;
 }
 
+namespace {
+
+// One report for a file whose SHAPE is wrong. The sentence the check already
+// built stays as the description; the S-code's own text says what to type.
+//
+// THE DESCRIPTION SAYS "this file" AND NOT THE PATH, because the path is already
+// the `directory:` row directly under it. Naming it twice made a long path wrap
+// across the report twice over and pushed the sentence that matters off the top.
+signed long long int raise_file_shape(const std::string &filename, const std::string &said,
+                                      signed long long int machine_code)
+{
+    const SCode named = s_code_for(machine_code);
+    CriticalReport report;
+    report.code = named.code;
+    report.name = named.name;
+    report.description = said;
+    report.directory = filename;
+    if (named.means[0] != '\0')
+        report.notes.push_back(named.means);
+    report.notes.push_back("machine code " + std::to_string(machine_code) + " " +
+                           machine_code_name(machine_code) + " -- satl exits with this.");
+    return raise(report, machine_code);
+}
+
+} // namespace
+
 signed long long int file_can_run(const std::vector<std::bitset<16>> &row,
                                   const std::string &filename,
                                   MachineState &state)
@@ -199,18 +227,31 @@ signed long long int file_can_run(const std::vector<std::bitset<16>> &row,
         ++i;
     }
 
+    // THE THREE FILE-SHAPE REFUSALS, AS REPORTS. SATELLITE_ERROR S0201-S0203.
+    //
+    // NO CARET, AND THAT IS NOT A GAP. These are about a whole file -- a line
+    // that is MISSING has no position to point at -- so raise() is the right
+    // call and raise_at() is not. What a report gives them that the old one line
+    // could not is room to print the exact line to type.
+    //
+    // THE FIRST ONE IS THE COMMONEST MISTAKE IN THE LANGUAGE: a file with no
+    // satellite.include(satellite) is a spaceship, and the old message said so
+    // without ever saying what to do about it.
     if (!marker)
-        return report_error("satl.file(check): " + filename +
-                                " has no satellite.include(satellite), so it is a spaceship and not a program",
-                            satl_file_missing_satellite_include_satellite);
+        return raise_file_shape(filename,
+                                "satl.file(check): this file has no satellite.include(satellite), so it "
+                                "is a spaceship and not a program",
+                                satl_file_missing_satellite_include_satellite);
     if (!main)
-        return report_error("satl.file(check): " + filename +
-                                " has no satellite.main -- there are no globals, so there is nowhere else to begin",
-                            satl_file_missing_satellite_main);
+        return raise_file_shape(filename,
+                                "satl.file(check): this file has no satellite.main -- there are no "
+                                "globals, so there is nowhere else to begin",
+                                satl_file_missing_satellite_main);
     if (!returns)
-        return report_error("satl.file(check): " + filename +
-                                " has no satellite.return -- execution ends inside main",
-                            satl_file_missing_satellite_return_satellite);
+        return raise_file_shape(filename,
+                                "satl.file(check): this file has no satellite.return -- execution ends "
+                                "inside main",
+                                satl_file_missing_satellite_return_satellite);
 
     state.set("satl.file(runnable): " + filename, success);
     return success;
