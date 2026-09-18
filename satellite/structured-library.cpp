@@ -34,6 +34,7 @@
 #include "bytecode/program_walk.hpp"
 #include "config/config_file.hpp"
 #include "config/feature_register.hpp"
+#include "config/feature_switch.hpp"
 #include "config/rebuild.hpp"
 #include "machine/critical_report.hpp"
 #include "machine/exit_status.hpp"
@@ -350,7 +351,18 @@ signed long long int run_satl(int argc, char **argv)
     if (stops_the_program(code))
         return code;
 
-    code = run_main(bytecode_registry, capsules, functions, state);
+    // THROUGH THE SWITCH HIERARCHY (the author, 2026-09-18), and every one of
+    // its eight leaves calls the same run_main -- *"we are just running the exact
+    // same interpreter a bunch of different ways, we don't have to change the
+    // actual interpreter right now"*. The choice is made ONCE, here, outside
+    // every loop, which is the property that measured at the floor: a nested
+    // switch wrapping the loop costs 0.216 ns against a 0.216 ns floor, where the
+    // same switch taken per statement costs 0.708. config/feature_switch.hpp
+    // carries the numbers and the reason it switches on TIERS and not on
+    // features -- fourteen features one to a switch would be 16,384 leaves.
+    if (state.debug_mode)
+        state.set(std::string("features.plan = ") + plan_name(plan_for(features)), success);
+    code = run_through_the_hierarchy(features, bytecode_registry, capsules, functions, state);
     if (stops_the_program(code))
         return code;
 

@@ -594,7 +594,9 @@ each one.
 - **F2** — ~~Read it from config.ini at start-up: one value, one parse.~~ **Done** — `start_register()`, and it answers three ways rather than two (absent / unreadable / read), because Part 7's rule 3 says a section that could not be gathered must not print as empty.
 - **F3** — ~~`satl --rebuild`: compose the settings into the binary, write it, print what it turned on.~~ **Done** — and it names every feature that is turned on and **not built yet**, which only belongs in a once-per-machine step.
 - **F4** — ~~Fold `arguments.access` in as bit 0.~~ **Done** — bit 0, and red note 14 is closed: **both spellings live.** The named keys are what a person edits and what a program writes; `features` is the one value satl reads and is DERIVED from them. So `arguments.access` keeps working exactly as built, and `--rebuild` is what makes the fast value out of it.
-- **F5** — **Split the walker**: `run_statements_plain` and `run_statements_watched`, chosen once. **This is the milestone the 0.225 ns depends on.**
+- **F5** — ~~**Split the walker**~~ **SUPERSEDED 2026-09-18 by the author's switch hierarchy, and built as F5a.** F5 said two loops, plain and instrumented. He generalised it: *"BUILD A SWITCH-BASED HIERARCHY ... switch statements inside of other switch statements ... for now, we just wrap the entire interpreter in a switch hierarchy and we end up running the exact same interpreter that we have, just encompassed by switch statements"*. A hierarchy is two loops with room for eight, so F5 is its first case rather than a rival.
+- **F5a** — ~~The hierarchy, wrapping `run_main`: eight leaves, all calling the same interpreter.~~ **Done** — `satellite/config/feature_switch.hpp`. See Part 14.
+- **F5b** — Give `RunPlan::plain` a walker with no feature tests compiled into it. **The author is milestoning the interpreter's own optimisation; this is the leaf it lands in.**
 - **F6** — Re-measure with a real program after F5. `experiments/energy/release.satl` is about a million statements a second and is the shape that would show any regression.
 - **F7** — §A of the report prints the register as bits AND as names (rule 4).
 - **F8** — The register is fixed after start-up; a program that tries to write one says so (rule 3).
@@ -710,3 +712,85 @@ Red notes. None of them blocks E1–E6, R1–R6 or F1–F5.
     refused. But it ships TODAY as a `flag_setting` library, so folding it in is
     a change to something that works, and the author should say whether the
     setting stays the spelling with the register behind it, or is replaced.
+
+---
+
+# Part 14 — the switch hierarchy, as built
+
+`satellite/config/feature_switch.hpp`, 2026-09-18. **Nested switches wrapping the
+interpreter**, choosing once which shape of run to do.
+
+## What it measured
+
+Two questions, both answered by running them rather than arguing them.
+
+**Does a switch hierarchy cost anything?** Only inside the loop. 2,000,000,000
+statements, clang 24 -O2, all features off, two runs agreeing to the fourth digit:
+
+| | ns a statement | |
+|---|---|---|
+| floor: plain loop, no switches | **0.216** | — |
+| nested switch **per statement** | 0.708 | 3.3x the floor |
+| nested switch **wrapping the loop** | **0.216** | **the same loop** |
+
+**And in the real interpreter?** A 2,000,000-turn satellite loop, best of four,
+through four different leaves:
+
+| register | plan | time |
+|---|---|---|
+| nothing on | `plain` | 2.272 s |
+| `access` | `assignments` | 2.276 s |
+| `trace` | `statements` | 2.269 s |
+| `frames trace access` | `statements+capsules+assignments` | 2.288 s |
+
+**Within 1% across every plan** — which is what "the choice is made once, outside
+the loop" looks like from the outside.
+
+## The one correction the author made
+
+I wrote that fourteen features nested one to a switch is 2^14 = 16,384 leaves and
+therefore unwritable. He answered: *"no you have to run the same interpreter for
+different cases inside of different cases, so it's NOT 16k"*, and *"it will be
+like... 100 lines long to do this, or maybe 200 300 400"*.
+
+**He is right.** 16,384 is the number of distinct BODIES you would write if every
+combination got its own specialised interpreter. It is not the cost of the switch
+nest, because cases running the same thing share it. The file is 230 lines.
+
+So the 16,384 is a budget on SPECIALISATION, not on structure, and it only starts
+being spent the night a leaf gets a body of its own.
+
+## Why it switches on tiers
+
+A feature's cost is decided by how often it is looked at, so that is what the
+switches ask about:
+
+| tier | looked at | features |
+|---|---|---|
+| **S** | once a statement | `statements` `trace` `coverage` `word_counts` |
+| **C** | once a capsule | `frames` `capsule_timing` |
+| **A** | once an assignment | `access` `history` `watchpoints` `memory_accounting` |
+| **O** | once a run | `report_file` `report_on_success` `thread_state` `replay` |
+
+Tier O is **not in the hierarchy**: a thing done twice in a program's life cannot
+be made cheaper by specialising a loop, and putting it in would double the leaves
+to buy nothing. Three tiers, two states each: **eight leaves**, all of which are
+reachable and were checked one at a time.
+
+**TWO `static_assert`s KEEP IT TRUE.** Every `Feature` must be in exactly one
+tier, and no feature may be in two. A feature added to the enum and forgotten
+would be tested nowhere — it would never turn on and nothing would say so. That
+is a build failure now instead of a silent one.
+
+## What was verified
+
+- All eight leaves reachable, each register landing on the right one.
+- **Byte-identical output through every leaf** on a program with a loop, a
+  capsule call and arithmetic — same md5, seven lines, eight times.
+- No measurable cost, above.
+- 223 of check.sh passing, 0 failing.
+
+**A CHECK THAT PASSED VACUOUSLY FIRST, recorded because it nearly counted.** The
+identity test compared md5s across eight leaves and all eight matched — because
+the program failed to run and every output was empty. `d41d8cd98f00` is the md5
+of nothing. The test only became a test once the program produced seven lines.
