@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.statement.for(i < 3)
+    {
+        satellite.console.display("never")
+    }
+}
+
+satellite.return(satellite)

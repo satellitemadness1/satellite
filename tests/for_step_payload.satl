@@ -1,0 +1,18 @@
+satellite.include(satellite)
+
+// A STRING IN THE STEP IS A TYPE MISTAKE, NOT A `**`. U+0308 COMBINING DIAERESIS
+// is 0x0308, which is tight_times_token, so this is the shape that would fool a
+// scan of the step that read a payload's codes as tokens. It does NOT fool one
+// today -- every wide character is its own run of one, so the two 0x0308 codes
+// are never adjacent -- and this pins the answer while that stays true.
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.statement.for(satellite.variable.number i = 0; i < 3; "̈̈")
+    {
+        satellite.console.display(i)
+    }
+}
+
+satellite.return(satellite)

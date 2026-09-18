@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.statement.for(satellite.variable.number i = 1; i < 20; i & 1)
+    {
+        satellite.console.display(i)
+    }
+}
+
+satellite.return(satellite)

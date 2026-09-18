@@ -54,6 +54,33 @@ std::size_t past_the_statement(const std::vector<std::bitset<16>> &row, std::siz
 std::size_t past_matching_brace(const std::vector<std::bitset<16>> &row, std::size_t from);
 std::size_t brace_after(const std::vector<std::bitset<16>> &row, std::size_t at);
 
+// WHERE A for's THREE PARTS BEGIN. `satellite.statement.for` is the one statement
+// written with semicolons (MILESTONES M20.A, the author's own line):
+//
+//     satellite.statement.for(satellite.variable.number my_int = 0; my_int < 9; my_int + 1)
+//
+// Shared by the walker and the checker for the same reason past_the_statement is:
+// two readers of one shape drift apart, and this one has three places to drift.
+// `ok` is false unless there is a `(`, exactly two semicolons outside any nested
+// brackets, and the `)` that closes it -- all on the statement's own line.
+struct ForHeader {
+    bool ok = false;
+    std::size_t declaration = 0;   // the first code inside the `(`
+    std::size_t condition = 0;     // the code after the first `;`
+    std::size_t step = 0;          // the code after the second `;` -- the `)` itself when the step is empty
+    std::size_t closing = 0;       // the `)`
+};
+ForHeader for_header(const std::vector<std::bitset<16>> &row, std::size_t at);
+
+// What the third part IS: +1 for `<name>++`, -1 for `<name>--`, 0 for an ordinary
+// expression. Shared for the same reason for_header is, and because the two
+// refusals it gives are shape and belong to the checker. program_walk.cpp says why.
+signed long long int for_step_moves_by(const std::vector<std::bitset<16>> &row,
+                                       const ForHeader &parts,
+                                       const std::string &name,
+                                       int &moves_by,
+                                       std::string &why);
+
 // Where a capsule's body begins: which row, and the code just past its `{`.
 struct CapsuleSite {
     std::size_t row = 0;

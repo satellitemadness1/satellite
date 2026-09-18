@@ -330,6 +330,184 @@ used to store 1 and say nothing.
 `~` are to MEAN. They keep their registry rows and their QUESTION marks until the
 author says (M24's list).
 
+## M20.H satellite.statement.switch
+
+switch syntax will be...
+
+satellite.statement.switch(something)
+{
+  satellite.statement.case(piece_of_something)
+  {
+    // runs this code
+  }
+}
+
+so for example, if the switch is a string, the piece can be anything: for the switch something "saiodjghmhwerkuudfk" a case can be any piece of that string, so it can be "od" as the case,
+
+what else should the interpreter provide for "switch"? What do we do with a number, if it's a number, then the switch has to accept that number as a value, and code would be built in between the cases that runs no matter what, so you can have:
+
+my_int = 29834783
+satellite.statement.switch(my_int)
+{
+  my_int = 9
+  satellite.statement.case(9)
+  {
+    // THEN this will run
+  }
+  satellite.statement.case(29834783)
+  {
+    // this will not run,
+  }
+}
+
+switch will also have satellite.statement.finally(optional_condition) if no condition is given, then the condition is true... 
+
+# M20.G satellite.statement.finally
+
+finally is for 
+satellite.statement.if
+satellite.statement.while
+satellite.statement.for
+
+## M20.E satellite.statement.break
+
+break is part of if, for, while and exits the loop
+
+## M20.F satellite.statement.continue
+
+continue is part of if, for and while and jumps out of the current statement correct me if that is wrong?
+
+## M20.D satellite.statement.if
+satellite.statement.if is just (condition) { code }
+
+## M20.C satellite.history arguments
+satellite.history relies on two variables from arguments...
+
+arguments.history is a satellite.variable.bool, when set to true, it records type name and value of every object, and writes it to disk, then satellite.history(object_name) will be the way to access the disk...
+
+arguments.history_path = "/dir/" this must be a directory, and is an error when you try to set it to a particular file... in this directory, we will be saving name_of_satl_file.history files with the extension .number.history for each time that file is ran, now the satellite.history extension is going to have to check if turned on, whether there is at least... 32 gigabytes? Free in the location of the directory, otherwise the interpreter must set arguments.history to false. So the entire history system is hidden behind something: a single check of whether arguments.history is set to true or false, if set to false, then none of the satellite.history stuff has to be accessed, somehow we have to program this, because this adds alot to the interpreter when turned on, so we need this way of turning all of it off, so it doesn't slow us down as much...
+
+##M20.B -- satellite.history
+before satellite.history is created, we need the arguments variable to be created...
+
+satellite.history if it's arguments are set to true, records the values of everything onto disk -- type, name and value of every object, and satellite.history is similar to satellite.library, except satellite.history is also a record of past values, and even past types of objects, written to disk. This is very easy to program, it just has alot of requirements, and it adds additional lines of code to every action taken by the satellite interpreter -- especially when turned on!
+
+## M20.A -- satellite.statement.for
+satellite.statement.for begins with a place to declare a variable,
+then has a place to declare a condition that evaluates to true or
+to false, then it has an optionally declare increment or decrement
+a number, and we have to accept ++, -- and number + number here,
+in a form that is not consistent with other parts of the language,
+so the for loop is the only place where this exists, and it will
+look like this:
+
+satellite.statement.for(satellite.variable.number my_int = 0; my_int < 9; my_int + 1)
+{
+  // the loop code
+  // but my_int + number it's a statement with a single operand,
+  // we must take any math operation here and then add the declared number in the beginning of the statement, so in this example we add "my_int = " to the final block, so here we take as valid input my_int + number, my_int - number, my_int / number, my_int * number, my_int ** number(power), my_int % number, and in every circumstance, we are adding "my_int = " to the code, so we always add the declared number from the beginning of the for loop, and you must declare a number here and then that number exists in 2 places: it exists while the for loop is running, then it exists under a new namespace we can call it satellite.history and we can have satellite.history.live and satellite.history.dead for every single variable: we need to save every objects LAST type, every objects name, and every objects value under satellite.history, it will become something similar to satellite.library, so now every object is getting registered with satellite.library and satellite.history, so we will have to build satellite.history and this opens a new door! We can spin another thread, and have it listen for input, while a worker thread records onto disk the values for object... this feature will be turned off by default, but if someone turns it on, it saves the values in a .json like format onto disk, so we
+}
+
+**BUILT 2026-09-17**, everything in this entry except satellite.history. Your own
+line runs:
+
+    satellite.statement.for(satellite.variable.number my_int = 0; my_int < 3; my_int + 1)
+
+**The third part is the interesting one, and it is built as written.** It carries
+no `=` because the loop's own name goes in front of whatever is there --
+*"in every circumstance, we are adding `my_int = ` to the code"* -- so `my_int + 1`
+IS `my_int = my_int + 1`. It is worked out by the ordinary evaluator and the
+answer is given to the number, which is why `* 2`, `- 1`, `^ 2` and `% 7` all
+followed without a line of code each: the evaluator does not care which operator
+it is. `++` and `--` work too, and **neither is a token**: the lexer already
+writes `i++` as the name and two TOUCHING pluses, and a touching sign is not an
+operation anywhere in satellite, so the spelling could be read inside this one
+bracket without giving it a meaning outside it -- which is this entry's own
+*"a form that is not consistent with other parts of the language, so the for loop
+is the only place where this exists"*, kept literally. No registry row was minted.
+
+**THE STEP IS EXACTLY ONE OF THREE THINGS**, which is this entry's own list and
+not a rule invented here: empty, or `<name>++` / `<name>--`, or `<name>` and one
+of `+ - * / % ^` spaced, and then an expression. Anything else is refused BY THE
+CHECKER. That rule was written after a fresh reader found what the looser version
+did: **`--i` ran forever printing 0**, nine million lines in five seconds, saying
+nothing -- it is double unary minus, so the step was `i = i`. A step of just `i`
+did the same. `i * * 2`, `i++ + 1`, `i & 1`, `i^^` each printed one turn of the
+loop and then stopped. The step is the only part of a for that runs AFTER the
+body, so a step the walker cannot use is a loop that half-runs; it is now the
+part most tightly checked. What is still a RUN-time refusal is `i + 1 & 2`, where
+the step begins correctly and stops being readable later -- the same refusal
+`while(n < 3 & 1)` gets, in the same place.
+
+**`**` IS REFUSED BY NAME** in the step. This entry lists `my_int ** number(power)`,
+and on 2026-09-16 you ruled that power is `^`. A second spelling for power living
+in one bracket would be the inconsistency without the reason for it, so `i ** 2`
+answers *"power is written ^ -- write i ^ ... rather than i ** ..."*. **Say if you
+want `**` accepted here as well** -- it is one branch in `for_step_moves_by`. In
+the CONDITION it is not by name: `for(...; i ** 2 < 20; ...)` gets the language's
+ordinary "every math operation is written with a space on both sides".
+
+**The number exists while the loop is running, and no longer.** *"it exists while
+the for loop is running, then it exists under... satellite.history"*. The first
+half is what exists: the name goes into the enclosing body's own table before the
+first turn and is erased after the last. The second half is M20.B and is not
+built, so the number is simply gone -- and `i` written after the loop is refused
+by the CHECKER, before the loop has printed anything. Two loops that do not
+overlap may both call their number `i`; two that do overlap are "declared twice",
+which is the same rule seen from the other side.
+
+**A for is a while with two more parts**, the same economy `if` was: one
+`evaluate_expression`, one `is_bool()` demand, one `run_statements` on the body
+sharing this body's variables. Nothing is allocated per turn but the step's
+answer, and the step's SHAPE is read once per loop rather than once per turn.
+
+**What the checker refuses before anything runs:** a missing semicolon, a first
+part that is not `satellite.variable.number <name> = <value>`, an empty condition,
+no body, every step that is not one of the three shapes above, and the number used
+after the loop. **What is refused at RUN time**, exactly as `if(5)` is, because the
+checker does not evaluate: a condition that is not a bool, and a first part or a
+step that does not answer a number.
+
+Built: `satellite/bytecode/program_walk.cpp` (`for_header`, `for_step_moves_by`,
+`run_for`, `run_for_step`), `program_walk.hpp`, `program_check.cpp`,
+`tests/for_loop.satl` and fifteen refusal fixtures, 33 rows in check.sh
+(223 passed). Reviewed by a fresh reader (~144k tokens): the step rule above is
+its find; what it could NOT break is listed in PROGRESS.md.
+
+**FOR YOU, ON THIS ONE -- two of these are bugs, and neither is mine to rule on:**
+
+1. **`satellite.return` INSIDE A LOOP DOES NOT END THE CAPSULE. A real bug, and
+   it is `while`'s too, not new.** `satellite.return(0)` in a for body printed
+   0 1 2 3 4 and then the line after the loop; the same program with a `while`
+   does the same. `run_statements` answers `success` for a return, and `success`
+   is not `stops_the_program`, so the loop goes round again. I did not fix it
+   because the fix decides two things that are yours: whether return leaves the
+   whole capsule or only the loop (M20.E says `break` is the word that exits a
+   loop, which reads as: return leaves the capsule), and what its ARGUMENT means
+   -- `satellite.returns(TYPE)` is a different word, and `return(0)`'s 0 has no
+   meaning written down anywhere yet.
+
+2. **8,000 nested `for`s SEGFAULT (exit 139, core dumped).** 6,500 is fine. `if`
+   survives 8,000 at the same depth and dies later, because `run_for`'s C++ frame
+   is the biggest of the three. It is stack exhaustion, proven: `ulimit -s 65536`
+   makes the 8,000 case print and exit 0. **This is the thing "the language has no
+   limits" is about, and a depth bound is not the fix** -- the fix is the walker
+   keeping its own stack instead of recursing through C++, which is the same
+   decision as item 3 and wants to be made once.
+
+3. `program_walk.cpp` is now **939 lines**, against your 300. The three statement
+   runners (`run_while`, `run_if`, `run_for`) and `run_statements` call each
+   other, so splitting them out means putting `run_statements` in a header -- a
+   real change to what that header promises, not a move. Say whether to do it.
+
+4. `satellite.statement.for(...; ...; )` with an empty step is accepted -- this
+   entry marks only the third part "optionally". Is an empty CONDITION
+   (`for(number i = 0; ; i++)`, C's forever loop) wanted too? It is refused today.
+
+5. Smaller, both shared with `while`: `i ++` with spaces is taken as `i++` (the
+   lexer makes both signs touching whatever the gap), and junk after the header's
+   own `)` is ignored -- `for(...; i++))` runs clean.
+
 ## M20 — satellite_float, and hex as its own type
 
 **Binary is built** (2026-09-16): `satellite.variable.binary` `1 6 5` is

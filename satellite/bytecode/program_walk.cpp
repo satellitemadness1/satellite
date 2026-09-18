@@ -1,15 +1,23 @@
 // satellite/bytecode/program_walk.cpp -- the header says what the three pieces
 // are for and why a call is a position rather than an object. The checker moved
-// to program_check.cpp when statements grew past calls, so both stay near the
-// author's 300-line target.
+// to program_check.cpp when statements grew past calls, for the author's 300-line
+// target -- WHICH THIS FILE NO LONGER MEETS: `while`, `if`/`else` and `for` took
+// it to 861 lines. The same move a second time is not a move, because the three
+// statement runners and run_statements call EACH OTHER, so lifting them out means
+// putting run_statements in a header and promising it to everything that includes
+// one. That is the author's to rule (MILESTONES M20.A), not to be done in passing.
 //
-// A STATEMENT IS ONE OF SIX SHAPES, and run_statements below is that list:
+// A STATEMENT IS ONE OF EIGHT SHAPES, and run_statements below is that list:
 //
 //     satellite.return(...)                      ends the body
 //     satellite.variable.number <name> = <expr>  declares, and gives a value
 //                                                (.string .binary .percentage the same)
 //     <name> = <expr>                            gives a value to one declared
 //     satellite.statement.while(<expr>) { ... }  runs the body while it holds
+//     satellite.statement.if(<expr>) { ... }     runs it once, if it holds
+//                              [ satellite.statement.else { ... } ]
+//     satellite.statement.for(<declaration>; <expr>; <step>) { ... }
+//                                                the same loop, counting
 //     <word>(<expr>)                             a word of the language
 //     <name>()                                   a capsule the user wrote
 //
@@ -93,6 +101,162 @@ std::size_t brace_after(const std::vector<std::bitset<16>> &row, std::size_t at)
 {
     while (at < row.size() && code_at(row, at) == token::line_end_token) ++at;
     return at;
+}
+
+// The header says what this is for. `at` is on the `satellite.statement.for` code.
+// Only a semicolon OUTSIDE nested brackets divides the parts, so a call in the
+// condition keeps its own commas and brackets; a payload is skipped rather than
+// read, by the same rule that keeps a `}` inside a string from closing a body.
+ForHeader for_header(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    ForHeader parts;
+    std::size_t k = at + 1;
+    if (code_at(row, k) != token::left_parenthesis_token)
+        return parts;
+    parts.declaration = ++k;
+
+    std::size_t depth = 1;
+    unsigned int semicolons = 0;
+    while (k < row.size()) {
+        const Code code = code_at(row, k);
+        if (token::carries_a_count(code)) { text_at(row, k); continue; }
+        if (code == token::line_end_token || code == token::end_of_file_token)
+            return ForHeader();                     // the brackets never closed on this line
+        if (code == token::left_parenthesis_token) {
+            ++depth;
+        } else if (code == token::right_parenthesis_token && --depth == 0) {
+            parts.closing = k;
+            parts.ok = semicolons == 2;
+            return parts;
+        } else if (code == token::semicolon_token && depth == 1) {
+            if (semicolons >= 2)
+                return ForHeader();                 // a third `;`: this is not the shape
+            (semicolons == 0 ? parts.condition : parts.step) = k + 1;
+            ++semicolons;
+        }
+        ++k;
+    }
+    return ForHeader();
+}
+
+// WHAT A for's THIRD PART IS, without running any of it. The step is EXACTLY
+// ONE OF THREE THINGS, which is M20.A's own list and not a rule invented here --
+// *"here we take as valid input my_int + number, my_int - number, my_int / number,
+// my_int * number, my_int ** number(power), my_int % number"*, plus the `++` and
+// `--` the same entry asks for:
+//
+//     (empty)                               the body moves the number itself
+//     <name>++   <name>--                   moves_by +1 and -1
+//     <name> <+ - * / % ^> <expression>     moves_by 0: the evaluator answers it
+//
+// ANYTHING ELSE IS REFUSED HERE, BY THE CHECKER, BEFORE THE LOOP HAS PRINTED --
+// and that is the whole reason this is one rule rather than a list of traps. The
+// step is the only part of a for that runs AFTER the body, so a step the walker
+// cannot use is a loop that prints a turn and then stops, or worse:
+//
+//     `--i`        double unary minus, so `i = i`: THE LOOP RAN FOREVER, printing
+//                  0 nine million times in five seconds and saying nothing (the
+//                  review, 2026-09-17). It is the prefix spelling of `i--`, which
+//                  is a spelling the author DID give, so a person will write it.
+//     `i`          `i = i`, the same silence.
+//     `i * * 2`    named in this file as the wrong thing a generic message sends
+//                  a person to write -- and it half-ran until this rule.
+//     `i++ + 1`    a doubled sign that is not the whole step.
+//     `i & 1`      `&` is a QUESTION row: it has no meaning in an expression yet.
+//
+// WHAT IS STILL A RUN-TIME REFUSAL: `i + 1 & 2`, where the step BEGINS correctly
+// and stops being readable later. That is the same refusal `while(n < 3 & 1)`
+// gets (tests/unread_while.satl), and it belongs in the same place as while's.
+//
+// THE PAYLOAD PROBLEM DISSOLVED WITH THIS RULE. The version before it scanned
+// every code of the step looking for `**`, and a payload's codes are never to be
+// classified (0x0308 is tight_times_token AND U+0308, a real combining
+// character). Nothing is scanned now: only the code straight after the name is
+// ever looked at, and a step that starts with a string is refused for not
+// starting with the name.
+signed long long int for_step_moves_by(const std::vector<std::bitset<16>> &row,
+                                       const ForHeader &parts,
+                                       const std::string &name,
+                                       int &moves_by,
+                                       std::string &why)
+{
+    moves_by = 0;
+    if (parts.step == parts.closing)
+        return success;                     // the empty step: the third part is the optional one
+
+    const std::string is_written = " -- a for's step is " + name +
+                                   " and one of + - * / % ^ with a space on both sides, or " + name +
+                                   "++ or " + name + "--";
+
+    // ++i and --i, the prefix spelling of the one the author gave. Worth its own
+    // sentence because the language accepts the other half of it.
+    const Code first = code_at(row, parts.step);
+    if ((first == token::tight_plus_token || first == token::tight_minus_token) &&
+        first == code_at(row, parts.step + 1)) {
+        const std::string doubled = first == token::tight_plus_token ? "++" : "--";
+        why = "satellite.statement.for's step is written " + name + doubled + ", not " + doubled + name;
+        return satl_line_not_understood;
+    }
+    if (first != token::name_token) {
+        why = "satellite.statement.for's step does not begin with " + name + is_written;
+        return satl_line_not_understood;
+    }
+
+    std::size_t after = parts.step;
+    const std::string moved = text_at(row, after);
+    if (moved != name) {
+        why = "satellite.statement.for's step moves " + moved + ", which is not " + name +
+              ", the number this loop declared";
+        return satl_line_not_understood;
+    }
+
+    // `<name>++` and `<name>--`, and the doubled sign must be the WHOLE step.
+    const Code sign = code_at(row, after);
+    if ((sign == token::tight_plus_token || sign == token::tight_minus_token) &&
+        sign == code_at(row, after + 1)) {
+        const std::string doubled = sign == token::tight_plus_token ? "++" : "--";
+        if (after + 2 != parts.closing) {
+            why = "satellite.statement.for's " + name + doubled + " is the whole step, and there is more after it" +
+                  is_written;
+            return satl_line_not_understood;
+        }
+        moves_by = sign == token::tight_plus_token ? 1 : -1;
+        return success;
+    }
+
+    // `**` BY NAME. M20.A lists `my_int ** number(power)`, and the author ruled on
+    // 2026-09-16 that power is `^`. A second spelling for power living in this one
+    // bracket would be the inconsistency without the reason for it, and the
+    // generic answer ("a math operation needs a space on both sides") would send a
+    // person to write `i * * 2`, which is not power either.
+    if (sign == token::tight_times_token && code_at(row, after + 1) == token::tight_times_token) {
+        why = "in satellite.statement.for, power is written ^ -- write " + name + " ^ ... rather than " + name +
+              " ** ...";
+        return satl_line_not_understood;
+    }
+
+    // One of the author's six, SPACED, with something after it for it to work on.
+    const bool arithmetic = sign == token::plus_token || sign == token::minus_token ||
+                            sign == token::times_token || sign == token::divide_token ||
+                            sign == token::modulus_token || sign == token::power_token;
+    if (!arithmetic || after + 1 >= parts.closing) {
+        why = "satellite.statement.for's step does not move " + name + is_written;
+        return satl_line_not_understood;
+    }
+
+    // `i * * 2` IS TWO SPACED OPERATORS, not `**` -- both stars have a space on
+    // both sides, so the lexer writes two times_tokens and the `**` rule above
+    // never sees it. It is the spelling this file names as the wrong thing a
+    // generic message sends a person to write, so it does not get to half-run:
+    // an operator can never be the value another operator works on. A TOUCHING
+    // minus may (`i - -1` is i + 1), which is why only the spaced six are refused.
+    const Code next = code_at(row, after + 1);
+    if (next == token::plus_token || next == token::minus_token || next == token::times_token ||
+        next == token::divide_token || next == token::modulus_token || next == token::power_token) {
+        why = "satellite.statement.for's step has two operations in a row and no number between them" + is_written;
+        return satl_line_not_understood;
+    }
+    return success;
 }
 
 signed long long int load_program(const std::string &main_file,
@@ -386,6 +550,177 @@ signed long long int run_if(const BytecodeRegistry &registry,
     return run_statements(registry, capsules, functions, which_row, after_else + 1, variables, state);
 }
 
+// THE THIRD PART OF A for, WHICH IS NOT AN EXPRESSION AND NOT AN ASSIGNMENT
+// (MILESTONES M20.A). The author: *"we must take any math operation here and then
+// add the declared number in the beginning of the statement, so in this example we
+// add `my_int = ` to the final block"*. So `my_int + 1` is written without an `=`
+// and MEANS `my_int = my_int + 1`: the step is worked out by the ordinary
+// evaluator and its answer is given to the loop's own name. `my_int * 2`,
+// `my_int - 1`, `my_int ^ 2`, `my_int % 7` all follow, because the evaluator does
+// not care which operator it is.
+//
+// `++` AND `--` ARE THE ONE SPELLING THE LANGUAGE HAS NOWHERE ELSE, which is the
+// author's own framing -- *"in a form that is not consistent with other parts of
+// the language, so the for loop is the only place where this exists"*. They are
+// not tokens and do not become tokens: the lexer already writes `i++` as the name
+// and two TOUCHING pluses, and touching is not an operation anywhere in
+// satellite, so reading the pair here takes the spelling without giving it a
+// meaning outside this bracket. Each is its `+ 1` through the same
+// satelliteObject::add that `+` reaches.
+//
+// WHICH OF THE TWO IT IS, IS A SHAPE, so for_step_moves_by answers it once --
+// for the CHECKER before anything runs, and for run_for before its first turn --
+// rather than run_for_step working it out again on every turn of the loop.
+signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
+                                  const ForHeader &parts,
+                                  const std::string &name,
+                                  int moves_by,
+                                  const FunctionTable &functions,
+                                  VariableTable &variables,
+                                  MachineState &state)
+{
+    if (parts.step == parts.closing)        // no step: the body moves the number itself
+        return success;
+
+    // run_for put the name there and only run_for takes it away, so this cannot
+    // fail today. It is asked anyway because the answer is used as a pointer, and
+    // a wrong answer here would be a crash rather than a refusal.
+    const VariableTable::iterator counting = variables.find(name);
+    if (counting == variables.end())
+        return report_error("satl(run): satellite.statement.for's " + name + " is no longer declared",
+                            name_not_declared);
+
+    Value answer;
+    if (moves_by != 0) {
+        const Value one = Value::of_number(satellite_number::from_signed(1));
+        std::string why;
+        const signed long long int code = moves_by > 0 ? counting->second.value.add(one, answer, why)
+                                                       : counting->second.value.subtract(one, answer, why);
+        if (code != success)
+            return report_error("satl(run): in satellite.statement.for, " + why, code);
+        counting->second.value = std::move(answer);
+        return success;
+    }
+
+    std::size_t at = parts.step;
+    ExpressionContext context{variables, functions, state};
+    answer = evaluate_expression(row, at, context);
+    if (context.code != success)
+        return report_error("satl(run): in satellite.statement.for, " + context.why, context.code);
+    if (at != parts.closing)
+        return report_error(std::string("satl(run): satellite.statement.for's third part ") + kNotReadToTheEnd,
+                            satl_line_not_understood);
+    if (!answer.is_number())
+        return report_error("satl(run): satellite.statement.for's " + name + " was declared " +
+                                word::spelling_of(word::code_of(1, 6, 4)) + " and its step answered " +
+                                answer.kind_name(),
+                            types_do_not_meet);
+    counting->second.value = std::move(answer);
+    return success;
+}
+
+// `satellite.statement.for(satellite.variable.number my_int = 0; my_int < 9; my_int + 1)`
+// and then a body -- the author's own line, MILESTONES M20.A. `at` is on the word
+// code and is left past the body's `}`.
+//
+// IT IS A while WITH TWO MORE PARTS, which is the same economy `if` was: the
+// condition is read from its own position every turn and goes through the same
+// evaluator and the same is_bool() demand, and the body is run_statements sharing
+// this body's variables. Nothing is allocated per turn but the step's answer.
+//
+// THE NUMBER BELONGS TO THE LOOP. The author: *"you must declare a number here
+// and then that number exists in 2 places: it exists while the for loop is
+// running, then it exists under... satellite.history"*. satellite.history is
+// M20.B and is not built, so the first half is what exists: the name is put into
+// this body's table before the first turn and TAKEN OUT when the loop ends. It is
+// this body's table and not a new one for the same reason a while's body shares
+// it -- a loop that could not move the counter outside it would be a capsule.
+signed long long int run_for(const BytecodeRegistry &registry,
+                             const CapsuleTable &capsules,
+                             const FunctionTable &functions,
+                             std::size_t which_row,
+                             std::size_t &at,
+                             VariableTable &variables,
+                             MachineState &state)
+{
+    const std::vector<std::bitset<16>> &row = registry[which_row];
+    const ForHeader parts = for_header(row, at);
+    const std::size_t after = past_the_statement(row, at);
+    const std::size_t brace = brace_after(row, after);
+    if (!parts.ok || code_at(row, brace) != token::left_brace_token) {
+        at = after;
+        return report_error(parts.ok ? "satl(run): satellite.statement.for has no body"
+                                     : "satl(run): satellite.statement.for is written "
+                                       "(satellite.variable.number <name> = <value>; <condition>; <step>)",
+                            satl_line_not_understood);
+    }
+    at = past_matching_brace(row, brace);
+
+    // THE FIRST PART DECLARES, and the checker has already said it is a number
+    // with a name and an `=`. What cannot be known without running is the VALUE.
+    std::size_t k = parts.declaration + 1;
+    const std::string name = text_at(row, k);
+    ++k;                                                  // past the `=`
+    ExpressionContext opening{variables, functions, state};
+    Value start = evaluate_expression(row, k, opening);
+    if (opening.code != success)
+        return report_error("satl(run): in satellite.statement.for, " + opening.why, opening.code);
+    if (k != parts.condition - 1)
+        return report_error(std::string("satl(run): satellite.statement.for's first part ") + kNotReadToTheEnd,
+                            satl_line_not_understood);
+    if (!start.is_number())
+        return report_error("satl(run): satellite.statement.for declares " +
+                                std::string(word::spelling_of(word::code_of(1, 6, 4))) + " " + name +
+                                ", and it was given " + start.kind_name(),
+                            types_do_not_meet);
+    variables[name] = Variable{word::code_of(1, 6, 4), std::move(start)};
+
+    // ONCE, NOT PER TURN -- and the checker has already refused the two shapes
+    // this can turn down, so a program reaching here has a step that is one of
+    // the three (see for_step_moves_by).
+    int moves_by = 0;
+    std::string shaped;
+    const signed long long int step_shape = for_step_moves_by(row, parts, name, moves_by, shaped);
+    if (step_shape != success) {
+        variables.erase(name);
+        return report_error("satl(run): " + shaped, step_shape);
+    }
+
+    signed long long int stopped = success;
+    for (;;) {
+        std::size_t here = parts.condition;
+        ExpressionContext turn{variables, functions, state};
+        const Value holds = evaluate_expression(row, here, turn);
+        if (turn.code != success) {
+            stopped = report_error("satl(run): in satellite.statement.for, " + turn.why, turn.code);
+            break;
+        }
+        if (here != parts.step - 1) {
+            stopped = report_error(std::string("satl(run): satellite.statement.for's condition ") + kNotReadToTheEnd,
+                                   satl_line_not_understood);
+            break;
+        }
+        if (!holds.is_bool()) {
+            stopped = report_error(std::string("satl(run): satellite.statement.for was given ") + holds.kind_name() +
+                                       " and needs a true or false",
+                                   types_do_not_meet);
+            break;
+        }
+        if (!*holds.as_bool())
+            break;
+
+        stopped = run_statements(registry, capsules, functions, which_row, brace + 1, variables, state);
+        if (stops_the_program(stopped))
+            break;
+        stopped = run_for_step(row, parts, name, moves_by, functions, variables, state);
+        if (stops_the_program(stopped))
+            break;
+    }
+
+    variables.erase(name);      // the loop is over, and so is its number
+    return stops_the_program(stopped) ? stopped : success;
+}
+
 // `satellite.variable.number <name> = <expr>`, and `<name> = <expr>`.
 // `declared` is 0 for a plain assignment.
 signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
@@ -504,6 +839,14 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         if (code == word::code_of(1, 13, 3)) {       // satellite.statement.while
             const signed long long int stopped =
                 run_while(registry, capsules, functions, which_row, at, variables, state);
+            if (stops_the_program(stopped))
+                return stopped;
+            continue;
+        }
+
+        if (code == word::code_of(1, 13, 2)) {       // satellite.statement.for
+            const signed long long int stopped =
+                run_for(registry, capsules, functions, which_row, at, variables, state);
             if (stops_the_program(stopped))
                 return stopped;
             continue;

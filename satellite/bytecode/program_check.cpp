@@ -33,6 +33,8 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace satellite004 {
 namespace {
@@ -41,6 +43,29 @@ using token::Code;
 // Each declared name and the word that declared it -- the TYPE is kept so that a
 // later `bits = 1010` can be judged by the same rule as the declaration was.
 using DeclaredNames = std::unordered_map<std::string, Code>;
+
+// A for's NUMBER OUTLIVES NOTHING (MILESTONES M20.A: it "exists while the for
+// loop is running"), so the checker has to forget it where the walker erases it,
+// or `i` written after the loop would pass the check and be refused at run time --
+// with the loop's own output already printed, which is the one thing this whole
+// file exists to prevent. Each entry is the code just past a for's `}` and the
+// name that dies there; forget_the_finished below is called before every
+// statement, so a name is gone by the first statement at or after that point.
+//
+// It is a list and not a stack because it is read by POSITION: nested loops end
+// in the order they must, and two loops that use `i` one after the other are both
+// allowed -- the first has forgotten it before the second declares it.
+using EndingNames = std::vector<std::pair<std::size_t, std::string>>;
+
+void forget_the_finished(EndingNames &ending, std::size_t at, DeclaredNames &declared)
+{
+    for (std::size_t which = ending.size(); which > 0; --which) {
+        if (ending[which - 1].first > at)
+            continue;
+        declared.erase(ending[which - 1].second);
+        ending.erase(ending.begin() + static_cast<std::ptrdiff_t>(which - 1));
+    }
+}
 
 // A BINARY IS WRITTEN WITH ITS b (the author, 2026-09-16): "if the user doesn't
 // enter "b" and enters satellite.variable.binary just require them to enter the
@@ -236,8 +261,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                                      const CapsuleTable &capsules,
                                      const FunctionTable &functions,
                                      DeclaredNames &declared,
+                                     EndingNames &ending,
                                      std::string &why)
 {
+    forget_the_finished(ending, at, declared);
     const Code code = code_at(row, at);
 
     if (code == token::line_end_token || code == token::left_brace_token ||
@@ -309,6 +336,73 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // and stepping over this one would make the body's `}` read as the
         // capsule's and end the check early.
         at = brace;
+        return success;
+    }
+
+    // satellite.statement.for -- the only statement with three parts, and the
+    // only one that DECLARES in its own header (MILESTONES M20.A). Its shape is
+    // knowable without running and every piece of it is judged here: the two
+    // semicolons, a satellite.variable.number with a name and a value, a
+    // condition that is not empty, and a body.
+    if (code == word::code_of(1, 13, 2)) {
+        const std::size_t stop = past_the_statement(row, at);
+        const ForHeader parts = for_header(row, at);
+        if (!parts.ok) {
+            why = "satellite.statement.for is written (satellite.variable.number <name> = <value>; "
+                  "<condition>; <step>), with both semicolons";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        // "you must declare a number here" (the author, M20.A). Not a string and
+        // not a name already declared elsewhere: the header owns this one.
+        std::size_t k = parts.declaration;
+        if (code_at(row, k) != word::code_of(1, 6, 4) || code_at(row, k + 1) != token::name_token) {
+            why = "satellite.statement.for begins with satellite.variable.number <name> = <value>";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        ++k;
+        const std::string name = text_at(row, k);
+        if (code_at(row, k) != token::assign_token) {
+            why = "satellite.statement.for's " + name + " needs a value: satellite.variable.number " + name + " = 0";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        // THE VALUE IS READ BEFORE THE NAME IS DECLARED, so `for(number i = i; ...)`
+        // is the same "no satellite.variable line" it would be anywhere else.
+        signed long long int held =
+            names_in_statement(row, k, parts.condition - 1, declared, capsules, functions, why);
+        if (held != success) { at = stop; return held; }
+        if (!declared.emplace(name, word::code_of(1, 6, 4)).second) {
+            why = name + " is declared twice in the same capsule";
+            at = stop;
+            return name_declared_twice;
+        }
+        // THE STEP IS OPTIONAL AND THE CONDITION IS NOT: M20.A gives the middle
+        // part no choice ("a place to declare a condition that evaluates to true
+        // or to false") and marks only the third "optionally".
+        if (parts.condition == parts.step - 1) {
+            why = "satellite.statement.for has nothing between its semicolons, and it needs a condition there";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        held = names_in_statement(row, parts.condition, parts.closing, declared, capsules, functions, why);
+        if (held != success) { at = stop; return held; }
+        // THE STEP'S SHAPE, which is `i++`, `i--` or a math operation and nothing
+        // else. The move itself is a run-time fact; which of the three it is, is
+        // not, so it is refused here rather than after the loop's first turn has
+        // printed (program_walk.cpp, for_step_moves_by).
+        int moves_by = 0;
+        held = for_step_moves_by(row, parts, name, moves_by, why);
+        if (held != success) { at = stop; return held; }
+        const std::size_t brace = brace_after(row, stop);
+        if (code_at(row, brace) != token::left_brace_token) {
+            why = "satellite.statement.for has no body";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        ending.push_back({past_matching_brace(row, brace), name});
+        at = brace;                 // ON the brace, as if and while are
         return success;
     }
 
@@ -420,11 +514,12 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
 {
     static const CapsuleTable none;
     DeclaredNames declared;
+    EndingNames ending;
     const std::vector<std::bitset<16>> &row = registry.front();
     for (std::size_t at = 0; at < row.size() && code_at(row, at) != token::end_of_file_token; ) {
         const std::size_t was = at;
         std::string why;
-        const signed long long int stopped = check_statement(row, at, none, functions, declared, why);
+        const signed long long int stopped = check_statement(row, at, none, functions, declared, ending, why);
         if (stops_the_program(stopped))
             return report_error("satl(prompt): " + why, stopped);
         if (at <= was)                  // a statement must always move forward
@@ -444,6 +539,7 @@ signed long long int check_program(const BytecodeRegistry &registry,
         // One set a capsule: there are no globals, so a name declared elsewhere
         // is not declared here.
         DeclaredNames declared;
+        EndingNames ending;
         std::size_t depth = 0;
         for (std::size_t at = entry.second.body; at < row.size(); ) {
             const Code code = code_at(row, at);
@@ -457,7 +553,7 @@ signed long long int check_program(const BytecodeRegistry &registry,
             const std::size_t was = at;
             std::string why;
             const signed long long int code_of_line =
-                check_statement(row, at, capsules, functions, declared, why);
+                check_statement(row, at, capsules, functions, declared, ending, why);
             if (stops_the_program(code_of_line))
                 return report_error("satl(check): in " + entry.first + ", " + why, code_of_line);
             if (at <= was)                  // a statement must always move forward

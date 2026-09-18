@@ -1,0 +1,89 @@
+satellite.include(satellite)
+
+// satellite.statement.for -- MILESTONES M20.A, the author's own line. Three parts
+// divided by semicolons: a declaration, a condition, and an optional step written
+// WITHOUT an `=` because the loop's own name is put in front of it.
+
+satellite.capsule satellite.main()
+{
+    // The author's example, one lower so the output stays short.
+    satellite.statement.for(satellite.variable.number my_int = 0; my_int < 3; my_int + 1)
+    {
+        satellite.console.display(my_int)
+    }
+
+    // ++ and -- , the one spelling that lives nowhere else in the language.
+    satellite.statement.for(satellite.variable.number up = 0; up < 3; up++)
+    {
+        satellite.console.display(up)
+    }
+    satellite.statement.for(satellite.variable.number down = 3; down > 0; down--)
+    {
+        satellite.console.display(down)
+    }
+
+    // ANY math operation, not only + 1 (the author: "my_int + number, my_int -
+    // number, my_int / number, my_int * number, ... my_int % number").
+    satellite.statement.for(satellite.variable.number doubling = 1; doubling < 20; doubling * 2)
+    {
+        satellite.console.display(doubling)
+    }
+
+    // THE BODY SHARES THIS BODY'S VARIABLES, as a while's does: a loop that could
+    // not move the count outside it would be a capsule.
+    satellite.variable.number total = 0
+    satellite.statement.for(satellite.variable.number adding = 1; adding < 5; adding + 1)
+    {
+        total = total + adding
+    }
+    satellite.console.display(total)
+
+    // NO STEP: the third part is the optional one, and the body moves the number.
+    satellite.statement.for(satellite.variable.number walking = 0; walking < 2; )
+    {
+        satellite.console.display(walking)
+        walking = walking + 1
+    }
+
+    // A for inside a for, and an if inside both.
+    satellite.statement.for(satellite.variable.number outer = 0; outer < 2; outer++)
+    {
+        satellite.statement.for(satellite.variable.number inner = 0; inner < 2; inner++)
+        {
+            satellite.statement.if(outer == inner)
+            {
+                satellite.console.display("same")
+            }
+            satellite.statement.else
+            {
+                satellite.console.display("different")
+            }
+        }
+    }
+
+    // A for inside a while, and the counter's name used again afterwards -- the
+    // first loop has forgotten it, so this is a declaration and not a second one.
+    satellite.variable.number turns = 0
+    satellite.statement.while(turns < 2)
+    {
+        satellite.statement.for(satellite.variable.number i = 0; i < 1; i++)
+        {
+            satellite.console.display(turns)
+        }
+        turns = turns + 1
+    }
+    satellite.statement.for(satellite.variable.number i = 9; i < 10; i++)
+    {
+        satellite.console.display(i)
+    }
+
+    // A CONDITION IS AN EXPRESSION LIKE ANY OTHER and is read again every turn,
+    // so a method call in it really runs each time round.
+    satellite.variable.string letters = "abc"
+    satellite.statement.for(satellite.variable.number spot = 0; spot < letters.find("c"); spot++)
+    {
+        satellite.console.display(spot)
+    }
+}
+
+satellite.return(satellite)

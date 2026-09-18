@@ -161,6 +161,61 @@ expect "... by the check too, and says so" 1 \
 "$interpreter" tests/if_not_a_condition.satl > build/if.out 2>&1; expect "if(5) is refused: a number is not a condition" 27 $?
 expect "... and says what it was given" 1 \
        "$(grep -c 'satellite.statement.if was given a number and needs a true or false' build/if.out)"
+# satellite.statement.for (2026-09-17), MILESTONES M20.A and the author's own line:
+# three parts divided by semicolons, and a third part written with no `=` because
+# the loop's own name goes in front of it -- `my_int + 1` MEANS `my_int = my_int + 1`.
+# `++` and `--` are the one spelling that exists nowhere else in the language, and
+# they are not tokens: the lexer already writes `i++` as the name and two TOUCHING
+# pluses, which is not an operation anywhere, so reading the pair costs no registry row.
+wanted_for="0|1|2|0|1|2|3|2|1|1|2|4|8|16|10|0|1|same|different|different|same|0|1|9|0|1"
+expect "for: + 1, ++, --, * 2, an empty step, nesting, and a call in the condition" "$wanted_for" \
+       "$("$interpreter" tests/for_loop.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+"$interpreter" tests/for_loop.satl > /dev/null 2>&1; expect "... and it ends cleanly" 0 $?
+# EVERY SHAPE MISTAKE IS THE CHECKER'S, and each is asserted to have printed
+# nothing: a loop that half-runs and then stops is the one thing program_check.cpp
+# exists to prevent, and a for has three more places to get that wrong.
+# THE STEP IS THE ONE PART THAT RUNS AFTER THE BODY, so a step the walker cannot
+# use is a loop that prints a turn and then stops -- or, for `--i` and a bare `i`,
+# one that runs forever saying nothing (9 million lines in five seconds, the
+# review, 2026-09-17). Every one of these is a SHAPE and is refused by the checker.
+for case in for_no_body for_no_semicolons for_no_declaration for_empty_condition \
+            for_power_stars for_step_other_name for_step_payload \
+            for_step_prefix_minus for_step_is_the_name for_step_two_operators \
+            for_step_doubled_then_more for_step_undecided_sign; do
+    timeout 10 "$interpreter" "tests/$case.satl" > build/for.out 2>&1
+    expect "$case is refused" 13 $?
+    expect "... with nothing run before it" "" "$(grep -x before build/for.out)"
+done
+# THE ROWS ABOVE ARE ONLY WORTH SOMETHING IF THE FIXTURES REALLY PRINT FIRST: each
+# one opens with display("before"), so a refusal that let the program start would
+# show it. This proves the "nothing run before it" rows are not vacuous.
+"$interpreter" tests/for_not_a_condition.satl > build/for.out 2>&1
+expect "the fixtures do print before their for -- so the rows above mean something" "before" \
+       "$(grep -x before build/for.out)"
+# THE for's NUMBER DIES WITH THE LOOP (M20.A: it "exists while the for loop is
+# running", and then belongs to satellite.history, which is M20.B and unbuilt).
+# The CHECKER forgets it where the walker erases it, so a later `i` is refused
+# before the loop has printed -- and tests/for_loop.satl declares `i` twice, in
+# two loops that do not overlap, which is the same rule seen from the other side.
+"$interpreter" tests/for_counter_after.satl > build/for.out 2>&1
+expect "the for's number is gone after the loop" 25 $?
+expect "... by the check, with nothing run before it" "" "$(grep -x before build/for.out)"
+# A CONDITION'S TYPE AND A DECLARATION'S VALUE ARE RUN-TIME FACTS, for a for
+# exactly as for an if: the checker does not evaluate, so both are refused after
+# the line above them has printed. Pinned so the two never drift apart.
+"$interpreter" tests/for_not_a_condition.satl > build/for.out 2>&1
+expect "for(...; 5; ...) is refused: a number is not a condition" 27 $?
+expect "... and says what it was given" 1 \
+       "$(grep -c 'satellite.statement.for was given a number and needs a true or false' build/for.out)"
+# A STRING IN THE STEP is refused for not beginning with the number -- it is in
+# the loop above. U+0308 is 0x0308, which is tight_times_token, so this is the
+# shape that would fool a scan reading a payload's codes as tokens; the rule reads
+# only the code after the name, so there is no scan left to fool.
+"$interpreter" tests/for_declares_a_string.satl > build/for.out 2>&1
+expect "a for that declares a number and is given a string" 27 $?
+expect "... says both the type and the name" 1 \
+       "$(grep -c 'declares satellite.variable.number i, and it was given a string' build/for.out)"
+
 expect "\"some\" + \"str\" joins them" "somestr" "$("$interpreter" tests/two_strings.satl 2>/dev/null)"
 # `.find(` -- period + the method's own 16-bit code + `(` (the author, 2026-09-16).
 # A quoted argument and an object argument both work; an undeclared one is 25.
