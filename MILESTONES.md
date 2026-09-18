@@ -43,7 +43,84 @@ and the string checks. What is still the author's:
   satl-term tab running a 003 satl names 003's exit status with 004's
   machine-code names; satl holds its output until a run ends (DESIGN §8), so a
   satl-term tab shows nothing from a long program and loses it on Ctrl-C.
+Written for: the next Claude session, pasted in after /clear.
 
+Everything below is also in the project-state memory, so nothing is lost if the note is skipped.
+
+
+Continue satellite 004 work. Repo /home/madness/code/cxx/satellite, branch
+milestones-install-and-no-console-handover, NOT pushed, tree clean at 741a017.
+Read memory satellite-project-state.md, section "2026-09-17", and its
+"NEXT SESSION, IN ORDER" list before anything.
+
+COMMITTED LAST SESSION (check.sh 92/92 at 741a017):
+- be4869b  A minus no longer hides a missing % or b: `p = -50` is
+  "ERROR: expected -50%" before anything runs (it used to print first, then fail).
+- ef68855  build_number.py refuses config rows -1ULL, -4u and
+  -9223372036854775808, which C++ read as positive. make_words.py now refuses a
+  words_004.tsv row whose numbers sit under the wrong parent, an empty or padded
+  path, a word under a () shape, non-numbers, and a bare shape not at 0.
+  words/check_make_words.py (14 cases, real script + 003's real satl) runs in check.sh.
+- 741a017  A binary keeps its sign. The author: "give it a different number and
+  keep a sign with all of these things a satellite.variable.bool with percentages
+  and with infinities keep satellite.variable.bool with them".
+  -b0101 is a binary: shows -b0101, worth -5, width kept, .bin -0101.
+  `= -1010` is "ERROR: expected -b1010". The sign is the bool inside the
+  satellite_number (binary.bits, percentage.scaled), read by negative().
+  -b0000 is b0000. Infinity's sign is recorded in MILESTONES M11; M11 is unbuilt.
+  My reading of "give it a different number" (a negative binary is a different
+  value, not a new machine code) is not confirmed by the author.
+
+REFUTED BY SKEPTICS, NOT FIXED: an insert in words_004.tsv moves later codes (the
+word-list digest is the guard); the arguments.infinity refusal wording;
+bool/char/nullptr config rows.
+
+STEP 1: READ THE WIDE-STRINGS PATCH REVIEW (workflow wf_4de53474-c44):
+  ~/.claude/projects/-home-madness-code-cxx-satellite/368b2a06-ff3b-4eed-8dae-663db741fb8f/subagents/workflows/wf_4de53474-c44/journal.jsonl
+  Three lenses (bytecode, string-contract, tests-and-claims), one skeptic per
+  finding. At /clear, 5 of 8 agents had finished; tests-and-claims and two bytecode
+  skeptics were still running. Re-run any lens with no result. Fold every
+  real=true fix and its regression test into the patch, in a scratch copy.
+  Patch: memory/wide_strings_and_40000.patch (patch -p0 from the repo top;
+  dry-run passes at 741a017).
+
+STEP 2: RACE BEFORE/AFTER, ON A QUIET MACHINE ONLY. Check uptime first. The
+  author's own ~/.satl/satl --repl (from satl-term, in ~/code/satl/the_combine)
+  was using 20 cores and 29 GB. Leave it alone.
+  The harness is saved as memory/string_race_abba.sh.txt and string_race_parse.py.txt.
+  1. Make two scratch copies: git archive HEAD into before/ and after/.
+  2. Apply the patch in after/.
+  3. In each copy: make -j4 build/string_race.
+  4. Put the two .txt files beside the copies as run_race.sh and parse_race.py.
+  5. Run ROUNDS=3 MB=16 ./run_race.sh, then python3 parse_race.py.
+  The (a) contestants are the same code in both binaries: they are the noise floor.
+  Text 3 (emoji) is refused by the plain reference decoder in both, so only texts
+  1 and 2 race.
+
+STEP 3: apply the patch, make, ./check.sh,
+  make build/string16_cases build/string_table_check &&
+  python3 satellite/satellite_variable_string/check_strings16.py, then commit.
+  Update satellite_string.hpp's comment and PROGRESS if speed changed.
+
+QUESTIONS FOR THE AUTHOR, NEW FROM THE REVIEW (skeptics: design, not bugs):
+- percentage * number answers a number, but percentage / number answers a
+  percentage, so `50% / 4 * 4` is refused (24);
+- percentage / percentage has no scenario;
+- the `50% - 5` hint suggests `5 - 50%`, a different quantity;
+- how infinity's sign meets its multiplier's sign.
+Older open questions are listed in the memory file.
+
+RULES THAT BIT:
+- One make at a time. Check that no make is running, in its own tool call.
+  Use -j4 when load is high. Every tree make raises the build number; that's expected.
+- Agents that build or mutate work in their own git-archive copy, never the checkout.
+- Run the interpreter as build/satellite-004 file.satl < /dev/null.
+  Run 003's satl with a pipe on stdin, never /dev/null.
+- python3 is PyPy.
+- Never run thread stress tests or change the threads rows.
+- Always commit finished work. Record rulings in MILESTONES.md and PROGRESS.md,
+  quoting the author. Don't edit PLAN.md or DESIGN.md without the author's say-so.
+- Reversible choices: make them, write the reason at the seam, name them in the summary.
 ## M0.6 / M0.7 — the prompt, in satl and then in satl-term
 
 `satellite.directory.change` and `.list` come with M0.6. M0.7 is the same prompt
@@ -728,6 +805,204 @@ beginning at different offsets rather than one chain from line 0.
 
 Worth doing only if M29 shows the front-loaded cascade leaves threads idle. Filed
 so the idea is not lost, not because it is owed.
+
+## M34 -- optimizing the --rebuild command
+
+for this milestone we have to tighten up the --rebuild command,
+and to do that, we need to build some system, let me think about
+how we can quickly turn on and off all of the features, the
+general idea is already built into the interpreter -- --rebuild
+builds a single long 10101111 binary number into config.ini so
+it doesn't have to work on the defaults... and let's build a
+default variable as a std::string as the defaults, and to optimize
+it we can do this: 
+
+std::string default_variables = "110010101111";
+
+if (default_variables[4] == "1")
+{
+  // run this code
+} else {
+  // run this code
+}
+
+and we'll build the if statements into a hierarchy, so that
+features that rely on other features can come after and before
+other features that we turn on/off, and this shall be our
+optimized strategy, I know what you're thinking, but the only
+alternative is to do a fast path, so you decide claude, which is
+going to be faster? A bunch of fast paths in the form of a switch
+statement, or an if statement hierarchy,?
+
+here is an example switch fast path setup:
+
+switch (default_variables)
+{
+  case ("11111100000010101")
+  {
+    // code for that particular case
+  }
+
+  case ("11101010101011111")
+  {
+    // code for that particular case,
+  }
+
+  case ("101010101010101010")
+  {
+    // code for that case,
+  }
+}
+
+so we have to write a SWITCH hierarchy actually! We shall combine the best features of both strategies to make a HYPER OPTIMIZED
+
+### Answered 2026-09-18 — switch, and here are the numbers
+
+The milestone asks: *"so you decide claude, which is going to be faster? A bunch
+of fast paths in the form of a switch statement, or an if statement hierarchy?"*
+
+**Measured rather than argued.** clang 24 -O2, 2,000,000,000 statements, eight
+features off, two runs agreeing to the fourth digit:
+
+| how the features are gated | ns a statement | over the floor |
+|---|---|---|
+| **no gates at all** (the floor) | **0.216** | — |
+| eight separate `bool`s | 1.81 | +1.59 |
+| one bitmask, eight bit tests | 1.84 | +1.62 |
+| nested switch **per statement** | 0.708 | +0.49 |
+| one bitmask, **one** test per statement | 0.72 | +0.50 |
+| **nested switch WRAPPING the loop** | **0.216** | **+0.000** |
+
+**So: switch, and the milestone is right — but the win is not the switch, it is
+WHERE the switch is.** An `if` hierarchy and a `switch` hierarchy measure the
+same inside the loop (1.81 against 1.84; both are compare-and-branch chains).
+Neither is the answer. The answer is the last row: **the hierarchy WRAPS the
+interpreter** so the choice is taken once, and the loop it chose has no test in
+it at all. In the real interpreter, a 2,000,000-turn satellite loop through four
+different leaves came in at 2.272, 2.276, 2.269 and 2.288 seconds — within 1%.
+
+**Built 2026-09-18** as `satellite/config/feature_switch.hpp`, 230 lines — inside
+the milestone's own estimate of *"100 lines ... or maybe 200 300 400"*.
+SATELLITE_ERROR.md Part 14 has the whole record.
+
+### Two things in the sketch above that will not compile
+
+Written down because they are easy to fix and hard to see:
+
+1. **`switch (default_variables)` cannot switch on a `std::string`.** C++ switches
+   on integers and enums only. This is not a small detail — it is the reason the
+   register is a `std::uint64_t` and the `case` labels are masks. The satellite
+   binary in config.ini is what a PERSON reads; the register the switch tests is
+   the integer behind it, and `written()` / `read_written()` in
+   `feature_register.hpp` are the two conversions between them.
+2. **`if (default_variables[4] == "1")` compares a `char` to a `const char *`.**
+   It needs `== '1'`, single quotes. And a string index is a memory load plus a
+   compare where a bit test is one instruction on a register already in flight —
+   which is the other half of why the register is an integer and not a string.
+
+### What IS in `--rebuild` today
+
+Fourteen feature bits, composed from the named keys in config.ini into one
+satellite binary, with a table saying which are on and **which are turned on and
+not built yet**:
+
+`access` `history` `frames` `statements` `trace` `coverage` `word_counts`
+`capsule_timing` `watchpoints` `memory_accounting` `thread_state`
+`report_on_success` `report_file` `replay`
+
+Of those, **two actually do something**: `access` (reads and writes, and lasts)
+and `word_counts` (per-word call counts, the first bit anything reads —
+`satellite/bytecode/word_counts.hpp`). The other twelve are numbered and honest
+about it.
+
+### What is NOT in `--rebuild` — the list this milestone is for
+
+**1. Twelve features have a bit and no behaviour.** Everything above except
+`access` and `word_counts`. Each one's milestone is in SATELLITE_ERROR.md Parts 8
+and 12. `--rebuild` names them when they are turned on, so this is visible rather
+than silent.
+
+**2. Three booleans that could be bits and are not.** These are real true/false
+settings the interpreter already reads from somewhere else, and every one of them
+is a candidate for the register:
+
+| setting | where it lives now | why it is a candidate |
+|---|---|---|
+| `arguments.sate` | `satellite_config.hpp`, compiled in | gates whether the 16-bit file is written |
+| `arguments.startup_display` | `satellite_config.hpp`, compiled in | gates the start-up block |
+| `arguments.debug_mode` | the command line, `--debug` | gates every state line |
+
+**`--debug` is the interesting one**, because it is the only one a person changes
+per run rather than per machine — so folding it into a register composed once
+would take that away. It may want to stay a flag, or want both.
+
+**3. Ten numbers that CANNOT be bits, and this is the real limit of the design.**
+A register bit is one yes-or-no. These are values:
+
+`arguments.magic` (5) · `arguments.version` · `arguments.revision` ·
+`arguments.build` · `arguments.object_bytes_max` (34359738368) ·
+`arguments.threads_max` (1000000) · `arguments.threads_startup` (1024) ·
+`arguments.file_size_max_bytes` (549755813888) · `arguments.infinity` (4096) ·
+`arguments.infinity_display` (32)
+
+**So `--rebuild` composes the FLAGS and cannot compose the NUMBERS**, and a
+milestone that says "pack everything into --rebuild" has to decide what that
+means for a number. Three ways, each one line to reverse:
+
+- **leave them where they are** — they are read once at start-up and never in a
+  loop, so they cost nothing and the register buys them nothing;
+- **compose a second value** — `numbers = 5,4,4,115,...` beside `features`, one
+  parse instead of ten;
+- **bit-pack the ones with small ranges** — `magic` and `infinity_display` fit in
+  a few bits each, and nothing else does.
+
+**The first is almost certainly right**, and the reason is the measurement above:
+the register earned its place because it is tested in a LOOP. A number read once
+before the program starts is not on any hot path, so moving it changes nothing a
+clock can see.
+
+**4. The machine facts are not settings and do not belong.**
+`arguments.memory.total`, `arguments.machine.cores`, `arguments.machine.threads`,
+`arguments.disk.free`, `arguments.username`, `arguments.system.*` — these are
+READ from the machine every run and cannot be composed, because composing them
+would mean caching a fact that changes. A register of them would be a register
+that goes stale, which is S0723 with no way to fix it.
+
+**5. `satl --config`'s measured thread count is still owed.**
+SATELLITE_ARGUMENTS Phase 8 (C1–C8): the 9.6-second probe that writes what the
+machine can really do. It is the sibling command to this one — both run once per
+machine, both may be slow, both write config.ini — and **whether they are one
+command or two is SATELLITE_ERROR red note 13**, still open.
+
+**6. The deferred values.** SATELLITE_ARGUMENTS Phase C and D (B7–B15):
+`arguments.memory.free`/`.used`/`.swap.*`, `arguments.directory`,
+`arguments.directory.history`, `arguments.system.stack`,
+`arguments.memory.system.reserved`. None is a flag, so none is a register bit —
+they are values, and they join the list in 3 and 4 above.
+
+### Two number collisions to fix
+
+**M34 and M35 are each used twice**, found 2026-09-18 while adding the notes
+above:
+
+| number | this one | and also |
+|---|---|---|
+| **M34** | optimizing the `--rebuild` command | *the names a session has used, `satellite.access` and `satellite.help`* |
+| **M35** | Optimizing The Interpreter | *a spacesuit takes a supertype, and `satellite.protected` takes arguments* |
+
+Four different milestones, two numbers. **The M34 pair is the one that matters**,
+because they are genuinely related and will be worked on together: the other M34
+is where the last-known store lives, and `access` — bit 0 of this milestone's
+register — is its valve. A person reading "M34" in a commit message cannot tell
+which is meant.
+
+Renumbering is the author's call: the two in Part 3 came first by date, and the
+two above came first in the file.
+
+
+## M35 -- Optimizing The Interpreter
+
+we are going to rebuild the interpreter as we rebuilt the features to be a switch-hierarchy of everything with pathways, so that the entire interpreter is a switch-hierarchy of different cases and different switches, this is the very fastest way I can think of to build this interpreter, and it's way faster than it will ever need to be.
 
 ---
 

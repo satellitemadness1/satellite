@@ -10,6 +10,31 @@ interpreter=$(realpath -s "${SATL:-$(dirname "$0")/build/satl}")
 cd "$(dirname "$0")"
 passed=0 failed=0
 
+# A HOME OF ITS OWN, SO THE SUITE DOES NOT READ THE PERSON'S SETTINGS.
+#
+# satl reads $HOME/.satl/config.ini at start-up (satellite/config/config_file.hpp)
+# and everything in it changes what a run does -- a feature turned on prints a
+# profile, a missing file prints S0721, a stale register prints S0723. All three
+# land on stderr, and this suite counts stderr lines.
+#
+# FOUND BY BREAKING IT, 2026-09-18. `word_counts = true` was left on in the
+# author's own config.ini and "the start-up block is five lines" failed with 11 --
+# the six extra being the per-word profile. The suite was reading the developer's
+# machine, so it could pass here and fail there, or fail for a reason that had
+# nothing to do with the change being tested.
+#
+# --rebuild MAKES THE FILE, rather than this script writing one. The register's
+# width grows every time a feature is added, so a config.ini written here as fixed
+# text would go stale and raise the very S0723 this is avoiding; the binary is the
+# thing that knows how wide its register is. It also runs BEFORE the missing-file
+# notice by design, so this first call is quiet on a home with nothing in it.
+CHECK_HOME=$PWD/build/check-home
+rm -rf -- "$CHECK_HOME"
+mkdir -p -- "$CHECK_HOME/.satl"
+export HOME=$CHECK_HOME
+"$interpreter" --rebuild > build/check-home-rebuild.out 2>&1 ||
+    echo "  note  --rebuild could not write $CHECK_HOME/.satl/config.ini; the suite may see S0721"
+
 expect() {   # expect <description> <wanted code> <actual code>
     if [ "$2" = "$3" ]; then passed=$((passed + 1)); echo "  ok    $1 -> $3";
     else failed=$((failed + 1)); echo "  FAIL  $1 -> wanted $2, got $3"; fi

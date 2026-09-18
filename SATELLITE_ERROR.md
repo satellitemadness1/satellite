@@ -596,14 +596,15 @@ each one.
 - **F4** — ~~Fold `arguments.access` in as bit 0.~~ **Done** — bit 0, and red note 14 is closed: **both spellings live.** The named keys are what a person edits and what a program writes; `features` is the one value satl reads and is DERIVED from them. So `arguments.access` keeps working exactly as built, and `--rebuild` is what makes the fast value out of it.
 - **F5** — ~~**Split the walker**~~ **SUPERSEDED 2026-09-18 by the author's switch hierarchy, and built as F5a.** F5 said two loops, plain and instrumented. He generalised it: *"BUILD A SWITCH-BASED HIERARCHY ... switch statements inside of other switch statements ... for now, we just wrap the entire interpreter in a switch hierarchy and we end up running the exact same interpreter that we have, just encompassed by switch statements"*. A hierarchy is two loops with room for eight, so F5 is its first case rather than a rival.
 - **F5a** — ~~The hierarchy, wrapping `run_main`: eight leaves, all calling the same interpreter.~~ **Done** — `satellite/config/feature_switch.hpp`. See Part 14.
-- **F5b** — Give `RunPlan::plain` a walker with no feature tests compiled into it. **The author is milestoning the interpreter's own optimisation; this is the leaf it lands in.**
+- **F5b** — Give `RunPlan::plain` a walker with no feature tests compiled into it. **The author is milestoning the interpreter's own optimisation (MILESTONES M35); this is the leaf it lands in.** As of 2026-09-18 there is one gated site to hoist: the `word_counts` test in `call_word`.
+- **F9** — ~~The register has to reach the places that test it.~~ **Done 2026-09-18** — `FeatureRegister features` on `MachineState`, which SATELLITE_ARGUMENTS A1 already chose for the reason it gives: there are no globals, and a register a thread cannot see the right copy of turns features on for some threads and not others. `MachineState &state` was already threaded everywhere, so nothing new is passed.
 - **F6** — Re-measure with a real program after F5. `experiments/energy/release.satl` is about a million statements a second and is the shape that would show any regression.
 - **F7** — §A of the report prints the register as bits AND as names (rule 4).
 - **F8** — The register is fixed after start-up; a program that tries to write one says so (rule 3).
 
 ## Phase G — the nearly-free ones (11.2)
 
-- **G1** — Per-word call counts: `++counts[code]`, and a report section ordered by count.
+- **G1** — ~~Per-word call counts: `++counts[code]`, and a report section ordered by count.~~ **Done 2026-09-18** — `satellite/bytecode/word_counts.hpp`, and it is **the first feature in 004 that reads its own bit**. Verified at 100,000 calls counted exactly, and the bit off against on was 0.136s to 0.132s on that program — noise. Its one honest limit: it counts words reached through `call_word`, which is words called with `(`. A statement word like `satellite.statement.while` does not pass through there and is not counted.
 - **G2** — Coverage: one bit per statement, and a section naming statements that never ran.
 - **G3** — Watchpoints, off the last-known store's write path.
 - **G4** — The reproduction command line, in the report.

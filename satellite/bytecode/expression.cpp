@@ -13,6 +13,7 @@
 #include "../machine/stop_flag.hpp"
 
 #include "word_codes.hpp"
+#include "word_counts.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 #include "../satellite_object/fast_paths.hpp"
 
@@ -601,6 +602,18 @@ Value call_directory_word(token::Code code, const Scenarios &scenarios, const Va
 Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     const Code code = code_at(row, at);
+
+    // THE `word_counts` BIT, AND THIS IS THE ONE PLACE IT IS READ. Every word in
+    // the language arrives here, so counting here counts everything once and
+    // needs no second site to keep in step.
+    //
+    // THE TEST IS NOT HOISTED YET AND THAT IS THE AUTHOR'S ORDER, not an
+    // oversight: "we can leave optimizing it to another milestone later, so it
+    // doesn't have to be optimized yet". MILESTONES M35 and SATELLITE_ERROR F5b
+    // are where `RunPlan::plain` gets a call_word with this line compiled out.
+    if (context.state.features.on(Feature::word_counts))
+        word_counts().saw(code);
+
     const NumberRow *library = context.functions[code];
     const Scenarios *scenarios = library != nullptr ? &library->scenarios : nullptr;
     ++at;

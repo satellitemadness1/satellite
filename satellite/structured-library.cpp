@@ -32,6 +32,7 @@
 #include "bytecode/bytecode_registry.hpp"
 #include "bytecode/function_table.hpp"
 #include "bytecode/program_walk.hpp"
+#include "bytecode/word_counts.hpp"
 #include "config/config_file.hpp"
 #include "config/feature_register.hpp"
 #include "config/feature_switch.hpp"
@@ -212,6 +213,10 @@ signed long long int run_satl(int argc, char **argv)
         std::cerr << startup_block(arguments);
 
     state.debug_mode = arguments.flag("arguments.debug_mode");
+    // THE REGISTER REACHES THE INTERPRETER HERE, and this one line is what makes
+    // every bit readable everywhere: `MachineState &state` is already threaded
+    // through the walker, the expression reader and every call.
+    state.features = features;
     state.set("satellite " + version_line(arguments) + " (starting)", success);
     state.set("arguments(gathered)", success);
 
@@ -365,6 +370,16 @@ signed long long int run_satl(int argc, char **argv)
     code = run_through_the_hierarchy(features, bytecode_registry, capsules, functions, state);
     if (stops_the_program(code))
         return code;
+
+    // THE `word_counts` BIT'S ANSWER, printed when the run is over rather than as
+    // it goes: a profile is a thing you read after, and the hot path must not pay
+    // for the order a person wants it in.
+    if (features.on(Feature::word_counts)) {
+        std::cerr << "\nsatl: per-word call counts (features." << feature_facts()[
+            static_cast<unsigned>(Feature::word_counts)].name << ")\n";
+        std::cerr << word_counts_table(word_counts());
+        std::cerr.flush();
+    }
 
     // A REFUSED WRITE IS ONLY REFUSED AT THE FLUSH. std::cout buffers, so
     // writing to a full disk succeeds line by line and fails once, here --
