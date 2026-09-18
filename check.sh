@@ -292,7 +292,7 @@ satellite.capsule satellite.main()
 TYPE_EOF
 HOME="$CHECK_HOME" "$interpreter" build/braced_type.satl > build/braced_type.out 2>&1
 expect "a list given to a string name is refused, and is CALLED a list" "27|1" \
-       "$?|$(grep -c 'was given a list' build/braced_type.out)"
+       "$?|$(grep -c 'it holds a list' build/braced_type.out)"
 
 # A LIST IN A LOOP STILL CANNOT FLOOD ANYBODY -- the author's own worry, written
 # with the shape he actually wrote it in: satellite.feedback({...}) in a loop.
@@ -429,9 +429,109 @@ expect "an index that is not a number says so" "27|1" \
        "$(list_says '    satellite.console.display(a["two"])' 'takes an item number, and was given a string')"
 expect "[ ] on something with no items says what it is" "27|1" \
        "$(list_says '    satellite.variable.number n = 4
-    satellite.console.display(n[1])' 'is a number, and \[ \] reads a line of a file or an item of a list')"
+    satellite.console.display(n[1])' 'is a number, and \[ \] reads a line of a file')"
 expect "a list given to a number name is refused" "27|1" \
-       "$(list_says '    satellite.variable.number bad = {1, 2}' 'was given a list')"
+       "$(list_says '    satellite.variable.number bad = {1, 2}' 'it holds a list')"
+
+# satellite.container.index -- A PYTHON DICT, NOT A std::map (the author,
+# 2026-09-18: "an index is a python dictionary, but I think it's just a std::map,
+# but I could be wrong").
+#
+# THE FIRST ROW IS THE WHOLE DIFFERENCE, and it is the reason this is not a
+# std::map: the keys come back IN THE ORDER THEY WERE PUT IN. A std::map would
+# print alice, bob, zoe -- sorted -- from the same program. Writing an existing
+# key keeps its place rather than moving it to the end, which is what Python does
+# and what anybody reading the output expects.
+cat > build/index_order.satl <<'IDX_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.index<satellite.variable.string, satellite.variable.number> scores
+    scores["zoe"] = 10
+    scores["alice"] = 20
+    scores["bob"] = 30
+    satellite.console.display(scores)
+    satellite.console.display(scores["alice"])
+    scores["zoe"] = 99
+    satellite.console.display(scores)
+    satellite.return(satellite)
+}
+IDX_EOF
+HOME="$CHECK_HOME" "$interpreter" build/index_order.satl > build/index_order.out 2>&1
+expect "an index keeps INSERTION order, not sorted order (a std::map would say alice first)" \
+       '{"zoe": 10, "alice": 20, "bob": 30}|20|{"zoe": 99, "alice": 20, "bob": 30}' \
+       "$(tail -3 build/index_order.out | tr '\n' '|' | sed 's/|$//')"
+
+# ANY CONTAINER WITH ANY CONTAINER (the author's words), and `[a][b]` across two
+# DIFFERENT kinds: an index by key, then the list it holds by position -- reading
+# and writing. `>>` closing two type parameters is the C++ wart, split here.
+cat > build/container_mix.satl <<'MIX_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.multiple<satellite.variable.string, satellite.variable.number> either = "text"
+    satellite.console.display(either)
+    either = 42
+    satellite.console.display(either)
+
+    satellite.container.index<satellite.variable.string, satellite.container.list> teams
+    teams["red"] = {"ann", "bo"}
+    teams["blue"] = {"cy"}
+    satellite.console.display(teams["red"][2])
+    teams["red"][1] = "ANN"
+    satellite.console.display(teams)
+
+    satellite.container.list<satellite.container.list<satellite.variable.number>> grid = {{1, 2}, {3, 4}}
+    satellite.console.display(grid[2][2])
+    satellite.return(satellite)
+}
+MIX_EOF
+HOME="$CHECK_HOME" "$interpreter" build/container_mix.satl > build/container_mix.out 2>&1
+expect "multiple holds either type; [key][position] reads and writes across two container kinds; >> closes two" \
+       'text|42|bo|{"red": {"ANN", "bo"}, "blue": {"cy"}}|4' \
+       "$(tail -5 build/container_mix.out | tr '\n' '|' | sed 's/|$//')"
+
+# THE TYPE BETWEEN < AND > IS ENFORCED ON ONE ITEM, NOT ONLY ON THE WHOLE
+# CONTAINER. This shipped broken for an hour: `index<string, number> s` took
+# `s[1] = 5` -- a number key -- because the shape was checked when a whole
+# container was assigned and ignored when one item was written. A type that holds
+# until you use it is worse than no type, because a person believes it.
+index_says() {
+    cat > build/index_bad.satl <<BAD_EOF
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+$1
+    satellite.return(satellite)
+}
+BAD_EOF
+    HOME="$CHECK_HOME" "$interpreter" build/index_bad.satl > build/index_bad.out 2>&1
+    printf '%s|%s' "$?" "$(tr '\n' ' ' < build/index_bad.out | grep -c "$2")"
+}
+expect "a key of the wrong type is refused ON THE WRITE, not just on assignment" "27|1" \
+       "$(index_says '    satellite.container.index<satellite.variable.string, satellite.variable.number> s
+    s[1] = 5' 'the key does not fit')"
+expect "a value of the wrong type is refused on the write" "27|1" \
+       "$(index_says '    satellite.container.index<satellite.variable.string, satellite.variable.number> s
+    s["a"] = "not a number"' 'the value does not fit')"
+expect "list<number> refuses a string written into an item" "27|1" \
+       "$(index_says '    satellite.container.list<satellite.variable.number> n = {1, 2}
+    n[1] = "text"' 'does not fit')"
+expect "the shape is walked DOWN: index<string, list<number>> refuses t[key][n] = text" "27|1" \
+       "$(index_says '    satellite.container.index<satellite.variable.string, satellite.container.list<satellite.variable.number>> t
+    t["a"] = {1, 2}
+    t["a"][1] = "text"' 'does not fit')"
+expect "a missing key says so rather than answering nothing" "47|1" \
+       "$(index_says '    satellite.container.index<satellite.variable.string, satellite.variable.number> s
+    s["a"] = 1
+    satellite.console.display(s["nope"])' 'there is no such key in it')"
+expect "a list cannot be a key, because a key must not be able to change" "27|1" \
+       "$(index_says '    satellite.container.index s
+    s[{1, 2}] = 1' 'a key must be a number, a string, a bool, a binary or a percentage')"
+expect "multiple<a, b> refuses a third type" "27|1" \
+       "$(index_says '    satellite.container.multiple<satellite.variable.string, satellite.variable.number> x = {1, 2}' 'this name takes')"
+expect "multiple with one type is refused as saying nothing" "13|1" \
+       "$(index_says '    satellite.container.multiple<satellite.variable.string> x = "a"' 'takes two or more types')"
 
 # THE EXAMPLE IN `satl --help` IS EXTRACTED FROM THE REAL OUTPUT AND RUN.
 #

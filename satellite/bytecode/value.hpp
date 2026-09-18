@@ -39,6 +39,7 @@
 // survives past the line that wrote it.
 
 #include "token_codes.hpp"
+#include "type_shape.hpp"
 #include "../satellite_object/satellite_spacesuit.hpp"
 
 #include <string>
@@ -50,6 +51,18 @@ using Value = satelliteObject;
 
 struct Variable {
     token::Code declared = 0;   // the word code of satellite.variable.number, .string, ...
+
+    // AND WHAT WAS BETWEEN ITS < AND >, when it had any:
+    // `satellite.container.index<satellite.variable.string, satellite.variable.number>`
+    // keeps both, and `satellite.container.multiple<a, b>` keeps the list of
+    // types the name will accept. `declared` is still the word, so every test
+    // that only cares which word it was reads exactly as it did.
+    //
+    // EMPTY MEANS "OF ANYTHING", not "unchecked by accident": a list declared
+    // with no <> holds whatever the braced literal put in it, which is what the
+    // literal already makes. type_shape.hpp says why that is the default.
+    TypeShape shape;
+
     Value value;
 };
 

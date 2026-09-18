@@ -15,7 +15,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(SATELLITE)/threads/startup_threads.cpp \
                       $(BYTECODE)/bytecode_registry.cpp $(BYTECODE)/cascade_convert.cpp \
                       $(BYTECODE)/function_table.cpp $(BYTECODE)/include_shape.cpp \
-                      $(BYTECODE)/program_walk.cpp $(BYTECODE)/program_check.cpp \
+                      $(BYTECODE)/program_walk.cpp $(BYTECODE)/program_check.cpp $(BYTECODE)/type_shape.cpp \
                       $(BYTECODE)/expression.cpp $(BYTECODE)/sate_file.cpp \
                       $(BYTECODE)/file_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
                       $(OBJECT)/satellite_object.cpp \
@@ -55,7 +55,8 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(BINARY)/satellite_binary_number.hpp \
           $(PERCENTAGE)/satellite_percentage.hpp \
           $(OBJECT)/satellite_object.hpp $(OBJECT)/satellite_spacesuit.hpp \
-          $(OBJECT)/satellite_list.hpp \
+          $(OBJECT)/satellite_list.hpp $(OBJECT)/satellite_index.hpp \
+          $(BYTECODE)/type_shape.hpp \
           $(OBJECT)/satellite_bytecode.hpp $(OBJECT)/satellite_capsule.hpp \
           $(OBJECT)/fast_paths.hpp $(OBJECT)/object_pair.hpp \
           $(wildcard $(OBJECT)/*_and_*.hpp) $(wildcard $(OBJECT)/*_to_*.hpp) \

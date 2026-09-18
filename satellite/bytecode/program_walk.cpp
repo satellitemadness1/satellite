@@ -35,6 +35,8 @@
 
 #include "word_codes.hpp"
 #include "../satl/satl_file.hpp"
+#include "../satellite_object/satellite_index.hpp"
+#include "../satellite_object/satellite_list.hpp"
 
 #include <cerrno>
 #include <cstring>
@@ -697,7 +699,7 @@ signed long long int run_for(const BytecodeRegistry &registry,
                                 std::string(word::spelling_of(word::code_of(1, 6, 4))) + " " + name +
                                 ", and it was given " + start.kind_name(),
                             types_do_not_meet);
-    variables[name] = Variable{word::code_of(1, 6, 4), std::move(start)};
+    variables[name] = Variable{word::code_of(1, 6, 4), TypeShape{word::code_of(1, 6, 4), {}}, std::move(start)};
 
     // ONCE, NOT PER TURN -- and the checker has already refused the two shapes
     // this can turn down, so a program reaching here has a step that is one of
@@ -747,11 +749,26 @@ signed long long int run_for(const BytecodeRegistry &registry,
     return stops_the_program(stopped) ? stopped : success;
 }
 
+// WHAT A CONTAINER IS BEFORE ANYTHING IS PUT IN IT.
+//
+// `satellite.container.index scores` MUST START AS AN EMPTY INDEX and not as
+// nothing, or `scores["alice"] = 10` has nothing to write into and there is no
+// other way to fill one -- an index has no literal yet. A list starts empty for
+// the same reason, and every other type still starts as nothing, which is what
+// name_not_declared already reports when it is read too early.
+Value empty_container_for(Code declared)
+{
+    if (declared == word::code_of(1, 4, 5)) return Value::of_index(make_index());
+    if (declared == word::code_of(1, 4, 2)) return Value::of_list(make_list());
+    return Value();
+}
+
 // `satellite.variable.number <name> = <expr>`, and `<name> = <expr>`.
 // `declared` is 0 for a plain assignment.
 signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
                                     std::size_t &at,
                                     Code declared,
+                                    const TypeShape &shape,
                                     const std::string &name,
                                     const FunctionTable &functions,
                                     VariableTable &variables,
@@ -781,7 +798,7 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
         // read it before something writes it, which name_not_declared already says.
         at = past_the_statement(row, at);
         if (declared != 0)
-            variables[name] = Variable{declared, Value()};
+            variables[name] = Variable{declared, shape, empty_container_for(declared)};
         return success;
     }
     ++at;
@@ -811,19 +828,19 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     if (holds == word::code_of(1, 6, 4) && value.is_binary())
         value = Value::of_number(value.as_binary()->bits);
 
-    if ((holds == word::code_of(1, 6, 4) && !value.is_number()) ||
-        (holds == word::code_of(1, 6, 1) && !value.is_string()) ||
-        (holds == word::code_of(1, 6, 5) && !value.is_binary()) ||
-        (holds == word::code_of(1, 6, 16) && !value.is_percentage()) ||
-        (holds == word::code_of(1, 6, 2) && !value.is_file()) ||
-        (holds == word::code_of(1, 6, 6) && !value.is_bool()) ||
-        (holds == word::code_of(1, 4, 2) && !value.is_list())) {
+    // ONE TEST FOR EVERY TYPE, THROUGH THE DECLARED SHAPE. This used to be a
+    // chain of `word == this && !value.is_that()`, which grew a row per type and
+    // could say nothing about what was between a `<` and a `>`. type_shape.hpp
+    // answers both, and answers them the same way for the checker.
+    const TypeShape &against = declared != 0 ? shape : found->second.shape;
+    std::string why;
+    if (against.word != 0 && !value_fits(against, value, why)) {
         at = past_the_statement(row, at);
         return report_error(std::string("satl(run): ") + name + " was declared " +
-                                word::spelling_of(holds) + " and was given " + value.kind_name(),
+                                word::spelling_of(holds) + ", and " + why,
                             types_do_not_meet);
     }
-    variables[name] = Variable{holds, std::move(value)};
+    variables[name] = Variable{holds, against, std::move(value)};
     at = past_the_statement(row, at);
     return success;
 }
@@ -906,7 +923,8 @@ signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &
         if (context.code == success && !read_to_the_end(row, at))
             context.refuse(satl_line_not_understood, name + "[...] = ... " + kNotReadToTheEnd, opened_at);
         if (context.code == success)
-            write_through_index(found->second.value, indices, std::move(value), name, opened_at, context);
+            write_through_index(found->second.value, indices, std::move(value), name, opened_at,
+                                found->second.shape, context);
     }
 
     const std::size_t blame = context.placed ? context.refused_at : opened_at;
@@ -1079,6 +1097,38 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             continue;
         }
 
+        // A DECLARATION WITH TYPES BETWEEN < AND > (the author, 2026-09-18):
+        // `satellite.container.index<satellite.variable.string, satellite.variable.number> scores`.
+        // Read as a shape first, because the name is on the far side of the `>`
+        // and the plain test below looks only at the next code.
+        if (word::is_word_code(code) && code_at(row, at + 1) == token::less_than_token) {
+            std::size_t k = at;
+            TypeShape shape;
+            unsigned int pending = 0;
+            std::string why;
+            if (!read_type_shape(row, k, shape, pending, why) || pending != 0) {
+                if (pending != 0)
+                    why = "there is a > here with nothing left for it to close";
+                at = past_the_statement(row, at);
+                report_error("satl(run): " + why, satl_line_not_understood);
+                continue;
+            }
+            if (code_at(row, k) != token::name_token) {
+                at = past_the_statement(row, at);
+                report_error(std::string("satl(run): ") + word::spelling_of(code) +
+                                 "<...> declares a name, and there is no name after the >",
+                             satl_line_not_understood);
+                continue;
+            }
+            const std::string name = text_at(row, k);
+            at = k;
+            const signed long long int stopped =
+                run_assignment(row, at, code, shape, name, functions, variables, state);
+            if (stops_the_program(stopped))
+                return stopped;
+            continue;
+        }
+
         // A DECLARATION IS A WORD FOLLOWED BY A NAME; a call is a word followed
         // by `(`. That one test tells them apart with no list of types.
         if (word::is_word_code(code) && code_at(row, at + 1) == token::name_token) {
@@ -1086,7 +1136,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             const std::string name = text_at(row, k);
             at = k;
             const signed long long int stopped =
-                run_assignment(row, at, code, name, functions, variables, state);
+                run_assignment(row, at, code, TypeShape{code, {}}, name, functions, variables, state);
             if (stops_the_program(stopped))
                 return stopped;
             continue;
@@ -1194,7 +1244,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             }
             at = k;
             const signed long long int stopped =
-                run_assignment(row, at, 0, name, functions, variables, state);
+                run_assignment(row, at, 0, TypeShape{}, name, functions, variables, state);
             if (stops_the_program(stopped))
                 return stopped;
             continue;

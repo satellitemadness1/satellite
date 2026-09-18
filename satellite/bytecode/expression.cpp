@@ -18,6 +18,7 @@
 #include "../satellite_variable_number/number_conversions.hpp"
 #include "../satellite_object/fast_paths.hpp"
 #include "../satellite_object/satellite_list.hpp"
+#include "../satellite_object/satellite_index.hpp"
 
 #include <limits>
 #include <utility>
@@ -452,11 +453,41 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
         }
         return *item;
     }
+    // AN INDEX IS REACHED BY ITS KEY, not by a position -- so it does NOT go
+    // through position_of, and `scores["alice"]` is not a number anywhere.
+    if (const IndexHandle *handle = current.as_index()) {
+        std::string key_name;
+        if (!key_name_of(index, key_name)) {
+            context.refuse(types_do_not_meet,
+                           what + "[...] was given " + index.kind_name() +
+                               " as a key, and a key must be a number, a string, a bool, a binary or a "
+                               "percentage -- something that cannot change after it is filed under",
+                           where);
+            return Value();
+        }
+        const satelliteIndex *held = handle->get();
+        const satelliteObject *found = held == nullptr ? nullptr : value_at(*held, key_name);
+        if (found == nullptr) {
+            satellite_string spelled;
+            std::string ignored;
+            index.to_string(spelled, ignored);
+            context.refuse(line_past_the_end,
+                           what + "[" + spelled.to_utf8() + "]: there is no such key in it" +
+                               (held == nullptr || held->entries.empty()
+                                    ? " -- the index is empty"
+                                    : " -- it holds " + std::to_string(held->entries.size()) +
+                                          (held->entries.size() == 1 ? " key" : " keys")),
+                           where);
+            return Value();
+        }
+        return *found;
+    }
+
     if (satellite_file *file = current.as_file())
         return read_file_line(*file, index, what, context);
 
     context.refuse(types_do_not_meet, what + " is " + current.kind_name() +
-                                          ", and [ ] reads a line of a file or an item of a list",
+                                          ", and [ ] reads a line of a file, an item of a list, or a key of an index",
                    where);
     return Value();
 }
@@ -1007,15 +1038,16 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         answer = scenarios->text(argument.as_percentage()->written(), true);
     else if (argument.is_bool() && scenarios->flag != nullptr)
         answer = scenarios->flag(*argument.as_bool(), true);
-    // A LIST GIVEN TO A WORD THAT ONLY TAKES TEXT reads back as what was typed:
-    // {1, "two"}. satellite_object.cpp's to_string is the one spelling, so
-    // display and a refusal quote it the same way.
-    else if (argument.is_list() && scenarios->text != nullptr) {
+    // A CONTAINER GIVEN TO A WORD THAT ONLY TAKES TEXT reads back as what was
+    // typed: {1, "two"}, or {"zoe": 1, "al": 2} for an index. satellite_object.cpp's
+    // to_string is the one spelling, so display and a refusal quote it the same way.
+    else if ((argument.is_list() || argument.is_index()) && scenarios->text != nullptr) {
         satellite_string written;
         std::string why;
         const signed long long int made = argument.to_string(written, why);
         if (made != success) {
-            context.refuse(made, std::string(word::spelling_of(code)) + " was given a list, and " + why);
+            context.refuse(made, std::string(word::spelling_of(code)) + " was given " +
+                                     argument.kind_name() + ", and " + why);
             return Value();
         }
         answer = scenarios->text(written.to_utf8(), true);
@@ -1042,10 +1074,23 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
 // `root` IS A REFERENCE INTO THE VARIABLE TABLE, never a copy, and the whole
 // copy-on-write scheme depends on that. satellite_list.hpp says why at length.
 signed long long int write_through_index(Value &root, const std::vector<Value> &indices, Value value,
-                                         const std::string &name, std::size_t where, ExpressionContext &context)
+                                         const std::string &name, std::size_t where, const TypeShape &shape,
+                                         ExpressionContext &context)
 {
     Value *target = &root;
     std::string what = name;
+
+    // THE DECLARED SHAPE IS WALKED DOWN BESIDE THE VALUE, and this is not
+    // decoration: without it `<key, value>` is enforced when a WHOLE container is
+    // assigned and silently ignored when one item is written, so
+    // `satellite.container.index<...string, ...number> s` took `s[1] = 5` -- a
+    // number key in an index declared to take strings. A type that holds until
+    // you use it is worse than no type at all, because a person believes it.
+    //
+    // A SHAPE WITH NO WORD MEANS "ANYTHING", which is what a container declared
+    // without <> is and what every level below one becomes.
+    static const TypeShape kAnything;
+    const TypeShape *here = &shape;
 
     for (std::size_t step = 0; step < indices.size(); ++step) {
         if (target->is_nothing()) {
@@ -1063,10 +1108,58 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
                            where);
             return context.code;
         }
+        // AN INDEX GROWS ON A WRITE. A new key is PUT IN rather than refused,
+        // which is the opposite of a list and is not an inconsistency:
+        // satellite_index.hpp has the reason -- a position is not something a
+        // program invents, and a key is the only way a dict is ever filled.
+        if (IndexHandle *keys = target->as_index()) {
+            // THE KEY MUST FIT WHAT WAS DECLARED, checked before anything is put
+            // in: an index that has already taken a key of the wrong type cannot
+            // be un-taken, and the entry would sit there for the rest of the run.
+            std::string unfit;
+            if (here->word != 0 && !here->parameters.empty() &&
+                !value_fits(here->parameters[0], indices[step], unfit)) {
+                context.refuse(types_do_not_meet,
+                               "the key does not fit: " + unfit, where);
+                return context.code;
+            }
+            const TypeShape *inside = (here->word != 0 && here->parameters.size() > 1)
+                                          ? &here->parameters[1] : &kAnything;
+
+            std::string key_name;
+            if (!key_name_of(indices[step], key_name)) {
+                context.refuse(types_do_not_meet,
+                               "the key is " + std::string(indices[step].kind_name()) +
+                                   ", and a key must be a number, a string, a bool, a binary or a "
+                                   "percentage -- something that cannot change after it is filed under",
+                               where);
+                return context.code;
+            }
+            satelliteIndex &body = about_to_change(*keys);
+            satelliteObject &slot = value_for_writing(body, key_name, indices[step]);
+            if (step + 1 == indices.size()) {
+                if (inside->word != 0 && !value_fits(*inside, value, unfit)) {
+                    context.refuse(types_do_not_meet,
+                                   "the value does not fit: " + unfit, where);
+                    return context.code;
+                }
+                slot = std::move(value);
+                return success;
+            }
+            here = inside;
+            target = &slot;
+            satellite_string spelled;
+            std::string ignored;
+            indices[step].to_string(spelled, ignored);
+            what += "[" + spelled.to_utf8() + "]";
+            continue;
+        }
+
         ListHandle *handle = target->as_list();
         if (handle == nullptr) {
             context.refuse(types_do_not_meet,
-                           what + " is " + target->kind_name() + ", and [ ] = ... changes an item of a list", where);
+                           what + " is " + target->kind_name() +
+                               ", and [ ] = ... changes an item of a list or a key of an index", where);
             return context.code;
         }
 
@@ -1094,10 +1187,20 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
             return context.code;
         }
 
+        // THE ITEM'S OWN SHAPE, for a list declared `<of what>`.
+        const TypeShape *inside_list = (here->word != 0 && !here->parameters.empty())
+                                           ? &here->parameters[0] : &kAnything;
         if (step + 1 == indices.size()) {
+            std::string unfit;
+            if (inside_list->word != 0 && !value_fits(*inside_list, value, unfit)) {
+                context.refuse(types_do_not_meet,
+                               what + "[" + std::to_string(position) + "] does not fit: " + unfit, where);
+                return context.code;
+            }
             *item = std::move(value);
             return success;
         }
+        here = inside_list;
         target = item;
         what += "[" + std::to_string(position) + "]";
     }

@@ -20,6 +20,7 @@
 // The list arm's items, which satellite_object.hpp cannot name: a list holds
 // objects, so its definition has to come after this class is complete.
 #include "satellite_list.hpp"
+#include "satellite_index.hpp"
 
 #include "bool_and_bool_compare.hpp"
 #include "bool_to_string.hpp"
@@ -178,6 +179,9 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     // append pulls apart, which is a wrong answer decided today for a question
     // that is still open.
     case satelliteObject::list: return *l.as_list() == *r.as_list();
+    // AN INDEX, THE SAME WAY AND FOR THE SAME REASON as a list: the same index,
+    // or not the same index. See the note above before deepening either.
+    case satelliteObject::index: return *l.as_index() == *r.as_index();
     case satelliteObject::how_many_kinds: break;
     }
     return false;
@@ -196,6 +200,7 @@ const char *satelliteObject::kind_name() const
     case percentage: return "a percentage";
     case file: return "a file";
     case list: return "a list";
+    case index: return "an index";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -484,6 +489,29 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
                     return made;          // why already says which item and how
                 if (item.is_string()) written += "\"" + one.to_utf8() + "\"";
                 else written += one.to_utf8();
+            }
+        }
+        written += "}";
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(written, out, bad_offset);
+    }
+    // AN INDEX READS BACK AS ITS PAIRS, IN THE ORDER THEY WERE PUT IN -- which
+    // is the whole point of it being a dict rather than a sorted map, so the
+    // spelling has to show that order rather than tidy it away.
+    case index: {
+        std::string written = "{";
+        const satelliteIndex *held = as_index()->get();
+        if (held != nullptr) {
+            for (std::size_t at = 0; at < held->entries.size(); ++at) {
+                if (at != 0) written += ", ";
+                const satelliteObject &key = held->entries[at].first;
+                const satelliteObject &value = held->entries[at].second;
+                satellite_string one;
+                if (key.to_string(one, why) != success) return types_do_not_meet;
+                written += key.is_string() ? "\"" + one.to_utf8() + "\"" : one.to_utf8();
+                written += ": ";
+                if (value.to_string(one, why) != success) return types_do_not_meet;
+                written += value.is_string() ? "\"" + one.to_utf8() + "\"" : one.to_utf8();
             }
         }
         written += "}";

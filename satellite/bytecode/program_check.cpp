@@ -566,6 +566,40 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         return success;
     }
 
+    // A DECLARATION WITH TYPES BETWEEN < AND > -- read here so the checker
+    // refuses a malformed one BEFORE the program prints anything, which is the
+    // whole point of the checker. read_type_shape is the walker's own parser, so
+    // the two cannot come to disagree about what `<a, b>` means.
+    if (word::is_word_code(code) && code_at(row, at + 1) == token::less_than_token) {
+        const std::size_t stop = past_the_statement(row, at);
+        std::size_t k = at;
+        TypeShape shape;
+        unsigned int pending = 0;
+        if (!read_type_shape(row, k, shape, pending, why) || pending != 0) {
+            if (pending != 0)
+                why = "there is a > here with nothing left for it to close";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        if (code_at(row, k) != token::name_token) {
+            why = std::string(word::spelling_of(code)) +
+                  "<...> declares a name, and there is no name after the >";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        const std::string name = text_at(row, k);
+        if (!declared.emplace(name, code).second) {
+            why = name + " is declared twice in the same capsule";
+            at = stop;
+            return name_declared_twice;
+        }
+        const signed long long int shaped = after_the_name(row, k, name, true, why);
+        if (shaped != success) { at = stop; return shaped; }
+        const signed long long int held = names_in_statement(row, k, stop, declared, capsules, functions, why);
+        at = stop;
+        return held;
+    }
+
     // A DECLARATION IS A WORD FOLLOWED BY A NAME. Only the type that is finished
     // is accepted: satellite.variable.number is built and checked against Python
     // across 477,253 cases, while satellite.variable.string's 23 method
@@ -585,15 +619,17 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // satellite.variable.file (1 6 2) and satellite.variable.bool (1 6 6) joined on
         // 2026-09-18 with the file type (SATELLITE_FILE_OPERATIONS FO-1, FO-2): most
         // of a file's words answer true or false, and a program has to keep them.
-        // satellite.container.list (1 4 2) joined on 2026-09-18, with the braced
-        // literal and `a[n]`. It is the first declaration word outside
-        // satellite.variable, which is why the test below names two families.
-        if (code != word::code_of(1, 6, 4) && code != word::code_of(1, 6, 1) && code != word::code_of(1, 6, 5) &&
-            code != word::code_of(1, 6, 16) && code != word::code_of(1, 6, 2) && code != word::code_of(1, 6, 6) &&
-            code != word::code_of(1, 4, 2)) {
+        // WHICH WORDS DECLARE A TYPE IS type_shape.hpp's LIST, and asking it is
+        // the point rather than the tidiness. This was a chain of `code != this
+        // && code != that`, and adding satellite.container.index to the language
+        // did not add it here -- so `satellite.container.index s` was refused as
+        // "not built yet" while the very same declaration WITH <> worked, which
+        // is the sort of contradiction a hand-kept second list always grows.
+        if (!is_a_type_word(code)) {
             why = std::string(word::spelling_of(code)) + " " + name +
                   " is a declaration, and only satellite.variable.number, .string, .binary, "
-                  ".percentage, .file, .bool and satellite.container.list are built yet";
+                  ".percentage, .file, .bool and satellite.container.list, .index and .multiple "
+                  "are built yet";
             at = stop;
             return satl_line_not_understood;
         }

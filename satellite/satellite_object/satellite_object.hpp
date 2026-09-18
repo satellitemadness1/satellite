@@ -92,6 +92,25 @@ using FileHandle = std::shared_ptr<satellite_file>;
 struct satelliteList;
 using ListHandle = std::shared_ptr<satelliteList>;
 
+// AN INDEX -- keys to values -- for the same reason and on the same terms.
+// satellite_index.hpp holds it, and says why it is a python dict rather than the
+// std::map it looks like.
+struct satelliteIndex;
+using IndexHandle = std::shared_ptr<satelliteIndex>;
+
+// THERE IS NO ARM FOR satellite.container.multiple, AND THERE MUST NOT BE.
+//
+// The author, 2026-09-18: *"satellite.container.multiple<type1, type2> ... and
+// multiple is a std::variant"*. It is -- and THIS CLASS IS ALREADY THAT VARIANT.
+// `Held` is a std::variant over every type satellite has; an object that may be
+// a string or a list is not a new kind of object, it is this one.
+//
+// So `multiple<A, B>` is not a container at all: it is a DECLARATION saying
+// which arms a name will accept. It lives with the variable, beside the declared
+// word, and is checked when something is assigned. Adding an arm for it would
+// have meant a variant inside a variant, two ways to spell one value, and every
+// `pair_of` switch growing a row that means "look inside and ask again".
+
 class satelliteObject {
 public:
     // EVERY ARM, IN ORDER. The order IS the Kind below.
@@ -105,7 +124,8 @@ public:
                               satellite_binary_number, // 7  satellite.variable.binary
                               satellite_percentage,    // 8  satellite.variable.percentage
                               FileHandle,              // 9  satellite.variable.file (2026-09-18)
-                              ListHandle               // 10 {a, b} (2026-09-18)
+                              ListHandle,              // 10 {a, b} (2026-09-18)
+                              IndexHandle              // 11 satellite.container.index (2026-09-18)
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
@@ -117,8 +137,8 @@ public:
                               // 9, and the braced list is 10 -- asked for the
                               // same day, to give satellite.feedback({"a","b"})
                               // a shape to arrive in.
-                              // 11  satellite_float
-                              // 12  satellite_hexadecimal_number
+                              // 12  satellite_float
+                              // 13  satellite_hexadecimal_number
                               >;
 
     enum Kind : std::size_t {
@@ -133,7 +153,8 @@ public:
         percentage = 8,
         file = 9,
         list = 10,
-        how_many_kinds = 11
+        index = 11,
+        how_many_kinds = 12
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -145,6 +166,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<percentage, Held>, satellite_percentage>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<file, Held>, FileHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<list, Held>, ListHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<index, Held>, IndexHandle>, "");
 
     Held held;
 
@@ -159,6 +181,7 @@ public:
     satelliteObject(satellite_percentage from) : held(std::move(from)) {}
     satelliteObject(FileHandle from) : held(std::move(from)) {}
     satelliteObject(ListHandle from) : held(std::move(from)) {}
+    satelliteObject(IndexHandle from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -171,6 +194,7 @@ public:
     static satelliteObject of_percentage(satellite_percentage from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_file(FileHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_list(ListHandle from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_index(IndexHandle from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -193,6 +217,7 @@ public:
     bool is_percentage() const { return held.index() == percentage; }
     bool is_file() const { return held.index() == file; }
     bool is_list() const { return held.index() == list; }
+    bool is_index() const { return held.index() == index; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -223,6 +248,9 @@ public:
     // `use_count() == 1`, and a copy taken on the way here makes that answer no
     // every time. 003 built exactly that and it was dead code for months.
     ListHandle *as_list() { return std::get_if<ListHandle>(&held); }
+
+    const IndexHandle *as_index() const { return std::get_if<IndexHandle>(&held); }
+    IndexHandle *as_index() { return std::get_if<IndexHandle>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }

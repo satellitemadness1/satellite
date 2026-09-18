@@ -124,6 +124,7 @@ signed long long int display_a_number(const Scenarios &scenarios, const satellit
 // copy of the list -- satellite_object/satellite_list.hpp says why, and says how
 // 003 lost months to exactly that.
 signed long long int write_through_index(Value &root, const std::vector<Value> &indices, Value value,
-                                         const std::string &name, std::size_t where, ExpressionContext &context);
+                                         const std::string &name, std::size_t where, const TypeShape &shape,
+                                         ExpressionContext &context);
 
 } // namespace satellite004

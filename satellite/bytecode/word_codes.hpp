@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 379;
+inline constexpr unsigned int kWordsInTable = 381;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -89,6 +89,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301040200000000ULL, 4121},  // 1 4 2 -- satellite.container.list
     {0x0301040300000000ULL, 4149},  // 1 4 3 -- satellite.container.arguments
     {0x0301040400000000ULL, 4160},  // 1 4 4 -- satellite.container.result
+    {0x0301040500000000ULL, 4476},  // 1 4 5 -- satellite.container.index
+    {0x0301040600000000ULL, 4477},  // 1 4 6 -- satellite.container.multiple
     {0x0301050000000000ULL, 4162},  // 1 5 0 -- satellite.console()
     {0x0301050100000000ULL, 4163},  // 1 5 1 -- satellite.console.display
     {0x0301050200000000ULL, 4164},  // 1 5 2 -- satellite.console.input()
@@ -818,6 +820,8 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.feedback", {1, 25, 0, 0, 0, 0, 0}, 2},
     {"satellite.feedback()", {1, 25, 0, 0, 0, 0, 0}, 3},
     {"satellite.feedback(x)", {1, 25, 1, 0, 0, 0, 0}, 3},
+    {"satellite.container.index", {1, 4, 5, 0, 0, 0, 0}, 3},
+    {"satellite.container.multiple", {1, 4, 6, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -862,6 +866,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.container.arguments.length", 4150},
     {"satellite.container.arguments.lines", 4154},
     {"satellite.container.arguments.to_string", 4153},
+    {"satellite.container.index", 4476},
     {"satellite.container.list", 4121},
     {"satellite.container.list()", 4122},
     {"satellite.container.list.append", 4123},
@@ -902,6 +907,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.container.map.set(k, v)", 4111},
     {"satellite.container.map.size", 4114},
     {"satellite.container.map.values", 4119},
+    {"satellite.container.multiple", 4477},
     {"satellite.container.result", 4160},
     {"satellite.directory", 4397},
     {"satellite.directory()", 4398},
