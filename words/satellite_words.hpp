@@ -383,6 +383,8 @@ inline constexpr WordRow kWords[] = {
     {"satellite.library.main.arguments.access", {1, 14, 1, 1, 10, 0}, 5},
     {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 0}, 5},
     {"satellite.file.open(path)", {1, 8, 6, 0, 0, 0}, 3},
+    {"satellite.library.main.arguments.memory.free", {1, 14, 1, 1, 2, 2}, 6},
+    {"satellite.library.main.arguments.memory.used", {1, 14, 1, 1, 2, 3}, 6},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -538,7 +540,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.library.main.arguments.machine.byte_order", {1, 14, 1, 1, 1, 5, 1}, 7},
     {"satellite.library.main.arguments.machine.page_size", {1, 14, 1, 1, 1, 6, 1}, 7},
     {"satellite.library.main.arguments.machine.pointer_bits", {1, 14, 1, 1, 1, 7, 1}, 7},
-    {"satellite.library.main.arguments.memory", {1, 14, 1, 1, 2, 2, 0}, 6},
+    {"satellite.library.main.arguments.memory", {1, 14, 1, 1, 2, 4, 0}, 6},
     {"satellite.library.main.arguments.memory.total", {1, 14, 1, 1, 2, 1, 1}, 7},
     {"satellite.library.main.arguments.username", {1, 14, 1, 1, 3, 1, 0}, 6},
     {"satellite.library.main.arguments.system", {1, 14, 1, 1, 4, 8, 0}, 6},
@@ -605,6 +607,8 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.percentage", {1, 6, 16, 1, 0, 0, 0}, 4},
     {"satellite.library.main.arguments.access", {1, 14, 1, 1, 10, 1, 0}, 6},
     {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 1, 0}, 6},
+    {"satellite.library.main.arguments.memory.free", {1, 14, 1, 1, 2, 2, 1}, 7},
+    {"satellite.library.main.arguments.memory.used", {1, 14, 1, 1, 2, 3, 1}, 7},
 };
 
 } // namespace satellite004

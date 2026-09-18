@@ -2,3 +2,5 @@
 1 14 1 1 10	satellite.library.main.arguments.access
 1 14 1 1 11	satellite.library.main.arguments.history
 1 8 6	satellite.file.open(path)
+1 14 1 1 2 2	satellite.library.main.arguments.memory.free
+1 14 1 1 2 3	satellite.library.main.arguments.memory.used

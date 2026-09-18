@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 368;
+inline constexpr unsigned int kWordsInTable = 370;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -390,6 +390,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x06010E0101010700ULL, 4341},  // 1 14 1 1 1 7 -- satellite.library.main.arguments.machine.pointer_bits
     {0x06010E0101020000ULL, 4343},  // 1 14 1 1 2 0 -- satellite.library.main.arguments.memory()
     {0x06010E0101020100ULL, 4344},  // 1 14 1 1 2 1 -- satellite.library.main.arguments.memory.total
+    {0x06010E0101020200ULL, 4465},  // 1 14 1 1 2 2 -- satellite.library.main.arguments.memory.free
+    {0x06010E0101020300ULL, 4466},  // 1 14 1 1 2 3 -- satellite.library.main.arguments.memory.used
     {0x06010E0101040000ULL, 4347},  // 1 14 1 1 4 0 -- satellite.library.main.arguments.system()
     {0x06010E0101040100ULL, 4348},  // 1 14 1 1 4 1 -- satellite.library.main.arguments.system.name
     {0x06010E0101040200ULL, 4349},  // 1 14 1 1 4 2 -- satellite.library.main.arguments.system.kernel
@@ -796,6 +798,8 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.library.main.arguments.access", {1, 14, 1, 1, 10, 0, 0}, 5},
     {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 0, 0}, 5},
     {"satellite.file.open(path)", {1, 8, 6, 0, 0, 0, 0}, 3},
+    {"satellite.library.main.arguments.memory.free", {1, 14, 1, 1, 2, 2, 0}, 6},
+    {"satellite.library.main.arguments.memory.used", {1, 14, 1, 1, 2, 3, 0}, 6},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -938,7 +942,9 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.library.main.arguments.machine.threads", 4337},
     {"satellite.library.main.arguments.memory", 4342},
     {"satellite.library.main.arguments.memory()", 4343},
+    {"satellite.library.main.arguments.memory.free", 4465},
     {"satellite.library.main.arguments.memory.total", 4344},
+    {"satellite.library.main.arguments.memory.used", 4466},
     {"satellite.library.main.arguments.process", 4370},
     {"satellite.library.main.arguments.process()", 4371},
     {"satellite.library.main.arguments.process.id", 4372},

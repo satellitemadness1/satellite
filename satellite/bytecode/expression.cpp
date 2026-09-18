@@ -563,6 +563,39 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             }
             return Value::of_bool(said.flag);
         }
+
+        // A FACT ABOUT THE MACHINE, read the same way and for the same reason:
+        // it is a VALUE with no brackets, so without this arm it looks like a
+        // word the expression reader has no scenario for. SATELLITE_ARGUMENTS
+        // B7-B11.
+        //
+        // THE LIBRARY DECIDES AGAIN. A word is a fact exactly when its library
+        // filled in `fact`, so no list of codes is kept here and a fact added
+        // later needs no line in this file.
+        if (library != nullptr && library->scenarios.fact != nullptr) {
+            const FactReply said = library->scenarios.fact();
+            ++at;
+            if (said.code != success) {
+                context.refuse(said.code, std::string(word::spelling_of(code)) +
+                                              " could not be read" +
+                                              (said.reason.empty() ? "" : " -- " + said.reason),
+                               at - 1);
+                return Value();
+            }
+            if (said.is_text == true) {
+                Value answer;
+                std::size_t bad = 0;
+                const signed long long int made = Value::of_utf8(said.text, answer, bad);
+                if (made != success) {
+                    context.refuse(made, std::string(word::spelling_of(code)) +
+                                             " answered bytes that are not text",
+                                   at - 1);
+                    return Value();
+                }
+                return answer;
+            }
+            return Value::of_number(satellite_number(said.count));
+        }
     }
 
     // A NAME IS A VARIABLE, and a name with no declaration is name_not_declared

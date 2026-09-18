@@ -54,6 +54,32 @@ struct SettingReply {
 // back, so a caller never has to read again to know what it has.
 using FlagSettingScenario = SettingReply (*)(bool writing, bool value);
 
+// WHAT A WORD THAT ANSWERS A FACT ABOUT THE MACHINE SAYS.
+//
+// ONE REPLY FOR BOTH A COUNT AND SOME TEXT, because the alternative is two
+// scenario fields and a library that fills in neither or both. `is_text` picks
+// which field is the answer, and a library that answers a count leaves `text`
+// alone.
+//
+// A COUNT IS AN `unsigned long long int` AND NOT A satellite_number, because a
+// library is compiled on its own and satellite_number is the interpreter's. The
+// caller turns it into one. Every fact here -- bytes, cores, threads -- fits.
+//
+// NOTHING IS CACHED. A machine fact is READ every time it is asked for, which is
+// the point: `arguments.memory.free` that answered what was free a minute ago is
+// a wrong answer that looks like a right one. SATELLITE_ARGUMENTS says the same
+// thing about the register: "composing them would mean caching a fact that
+// changes".
+struct FactReply {
+    signed long long int code = 0;              // success, or why it could not be read
+    bool is_text = false;                       // false: `count` is the answer
+    unsigned long long int count = 0;
+    std::string text;
+    std::string reason;                         // the system's own word for a failure
+};
+
+using FactScenario = FactReply (*)();
+
 struct Scenarios {
     // The most likely scenario: display a string.
     signed long long int (*text)(const std::string &text, bool endline) = nullptr;
@@ -73,6 +99,18 @@ struct Scenarios {
     // what a program hands it and reports how it went; `arguments.access` is
     // read as well as written, so it is the shape none of them has.
     FlagSettingScenario flag_setting = nullptr;
+
+    // APPENDED LAST AGAIN -- A FACT, 2026-09-18. SATELLITE_ARGUMENTS B7-B11.
+    //
+    // THE SECOND SHAPE THAT ANSWERS RATHER THAN CONSUMES, and it is not the
+    // first one widened. `flag_setting` is READ AND WRITTEN and answers a bool;
+    // a fact is READ ONLY and answers a count or some text. Widening the setting
+    // to carry both would have given every setting a write path for a thing that
+    // cannot be written -- `arguments.memory.total` is what the machine has, not
+    // a preference -- and a word that can be assigned to and must not be is a
+    // word whose refusal has to be written somewhere. Read-only by having no
+    // write path at all is the version with nothing to get wrong.
+    FactScenario fact = nullptr;
 };
 
 struct LibraryRow {

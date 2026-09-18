@@ -593,11 +593,45 @@ after six libraries already parse their own would be six places to fix.
 Every one of these is a `/proc` or `sysconf` read that `arguments.cpp` **already
 does** — they need a library and a row, not a new reader.
 
-- **B7** — `arguments.memory.total`, `.free`, `.used` — `/proc/meminfo`.
-- **B8** — `arguments.memory.swap.total`, `.free`, `.used` — the same file.
-- **B9** — `arguments.username` — `getpwuid`, already in `arguments.cpp`.
-- **B10** — `arguments.cores`, `arguments.threads` — `physical_cores()` and `sysconf`, both already written.
-- **B11** — `arguments.directory` — `getcwd`.
+- **B7** — ~~`arguments.memory.total`, `.free`, `.used` — `/proc/meminfo`.~~ **Done 2026-09-18.** Verified against `/proc/meminfo` on this machine: total `66509373440`, exact.
+- **B8** — `arguments.memory.swap.total`, `.free`, `.used` — the same file. **The three rows are not in `words.tsv` yet**; B7's two were appended, and swap's three go the same way.
+- **B9** — ~~`arguments.username` — `getpwuid`.~~ **Done** — answers `madness` here. `getpwuid` and **not** `$USER`: the environment's copy is whatever was exported, the passwd entry is who the process really is, and under `sudo` they disagree.
+- **B10** — ~~`arguments.cores`, `arguments.threads`.~~ **Done**, under the word table's spelling (`arguments.machine.cores`, `arguments.machine.threads`) — **red note 5 is still the author's**, and an alias is one row when he picks. Cores answers `24`; threads answers `506566`, which is this machine's `threads-max` exactly, **and is C6**: the measured count from `machine.conf` when `satl --config` has run, the lowest `/proc` ceiling when it has not, and **never a probe**.
+- **B11** — `arguments.directory` — `getcwd`. The reader is written (`machine_facts::working_directory`) and **the word has no row in `words.tsv`** yet.
+
+## What Phase C needed first, and it was not a reader
+
+**A NEW SCENARIO SHAPE.** Every scenario a library could fill in CONSUMED what a
+program handed it and reported how it went; `flag_setting` was the first that
+answered, and it answers a bool. A machine fact answers a **count or some text**
+and can never be written, so it is `FactScenario` — appended last, as that file
+requires.
+
+**READ-ONLY BY HAVING NO WRITE PATH**, rather than by refusing one. Widening
+`flag_setting` to carry a count would have given every fact a write path for
+something that cannot be written — `arguments.memory.total` is what the machine
+has, not a preference — and a word that can be assigned to and must not be needs
+its refusal written somewhere. This version has nothing to get wrong.
+
+**NOTHING IS CACHED, AND THAT IS THE POINT.** `arguments.memory.free` that
+answers what was free a minute ago is a wrong answer wearing a right answer's
+face. Two runs a second apart gave `55091806208` and `54885224448`, which is the
+feature working.
+
+**`used` IS TOTAL LESS `MemAvailable`, NOT TOTAL LESS `MemFree`.** `MemFree`
+leaves out the page cache, which the kernel hands back the moment anything wants
+it — so `free` off `MemFree` reads as almost nothing on a machine that is
+perfectly healthy, and `used` off it reads as almost everything.
+
+**A FAILURE IS SAID, NEVER ANSWERED AS 0.** A machine that does not state a fact
+refuses with `machine_fact_not_read` (36), naming what could not be read. 0 is a
+number a program would divide by.
+
+**A NEW WORD ROW NEEDS THREE REGENERATIONS, AND `make` DOES ONLY SOME OF THEM.**
+`words_004.tsv` → `words.tsv` (`words/make_words.py`) → `word_codes.hpp`
+(`satellite/bytecode/make_word_codes.py`). The libraries built and the word still
+answered `name_not_declared` until `make_word_codes.py` was run by hand. Learned
+the hard way; written here so the next person does not.
 
 ## Phase D — the values that need something built
 
