@@ -345,11 +345,16 @@ first; 003 had it (`Fil`, M19), so it is a port. The third overload waits on M14
 **003's hazard, inherited:** `Fil` was the first arm to come off `const`, because
 a file is not a value.
 
-**GROWN INTO `SATELLITE_FILE_OPERATIONS.md` (2026-09-18), AND FO-1 TO FO-4 ARE BUILT THE SAME DAY** (its Part 7; PROGRESS §1). The author's brief
+**GROWN INTO `SATELLITE_FILE_OPERATIONS.md` (2026-09-18), AND FO-1 TO FO-4 ARE BUILT AND COMMITTED THE SAME DAY (`1547deb`)** (its Part 7; PROGRESS §1). The author's brief
 for the storyline generator: *"a text file is a list of lines"*, the file words
 spelled like `satellite.container.list`'s, and milestones FO-1 to FO-10. Its R9
 answers the three `seek` overloads above. FO-1 (a method call as a statement)
 comes first and is not only for files.
+
+**WHAT IS LEFT OF M15 IS FO-5 TO FO-10**, and Part 8 of that file lists them in
+order. The one that matters most is **FO-6, the race**: two runs of a
+self-editing program can both read 7 and both write 8, because there is no file
+lock yet — the only open item likely to bite a real program rather than a test.
 
 ## M16 — the rest of the string methods
 

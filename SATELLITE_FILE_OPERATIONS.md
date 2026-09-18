@@ -510,7 +510,18 @@ M15's *"collection_of_str"*: the first line that matches any string in a list.
 # Part 7 — what is built and checked (2026-09-18, BUILD 0145)
 
 **FO-1 to FO-4, and 3.8.** `make test`: **242 passed, 0 failed**, with the
-install checks' 14. Nothing is committed; the author commits.
+install checks' 14.
+
+**COMMITTED 2026-09-18 AS `1547deb`.** This line said "Nothing is committed; the
+author commits" while the change sat in a working tree that TWO sessions were
+sharing — 22 files and 706 insertions that existed nowhere but the working tree,
+with another session committing over the top of it all night. One `git add -A`
+would have swept it into an unrelated commit. Nothing was edited, only saved;
+`git reset --soft HEAD~1` returns it untouched.
+
+**Re-verified through the real paths before it was committed**, rather than taken
+on the note's word: `make` 0 errors and 0 warnings, `./check.sh` **242 passed, 0
+failed**, `build/file_cases` **222 ok, 0 failed**.
 
 **A fresh reader tried to break it** and found five wrong answers and a set of
 shapes the check let through. All are fixed and the worst are pinned in
@@ -575,4 +586,51 @@ MILESTONES already records as accepted.
   write 8; there is no file lock yet.
 - **Not built:** FO-5 (read-only open), FO-6 (the race), FO-7 (help), FO-8
   (binary), FO-9 (no limit on an edited file), FO-10.
+
+---
+
+# Part 8 — what is accomplished, and what is next
+
+Written 2026-09-18 from the author's own handoff note, so the two do not have to
+be read side by side.
+
+## Accomplished (`1547deb`)
+
+| | |
+|---|---|
+| **the type** | `satellite.variable.file` — a text file as a list of lines, **counting from 1** |
+| **the words** | `satellite.file.new(path)` / `new(path, "text")`, `open(path)` / `open(path, "text")`, `exists(path)`, `clear(path)`. **`open(path)` is the one row `words.tsv` gained**: word `1 8 6`, code 4464 |
+| **the methods** | 23: `append insert replace index_of search contains remove_at remove remove_first remove_last truncate clear size empty first last save read_all close open ok error path exists`. `replace` takes `(n, text)` or `(old, new)` |
+| **reading** | `f[n]` reads line n |
+| **writing** | saves are **whole or not at all**; appends stream to disk; files close when a body ends; a failed save exits **44** |
+| **the language** | a method call stands alone on a line; `satellite.variable.bool` and `.file` declare; word and method calls take several arguments and the lexer picks the row by argument count; a method can follow a word's call |
+| **running the copy** | reports quote the LOADED copy, so a program can rewrite its own `.satl` while it runs |
+| **the checker** | wrong argument counts, a file method on the wrong type, and `f.size = 3` lines are refused **before anything runs** |
+| **the numbers** | machine codes **39–47**; report codes **S0901–S0905** |
+
+## Next, in the order the milestones give
+
+1. **FO-5 — a read-only open.** The smallest, and the one a program that only
+   reads wants.
+2. **FO-6 — the race.** Two runs of a self-editing program can both read 7 and
+   both write 8; **there is no file lock yet**, and this is the open item most
+   likely to bite a real program rather than a test.
+3. **FO-7 — help.** The file words are not in `help_lines/` yet, and HELP.md is
+   generated from it.
+4. **FO-8 — binary.** The brief asks for `"binary"` beside `"text"` and only
+   text is built.
+5. **FO-9, FO-10** — no limit on an edited file, and the last of the ten.
+6. **R10, still the author's** — the file words have no library (3.2).
+
+## The four small ones already named, kept here so they are not lost
+
+- `append` answers true when the line is held and the automatic 64 KiB write
+  failed; the failure is in `error`, and the API has no third answer for "held,
+  not on the disk yet".
+- `open` (the method) after a `new` that was refused opens that existing file —
+  nothing is clobbered, but a "new" handle ends up on an old one.
+- A leftover `.<name>.saving.<pid>` from a crashed run with the same process id
+  blocks full rewrites until removed. The error names it.
+- A nesting about 20,000 deep still crashes the walker's C stack (exit 139) —
+  **older than this work**, and the depth MILESTONES already records as accepted.
 
