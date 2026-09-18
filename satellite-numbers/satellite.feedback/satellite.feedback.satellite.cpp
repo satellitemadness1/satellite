@@ -30,26 +30,6 @@
 
 #include "../feedback_book.hpp"
 
-namespace {
-
-satellite004::SettingReply feedback_from_text(const std::string &said)
-{
-    satellite004::SettingReply reply;
-    std::string why;
-    reply.code = satellite004::feedback_book::write_one(said, why);
-    reply.flag = (reply.code == satellite004::success);
-    reply.reason = why;
-    return reply;
-}
-
-signed long long int feedback_text(const std::string &text, bool)
-{
-    const satellite004::SettingReply said = feedback_from_text(text);
-    return said.code;
-}
-
-} // namespace
-
 extern "C" signed long long int satellite_number_describe(satellite004::LibraryRow *row)
 {
     if (row == nullptr) return satellite004::error;
@@ -57,6 +37,7 @@ extern "C" signed long long int satellite_number_describe(satellite004::LibraryR
     row->numbers[0] = 1;
     row->numbers[1] = 25;
     row->depth = 2;
-    row->scenarios.text = &feedback_text;
+    row->scenarios.text = &satellite004::feedback_book::feedback_text;
+    row->scenarios.list = &satellite004::feedback_book::feedback_list;
     return satellite004::success;
 }

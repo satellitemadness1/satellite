@@ -220,20 +220,36 @@ signed long long int after_the_name(const std::vector<std::bitset<16>> &row, std
 bool brackets_at(const std::vector<std::bitset<16>> &row, std::size_t open, std::size_t &close, std::size_t &count)
 {
     std::size_t depth = 0, commas = 0;
+    // A BRACED LIST IS ONE ARGUMENT, HOWEVER MANY COMMAS IT HOLDS. Counted apart
+    // from `depth` rather than folded into it, because a `}` must never be able
+    // to close the brackets: depth reaching 0 is what ends this loop, and a
+    // stray brace driving it there would make `f({a, b}` look closed.
+    //
+    // Without this, `satellite.feedback({"a", "b"})` is refused before it runs,
+    // by a checker counting two arguments in a call that takes one -- which is
+    // exactly the message a person would get for their own mistake, so it must
+    // not be given for the language's.
+    std::size_t braces = 0;
     bool any = false;
     std::size_t at = open;
     while (at < row.size()) {
         const Code code = code_at(row, at);
         if (token::carries_a_count(code)) { any = true; text_at(row, at); continue; }
         if (code == token::line_end_token || code == token::end_of_file_token) break;
-        if (code == token::left_parenthesis_token || code == token::left_square_bracket_token) {
+        if (code == token::left_brace_token) {
+            any = true;
+            ++braces;
+        } else if (code == token::right_brace_token) {
+            any = true;
+            if (braces > 0) --braces;
+        } else if (code == token::left_parenthesis_token || code == token::left_square_bracket_token) {
             if (depth > 0) any = true;
             ++depth;
         } else if (code == token::right_parenthesis_token || code == token::right_square_bracket_token) {
             if (--depth == 0) { close = at; count = any ? commas + 1 : 0; return true; }
         } else {
             any = true;
-            if (code == token::comma_token && depth == 1) ++commas;
+            if (code == token::comma_token && depth == 1 && braces == 0) ++commas;
         }
         ++at;
     }

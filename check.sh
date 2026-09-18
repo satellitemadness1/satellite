@@ -214,6 +214,105 @@ expect "... the book holds what was typed and nothing about the machine" "1|0|0"
 expect "satl links nothing that can reach a network" 0 \
        "$(nm -D "$interpreter" 2>/dev/null | grep -icE 'socket|connect|getaddrinfo|SSL_|curl_')"
 
+# THE BRACED LIST -- `{a, b}` WHERE A VALUE BELONGS (the author, 2026-09-18: "we
+# need to build satellite object definitions to be this: = {series_of_objects,
+# another_object}").
+#
+# THE FIRST ROW IS THE ONE THAT MATTERS AND IT IS NOT THE OBVIOUS ONE: a list
+# given to satellite.feedback must become TWO ENTRIES, not one entry reading
+# {"a", "b"}. It did exactly that during the build -- the word has two spellings
+# (`1 25` and `1 25 1`, because the lexer matches the longest plain path), the
+# list scenario was added to one of them, and the other silently went on taking
+# the text path. Nothing errored; the only way to see it was to read the file.
+# That is why both bodies now live in feedback_book.hpp and why this asserts on
+# the STORE rather than on the exit status.
+cat > build/braced_list.satl <<'LIST_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.feedback({"the caret is great", "the prompt eats my tabs"})
+    satellite.console.display({"one", "two"})
+    satellite.console.display({1, 2, 3})
+    satellite.console.display({})
+    satellite.console.display({1, "two", {3, 4}})
+    satellite.console.display({1 + 1, 2 * 3})
+    satellite.console.display({1, 2,})
+    satellite.return(satellite)
+}
+LIST_EOF
+rm -f "$CHECK_HOME/.satl/feedback.txt"
+HOME="$CHECK_HOME" "$interpreter" build/braced_list.satl > build/braced_list.out 2>&1
+expect "a braced list runs" 0 $?
+expect "a list of two reaches feedback as TWO entries, not one line of {a, b}" "2|0" \
+       "$(wc -l < "$CHECK_HOME/.satl/feedback.txt")|$(grep -c '{' "$CHECK_HOME/.satl/feedback.txt")"
+expect "a list prints as what was typed, nested and empty and all" \
+       '{"one", "two"}|{1, 2, 3}|{}|{1, "two", {3, 4}}|{2, 6}|{1, 2}' \
+       "$(tail -6 build/braced_list.out | tr '\n' '|' | sed 's/|$//')"
+
+# A BLOCK'S BRACE IS UNTOUCHED. This is the row that would catch the whole idea
+# being wrong: `{` was the block opener long before it was a list, and if the two
+# ever collide it is here that it shows.
+cat > build/braced_block.satl <<'BLOCK_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 3
+    satellite.statement.if(n > 2)
+    {
+        satellite.console.display({"a list inside a block", "still a list"})
+    }
+    satellite.return(satellite)
+}
+BLOCK_EOF
+HOME="$CHECK_HOME" "$interpreter" build/braced_block.satl > build/braced_block.out 2>&1
+expect "a block's brace and a list's brace do not collide" '0|{"a list inside a block", "still a list"}' \
+       "$?|$(tail -1 build/braced_block.out)"
+
+# THE REFUSALS. An unclosed list names the `{` that opened it, and a list handed
+# to a name of another type is the ordinary type refusal, reading "a list".
+cat > build/braced_bad.satl <<'BAD_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display({1, 2)
+    satellite.return(satellite)
+}
+BAD_EOF
+HOME="$CHECK_HOME" "$interpreter" build/braced_bad.satl > build/braced_bad.out 2>&1
+expect "an unclosed { says so" "13|1" \
+       "$?|$(grep -c 'opened with { and never closed' build/braced_bad.out)"
+
+cat > build/braced_type.satl <<'TYPE_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = {"a", "b"}
+    satellite.return(satellite)
+}
+TYPE_EOF
+HOME="$CHECK_HOME" "$interpreter" build/braced_type.satl > build/braced_type.out 2>&1
+expect "a list given to a string name is refused, and is CALLED a list" "27|1" \
+       "$?|$(grep -c 'was given a list' build/braced_type.out)"
+
+# A LIST IN A LOOP STILL CANNOT FLOOD ANYBODY -- the author's own worry, written
+# with the shape he actually wrote it in: satellite.feedback({...}) in a loop.
+cat > build/braced_bomb.satl <<'LBOMB_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.statement.for(satellite.variable.number i = 0; i < 25000; i++)
+    {
+        satellite.feedback({"something_in_a_loop", "and another thing"})
+    }
+    satellite.console.display("done")
+    satellite.return(satellite)
+}
+LBOMB_EOF
+rm -f "$CHECK_HOME/.satl/feedback.txt"
+HOME="$CHECK_HOME" "$interpreter" build/braced_bomb.satl > build/braced_bomb.out 2>&1
+expect "50,000 feedback calls through a LIST cost two lines" "0|done|2" \
+       "$?|$(tail -1 build/braced_bomb.out)|$(wc -l < "$CHECK_HOME/.satl/feedback.txt")"
+
 # THE EXAMPLE IN `satl --help` IS EXTRACTED FROM THE REAL OUTPUT AND RUN.
 #
 # There are no users yet -- satellite is pre-release -- so the first program a

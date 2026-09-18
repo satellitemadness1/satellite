@@ -80,6 +80,21 @@ struct FactReply {
 
 using FactScenario = FactReply (*)();
 
+// WHAT A BRACED LIST ARRIVES AS -- `satellite.feedback({"a", "b"})`, 2026-09-18.
+//
+// THE ITEMS AS TEXT, AND NOT AS OBJECTS, for the same reason the `text` scenario
+// takes a std::string rather than a satellite_string: this is the boundary where
+// a value leaves the interpreter. A library is a `.so` that knows nothing about
+// satelliteObject, and handing it one would make every library depend on the
+// object model's layout -- so it gets what it can use.
+//
+// MANY ITEMS, ONE CALL. The alternative is the interpreter calling `text` once
+// per item, which reads simpler and is wrong: `satellite.feedback` must know the
+// two lines arrived TOGETHER, because its own cap is on how many DIFFERENT
+// things one run says. Three calls and one call of three are the same thing to
+// the sender and very different things to a bound.
+using ListScenario = signed long long int (*)(const std::vector<std::string> &items, bool endline);
+
 struct Scenarios {
     // The most likely scenario: display a string.
     signed long long int (*text)(const std::string &text, bool endline) = nullptr;
@@ -111,6 +126,13 @@ struct Scenarios {
     // word whose refusal has to be written somewhere. Read-only by having no
     // write path at all is the version with nothing to get wrong.
     FactScenario fact = nullptr;
+
+    // APPENDED LAST AGAIN -- A BRACED LIST, 2026-09-18. A library that predates
+    // this field is unchanged and still correct: every scenario it fills in is
+    // still at the offset it was built at, and a null here means "this word has
+    // no meaning for a list", which is exactly true of every word built before
+    // lists existed.
+    ListScenario list = nullptr;
 };
 
 struct LibraryRow {

@@ -17,6 +17,7 @@
 #include "word_counts.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 #include "../satellite_object/fast_paths.hpp"
+#include "../satellite_object/satellite_list.hpp"
 
 #include <utility>
 
@@ -458,6 +459,66 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         return inside;
     }
 
+    // A BRACE WHERE A VALUE BELONGS IS A LIST (the author, 2026-09-18: "we need
+    // to build satellite object definitions to be this: = {series_of_objects,
+    // another_object}").
+    //
+    // THIS NEEDED NO NEW TOKEN AND NO LOOKAHEAD, and that is worth a sentence
+    // because it looks like it should have. `{` is already the block opener, so
+    // the obvious fear is that `if x {` and `x = {` now collide. They cannot:
+    // one_operand is only ever reached WHERE A VALUE BELONGS, and a block's `{`
+    // never stands in that position -- it follows a condition, a capsule's
+    // header or an `else`, each of which is read by its own shape before an
+    // expression is asked for. The POSITION decides, which is the same thing
+    // that already tells a unary minus from a subtraction.
+    //
+    // EACH ITEM IS A WHOLE EXPRESSION, so {1 + 1, x, {2, 3}} is a list of a sum,
+    // a variable and a list. Nesting costs nothing here: an item is an object,
+    // and a list IS an object.
+    if (code == token::left_brace_token) {
+        const std::size_t brace_at = at;
+        ++at;
+        std::vector<satelliteObject> items;
+        // `{}` IS A LIST OF NOTHING, not a refusal and not `nothing`. A list that
+        // may be empty is what makes a loop that fills one legal to write.
+        if (code_at(row, at) == token::right_brace_token) {
+            ++at;
+            return Value::of_list(make_list());
+        }
+        for (;;) {
+            Value item = evaluate_at(row, at, 1, context);
+            if (context.code != success)
+                return Value();
+            items.push_back(std::move(item));
+
+            const Code next = code_at(row, at);
+            if (next == token::comma_token) {
+                ++at;
+                // A TRAILING COMMA IS ALLOWED: `{1, 2,}` is two items. It costs
+                // one test, and the alternative is refusing a line that says
+                // exactly what it means for the sake of tidiness.
+                if (code_at(row, at) == token::right_brace_token) {
+                    ++at;
+                    break;
+                }
+                continue;
+            }
+            if (next == token::right_brace_token) {
+                ++at;
+                break;
+            }
+            // THE UNCLOSED LIST, named at the brace that opened it rather than
+            // at the end of the line -- the `{` is what the person has to look
+            // at, and the caret should be under it.
+            context.refuse(satl_line_not_understood,
+                           "this list was opened with { and never closed with } -- items are "
+                           "separated by commas, as in {\"one\", \"two\"}",
+                           brace_at);
+            return Value();
+        }
+        return Value::of_list(make_list(std::move(items)));
+    }
+
     // A STRING LITERAL BECOMES A satellite_string HERE, which is the one doorway
     // UTF-8 comes in through. Strict: a bad sequence is string_error (4) naming
     // the byte, rather than a string standing for bytes that could not be read.
@@ -843,7 +904,35 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // A VALUE LEAVES AS BYTES HERE, and only here: a library's text scenario
     // takes a std::string (number_row.hpp), so the satellite_string goes back
     // out through to_utf8 at the boundary and nowhere inside the interpreter.
-    if (argument.is_string() && scenarios->text != nullptr)
+    // A LIST GOES TO THE WORD THAT KNOWS WHAT A LIST MEANS, and falls back to
+    // its own spelling when the word has no such meaning -- so
+    // `satellite.feedback({"a","b"})` is two messages, while
+    // `satellite.console.display({1, 2})` prints {1, 2} without every library
+    // having to grow a list scenario it does not want.
+    if (argument.is_list() && scenarios->list != nullptr) {
+        std::vector<std::string> items;
+        const satelliteList *held = argument.as_list()->get();
+        if (held != nullptr) {
+            items.reserve(held->items.size());
+            for (const satelliteObject &item : held->items) {
+                satellite_string one;
+                std::string why;
+                // AN ITEM THAT HAS NO TEXT STOPS THE CALL, naming the item. A
+                // list with a file in it reaching a word that expects words
+                // would otherwise arrive as an empty string among real ones,
+                // which is a lie the person cannot see.
+                const signed long long int made = item.to_string(one, why);
+                if (made != success) {
+                    context.refuse(made, std::string(word::spelling_of(code)) + " was given a list holding " +
+                                             item.kind_name() + ", and " + why);
+                    return Value();
+                }
+                items.push_back(one.to_utf8());
+            }
+        }
+        answer = scenarios->list(items, true);
+    }
+    else if (argument.is_string() && scenarios->text != nullptr)
         answer = scenarios->text(argument.text_utf8(), true);
     else if (argument.is_number())
         answer = display_a_number(*scenarios, *argument.as_number());
@@ -855,6 +944,19 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         answer = scenarios->text(argument.as_percentage()->written(), true);
     else if (argument.is_bool() && scenarios->flag != nullptr)
         answer = scenarios->flag(*argument.as_bool(), true);
+    // A LIST GIVEN TO A WORD THAT ONLY TAKES TEXT reads back as what was typed:
+    // {1, "two"}. satellite_object.cpp's to_string is the one spelling, so
+    // display and a refusal quote it the same way.
+    else if (argument.is_list() && scenarios->text != nullptr) {
+        satellite_string written;
+        std::string why;
+        const signed long long int made = argument.to_string(written, why);
+        if (made != success) {
+            context.refuse(made, std::string(word::spelling_of(code)) + " was given a list, and " + why);
+            return Value();
+        }
+        answer = scenarios->text(written.to_utf8(), true);
+    }
     else {
         context.refuse(not_built_yet, std::string(word::spelling_of(code)) + " has no scenario for " +
                                           argument.kind_name());

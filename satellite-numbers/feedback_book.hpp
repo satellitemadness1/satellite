@@ -175,5 +175,52 @@ inline signed long long int write_one(const std::string &said, std::string &why)
     return out.good() ? success : config_file_unwritable;
 }
 
+// ---------------------------------------------------------------------------
+// THE SCENARIOS, HERE AND NOT IN EITHER LIBRARY.
+//
+// THERE ARE TWO SPELLINGS OF THIS WORD -- `satellite.feedback` (1 25) and
+// `satellite.feedback(x)` (1 25 1) -- because the lexer matches the longest
+// plain path, so both have to exist and both have to behave the same.
+//
+// THEY DRIFTED THE MOMENT THEY COULD. The list scenario was added to
+// `satellite.feedback(x)` alone, and `satellite.feedback({"a","b"})` silently
+// went on taking the text path and storing ONE line reading {"a", "b"} instead
+// of two -- a wrong answer with no error anywhere, found only by reading the
+// file afterwards. So the bodies live here and each library points at them:
+// machine_facts.hpp keeps its readers and answers together for the same reason,
+// and this is the second time that has proved to be the right shape.
+// ---------------------------------------------------------------------------
+
+inline signed long long int feedback_text(const std::string &text, bool)
+{
+    std::string why;
+    return write_one(text, why);
+}
+
+// EVERY ITEM IS WRITTEN, AND THE FIRST REFUSAL IS THE ANSWER.
+//
+// IT DOES NOT STOP AT THE FIRST REFUSAL, which is the choice worth explaining.
+// The refusal a list meets is the run's cap -- "this run has already said 32
+// different things" -- and stopping there would throw away the items after it
+// that may well fit, because a REPEAT is always accepted. So it keeps writing
+// and reports the first thing that went wrong: a person mid-rant loses nothing
+// that could have been kept.
+inline signed long long int feedback_list(const std::vector<std::string> &items, bool)
+{
+    // AN EMPTY LIST IS REFUSED rather than quietly succeeding.
+    // `satellite.feedback({})` is somebody who meant to say something.
+    if (items.empty())
+        return empty_search_text;
+
+    signed long long int first_refusal = success;
+    for (const std::string &one : items) {
+        std::string why;
+        const signed long long int code = write_one(one, why);
+        if (code != success && first_refusal == success)
+            first_refusal = code;
+    }
+    return first_refusal;
+}
+
 } // namespace feedback_book
 } // namespace satellite004

@@ -81,6 +81,17 @@ using UserDefinedHandle = std::shared_ptr<satelliteUserDefinedObject>;
 // file are two names for ONE file, so the arm is a handle and a copy shares it.
 using FileHandle = std::shared_ptr<satellite_file>;
 
+// A LIST HOLDS satelliteObjectS, AND A satelliteObject MAY BE A LIST -- so the
+// arm cannot be the vector itself, for exactly the reason the spacesuit's cannot
+// be the object: the type would contain itself. Defined in satellite_list.hpp,
+// which this file cannot include because that file needs this one complete.
+//
+// The handle does NOT mean a list is a reference type. Nothing in 004 can change
+// a list after it is made, so sharing is unobservable today; satellite_list.hpp
+// carries the red note and 003 §12's copy-on-write ruling for when it is not.
+struct satelliteList;
+using ListHandle = std::shared_ptr<satelliteList>;
+
 class satelliteObject {
 public:
     // EVERY ARM, IN ORDER. The order IS the Kind below.
@@ -93,18 +104,21 @@ public:
                               UserDefinedHandle,   // 6  one object of a spacesuit
                               satellite_binary_number, // 7  satellite.variable.binary
                               satellite_percentage,    // 8  satellite.variable.percentage
-                              FileHandle               // 9  satellite.variable.file (2026-09-18)
+                              FileHandle,              // 9  satellite.variable.file (2026-09-18)
+                              ListHandle               // 10 {a, b} (2026-09-18)
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
                               // the order they are BUILT, not the order they
                               // were named in: binary was asked for first
                               // (2026-09-16) and is 7, percentage next
-                              // (2026-09-17) and is 8, and the file was built
-                              // next (2026-09-18, for the storyline generator)
-                              // and is 9 -- so the author's other two follow it.
-                              // 10  satellite_float
-                              // 11  satellite_hexadecimal_number
+                              // (2026-09-17) and is 8, the file was built next
+                              // (2026-09-18, for the storyline generator) and is
+                              // 9, and the braced list is 10 -- asked for the
+                              // same day, to give satellite.feedback({"a","b"})
+                              // a shape to arrive in.
+                              // 11  satellite_float
+                              // 12  satellite_hexadecimal_number
                               >;
 
     enum Kind : std::size_t {
@@ -118,7 +132,8 @@ public:
         binary = 7,
         percentage = 8,
         file = 9,
-        how_many_kinds = 10
+        list = 10,
+        how_many_kinds = 11
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -129,6 +144,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<binary, Held>, satellite_binary_number>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<percentage, Held>, satellite_percentage>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<file, Held>, FileHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<list, Held>, ListHandle>, "");
 
     Held held;
 
@@ -142,6 +158,7 @@ public:
     satelliteObject(satellite_binary_number from) : held(std::move(from)) {}
     satelliteObject(satellite_percentage from) : held(std::move(from)) {}
     satelliteObject(FileHandle from) : held(std::move(from)) {}
+    satelliteObject(ListHandle from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -153,6 +170,7 @@ public:
     static satelliteObject of_binary(satellite_binary_number from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_percentage(satellite_percentage from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_file(FileHandle from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_list(ListHandle from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -174,6 +192,7 @@ public:
     bool is_binary() const { return held.index() == binary; }
     bool is_percentage() const { return held.index() == percentage; }
     bool is_file() const { return held.index() == file; }
+    bool is_list() const { return held.index() == list; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -192,6 +211,12 @@ public:
         const FileHandle *handle = std::get_if<FileHandle>(&held);
         return handle != nullptr ? handle->get() : nullptr;
     }
+
+    // THE HANDLE ITSELF, because a list is passed on rather than reached into:
+    // a library scenario is handed the whole list. satellite_list.hpp defines
+    // what is behind it, so only a file that includes THAT can read the items --
+    // which keeps this header free of the type that contains it.
+    const ListHandle *as_list() const { return std::get_if<ListHandle>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }

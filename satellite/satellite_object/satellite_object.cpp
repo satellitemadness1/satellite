@@ -17,6 +17,9 @@
 
 #include "satellite_object.hpp"
 #include "fast_paths.hpp"
+// The list arm's items, which satellite_object.hpp cannot name: a list holds
+// objects, so its definition has to come after this class is complete.
+#include "satellite_list.hpp"
 
 #include "bool_and_bool_compare.hpp"
 #include "bool_to_string.hpp"
@@ -166,6 +169,15 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     case satelliteObject::percentage: return *l.as_percentage() == *r.as_percentage();
     // IDENTITY, as for an object: the same open file, or not.
     case satelliteObject::file: return l.as_file() == r.as_file();
+    // A LIST IS THE SAME LIST WHEN IT IS THE SAME LIST, and this is the arm most
+    // likely to be "fixed" into a deep compare by somebody who has not read
+    // satellite_list.hpp. It must not be, yet: the list arm is a handle only
+    // because a list may hold a list, and NOTHING has decided whether `b = a`
+    // shares or copies (003 §12 says copy-on-write; 004 has no word that can
+    // tell). A deep compare would answer `true` for two lists that a later
+    // append pulls apart, which is a wrong answer decided today for a question
+    // that is still open.
+    case satelliteObject::list: return *l.as_list() == *r.as_list();
     case satelliteObject::how_many_kinds: break;
     }
     return false;
@@ -183,6 +195,7 @@ const char *satelliteObject::kind_name() const
     case binary: return "a binary";
     case percentage: return "a percentage";
     case file: return "a file";
+    case list: return "a list";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -446,6 +459,37 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
     case file:
         why = "a file has two strings, its text (read_all) and its name (path) -- write the one you mean";
         return types_do_not_meet;
+    // A LIST READS BACK AS WHAT WAS TYPED: {1, "two", {3}}.
+    //
+    // THIS IS THE ONE PLACE A SPELLING IS CHOSEN RATHER THAN REFUSED, and the
+    // reason it is not the same call the bytecode and spacesuit arms make. Those
+    // two refuse because satellite has no syntax for them, so any text would be
+    // invented. A list HAS syntax -- the author wrote it the same day -- so
+    // echoing the literal is not a guess, it is the one spelling already decided.
+    //
+    // STRINGS INSIDE A LIST KEEP THEIR QUOTES, though `display("x")` prints x
+    // without them. Inside a list they are what tells `{1}` from `{"1"}`, and a
+    // person reading output that cannot tell those apart is reading output they
+    // cannot trust.
+    case list: {
+        std::string written = "{";
+        const satelliteList *held = as_list()->get();
+        if (held != nullptr) {
+            for (std::size_t at = 0; at < held->items.size(); ++at) {
+                if (at != 0) written += ", ";
+                const satelliteObject &item = held->items[at];
+                satellite_string one;
+                const signed long long int made = item.to_string(one, why);
+                if (made != success)
+                    return made;          // why already says which item and how
+                if (item.is_string()) written += "\"" + one.to_utf8() + "\"";
+                else written += one.to_utf8();
+            }
+        }
+        written += "}";
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(written, out, bad_offset);
+    }
     case how_many_kinds: break;
     }
     why = "there is nothing here to make a string of";

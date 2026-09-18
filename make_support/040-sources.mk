@@ -55,6 +55,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(BINARY)/satellite_binary_number.hpp \
           $(PERCENTAGE)/satellite_percentage.hpp \
           $(OBJECT)/satellite_object.hpp $(OBJECT)/satellite_spacesuit.hpp \
+          $(OBJECT)/satellite_list.hpp \
           $(OBJECT)/satellite_bytecode.hpp $(OBJECT)/satellite_capsule.hpp \
           $(OBJECT)/fast_paths.hpp $(OBJECT)/object_pair.hpp \
           $(wildcard $(OBJECT)/*_and_*.hpp) $(wildcard $(OBJECT)/*_to_*.hpp) \
