@@ -32,6 +32,8 @@
 #include "bytecode/bytecode_registry.hpp"
 #include "bytecode/function_table.hpp"
 #include "bytecode/program_walk.hpp"
+#include "config/config_file.hpp"
+#include "machine/critical_report.hpp"
 #include "machine/exit_status.hpp"
 #include "machine/machine_codes.hpp"
 #include "machine/machine_state.hpp"
@@ -118,6 +120,33 @@ signed long long int run_satl(int argc, char **argv)
         if (!std::cout)
             return report_error("satl(output): the output refused the lines", display_error);
         return success;
+    }
+
+    // THE LASTING SETTINGS, AND SAYING SO WHEN THEY ARE NOT THERE. Checked here
+    // and not above, so `satl --version`, `satl --help` and a bare `satl` stay
+    // quiet: those three answer a question about satl itself and do not run a
+    // program, and a person asking the version does not need to be told about a
+    // file no part of that answer reads.
+    //
+    // THE RUN CARRIES ON. Every setting has its own default, so this costs
+    // nothing but the telling -- see config_file.hpp's exists() for why it is a
+    // notice and why satl does not quietly create the file to make it go away.
+    if (!config_file::exists()) {
+        const std::string where = config_file::path();
+        CriticalReport missing;
+        missing.code = "S0721";
+        missing.name = "CONFIG_FILE_MISSING";
+        missing.description =
+            "satl could not find the file it keeps its lasting settings in. Please reinstall "
+            "satellite, or create a config.ini at the path below. This run carries on with the "
+            "built-in default for every setting, so nothing is lost except what you had changed.";
+        missing.directory = where.empty() ? std::string("$HOME is not set, so there is no ~/.satl")
+                                          : where;
+        missing.notes.push_back(
+            "A setting is written by a program -- satellite.library.main.arguments.access = "
+            "satellite.bool.true -- and writing one creates this file, so running any program "
+            "that sets a setting is the third way to fix this.");
+        print_critical(missing);
     }
 
     MachineState state;

@@ -77,6 +77,29 @@ inline std::string path()
     return where + "/config.ini";
 }
 
+// Whether the file is there at all. Asked at start-up so satl can SAY it is
+// missing -- the author, 2026-09-18: *"don't run the interpreter without
+// /home_dir/.satl/config.ini say 'cannot find ...' please reinstall satellite,
+// or create a config.ini there"*.
+//
+// AND IT IS A NOTICE RATHER THAN A REFUSAL, on the same instruction: *"let's
+// build default config values so the interpreter still runs without the
+// config.ini file"*. A missing file is a thing to tell somebody about, not a
+// reason to take their interpreter away -- every setting carries its own default
+// (see each library's kDefault), so there is nothing satl cannot do without it.
+//
+// NOTHING IS WRITTEN HERE TO FIX IT. satl could create the file and be quiet,
+// and that is exactly what would make a broken install invisible: the person
+// asked to be told, and told is what a person can act on.
+inline bool exists()
+{
+    const std::string where = path();
+    if (where.empty())
+        return false;
+    std::ifstream in(where);
+    return static_cast<bool>(in);
+}
+
 // Whether the file names this key, and what it says. `found` is false both when
 // the file is absent and when it is there without this key -- the caller wants a
 // default in either case, and telling them apart buys nothing.

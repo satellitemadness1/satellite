@@ -75,4 +75,5 @@ fi
 . "$support/040-root.sh"
 . "$support/050-building.sh"
 . "$support/060-install-tree.sh"
+. "$support/065-config.sh"
 . "$support/080-report.sh"
