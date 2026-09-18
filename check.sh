@@ -181,6 +181,25 @@ expect "... by the CHECK, with nothing run before it" "" "$(grep -x before build
 # FLATTENED FIRST: the refusal is a full report now and a report wraps at eighty
 # columns, so this sentence arrives split across two lines. The assertion is
 # about the words, not where the report chose to break them.
+# THE EXAMPLE IN `satl --help` IS EXTRACTED FROM THE REAL OUTPUT AND RUN.
+#
+# There are no users yet -- satellite is pre-release -- so the first program a
+# person ever writes will be the one they copy out of --help, and an example that
+# does not run is the worst possible first impression. 003 learned this the
+# expensive way: HELP.md's examples were run once and FIVE of them were wrong.
+#
+# Taken from the binary's own output, never re-typed here, so the test cannot
+# agree with a copy while the real one rots.
+"$interpreter" --help > build/help.out 2>&1
+sed -n '/YOUR FIRST PROGRAM/,/satellite.return(satellite)/p' build/help.out \
+    | sed '1,2d' | sed 's/^    //' > build/help_example.satl
+expect "the example in --help is a whole program" "1|1|1" \
+       "$(grep -c 'satellite.include(satellite)' build/help_example.satl)|$(grep -c 'satellite.capsule satellite.main()' build/help_example.satl)|$(grep -c 'satellite.return(satellite)' build/help_example.satl)"
+expect "... and it runs, exactly as printed" "hello|0" \
+       "$("$interpreter" build/help_example.satl 2>/dev/null | tail -1)|$(? 2>/dev/null; "$interpreter" build/help_example.satl >/dev/null 2>&1; echo $?)"
+expect "--help does not promise a feature that is missing" 0 \
+       "$(grep -c 'not built yet' build/help.out)"
+
 expect "... by the check too, and says so" 1 \
        "$(tr '\n' ' ' < build/if.out | grep -c 'satellite.statement.else with no satellite.statement.if before it')"
 # A CONDITION'S TYPE IS A RUN-TIME FACT, for an if exactly as for a while: the

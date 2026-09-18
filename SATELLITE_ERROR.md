@@ -155,10 +155,18 @@ no interpreter.** So `S980` is a library that loaded and did not describe itself
 filled at its tens, so a refusal added beside an existing one has somewhere
 obvious to go without renumbering anything.
 
-**WHAT THIS COST, AND IT IS WORTH SAYING PLAINLY: 003 COMPATIBILITY.** The old
-scheme put `text_not_found` at 003's own `S0716` so a person moving between the
-two read one number. Severity ordering and that promise cannot both be true, and
-the author chose severity. `S0716` is now `S420`.
+**WHAT THIS COST: NOTHING, AND THE EARLIER NOTE HERE WAS WRONG.** This file said
+the renumber cost "003 compatibility" -- that a person moving between 003 and 004
+would no longer read one number for one refusal. **There are no such people.**
+The author, 2026-09-18: *"We do not have users yet, this is all sitting BEFORE a
+release campaign"*. 004 is what ships; 003 is where it came from.
+
+**AND THAT IS THE GENERAL RULE WHILE THIS IS PRE-RELEASE.** Every "never
+renumber, never rename, a number somebody wrote down has to keep meaning what it
+meant" argument in this file is protecting users who do not exist yet. Before
+release those changes are FREE, and the time to make them is now -- after the
+first advert runs, every one of them has a price. `S0716` becoming `S420` cost
+nothing at all.
 
 ## Assigned
 

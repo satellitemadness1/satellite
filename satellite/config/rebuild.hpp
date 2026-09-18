@@ -160,7 +160,8 @@ inline signed long long int run_rebuild()
         std::cout << "\n    turned on but NOT BUILT YET, so nothing will happen:\n";
         for (const std::string &name : asked_for_but_unbuilt)
             std::cout << "        " << name << "\n";
-        std::cout << "    SATELLITE_ERROR.md Parts 8 and 12 are the milestones that owe them.\n";
+        std::cout << "    They are numbered and waiting on the code behind them; nothing you\n";
+        std::cout << "    have set is wrong, and turning them on again later needs no change.\n";
     }
 
     std::string why;

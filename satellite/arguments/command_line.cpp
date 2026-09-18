@@ -109,7 +109,7 @@ std::string usage_lines()
            "    satl <file.satl> [words...]           run a program\n"
            "    satl --run <file> [words...]          the same; the file may begin with -\n"
            "    satl --debug <file.satl> [words...]   run it, showing every state and argument\n"
-           "    satl --repl                           the prompt (not built yet: M0.6)\n"
+           "    satl --repl                           the prompt: type a line, see it run\n"
            "    satl --rebuild                        compose every setting into one binary\n"
            "    satl --config [most]                  measure what this machine can do, once\n"
            "    satl --version, -V                    the version, revision and build\n"
@@ -122,7 +122,25 @@ std::string usage_lines()
            "\n"
            "    satl exits with the machine code the program stopped on, 0 when it ran\n"
            "    to the end. A code below 0 or above 254 exits 255 and is written in\n"
-           "    full on stderr.\n";
+           "    full on stderr.\n"
+           "\n"
+           "  YOUR FIRST PROGRAM -- save it as hello.satl and run satl hello.satl\n"
+           "\n"
+           "    satellite.include(satellite)\n"
+           "\n"
+           "    satellite.capsule satellite.main()\n"
+           "    {\n"
+           "        satellite.console.display(\"hello\")\n"
+           "    }\n"
+           "    satellite.return(satellite)\n"
+           "\n"
+           "    Every program has those three: the include, satellite.main, and the\n"
+           "    return. Leave one out and satl says which one and what to type.\n"
+           "\n"
+           "  WHEN SOMETHING GOES WRONG satl prints a report with an S-code, the line\n"
+           "  it happened on and a caret under it. The number says how bad it is:\n"
+           "  S0xx is a warning and the run carries on, and it climbs from there to\n"
+           "  S999, which is the machine refusing satl any memory at all.\n";
 }
 
 } // namespace satellite004
