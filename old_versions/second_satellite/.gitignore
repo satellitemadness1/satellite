@@ -6,6 +6,7 @@
 /satl-term
 .cxxflags-stamp
 .cxxflags-stamp-haswell
+.version-stamp
 .ldflags-stamp
 
 # The empty program `make startup` measures satl against. A build artefact like

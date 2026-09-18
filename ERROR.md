@@ -318,3 +318,62 @@ is what turned the payload readers above into wrong answers instead of refusals.
 readings, neither decided: a no-break space (and the other Unicode spaces) is
 whitespace; or any character with no code is refused by name before anything runs,
 e.g. `U+00A0 has no meaning in a program` (13). Found by the payload sweep, 2026-09-17.
+
+## Only seven names lex as methods, and the rest say "no capsule named x" — OPEN
+
+`s.size()` on a string does not run `satellite.variable.string.size` (`1 6 1 1`).
+It fails **in the checker** with `no capsule named size` (13), which names
+something the person did not write and points nowhere near the problem.
+
+**Why.** `bytecode_registry.cpp`'s `method_code_of()` knows exactly seven
+spellings — `find`, `replace`, `to_string`, `to_number`, `to_binary`, `to_hex`,
+`add`. Anything else after a `.` lexes as `name_token`, so `s.size()` reads as a
+call to a capsule called `size`, and the checker says so truthfully about a
+program nobody wrote.
+
+**What makes it worth an entry rather than a milestone.** The 24 string methods
+are all numbered in `words.tsv` and 20 of them have a built library under
+`satellite-numbers/` — they are *there*, and there is no spelling that reaches
+them. So this is not "not built yet" (14), which the language has a good word
+for; it is a built feature behind a lexer that has never heard of it, reported as
+a different mistake entirely.
+
+**Two parts, and only the first is a bug.** The spelling is a milestone. The
+MESSAGE is the bug: a `.name()` that is not a known method should say that the
+receiver's type has no method of that name, and should not invent a capsule.
+
+Found 2026-09-18, writing a test program for the switch hierarchy — I wrote
+`s.upper()` and `s.size()` in turn and believed the interpreter both times.
+
+## 004 does NOT have 003's unbounded console queue — CHECKED 2026-09-18, fine
+
+Recorded so nobody measures it twice. 003's `satellite_console/console.cpp` kept
+an unbounded `std::vector<std::string>` between the program and the terminal; a
+print loop through satl-term grew the interpreter **125 MB a second, to 5.9 GB in
+48**, because `display` never waited for the printer (fixed the same night, 003
+revision 09, `2560f1d`).
+
+**004 cannot have that bug**, and structurally rather than by luck:
+`satellite-numbers/satellite.console.display/` writes to `std::cout` directly —
+no queue, no printer thread — so a slow reader applies backpressure through the
+pipe, which is the operating system doing for free what 003 had to be taught.
+
+**Measured, not assumed:** the same shape of program (an unending print loop into
+a deliberately slow reader) held **13 MB flat for 20 seconds**.
+
+## A program may have to be run from its own folder — OPEN, not reproduced
+
+The author, 2026-09-18: *"everything except for running files as programs.... you
+have to be in the folder to run the program for some reason"*, and *"this file
+could not be read"*.
+
+**Recorded because it was seen, and marked because it was not reproduced.** It was
+reported against 003 during the console work and never pinned down; nothing in
+either tree locks a directory, and the `.satellite_build.lock` in the repository
+root is unrelated. The likeliest shape is relative-path resolution — 004 resolves
+a program's includes against the file's own folder (the author's rule, 2026-09-16:
+*"the files directory becomes the cwd for each file"*) — but the report was about
+the PROGRAM, not an include, so that is a guess and is written as one.
+
+**What would settle it in one minute:** run the same program by absolute path from
+three different working directories and compare. Nobody has.

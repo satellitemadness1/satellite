@@ -380,6 +380,8 @@ inline constexpr WordRow kWords[] = {
     {"satellite.constructor", {1, 24, 0, 0, 0, 0}, 2},
     {"satellite.constructor()", {1, 24, 0, 0, 0, 0}, 3},
     {"satellite.variable.percentage", {1, 6, 16, 0, 0, 0}, 3},
+    {"satellite.library.main.arguments.access", {1, 14, 1, 1, 10, 0}, 5},
+    {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 0}, 5},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -526,7 +528,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.statement.else", {1, 13, 4, 1, 0, 0, 0}, 4},
     {"satellite.library", {1, 14, 3, 0, 0, 0, 0}, 3},
     {"satellite.library.main", {1, 14, 1, 2, 0, 0, 0}, 4},
-    {"satellite.library.main.arguments", {1, 14, 1, 1, 10, 0, 0}, 5},
+    {"satellite.library.main.arguments", {1, 14, 1, 1, 12, 0, 0}, 5},
     {"satellite.library.main.arguments.machine", {1, 14, 1, 1, 1, 8, 0}, 6},
     {"satellite.library.main.arguments.machine.cores", {1, 14, 1, 1, 1, 1, 1}, 7},
     {"satellite.library.main.arguments.machine.cpu", {1, 14, 1, 1, 1, 2, 1}, 7},
@@ -600,6 +602,8 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.thread.new", {1, 23, 1, 1, 0, 0, 0}, 4},
     {"satellite.constructor", {1, 24, 1, 0, 0, 0, 0}, 3},
     {"satellite.variable.percentage", {1, 6, 16, 1, 0, 0, 0}, 4},
+    {"satellite.library.main.arguments.access", {1, 14, 1, 1, 10, 1, 0}, 6},
+    {"satellite.library.main.arguments.history", {1, 14, 1, 1, 11, 1, 0}, 6},
 };
 
 } // namespace satellite004
