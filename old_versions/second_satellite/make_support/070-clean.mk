@@ -44,4 +44,5 @@ clean:
 	rm -f satl satl.haswell satl-cpu-level satl-term $(SRC)/*/*.o $(SRC)/*/*/*.o \
 	      $(ZLIB)/*.o \
 	      $(TESTBINS) $(STARTUP_FLOOR) \
-	      .cxxflags-stamp .cxxflags-stamp-haswell .ldflags-stamp
+	      .cxxflags-stamp .cxxflags-stamp-haswell .ldflags-stamp \
+	      .version-stamp

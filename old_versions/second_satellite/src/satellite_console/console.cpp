@@ -8,8 +8,13 @@
 //   2. A DRAIN MEANS WRITTEN. When drain() returns, everything queued before it
 //      has reached the fd and been flushed -- which is what lets M14 print a
 //      prompt with no newline and then wait for a key.
-//   3. NOTHING BLOCKS THE PROGRAM. `display` takes a lock, moves a string and
-//      signals; it never waits for a write.
+//   3. NOTHING WAITS FOR A WRITE, AND THAT IS NARROWER THAN IT READ UNTIL
+//      2026-09-17. `display` takes a lock, moves a string and signals; it still
+//      never waits for bytes to reach the fd. What it will now do is wait for
+//      the printer to TAKE the last batch, when the program has run more than
+//      kHighWater ahead of a sink that cannot keep up. console.hpp carries the
+//      measurement that changed this and the argument for why a bound here is
+//      not a bound on the language.
 
 #include "satellite_console/console.hpp"
 
@@ -68,8 +73,30 @@ void Console::push(std::string text)
     // this pays it if nobody did, so no path can queue into a console with no
     // printer behind it. A lazy start and an eager one written separately would
     // be two answers to when the thread exists.
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     start_held();
+
+    // THE WAIT FOR ROOM, AND THE THREE WAYS OUT OF IT ARE ALL LOAD-BEARING.
+    //
+    //   queued_bytes_ < kHighWater -- the ordinary one. A sink that keeps up
+    //       never reaches the mark and never waits, which is every file and
+    //       every pipe with a reader on it.
+    //   queue_.empty() -- WHY A SINGLE HUGE LINE STILL GOES THROUGH. With
+    //       nothing queued there is nothing for the printer to take, so waiting
+    //       here would be waiting for an event that cannot arrive: a deadlock,
+    //       and one that only a program printing a string bigger than the mark
+    //       would ever meet. This is also what keeps the bound off the
+    //       language -- no line is too big to print, it is only too big to have
+    //       COMPANY while it waits.
+    //   closed_ -- shutdown has begun. A producer racing the close is let
+    //       through to the queue rather than parked against a printer that is
+    //       on its way out; the printer's own "closed and empty is the only way
+    //       out" then writes what it left.
+    roomed_.wait(lock, [this] {
+        return queued_bytes_ < kHighWater || queue_.empty() || closed_;
+    });
+
+    queued_bytes_ += text.size();
     queue_.push_back(std::move(text));
     arrived_.notify_one();
 }
@@ -131,6 +158,13 @@ void Console::shutdown()
         closed_ = true;
     }
     arrived_.notify_all();
+
+    // AND THE PRODUCERS WAITING FOR ROOM, or a thread parked in push() when the
+    // close landed would still be parked when step 4 tries to join -- the
+    // printer would be gone, nothing would ever take a batch again, and the
+    // join would wait on a thread that is waiting on nothing. `closed_` is in
+    // that predicate for this wake to have something to say.
+    roomed_.notify_all();
 
     // STEP 4 -- JOIN.
     if (printer_.joinable())
@@ -203,8 +237,23 @@ void Console::printer()
             return;
 
         batch.swap(queue_);
+
+        // ROOM EXISTS AT THE SWAP AND NOT AT THE FLUSH, which is the whole
+        // reason a producer waiting here is cheap. The queue is empty the
+        // instant this line runs, so a producer parked for room waits for one
+        // batch to be TAKEN rather than for it to reach the terminal -- it
+        // refills while the printer is still writing the last lot, and the two
+        // stay a batch apart instead of a syscall apart.
+        queued_bytes_ = 0;
         writing_ = true;
         lock.unlock();
+
+        // NOTIFIED WITH THE LOCK DOWN, so a woken producer takes the mutex
+        // instead of finding it held by the thread that woke it. notify_all and
+        // not notify_one: every thread in the program can be a producer, and
+        // waking one of several while the queue sits empty would leave the rest
+        // parked with their predicate already true.
+        roomed_.notify_all();
 
         // THE ONLY PLACE THIS PROGRAM WRITES TO STDOUT. fwrite and not fputs,
         // because a satellite string may hold a NUL -- DESIGN §5's code table

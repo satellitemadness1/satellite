@@ -33,11 +33,41 @@
 // THE BARRIER IS NOT SPECULATIVE three milestones before anything reads input:
 // the same wait is on the exit path of every program that prints.
 //
-// AND `display` NEVER BLOCKS, BECAUSE THE QUEUE IS UNBOUNDED ON PURPOSE. A
-// bounded queue makes a producer wait when it fills, which is a threshold
-// nobody chose appearing in the most-called path in the language -- the hidden
-// constant DESIGN §1.1 refuses and §7.5 rules out in general. The bound is
-// memory, the way a list's is, and M6's watchdog is what notices.
+// AND `display` WAITS WHEN THE WRITER IS BEHIND, WHICH REVERSES WHAT STOOD
+// HERE. The paragraph this replaces said the queue was unbounded on purpose,
+// that a high-water mark was "a threshold nobody chose appearing in the
+// most-called path", and that "the bound is memory, the way a list's is, and
+// M6's watchdog is what notices." The first two are still fair. The third was
+// measured on 2026-09-17 and is not true:
+//
+//     experiments/energy/release.satl prints in a loop with no sleep in it.
+//     Through satl-term the `satl` child grew 125 MB EVERY SECOND -- 5.9 GB in
+//     48 seconds -- and satl-term itself stayed flat at 164 MB. Every one of
+//     those bytes was a line already rendered and waiting for a terminal that
+//     draws at 60 Hz. The same program writing to a FILE holds 4.4 MB flat,
+//     because there the printer keeps up.
+//
+// The watchdog does not notice, and that is not a bug in the watchdog: its
+// `memory_max` defaults to `Fact::MemoryTotal`, so on this machine it is armed
+// at 61.9 GiB -- the whole of RAM -- and `min_free_mb` is unset by the argument
+// in limits.hpp, which is a good argument. So the only thing standing between a
+// print loop and the machine's memory was a ceiling the machine cannot reach
+// before it is already thrashing.
+//
+// SO THE QUEUE IS BOUNDED, AND THE BOUND IS NOT A LIMIT ON THE LANGUAGE.
+// DESIGN §7.5 forbids a constant deciding how big a thing the user may write. A
+// program can still print forever and print lines of any size -- kHighWater is
+// read only when the queue is NON-EMPTY, so a single line larger than it is
+// queued whole and written whole, and nothing a program can say becomes
+// unsayable. What the constant decides is how far ahead of the WRITER the
+// program may run before it waits for it, which is a fact about a pipe and not
+// about satellite. The honest cost is stated plainly: a program printing to a
+// slow terminal now runs at the terminal's speed. The alternative it replaces
+// is the same program dying, and taking the machine with it.
+//
+// IT COUNTS BYTES AND NOT LINES, because a line count bounds nothing: this
+// program's lines are ~150 bytes and QUAD's are not, and a cap of N lines is a
+// cap of N times whatever the widest line turns out to be.
 //
 // WHAT THE WATCHDOG CANNOT REACH IS STATED HERE RATHER THAN DISCOVERED LATER.
 // `machine_limits/watchdog.cpp` flushes stdio before `_exit` and says why in
@@ -156,10 +186,32 @@ private:
     std::condition_variable arrived_;
     std::condition_variable emptied_;
 
+    // A THIRD, AND THE HEADER'S OWN RULE IS WHY IT IS NOT A REUSE OF `emptied_`:
+    // a waiting drain and a producer waiting for room are woken for different
+    // reasons and hold different predicates. `emptied_` says there is no work
+    // left anywhere, which is what `drain()` needs; `roomed_` says the printer
+    // has TAKEN a batch, which is what a blocked producer needs and which is
+    // true the instant of the swap, long before the writing is done.
+    std::condition_variable roomed_;
+
     // SWAPPED OUT WHOLE RATHER THAN POPPED FROM THE FRONT -- v1's note again.
     // The printer takes the vector, releases the lock and writes; a producer
     // that arrives meanwhile fills a fresh one and never waits on a syscall.
     std::vector<std::string> queue_;
+
+    // WHAT `queue_` IS HOLDING, IN BYTES. Kept alongside rather than summed on
+    // demand, because push() consults it on every call and a fold over the
+    // vector would put an O(n) walk in the most-called path in the language --
+    // which is the objection the paragraph at the top of this file makes to
+    // hidden costs, applied to the cure rather than the disease.
+    size_t queued_bytes_ = 0;
+
+    // HOW FAR AHEAD OF THE WRITER A PROGRAM MAY RUN. Not a limit on what can be
+    // printed -- see the header -- and deliberately generous: a file sink
+    // drains far faster than this fills, so backpressure never engages there
+    // and the measured 4.4 MB stays 4.4 MB. Peak queue memory is at most twice
+    // this: one batch in flight while the next fills.
+    static constexpr size_t kHighWater = 4u * 1024u * 1024u;
 
     std::thread printer_;
     bool started_ = false;

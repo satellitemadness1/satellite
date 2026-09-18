@@ -26,14 +26,14 @@ $(SRC)/%.o: $(SRC)/%.cpp
 
 # main.o is the object that learns what this build IS. An explicit rule, so that
 # a change to the version invalidates one object rather than the whole tree.
-$(PROGRAMS)/main.o: $(PROGRAMS)/main.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
+$(PROGRAMS)/main.o: $(PROGRAMS)/main.cpp .cxxflags-stamp $(SYSTEM)/version.hpp .version-stamp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/main.cpp
 
 # The same, and the reason is that the opening information names the version
 # too. It reads version_line() rather than carrying a literal, so the banner and
 # --version cannot drift apart -- which they had in the first satellite, where
 # the prompt still said 0.1 long after the language said 002.
-$(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
+$(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version.hpp .version-stamp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(PROGRAMS)/opening.cpp
 
 # THE THIRD OBJECT THAT LEARNS WHAT THIS BUILD IS -- M20. `arguments.build.*`
@@ -43,7 +43,7 @@ $(PROGRAMS)/opening.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp $(SYSTEM)/version
 # distinction is the reason the facts are worth carrying at all, and an
 # explicit rule is what keeps a version bump invalidating one object instead of
 # the tree.
-$(SYSTEM)/arguments_facts.o: $(SYSTEM)/arguments_facts.cpp .cxxflags-stamp $(SYSTEM)/version.hpp $(SYSTEM)/arguments_facts.hpp
+$(SYSTEM)/arguments_facts.o: $(SYSTEM)/arguments_facts.cpp .cxxflags-stamp $(SYSTEM)/version.hpp $(SYSTEM)/arguments_facts.hpp .version-stamp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(VERSION_DEFS) -c -o $@ $(SYSTEM)/arguments_facts.cpp
 
 # THE WINDOW OBJECTS, which need $(WINDOW_CFLAGS) and are therefore the one
@@ -54,7 +54,7 @@ $(SYSTEM)/arguments_facts.o: $(SYSTEM)/arguments_facts.cpp .cxxflags-stamp $(SYS
 # window.o also takes $(VERSION_DEFS), because `satl-term --version` prints the
 # same version_text() satl does. The others do not -- they name no version, and
 # giving them the defines would rebuild them on every version bump for nothing.
-$(TERM_DIR)/window.o: $(TERM_DIR)/window.cpp .cxxflags-stamp $(SYSTEM)/version.hpp
+$(TERM_DIR)/window.o: $(TERM_DIR)/window.cpp .cxxflags-stamp $(SYSTEM)/version.hpp .version-stamp
 	$(CXX) $(CXXFLAGS) -I$(SRC) $(WINDOW_CFLAGS) $(VERSION_DEFS) -c -o $@ $(TERM_DIR)/window.cpp
 
 # AND ONE PATTERN RULE FOR ALL THE REST OF THEM, which is a change from the
@@ -143,16 +143,16 @@ $(SRC)/%.haswell.o: $(SRC)/%.cpp
 # flags. That is what makes an installed binary able to say which of the two it
 # is -- `satl --version` prints that line -- so the install needs no manifest
 # and cannot have one that disagrees with the file it describes.
-$(PROGRAMS)/main.haswell.o: $(PROGRAMS)/main.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp
+$(PROGRAMS)/main.haswell.o: $(PROGRAMS)/main.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp .version-stamp
 	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) $(VERSION_DEFS_HASWELL) -c -o $@ $(PROGRAMS)/main.cpp
 
-$(PROGRAMS)/opening.haswell.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp
+$(PROGRAMS)/opening.haswell.o: $(PROGRAMS)/opening.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp .version-stamp
 	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) $(VERSION_DEFS_HASWELL) -c -o $@ $(PROGRAMS)/opening.cpp
 
 # THREE OBJECTS SINCE M20, and the paragraph above says "the two". The
 # arguments object reports the flags this binary was built with, so it has to
 # know which variant it is for exactly the reason --version does.
-$(SYSTEM)/arguments_facts.haswell.o: $(SYSTEM)/arguments_facts.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp $(SYSTEM)/arguments_facts.hpp
+$(SYSTEM)/arguments_facts.haswell.o: $(SYSTEM)/arguments_facts.cpp .cxxflags-stamp-haswell $(SYSTEM)/version.hpp $(SYSTEM)/arguments_facts.hpp .version-stamp
 	$(CXX) $(CXXFLAGS) $(MARCH_HASWELL) -I$(SRC) $(VERSION_DEFS_HASWELL) -c -o $@ $(SYSTEM)/arguments_facts.cpp
 
 # make invalidates a target when a PREREQUISITE changes, and CXXFLAGS is not a
@@ -175,6 +175,32 @@ $(SYSTEM)/arguments_facts.haswell.o: $(SYSTEM)/arguments_facts.cpp .cxxflags-sta
 .cxxflags-stamp-haswell: FORCE
 	@printf '%s' '$(CXX) $(CXXFLAGS) $(MARCH_HASWELL)' | cmp -s - $@ || \
 	    printf '%s' '$(CXX) $(CXXFLAGS) $(MARCH_HASWELL)' > $@
+
+# AND THE SAME HOLE FOR THE VERSION, FOUND ON 2026-09-17 BY WALKING INTO IT.
+# SATELLITE_REVISION went 07 -> 09 in 020-version.mk, `make` reported success,
+# install.sh ran, and the binary it installed still said `003 revision 07` --
+# because the revision reaches the compiler as a -D on four recipes and a -D is
+# not a prerequisite of anything, which is the identical argument the paragraph
+# above makes about CXXFLAGS. A build that silently keeps the old number is
+# worse than the flags case it mirrors: `satl --version` is the one thing that
+# says which binary a person is running, and [[which satl did they run]] is
+# already the first question every regression report has to answer.
+#
+# ONE STAMP AND NOT TWO, which departs from the haswell split directly above
+# and for the reason that split gives. Two stamps exist there because the flags
+# string DIFFERS between the variants and a shared file could only describe one.
+# The version does not differ -- both variants carry the same VERSION and the
+# same REVISION, and 020-version.mk's `version_defs` function takes the march as
+# its only argument for exactly that reason. So one stamp describes both truly.
+#
+# THE BUILD STAMP IS DELIBERATELY NOT IN HERE. 020-version.mk's own note says
+# BUILD_STAMP changes every second and that putting it in a stamp file would
+# recompile the tree on every invocation, forever, silencing the check. That
+# argument applies here word for word, so this records the two numbers a person
+# reads and nothing that moves on its own.
+.version-stamp: FORCE
+	@printf '%s' '$(SATELLITE_VERSION) $(SATELLITE_REVISION)' | cmp -s - $@ || \
+	    printf '%s' '$(SATELLITE_VERSION) $(SATELLITE_REVISION)' > $@
 
 FORCE:
 
