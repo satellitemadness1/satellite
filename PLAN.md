@@ -944,7 +944,7 @@ struck. (The prompt and satl-term moved into M0.5-M0.7 on 2026-09-15.)
 
 ---
 
-## WITHOUT A MILESTONE — the red notes (2026-09-17)
+## WITHOUT A MILESTONE — the red notes (2026-09-17, added to 2026-09-18)
 
 **Work this rework found with no milestone to live in.** Each one was real before
 the rework and is real after it; what it lost was its owner, because the milestone
@@ -996,6 +996,29 @@ pool.
 **7. `.sate`'s header.** A stored program is meaningless against a different word
 list. M1 carried that rule for the `.satc`; M3.6 and MILESTONES M31 now mention
 it, but no milestone owns writing the digest into the file that already exists.
+
+**8. Does `b = a` on a list share it or copy it? (2026-09-18)** The braced list
+`{a, b}` was built the day it was asked for, and its arm is a
+`std::shared_ptr` — but **only because a list may hold a list**, which is the
+same wall the spacesuit hit, and not because assignment was decided to alias.
+
+**Nothing can tell the difference yet.** 004 has no word that changes a list once
+it is made, so a shared list and a copied one behave identically in every program
+that can be written today. **The moment `satellite.container.list` gets an
+append, it matters**, and 003 already ruled: §12 made containers copy-on-write,
+with the `use_count() == 1` check that `19526c9` later had to split in two.
+
+It is left undone rather than guessed, because the cost of guessing wrong is a
+language where assignment sometimes aliases — the one bug a person cannot see in
+their own code. `satellite/satellite_object/satellite_list.hpp` carries the note
+at the code.
+
+**A second, smaller one in the same place:** a list handed to a word that takes
+text reads back as what was typed — `{1, "two"}`, strings keeping their quotes so
+`{1}` and `{"1"}` are not the same output. That is the one spelling chosen rather
+than refused, on the grounds that it is not an invention: it is the syntax you
+wrote the same day. Say if a list should refuse to print instead, as bytecode and
+a spacesuit do.
 
 **Decisions waiting on you, gathered from the rework:** what `&` `|` `^` `<<`
 `>>` `!!` `~` mean (the nineteen QUESTION rows, MILESTONES M24); whether an
