@@ -1479,9 +1479,11 @@ expect "--debug shows the index being defined" 1 "$(grep -c 'vector.number.index
 expect "--debug shows memory as a size" 1 "$(grep -cE '^\[satellite\] arguments.memory.total = [0-9.]+ (kilo|mega|giga|tera)?bytes' build/debug.out)"
 expect "--debug shows arguments.threads_startup from the config" 1 "$(grep -c "^\[satellite\] arguments.threads_startup = $(config_row threads_startup) " build/debug.out)"
 # Every config number is a satellite_number (the author, 2026-09-16), and infinity's
-# two digit counts are rows: 4096 held, 32 shown, "both digits configurable".
+# two digit counts are rows: 128 held (4096 until 2026-09-18), 32 shown, "both digits
+# configurable". The counter (2026-09-18) is the calculations before the INFINITY WARNING.
 expect "--debug shows arguments.infinity from the config" 1 "$(grep -c "^\[satellite\] arguments.infinity = $(config_row infinity) " build/debug.out)"
 expect "--debug shows arguments.infinity_display from the config" 1 "$(grep -c "^\[satellite\] arguments.infinity_display = $(config_row infinity_display) " build/debug.out)"
+expect "--debug shows arguments.infinity.counter from the config" 1 "$(grep -c "^\[satellite\] arguments.infinity.counter = $(config_row infinity.counter) " build/debug.out)"
 # A negative row must reach C++ negative (the review of b68d1a7, 2026-09-17): -1ULL and
 # -4u are unsigned there and -9223372036854775808 has no literal, so the reader the
 # build uses refuses all three before anything compiles. -1 and the quoted row still read.

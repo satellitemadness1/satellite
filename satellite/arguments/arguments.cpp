@@ -198,6 +198,17 @@ signed long long int Arguments::gather_config()
         if (entry->kind != ArgumentKind::number || entry->number.negative() || entry->number.is_zero())
             return refuse(std::string(name) + " is a number row of at least 1 digit");
     }
+
+    // THE INFINITY COUNTER (the author, 2026-09-18): how many calculations one
+    // infinity-family object may take without reaching the next type before satl
+    // prints the SATELLITE INFINITY WARNING and counts again. The same rule as the two
+    // above: a missing row takes the author's 999,999,999, and a row that is there
+    // counts at least one calculation.
+    const Argument *counter = find("arguments.infinity.counter");
+    if (counter == nullptr)
+        add_number("arguments.infinity.counter", satellite_number(999999999ull));
+    else if (counter->kind != ArgumentKind::number || counter->number.negative() || counter->number.is_zero())
+        return refuse("arguments.infinity.counter is a number row of at least 1 calculation");
     return success;
 }
 

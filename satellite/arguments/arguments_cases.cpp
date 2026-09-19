@@ -47,7 +47,8 @@ int main()
     check(arguments.gather(command_line) == success, "a gather of three words");
     for (const Argument &argument : arguments.all())
         if (rows.count(argument.name) == 0 && argument.name != "arguments.startup_display" &&
-            argument.name != "arguments.infinity" && argument.name != "arguments.infinity_display")
+            argument.name != "arguments.infinity" && argument.name != "arguments.infinity_display" &&
+            argument.name != "arguments.infinity.counter")
             check(filled_in_by_satl(argument.name), "gather's " + argument.name + " is on filled_in_by_satl's list");
     return failed == 0 ? 0 : 1;
 }
