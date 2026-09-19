@@ -1092,24 +1092,24 @@ already two rows). Nothing reads it yet.
   infinity goes away the counter goes with it, and a name holding `0` is never told it
   will not reach infinity. A value with no name (half of a longer expression) has none,
   because the warning names the object (Q40).
-- **What counts.** *"we just increase the counter every time it is used, then when it's
-  full, it counts everytime the object is NOT destroyed ONLY"*, and *"does that many
-  calculations WITH that object"*. **One calculation the object survives adds 1**:
-  `+ - * /` or `.power_of()` with the object as an operand, where the answer goes
-  somewhere else (`y = x + 1`) or comes back into the object with the same type (`x = x
-  + 1`). `x * x` is one calculation, not two. Comparing (`x > 5`) and displaying
-  (`satellite.console.display(x)`) are not calculations and do not count, although his
-  *"every time it is used"* could take them in (Q39).
+- **What counts — ANSWERED 2026-09-18:** *"whenever the number changes"* (the author, on
+  Q39). **A calculation whose answer comes back into the object with the same type adds
+  1**: `x = x + 1`, `x = x * 2`, and `x = x * x` once `x` is a power. Reading the object
+  changes nothing and counts nothing — `y = x + 1`, comparing (`x > 5`), displaying.
+  `x = x + 0` counts too: the object was written by a calculation, and comparing every
+  answer with the old value to see whether it moved would cost as much as the value is
+  big.
 - **What destroys it.** *"if the object is destroyed and turned into a different class
   object, then the counter is destroyed with it"*. An answer of a **different type**
   coming back into the object — infinity → power, or the plain number left when it goes
   away — ends the object and its counter. A new type starts a new counter at 0.
 - **What happens.** *"display the warning, then reset the counter to 0"*. At
-  `arguments.infinity.counter` the warning is printed and the count starts again. His
-  *"we pause the interpreter"* is kept: **satl waits for Enter when it is at a
-  terminal** (stdin and stderr both a terminal), and prints and goes on otherwise, so a
-  program run from a pipe or a script never hangs (Q37). It goes to stderr, with satl's
-  other reports, so a program's own output is not broken into (Q38).
+  `arguments.infinity.counter` the warning is printed and the count starts again.
+  **ANSWERED 2026-09-18 (Q37):** *"It doesn't seem like to me there would ever be a good
+  time to pause the script, unless we are at the prompt already, in that case it
+  would"*. **A program never pauses** — it prints the warning and goes on. **At satl's
+  prompt** (satl run with no file, M0.6) it waits for Enter. It goes to stderr, with
+  satl's other reports, so a program's own output is not broken into (Q38, open).
 
 **His example is the case it is for:** *"so my_inf = my_inf * my_inf never reaches two
 infinities"*. His "two infinities" is message five's power, *"two separate
@@ -1129,19 +1129,21 @@ and never reaches a sat, the next type. With the row set to 3 so the trace is sh
         pass 7   power    (infinity^128)                   WARNING, counter 0
         pass 8   power    (infinity^256)                   counter 1
         the other reading (Q42), the type changes only at a named rung: warnings at passes [3, 6]
-        y = x + 1          x is infinity counter 1
-        y = x + 1          x is infinity counter 2
-        x = x.power_of(x)  x is power    destroyed, counter 0
-        y = x * 2          x is power    counter 1
-        y = x * 2          x is power    counter 2
-        y = x * 2          x is power    WARNING, counter 0
+        y = x + 1          x is infinity read, not changed: no count
+        x = x * 2          x is infinity counter 1
+        x = x * 2          x is infinity counter 2
+        x = x * x          x is power    destroyed, counter 0
+        x = x * 2          x is power    counter 1
+        x = x * 2          x is power    counter 2
+        x = x * 2          x is power    WARNING, counter 0
         x = x - x          x is number   destroyed; a plain number has no counter
-        y = x + 1          x is number   a plain number: no counter
+        x = x + 1          x is number   a plain number: no counter
 
 The other reading — the type changes only at a named rung, so `(infinity^2)` is not yet
-new — warns one pass sooner, at 3 and 6 (Q42). In the second trace `y = x + 1` counts
-for `x` though `x` is not changed, `x = x.power_of(x)` destroys the counter, and once
-`x = x - x` leaves a plain number there is no counter at all.
+new — warns one pass sooner, at 3 and 6 — the author confirmed the power reading (Q42). In
+the second trace `y = x + 1` only reads `x` and counts nothing, `x = x * x` turns `x`
+into a power and destroys the counter, and once `x = x - x` leaves a plain number there
+is no counter at all.
 
 **The warning**, from the oracle, eighty columns (the rules are exactly 80 dashes, as in
 the SATELLITE CRITICAL ERROR REPORT, `critical_report.hpp`):
@@ -1341,15 +1343,15 @@ is always one more symbol"**, never as one system that finishes the job.
 | **Q33** | Until INF-8, refuse any answer with an exponent that is negative or between 0 and 1, judged on the answer at every depth? | **yes** |
 | **Q34** | INF-8, from message nine's *".power(-infinity)"*: build the infinitely small numbers? What are they called and shown as (`(5 infinity^-1)`?), is `infinity^0.5` one of them, and where is an endless series (`(n * n + 1) / (n * n - n)`) cut — after how many terms, or at what exponent? | **build them, shown with `^`; the cut is his to set** |
 | **Q35** | `.power(x)` (message nine) as a third spelling of `.power_of(x)`? | **yes** |
-| **Q36** | A count of 1 in front of an infinity is not printed — `(infinity, -500000000000000)` as message ten writes it, not `(1 infinity, …)` as message six's "1 infinity" would — so a negative power is `(-infinity-1)`, beside `(-infinity, -1)`? Or print the count when a sign touches a rung (`(-1 infinity-1)`)? | **not printed** |
-| **Q37** | *"we pause the interpreter and remind them"*: wait for Enter at a terminal and print-and-go-on otherwise; or always print and go on; or always wait (which hangs a program run from a pipe)? | **wait at a terminal only** |
+| **Q36** | A count of 1 in front of an infinity is not printed — `(infinity, -500000000000000)` as message ten writes it, not `(1 infinity, …)` as message six's "1 infinity" would — so a negative power is `(-infinity-1)`, beside `(-infinity, -1)`? Or print the count when a sign touches a rung (`(-1 infinity-1)`)? | **ANSWERED 2026-09-18: not printed** — *"q36 looks right to me"* |
+| **Q37** | *"we pause the interpreter and remind them"*: when does it wait for Enter? | **ANSWERED 2026-09-18: only at satl's prompt; a program never pauses** — *"there would ever be a good time to pause the script, unless we are at the prompt already"* |
 | **Q38** | *"we display a warning"*: to stderr, with satl's other reports, or to stdout, where `satellite.console.display` writes? | **stderr** |
-| **Q39** | What counts: one per calculation (`+ - * /`, `.power_of()`) the object survives — his *"does that many calculations WITH that object"* — or every use, comparing and displaying too — his *"every time it is used"*? And does *"then when it's full"* change when the survival test applies? | **one per calculation it survives** |
+| **Q39** | What counts: one per calculation the object survives, or every use? | **ANSWERED 2026-09-18: "whenever the number changes"** — a calculation written back into the object with the same type; reading it counts nothing |
 | **Q40** | Which objects: every name holding a value of the family (*"anything that never reaches the next object type"*), or only names declared `satellite.variable.infinity` (*"when using the variable satellite.variable.infinity"*)? A plain number and a value with no name have none. | **every name holding the family** |
-| **Q40a** | The OBJECT and WILL NEVER lines centered like the title, or at his hand-set 23 and 19 spaces (only the title is marked *"(centered)"*)? | **centered** |
+| **Q40a** | The OBJECT and WILL NEVER lines centered like the title, or at his hand-set 23 and 19 spaces? | **ANSWERED 2026-09-18: centered** — *"yes it's all centered"* |
 | **Q40b** | The warning's last line, his *"(one space here)"*: an empty line, like his *"(one empty line here)"* at the top, or a line holding one space? | **an empty line** |
 | **Q41** | The wording *"WILL NEVER REACH INFINITY"* as he wrote it (his "reach infinity" is the next rung, message nine), or naming the rung (`WILL NEVER REACH INFINITY-2`)? | **his wording** |
-| **Q42** | For the counter, is `(infinity^2)` already the next type — a power, as message five's *"infinity to the power of 2 ... a power object"* says (his loop warns at passes 4 and 7 with the row at 3) — or does the type change only at a named rung (warnings at 3 and 6)? | **the power, per message five** |
+| **Q42** | For the counter, is `(infinity^2)` already the next type — a power, as message five's *"infinity to the power of 2 ... a power object"* says (his loop warns at passes 4 and 7 with the row at 3) — or does the type change only at a named rung (warnings at 3 and 6)? | **ANSWERED 2026-09-18: the power** — *"looks like you have that one correct"* |
 | **Q43** | Inside the parentheses every number prints exactly, all its places; a float on its own shows `arguments.infinity_display` places? | **yes** |
 
 **Not questions — decided by the author:** the width is 128 (`239cfae`); a sign as a
@@ -1478,10 +1480,11 @@ increment per calculation costs no copy. The warning is rendered beside
 `arguments.infinity.counter` set to 3, the oracle's THE COUNTER trace happens: the
 warning for `my_inf` on stderr at passes 4 and 7 and at no other pass (none at pass 3,
 where it would come had pass 1 counted), byte for byte as `infinity_warning('my_inf')`
-returns it; in the second trace one warning, for `x`, on the third `y = x * 2`, and no
-counter once `x` is a plain number; at a terminal satl waits for Enter after the
-warning, and from a pipe it goes on (Q37); and at the default, 999,999,999, a short
-program prints no warning at all.
+returns it; in the second trace `y = x + 1` counts nothing, one warning comes, for
+`x`, on the third `x = x * 2` after `x = x * x`, and there is no counter once `x` is a
+plain number; a program goes on after the warning without waiting, and satl's prompt
+waits for Enter (Q37); and at the default, 999,999,999, a short program prints no
+warning at all.
 
 **SAT-1 … SAT-6 — the author's `.satl` track**, after Q12. SAT-1 is M8 (the spacesuit
 grammar) with M35's supertype. SAT-2 lets a spacesuit answer `+ - * /` and

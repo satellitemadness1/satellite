@@ -282,9 +282,9 @@ def display(a):
 
 
 # ---------------------------------------------------------------------------
-# THE INFINITY COUNTER AND ITS WARNING (message ten). Every calculation with an
-# infinity-family object that it SURVIVES -- the answer keeps its type -- adds 1 to
-# that object's counter. At arguments.infinity.counter (999,999,999) satl prints the
+# THE INFINITY COUNTER AND ITS WARNING (message ten). The counter moves "whenever the
+# number changes" (the author, answering Q39): a calculation whose answer comes back
+# into the object with the same type adds 1; reading the object does not. At arguments.infinity.counter (999,999,999) satl prints the
 # warning and sets the counter to 0. When the object is "destroyed and turned into a
 # different class object", the counter is destroyed with it.
 # ---------------------------------------------------------------------------
@@ -315,13 +315,14 @@ class Slot:
         self.name, self.value, self.counter, self.row, self.kind = name, value, 0, counter_row, kind
 
     def calculate(self, answer, into_self=True):
-        """A calculation with this object -- one per calculation, however many times the
-        object is an operand. into_self: the answer is assigned back to it."""
-        if into_self and self.kind(answer) != self.kind(self.value):
+        """A calculation with this object. into_self: the answer is written back into it,
+        which is when its number changes; otherwise it was only read, and nothing counts."""
+        if not into_self:
+            return 'read, not changed: no count'
+        if self.kind(answer) != self.kind(self.value):
             self.value, self.counter = answer, 0     # destroyed: a new object, a new counter
             return 'destroyed, counter 0' if not is_finite(answer) else 'destroyed; a plain number has no counter'
-        if into_self:
-            self.value = answer
+        self.value = answer
         if is_finite(self.value):
             return 'a plain number: no counter'
         self.counter += 1
@@ -470,10 +471,11 @@ def tables():
     warned = [k for k in range(1, 9) if other.calculate(t_mul(other.value, other.value)).startswith('WARNING')]
     print(f'    the other reading (Q42), the type changes only at a named rung: warnings at passes {warned}')
     slot = Slot('x', inf, 3)
-    steps = [('y = x + 1', lambda v: t_add(v, ONE), False)] * 2 + \
-            [('x = x.power_of(x)', lambda v: t_pow(v, v), True)] + \
-            [('y = x * 2', lambda v: t_mul(v, num(2)), False)] * 3 + \
-            [('x = x - x', lambda v: t_sub(v, v), True), ('y = x + 1', lambda v: t_add(v, ONE), False)]
+    steps = [('y = x + 1', lambda v: t_add(v, ONE), False)] + \
+            [('x = x * 2', lambda v: t_mul(v, num(2)), True)] * 2 + \
+            [('x = x * x', lambda v: t_mul(v, v), True)] + \
+            [('x = x * 2', lambda v: t_mul(v, num(2)), True)] * 3 + \
+            [('x = x - x', lambda v: t_sub(v, v), True), ('x = x + 1', lambda v: t_add(v, ONE), True)]
     for what, answer, into_self in steps:
         said = slot.calculate(answer(slot.value), into_self)
         kind = type_of(slot.value)
