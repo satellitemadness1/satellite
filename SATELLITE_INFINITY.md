@@ -1374,7 +1374,7 @@ column matches, and an ERROR row is refused with a named reason.
 **INF-0 — the oracle.** `satellite/satellite_variable_infinity/infinity_oracle.py`.
 **Built with this file.**
 
-**INF-1 — groundwork. BUILT** (the author, 2026-09-18: *"let's do INF-1 then"*). The
+**INF-1 — groundwork. BUILT, `6408294`** (the author, 2026-09-18: *"let's do INF-1 then"*). The
 REGISTRY's method-family `free` row is fixed, and `make_token_codes.py` now refuses a
 `free` row that starts on or runs over a used code — it caught the old row, and one
 more: the catch-all "unclaimed" range ran over `wide_token`, and is split. The method
