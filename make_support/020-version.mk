@@ -10,6 +10,19 @@
 # leaves it alone. satellite/config/build_number.py says exactly when. Its stamp,
 # .satellite_build (not in git), holds the last build's number and fingerprint.
 #
+# A REVISION RESTARTS THE COUNT (the author, 2026-09-19). Raise arguments.revision by
+# hand and the next make sets arguments.build back to 1 rather than raising it, so BUILD
+# means "the Nth build of THIS revision" and not of satellite since the beginning:
+#
+#     satellite: REVISION 05 -- BUILD restarts at 0001
+#
+# The stamp carries the revision as a third field for exactly this -- `1 <fingerprint> 5`
+# -- because the reset is the only case allowed to write a build number BELOW the one the
+# stamp holds, which every other time means an editor saved a stale config and is refused.
+# A stamp written before this rule has no third field; that reads as "unknown" and resets
+# nothing, so upgrading never throws a count away. Nothing needs to change in this file
+# when a revision is raised: edit the row, run make.
+#
 # satl and satl-term both show the three numbers (satellite/version/), and each
 # carries the rows it was compiled with.
 BUILD_STAMP = .satellite_build

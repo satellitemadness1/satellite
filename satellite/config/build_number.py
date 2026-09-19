@@ -11,6 +11,13 @@
 # into the make file", kept in satellite_config.hpp as the row
 #     arguments_vector.push_back({"arguments.build", 52, false, false});
 #
+# A REVISION IS A NEW COUNT OF BUILDS (the author, 2026-09-19): raising
+# arguments.revision resets arguments.build to 1, so BUILD is "the Nth build of THIS
+# revision" rather than of satellite for all time. The stamp records the revision each
+# build was made under, and a make that sees a different one resets instead of raising.
+# This is the ONE case that may write a build number BELOW the stamp's, so it is checked
+# before the guard below that refuses exactly that -- see the note there.
+#
 # A BUILD IS A CHANGE TO WHAT SATELLITE IS MADE FROM. The stamp (.satellite_build,
 # not in git) holds the number the last build used and a FINGERPRINT: a hash of
 # every input file's contents (the build row's own number left out), plus the
@@ -50,6 +57,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 CONFIG = os.path.join(HERE, "satellite_config.hpp")
 LONG_LONG_MAX = 2 ** 63 - 1
+# The number the first build of a new revision gets. One, not zero: BUILD 0001 is a
+# build that happened, and a released binary never shows a count of none.
+FIRST_BUILD = 1
 
 # A live row: push_back({"name", <number>, <flag>, <is_flag>}); the number spans group 2.
 ROW = re.compile(r'push_back\(\s*\{\s*"([^"\n]*)"\s*,\s*([^,\n]*?)\s*,\s*(true|false)\s*,\s*(true|false)\s*\}\s*\)')
@@ -133,6 +143,15 @@ def build_row(rows):
     return found[0]
 
 
+def revision_row(rows):
+    """arguments.revision, or None when the author has not put one in the config.
+
+    Unlike arguments.build this row is never written by this script -- it is the
+    author's to set. It is only read, and only to notice that it changed."""
+    found = [row for row in rows if row["name"] == "arguments.revision"]
+    return found[0]["number"] if len(found) == 1 else None
+
+
 def read_config():
     try:
         with open(CONFIG, encoding="utf-8", newline="") as config:
@@ -169,14 +188,22 @@ def fingerprint(inputs, also, text):
 
 
 def read_stamp(stamp):
-    """(number, fingerprint); a stamp from the first version holds only a number."""
+    """(number, fingerprint, revision).
+
+    A stamp from the first version holds only a number; one from before the revision
+    reset holds a number and a fingerprint. A missing revision reads as None, which
+    means "do not reset" -- the first make after this change records the revision it
+    finds and resets nothing, so upgrading the stamp never costs a build number."""
     try:
         words = open(stamp).read().split()
     except (OSError, UnicodeDecodeError):
-        return None, None
+        return None, None, None
     if not words or not words[0].isdigit():
-        return None, None
-    return int(words[0]), (words[1] if len(words) > 1 else None)
+        return None, None, None
+    revision = None
+    if len(words) > 2 and re.fullmatch(r"-?[0-9]+", words[2]):
+        revision = int(words[2])
+    return int(words[0]), (words[1] if len(words) > 1 else None), revision
 
 
 def main():
@@ -188,7 +215,7 @@ def main():
                 return
         sys.exit("build_number.py: satellite_config.hpp has no live row %s" % arguments[1])
     if len(arguments) == 2 and arguments[1] == "--verify":
-        used, _ = read_stamp(arguments[0])
+        used, _, _ = read_stamp(arguments[0])
         row = build_row(live_rows(read_config()))["number"]
         if used is not None and row != used:
             fail("arguments.build changed from %d to %d while the build ran (an editor saved an older copy?); "
@@ -207,25 +234,57 @@ def main():
     with open(stamp + ".lock", "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         text = read_config()
-        row = build_row(live_rows(text))
-        used, recorded = read_stamp(stamp)
+        rows = live_rows(text)
+        row = build_row(rows)
+        revision = revision_row(rows)
+        used, recorded, was = read_stamp(stamp)
         current = fingerprint(inputs, also, text)
-        if current == recorded and row["number"] == used:
-            return
-        if used is not None and row["number"] < used:
-            fail("arguments.build is %d, but build %d was already used (an editor saved an older copy?); "
-                 "write a number above %d, or delete .satellite_build to start over" % (row["number"], used, used))
 
-        number = row["number"]
-        if used is None or number == used:
-            number += 1
-            # Written back the way it was written, and quoted once it outgrows a
-            # C++ integer: the row is a satellite_number, so it never stops rising.
-            written = '"%d"' % number if row["quoted"] or number > LONG_LONG_MAX else str(number)
+        # THE REVISION CHANGED, so the count starts again. Asked before anything else
+        # because this is the one path allowed to write a number BELOW the stamp's, and
+        # the guard underneath refuses exactly that for every other reason.
+        #
+        # `was is None` means a stamp written before this rule existed: record the
+        # revision, reset nothing. Otherwise the first make after upgrading would read a
+        # missing revision as "different" and throw the count away for nothing.
+        #
+        # Raising the revision always changes the fingerprint too -- the row is in the
+        # config, and fingerprint() blanks out only arguments.build -- so a revision
+        # bump is always a real build. The test below does not lean on that.
+        restarted = was is not None and revision is not None and revision != was
+
+        if current == recorded and row["number"] == used and not restarted:
+            return
+
+        if restarted:
+            number = FIRST_BUILD
+            written = '"%d"' % number if row["quoted"] else str(number)
             text = text[:row["span"][0]] + written + text[row["span"][1]:]
             write_atomically(CONFIG, text)
-        write_atomically(stamp, "%d %s\n" % (number, fingerprint(inputs, also, text)))
-        print("satellite: BUILD %s (%s)" % (str(number).zfill(4), datetime.date.today().isoformat()))
+            print("satellite: REVISION %s -- BUILD restarts at %s"
+                  % (str(revision).zfill(2), str(number).zfill(4)))
+        else:
+            if used is not None and row["number"] < used:
+                fail("arguments.build is %d, but build %d was already used (an editor saved an older copy?); "
+                     "write a number above %d, or delete .satellite_build to start over" % (row["number"], used, used))
+
+            number = row["number"]
+            if used is None or number == used:
+                number += 1
+                # Written back the way it was written, and quoted once it outgrows a
+                # C++ integer: the row is a satellite_number, so it never stops rising.
+                written = '"%d"' % number if row["quoted"] or number > LONG_LONG_MAX else str(number)
+                text = text[:row["span"][0]] + written + text[row["span"][1]:]
+                write_atomically(CONFIG, text)
+
+        # THE REVISION IS RECORDED WHETHER OR NOT IT MOVED -- that is what makes the next
+        # make able to tell. A config with no arguments.revision writes "-", which reads
+        # back as None and resets nothing.
+        write_atomically(stamp, "%d %s %s\n"
+                         % (number, fingerprint(inputs, also, text),
+                            "-" if revision is None else revision))
+        if not restarted:
+            print("satellite: BUILD %s (%s)" % (str(number).zfill(4), datetime.date.today().isoformat()))
 
 
 if __name__ == "__main__":
