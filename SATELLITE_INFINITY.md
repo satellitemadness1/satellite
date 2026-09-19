@@ -1400,7 +1400,7 @@ the registry (`token::method_name_of`), where three hand-kept copies fell throug
 file's"*, *"a container's"*, or *"no type has it"*; and check.sh now reruns both
 bytecode generators in a copy of the tree and compares their headers byte for byte.
 
-**INF-2 — arm 12, the constructor, the display, the order. BUILT** (2026-09-19). In
+**INF-2 — arm 12, the constructor, the display, the order. BUILT, `78b1447`** (2026-09-19). In
 `satellite/satellite_variable_infinity/`, beside the oracle. The arm is a handle to an
 immutable term list. A count is an exact decimal in the float's shape, and each value
 carries a nines width. The comparator — the sign of the first term of `a - b` — is
