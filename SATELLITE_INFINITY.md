@@ -5,13 +5,14 @@ asat … zsat, aasat … and the float they rest on. What each one holds, how ev
 result is put together, how the numbers are named and displayed, what satellite
 refuses, and the milestones that build it.
 
-Written 2026-09-18 from the author's nine messages of that day, **quoted in Part 1,
+Written 2026-09-18 from the author's ten messages of that day, **quoted in Part 1,
 in order**. The design changed between the messages, and the later message decides.
 The first version of this file (`3a72f33`) was built from messages one to four: an
 infinity as a *target* and a count of nines. **Message five replaced its heart.**
 Part 2 lists every piece it overturned and every piece it kept.
 
-**What is built:** only `arguments.infinity = 128` (`239cfae`). There is no infinity,
+**What is built:** only two config rows, `arguments.infinity = 128` (`239cfae`) and
+`arguments.infinity.counter = 999999999` (`95d00ca`). There is no infinity,
 no float and no power in 004 yet. Today `satellite.variable.infinity x =
 satellite.infinity()` fails with `S110: … satellite.variable is not a call`, and
 `12.34` fails with `S120: 12.34 is not a number this can read`.
@@ -37,9 +38,12 @@ IS, and its sign. **The terms after it are the author's register**: what is atta
 flip the sign of the number THEN add the number"*. `+` and `-` use it directly.
 `*`, `/` and `.power_of()` first work out which terms the answer has, and the one rule
 adds them. **The type is how high the tower of exponents goes**, so `infinity ** infinity
-** infinity` is `1 infinity-2`, a sat. Counts are exact decimals of at most
+** infinity` is `(infinity-2)`, a sat. **One number is one set of parentheses**, as message ten
+writes it (he likens it to how a python list is displayed): `(infinity, -500000000000000)`. Counts are exact decimals of at most
 `arguments.infinity` (128) places. The author's nines — count 2 is `1.999…9` — are
 **derived** from a count for `.nines()`, and **no answer ever depends on them**.
+After 999,999,999 calculations with one object that never reaches the next type,
+satl prints the **SATELLITE INFINITY WARNING** (Part 9).
 
 ---
 
@@ -316,6 +320,43 @@ out):**
 > my_infinite_object.power(infinity * infinity) and it will do the math that is in
 > parentheses, this is how you use these numbers, you know?
 
+**Tenth — one number in one set of parentheses, and the warning:**
+
+> yes it displays as... infinity - 5000000000... or whatever the user enters, it holds
+> another number, and we keep track of whether that number is positive or negative, so
+> it actually should display as like how a python list is displayed, (infinity,
+> -500000000000000) we will keep it in parentheses for display, so we know that is a
+> single number, that is how we will show the user it is just a single number, and
+> when we get into infinities and powers and everything, it is still just adding sets
+> of parentheses, like this:
+>
+> (infinity.infinity, +90440393845) or whatever that particular number is, it has to
+> keep track of like, all this stuff, as it works it's way through the interpreter, I
+> dunno, just make it look nice, so my_inf = my_inf * my_inf never reaches two
+> infinities.... when using the variable satellite.variable.infinity, we have to warn
+> the user after so many operations, we pause the interpreter and remind them after so
+> many operations... let's call it, 999,999,999 after that many operations on the same
+> object, we display a warning like this:
+>
+>     (one empty line here)
+>     -------------------------------------------------------------------------------- (80 chars)
+>      SATELLITE INFINITY WARNING (centered)
+>     -------------------------------------------------------------------------------- (80 chars)
+>     (one blank line here)
+>                            OBJECT: \"object_name\" (in quotes)
+>                        WILL NEVER REACH INFINITY
+>     (one blank line)
+>     -------------------------------------------------------------------------------- (80 chars)
+>     (one space here)
+>
+> this is ONLY after 1 billion (999,999,999) and this number is set inside of
+> arguments.infinity.counter(999,999,999) and this applies to anything that never
+> reaches the next object type and does that many calculations WITH that object,
+> display the warning, then reset the counter to 0, so with the infinity object we just
+> increase the counter every time it is used, then when it's full, it counts everytime
+> the object is NOT destroyed ONLY, if the object is destroyed and turned into a
+> different class object, then the counter is destroyed with it! Perfect logic!
+
 ---
 
 # Part 2 — what message five changed, and what it kept
@@ -323,11 +364,12 @@ out):**
 | was (`3a72f33`, messages 1–4) | now | why |
 |---|---|---|
 | width 4096 (and 1024 in message 1) | **128** — built, `239cfae` | *"let's build it out of 128 digit width, and set arguments.infinity = 128"* |
-| a finite number is **folded into the target**: `infinity + 5` is target 6, shown `5.999…9` | **attached, never folded**: `1 infinity + 5` | *"YOU KEEP THE NUMBER THAT BEGINS WITH "500,000" you add the sign and the number onto the infinity object"*. Folded, `infinity - 500000000000` is a *negative finite* number (Part 3) |
+| a finite number is **folded into the target**: `infinity + 5` is target 6, shown `5.999…9` | **attached, never folded**: `(infinity, +5)` | *"YOU KEEP THE NUMBER THAT BEGINS WITH "500,000" you add the sign and the number onto the infinity object"*. Folded, `infinity - 500000000000` is a *negative finite* number (Part 3) |
 | the value **is** `target − 10^-width`, so the nines are the value | **the count is held exact; the nines are derived** for `.nines()` | message five: *"I don't think that the width of the float is going to matter"*. Held as the value, the nines drift (Q1) |
 | one multiplier float (M11, *"a single satellite float for going up or down"*) | **a count on every term**; the first term's count is M11's multiplier | the register is what message five adds beside it |
 | `satellite.infinity.new()` | **`satellite.infinity()`**, and `satellite.infinity(x)` is infinity ** x | messages five and eight |
-| display `infinityx2`, `infinityx0.5` (M11) | **`2 infinity`, `0.5 infinity`**, `1 infinity-1` | message six, *"let's do that instead"* |
+| display `infinityx2`, `infinityx0.5` (M11), then `1 infinity`, `2 infinity` (message six) | **one number in one set of parentheses**: `(infinity)`, `(2 infinity)`, `(infinity, -500000000000000)`, `(infinity-1)` — a count of 1 is not printed (Q36) | message six named the rungs, *"infinity-1"*; message ten: *"we will keep it in parentheses for display, so we know that is a single number"* |
+| — | **the SATELLITE INFINITY WARNING** after `arguments.infinity.counter` (999,999,999, built `95d00ca`) calculations that never reach the next type | message ten |
 | old I7: *"`infinity < 1` is true"* | **a positive infinity is larger than every number**, a negative one smaller (Q21) | under the first version the value WAS `target − 10^-width`, so `infinity < 1` followed from it. With the value no longer the nines, it does not |
 | old Q2: `infinity - infinity` is **an ERROR**, per M11's summary of 09-16, "an ERROR, never a guess" | **the number that is left**: `0` (Q2, with the ERROR as the alternative) | the 09-16 ruling in the author's words is *"we answer what we can, and give an error on what we can't"*; M11 adds that the infinity carries its x2 *"unless it goes away or causes an error"*; and *flip the sign and add* gives exactly 0 |
 | `.resize(n)` sets that infinity's precision (message two: *"resize(amount_of_digits_of_precision_here…)"*) | **sets that infinity's nines width, which only `.nines()` shows** (Q31) | with the count held exact, no digit of precision is lost for `.resize` to restore |
@@ -355,9 +397,13 @@ out):**
         every term AFTER it             the register -- "what is attached to it"
     and one nines width                 for .nines() only (Part 9)
 
-    satellite.infinity()                1 infinity
-    infinity - 500000000000000000       1 infinity - 500000000000000000
-    infinity + infinity                 2 infinity
+    satellite.infinity()                (infinity)
+    infinity - 500000000000000000       (infinity, -500000000000000000)
+    infinity + infinity                 (2 infinity)
+
+The register is what message ten means by *"it has to keep track of like, all this
+stuff, as it works it's way through the interpreter"*: every number attached, each with
+its sign — *"we keep track of whether that number is positive or negative"*.
 
 **The object's sign is its first term's sign, and each attached term keeps its own.**
 Message five: *"it keeps a sign, it isn't "9999999 objects in C++", it's a single
@@ -368,8 +414,8 @@ the question M11 left him (`-infinity` against `infinityx-1`). Q20 asks him to c
 it.
 
 **A count is an exact decimal of at most `arguments.infinity` places**, held in the
-float's shape (Part 10). It needs no float arm, so `0.5 infinity` and `0.25 infinity
-+ 1.5` can land before the float does. The plain term — the finite number attached —
+float's shape (Part 10). It needs no float arm, so `(0.5 infinity)` and `(0.25 infinity,
++1.5)` can land before the float does. The plain term — the finite number attached —
 follows the same rule.
 
 ## Every result is assembled by the one rule
@@ -380,20 +426,20 @@ infinity.power_of()"*. **`+` and `-` ARE the rule. `*`, `/` and `.power_of()` ea
 first work out which terms the answer has** — every term times every term, counts
 multiplied and exponents added. The rule then adds those terms into one object.
 That is how it *"goes for infinity.power_of()"*: `infinity.power_of(2) - infinity` is
-built by the rule from the two terms `1 infinity^2` and `-1 infinity`.
+built by the rule from the two terms `(infinity^2)` and `(-infinity)`.
 
     THE INFINITY
-        satellite.infinity()                     1 infinity                           infinity
-        inf + inf                                2 infinity                           infinity
-        inf * 50%                                0.5 infinity                         infinity
-        inf - 50%                                0.5 infinity                         infinity
-        inf - 500000000000000000                 1 infinity - 500000000000000000      infinity
-        inf + 7                                  1 infinity + 7                       infinity
-        (inf - 5) * 8                            8 infinity - 40                      infinity
-        (inf + 6) / 4                            0.25 infinity + 1.5                  infinity
-        inf * -1                                 -1 infinity                          infinity
-        inf + inf - inf                          1 infinity                           infinity
-        x = x - 1, a thousand times              1 infinity - 1000                    infinity
+        satellite.infinity()                     (infinity)                           infinity
+        inf + inf                                (2 infinity)                         infinity
+        inf * 50%                                (0.5 infinity)                       infinity
+        inf - 50%                                (0.5 infinity)                       infinity
+        inf - 500000000000000000                 (infinity, -500000000000000000)      infinity
+        inf + 7                                  (infinity, +7)                       infinity
+        (inf - 5) * 8                            (8 infinity, -40)                    infinity
+        (inf + 6) / 4                            (0.25 infinity, +1.5)                infinity
+        inf * -1                                 (-infinity)                          infinity
+        inf + inf - inf                          (infinity)                           infinity
+        x = x - 1, a thousand times              (infinity, -1000)                    infinity
         (inf - 1) - 1 == inf - 2                 true
         inf > 10 ^ 100                           true
         inf - 10 ^ 200 > 10 ^ 300                true
@@ -401,11 +447,11 @@ built by the rule from the two terms `1 infinity^2` and `-1 infinity`.
         inf * -1 < 5                             true
         inf * -1 < 0 - 10 ^ 300                  true
 
-**`*` and `/` by a number scale every count**: `(inf - 5) * 8` is `8 infinity - 40`.
+**`*` and `/` by a number scale every count**: `(inf - 5) * 8` is `(8 infinity, -40)`.
 That is *"something * 8 … we simply ADD the * 8 onto the power object"*, and the `x8`
 lives in the count. It is also why `p + p` and `p * 2` are one value.
 
-`inf - 50%` is `0.5 infinity` because 004's percentage is percent-**of** (checked:
+`inf - 50%` is `(0.5 infinity)` because 004's percentage is percent-**of** (checked:
 `10 - 50%` prints `5`). That is M11's `infinityx0.5`, displayed the new way.
 
 ## Why the width no longer matters — the first idea of message five, computed
@@ -430,7 +476,7 @@ true. The first version's fold hit the same wall sooner: its `infinity -
 ## The register combines like terms
 
 *"we are just adding or subtracting from registers"*, *"keeping track of how much is
-attached"*: an amount, not a log. `x = x - 1` a thousand times is `1 infinity - 1000`,
+attached"*: an amount, not a log. `x = x - 1` a thousand times is `(infinity, -1000)`,
 one term, and `(inf - 1) - 1 == inf - 2` is true. A log of every number typed would
 make that `false`, and would grow by one entry on every pass of a loop: at 88 bytes a
 `satelliteObject` (measured), 10^6 passes is 84 MiB (arithmetic, not a run). Q8.
@@ -438,11 +484,11 @@ make that `false`, and would grow by one entry on every pass of a loop: at 88 by
 ## Dividing, and a count that never ends
 
     DIVIDING
-        inf / 4                                  0.25 infinity                        infinity
+        inf / 4                                  (0.25 infinity)                      infinity
         inf / 3                                  ERROR: a count of 1/3 never ends; cut, it would be wrong by an infinite amount
         (inf * 3 + 1) / 3                        ERROR: a count of 1/3 never ends; cut, it would be wrong by an infinite amount
         inf / 10 ^ 200                           ERROR: a count needs 200 places, more than arguments.infinity (128)
-        (inf * inf - 1) / (inf - 1)              1 infinity + 1                       infinity
+        (inf * inf - 1) / (inf - 1)              (infinity, +1)                       infinity
         5 / inf                                  ERROR: the answer has a part infinitely small; no type holds it before INF-8
 
 **A count that never ends is refused, never cut**, and the reason is computed:
@@ -454,19 +500,19 @@ A finite float cut at 128 places is wrong by 10^-128. An infinity's count cut th
 wrong by 10^-128 **infinities**, and that is still infinite (Q3). The plain attached
 term follows the same rule, so `(inf * 3 + 1) / 3` is refused for its `1/3` too.
 
-**Division inside an infinity is exact** — `(inf + 6) / 4` carries `+ 1.5` — while
+**Division inside an infinity is exact** — `(inf + 6) / 4` carries `+1.5` — while
 004's `/` between two plain numbers is whole-number division (`6 / 4` prints `1`). An
 infinity is not a whole number, and its register is exact. **Dividing by a sum** works
 when every exponent is finite and it divides exactly: `(inf * inf - 1) / (inf - 1)` is
-`1 infinity + 1` (Q32). Dividing a number by an infinity leaves something infinitely
+`(infinity, +1)` (Q32). Dividing a number by an infinity leaves something infinitely
 small — below every positive number and above 0 — and no type holds that until INF-8
 (message nine).
 
 ## A rounded percentage going in
 
     A ROUNDED PERCENTAGE GOING IN (satl prints 100% / 3 as 33.33333333333333333333333333333333%)
-        inf * (100% / 3)                         0.3333333333333333333333333333333333 infinity infinity
-        inf * (100% / 3) * 3 - inf               -0.0000000000000000000000000000000001 infinity infinity
+        inf * (100% / 3)                         (0.3333333333333333333333333333333333 infinity) infinity
+        inf * (100% / 3) * 3 - inf               (-0.0000000000000000000000000000000001 infinity) infinity
 
 004's percentage rounds every answer half away from zero at 10^-32 percent
 (`satellite_percentage::rounded_divide`). So `100% / 3` is a decimal that ends, and
@@ -487,7 +533,7 @@ same way.
         (inf + 6) / 4 - inf / 4                  1.5                                  number
 
 M11: the infinity carries its x2 *"unless it goes away or causes an error"*. Every
-infinity is the same unit — that is why `inf + inf` is exactly `2 infinity` — so *flip
+infinity is the same unit — that is why `inf + inf` is exactly `(2 infinity)` — so *flip
 the sign and add* makes `inf - inf` exactly 0. **The name keeps what is left**, a
 plain number: the author's *"a different type of object UNDER the same name"*, run the
 other way, and it is the author's 09-16 ruling at work: *"we answer what we can, and
@@ -521,7 +567,7 @@ hex"*, and an infinity has no digits to turn round.
 ## Do humans already have a number greater than infinity? (message six)
 
 **Yes.** Georg Cantor wrote the infinity as ω, in the 1880s, and counted past it.
-`inf * inf` is his ω², and `1 infinity-1` is his ω^ω. The arithmetic below is John
+`inf * inf` is his ω², and `(infinity-1)` is his ω^ω. The arithmetic below is John
 Conway's (the surreal numbers, 1970s), written in Cantor's normal form: it is
 commutative, it subtracts, and its counts can be fractions. That is why `infinity - 5`
 exists here, which in Cantor's own ordinal arithmetic it does not. Mathematicians
@@ -537,8 +583,8 @@ useful — it names "this never ends" — and each rung above names a stronger k
 never ending. They are for measuring, not for counting up to:
 
     WHAT THEY ARE FOR: which grows faster, with n put in as infinity
-        1000 * n * n + n                         1000 infinity^2 + 1 infinity         power
-        0.001 * n * n * n                        0.001 infinity^3                     power
+        1000 * n * n + n                         (1000 infinity^2, +infinity)         power
+        0.001 * n * n * n                        (0.001 infinity^3)                   power
         the second is larger in the end          true
         (n * n + 1) / (n * n - n)                ERROR: does not divide exactly: the answer is an endless series of infinitely small parts
 
@@ -547,7 +593,7 @@ never ending. They are for measuring, not for counting up to:
   done without estimating (G. H. Hardy, *Orders of Infinity*, 1910).
 - **Proving a program stops.** Give each pass of a loop a number that shrinks; if it
   always shrinks, the loop ends — even when the number is infinity-sized, as for a
-  loop inside a loop (`1 infinity * outer + inner`). The ACL2 theorem prover, used to
+  loop inside a loop (`infinity * outer + inner`). The ACL2 theorem prover, used to
   check AMD's chip arithmetic, proves termination with exactly these numbers, written
   in exactly this normal form. satellite's numbers with whole, positive counts are
   ordered the same way. For QUAD AI reading code, this is the use that matters most.
@@ -560,70 +606,69 @@ never ending. They are for measuring, not for counting up to:
 tail of infinitely small parts. With infinitely small numbers (INF-8, *".power(-infinity)"*)
 and a rule for where to cut such a tail (Q34), satellite could compute a limit
 exactly, as calculus does. Message nine's other uses already work: `.power(infinity *
-infinity)` does the math in the parentheses first (`1 infinity^(1 infinity^2)`, a sat),
+infinity)` does the math in the parentheses first (`(infinity^(infinity^2))`, a sat),
 and `.power(infinity).power(infinity)` is the same number.
 
 ## `infinity * infinity`, and the author's own example
 
     THE POWER (infinity-1)
-        inf * inf                                1 infinity^2                         power
-        inf * inf * inf                          1 infinity^3                         power
-        inf.power_of(2) - inf                    1 infinity^2 - 1 infinity            power
-        inf.power_of(100000)                     1 infinity^100000                    power
-        inf.power_of(inf)                        1 infinity-1                         power
-        satellite.infinity(satellite.infinity()) 1 infinity-1                         power
-        satellite.infinity(2)                    1 infinity^2                         power
-        p + p                                    2 infinity-1                         power
-        p * 8                                    8 infinity-1                         power
-        p - inf                                  1 infinity-1 - 1 infinity            power
-        p - inf + 5                              1 infinity-1 - 1 infinity + 5        power
-        p * p                                    1 infinity^(2 infinity)              power
-        p / inf                                  1 infinity^(1 infinity - 1)          power
-        inf.power_of(inf + 1)                    1 infinity^(1 infinity + 1)          power
-        (inf * inf).power_of(inf)                1 infinity^(2 infinity)              power
+        inf * inf                                (infinity^2)                         power
+        inf * inf * inf                          (infinity^3)                         power
+        inf.power_of(2) - inf                    (infinity^2, -infinity)              power
+        inf.power_of(100000)                     (infinity^100000)                    power
+        inf.power_of(inf)                        (infinity-1)                         power
+        satellite.infinity(satellite.infinity()) (infinity-1)                         power
+        satellite.infinity(2)                    (infinity^2)                         power
+        p + p                                    (2 infinity-1)                       power
+        p * 8                                    (8 infinity-1)                       power
+        p - inf                                  (infinity-1, -infinity)              power
+        p - inf + 5                              (infinity-1, -infinity, +5)          power
+        p * p                                    (infinity^(2 infinity))              power
+        p / inf                                  (infinity^(infinity, -1))            power
+        inf.power_of(inf + 1)                    (infinity^(infinity, +1))            power
+        (inf * inf).power_of(inf)                (infinity^(2 infinity))              power
         (inf + 5).power_of(inf)                  ERROR: a sum raised to an infinite or non-whole power is an endless series
         (inf + inf).power_of(inf)                ERROR: a count other than 1 (2) raised to an infinite or non-whole power is not built
         inf.power_of(-1)                         ERROR: a negative exponent is infinitely small; no type holds it before INF-8
-        inf.power_of(50%)                        ERROR: an exponent of 0.5 lies between the numbers and 1 infinity; no type holds it before INF-8
-        (inf * inf).power_of(50%)                1 infinity                           infinity
-        inf.power_of(150%)                       1 infinity^1.5                       power
-        inf.power_of(150%) / inf                 ERROR: an exponent of 0.5 lies between the numbers and 1 infinity; no type holds it before INF-8
+        inf.power_of(50%)                        ERROR: an exponent of 0.5 lies between the numbers and one infinity; no type holds it before INF-8
+        (inf * inf).power_of(50%)                (infinity)                           infinity
+        inf.power_of(150%)                       (infinity^1.5)                       power
+        inf.power_of(150%) / inf                 ERROR: an exponent of 0.5 lies between the numbers and one infinity; no type holds it before INF-8
         2.power_of(inf)                          ERROR: 2 to an infinite power has no type
         p > inf * 10 ^ 100                       true
         inf * inf * inf < p                      true
         1000 * p < p * p                         true
         p - inf < p + 5                          true
         p * -1 < inf                             true
-        my_inf = my_inf * my_inf, 99 times       1 infinity^633825300114114700748351602688 power
+        my_inf = my_inf * my_inf, 99 times       (infinity^633825300114114700748351602688) power
         ... and that is still < p                true
 
 (`p` is `inf.power_of(inf)`.) **Multiplying infinities adds their exponents.**
-Message six asks what `infinity * infinity * infinity` equals: `1 infinity^3`, which
-is bigger than any count of infinities and smaller than `1 infinity-1`. The display
-needs the `^3`, because `1 infinity-1` is a different, larger number (Q5). Message six's
+Message six asks what `infinity * infinity * infinity` equals: `(infinity^3)`, which
+is bigger than any count of infinities and smaller than `(infinity-1)`. The display
+needs the `^3`, because `(infinity-1)` is a different, larger number (Q5). Message six's
 display example uses `**` instead (`my_number ** my_number ** my_number`), and that
-one is `1 infinity-2`, the *"1 sat"* he expected. Q4 asks which he meant in the first
+one is `(infinity-2)`, the *"1 sat"* he expected. Q4 asks which he meant in the first
 sentence.
 
 *"infinity to the power of 2 - 1 infinity = a container of 2 things -- a power object
 and a negative infinity"* is the third row exactly: the first term is the power, and
-the register holds `-1 infinity`.
+the register holds `(-infinity)`.
 
-**`1 infinity-1` is `infinity.power_of(infinity)`**: *"dual 0.9999999999..9999
+**`(infinity-1)` is `infinity.power_of(infinity)`**: *"dual 0.9999999999..9999
 infinities -- it's two separate infinities"*, a base and an exponent. *"1 power + 1
-power = 1.9999999999999 power"* is `2 infinity-1`, whose nines are `1.999…9` (Part 9).
+power = 1.9999999999999 power"* is `(2 infinity-1)`, whose nines are `1.999…9` (Part 9).
 *"you add an infinity to the power object and give it a negative sign"* is `p - inf`.
 
 **`satellite.infinity(x)` is infinity ** x** — message eight's way to ask for a
 number: *"satellite.variable.infinity my_number = satellite.infinity(infinity) =
-displayed as 1 infinity-1 (1 power_object)"*. `satellite.infinity()` is `1 infinity`,
-`satellite.infinity(2)` is `1 infinity^2`, and each nesting climbs one rung:
-`satellite.infinity(satellite.infinity(satellite.infinity()))` is `1 infinity-2`. It is
+displayed as 1 infinity-1 (1 power_object)"*. `satellite.infinity()` is `(infinity)`,
+`satellite.infinity(2)` is `(infinity^2)`, and each nesting climbs one rung:
+`satellite.infinity(satellite.infinity(satellite.infinity()))` is `(infinity-2)`. It is
 Cantor's own ω^x, the function every number in this Part is built from. Q27a.
 
-**Message eight's loop** — `my_inf = my_inf * my_inf`, 99 times — ends at `1
-infinity^633825300114114700748351602688`: the exponent doubles each pass, to 2^99. It
-is **still smaller than `1 infinity-1`**. Every pass adds a finite amount to the
+**Message eight's loop** — `my_inf = my_inf * my_inf`, 99 times — ends at `(infinity^633825300114114700748351602688)`: the exponent doubles each pass, to 2^99. It
+is **still smaller than `(infinity-1)`**. Every pass adds a finite amount to the
 exponent, so no loop of any length reaches infinity ** infinity. That is the whole
 reason each rung needs a new operation, and Part 11 needs a new symbol.
 
@@ -631,33 +676,33 @@ reason each rung needs a new operation, and Part 11 needs a new symbol.
 
 *"we maintain what is attached to it"* holds for every exact operation after a
 promotion (`p - inf`, `p * 8`). It cannot hold INSIDE the promotion. Keeping the `+5`
-attached would answer `1 infinity-1 + 5`, but:
+attached would answer `(infinity-1, +5)`, but:
 
     CHECKS
         (x + 5)^x / x^x at x = 10^6: 148.4113   (e^5 = 148.4132)
 
 The true value is about 148 powers, not one power plus 5, so any comparison against
-`2 infinity-1` would come out the wrong way round. A wrong number cannot be taken
+`(2 infinity-1)` would come out the wrong way round. A wrong number cannot be taken
 back; an ERROR can (Q7). **An answer with an exponent that is negative, or between 0
 and 1, is refused** — judged on the answer, at every depth, so `(inf * inf).power_of(50%)`
-is `1 infinity`, while `inf.power_of(50%)` and `inf.power_of(150%) / inf` are refused.
-No type sits between the numbers and `1 infinity`, and none below the numbers, until
+is `(infinity)`, while `inf.power_of(50%)` and `inf.power_of(150%) / inf` are refused.
+No type sits between the numbers and `(infinity)`, and none below the numbers, until
 INF-8 builds them (Q33, Q34).
 
 ## Sat and above: the type is how high the exponent tower goes
 
     SAT AND ABOVE
-        inf ** inf ** inf  (right to left)       1 infinity-2                         sat
-        (inf ** inf) ** inf                      1 infinity^(1 infinity^2)            sat
-        satellite.sat()                          1 infinity-2                         sat
-        p.power_of(p)                            1 infinity^(1 infinity^(1 infinity + 1)) sat
-        inf ** inf ** inf ** inf                 1 infinity-3                         asat
-        satellite.asat()                         1 infinity-3                         asat
-        satellite.sat() + satellite.power()      1 infinity-2 + 1 infinity-1          sat
-        satellite.sat() - 1                      1 infinity-2 - 1                     sat
-        satellite.sat().power_of(inf)            1 infinity^(1 infinity^(1 infinity + 1)) sat
-        satellite.sat().power_of(satellite.sat()) 1 infinity^(1 infinity^(1 infinity-1 + 1 infinity)) asat
-        x = inf.power_of(x), 300 passes from inf 1 infinity-300                       klsat
+        inf ** inf ** inf  (right to left)       (infinity-2)                         sat
+        (inf ** inf) ** inf                      (infinity^(infinity^2))              sat
+        satellite.sat()                          (infinity-2)                         sat
+        p.power_of(p)                            (infinity^(infinity^(infinity, +1))) sat
+        inf ** inf ** inf ** inf                 (infinity-3)                         asat
+        satellite.asat()                         (infinity-3)                         asat
+        satellite.sat() + satellite.power()      (infinity-2, +infinity-1)            sat
+        satellite.sat() - 1                      (infinity-2, -1)                     sat
+        satellite.sat().power_of(inf)            (infinity^(infinity^(infinity, +1))) sat
+        satellite.sat().power_of(satellite.sat()) (infinity^(infinity^(infinity-1, +infinity))) asat
+        x = inf.power_of(x), 300 passes from inf (infinity-300)                       klsat
         satellite.sat() > 10 ^ 6 * inf.power_of(inf * 10 ^ 6) true
         satellite.zsat() < satellite.aasat()     true
 
@@ -666,8 +711,8 @@ infinity. A finite exponent above 1, or an exponent of rank 0, is rank 1, a powe
 exponent of rank k is rank k+1. **Rank k is shown `infinity-k`**, and the canonical
 `infinity-k` is a tower of k+1 infinities: `infinity-1` is inf^inf, `infinity-2`
 is inf^inf^inf, `infinity-3` is inf^inf^inf^inf. Three hundred passes of `x =
-inf.power_of(x)` from `x = inf` build a tower of 301, which is `1 infinity-300`, a
-klsat. The author's `my_number ** my_number ** my_number` is `1 infinity-2`. It reads
+inf.power_of(x)` from `x = inf` build a tower of 301, which is `(infinity-300)`, a
+klsat. The author's `my_number ** my_number ** my_number` is `(infinity-2)`. It reads
 right to left, as 004's `^` already does: `2 ^ 3 ^ 2` prints `512`, checked.
 
 **Why this reading, and not the other.** *"TREAT THE POWERS THE SAME WAY YOU TREATED
@@ -691,11 +736,11 @@ The second is built (Q4). It overrules the first reading of *"MORE power just be
 adding an infinity onto value"*: under it, the third infinity in a tower makes a sat,
 not more power. Three consequences for the author:
 
-- **`infinity-1 ** infinity` is a sat**, `1 infinity^(1 infinity^2)`. That answers the
+- **`infinity-1 ** infinity` is a sat**, `(infinity^(infinity^2))`. That answers the
   question message five left open: *"we just have to figure out exactly how to write
   the code to add and do power.to_the_power_of(infinity)"*. But **`infinity^k **
-  infinity` is still a power**: `(inf * inf).power_of(inf)` is `1 infinity^(2
-  infinity)`. `** infinity` climbs from infinity, and from a power whose exponent is
+  infinity` is still a power**: `(inf * inf).power_of(inf)` is
+  `(infinity^(2 infinity))`. `** infinity` climbs from infinity, and from a power whose exponent is
   infinite, and not from a sat.
 - **`L.power_of(L)` climbs exactly one level at every level**: infinity → power → sat
   → asat.
@@ -742,11 +787,11 @@ stay where a minus sign cannot go: in a word and in a folder name. *"2 infinity-
 also in message six, gave way to the author's own numbers in the same breath (*"let's
 use this for displaying the numbers: "infinity-1""*).
 
-**A level's dash touches; a minus has a space on both sides.** `1 infinity-1` is a
-power, and `1 infinity - 1` is one infinity minus one. 004 already requires the space:
-*"every math operation is written with a space on both sides"* (S110, checked on `2
-** 3`). If `.nines()` or anything else ever reads a display back, it reads by this
-rule (Q5).
+**A level's dash touches its word; an attached number follows a comma with its own
+sign.** `(infinity-1)` is a power, and `(infinity, -1)` is one infinity minus one, so
+the two never meet on the screen (Q5). In a program the minus is spaced, as every
+math operation in 004 already must be (*"every math operation is written with a space
+on both sides"*, S110, checked on `2 ** 3`).
 
     NAMES AND FOLDERS
         infinity      satellite.variable.infinity satellite.infinity() /infinity/infinity.satl
@@ -916,20 +961,45 @@ level's own methods. Each file is checked equal to the C++ through the oracle.
 
 # Part 8 — display
 
-    1 infinity                        satellite.infinity()
-    2 infinity                        infinity + infinity
-    0.5 infinity                      infinity * 50%
-    1 infinity - 500000000000000000   the register, combined
-    -1 infinity                       the sign
-    1 infinity^3                      between the named rungs, the exponent is shown (Q5)
-    1 infinity-1                      a power
-    2 infinity-1                      1 power + 1 power
-    1 infinity-2 + 1 infinity-1       a sat with a power attached
+Message ten: *"we will keep it in parentheses for display, so we know that is a single
+number ... when we get into infinities and powers and everything, it is still just
+adding sets of parentheses"*, and *"I dunno, just make it look nice"*.
 
-**The count always prints, even when it is 1** (message six: *"1 infinity" "2
-infinity"*). A count prints as its exact decimal. It never needs cutting, because a
-count that never ends is refused (Part 3). `arguments.infinity_display` (32) sets how
-many digits `.nines()` shows, and how many a float shows.
+    (infinity)                              satellite.infinity()
+    (2 infinity)                            infinity + infinity
+    (0.5 infinity)                          infinity * 50%
+    (infinity, -500000000000000000)         the register: every attached number with its sign
+    (infinity, +7)                          a plus sign shows too
+    (infinity, +1)                          a plain 1 prints
+    (-infinity)                             the first term shows a sign only when negative
+    (-infinity-1)                           a negative power: minus (infinity-1), not (-infinity, -1)
+    (infinity^3)                            between the named rungs, the exponent is shown (Q5)
+    (infinity-1)                            a power
+    (2 infinity-1)                          1 power + 1 power
+    (infinity-2, +infinity-1)               a sat with a power attached
+    (infinity^(infinity, +1))               an exponent in the family is its own parentheses
+    0                                       what an infinity leaves when it goes away: bare
+
+**His rules:** one number is one set of parentheses, and every attached number carries
+its sign — *"we keep track of whether that number is positive or negative"*.
+
+**This file's, under his *"just make it look nice"*:**
+
+- the first term shows its sign only when it is negative: `(infinity, -500000000000000)`,
+  his own example, has none;
+- **a count of 1 in front of an infinity is not printed** — message ten writes
+  `(infinity, -500000000000000)` where message six wrote `1 infinity`, and the later
+  message decides — but a plain number prints whatever it is, 1 included. A negative
+  power is then `(-infinity-1)`, which reads differently from `(-infinity, -1)`,
+  minus infinity minus one, only by the comma (Q36);
+- **an exponent in the family is shown in its own parentheses**, `(infinity^(infinity,
+  +1))`. That is this file's reading of *"it is still just adding sets of
+  parentheses"*; his example straight after it, `(infinity.infinity, +90440393845)`,
+  has one set (Q5);
+- a plain number shows bare, so parentheses always mean the family;
+- every number inside the parentheses prints exactly, all its places — a count and a
+  plain term are exact by construction — while a float on its own shows
+  `arguments.infinity_display` (32) places (Q43). `.nines()` shows 32 too.
 
 **Cut or round is the author's, and it splits in two.** M11 records his words:
 *"displayed as a rounded thing... we round to 32 digits"*. **The nines view is cut**
@@ -1004,6 +1074,97 @@ built: it would set a width no answer depends on, and the author set 128 by hand
 (Q15). The first version's measurement still stands for anyone who builds it: time a
 MULTIPLY, never an add, because add is linear and multiply quadratic.
 
+## `arguments.infinity.counter` and the SATELLITE INFINITY WARNING
+
+Message ten: *"when using the variable satellite.variable.infinity, we have to warn the
+user after so many operations, we pause the interpreter and remind them after so many
+operations... let's call it, 999,999,999 after that many operations on the same
+object"*. **The row is built** (`95d00ca`): `arguments.infinity.counter`, 999,999,999,
+the author's own dotted name (`arguments.memory` and `arguments.memory.total` are
+already two rows). Nothing reads it yet.
+
+**The rule, in his words and then exactly:**
+
+- **Which objects.** *"when using the variable satellite.variable.infinity"*, and
+  *"this applies to anything that never reaches the next object type"*. **Every name
+  holding a value of the family has a counter** — a name declared with any tower word
+  (Q24), not only `satellite.variable.infinity`. A plain number has none: when an
+  infinity goes away the counter goes with it, and a name holding `0` is never told it
+  will not reach infinity. A value with no name (half of a longer expression) has none,
+  because the warning names the object (Q40).
+- **What counts.** *"we just increase the counter every time it is used, then when it's
+  full, it counts everytime the object is NOT destroyed ONLY"*, and *"does that many
+  calculations WITH that object"*. **One calculation the object survives adds 1**:
+  `+ - * /` or `.power_of()` with the object as an operand, where the answer goes
+  somewhere else (`y = x + 1`) or comes back into the object with the same type (`x = x
+  + 1`). `x * x` is one calculation, not two. Comparing (`x > 5`) and displaying
+  (`satellite.console.display(x)`) are not calculations and do not count, although his
+  *"every time it is used"* could take them in (Q39).
+- **What destroys it.** *"if the object is destroyed and turned into a different class
+  object, then the counter is destroyed with it"*. An answer of a **different type**
+  coming back into the object — infinity → power, or the plain number left when it goes
+  away — ends the object and its counter. A new type starts a new counter at 0.
+- **What happens.** *"display the warning, then reset the counter to 0"*. At
+  `arguments.infinity.counter` the warning is printed and the count starts again. His
+  *"we pause the interpreter"* is kept: **satl waits for Enter when it is at a
+  terminal** (stdin and stderr both a terminal), and prints and goes on otherwise, so a
+  program run from a pipe or a script never hangs (Q37). It goes to stderr, with satl's
+  other reports, so a program's own output is not broken into (Q38).
+
+**His example is the case it is for:** *"so my_inf = my_inf * my_inf never reaches two
+infinities"*. His "two infinities" is message five's power, *"two separate
+infinities"* — `(infinity-1)` — and the loop never reaches it (Part 4: after 99 passes it
+is still below it). **But the loop's first pass does change the type.** Message five
+calls infinity to the power of 2 *"a power object"*, and so does Part 4: `(infinity^2)`
+is a power. So pass 1 destroys the counter, and from then on every pass stays a power
+and never reaches a sat, the next type. With the row set to 3 so the trace is short:
+
+    THE COUNTER: arguments.infinity.counter set to 3, my_inf = my_inf * my_inf
+        pass 1   power    (infinity^2)                     destroyed, counter 0
+        pass 2   power    (infinity^4)                     counter 1
+        pass 3   power    (infinity^8)                     counter 2
+        pass 4   power    (infinity^16)                    WARNING, counter 0
+        pass 5   power    (infinity^32)                    counter 1
+        pass 6   power    (infinity^64)                    counter 2
+        pass 7   power    (infinity^128)                   WARNING, counter 0
+        pass 8   power    (infinity^256)                   counter 1
+        the other reading (Q42), the type changes only at a named rung: warnings at passes [3, 6]
+        y = x + 1          x is infinity counter 1
+        y = x + 1          x is infinity counter 2
+        x = x.power_of(x)  x is power    destroyed, counter 0
+        y = x * 2          x is power    counter 1
+        y = x * 2          x is power    counter 2
+        y = x * 2          x is power    WARNING, counter 0
+        x = x - x          x is number   destroyed; a plain number has no counter
+        y = x + 1          x is number   a plain number: no counter
+
+The other reading — the type changes only at a named rung, so `(infinity^2)` is not yet
+new — warns one pass sooner, at 3 and 6 (Q42). In the second trace `y = x + 1` counts
+for `x` though `x` is not changed, `x = x.power_of(x)` destroys the counter, and once
+`x = x - x` leaves a plain number there is no counter at all.
+
+**The warning**, from the oracle, eighty columns (the rules are exactly 80 dashes, as in
+the SATELLITE CRITICAL ERROR REPORT, `critical_report.hpp`):
+
+    --------------------------------------------------------------------------------
+                               SATELLITE INFINITY WARNING
+    --------------------------------------------------------------------------------
+
+                                    OBJECT: "my_inf"
+                               WILL NEVER REACH INFINITY
+
+    --------------------------------------------------------------------------------
+
+One empty line before it and one after. His drawing gives the first as *"(one empty
+line here)"* and the last as *"(one space here)"*; the last is read as an empty line
+too, not a line holding one space (Q40b). The title is centered, as he marked it. **The
+other two lines are centered too**: he marked only the title *"(centered)"* and set the
+other two by hand, 23 and 19 spaces in, where centered is 29–32 and 27 (Q40a). The
+wording is his: *"WILL NEVER REACH INFINITY"*. In his usage "reach infinity" is reaching
+the next rung — message nine asks of the same loop, which starts at infinity, *"does
+my_number = my_number * my_number ever reach infinity? No! it doesn't!"* — so the words
+stand as written (Q41).
+
 ---
 
 # Part 10 — the float
@@ -1063,6 +1224,10 @@ one reading of it, and the questions to settle first.
 - Message eight, later, gives the alternation as a sequence: *"infinity-1 for power,
   infinity-infinity then infinity.infinity-1 then infinity.infinity-infinity, then
   infinity.infinity.infinity-1"*.
+
+Message ten shows how such a number is displayed: *"(infinity.infinity,
++90440393845)"* — one set of parentheses, the attached number with its sign, the same
+as every number in Part 8.
 
 ## One reading of message eight's sequence
 
@@ -1142,10 +1307,10 @@ is always one more symbol"**, never as one system that finishes the job.
 | **Q1** | A count held exact with its nines derived ((C): count 2 shows `1.999…99`), or the nines as the count ((A): `1.999…98`, message one)? Under (A), `inf * 50% * 2 == inf` is false. | **(C)** |
 | **Q2** | `inf - inf`, `(inf + 5) - inf`, `inf / inf`, `inf * 0`: the number that is left (`0`, `5`, `1`, `0`), or an ERROR, as the first version had it on M11's summary "an ERROR, never a guess"? | **the number that is left** — 09-16: *"we answer what we can"*; M11: *"unless it goes away"* |
 | **Q3** | `inf / 3`: refused, or a count held as an exact fraction and shown cut? (Cutting the count is ruled out: wrong by an infinite amount.) | **refused** |
-| **Q4** | The type is how high the exponent tower goes, so `inf ** inf ** inf` is `1 infinity-2` and every sat beats every power — overruling the reading of *"MORE power just becomes adding an infinity onto value"* that keeps a taller tower a power? And did message six's *"infinity * infinity * infinity"* mean `**`? (`*` gives `1 infinity^3`; `**` gives `1 infinity-2`, his "1 sat".) | **yes** — message six's `**` example |
-| **Q5** | Between the named rungs, show the exponent (`1 infinity^3`, `1 infinity^(2 infinity)`), with a level's dash touching and a minus spaced? | **yes** |
+| **Q4** | The type is how high the exponent tower goes, so `inf ** inf ** inf` is `(infinity-2)` and every sat beats every power — overruling the reading of *"MORE power just becomes adding an infinity onto value"* that keeps a taller tower a power? And did message six's *"infinity * infinity * infinity"* mean `**`? (`*` gives `(infinity^3)`; `**` gives `(infinity-2)`, his "1 sat".) | **yes** — message six's `**` example |
+| **Q5** | Between the named rungs, show the exponent (`(infinity^3)`, `(infinity^(2 infinity))`), and an exponent in the family in its own parentheses, as this file reads *"it is still just adding sets of parentheses"* (his example after it, `(infinity.infinity, +90440393845)`, has one set)? | **yes, nested** |
 | **Q6** | `**` as a second spelling of `^` (09-16's ruling that power is `^` stands), right to left, and accepted in a `for` step too (M20.A's open question)? | **yes** |
-| **Q7** | `(inf + 5).power_of(inf)`: an ERROR, rather than keeping the `+ 5` attached (a wrong number)? | **ERROR** |
+| **Q7** | `(inf + 5).power_of(inf)`: an ERROR, rather than keeping the `+5` attached (a wrong number)? | **ERROR** |
 | **Q8** | The register as an amount per unit (combined), not a log of every number typed? | **combined** |
 | **Q9** | `.power_of()` answers a new value (`x = x.power_of(x)` turns `x` into a power); it does not change `x` by itself? | **a new value** |
 | **Q10** | After azsat: basat (spreadsheet), or aaasat (an a-run)? | **basat** |
@@ -1172,15 +1337,29 @@ is always one more symbol"**, never as one system that finishes the job.
 | **Q29** | The SAT track: where the installed `/infinity/` library lives, and which lettered files the repo carries? | **every level the author named; location open** |
 | **Q30** | A float's `.reverse().reverse()` read from the chain (red note 9's default (a)), so `y = x.reverse(); y.reverse()` is `12.34`? | **yes** |
 | **Q31** | `.resize(n)` sets that infinity's nines width only, or also the most places its counts may have? | **nines width only** |
-| **Q32** | Divide by a sum when every exponent is finite and it divides exactly (`(inf * inf - 1) / (inf - 1)` is `1 infinity + 1`)? | **yes** |
+| **Q32** | Divide by a sum when every exponent is finite and it divides exactly (`(inf * inf - 1) / (inf - 1)` is `(infinity, +1)`)? | **yes** |
 | **Q33** | Until INF-8, refuse any answer with an exponent that is negative or between 0 and 1, judged on the answer at every depth? | **yes** |
-| **Q34** | INF-8, from message nine's *".power(-infinity)"*: build the infinitely small numbers? What are they called and shown as (`5 infinity^-1`?), is `infinity^0.5` one of them, and where is an endless series (`(n * n + 1) / (n * n - n)`) cut — after how many terms, or at what exponent? | **build them, shown with `^`; the cut is his to set** |
+| **Q34** | INF-8, from message nine's *".power(-infinity)"*: build the infinitely small numbers? What are they called and shown as (`(5 infinity^-1)`?), is `infinity^0.5` one of them, and where is an endless series (`(n * n + 1) / (n * n - n)`) cut — after how many terms, or at what exponent? | **build them, shown with `^`; the cut is his to set** |
 | **Q35** | `.power(x)` (message nine) as a third spelling of `.power_of(x)`? | **yes** |
+| **Q36** | A count of 1 in front of an infinity is not printed — `(infinity, -500000000000000)` as message ten writes it, not `(1 infinity, …)` as message six's "1 infinity" would — so a negative power is `(-infinity-1)`, beside `(-infinity, -1)`? Or print the count when a sign touches a rung (`(-1 infinity-1)`)? | **not printed** |
+| **Q37** | *"we pause the interpreter and remind them"*: wait for Enter at a terminal and print-and-go-on otherwise; or always print and go on; or always wait (which hangs a program run from a pipe)? | **wait at a terminal only** |
+| **Q38** | *"we display a warning"*: to stderr, with satl's other reports, or to stdout, where `satellite.console.display` writes? | **stderr** |
+| **Q39** | What counts: one per calculation (`+ - * /`, `.power_of()`) the object survives — his *"does that many calculations WITH that object"* — or every use, comparing and displaying too — his *"every time it is used"*? And does *"then when it's full"* change when the survival test applies? | **one per calculation it survives** |
+| **Q40** | Which objects: every name holding a value of the family (*"anything that never reaches the next object type"*), or only names declared `satellite.variable.infinity` (*"when using the variable satellite.variable.infinity"*)? A plain number and a value with no name have none. | **every name holding the family** |
+| **Q40a** | The OBJECT and WILL NEVER lines centered like the title, or at his hand-set 23 and 19 spaces (only the title is marked *"(centered)"*)? | **centered** |
+| **Q40b** | The warning's last line, his *"(one space here)"*: an empty line, like his *"(one empty line here)"* at the top, or a line holding one space? | **an empty line** |
+| **Q41** | The wording *"WILL NEVER REACH INFINITY"* as he wrote it (his "reach infinity" is the next rung, message nine), or naming the rung (`WILL NEVER REACH INFINITY-2`)? | **his wording** |
+| **Q42** | For the counter, is `(infinity^2)` already the next type — a power, as message five's *"infinity to the power of 2 ... a power object"* says (his loop warns at passes 4 and 7 with the row at 3) — or does the type change only at a named rung (warnings at 3 and 6)? | **the power, per message five** |
+| **Q43** | Inside the parentheses every number prints exactly, all its places; a float on its own shows `arguments.infinity_display` places? | **yes** |
 
 **Not questions — decided by the author:** the width is 128 (`239cfae`); a sign as a
 bool (09-17); `satellite.infinity()` rather than `.new()`, and `satellite.aasat()` for
-the levels (message five); the display `1 infinity`, `2 infinity`, `1 infinity-1`
-(message six); `12.34.reverse()` is `34.12` and twice is `21.43` (red note 9).
+the levels (message five); the rungs shown as `infinity-1`, `infinity-2` (message six),
+and one number in one set of parentheses, every attached number with its sign
+(message ten); the warning's title and its two lines as he drew them, the 80-dash
+rules, the name in quotes, and `arguments.infinity.counter` at 999,999,999, reset to 0
+after each warning and destroyed with its object (message ten, the row built
+`95d00ca`) — where the warning goes, the pause, its layout and its last line are Q37–Q41; `12.34.reverse()` is `34.12` and twice is `21.43` (red note 9).
 
 ---
 
@@ -1209,7 +1388,7 @@ immutable term list. A count is an exact decimal in the float's shape, and each 
 carries a nines width. The comparator — the sign of the first term of `a - b` — is
 built here, whole, together with the checker rule for `satellite.variable.infinity`.
 The arm comment in `satellite_object.hpp` moves the float to 13 and hex to 14. *Done
-when* `satellite.console.display(satellite.infinity())` prints `1 infinity`;
+when* `satellite.console.display(satellite.infinity())` prints `(infinity)`;
 `satellite.infinity() > 10 ^ 100`, `5 < satellite.infinity()` and
 `satellite.infinity() == satellite.infinity()` are true; a `satellite.variable.number`
 name refuses an infinity; and `.reverse()` and `number(satellite.infinity())` are
@@ -1241,17 +1420,17 @@ recursing through C++ (Part 4). *Done when* the oracle's THE POWER table prints
 entire, and SAT AND ABOVE prints every row whose only family constructor is
 `satellite.infinity()`: `inf ** inf ** inf`, `(inf ** inf) ** inf`, `p.power_of(p)`,
 `inf ** inf ** inf ** inf`, and the 300-pass row. From `satellite.variable.infinity x
-= satellite.infinity()`, 300 passes of `x = satellite.infinity().power_of(x)` print `1
-infinity-300`, and **100,000 passes print `1 infinity-100000` rather than crashing**
+= satellite.infinity()`, 300 passes of `x = satellite.infinity().power_of(x)` print
+`(infinity-300)`, and **100,000 passes print `(infinity-100000)` rather than crashing**
 (the oracle is checked at 300; the C++ at 100,000). After `z = x.power_of(x)`, `x`
-still displays `1 infinity`.
+still displays `(infinity)`.
 
 **INF-6 — the family words.** The lexer pattern, the level token after each spelling,
 names ↔ rank in both directions, canonical units in constant memory, the
 `make_words.py` guard, and the checker rule for every tower word (Q24). *Done when* SAT
 AND ABOVE prints the rest — every row that names `satellite.power()`,
 `satellite.sat()` or a lettered level; `satellite.variable.aasat my_aasat = satellite.aasat()` displays
-`1 infinity-29`; a rank-10^40 constructor runs in the same time and memory as
+`(infinity-29)`; a rank-10^40 constructor runs in the same time and memory as
 `satellite.power()`; and a hand-typed row `1 6 18 satellite.variable.power` in
 `words_004.tsv` is refused.
 
@@ -1273,20 +1452,36 @@ be `…666` if Q17b says cut); the same program with `arguments.infinity` set to
 10 places; `4 / 3` still prints `1`; `2 ^ -1` prints `0.5` and `3 - 50%` prints `1.5`;
 and a touching `5/4` is still S210.
 
-**FLT-3 — floats inside an infinity.** *Done when* `inf * 0.5` prints `0.5 infinity`,
-`inf + 0.25` prints `1 infinity + 0.25`, and `(inf + 6) / 4 - inf / 4` prints `1.5`.
+**FLT-3 — floats inside an infinity.** *Done when* `inf * 0.5` prints `(0.5 infinity)`,
+`inf + 0.25` prints `(infinity, +0.25)`, and `(inf + 6) / 4 - inf / 4` prints `1.5`.
 
 **FLT-4 — a float's `.reverse()`** (red note 9). *Done when* `12.34.reverse()` is
 `34.12`, `12.34.reverse().reverse()` is `21.43`, and `y = 12.34.reverse();
 y.reverse()` is `12.34` (Q30).
 
 **INF-8 — the infinitely small numbers** (message nine, Q34). An exponent that is
-negative or between 0 and 1 stops being refused: `5 / inf` is `5 infinity^-1`, and
-`inf.power_of(inf * -1)` is `1 infinity^(-1 infinity)`, below every positive number and
+negative or between 0 and 1 stops being refused: `5 / inf` is `(5 infinity^-1)`, and
+`inf.power_of(inf * -1)` is `(infinity^(-infinity))`, below every positive number and
 above 0. They compare, add and multiply by the same rules, and a tower-declared name
-holds them. An endless series stays refused until Q34 sets where it is cut. *Done
+holds them. The oracle is extended first: its display checks for a named rung only when
+an exponent is at least 1, and an infinitely small value gets a type of its own, for the
+checker and for the counter (Q34 names it). An endless series stays refused until Q34
+sets where it is cut. *Done
 when* `5 / inf > 0`, `5 / inf < 1` and `inf.power_of(inf * -1) < 5 / inf` are true, and
-`(inf + 5) * (1 / inf)` prints `1 + 5 infinity^-1`.
+`(inf + 5) * (1 / inf)` prints `(1, +5 infinity^-1)`.
+
+**INF-9 — the counter and the SATELLITE INFINITY WARNING** (message ten). A counter in
+each variable's slot, beside the value and never inside it — the value is immutable
+and shared, and **nothing on the mutating path may hold a copy of a Value** — so one
+increment per calculation costs no copy. The warning is rendered beside
+`critical_report.hpp`, from its 80-column rule. *Done when*, with
+`arguments.infinity.counter` set to 3, the oracle's THE COUNTER trace happens: the
+warning for `my_inf` on stderr at passes 4 and 7 and at no other pass (none at pass 3,
+where it would come had pass 1 counted), byte for byte as `infinity_warning('my_inf')`
+returns it; in the second trace one warning, for `x`, on the third `y = x * 2`, and no
+counter once `x` is a plain number; at a terminal satl waits for Enter after the
+warning, and from a pipe it goes on (Q37); and at the default, 999,999,999, a short
+program prints no warning at all.
 
 **SAT-1 … SAT-6 — the author's `.satl` track**, after Q12. SAT-1 is M8 (the spacesuit
 grammar) with M35's supertype. SAT-2 lets a spacesuit answer `+ - * /` and
@@ -1297,7 +1492,8 @@ lettered levels generated from one template. Each is checked equal to the C++ th
 the oracle.
 
 **Order:** INF-0 → INF-1 → INF-2 → INF-3 → INF-4 → INF-5 → INF-6 → INF-7 is the
-infinity, and needs no float. INF-8 comes after INF-5, once Q34 is answered. FLT-1 →
+infinity, and needs no float. INF-8 comes after INF-5, once Q34 is answered. INF-9
+comes after INF-5, because its trace needs a promotion. FLT-1 →
 FLT-2 go any time after INF-2. FLT-3 needs FLT-2 and INF-3. FLT-4 needs FLT-1. The SAT
 track waits for Q12, and starts with M8 and M35. **Part 11 waits for Q16.**
 

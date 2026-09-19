@@ -16,24 +16,25 @@
 # count). The unit of a term is infinity to that exponent, and the exponent is
 # itself a value, so the definition is recursive:
 #
-#     5                      [(0, 5)]                       a plain number
-#     infinity               [(1, 1)]                       1 infinity
-#     infinity - 500         [(1, 1), (0, -500)]            the author's REGISTER is
-#                                                           every term after the first
-#     infinity.power_of(2)   [(2, 1)]                       1 infinity^2
-#     infinity.power_of(inf) [(infinity, 1)]                1 infinity-1, a power
+#     5                      [(0, 5)]                       5, a plain number
+#     infinity               [(1, 1)]                       (infinity)
+#     infinity - 500         [(1, 1), (0, -500)]            (infinity, -500): the author's
+#                                                           REGISTER is every term after the first
+#     infinity.power_of(2)   [(2, 1)]                       (infinity^2)
+#     infinity.power_of(inf) [(infinity, 1)]                (infinity-1), a power
 #
 # This is Conway's arithmetic of surreal numbers written in Cantor's normal form
 # (sums of count x infinity^exponent, commutative), not Cantor's ordinal arithmetic:
-# here 1 + infinity is `1 infinity + 1`, and infinity - 5 exists.
+# here 1 + infinity is `(infinity, +1)`, and infinity - 5 exists.
 #
 # The width (arguments.infinity, 128) never enters an answer. It bounds how many
 # decimal places a count may have, and it is how many nines `.nines()` shows.
 #
 # The normal form was written by the design panel of 2026-09-18 (its soundness
-# lens); the type read from exponent height is the panel judge's; the display
-# "1 infinity", "2 infinity", "1 infinity-1" is the author's (message six). Showing
-# the exponent between the named rungs (`1 infinity^3`) is this file's proposal (Q5).
+# lens); the type read from exponent height is the panel judge's; the rung names
+# `infinity-1`, `infinity-2` are the author's (message six), and one number in one set
+# of parentheses with every attached number signed is his (message ten). Showing the
+# exponent between the named rungs (`(infinity^3)`) is this file's proposal (Q5).
 #
 #     python3 satellite/satellite_variable_infinity/infinity_oracle.py
 
@@ -169,7 +170,7 @@ def checked(v):
             if sign(e) < 0:
                 raise SatError("a negative exponent is infinitely small; no type holds it before INF-8")
             if cmp(e, ONE) < 0:
-                raise SatError(f"an exponent of {display(e)} lies between the numbers and 1 infinity; no type holds it before INF-8")
+                raise SatError(f"an exponent of {display(e)} lies between the numbers and one infinity; no type holds it before INF-8")
             checked(e)
     return v
 
@@ -236,8 +237,15 @@ def path(r):
 
 
 # ---------------------------------------------------------------------------
-# DISPLAY. A level's dash TOUCHES (`infinity-1`); a minus has a space on both
-# sides (`infinity - 1`), as every math operation in 004 already must.
+# DISPLAY, the author's (message ten): one number is one set of parentheses -- he
+# likens it to how a python list is displayed -- `(infinity, -500000000000000)`,
+# `(infinity.infinity, +90440393845)`.
+# The first term shows a sign only when it is negative; every attached term shows its
+# own `+` or `-`; a count of 1 is not printed. An exponent that is itself in the family
+# is shown as its own parentheses ("it is still just adding sets of parentheses"). A
+# plain number -- what is left when an infinity goes away -- shows bare. A level's
+# dash touches its word (`infinity-1`), and an attached term's sign follows a comma,
+# so the two never meet.
 # ---------------------------------------------------------------------------
 def number_text(c):
     c = F(c)
@@ -255,17 +263,72 @@ def unit_text(e):
     r = rank(e)
     if r is not None and cmp(e, unit(r)) == 0:
         return f'infinity-{r + 1}'
-    inner = display(e)
-    return 'infinity^' + (inner if is_finite(e) else '(' + inner + ')')
+    return 'infinity^' + (number_text(finite_val(e)) if is_finite(e) else display(e))
+
+def term_text(e, c, first):
+    size = abs(c)
+    if e == ZERO:
+        body = number_text(size)
+    else:
+        body = unit_text(e) if size == 1 else f'{number_text(size)} {unit_text(e)}'
+    return ('-' if c < 0 else '') + body if first else ('-' if c < 0 else '+') + body
 
 def display(a):
     if not a:
         return '0'
-    parts = [(c < 0, number_text(abs(c)) if e == ZERO else f'{number_text(abs(c))} {unit_text(e)}') for e, c in a]
-    s = ('-' if parts[0][0] else '') + parts[0][1]
-    for negative, t in parts[1:]:
-        s += (' - ' if negative else ' + ') + t
-    return s
+    if is_finite(a):
+        return number_text(finite_val(a))            # a plain number shows bare
+    return '(' + ', '.join(term_text(e, c, k == 0) for k, (e, c) in enumerate(a)) + ')'
+
+
+# ---------------------------------------------------------------------------
+# THE INFINITY COUNTER AND ITS WARNING (message ten). Every calculation with an
+# infinity-family object that it SURVIVES -- the answer keeps its type -- adds 1 to
+# that object's counter. At arguments.infinity.counter (999,999,999) satl prints the
+# warning and sets the counter to 0. When the object is "destroyed and turned into a
+# different class object", the counter is destroyed with it.
+# ---------------------------------------------------------------------------
+WIDTH = 80
+
+def infinity_warning(name):
+    rule = '-' * WIDTH
+    def centered(s):
+        return ' ' * max(0, (WIDTH - len(s)) // 2) + s
+    return '\n'.join(['', rule, centered('SATELLITE INFINITY WARNING'), rule, '',
+                      centered(f'OBJECT: "{name}"'), centered('WILL NEVER REACH INFINITY'), '', rule, '']) + '\n'
+
+def type_of(v):
+    return 'number' if is_finite(v) else rank(v)
+
+def rung_of(v):
+    """Q42's other reading: the type changes only at a NAMED rung (infinity-k)."""
+    if is_finite(v):
+        return 'number'
+    k = 0
+    while cmp(v, unit(k + 1)) >= 0:
+        k += 1
+    return k
+
+class Slot:
+    """One named variable holding an infinity-family value, and its counter."""
+    def __init__(self, name, value, counter_row, kind=type_of):
+        self.name, self.value, self.counter, self.row, self.kind = name, value, 0, counter_row, kind
+
+    def calculate(self, answer, into_self=True):
+        """A calculation with this object -- one per calculation, however many times the
+        object is an operand. into_self: the answer is assigned back to it."""
+        if into_self and self.kind(answer) != self.kind(self.value):
+            self.value, self.counter = answer, 0     # destroyed: a new object, a new counter
+            return 'destroyed, counter 0' if not is_finite(answer) else 'destroyed; a plain number has no counter'
+        if into_self:
+            self.value = answer
+        if is_finite(self.value):
+            return 'a plain number: no counter'
+        self.counter += 1
+        if self.counter >= self.row:
+            self.counter = 0
+            return 'WARNING, counter 0'
+        return f'counter {self.counter}'
 
 def nines(count, width=PLACES):
     """.nines(): the count in nines, (C): |count| - 10^-w with the sign in front, where w
@@ -397,6 +460,28 @@ def tables():
     a_two = 2 * (1 - F(1, 10 ** 10))                  # (A): the nines ARE the count, and 2 infinities add them
     print(f'    count 2, .resize(10):     (C) {nines(2, width=10)}   (A) {number_text(a_two)}')
     print(f'    count 10^-20, .resize(10): {nines(F(1, 10 ** 20), width=10)}   (the nines follow the last digit)')
+
+    print('\nTHE COUNTER: arguments.infinity.counter set to 3, my_inf = my_inf * my_inf')
+    slot = Slot('my_inf', inf, 3)
+    for k in range(1, 9):
+        said = slot.calculate(t_mul(slot.value, slot.value))
+        print(f'    pass {k}   {name(type_of(slot.value)):8s} {display(slot.value):32s} {said}')
+    other = Slot('my_inf', inf, 3, kind=rung_of)
+    warned = [k for k in range(1, 9) if other.calculate(t_mul(other.value, other.value)).startswith('WARNING')]
+    print(f'    the other reading (Q42), the type changes only at a named rung: warnings at passes {warned}')
+    slot = Slot('x', inf, 3)
+    steps = [('y = x + 1', lambda v: t_add(v, ONE), False)] * 2 + \
+            [('x = x.power_of(x)', lambda v: t_pow(v, v), True)] + \
+            [('y = x * 2', lambda v: t_mul(v, num(2)), False)] * 3 + \
+            [('x = x - x', lambda v: t_sub(v, v), True), ('y = x + 1', lambda v: t_add(v, ONE), False)]
+    for what, answer, into_self in steps:
+        said = slot.calculate(answer(slot.value), into_self)
+        kind = type_of(slot.value)
+        print(f'    {what:18s} x is {"number" if kind == "number" else name(kind):8s} {said}')
+
+    print('\nTHE WARNING (80 columns; one empty line before and after)')
+    for line in infinity_warning('my_inf').split('\n')[:-1]:
+        print('    ' + line if line else '')
 
     print('\nWHAT THEY ARE FOR: which grows faster, with n put in as infinity')
     n = inf
