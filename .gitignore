@@ -51,3 +51,11 @@ __pycache__/
 /vendor/gtk/gtk-*/
 /vendor/gtk/.mesonvenv/
 /vendor/gtk/build-*/
+
+# vendor/fonts/ -- IBM Plex Mono. Regular and OFL.txt ARE in git: the font is the
+# satellite look (titles are IBM Plex Mono 11px, never bold, never italic) and a static
+# satl must embed one, because a GTK4 binary with no font reachable exits 139 rather
+# than drawing tofu. The other thirteen faces are dead weight for a language that never
+# uses them -- `sh vendor/fonts/fetch.sh --family` gets them back.
+/vendor/fonts/ibm-plex-mono/*.ttf
+!/vendor/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf
