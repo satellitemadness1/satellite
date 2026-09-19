@@ -49,3 +49,5 @@ __pycache__/
 /vendor/*/*.tar.*
 /vendor/*/*.sha256sum
 /vendor/gtk/gtk-*/
+/vendor/gtk/.mesonvenv/
+/vendor/gtk/build-*/
