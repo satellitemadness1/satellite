@@ -59,3 +59,9 @@ __pycache__/
 # uses them -- `sh vendor/fonts/fetch.sh --family` gets them back.
 /vendor/fonts/ibm-plex-mono/*.ttf
 !/vendor/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf
+
+# vendor/gtk build outputs: the experiment binaries (85 MB each, unstripped) and the
+# meson install prefix. Both are made by the scripts beside them.
+/vendor/gtk/hello/hello-static
+/vendor/gtk/hello/hello-dynamic
+/vendor/gtk/stage-static/
