@@ -41,3 +41,11 @@ __pycache__/
 # The 16-bit bytecode saved beside a program (arguments.sate). A build
 # artifact of a run, never a source: the .satl is what is edited.
 *.sate
+
+# vendor/ -- other people's source, fetched by vendor/<name>/fetch.sh and checked
+# against upstream's own sha256sum (vendor/README.md). GTK unpacks to 201 MB and has
+# its own history upstream, so the RECIPE is in git and the tree is not -- the same
+# rule as old_versions/first_satellite above.
+/vendor/*/*.tar.*
+/vendor/*/*.sha256sum
+/vendor/gtk/gtk-*/
