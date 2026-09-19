@@ -68,7 +68,7 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 4, false, false});
-    arguments_vector.push_back({"arguments.build", 208, false, false});
+    arguments_vector.push_back({"arguments.build", 209, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});
@@ -78,7 +78,9 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // satellite float for going up or down" -- infinityx2, infinityx0.5 -- held to
     // arguments.infinity digits and "displayed as a rounded thing... we round to
     // 32 digits", "both digits configurable". Read by nothing yet: MILESTONES M11.
-    arguments_vector.push_back({"arguments.infinity", 4096, false, false});
+    // 128, not 4096 (the author, 2026-09-18): "let's build it out of 128 digit
+    // width, and set arguments.infinity = 128 for precision". SATELLITE_INFINITY.md.
+    arguments_vector.push_back({"arguments.infinity", 128, false, false});
     arguments_vector.push_back({"arguments.infinity_display", 32, false, false});
 
     return(arguments_vector);
