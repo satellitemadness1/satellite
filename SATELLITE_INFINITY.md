@@ -11,11 +11,14 @@ The first version of this file (`3a72f33`) was built from messages one to four: 
 infinity as a *target* and a count of nines. **Message five replaced its heart.**
 Part 2 lists every piece it overturned and every piece it kept.
 
-**What is built:** only two config rows, `arguments.infinity = 128` (`239cfae`) and
-`arguments.infinity.counter = 999999999` (`95d00ca`). There is no infinity,
-no float and no power in 004 yet. Today `satellite.variable.infinity x =
-satellite.infinity()` fails with `S110: … satellite.variable is not a call`, and
-`12.34` fails with `S120: 12.34 is not a number this can read`.
+**What is built:** the two config rows, `arguments.infinity = 128` (`239cfae`) and
+`arguments.infinity.counter = 999999999` (`95d00ca`), and INF-1 and INF-2 (Part 13).
+`satellite.variable.infinity x = satellite.infinity()` runs: it displays `(infinity)`,
+`-x` displays `(-infinity)`, and both order against every number and every value of the
+family. **The arithmetic is not built** — `+ - * / **` on one are refused by name,
+each with the milestone that builds it (INF-3 on) — and there is no float, no power and
+no lettered level yet: `12.34` still fails with `S120: 12.34 is not a number this can
+read`, and `satellite.aasat()` is a word the language does not have.
 
 **The tables are computed, not typed.**
 `python3 satellite/satellite_variable_infinity/infinity_oracle.py` prints every computed
@@ -1397,7 +1400,7 @@ the registry (`token::method_name_of`), where three hand-kept copies fell throug
 file's"*, *"a container's"*, or *"no type has it"*; and check.sh now reruns both
 bytecode generators in a copy of the tree and compares their headers byte for byte.
 
-**INF-2 — arm 12, the constructor, the display, the order.** In
+**INF-2 — arm 12, the constructor, the display, the order. BUILT** (2026-09-19). In
 `satellite/satellite_variable_infinity/`, beside the oracle. The arm is a handle to an
 immutable term list. A count is an exact decimal in the float's shape, and each value
 carries a nines width. The comparator — the sign of the first term of `a - b` — is
@@ -1406,8 +1409,49 @@ The arm comment in `satellite_object.hpp` moves the float to 13 and hex to 14. *
 when* `satellite.console.display(satellite.infinity())` prints `(infinity)`;
 `satellite.infinity() > 10 ^ 100`, `5 < satellite.infinity()` and
 `satellite.infinity() == satellite.infinity()` are true; a `satellite.variable.number`
-name refuses an infinity; and `.reverse()` and `number(satellite.infinity())` are
-refused by name.
+name refuses an infinity; and `.reverse()` and `.number` on an infinity are refused by
+name. (This line asked for `number(satellite.infinity())`: **004 has no bare
+`number(...)` call** — that spelling is 003's, and here it is "no capsule named
+number" — so the conversion refused is the selector, `x.number`.)
+
+**What it came out as:**
+
+- **The order and the display are whole, and checked against the oracle.**
+  `check_infinity.py` (beside it, run by check.sh) holds `build/infinity_cases` to
+  `infinity_oracle.py` over **98,184 cases**: every value the tables above print, the
+  CHECKS pool with both signs, INF-8's shapes written straight in normal form, the
+  canonical `infinity-k` to 1,000, and a chain 100,000 exponents deep. Two deliberately
+  broken builds were refused by it (24,807 and 483 wrong), so it has teeth.
+- **Every walk keeps its own stack** (Part 4) — compare, display *and the destructor*,
+  which would otherwise free a 100,000-deep chain one C++ frame a level. INF-5 still
+  owes the same depth through a satl program.
+- **A count** is a sign, a whole part and a fraction, and the fraction carries its own
+  count of places rather than being padded to `arguments.infinity`: one number has one
+  spelling, and a changed row never changes what a count already made means.
+- **`-satellite.infinity()`** is built with it — unary minus turns every count over
+  (Q20) — because the order cannot be seen from a program without a negative one.
+- **What an infinity meets:** another value of the family, a number, or a binary by its
+  worth. A percentage still "only compares with a percentage", and anything else is
+  refused naming both kinds. Against a plain number the order makes no value first: that
+  cost 190 ns a comparison of a loop's time, measured, and now costs nothing —
+  `while (count < inf)` runs at the speed of `while (count < 1000000000000)`.
+- **A name declared `satellite.variable.infinity`** takes the family and a plain number
+  (Q24) and refuses a binary, a percentage and a string; a `satellite.variable.number`
+  name refuses an infinity, in the words the spec quotes.
+- **Refused by name, each with the milestone that owes it:** `+` and `-` (INF-3), `*`
+  and `/` (INF-3 and INF-4), `^`/`**` (INF-4 and INF-5), `.power_of` (INF-4 and INF-5),
+  `.resize` and `.nines` (INF-7), and `satellite.infinity(x)` (INF-5). The method
+  refusals and `satellite.infinity(x)` come from the CHECKER, before anything runs.
+  `.reverse()` says *"an infinity has no digits to turn round"*; `.number`, `.binary`
+  and `.hex` say *"an infinity is larger than every number"*; `.string` is its display.
+  `"a" + inf` is still the string's own refusal — no milestone builds that pair.
+- **The nines width is the row**, read when `satellite.infinity()` makes a value:
+  `MachineState` now carries the gathered `Arguments`, read-only, the way it carries the
+  feature register, so INF-3's "at most `arguments.infinity` places" has its reader too.
+- `tests/infinity_not_built.satl` and `tests/infinity_constructor_not_built.satl` went
+  red as predicted and are **rebased onto the lettered levels** (`satellite.variable.aasat`,
+  `satellite.aasat()`), which INF-6 takes.
+- check.sh: **343 passed, 0 failed** (325 at INF-1), with 23 rows of its own.
 
 **INF-3 — the register.** `+` and `-` between any two values of the family, and
 against numbers and percentages; `*` and `/` by numbers and percentages; like terms
@@ -1527,7 +1571,11 @@ schedule, or done by the milestone named):
   number…""* (it prints `1`).
 - DESIGN §10: the `.new()` spelling, the layout (Q28), and three questions this file
   answers.
-- `satellite_config.hpp:77-80` and `arguments.cpp:186-191`: comments on `infinityx2`
-  and *"a multiplier with no digits cannot hold x2"* — at INF-2.
-- `satellite_object.hpp`'s arm comment — at INF-2. `tests/not_understood.satl` — at
-  FLT-1. `tests/for_power_stars` — at INF-1.
+- ~~`satellite_config.hpp:77-80` and `arguments.cpp:186-191`: comments on `infinityx2`
+  and *"a multiplier with no digits cannot hold x2"*~~ — **done at INF-2**: both now say
+  what the two rows are for under the register.
+- ~~`satellite_object.hpp`'s arm comment~~ — **done at INF-2** (the infinity is 12, the
+  float 13, hex 14). `tests/not_understood.satl` — at FLT-1. `tests/for_power_stars` —
+  done at INF-1.
+- **MILESTONES M11 and PLAN red note 9 are NOT touched** (the 4096 default, `infinityx2`,
+  *"`satellite_float` is arm 12"*): they are plan documents, and yours to schedule.

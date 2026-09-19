@@ -72,6 +72,9 @@ signed long long int object_to_string(const satelliteObject &from, satelliteObje
     } else if (const satellite_binary_number *held = from.as_binary()) {
         std::size_t bad_offset = 0;       // "b00101010": exactly what display prints
         code = satellite_string::from_utf8(held->written(), text, bad_offset);
+    } else if (from.is_infinity()) {
+        std::size_t bad_offset = 0;       // "(infinity)": exactly what display prints
+        code = satellite_string::from_utf8(satellite_infinity::display(from.as_infinity()), text, bad_offset);
     } else
         return types_do_not_meet;
     if (code != success)

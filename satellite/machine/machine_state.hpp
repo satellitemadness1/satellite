@@ -21,6 +21,8 @@ namespace satellite004 {
 using BytecodeRegistry = std::vector<std::vector<std::bitset<16>>>;
 using BytecodeFilenames = std::vector<std::string>;
 
+class Arguments;   // arguments/arguments.hpp, which the pointer below needs no more of
+
 signed long long int display_machine_state(const std::string &current_machine_state,
                                            signed long long int machine_code_input);
 
@@ -83,6 +85,15 @@ struct MachineState {
     // no source to show for it.
     const BytecodeRegistry *program = nullptr;
     const BytecodeFilenames *program_files = nullptr;
+
+    // THE CONFIG ROWS A RUNNING PROGRAM READS, and the first is arguments.infinity: the
+    // nines width every satellite.infinity() is made with (SATELLITE_INFINITY.md,
+    // INF-2), and from INF-3 the most places a count may have. Here for the reason
+    // above -- the evaluator already carries this -- and read-only, as the feature
+    // register is: gather_config() filled it before anything ran, and nothing
+    // writes it while a program runs. Nullptr is a real state again, and the reader
+    // falls back to the author's own default.
+    const Arguments *arguments = nullptr;
 
     // Record a new state and, in debug mode, display it. Answers the code, so
     // a caller can write `return state.set("...", code);`.

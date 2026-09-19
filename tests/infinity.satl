@@ -1,0 +1,58 @@
+// satellite.variable.infinity, INF-2 (SATELLITE_INFINITY.md): the arm, the
+// constructor, the display and the order -- through the real path, a program.
+// check.sh holds every line of the output; check_infinity.py holds the same display
+// and order to infinity_oracle.py over every value the spec's tables print.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.infinity my_inf = satellite.infinity()
+
+    // THE DISPLAY: one number is one set of parentheses, and a count of 1 is not printed.
+    satellite.console.display(my_inf)
+    satellite.console.display(satellite.infinity())
+    satellite.console.display(-my_inf)
+
+    // THE ORDER: INF-2's done-when, then the spec's own rows that need no arithmetic.
+    satellite.console.display(satellite.infinity() > 10 ^ 100)
+    satellite.console.display(5 < satellite.infinity())
+    satellite.console.display(satellite.infinity() == satellite.infinity())
+    satellite.console.display(-my_inf < 5)
+    satellite.console.display(-my_inf < 0 - 10 ^ 300)
+    satellite.console.display(my_inf != -my_inf)
+    satellite.console.display(my_inf >= my_inf)
+    satellite.console.display(b1010 < my_inf)
+
+    // A VALUE: b = a copies, and the two are equal.
+    satellite.variable.infinity copied = my_inf
+    satellite.console.display(copied == my_inf)
+
+    // A NAME OF THE FAMILY TAKES A PLAIN NUMBER (Q24): what is left when an infinity
+    // goes away keeps the name.
+    satellite.variable.infinity left = 5
+    satellite.console.display(left)
+    left = my_inf
+    satellite.console.display(left)
+
+    // AS TEXT: a list shows each item as display does, and .string is display's text.
+    satellite.console.display({my_inf, 5, -my_inf})
+    satellite.console.display(my_inf.string)
+
+    // SORTED BY VALUE, through the one comparison.
+    satellite.container.list numbers = {5, my_inf, -my_inf, 0}
+    satellite.console.display(numbers.sort().by_value())
+    satellite.console.display(numbers.contains(-my_inf))
+
+    // `while (count < inf)` runs (Q27): comparing one is fine. The condition asks
+    // count < my_inf on every pass, and is tied to count < 3 so that the loop ends --
+    // a satellite.return inside it would not (it goes on past the if, found at INF-2
+    // and true before it).
+    satellite.variable.number count = 0
+    satellite.statement.while(count < 3 == count < my_inf)
+    {
+        count = count + 1
+    }
+    satellite.console.display(count)
+}
+
+satellite.return(satellite)

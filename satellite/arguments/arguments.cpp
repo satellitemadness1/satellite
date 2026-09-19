@@ -186,8 +186,10 @@ signed long long int Arguments::gather_config()
     // INFINITY'S TWO DIGIT COUNTS (the author, 2026-09-16): 128 held (4096 until
     // 2026-09-18), 32 shown, "both digits configurable". A missing row takes the
     // author's default, as arguments.startup_display does; a row that is there must
-    // be a count of at least one digit, because a multiplier with no digits cannot
-    // hold x2.
+    // be a count of at least one digit. arguments.infinity is the nines width every
+    // satellite.infinity() is made with (INF-2) and the most places a count may have
+    // (INF-3): with none, .nines() would have no place for a nine and `inf * 50%` none
+    // for its 5 (SATELLITE_INFINITY.md Part 9).
     for (const auto &[name, fallback] : {std::pair<const char *, unsigned long long int>{"arguments.infinity", 128},
                                          std::pair<const char *, unsigned long long int>{"arguments.infinity_display", 32}}) {
         const Argument *entry = find(name);

@@ -31,6 +31,7 @@
 
 #include "file_calls.hpp"
 #include "container_calls.hpp"
+#include "infinity_calls.hpp"
 #include "word_codes.hpp"
 #include "../machine/s_codes.hpp"
 
@@ -290,6 +291,15 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
                              declared_as == word::code_of(1, 4, 6);
     if (method == token::reverse_token)
         return success;                  // every type with an order has one
+    // AN INFINITY'S OWN METHODS, numbered at INF-1 and built from INF-4, each named
+    // with the milestone that builds it -- before anything runs.
+    if (declared_as == word::code_of(1, 6, 17)) {
+        const std::string missing = infinity_method_not_built(method);
+        if (!missing.empty()) {
+            why = spelling + " " + missing;
+            return not_built_yet;
+        }
+    }
     if (a_container) {
         if (of_a_container || of_a_string_or_number) return success;
         why = spelling + " is not built for " + word::spelling_of(declared_as) +
@@ -403,9 +413,10 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // A WORD USED AS A CALL MUST HAVE A LIBRARY. A word with none is
         // not_built_yet (14) with its own name, which is what 003 did and what a
         // person can act on (function_table.hpp).
-        // satellite.file's words are the object model's and have none (file_calls.hpp).
+        // satellite.file's words and satellite.infinity() are the object model's and have
+        // none (file_calls.hpp, infinity_calls.hpp).
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
-            functions[code] == nullptr && !is_file_word(code)) {
+            functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
         }
@@ -418,6 +429,12 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
             std::size_t close = at + 1, given = 0;
             if (brackets_at(row, at + 1, close, given)) {
+                // satellite.infinity(x) is infinity ** x, and INF-5 builds it.
+                const std::string not_yet = infinity_word_not_built(code, given);
+                if (!not_yet.empty()) {
+                    why = not_yet;
+                    return not_built_yet;
+                }
                 if (is_file_word(code) && given != file_word_arity(code)) {
                     why = file_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
                     return satl_line_not_understood;
@@ -650,8 +667,8 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (!is_a_type_word(code)) {
             why = std::string(word::spelling_of(code)) + " " + name +
                   " is a declaration, and only satellite.variable.number, .string, .binary, "
-                  ".percentage, .file, .bool and satellite.container.list, .index and .multiple "
-                  "are built yet";
+                  ".percentage, .file, .bool, .infinity and satellite.container.list, .index and "
+                  ".multiple are built yet";
             at = stop;
             return satl_line_not_understood;
         }

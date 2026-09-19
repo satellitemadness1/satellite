@@ -48,6 +48,7 @@
 #include "satellite_capsule.hpp"
 #include "../satellite_variable_binary/satellite_binary_number.hpp"
 #include "../satellite_variable_file/satellite_file.hpp"
+#include "../satellite_variable_infinity/satellite_infinity.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../satellite_variable_percentage/satellite_percentage.hpp"
 #include "../satellite_variable_string/satellite_string.hpp"
@@ -98,6 +99,16 @@ using ListHandle = std::shared_ptr<satelliteList>;
 struct satelliteIndex;
 using IndexHandle = std::shared_ptr<satelliteIndex>;
 
+// AN INFINITY -- AND EVERY NUMBER ABOVE IT -- IS A HANDLE TO A CONST VALUE
+// (SATELLITE_INFINITY.md, INF-2). Not for its size: a term list held inline would be
+// a 24-byte vector. A term's exponent is itself a value, so the type is recursive; a
+// copy is O(1); and identical exponents are shared, never copied. The CONST is the
+// point: an infinity is a value, as a list is, and nothing ever changes one in place
+// -- every operation answers a new one -- so sharing it is never seen. The power, the
+// sat and every lettered level are this same arm (Part 7): the levels never end, and
+// std::variant's arms are fixed when satl is compiled.
+// (InfinityHandle is satellite_infinity.hpp's.)
+
 // THERE IS NO ARM FOR satellite.container.multiple, AND THERE MUST NOT BE.
 //
 // The author, 2026-09-18: *"satellite.container.multiple<type1, type2> ... and
@@ -125,7 +136,8 @@ public:
                               satellite_percentage,    // 8  satellite.variable.percentage
                               FileHandle,              // 9  satellite.variable.file (2026-09-18)
                               ListHandle,              // 10 {a, b} (2026-09-18)
-                              IndexHandle              // 11 satellite.container.index (2026-09-18)
+                              IndexHandle,             // 11 satellite.container.index (2026-09-18)
+                              InfinityHandle           // 12 satellite.variable.infinity (INF-2, 2026-09-19)
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
@@ -136,9 +148,13 @@ public:
                               // (2026-09-18, for the storyline generator) and is
                               // 9, and the braced list is 10 -- asked for the
                               // same day, to give satellite.feedback({"a","b"})
-                              // a shape to arrive in.
-                              // 12  satellite_float
-                              // 13  satellite_hexadecimal_number
+                              // a shape to arrive in. The infinity is 12 on the
+                              // author's word, "we are building
+                              // satellite.variable.infinity FIRST" -- so the
+                              // float, which PLAN red note 9 had at 12, moves to
+                              // 13 and hex to 14 (SATELLITE_INFINITY.md Q26).
+                              // 13  satellite_float
+                              // 14  satellite_hexadecimal_number
                               >;
 
     enum Kind : std::size_t {
@@ -154,7 +170,8 @@ public:
         file = 9,
         list = 10,
         index = 11,
-        how_many_kinds = 12
+        infinity = 12,
+        how_many_kinds = 13
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -167,6 +184,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<file, Held>, FileHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<list, Held>, ListHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<index, Held>, IndexHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<infinity, Held>, InfinityHandle>, "");
 
     Held held;
 
@@ -182,6 +200,7 @@ public:
     satelliteObject(FileHandle from) : held(std::move(from)) {}
     satelliteObject(ListHandle from) : held(std::move(from)) {}
     satelliteObject(IndexHandle from) : held(std::move(from)) {}
+    satelliteObject(InfinityHandle from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -195,6 +214,7 @@ public:
     static satelliteObject of_file(FileHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_list(ListHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_index(IndexHandle from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_infinity(InfinityHandle from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -218,6 +238,7 @@ public:
     bool is_file() const { return held.index() == file; }
     bool is_list() const { return held.index() == list; }
     bool is_index() const { return held.index() == index; }
+    bool is_infinity() const { return held.index() == infinity; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -251,6 +272,14 @@ public:
 
     const IndexHandle *as_index() const { return std::get_if<IndexHandle>(&held); }
     IndexHandle *as_index() { return std::get_if<IndexHandle>(&held); }
+
+    // THE INFINITY ITSELF, or nullptr -- through the handle, and const whichever way
+    // it is asked for: an infinity is never changed in place (satellite_infinity.hpp).
+    const satellite_infinity *as_infinity() const
+    {
+        const InfinityHandle *handle = std::get_if<InfinityHandle>(&held);
+        return handle != nullptr ? handle->get() : nullptr;
+    }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }

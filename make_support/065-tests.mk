@@ -131,6 +131,14 @@ $(BUILD)/number_cases: $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) $(NUMBER_HEA
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) -o $@
 
+# satellite.variable.infinity with no interpreter around it (SATELLITE_INFINITY.md,
+# INF-2): the display and the order, held to infinity_oracle.py by check_infinity.py,
+# which check.sh runs. It refuses one older than these prerequisites.
+INFINITY_CASES_SOURCES = $(INFINITY)/infinity_cases.cpp $(INFINITY)/satellite_infinity.cpp $(NUMBER_SOURCES)
+$(BUILD)/infinity_cases: $(INFINITY_CASES_SOURCES) $(INFINITY)/satellite_infinity.hpp $(NUMBER_HEADERS)
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(INFINITY_CASES_SOURCES) -o $@
+
 $(BUILD)/number_race: $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) -o $@

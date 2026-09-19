@@ -68,18 +68,19 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 4, false, false});
-    arguments_vector.push_back({"arguments.build", 213, false, false});
+    arguments_vector.push_back({"arguments.build", 217, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});
     arguments_vector.push_back({"arguments.file_size_max_bytes", 549755813888, false, false}); // 512 gigabyte file_size maximum
 
-    // INFINITY'S DIGITS (the author, 2026-09-16): an infinity carries "a single
-    // satellite float for going up or down" -- infinityx2, infinityx0.5 -- held to
-    // arguments.infinity digits and "displayed as a rounded thing... we round to
-    // 32 digits", "both digits configurable". Read by nothing yet: MILESTONES M11.
-    // 128, not 4096 (the author, 2026-09-18): "let's build it out of 128 digit
-    // width, and set arguments.infinity = 128 for precision". SATELLITE_INFINITY.md.
+    // INFINITY'S TWO WIDTHS (the author, 2026-09-16: "both digits configurable"; and
+    // 128, not 4096, on 2026-09-18: "let's build it out of 128 digit width, and set
+    // arguments.infinity = 128 for precision"). M11's "infinityx2" is a COUNT now, held
+    // exact, and no answer depends on either row (SATELLITE_INFINITY.md Part 9):
+    // arguments.infinity is the nines width every satellite.infinity() is made with --
+    // read since INF-2 -- and the most decimal places a count may have (INF-3);
+    // arguments.infinity_display is how many places .nines() shows (INF-7).
     arguments_vector.push_back({"arguments.infinity", 128, false, false});
     arguments_vector.push_back({"arguments.infinity_display", 32, false, false});
 

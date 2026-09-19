@@ -226,6 +226,9 @@ signed long long int run_satl(int argc, char **argv)
     // every bit readable everywhere: `MachineState &state` is already threaded
     // through the walker, the expression reader and every call.
     state.features = features;
+    // AND THE CONFIG ROWS, the same way and for the same reason: `arguments` lives
+    // until run_satl returns, which is after every program and prompt line it runs.
+    state.arguments = &arguments;
     state.set("satellite " + version_line(arguments) + " (starting)", success);
     state.set("arguments(gathered)", success);
 

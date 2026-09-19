@@ -160,17 +160,58 @@ print(' '.join(sorted(missing)))")"
 "$interpreter" tests/not_understood.satl > build/nu.out 2>&1; code=$?
 expect "a line with no scenario" 13 $code
 expect "nothing ran before the refusal" "" "$(grep -x before build/nu.out)"
-# THE INFINITY'S THREE WORDS ARE NUMBERED, NOT BUILT (SATELLITE_INFINITY.md, INF-1).
-# The line is a declaration now, refused by name -- and red on purpose at INF-2.
+# THE INFINITY FAMILY'S LETTERED LEVELS ARE NOT BUILT (SATELLITE_INFINITY.md, INF-6).
+# These two held satellite.variable.infinity and satellite.infinity() until INF-2 built
+# them, and were rebased then, as their comments say -- red on purpose again at INF-6.
 "$interpreter" tests/infinity_not_built.satl > build/inf.out 2>&1; code=$?
-expect "satellite.variable.infinity is a numbered word, not built yet" 13 $code
-expect "... refused by name as a declaration" 1 \
-       "$(tr '\n' ' ' < build/inf.out | grep -c 'satellite.variable.infinity my_inf is a declaration')"
+expect "satellite.variable.aasat, a lettered level, is not built yet" 13 $code
+expect "... refused before it runs: satellite.variable is not a call" 1 \
+       "$(tr '\n' ' ' < build/inf.out | grep -c 'satellite.variable is not a call')"
 expect "... with nothing run before it" "" "$(grep -x before build/inf.out)"
 "$interpreter" tests/infinity_constructor_not_built.satl > build/inf.out 2>&1; code=$?
-expect "satellite.infinity() is a numbered word with no library yet" 14 $code
-expect "... refused by name" 1 "$(tr '\n' ' ' < build/inf.out | grep -c 'satellite.infinity has no library built for it yet')"
+expect "satellite.aasat(), a lettered level's constructor, is not built yet" 13 $code
+expect "... refused before it runs: no capsule named aasat" 1 "$(tr '\n' ' ' < build/inf.out | grep -c 'no capsule named aasat')"
 expect "... with nothing run before it" "" "$(grep -x before build/inf.out)"
+# satellite.variable.infinity, INF-2 (SATELLITE_INFINITY.md): arm 12, satellite.infinity(),
+# the display and the order, through a program. check_infinity.py, further down, holds
+# the same display and order to infinity_oracle.py over every value the tables print.
+expect "INF-2: an infinity displays, orders, copies, sorts, and a family name takes a number" \
+       "(infinity)|(infinity)|(-infinity)|true|true|true|true|true|true|true|true|true|5|(infinity)|{(infinity), 5, (-infinity)}|(infinity)|{(-infinity), 0, 5, (infinity)}|true|3" \
+       "$("$interpreter" tests/infinity.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+"$interpreter" tests/infinity.satl > /dev/null 2>&1; expect "tests/infinity.satl runs" 0 $?
+# EVERY REFUSAL INF-2 OWES IS BY NAME -- its done-when, and the milestones that build
+# the rest. Answers the code, whether the reason was said, and how many "before" lines
+# ran first: 0 for a refusal the checker makes, 1 for one made while running.
+infinity_says() {
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n}\n\nsatellite.return(satellite)\n' "$1" > build/infinity_probe.satl
+    "$interpreter" build/infinity_probe.satl > build/infinity_probe.out 2>&1; code=$?
+    printf '%s|%s|%s' "$code" "$(tr '\n' ' ' < build/infinity_probe.out | grep -c -- "$2")" "$(grep -cx before build/infinity_probe.out)"
+}
+expect "a satellite.variable.number name refuses an infinity" "27|1|1" \
+       "$(infinity_says '    satellite.variable.number n = satellite.infinity()' 'n was declared satellite.variable.number, and it holds an infinity')"
+expect "an infinity name refuses a string" "27|1|1" \
+       "$(infinity_says '    satellite.variable.infinity x = "text"' 'x was declared satellite.variable.infinity, and it holds a string')"
+expect "an infinity name refuses a binary: besides its family it takes a plain number (Q24)" "27|1|1" \
+       "$(infinity_says '    satellite.variable.infinity x = b1010' 'and it holds a binary')"
+expect ".reverse() on an infinity is refused by name" "27|1|1" \
+       "$(infinity_says '    satellite.variable.infinity x = satellite.infinity()
+    satellite.console.display(x.reverse())' 'x.reverse() was written on an infinity, and an infinity has no digits to turn round')"
+expect ".number on an infinity is refused by name" "27|1|1" \
+       "$(infinity_says '    satellite.console.display(satellite.infinity().number)' 'an infinity is larger than every number -- there is no number to make of it')"
+expect "satellite.infinity(x) is INF-5's, refused before anything runs" "14|1|0" \
+       "$(infinity_says '    satellite.console.display(satellite.infinity(2))' 'satellite.infinity(x) -- infinity to the power of x -- is not built yet')"
+for pair in power_of:INF-4 to_the_power_of:INF-4 power:INF-4 nines:INF-7 resize:INF-7; do
+    written=${pair%%:*}; builds=${pair##*:}
+    expect "x.$written(...) on an infinity names $builds, before anything runs" "14|1|0" \
+           "$(infinity_says "    satellite.variable.infinity x = satellite.infinity()
+    satellite.console.display(x.$written(2))" "SATELLITE_INFINITY.md $builds")"
+done
+expect "+ on an infinity names INF-3" "14|1|1" \
+       "$(infinity_says '    satellite.console.display(satellite.infinity() + 1)' "an infinity's + is not built yet (SATELLITE_INFINITY.md, INF-3)")"
+expect "* by a percentage names INF-3 and INF-4, not the percentage's pair" "14|1|1" \
+       "$(infinity_says '    satellite.console.display(satellite.infinity() * 50%)' "an infinity's \\* is not built yet (SATELLITE_INFINITY.md, INF-3 and INF-4)")"
+expect "** on two infinities names INF-4 and INF-5" "14|1|1" \
+       "$(infinity_says '    satellite.console.display(satellite.infinity() ** satellite.infinity())' "(SATELLITE_INFINITY.md, INF-4 and INF-5)")"
 # THE INFINITY'S THREE METHOD TOKENS (INF-1): every spelling lexes to its token and is
 # refused BY NAME on a type that does not have it -- the registry's own name, from the
 # generated method_name_of(), where a hand-kept table used to say "that method".
@@ -1131,6 +1172,16 @@ elif ! make -sq build/directory_cases 2>/dev/null; then
 else
     timeout 300 build/directory_cases "${TMPDIR:-/tmp}" > build/directory_cases.out 2>&1; code=$?
     expect "satellite.directory's words: $(grep -c '^ok' build/directory_cases.out) cases (build/directory_cases.out)" 0 $code
+fi
+# satellite_infinity AGAINST infinity_oracle.py (SATELLITE_INFINITY.md, INF-2): every value
+# the spec's tables print is shown as the oracle shows it, every pair is ordered as the
+# oracle orders it, and a chain 100,000 exponents deep goes through every walk.
+if [ ! -x build/infinity_cases ]; then expect "build/infinity_cases is built (make)" built missing
+elif ! make -sq build/infinity_cases 2>/dev/null; then
+    expect "build/infinity_cases is as new as its sources (make build/infinity_cases)" current stale
+else
+    timeout 600 python3 satellite/satellite_variable_infinity/check_infinity.py > build/check_infinity.out 2>&1; code=$?
+    expect "satellite_infinity against the oracle: $(tail -1 build/check_infinity.out) (build/check_infinity.out)" 0 $code
 fi
 # satellite.variable.file's handle with no interpreter around it (SATELLITE_FILE_OPERATIONS
 # Part 3): lines from 1, the endings a file had, strict UTF-8, and the two saves, in a

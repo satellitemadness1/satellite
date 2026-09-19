@@ -12,6 +12,7 @@
 
 #include "file_calls.hpp"
 #include "container_calls.hpp"
+#include "infinity_calls.hpp"
 #include "../machine/stop_flag.hpp"
 
 #include "word_codes.hpp"
@@ -411,6 +412,25 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             return Value();
         }
 
+        // AN INFINITY'S OWN METHODS ARE NUMBERED AND NOT BUILT YET (INF-1 numbered
+        // them), and each says which milestone builds it. An infinity has no number,
+        // no bits and no hex digits to be converted to -- it is larger than every
+        // number -- so those three are refused by name; `.string` is its display, and
+        // `.reverse()` was answered above.
+        if ((*live).is_infinity()) {
+            const std::string missing = infinity_method_not_built(method);
+            if (!missing.empty()) {
+                context.refuse(not_built_yet, name + "." + spelling + " " + missing);
+                return Value();
+            }
+            if (conversion != nullptr && conversion != object_to_string) {
+                context.refuse(types_do_not_meet, name + "." + spelling +
+                                                      " was written on an infinity, and an infinity is larger than "
+                                                      "every number -- there is no " + spelling + " to make of it");
+                return Value();
+            }
+        }
+
         // THE REST ARE THE STRING'S AND THE NUMBER'S, which take one argument or none.
         // A file's method names on anything else are not built for it yet.
         if (conversion == nullptr && method != token::find_token && method != token::add_token) {
@@ -712,6 +732,10 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // -50% is a percentage below zero: `200 - -50%` grows 200 by half.
         if (const satellite_percentage *percent = inner.as_percentage())
             return Value::of_percentage(satellite_percentage{-percent->scaled});
+        // -infinity IS infinity * -1, ONE VALUE (SATELLITE_INFINITY.md Q20): every count
+        // turned over, the exponents shared. A negative infinity is below every number.
+        if (const satellite_infinity *infinite = inner.as_infinity())
+            return Value::of_infinity(satellite_infinity::negated(infinite));
         if (!inner.is_number()) {
             if (context.code == success)
                 context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name(),
@@ -1185,6 +1209,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // satellite.file's words answer a HANDLE, which no library can (file_calls.hpp).
     if (is_file_word(code))
         return call_file_word(code, arguments, row, context);
+    // ...and so does satellite.infinity() (infinity_calls.hpp).
+    if (is_infinity_word(code))
+        return call_infinity_word(code, arguments, context);
 
     if (arguments.size() > 1) {
         context.refuse(satl_line_not_understood, std::string(word::spelling_of(code)) +
@@ -1275,6 +1302,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // A percentage leaves as its digits and its %: 50%, 12.5%.
     else if (argument.is_percentage() && scenarios->text != nullptr)
         answer = scenarios->text(argument.as_percentage()->written(), true);
+    // An infinity leaves as its one set of parentheses: (infinity), (-infinity).
+    else if (argument.is_infinity() && scenarios->text != nullptr)
+        answer = scenarios->text(satellite_infinity::display(argument.as_infinity()), true);
     else if (argument.is_bool() && scenarios->flag != nullptr)
         answer = scenarios->flag(*argument.as_bool(), true);
     // A CONTAINER GIVEN TO A WORD THAT ONLY TAKES TEXT reads back as what was

@@ -1,13 +1,20 @@
-// satellite.infinity() IS A NUMBERED WORD WITH NO LIBRARY (SATELLITE_INFINITY.md,
-// INF-1: 1 26 satellite.infinity, 1 26 0 satellite.infinity()). It is refused by
-// name before anything runs. Red on purpose when INF-2 builds it: rebase onto
-// whatever constructor is still unbuilt (the lettered levels, INF-6).
+// A LEVEL'S CONSTRUCTOR THAT IS NOT BUILT, refused before anything runs
+// (SATELLITE_INFINITY.md). check.sh asserts both.
+//
+// REBASED AT INF-2 (2026-09-19). At INF-1 this displayed `satellite.infinity()`,
+// which was a numbered word with no library; INF-2 built it, and it prints
+// (infinity) now. The vehicle is the lettered level from INF-6's done-when,
+// `satellite.aasat()`: no word has that spelling yet, so `satellite.` is read as the
+// word and `aasat(` as a capsule this program never wrote.
+//
+// Red on purpose when INF-6 builds the family words; rebase it then onto whatever
+// constructor is still unbuilt, never delete it.
 satellite.include(satellite)
 
 satellite.capsule satellite.main()
 {
     satellite.console.display("before")
-    satellite.console.display(satellite.infinity())
+    satellite.console.display(satellite.aasat())
 }
 
 satellite.return(satellite)

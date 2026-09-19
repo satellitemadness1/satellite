@@ -124,6 +124,28 @@ satelliteObject worth_of(const satelliteObject &value)
     return held != nullptr ? satelliteObject::of_number(held->bits) : value;
 }
 
+// THE INFINITY'S ARITHMETIC IS DESIGNED AND NOT BUILT (SATELLITE_INFINITY.md), so an
+// operator that meets one says that, and which milestone builds it -- not "there is
+// no scenario for that pair", which would be untrue: the scenario is written down to
+// the last row of the oracle. Asked BEFORE the percentage's branch, which would
+// otherwise answer `inf * 50%` with a pair it knows nothing about.
+//
+// ONLY FOR THE PAIRS THE SPEC BUILDS: an infinity with an infinity, a number, a
+// percentage, or a binary read by its worth. `"a" + inf` is no milestone's -- it is a
+// string meeting a kind it does not convert -- and is refused as that pair, below.
+bool refuse_infinity_arithmetic(const satelliteObject &left, const satelliteObject &right, const char *sign,
+                                const char *builds_it, std::string &why)
+{
+    const auto of_the_math = [](const satelliteObject &value) {
+        return value.is_infinity() || value.is_number() || value.is_percentage() || value.is_binary();
+    };
+    if ((!left.is_infinity() && !right.is_infinity()) || !of_the_math(left) || !of_the_math(right))
+        return false;
+    why = std::string(sign) + " was given " + left.kind_name() + " and " + right.kind_name() +
+          ", and an infinity's " + sign + " is not built yet (SATELLITE_INFINITY.md, " + builds_it + ")";
+    return true;
+}
+
 } // namespace
 
 // A LITERAL ARRIVES AS UTF-8 BYTES and becomes a satellite_string here -- the
@@ -210,6 +232,10 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
         }
         return true;
     }
+    // BY VALUE: two infinities are equal when the order says so, and one number
+    // has one term list, so that is the same as holding the same terms.
+    case satelliteObject::infinity:
+        return satellite_infinity::compare(l.as_infinity(), r.as_infinity()) == 0;
     case satelliteObject::how_many_kinds: break;
     }
     return false;
@@ -229,6 +255,7 @@ const char *satelliteObject::kind_name() const
     case file: return "a file";
     case list: return "a list";
     case index: return "an index";
+    case infinity: return "an infinity";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -251,6 +278,8 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
     // and is_percentage() needs one side a percentage.
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_add, "+", out, why);
+    if (refuse_infinity_arithmetic(*this, other, "+", "INF-3", why))
+        return not_built_yet;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('+', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -315,6 +344,8 @@ signed long long int satelliteObject::subtract(const satelliteObject &other, sat
     // and is_percentage() needs one side a percentage.
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_subtract, "-", out, why);
+    if (refuse_infinity_arithmetic(*this, other, "-", "INF-3", why))
+        return not_built_yet;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('-', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -343,6 +374,8 @@ signed long long int satelliteObject::multiply(const satelliteObject &other, sat
     // and is_percentage() needs one side a percentage.
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_multiply, "*", out, why);
+    if (refuse_infinity_arithmetic(*this, other, "*", "INF-3 and INF-4", why))
+        return not_built_yet;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('*', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -362,6 +395,8 @@ signed long long int satelliteObject::divide(const satelliteObject &other, satel
     // and is_percentage() needs one side a percentage.
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_divide, "/", out, why);
+    if (refuse_infinity_arithmetic(*this, other, "/", "INF-3 and INF-4", why))
+        return not_built_yet;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('/', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -400,6 +435,8 @@ signed long long int satelliteObject::power(const satelliteObject &other, satell
     // and is_percentage() needs one side a percentage.
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_power, "^", out, why);
+    if (refuse_infinity_arithmetic(*this, other, "^", "INF-4 and INF-5", why))
+        return not_built_yet;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('^', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -415,6 +452,29 @@ signed long long int satelliteObject::compare(const satelliteObject &other, int 
 {
     if (is_percentage() || other.is_percentage())
         return percentage_compare(*this, other, order, why);
+    // AN INFINITY IS ORDERED AGAINST AN INFINITY AND AGAINST A NUMBER, and a binary
+    // meets one by worth, as it meets a number (SATELLITE_INFINITY.md Part 3: the sign
+    // of the first term of a - b). So `satellite.infinity() > 10 ^ 100` is true, and
+    // `while (count < inf)` runs (Q27). Anything else it meets is refused below.
+    if (is_infinity() || other.is_infinity()) {
+        const auto worth = [](const satelliteObject &value) -> const satellite_number * {
+            if (const satellite_binary_number *bits = value.as_binary()) return &bits->bits;
+            return value.as_number();
+        };
+        if (is_infinity() && other.is_infinity()) {
+            order = satellite_infinity::compare(as_infinity(), other.as_infinity());
+            return success;
+        }
+        if (is_infinity() && worth(other) != nullptr) {
+            order = satellite_infinity::compare(as_infinity(), *worth(other));
+            return success;
+        }
+        if (worth(*this) != nullptr) {                     // and the other is the infinity
+            order = -satellite_infinity::compare(other.as_infinity(), *worth(*this));
+            return success;
+        }
+        return refuse_pair(*this, other, "a comparison", why);
+    }
     // A binary against a number, by worth (read_by_worth says why). Two binaries
     // keep their own case below, where the width counts.
     if (read_by_worth(*this, other) && !(is_binary() && other.is_binary()))
@@ -546,6 +606,12 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
         std::size_t bad_offset = 0;
         return satellite_string::from_utf8(written, out, bad_offset);
     }
+    // AN INFINITY READS AS ITS ONE SET OF PARENTHESES, exactly what display prints:
+    // (infinity), (-infinity), and one day (infinity, -500).
+    case infinity: {
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(satellite_infinity::display(as_infinity()), out, bad_offset);
+    }
     case how_many_kinds: break;
     }
     why = "there is nothing here to make a string of";
@@ -563,6 +629,12 @@ signed long long int satelliteObject::to_number(satellite_number &out, std::stri
             why = "that string is not a whole number this can read";
         return code;
     }
+    // AN INFINITY IS LARGER THAN EVERY NUMBER, so there is no number to make of one
+    // -- and cutting it to some very large number would be the wrong answer that does
+    // not say so (SATELLITE_INFINITY.md INF-2).
+    case infinity:
+        why = "an infinity is larger than every number, so no number can be made out of it";
+        return types_do_not_meet;
     default: break;
     }
     why = std::string("a number cannot be made out of ") + kind_name();

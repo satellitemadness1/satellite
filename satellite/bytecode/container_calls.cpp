@@ -198,6 +198,15 @@ Value reverse_of(const Value &receiver, bool &handled, std::string &why)
         return Value::of_binary(below_zero ? made.negated() : std::move(made));
     }
 
+    // AN INFINITY HAS NO DIGITS TO TURN ROUND (SATELLITE_INFINITY.md Part 3). It is
+    // larger than every number, and reversing the digits of some number standing in
+    // for it would be an answer that is wrong and does not say so.
+    if (receiver.is_infinity()) {
+        why = "an infinity has no digits to turn round";
+        handled = false;
+        return Value();
+    }
+
     handled = false;
     return Value();
 }

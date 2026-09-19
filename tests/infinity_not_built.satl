@@ -1,18 +1,23 @@
-// THE INFINITY'S WORDS ARE NUMBERED AND NOTHING ELSE IS (SATELLITE_INFINITY.md,
-// INF-1): satellite.variable.infinity is 1 6 17, satellite.infinity 1 26 and
-// satellite.infinity() 1 26 0. Before INF-1 this line was "satellite.variable is not
-// a call"; now it is a declaration the checker names as not built, the way
-// satellite.variable.float is -- and nothing runs before it.
+// A LEVEL OF THE INFINITY FAMILY THAT IS NOT BUILT, AND NOTHING RUNS BEFORE IT
+// (SATELLITE_INFINITY.md). check.sh asserts both.
 //
-// THIS FILE GOES RED ON PURPOSE WHEN INF-2 BUILDS THE ARM. Then the line runs, and
-// the fix is to rebase this onto whatever is still unbuilt (the lettered levels,
-// INF-6), never to delete the check.
+// REBASED AT INF-2 (2026-09-19), and the rebase is the point. At INF-1 this file
+// declared `satellite.variable.infinity my_inf = satellite.infinity()`, which INF-2
+// built -- the line started working, exactly as this comment said it would. The
+// vehicle is now a LETTERED LEVEL, the spec's own INF-6 example: there is no word
+// for it at all yet (Part 5: "There are no rows for power, sat or any lettered
+// level"), so the lexer reads `satellite.variable` and the checker says it is not a
+// call.
+//
+// INF-6 BUILDS THIS -- the lexer pattern and the level token after each spelling --
+// and then this goes red again. The fix is the same one: move it to whatever is
+// still unbuilt (Part 11's `infinity-infinity`, which waits for Q16), never delete it.
 satellite.include(satellite)
 
 satellite.capsule satellite.main()
 {
     satellite.console.display("before")
-    satellite.variable.infinity my_inf = satellite.infinity()
+    satellite.variable.aasat my_aasat = satellite.aasat()
 }
 
 satellite.return(satellite)

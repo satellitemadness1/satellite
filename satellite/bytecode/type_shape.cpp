@@ -33,6 +33,15 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
     if (wanted == satelliteObject::number && value.is_binary())
         return true;
 
+    // AN INFINITY NAME TAKES A PLAIN NUMBER, the way `multiple` takes each type it
+    // lists (SATELLITE_INFINITY.md Q24): when an infinity goes away, "the name keeps
+    // what is left, a plain number" -- `x = x - x` leaves 0 in x, under the same name
+    // (INF-3). So the name is declared for the whole family and what it can come down
+    // to; the level declared is a synonym, not a bound. A binary or a percentage is not
+    // a plain number, and a name of the family refuses one.
+    if (wanted == satelliteObject::infinity && value.is_number())
+        return true;
+
     if (value.kind() != wanted) {
         // JUST WHAT IT HOLDS. Every caller has already said what the name was
         // declared as, so naming the wanted type again reads as
