@@ -844,7 +844,7 @@ copied.
 ## Words — one row per spelling, and a level after it
 
 The levels never end, and **every word today is one registry row**. Word codes run
-4097 to 8191, and `words.tsv` has 381 rows. `key_of` (`word_codes.hpp:40`) answers 0
+4097 to 8191, and `words.tsv` has 384 rows since INF-1. `key_of` (`word_codes.hpp:40`) answers 0
 for any path number above 255. The REGISTRY's promised fallback for a word with no
 code (`word_number_token`) is defined, and nothing writes it. So:
 
@@ -1374,15 +1374,28 @@ column matches, and an ERROR row is refused with a named reason.
 **INF-0 — the oracle.** `satellite/satellite_variable_infinity/infinity_oracle.py`.
 **Built with this file.**
 
-**INF-1 — groundwork.** Fix the REGISTRY's method-family `free` row, and add the
-check that would have caught it: a family's `free` row must start above the highest
-code that family uses. Add the method tokens `power_of` (with `to_the_power_of`),
-`resize` and `nines`. Add `**` as a second spelling of the power token, accepted in a
-`for` step too, and rebase `tests/for_power_stars`. Append the words `1 6 17`
+**INF-1 — groundwork. BUILT** (the author, 2026-09-18: *"let's do INF-1 then"*). The
+REGISTRY's method-family `free` row is fixed, and `make_token_codes.py` now refuses a
+`free` row that starts on or runs over a used code — it caught the old row, and one
+more: the catch-all "unclaimed" range ran over `wide_token`, and is split. The method
+tokens `power_of` (spelled `power_of`, `to_the_power_of` and `power`), `resize` and
+`nines` exist, and are refused by name on every type until INF-2. A spaced `**` lexes
+to the power token itself, so it answers and groups exactly as `^` (`2 ** 3 ** 2` is
+`512`), in a `for` step too; `tests/for_power_stars` runs from 2; a touching `**` is
+refused by name, in and out of a `for`, with the caret on it. The words `1 6 17`
 `satellite.variable.infinity`, `1 26` `satellite.infinity` and `1 26 0`
-`satellite.infinity()`. *Done when* `2 ** 3 ** 2` prints `512`, and
-`satellite.variable.infinity x = satellite.infinity()` stops being S110 and is refused
-as not built yet, by name.
+`satellite.infinity()` are appended (384 words, codes 4478–4480).
+`satellite.variable.infinity x = satellite.infinity()` is no longer *"satellite.variable
+is not a call"*: it is refused by name as a declaration that is not built yet — S110,
+as `satellite.variable.float` is; whether a numbered but unbuilt type should be S210
+instead is open, and would move `tests/not_understood.satl` with it.
+`satellite.infinity()` alone is S210, *"has no library built for it yet"*.
+
+Built with it, from its review: the method names come from ONE table, generated from
+the registry (`token::method_name_of`), where three hand-kept copies fell through to
+*"that method"*; a method a type lacks is refused with whose it is — *"so far it is a
+file's"*, *"a container's"*, or *"no type has it"*; and check.sh now reruns both
+bytecode generators in a copy of the tree and compares their headers byte for byte.
 
 **INF-2 — arm 12, the constructor, the display, the order.** In
 `satellite/satellite_variable_infinity/`, beside the oracle. The arm is a handle to an
@@ -1514,8 +1527,6 @@ schedule, or done by the milestone named):
   number…""* (it prints `1`).
 - DESIGN §10: the `.new()` spelling, the layout (Q28), and three questions this file
   answers.
-- REGISTRY.satellite: *"004 has 364 words"* (`words.tsv` has 381 rows); the method
-  family's `free` row (INF-1).
 - `satellite_config.hpp:77-80` and `arguments.cpp:186-191`: comments on `infinityx2`
   and *"a multiplier with no digits cannot hold x2"* — at INF-2.
 - `satellite_object.hpp`'s arm comment — at INF-2. `tests/not_understood.satl` — at

@@ -1,0 +1,13 @@
+// satellite.infinity() IS A NUMBERED WORD WITH NO LIBRARY (SATELLITE_INFINITY.md,
+// INF-1: 1 26 satellite.infinity, 1 26 0 satellite.infinity()). It is refused by
+// name before anything runs. Red on purpose when INF-2 builds it: rebase onto
+// whatever constructor is still unbuilt (the lettered levels, INF-6).
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(satellite.infinity())
+}
+
+satellite.return(satellite)

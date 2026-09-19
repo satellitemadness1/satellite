@@ -154,7 +154,7 @@ ForHeader for_header(const std::vector<std::bitset<16>> &row, std::size_t at)
 //
 //     (empty)                               the body moves the number itself
 //     <name>++   <name>--                   moves_by +1 and -1
-//     <name> <+ - * / % ^> <expression>     moves_by 0: the evaluator answers it
+//     <name> <+ - * / % ^ **> <expression>  moves_by 0: the evaluator answers it
 //
 // ANYTHING ELSE IS REFUSED HERE, BY THE CHECKER, BEFORE THE LOOP HAS PRINTED --
 // and that is the whole reason this is one rule rather than a list of traps. The
@@ -192,7 +192,7 @@ signed long long int for_step_moves_by(const std::vector<std::bitset<16>> &row,
         return success;                     // the empty step: the third part is the optional one
 
     const std::string is_written = " -- a for's step is " + name +
-                                   " and one of + - * / % ^ with a space on both sides, or " + name +
+                                   " and one of + - * / % ^ ** with a space on both sides, or " + name +
                                    "++ or " + name + "--";
 
     // ++i and --i, the prefix spelling of the one the author gave. Worth its own
@@ -231,14 +231,15 @@ signed long long int for_step_moves_by(const std::vector<std::bitset<16>> &row,
         return success;
     }
 
-    // `**` BY NAME. M20.A lists `my_int ** number(power)`, and the author ruled on
-    // 2026-09-16 that power is `^`. A second spelling for power living in this one
-    // bracket would be the inconsistency without the reason for it, and the
-    // generic answer ("a math operation needs a space on both sides") would send a
-    // person to write `i * * 2`, which is not power either.
+    // A TOUCHING `**` BY NAME. M20.A lists `my_int ** number(power)`, and since INF-1
+    // (SATELLITE_INFINITY.md) a SPACED `**` is power everywhere, this bracket
+    // included: the lexer writes it as power_token, so `i ** 2` never reaches this.
+    // What does is `i**2`, two touching stars -- and the generic answer ("a math
+    // operation needs a space on both sides") would send a person to write
+    // `i * * 2`, which is not power either, so this one is named.
     if (sign == token::tight_times_token && code_at(row, after + 1) == token::tight_times_token) {
-        why = "in satellite.statement.for, power is written ^ -- write " + name + " ^ ... rather than " + name +
-              " ** ...";
+        why = "in satellite.statement.for, power is written with a space on both sides -- write " + name +
+              " ** ... or " + name + " ^ ...";
         return satl_line_not_understood;
     }
 

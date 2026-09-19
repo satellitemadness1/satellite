@@ -1,0 +1,18 @@
+// THE INFINITY'S WORDS ARE NUMBERED AND NOTHING ELSE IS (SATELLITE_INFINITY.md,
+// INF-1): satellite.variable.infinity is 1 6 17, satellite.infinity 1 26 and
+// satellite.infinity() 1 26 0. Before INF-1 this line was "satellite.variable is not
+// a call"; now it is a declaration the checker names as not built, the way
+// satellite.variable.float is -- and nothing runs before it.
+//
+// THIS FILE GOES RED ON PURPOSE WHEN INF-2 BUILDS THE ARM. Then the line runs, and
+// the fix is to rebase this onto whatever is still unbuilt (the lettered levels,
+// INF-6), never to delete the check.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.infinity my_inf = satellite.infinity()
+}
+
+satellite.return(satellite)

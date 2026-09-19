@@ -204,7 +204,8 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
 // an operator was (`display(2+3)`, where `2` is read first and the `+` is next).
 // The second is the common one and it is the one a generic "could not read to
 // the end" message served badly.
-bool refuse_if_reserved(Code code, std::size_t &at, ExpressionContext &context)
+bool refuse_if_reserved(const std::vector<std::bitset<16>> &row, Code code, std::size_t &at,
+                        ExpressionContext &context)
 {
     // 5/4 -- the fraction (the author, 2026-09-16: "when you encounter
     // number/number with NO space -- that becomes a fraction"). The type is not
@@ -223,6 +224,16 @@ bool refuse_if_reserved(Code code, std::size_t &at, ExpressionContext &context)
                      : code == token::tight_power_token ? "^" : nullptr;
     if (sign == nullptr)
         return false;
+    // A TOUCHING `**` IS NAMED (INF-1, SATELLITE_INFINITY.md). A spaced `**` is power,
+    // so a person writing `2**3` meant power -- and the generic answer below would
+    // send them to write `2 * * 3`, which is two operators and is refused too. The
+    // for step names the same mistake (program_walk.cpp, for_step_moves_by).
+    if (code == token::tight_times_token && code_at(row, at + 1) == token::tight_times_token) {
+        context.refuse(satl_line_not_understood,
+                       "power is written with a space on both sides -- 2 ** 3 or 2 ^ 3, never 2**3", at);
+        ++at;
+        return true;
+    }
     context.refuse(satl_line_not_understood,
                    std::string("every math operation is written with a space on both sides of the sign, and this ") +
                        sign + " has none");
@@ -238,16 +249,7 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
 // refusal names the one the language thinks in.
 const char *spelling_of_method(Code method)
 {
-    switch (method) {
-    case token::find_token: return "find";
-    case token::replace_token: return "replace";
-    case token::add_token: return "add";
-    case token::to_string_token: return "to_string";
-    case token::to_number_token: return "number";
-    case token::to_binary_token: return "binary";
-    case token::to_hexadecimal_token: return "hex";
-    default: return method_spelling(method);
-    }
+    return method_spelling(method);                         // the registry's one table (INF-1)
 }
 
 // A CONVERSION, OR nullptr FOR AN OPERATION. The whole difference between the two
@@ -413,7 +415,7 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // A file's method names on anything else are not built for it yet.
         if (conversion == nullptr && method != token::find_token && method != token::add_token) {
             context.refuse(not_built_yet, name + "." + spelling + " is not built for " + (*live).kind_name() +
-                                              " yet -- so far it is a file's");
+                                              " yet -- " + so_far_whose(method));
             return Value();
         }
         if (arguments.size() > 1) {
@@ -731,7 +733,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         return Value::of_bool(!*inner.as_bool());
     }
 
-    if (refuse_if_reserved(code, at, context))
+    if (refuse_if_reserved(row, code, at, context))
         return Value();
 
     if (code == token::left_parenthesis_token) {
@@ -1062,7 +1064,7 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
         // A touching sign where an operator belongs is the common way the
         // whitespace rule is broken, so it is answered here rather than left to
         // whatever notices the expression stopped early.
-        if (refuse_if_reserved(op, at, context))
+        if (refuse_if_reserved(row, op, at, context))
             return Value();
         const int level = precedence_of(op);
         if (level == 0 || level < lowest)

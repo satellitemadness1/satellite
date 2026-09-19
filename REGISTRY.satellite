@@ -48,7 +48,7 @@ EVERY satellite.something.something HAS ITS OWN CODE, 4096 to 8191 (the author,
 **words/words.tsv is what assigns them** -- a word's code is 4097 plus its row
 there, and satellite/bytecode/make_word_codes.py generates the header from it, so
 this file does not carry 4096 rows it would only be able to get wrong. 004 has
-364 words, which leaves 3731 codes for the ones a user defines. The words sit at
+384 words, which leaves 3711 codes for the ones a user defines. The words sit at
 4096 and not lower because the eleven token families reach 3071, and a range that
 starts under them would have moved seven of them.
 
@@ -232,7 +232,7 @@ bits              name                         what it is
 0000001100000010  times_token                  *  with whitespace on BOTH sides
 0000001100000011  divide_token                 /  with whitespace on BOTH sides; a touching / is a path or a fraction
 0000001100000100  modulus_token                %  with whitespace on BOTH sides
-0000001100000101  power_token                  ^  with whitespace on BOTH sides. The author ruled ^ is power, 2026-09-16
+0000001100000101  power_token                  ^  with whitespace on BOTH sides. The author ruled ^ is power, 2026-09-16; ** spaced is its second spelling (SATELLITE_INFINITY.md, INF-1)
 0000001100000110  tight_plus_token             +  touching: not an operation. Reserved
 0000001100000111  tight_minus_token            -  touching: the UNARY minus, which is how -5 is written
 0000001100001000  tight_times_token            *  touching: not an operation. Reserved
@@ -354,7 +354,10 @@ bits              name                         what it is
 0000101100100001  reverse_token                reverse  [METHOD] object.reverse() -- a list, a string, a number, a binary or a hex, back to front (the author, 2026-09-18)
 0000101100100010  keys_token                   keys  [METHOD] index.keys -- every key, as a list, IN THE ORDER THEY WERE PUT IN (words.tsv already numbers satellite.container.map.keys 1 4 1 8)
 0000101100100011  values_token                 values  [METHOD] index.values -- every value, as a list, in the same order as .keys (words.tsv already numbers satellite.container.map.values 1 4 1 9)
-0000101100011110  free                         to 0000101111111111, free for this family
+0000101100100100  power_of_token               power_of/to_the_power_of/power  [METHOD] object.power_of(x) -- the object to the power of x; three spellings, the author's (SATELLITE_INFINITY.md, messages five and nine)
+0000101100100101  resize_token                 resize  [METHOD] infinity.resize(n) -- that one infinity's nines width (SATELLITE_INFINITY.md, message two)
+0000101100100110  nines_token                  nines  [METHOD] infinity.nines() -- the first count shown in nines (SATELLITE_INFINITY.md, Q14)
+0000101100100111  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it
@@ -364,7 +367,8 @@ bits              name                         what it is
 1001110001000000  wide_token                   the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U+FFFF inside a payload (D3.1)
 1001110001000001  free                         to 1001110011111111, free beside the wide token
 
-0010000000000000  free                         to 1111111011111111, unclaimed
+0010000000000000  free                         to 1001101111111111, unclaimed
+1001110100000000  free                         to 1111111011111111, unclaimed -- the range above wide_token's family (split 2026-09-18, INF-1: one range used to run over it)
 
 -- KEPT BACK  (1111111100000000 up)
 1111111111111111  extend_token                 the next code carries the token; kept back so an all-ones buffer is never a token

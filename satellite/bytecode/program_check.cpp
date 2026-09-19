@@ -300,7 +300,7 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
 
     if (declared_as != word::code_of(1, 6, 2)) {
         if (of_a_string_or_number) return success;
-        why = spelling + " is not built for " + word::spelling_of(declared_as) + " yet -- so far it is a file's";
+        why = spelling + " is not built for " + word::spelling_of(declared_as) + " yet -- " + so_far_whose(method);
         return not_built_yet;
     }
     if (arity < 0) {

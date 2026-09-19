@@ -23,30 +23,8 @@ namespace fast = number_fast_path;
 
 const char *name_of(token::Code method)
 {
-    switch (method) {
-    case token::append_token: return "append";
-    case token::size_token: return "size";
-    case token::contains_token: return "contains";
-    case token::sort_token: return "sort";
-    case token::by_name_token: return "by_name";
-    case token::by_value_token: return "by_value";
-    case token::reverse_token: return "reverse";
-    case token::first_token: return "first";
-    case token::last_token: return "last";
-    case token::empty_token: return "empty";
-    case token::clear_token: return "clear";
-    case token::insert_token: return "insert";
-    case token::remove_token: return "remove";
-    case token::remove_at_token: return "remove_at";
-    case token::remove_first_token: return "remove_first";
-    case token::remove_last_token: return "remove_last";
-    case token::index_of_token: return "index_of";
-    case token::truncate_token: return "truncate";
-    case token::search_token: return "search";
-    case token::keys_token: return "keys";
-    case token::values_token: return "values";
-    default: return "that";
-    }
+    const char *named = token::method_name_of(method);   // the registry's one table (INF-1)
+    return named[0] != '\0' ? named : "that";
 }
 
 Value a_count(std::size_t n)

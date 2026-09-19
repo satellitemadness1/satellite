@@ -436,6 +436,19 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
         }
         if (matched_pair) continue;
 
+        // `**` IS THE SECOND SPELLING OF `^` (SATELLITE_INFINITY.md, INF-1): the
+        // author writes it twice -- "power ** infinity", `my_number ** my_number **
+        // my_number` -- and the 2026-09-16 ruling that power is `^` stands. Spaced on
+        // both sides it lexes to power_token itself, so nothing after the lexer ever
+        // learns there were two spellings, and it groups right to left as `^` does.
+        // A TOUCHING `**` is left to the rule below: two tight stars, refused.
+        if (c == '*' && line.two_ahead("**") && line.i > 0 && blank(text[line.i - 1]) &&
+            line.i + 2 < n && blank(text[line.i + 2])) {
+            line.put(token::power_token);
+            line.i += 2;
+            continue;
+        }
+
         // EVERY ARITHMETIC OPERATION NEEDS WHITESPACE ON BOTH SIDES (the author,
         // 2026-09-16): "Literally every math operation, ANY math operation has to
         // have spacebar(sign)spacebar". This used to be the rule for `/` alone;

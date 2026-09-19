@@ -1,9 +1,16 @@
 satellite.include(satellite)
 
+// REBASED 2026-09-18 (SATELLITE_INFINITY.md, INF-1). This file used to be refused:
+// power was written ^ only, and `i ** 2` was named as the wrong spelling. The author
+// writes `**` ("power ** infinity"), so a SPACED `**` is now the second spelling of
+// ^ everywhere, this bracket included -- and the loop starts at 2, because 1 ** 2 is
+// 1 and a loop that started there would never end. The touching `i**2` is still
+// refused, by name: tests/for_power_stars_touching.satl.
+
 satellite.capsule satellite.main()
 {
     satellite.console.display("before")
-    satellite.statement.for(satellite.variable.number i = 1; i < 20; i ** 2)
+    satellite.statement.for(satellite.variable.number i = 2; i < 20; i ** 2)
     {
         satellite.console.display(i)
     }

@@ -56,4 +56,11 @@ Value read_file_line(satellite_file &file, const Value &index, const std::string
 // A method code's spelling, for any refusal that names one.
 const char *method_spelling(token::Code method);
 
+// WHOSE A METHOD IS, for the refusal of one called on a type that does not have
+// it: "so far it is a file's" when a file has it, "so far no type has it" when
+// nothing does yet -- the infinity's .power_of, .resize and .nines, numbered in
+// INF-1 and built from INF-2 (SATELLITE_INFINITY.md). Asked of file_method_arity,
+// never a list of its own, so it cannot go stale when a type gains a method.
+const char *so_far_whose(token::Code method);
+
 } // namespace satellite004

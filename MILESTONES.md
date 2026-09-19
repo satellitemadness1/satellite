@@ -527,13 +527,14 @@ part most tightly checked. What is still a RUN-time refusal is `i + 1 & 2`, wher
 the step begins correctly and stops being readable later -- the same refusal
 `while(n < 3 & 1)` gets, in the same place.
 
-**`**` IS REFUSED BY NAME** in the step. This entry lists `my_int ** number(power)`,
-and on 2026-09-16 you ruled that power is `^`. A second spelling for power living
-in one bracket would be the inconsistency without the reason for it, so `i ** 2`
-answers *"power is written ^ -- write i ^ ... rather than i ** ..."*. **Say if you
-want `**` accepted here as well** -- it is one branch in `for_step_moves_by`. In
-the CONDITION it is not by name: `for(...; i ** 2 < 20; ...)` gets the language's
-ordinary "every math operation is written with a space on both sides".
+**`**` IS POWER, IN THE STEP AND EVERYWHERE -- SINCE INF-1** (SATELLITE_INFINITY.md,
+2026-09-18). This entry lists `my_int ** number(power)`, and on 2026-09-16 you ruled
+that power is `^`; the step then refused `i ** 2` by name and asked whether `**`
+should be accepted. The infinity answered it: you write `**` ("power ** infinity",
+`my_number ** my_number ** my_number`), so a SPACED `**` now lexes to power_token
+itself -- `^`'s ruling stands, and `**` is its second spelling, in a step, a
+condition and every expression. Only a TOUCHING `i**2` is refused by name: *"power is
+written with a space on both sides -- write i ** ... or i ^ ..."*.
 
 **The number exists while the loop is running, and no longer.** *"it exists while
 the for loop is running, then it exists under... satellite.history"*. The first

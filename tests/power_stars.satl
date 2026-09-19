@@ -1,0 +1,17 @@
+satellite.include(satellite)
+
+// `**` IS THE SECOND SPELLING OF `^` (SATELLITE_INFINITY.md, INF-1): spaced, it lexes
+// to power_token itself, so it answers what ^ answers and groups the same way --
+// right to left, 2 ** 3 ** 2 is 2 ** 9. The author's own line is
+// `my_number ** my_number ** my_number`, which is this with infinities (INF-5).
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(2 ** 3 ** 2)
+    satellite.console.display(2 ^ 3 ^ 2)
+    satellite.console.display(2 ** 10)
+    satellite.console.display(3 ** 2 + 1)
+    satellite.console.display(2 ** 3 ^ 2)
+}
+
+satellite.return(satellite)

@@ -15,3 +15,6 @@
 1 25 1	satellite.feedback(x)
 1 4 5	satellite.container.index
 1 4 6	satellite.container.multiple
+1 6 17	satellite.variable.infinity
+1 26	satellite.infinity
+1 26 0	satellite.infinity()

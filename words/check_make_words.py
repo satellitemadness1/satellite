@@ -31,14 +31,32 @@ WORK = os.path.join(ROOT, "build", "check_make_words")
 COMMITTED = open(os.path.join(HERE, "words_004.tsv"), encoding="utf-8").read()
 TABLES = ("words.tsv", "words_003.tsv", "satellite_words.hpp")
 
+
+def next_under(parent):
+    """The next free number under a word, read from the committed words.tsv."""
+    taken = [0]
+    for line in open(os.path.join(HERE, "words.tsv"), encoding="utf-8"):
+        numbers = [int(n) for n in line.split("\t")[0].split()]
+        if numbers[:-1] == list(parent):
+            taken.append(numbers[-1])
+    return max(taken) + 1
+
+
+# THE NEXT FREE NUMBER UNDER satellite.variable, READ, NEVER TYPED. These cases used
+# to write 1 6 17 by hand as "the next free number", and on 2026-09-18
+# satellite.variable.infinity took it (SATELLITE_INFINITY.md, INF-1): "a gap" stopped
+# being a gap and failed, and two others went on passing for a reason that was no
+# longer the one they named. Read from the table, no word taking a number can do that.
+NEXT = next_under((1, 6))
+
 # (what it proves, rows after the committed ones, what make_words.py must say)
 # A REFUSAL is its exit 1 and a sentence of make_words.py's own -- never a traceback.
 # An ACCEPTANCE is exit 0 with the rows written at the end of words.tsv as typed.
 REFUSED = [
     ("numbers under another word than the name says",
      "1 5 10\tsatellite.variable.foo\n", "satellite.variable.foo is numbered under 1 5, which is satellite.console"),
-    ("an empty path", "1 6 17\t\n", "write numbers, a tab, then the path"),
-    ("a path with a trailing space", "1 6 17\tsatellite.variable.percentage \n", "write numbers, a tab, then the path"),
+    ("an empty path", f"1 6 {NEXT}\t\n", "write numbers, a tab, then the path"),
+    ("a path with a trailing space", f"1 6 {NEXT}\tsatellite.variable.percentage \n", "write numbers, a tab, then the path"),
     ("numbers that are not numbers", "1 6 x\tsatellite.variable.y\n", "write numbers, a tab, then the path"),
     ("a word under a bare shape", "1 6 4 0 1\tsatellite.variable.number().x\n",
      "cannot go under satellite.variable.number(), which holds no words"),
@@ -46,8 +64,8 @@ REFUSED = [
      "satellite.variable.percentage() is a bare shape, which keeps 0: 1 6 16 0"),
     ("a 0 that is not a bare shape", "1 6 16 0\tsatellite.variable.percentage(x)\n",
      "is not a bare shape, so it cannot keep 0"),
-    ("a gap", "1 6 18\tsatellite.variable.skipped\n", "must take the next free number, 1 6 17"),
-    ("a path that is already a word", "1 6 17\tsatellite.variable.percentage\n", "is already a word"),
+    ("a gap", f"1 6 {NEXT + 1}\tsatellite.variable.skipped\n", f"must take the next free number, 1 6 {NEXT}"),
+    ("a path that is already a word", f"1 6 {NEXT}\tsatellite.variable.percentage\n", "is already a word"),
     ("numbers that are already a word", "1 6 16\tsatellite.variable.other\n", "is already a word"),
 ]
 ACCEPTED = [

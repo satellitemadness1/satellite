@@ -1,0 +1,17 @@
+satellite.include(satellite)
+
+// A TOUCHING `**` is two tight stars, not power -- the lexer turns only a SPACED `**`
+// into power_token (SATELLITE_INFINITY.md, INF-1) -- and the checker names it, so
+// the answer is not the generic "a space on both sides" that would send a person to
+// write `i * * 2`.
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.statement.for(satellite.variable.number i = 2; i < 20; i**2)
+    {
+        satellite.console.display(i)
+    }
+}
+
+satellite.return(satellite)

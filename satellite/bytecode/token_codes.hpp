@@ -63,7 +63,7 @@ inline constexpr Code minus_token = 0x0301;  // -  with whitespace on BOTH sides
 inline constexpr Code times_token = 0x0302;  // *  with whitespace on BOTH sides
 inline constexpr Code divide_token = 0x0303;  // /  with whitespace on BOTH sides; a touching / is a path or a fraction
 inline constexpr Code modulus_token = 0x0304;  // %  with whitespace on BOTH sides
-inline constexpr Code power_token = 0x0305;  // ^  with whitespace on BOTH sides. The author ruled ^ is power, 2026-09-16
+inline constexpr Code power_token = 0x0305;  // ^  with whitespace on BOTH sides. The author ruled ^ is power, 2026-09-16; ** spaced is 
 inline constexpr Code tight_plus_token = 0x0306;  // +  touching: not an operation. Reserved
 inline constexpr Code tight_minus_token = 0x0307;  // -  touching: the UNARY minus, which is how -5 is written
 inline constexpr Code tight_times_token = 0x0308;  // *  touching: not an operation. Reserved
@@ -161,8 +161,59 @@ inline constexpr Code by_value_token = 0x0B20;  // by_value  [METHOD] object.sor
 inline constexpr Code reverse_token = 0x0B21;  // reverse  [METHOD] object.reverse() -- a list, a string, a number, a binary or a hex, bac
 inline constexpr Code keys_token = 0x0B22;  // keys  [METHOD] index.keys -- every key, as a list, IN THE ORDER THEY WERE PUT IN (words.
 inline constexpr Code values_token = 0x0B23;  // values  [METHOD] index.values -- every value, as a list, in the same order as .keys (wor
+inline constexpr Code power_of_token = 0x0B24;  // power_of/to_the_power_of/power  [METHOD] object.power_of(x) -- the object to the power o
+inline constexpr Code resize_token = 0x0B25;  // resize  [METHOD] infinity.resize(n) -- that one infinity's nines width (SATELLITE_INFINI
+inline constexpr Code nines_token = 0x0B26;  // nines  [METHOD] infinity.nines() -- the first count shown in nines (SATELLITE_INFINITY.m
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
+
+// GENERATED from the [METHOD] rows: a method's FIRST spelling, "" for a code
+// that is not a method. The hand-written name functions fall back to this, so
+// a method added to the registry is never named "that method" in a refusal
+// (SATELLITE_INFINITY.md, INF-1, found when power_of was).
+inline constexpr const char *method_name_of(Code code)
+{
+    if (code == find_token) return "find";
+    if (code == replace_token) return "replace";
+    if (code == to_string_token) return "to_string";
+    if (code == to_number_token) return "number";
+    if (code == to_binary_token) return "binary";
+    if (code == to_hexadecimal_token) return "hex";
+    if (code == add_token) return "add";
+    if (code == append_token) return "append";
+    if (code == insert_token) return "insert";
+    if (code == index_of_token) return "index_of";
+    if (code == search_token) return "search";
+    if (code == contains_token) return "contains";
+    if (code == remove_at_token) return "remove_at";
+    if (code == remove_token) return "remove";
+    if (code == remove_first_token) return "remove_first";
+    if (code == remove_last_token) return "remove_last";
+    if (code == truncate_token) return "truncate";
+    if (code == clear_token) return "clear";
+    if (code == size_token) return "size";
+    if (code == empty_token) return "empty";
+    if (code == first_token) return "first";
+    if (code == last_token) return "last";
+    if (code == save_token) return "save";
+    if (code == read_all_token) return "read_all";
+    if (code == close_token) return "close";
+    if (code == open_token) return "open";
+    if (code == ok_token) return "ok";
+    if (code == error_text_token) return "error";
+    if (code == path_token) return "path";
+    if (code == exists_token) return "exists";
+    if (code == sort_token) return "sort";
+    if (code == by_name_token) return "by_name";
+    if (code == by_value_token) return "by_value";
+    if (code == reverse_token) return "reverse";
+    if (code == keys_token) return "keys";
+    if (code == values_token) return "values";
+    if (code == power_of_token) return "power_of";
+    if (code == resize_token) return "resize";
+    if (code == nines_token) return "nines";
+    return "";
+}
 
 // GENERATED from the [METHOD] rows. Answers 0 for a name that is not a
 // method of the language -- a user's own method keeps name_token.
@@ -213,6 +264,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "reverse") return reverse_token;
     if (spelling == "keys") return keys_token;
     if (spelling == "values") return values_token;
+    if (spelling == "power_of") return power_of_token;
+    if (spelling == "to_the_power_of") return power_of_token;
+    if (spelling == "power") return power_of_token;
+    if (spelling == "resize") return resize_token;
+    if (spelling == "nines") return nines_token;
     return 0;
 }
 
@@ -220,11 +276,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token;
 }
 
 
-inline constexpr int kTokenCount = 114;
+inline constexpr int kTokenCount = 117;
 
 } // namespace token
 } // namespace satellite004

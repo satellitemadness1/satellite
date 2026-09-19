@@ -7,6 +7,7 @@
 // for "no such line".
 
 #include "file_calls.hpp"
+#include "container_calls.hpp"
 
 #include "word_codes.hpp"
 #include "../machine/source_position.hpp"
@@ -223,49 +224,25 @@ bool open_or_stop(const satellite_file &file, const std::string &name, const std
 
 const char *method_spelling(Code method)
 {
-    switch (method) {
-    case token::find_token: return "find";
-    case token::replace_token: return "replace";
-    case token::add_token: return "add";
-    case token::to_string_token: return "to_string";
-    case token::to_number_token: return "number";
-    case token::to_binary_token: return "binary";
-    case token::to_hexadecimal_token: return "hex";
-    case token::append_token: return "append";
-    case token::insert_token: return "insert";
-    case token::index_of_token: return "index_of";
-    case token::search_token: return "search";
-    case token::contains_token: return "contains";
-    case token::remove_at_token: return "remove_at";
-    case token::remove_token: return "remove";
-    case token::remove_first_token: return "remove_first";
-    case token::remove_last_token: return "remove_last";
-    case token::truncate_token: return "truncate";
-    case token::clear_token: return "clear";
-    case token::size_token: return "size";
-    case token::empty_token: return "empty";
-    case token::first_token: return "first";
-    case token::last_token: return "last";
-    case token::save_token: return "save";
-    case token::read_all_token: return "read_all";
-    case token::close_token: return "close";
-    case token::open_token: return "open";
-    case token::ok_token: return "ok";
-    case token::error_text_token: return "error";
-    case token::path_token: return "path";
-    case token::exists_token: return "exists";
-    // THE SIX ADDED WITH THE CONTAINERS (2026-09-18). They belong here even
-    // though no file has them, because this function is what every REFUSAL calls
-    // to name a method -- so a missing row does not break a call, it makes the
-    // refusal say "that method" and leaves a person hunting the line themselves.
-    case token::sort_token: return "sort";
-    case token::by_name_token: return "by_name";
-    case token::by_value_token: return "by_value";
-    case token::reverse_token: return "reverse";
-    case token::keys_token: return "keys";
-    case token::values_token: return "values";
-    default: return "that method";
-    }
+    // THE REGISTRY NAMES EVERY METHOD (INF-1): token::method_name_of is generated
+    // from its [METHOD] rows -- the first spelling of each, which is the one the
+    // language thinks in (`number/as_number/to_number` is "number"). This used to be
+    // a hand-written switch of 36 cases, and two more copies lived in
+    // container_calls.cpp and expression.cpp; a method added to the registry fell
+    // through all three to "that method". One table now, and it cannot go stale.
+    const char *named = token::method_name_of(method);
+    return named[0] != '\0' ? named : "that method";
+}
+
+const char *so_far_whose(token::Code method)
+{
+    const bool a_file = file_method_arity(method) >= 0;
+    const bool a_container = container_arity(method) >= 0;
+    if (a_file && a_container)
+        return "so far a file and a container have it";
+    if (a_container)
+        return "so far it is a container's";
+    return a_file ? "so far it is a file's" : "so far no type has it";
 }
 
 int file_method_arity(Code method)

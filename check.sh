@@ -160,6 +160,40 @@ print(' '.join(sorted(missing)))")"
 "$interpreter" tests/not_understood.satl > build/nu.out 2>&1; code=$?
 expect "a line with no scenario" 13 $code
 expect "nothing ran before the refusal" "" "$(grep -x before build/nu.out)"
+# THE INFINITY'S THREE WORDS ARE NUMBERED, NOT BUILT (SATELLITE_INFINITY.md, INF-1).
+# The line is a declaration now, refused by name -- and red on purpose at INF-2.
+"$interpreter" tests/infinity_not_built.satl > build/inf.out 2>&1; code=$?
+expect "satellite.variable.infinity is a numbered word, not built yet" 13 $code
+expect "... refused by name as a declaration" 1 \
+       "$(tr '\n' ' ' < build/inf.out | grep -c 'satellite.variable.infinity my_inf is a declaration')"
+expect "... with nothing run before it" "" "$(grep -x before build/inf.out)"
+"$interpreter" tests/infinity_constructor_not_built.satl > build/inf.out 2>&1; code=$?
+expect "satellite.infinity() is a numbered word with no library yet" 14 $code
+expect "... refused by name" 1 "$(tr '\n' ' ' < build/inf.out | grep -c 'satellite.infinity has no library built for it yet')"
+expect "... with nothing run before it" "" "$(grep -x before build/inf.out)"
+# THE INFINITY'S THREE METHOD TOKENS (INF-1): every spelling lexes to its token and is
+# refused BY NAME on a type that does not have it -- the registry's own name, from the
+# generated method_name_of(), where a hand-kept table used to say "that method".
+for pair in power_of:power_of to_the_power_of:power_of power:power_of nines:nines resize:resize; do
+    written=${pair%%:*}; named=${pair##*:}
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number n = 5\n    satellite.console.display(n.%s(1))\n}\n\nsatellite.return(satellite)\n' "$written" > build/method_probe.satl
+    "$interpreter" build/method_probe.satl > build/method_probe.out 2>&1; code=$?
+    expect "n.$written(1) on a number is not built yet" 14 $code
+    expect "... and is named n.$named, which no type has yet" 1 \
+           "$(tr '\n' ' ' < build/method_probe.out | grep -c "n.$named is not built for satellite.variable.number yet -- so far no type has it")"
+done
+# ...and a container's method on a number names the container, not "no type".
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number n = 5\n    satellite.console.display(n.sort())\n}\n\nsatellite.return(satellite)\n' > build/method_probe.satl
+"$interpreter" build/method_probe.satl > build/method_probe.out 2>&1
+expect "n.sort() on a number: so far it is a container's" 1 \
+       "$(tr '\n' ' ' < build/method_probe.out | grep -c "n.sort is not built for satellite.variable.number yet -- so far it is a container's")"
+# A TOUCHING ** OUTSIDE A for IS NAMED TOO, with the caret on it: the generic "a space
+# on both sides" answer would send a person to write 2 * * 3.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(2**3)\n}\n\nsatellite.return(satellite)\n' > build/method_probe.satl
+"$interpreter" build/method_probe.satl > build/method_probe.out 2>&1; code=$?
+expect "2**3 is refused" 13 $code
+expect "... by name: power is written with a space on both sides" 1 \
+       "$(tr '\n' ' ' < build/method_probe.out | grep -c 'power is written with a space on both sides -- 2 \*\* 3 or 2 ^ 3')"
 # THESE TWO CHANGED ON 2026-09-16, WHEN THE ARITHMETIC TOKENS WERE WIRED TO
 # satellite_number's FAST PATHS, and they changed from "refuses" to "answers".
 # Both used to assert a refusal, and both refusals were placeholders for work
@@ -957,13 +991,20 @@ expect "for: + 1, ++, --, * 2, an empty step, nesting, and a call in the conditi
 # one that runs forever saying nothing (9 million lines in five seconds, the
 # review, 2026-09-17). Every one of these is a SHAPE and is refused by the checker.
 for case in for_no_body for_no_semicolons for_no_declaration for_empty_condition \
-            for_power_stars for_step_other_name for_step_payload \
+            for_power_stars_touching for_step_other_name for_step_payload \
             for_step_prefix_minus for_step_is_the_name for_step_two_operators \
             for_step_doubled_then_more for_step_undecided_sign; do
     timeout 10 "$interpreter" "tests/$case.satl" > build/for.out 2>&1
     expect "$case is refused" 13 $?
     expect "... with nothing run before it" "" "$(grep -x before build/for.out)"
 done
+# A SPACED `**` IS POWER IN A for STEP TOO (SATELLITE_INFINITY.md, INF-1): the file
+# that used to be refused here for `i ** 2` now runs, from 2 so that it ends.
+timeout 10 "$interpreter" tests/for_power_stars_touching.satl > build/for.out 2>&1
+expect "for(...; i**2): the touching ** is refused by name" 1 \
+       "$(tr '\n' ' ' < build/for.out | grep -c 'power is written with a space on both sides -- write i \*\* ... or i ^ ...')"
+expect "for(...; i ** 2) runs: ** is the second spelling of ^" "before|2|4|16" \
+       "$(timeout 10 "$interpreter" tests/for_power_stars.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 # THE ROWS ABOVE ARE ONLY WORTH SOMETHING IF THE FIXTURES REALLY PRINT FIRST: each
 # one opens with display("before"), so a refusal that let the program start would
 # show it. This proves the "nothing run before it" rows are not vacuous.
@@ -1346,6 +1387,10 @@ wanted_math=$(python3 -c "
 for n in (34587, 2+3, 10-4, 6*7, 20//3, 20%3, 2**10, 2+3*4, 10-3-2, 2**(3**2), -3, -1,
           99999999999999999999999+1, 2**200, 0b1100+0xFF, sum(range(1000))): print(n)")
 expect "the six fast paths through their tokens" "$wanted_math" "$("$interpreter" tests/arithmetic.satl 2>/dev/null)"
+# `**` spaced is `^` (SATELLITE_INFINITY.md, INF-1): the same token, so the same answers
+# and the same right-to-left grouping, mixed with `^` too.
+expect "** is the second spelling of ^: 2 ** 3 ** 2, 2 ^ 3 ^ 2, 2 ** 10, 3 ** 2 + 1, 2 ** 3 ^ 2" \
+       "512|512|1024|10|512" "$("$interpreter" tests/power_stars.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 "$interpreter" tests/arithmetic.satl > /dev/null 2>&1; expect "tests/arithmetic.satl runs" 0 $?
 "$interpreter" tests/divide_by_zero.satl > /dev/null 2>&1; expect "a divisor of zero" 22 $?
 "$interpreter" tests/negative_exponent.satl > /dev/null 2>&1; expect "2 ^ -1 is not a whole number" 24 $?
@@ -1499,6 +1544,22 @@ expect "a config row written -1, -9223372036854775807 or quoted still reads" "-1
        "$(row_read -1)|$(row_read -9223372036854775807)|$(row_read '"-9223372036854775808"')"
 # words_004.tsv is typed by hand, so make_words.py refuses a row it cannot trust --
 # checked through the real script and 003's real satl, which is gitignored.
+# THE TWO BYTECODE HEADERS ARE GENERATED, AND NOTHING ELSE CHECKED THAT THEY ARE STILL
+# WHAT THE GENERATORS WRITE (INF-1's review, 2026-09-18). Both scripts run in a copy of
+# their folders under build/, so the committed files are never rewritten, and each
+# header must come out byte-identical -- which also runs make_token_codes.py's own
+# checks (the free rows) on every check.sh.
+rm -rf build/generators && mkdir -p build/generators/satellite/bytecode build/generators/words
+cp REGISTRY.satellite build/generators/ && cp words/words.tsv build/generators/words/
+cp satellite/bytecode/make_token_codes.py satellite/bytecode/make_word_codes.py build/generators/satellite/bytecode/
+python3 build/generators/satellite/bytecode/make_token_codes.py > build/generators/tokens.out 2>&1; code=$?
+expect "make_token_codes.py runs clean on REGISTRY.satellite" 0 $code
+cmp -s build/generators/satellite/bytecode/token_codes.hpp satellite/bytecode/token_codes.hpp; code=$?
+expect "token_codes.hpp is exactly what make_token_codes.py writes" 0 $code
+python3 build/generators/satellite/bytecode/make_word_codes.py > build/generators/words.out 2>&1; code=$?
+expect "make_word_codes.py runs clean on words.tsv" 0 $code
+cmp -s build/generators/satellite/bytecode/word_codes.hpp satellite/bytecode/word_codes.hpp; code=$?
+expect "word_codes.hpp is exactly what make_word_codes.py writes" 0 $code
 python3 words/check_make_words.py > build/check_make_words.out 2>&1; code=$?
 if [ $code = 2 ]; then echo "  skip  make_words.py's checks: no 003 satl at old_versions/second_satellite/satl"
 else expect "make_words.py against rows typed by hand: $(tail -1 build/check_make_words.out) (build/check_make_words.out)" 0 $code; fi
