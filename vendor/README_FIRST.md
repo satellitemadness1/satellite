@@ -112,6 +112,29 @@ letting `sha256sum -c` passing read as more than it is.
 
 ---
 
+## An edit is committed as a PATCH, not as a changed file
+
+**The unpacked trees are not in git.** The tarballs are, so every project folder
+is reproducible with one `tar xf`, and committing both would store 590 MB of
+other people's source twice.
+
+That has a consequence worth being explicit about: **a change made directly to
+an unpacked tree is in no repository at all**, and the next person who
+re-unpacks that tarball destroys it without a single warning. The journal entry
+would survive and the change would not, which is the worst of both.
+
+So an edit lands as two things, together:
+
+    vendor/edit_journal/<project>/EDITS.md        the entry saying what and why
+    vendor/edit_journal/<project>/NNN-<name>.patch   the change itself
+
+    # made with, from inside vendor/<project>/:
+    diff -u <file>.orig <file> > ../edit_journal/<project>/001-thing.patch
+
+The tree stays reproducible, the change stays reviewable, and re-applying it
+after an upgrade is a command instead of an act of memory. Number the patches so
+their order is not a guess.
+
 ## What to write in an EDITS.md
 
 One entry per edit. Date it, name the exact file and lines, and say **why** —

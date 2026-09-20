@@ -62,10 +62,43 @@ __pycache__/
 # scripts and none of the source, which is the thing vendoring was meant to end.
 !/vendor/new/*
 
-# vendor/gtk/ -- the NEW tree, built from vendor/new/gtk-4.24.0.tar.xz. Unpacked source
-# and build output only; the tarball it comes from is in vendor/new/ and is committed.
-/vendor/gtk/gtk-*/
-/vendor/gtk/build-*/
+# THE UNPACKED TREES ARE NOT IN GIT -- the tarballs they come from ARE (vendor/new/,
+# above), so every one of these folders is reproducible with `tar xf`. Together they are
+# ~590 MB of other people's source with its own history upstream, and committing both
+# the tarball and its contents would store everything twice.
+#
+# WHICH MEANS AN EDIT TO VENDORED SOURCE WOULD NOT BE IN GIT EITHER, and would be lost
+# silently the next time the tree was re-unpacked. So an edit is committed as a PATCH
+# FILE beside its journal entry -- vendor/edit_journal/<project>/*.patch -- which keeps
+# the tree reproducible, the change reviewable, and re-applying it a command rather than
+# an act of memory. vendor/README_FIRST.md says this too.
+/vendor/cairo/
+/vendor/expat/
+/vendor/fontconfig/
+/vendor/freetype/
+/vendor/fribidi/
+/vendor/gdk-pixbuf/
+/vendor/glib/
+/vendor/gperf/
+/vendor/graphene/
+/vendor/gtk/
+/vendor/harfbuzz/
+/vendor/libepoxy/
+/vendor/libffi/
+/vendor/libjpeg-turbo/
+/vendor/libpng/
+/vendor/libtiff/
+/vendor/libxkbcommon/
+/vendor/meson/
+/vendor/pango/
+/vendor/pcg-cpp/
+/vendor/pcre2/
+/vendor/pixman/
+/vendor/wayland-protocols/
+/vendor/xkeyboard-config/
+/vendor/zlib/
+
+# vendor/stage/ -- the shared install prefix every project is built into. Build output.
 /vendor/stage/
 
 # vendor/fonts/ -- IBM Plex Mono. Regular and OFL.txt ARE in git: the font is the
