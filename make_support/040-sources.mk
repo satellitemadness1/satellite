@@ -51,6 +51,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(BYTECODE)/file_calls.hpp $(BYTECODE)/container_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
           $(BYTECODE)/infinity_calls.hpp $(INFINITY)/satellite_infinity.hpp \
           $(BYTECODE)/window_calls.hpp $(WINDOW_DIR)/satellite_window.hpp $(WINDOW_DIR)/window_desk.hpp \
+          $(WINDOW_DIR)/window_spill.hpp \
           $(BYTECODE)/sate_file.hpp $(BYTECODE)/cascade_convert.hpp \
           $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
           $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp \

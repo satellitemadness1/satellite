@@ -7,6 +7,8 @@
 
 #include "window_desk.hpp"
 
+#include "window_spill.hpp"
+
 #include <gtk/gtk.h>
 
 #include <condition_variable>
@@ -54,14 +56,27 @@ gboolean run_the_parcel(gpointer as_pointer)
 // SIGABRT out of a library it never asked for.
 void be_the_desk()
 {
-    const bool started = gtk_init_check() != FALSE;
+    // THE SPILL COMES FIRST, AND "FIRST" IS LITERAL (WIN-1). xkeyboard-config is
+    // read inside gtk_init() by a call that null-checks nothing, and glib freezes
+    // its GSettings source list on the first lookup -- so a spill one line later
+    // is a spill that did nothing, silently. window_spill.hpp has the three.
+    //
+    // A FAILED SPILL IS NOT FATAL HERE. It is reported through the same path as
+    // "no display": a machine whose $XDG_RUNTIME_DIR is full still gets a refusal
+    // it can read, rather than the SIGSEGV this whole milestone exists to remove.
+    std::string spill_trouble;
+    const bool spilled = spill_what_gtk_needs(spill_trouble);
+
+    const bool started = spilled && gtk_init_check() != FALSE;
     GMainLoop *loop = started ? g_main_loop_new(nullptr, FALSE) : nullptr;
     {
         std::lock_guard<std::mutex> lock(desk_mutex);
         desk_tried = true;
         desk_running = started;
         desk_loop = loop;
-        if (!started)
+        if (!spilled)
+            desk_trouble = "the window data satl carries could not be written -- " + spill_trouble;
+        else if (!started)
             desk_trouble = "there is no display to draw on -- GTK could not open one "
                            "(no Wayland or X11 session in this environment)";
     }

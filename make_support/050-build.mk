@@ -68,7 +68,12 @@ endef
 #
 # readelf -d AND NOT ldd, which prints the whole transitive closure: that is what
 # made libffi look like a leak until WIN-7 corrected it.
-ALLOWED_NEEDED = libm libresolv libwayland-client libwayland-egl libc ld-linux
+# libstdc++ AND libgcc_s ARE HERE ON A MEASUREMENT, not a shrug: -static-libstdc++
+# removes them and gives satl a SECOND std::cout, which made a failed write to a
+# full device report success (047-window.mk has the whole finding). They come off
+# this list the day the word libraries stop being dlopened.
+ALLOWED_NEEDED = libm libresolv libwayland-client libwayland-egl libc ld-linux \
+                 libstdc++ libgcc_s
 
 define carries_its_own_gtk
 @found=$$(readelf -d $(1) | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p'); \

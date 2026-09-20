@@ -77,13 +77,35 @@ GTK_CFLAGS := $(shell PKG_CONFIG_PATH=$(GTK_BUILD)/meson-uninstalled pkg-config 
 GTK_ARCHIVES := $(shell find $(GTK_BUILD) -name '*.a' ! -name 'libgtk.a' 2>/dev/null | \
                         grep -vE '/(libmalloc-stats|libcairo-trace|libcairo-fdr|libdemo|libintl)\.a$$' | sort)
 
-# -static-libstdc++ AND -static-libgcc take the LAST TWO off the NEEDED list and
-# get satl to the same six the proved binary has. Measured 2026-09-20: the 62
-# dlopened word libraries still load and run against a satl carrying its own
-# libstdc++, and 68 test programs give byte-identical stdout, stderr and exit
-# status. The ONE difference is that stdout and stderr INTERLEAVE differently when
-# merged into one file, which is a buffering change and not a semantic one.
-GTK_LINK_FLAGS = -static-libstdc++ -static-libgcc
+# -static-libstdc++ IS NOT USED, AND THE REASON IS A MEASUREMENT (2026-09-20).
+#
+# It links, and it takes the last two entries off NEEDED, and 68 test programs
+# come out byte-identical -- so it LOOKED right. Then check.sh's /dev/full row
+# failed: writing to a full device answered 0 instead of display_error (2). The
+# same objects linked WITHOUT the flag answer 2.
+#
+# WHY: every library in build/satellite-numbers/ has NEEDED libstdc++.so.6. With
+# satl carrying its own copy there are TWO std::cout in one process --
+# satellite.console.display writes through the shared one, and satl checks the
+# error state of its own, which never saw the failure. A write that failed is
+# reported as a run that succeeded, which is "an answer that is wrong and does
+# not say so".
+#
+# 048-link.mk SAID THIS BEFORE ANY OF IT WAS BUILT: "satl and every library in
+# build/satellite-numbers/ must share one libstdc++, or each has its own
+# std::cout (DESIGN 3.4)". It was written about STATIC=full in 003 and it is
+# exactly as true here.
+#
+# AND IT GENERALISES PART 1's RULE. That rule read "a library whose objects cross
+# into a dlopened DRIVER cannot be static", learned from libwayland-client and the
+# GPU driver. libstdc++ is the same shape with a different boundary: our own
+# dlopened word libraries. The rule is really **a library whose state is shared
+# across a dlopen boundary cannot be static** -- and satl dlopens 62 things.
+#
+# SO THE WAY TO SIX IS NOT THIS FLAG. It is to stop dlopening the word libraries
+# and link them into satl (SATELLITE_WINDOW.md WIN-6 shape (i)), which is the
+# author's decision and a real change to DESIGN 3.4, not a link flag.
+GTK_LINK_FLAGS =
 
 # -lwayland-client AND -lwayland-egl STAY SHARED, AND THAT IS NOT A COMPROMISE.
 # Linked statically there are two copies in one process -- ours and the one the GPU
@@ -133,9 +155,26 @@ TERM_OBJECTS = $(TERM_SOURCES:%.cpp=$(OBJECTS)/%.o)
 # this satl has no window.
 ifeq ($(HAVE_GTK),yes)
 GTK_SOURCES = $(SATELLITE)/satellite_variable_window/window_desk.cpp \
-              $(SATELLITE)/satellite_variable_window/satellite_window.cpp
+              $(SATELLITE)/satellite_variable_window/satellite_window.cpp \
+              $(SATELLITE)/satellite_variable_window/window_spill.cpp
 else
 GTK_SOURCES =
 endif
 
 GTK_OBJECTS = $(GTK_SOURCES:%.cpp=$(OBJECTS)/%.o)
+
+# THE CARRIED DATA (WIN-1), generated rather than written: xkeyboard-config, the
+# IBM Plex Mono family, satl's own fonts.conf and GTK's compiled schemas, all as
+# one compressed GResource in .rodata. make_window_data.py says why each is
+# fatal without it. It is a C file, so it compiles with the plain rule and needs
+# no GTK include path of its own -- only glib's, which GTK_CFLAGS already has.
+WINDOW_DATA_SOURCE = $(BUILD)/generated/window_data.c
+WINDOW_DATA_OBJECT = $(OBJECTS)/generated/window_data.o
+WINDOW_DATA_INPUTS = $(SATELLITE)/satellite_variable_window/make_window_data.py \
+                     $(SATELLITE)/satellite_variable_window/fonts.conf \
+                     $(wildcard vendor/fonts/ibm-plex-mono/*.ttf) \
+                     $(wildcard vendor/xkb/xkb-data/rules/*)
+
+ifeq ($(HAVE_GTK),yes)
+GTK_OBJECTS += $(WINDOW_DATA_OBJECT)
+endif

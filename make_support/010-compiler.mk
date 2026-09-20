@@ -10,6 +10,15 @@ ifeq ($(origin CXX),default)
   CXX := $(if $(wildcard $(LLVM_BIN)/clang++),$(LLVM_BIN)/clang++,c++)
 endif
 
+# AND THE C COMPILER, chosen the same way and for one file only: the GResource
+# that glib-compile-resources writes for the window's carried data (WIN-1). Left
+# at make's built-in `cc` it would be the system gcc while everything else is
+# this clang, which is the mismatch PLAN M0.5 wrote build_libraries.py's
+# .built_with file to stop happening quietly.
+ifeq ($(origin CC),default)
+  CC := $(if $(wildcard $(LLVM_BIN)/clang),$(LLVM_BIN)/clang,cc)
+endif
+
 # OPT IS THE KNOB, AND CXXFLAGS IS NOT ONE: `make CXXFLAGS=-O3` replaces the whole
 # variable and would take -std=c++20 with it. -O2, not 003's -O3, because every
 # measurement in PROGRESS.md and DESIGN §12 was taken at -O2; moving it is a race,
