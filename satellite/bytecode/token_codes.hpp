@@ -164,6 +164,8 @@ inline constexpr Code values_token = 0x0B23;  // values  [METHOD] index.values -
 inline constexpr Code power_of_token = 0x0B24;  // power_of/to_the_power_of/power  [METHOD] object.power_of(x) -- the object to the power o
 inline constexpr Code resize_token = 0x0B25;  // resize  [METHOD] infinity.resize(n) -- that one infinity's nines width (SATELLITE_INFINI
 inline constexpr Code nines_token = 0x0B26;  // nines  [METHOD] infinity.nines() -- the first count shown in nines (SATELLITE_INFINITY.m
+inline constexpr Code focus_token = 0x0B27;  // focus  [METHOD] window.focus() -- ask the desktop to bring this window to the front (SAT
+inline constexpr Code title_token = 0x0B28;  // title  [METHOD] window.title("text") -- the window's title now; window.title reads it ba
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
@@ -212,6 +214,8 @@ inline constexpr const char *method_name_of(Code code)
     if (code == power_of_token) return "power_of";
     if (code == resize_token) return "resize";
     if (code == nines_token) return "nines";
+    if (code == focus_token) return "focus";
+    if (code == title_token) return "title";
     return "";
 }
 
@@ -269,6 +273,8 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "power") return power_of_token;
     if (spelling == "resize") return resize_token;
     if (spelling == "nines") return nines_token;
+    if (spelling == "focus") return focus_token;
+    if (spelling == "title") return title_token;
     return 0;
 }
 
@@ -276,11 +282,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token;
 }
 
 
-inline constexpr int kTokenCount = 117;
+inline constexpr int kTokenCount = 119;
 
 } // namespace token
 } // namespace satellite004

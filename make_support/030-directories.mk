@@ -21,6 +21,7 @@ STRING16   = $(SATELLITE)/satellite_variable_string
 BINARY     = $(SATELLITE)/satellite_variable_binary
 PERCENTAGE = $(SATELLITE)/satellite_variable_percentage
 INFINITY   = $(SATELLITE)/satellite_variable_infinity
+WINDOW_DIR = $(SATELLITE)/satellite_variable_window
 VERSION_DIR = $(SATELLITE)/version
 PROMPT     = $(SATELLITE)/prompt
 STRINGS32  = strings

@@ -13,6 +13,7 @@
 #include "file_calls.hpp"
 #include "container_calls.hpp"
 #include "infinity_calls.hpp"
+#include "window_calls.hpp"
 #include "../machine/stop_flag.hpp"
 
 #include "word_codes.hpp"
@@ -396,6 +397,20 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // handle, so the method acts on the one open file every name for it shares.
         if (satellite_file *file = (*live).as_file()) {
             Value answer = call_file_method(method, *file, arguments, had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
+            continue;
+        }
+
+        // A WINDOW ANSWERS ITS OWN (window_calls.cpp), the same way and for the
+        // same reason: the handle is what a method acts through, so two names for
+        // one window move one window. What comes back IS the window, so
+        // `w.title("x").focus()` strings together with no case of its own here.
+        if (const WindowHandle *window = (*live).window_handle()) {
+            Value answer = call_window_method(method, *window, arguments, had_parentheses, name, context);
             if (context.code != success)
                 return Value();
             held = std::move(answer);
@@ -1212,6 +1227,10 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // ...and so does satellite.infinity() (infinity_calls.hpp).
     if (is_infinity_word(code))
         return call_infinity_word(code, arguments, context);
+    // ...and so does satellite.window.new() (window_calls.hpp). Three word
+    // families now, which is why that header stops calling it a departure.
+    if (is_window_word(code))
+        return call_window_word(code, arguments, context);
 
     if (arguments.size() > 1) {
         context.refuse(satl_line_not_understood, std::string(word::spelling_of(code)) +
@@ -1310,7 +1329,13 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // A CONTAINER GIVEN TO A WORD THAT ONLY TAKES TEXT reads back as what was
     // typed: {1, "two"}, or {"zoe": 1, "al": 2} for an index. satellite_object.cpp's
     // to_string is the one spelling, so display and a refusal quote it the same way.
-    else if ((argument.is_list() || argument.is_index()) && scenarios->text != nullptr) {
+    // A WINDOW READS BACK AS WHICH WINDOW IT IS -- (window "my title") -- for the
+    // same reason a container reads back as what was typed: the one thing a person
+    // displays a window for is to see which one they have hold of. Same branch as
+    // the containers, because satellite_object.cpp's to_string is the one spelling
+    // for all of them.
+    else if ((argument.is_list() || argument.is_index() || argument.is_window()) &&
+             scenarios->text != nullptr) {
         satellite_string written;
         std::string why;
         const signed long long int made = argument.to_string(written, why);

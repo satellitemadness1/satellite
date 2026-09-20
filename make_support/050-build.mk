@@ -54,8 +54,12 @@ define shows_the_build_row
     rm -f $(1); exit 1 ;; esac
 endef
 
-$(BUILD)/satl: $(INTERPRETER_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
-	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(INTERPRETER_OBJECTS) -o $@ -ldl
+# $(GTK_LIBS) AFTER the objects, and for the same reason satl-term's are: a
+# linker resolves an -l only against the symbols it has already been asked for.
+# Both are empty when pkg-config found no gtk4, and this is then exactly the link
+# line it was before the window (047-window.mk).
+$(BUILD)/satl: $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) -o $@ -ldl $(GTK_LIBS)
 	$(call shows_the_build_row,$@)
 
 # THE OLD NAME IS A LINK TO THE NEW ONE. build/satellite-004 was the binary until

@@ -221,6 +221,18 @@ inline SCode s_code_for(signed long long int machine_code)
                 "Ctrl-C stopped this between statements. satl exits 130, which is 128 + SIGINT -- "
                 "what a shell and 003 both answer."};
 
+    // S13xx -- THE WINDOW (SATELLITE_WINDOW.md WIN-3, 2026-09-20).
+    case no_display:
+        return {"S730", "NO_DISPLAY",
+                "there is no screen to draw on. GTK found no Wayland or X11 session -- which is "
+                "true of a build server and of an ssh session without forwarding, and is not a "
+                "fault in the program. The same program on a desktop opens its window."};
+    case window_is_closed:
+        return {"S505", "WINDOW_IS_CLOSED",
+                "a window word was used on a window that is not on a screen. Either the program "
+                "closed it, or the person running it did -- a window is a thing on a desktop, so "
+                "the second one can happen between any two lines."};
+
     // S11xx -- THREADS AND MEMORY.
     case thread_start_error:
         return {"S720", "THREAD_NOT_STARTED",

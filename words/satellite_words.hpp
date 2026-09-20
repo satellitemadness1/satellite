@@ -399,6 +399,10 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.infinity", {1, 6, 17, 0, 0, 0}, 3},
     {"satellite.infinity", {1, 26, 0, 0, 0, 0}, 2},
     {"satellite.infinity()", {1, 26, 0, 0, 0, 0}, 3},
+    {"satellite.variable.window", {1, 6, 18, 0, 0, 0}, 3},
+    {"satellite.window", {1, 27, 0, 0, 0, 0}, 2},
+    {"satellite.window.new(title, width, height)", {1, 27, 1, 0, 0, 0}, 3},
+    {"satellite.window.button(text)", {1, 27, 2, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -420,7 +424,7 @@ struct NextFree {
 };
 
 inline constexpr NextFree kNextFree[] = {
-    {"satellite", {1, 27, 0, 0, 0, 0, 0}, 2},
+    {"satellite", {1, 28, 0, 0, 0, 0, 0}, 2},
     {"satellite.include", {1, 1, 3, 0, 0, 0, 0}, 3},
     {"satellite.capsule", {1, 2, 2, 0, 0, 0, 0}, 3},
     {"satellite.capsule.launch", {1, 2, 1, 1, 0, 0, 0}, 4},
@@ -456,7 +460,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.console.display", {1, 5, 1, 1, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},
-    {"satellite.variable", {1, 6, 18, 0, 0, 0, 0}, 3},
+    {"satellite.variable", {1, 6, 19, 0, 0, 0, 0}, 3},
     {"satellite.variable.string", {1, 6, 1, 23, 0, 0, 0}, 4},
     {"satellite.variable.string.size", {1, 6, 1, 1, 1, 0, 0}, 5},
     {"satellite.variable.string.empty", {1, 6, 1, 2, 1, 0, 0}, 5},
@@ -634,6 +638,8 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.container.multiple", {1, 4, 6, 1, 0, 0, 0}, 4},
     {"satellite.variable.infinity", {1, 6, 17, 1, 0, 0, 0}, 4},
     {"satellite.infinity", {1, 26, 1, 0, 0, 0, 0}, 3},
+    {"satellite.variable.window", {1, 6, 18, 1, 0, 0, 0}, 4},
+    {"satellite.window", {1, 27, 3, 0, 0, 0, 0}, 3},
 };
 
 } // namespace satellite004

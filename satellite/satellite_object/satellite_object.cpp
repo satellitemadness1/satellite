@@ -236,6 +236,12 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     // has one term list, so that is the same as holding the same terms.
     case satelliteObject::infinity:
         return satellite_infinity::compare(l.as_infinity(), r.as_infinity()) == 0;
+    // TWO WINDOWS ARE EQUAL WHEN THEY ARE THE SAME WINDOW, and never when they
+    // merely look alike. A window is a thing on a screen: two windows with the
+    // same title and size are two windows, and a program comparing them is
+    // asking which one it has, not what they have on them.
+    case satelliteObject::window:
+        return l.as_window() == r.as_window();
     case satelliteObject::how_many_kinds: break;
     }
     return false;
@@ -256,6 +262,7 @@ const char *satelliteObject::kind_name() const
     case list: return "a list";
     case index: return "an index";
     case infinity: return "an infinity";
+    case window: return "a window";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -611,6 +618,22 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
     case infinity: {
         std::size_t bad_offset = 0;
         return satellite_string::from_utf8(satellite_infinity::display(as_infinity()), out, bad_offset);
+    }
+    // A WINDOW READS AS WHAT IT IS AND WHAT IS ON IT, because the one thing a
+    // person displays a window for is to see WHICH window they have. A button
+    // reads as its label for the same reason.
+    case window: {
+        const satellite_window *which = as_window();
+        std::string written;
+        if (which == nullptr)
+            written = "(no window)";
+        else if (which->piece == satellite_window::button)
+            written = "(button \"" + which->text + "\")";
+        else
+            written = std::string(which->on_the_screen ? "(window \"" : "(closed window \"") +
+                      which->title + "\")";
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(written, out, bad_offset);
     }
     case how_many_kinds: break;
     }

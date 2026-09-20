@@ -14,8 +14,8 @@ DEPENDENCY_FLAGS = -MMD -MP
 COMPILE_STAMP = $(BUILD)/.compile-flags
 $(COMPILE_STAMP): FORCE
 	@mkdir -p $(BUILD)
-	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE)' | cmp -s - $@ || \
-	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE)' > $@
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' > $@
 
 # The window's own stamp, so gtk's include paths appearing or vanishing recompiles
 # the window and not all of satl.
@@ -30,13 +30,28 @@ $(TERM_COMPILE_STAMP): FORCE
 # compiled from the row it is about to replace.
 $(OBJECTS)/%.o: %.cpp $(COMPILE_STAMP) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
 
 # THE WINDOW'S OBJECTS, which need gtk's include paths. The shorter stem wins, so
 # this rule, and not the one above, compiles satl-term/*.cpp.
 $(OBJECTS)/$(TERM_DIR)/%.o: $(TERM_DIR)/%.cpp $(TERM_COMPILE_STAMP) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS) $(DEPENDENCY_FLAGS) -c $< -o $@
+
+# THE INTERPRETER'S OWN WINDOW OBJECTS, which need GTK's include paths and not
+# VTE's -- a longer stem than the plain rule above, so this one wins for them.
+# They have their own stamp for the same reason satl-term's do: gtk4 appearing or
+# vanishing must recompile the window and not all of satl.
+GTK_COMPILE_STAMP = $(BUILD)/.compile-flags-gtk
+$(GTK_COMPILE_STAMP): FORCE
+	@mkdir -p $(BUILD)
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS)' > $@
+
+$(OBJECTS)/$(SATELLITE)/satellite_variable_window/%.o: $(SATELLITE)/satellite_variable_window/%.cpp \
+                                                       $(GTK_COMPILE_STAMP) | $(BUILD_STAMP)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(DEPENDENCY_FLAGS) -c $< -o $@
 
 # THE OBJECTS THAT READ THE ROWS depend on the build stamp as a real prerequisite,
 # and the .d files are not enough for them. make remembers a file's time from the
@@ -49,4 +64,4 @@ ROW_READERS = $(OBJECTS)/$(ARGUMENTS)/arguments.o $(OBJECTS)/$(SATELLITE)/struct
               $(OBJECTS)/$(TERM_DIR)/window.o
 $(ROW_READERS): $(BUILD_STAMP)
 
--include $(INTERPRETER_OBJECTS:.o=.d) $(TERM_OBJECTS:.o=.d)
+-include $(INTERPRETER_OBJECTS:.o=.d) $(TERM_OBJECTS:.o=.d) $(GTK_OBJECTS:.o=.d)

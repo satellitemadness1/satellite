@@ -29,6 +29,7 @@
 
 #include "arguments/arguments.hpp"
 #include "bytecode/sate_file.hpp"
+#include "bytecode/window_calls.hpp"
 #include "bytecode/bytecode_registry.hpp"
 #include "bytecode/function_table.hpp"
 #include "bytecode/program_walk.hpp"
@@ -482,7 +483,22 @@ int main(int argc, char **argv)
     std::set_new_handler(&out_of_memory_handler);
 
     try {
-        return satellite004::exit_status_of(run_satl(argc, argv));
+        const signed long long int code = run_satl(argc, argv);
+        // THE RUN DOES NOT END WHILE A WINDOW IS OPEN (SATELLITE_WINDOW.md WIN-3).
+        // A program that opens a window and returns would otherwise take it down
+        // with it before anybody saw it -- and the author's own example is four
+        // lines long. HERE AND NOT IN run_satl: that function returns from two
+        // dozen places, and a wait written at each of them is a wait that will be
+        // missed from the next one added.
+        //
+        // IT COSTS NOTHING WHEN THERE IS NO WINDOW. The desk is not started until
+        // a window word runs, and this answers at once when it was never started
+        // -- so `satl batch.satl` on a headless server is untouched.
+        // A REFUSED RUN TAKES ITS WINDOWS DOWN rather than waiting on them: the
+        // report is already printed, and a person told their program stopped
+        // must not then be left at a prompt that never comes back.
+        satellite004::windows_hold_the_run_open(!satellite004::stops_the_program(code));
+        return satellite004::exit_status_of(code);
     } catch (const std::bad_alloc &) {
         // S999, THE TOP OF THE SCALE. Before this, an allocation that failed was
         // std::terminate and a core dump -- the one failure a person could learn

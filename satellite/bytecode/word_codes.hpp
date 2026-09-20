@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 384;
+inline constexpr unsigned int kWordsInTable = 388;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -79,6 +79,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0201180000000000ULL, 4459},  // 1 24 -- satellite.constructor
     {0x0201190000000000ULL, 4473},  // 1 25 -- satellite.feedback
     {0x02011A0000000000ULL, 4479},  // 1 26 -- satellite.infinity
+    {0x02011B0000000000ULL, 4482},  // 1 27 -- satellite.window
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -120,6 +121,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301060F00000000ULL, 4283},  // 1 6 15 -- satellite.variable.capsule
     {0x0301061000000000ULL, 4461},  // 1 6 16 -- satellite.variable.percentage
     {0x0301061100000000ULL, 4478},  // 1 6 17 -- satellite.variable.infinity
+    {0x0301061200000000ULL, 4481},  // 1 6 18 -- satellite.variable.window
     {0x0301070000000000ULL, 4285},  // 1 7 0 -- satellite.random()
     {0x0301070100000000ULL, 4286},  // 1 7 1 -- satellite.random.fast()
     {0x0301070200000000ULL, 4287},  // 1 7 2 -- satellite.random.normal()
@@ -198,6 +200,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301190000000000ULL, 4474},  // 1 25 0 -- satellite.feedback()
     {0x0301190100000000ULL, 4475},  // 1 25 1 -- satellite.feedback(x)
     {0x03011A0000000000ULL, 4480},  // 1 26 0 -- satellite.infinity()
+    {0x03011B0100000000ULL, 4483},  // 1 27 1 -- satellite.window.new(title, width, height)
+    {0x03011B0200000000ULL, 4484},  // 1 27 2 -- satellite.window.button(text)
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -828,6 +832,10 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.infinity", {1, 6, 17, 0, 0, 0, 0}, 3},
     {"satellite.infinity", {1, 26, 0, 0, 0, 0, 0}, 2},
     {"satellite.infinity()", {1, 26, 0, 0, 0, 0, 0}, 3},
+    {"satellite.variable.window", {1, 6, 18, 0, 0, 0, 0}, 3},
+    {"satellite.window", {1, 27, 0, 0, 0, 0, 0}, 2},
+    {"satellite.window.new(title, width, height)", {1, 27, 1, 0, 0, 0, 0}, 3},
+    {"satellite.window.button(text)", {1, 27, 2, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1221,6 +1229,10 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.variant.held", 4281},
     {"satellite.variable.variant.holding", 4279},
     {"satellite.variable.variant.holds(x)", 4280},
+    {"satellite.variable.window", 4481},
+    {"satellite.window", 4482},
+    {"satellite.window.button(text)", 4484},
+    {"satellite.window.new(title, width, height)", 4483},
 };
 
 inline constexpr std::size_t kSpelledWordCount = sizeof kSpelledWords / sizeof kSpelledWords[0];

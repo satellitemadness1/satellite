@@ -19,6 +19,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/expression.cpp $(BYTECODE)/sate_file.cpp \
                       $(BYTECODE)/file_calls.cpp $(BYTECODE)/container_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
                       $(BYTECODE)/infinity_calls.cpp $(INFINITY)/satellite_infinity.cpp \
+                      $(BYTECODE)/window_calls.cpp \
                       $(OBJECT)/satellite_object.cpp \
                       $(OBJECT)/str_add_str.cpp $(OBJECT)/str_minus_str.cpp $(OBJECT)/str_find_str.cpp \
                       $(OBJECT)/num_add_num.cpp $(OBJECT)/num_sub_num.cpp $(OBJECT)/num_div_num.cpp \
@@ -49,6 +50,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(BYTECODE)/expression.hpp $(BYTECODE)/value.hpp \
           $(BYTECODE)/file_calls.hpp $(BYTECODE)/container_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
           $(BYTECODE)/infinity_calls.hpp $(INFINITY)/satellite_infinity.hpp \
+          $(BYTECODE)/window_calls.hpp $(WINDOW_DIR)/satellite_window.hpp $(WINDOW_DIR)/window_desk.hpp \
           $(BYTECODE)/sate_file.hpp $(BYTECODE)/cascade_convert.hpp \
           $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
           $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp \
@@ -75,5 +77,5 @@ MAKE_FRAGMENTS = make_support/005-jobs.mk make_support/010-compiler.mk make_supp
                  make_support/030-directories.mk make_support/040-sources.mk make_support/047-window.mk \
                  make_support/048-link.mk make_support/050-build.mk make_support/060-compile.mk \
                  make_support/065-tests.mk make_support/070-clean.mk
-BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) $(TERM_SOURCES) $(TERM_HEADERS) Makefile $(MAKE_FRAGMENTS) \
+BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) $(GTK_SOURCES) $(TERM_SOURCES) $(TERM_HEADERS) Makefile $(MAKE_FRAGMENTS) \
                $(SATELLITE)/config/build_number.py words/words.tsv $(NUMBERS)/build_libraries.py

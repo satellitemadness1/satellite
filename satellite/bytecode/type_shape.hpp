@@ -65,6 +65,7 @@ inline satelliteObject::Kind kind_of_type_word(token::Code word)
     if (word == word::code_of(1, 6, 17)) return satelliteObject::infinity;   // and every level above (INF-2)
     if (word == word::code_of(1, 4, 2)) return satelliteObject::list;
     if (word == word::code_of(1, 4, 5)) return satelliteObject::index;
+    if (word == word::code_of(1, 6, 18)) return satelliteObject::window;   // and a button (WIN-3)
     return satelliteObject::how_many_kinds;          // not a type word
 }
 

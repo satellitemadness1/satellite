@@ -18,3 +18,7 @@
 1 6 17	satellite.variable.infinity
 1 26	satellite.infinity
 1 26 0	satellite.infinity()
+1 6 18	satellite.variable.window
+1 27	satellite.window
+1 27 1	satellite.window.new(title, width, height)
+1 27 2	satellite.window.button(text)

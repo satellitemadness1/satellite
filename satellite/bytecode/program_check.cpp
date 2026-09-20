@@ -32,6 +32,7 @@
 #include "file_calls.hpp"
 #include "container_calls.hpp"
 #include "infinity_calls.hpp"
+#include "window_calls.hpp"
 #include "word_codes.hpp"
 #include "../machine/s_codes.hpp"
 
@@ -308,6 +309,16 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         return not_built_yet;
     }
 
+    // A WINDOW'S OWN METHODS, asked of window_calls.hpp and never copied here --
+    // the hand-written container set that used to sit above went stale the same
+    // afternoon it was written, and one list is the fix for that.
+    if (declared_as == word::code_of(1, 6, 18)) {
+        if (window_method_arity(method) >= 0) return success;
+        why = spelling + " -- a window has .append(piece, across, down), .close(), .focus(), "
+                         ".title(\"text\") and .ok (SATELLITE_WINDOW.md WIN-3 lists what a window does)";
+        return types_do_not_meet;
+    }
+
     if (declared_as != word::code_of(1, 6, 2)) {
         if (of_a_string_or_number) return success;
         why = spelling + " is not built for " + word::spelling_of(declared_as) + " yet -- " + so_far_whose(method);
@@ -413,10 +424,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // A WORD USED AS A CALL MUST HAVE A LIBRARY. A word with none is
         // not_built_yet (14) with its own name, which is what 003 did and what a
         // person can act on (function_table.hpp).
-        // satellite.file's words and satellite.infinity() are the object model's and have
-        // none (file_calls.hpp, infinity_calls.hpp).
+        // satellite.file's words, satellite.infinity() and satellite.window's are the
+        // object model's and have none (file_calls.hpp, infinity_calls.hpp,
+        // window_calls.hpp) -- each of them answers a HANDLE, which is the one thing
+        // a library cannot make.
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
-            functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code)) {
+            functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code) &&
+            !is_window_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
         }
@@ -439,7 +453,14 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     why = file_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
                     return satl_line_not_understood;
                 }
-                if (!is_file_word(code) && given > 1) {
+                // A WINDOW WORD TAKES ITS OWN COUNT TOO -- three for new, one for
+                // button -- so it is refused here rather than by the one-argument
+                // rule below, which would tell a person the wrong thing.
+                if (is_window_word(code) && given != window_word_arity(code)) {
+                    why = window_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
+                    return satl_line_not_understood;
+                }
+                if (!is_file_word(code) && !is_window_word(code) && given > 1) {
                     const std::string spelled(word::spelling_of(code));
                     why = spelled.substr(0, spelled.find('(')) + " takes one argument, and was given " +
                           std::to_string(given);

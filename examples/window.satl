@@ -1,0 +1,32 @@
+satellite.include(satellite)
+
+// A WINDOW, AND THE AUTHOR'S OWN LINE FOR ONE (SATELLITE_WINDOW.md WIN-3,
+// 2026-09-19): "satellite.variable.window my_window = satellite.window.new(...)"
+// followed by an append of a button at a position.
+//
+// THREE ARGUMENTS AND NOT `800x600`. satl reads `x600` as a hex literal -- xFFAA
+// is hex -- so `800x600` is two numbers side by side and is refused. Three is
+// also what 003 wrote: its own removed word table has
+// satellite.window.console.new(title, width, height).
+//
+// A POSITION IS THE PIECE'S CENTRE, not its corner: 400, 300 is the middle of an
+// 800x600 window, whatever size the button turns out to be.
+//
+// THE RUN DOES NOT END WHILE THE WINDOW IS OPEN. There is no wait word here and
+// there does not need to be one -- close the window and the program ends. A
+// program can close it itself with my_window.close().
+//
+// ON A MACHINE WITH NO SCREEN this refuses with S730 NO_DISPLAY and exits 50,
+// which is not a fault in the program: the same file on a desktop opens a window.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.window my_window = satellite.window.new("window_title", 800, 600)
+
+    my_window.append(satellite.window.button("text"), 400, 300)
+
+    satellite.console.display("the window is open, and this line already ran")
+    satellite.console.display(my_window)
+
+    satellite.return(satellite)
+}

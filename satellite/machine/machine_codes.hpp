@@ -92,6 +92,16 @@ enum MachineCode : signed long long int {
     out_of_memory = 48,                 // the machine would not give satl memory; S999
     libraries_not_understood = 49,      // a numbered library loaded and does not describe itself; S980
 
+    // 50-51 WERE ADDED 2026-09-20 for satellite.window (SATELLITE_WINDOW.md WIN-3).
+    // TWO, AND NOT ONE, because they are answered by different people. `no_display`
+    // is the MACHINE saying it has no screen -- true of every build server and
+    // every ssh session, and not a fault in the program. `window_is_closed` is the
+    // PROGRAM using a window it already closed, or one a person closed while it
+    // ran. A single "window error" would have made a headless run and a bug read
+    // the same in an exit status.
+    no_display = 50,                    // GTK found no Wayland or X11 session to draw on
+    window_is_closed = 51,              // a window word used on a window that is not on a screen
+
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
     // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
@@ -140,6 +150,8 @@ inline const char *machine_code_name(signed long long int code)
     case machine_fact_not_read: return "machine_fact_not_read";
     case setting_out_of_range: return "setting_out_of_range";
     case machine_conf_unwritable: return "machine_conf_unwritable";
+    case no_display: return "no_display";
+    case window_is_closed: return "window_is_closed";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

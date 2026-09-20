@@ -138,8 +138,13 @@ build/exit_status_cases > build/exit_status.out 2> build/exit_status.err; code=$
 expect "exit statuses for 0, 1, 255, 256, -1, 4294967298 ... ($(grep -c '^ok' build/exit_status.out) cases)" 0 $code
 expect "... a code that does not fit is written in full on stderr" 1 \
        "$(grep -c 'machine code 4294967298 does not fit an exit status (0 to 254 exit as themselves), so satl exits 255' build/exit_status.err)"
-expect "... and satl's main returns through exit_status_of, the one place a code becomes a status" 1 \
-       "$(grep -cF 'return satellite004::exit_status_of(run_satl(argc, argv));' satellite/structured-library.cpp)"
+# THE SHAPE CHANGED 2026-09-20 AND THE PROPERTY DID NOT. main used to be one
+# line, `return exit_status_of(run_satl(...))`; the window needs the code before
+# main returns, so that run is now named and then passed. The third field is the
+# one that keeps this honest: run_satl's value must never be returned DIRECTLY,
+# which is the only way a code could become a status without passing through.
+expect "... and satl's main returns through exit_status_of, the one place a code becomes a status" "1|1|0" \
+       "$(grep -cF 'const signed long long int code = run_satl(argc, argv);' satellite/structured-library.cpp)|$(grep -cF 'return satellite004::exit_status_of(code);' satellite/structured-library.cpp)|$(grep -cE 'return [^;]*run_satl' satellite/structured-library.cpp)"
 # A config row may never hold a name satl fills in, however many words a run has.
 build/arguments_cases > build/arguments_cases.out 2>&1; code=$?
 expect "names satl fills in are refused as rows, and gather adds no other ($(grep -c '^ok' build/arguments_cases.out) cases)" 0 $code
@@ -286,8 +291,23 @@ expect "... and 50,000 identical ones cost ONE line" 2 \
        "$(wc -l < "$CHECK_HOME/.satl/feedback.txt" 2>/dev/null || echo 0)"
 expect "... the book holds what was typed and nothing about the machine" "1|0|0" \
        "$(grep -c 'a real thing a person typed' "$CHECK_HOME/.satl/feedback.txt")|$(grep -c "$(whoami)" "$CHECK_HOME/.satl/feedback.txt")|$(grep -c 'feedback_bomb.satl' "$CHECK_HOME/.satl/feedback.txt")"
-expect "satl links nothing that can reach a network" 0 \
-       "$(nm -D "$interpreter" 2>/dev/null | grep -icE 'socket|connect|getaddrinfo|SSL_|curl_')"
+# WHOLE SYMBOL NAMES, NOT SUBSTRINGS (2026-09-20). This row used to grep for
+# `connect` anywhere in nm's output, and the moment satl linked GTK it matched
+# `g_signal_connect_data` -- GLib connecting a SIGNAL, which reaches no network
+# at all. A guard that cries wolf is a guard somebody turns off, so it now asks
+# for the symbol itself and still catches every real way in: a raw socket, a
+# resolver, OpenSSL, libcurl, and gio's own network classes.
+expect "satl imports no network entry point of its own" 0 \
+       "$(nm -D "$interpreter" 2>/dev/null | awk '{print $NF}' | grep -cE '^(socket|socketpair|connect|bind|listen|accept|accept4|send|sendto|recv|recvfrom|getaddrinfo|gethostbyname)$|^(SSL_|curl_|g_socket|g_network|g_resolver|g_inet|g_tls|g_proxy)')"
+# AND THE THING GTK COST, SAID OUT LOUD RATHER THAN LOST. Since satl links GTK
+# it also links libgio, and gio CAN open a socket -- so "satl links nothing that
+# can reach a network" stopped being true on 2026-09-20 and this is what replaced
+# it: satl calls none of it. The row above is the proof; this one names the
+# library so nobody reads the row above as the old, stronger claim.
+# Written to pass with or without GTK: on a machine with no gtk4 there is no
+# libgio either, and the count is 0.
+expect "... and libgio, which CAN reach one, is linked by GTK and never called" "yes" \
+       "$(gio_linked=$(readelf -d "$interpreter" 2>/dev/null | grep -c 'libgio-2.0'); gio_called=$(nm -D "$interpreter" 2>/dev/null | awk '{print $NF}' | grep -cE '^g_(socket|network|resolver|inet|tls|proxy)'); if [ "$gio_called" = 0 ] && [ "$gio_linked" -le 1 ]; then echo yes; else echo "linked=$gio_linked called=$gio_called"; fi)"
 
 # THE BRACED LIST -- `{a, b}` WHERE A VALUE BELONGS (the author, 2026-09-18: "we
 # need to build satellite object definitions to be this: = {series_of_objects,
@@ -1556,6 +1576,95 @@ expect "... says ERROR: expected -25%, before anything runs" "1|" \
 expect "a declaration inside a loop runs every turn" "0|1|10|11|20|21" \
        "$("$interpreter" tests/loop_declaration.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 "$interpreter" examples/hello_world.satl > /dev/full 2> /dev/null; expect "output refused (/dev/full)" 2 $?
+
+# ---------------------------------------------------------------------------
+# THE WINDOW (SATELLITE_WINDOW.md WIN-3, 2026-09-20).
+# ---------------------------------------------------------------------------
+#
+# EVERY ROW HERE RUNS WITH NO DISPLAY, ON PURPOSE, AND THAT IS THE LIMIT OF WHAT
+# THIS FILE CAN PROVE. A row that opened a real window would put one on the
+# screen of whoever ran check.sh -- and would then have to close it, or hang the
+# suite. So what is asserted here is the shape: the words lex, the checker knows
+# their arguments, a window's methods are known before anything runs, and a
+# machine with no screen is REFUSED rather than left waiting. That a window
+# actually appears was proved by running it and photographing the screen, which
+# is not a thing a shell script can assert.
+#
+# NO DISPLAY MEANS NO XDG_RUNTIME_DIR EITHER. Unsetting WAYLAND_DISPLAY is not
+# enough: libwayland falls back to $XDG_RUNTIME_DIR/wayland-0, so a run meant to
+# be headless opens a window on the real desktop instead. That cost a window on
+# the author's own screen on 2026-09-20, and this comment is why the line below
+# is as long as it is.
+rm -rf build/no_display && mkdir -p build/no_display
+headless() { env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY XDG_RUNTIME_DIR="$PWD/build/no_display" \
+                 timeout 30 "$interpreter" "$@"; }
+
+cat > build/window_new.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("a title", 800, 600)
+    w.append(satellite.window.button("press me"), 400, 300)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_new.satl > build/window.out 2>&1
+expect "a window on a machine with no screen is refused, not hung" 50 $?
+expect "... with S730 NO_DISPLAY and the reason" "1|1" \
+       "$(grep -c 'S730: NO_DISPLAY' build/window.out)|$(tr '\n' ' ' < build/window.out | grep -c 'there is no display to draw on')"
+
+# THE AUTHOR'S 800x600 DOES NOT LEX AND IS NOT QUIETLY ACCEPTED (WIN-4): satl
+# reads x600 as a hex literal, so `800x600` is two numbers side by side. The
+# spelling built is three arguments, which is 003's own -- its removed word table
+# has satellite.window.console.new(title, width, height).
+cat > build/window_nxm.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("a title", 800x600)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_nxm.satl > build/window_nxm.out 2>&1
+expect "800x600 does not lex, and is refused before anything runs (WIN-4)" "13|" \
+       "$?|$(grep -x before build/window_nxm.out)"
+
+# A WRONG ARGUMENT COUNT IS THE CHECKER'S, not the window's: nothing runs first.
+cat > build/window_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("a title", 800)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_arity.satl > build/window_arity.out 2>&1
+expect "satellite.window.new with two arguments is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_arity.out)"
+
+# A METHOD A WINDOW DOES NOT HAVE, also before anything runs.
+cat > build/window_method.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("a title", 800, 600)
+    satellite.console.display(w.read_all)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_method.satl > build/window_method.out 2>&1
+expect "a window has no .read_all, and the checker says so first" "27|" \
+       "$?|$(grep -x before build/window_method.out)"
+expect "... and names what a window DOES have" 1 \
+       "$(tr '\n' ' ' < build/window_method.out | grep -cF 'a window has .append(piece, across, down), .close(), .focus()')"
+
+# THE WORDS ARE IN THE TABLE, at the numbers WIN-3 minted. 003 had these paths
+# and they were REMOVED and their numbers REASSIGNED, so a row here that read
+# 003's numbers would be a word pointing at the wrong library.
+expect "satellite.window is 1 27, and its two calls 1 27 1 and 1 27 2" "1|1|1|1" \
+       "$(grep -cP '^1 27\tsatellite.window\t' words/words.tsv)|$(grep -cP '^1 27 1\tsatellite.window.new\(title, width, height\)\t' words/words.tsv)|$(grep -cP '^1 27 2\tsatellite.window.button\(text\)\t' words/words.tsv)|$(grep -cP '^1 6 18\tsatellite.variable.window\t' words/words.tsv)"
 
 mkdir -p build/alone && cp "$interpreter" build/alone/satl
 build/alone/satl examples/hello_world.satl > /dev/null 2>&1; expect "no libraries beside the interpreter" 5 $?

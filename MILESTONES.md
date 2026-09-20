@@ -19,8 +19,19 @@ that was never written.
 `WIN-1` to `WIN-10`, the same way the infinity has SATELLITE_INFINITY.md. It is
 kept apart for two reasons: a GUI is a large enough subject, and this file's
 numbering already carries two M34s and two M35s, so a new M-number would be
-ambiguous on sight. **WIN-1 (the startup spill) blocks every other window
-milestone** — without it a static satl SIGSEGVs inside `gtk_init()`.
+ambiguous on sight.
+
+**WIN-3 IS BUILT: a window appears when the window syntax is called
+(2026-09-20).** `satellite.variable.window`, `satellite.window.new(title, width,
+height)`, `.button(text)`, `.append`, `.close`, `.focus`, `.title`, `.ok` —
+`examples/window.satl` is the author's own two lines and it draws. Read
+SATELLITE_WINDOW.md **Part 2a** first: it answers WIN-6, settles WIN-4, and
+corrects this paragraph's own next sentence.
+
+**WIN-1 was called "the blocker" and is not one.** It blocks shipping to a
+machine with **no GTK** — without it a static satl SIGSEGVs inside `gtk_init()`
+— and blocks nothing on a machine that has GTK installed, which is where the
+language work happens. Still owed, no longer first.
 
 **The numbering continues PLAN.md's.** M0–M12 are PLAN's own and keep their
 numbers and meanings; M13 up are new, most of them found while building the

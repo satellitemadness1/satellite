@@ -1,5 +1,11 @@
 # satellite-004 — SATELLITE_WINDOW
 
+**WIN-3 IS BUILT AND A WINDOW APPEARS (2026-09-20).** `satellite.window.new(...)`
+opens a real window with a real button in it, from a real `.satl` — run and
+photographed, not reasoned about. Read **Part 2a** before anything else in this
+file: it is what changed, and it moves WIN-1 off the critical path, answers WIN-6
+and settles WIN-4. Parts 0 and 1 are still true and still worth not re-measuring.
+
 The GTK+ window: what is **proved**, what is **owed**, and what is still the
 author's to decide. Written 2026-09-19/20, the same shape as SATELLITE_INFINITY.md
 — one milestone each, `WIN-n`, because MILESTONES.md's numbering already carries
@@ -8,7 +14,9 @@ two M34s and two M35s and a GUI is a large enough subject to keep its own file.
 **Read PROGRESS.md first** for what IS built of the *language*. It knows nothing
 about any of this — grep it for `gtk`, `vendor` or `window` and you get zero hits —
 so for the window, this file IS the record of what is built: `vendor/gtk/` (the static
-stack, proved) and `vendor/fonts/` (the font). Nothing in `satellite/` links GTK yet.
+stack, proved), `vendor/fonts/` (the font), and **since 2026-09-20
+`satellite/satellite_variable_window/` and `satellite/bytecode/window_calls.cpp`,
+which satl links.**
 
 The brief, in the author's words (2026-09-19):
 
@@ -184,9 +192,144 @@ WIN-6 problem, not a detail.
 
 ---
 
+# Part 2a — WHAT WAS BUILT ON 2026-09-20, and what it changed
+
+The author: *"I think we were actually trying to get a window to appear when the
+window syntax is called, so let's do that"*. It does.
+
+    satellite.variable.window my_window = satellite.window.new("window_title", 800, 600)
+    my_window.append(satellite.window.button("text"), 400, 300)
+
+`examples/window.satl` is that program. Run on a desktop it puts an 800x600
+window on the screen with a button labelled `text` at its centre; the window was
+photographed under a headless `mutter` to prove it rather than assert it.
+
+## The four rulings that were made to get there
+
+Each was reversible and each is written down here so the author can overturn it.
+
+1. **The window words live in the interpreter, not in a `.so` — WIN-6 IS
+   ANSWERED, and not by preference.** A window word answers a HANDLE, and
+   `file_calls.hpp` had already ruled that a handle cannot be made inside a
+   dlopened library. WIN-6's shapes (ii) `--export-dynamic` and (iii) one GUI
+   `.so` both require exactly that crossing. So the word is shape (i). **A
+   widget's drawing could still live in a `.so` one day; the word that answers a
+   handle cannot.** That is the whole of the author's *"tiny C++ executables"*
+   tension resolved, and it was resolved by a rule already in the tree.
+2. **GTK links dynamically, gated on `pkg-config gtk4` — SO WIN-1 IS NO LONGER
+   THE BLOCKER.** WIN-1's spill (xkb data, a font, the schemas) is what a
+   **bare** machine needs. A machine that HAS GTK has all three already, so the
+   language work never needed it. WIN-1 is still owed for shipping; it is no
+   longer owed first, and this file said the opposite for a day.
+   `make_support/047-window.mk` carries `GTK_PKGS`/`HAVE_GTK` **separate from**
+   `WINDOW_PKGS`/`HAVE_WINDOW`: a machine can have gtk4 and no VTE, and there
+   satl draws while satl-term is not built. Swapping in `vendor/gtk`'s static
+   archives is a change to three make variables.
+3. **`new("title", 800, 600)`, three arguments — WIN-4 IS SETTLED, and by the
+   author's own precedent.** `800x600` genuinely does not lex, and while minting
+   the words `make_words.py` printed 003's removed rows: one of them is
+   **`satellite.window.console.new(title, width, height)`**. Three arguments is
+   what 003 wrote. check.sh asserts `800x600` is still refused, so nobody
+   rediscovers it.
+4. **satl does not exit while a window is open**, and no word was needed for it.
+   A program that opened a window and returned would take it down before anybody
+   saw it. `main()` waits after `run_satl` returns; `.close()` is how a program
+   ends it; a program with no window pays nothing, because the desk is not
+   started until a window word runs.
+
+## What was built
+
+| where | what |
+|---|---|
+| `words/words_004.tsv` | four rows: `1 6 18` the type, `1 27` the family, `1 27 1` new, `1 27 2` button |
+| `REGISTRY.satellite` | two method tokens, `focus` 0x0B27 and `title` 0x0B28 |
+| `satellite/satellite_variable_window/window_desk.hpp/.cpp` | WIN-2's one GTK thread |
+| `satellite/satellite_variable_window/satellite_window.hpp/.cpp` | the handle and the six operations |
+| `satellite/bytecode/window_calls.hpp/.cpp` | the interpreter edge, and the ONE `#if SATELLITE_HAS_WINDOW` |
+| `satellite_object.hpp` | **arm 13**, `window` |
+| `machine_codes.hpp`, `s_codes.hpp` | `no_display` 50 / S730, `window_is_closed` 51 / S505 |
+
+**THE ARM IS 13 AND NOT 15.** WIN-3 guessed 15 and said why it might not be:
+*"15 is right only if the float and hex ... are built first"*. They were not, so
+by the rule in `satellite_object.hpp:143-145` — arms take their numbers in the
+order they are BUILT — the window is 13 and the float and hex move to 14 and 15.
+
+## WIN-2, as built
+
+One thread. It runs `gtk_init_check`, owns the `GMainContext` and every widget,
+and parks in `g_main_loop_run`; the interpreter hands work over with
+`g_main_context_invoke` and waits. **Measured before it was written**: GTK4 inits
+on a second thread, the first thread posts a window in, clean exit 0.
+
+**Not warmed at startup, and not yet warmed from the token pass either.** The
+desk opens the first time a window word runs, so `satl batch.satl` on a headless
+server pays nothing. WIN-2's better answer — satl already tokenises the whole
+file, so it can know a window word is coming — is a speed-up on top of this and
+is still owed.
+
+## Two defects found by running it, both fixed, both worth keeping
+
+- **A refused program HUNG with its window open.** The report printed and then
+  `main` waited on a window nothing was ever going to close — a hang that reads
+  exactly like the interpreter locking up. A run that STOPPED now takes its
+  windows down; only a run that finished waits.
+- **`w.ok` wanted brackets.** It is a question, not a doing, and a file's `.ok`
+  has never wanted them. `.close()` and `.focus()` are doings and still do.
+
+## The trap that put a window on the author's own desktop
+
+Testing the headless path, `env -u DISPLAY -u WAYLAND_DISPLAY` **is not enough**:
+libwayland falls back to `$XDG_RUNTIME_DIR/wayland-0`, so a run meant to have no
+display connected to the real session and opened a window on it. A genuinely
+headless run needs `XDG_RUNTIME_DIR` pointed at an empty directory too. check.sh's
+window rows do that, and say why in a comment as long as this paragraph.
+
+## What GTK COST, and it is not nothing
+
+**check.sh's `satl links nothing that can reach a network` stopped being true.**
+satl now has `libgio-2.0` in its `NEEDED` list, and gio can open a socket. That
+row is the one the `satellite.feedback` flood promise rests on, so it was split
+rather than loosened:
+
+- **`satl imports no network entry point of its own` — still 0**, now matched on
+  whole symbol names. The old row grepped for `connect` as a substring and began
+  failing on `g_signal_connect_data`, which is GLib connecting a SIGNAL.
+- **a second row names libgio out loud**, so nobody reads the first as the old,
+  stronger claim.
+
+**This is the author's to rule on.** The feedback promise is intact — no word
+calls gio's network classes — but a static satl will carry that code, and
+"cannot reach a network" is now "does not", which is a different sentence.
+
+## What is STILL owed of the window
+
+- **WIN-1**, for a machine with no GTK — still every word of it, just not first.
+- **WIN-5** (cairo fallback), **WIN-8** (the notices), **WIN-9** (the console
+  handover, still the author's and still unanswered), **WIN-10** (X11).
+- **The font ruling of WIN-3** — 11px or 12px, and only Regular is in git. No
+  font is set at all today; the window uses the theme's.
+- **More widgets than a button**, and a button that does something when pressed.
+  There is no signal from a widget back into a satellite program yet — that is
+  the next real piece, and it is bigger than it sounds: it means the walker
+  running a capsule on the desk's thread, or a queue back to the interpreter's.
+- **check.sh cannot prove a window appears.** Every window row runs headless on
+  purpose, because a row that opened one would put it on the screen of whoever
+  ran the suite. What is asserted is the shape; the appearing was proved by
+  photograph.
+
+---
+
 # Part 2 — the milestones
 
-## WIN-1 — the startup spill — **THE BLOCKER, nothing else matters first**
+## WIN-1 — the startup spill — **no longer the blocker; see Part 2a**
+
+**CORRECTED 2026-09-20.** This was headed *"THE BLOCKER, nothing else matters
+first"* and that was wrong: it blocks a **bare** machine, not the language work.
+A machine with GTK installed already has the xkb data, a font and the schemas, so
+WIN-3 was built against a dynamic GTK and a window appeared without any of this.
+Every word below is still owed before satl can be SHIPPED to a machine with no
+GTK. None of it is owed before the next widget.
+
 
 Code links in; **data does not**. Three things must be carried inside satl as a
 GResource and written to a writable directory before `gtk_init()`:
@@ -343,7 +486,8 @@ is IBM Plex Mono, 11px, never bold or italic"*, and **only Regular is in git** �
 12px bold anything is not merely undecided, it is unshippable without
 `fetch.sh --family`.
 
-## WIN-4 — `800x600` does not lex
+## WIN-4 — `800x600` does not lex — **SETTLED 2026-09-20, see Part 2a**
+
 
 `satl` reads `x600` as a hex literal (`xFFAA` is hex), so `800x600` is two numbers
 side by side and is refused S110 (checked). Same for `400x300`. Options:
@@ -357,7 +501,8 @@ Wayland display`. It matters for a target with no GL driver at all, and
 `gsk/gskrenderer.c:803` is `g_assert_not_reached()` if every renderer fails to
 realize — so the fallback is load-bearing, not tidy.
 
-## WIN-6 — linking GTK into satl, and the widget-`.so` question
+## WIN-6 — linking GTK into satl — **the word question is ANSWERED, see Part 2a**
+
 
 satl is built by **make**, not meson, so a make rule must name the archives.
 `make_support/048-link.mk` holds only `LINK_ENV` and `LINK_STAMP`; the recipe that
@@ -463,10 +608,13 @@ satl draws on Wayland only.
 
 # Part 3 — what was NOT done
 
-- **No window word exists.** Nothing in `satellite/` links GTK yet. What exists is
-  `vendor/gtk/` (the static stack, proved) and `vendor/fonts/` (the font).
-- **WIN-1's spill is designed and not built** — so the binary still depends on the
-  target having xkeyboard-config and a font.
+- ~~**No window word exists.**~~ **DONE 2026-09-20 — see Part 2a.** Four words,
+  two method tokens, arm 13, and satl links GTK when pkg-config finds it.
+- **WIN-1's spill is designed and not built** — so a SHIPPED binary still depends
+  on the target having xkeyboard-config and a font. It is not in the way of the
+  next widget.
+- **No widget can talk back yet.** A button is drawn and pressing it does
+  nothing: there is no path from a GTK signal into a satellite capsule.
 - **INF-2 was never reviewed by a fresh reader** (all four agents died on the
   account's session limit, 2026-09-18). Its evidence is `check_infinity.py`
   (98,184 cases, two mutants caught) and the suite. **INF-3** is next in

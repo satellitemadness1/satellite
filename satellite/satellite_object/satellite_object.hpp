@@ -49,6 +49,7 @@
 #include "../satellite_variable_binary/satellite_binary_number.hpp"
 #include "../satellite_variable_file/satellite_file.hpp"
 #include "../satellite_variable_infinity/satellite_infinity.hpp"
+#include "../satellite_variable_window/satellite_window.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../satellite_variable_percentage/satellite_percentage.hpp"
 #include "../satellite_variable_string/satellite_string.hpp"
@@ -137,7 +138,8 @@ public:
                               FileHandle,              // 9  satellite.variable.file (2026-09-18)
                               ListHandle,              // 10 {a, b} (2026-09-18)
                               IndexHandle,             // 11 satellite.container.index (2026-09-18)
-                              InfinityHandle           // 12 satellite.variable.infinity (INF-2, 2026-09-19)
+                              InfinityHandle,          // 12 satellite.variable.infinity (INF-2, 2026-09-19)
+                              WindowHandle             // 13 satellite.variable.window (WIN-3, 2026-09-20)
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
@@ -153,8 +155,16 @@ public:
                               // satellite.variable.infinity FIRST" -- so the
                               // float, which PLAN red note 9 had at 12, moves to
                               // 13 and hex to 14 (SATELLITE_INFINITY.md Q26).
-                              // 13  satellite_float
-                              // 14  satellite_hexadecimal_number
+                              // THE WINDOW IS 13 BY THE SAME RULE -- in the order
+                              // they are BUILT -- because the author asked for the
+                              // GUI next (2026-09-19) and the float and the hex are
+                              // still unbuilt reservations. So those two move along
+                              // again, to 14 and 15. SATELLITE_WINDOW.md WIN-3 had
+                              // guessed 15 for the window and said why it might not
+                              // be: "15 is right only if the float and hex ... are
+                              // built first". They were not.
+                              // 14  satellite_float
+                              // 15  satellite_hexadecimal_number
                               >;
 
     enum Kind : std::size_t {
@@ -171,7 +181,8 @@ public:
         list = 10,
         index = 11,
         infinity = 12,
-        how_many_kinds = 13
+        window = 13,
+        how_many_kinds = 14
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -185,6 +196,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<list, Held>, ListHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<index, Held>, IndexHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<infinity, Held>, InfinityHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<window, Held>, WindowHandle>, "");
 
     Held held;
 
@@ -201,6 +213,7 @@ public:
     satelliteObject(ListHandle from) : held(std::move(from)) {}
     satelliteObject(IndexHandle from) : held(std::move(from)) {}
     satelliteObject(InfinityHandle from) : held(std::move(from)) {}
+    satelliteObject(WindowHandle from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -215,6 +228,7 @@ public:
     static satelliteObject of_list(ListHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_index(IndexHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_infinity(InfinityHandle from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_window(WindowHandle from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -239,6 +253,7 @@ public:
     bool is_list() const { return held.index() == list; }
     bool is_index() const { return held.index() == index; }
     bool is_infinity() const { return held.index() == infinity; }
+    bool is_window() const { return held.index() == window; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -280,6 +295,20 @@ public:
         const InfinityHandle *handle = std::get_if<InfinityHandle>(&held);
         return handle != nullptr ? handle->get() : nullptr;
     }
+
+    // THE WINDOW ITSELF, or nullptr -- through the handle, as a file is, and for
+    // the same reason: two names for one window are one window, because a window
+    // is a thing on a screen and not a value to be copied.
+    satellite_window *as_window() const
+    {
+        const WindowHandle *handle = std::get_if<WindowHandle>(&held);
+        return handle != nullptr ? handle->get() : nullptr;
+    }
+
+    // AND THE HANDLE, which `.append` needs: the piece being appended is KEPT by
+    // the window it goes into, so what crosses is the shared handle and not the
+    // window behind it.
+    const WindowHandle *window_handle() const { return std::get_if<WindowHandle>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }
