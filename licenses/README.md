@@ -38,7 +38,7 @@ every source tarball into the project folder.
 | the startup banner | **nothing, on purpose** -- it prints on every run of every program, and a notice nobody reads satisfies nothing |
 | `licenses/` | the full texts |
 
-## Two elections, made 2026-09-20
+## Three elections, made 2026-09-20
 
 Two projects do not have a licence -- they offer a **choice**, and a choice has to be
 made and recorded or the page is ambiguous.
@@ -56,6 +56,21 @@ is `docs/FTL.TXT`, not the chooser page.
 Public License (LGPL) version 2.1 or the Mozilla Public License (MPL) version 1.1"*.
 LGPL-2.1 matches what glib and GTK already place on us, so electing it adds no new
 obligation. `licenses/cairo/license.txt` is `COPYING-LGPL-2.1`.
+
+> Note the LGPL side is **2.1-only** -- no "or any later version" appears in any `src/`
+> header. And **MPL-1.1 is arguably the better election** for a statically linked MIT
+> product: MPL 1.1 section 3.7 ("Larger Work") is friendlier to combination than
+> LGPL-2.1's relink clause. It is close to moot in practice, because glib, GTK, pango
+> and gdk-pixbuf put the LGPL relink obligation on us regardless of what cairo is --
+> which is why LGPL-2.1 was chosen. **Reversible if you would rather narrow the set of
+> files under the relink obligation.**
+
+**glib -- ELECTED: LGPL-2.1-or-later.** Found by the audit, not by reading `COPYING`.
+`gio/xdgmime/*` carries a second choice: its SPDX header reads exactly
+`LGPL-2.1-or-later or AFL-2.0`. **It is linked** -- `gio/meson.build:445-446` does
+`subdir('xdgmime')` and `internal_deps += [xdgmime_lib]`, and `libxdgmime.a` is on
+satl's link line today. Electing LGPL-2.1-or-later adds nothing, since the rest of glib
+is already LGPL-2.1-or-later.
 
 ## The list, and where each text came from
 
@@ -86,6 +101,47 @@ obligation. `licenses/cairo/license.txt` is `COPYING-LGPL-2.1`.
 | wayland-protocols | 1.49 | `COPYING` |
 | xkeyboard-config | 2.48 | `COPYING` |
 | zlib | 1.3.2 | `LICENSE` |
+
+## Almost every tree is MIXED, and the mixing reaches the binary
+
+A component is not "one licence". A twelve-agent audit on 2026-09-20 read every tree
+file by file and raised **56 corrections** to a first pass that had read only the
+top-level `COPYING`. The ones that matter are things **compiled into satl** that a
+top-level read does not see:
+
+| in the binary | licence | found in |
+|---|---|---|
+| `gtk/gtktextbtree.c` + 11 siblings | **Tcl/Tk** licence, from the Tk port | core GTK, named in `gtk/meson.build` |
+| `gtk/inspector/*` (14 files) | **MIT** | part of libgtk, not optional |
+| `gtk/roaring/roaring.c` | embeds **BSD-3-Clause** (`isadetection`, from pytorch) | clause 2 requires the notice in **binary** distributions |
+| `pango/pango-script.c` | **ICU/IBM** permissive, attribution reaches binaries | below its LGPL header |
+| `pango/json/*` (4 files) | Library GPL, © Benjamin Otte, imported from GTK | |
+| `glib gio/xdgmime/*` | **LGPL-2.1-or-later OR AFL-2.0** | a choice -- elected above |
+| `glib subprojects/gvdb` | LGPL-2.1-or-later, © Codethink Limited | linked into libgio |
+| `glib gutils.c` | embedded **MIT** block, © Red Hat (xdg-user-dir-lookup) | |
+| `expat lib/siphash.h` | **CC0-1.0** | `#include`d unconditionally by `xmlparse.c` |
+| `harfbuzz src/hb-ucd.cc` | **ISC** -- src/ is not uniform | |
+| `freetype src/dlg/*` | **Boost-1.0** | bundled logger |
+| `libxkbcommon src/utils-checked-arithmetic.h` | **ISC**, omitted from upstream's own LICENSE | fixed below |
+
+**Three files here were incomplete and have been repaired:**
+
+- `libepoxy/license.txt` -- libepoxy is MIT **AND Apache-2.0**, and Apache-2.0 section
+  4(a) obliges us to hand recipients a copy of the License. **libepoxy's tree ships
+  none.** The Apache text is now appended, clearly marked as our addition.
+- `libxkbcommon/license.txt` -- upstream's `LICENSE` assembles five notice blocks and
+  omits the ISC grant above. Appended.
+- `unicode/license.txt` -- **new.** fontconfig, harfbuzz and fribidi all compile Unicode
+  Character Database derivatives in, and not one of the three ships the Unicode licence
+  text; they cite a URL. Fetched from `unicode.org/license.txt`.
+
+**A correction to an earlier claim:** `libffi src/dlmalloc.c` is **not** compiled on
+this platform. Its `#include` sits behind `FFI_MMAP_EXEC_WRIT`, which `configure.ac`
+sets only for Apple, the BSDs, Solaris and Android -- not Linux/glibc.
+
+**And `SATELLITE_WINDOW.md:557-560` is wrong** about three of four components and would
+poison anything drafted from it: libjpeg-turbo is not "MIT/BSD" but IJG AND Zlib for
+what we link. Fix it when that file is next touched.
 
 ## Two things this folder does not yet settle
 

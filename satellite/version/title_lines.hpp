@@ -101,7 +101,15 @@ inline std::string licence_lines()
            "satellite is MIT. This binary also carries 24 other projects, each under\n"
            "its own licence -- GTK and pango under the GNU Library GPL, glib, gdk-pixbuf\n"
            "and cairo under the LGPL, FreeType under the FreeType Licence, and others.\n"
-           "Full texts: licenses/ in the satellite distribution, one folder per project.\n";
+           "Full texts: licenses/ in the satellite distribution, one folder per project.\n"
+           "\n"
+           // NOT A COURTESY -- THE ONE MANDATORY CREDIT SENTENCE IN THE WHOLE SET.
+           // docs/FTL.TXT section 3: "This credit MUST appear in the documentation
+           // and/or other materials", with <year> to be replaced from the version
+           // actually shipped. 2026 is the end year of freetype 2.14.3's copyright
+           // line. If freetype is ever bumped, THIS YEAR MOVES WITH IT.
+           "Portions of this software are copyright (c) 2026 The FreeType Project\n"
+           "(https://freetype.org).  All rights reserved.\n";
 }
 
 } // namespace satellite004
