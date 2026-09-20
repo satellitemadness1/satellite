@@ -5,8 +5,10 @@ author's to decide. Written 2026-09-19/20, the same shape as SATELLITE_INFINITY.
 — one milestone each, `WIN-n`, because MILESTONES.md's numbering already carries
 two M34s and two M35s and a GUI is a large enough subject to keep its own file.
 
-**Read PROGRESS.md first** for what IS built. This file is the debt and the
-evidence behind it.
+**Read PROGRESS.md first** for what IS built of the *language*. It knows nothing
+about any of this — grep it for `gtk`, `vendor` or `window` and you get zero hits —
+so for the window, this file IS the record of what is built: `vendor/gtk/` (the static
+stack, proved) and `vendor/fonts/` (the font). Nothing in `satellite/` links GTK yet.
 
 The brief, in the author's words (2026-09-19):
 
@@ -20,6 +22,45 @@ The brief, in the author's words (2026-09-19):
     my_window.append(satellite.window.button("text") <position>)
 
 ---
+
+# Part 0 — how to get back to the measured state
+
+**NONE OF IT IS IN GIT.** A fresh clone has four scripts and nothing else: no GTK
+tree, no venv, no build. Rebuilding costs ~2.2 GB for `build-static`, 753 MB for the
+unpacked GTK, ~3,200 ninja targets, and six tarball downloads. Budget an hour.
+
+    /usr/bin/python3 -m venv vendor/gtk/.mesonvenv          # NOT dnf -- see below
+    vendor/gtk/.mesonvenv/bin/pip install meson packaging
+    sh vendor/gtk/fetch.sh            # GTK 4.16.7, upstream sha256sum
+    sh vendor/gtk/fetch-deps.sh       # the stack, pinned to what this machine runs
+    sh vendor/gtk/configure-static.sh
+    sh vendor/gtk/build-static.sh     # NOT a bare ninja -- see below
+    STATIC=0 CC=/home/madness/opt/clang-current/bin/clang sh vendor/gtk/hello/build.sh
+    sh vendor/gtk/hello/bare-machine.sh --with-xkb --with-fonts ./hello-dynamic
+
+**The four gates, each of which cost a build the first time:**
+
+- **meson must come from the venv, not dnf.** `configure-static.sh:20-25` gates on it.
+  CRB ships 1.4.1; the venv gets 1.12 and they do not build the same thing.
+- **`python3` on this machine is PyPy and has no `packaging`**, so the venv must be
+  first on PATH **for ninja as well as for meson** — glib's `gdbus-codegen` starts
+  `#!/usr/bin/env python3` and re-resolves at run time. Configuring in one shell and
+  building in another is enough to break it, and it broke **2,235 targets in**. That is
+  the only reason `build-static.sh` exists rather than a bare `ninja`.
+- **`/usr/include/drm/drm_fourcc.h` must exist** (kernel-headers). `fetch-deps.sh`
+  exits without it. GTK wants the header and never links libdrm.
+- **`bwrap`, a live Wayland session, and unprivileged user namespaces** for
+  `bare-machine.sh` — and that script binds `/opt/amdgpu/lib64` and a fixed list of
+  AMD/mesa paths. **On a non-AMD machine it needs editing before it proves anything.**
+
+**One more mismatch worth knowing:** GTK's archives are built by **clang 24** through
+the generated `-w` wrapper, but `hello/build.sh` links with **`/usr/bin/gcc`** by
+default. The measured binary is gcc-linked against clang-built archives. It works;
+it is not what a reader assumes from "CC here is clang 24".
+
+**Paths:** every GTK citation in this file is relative to `vendor/gtk/gtk-4.16.7/`,
+which a fresh clone does not have. `grep gtk/gtktext.c` from the repo root finds
+nothing, and the citation is not wrong — the tree is just not fetched yet.
 
 # Part 1 — what was MEASURED, so nobody measures it twice
 
@@ -80,6 +121,30 @@ also loads.
 libwayland-client (WIN-7). Nothing else. Every item on the right is present on any
 machine that can show a window at all.
 
+## What this build GIVES UP, on purpose
+
+Each is a comment in `configure-static.sh` and a user-visible capability, not a build
+detail. **A static satl cannot print and cannot play media.**
+
+| option | what is lost |
+|---|---|
+| `-Dprint-cups=disabled` | printing, entirely |
+| `-Dmedia-gstreamer=disabled` | video/audio playback in a widget |
+| `-Dpango:libthai=disabled` | Thai word-breaking |
+| `-Dfreetype2:brotli=disabled`, `:bzip2=disabled` | WOFF2 web fonts, bzip2 PCF fonts |
+| `-Dfreetype2:harfbuzz=disabled` | auto-hinter quality for glyphs outside a cmap |
+| `-Dvulkan=disabled` | the Vulkan renderer — **and satl-term links libvulkan today**, so the pair already differ in how they draw |
+| `-Dxkbcommon:enable-xkbregistry=false` | the rules-XML registry (would drag in libxml2) |
+| `-Dx11-backend=false` | X11 entirely (WIN-10) |
+
+**`-Dgdk-pixbuf:gio_sniffing=false` is not a loss, it is what makes
+`builtin_loaders=all` WORK.** Left at its default, gdk-pixbuf picks a loader only
+through `g_content_type_guess()` — the system MIME database via `XDG_DATA_DIRS` — so
+on a bare machine the loaders compiled *into* the binary are unreachable. There is no
+`shared-mime-info` wrap, so the build resolves it from the system and **succeeds in
+silence**. Anyone regenerating the meson line who drops this loses image loading with
+no error anywhere.
+
 ## GTK's own wrap set does not build statically
 
 Eleven defects in the table in `vendor/README.md`, each fixed in
@@ -112,6 +177,10 @@ configured `--default-library=static`. A binary linked from that line passes eve
 casual check and is not static. The static library is `libgtk_static`
 (`gtk/meson.build:1116`), never installed, named in no `.pc`, and on disk it is a
 **thin** archive of 557 members that references its objects by path.
+**The consequence, which matters for shipping:** a thin archive cannot be copied,
+cached or shipped — every machine that links satl must first build the whole of GTK.
+That collides directly with the prebuilt `satellite_distribute` package, and it is a
+WIN-6 problem, not a detail.
 
 ---
 
@@ -134,13 +203,24 @@ GResource and written to a writable directory before `gtk_init()`:
    that wants an already-compiled keymap, not xkeyboard-config data, and the
    crashing path never reaches it. No meson option embeds the data either. Minimum closure for
    `evdev/pc105/us` is **34 files, 348,215 bytes**, and a *partial* tree fails
-   exactly like no tree. Reproduced independently here: the build compiles in
+   exactly like no tree. **No script in the tree computes that closure**, so it cannot
+   be re-derived or maintained, and an independent attempt landed at 37 files /
+   357,882 bytes before trimming. Since a partial tree is a SIGSEGV rather than a
+   warning, **commit the closure script or the explicit file list** as part of WIN-1;
+   do not leave the number in prose. Reproduced independently here: the build compiles in
    `xkb-config-root=/nonexistent/satl-must-provide-xkb-data` on purpose, and the
    binary dies on a machine that HAS xkeyboard-config installed.
 2. **A font.** Measured, and it corrects an earlier claim that this was cosmetic:
    **no font is FATAL, not degraded** — exit 139 twice, exit 0 twice with fonts
    present, after `GtkImage reported baselines of minimum -2147483648` and
    `g_object_ref: assertion 'G_IS_OBJECT (object)' failed`.
+   **BUT THE MECHANISM IS NOT UNDERSTOOD, AND THE EVIDENCE IS n=2.**
+   `hello-static.c` builds only a GtkLabel and a GtkButton — **there is no GtkImage in
+   it**. The widget that reported the bad baseline is most likely GTK's client-side
+   decoration close button, which is an ICON, not text. If so the crash is on the icon
+   path and "embed a font" may not be the whole fix. **Re-measure this before building
+   WIN-1 around it** — bind fonts but not the icon theme, and vice versa, and see which
+   one actually stops the crash.
    `vendor/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf` is in git for this, 133 KB.
    GTK's own way is `gsk/gskrendernodeparser.c`, and the ORDER is the reverse of
    the obvious one: `FcConfigCreate()` + `pango_fc_font_map_set_config` on a fresh
@@ -239,8 +319,29 @@ the centre of an 800x600 window. Buttons are a fixed size, 12px font. GTK4 has n
 absolute positioning in a box; this wants `GtkFixed`, and the centre-not-corner
 rule means subtracting half the button's measured size at placement.
 
+**Two constraints that live only in `hello/hello-static.c` and bind WIN-3:**
+
+- **No `GtkApplication`, on purpose** (`hello-static.c:17-22`). GtkApplication is
+  GApplication, which registers on the D-Bus session bus, and a bare machine may have
+  none. `gtk_window_new()` needs none of it. If satl later wants GtkApplication for the
+  launcher that is a separate decision with a separate cost — `satl-term/window.cpp`
+  passes `G_APPLICATION_NON_UNIQUE` for a related reason.
+- **`gtk_init_check()`, not `gtk_init()`** (`hello-static.c:155-158`): it returns 2
+  instead of dying when there is no display. WIN-2's warm order says `gtk_init()`; for
+  the headless case WIN-2 itself raises, the *check* form is the whole graceful path.
+
+**A bug already paid for once, and WIN-2/WIN-3 wire exactly this signal:** a `destroy`
+handler is called as `(window, user_data)`, so connecting `g_main_loop_quit` plainly
+hands it the WINDOW where a `GMainLoop*` is expected. The first version of the
+experiment opened the window, fired the timer and never quit. Use
+`g_signal_connect_swapped` (`hello-static.c:196-199`).
+
 **Decision the author owes:** he wrote `my_window.title(12px)` AND *"leave it
-unchangeable at 11px"*. Which?
+unchangeable at 11px"*. Which? Note this is a THREE-way conflict, not two:
+`vendor/fonts/fetch.sh` and `.gitignore` both record the rule as *"every window title
+is IBM Plex Mono, 11px, never bold or italic"*, and **only Regular is in git** — so a
+12px bold anything is not merely undecided, it is unshippable without
+`fetch.sh --family`.
 
 ## WIN-4 — `800x600` does not lex
 
@@ -267,10 +368,13 @@ cycles, and five archives excluded by name (`libmalloc-stats.a`,
 `libcairo-trace.a`, `libcairo-fdr.a`, `libdemo.a`, `libintl.a`) because they
 define `malloc`/`realloc`, interpose `cairo_*`, or collide with glibc's gettext.
 
-**The unresolved tension.** 004 dlopens each word's library from
-`satellite-numbers/`. With GTK statically inside satl, widget words as separate
-`.so` files would each need GTK's symbols back out of satl — which means linking
-satl with `--export-dynamic`, or linking the widget words in directly. The
+**The unresolved tension, and there are THREE shapes, not two** (`vendor/README.md`
+wrote all three down; an earlier draft of this milestone offered only the first two).
+004 dlopens each word's library from `satellite-numbers/`. With GTK statically inside
+satl, widget words as separate `.so` files would each need GTK's symbols back out of
+satl. So: **(i)** link the widget words INTO satl; **(ii)** link satl with
+`--export-dynamic` and keep them dlopened; or **(iii)** make the GUI **one `.so` with
+GTK statically inside it** — one satl and one library, not one file. The
 author's *"tiny C++ executables"* for widgets pulls against *"one executable"*.
 **Decide before minting WIN-3, not after.**
 
@@ -313,6 +417,11 @@ recipient must be able to **relink against their own modified GTK**. Shipping
 satellite's source plus `vendor/gtk/`'s four scripts satisfies it today. It
 becomes a live constraint the moment `satellite_enterprise/` ships a static binary
 *without* source.
+
+**The OFL obligation is a BUILD STEP, not a courtesy.** `vendor/fonts/fetch.sh`:
+*"Embedding a font in a binary is redistribution, and the OFL requires its notice to
+travel along. Whatever satl ships, ships OFL.txt with it."* So WIN-1 must decide how —
+spill `OFL.txt` beside the font, or answer it from `satl --licences`.
 
 **Two choices the author owes** before `THIRD-PARTY-NOTICES.md` can be generated:
 freetype (**FTL** recommended — GPLv2 would infect) and cairo (**LGPL-2.1**

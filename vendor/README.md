@@ -230,8 +230,13 @@ resolves it from the system and succeeds in silence.
 
 **The honest residue — what the target machine must still provide:** a Wayland
 compositor socket; a writable temp directory; `libEGL.so.1` and the vendor driver chain
-*if* hardware rendering is wanted; and at least one font, or text is tofu (degraded, not
-fatal).
+*if* hardware rendering is wanted; and **at least one font, which is FATAL to be
+without, not degraded** — exit 139 twice, exit 0 twice with fonts bound, as the
+CORRECTION above this paragraph already says. (This sentence used to say "tofu
+(degraded, not fatal)", 55 lines below the measurement that disproves it. The
+measurement wins. SATELLITE_WINDOW.md WIN-1 also records that the MECHANISM is not
+understood: the experiment builds no GtkImage, so the icon path is a live suspect and
+"embed a font" may not be the whole fix.)
 
 - **A unified executable and 004's "every word is its own .so" pull against each other.**
   satl loads each word's library at start-up (`satellite-numbers/`), and a dlopened `.so`
