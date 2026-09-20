@@ -54,13 +54,49 @@ define shows_the_build_row
     rm -f $(1); exit 1 ;; esac
 endef
 
+# WHAT satl IS ALLOWED TO NEED AT RUN TIME, WHEN IT CARRIES GTK. Exactly these
+# six, which is what the proved binary has (SATELLITE_WINDOW.md Part 1). Nobody
+# installs any of them: a machine without them cannot draw anything at all.
+#
+# THIS GATE IS WHY NO GTK HAS TO BE UNINSTALLED from a development machine. The
+# author proposed removing it to force the vendored stack; that would have taken
+# gnome-shell and mutter with it (38 packages) AND still not proved anything,
+# because glib2 cannot be removed at all -- 261 packages need it, NetworkManager
+# among them -- so a satl built there would link the system's gio and pass. A
+# build that FAILS on an unexpected NEEDED entry is the stronger thing, and it
+# holds on every machine and after every update rather than once here.
+#
+# readelf -d AND NOT ldd, which prints the whole transitive closure: that is what
+# made libffi look like a leak until WIN-7 corrected it.
+ALLOWED_NEEDED = libm libresolv libwayland-client libwayland-egl libc ld-linux
+
+define carries_its_own_gtk
+@found=$$(readelf -d $(1) | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p'); \
+ bad=""; \
+ for lib in $$found; do \
+     base=$$(echo "$$lib" | sed 's/\.so.*//; s/-x86-64//'); \
+     case " $(ALLOWED_NEEDED) " in *" $$base "*) ;; *) bad="$$bad $$lib" ;; esac; \
+ done; \
+ if [ -n "$$bad" ]; then \
+     echo "$(1) still needs:$$bad" >&2; \
+     echo "  GTK=vendor must carry its whole stack. Allowed: $(ALLOWED_NEEDED)" >&2; \
+     echo "  (make_support/050-build.mk -- ALLOWED_NEEDED says why each one is allowed)" >&2; \
+     rm -f $(1); exit 1; \
+ fi; \
+ echo "$(1): carries GTK -- needs only$$(for l in $$found; do printf ' %s' $$l; done)"
+endef
+
 # $(GTK_LIBS) AFTER the objects, and for the same reason satl-term's are: a
 # linker resolves an -l only against the symbols it has already been asked for.
 # Both are empty when pkg-config found no gtk4, and this is then exactly the link
 # line it was before the window (047-window.mk).
 $(BUILD)/satl: $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
-	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) -o $@ -ldl $(GTK_LIBS)
+	@echo "linking $@ -- $(GTK_KIND)"
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(GTK_LINK_FLAGS) $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) -o $@ -ldl $(GTK_LIBS)
 	$(call shows_the_build_row,$@)
+ifeq ($(GTK),vendor)
+	$(call carries_its_own_gtk,$@)
+endif
 
 # THE OLD NAME IS A LINK TO THE NEW ONE. build/satellite-004 was the binary until
 # M0.5, and the author's `satl` alias still names it; a link keeps that alias

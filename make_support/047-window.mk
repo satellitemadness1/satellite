@@ -33,20 +33,80 @@ WINDOW_LIBS   := $(shell pkg-config --libs $(WINDOW_PKGS) 2>/dev/null)
 # gtk4, SATELLITE_HAS_WINDOW is 0, the two window sources are not compiled, and
 # bytecode/window_calls.cpp -- which IS always compiled -- refuses the word with
 # a sentence naming the package to install.
-GTK_PKGS = gtk4
+# ---------------------------------------------------------------------------
+# `make GTK=vendor` CARRIES GTK INSIDE satl. `make` (GTK=system) does not.
+# ---------------------------------------------------------------------------
+#
+# TWO BINARIES AT ONE PATH, AND THE SIZE IS HOW YOU TELL THEM APART:
+#
+#     make              ~1 MB    GTK loaded from the machine at run time
+#     make GTK=vendor  ~87 MB    GTK compiled IN; 6 NEEDED entries, no GTK stack
+#
+# Both write build/satl, so the author's `satl` alias runs whichever was built
+# last. The link prints which kind it made, because a 1 MB satl and an 87 MB satl
+# behave identically on THIS machine and differently on every other one -- that
+# is exactly the confusion worth spending a line of output to prevent.
+#
+# WHY system IS STILL THE DEFAULT, 2026-09-20: WIN-1 is not built, so a vendored
+# satl SIGSEGVs inside gtk_init() the moment a window word runs -- it has no
+# xkeyboard-config and no fontconfig config, and neither of those is code that
+# can be linked. Measured, with the real satl, not with hello. **Flip this
+# default to vendor the day WIN-1 lands**; nothing else here has to change.
+GTK ?= system
 
-HAVE_GTK   := $(shell pkg-config --exists $(GTK_PKGS) 2>/dev/null && echo yes || echo no)
-GTK_CFLAGS := $(shell pkg-config --cflags $(GTK_PKGS) 2>/dev/null)
-GTK_LIBS   := $(shell pkg-config --libs $(GTK_PKGS) 2>/dev/null)
+GTK_PKGS  = gtk4
+GTK_BUILD = $(CURDIR)/vendor/gtk/build-static
 
-# THE STATIC STACK IS THE SHIPPING ANSWER AND IS NOT WIRED IN YET. vendor/gtk/
-# proves a GTK4 binary that carries GTK opens a window where no GTK is installed
-# (SATELLITE_WINDOW.md Part 1), and turning that on is a change to these three
-# variables and nothing else -- the archives, the --start-group, and the five
-# excluded by name, exactly as vendor/gtk/hello/build.sh gathers them. It also
-# needs WIN-1's startup spill first, because a bare machine with no
-# xkeyboard-config SIGSEGVs inside gtk_init(). Until then satl draws where GTK
-# is installed, which is every machine this is developed on.
+ifeq ($(GTK),vendor)
+
+# THE VENDORED STACK. Its pkg-config answers entirely out of vendor/ -- measured
+# 2026-09-20: `--cflags gtk4` through meson-uninstalled returns ZERO -I/usr paths,
+# which is what makes uninstalling the system GTK unnecessary. The build simply
+# never asks it.
+HAVE_GTK   := $(shell [ -f $(GTK_BUILD)/gtk/libgtk.a ] && echo yes || echo no)
+GTK_CFLAGS := $(shell PKG_CONFIG_PATH=$(GTK_BUILD)/meson-uninstalled pkg-config --cflags $(GTK_PKGS) 2>/dev/null)
+
+# EVERY ARCHIVE THE BUILD PRODUCED, gathered exactly as vendor/gtk/hello/build.sh
+# gathers them -- libgtk.a FIRST so its undefined symbols drive the rest, the whole
+# lot in a --start-group because the graph has cycles, and FIVE EXCLUDED BY NAME:
+# libmalloc-stats.a DEFINES malloc/realloc, libcairo-trace.a and libcairo-fdr.a are
+# LD_PRELOAD interposers that redefine cairo_*, libdemo.a is pixman's demo, and
+# libintl.a is a STUB gettext that collides with glibc's own _nl_msg_cat_cntr.
+# The test is the NAME, not the directory: cairo keeps two REAL libraries under the
+# same util/ that GSK needs, so excluding util/ wholesale breaks the link instead.
+GTK_ARCHIVES := $(shell find $(GTK_BUILD) -name '*.a' ! -name 'libgtk.a' 2>/dev/null | \
+                        grep -vE '/(libmalloc-stats|libcairo-trace|libcairo-fdr|libdemo|libintl)\.a$$' | sort)
+
+# -static-libstdc++ AND -static-libgcc take the LAST TWO off the NEEDED list and
+# get satl to the same six the proved binary has. Measured 2026-09-20: the 62
+# dlopened word libraries still load and run against a satl carrying its own
+# libstdc++, and 68 test programs give byte-identical stdout, stderr and exit
+# status. The ONE difference is that stdout and stderr INTERLEAVE differently when
+# merged into one file, which is a buffering change and not a semantic one.
+GTK_LINK_FLAGS = -static-libstdc++ -static-libgcc
+
+# -lwayland-client AND -lwayland-egl STAY SHARED, AND THAT IS NOT A COMPROMISE.
+# Linked statically there are two copies in one process -- ours and the one the GPU
+# driver dlopens -- and GDK hands EGL a wl_display whose lists the driver's copy
+# never initialised. SIGSEGV, measured, in BOTH link modes. A library whose objects
+# cross into a dlopened driver cannot be static. -ldl is the honest other half:
+# libepoxy dlopens libGL/libEGL by design, because the driver belongs to the
+# machine's graphics card and not to satellite.
+GTK_LIBS = -Wl,--start-group $(GTK_BUILD)/gtk/libgtk.a $(GTK_ARCHIVES) -Wl,--end-group \
+           -lm -lpthread -lrt -lresolv -lwayland-client -lwayland-egl
+
+GTK_KIND = vendored (GTK carried inside satl)
+
+else
+
+HAVE_GTK       := $(shell pkg-config --exists $(GTK_PKGS) 2>/dev/null && echo yes || echo no)
+GTK_CFLAGS     := $(shell pkg-config --cflags $(GTK_PKGS) 2>/dev/null)
+GTK_LIBS       := $(shell pkg-config --libs $(GTK_PKGS) 2>/dev/null)
+GTK_LINK_FLAGS =
+GTK_KIND       = system (GTK loaded from this machine at run time)
+
+endif
+
 ifeq ($(HAVE_GTK),yes)
   WINDOW_DEFINE = -DSATELLITE_HAS_WINDOW=1
 else
