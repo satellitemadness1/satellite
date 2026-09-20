@@ -6,6 +6,14 @@ photographed, not reasoned about. Read **Part 2a** before anything else in this
 file: it is what changed, and it moves WIN-1 off the critical path, answers WIN-6
 and settles WIN-4. Parts 0 and 1 are still true and still worth not re-measuring.
 
+**WIN-1 IS ALSO BUILT (2026-09-20).** `make GTK=vendor` opens a window with no
+GTK stack loaded from the machine: xkeyboard-config, the IBM Plex Mono family,
+satl's own fonts.conf and GTK's schemas are carried as a GResource and spilled
+before `gtk_init`. **What that cost, and the eight libraries satl still needs,
+moved to its own file: GTK_AND_NO_DEPENDENCIES.md, `DEP-1` to `DEP-9`.** Read it
+for anything about dependencies, vendoring or the static link; this file stays the
+record for the window itself.
+
 The GTK+ window: what is **proved**, what is **owed**, and what is still the
 author's to decide. Written 2026-09-19/20, the same shape as SATELLITE_INFINITY.md
 — one milestone each, `WIN-n`, because MILESTONES.md's numbering already carries
