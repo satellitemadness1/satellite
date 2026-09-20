@@ -67,12 +67,30 @@ def gather():
 
     items.append(("fonts.conf.in", os.path.join(HERE, "fonts.conf")))
 
-    schemas = os.path.join(ROOT, "vendor", "gtk", "build-static", "gtk", "gschemas.compiled")
-    if os.path.isfile(schemas):
+    # THE GTK BUILD DIRECTORY COMES FROM THE MAKEFILE, and it is an environment variable
+    # rather than a path repeated here because repeating it is how it broke. On
+    # 2026-09-20 vendor/gtk was renamed to vendor/gtk-old to free the name for the new
+    # stack; make_support/047-window.mk's GTK_BUILD was updated and this line was not.
+    # The schemas then silently stopped being found -- the branch below printed one line
+    # to stderr in the middle of a several-thousand-line build and carried on.
+    #
+    # SO A MISSING FILE IS NOW FATAL WHEN GTK IS VENDORED. g_settings_new() on a missing
+    # schema calls g_error(), which is fatal and cannot be caught, and the emoji chooser
+    # is in the default right-click menu of every editable text widget -- so shipping
+    # without the schemas is not a degraded binary, it is one that dies on a right-click.
+    # A warning was the wrong severity for that.
+    #
+    # Unset means GTK=system, where the schemas come from the machine and embedding them
+    # would be wrong. Silence is correct there, and only there.
+    gtk_build = os.environ.get("SATL_GTK_BUILD")
+    if gtk_build:
+        schemas = os.path.join(gtk_build, "gtk", "gschemas.compiled")
+        if not os.path.isfile(schemas):
+            sys.exit("make_window_data.py: SATL_GTK_BUILD is set but there is no "
+                     + schemas + "\n  a vendored satl without GSettings schemas dies "
+                     "inside g_settings_new() the first time a text widget is "
+                     "right-clicked. Build the GTK stack first.")
         items.append(("schemas/gschemas.compiled", schemas))
-    else:
-        print("make_window_data.py: no gschemas.compiled -- GTK's emoji chooser will abort "
-              "(build vendor/gtk first)", file=sys.stderr)
     return items
 
 

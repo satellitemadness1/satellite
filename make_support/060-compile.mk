@@ -58,7 +58,8 @@ $(OBJECTS)/$(SATELLITE)/satellite_variable_window/%.o: $(SATELLITE)/satellite_va
 # people's style -- the warnings that matter about it are in the script.
 $(WINDOW_DATA_SOURCE): $(WINDOW_DATA_INPUTS)
 	@mkdir -p $(dir $@)
-	@python3 $(SATELLITE)/satellite_variable_window/make_window_data.py
+	@SATL_GTK_BUILD=$(if $(filter vendor,$(GTK)),$(GTK_BUILD)) \
+	 python3 $(SATELLITE)/satellite_variable_window/make_window_data.py
 
 $(WINDOW_DATA_OBJECT): $(WINDOW_DATA_SOURCE) $(GTK_COMPILE_STAMP) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
