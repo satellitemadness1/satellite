@@ -55,7 +55,18 @@ WINDOW_LIBS   := $(shell pkg-config --libs $(WINDOW_PKGS) 2>/dev/null)
 GTK ?= system
 
 GTK_PKGS  = gtk4
-GTK_BUILD = $(CURDIR)/vendor/gtk/build-static
+
+# POINTS AT gtk-old ON PURPOSE, 2026-09-20. vendor/gtk was renamed to vendor/gtk-old
+# to free the name for the new stack built from vendor/new/ (GTK 4.24.0 and 25 other
+# frozen sources). gtk-old still holds the ONLY built GTK on this machine -- 2.2 GB,
+# an hour to make -- so `make GTK=vendor` keeps working through the whole changeover
+# rather than going dark until the new stack links. Nothing else in this file changes:
+# every other GTK path is derived from this one line.
+#
+# **Move this to vendor/gtk the day the new stack links green**, and delete gtk-old
+# only after that -- GTK_AND_NO_DEPENDENCIES.md Part 0 describes the old tree and stops
+# being true the moment it is gone.
+GTK_BUILD = $(CURDIR)/vendor/gtk-old/build-static
 
 ifeq ($(GTK),vendor)
 

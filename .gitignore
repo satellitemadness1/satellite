@@ -48,9 +48,25 @@ __pycache__/
 # rule as old_versions/first_satellite above.
 /vendor/*/*.tar.*
 /vendor/*/*.sha256sum
+/vendor/gtk-old/gtk-*/
+/vendor/gtk-old/.mesonvenv/
+/vendor/gtk-old/build-*/
+
+# vendor/new/ REVERSES THE RULE ABOVE, and it is the author's, 2026-09-20: "we need no
+# dependencies, if you need something, include a copy of it so it exists inside of this
+# project folder". These 26 files ARE the project's dependencies -- every library that
+# links into satl, frozen at one version, with SHA256SUMS beside them recording where
+# each hash came from. `/vendor/*/*.tar.*` above would have ignored 24 of the 26, which
+# is the old policy ("the RECIPE is in git and the tree is not") applied to a folder
+# that exists precisely so the tree IS in git. Without this line a fresh clone gets the
+# scripts and none of the source, which is the thing vendoring was meant to end.
+!/vendor/new/*
+
+# vendor/gtk/ -- the NEW tree, built from vendor/new/gtk-4.24.0.tar.xz. Unpacked source
+# and build output only; the tarball it comes from is in vendor/new/ and is committed.
 /vendor/gtk/gtk-*/
-/vendor/gtk/.mesonvenv/
 /vendor/gtk/build-*/
+/vendor/stage/
 
 # vendor/fonts/ -- IBM Plex Mono. Regular and OFL.txt ARE in git: the font is the
 # satellite look (titles are IBM Plex Mono 11px, never bold, never italic) and a static
@@ -62,9 +78,9 @@ __pycache__/
 
 # vendor/gtk build outputs: the experiment binaries (85 MB each, unstripped) and the
 # meson install prefix. Both are made by the scripts beside them.
-/vendor/gtk/hello/hello-static
-/vendor/gtk/hello/hello-dynamic
-/vendor/gtk/stage-static/
+/vendor/gtk-old/hello/hello-static
+/vendor/gtk-old/hello/hello-dynamic
+/vendor/gtk-old/stage-static/
 
 # vendor/xkb/ -- xkeyboard-config, staged by vendor/xkb/fetch.sh (2.8 MB, 254
 # files). NOT in git today for the same reason vendor/gtk's tarballs are not,
