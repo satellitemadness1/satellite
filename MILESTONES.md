@@ -15,6 +15,13 @@ entries now say fixed, dead or still real: M1/M2/M3 dead, M6/M7 built, M19 fixed
 M26 re-run one defect at a time, M24 narrowed, M8 and M35 cut loose from a parser
 that was never written.
 
+**THE GTK+ WINDOW IS IN ITS OWN FILE: SATELLITE_WINDOW.md** (2026-09-19/20),
+`WIN-1` to `WIN-10`, the same way the infinity has SATELLITE_INFINITY.md. It is
+kept apart for two reasons: a GUI is a large enough subject, and this file's
+numbering already carries two M34s and two M35s, so a new M-number would be
+ambiguous on sight. **WIN-1 (the startup spill) blocks every other window
+milestone** — without it a static satl SIGSEGVs inside `gtk_init()`.
+
 **The numbering continues PLAN.md's.** M0–M12 are PLAN's own and keep their
 numbers and meanings; M13 up are new, most of them found while building the
 object model on 2026-09-16. Where a decision is still the author's it says so

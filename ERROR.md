@@ -361,6 +361,32 @@ pipe, which is the operating system doing for free what 003 had to be taught.
 **Measured, not assumed:** the same shape of program (an unending print loop into
 a deliberately slow reader) held **13 MB flat for 20 seconds**.
 
+## The prompt's pty check is FLAKY — a different check fails each run — OPEN
+
+Found 2026-09-19 while proving an unrelated change (the revision/build reset,
+`64d1ae5`). `check.sh` line 1161 runs `satellite/prompt/check_prompt.py` under a
+real pty; it reports 36–37 checks. **It does not give the same answer twice.**
+
+    check.sh          1 failure:  "Ctrl-D on a line with text deletes forward"
+    run alone, once:  37 ok, 0 failures
+    run alone, again: 1 failure:  "a line exactly as wide as the screen: its
+                                   answer on the next row, with no blank row between"
+
+A *different* check failing each time, with one clean run in between, is timing in
+the harness rather than a defect in the prompt — the two named checks share no
+code path. Nothing in that session touched `satellite/prompt/`.
+
+**Why it matters more than one red line.** check.sh is what the author trusts to
+say 343/343, and a suite that goes red for no reason trains everyone to ignore it.
+It also means "check.sh passed" is not evidence on its own — a run must be
+repeated before a failure is believed, and before a PASS is believed either.
+
+**Where to look:** `check_prompt.py` drives a pty with sleeps between writes
+(`pty.fork()`, asserting on the screen rather than the bytes). A check that races
+the terminal's own redraw will pass or fail by load. The two that have failed so
+far are both ones that compare the SCREEN after a redraw, which is the suspicious
+shape. Not yet reproduced under deliberate load.
+
 ## A program may have to be run from its own folder — OPEN, not reproduced
 
 The author, 2026-09-18: *"everything except for running files as programs.... you
