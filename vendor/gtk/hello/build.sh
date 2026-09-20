@@ -40,7 +40,7 @@ CFLAGS=$(PKG_CONFIG_PATH="$BUILD/meson-uninstalled" pkg-config --cflags gtk4)
 # Every archive the build produced. libgtk.a goes FIRST so its undefined symbols drive
 # the rest; the group sorts out the remainder. Sorted for a reproducible command line.
 # NOT EVERY .a IN THE TREE IS A LIBRARY, AND THE TEST IS THE NAME, NOT THE DIRECTORY.
-# cairo keeps four things under util/ that must never be linked into a program:
+# cairo keeps three things under util/ that must never be linked into a program:
 #   libmalloc-stats.a  DEFINES malloc/realloc/free ->
 #       multiple definition of `realloc'; .../malloc-stats.c:216: first defined here
 #   libcairo-trace.a, libcairo-fdr.a  LD_PRELOAD interposers that redefine cairo_*

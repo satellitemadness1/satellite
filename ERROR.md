@@ -373,19 +373,32 @@ real pty; it reports 36–37 checks. **It does not give the same answer twice.**
                                    answer on the next row, with no blank row between"
 
 A *different* check failing each time, with one clean run in between, is timing in
-the harness rather than a defect in the prompt — the two named checks share no
-code path. Nothing in that session touched `satellite/prompt/`.
+the harness rather than a defect in the prompt. The two named checks share no
+PROMPT code path — one is forward-delete, the other is wrap geometry — and they run
+on separate `Terminal` instances (`check_prompt.py:192`, width 40, and `:283`, width
+20). **What they DO share is the harness**: `Terminal.type` (:148),
+`Terminal.wait_for`/`pump` (:140, :126) and `Screen.feed` (:86), which is exactly
+where the timing is suspected. Nothing in that session touched `satellite/prompt/`.
 
 **Why it matters more than one red line.** check.sh is what the author trusts to
 say 343/343, and a suite that goes red for no reason trains everyone to ignore it.
 It also means "check.sh passed" is not evidence on its own — a run must be
 repeated before a failure is believed, and before a PASS is believed either.
 
-**Where to look:** `check_prompt.py` drives a pty with sleeps between writes
-(`pty.fork()`, asserting on the screen rather than the bytes). A check that races
-the terminal's own redraw will pass or fail by load. The two that have failed so
-far are both ones that compare the SCREEN after a redraw, which is the suspicious
-shape. Not yet reproduced under deliberate load.
+**Where to look:** `check_prompt.py` drives a pty (`pty.fork()`, :117) and asserts
+on the screen rather than the bytes. It does **not** sleep between writes —
+`type()`'s `gap` defaults to 0.0 and exactly one call passes one (`:251`, the 800 KB
+paste, which is neither failing check). The timing it actually depends on is
+`wait_for`'s 0.05 s poll (`:145`) and the single trailing `pump(0.1)` at the end of
+`type` (`:157`): a check whose screen is still mid-redraw when that last pump returns
+will pass or fail by load.
+
+Note the two failures do **not** share a shape, which was an earlier guess here and
+was wrong. `:296` compares positioned rows (`rows_from(...)[:2] == [...]`); `:215` is
+a bare substring search over the whole screen (`t.wait_for('[b]')` →
+`Screen.shows`, :111), which is position- and order-insensitive. The common suspect
+is the wait/pump timing, not positional comparison. Not yet reproduced under
+deliberate load.
 
 ## A program may have to be run from its own folder — OPEN, not reproduced
 

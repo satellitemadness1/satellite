@@ -27,8 +27,13 @@ Everything here was run, not reasoned about. Commit `efc0ddd`.
 
 ## A GTK4 binary that carries GTK works on a machine with no GTK
 
-`vendor/gtk/hello/hello-static.c`, run under `bwrap` in an empty root holding
-only the binary, the GL driver, the Wayland socket and glibc:
+`vendor/gtk/hello/hello-static.c` built with `STATIC=0` (the binary is
+`hello/hello-dynamic`; `hello/hello-static` is the `-static` one below, which
+crashes), run under `bwrap` in a root holding the binary, the GL driver, the
+Wayland socket, glibc — **plus `/usr/share/X11/xkb` and one font directory**,
+which `bare-machine.sh --with-xkb --with-fonts` binds and which **WIN-1 exists to
+remove**. Without those two it is exit 139, not 0, and that is the whole point of
+WIN-1:
 
     window presented
     clean exit
@@ -70,15 +75,18 @@ also loads.
 | graphene, libepoxy, libxkbcommon | **at least one font** (WIN-1) |
 
 `ldd` on the working binary, in full: `libm`, `libresolv`, `libc`, `ld-linux`,
-`libwayland-client`, `libwayland-egl`, `libffi`. Nothing else. Every item on the
-right is present on any machine that can show a window at all.
+`libwayland-client`, `libwayland-egl` — and `libffi`, which is NOT the binary's own:
+`readelf -d` names six NEEDED entries and libffi is not one, it comes in behind
+libwayland-client (WIN-7). Nothing else. Every item on the right is present on any
+machine that can show a window at all.
 
 ## GTK's own wrap set does not build statically
 
-Eleven defects, each fixed in `vendor/gtk/fetch-deps.sh` or
-`configure-static.sh` with the error that earned it quoted beside it. The table is
-in `vendor/README.md`. Two were the compiler rather than the source: `CC` here is
-clang 24 from LLVM trunk, and pango **1.54.0, the current release**, dies on
+Eleven defects in the table in `vendor/README.md`, each fixed in
+`vendor/gtk/fetch-deps.sh` or `configure-static.sh` with the error that earned it
+quoted beside it — **and two more that are not in that table**, recorded in prose
+below it, because they were the compiler rather than the source: `CC` here is
+clang 24 from LLVM trunk, and pango **1.54.0 — the release this machine runs (`pango-1.54.0-3.el10`), not an old one** — dies on
 `-Wunused-but-set-global` over ordinary `G_DEFINE_TYPE` boilerplate.
 
 `-Dc_args=-Wno-error` does **not** fix that, and the measurement is worth keeping:
@@ -86,6 +94,12 @@ clang 24 from LLVM trunk, and pango **1.54.0, the current release**, dies on
     -Werror=unused-but-set-variable                                     FAILS
     -Werror=unused-but-set-variable  -Wno-error=unused-but-set-variable  OK   (after)
     -Wno-error=unused-but-set-variable  -Werror=unused-but-set-variable FAILS (before)
+    -Wno-unused-but-set-global       -Werror=unused-but-set-variable    FAILS (before)
+
+The fourth row is the one that matters most: a plain `-Wno-<name>`, not just
+`-Wno-error=<name>`, ALSO loses from the front. (Measured on
+`unused-but-set-variable`; the flag that actually kills pango is
+`-Wunused-but-set-global`, a different clang diagnostic that orders the same way.)
 
 Plain `-Wno-error` does not cancel a specific `-Werror=<name>`, only a blanket
 `-Werror`; and meson puts user `c_args` BEFORE a subproject's own. Hence the
@@ -111,8 +125,14 @@ GResource and written to a writable directory before `gtk_init()`:
 1. **xkeyboard-config** — `gdk/wayland/gdkkeymap-wayland.c:478-486` runs at seat
    creation and null-checks nothing, so a machine without this data gets a
    **SIGSEGV inside `gtk_init()`**, before any window exists and before anything
-   is printed. libxkbcommon reads files and only files: there is no API to hand it
-   bytes and no meson option that embeds them. Minimum closure for
+   is printed. The call GDK makes at seat creation,
+   `xkb_keymap_new_from_names` (`xkbcommon.h:886`), resolves the
+   rules/keycodes/types/compat/symbols tree off disk, and GDK offers no hook to
+   substitute a keymap before it runs. libxkbcommon *can* take bytes —
+   `xkb_keymap_new_from_string`/`_from_buffer` (`xkbcommon.h:929`, `:944`), which
+   is how GTK accepts the compositor's keymap at `gdkkeymap-wayland.c:564` — but
+   that wants an already-compiled keymap, not xkeyboard-config data, and the
+   crashing path never reaches it. No meson option embeds the data either. Minimum closure for
    `evdev/pc105/us` is **34 files, 348,215 bytes**, and a *partial* tree fails
    exactly like no tree. Reproduced independently here: the build compiles in
    `xkb-config-root=/nonexistent/satl-must-provide-xkb-data` on purpose, and the
@@ -122,14 +142,21 @@ GResource and written to a writable directory before `gtk_init()`:
    present, after `GtkImage reported baselines of minimum -2147483648` and
    `g_object_ref: assertion 'G_IS_OBJECT (object)' failed`.
    `vendor/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf` is in git for this, 133 KB.
-   GTK's own way to register bytes is `gsk/gskrendernodeparser.c:1186`: spill to a
-   temp file, `FcConfigAppFontAddFile` on a private `FcConfigCreate()`, then
-   `pango_fc_font_map_set_config`. There is no `FcConfigAppFontAddMemory`.
+   GTK's own way is `gsk/gskrendernodeparser.c`, and the ORDER is the reverse of
+   the obvious one: `FcConfigCreate()` + `pango_fc_font_map_set_config` on a fresh
+   fontmap first (`ensure_fontmap`, :1138-1140), then spill the bytes to a temp
+   file (`g_file_new_tmp`, :1195) and `FcConfigAppFontAddFile` +
+   `pango_fc_font_map_config_changed` (:1168, :1180). There is no
+   `FcConfigAppFontAddMemory`.
 3. **GSettings schemas.** `g_settings_new()` on a missing schema calls
    `g_error()`, which is fatal and cannot be caught. Three unguarded sites in GTK,
-   and one is the emoji chooser — **in the default right-click menu of every
-   editable text widget** (`gtk/gtktext.c:6348`). A bare window is fine; any satl
-   window with a text field aborts on right-click. Four schemas, ~8 KB compiled.
+   and one is the emoji chooser, whose menu item is in the default
+   right-click menu of every editable text widget (`gtk/gtktext.c:6348`, and the
+   same item at `gtk/gtktextview.c:9263`). **Right-clicking only builds the menu**
+   — the abort comes one step later, when the item is chosen or Ctrl-. / Ctrl-; is
+   pressed (`gtk/gtktext.c:1639-1647`), because the chooser is constructed lazily
+   (`gtk/gtktext.c:7219`) and `gtk_emoji_chooser_init` calls `g_settings_new`
+   (`gtk/gtkemojichooser.c:1015`). Four schemas, **2,426 bytes** compiled (`vendor/gtk/build-static/gtk/gschemas.compiled`; ~9 KB as XML).
    `GSETTINGS_SCHEMA_DIR` *prepends*, so it cannot regress a machine that has them.
 
 **Ordering is load-bearing.** `initialise_schema_sources()` is wrapped in
@@ -144,7 +171,9 @@ of this goes at the very top of `main()`, before anything touches GSettings.
 
 The author: *"the main gtk+ window starts automatically in another thread... load
 as much as we can if that is possible without actually drawing the window"*. It is
-possible, and the API exists — checked in the vendored source:
+possible, and the API exists — checked in the vendored source. **Every GTK path in
+this file is relative to `vendor/gtk/gtk-4.16.7/`**; grepping them from the repo root
+finds nothing.
 
     gsk/gskrenderer.h:51   gsk_renderer_realize_for_display (GskRenderer*, GdkDisplay*, GError**)
     gdk/gdkdisplay.h:72    gdk_display_prepare_gl           (GdkDisplay*, GError**)
@@ -161,7 +190,9 @@ Cannot be pre-done: the surface, its buffers, and the first frame's shader
 variants, which GSK compiles lazily per drawing op.
 
 **THE CONSTRAINT: it all runs on thread2 itself.** GTK4 is not thread-safe; every
-call above must happen on the thread owning the `GMainContext`. So thread2 is:
+call above must happen on **the thread that called `gtk_init()`**
+(`docs/reference/gtk/question_index.md:87-89`) — which in this plan is also the thread
+owning the `GMainContext`, because thread2 does both. So thread2 is:
 spill → `gtk_init` → warm → `g_main_loop_run` and park. The 1024 and the walker
 stay where they are. `satellite.window.new(...)` on the interpreter thread hands
 work over with `g_main_context_invoke()`. **A thread per window object would
@@ -179,8 +210,22 @@ is unknowable.
 
 ## WIN-3 — the window words
 
-None exist: 0 rows matching "window" in `words/words_004.tsv`. To mint:
-`satellite.variable.window` (the type — **arm 15**; 13 is the float, 14 hex),
+None exist in 004 — 0 rows in `words/words_004.tsv` and in the generated
+`words/words.tsv`. **003 HAD them and their numbers are GONE.**
+`words/words_003.tsv` has seven (`1 6 15 satellite.variable.window` at :187,
+`1 24 satellite.window` at :364, `1 24 1 satellite.window.new`,
+`1 24 2 satellite.window.console`, … :369); they were removed on purpose
+(`words/make_words.py:6`, "remove GUI commands") and the numbers were REASSIGNED —
+`1 6 15` is now `satellite.variable.capsule`, `1 24` is `satellite.constructor`.
+So minting takes the next free number, **`1 27` for `satellite.window` and `1 6 18`
+for the type** (words_004.tsv already holds `1 25` feedback, `1 26` infinity,
+`1 6 16` percentage, `1 6 17` infinity) — never 003's. To mint:
+`satellite.variable.window` (the type — **the next free arm, which is 13 TODAY**.
+The "arm 15" this file first claimed is a reservation, not a fact:
+`satellite_object.hpp:156-157` are COMMENT lines for the float and hex, the live enum
+ends at `infinity = 12, how_many_kinds = 13`, and `:143-145` rules that "arms take
+their numbers in the order they are BUILT, not the order they were named". 15 is right
+only if the float and hex reserved by SATELLITE_INFINITY.md Q26 are built first),
 `satellite.window.new()`, `.close()`, `.focus()`, `.button()`. The author wants a
 folder of folders, `satellite.window/`, one C++ file per object.
 
@@ -213,10 +258,12 @@ realize — so the fallback is load-bearing, not tidy.
 
 ## WIN-6 — linking GTK into satl, and the widget-`.so` question
 
-satl is built by **make**, not meson (`make_support/048-link.mk`), so a make rule
-must name the archives the way `vendor/gtk/hello/build.sh` does — CFLAGS from
+satl is built by **make**, not meson, so a make rule must name the archives.
+`make_support/048-link.mk` holds only `LINK_ENV` and `LINK_STAMP`; the recipe that
+actually links satl is **`make_support/050-build.mk:57-58`** (satl-term at :83-84,
+with `WINDOW_LIBS` from `047-window.mk`). That is where the GTK archives have to go, and it the way `vendor/gtk/hello/build.sh` does — CFLAGS from
 pkg-config, libraries gathered as FILES, `--start-group` because the graph has
-cycles, and four archives excluded by name (`libmalloc-stats.a`,
+cycles, and five archives excluded by name (`libmalloc-stats.a`,
 `libcairo-trace.a`, `libcairo-fdr.a`, `libdemo.a`, `libintl.a`) because they
 define `malloc`/`realloc`, interpose `cairo_*`, or collide with glibc's gettext.
 
@@ -232,13 +279,22 @@ libstdc++. GTK is C and does not touch that argument; `-static` for the whole
 binary would — and WIN-1's measurement says a fully static satl cannot draw
 anyway.
 
-## WIN-7 — finish the purity audit
+## WIN-7 — the purity audit is CLEAN (corrected 2026-09-20)
 
-`libffi.so.8` still comes from the system although libffi builds as a subproject.
-Harmless, but it means the audit is not clean, and the audit is the only thing
-standing between "static" and "mostly static". The method that found the others:
-grep the configure log for `Run-time dependency ... found: YES`, which is meson
-saying *from the system*.
+**An earlier draft of this file said `libffi.so.8` leaks in from the system. It does
+not**, and the correction is worth keeping because the method that found it is the one
+to reuse. `ldd` prints libffi, but `ldd` prints the whole transitive closure.
+`readelf -d vendor/gtk/hello/hello-dynamic` names exactly six NEEDED entries — `libm`,
+`libresolv`, `libwayland-client`, `libwayland-egl`, `libc`, `ld-linux` — and libffi is
+not among them. It appears because `readelf -d
+/opt/amdgpu/lib64/libwayland-client.so.0` has `NEEDED libffi.so.8`, and
+libwayland-client is the one library kept shared **on purpose** (Part 1). libffi did
+build as a subproject: `build-static/subprojects/libffi/src/libffi.a` is on disk.
+
+**Use `readelf -d`, not `ldd`, to ask what a binary itself requires.** To catch a
+system library linked at BUILD time, grep the configure log for
+`Run-time dependency ... found: YES`, which is meson saying *from the system* — that
+is what caught libmount, libselinux, graphene and the X libraries.
 
 ## WIN-8 — the third-party notices
 
@@ -247,7 +303,10 @@ gdk-pixbuf), LGPL-2.0-or-later (pango), LGPL-2.1-or-MPL-1.1 (cairo), FTL-or-GPLv
 (freetype), MIT/BSD (harfbuzz, pixman, graphene, libepoxy, libxkbcommon, expat,
 libffi, libjpeg-turbo, libtiff, fontconfig), libpng, zlib, BSD-3 (pcre2),
 **Apache-2.0** (PCG, in 003 only — 004 has `satellite.random` numbered at `1 7`
-and no implementation), **OFL-1.1** (IBM Plex Mono, now embedded).
+and no implementation), **OFL-1.1** (IBM Plex Mono, now **vendored**; embedding it in the binary is
+WIN-1's spill and is NOT built — `strings hello-static | grep -i plex` finds nothing,
+and `satl-term/terminal.cpp:125` still asks fontconfig for
+`"IBM Plex Mono,monospace 11"` with a system fallback).
 
 **LGPL §6 is the one with teeth, and static linking is what gives it teeth:** the
 recipient must be able to **relink against their own modified GTK**. Shipping
@@ -257,9 +316,10 @@ becomes a live constraint the moment `satellite_enterprise/` ships a static bina
 
 **Two choices the author owes** before `THIRD-PARTY-NOTICES.md` can be generated:
 freetype (**FTL** recommended — GPLv2 would infect) and cairo (**LGPL-2.1**
-recommended, same as GTK). FTL wants this line in the documentation: *"Portions of
-this software are copyright © The FreeType Project (www.freetype.org). All rights
-reserved."*
+recommended, same as GTK). FTL wants this line in the documentation: *"Portions of this software are copyright © `<year>` The FreeType Project
+(www.freetype.org). All rights reserved."* — `<year>` is not decoration: `FTL.TXT:54`
+says to replace it with the version actually vendored, and the line is meant to be
+pasted verbatim.
 
 ## WIN-9 — force the satl-term console, or not — **THE AUTHOR'S, STILL UNANSWERED**
 
@@ -267,8 +327,9 @@ He asked it on 2026-09-19 and has not ruled. The recommendation given was: **do
 not force it.** Static removes the "satl would not start where GTK is missing"
 objection, but not the other two — a detached window still loses the program's
 **exit status** and its **stdout**, and both are load-bearing here
-(`machine/exit_status.hpp`; check.sh asserts 44 at line 1237; DESIGN §8 spends
-four bullets getting pipes right). 004 already removed 003's handover on purpose
+(`satellite/machine/exit_status.hpp`; check.sh asserts 44 at line 1237; DESIGN §8
+spends four bullets getting stdout right, one of them on pipes specifically,
+`DESIGN.md:277-290`). 004 already removed 003's handover on purpose
 (PLAN.md:147, and the branch is named `...-no-console-handover`).
 
 Recommended shape: `satl` never opens a window on its own; the `.desktop` names
@@ -280,7 +341,8 @@ on-demand warm. Forcing the window would give such a program **two** windows.
 ## WIN-10 — X11, and machines that are not Wayland
 
 The build is `-Dx11-backend=false` on purpose: the X11 backend needs libX11,
-libXext, libXi, libXcursor, libXdamage, libXfixes, libXinerama and libXrandr, and
+libXext, libXi, libXcursor, libXdamage, libXfixes, libXinerama, libXrandr and
+libXrender (`meson.build:520-532`), and
 **none of them has a wrap**, so every one would link as a system `.so` and quietly
 un-static the binary. libepoxy's own `glx_static` test proves the point by failing
 the build: `attempted static link of dynamic object /usr/lib64/libX11.so`.
