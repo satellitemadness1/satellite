@@ -78,4 +78,30 @@ inline std::string title_lines_from_config()
                                           config_row_digits("arguments.build")));
 }
 
+// WHAT satl IS MADE OF, LEGALLY, IN FOUR LINES.
+//
+// satellite is MIT and that is the licence for the language. It is NOT the only
+// licence in the binary: `make GTK=vendor` compiles twenty-four other projects IN,
+// and several of them are copyleft -- GTK and pango under the GNU Library GPL, glib,
+// gdk-pixbuf and cairo under the LGPL. Static linking is what gives those teeth
+// (LGPL-2.1 section 6), so saying so is an obligation and not a courtesy.
+//
+// IT IS NOT IN THE STARTUP BANNER, on purpose. title_lines() prints on every run of
+// every program; a licence notice there is noise that gets scrolled past, and a
+// notice nobody reads satisfies nothing. --version and --help are where somebody is
+// actually asking what this is.
+//
+// The full texts are one file per project under licenses/, copied VERBATIM out of
+// each vendored tree -- a licence text that has been reformatted is no longer the
+// licence. licenses/README.md is the index and records the two elections made where
+// upstream offered a choice.
+inline std::string licence_lines()
+{
+    return "\n"
+           "satellite is MIT. This binary also carries 24 other projects, each under\n"
+           "its own licence -- GTK and pango under the GNU Library GPL, glib, gdk-pixbuf\n"
+           "and cairo under the LGPL, FreeType under the FreeType Licence, and others.\n"
+           "Full texts: licenses/ in the satellite distribution, one folder per project.\n";
+}
+
 } // namespace satellite004

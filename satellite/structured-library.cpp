@@ -121,9 +121,9 @@ signed long long int run_satl(int argc, char **argv)
     if (command_line.command == Command::version || command_line.command == Command::help ||
         command_line.command == Command::opening) {
         if (command_line.command == Command::version)
-            std::cout << title_lines(arguments);
+            std::cout << title_lines(arguments) << licence_lines();
         else if (command_line.command == Command::help)
-            std::cout << startup_block(arguments) << usage_lines();
+            std::cout << startup_block(arguments) << usage_lines() << licence_lines();
         else
             // "Nothing to do is not an error" (003 main.cpp), so bare satl is 0.
             std::cout << startup_block(arguments) << opening_lines();
