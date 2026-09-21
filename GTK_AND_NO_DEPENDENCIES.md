@@ -21,13 +21,22 @@ The author, 2026-09-20, in his own words:
 
 # Part 0 — how to get back to where this was written
 
-`make GTK=vendor` builds it. That is the whole recipe **on this machine**,
-because vendor/gtk is already built here. Anywhere else, follow
-SATELLITE_WINDOW.md Part 0 first (~1 hour, ~2.2 GB) — and **DEP-1 exists so that
-stops being true.**
+**REWRITTEN 2026-09-21: DEP-1 landed, and this section's whole premise is gone.**
+It used to say "that is the whole recipe *on this machine*, because vendor/gtk is
+already built here", and pointed anywhere else at an hour and 2.2 GB. Two commands
+now, on any machine:
 
-    make                 1.1 MB   GTK loaded from the machine at run time
-    make GTK=vendor     87.3 MB   GTK compiled in; 21.0 MB stripped
+    /usr/bin/python3 vendor/build_stack.py      24 projects into vendor/stage, ~3 min
+    make                                        satl, with GTK carried inside it
+
+`vendor/gtk-old` — the GTK 4.16.7 tree that made the first proof — **has been
+deleted** (3.0 GB reclaimed, 2026-09-21). Its seven scripts are still in git at
+`vendor/gtk-old/*.sh` and `vendor/gtk-old/hello/`, including the `bare-machine.sh`
+that DEP-3 needs; only the build output, the source trees and the tarballs went.
+Every measurement taken from it is in Part 1 and does not need it back.
+
+    make                53 MB   GTK compiled in            <- the default since 2026-09-21
+    make GTK=system    1.1 MB   GTK loaded from the machine at run time
 
 Both write `build/satl`, and the link prints which kind it made. The author's
 `satl` alias runs `build/satellite-004 -> satl`, so **whichever was built last is
@@ -331,10 +340,21 @@ change.
 
 # Part 3 — what is NOT done, stated plainly
 
-- **DEP-1 is not started.** A fresh clone cannot build this at all.
-- **`vendor/xkb/xkb-data` is staged from this machine** and is gitignored.
-- **`fribidi` is pinned to `master`.**
-- **NEEDED is eight, not six.** DEP-2 is the way to six and is unstarted.
+- **DEP-1 IS DONE** (2026-09-21). `vendor/build_stack.py` builds all 24 projects
+  from the frozen tarballs in `vendor/new/` into `vendor/stage` in 172 seconds, and
+  `make` links them. One gap remains and it is named below.
+- **A FRESH CLONE STILL CANNOT RUN IT**: `vendor/new/*.tar.*` is committed but
+  nothing UNPACKS it, and `vendor/<project>/` is gitignored. Until there is an
+  unpack step the build works only where the trees already exist.
+- **`vendor/xkb/xkb-data` is GONE** — it was xkeyboard-config 2.41 copied out of
+  this machine's `/usr/share/X11/xkb`. satl now carries xkeyboard-config 2.48 built
+  from the frozen tarball: 293 files rather than 254, `geometry/` included.
+- **`fribidi` is no longer pinned to `master`** — it is the 1.0.17 release tarball,
+  like every other dependency.
+- **NEEDED is eight, not six.** DEP-2 is the way to six. The author ruled on
+  2026-09-21: *"eventually we will build all the satellite-number's into the satl
+  interpreter as well, but until we do, they are left separate"* — so DEP-2 is
+  DECIDED AND DEFERRED, not open.
 - **`bare-machine.sh` has never been run against the real satl.**
 - **No widget can talk back.** A button draws and pressing it reaches no
   satellite code — there is no path from a GTK signal into a capsule. That is

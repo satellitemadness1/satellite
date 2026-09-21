@@ -41,9 +41,23 @@ PREFIX = "/org/satellite/window"
 def gather():
     items = []
 
-    xkb = os.path.join(ROOT, "vendor", "xkb", "xkb-data")
+    # THE XKB DATA IS NOW OURS TO ACCOUNT FOR, 2026-09-21. It used to be
+    # vendor/xkb/xkb-data, which vendor/xkb/fetch.sh COPIED OUT OF THIS MACHINE'S
+    # /usr/share/X11/xkb -- gitignored, so a fresh clone had none of it, and
+    # provenance that amounted to "whatever this laptop happened to have". It is
+    # now xkeyboard-config 2.48, unpacked from the frozen tarball in vendor/new/
+    # and built by vendor/build_stack.py like every other dependency. 293 files
+    # instead of 254: the new tree also carries geometry/, which the copied one
+    # did not.
+    #
+    # THE WHOLE TREE, STILL. WIN-1 shipped a 34-file "closure" and it only worked
+    # for US keyboards -- a partial tree SIGSEGVs exactly like no tree at all.
+    # 3.3 MB against a 12 GB ceiling is not a trade worth thinking about.
+    xkb = os.path.join(ROOT, "vendor", "stage", "share", "xkeyboard-config-2")
     if not os.path.isdir(xkb):
-        sys.exit("make_window_data.py: no vendor/xkb/xkb-data -- run sh vendor/xkb/fetch.sh")
+        sys.exit("make_window_data.py: no " + xkb + "\n"
+                 "  the keyboard database is built, not copied:  "
+                 "/usr/bin/python3 vendor/build_stack.py --only xkeyboard-config")
     for folder, _, names in os.walk(xkb):
         for name in sorted(names):
             full = os.path.join(folder, name)
@@ -113,8 +127,18 @@ def main():
 
     # THE VENDORED COMPILER FIRST. A GResource written by the system's glib and
     # read by ours is two versions of one format meeting inside satl.
-    vendored = os.path.join(ROOT, "vendor", "gtk", "build-static", "subprojects",
-                            "glib", "gio", "glib-compile-resources")
+    #
+    # AND THIS LINE HAD ALREADY ROTTED, exactly the way the comment above the
+    # schemas warns about. It named vendor/gtk/build-static/subprojects/glib/,
+    # which was right while every dependency was a meson subproject of GTK and
+    # stopped existing the moment the stack was rebuilt bottom-up. The fallback is
+    # silent by design, so the build went on using the SYSTEM's glib 2.80 to write
+    # a resource that vendored glib 2.90 then reads -- measured 2026-09-20, the
+    # build printed "(system glib)" and nobody read it.
+    #
+    # It now points at the install prefix, which is the one path in this project
+    # that does not move: vendor/build_stack.py stages every tool there.
+    vendored = os.path.join(ROOT, "vendor", "stage", "bin", "glib-compile-resources")
     tool = vendored if os.access(vendored, os.X_OK) else "glib-compile-resources"
 
     source = os.path.join(OUT, "window_data.c")

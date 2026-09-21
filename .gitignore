@@ -129,9 +129,3 @@ __pycache__/
 /vendor/gtk-old/hello/hello-dynamic
 /vendor/gtk-old/stage-static/
 
-# vendor/xkb/ -- xkeyboard-config, staged by vendor/xkb/fetch.sh (2.8 MB, 254
-# files). NOT in git today for the same reason vendor/gtk's tarballs are not,
-# and that is a GAP against the author's rule of 2026-09-20 -- "include a copy
-# of it so it exists inside of this project folder". Committing it is cheap
-# against his 12 GB ceiling and is what the vendoring sweep will do.
-/vendor/xkb/xkb-data/

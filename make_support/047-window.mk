@@ -47,12 +47,28 @@ WINDOW_LIBS   := $(shell pkg-config --libs $(WINDOW_PKGS) 2>/dev/null)
 # behave identically on THIS machine and differently on every other one -- that
 # is exactly the confusion worth spending a line of output to prevent.
 #
-# WHY system IS STILL THE DEFAULT, 2026-09-20: WIN-1 is not built, so a vendored
-# satl SIGSEGVs inside gtk_init() the moment a window word runs -- it has no
-# xkeyboard-config and no fontconfig config, and neither of those is code that
-# can be linked. Measured, with the real satl, not with hello. **Flip this
-# default to vendor the day WIN-1 lands**; nothing else here has to change.
-GTK ?= system
+# FLIPPED TO vendor, 2026-09-21, which is what the line below this one told its
+# own future to do: "Flip this default to vendor the day WIN-1 lands". WIN-1
+# landed (`1f36e95`) and the whole stack was rebuilt from vendor/new/ the night
+# of 2026-09-20, so the reason `system` was the default is gone. What was
+# measured before flipping, on the vendored binary and not on hello:
+#
+#     readelf -d              the eight allowed, and nothing else
+#     check.sh                353 passed, 0 failed
+#     examples/window.satl    opens a window under headless mutter
+#     LD_DEBUG=libs           no GTK-stack library loaded from /usr at run time
+#
+# WHAT THIS CHANGES FOR SOMEBODY RUNNING PLAIN `make`: build/satl becomes ~52 MB
+# instead of ~1 MB, and it stops needing gtk4 installed to open a window. It also
+# needs vendor/stage to exist -- `/usr/bin/python3 vendor/build_stack.py`, about
+# three minutes -- and HAVE_GTK is `no` without it, which builds an interpreter
+# that refuses the window words by name rather than failing. That is 047's oldest
+# rule holding: a Makefile that dies for want of a window has made the
+# interpreter unbuildable to deliver one.
+#
+# `make GTK=system` is still there and still works. It is the right build for a
+# machine that HAS gtk4 and wants the 1 MB binary.
+GTK ?= vendor
 
 GTK_PKGS  = gtk4
 
@@ -219,7 +235,7 @@ WINDOW_DATA_OBJECT = $(OBJECTS)/generated/window_data.o
 WINDOW_DATA_INPUTS = $(SATELLITE)/satellite_variable_window/make_window_data.py \
                      $(SATELLITE)/satellite_variable_window/fonts.conf \
                      $(wildcard vendor/fonts/ibm-plex-mono/*.ttf) \
-                     $(wildcard vendor/xkb/xkb-data/rules/*)
+                     $(wildcard $(GTK_STAGE)/share/xkeyboard-config-2/rules/*)
 
 ifeq ($(HAVE_GTK),yes)
 GTK_OBJECTS += $(WINDOW_DATA_OBJECT)
