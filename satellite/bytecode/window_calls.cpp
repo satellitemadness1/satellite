@@ -25,8 +25,66 @@ using token::Code;
 namespace fast = number_fast_path;
 
 Code window_word() { return word::code_of(1, 27); }
-Code window_new_word() { return word::code_of(1, 27, 1); }
-Code window_button_word() { return word::code_of(1, 27, 2); }
+
+// ---------------------------------------------------------------------------
+// EVERY WORD UNDER satellite.window, IN ONE TABLE (GTK-0's recipe).
+// ---------------------------------------------------------------------------
+//
+// A WIDGET IS A ROW HERE AND A `Piece` NEXT DOOR, and nothing else in satl knows
+// the numbers. is_window_word, the arity, the sentence a wrong argument count
+// gets and `.append`'s own refusal are every one of them written FROM this
+// table, so a widget added here cannot be left out of any of them -- which is
+// how the hand-written list in program_check.cpp went stale in an afternoon and
+// what one table is the fix for.
+//
+// `satellite.window` ITSELF IS NOT IN HERE. It is the family name, it answers
+// nothing, and it is refused by name -- a row with no arity and no Piece would
+// be a word that exists, which it is not.
+struct AWord {
+    unsigned int number;                  // its number under 1 27
+    const char *spelling;                 // satellite.window.<this>
+    std::size_t arity;
+    satellite_window::Piece makes;        // what a program gets back
+    const char *takes;                    // and what to say when the count is wrong
+};
+
+constexpr AWord kWords[] = {
+    {1, "new", 3, satellite_window::window,
+     "satellite.window.new takes a title, a width and a height: "
+     "satellite.window.new(\"my window\", 800, 600)"},
+    {2, "button", 1, satellite_window::button,
+     "satellite.window.button takes the text on it: satellite.window.button(\"press me\")"},
+    {3, "label", 1, satellite_window::label,
+     "satellite.window.label takes the text it shows: satellite.window.label(\"a line of text\")"},
+};
+
+// A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
+// program, not once a line, and three rows -- eighteen one day -- is nothing
+// beside the code_of() call it is comparing against.
+const AWord *word_at(Code code)
+{
+    for (const AWord &row : kWords)
+        if (code == word::code_of(1, 27, row.number))
+            return &row;
+    return nullptr;
+}
+
+// THE WORDS THAT MAKE SOMETHING TO PUT IN A WINDOW, written out of the table so
+// that `.append`'s refusal names the widget added this morning without anybody
+// having remembered to come back here. The window is skipped: a window does not
+// go inside a window.
+std::string the_words_that_make_a_piece()
+{
+    std::string out;
+    for (const AWord &row : kWords) {
+        if (row.makes == satellite_window::window)
+            continue;
+        if (!out.empty())
+            out += " or ";
+        out += "satellite.window." + std::string(row.spelling) + "(\"text\")";
+    }
+    return out;
+}
 
 // Text going in. A NUMBER WHERE TEXT IS EXPECTED IS ITS DIGITS, which is
 // file_calls.cpp's rule and the author's: `satellite.window.new(5, 80, 24)` is
@@ -94,27 +152,32 @@ Value no_window_here(const std::string &what, ExpressionContext &context)
 
 } // namespace
 
-bool is_window_word(Code code)
-{
-    return code == window_word() || code == window_new_word() || code == window_button_word();
-}
+bool is_window_word(Code code) { return code == window_word() || word_at(code) != nullptr; }
 
 std::size_t window_word_arity(Code code)
 {
-    if (code == window_new_word()) return 3;
-    if (code == window_button_word()) return 1;
-    return 0;
+    const AWord *row = word_at(code);
+    return row == nullptr ? 0 : row->arity;
 }
 
 std::string window_word_takes(Code code)
 {
-    if (code == window_new_word())
-        return "satellite.window.new takes a title, a width and a height: "
-               "satellite.window.new(\"my window\", 800, 600)";
-    if (code == window_button_word())
-        return "satellite.window.button takes the text on it: satellite.window.button(\"press me\")";
+    const AWord *row = word_at(code);
+    if (row != nullptr)
+        return row->takes;
     return "satellite.window is the family name and is not a call -- "
            "satellite.window.new(...) makes a window";
+}
+
+// THE SENTENCE A PERSON GETS WHEN THEY ASK A WINDOW FOR SOMETHING IT HAS NO
+// METHOD FOR, and it lives here rather than in program_check.cpp because this is
+// the file that knows. The checker used to carry its own copy of a list like
+// this and it went stale the same afternoon it was written.
+std::string window_methods_are()
+{
+    return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\") and .ok; "
+           "a piece in one has .text; and a button has .pressed(a_capsule) and .press() "
+           "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
 int window_method_arity(Code method)
@@ -126,6 +189,7 @@ int window_method_arity(Code method)
     case token::title_token:   return 1;     // written; read with no brackets
     case token::pressed_token: return 1;     // the capsule's name; read with no brackets
     case token::press_token:   return 0;     // a click has nothing to say
+    case token::text_token:    return 1;     // written; read with no brackets (GTK-1)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -144,24 +208,31 @@ bool window_method_takes_a_capsule_name(Code method) { return method == token::p
 
 Value call_window_word(Code code, const std::vector<Value> &arguments, ExpressionContext &context)
 {
-    if (code == window_word()) {
+    const AWord *row = word_at(code);
+    if (row == nullptr) {
         context.refuse(satl_line_not_understood, window_word_takes(code));
         return Value();
     }
-    if (arguments.size() != window_word_arity(code)) {
-        context.refuse(satl_line_not_understood, window_word_takes(code) + " -- it was given " +
+    if (arguments.size() != row->arity) {
+        context.refuse(satl_line_not_understood, std::string(row->takes) + " -- it was given " +
                                                      std::to_string(arguments.size()));
         return Value();
     }
 
     std::string why;
-    if (code == window_button_word()) {
+    const std::string called = "satellite.window." + std::string(row->spelling);
+
+    // EVERY PIECE MADE FROM ONE LINE OF TEXT GOES THROUGH HERE, and a widget
+    // added to the table above needs no branch of its own -- the Piece in its row
+    // is what window_pieces.cpp turns into a GtkWidget. `new` is the one word
+    // that is not this shape, and it falls past.
+    if (row->makes != satellite_window::window) {
         std::string text;
-        if (!text_of(arguments[0], text, "satellite.window.button", context))
+        if (!text_of(arguments[0], text, called, context))
             return Value();
-        WindowHandle made = window_button(text, why);
+        WindowHandle made = window_piece_of_text(row->makes, text, why);
         if (made == nullptr) {
-            context.refuse(no_display, "satellite.window.button could not be made -- " + why);
+            context.refuse(no_display, called + " could not be made -- " + why);
             return Value();
         }
         return Value::of_window(std::move(made));
@@ -232,6 +303,17 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         Value::of_utf8(button == nullptr ? std::string() : button->when_pressed, out, bad_offset);
         return out;
     }
+    // `.text` WITH NO BRACKETS READS THE WORDS ON A PIECE, and it never crosses
+    // to the desk to do it: the handle holds them, because the factory was given
+    // them and window_set_text writes them back. GTK-2's text box is the first
+    // piece whose words belong to GTK instead, and it is what makes this an ask.
+    if (method == token::text_token && !had_parentheses) {
+        satellite_window *piece = which.get();
+        Value out;
+        std::size_t bad_offset = 0;
+        Value::of_utf8(piece == nullptr ? std::string() : piece->text, out, bad_offset);
+        return out;
+    }
     if (!had_parentheses && wanted == 0) {
         context.refuse(satl_line_not_understood, what + " is something a window DOES, so write it with "
                                                         "its brackets: " + what + "()");
@@ -270,12 +352,19 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         went = window_pressed(*window, capsule, why);
         break;
     }
+    case token::text_token: {
+        std::string text;
+        if (!text_of(arguments[0], text, what, context))
+            return Value();
+        went = window_set_text(*window, text, why);
+        break;
+    }
     case token::append_token: {
         const WindowHandle *piece = arguments[0].window_handle();
         if (piece == nullptr) {
-            context.refuse(types_do_not_meet, what + " takes a piece to put in the window -- "
-                                                     "satellite.window.button(\"text\") makes one -- and was "
-                                                     "given " + arguments[0].kind_name());
+            context.refuse(types_do_not_meet, what + " takes a piece to put in the window -- " +
+                                                  the_words_that_make_a_piece() + " makes one -- and was "
+                                                  "given " + arguments[0].kind_name());
             return Value();
         }
         long long int x = 0, y = 0;

@@ -314,9 +314,12 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
     // afternoon it was written, and one list is the fix for that.
     if (declared_as == word::code_of(1, 6, 18)) {
         if (window_method_arity(method) < 0) {
-            why = spelling + " -- a window has .append(piece, across, down), .close(), .focus(), "
-                             ".title(\"text\") and .ok, and a button has .pressed(a_capsule) and "
-                             ".press() (SATELLITE_WINDOW.md WIN-3 and WIN-11 list what a window does)";
+            // ASKED OF window_calls.hpp AND NOT WRITTEN HERE, which is the same
+            // rule the line above already follows for the arity: this file kept
+            // its own copy of a method list once and it was stale by the
+            // afternoon. A widget added to window_calls.cpp's table appears in
+            // this sentence without anybody coming back here.
+            why = spelling + " -- " + window_methods_are();
             return types_do_not_meet;
         }
         // HOW `.press` AND `.pressed` ARE SPELLED IS NOT CHECKED HERE, and the

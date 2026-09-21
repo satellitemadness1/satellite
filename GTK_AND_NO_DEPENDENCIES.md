@@ -70,7 +70,7 @@ projects produce the archives.
 | ✔ | **WIN-2** the one GTK thread | gtk (`gtk_init_check`), glib (`GMainContext`, `GMainLoop`) | gdk, gdk-wayland, gsk, graphene, libepoxy, libxkbcommon |
 | ✔ | **WIN-3** window and button | gtk | pango + pangocairo + pangoft2, harfbuzz, fribidi, freetype, fontconfig, expat, cairo, pixman |
 | ✔ | **WIN-11** a press | gtk, gobject (`g_signal_connect`, `g_signal_emit_by_name`) | libffi — the closure marshaller is libffi's |
-| — | **GTK-1** a label | gtk | the whole pango stack, as a button's label already does |
+| ✔ | **GTK-1** a label | gtk | the whole pango stack, as a button's label already does |
 | — | **GTK-2** a person types | gtk | pango |
 | — | **GTK-3** on and off | gtk | — |
 | — | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
@@ -536,7 +536,7 @@ library that is not in the folder.
 
 ---
 
-## GTK-1 — a label, and the split that has to happen first
+## GTK-1 — a label, and the split that has to happen first — **BUILT 2026-09-21**
 
     satellite.variable.window a_line = satellite.window.label("a line of text")
     my_window.append(a_line, 400, 100)
@@ -559,6 +559,28 @@ or about reading a value back.
 **Reversible, and the one worth naming:** a label is not focusable and cannot be
 pressed, so `label.pressed(c)` is refused — *"only a button is pressed"* already
 says it. That refusal gets re-read at GTK-9.
+
+**AS BUILT, and every one of the four above was paid:**
+
+| where | what |
+|---|---|
+| `words/words_004.tsv` | `1 27 3  satellite.window.label(text)` |
+| `REGISTRY.satellite` | `text_token` `0x0B2B` |
+| `satellite_window.hpp` | `Piece` grew `label` and `how_many_pieces`; `kPieceNames` with a `static_assert` sized by the enum |
+| `window_pieces.cpp` | **new** — every piece that goes INSIDE a window, and `window_piece_of_text` makes all of them |
+| `window_calls.cpp` | `kWords`, the one table; `window_methods_are()`; `the_words_that_make_a_piece()` |
+| `program_check.cpp` | its hand-typed method list deleted, asked of `window_calls.hpp` instead |
+| `satellite_object.cpp` | a piece displays as its own name — `(label "hello")` — out of `kPieceNames` |
+
+**TWO GUARDS THE COMPILER KEEPS**, and they are the reason GTK-2 onward is an
+hour each: a `Piece` added without a row in `kPieceNames` fails the
+`static_assert`, and one added without a widget in `a_widget_for` warns, because
+that switch names every enumerator and has no `default`.
+
+**Proved by running it**, not by reasoning: on a compositor of its own, an
+800x600 window with the label appended at its centre, `.text` read back,
+`.text("...")` written and read again, a button pressed, the window closed,
+exit 0. check.sh is **391 passed, 0 failed** — nine rows more than WIN-11 left.
 
 ## GTK-2 — a person types: a text box and a text area
 
@@ -1007,9 +1029,11 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE TWO WIDGETS.** A window and a button, and nothing else — no label,
-  no place to type, no picture, no row, no menu. **Part 2G is the eighteen
-  milestones that fix that**, and GTK-0 is the recipe each one repeats.
+- **THERE ARE THREE WIDGETS** as of 2026-09-21: a window, a button and a label.
+  No place to type, no picture, no row, no menu. **Part 2G is the eighteen
+  milestones**, GTK-0 is the recipe each one repeats, and **GTK-1 is built** —
+  it is the one that paid GTK-0's bill, so the ones after it are an hour each
+  rather than a morning.
 - **VTE IS NOT IN `vendor/new/`.** The author named `satellite.console` as a
   libvte window and `satellite.terminal` as a bash prompt on 2026-09-21
   (GTK-17, GTK-18), and neither can start until DEP-1 is extended by one

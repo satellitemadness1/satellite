@@ -12,8 +12,9 @@
 // so every file that holds a value would otherwise include gtk/gtk.h -- 004's
 // own object model would stop compiling on a machine with no GTK, and satl is
 // the one thing 047-window.mk promises builds everywhere. The widget is a
-// `void *` here and a GtkWidget * in exactly two files, both of which are
-// compiled only when pkg-config finds gtk4.
+// `void *` here and a GtkWidget * in exactly three files -- window_desk.cpp,
+// satellite_window.cpp and window_pieces.cpp -- every one of which is compiled
+// only when pkg-config finds gtk4.
 //
 // A WINDOW AND A BUTTON ARE ONE TYPE, not two arms. `satellite.window.button()`
 // answers something that is only ever handed straight to `.append`, and the
@@ -50,13 +51,18 @@ using WindowHandle = std::shared_ptr<satellite_window>;
 class satellite_window : public std::enable_shared_from_this<satellite_window> {
 public:
     // WHICH PIECE OF A WINDOW THIS IS. `window` is the thing with a frame;
-    // `button` is a thing put inside one.
-    enum Piece { window, button };
+    // everything after it is a thing put inside one.
+    //
+    // `how_many_pieces` IS NOT A PIECE, it is the count -- and it is what makes
+    // adding one below without naming it a COMPILE ERROR rather than a widget
+    // that is refused as "a button". See kPieceNames under this class.
+    enum Piece { window, button, label, how_many_pieces };
 
     Piece piece = window;
 
-    // THE GtkWidget *, AS A void *. Only window_desk.cpp and satellite_window.cpp
-    // ever cast it back, and both are compiled only where GTK is.
+    // THE GtkWidget *, AS A void *. Only window_desk.cpp, satellite_window.cpp and
+    // window_pieces.cpp ever cast it back, and all three are compiled only where
+    // GTK is.
     void *widget = nullptr;
 
     // THE GtkFixed INSIDE A WINDOW, which is what `.append` puts a piece into.
@@ -80,7 +86,7 @@ public:
     std::weak_ptr<satellite_window> inside_of;
 
     std::string title;            // what it was made with, and what .title reads back
-    std::string text;             // a button's label
+    std::string text;             // the words ON a piece: a button's label, a label's line
     bool on_the_screen = false;   // false once it is closed, whoever closed it
 
     // THE CAPSULE A PRESS RUNS, by name, and empty for a piece that answers
@@ -98,8 +104,37 @@ public:
     satellite_window() = default;
     explicit satellite_window(Piece which) : piece(which) {}
 
-    const char *piece_name() const { return piece == window ? "a window" : "a button"; }
+    // WHAT THIS PIECE IS CALLED. A TABLE AND NOT A `?:` SINCE GTK-1: two pieces
+    // fit in a conditional and eighteen do not, and every refusal in this module
+    // names the piece it was given -- so the naming is one place a new piece is
+    // added to, or the tenth widget is refused as "a button".
+    const char *piece_name() const;     // "a label"  -- inside a refusal
+    const char *piece_shown() const;    // "label"    -- what display() prints
 };
+
+// EVERY PIECE, NAMED ONCE, IN Piece's OWN ORDER. `the` is what a refusal calls
+// it; `shown` is the word a program sees when it displays one -- (label "text").
+//
+// THE static_assert IS THE WHOLE POINT OF THE TABLE. A `Piece` added to the enum
+// and not given a row here does not compile, which is the only way a table like
+// this stays true -- a short initialiser would zero-fill and answer nullptr at
+// the moment somebody was being told what they did wrong.
+struct PieceNames {
+    const char *the;
+    const char *shown;
+};
+
+inline constexpr PieceNames kPieceNames[] = {
+    {"a window", "window"},
+    {"a button", "button"},
+    {"a label", "label"},
+};
+
+static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
+              "a Piece was added without a name -- give it a row in kPieceNames");
+
+inline const char *satellite_window::piece_name() const { return kPieceNames[piece].the; }
+inline const char *satellite_window::piece_shown() const { return kPieceNames[piece].shown; }
 
 // ---------------------------------------------------------------------------
 // WHAT A PROGRAM CAN DO TO ONE.
@@ -119,8 +154,35 @@ public:
 WindowHandle window_new(const std::string &title, unsigned long long int width,
                         unsigned long long int height, std::string &why);
 
-// `satellite.window.button(text)`. Not on any screen until it is appended.
-WindowHandle window_button(const std::string &text, std::string &why);
+// `satellite.window.button(text)`, `satellite.window.label(text)`, and every
+// piece after them that is made from one line of text.
+//
+// ONE FUNCTION AND NOT ONE A WIDGET, because they differ in exactly one thing --
+// which GtkWidget is asked for. Eighteen near-identical declarations would be
+// eighteen places for the nineteenth to be left out of, and the table in
+// bytecode/window_calls.cpp already says which word answers which `Piece`; this
+// is what turns that Piece into a widget.
+//
+// A LABEL DRAWS AND ANSWERS NOBODY. It is not focusable and cannot be pressed,
+// so `a_label.pressed(c)` is refused by the sentence that already refuses it on
+// a window -- "only a button is pressed".
+//
+// NOT ON ANY SCREEN until it is appended. A null handle with `why` filled in
+// when there is no display to draw on, or when the Piece is not one made this
+// way -- a window is not, and window_new above is what makes one.
+WindowHandle window_piece_of_text(satellite_window::Piece which, const std::string &text,
+                                  std::string &why);
+
+// `a_piece.text("what it says now")` -- the words ON a piece. A window is
+// REFUSED here and told to use `.title` instead: a window's words are its title,
+// and answering the title to `.text` would be two names for one thing, which is
+// the shape this language spends its refusals avoiding.
+//
+// READING `.text` NEVER COMES HERE. The handle already holds the words -- they
+// were given to the factory -- so bytecode/window_calls.cpp answers a bare
+// `.text` without crossing to the desk at all. GTK-2's text box is the first
+// piece whose words are GTK's and not ours, and it is what changes that.
+bool window_set_text(satellite_window &which, const std::string &text, std::string &why);
 
 // `my_window.append(piece, x, y)` -- BY ITS CENTRE (WIN-3): 400, 300 is the
 // middle of an 800x600 window, not a corner. The piece's own measured size is

@@ -361,7 +361,8 @@ bits              name                         what it is
 0000101100101000  title_token                  title  [METHOD] window.title("text") -- the window's title now; window.title reads it back (SATELLITE_WINDOW.md WIN-3)
 0000101100101001  pressed_token                pressed  [METHOD] button.pressed(a_capsule) -- the capsule to run when it is pressed; button.pressed reads the name back (SATELLITE_WINDOW.md WIN-11)
 0000101100101010  press_token                  press  [METHOD] button.press() -- the PROGRAM presses it, as a click does; it takes nothing (SATELLITE_WINDOW.md WIN-11)
-0000101100101011  free                         to 0000101111111111, free for this family
+0000101100101011  text_token                   text  [METHOD] object.text -- the words on a piece of a window, read with no brackets; object.text("x") writes them (GTK_AND_NO_DEPENDENCIES.md GTK-1)
+0000101100101100  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

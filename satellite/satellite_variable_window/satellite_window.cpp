@@ -1,5 +1,10 @@
 // satellite/satellite_variable_window/satellite_window.cpp -- what a program can
-// do to a window. SATELLITE_WINDOW.md WIN-3.
+// do to a WINDOW. SATELLITE_WINDOW.md WIN-3.
+//
+// THE PIECES THAT GO INSIDE ONE ARE NEXT DOOR, in window_pieces.cpp since
+// GTK-1. This file makes a window, closes it, focuses it, titles it, appends
+// into it and holds the run open; that file makes a button, a label and
+// whatever comes after them.
 //
 // EVERY GTK CALL IN THIS FILE HAPPENS INSIDE on_the_desk(), which is the rule
 // window_desk.hpp exists to keep: GTK4 is not thread-safe and the interpreter
@@ -98,19 +103,6 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
         raw->inside = inside;
         gtk_window_present(GTK_WINDOW(window));
     });
-    return made;
-}
-
-WindowHandle window_button(const std::string &text, std::string &why)
-{
-    if (!open_the_desk(why))
-        return nullptr;
-    WindowHandle made = std::make_shared<satellite_window>(satellite_window::button);
-    made->text = text;
-    satellite_window *raw = made.get();
-    on_the_desk([raw, &text] { raw->widget = gtk_button_new_with_label(text.c_str()); });
-    // NOT on_the_screen: a button is nothing until it is appended, and `.append`
-    // is what puts it on one.
     return made;
 }
 

@@ -210,14 +210,16 @@ TERM_HEADERS = $(TERM_DIR)/menu.hpp $(TERM_DIR)/tabs.hpp $(TERM_DIR)/terminal.hp
 TERM_OBJECTS = $(TERM_SOURCES:%.cpp=$(OBJECTS)/%.o)
 
 # THE WINDOW SOURCES satl LINKS IN, and they are the interpreter's, not
-# satl-term's: the desk that owns the one GTK thread, and what a program can do
-# to a window. Empty when there is no gtk4, which is what makes satl buildable
+# satl-term's: the desk that owns the one GTK thread, what a program can do to a
+# window, and the pieces that go inside one (window_pieces.cpp, split out at
+# GTK-1 for the line rule). Empty when there is no gtk4, which is what makes satl buildable
 # without one. bytecode/window_calls.cpp is NOT here -- it is in
 # INTERPRETER_SOURCES and compiled always, because it is the file that says
 # this satl has no window.
 ifeq ($(HAVE_GTK),yes)
 GTK_SOURCES = $(SATELLITE)/satellite_variable_window/window_desk.cpp \
               $(SATELLITE)/satellite_variable_window/satellite_window.cpp \
+              $(SATELLITE)/satellite_variable_window/window_pieces.cpp \
               $(SATELLITE)/satellite_variable_window/window_spill.cpp
 else
 GTK_SOURCES =

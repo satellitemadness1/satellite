@@ -31,7 +31,10 @@
 
 namespace satellite004 {
 
-// satellite.window 1 27, new(title, width, height) 1 27 1, button(text) 1 27 2.
+// satellite.window 1 27; new(title, width, height) 1 27 1; button(text) 1 27 2;
+// label(text) 1 27 3. The .cpp holds the one table every one of those is read
+// from (GTK_AND_NO_DEPENDENCIES.md GTK-0), so a widget added there is a widget
+// here without a second list to keep true.
 bool is_window_word(token::Code code);
 
 // How many arguments a window word takes, and the sentence that says so. The
@@ -42,6 +45,14 @@ std::string window_word_takes(token::Code code);
 // How many arguments a window METHOD takes, or -1 for one a window does not
 // have. `.append` takes three -- the piece and where its centre goes.
 int window_method_arity(token::Code method);
+
+// AND WHAT TO SAY WHEN IT IS -1: the methods a window and the pieces in one do
+// have, in one sentence. The CHECKER prints this, and it is asked for rather
+// than copied for the reason the paragraph below gives about capsule names --
+// program_check.cpp's own hand-written list of container methods went stale the
+// same afternoon it was written, and this is that lesson applied before it can
+// happen again.
+std::string window_methods_are();
 
 // TRUE FOR A METHOD WHOSE ARGUMENT IS A CAPSULE'S NAME, READ AS WRITTEN --
 // `my_button.pressed(when_pressed)` (WIN-11). ASKED, NEVER COPIED: the reader

@@ -1884,6 +1884,92 @@ expect "pressed is a method token at 0000101100101001, and token_codes.hpp was g
        "$(grep -c '^0000101100101001  pressed_token ' REGISTRY.satellite)|$(grep -c 'Code pressed_token = 0x0B29;' satellite/bytecode/token_codes.hpp)"
 
 # ---------------------------------------------------------------------------
+# A LABEL, AND THE PIECE TABLE UNDER IT (GTK_AND_NO_DEPENDENCIES.md GTK-1,
+# 2026-09-21). The second piece satellite ever had, and the first one added
+# through GTK-0's recipe rather than by hand.
+# ---------------------------------------------------------------------------
+#
+# SAME LINE AS EVERY WINDOW ROW ABOVE: these run headless, so what is asserted is
+# the word, the checker and the refusals that happen BEFORE a display is asked
+# for. That a label really draws, reads its words back and has them written was
+# proved on a compositor of its own -- an 800x600 window with the label appended,
+# `.text` read, `.text("...")` written and read again, a button pressed and the
+# window closed, exit 0.
+
+expect "satellite.window.label is 1 27 3, the next free number under satellite.window" "1|1" \
+       "$(grep -cP '^1 27 3\tsatellite.window.label\(text\)\t' words/words.tsv)|$(grep -c '1 27 3 -- satellite.window.label(text)' satellite/bytecode/word_codes.hpp)"
+
+expect "text is a method token at 0000101100101011, and token_codes.hpp was generated from it" "1|1" \
+       "$(grep -c '^0000101100101011  text_token ' REGISTRY.satellite)|$(grep -c 'Code text_token = 0x0B2B;' satellite/bytecode/token_codes.hpp)"
+
+# THE ARGUMENT COUNT IS THE CHECKER'S, and it comes out of the ONE word table in
+# window_calls.cpp -- a widget added to that table is refused correctly here
+# without a second list being kept true.
+cat > build/window_label_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window a = satellite.window.label("one", "two")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_label_arity.satl > build/window_label_arity.out 2>&1
+expect "satellite.window.label with two arguments is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_label_arity.out)"
+expect "... and the sentence is the word table's own" 1 \
+       "$(tr '\n' ' ' < build/window_label_arity.out | grep -cF 'satellite.window.label takes the text it shows')"
+
+# A WINDOW'S WORDS ARE ITS TITLE, and a person who wrote .text on one meant
+# .title -- so the refusal names the word they wanted rather than the one they
+# did not get. Refused at the RUN and not the checker: `.text` is a real method
+# on a real piece, and which piece the receiver is is not known until it is made.
+cat > build/window_text_on_window.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.text("no")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_text_on_window.satl > build/window_text_on_window.out 2>&1
+expect "a window asked for .text stops for want of a screen, not for want of the method" 50 $?
+expect "... and .text is a method the CHECKER knows a window has" 0 \
+       "$(tr '\n' ' ' < build/window_text_on_window.out | grep -cF 'is not built for')"
+
+# THE SENTENCE THAT LISTS WHAT A PIECE DOES IS GENERATED, not typed -- it comes
+# from window_calls.cpp, which is the file that knows. program_check.cpp kept its
+# own copy of a list like this once and it was stale by the afternoon.
+expect "a window has no .read_all, and the sentence naming .text comes from window_calls.cpp" 1 \
+       "$(tr '\n' ' ' < build/window_method.out | grep -cF 'a piece in one has .text')"
+
+# ONLY A BUTTON IS PRESSED, and a label is refused by the sentence that already
+# refused a window -- one rule, not one a widget.
+cat > build/window_label_press.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed()
+{
+    satellite.console.display("pressed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window a = satellite.window.label("x")
+    a.pressed(when_pressed)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_label_press.satl > build/window_label_press.out 2>&1
+expect "a label wired to a capsule passes the checker, and stops only for want of a screen" 50 $?
+
+# EVERY Piece HAS A NAME AND THE COMPILER PROVES IT. kPieceNames is sized by the
+# enum with a static_assert, and window_pieces.cpp switches over every enumerator
+# with no `default` -- so a widget added to the enum and left out of either one
+# does not build. This row is what stops the two guards being quietly deleted.
+expect "a Piece cannot be added without a name or a widget" "1|1" \
+       "$(grep -c 'static_assert(sizeof(kPieceNames)' satellite/satellite_variable_window/satellite_window.hpp)|$(grep -c 'case satellite_window::how_many_pieces: break;' satellite/satellite_variable_window/window_pieces.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

@@ -620,15 +620,17 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
         return satellite_string::from_utf8(satellite_infinity::display(as_infinity()), out, bad_offset);
     }
     // A WINDOW READS AS WHAT IT IS AND WHAT IS ON IT, because the one thing a
-    // person displays a window for is to see WHICH window they have. A button
-    // reads as its label for the same reason.
+    // person displays a window for is to see WHICH window they have. Every other
+    // piece reads as its own name and its words -- (button "ok"), (label "hello")
+    // -- and the name comes from kPieceNames, so a widget added since this was
+    // written displays as itself rather than as whatever the last `else` said.
     case window: {
         const satellite_window *which = as_window();
         std::string written;
         if (which == nullptr)
             written = "(no window)";
-        else if (which->piece == satellite_window::button)
-            written = "(button \"" + which->text + "\")";
+        else if (which->piece != satellite_window::window)
+            written = "(" + std::string(which->piece_shown()) + " \"" + which->text + "\")";
         else
             written = std::string(which->on_the_screen ? "(window \"" : "(closed window \"") +
                       which->title + "\")";
