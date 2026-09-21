@@ -12,6 +12,17 @@ satellite.include(satellite)
 // A POSITION IS THE PIECE'S CENTRE, not its corner: 400, 300 is the middle of an
 // 800x600 window, whatever size the button turns out to be.
 //
+// `.pressed` NAMES A CAPSULE, WRITTEN AS IT IS WRITTEN (WIN-11) -- not
+// "when_pressed" in quotes, and not a value worked out. satl proves the capsule
+// is there before the program runs, which is why the name may stand there at
+// all: a button wired to a capsule nobody wrote is refused with the rest of the
+// program, rather than at the moment somebody presses it.
+//
+// A PRESS RUNS ON THE INTERPRETER'S THREAD, never the window's, and presses run
+// ONE AT A TIME in the order they were made. So `when_pressed` is an ordinary
+// capsule with an ordinary frame -- it cannot see main's names, because there
+// are no globals and a capsule never could.
+//
 // THE RUN DOES NOT END WHILE THE WINDOW IS OPEN. There is no wait word here and
 // there does not need to be one -- close the window and the program ends. A
 // program can close it itself with my_window.close().
@@ -19,11 +30,19 @@ satellite.include(satellite)
 // ON A MACHINE WITH NO SCREEN this refuses with S730 NO_DISPLAY and exits 50,
 // which is not a fault in the program: the same file on a desktop opens a window.
 
+satellite.capsule when_pressed()
+{
+    satellite.console.display("the button was pressed")
+}
+
 satellite.capsule satellite.main()
 {
     satellite.variable.window my_window = satellite.window.new("window_title", 800, 600)
 
-    my_window.append(satellite.window.button("text"), 400, 300)
+    satellite.variable.window my_button = satellite.window.button("text")
+    my_button.pressed(when_pressed)
+
+    my_window.append(my_button, 400, 300)
 
     satellite.console.display("the window is open, and this line already ran")
     satellite.console.display(my_window)

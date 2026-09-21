@@ -64,6 +64,18 @@ public:
     std::string text;             // a button's label
     bool on_the_screen = false;   // false once it is closed, whoever closed it
 
+    // THE CAPSULE A PRESS RUNS, by name, and empty for a piece that answers
+    // nobody (WIN-11). A NAME AND NOT A CAPSULE: a capsule is arm 5 of the
+    // object model and nothing in the language makes one yet, and the walker
+    // finds a user's capsule BY NAME anyway (program_walk.hpp's CapsuleTable) --
+    // so the name IS the reference, and no body is copied to hold it.
+    //
+    // WRITTEN AND READ ON THE DESK'S THREAD ONLY. `.pressed()` sets it inside
+    // an on_the_desk() lambda and the `clicked` handler reads it there, so the
+    // two never race and no second mutex is needed for one string.
+    std::string when_pressed;
+    bool press_is_connected = false;   // `clicked` is connected once, not once a call
+
     satellite_window() = default;
     explicit satellite_window(Piece which) : piece(which) {}
 
@@ -96,6 +108,28 @@ WindowHandle window_button(const std::string &text, std::string &why);
 // halved and taken off at placement, which is the whole difference.
 bool window_append(satellite_window &into, const WindowHandle &piece, long long int x,
                    long long int y, std::string &why);
+
+// `my_button.pressed(when_pressed)` -- the capsule to run when it is pressed
+// (WIN-11). ONLY A BUTTON, because only a button is pressed; a window is
+// refused here rather than silently answering nobody.
+//
+// THE CAPSULE IS NOT RUN HERE AND NOT ON THIS THREAD. A press puts the name on
+// the desk's queue (window_desk.hpp) and the INTERPRETER's thread takes it off
+// and walks it -- see the_desk_waits_for_a_press for why that is the only safe
+// thread for it.
+bool window_pressed(satellite_window &which, const std::string &capsule, std::string &why);
+
+// `my_button.press()` -- THE PROGRAM PRESSES IT, as a person clicking would
+// (WIN-11, the author 2026-09-21: *"It's just a mouse click, so it's not like
+// there's any arguments to clicking on something"*). It takes nothing and it
+// runs whatever `.pressed(...)` named, through the same path a real click takes.
+//
+// IT EMITS `clicked` AND DOES NOT CALL gtk_widget_activate(). Activate is the
+// KEYBOARD path: for a button it needs the widget REALIZED and does nothing at
+// all when it is not (gtkbutton.c:827), while still answering TRUE -- an answer
+// that is wrong and does not say so. A mouse release emits `clicked` directly
+// (gtkbutton.c:802), which is what this does.
+bool window_press(satellite_window &which, std::string &why);
 
 bool window_close(satellite_window &which, std::string &why);
 bool window_focus(satellite_window &which, std::string &why);

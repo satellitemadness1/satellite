@@ -313,10 +313,23 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
     // the hand-written container set that used to sit above went stale the same
     // afternoon it was written, and one list is the fix for that.
     if (declared_as == word::code_of(1, 6, 18)) {
-        if (window_method_arity(method) >= 0) return success;
-        why = spelling + " -- a window has .append(piece, across, down), .close(), .focus(), "
-                         ".title(\"text\") and .ok (SATELLITE_WINDOW.md WIN-3 lists what a window does)";
-        return types_do_not_meet;
+        if (window_method_arity(method) < 0) {
+            why = spelling + " -- a window has .append(piece, across, down), .close(), .focus(), "
+                             ".title(\"text\") and .ok, and a button has .pressed(a_capsule) and "
+                             ".press() (SATELLITE_WINDOW.md WIN-3 and WIN-11 list what a window does)";
+            return types_do_not_meet;
+        }
+        // HOW `.press` AND `.pressed` ARE SPELLED IS NOT CHECKED HERE, and the
+        // reason is a defect this file had for a day (found by a fresh reader,
+        // 2026-09-21). This function sees only the FIRST method of a chain on a
+        // DECLARED name, so a rule written here holds for exactly one spelling:
+        // `satellite.window.button("x").pressed("nosuch")` has no declared
+        // receiver and `b.title("t").pressed("nosuch")` is not the first method,
+        // and BOTH escaped -- drew a window, and failed at the moment somebody
+        // pressed the button. That is precisely the refusal WIN-11 claims to
+        // have moved earlier. It now lives in names_in_statement, which walks
+        // the WHOLE statement, so every spelling passes through it.
+        return success;
     }
 
     if (declared_as != word::code_of(1, 6, 2)) {
@@ -399,8 +412,60 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                                         const FunctionTable &functions,
                                         std::string &why)
 {
+    // THE TWO CODES THIS LOOP LAST VISITED, and NOT row[at - 1] and row[at - 2]
+    // (WIN-11). `.pressed(when_pressed)` is recognised by what stands before the
+    // name, and a raw index backwards can land INSIDE A PAYLOAD -- where a
+    // string's characters are their own Unicode numbers and one of them may
+    // equal a token's code exactly. That is not a hypothetical in this tree:
+    // capsules_in() carries the same warning, for a string ending in U+1006 that
+    // made the next body a second satellite.main. This loop already SKIPS every
+    // payload, so the codes it visited are the only ones that are really tokens.
+    Code one_back = 0, two_back = 0;
     for (std::size_t at = from; at < stop && at < row.size(); ) {
         const Code code = code_at(row, at);
+        const Code before_this = one_back, and_before_that = two_back;
+        two_back = one_back;
+        one_back = code;
+
+        // HOW `.pressed(...)` IS SPELLED, WHEREVER IT STANDS AND WHATEVER IT IS
+        // WRITTEN ON (WIN-11). A method is judged by its RECEIVER in
+        // method_on_a_name, and that is the wrong place for this: a receiver
+        // that is a word's answer has no declared name, and a chain's second
+        // method is never reached. Here there is no receiver to be gated on --
+        // this loop walks every statement and skips every payload, so a
+        // `pressed_token` it visits is a real one, wherever it was written.
+        if (window_method_takes_a_capsule_name(code) &&
+            code_at(row, at + 1) == token::left_parenthesis_token) {
+            const std::string spelled = std::string(".") + token::method_name_of(code);
+            std::size_t argument = at + 2;
+            // TEXT IS NOT A NAME. It would lex, check, run, open the window, and
+            // fail at the moment of the press -- window already up.
+            if (code_at(row, argument) != token::name_token) {
+                why = spelled + " takes the NAME of a capsule, written as it is written: " + spelled +
+                      "(when_pressed) -- not text and not a value worked out, because satl proves "
+                      "the capsule is there before your program runs";
+                return types_do_not_meet;
+            }
+            // AND ONE NAME, NOT A NAME AND THEN ANYTHING. Looking only at the
+            // code after the `(` let `.pressed(when_pressed, 5)` through to be
+            // refused at run time, which is a refusal this checker owes earlier.
+            text_at(row, argument);
+            if (code_at(row, argument) != token::right_parenthesis_token) {
+                why = spelled + " takes one capsule's name and nothing else";
+                return satl_line_not_understood;
+            }
+        }
+        // `.press()` IS THE OTHER ONE, AND THEY ARE ONE LETTER APART -- so the
+        // refusal for either given the other's argument names the other out
+        // loud, rather than leaving a person with "when_pressed has no
+        // satellite.variable line declaring it": a true sentence about the wrong
+        // half of a typo.
+        if (code == token::press_token && code_at(row, at + 1) == token::left_parenthesis_token &&
+            code_at(row, at + 2) != token::right_parenthesis_token) {
+            why = ".press() is the PROGRAM pressing it, and a click has nothing to say, so it takes "
+                  "nothing. To name what a press RUNS, that is .pressed(a_capsule)";
+            return satl_line_not_understood;
+        }
 
         if (code == token::name_token) {
             std::size_t k = at;
@@ -408,6 +473,27 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             if (code_at(row, k) == token::left_parenthesis_token) {
                 if (capsules.find(name) == capsules.end()) {
                     why = "no capsule named " + name;
+                    return satl_line_not_understood;
+                }
+            } else if (before_this == token::left_parenthesis_token &&
+                       window_method_takes_a_capsule_name(and_before_that)) {
+                // A CAPSULE'S NAME STANDING WHERE A VALUE WOULD (WIN-11).
+                // `my_button.pressed(when_pressed)` names a capsule to run, so
+                // the test below -- every name must have a satellite.variable
+                // line -- would refuse the program that is right. What IS owed
+                // is that the capsule exists, and here is where that is cheap:
+                // the whole CapsuleTable is already in hand, so a button wired
+                // to a capsule nobody wrote is refused before the window opens
+                // rather than at the moment somebody presses it.
+                //
+                // READ BACKWARDS AND NOT FORWARDS FROM THE METHOD, because a
+                // method CHAINS: `b.title("x").pressed(when_pressed)` puts this
+                // name far past the first method the receiver's own check saw.
+                if (capsules.find(name) == capsules.end()) {
+                    why = "no capsule named " + name + " -- ." +
+                          std::string(token::method_name_of(and_before_that)) +
+                          "(...) names a capsule to run, and there is no satellite.capsule " + name +
+                          "() in this program";
                     return satl_line_not_understood;
                 }
             } else if (declared.find(name) == declared.end()) {

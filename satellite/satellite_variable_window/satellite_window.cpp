@@ -28,6 +28,20 @@ void it_was_closed(GtkWidget *, gpointer user_data)
     the_desk_let_go_of(static_cast<satellite_window *>(user_data));
 }
 
+// A BUTTON WAS PRESSED (WIN-11). ON THE DESK'S THREAD, so it does the one thing
+// that is safe here -- writes the capsule's name on the desk's queue -- and the
+// interpreter's thread takes it off and walks it. window_desk.hpp says why the
+// walker must not be entered from here.
+//
+// `when_pressed` IS READ ON THIS THREAD AND WRITTEN ON IT, which is what makes
+// reading it without a lock right: window_pressed() sets it inside on_the_desk().
+void it_was_pressed(GtkWidget *, gpointer user_data)
+{
+    const satellite_window *button = static_cast<const satellite_window *>(user_data);
+    if (!button->when_pressed.empty())
+        the_desk_saw_a_press(button->when_pressed);
+}
+
 GtkWidget *as_widget(const satellite_window &which) { return static_cast<GtkWidget *>(which.widget); }
 
 // A WINDOW THAT IS NO LONGER ON A SCREEN, said the same way everywhere.
@@ -138,6 +152,64 @@ bool window_append(satellite_window &into, const WindowHandle &piece, long long 
     // HELD BY THE WINDOW, so that the window going away can null this piece's
     // GtkWidget * before GTK frees it underneath a handle the program still has.
     into.pieces.push_back(piece);
+    return true;
+}
+
+bool window_pressed(satellite_window &which, const std::string &capsule, std::string &why)
+{
+    if (which.piece != satellite_window::button) {
+        why = "only a button is pressed";
+        return false;
+    }
+    // NOT still_there(): a button is not on a screen until it is appended, and
+    // saying what a press does BEFORE putting it in a window is the ordinary
+    // order to write it in. What must be true is that the widget still exists --
+    // a button whose window has been closed has had its GtkWidget * nulled.
+    if (which.widget == nullptr) {
+        why = "it is closed";
+        return false;
+    }
+    satellite_window *raw = &which;
+    on_the_desk([raw, &capsule] {
+        raw->when_pressed = capsule;
+        // CONNECTED ONCE, AND NOT ONCE A CALL. `b.pressed(a).pressed(b)` is a
+        // button that runs b, not one that runs both -- a second connection
+        // would leave the first handler in place and fire twice for one press.
+        if (!raw->press_is_connected) {
+            g_signal_connect(static_cast<GtkWidget *>(raw->widget), "clicked",
+                             G_CALLBACK(it_was_pressed), raw);
+            raw->press_is_connected = true;
+        }
+    });
+    return true;
+}
+
+bool window_press(satellite_window &which, std::string &why)
+{
+    if (which.piece != satellite_window::button) {
+        why = "only a button is pressed";
+        return false;
+    }
+    if (which.widget == nullptr) {
+        why = "it is closed";
+        return false;
+    }
+    // AND IT MUST BE SOMETHING A PERSON COULD HAVE CLICKED. A button that has
+    // not been appended is on no screen, so pressing it is the program
+    // pretending a person did something they could not have done. The two are
+    // told apart because they are different mistakes: one forgot `.append`, the
+    // other is holding a button whose window has gone.
+    if (!which.on_the_screen) {
+        why = "it is not in a window yet -- append it into one first";
+        return false;
+    }
+    GtkWidget *widget = as_widget(which);
+    // THE SAME SIGNAL A MOUSE RELEASE EMITS (gtkbutton.c:802), so a pressed
+    // capsule cannot tell this apart from a person -- which is the whole point.
+    // It arrives at it_was_pressed on the desk's thread, exactly as a click
+    // does, and is QUEUED there rather than run: a program that presses its own
+    // button does not recurse into the walker, it adds a press to the line.
+    on_the_desk([widget] { g_signal_emit_by_name(widget, "clicked"); });
     return true;
 }
 

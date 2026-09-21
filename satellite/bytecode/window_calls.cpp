@@ -6,6 +6,7 @@
 
 #include "word_codes.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
+#include "../satellite_variable_window/window_desk.hpp"
 
 #include <string>
 #include <utility>
@@ -119,14 +120,18 @@ std::string window_word_takes(Code code)
 int window_method_arity(Code method)
 {
     switch (method) {
-    case token::append_token: return 3;      // the piece, and where its centre goes
-    case token::close_token:  return 0;
-    case token::focus_token:  return 0;
-    case token::title_token:  return 1;      // written; read with no brackets
-    case token::ok_token:     return 0;
-    default:                  return -1;
+    case token::append_token:  return 3;     // the piece, and where its centre goes
+    case token::close_token:   return 0;
+    case token::focus_token:   return 0;
+    case token::title_token:   return 1;     // written; read with no brackets
+    case token::pressed_token: return 1;     // the capsule's name; read with no brackets
+    case token::press_token:   return 0;     // a click has nothing to say
+    case token::ok_token:      return 0;
+    default:                   return -1;
     }
 }
+
+bool window_method_takes_a_capsule_name(Code method) { return method == token::pressed_token; }
 
 
 // ---------------------------------------------------------------------------
@@ -211,6 +216,22 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         Value::of_utf8(window == nullptr ? std::string() : window->title, out, bad_offset);
         return out;
     }
+    // `.pressed` WITH NO BRACKETS READS THE CAPSULE'S NAME BACK, and with
+    // brackets says what it is -- the same pair as `.title`, and for the author's
+    // same reason: a person who can set a thing expects to be able to ask it.
+    // Empty for a button that answers nobody, which is what a button is until
+    // something says otherwise.
+    //
+    // READ HERE ON THE INTERPRETER'S THREAD while the desk may be reading it in
+    // `clicked`, and that is safe because both are READS: the only writer is
+    // window_pressed(), which is this same thread going through on_the_desk().
+    if (method == token::pressed_token && !had_parentheses) {
+        satellite_window *button = which.get();
+        Value out;
+        std::size_t bad_offset = 0;
+        Value::of_utf8(button == nullptr ? std::string() : button->when_pressed, out, bad_offset);
+        return out;
+    }
     if (!had_parentheses && wanted == 0) {
         context.refuse(satl_line_not_understood, what + " is something a window DOES, so write it with "
                                                         "its brackets: " + what + "()");
@@ -232,6 +253,7 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
     std::string why;
     bool went = false;
     switch (method) {
+    case token::press_token: went = window_press(*window, why); break;
     case token::close_token: went = window_close(*window, why); break;
     case token::focus_token: went = window_focus(*window, why); break;
     case token::title_token: {
@@ -239,6 +261,13 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         if (!text_of(arguments[0], title, what, context))
             return Value();
         went = window_set_title(*window, title, why);
+        break;
+    }
+    case token::pressed_token: {
+        std::string capsule;
+        if (!text_of(arguments[0], capsule, what, context))
+            return Value();
+        went = window_pressed(*window, capsule, why);
         break;
     }
     case token::append_token: {
@@ -273,6 +302,23 @@ void windows_hold_the_run_open(bool the_program_finished)
     windows_stay_open_until_closed(the_program_finished);
 }
 
+signed long long int windows_run_until_they_are_closed(
+    const std::function<signed long long int(const std::string &)> &run_a_capsule)
+{
+    std::string capsule;
+    while (the_desk_waits_for_a_press(capsule)) {
+        const signed long long int stopped = run_a_capsule(capsule);
+        // A CAPSULE THAT STOPPED STOPS THE RUN, the same as a line of main
+        // would have. The report is already printed by the time this answers,
+        // and main() takes the windows down on a code that stops -- a person
+        // told their program stopped must not be left pressing a button that
+        // still looks alive.
+        if (stops_the_program(stopped))
+            return stopped;
+    }
+    return success;
+}
+
 #else
 
 Value call_window_word(Code code, const std::vector<Value> &, ExpressionContext &context)
@@ -288,6 +334,14 @@ Value call_window_method(Code method, const WindowHandle &, const std::vector<Va
 
 // NOTHING TO HOLD OPEN: no window word ever answered a window in this build.
 void windows_hold_the_run_open(bool) {}
+
+// AND NOTHING TO PRESS. No window word answered a window, so no button was made
+// and no press can be waiting.
+signed long long int windows_run_until_they_are_closed(
+    const std::function<signed long long int(const std::string &)> &)
+{
+    return success;
+}
 
 #endif
 

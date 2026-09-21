@@ -336,7 +336,30 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             ++at;
             if (code_at(row, at) != token::right_parenthesis_token) {
                 for (;;) {
-                    arguments.push_back(evaluate_at(row, at, 1, context));
+                    // A CAPSULE'S NAME IS READ AS WRITTEN, NEVER WORKED OUT
+                    // (SATELLITE_WINDOW.md WIN-11). `my_button.pressed(when_pressed)`
+                    // names a capsule to run, and a capsule is not a value any
+                    // expression can answer yet -- worked out, `when_pressed` is
+                    // "a name with no satellite.variable line declaring it",
+                    // which is a refusal of the program that is right.
+                    //
+                    // ASKED OF window_calls.hpp AND NOT LISTED HERE, so there is
+                    // one place that says which methods are spelled this way.
+                    // THE CHECKER HAS ALREADY PROVED the name is a real capsule
+                    // and that this argument IS a name -- that is the whole
+                    // reason a name may stand here at all.
+                    if (arguments.empty() && window_method_takes_a_capsule_name(method) &&
+                        code_at(row, at) == token::name_token) {
+                        std::size_t k = at;
+                        const std::string capsule = text_at(row, k);
+                        Value named;
+                        std::size_t bad_offset = 0;
+                        Value::of_utf8(capsule, named, bad_offset);
+                        arguments.push_back(std::move(named));
+                        at = k;
+                    } else {
+                        arguments.push_back(evaluate_at(row, at, 1, context));
+                    }
                     if (context.code != success || code_at(row, at) != token::comma_token)
                         break;
                     ++at;

@@ -25,6 +25,7 @@
 
 #include "expression.hpp"
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -42,6 +43,19 @@ std::string window_word_takes(token::Code code);
 // have. `.append` takes three -- the piece and where its centre goes.
 int window_method_arity(token::Code method);
 
+// TRUE FOR A METHOD WHOSE ARGUMENT IS A CAPSULE'S NAME, READ AS WRITTEN --
+// `my_button.pressed(when_pressed)` (WIN-11). ASKED, NEVER COPIED: the reader
+// (expression.cpp) and the checker (program_check.cpp) both ask this rather than
+// each holding a list of which methods are special, which is how the container
+// method list in program_check.cpp went stale the afternoon it was written.
+//
+// WHY THERE IS SUCH A THING AT ALL. A capsule is arm 5 of the object model and
+// nothing in the language makes one yet, so there is no expression that answers
+// a capsule -- `when_pressed` worked out as a value is "a name with no
+// satellite.variable line declaring it". The name is what is wanted, and the
+// checker proves it names a real capsule before the program runs.
+bool window_method_takes_a_capsule_name(token::Code method);
+
 // One of those words, its arguments already evaluated.
 Value call_window_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context);
 
@@ -54,5 +68,23 @@ Value call_window_method(token::Code method, const WindowHandle &which, const st
 // program has returned. Answers at once when this satl has no window built in
 // or no window was ever opened, so nothing else pays for it.
 void windows_hold_the_run_open(bool the_program_finished);
+
+// THE WINDOW'S OWN RUN (WIN-11): every press, one at a time, in the order they
+// were made, on THIS thread -- until the last window is closed and nothing is
+// waiting. Answers success, or the machine code a capsule stopped on.
+//
+// CALLED FROM run_satl AND NOT FROM main(), unlike the wait above, and for a
+// reason that is not a preference: the registry, the capsules and the walker's
+// state are run_satl's own locals and are gone by the time main() sees anything.
+//
+// IT TAKES A WAY TO RUN A CAPSULE RATHER THAN THE WALKER ITSELF. Handed a
+// std::function, this file needs no program_walk.hpp -- which would otherwise
+// put the whole walker in front of expression.cpp and program_check.cpp, both of
+// which include this header for three integers about arity.
+//
+// ANSWERS success AT ONCE when this satl has no window built in, or no window
+// was ever opened, so a program that draws nothing pays a function call.
+signed long long int windows_run_until_they_are_closed(
+    const std::function<signed long long int(const std::string &)> &run_a_capsule);
 
 } // namespace satellite004

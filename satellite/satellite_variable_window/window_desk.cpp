@@ -12,6 +12,7 @@
 #include <gtk/gtk.h>
 
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -27,6 +28,18 @@ bool desk_tried = false;                // gtk_init has been attempted
 bool desk_running = false;              // ...and it worked
 std::string desk_trouble;
 std::vector<WindowHandle> open_windows;
+
+// PRESSES WAITING TO BE RUN, oldest first (WIN-11). Written by the desk out of
+// GTK's `clicked` and read by the interpreter's thread, under the one mutex
+// everything else here is under. THE NAME IS COPIED AT PRESS TIME and nothing
+// else is kept: no handle, no widget, nothing that a window going away could
+// leave dangling between the press and the run.
+//
+// NOT BOUNDED. A person cannot press a button faster than a capsule runs often
+// enough to matter, and a bound here would be a limit the language does not
+// have -- a press silently dropped is exactly the answer that is wrong and does
+// not say so.
+std::deque<std::string> presses;
 
 // THE JOB, AND THE ONE PLACE IT IS WAITED ON. g_main_context_invoke copies
 // nothing and takes a pointer, so the parcel lives on the calling thread's
@@ -153,6 +166,35 @@ unsigned long long int windows_open()
     return open_windows.size();
 }
 
+// ON THE DESK'S OWN THREAD, out of GTK's `clicked` -- the same rule as
+// the_desk_let_go_of above, and for the same reason: the desk must never go
+// through on_the_desk(), which would be the desk waiting on itself.
+void the_desk_saw_a_press(const std::string &capsule)
+{
+    {
+        std::lock_guard<std::mutex> lock(desk_mutex);
+        presses.push_back(capsule);
+    }
+    desk_changed.notify_all();
+}
+
+bool the_desk_waits_for_a_press(std::string &capsule)
+{
+    std::unique_lock<std::mutex> lock(desk_mutex);
+    if (!desk_thread.joinable())
+        return false;                                // no window was ever opened
+    desk_changed.wait(lock, [] { return !presses.empty() || open_windows.empty(); });
+    // THE PRESSES FIRST, AND THAT ORDER IS THE POINT. A button pressed in the
+    // same instant its window was closed has both conditions true at once, and
+    // testing the windows first would throw that press away -- the one case
+    // where a person pressed something and nothing happened.
+    if (presses.empty())
+        return false;
+    capsule = presses.front();
+    presses.pop_front();
+    return true;
+}
+
 void close_the_desk_now()
 {
     {
@@ -172,6 +214,13 @@ void close_the_desk_now()
         GtkWidget *widget = static_cast<GtkWidget *>(one->widget);
         if (widget != nullptr)
             on_the_desk([widget] { gtk_window_destroy(GTK_WINDOW(widget)); });
+    }
+    // NOTHING WAITING IS RUN AFTER A REFUSAL. The report is printed and the run
+    // has stopped; a capsule walked now would be a program running on after it
+    // was told it could not.
+    {
+        std::lock_guard<std::mutex> lock(desk_mutex);
+        presses.clear();
     }
     close_the_desk_when_the_windows_are();
 }

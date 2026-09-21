@@ -129,6 +129,24 @@ signed long long int run_main(const BytecodeRegistry &registry,
                               const FunctionTable &functions,
                               MachineState &state);
 
+// ONE CAPSULE, BY NAME, with its own frame -- the same thing run_statements does
+// for `my_capsule()` written in a program, reached from outside the walker.
+//
+// IT EXISTS FOR A BUTTON (SATELLITE_WINDOW.md WIN-11). A GTK signal has a
+// capsule's NAME and nothing else, and the walker's own capsule arm is inside an
+// anonymous namespace, so without this the window would have had to carry a
+// second copy of "call a capsule" -- two readers of one shape, which is the
+// defect program_walk.hpp already exists to avoid twice over.
+//
+// A NEW VariableTable EVERY TIME, because a capsule cannot see the caller's
+// names and there are no globals. Nothing is kept between one press and the
+// next but what the program itself wrote to a file.
+signed long long int run_capsule(const BytecodeRegistry &registry,
+                                 const CapsuleTable &capsules,
+                                 const FunctionTable &functions,
+                                 const std::string &name,
+                                 MachineState &state);
+
 // ONE TYPED LINE, tokenised as row 0 of its own registry: the prompt's way in
 // (PLAN M0.6). The same six shapes a capsule's body has, checked and then run --
 // no wrapper around the line, no second reader, and nothing kept between lines

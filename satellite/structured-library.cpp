@@ -404,6 +404,46 @@ signed long long int run_satl(int argc, char **argv)
     if (stops_the_program(code))
         return code;
 
+    // AND NOW THE WINDOW'S OWN RUN, if a window word ever opened one
+    // (SATELLITE_WINDOW.md WIN-11). The program's own lines are finished; what
+    // is left is the presses, one at a time, in the order they were made, ON
+    // THIS THREAD -- window_desk.hpp says why the desk's thread must not walk a
+    // capsule. It answers at once when nothing drew.
+    //
+    // HERE AND NOT IN main(), which is where the WAIT lives: the registry, the
+    // capsules and the walker's state are this function's own locals, and by the
+    // time main() sees anything they are gone. main()'s call is still what takes
+    // the windows down when a run STOPPED, and still what waits out a window
+    // that no button was ever wired to.
+    //
+    // A PRESS THAT STOPS THE PROGRAM STOPS THE RUN, and is returned from here
+    // like any other refusal -- so main() closes the windows and satl exits with
+    // that code, rather than leaving a window up that answers nothing.
+    // WHAT THE PROGRAM ALREADY SAID IS SAID NOW, BEFORE ANYTHING WAITS. std::cout
+    // is buffered -- main() calls sync_with_stdio(false), and
+    // satellite.console.display writes '\n' and never flushes on purpose -- and
+    // the only flush on this path is at the end of this function. A pump that
+    // blocks in FRONT of it makes every line the program printed invisible until
+    // the last window closes.
+    //
+    // IT IS A REGRESSION THE PUMP WOULD HAVE INTRODUCED, and that is how it was
+    // found (a fresh reader, 2026-09-21). Before WIN-11 the only waiting was
+    // main()'s, which happens AFTER run_satl has flushed -- so a program that
+    // opened a window and printed a line really did print it.
+    std::cout.flush();
+    const signed long long int pressed = windows_run_until_they_are_closed(
+        [&bytecode_registry, &capsules, &functions, &state](const std::string &capsule) {
+            const signed long long int stopped =
+                run_capsule(bytecode_registry, capsules, functions, capsule, state);
+            // AND EACH PRESS SAYS WHAT IT SAID WHEN IT SAID IT. A person who
+            // pressed a button is owed the answer to THAT press, not a page of
+            // answers when the window finally closes.
+            std::cout.flush();
+            return stopped;
+        });
+    if (stops_the_program(pressed))
+        return pressed;
+
     // THE `word_counts` BIT'S ANSWER, printed when the run is over rather than as
     // it goes: a profile is a thing you read after, and the hot path must not pay
     // for the order a person wants it in.

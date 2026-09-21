@@ -1268,6 +1268,25 @@ signed long long int run_typed_line(const BytecodeRegistry &registry,
     return close_files(variables, run_statements(registry, none, functions, 0, 0, variables, state));
 }
 
+signed long long int run_capsule(const BytecodeRegistry &registry,
+                                const CapsuleTable &capsules,
+                                const FunctionTable &functions,
+                                const std::string &name,
+                                MachineState &state)
+{
+    const CapsuleTable::const_iterator found = capsules.find(name);
+    // THE CHECKER HAS ALREADY PROVED THIS, before anything ran: a button whose
+    // capsule does not exist is refused with the rest of the program. This is
+    // the second reader saying so anyway, because a walker that trusts a name it
+    // was handed is a walker that crashes when something else stops checking.
+    if (found == capsules.end())
+        return report_error("satl(run): no capsule named " + name, satl_line_not_understood);
+    VariableTable theirs;   // its own frame, as every capsule called by name has
+    return close_files(theirs,
+                       run_statements(registry, capsules, functions, found->second.row, found->second.body,
+                                      theirs, state));
+}
+
 signed long long int run_main(const BytecodeRegistry &registry,
                               const CapsuleTable &capsules,
                               const FunctionTable &functions,

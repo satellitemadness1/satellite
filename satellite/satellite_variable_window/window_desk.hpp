@@ -63,6 +63,39 @@ void the_desk_let_go_of(satellite_window *window);
 // How many windows are on the screen right now.
 unsigned long long int windows_open();
 
+// ---------------------------------------------------------------------------
+// A PRESS, AND WHICH THREAD RUNS THE CAPSULE FOR IT (WIN-11).
+// ---------------------------------------------------------------------------
+//
+// THE INTERPRETER'S THREAD RUNS IT, ALWAYS, AND THE DESK NEVER DOES. A capsule
+// is walked by run_statements, which reads the one BytecodeRegistry and writes
+// the one MachineState, and the statement ring is a global beside them. Two
+// threads in there at once is not a slow program, it is a corrupt one -- the
+// same sentence this file already says about GTK, pointing the other way. So
+// the desk's `clicked` handler does the one thing it safely can: it writes the
+// capsule's NAME down and wakes whoever is waiting.
+//
+// SO A PRESS IS A QUEUE AND NOT A CALL, and the consequences are worth saying
+// out loud rather than discovering:
+//
+//   * A press that arrives while the program is still running its own lines
+//     WAITS. It is not lost and it is not run underneath the program.
+//   * Presses run ONE AT A TIME, in the order they were made. A press made
+//     while a capsule is running waits for that capsule to finish.
+//   * A press that arrives after the last window closed is still drained, so a
+//     button pressed at the moment the window went away is not silently dropped.
+//
+// REVERSIBLE, AND THIS IS WHERE TO REVERSE IT: running the capsule on the desk
+// would mean giving the walker its own state per thread, which is a language
+// decision and not a window one.
+void the_desk_saw_a_press(const std::string &capsule);
+
+// WAITS FOR THE NEXT PRESS, ON THE INTERPRETER'S THREAD. True with `capsule`
+// filled in when there is one to run; false when every window is closed and no
+// press is left -- which is when the run is over. False at once when the desk
+// was never opened.
+bool the_desk_waits_for_a_press(std::string &capsule);
+
 // BLOCKS UNTIL EVERY WINDOW IS CLOSED, then stops the desk and joins it. Returns
 // at once when the desk was never opened.
 void close_the_desk_when_the_windows_are();

@@ -1700,6 +1700,189 @@ expect "... and names what a window DOES have" 1 \
 expect "satellite.window is 1 27, and its two calls 1 27 1 and 1 27 2" "1|1|1|1" \
        "$(grep -cP '^1 27\tsatellite.window\t' words/words.tsv)|$(grep -cP '^1 27 1\tsatellite.window.new\(title, width, height\)\t' words/words.tsv)|$(grep -cP '^1 27 2\tsatellite.window.button\(text\)\t' words/words.tsv)|$(grep -cP '^1 6 18\tsatellite.variable.window\t' words/words.tsv)"
 
+# ---------------------------------------------------------------------------
+# A BUTTON THAT TALKS BACK (SATELLITE_WINDOW.md WIN-11, 2026-09-21).
+# ---------------------------------------------------------------------------
+#
+# WHAT THESE ROWS CAN AND CANNOT PROVE, and the line is the same as above: every
+# row here is headless, so what is asserted is that the CHECKER knows `.pressed`
+# and refuses the two ways of writing it wrongly BEFORE anything runs. That a
+# real click really runs a real capsule was proved by pressing one --
+# satellite/satellite_variable_window/press-a-button.sh opens a window on a
+# compositor of its own, clicks the button three times and reads three lines
+# back. It is not run from here because it would need mutter, a session bus and
+# twenty seconds, and because check.sh must not open windows.
+cat > build/window_pressed.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed()
+{
+    satellite.console.display("pressed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window b = satellite.window.button("press me")
+    b.pressed(when_pressed)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_pressed.satl > build/window_pressed.out 2>&1
+expect "a button wired to a capsule passes the checker, and stops only for want of a screen" 50 $?
+
+# A CAPSULE NOBODY WROTE IS REFUSED WITH THE PROGRAM, not when somebody presses
+# the button -- which is the whole reason `.pressed` takes a name and not text.
+cat > build/window_nocapsule.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window b = satellite.window.button("press me")
+    b.pressed(nobody_wrote_this)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_nocapsule.satl > build/window_nocapsule.out 2>&1
+expect ".pressed naming a capsule nobody wrote is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_nocapsule.out)"
+expect "... and says which capsule is missing" 1 \
+       "$(tr '\n' ' ' < build/window_nocapsule.out | grep -cF 'no capsule named nobody_wrote_this')"
+
+# AND TEXT IS NOT A NAME. `b.pressed("when_pressed")` would lex, run, and fail at
+# the moment the button was pressed -- with the window already up, which is
+# exactly the refusal the checker exists to move earlier.
+cat > build/window_pressedtext.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed()
+{
+    satellite.console.display("pressed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window b = satellite.window.button("press me")
+    b.pressed("when_pressed")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_pressedtext.satl > build/window_pressedtext.out 2>&1
+expect ".pressed given text instead of a name is refused before anything runs" "27|" \
+       "$?|$(grep -x before build/window_pressedtext.out)"
+expect "... and shows the spelling it wanted" 1 \
+       "$(tr '\n' ' ' < build/window_pressedtext.out | grep -cF 'takes the NAME of a capsule, written as it is written: .pressed(when_pressed)')"
+
+# EVERY SPELLING, AND NOT JUST THE EASY ONE. The "takes a NAME" rule first lived
+# beside the RECEIVER's own check, which sees only the FIRST method of a chain on
+# a DECLARED name -- so both rows below drew a window and failed at the moment
+# somebody pressed the button, which is the exact failure WIN-11 says it moved
+# earlier. A fresh reader found it by running it (2026-09-21). The rule now lives
+# where a whole statement is walked, and these two are why.
+cat > build/window_chain1.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed()
+{
+    satellite.console.display("pressed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.append(satellite.window.button("y").pressed("no_such"), 400, 300)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_chain1.satl > build/window_chain1.out 2>&1
+expect ".pressed with text on a word's ANSWER is refused before anything runs" "27|" \
+       "$?|$(grep -x before build/window_chain1.out)"
+
+cat > build/window_chain2.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed()
+{
+    satellite.console.display("pressed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window b = satellite.window.button("y")
+    b.title("t").pressed("no_such")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_chain2.satl > build/window_chain2.out 2>&1
+expect ".pressed with text as a chain's SECOND method is refused too" "27|" \
+       "$?|$(grep -x before build/window_chain2.out)"
+
+# ONE NAME AND NOTHING ELSE. Looking only at the code after the `(` let a second
+# argument through to be refused at run time.
+cat > build/window_twoargs.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed()
+{
+    satellite.console.display("pressed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window b = satellite.window.button("y")
+    b.pressed(when_pressed, 5)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_twoargs.satl > build/window_twoargs.out 2>&1
+expect ".pressed given a name and then junk is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_twoargs.out)"
+
+# ---------------------------------------------------------------------------
+# .press() -- THE PROGRAM PRESSING IT (the author, 2026-09-21: "It's just a mouse
+# click, so it's not like there's any arguments to clicking on something").
+# ---------------------------------------------------------------------------
+#
+# `.press` and `.pressed` are ONE LETTER APART, so each refuses the other's
+# argument by naming the other out loud.
+cat > build/window_press_arg.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed()
+{
+    satellite.console.display("pressed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window b = satellite.window.button("y")
+    b.press(when_pressed)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_press_arg.satl > build/window_press_arg.out 2>&1
+expect ".press given an argument is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_press_arg.out)"
+expect "... and names .pressed(a_capsule), which is what was meant" 1 \
+       "$(tr '\n' ' ' < build/window_press_arg.out | grep -cF 'To name what a press RUNS, that is .pressed(a_capsule)')"
+
+cat > build/window_press_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed()
+{
+    satellite.console.display("pressed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window b = satellite.window.button("y")
+    b.pressed(when_pressed)
+    b.press()
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_press_ok.satl > build/window_press_ok.out 2>&1
+expect "a button pressing itself passes the checker, and stops only for want of a screen" 50 $?
+
+expect "press is a method token at 0000101100101010, generated into token_codes.hpp" "1|1" \
+       "$(grep -c '^0000101100101010  press_token ' REGISTRY.satellite)|$(grep -c 'Code press_token = 0x0B2A;' satellite/bytecode/token_codes.hpp)"
+
+# THE TOKEN IS MINTED ONCE, in the registry, and the header is GENERATED from it
+# -- so a header edited by hand is a header this row catches.
+expect "pressed is a method token at 0000101100101001, and token_codes.hpp was generated from it" "1|1" \
+       "$(grep -c '^0000101100101001  pressed_token ' REGISTRY.satellite)|$(grep -c 'Code pressed_token = 0x0B29;' satellite/bytecode/token_codes.hpp)"
+
 mkdir -p build/alone && cp "$interpreter" build/alone/satl
 build/alone/satl examples/hello_world.satl > /dev/null 2>&1; expect "no libraries beside the interpreter" 5 $?
 # A satl deeper than the kernel can name (ERROR #8): refused with 5 and the reason, and

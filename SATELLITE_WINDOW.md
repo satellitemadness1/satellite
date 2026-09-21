@@ -6,6 +6,13 @@ photographed, not reasoned about. Read **Part 2a** before anything else in this
 file: it is what changed, and it moves WIN-1 off the critical path, answers WIN-6
 and settles WIN-4. Parts 0 and 1 are still true and still worth not re-measuring.
 
+**A BUTTON TALKS BACK (2026-09-21).** `my_button.pressed(when_pressed)` runs a
+satellite capsule when the button is pressed, and `my_button.press()` is the
+program pressing it itself. **Part 2b is what was built, and
+which thread runs it.** It was proved by clicking a real button three times on a
+real compositor, not reasoned about:
+`satellite/satellite_variable_window/press-a-button.sh`.
+
 **WIN-1 IS ALSO BUILT (2026-09-20).** `make GTK=vendor` opens a window with no
 GTK stack loaded from the machine: xkeyboard-config, the IBM Plex Mono family,
 satl's own fonts.conf and GTK's schemas are carried as a GResource and spilled
@@ -316,16 +323,319 @@ calls gio's network classes — but a static satl will carry that code, and
   handover, still the author's and still unanswered), **WIN-10** (X11).
 - **The font ruling of WIN-3** — 11px or 12px, and only Regular is in git. No
   font is set at all today; the window uses the theme's.
-- **More widgets than a button**, and a button that does something when pressed.
-  There is no signal from a widget back into a satellite program yet — that is
-  the next real piece, and it is bigger than it sounds: it means the walker
-  running a capsule on the desk's thread, or a queue back to the interpreter's.
+- ~~**a button that does something when pressed**~~ **DONE 2026-09-21 — WIN-11,
+  Part 2b.** It was the queue back to the interpreter's thread, not the walker on
+  the desk's. **More widgets than a button** is still owed: a button is the only
+  piece `satellite.window` makes.
 - **check.sh cannot prove a window appears.** Every window row runs headless on
   purpose, because a row that opened one would put it on the screen of whoever
   ran the suite. What is asserted is the shape; the appearing was proved by
   photograph.
 
 ---
+
+# Part 2b — A BUTTON TALKS BACK, 2026-09-21 (WIN-11)
+
+Part 2a's list of what was owed opened with *"a button that does something when
+pressed. There is no signal from a widget back into a satellite program yet — that
+is the next real piece, and it is bigger than it sounds: it means the walker
+running a capsule on the desk's thread, or a queue back to the interpreter's."*
+
+**It was the queue.** That was not a preference, and the rest of this part is
+what it cost and what it bought.
+
+    satellite.capsule when_pressed()
+    {
+        satellite.console.display("the button was pressed")
+    }
+
+    satellite.capsule satellite.main()
+    {
+        satellite.variable.window my_window = satellite.window.new("window_title", 800, 600)
+
+        satellite.variable.window my_button = satellite.window.button("text")
+        my_button.pressed(when_pressed)
+
+        my_window.append(my_button, 400, 300)
+        satellite.return(satellite)
+    }
+
+`examples/window.satl` is that program.
+
+## THE RULING: the interpreter's thread runs every capsule, and the desk never does
+
+GTK4 is not thread-safe and every GTK call must happen on the desk's thread —
+that is WIN-2 and it has not moved. **The new half is its mirror image, and it is
+just as absolute: the WALKER is not thread-safe either.** `run_statements` reads
+one `BytecodeRegistry`, writes one `MachineState`, and the statement ring is a
+global beside them. A capsule walked on the desk's thread while the interpreter
+is still running the program is not a slow program, it is a corrupt one.
+
+So GTK's `clicked` handler does the one thing it safely can: it copies the
+capsule's **name** onto a queue and wakes whoever is waiting. The interpreter's
+thread takes it off and walks it.
+
+**What that shape gives, said out loud so nobody has to find out:**
+
+| | |
+|---|---|
+| a press while the program is still running its own lines | **waits.** Not lost, and not run underneath the program |
+| two presses | run **one at a time, in the order they were made** |
+| a press in the instant the window closed | still runs — the queue is drained before the windows are counted |
+| a press after a REFUSED run | thrown away. The report is printed, and a program told it stopped must not run on |
+| a capsule that stops the program | stops the run; main() takes the windows down and satl exits with that code |
+
+**Where to reverse it:** running the capsule on the desk would mean giving the
+walker its own state per thread. That is a language decision and not a window
+one, which is exactly why it was not made here.
+
+## THE PUMP IS IN `run_satl`, AND THE WAIT IS STILL IN `main`
+
+Part 2a put the "do not exit while a window is open" wait in `main()` with a
+reason: *"that function returns from two dozen places, and a wait written at each
+of them is a wait that will be missed from the next one added."* That reason is
+still true and the wait is still there.
+
+**The pump could not join it, and not by preference.** The registry, the capsule
+table and the walker's state are `run_satl`'s own locals: by the time `main()`
+sees anything they are gone. So `run_satl` pumps once the program's lines have
+finished, and `main()`'s wait is what it always was — the safety net for the two
+dozen early returns, every one of which is a refusal, and the thing that waits
+out a window no button was ever wired to.
+
+`windows_run_until_they_are_closed` takes **a way to run a capsule** and not the
+walker: a `std::function<signed long long int(const std::string &)>`. That is
+what keeps `program_walk.hpp` out of `window_calls.hpp`, which `expression.cpp`
+and `program_check.cpp` both include for three integers about arity.
+
+## `.pressed(when_pressed)` IS A NAME, AND THAT IS THE WHOLE POINT
+
+A capsule is **arm 5** of the object model and nothing in the language makes one
+yet (`satellite_object/satellite_capsule.hpp`). Worked out as an expression,
+`when_pressed` is *"a name with no satellite.variable line declaring it"* — a
+refusal of the program that is right. So the argument is read **as written**:
+`expression.cpp` takes the `name_token` instead of evaluating it, gated on
+`window_method_takes_a_capsule_name()` so that one file says which methods are
+spelled this way.
+
+**A name may stand there because the CHECKER proves it is a real capsule**, with
+the whole `CapsuleTable` already in hand, before a line runs:
+
+    b.pressed(nobody_wrote_this)    13  no capsule named nobody_wrote_this -- .pressed(...)
+                                        names a capsule to run, and there is no
+                                        satellite.capsule nobody_wrote_this() in this program
+    b.pressed("when_pressed")       27  b.pressed takes the NAME of a capsule, written as it
+                                        is written: b.pressed(when_pressed) -- not text and
+                                        not a value worked out
+
+**Text is refused ON PURPOSE, and it is not pedantry.** A quoted name would lex,
+check, run, open the window, and fail at the moment somebody pressed the
+button — with the window already up. That is precisely the refusal this checker
+exists to move earlier.
+
+`b.pressed` with no brackets reads the name back, the pair `.title` already has.
+
+**AND THE CHECKER REMEMBERS THE TWO CODES IT VISITED, never `row[at - 1]` and
+`row[at - 2]`.** It recognises the bare name by what stands before it, and a raw
+index backwards can land INSIDE A PAYLOAD — where a string's characters are their
+own Unicode numbers, and one of them may equal a token's code exactly. **This
+tree has been bitten by that before**: `capsules_in()` carries a comment about a
+string ending in U+1006 that made the next body a second `satellite.main` — *"the
+only one checked and the one that ran"*. Two remembered codes cost three lines
+and cannot be fooled, because the loop already skips every payload. **It is
+hardening rather than a repair**: names lex as ASCII today, so no reachable
+program could have got a payload character into that position. It is written
+this way so that the day names stop being ASCII is not the day this breaks.
+Reading BACKWARDS is also what makes a chain work —
+`b.title("x").pressed(when_pressed)` puts the name far past the first method
+the receiver's own check ever saw.
+
+## `.press()` IS THE OTHER HALF, AND IT TAKES NOTHING
+
+The author, 2026-09-21: *"`.press()` wouldn't include any arguments would it?
+It's just a mouse click, so it's not like there's any arguments to clicking on
+something"*. So `my_button.press()` is **the program pressing it**, and it runs
+whatever `.pressed(...)` named, down the same path a person's click takes.
+
+**IT EMITS `clicked` AND DOES NOT CALL `gtk_widget_activate()`.** Activate is
+GTK's KEYBOARD path: for a button it requires the widget to be REALIZED and
+does nothing at all when it is not (`gtkbutton.c:827`) — while still answering
+TRUE. That is an answer that is wrong and does not say so. A mouse release emits
+`clicked` directly (`gtkbutton.c:802`), which is what `.press()` does.
+
+**A PRESS IS QUEUED, NOT RUN, even when the program is the one pressing.** So a
+capsule that presses its own button adds a press to the line rather than
+recursing into the walker — and a program that does that forever loops forever,
+exactly as `satellite.statement.while` written the same way would.
+
+**`.press` AND `.pressed` ARE ONE LETTER APART**, so each refuses the other's
+argument by naming the other out loud:
+
+    b.press(when_pressed)   13  .press() is the PROGRAM pressing it, and a click has
+                                nothing to say, so it takes nothing. To name what a
+                                press RUNS, that is .pressed(a_capsule)
+
+**AND IT MAKES THE PRESS PATH PROVABLE WITH NO POINTER AT ALL**, which is the
+second stage of `press-a-button.sh` below.
+
+## WHAT WAS BUILT
+
+| where | what |
+|---|---|
+| `REGISTRY.satellite` | two method tokens, `pressed` 0x0B29 and `press` 0x0B2A. `token_codes.hpp` is GENERATED from them |
+| `satellite_window.hpp/.cpp` | `when_pressed`, `press_is_connected`, `window_pressed()`, `window_press()`, the `clicked` handler |
+| `window_desk.hpp/.cpp` | the press queue, `the_desk_saw_a_press`, `the_desk_waits_for_a_press` |
+| `bytecode/program_walk.hpp/.cpp` | `run_capsule()` — the walker's own capsule arm, reachable from outside |
+| `bytecode/window_calls.hpp/.cpp` | `.pressed`, and `windows_run_until_they_are_closed` in BOTH halves |
+| `bytecode/expression.cpp` | the one argument in the language read as written |
+| `bytecode/program_check.cpp` | the capsule must exist, and the argument must be ONE name |
+| `structured-library.cpp` | the pump, after the program's lines and before the profiles print |
+| `examples/window.satl`, `check.sh` | the author's line, and thirteen rows |
+
+## IT WAS PROVED BY PRESSING ONE
+
+`satellite/satellite_variable_window/press-a-button.sh`, about thirty seconds,
+run by hand. It starts a mutter of its own and proves it **twice**: once with a
+real pointer, and once with `.press()`, which needs no pointer at all.
+
+    A REAL POINTER
+      satl exit 0        (0 -- the window was closed and the run ended)
+      main returned with the window open: 1   (want 1)
+      capsule runs from real clicks:      3   (want 3)
+        main is finished, and the window is still open
+        the button was pressed
+        the button was pressed
+        the button was pressed
+    THE PROGRAM PRESSING ITSELF -- .press()
+      satl exit 0        (0 -- drained after the window closed)
+      capsule runs from .press():         2   (want 2)
+        main pressed it twice and is closing the window
+        the button was pressed
+        the button was pressed
+
+**THE SECOND STAGE PROVES WHAT A CLICK CANNOT.** Its program presses twice and
+then CLOSES THE WINDOW on the next line, and both capsules still run — which is
+`the_desk_waits_for_a_press` testing the queue BEFORE it counts the windows. The
+ORDER is asserted and not just the count: main's own line comes first, because a
+press waits for the program to finish.
+
+**check.sh cannot do this, and the script says why** — every window row in check.sh
+is headless on purpose, because a row that opened a window would put one on the
+screen of whoever ran the suite. check.sh's six new rows assert that the CHECKER
+knows `.pressed` and refuses both wrong spellings before anything runs. 366
+passed, 0 failed.
+
+**There is no sway, no wtype, no ydotool and no uinput on this machine, and XTest
+cannot reach a Wayland client.** The click goes through mutter's own
+`org.gnome.Mutter.RemoteDesktop`, and **that session dies with the connection
+that made it** — so a shell loop of `busctl call` makes a session per call and
+destroys each one before the next. That is why the clicker is one Python process
+and not three lines of shell.
+
+## THE TRAP THAT LOOKED EXACTLY LIKE satl LOCKING UP
+
+**`gtk_init_check()` can block for ever on D-Bus, and nothing is printed.**
+`gdk_display_should_use_portal` -> `check_portal_interface` (`gdk/gdk.c:525`) is a
+**synchronous** `g_dbus_connection_call_sync` to `org.freedesktop.portal.Settings`
+with no timeout of satl's. Under `dbus-run-session` the portal is activatable but
+cannot finish starting, so the call never returns: the desk never sets
+`desk_tried`, and the interpreter waits in `open_the_desk` for ever.
+
+It cost an afternoon, and it was found only by attaching gdb:
+
+    #2  open_the_desk()                        <-- the interpreter, waiting
+    ...
+    #6  check_portal_interface                 <-- the desk, inside gtk_init_check
+    #11 gtk_init_check () at gtk/gtkmain.c:695
+
+`env -u DBUS_SESSION_BUS_ADDRESS` is the fix for the test, and the script carries
+it with the reason. **THE AUTHOR HAS TO RULE ON THE REAL VERSION OF THIS**, which
+is Q-WIN-11a below: on a machine whose portal is wedged, `satl window.satl` hangs
+with no message at all — and "a hang that reads exactly like the interpreter
+locking up" is a defect Part 2a already fixed once.
+
+## WHAT WIN-11 DOES NOT GIVE, and the first is the one that will be felt
+
+- **A pressed capsule cannot reach the window.** There are no globals (the
+  author, 2026-09-16: *"the only globals are the includes, other files"*) and a
+  capsule gets its own frame, so `when_pressed` cannot see main's `my_window` and
+  cannot close it. It can print and it can write a file. **The way out is capsule
+  PARAMETERS** — `.pressed` handing the button to the capsule that answers it —
+  and the walker ignores a capsule's parameters entirely today (`run_statements`
+  calls every capsule with a fresh empty `VariableTable`), so that is a language
+  milestone and not a window one.
+- **Nothing is kept between presses.** A press costs a capsule walk from cold
+  each time, because there is no frame that outlives one.
+- **A press at the PROMPT is not run**, and the reason it is safe is NOT the one
+  this file first gave. The pump is `run_satl`'s, and the prompt returns 91 lines
+  before it. What makes that harmless is that **no capsule can exist at the
+  prompt at all** — `session.cpp` refuses `satellite.capsule` by name — so both
+  spellings of `.pressed` are refused there, the name by "no capsule named ..."
+  and text by "takes the NAME of a capsule". Checked over a pty, because a
+  piped stdin never enters the prompt at all. **The first version of this bullet
+  said "nothing is silently dropped" and was WRONG**: before the fix below, a
+  typed `satellite.window.button("x").pressed("boom")` drew a window whose
+  button was dead for ever and said nothing.
+- **Only `clicked`.** No hover, no key, and no close-button signal a program can see.
+
+## WHAT A FRESH READER FOUND, and both were real
+
+Three agents were set on the diff with orders to refute rather than agree. Nine
+of their twelve claims died under a second agent trying to break them; **two
+were real and are fixed here**, and one led to the prompt correction above.
+
+**1. THE "TAKES A NAME" RULE HELD FOR EXACTLY ONE SPELLING.** It was written
+beside the RECEIVER's own check (`method_on_a_name`), which sees only the FIRST
+method of a chain on a DECLARED name. So both of these passed the checker, drew
+a window, and failed at the moment somebody pressed the button:
+
+    w.append(satellite.window.button("y").pressed("no_such"), 400, 300)   no declared receiver
+    b.title("t").pressed("no_such")                                      not the first method
+
+That is **precisely the failure this milestone claims to have moved earlier**,
+and it was proved by running it on a real compositor and clicking. Worse,
+`.pressed("satellite.main")` chained that way would have re-entered `main` from
+a press, because `run_capsule` looks a string up in the same table `satellite.main`
+lives in — a spelling a bare NAME can never reach.
+
+**THE FIX IS WHERE THE RULE LIVES, not what it says.** A method judged by its
+receiver is judged once; the rule now sits in `names_in_statement`, the one loop
+that walks a WHOLE statement and skips every payload, so every spelling passes
+through it whatever it was written on. The same move closed a second hole beside
+it: the old test was a one-code peek after the `(`, so `.pressed(when_pressed, 5)`
+went through to be refused at run time. It now reads past the name and insists on
+the `)`.
+
+**THE LESSON, and it is bigger than this method:** a rule about HOW SOMETHING IS
+WRITTEN belongs where statements are walked. A rule about WHAT A RECEIVER CAN DO
+belongs with the receiver. Putting the first in the second's place is a rule that
+holds for the example you tested and nothing else.
+
+**2. THE PUMP BLOCKED IN FRONT OF THE ONLY `std::cout.flush()`.** satl's stdout is
+buffered — `main()` calls `sync_with_stdio(false)`, and
+`satellite.console.display` writes `'\n'` and never flushes, on purpose — and the
+one flush on the program path is at the END of `run_satl`. The pump was put 34
+lines in front of it, so **every line a program printed became invisible until
+the last window closed**.
+
+**It is a regression the pump introduced, and the shape of it is worth keeping.**
+Before WIN-11 the only waiting was `main()`'s, which happens AFTER `run_satl` has
+flushed — so moving a wait EARLIER moved it past a flush nobody was thinking
+about. `run_satl` now flushes before the pump, and the pump flushes after every
+capsule, so a person who pressed a button gets the answer to THAT press rather
+than a page of them when the window finally closes.
+
+## OPEN, AND THE AUTHOR'S — do not decide these
+
+- **Q-WIN-11a: should satl defend against a wedged portal?** `GTK_USE_PORTAL=0`
+  before `gtk_init` would take the hang away, and would also take away whatever
+  the portal gives a sandboxed satl. The other answer is to leave it and say so
+  in the refusal. Today satl does neither, and a hang is the failure a person can
+  learn nothing at all from.
+- **Q-WIN-11b: should a press that refuses take the whole run down?** It does
+  today, on the argument that a capsule's refusal is the program's refusal. The
+  other answer is that a GUI reports and carries on — which is what every other
+  GUI does, and which would need somewhere to put the report.
 
 # Part 2 — the milestones
 
@@ -612,6 +922,23 @@ the build: `attempted static link of dynamic object /usr/lib64/libX11.so`.
 An X11 satl is a separate decision with its own vendoring, not a flag. Until then
 satl draws on Wayland only.
 
+## WIN-11 — a widget talks back — **BUILT 2026-09-21, see Part 2b**
+
+`my_button.pressed(when_pressed)` says what a press runs; `my_button.press()` is
+the program pressing it itself, and takes nothing (the author: *"It's just a
+mouse click"*). Part 2a named this as the next real piece
+and said the choice was *"the walker running a capsule on the desk's thread, or
+a queue back to the interpreter's"*. **It is the queue**, because the walker is
+no more thread-safe than GTK is: one `BytecodeRegistry`, one `MachineState`, one
+global statement ring. Part 2b has the ruling, what it gives, the two open
+questions it leaves the author, and the `gtk_init_check` D-Bus hang it found on
+the way. Proved by clicking a real button three times, not reasoned about.
+
+**What it does NOT give, and it will be felt first:** a pressed capsule cannot
+reach the window. No globals and no capsule parameters means `when_pressed`
+cannot see main's `my_window`, so it can print and write files and nothing else.
+The way out is capsule parameters, which is a LANGUAGE milestone.
+
 ---
 
 # Part 3 — what was NOT done
@@ -621,8 +948,11 @@ satl draws on Wayland only.
 - **WIN-1's spill is designed and not built** — so a SHIPPED binary still depends
   on the target having xkeyboard-config and a font. It is not in the way of the
   next widget.
-- **No widget can talk back yet.** A button is drawn and pressing it does
-  nothing: there is no path from a GTK signal into a satellite capsule.
+- ~~**No widget can talk back yet.**~~ **DONE 2026-09-21 — WIN-11, Part 2b.**
+  A press queues the capsule's name and the INTERPRETER's thread walks it, proved
+  by clicking a real button three times (`press-a-button.sh`). What a press
+  cannot do is reach the window, because a capsule has no globals and no
+  parameters — Part 2b lists that, and the two questions it leaves open.
 - **INF-2 was never reviewed by a fresh reader** (all four agents died on the
   account's session limit, 2026-09-18). Its evidence is `check_infinity.py`
   (98,184 cases, two mutants caught) and the suite. **INF-3** is next in

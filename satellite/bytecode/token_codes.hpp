@@ -166,6 +166,8 @@ inline constexpr Code resize_token = 0x0B25;  // resize  [METHOD] infinity.resiz
 inline constexpr Code nines_token = 0x0B26;  // nines  [METHOD] infinity.nines() -- the first count shown in nines (SATELLITE_INFINITY.m
 inline constexpr Code focus_token = 0x0B27;  // focus  [METHOD] window.focus() -- ask the desktop to bring this window to the front (SAT
 inline constexpr Code title_token = 0x0B28;  // title  [METHOD] window.title("text") -- the window's title now; window.title reads it ba
+inline constexpr Code pressed_token = 0x0B29;  // pressed  [METHOD] button.pressed(a_capsule) -- the capsule to run when it is pressed; bu
+inline constexpr Code press_token = 0x0B2A;  // press  [METHOD] button.press() -- the PROGRAM presses it, as a click does; it takes noth
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
@@ -216,6 +218,8 @@ inline constexpr const char *method_name_of(Code code)
     if (code == nines_token) return "nines";
     if (code == focus_token) return "focus";
     if (code == title_token) return "title";
+    if (code == pressed_token) return "pressed";
+    if (code == press_token) return "press";
     return "";
 }
 
@@ -275,6 +279,8 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "nines") return nines_token;
     if (spelling == "focus") return focus_token;
     if (spelling == "title") return title_token;
+    if (spelling == "pressed") return pressed_token;
+    if (spelling == "press") return press_token;
     return 0;
 }
 
@@ -282,11 +288,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token;
 }
 
 
-inline constexpr int kTokenCount = 119;
+inline constexpr int kTokenCount = 121;
 
 } // namespace token
 } // namespace satellite004
