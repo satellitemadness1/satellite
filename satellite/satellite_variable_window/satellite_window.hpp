@@ -60,7 +60,8 @@ public:
     // sees is in kPieceNames and is "a switch"; this is the only place the
     // language's spelling and C++'s disagree, and renaming the piece would have
     // been letting C++ choose satellite's words.
-    enum Piece { window, button, label, text_box, text_area, checkbox, a_switch, how_many_pieces };
+    enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
+                 slider, number_box, progress, how_many_pieces };
 
     Piece piece = window;
 
@@ -145,6 +146,9 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a text area", "text area"},
     {"a checkbox", "checkbox"},
     {"a switch", "switch"},
+    {"a slider", "slider"},
+    {"a number box", "number box"},
+    {"a progress bar", "progress bar"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -206,6 +210,17 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
 WindowHandle window_piece_of_text(satellite_window::Piece which, const std::string &text,
                                   std::string &why);
 
+// AND THE PIECES WHOSE WORD TAKES NUMBERS INSTEAD (GTK-4): a slider and a number
+// box are made from the range they run over, and a progress bar from nothing --
+// it is here rather than beside the text pieces because nothing about it is
+// words.
+//
+// `least` AND `most` MUST NOT BE THE SAME. GTK takes a zero-width range and
+// draws a slider that cannot move, which is an answer that is wrong and does not
+// say so; it is refused where it is written.
+WindowHandle window_piece_of_numbers(satellite_window::Piece which, long long int least,
+                                     long long int most, std::string &why);
+
 // `a_piece.text("what it says now")` -- the words ON a piece. A window is
 // REFUSED here and told to use `.title` instead: a window's words are its title,
 // and answering the title to `.text` would be two names for one thing, which is
@@ -252,6 +267,24 @@ bool window_text_of(satellite_window &which, std::string &out, std::string &why)
 // refused outright -- there is no "it was ours all along" half here.
 bool window_on_of(satellite_window &which, bool &out, std::string &why);
 bool window_set_on(satellite_window &which, bool on, std::string &why);
+
+// `a_slider.value` AND `a_slider.value(50)` -- THE NUMBER A PIECE IS AT (GTK-4).
+//
+// THE UNITS ARE THE PIECE'S OWN, AND THIS IS THE ONE THING TO READ BEFORE
+// CALLING IT. A slider and a number box answer the whole number they are at. A
+// PROGRESS BAR ANSWERS MILLIONTHS -- 0 to 1,000,000 -- because what it holds is
+// a `double` fraction of GTK's and a percentage is exact to 32 digits, so the
+// two cannot meet without a unit that is a whole number. bytecode/window_calls.cpp
+// is what turns millionths into a satellite.variable.percentage and back, and
+// the conversion is exact in both directions: a percentage is held as itself
+// times 10^32, so one millionth of the whole is exactly 10^28 of those.
+//
+// WHY NOT A double THROUGH THIS BOUNDARY: because satellite has no binary
+// fraction anywhere and is not going to gain one in a window. GTK's slider is a
+// double; satellite's slider is whole numbers, and a slider that needs fractions
+// waits for the float arm (arm 14, not built).
+bool window_value_of(satellite_window &which, long long int &out, std::string &why);
+bool window_set_value(satellite_window &which, long long int to, std::string &why);
 
 // `my_window.append(piece, x, y)` -- BY ITS CENTRE (WIN-3): 400, 300 is the
 // middle of an 800x600 window, not a corner. The piece's own measured size is

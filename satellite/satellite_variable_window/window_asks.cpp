@@ -63,6 +63,12 @@ std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
     // is the truth rather than a refusal: a switch really does say nothing.
     case satellite_window::checkbox: got = gtk_check_button_get_label(GTK_CHECK_BUTTON(widget)); break;
     case satellite_window::a_switch: break;
+    // A NUMBER IS NOT WORDS. A slider has no label and a progress bar's text is
+    // GTK's own optional overlay, not a thing satellite gave it -- both answer
+    // "" here and `.value` is what a program actually wants of them.
+    case satellite_window::slider:
+    case satellite_window::number_box:
+    case satellite_window::progress: break;
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -213,6 +219,88 @@ bool window_set_on(satellite_window &which, bool on, std::string &why)
             gtk_check_button_set_active(GTK_CHECK_BUTTON(widget), on ? TRUE : FALSE);
         else
             gtk_switch_set_active(GTK_SWITCH(widget), on ? TRUE : FALSE);
+    });
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// THE NUMBER A PIECE IS AT (GTK-4).
+// ---------------------------------------------------------------------------
+//
+// THE UNITS ARE THE PIECE'S OWN and satellite_window.hpp says which: a slider
+// and a number box are whole numbers, and a progress bar is MILLIONTHS. The
+// millionths exist because GTK holds a double and satellite's percentage is
+// exact to 32 digits; a whole number of millionths is the largest unit both can
+// say without either of them rounding. window_calls.cpp does the rest.
+namespace {
+
+constexpr long long int kMillion = 1000000;
+
+bool has_a_value(const satellite_window &which)
+{
+    return which.piece == satellite_window::slider || which.piece == satellite_window::number_box ||
+           which.piece == satellite_window::progress;
+}
+
+} // namespace
+
+bool window_value_of(satellite_window &which, long long int &out, std::string &why)
+{
+    if (!has_a_value(which)) {
+        why = std::string(which.piece_name()) + " has no number -- a slider, a number box and a "
+              "progress bar do";
+        return false;
+    }
+    if (which.widget == nullptr) {
+        why = "it is closed -- read .value while the window is still open";
+        return false;
+    }
+    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
+    const satellite_window::Piece piece = which.piece;
+    double got = 0.0;
+    on_the_desk([widget, piece, &got] {
+        if (piece == satellite_window::progress)
+            got = gtk_progress_bar_get_fraction(GTK_PROGRESS_BAR(widget)) * static_cast<double>(kMillion);
+        else if (piece == satellite_window::number_box)
+            got = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+        else
+            got = gtk_range_get_value(GTK_RANGE(widget));
+    });
+    // ROUNDED, NOT TRUNCATED. GTK's double for a slider left exactly on 50 can
+    // come back as 49.999999999999996, and a language whose numbers are whole
+    // must not answer 49 for a slider a person put on 50.
+    out = static_cast<long long int>(got < 0.0 ? got - 0.5 : got + 0.5);
+    return true;
+}
+
+bool window_set_value(satellite_window &which, long long int to, std::string &why)
+{
+    if (!has_a_value(which)) {
+        why = std::string(which.piece_name()) + " has no number -- a slider, a number box and a "
+              "progress bar do";
+        return false;
+    }
+    if (which.widget == nullptr) {
+        why = "it is closed";
+        return false;
+    }
+    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
+    const satellite_window::Piece piece = which.piece;
+    on_the_desk([widget, piece, to] {
+        if (piece == satellite_window::progress) {
+            // CLAMPED HERE AND NOT REFUSED. A progress bar past its end is a
+            // program counting slightly wrong, not a program that has gone
+            // wrong -- and GTK draws a fraction above 1.0 as a bar longer than
+            // its own frame. A slider and a number box need no clamp: GTK holds
+            // them inside the range they were made with.
+            const double fraction = static_cast<double>(to) / static_cast<double>(kMillion);
+            gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(widget),
+                                          fraction < 0.0 ? 0.0 : (fraction > 1.0 ? 1.0 : fraction));
+        } else if (piece == satellite_window::number_box) {
+            gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), static_cast<double>(to));
+        } else {
+            gtk_range_set_value(GTK_RANGE(widget), static_cast<double>(to));
+        }
     });
     return true;
 }

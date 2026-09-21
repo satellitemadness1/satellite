@@ -74,6 +74,12 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     // nothing -- satellite.window.switch(). A switch with a label beside it is a
     // switch and a label, which is two pieces and GTK-7's business.
     case satellite_window::a_switch: return gtk_switch_new();
+    // MADE FROM NUMBERS AND NOT FROM WORDS, so they are not this function's --
+    // window_piece_of_numbers below is where they are made, and reaching here
+    // with one is window_calls.cpp having read the table wrongly.
+    case satellite_window::slider:
+    case satellite_window::number_box:
+    case satellite_window::progress:
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -108,6 +114,55 @@ WindowHandle window_piece_of_text(satellite_window::Piece which, const std::stri
     made->text = text;
     satellite_window *raw = made.get();
     on_the_desk([raw, &text, which] { raw->widget = a_widget_for(which, text); });
+    return made;
+}
+
+WindowHandle window_piece_of_numbers(satellite_window::Piece which, long long int least,
+                                     long long int most, std::string &why)
+{
+    const bool a_range = which == satellite_window::slider || which == satellite_window::number_box;
+    if (!a_range && which != satellite_window::progress) {
+        why = "that is not a piece made from numbers";
+        return nullptr;
+    }
+    // A RANGE OF NOTHING IS NOT A RANGE. GTK takes least == most and draws a
+    // slider that cannot be moved -- a thing on the screen that looks like a
+    // control and is not one, which is the shape of wrongness this project
+    // refuses everywhere else. Refused where it is written.
+    if (a_range && least >= most) {
+        why = "a slider runs from its least to its most, so the least must be the smaller of the two";
+        return nullptr;
+    }
+    if (!open_the_desk(why))
+        return nullptr;
+    WindowHandle made = std::make_shared<satellite_window>(which);
+    satellite_window *raw = made.get();
+    const double from = static_cast<double>(least), to = static_cast<double>(most);
+    on_the_desk([raw, which, from, to] {
+        GtkWidget *made_here = nullptr;
+        switch (which) {
+        case satellite_window::slider:
+            made_here = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, from, to, 1.0);
+            // A SLIDER IN A GtkFixed MEASURES ALMOST NOTHING, the same trap the
+            // text area walked into: `.append` places by the measured size, so a
+            // slider left to itself is a few pixels nobody can drag. GTK-8's
+            // .resize is how a program says otherwise.
+            gtk_widget_set_size_request(made_here, 300, -1);
+            // THE NUMBER IS NOT DRAWN. GTK shows it by default and satellite has
+            // a label for that -- and a slider that prints "50.000000" under
+            // itself is GTK's double leaking into a language that has none.
+            gtk_scale_set_draw_value(GTK_SCALE(made_here), FALSE);
+            break;
+        case satellite_window::number_box:
+            made_here = gtk_spin_button_new_with_range(from, to, 1.0);
+            break;
+        default:
+            made_here = gtk_progress_bar_new();
+            gtk_widget_set_size_request(made_here, 300, -1);
+            break;
+        }
+        raw->widget = made_here;
+    });
     return made;
 }
 

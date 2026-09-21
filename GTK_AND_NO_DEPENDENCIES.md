@@ -73,7 +73,7 @@ projects produce the archives.
 | ✔ | **GTK-1** a label | gtk | the whole pango stack, as a button's label already does |
 | ✔ | **GTK-2** a person types | gtk | pango |
 | ✔ | **GTK-3** on and off | gtk | — |
-| — | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
+| ✔ | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
 | — | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
 | — | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
 | — | **GTK-7** rows, columns, a grid | gtk | — |
@@ -694,7 +694,7 @@ call. **Every zero-argument word after this one needs both rows.**
 `make` against `ask` — a piece is made once and asked for ever, and the asking
 half is the half that crosses to the desk and brings a value back.
 
-## GTK-4 — a number a person chooses: a slider, a spinner, a progress bar
+## GTK-4 — a number a person chooses: a slider, a number box, a progress bar — **BUILT 2026-09-21**
 
     satellite.variable.window how_much = satellite.window.slider(0, 100)
     satellite.variable.window getting_on = satellite.window.progress()
@@ -717,6 +717,42 @@ to 100 is exact; a slider from 0 to 3 asked for a third is not. The honest rule,
 and it is written here so nobody discovers it in a program: **a slider answers
 whole numbers**, and a slider that needs fractions waits for the float arm
 (arm 14, not built).
+
+**AS BUILT** — `slider` `1 27 8`, `number_box` `1 27 9`, `progress` `1 27 10`
+(and `1 27 10 0` for its call), `.value` `0x0B2D`.
+
+**`spinner` WAS RENAMED `number_box`.** "Spinner" is GTK's word and it names two
+different widgets in GTK's own docs — the little turning circle and the number
+entry with arrows. `satellite.window.number_box(1, 12)` says which it is.
+
+**THE PERCENTAGE IS EXACT AND THAT IS NOT LUCK.** A percentage is held as itself
+times 10^32, so the whole of it is 10^34; the desk speaks **millionths**, so one
+millionth of the whole is exactly **10^28**. Both directions are one multiply or
+one divide and **nothing rounds on satellite's side** — `p.value(12.5%)` reads
+back as `12.5%`. The millionths exist to fence off GTK's `double`, which is the
+only thing in the chain that cannot be exact.
+
+**The kind is the piece's, and the wrong one is refused rather than converted.**
+`p.value(50)` on a progress bar is refused and told to write `50%`, because a
+bare 50 could mean 50% or half of one and a guess between them is an answer that
+is wrong and does not say so.
+
+### Two defects it found, and one of them was three days old
+
+1. **A slider on a machine with no screen exited 13 while printing "there is no
+   display to draw on".** The refusal asked whether the WORD takes numbers
+   instead of whether the NUMBERS were wrong. A code and a sentence disagreeing
+   about what happened is the worst kind of report this project can print.
+2. **A word whose only row takes two arguments fell out of the lexer entirely.**
+   `shaped_word_code` had two answers — a row with exactly as many parameters as
+   the call, and **the one-parameter row** as a fallback —
+   so `satellite.window.slider(100)` matched neither and was refused as **"no
+   capsule named slider"**: a word that exists, told it does not.
+   **`satellite.window.new("a title", 800)` had the same hole since WIN-3** and
+   nobody had seen it, because the check.sh row that tested it only ever asserted
+   the exit code, and *"no capsule named new"* and *"takes a title, a width and a
+   height"* are both 13. A third fallback — the single row carrying that name,
+   whatever its shape — fixes both and cannot take a call away from a real word.
 
 ## GTK-5 — a list to choose from
 
@@ -1064,6 +1100,7 @@ is the milestone that gets VTE into the folder and into a static archive.
 | | question | recommendation |
 |---|---|---|
 | GTK-3 | how a radio group is spelled | `one_of(a_list)` — one word, many pieces |
+| GTK-3 | **a `true` and a `false` to type** — a LANGUAGE milestone | there should be one; `c.on(1)` is the stopgap |
 | GTK-9 | does a capsule get the new value? | no — it gets the piece and asks it |
 | GTK-11 | may a satellite line wait for a person? | no — a capsule, as a press is |
 | GTK-14 | how a key is spelled to a program | the character, or a name for the rest |
@@ -1094,14 +1131,16 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE SEVEN WIDGETS** as of 2026-09-21: a window, a button, a label, a
-  text box, a text area, a checkbox and a switch.
+- **THERE ARE TEN WIDGETS** as of 2026-09-21: a window, a button, a label, a
+  text box, a text area, a checkbox, a switch, a slider, a number box and a
+  progress bar.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1, GTK-2 and GTK-3 are built** — the first paid GTK-0's bill, the second
-  proved a value can be read back out of GTK at all, and the third found that
-  **satellite has no `true` to type**, which is the author's and is a language
-  question rather than a window one.
+  **GTK-1 to GTK-4 are built** — the first paid GTK-0's bill, the second proved a
+  value can be read back out of GTK at all, the third found that **satellite has
+  no `true` to type**, and the fourth found a **three-day-old hole in the
+  lexer** that had been refusing `satellite.window.new("a title", 800)` as a
+  capsule nobody wrote.
 - **VTE IS NOT IN `vendor/new/`.** The author named `satellite.console` as a
   libvte window and `satellite.terminal` as a bash prompt on 2026-09-21
   (GTK-17, GTK-18), and neither can start until DEP-1 is extended by one

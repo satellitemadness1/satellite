@@ -2105,6 +2105,87 @@ expect "a wordless piece displays with no empty quotes" 1 \
        "$(grep -c 'which->text.empty()' satellite/satellite_object/satellite_object.cpp)"
 
 # ---------------------------------------------------------------------------
+# A NUMBER A PERSON CHOOSES (GTK_AND_NO_DEPENDENCIES.md GTK-4, 2026-09-21): a
+# slider, a number box and a progress bar, and `.value` read and written.
+# ---------------------------------------------------------------------------
+#
+# PROVED ON A COMPOSITOR, and the percentage round trip is the part worth saying:
+# `getting_on.value(12.5%)` read back as exactly 12.5%, and 100% as 100%. A
+# percentage is held as itself times 10^32 and the desk speaks millionths, so one
+# millionth of the whole is exactly 10^28 -- both conversions are one multiply or
+# one divide and NOTHING rounds on satellite's side. Also proved: a number on a
+# progress bar refused by name, a percentage on a slider refused by name, and a
+# slider whose least is not smaller than its most refused before a window opens.
+
+expect "slider is 1 27 8, number_box 1 27 9, progress 1 27 10 and its call 1 27 10 0" "1|1|1|1" \
+       "$(grep -cP '^1 27 8\tsatellite.window.slider\(least, most\)\t' words/words.tsv)|$(grep -cP '^1 27 9\tsatellite.window.number_box\(least, most\)\t' words/words.tsv)|$(grep -cP '^1 27 10\tsatellite.window.progress\t' words/words.tsv)|$(grep -cP '^1 27 10 0\tsatellite.window.progress\(\)\t' words/words.tsv)"
+
+expect "value is a method token at 0000101100101101, and token_codes.hpp was generated from it" "1|1" \
+       "$(grep -c '^0000101100101101  value_token ' REGISTRY.satellite)|$(grep -c 'Code value_token = 0x0B2D;' satellite/bytecode/token_codes.hpp)"
+
+cat > build/window_slider_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window s = satellite.window.slider(100)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_slider_arity.satl > build/window_slider_arity.out 2>&1
+expect "satellite.window.slider with one number is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_slider_arity.out)"
+expect "... and says it takes the least and the most" 1 \
+       "$(tr '\n' ' ' < build/window_slider_arity.out | grep -cF 'takes the least and the most it runs between')"
+
+cat > build/window_value_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window s = satellite.window.slider(0, 100)
+    s.value(50)
+    satellite.console.display(s.value)
+    satellite.variable.window p = satellite.window.progress()
+    p.value(12.5%)
+    satellite.console.display(p.value)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_value_ok.satl > build/window_value_ok.out 2>&1
+expect "a slider and a progress bar written and read pass the checker, and stop for want of a screen" 50 $?
+
+# THE MILLIONTH IS 10^28 AND IT IS NOT A MAGIC NUMBER: a percentage is held as
+# itself times 10^32, so the whole of it is 10^34 and a millionth of that is
+# 10^28. This row is what catches somebody "tidying" the two factors.
+expect "a millionth of the whole is 10^16 times 10^12" 1 \
+       "$(grep -c 'satellite_number(10000000000000000ull) \* satellite_number(1000000000000ull)' satellite/bytecode/window_calls.cpp)"
+
+# A SLIDER'S VALUE IS NOT PIXELS. place_of is borrowed for it, and it was saying
+# "takes a number of pixels" in the one place a person reads carefully.
+expect "the borrowed number reader names what the number is OF" 1 \
+       "$(grep -c 'const char \*units = \"a number of pixels\"' satellite/bytecode/window_calls.cpp)"
+
+# A WORD WHOSE ONLY ROW TAKES TWO ARGUMENTS USED TO FALL OUT OF THE LEXER
+# ENTIRELY (found by GTK-4, 2026-09-21). shaped_word_code had two answers -- a
+# row with exactly as many parameters as the call, and the ONE-PARAMETER row as
+# a fallback -- and `satellite.window.slider(100)` matched neither, so a word
+# that exists was refused as "no capsule named slider".
+#
+# satellite.window.new HAD THE SAME HOLE SINCE WIN-3 and nobody had seen it,
+# because the row that tested it only ever asserted the exit code: "no capsule
+# named new" and "takes a title, a width and a height" are both 13.
+expect "a window word called with the wrong number of arguments is named, not denied" "1|1" \
+       "$(tr '\n' ' ' < build/window_arity.out | grep -cF 'satellite.window.new takes a title, a width and a height')|$(tr '\n' ' ' < build/window_slider_arity.out | grep -cF 'satellite.window.slider takes the least and the most')"
+expect "... and neither is called a capsule nobody wrote" "0|0" \
+       "$(grep -c 'no capsule named new' build/window_arity.out)|$(grep -c 'no capsule named slider' build/window_slider_arity.out)"
+
+# A CODE AND A SENTENCE MUST AGREE. A slider on a machine with no screen exited
+# 13 while printing "there is no display to draw on", because the refusal asked
+# whether the WORD takes numbers instead of whether the NUMBERS were wrong.
+expect "a piece that fails for want of a screen exits 50, whatever its word takes" 50 \
+       "$(headless build/window_value_ok.satl > build/window_value_ok.out 2>&1; echo $?)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

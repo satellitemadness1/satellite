@@ -45,28 +45,42 @@ struct AWord {
     const char *spelling;                 // satellite.window.<this>
     std::size_t arity;
     satellite_window::Piece makes;        // what a program gets back
+    // WHETHER ITS ARGUMENTS ARE NUMBERS OR WORDS, which is the second shape a
+    // window word has (GTK-4). Three shapes exist now and `arity` tells the
+    // first two apart: nothing, one line of words, or two numbers. A fourth --
+    // GTK-5's list -- is a third value here and not a fourth field.
+    bool from_numbers;
     const char *takes;                    // and what to say when the count is wrong
 };
 
 constexpr AWord kWords[] = {
-    {1, "new", 3, satellite_window::window,
+    {1, "new", 3, satellite_window::window, false,
      "satellite.window.new takes a title, a width and a height: "
      "satellite.window.new(\"my window\", 800, 600)"},
-    {2, "button", 1, satellite_window::button,
+    {2, "button", 1, satellite_window::button, false,
      "satellite.window.button takes the text on it: satellite.window.button(\"press me\")"},
-    {3, "label", 1, satellite_window::label,
+    {3, "label", 1, satellite_window::label, false,
      "satellite.window.label takes the text it shows: satellite.window.label(\"a line of text\")"},
-    {4, "text_box", 1, satellite_window::text_box,
+    {4, "text_box", 1, satellite_window::text_box, false,
      "satellite.window.text_box takes the text already in it, and \"\" for an empty one: "
      "satellite.window.text_box(\"\")"},
-    {5, "text_area", 1, satellite_window::text_area,
+    {5, "text_area", 1, satellite_window::text_area, false,
      "satellite.window.text_area takes the text already in it, and \"\" for an empty one: "
      "satellite.window.text_area(\"\")"},
-    {6, "checkbox", 1, satellite_window::checkbox,
+    {6, "checkbox", 1, satellite_window::checkbox, false,
      "satellite.window.checkbox takes the text beside it: satellite.window.checkbox(\"I agree\")"},
-    {7, "switch", 0, satellite_window::a_switch,
+    {7, "switch", 0, satellite_window::a_switch, false,
      "satellite.window.switch takes nothing -- a switch says nothing, it is only on or off: "
      "satellite.window.switch()"},
+    {8, "slider", 2, satellite_window::slider, true,
+     "satellite.window.slider takes the least and the most it runs between: "
+     "satellite.window.slider(0, 100)"},
+    {9, "number_box", 2, satellite_window::number_box, true,
+     "satellite.window.number_box takes the least and the most it runs between: "
+     "satellite.window.number_box(1, 12)"},
+    {10, "progress", 0, satellite_window::progress, true,
+     "satellite.window.progress takes nothing -- how far along it is, is .value: "
+     "satellite.window.progress()"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
@@ -132,6 +146,57 @@ bool text_of(const Value &value, std::string &out, const std::string &what, Expr
     return false;
 }
 
+// ---------------------------------------------------------------------------
+// A PROGRESS BAR'S PERCENTAGE, BOTH WAYS (GTK-4).
+// ---------------------------------------------------------------------------
+//
+// A PERCENTAGE IS HELD AS ITSELF TIMES 10^32 (satellite_percentage.hpp), so the
+// whole of it -- 100% -- is 10^34. The desk speaks MILLIONTHS, so one millionth
+// of the whole is exactly 10^34 / 10^6 = **10^28**, and both conversions are a
+// multiply or a divide by that one number. NOTHING ROUNDS ON THIS SIDE: the only
+// place precision is lost is GTK's own double, which is what the millionths are
+// there to fence off.
+//
+// WHY A PERCENTAGE AT ALL: because satellite has one, the author added it
+// himself on 2026-09-17, and a progress bar is the thing it was made to say.
+// `p.value(50%)` is what a person means; `p.value(0.5)` is a binary fraction
+// this language does not have.
+const satellite_number &a_millionth_of_the_whole()
+{
+    static const satellite_number value =
+        satellite_number(10000000000000000ull) * satellite_number(1000000000000ull);   // 10^16 * 10^12
+    return value;
+}
+
+Value a_percentage_of(long long int millionths)
+{
+    satellite_percentage out;
+    const unsigned long long int magnitude =
+        millionths < 0 ? static_cast<unsigned long long int>(-millionths)
+                       : static_cast<unsigned long long int>(millionths);
+    out.scaled = satellite_number(magnitude, millionths < 0) * a_millionth_of_the_whole();
+    return Value::of_percentage(std::move(out));
+}
+
+// AND BACK. A percentage finer than a millionth is TRUNCATED and that is said
+// out loud rather than discovered: 0.00000012% and 0.00000019% set the same
+// pixel, because a progress bar is drawn from a double and no screen has a
+// million pixels of width. A program that wants the number it wrote back
+// unchanged should keep it; this is what the BAR is at.
+bool millionths_of(const satellite_percentage &from, long long int &out)
+{
+    satellite_number quotient, remainder;
+    if (satellite_number::divide(from.scaled, a_millionth_of_the_whole(), quotient, remainder) != success)
+        return false;
+    if (!fast::fits_a_count(quotient))
+        return false;
+    const unsigned long long int got = fast::as_count(quotient);
+    if (got > 9223372036854775807ull)
+        return false;
+    out = from.negative() ? -static_cast<long long int>(got) : static_cast<long long int>(got);
+    return true;
+}
+
 // ON OR OFF, GOING IN. A NUMBER WHERE A BOOL IS EXPECTED IS 0 FOR OFF AND
 // ANYTHING ELSE FOR ON, which is text_of's rule pointing the other way -- and it
 // is not a convenience, it is the only way to write one today. SATELLITE HAS NO
@@ -169,13 +234,21 @@ bool size_of(const Value &value, unsigned long long int &out, const std::string 
     return true;
 }
 
-// A PLACE. Unlike a size, a NEGATIVE place is meaningful -- it is a centre off
-// the left or the top of the window, and GtkFixed takes it.
-bool place_of(const Value &value, long long int &out, const std::string &what, ExpressionContext &context)
+// A PLACE, OR ANY OTHER WHOLE NUMBER THAT MAY BE NEGATIVE. Unlike a size, a
+// NEGATIVE one is meaningful -- a centre off the left of the window, a slider
+// that runs from -50.
+//
+// `units` IS WHAT THE NUMBER IS OF, and it is a parameter because this reader is
+// borrowed. It was written for `.append`'s across and down and says "a number of
+// pixels"; a slider's value is not pixels, and `s.value takes a number of
+// pixels` is a sentence that is wrong in the one place a person is reading
+// carefully.
+bool place_of(const Value &value, long long int &out, const std::string &what,
+              ExpressionContext &context, const char *units = "a number of pixels")
 {
     const satellite_number *number = value.as_number();
     if (number == nullptr) {
-        context.refuse(types_do_not_meet, what + " takes a number of pixels, and was given " + value.kind_name());
+        context.refuse(types_do_not_meet, what + " takes " + units + ", and was given " + value.kind_name());
         return false;
     }
     const unsigned long long int size = fast::fits_a_count(*number) ? fast::as_count(*number) : ~0ull;
@@ -228,8 +301,9 @@ std::string window_word_takes(Code code)
 std::string window_methods_are()
 {
     return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\") and .ok; "
-           "a piece in one has .text and, if it is a checkbox or a switch, .on -- both read "
-           "bare and written with brackets; and a button has .pressed(a_capsule) and .press() "
+           "a piece in one has .text; a checkbox or a switch has .on; a slider, a number box or "
+           "a progress bar has .value -- all read bare and written with brackets; and a button "
+           "has .pressed(a_capsule) and .press() "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -244,6 +318,7 @@ int window_method_arity(Code method)
     case token::press_token:   return 0;     // a click has nothing to say
     case token::text_token:    return 1;     // written; read with no brackets (GTK-1)
     case token::on_token:      return 1;     // written; read with no brackets (GTK-3)
+    case token::value_token:   return 1;     // written; read with no brackets (GTK-4)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -285,12 +360,36 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
         // arity is what says which -- `satellite.window.switch()` is the first
         // piece with nothing to say. A third shape one day is a third branch;
         // two do not need one.
-        std::string text;
-        if (row->arity == 1 && !text_of(arguments[0], text, called, context))
-            return Value();
-        WindowHandle made = window_piece_of_text(row->makes, text, why);
+        WindowHandle made;
+        long long int least = 0, most = 0;
+        if (row->from_numbers) {
+            // TWO NUMBERS OR NONE. place_of is borrowed on purpose rather than
+            // copied: a slider's least and most are the same kind of thing as a
+            // position -- a whole number that may be negative and must fit a
+            // screen's worth of int -- and one reader for both is one place for
+            // that rule to live.
+            if (row->arity == 2 &&
+                (!place_of(arguments[0], least, called + "'s least", context, "a whole number") ||
+                 !place_of(arguments[1], most, called + "'s most", context, "a whole number")))
+                return Value();
+            made = window_piece_of_numbers(row->makes, least, most, why);
+        } else {
+            std::string text;
+            if (row->arity == 1 && !text_of(arguments[0], text, called, context))
+                return Value();
+            made = window_piece_of_text(row->makes, text, why);
+        }
         if (made == nullptr) {
-            context.refuse(no_display, called + " could not be made -- " + why);
+            // A BAD RANGE IS THE PROGRAM'S AND NO SCREEN IS THE MACHINE'S, told
+            // apart the same way satellite.window.new tells them apart: by
+            // testing the very thing the factory checks BEFORE it ever asks for
+            // a display. Asking only whether the word takes numbers got this
+            // wrong and got it wrong quietly -- a slider on a machine with no
+            // screen exited 13 while printing "there is no display to draw on",
+            // which is a code and a sentence disagreeing about what happened.
+            const bool the_program = row->from_numbers && row->arity == 2 && least >= most;
+            context.refuse(the_program ? satl_line_not_understood : no_display,
+                           called + " could not be made -- " + why);
             return Value();
         }
         return Value::of_window(std::move(made));
@@ -414,6 +513,30 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         }
         return Value::of_bool(on);
     }
+    // `.value` WITH NO BRACKETS ASKS WHAT NUMBER A PIECE IS AT, and what comes
+    // back depends on the piece: a slider and a number box answer a NUMBER, and
+    // a progress bar answers a PERCENTAGE. That is not two methods wearing one
+    // name -- it is one question whose answer has the kind the piece has.
+    if (method == token::value_token && !had_parentheses) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        long long int got = 0;
+        std::string why;
+        if (!window_value_of(*piece, got, why)) {
+            context.refuse(piece->widget == nullptr ? window_is_closed : types_do_not_meet,
+                           what + " -- " + why);
+            return Value();
+        }
+        if (piece->piece == satellite_window::progress)
+            return a_percentage_of(got);
+        satellite_number answer(got < 0 ? static_cast<unsigned long long int>(-got)
+                                        : static_cast<unsigned long long int>(got),
+                                got < 0);
+        return Value::of_number(std::move(answer));
+    }
     if (!had_parentheses && wanted == 0) {
         context.refuse(satl_line_not_understood, what + " is something a window DOES, so write it with "
                                                         "its brackets: " + what + "()");
@@ -464,6 +587,31 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         if (!on_of(arguments[0], on, what, context))
             return Value();
         went = window_set_on(*window, on, why);
+        break;
+    }
+    case token::value_token: {
+        // THE KIND IT TAKES IS THE PIECE'S, and the wrong one is REFUSED rather
+        // than converted. A bare 50 on a progress bar could mean 50% or it could
+        // mean half of one -- and a guess between those two is an answer that is
+        // wrong and does not say so, so the refusal names the spelling instead.
+        long long int to = 0;
+        if (window->piece == satellite_window::progress) {
+            const satellite_percentage *asked = arguments[0].as_percentage();
+            if (asked == nullptr) {
+                context.refuse(types_do_not_meet,
+                               what + " takes a percentage, written with its sign on: " + name +
+                                   ".value(50%) -- and was given " + arguments[0].kind_name());
+                return Value();
+            }
+            if (!millionths_of(*asked, to)) {
+                context.refuse(not_a_position,
+                               what + " was given a percentage no bar can be set to");
+                return Value();
+            }
+        } else if (!place_of(arguments[0], to, what, context, "a whole number")) {
+            return Value();
+        }
+        went = window_set_value(*window, to, why);
         break;
     }
     case token::append_token: {

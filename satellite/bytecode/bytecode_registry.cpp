@@ -239,8 +239,21 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
         if (std::string_view(word::kSpelledWords[middle].path) < std::string_view(opened)) low = middle + 1;
         else high = middle;
     }
-    token::Code only = 0, exact = 0;
-    bool only_twice = false, exact_twice = false;
+    // THREE ANSWERS, IN THIS ORDER, and the third was added at GTK-4 (2026-09-21).
+    // `exact` is a row with as many parameters as the call has arguments. `only`
+    // is the one-parameter row, which is what a call with TOO MANY arguments
+    // falls back to. `any` is the single row under this name whatever its shape,
+    // and it exists because the fallback above only works for words that HAVE a
+    // one-parameter row: `satellite.window.slider(100)` has only
+    // `slider(least, most)` above it, matched nothing at all, and was refused as
+    // **"no capsule named slider"** -- a word that exists, told it does not.
+    // `satellite.window.new("a title", 800)` had the same hole and nobody had
+    // noticed, because the check.sh row for it only ever asserted the exit code.
+    //
+    // IT CANNOT TAKE A CALL AWAY FROM A REAL WORD, because it answers only when
+    // `exact` and `only` both found nothing and exactly one row carries the name.
+    token::Code only = 0, exact = 0, any = 0;
+    bool only_twice = false, exact_twice = false, any_twice = false;
     for (std::size_t row = low; row < word::kSpelledWordCount; ++row) {
         const std::string_view spelling(word::kSpelledWords[row].path);
         if (spelling.compare(0, opened.size(), opened) != 0)
@@ -257,10 +270,14 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
             only_twice = only_twice || only != 0;
             only = word::kSpelledWords[row].code;
         }
+        any_twice = any_twice || any != 0;
+        any = word::kSpelledWords[row].code;
     }
     if (exact != 0)
         return exact_twice ? 0 : exact;                     // two rows could be meant: say nothing
-    return only_twice ? 0 : only;
+    if (only != 0)
+        return only_twice ? 0 : only;
+    return any_twice ? 0 : any;
 }
 
 void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
