@@ -56,7 +56,11 @@ public:
     // `how_many_pieces` IS NOT A PIECE, it is the count -- and it is what makes
     // adding one below without naming it a COMPILE ERROR rather than a widget
     // that is refused as "a button". See kPieceNames under this class.
-    enum Piece { window, button, label, text_box, text_area, how_many_pieces };
+    // `a_switch` AND NOT `switch`, which is a C++ keyword. The name a person
+    // sees is in kPieceNames and is "a switch"; this is the only place the
+    // language's spelling and C++'s disagree, and renaming the piece would have
+    // been letting C++ choose satellite's words.
+    enum Piece { window, button, label, text_box, text_area, checkbox, a_switch, how_many_pieces };
 
     Piece piece = window;
 
@@ -139,6 +143,8 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a label", "label"},
     {"a text box", "text box"},
     {"a text area", "text area"},
+    {"a checkbox", "checkbox"},
+    {"a switch", "switch"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -177,6 +183,16 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
 // A LABEL DRAWS AND ANSWERS NOBODY. It is not focusable and cannot be pressed,
 // so `a_label.pressed(c)` is refused by the sentence that already refuses it on
 // a window -- "only a button is pressed".
+//
+// A CHECKBOX AND A SWITCH ARE THE SAME QUESTION DRAWN TWICE, and they are two
+// pieces for the reason the text box and the text area are: GTK makes them two
+// widgets, and a person choosing between them is choosing how it looks to
+// somebody. A switch takes no words at all -- it is the one piece so far whose
+// word takes nothing.
+//
+// A RADIO GROUP IS NOT HERE. GTK4 makes one by giving a check button ANOTHER as
+// its group, so a radio is not a widget -- it is two pieces that know about each
+// other, and satellite has no spelling for that. GTK-3 leaves it to the author.
 //
 // A TEXT BOX IS ONE LINE AND A TEXT AREA IS MANY, and they are TWO PIECES rather
 // than one with a flag, because GTK makes them two widgets and a person typing a
@@ -224,6 +240,18 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
 // one thread and read on another is undefined behaviour, and the only other
 // cross-thread fields in this class are a pointer and two bools.
 bool window_text_of(satellite_window &which, std::string &out, std::string &why);
+
+// `a_checkbox.on` AND `a_checkbox.on(1)` -- WHETHER A THING IS TURNED ON, read
+// and written (GTK-3). Only a checkbox and a switch have one; everything else is
+// refused by name, because a piece that is neither on nor off answering `false`
+// would be an answer that is wrong and does not say so.
+//
+// READ CROSSES TO THE DESK, as `.text` does and for the same reason: a person
+// clicking a checkbox changes the widget and tells satellite nothing. Unlike
+// `.text` there is nothing to cache and nothing to lose, so a CLOSED one is
+// refused outright -- there is no "it was ours all along" half here.
+bool window_on_of(satellite_window &which, bool &out, std::string &why);
+bool window_set_on(satellite_window &which, bool on, std::string &why);
 
 // `my_window.append(piece, x, y)` -- BY ITS CENTRE (WIN-3): 400, 300 is the
 // middle of an 800x600 window, not a corner. The piece's own measured size is

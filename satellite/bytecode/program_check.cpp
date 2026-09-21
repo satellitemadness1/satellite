@@ -610,7 +610,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 // button -- so it is refused here rather than by the one-argument
                 // rule below, which would tell a person the wrong thing.
                 if (is_window_word(code) && given != window_word_arity(code)) {
-                    why = window_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
+                    // "1 argument", NOT "1 arguments". A switch is the first
+                    // window word that takes NOTHING, so it is the first one a
+                    // person can get wrong by exactly one -- and the sentence
+                    // that tells them so reading like a machine wrote it is a
+                    // small thing that is entirely avoidable.
+                    why = window_word_takes(code) + ", and was given " + std::to_string(given) +
+                          (given == 1 ? " argument" : " arguments");
                     return satl_line_not_understood;
                 }
                 if (!is_file_word(code) && !is_window_word(code) && given > 1) {

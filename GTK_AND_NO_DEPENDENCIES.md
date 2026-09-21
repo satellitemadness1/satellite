@@ -72,7 +72,7 @@ projects produce the archives.
 | ✔ | **WIN-11** a press | gtk, gobject (`g_signal_connect`, `g_signal_emit_by_name`) | libffi — the closure marshaller is libffi's |
 | ✔ | **GTK-1** a label | gtk | the whole pango stack, as a button's label already does |
 | ✔ | **GTK-2** a person types | gtk | pango |
-| — | **GTK-3** on and off | gtk | — |
+| ✔ | **GTK-3** on and off | gtk | — |
 | — | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
 | — | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
 | — | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
@@ -644,7 +644,7 @@ lambda that has **finished** before the assignment happens.
 a text area would be a few pixels a person cannot find. It asks for 300×150.
 GTK-8's `.resize` is how a program says otherwise.
 
-## GTK-3 — on and off: a checkbox, a switch, and a group that agrees
+## GTK-3 — on and off: a checkbox, a switch, and a group that agrees — **BUILT 2026-09-21** (the radio is not)
 
     satellite.variable.window agree = satellite.window.checkbox("I agree")
     ...
@@ -663,7 +663,36 @@ shapes, and **this one is the author's**:
     satellite.window.one_of(a_list_of_text)                    one word, many buttons
 
 The second is nicer to write and makes a word that answers **many** pieces,
-which nothing in satellite does. The first is a smaller change. **Not decided.**
+which nothing in satellite does. The first is a smaller change. **Not decided**,
+and the checkbox and the switch were built without it.
+
+**AS BUILT** — `checkbox` is `1 27 6`, `switch` is `1 27 7`, `.on` is `0x0B2C`,
+read bare and written with brackets. A piece that is neither on nor off is
+**refused by name** rather than answered `false`: a label has no such question.
+
+**AND IT FOUND A LANGUAGE GAP THAT IS THE AUTHOR'S.** **satellite has no `true`
+and no `false` to type.** A bool comes out of a comparison or out of `.ok`, and
+nothing else makes one — `satellite.console.display(true)` is *"this name was
+used and no satellite.variable line ever declared it"*. So `c.on(1 < 2)` would
+be how a checkbox is turned on, which is not a sentence anybody should write.
+**What was done instead:** `.on` takes a number, 0 for off and anything else for
+on, which is `text_of`'s own documented rule pointing the other way — *a number
+where text is expected is its digits* — rather than an invention. **A `true` and
+a `false` literal is a LANGUAGE milestone and not a window one.**
+
+**A WORD THAT TAKES NOTHING IS TWO ROWS IN `words.tsv`, and that was learned by
+running it.** With only `satellite.window.switch()` registered,
+`satellite.window.switch("on")` matched no word at all and was refused as **"no
+capsule named switch"** — which tells a person nothing.
+`satellite.window.nosuchword("on")` says exactly the same thing, which is what
+proved it was the unregistered NAME and not the switch. The fix is
+`satellite.infinity`'s own shape: `1 27 7` is the name and `1 27 7 0` is the
+call. **Every zero-argument word after this one needs both rows.**
+
+`satellite_window.cpp`'s pieces split a second time here, at 297 lines:
+`window_pieces.cpp` MAKES a piece and `window_asks.cpp` ASKS one. The line is
+`make` against `ask` — a piece is made once and asked for ever, and the asking
+half is the half that crosses to the desk and brings a value back.
 
 ## GTK-4 — a number a person chooses: a slider, a spinner, a progress bar
 
@@ -1065,12 +1094,14 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE FIVE WIDGETS** as of 2026-09-21: a window, a button, a label, a
-  text box and a text area.
+- **THERE ARE SEVEN WIDGETS** as of 2026-09-21: a window, a button, a label, a
+  text box, a text area, a checkbox and a switch.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 and GTK-2 are built** — the first paid GTK-0's bill and the second
-  proved that a value can be read back out of GTK at all.
+  **GTK-1, GTK-2 and GTK-3 are built** — the first paid GTK-0's bill, the second
+  proved a value can be read back out of GTK at all, and the third found that
+  **satellite has no `true` to type**, which is the author's and is a language
+  question rather than a window one.
 - **VTE IS NOT IN `vendor/new/`.** The author named `satellite.console` as a
   libvte window and `satellite.terminal` as a bash prompt on 2026-09-21
   (GTK-17, GTK-18), and neither can start until DEP-1 is extended by one

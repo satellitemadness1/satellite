@@ -2040,6 +2040,71 @@ expect "the desk does not read a piece's words while a window is being torn down
        "$(grep -c 'window_keeps_what_was_typed' satellite/satellite_variable_window/window_desk.cpp)|$(grep -c 'no moment in a teardown' satellite/satellite_variable_window/window_desk.cpp)"
 
 # ---------------------------------------------------------------------------
+# ON AND OFF (GTK_AND_NO_DEPENDENCIES.md GTK-3, 2026-09-21). A checkbox and a
+# switch, and `.on` read and written.
+# ---------------------------------------------------------------------------
+#
+# PROVED ON A COMPOSITOR: both appended, `.on` false for each, `.on(1)` turning
+# both on, `.on(0)` turning one off, a checkbox's `.text` answering its label, a
+# switch displaying as (switch) because it has no words, and `.on` on a LABEL
+# refused by name rather than answered false.
+
+expect "checkbox is 1 27 6 and switch is 1 27 7" "1|1" \
+       "$(grep -cP '^1 27 6\tsatellite.window.checkbox\(text\)\t' words/words.tsv)|$(grep -cP '^1 27 7\tsatellite.window.switch\t' words/words.tsv)"
+
+expect "on is a method token at 0000101100101100, and token_codes.hpp was generated from it" "1|1" \
+       "$(grep -c '^0000101100101100  on_token ' REGISTRY.satellite)|$(grep -c 'Code on_token = 0x0B2C;' satellite/bytecode/token_codes.hpp)"
+
+# A SWITCH'S WORD TAKES NOTHING, which is the first piece of that shape -- so the
+# table's own arity is what drives it, and giving it something is refused before
+# anything runs.
+cat > build/window_switch_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window s = satellite.window.switch("on")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_switch_arity.satl > build/window_switch_arity.out 2>&1
+expect "satellite.window.switch given words is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_switch_arity.out)"
+expect "... and says a switch is only on or off, in one argument and not 1 arguments" "1|1" \
+       "$(tr '\n' ' ' < build/window_switch_arity.out | grep -cF 'a switch says nothing, it is only on or off')|$(tr '\n' ' ' < build/window_switch_arity.out | grep -cF 'was given 1 argument')"
+
+# A WORD THAT TAKES NOTHING IS TWO ROWS, the name and the call -- which is
+# satellite.infinity's own shape. With only the call registered,
+# satellite.window.switch("on") matched no word at all and was refused as "no
+# capsule named switch", which tells a person nothing.
+expect "a word that takes nothing registers its NAME as well as its call" "1|1" \
+       "$(grep -cP '^1 27 7\tsatellite.window.switch\t' words/words.tsv)|$(grep -cP '^1 27 7 0\tsatellite.window.switch\(\)\t' words/words.tsv)"
+
+cat > build/window_on_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window c = satellite.window.checkbox("I agree")
+    c.on(1)
+    satellite.console.display(c.on)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_on_ok.satl > build/window_on_ok.out 2>&1
+expect "a checkbox turned on and read back passes the checker, and stops only for want of a screen" 50 $?
+
+# .on TAKES 1 OR 0, AND SAYS SO. satellite has no `true` to type (GTK-3 leaves
+# that to the author), so a number is how a checkbox is turned on today -- and
+# anything that is neither is refused with the sentence that explains it.
+expect ".on says it takes 1 to turn it on and 0 to turn it off" 1 \
+       "$(grep -c 'takes 1 to turn it on and 0 to turn it off' satellite/bytecode/window_calls.cpp)"
+
+# A PIECE WITH NOTHING TO SAY DISPLAYS AS JUST ITSELF -- (switch), never
+# (switch "").
+expect "a wordless piece displays with no empty quotes" 1 \
+       "$(grep -c 'which->text.empty()' satellite/satellite_object/satellite_object.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

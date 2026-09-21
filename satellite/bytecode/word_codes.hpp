@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 391;
+inline constexpr unsigned int kWordsInTable = 394;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -205,6 +205,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x03011B0300000000ULL, 4485},  // 1 27 3 -- satellite.window.label(text)
     {0x03011B0400000000ULL, 4486},  // 1 27 4 -- satellite.window.text_box(text)
     {0x03011B0500000000ULL, 4487},  // 1 27 5 -- satellite.window.text_area(text)
+    {0x03011B0600000000ULL, 4488},  // 1 27 6 -- satellite.window.checkbox(text)
+    {0x03011B0700000000ULL, 4489},  // 1 27 7 -- satellite.window.switch
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -368,6 +370,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x040116040A000000ULL, 4448},  // 1 22 4 10 -- satellite.system.memory.free(unit)
     {0x040116040B000000ULL, 4449},  // 1 22 4 11 -- satellite.system.memory.total(unit)
     {0x040116040C000000ULL, 4450},  // 1 22 4 12 -- satellite.system.memory.used(unit)
+    {0x04011B0700000000ULL, 4490},  // 1 27 7 0 -- satellite.window.switch()
     {0x05010E0101000000ULL, 4332},  // 1 14 1 1 0 -- satellite.library.main.arguments()
     {0x05010E0101010000ULL, 4333},  // 1 14 1 1 1 -- satellite.library.main.arguments.machine
     {0x05010E0101020000ULL, 4342},  // 1 14 1 1 2 -- satellite.library.main.arguments.memory
@@ -842,6 +845,9 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.window.label(text)", {1, 27, 3, 0, 0, 0, 0}, 3},
     {"satellite.window.text_box(text)", {1, 27, 4, 0, 0, 0, 0}, 3},
     {"satellite.window.text_area(text)", {1, 27, 5, 0, 0, 0, 0}, 3},
+    {"satellite.window.checkbox(text)", {1, 27, 6, 0, 0, 0, 0}, 3},
+    {"satellite.window.switch", {1, 27, 7, 0, 0, 0, 0}, 3},
+    {"satellite.window.switch()", {1, 27, 7, 0, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1238,8 +1244,11 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.window", 4481},
     {"satellite.window", 4482},
     {"satellite.window.button(text)", 4484},
+    {"satellite.window.checkbox(text)", 4488},
     {"satellite.window.label(text)", 4485},
     {"satellite.window.new(title, width, height)", 4483},
+    {"satellite.window.switch", 4489},
+    {"satellite.window.switch()", 4490},
     {"satellite.window.text_area(text)", 4487},
     {"satellite.window.text_box(text)", 4486},
 };

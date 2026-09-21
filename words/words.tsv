@@ -389,3 +389,6 @@
 1 27 3	satellite.window.label(text)	
 1 27 4	satellite.window.text_box(text)	
 1 27 5	satellite.window.text_area(text)	
+1 27 6	satellite.window.checkbox(text)	
+1 27 7	satellite.window.switch	
+1 27 7 0	satellite.window.switch()	

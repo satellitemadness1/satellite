@@ -630,7 +630,13 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
         if (which == nullptr)
             written = "(no window)";
         else if (which->piece != satellite_window::window)
-            written = "(" + std::string(which->piece_shown()) + " \"" + which->text + "\")";
+            // A PIECE WITH NOTHING TO SAY READS AS JUST ITSELF -- (switch), not
+            // (switch ""). A switch has no words at all and an empty text box
+            // has none yet, and a pair of empty quotes for both says less than
+            // leaving them off.
+            written = which->text.empty()
+                          ? "(" + std::string(which->piece_shown()) + ")"
+                          : "(" + std::string(which->piece_shown()) + " \"" + which->text + "\")";
         else
             written = std::string(which->on_the_screen ? "(window \"" : "(closed window \"") +
                       which->title + "\")";

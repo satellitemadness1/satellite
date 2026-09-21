@@ -62,16 +62,33 @@ constexpr AWord kWords[] = {
     {5, "text_area", 1, satellite_window::text_area,
      "satellite.window.text_area takes the text already in it, and \"\" for an empty one: "
      "satellite.window.text_area(\"\")"},
+    {6, "checkbox", 1, satellite_window::checkbox,
+     "satellite.window.checkbox takes the text beside it: satellite.window.checkbox(\"I agree\")"},
+    {7, "switch", 0, satellite_window::a_switch,
+     "satellite.window.switch takes nothing -- a switch says nothing, it is only on or off: "
+     "satellite.window.switch()"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
-// program, not once a line, and three rows -- eighteen one day -- is nothing
+// program, not once a line, and seven rows -- eighteen one day -- is nothing
 // beside the code_of() call it is comparing against.
+//
+// A WORD THAT TAKES NOTHING IS **TWO ROWS** IN words.tsv, and both answer the
+// one row here. That is satellite.infinity's own shape -- `1 26` is the name and
+// `1 26 0` is the call -- and it exists for the refusal rather than for the
+// call: with only `satellite.window.switch()` registered, writing
+// `satellite.window.switch("on")` matches no word at all and is refused as **"no
+// capsule named switch"**, which tells a person nothing. Measured 2026-09-21;
+// `satellite.window.nosuchword("on")` says exactly the same thing, which is what
+// proved it was the unregistered NAME and not the switch.
 const AWord *word_at(Code code)
 {
-    for (const AWord &row : kWords)
+    for (const AWord &row : kWords) {
         if (code == word::code_of(1, 27, row.number))
             return &row;
+        if (row.arity == 0 && code == word::code_of(1, 27, row.number, 0))
+            return &row;
+    }
     return nullptr;
 }
 
@@ -112,6 +129,23 @@ bool text_of(const Value &value, std::string &out, const std::string &what, Expr
     if (value.is_string()) { out = value.text_utf8(); return true; }
     if (const satellite_number *number = value.as_number()) { out = fast::to_text(*number); return true; }
     context.refuse(types_do_not_meet, what + " takes text, and was given " + value.kind_name());
+    return false;
+}
+
+// ON OR OFF, GOING IN. A NUMBER WHERE A BOOL IS EXPECTED IS 0 FOR OFF AND
+// ANYTHING ELSE FOR ON, which is text_of's rule pointing the other way -- and it
+// is not a convenience, it is the only way to write one today. SATELLITE HAS NO
+// `true` AND NO `false` TO TYPE: a bool comes out of a comparison or out of
+// `.ok`, and `c.on(1 < 2)` is not a sentence anybody should have to write. That
+// gap is the LANGUAGE's and is written up as the author's in
+// GTK_AND_NO_DEPENDENCIES.md GTK-3; accepting a number here is what makes the
+// checkbox usable until he rules.
+bool on_of(const Value &value, bool &out, const std::string &what, ExpressionContext &context)
+{
+    if (value.is_bool()) { out = value.as_bool(); return true; }
+    if (const satellite_number *number = value.as_number()) { out = !number->is_zero(); return true; }
+    context.refuse(types_do_not_meet, what + " takes 1 to turn it on and 0 to turn it off, and was "
+                                             "given " + value.kind_name());
     return false;
 }
 
@@ -194,8 +228,8 @@ std::string window_word_takes(Code code)
 std::string window_methods_are()
 {
     return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\") and .ok; "
-           "a piece in one has .text, read bare and written with brackets; and a button has "
-           ".pressed(a_capsule) and .press() "
+           "a piece in one has .text and, if it is a checkbox or a switch, .on -- both read "
+           "bare and written with brackets; and a button has .pressed(a_capsule) and .press() "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -209,6 +243,7 @@ int window_method_arity(Code method)
     case token::pressed_token: return 1;     // the capsule's name; read with no brackets
     case token::press_token:   return 0;     // a click has nothing to say
     case token::text_token:    return 1;     // written; read with no brackets (GTK-1)
+    case token::on_token:      return 1;     // written; read with no brackets (GTK-3)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -246,8 +281,12 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
     // is what window_pieces.cpp turns into a GtkWidget. `new` is the one word
     // that is not this shape, and it falls past.
     if (row->makes != satellite_window::window) {
+        // A PIECE'S WORD TAKES ITS WORDS OR IT TAKES NOTHING, and the table's own
+        // arity is what says which -- `satellite.window.switch()` is the first
+        // piece with nothing to say. A third shape one day is a third branch;
+        // two do not need one.
         std::string text;
-        if (!text_of(arguments[0], text, called, context))
+        if (row->arity == 1 && !text_of(arguments[0], text, called, context))
             return Value();
         WindowHandle made = window_piece_of_text(row->makes, text, why);
         if (made == nullptr) {
@@ -355,6 +394,26 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         Value::of_utf8(words, out, bad_offset);
         return out;
     }
+    // `.on` WITH NO BRACKETS ASKS WHETHER A THING IS TURNED ON, and it is the
+    // same shape as `.text`: a person clicking a checkbox changes the widget and
+    // tells satellite nothing, so the answer is the widget's and not the
+    // handle's. A piece that is neither on nor off is REFUSED rather than
+    // answered false -- a label has no such question.
+    if (method == token::on_token && !had_parentheses) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        bool on = false;
+        std::string why;
+        if (!window_on_of(*piece, on, why)) {
+            context.refuse(piece->widget == nullptr ? window_is_closed : types_do_not_meet,
+                           what + " -- " + why);
+            return Value();
+        }
+        return Value::of_bool(on);
+    }
     if (!had_parentheses && wanted == 0) {
         context.refuse(satl_line_not_understood, what + " is something a window DOES, so write it with "
                                                         "its brackets: " + what + "()");
@@ -398,6 +457,13 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         if (!text_of(arguments[0], text, what, context))
             return Value();
         went = window_set_text(*window, text, why);
+        break;
+    }
+    case token::on_token: {
+        bool on = false;
+        if (!on_of(arguments[0], on, what, context))
+            return Value();
+        went = window_set_on(*window, on, why);
         break;
     }
     case token::append_token: {
