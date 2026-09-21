@@ -145,6 +145,25 @@ void the_desk_let_go_of(satellite_window *window)
             // window, so a button's handle that the program still holds would
             // keep a GtkWidget * that has already been freed -- and it would
             // read as a live button right up until something touched it.
+            // WHAT A PERSON TYPED IS **NOT** RESCUED HERE, and that was tried
+            // first (GTK-2, 2026-09-21). By the time a window's `destroy` reaches
+            // us every piece inside it has already been disposed:
+            // gtk_window_dispose unparents the child BEFORE chaining to
+            // gtk_widget_dispose, which is what emits this signal. Reading them
+            // here printed five Gtk-CRITICAL assertion failures and answered
+            // nothing.
+            //
+            // AND THE PIECE'S OWN `destroy` IS NO BETTER. gtk_entry_dispose clears
+            // priv->text and gtk_text_view_dispose calls
+            // gtk_text_view_set_buffer(view, NULL) -- both before they chain up to
+            // the dispose that emits `destroy`. There is no moment in a teardown
+            // at which a widget's words can still be asked for.
+            //
+            // SO `.text` REFUSES ON A CLOSED TEXT BOX and says to read it while
+            // the window is open (window_text_of). That is also what keeps this
+            // whole module free of a std::string written on the desk's thread and
+            // read on the interpreter's: `text` has exactly one writer, and it is
+            // not this thread.
             for (const WindowHandle &piece : open_windows[at]->pieces) {
                 piece->on_the_screen = false;
                 piece->widget = nullptr;

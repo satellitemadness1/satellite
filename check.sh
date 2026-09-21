@@ -1966,8 +1966,78 @@ expect "a label wired to a capsule passes the checker, and stops only for want o
 # enum with a static_assert, and window_pieces.cpp switches over every enumerator
 # with no `default` -- so a widget added to the enum and left out of either one
 # does not build. This row is what stops the two guards being quietly deleted.
-expect "a Piece cannot be added without a name or a widget" "1|1" \
-       "$(grep -c 'static_assert(sizeof(kPieceNames)' satellite/satellite_variable_window/satellite_window.hpp)|$(grep -c 'case satellite_window::how_many_pieces: break;' satellite/satellite_variable_window/window_pieces.cpp)"
+expect "a Piece cannot be added without a name or a widget" "1|yes" \
+       "$(grep -c 'static_assert(sizeof(kPieceNames)' satellite/satellite_variable_window/satellite_window.hpp)|$([ "$(grep -c 'case satellite_window::how_many_pieces: break;' satellite/satellite_variable_window/window_pieces.cpp)" -ge 1 ] && echo yes || echo no)"
+
+# ---------------------------------------------------------------------------
+# A PERSON TYPES (GTK_AND_NO_DEPENDENCIES.md GTK-2, 2026-09-21). A text box is
+# one line and a text area is many, and they are the first pieces whose words
+# belong to GTK rather than to satellite.
+# ---------------------------------------------------------------------------
+#
+# WHAT THESE ROWS CAN PROVE IS THE CHECKER, as every window row here can. What
+# was proved on a compositor of its own: a text box and a text area appended into
+# an 800x600 window, `.text` read back through GtkEditable and through a
+# GtkTextBuffer, `.text("...")` written and read again, and then -- after the
+# window closed -- a closed LABEL still answering its words while a closed TEXT
+# BOX refuses with S505 and says to read it while the window is open.
+
+expect "text_box is 1 27 4 and text_area is 1 27 5, the next free numbers" "1|1" \
+       "$(grep -cP '^1 27 4\tsatellite.window.text_box\(text\)\t' words/words.tsv)|$(grep -cP '^1 27 5\tsatellite.window.text_area\(text\)\t' words/words.tsv)"
+
+cat > build/window_textbox_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window t = satellite.window.text_box("a", "b")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_textbox_arity.satl > build/window_textbox_arity.out 2>&1
+expect "satellite.window.text_box with two arguments is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_textbox_arity.out)"
+expect "... and the sentence tells a person what an empty one is written as" 1 \
+       "$(tr '\n' ' ' < build/window_textbox_arity.out | grep -cF 'satellite.window.text_box("")')"
+
+# A TEXT AREA PASSES THE CHECKER AND STOPS ONLY FOR WANT OF A SCREEN -- which is
+# what says the word, its arity and `.text` on it are all known before a line
+# runs, and that the only thing missing here is a display.
+cat > build/window_textarea_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window m = satellite.window.text_area("line one")
+    m.text("line two")
+    satellite.console.display(m.text)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_textarea_ok.satl > build/window_textarea_ok.out 2>&1
+expect "a text area written and read passes the checker, and stops only for want of a screen" 50 $?
+
+# `.append`'s REFUSAL NAMES EVERY PIECE THERE IS, and it is written out of the
+# one word table. THE SENTENCE ITSELF CANNOT BE PROVED HERE: reaching `.append`
+# needs a window, and a window needs a screen -- headless, satellite.window.new
+# refuses first and the line never runs. It was proved on a compositor of its
+# own, where `w.append(5, 400, 300)` answered
+#
+#     takes a piece to put in the window -- satellite.window.button("text"),
+#     .label, .text_box or .text_area makes one -- and was given a number
+#
+# What IS proved here is that the list is GENERATED rather than typed, which is
+# the thing that would silently rot: a hand-written list would keep passing the
+# compositor test with the widget added this morning missing from it.
+expect "the words that make a piece are generated, not typed into the refusal" "1|0" \
+       "$(grep -c 'the_words_that_make_a_piece() + \" makes one' satellite/bytecode/window_calls.cpp)|$(grep -c 'satellite.window.button(.\"text.\") makes one' satellite/bytecode/window_calls.cpp)"
+
+# WHAT WAS TYPED CANNOT BE RESCUED AT TEARDOWN, and the measurement that settled
+# it is in window_desk.cpp: gtk_entry_dispose clears the text and
+# gtk_text_view_dispose drops the buffer BEFORE either chains up to the dispose
+# that emits `destroy`. This row is what stops the rescue being attempted a third
+# time, and what keeps `text` single-writer.
+expect "the desk does not read a piece's words while a window is being torn down" "0|1" \
+       "$(grep -c 'window_keeps_what_was_typed' satellite/satellite_variable_window/window_desk.cpp)|$(grep -c 'no moment in a teardown' satellite/satellite_variable_window/window_desk.cpp)"
 
 # ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared

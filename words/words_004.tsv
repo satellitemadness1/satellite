@@ -23,3 +23,5 @@
 1 27 1	satellite.window.new(title, width, height)
 1 27 2	satellite.window.button(text)
 1 27 3	satellite.window.label(text)
+1 27 4	satellite.window.text_box(text)
+1 27 5	satellite.window.text_area(text)

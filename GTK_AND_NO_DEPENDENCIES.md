@@ -71,7 +71,7 @@ projects produce the archives.
 | ✔ | **WIN-3** window and button | gtk | pango + pangocairo + pangoft2, harfbuzz, fribidi, freetype, fontconfig, expat, cairo, pixman |
 | ✔ | **WIN-11** a press | gtk, gobject (`g_signal_connect`, `g_signal_emit_by_name`) | libffi — the closure marshaller is libffi's |
 | ✔ | **GTK-1** a label | gtk | the whole pango stack, as a button's label already does |
-| — | **GTK-2** a person types | gtk | pango |
+| ✔ | **GTK-2** a person types | gtk | pango |
 | — | **GTK-3** on and off | gtk | — |
 | — | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
 | — | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
@@ -582,7 +582,7 @@ that switch names every enumerator and has no `default`.
 `.text("...")` written and read again, a button pressed, the window closed,
 exit 0. check.sh is **391 passed, 0 failed** — nine rows more than WIN-11 left.
 
-## GTK-2 — a person types: a text box and a text area
+## GTK-2 — a person types: a text box and a text area — **BUILT 2026-09-21**
 
     satellite.variable.window a_box = satellite.window.text_box("")
     satellite.variable.window many  = satellite.window.text_area("")
@@ -607,6 +607,42 @@ is small.
   typed nothing.
 - **A text area's text is a `GtkTextBuffer`**, not a widget property: two
   iterators and `gtk_text_buffer_get_text`. The `Piece` is what tells them apart.
+
+**AS BUILT** — `text_box` is `1 27 4`, `text_area` is `1 27 5`, and `.text` grew
+a second half: it was a look at the handle and is now an ask of the desk.
+
+**WHAT RUNNING IT FOUND, AND IT WAS NOT SMALL.** The first shape rescued what a
+person had typed when the window went away, so that `.text` could answer after a
+close. It printed **five `Gtk-CRITICAL` assertion failures** and answered
+nothing, and reading GTK's own source says why it can never work:
+
+    gtk_window_dispose    unparents the child BEFORE chaining to the dispose
+                          that emits the window's `destroy` -- so by the time
+                          the desk hears about it, every piece is already gone
+    gtk_entry_dispose     clears priv->text, and gtk_text_view_dispose calls
+                          gtk_text_view_set_buffer(view, NULL) -- both BEFORE
+                          they chain to the dispose that emits the PIECE's
+                          `destroy`, so the piece's own signal is no better
+
+**There is no moment in a GTK teardown at which a widget's words can still be
+asked for.** So the rule is:
+
+- a closed **button or label** answers — its words were always satellite's;
+- a closed **text box or text area** is **refused**, with `S505 WINDOW_IS_CLOSED`
+  and a sentence naming when to read it. Answering whatever satellite last
+  happened to write would be an answer that is wrong and does not say so.
+
+**AND THAT CHOICE IS WHAT KEEPS THIS MODULE RACE-FREE.** The rescue would have
+had the desk writing a `std::string` that the interpreter reads — undefined
+behaviour, and a real step down from the pointer and two bools that are the only
+other fields the two threads share. `text` now has exactly one writer and it is
+the interpreter: `window_text_of` reads the widget inside an `on_the_desk()`
+lambda that has **finished** before the assignment happens.
+
+**One size was invented and it is written down as such:** a `GtkTextView` in a
+`GtkFixed` measures almost nothing, and `.append` places by the measured size, so
+a text area would be a few pixels a person cannot find. It asks for 300×150.
+GTK-8's `.resize` is how a program says otherwise.
 
 ## GTK-3 — on and off: a checkbox, a switch, and a group that agrees
 
@@ -1029,11 +1065,12 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE THREE WIDGETS** as of 2026-09-21: a window, a button and a label.
-  No place to type, no picture, no row, no menu. **Part 2G is the eighteen
-  milestones**, GTK-0 is the recipe each one repeats, and **GTK-1 is built** —
-  it is the one that paid GTK-0's bill, so the ones after it are an hour each
-  rather than a morning.
+- **THERE ARE FIVE WIDGETS** as of 2026-09-21: a window, a button, a label, a
+  text box and a text area.
+  No picture, no row, no menu, nothing that talks back but a button. **Part 2G
+  is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
+  **GTK-1 and GTK-2 are built** — the first paid GTK-0's bill and the second
+  proved that a value can be read back out of GTK at all.
 - **VTE IS NOT IN `vendor/new/`.** The author named `satellite.console` as a
   libvte window and `satellite.terminal` as a bash prompt on 2026-09-21
   (GTK-17, GTK-18), and neither can start until DEP-1 is extended by one

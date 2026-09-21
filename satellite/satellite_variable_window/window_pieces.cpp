@@ -41,11 +41,69 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     switch (which) {
     case satellite_window::button: return gtk_button_new_with_label(text.c_str());
     case satellite_window::label:  return gtk_label_new(text.c_str());
+    case satellite_window::text_box: {
+        // GtkEntry TAKES NO TEXT AT CONSTRUCTION, which is the first place the
+        // one-call shape above stops fitting -- and the reason a_widget_for is a
+        // switch rather than a table of function pointers.
+        GtkWidget *made = gtk_entry_new();
+        gtk_editable_set_text(GTK_EDITABLE(made), text.c_str());
+        return made;
+    }
+    case satellite_window::text_area: {
+        GtkWidget *made = gtk_text_view_new();
+        gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(made)), text.c_str(), -1);
+        // A SIZE, AND IT IS NOT AN ARBITRARY ONE. A GtkTextView holding nothing
+        // measures almost nothing, and `.append` places a piece BY ITS MEASURED
+        // SIZE -- so a text area put in a window would be a few pixels of nothing
+        // that a person cannot find, let alone click into. That is the same
+        // failure window_new() refuses for a window of size 0: an answer that is
+        // wrong and does not say so. GTK-8's `.resize` is how a program says
+        // otherwise.
+        gtk_widget_set_size_request(made, 300, 150);
+        return made;
+    }
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
     return nullptr;
 }
+
+// THE GtkTextBuffer OF A TEXT AREA, which is where its words actually live --
+// the widget only draws them. Two iterators and a copy; there is no shorter way.
+std::string what_a_text_area_says(GtkWidget *widget)
+{
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(widget));
+    GtkTextIter from, to;
+    gtk_text_buffer_get_bounds(buffer, &from, &to);
+    gchar *got = gtk_text_buffer_get_text(buffer, &from, &to, FALSE);
+    std::string out = got == nullptr ? std::string() : std::string(got);
+    g_free(got);
+    return out;
+}
+
+// WHAT A WIDGET SAYS, ASKED OF GTK. ON THE DESK'S THREAD ONLY -- every caller
+// is inside an on_the_desk() lambda.
+//
+// A BUTTON AND A LABEL ARE IN HERE TOO even though the handle already knows: it
+// costs one call and it means `.text` answers what is ON THE SCREEN rather than
+// what satellite last wrote, which are the same thing today and need not stay
+// so. NULL IS A REAL ANSWER from gtk_button_get_label -- a button made with an
+// icon and no label has none -- so it is checked rather than handed to
+// std::string, which would be undefined behaviour and not an empty string.
+std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
+{
+    const char *got = nullptr;
+    switch (piece) {
+    case satellite_window::button:   got = gtk_button_get_label(GTK_BUTTON(widget)); break;
+    case satellite_window::label:    got = gtk_label_get_text(GTK_LABEL(widget)); break;
+    case satellite_window::text_box: got = gtk_editable_get_text(GTK_EDITABLE(widget)); break;
+    case satellite_window::text_area: return what_a_text_area_says(widget);
+    case satellite_window::window:
+    case satellite_window::how_many_pieces: break;
+    }
+    return got == nullptr ? std::string() : std::string(got);
+}
+
 
 } // namespace
 
@@ -104,12 +162,54 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
         switch (piece) {
         case satellite_window::button: gtk_button_set_label(GTK_BUTTON(widget), text.c_str()); break;
         case satellite_window::label:  gtk_label_set_text(GTK_LABEL(widget), text.c_str()); break;
+        case satellite_window::text_box: gtk_editable_set_text(GTK_EDITABLE(widget), text.c_str()); break;
+        case satellite_window::text_area:
+            gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(widget)), text.c_str(), -1);
+            break;
         default: break;
         }
     });
     // AND THE HANDLE KEEPS ITS OWN COPY, because that is what a bare `.text`
     // reads back -- window_calls.cpp answers it without crossing to the desk.
     which.text = text;
+    return true;
+}
+
+bool window_text_of(satellite_window &which, std::string &out, std::string &why)
+{
+    if (which.piece == satellite_window::window) {
+        why = "a window's words are its title -- write .title instead";
+        return false;
+    }
+    // A BUTTON'S AND A LABEL'S WORDS ARE OURS. Nothing but satellite ever writes
+    // them, so the handle is the truth -- and it stays the truth after the window
+    // has gone, which is why these two answer a closed piece and the next two do
+    // not.
+    if (which.widget == nullptr &&
+        (which.piece == satellite_window::button || which.piece == satellite_window::label)) {
+        out = which.text;
+        return true;
+    }
+    // WHAT A PERSON TYPED IS GTK'S, AND WHEN GTK HAS FREED THE WIDGET IT IS GONE.
+    // There is no moment in a teardown at which it can be rescued -- window_desk.cpp
+    // says why, at the place it was tried. Answering the last thing satellite
+    // happened to write instead would be an answer that is wrong and does not say
+    // so, so this refuses and names when to read it.
+    if (which.widget == nullptr) {
+        why = "it is closed, and what was typed in it went with the window -- "
+              "read .text while the window is still open";
+        return false;
+    }
+    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
+    const satellite_window::Piece piece = which.piece;
+    std::string got;
+    on_the_desk([widget, piece, &got] { got = what_a_piece_says(widget, piece); });
+    // WRITTEN BACK ON THE INTERPRETER'S THREAD, which is the only thread that
+    // ever writes `text`. on_the_desk() has already waited, so `got` is finished
+    // being written before this line reads it, and the desk never touches this
+    // string at all.
+    which.text = got;
+    out = got;
     return true;
 }
 

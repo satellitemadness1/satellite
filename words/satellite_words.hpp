@@ -404,6 +404,8 @@ inline constexpr WordRow kWords[] = {
     {"satellite.window.new(title, width, height)", {1, 27, 1, 0, 0, 0}, 3},
     {"satellite.window.button(text)", {1, 27, 2, 0, 0, 0}, 3},
     {"satellite.window.label(text)", {1, 27, 3, 0, 0, 0}, 3},
+    {"satellite.window.text_box(text)", {1, 27, 4, 0, 0, 0}, 3},
+    {"satellite.window.text_area(text)", {1, 27, 5, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -640,7 +642,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.infinity", {1, 6, 17, 1, 0, 0, 0}, 4},
     {"satellite.infinity", {1, 26, 1, 0, 0, 0, 0}, 3},
     {"satellite.variable.window", {1, 6, 18, 1, 0, 0, 0}, 4},
-    {"satellite.window", {1, 27, 4, 0, 0, 0, 0}, 3},
+    {"satellite.window", {1, 27, 6, 0, 0, 0, 0}, 3},
 };
 
 } // namespace satellite004

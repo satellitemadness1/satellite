@@ -56,6 +56,12 @@ constexpr AWord kWords[] = {
      "satellite.window.button takes the text on it: satellite.window.button(\"press me\")"},
     {3, "label", 1, satellite_window::label,
      "satellite.window.label takes the text it shows: satellite.window.label(\"a line of text\")"},
+    {4, "text_box", 1, satellite_window::text_box,
+     "satellite.window.text_box takes the text already in it, and \"\" for an empty one: "
+     "satellite.window.text_box(\"\")"},
+    {5, "text_area", 1, satellite_window::text_area,
+     "satellite.window.text_area takes the text already in it, and \"\" for an empty one: "
+     "satellite.window.text_area(\"\")"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
@@ -73,15 +79,27 @@ const AWord *word_at(Code code)
 // that `.append`'s refusal names the widget added this morning without anybody
 // having remembered to come back here. The window is skipped: a window does not
 // go inside a window.
+//
+// THE FIRST ONE IS SPELLED OUT AND THE REST ARE NOT -- `satellite.window.button,
+// .label or .text_box` -- because this goes inside a sentence a person is
+// reading at the worst moment, and eighteen full calls would be a paragraph
+// where a list was wanted. One of them spelled in full is enough to show the
+// shape.
 std::string the_words_that_make_a_piece()
 {
     std::string out;
+    std::size_t left = 0;
+    for (const AWord &row : kWords)
+        if (row.makes != satellite_window::window)
+            ++left;
     for (const AWord &row : kWords) {
         if (row.makes == satellite_window::window)
             continue;
-        if (!out.empty())
-            out += " or ";
-        out += "satellite.window." + std::string(row.spelling) + "(\"text\")";
+        if (out.empty())
+            out = "satellite.window." + std::string(row.spelling) + "(\"text\")";
+        else
+            out += (left == 1 ? " or ." : ", .") + std::string(row.spelling);
+        --left;
     }
     return out;
 }
@@ -176,7 +194,8 @@ std::string window_word_takes(Code code)
 std::string window_methods_are()
 {
     return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\") and .ok; "
-           "a piece in one has .text; and a button has .pressed(a_capsule) and .press() "
+           "a piece in one has .text, read bare and written with brackets; and a button has "
+           ".pressed(a_capsule) and .press() "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -303,15 +322,37 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         Value::of_utf8(button == nullptr ? std::string() : button->when_pressed, out, bad_offset);
         return out;
     }
-    // `.text` WITH NO BRACKETS READS THE WORDS ON A PIECE, and it never crosses
-    // to the desk to do it: the handle holds them, because the factory was given
-    // them and window_set_text writes them back. GTK-2's text box is the first
-    // piece whose words belong to GTK instead, and it is what makes this an ask.
+    // `.text` WITH NO BRACKETS READS THE WORDS ON A PIECE, and since GTK-2 it is
+    // a real ASK rather than a look at the handle: a person typing in a text box
+    // changes the widget and tells satellite nothing, so window_text_of() goes
+    // to the desk, copies what is there and answers that.
+    //
+    // AND IT CAN REFUSE, which no other bare read here can: a WINDOW has no words
+    // -- its words are its title -- and being handed an empty string for one
+    // would be an answer that is wrong and does not say so.
     if (method == token::text_token && !had_parentheses) {
         satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        std::string words, why;
+        if (!window_text_of(*piece, words, why)) {
+            // TWO REFUSALS AND TWO CODES, because they are two different
+            // mistakes. A WINDOW asked for `.text` is a kind that does not meet
+            // -- the program wanted `.title`. A CLOSED text box is not a mistake
+            // at all until it happens: the piece was right and the moment was
+            // late, and window_is_closed is the code that says so. Sending both
+            // through types_do_not_meet printed "this operator has no scenario
+            // for the two kinds it was given" under a sentence about a window
+            // that had closed, which is an explanation that does not fit.
+            context.refuse(piece->widget == nullptr ? window_is_closed : types_do_not_meet,
+                           what + " -- " + why);
+            return Value();
+        }
         Value out;
         std::size_t bad_offset = 0;
-        Value::of_utf8(piece == nullptr ? std::string() : piece->text, out, bad_offset);
+        Value::of_utf8(words, out, bad_offset);
         return out;
     }
     if (!had_parentheses && wanted == 0) {

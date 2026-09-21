@@ -56,7 +56,7 @@ public:
     // `how_many_pieces` IS NOT A PIECE, it is the count -- and it is what makes
     // adding one below without naming it a COMPILE ERROR rather than a widget
     // that is refused as "a button". See kPieceNames under this class.
-    enum Piece { window, button, label, how_many_pieces };
+    enum Piece { window, button, label, text_box, text_area, how_many_pieces };
 
     Piece piece = window;
 
@@ -86,7 +86,16 @@ public:
     std::weak_ptr<satellite_window> inside_of;
 
     std::string title;            // what it was made with, and what .title reads back
-    std::string text;             // the words ON a piece: a button's label, a label's line
+
+    // THE WORDS ON A PIECE: a button's label, a label's line, what a person
+    // typed. FOR A BUTTON AND A LABEL THIS IS THE TRUTH -- nothing but satellite
+    // ever writes them. FOR A TEXT BOX IT IS A CACHE and GTK holds the original:
+    // a person typing changes the widget and tells us nothing, so `.text`
+    // refreshes this out of the widget before answering (window_text_of).
+    //
+    // WRITTEN ONLY ON THE INTERPRETER'S THREAD. The desk reads widgets; it never
+    // writes this.
+    std::string text;
     bool on_the_screen = false;   // false once it is closed, whoever closed it
 
     // THE CAPSULE A PRESS RUNS, by name, and empty for a piece that answers
@@ -128,6 +137,8 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a window", "window"},
     {"a button", "button"},
     {"a label", "label"},
+    {"a text box", "text box"},
+    {"a text area", "text area"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -167,6 +178,12 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
 // so `a_label.pressed(c)` is refused by the sentence that already refuses it on
 // a window -- "only a button is pressed".
 //
+// A TEXT BOX IS ONE LINE AND A TEXT AREA IS MANY, and they are TWO PIECES rather
+// than one with a flag, because GTK makes them two widgets and a person typing a
+// name and a person typing a page are different things. One word with a flag
+// would be satellite hiding a distinction it cannot actually hide: a text area's
+// words live in a GtkTextBuffer and a text box's in the widget itself.
+//
 // NOT ON ANY SCREEN until it is appended. A null handle with `why` filled in
 // when there is no display to draw on, or when the Piece is not one made this
 // way -- a window is not, and window_new above is what makes one.
@@ -178,11 +195,35 @@ WindowHandle window_piece_of_text(satellite_window::Piece which, const std::stri
 // and answering the title to `.text` would be two names for one thing, which is
 // the shape this language spends its refusals avoiding.
 //
-// READING `.text` NEVER COMES HERE. The handle already holds the words -- they
-// were given to the factory -- so bytecode/window_calls.cpp answers a bare
-// `.text` without crossing to the desk at all. GTK-2's text box is the first
-// piece whose words are GTK's and not ours, and it is what changes that.
 bool window_set_text(satellite_window &which, const std::string &text, std::string &why);
+
+// `a_piece.text` -- THE WORDS ON A PIECE, READ BACK, and the first thing
+// satellite ever reads back OUT of GTK (GTK-2).
+//
+// A button's and a label's words are ours: nothing but satellite writes them, so
+// the handle is the truth. A TEXT BOX'S ARE NOT -- a person typing changes the
+// widget and tells us nothing -- so this crosses to the desk, copies what is
+// there into the handle, and answers that. `on_the_desk()` already waits for the
+// job it posts, so bringing a value back is the mechanism that was there and had
+// never been used in this direction.
+//
+// A CLOSED BUTTON OR LABEL STILL ANSWERS, because its words were always ours.
+// A CLOSED TEXT BOX REFUSES, and names when to read it instead. There is no
+// moment in a GTK teardown at which a widget's words can still be asked for --
+// gtk_entry_dispose clears them before the `destroy` signal it would have been
+// rescued in, and window_desk.cpp carries the measurement -- so the choice is
+// between refusing and answering whatever satellite last happened to write. This
+// project does not ship the second kind of answer.
+//
+// A WINDOW IS REFUSED, and told to ask for `.title` -- as it is when it tries to
+// SET `.text`, and for the same reason.
+//
+// `text` HAS EXACTLY ONE WRITER AND IT IS THIS THREAD. The desk never touches
+// it: this reads the widget inside an on_the_desk() lambda that has finished
+// before the assignment happens. That is deliberate -- a std::string written on
+// one thread and read on another is undefined behaviour, and the only other
+// cross-thread fields in this class are a pointer and two bools.
+bool window_text_of(satellite_window &which, std::string &out, std::string &why);
 
 // `my_window.append(piece, x, y)` -- BY ITS CENTRE (WIN-3): 400, 300 is the
 // middle of an 800x600 window, not a corner. The piece's own measured size is
