@@ -364,7 +364,8 @@ bits              name                         what it is
 0000101100101011  text_token                   text  [METHOD] object.text -- the words on a piece of a window, read with no brackets; object.text("x") writes them (GTK_AND_NO_DEPENDENCIES.md GTK-1)
 0000101100101100  on_token                     on  [METHOD] object.on -- whether a checkbox or a switch is turned on; object.on(1) turns it on and object.on(0) off (GTK_AND_NO_DEPENDENCIES.md GTK-3)
 0000101100101101  value_token                  value  [METHOD] object.value -- the number a slider or a number box is at, or the percentage a progress bar shows; object.value(x) sets it (GTK_AND_NO_DEPENDENCIES.md GTK-4)
-0000101100101110  free                         to 0000101111111111, free for this family
+0000101100101110  chosen_token                 chosen  [METHOD] choice.chosen -- which of its items is picked, as TEXT; choice.chosen("green") picks that one (GTK_AND_NO_DEPENDENCIES.md GTK-5)
+0000101100101111  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

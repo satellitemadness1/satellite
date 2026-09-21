@@ -1,11 +1,17 @@
-// satellite/satellite_variable_window/window_asks.cpp -- ASKING a piece what it
-// says and whether it is on, and telling it otherwise.
-// GTK_AND_NO_DEPENDENCIES.md GTK-2 and GTK-3.
+// satellite/satellite_variable_window/window_asks.cpp -- A PIECE'S WORDS, read
+// and written. GTK_AND_NO_DEPENDENCIES.md GTK-2.
 //
-// SPLIT OUT OF window_pieces.cpp AT GTK-3, at 297 lines against the author's
-// "try to build for 300 lines". The line is `make` against `ask`: a piece is
-// made once and asked for ever, and this is the half that has to cross to the
-// desk and bring an answer back.
+// SPLIT OUT OF window_pieces.cpp AT GTK-3 and split again at GTK-5, both times
+// against the author's "try to build for 300 lines". Four files now:
+//
+//   satellite_window.cpp   the WINDOW itself
+//   window_pieces.cpp      MAKING a piece -- three factories, one a shape
+//   window_asks.cpp        a piece's WORDS: .text, read and written
+//   window_state.cpp       what a piece is SET TO: .on, .value, .chosen
+//
+// The line between the last two is words against state. They are different
+// questions -- a label's words are satellite's own and a checkbox's tick never
+// was -- and they were always going to be asked by different pieces.
 //
 // WHAT A PIECE HOLDS IS NOT OURS, AND THAT IS THE WHOLE SUBJECT OF THIS FILE. A
 // button's label satellite handed it. What a person TYPED, and whether they
@@ -69,34 +75,13 @@ std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
     case satellite_window::slider:
     case satellite_window::number_box:
     case satellite_window::progress: break;
+    // A CHOICE'S WORDS ARE WHICH ITEM IS PICKED, and `.chosen` is the word for
+    // that. `.text` answering the same thing would be two names for one thing.
+    case satellite_window::choice: break;
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
     return got == nullptr ? std::string() : std::string(got);
-}
-
-// ---------------------------------------------------------------------------
-// ON AND OFF (GTK-3).
-// ---------------------------------------------------------------------------
-//
-// ONLY A CHECKBOX AND A SWITCH, and everything else is refused by name rather
-// than answered `false`. A label is not "off"; it has no such question, and
-// inventing an answer for it is exactly the kind of quiet wrongness this
-// language refuses.
-
-bool is_turned_on_or_off(const satellite_window &which)
-{
-    return which.piece == satellite_window::checkbox || which.piece == satellite_window::a_switch;
-}
-
-// WHY `which` AND NOT A RAW WIDGET: a checkbox is a GtkCheckButton and a switch
-// is a GtkSwitch, and their getters are different functions on unrelated types.
-// The Piece is the only thing that can tell them apart.
-bool is_it_on(GtkWidget *widget, satellite_window::Piece piece)
-{
-    if (piece == satellite_window::checkbox)
-        return gtk_check_button_get_active(GTK_CHECK_BUTTON(widget)) != FALSE;
-    return gtk_switch_get_active(GTK_SWITCH(widget)) != FALSE;
 }
 
 } // namespace
@@ -176,132 +161,6 @@ bool window_text_of(satellite_window &which, std::string &out, std::string &why)
     // string at all.
     which.text = got;
     out = got;
-    return true;
-}
-
-bool window_on_of(satellite_window &which, bool &out, std::string &why)
-{
-    if (!is_turned_on_or_off(which)) {
-        why = std::string(which.piece_name()) + " is not something that is turned on or off -- "
-              "a checkbox and a switch are";
-        return false;
-    }
-    // NOTHING TO FALL BACK ON, unlike `.text`. A checkbox's state was never
-    // satellite's, so a closed one has no last-known answer that is worth
-    // anything -- it is refused, and the sentence is the same one `.text` uses.
-    if (which.widget == nullptr) {
-        why = "it is closed -- read .on while the window is still open";
-        return false;
-    }
-    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
-    const satellite_window::Piece piece = which.piece;
-    bool got = false;
-    on_the_desk([widget, piece, &got] { got = is_it_on(widget, piece); });
-    out = got;
-    return true;
-}
-
-bool window_set_on(satellite_window &which, bool on, std::string &why)
-{
-    if (!is_turned_on_or_off(which)) {
-        why = std::string(which.piece_name()) + " is not something that is turned on or off -- "
-              "a checkbox and a switch are";
-        return false;
-    }
-    if (which.widget == nullptr) {
-        why = "it is closed";
-        return false;
-    }
-    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
-    const satellite_window::Piece piece = which.piece;
-    on_the_desk([widget, piece, on] {
-        if (piece == satellite_window::checkbox)
-            gtk_check_button_set_active(GTK_CHECK_BUTTON(widget), on ? TRUE : FALSE);
-        else
-            gtk_switch_set_active(GTK_SWITCH(widget), on ? TRUE : FALSE);
-    });
-    return true;
-}
-
-// ---------------------------------------------------------------------------
-// THE NUMBER A PIECE IS AT (GTK-4).
-// ---------------------------------------------------------------------------
-//
-// THE UNITS ARE THE PIECE'S OWN and satellite_window.hpp says which: a slider
-// and a number box are whole numbers, and a progress bar is MILLIONTHS. The
-// millionths exist because GTK holds a double and satellite's percentage is
-// exact to 32 digits; a whole number of millionths is the largest unit both can
-// say without either of them rounding. window_calls.cpp does the rest.
-namespace {
-
-constexpr long long int kMillion = 1000000;
-
-bool has_a_value(const satellite_window &which)
-{
-    return which.piece == satellite_window::slider || which.piece == satellite_window::number_box ||
-           which.piece == satellite_window::progress;
-}
-
-} // namespace
-
-bool window_value_of(satellite_window &which, long long int &out, std::string &why)
-{
-    if (!has_a_value(which)) {
-        why = std::string(which.piece_name()) + " has no number -- a slider, a number box and a "
-              "progress bar do";
-        return false;
-    }
-    if (which.widget == nullptr) {
-        why = "it is closed -- read .value while the window is still open";
-        return false;
-    }
-    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
-    const satellite_window::Piece piece = which.piece;
-    double got = 0.0;
-    on_the_desk([widget, piece, &got] {
-        if (piece == satellite_window::progress)
-            got = gtk_progress_bar_get_fraction(GTK_PROGRESS_BAR(widget)) * static_cast<double>(kMillion);
-        else if (piece == satellite_window::number_box)
-            got = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-        else
-            got = gtk_range_get_value(GTK_RANGE(widget));
-    });
-    // ROUNDED, NOT TRUNCATED. GTK's double for a slider left exactly on 50 can
-    // come back as 49.999999999999996, and a language whose numbers are whole
-    // must not answer 49 for a slider a person put on 50.
-    out = static_cast<long long int>(got < 0.0 ? got - 0.5 : got + 0.5);
-    return true;
-}
-
-bool window_set_value(satellite_window &which, long long int to, std::string &why)
-{
-    if (!has_a_value(which)) {
-        why = std::string(which.piece_name()) + " has no number -- a slider, a number box and a "
-              "progress bar do";
-        return false;
-    }
-    if (which.widget == nullptr) {
-        why = "it is closed";
-        return false;
-    }
-    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
-    const satellite_window::Piece piece = which.piece;
-    on_the_desk([widget, piece, to] {
-        if (piece == satellite_window::progress) {
-            // CLAMPED HERE AND NOT REFUSED. A progress bar past its end is a
-            // program counting slightly wrong, not a program that has gone
-            // wrong -- and GTK draws a fraction above 1.0 as a bar longer than
-            // its own frame. A slider and a number box need no clamp: GTK holds
-            // them inside the range they were made with.
-            const double fraction = static_cast<double>(to) / static_cast<double>(kMillion);
-            gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(widget),
-                                          fraction < 0.0 ? 0.0 : (fraction > 1.0 ? 1.0 : fraction));
-        } else if (piece == satellite_window::number_box) {
-            gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), static_cast<double>(to));
-        } else {
-            gtk_range_set_value(GTK_RANGE(widget), static_cast<double>(to));
-        }
-    });
     return true;
 }
 

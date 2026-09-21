@@ -74,7 +74,7 @@ projects produce the archives.
 | ✔ | **GTK-2** a person types | gtk | pango |
 | ✔ | **GTK-3** on and off | gtk | — |
 | ✔ | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
-| — | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
+| ✔ | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
 | — | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
 | — | **GTK-7** rows, columns, a grid | gtk | — |
 | — | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
@@ -754,7 +754,7 @@ is wrong and does not say so.
    height"* are both 13. A third fallback — the single row carrying that name,
    whatever its shape — fixes both and cannot take a call away from a real word.
 
-## GTK-5 — a list to choose from
+## GTK-5 — a list to choose from — **BUILT 2026-09-21** (the dropdown; the list box is GTK-16's)
 
     satellite.variable.list colours = satellite.container.list("red", "green")
     satellite.variable.window pick = satellite.window.choice(colours)
@@ -772,6 +772,29 @@ thread boundary, and this project already has one of those.
 
 `.chosen` reads back the **text**, not the index — a program that wanted the
 index can `.index_of` it in the list it already has.
+
+**AS BUILT** — `choice` is `1 27 11`, `.chosen` is `0x0B2E`, and the list IS
+copied: `satellite.window.choice(colours)` is a choice of what the list **said**,
+and changing the list afterwards changes nothing on the screen.
+
+**THE LIST BOX MOVED TO GTK-16 and that is a better cut.** A `GtkListBox` holds
+*pieces*, not words — it is a container, and every container depends on GTK-7
+having taken `.append` off coordinates. A dropdown holds words and depends on
+nothing.
+
+**`.chosen("purple")` ON A CHOICE OF RED AND GREEN IS REFUSED**, because
+`gtk_drop_down_set_selected` on a position that is not there simply picks
+nothing. A program that named an item the choice does not offer has said
+something untrue about itself and should hear so. **Nothing picked reads as
+`""`** and is not a refusal: a choice a person has not touched is an ordinary
+state of a choice.
+
+**AND IT BROKE THE GENERIC REFUSAL, WHICH IS WORTH KNOWING.** Every doing-method
+could once fail for exactly one reason — the window had gone — so the tail of
+`call_window_method` reported `S505 WINDOW_IS_CLOSED` for all of them.
+`.chosen("purple")` fails with the window **wide open**, and S505 under a
+sentence reading *"there is no purple to choose here"* is a code and a sentence
+disagreeing about what went wrong. The tail now asks the widget.
 
 ## GTK-6 — a picture, and the four projects it switches on
 
@@ -1131,12 +1154,12 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE TEN WIDGETS** as of 2026-09-21: a window, a button, a label, a
-  text box, a text area, a checkbox, a switch, a slider, a number box and a
-  progress bar.
+- **THERE ARE ELEVEN WIDGETS** as of 2026-09-21: a window, a button, a label, a
+  text box, a text area, a checkbox, a switch, a slider, a number box, a
+  progress bar and a choice.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-4 are built** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-5 are built** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a

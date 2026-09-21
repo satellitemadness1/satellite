@@ -6,6 +6,7 @@
 
 #include "word_codes.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
+#include "../satellite_object/satellite_list.hpp"
 #include "../satellite_variable_window/window_desk.hpp"
 
 #include <string>
@@ -45,42 +46,46 @@ struct AWord {
     const char *spelling;                 // satellite.window.<this>
     std::size_t arity;
     satellite_window::Piece makes;        // what a program gets back
-    // WHETHER ITS ARGUMENTS ARE NUMBERS OR WORDS, which is the second shape a
-    // window word has (GTK-4). Three shapes exist now and `arity` tells the
-    // first two apart: nothing, one line of words, or two numbers. A fourth --
-    // GTK-5's list -- is a third value here and not a fourth field.
-    bool from_numbers;
+    // WHAT ITS ARGUMENTS ARE. `arity` says how many and this says of what, and
+    // together they are every shape a window word has: nothing, one line of
+    // words, two numbers, one list. A widget added with a fifth shape is one
+    // more value here and one more branch in call_window_word -- not a fifth
+    // field and not a second table.
+    enum Takes { words, numbers, items } takes_what;
     const char *takes;                    // and what to say when the count is wrong
 };
 
 constexpr AWord kWords[] = {
-    {1, "new", 3, satellite_window::window, false,
+    {1, "new", 3, satellite_window::window, AWord::words,
      "satellite.window.new takes a title, a width and a height: "
      "satellite.window.new(\"my window\", 800, 600)"},
-    {2, "button", 1, satellite_window::button, false,
+    {2, "button", 1, satellite_window::button, AWord::words,
      "satellite.window.button takes the text on it: satellite.window.button(\"press me\")"},
-    {3, "label", 1, satellite_window::label, false,
+    {3, "label", 1, satellite_window::label, AWord::words,
      "satellite.window.label takes the text it shows: satellite.window.label(\"a line of text\")"},
-    {4, "text_box", 1, satellite_window::text_box, false,
+    {4, "text_box", 1, satellite_window::text_box, AWord::words,
      "satellite.window.text_box takes the text already in it, and \"\" for an empty one: "
      "satellite.window.text_box(\"\")"},
-    {5, "text_area", 1, satellite_window::text_area, false,
+    {5, "text_area", 1, satellite_window::text_area, AWord::words,
      "satellite.window.text_area takes the text already in it, and \"\" for an empty one: "
      "satellite.window.text_area(\"\")"},
-    {6, "checkbox", 1, satellite_window::checkbox, false,
+    {6, "checkbox", 1, satellite_window::checkbox, AWord::words,
      "satellite.window.checkbox takes the text beside it: satellite.window.checkbox(\"I agree\")"},
-    {7, "switch", 0, satellite_window::a_switch, false,
+    {7, "switch", 0, satellite_window::a_switch, AWord::words,
      "satellite.window.switch takes nothing -- a switch says nothing, it is only on or off: "
      "satellite.window.switch()"},
-    {8, "slider", 2, satellite_window::slider, true,
+    {8, "slider", 2, satellite_window::slider, AWord::numbers,
      "satellite.window.slider takes the least and the most it runs between: "
      "satellite.window.slider(0, 100)"},
-    {9, "number_box", 2, satellite_window::number_box, true,
+    {9, "number_box", 2, satellite_window::number_box, AWord::numbers,
      "satellite.window.number_box takes the least and the most it runs between: "
      "satellite.window.number_box(1, 12)"},
-    {10, "progress", 0, satellite_window::progress, true,
+    {10, "progress", 0, satellite_window::progress, AWord::numbers,
      "satellite.window.progress takes nothing -- how far along it is, is .value: "
      "satellite.window.progress()"},
+    {11, "choice", 1, satellite_window::choice, AWord::items,
+     "satellite.window.choice takes a list of what a person may pick: "
+     "satellite.window.choice(satellite.container.list(\"red\", \"green\"))"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
@@ -302,8 +307,8 @@ std::string window_methods_are()
 {
     return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\") and .ok; "
            "a piece in one has .text; a checkbox or a switch has .on; a slider, a number box or "
-           "a progress bar has .value -- all read bare and written with brackets; and a button "
-           "has .pressed(a_capsule) and .press() "
+           "a progress bar has .value; a choice has .chosen -- all read bare and written with "
+           "brackets; and a button has .pressed(a_capsule) and .press() "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -319,6 +324,7 @@ int window_method_arity(Code method)
     case token::text_token:    return 1;     // written; read with no brackets (GTK-1)
     case token::on_token:      return 1;     // written; read with no brackets (GTK-3)
     case token::value_token:   return 1;     // written; read with no brackets (GTK-4)
+    case token::chosen_token:  return 1;     // written; read with no brackets (GTK-5)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -362,7 +368,27 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
         // two do not need one.
         WindowHandle made;
         long long int least = 0, most = 0;
-        if (row->from_numbers) {
+        if (row->takes_what == AWord::items) {
+            // A LIST OF WORDS. Each item goes through text_of, so a list of
+            // numbers is a choice of their digits -- the author's own rule for a
+            // number where text is expected, applied one item at a time rather
+            // than invented again here.
+            const ListHandle *given = arguments[0].as_list();
+            if (given == nullptr || *given == nullptr) {
+                context.refuse(types_do_not_meet,
+                               called + " takes a list, and was given " + arguments[0].kind_name());
+                return Value();
+            }
+            std::vector<std::string> wanted;
+            wanted.reserve((*given)->items.size());
+            for (const Value &item : (*given)->items) {
+                std::string one;
+                if (!text_of(item, one, called + "'s items", context))
+                    return Value();
+                wanted.push_back(std::move(one));
+            }
+            made = window_piece_of_items(row->makes, wanted, why);
+        } else if (row->takes_what == AWord::numbers) {
             // TWO NUMBERS OR NONE. place_of is borrowed on purpose rather than
             // copied: a slider's least and most are the same kind of thing as a
             // position -- a whole number that may be negative and must fit a
@@ -387,7 +413,9 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
             // wrong and got it wrong quietly -- a slider on a machine with no
             // screen exited 13 while printing "there is no display to draw on",
             // which is a code and a sentence disagreeing about what happened.
-            const bool the_program = row->from_numbers && row->arity == 2 && least >= most;
+            const bool the_program = (row->takes_what == AWord::numbers && row->arity == 2 &&
+                                      least >= most) ||
+                                     row->takes_what == AWord::items;
             context.refuse(the_program ? satl_line_not_understood : no_display,
                            called + " could not be made -- " + why);
             return Value();
@@ -537,6 +565,26 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
                                 got < 0);
         return Value::of_number(std::move(answer));
     }
+    // `.chosen` WITH NO BRACKETS ASKS WHICH ITEM IS PICKED, as TEXT. Nothing
+    // picked is "" and not a refusal: a choice a person has not touched is an
+    // ordinary state of a choice.
+    if (method == token::chosen_token && !had_parentheses) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        std::string picked, why;
+        if (!window_chosen_of(*piece, picked, why)) {
+            context.refuse(piece->widget == nullptr ? window_is_closed : types_do_not_meet,
+                           what + " -- " + why);
+            return Value();
+        }
+        Value out;
+        std::size_t bad_offset = 0;
+        Value::of_utf8(picked, out, bad_offset);
+        return out;
+    }
     if (!had_parentheses && wanted == 0) {
         context.refuse(satl_line_not_understood, what + " is something a window DOES, so write it with "
                                                         "its brackets: " + what + "()");
@@ -614,6 +662,13 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         went = window_set_value(*window, to, why);
         break;
     }
+    case token::chosen_token: {
+        std::string pick;
+        if (!text_of(arguments[0], pick, what, context))
+            return Value();
+        went = window_set_chosen(*window, pick, why);
+        break;
+    }
     case token::append_token: {
         const WindowHandle *piece = arguments[0].window_handle();
         if (piece == nullptr) {
@@ -632,7 +687,15 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
     default: break;
     }
     if (!went) {
-        context.refuse(window_is_closed, what + " could not be done -- " + why);
+        // THE CODE FOLLOWS WHAT ACTUALLY HAPPENED, not what this tail used to
+        // assume. Every doing-method could once fail for one reason -- the
+        // window had gone -- and window_is_closed was the whole truth. It is not
+        // any more: `a_choice.chosen("purple")` on a choice of red and green
+        // fails with the window wide open, and reporting S505 under a sentence
+        // saying "there is no purple to choose here" is a code and a sentence
+        // disagreeing about what went wrong.
+        context.refuse(window->widget == nullptr ? window_is_closed : types_do_not_meet,
+                       what + " could not be done -- " + why);
         return Value();
     }
     // A WINDOW METHOD ANSWERS THE WINDOW, so they string together the way a

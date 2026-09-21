@@ -80,6 +80,7 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     case satellite_window::slider:
     case satellite_window::number_box:
     case satellite_window::progress:
+    case satellite_window::choice:
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -163,6 +164,35 @@ WindowHandle window_piece_of_numbers(satellite_window::Piece which, long long in
         }
         raw->widget = made_here;
     });
+    return made;
+}
+
+WindowHandle window_piece_of_items(satellite_window::Piece which,
+                                   const std::vector<std::string> &items, std::string &why)
+{
+    if (which != satellite_window::choice) {
+        why = "that is not a piece made from a list";
+        return nullptr;
+    }
+    if (items.empty()) {
+        why = "a choice needs something to choose from, and it was given an empty list";
+        return nullptr;
+    }
+    if (!open_the_desk(why))
+        return nullptr;
+    WindowHandle made = std::make_shared<satellite_window>(which);
+    satellite_window *raw = made.get();
+    // NULL-TERMINATED, WHICH IS GTK'S SHAPE AND NOT OURS. The pointers point
+    // into `items`, which is the CALLER's vector and outlives this call --
+    // on_the_desk() waits, so the lambda has finished before the caller's frame
+    // can end. Copying the strings again would be copying them a third time.
+    std::vector<const char *> as_gtk_wants;
+    as_gtk_wants.reserve(items.size() + 1);
+    for (const std::string &item : items)
+        as_gtk_wants.push_back(item.c_str());
+    as_gtk_wants.push_back(nullptr);
+    const char *const *strings = as_gtk_wants.data();
+    on_the_desk([raw, strings] { raw->widget = gtk_drop_down_new_from_strings(strings); });
     return made;
 }
 

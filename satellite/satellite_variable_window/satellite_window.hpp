@@ -61,7 +61,7 @@ public:
     // language's spelling and C++'s disagree, and renaming the piece would have
     // been letting C++ choose satellite's words.
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
-                 slider, number_box, progress, how_many_pieces };
+                 slider, number_box, progress, choice, how_many_pieces };
 
     Piece piece = window;
 
@@ -149,6 +149,7 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a slider", "slider"},
     {"a number box", "number box"},
     {"a progress bar", "progress bar"},
+    {"a choice", "choice"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -221,6 +222,19 @@ WindowHandle window_piece_of_text(satellite_window::Piece which, const std::stri
 WindowHandle window_piece_of_numbers(satellite_window::Piece which, long long int least,
                                      long long int most, std::string &why);
 
+// AND THE THIRD SHAPE (GTK-5): a piece made from a LIST of words.
+//
+// THE ITEMS ARE COPIED, and that is the whole ownership decision. A live view of
+// a satellite list into a GTK model would be a second ownership story across the
+// interpreter/desk line, and this project already has one of those and knows
+// what it costs. A choice made from a list is a choice made from what the list
+// SAID; changing the list afterwards changes nothing on the screen.
+//
+// AN EMPTY LIST IS REFUSED: a choice with nothing to choose from is a control a
+// person can do nothing with.
+WindowHandle window_piece_of_items(satellite_window::Piece which,
+                                   const std::vector<std::string> &items, std::string &why);
+
 // `a_piece.text("what it says now")` -- the words ON a piece. A window is
 // REFUSED here and told to use `.title` instead: a window's words are its title,
 // and answering the title to `.text` would be two names for one thing, which is
@@ -285,6 +299,21 @@ bool window_set_on(satellite_window &which, bool on, std::string &why);
 // waits for the float arm (arm 14, not built).
 bool window_value_of(satellite_window &which, long long int &out, std::string &why);
 bool window_set_value(satellite_window &which, long long int to, std::string &why);
+
+// `a_choice.chosen` AND `a_choice.chosen("green")` -- WHICH ITEM IS PICKED, AS
+// TEXT (GTK-5).
+//
+// TEXT AND NOT AN INDEX, on purpose. A program that wanted the position has the
+// list it made the choice from and can `.index_of` it; a program that has the
+// position and not the list has a number that means nothing on its own. And a
+// choice with nothing picked answers "" rather than a number no item has.
+//
+// SETTING IT REFUSES WHAT IS NOT THERE. `a_choice.chosen("purple")` on a choice
+// of red and green is a program saying something untrue about itself, and
+// silently picking nothing -- which is what GTK does -- is the answer that is
+// wrong and does not say so.
+bool window_chosen_of(satellite_window &which, std::string &out, std::string &why);
+bool window_set_chosen(satellite_window &which, const std::string &to, std::string &why);
 
 // `my_window.append(piece, x, y)` -- BY ITS CENTRE (WIN-3): 400, 300 is the
 // middle of an 800x600 window, not a corner. The piece's own measured size is

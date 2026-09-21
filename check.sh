@@ -2186,6 +2186,59 @@ expect "a piece that fails for want of a screen exits 50, whatever its word take
        "$(headless build/window_value_ok.satl > build/window_value_ok.out 2>&1; echo $?)"
 
 # ---------------------------------------------------------------------------
+# A LIST TO CHOOSE FROM (GTK_AND_NO_DEPENDENCIES.md GTK-5, 2026-09-21). The
+# first piece made out of a satellite CONTAINER rather than out of words.
+# ---------------------------------------------------------------------------
+#
+# PROVED ON A COMPOSITOR: a choice made from {"red", "green", "blue"}, `.chosen`
+# answering "red", `.chosen("blue")` picking it, and `.chosen("purple")` REFUSED
+# -- gtk_drop_down_set_selected on a position that is not there simply picks
+# nothing, and a program that named an item this choice does not offer has said
+# something untrue about itself.
+
+expect "choice is 1 27 11" 1 \
+       "$(grep -cP '^1 27 11\tsatellite.window.choice\(items\)\t' words/words.tsv)"
+
+expect "chosen is a method token at 0000101100101110, and token_codes.hpp was generated from it" "1|1" \
+       "$(grep -c '^0000101100101110  chosen_token ' REGISTRY.satellite)|$(grep -c 'Code chosen_token = 0x0B2E;' satellite/bytecode/token_codes.hpp)"
+
+# A CHOICE TAKES A LIST AND NOTHING ELSE, and the refusal names the kind it got.
+cat > build/window_choice_kind.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window c = satellite.window.choice("red")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_choice_kind.satl > build/window_choice_kind.out 2>&1
+expect "satellite.window.choice given text and not a list is refused" 27 $?
+expect "... and says it takes a list" 1 \
+       "$(tr '\n' ' ' < build/window_choice_kind.out | grep -cF 'satellite.window.choice takes a list, and was given a string')"
+
+# AN EMPTY LIST IS A CONTROL A PERSON CAN DO NOTHING WITH, and it is refused
+# where it is written rather than drawn as an empty box.
+cat > build/window_choice_empty.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list nothing = {}
+    satellite.variable.window c = satellite.window.choice(nothing)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_choice_empty.satl > build/window_choice_empty.out 2>&1
+expect "a choice of nothing is refused, and NOT as a machine with no screen" 13 $?
+expect "... and says it needs something to choose from" 1 \
+       "$(tr '\n' ' ' < build/window_choice_empty.out | grep -cF 'a choice needs something to choose from')"
+
+# A DOING-METHOD THAT FAILS WITH THE WINDOW WIDE OPEN MUST NOT SAY S505. Every
+# doing could once fail for one reason -- the window had gone -- and the generic
+# tail said so for all of them. `a_choice.chosen("purple")` broke that.
+expect "the refusal code follows what happened, not what the tail used to assume" 1 \
+       "$(grep -c 'context.refuse(window->widget == nullptr ? window_is_closed : types_do_not_meet,' satellite/bytecode/window_calls.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and
