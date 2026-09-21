@@ -61,6 +61,31 @@ expect "--version's third line names the compiler and system" 1 "$("$interpreter
 expect "--version is the title lines and the licence block" 11 "$("$interpreter" --version | wc -l)"
 expect "--version carries the mandatory FreeType credit" 1 "$("$interpreter" --version | grep -c 'The FreeType Project')"
 expect "--version still gives the three title lines to head -3" 3 "$("$interpreter" --version | head -3 | wc -l)"
+
+# --version POINTS AT THE COMMAND, NOT AT A FOLDER, since 2026-09-21. It used to end
+# "Full texts: licenses/ in the satellite distribution, one folder per project" --
+# written before `satl --license` existed and stale from the moment it did. It sent
+# somebody who is HOLDING every text off to look for a directory that a shipped
+# binary does not come with.
+expect "--version names the command that shows the texts" 1 "$("$interpreter" --version | grep -c 'satl --license')"
+
+# AND THE TWO COUNTS AGREE. --version said "24 other projects" while --license all
+# said 26, because one was typed and the other is licence_rows().size(). Only the
+# generated one could be right, and it was not the one a person reads first.
+# licence_lines() now takes the count, so this row is what keeps them together.
+carried=$("$interpreter" --license all | sed -n '1s/.*binary, \([0-9]*\) of them.*/\1/p')
+named=$("$interpreter" --version | sed -n 's/.*carries \([0-9]*\) other projects.*/\1/p')
+expect "--version's count is every licence less satellite's own" "$carried" "$((named + 1))"
+
+# EVERY SPELLING ANSWERS. --licenses was refused until 2026-09-21 -- "is not a word
+# satl takes" -- over one letter, for a command that shows 26 of them. NOT > /dev/null:
+# writing to it is what triggers the console handover, so a /dev/null sweep can report
+# a pass that never ran.
+for licence_word in --license --licence --licenses --licences; do
+    "$interpreter" "$licence_word" all > build/licence.out 2> build/licence.err
+    expect "$licence_word is accepted" 0 $?
+done
+expect "every spelling gives the same text" 1 "$(grep -c 'Every licence in this binary' build/licence.out)"
 expect "-V shows the title lines" "$title" "$("$interpreter" -V | head -2)"
 expect "--help starts with the start-up block" "$rule" "$("$interpreter" --help | sed -n 4p)"
 "$interpreter" --version > /dev/full 2> build/full.err; code=$?

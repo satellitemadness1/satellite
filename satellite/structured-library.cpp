@@ -121,10 +121,15 @@ signed long long int run_satl(int argc, char **argv)
 
     if (command_line.command == Command::version || command_line.command == Command::help ||
         command_line.command == Command::opening) {
+        // licence_rows().size() AND NOT A TYPED NUMBER. The two places that state
+        // how much is carried used to disagree -- this block said 24 other projects
+        // and `satl --license all` said 26 -- and the one a person reads first was
+        // the wrong one.
+        const std::size_t carried = licence_rows().size();
         if (command_line.command == Command::version)
-            std::cout << title_lines(arguments) << licence_lines();
+            std::cout << title_lines(arguments) << licence_lines(carried);
         else if (command_line.command == Command::help)
-            std::cout << startup_block(arguments) << usage_lines() << licence_lines();
+            std::cout << startup_block(arguments) << usage_lines() << licence_lines(carried);
         else
             // "Nothing to do is not an error" (003 main.cpp), so bare satl is 0.
             std::cout << startup_block(arguments) << opening_lines();

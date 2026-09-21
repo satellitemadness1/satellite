@@ -71,10 +71,16 @@ signed long long int read_command_line(int argc, char **argv, CommandLine &into)
         }
         return success;
     }
-    if (word == "--license" || word == "--licence") {
-        // BOTH SPELLINGS. The author types --license and this repository's prose
-        // writes licence; refusing either would be a spelling test, not a command
-        // line. ONE OPTIONAL WORD, like --config: a number, a name, or "all".
+    if (word == "--license" || word == "--licence" ||
+        word == "--licenses" || word == "--licences") {
+        // ALL FOUR SPELLINGS. The author types --license and this repository's
+        // prose writes licence; refusing either would be a spelling test, not a
+        // command line. THE PLURALS ARE HERE FOR THE SAME REASON, 2026-09-21:
+        // the command shows TWENTY-FIVE licences, so --licenses is what a person
+        // reaches for, and it answered "is not a word satl takes" -- which is a
+        // refusal that teaches nothing, over a letter.
+        //
+        // ONE OPTIONAL WORD, like --config: a number, a name, or "all".
         // The word is NOT checked here -- what counts as a name belongs to
         // licenses.cpp, so adding a licence does not rebuild the parser.
         if (i + 2 < argc)
@@ -141,6 +147,12 @@ std::string usage_lines()
            "    are the whole command line. Every word after the file is the\n"
            "    program's, --version and --debug included: arguments.program,\n"
            "    arguments.argument_1 ... and arguments.length.\n"
+           "\n"
+           // THE SPELLINGS ARE DOCUMENTED HERE AND NOT IN THE TABLE. Four of them
+           // on one row would be wider than the column and would read as four
+           // commands rather than one. The point is that none of them is a test.
+           "    --license answers to --licence, --licenses and --licences as well.\n"
+           "    Which one you type is not a test you can fail.\n"
            "\n"
            "    satl exits with the machine code the program stopped on, 0 when it ran\n"
            "    to the end. A code below 0 or above 254 exits 255 and is written in\n"
