@@ -8,6 +8,7 @@
 
 INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(ARGUMENTS)/arguments.cpp $(ARGUMENTS)/command_line.cpp \
+                      $(SATELLITE)/licenses/licenses.cpp \
                       $(MACHINE)/machine_state.cpp $(SATELLITE)/satl/satl_file.cpp \
                       $(SATELLITE)/satl/session.cpp $(SATELLITE)/satl/listing.cpp \
                       $(PROMPT)/raw_mode.cpp $(PROMPT)/keys.cpp $(PROMPT)/editor.cpp \
@@ -65,9 +66,25 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(OBJECT)/satellite_bytecode.hpp $(OBJECT)/satellite_capsule.hpp \
           $(OBJECT)/fast_paths.hpp $(OBJECT)/object_pair.hpp \
           $(wildcard $(OBJECT)/*_and_*.hpp) $(wildcard $(OBJECT)/*_to_*.hpp) \
-          $(NUMBERS)/call_number.hpp $(NUMBERS)/number_row.hpp $(STRINGS32)/string_method.hpp
+          $(NUMBERS)/call_number.hpp $(NUMBERS)/number_row.hpp $(STRINGS32)/string_method.hpp \
+          $(SATELLITE)/licenses/licenses.hpp
 
-INTERPRETER_OBJECTS = $(INTERPRETER_SOURCES:%.cpp=$(OBJECTS)/%.o)
+# EVERY LICENCE, COMPILED IN. licenses/<project>/license.txt is the source of
+# truth -- the same files the website and THIRD-PARTY-NOTICES.txt come from -- and
+# make_license_data.py turns them into one generated .cpp of raw string literals.
+#
+# PLAIN C++, NOT A GResource, unlike the window's fonts and keyboard data. That one
+# may assume glib because it only exists when GTK is compiled in; this has to work
+# in `make` as well as `make GTK=vendor`, so it depends on nothing.
+#
+# It is in INTERPRETER_OBJECTS rather than GTK_OBJECTS for the same reason: satl
+# without a window still has licences, and still has to be able to show them.
+LICENCE_DATA_SOURCE = $(BUILD)/generated/license_data.cpp
+LICENCE_DATA_OBJECT = $(OBJECTS)/generated/license_data.o
+LICENCE_DATA_INPUTS = $(SATELLITE)/licenses/make_license_data.py \
+                      $(wildcard licenses/*/license.txt)
+
+INTERPRETER_OBJECTS = $(INTERPRETER_SOURCES:%.cpp=$(OBJECTS)/%.o) $(LICENCE_DATA_OBJECT)
 
 # THE FILES THE APPLICATION IS MADE FROM, for the build number (020-version.mk):
 # satl, satl-term and their build. build_number.py adds every

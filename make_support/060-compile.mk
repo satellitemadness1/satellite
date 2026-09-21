@@ -61,6 +61,18 @@ $(WINDOW_DATA_SOURCE): $(WINDOW_DATA_INPUTS)
 	@SATL_GTK_BUILD=$(if $(filter vendor,$(GTK)),$(GTK_BUILD)) \
 	 python3 $(SATELLITE)/satellite_variable_window/make_window_data.py
 
+# THE LICENCES. Regenerated whenever a licences/ file changes, so a licence added
+# to the folder is in the next binary without anybody remembering to say so.
+$(LICENCE_DATA_SOURCE): $(LICENCE_DATA_INPUTS)
+	@mkdir -p $(dir $@)
+	@python3 $(SATELLITE)/licenses/make_license_data.py $@
+
+# -w, like the window data: it is 284 KB of other people's licence text in raw
+# string literals, and -Wall -Wextra has nothing useful to say about it.
+$(LICENCE_DATA_OBJECT): $(LICENCE_DATA_SOURCE) | $(BUILD_STAMP)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -w $(DEPENDENCY_FLAGS) -c $< -o $@
+
 $(WINDOW_DATA_OBJECT): $(WINDOW_DATA_SOURCE) $(GTK_COMPILE_STAMP) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
 	$(CC) -std=c11 $(OPT) -w $(GTK_CFLAGS) -c $< -o $@

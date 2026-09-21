@@ -71,6 +71,20 @@ signed long long int read_command_line(int argc, char **argv, CommandLine &into)
         }
         return success;
     }
+    if (word == "--license" || word == "--licence") {
+        // BOTH SPELLINGS. The author types --license and this repository's prose
+        // writes licence; refusing either would be a spelling test, not a command
+        // line. ONE OPTIONAL WORD, like --config: a number, a name, or "all".
+        // The word is NOT checked here -- what counts as a name belongs to
+        // licenses.cpp, so adding a licence does not rebuild the parser.
+        if (i + 2 < argc)
+            return refuse(word + " takes at most one word, and \"" + std::string(argv[i + 2]) +
+                          "\" came after it");
+        into.command = Command::licence;
+        if (i + 1 < argc)
+            into.which = argv[i + 1];
+        return success;
+    }
     if (word == "--feedback") {
         if (i + 1 < argc)
             return refuse("--feedback takes no other words, and \"" + std::string(argv[i + 1]) + "\" was given");
@@ -119,6 +133,7 @@ std::string usage_lines()
            "    satl --rebuild                        compose every setting into one binary\n"
            "    satl --config [most]                  measure what this machine can do, once\n"
            "    satl --feedback                       show what satellite.feedback has kept here\n"
+           "    satl --license [n|name|all]           every licence in this binary\n"
            "    satl --version, -V                    the version, revision and build\n"
            "    satl --help, -h                       this\n"
            "\n"

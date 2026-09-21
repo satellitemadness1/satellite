@@ -51,7 +51,16 @@ rule=---------------------------------------------------------------
 
 expect "--version shows the title lines" "$title" "$("$interpreter" --version | head -2)"
 expect "--version's third line names the compiler and system" 1 "$("$interpreter" --version | sed -n 3p | grep -cE "$compiler_line")"
-expect "--version is three lines" 3 "$("$interpreter" --version | wc -l)"
+# --version IS THE THREE TITLE LINES AND THEN THE LICENCE BLOCK, since 2026-09-20.
+# `head -3` still gives exactly what it always gave -- the two checks above still
+# assert that -- so anything parsing the version is unaffected. What follows is
+# eight lines naming the licence families, pointing at satl --license, and carrying
+# the one credit sentence the FreeType Licence makes MANDATORY (FTL.TXT section 3:
+# "This credit MUST appear in the documentation and/or other materials"). That is an
+# obligation, not decoration, which is why it is in the binary and asserted here.
+expect "--version is the title lines and the licence block" 11 "$("$interpreter" --version | wc -l)"
+expect "--version carries the mandatory FreeType credit" 1 "$("$interpreter" --version | grep -c 'The FreeType Project')"
+expect "--version still gives the three title lines to head -3" 3 "$("$interpreter" --version | head -3 | wc -l)"
 expect "-V shows the title lines" "$title" "$("$interpreter" -V | head -2)"
 expect "--help starts with the start-up block" "$rule" "$("$interpreter" --help | sed -n 4p)"
 "$interpreter" --version > /dev/full 2> build/full.err; code=$?
@@ -1672,7 +1681,15 @@ build/alone/satl examples/hello_world.satl > /dev/null 2>&1; expect "no librarie
 # never the libraries of the folder it was started in -- this folder holds a working set.
 rm -rf build/deep && mkdir -p build/deep
 deep_result=$(top=$PWD; libraries=$(dirname "$interpreter")/satellite-numbers; name=$(printf 'd%.0s' $(seq 100))
-    cd build/deep && for i in $(seq 45); do mkdir "$name" && cd "$name" || exit; done
+    # cd -P, NOT cd. /bin/sh is bash, and bash invoked as sh runs in POSIX mode,
+    # where cd keeps a LOGICAL $PWD and refuses once that string passes PATH_MAX --
+    # "cd: dddd...: File name too long" around level 40 of 45. The subshell then
+    # exits before the echo and this check reads back EMPTY, which looks like satl
+    # failing and is the harness failing. cd -P chdirs to the real directory and
+    # reaches all 45 levels. Measured 2026-09-20: `sh check.sh` red, `bash check.sh`
+    # green, same binary -- which is the sort of difference that sends somebody
+    # hunting through the interpreter for a bug that is in the test.
+    cd build/deep && for i in $(seq 45); do mkdir "$name" && cd -P "$name" || exit; done
     cp "$interpreter" satl && cp -r "$libraries" satellite-numbers && cp "$top/examples/hello_world.satl" .
     timeout 30 ./satl hello_world.satl > run.out 2>&1; echo "$?|$(grep -c 'satl cannot read its own path (/proc/self/exe: File name too long)' run.out)")
 expect "a satl deeper than 4,096 bytes refuses, and loads nothing from the current folder" "5|1" "$deep_result"

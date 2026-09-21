@@ -41,6 +41,7 @@
 #include "config/rebuild.hpp"
 #include "config/run_config.hpp"
 #include "config/run_feedback.hpp"
+#include "licenses/licenses.hpp"
 #include "machine/s_codes.hpp"
 #include "machine/critical_report.hpp"
 #include "machine/exit_status.hpp"
@@ -138,6 +139,12 @@ signed long long int run_satl(int argc, char **argv)
     // into it would be advice against the thing they are already doing.
     if (command_line.command == Command::rebuild)
         return run_rebuild();
+
+    // --license BEFORE the config notice too, and for the same reason --rebuild is:
+    // a person asking what this binary is licensed under has asked a question that
+    // has nothing to do with whether their config.ini exists.
+    if (command_line.command == Command::licence)
+        return run_licence(command_line.which);
 
     // `satl --config`, for the same reason and one more: it writes machine.conf
     // and reads nothing out of config.ini, so a missing config.ini has no
