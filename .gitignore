@@ -101,6 +101,20 @@ __pycache__/
 # vendor/stage/ -- the shared install prefix every project is built into. Build output.
 /vendor/stage/
 
+# What vendor/build_stack.py makes. The two .py files beside them ARE in git -- they are
+# the recipe, the same rule as everywhere else in this folder -- and everything below is
+# regenerated from them by one command:
+#   build/            one meson/autotools/cmake build directory per project, plus the
+#                     generated native.ini that blocks meson's CMake fall-through
+#   build-cc/         the two-line -w compiler wrapper, written from --clang
+#   build-tools-path/ one symlink, python3 -> /usr/bin/python3, so a generator that
+#                     hardcodes `python3` does not run under this machine's alpha PyPy
+#   build_logs/       one log per project; the record of a run, not of the tree
+/vendor/build/
+/vendor/build-cc/
+/vendor/build-tools-path/
+/vendor/build_logs/
+
 # vendor/fonts/ -- IBM Plex Mono. Regular and OFL.txt ARE in git: the font is the
 # satellite look (titles are IBM Plex Mono 11px, never bold, never italic) and a static
 # satl must embed one, because a GTK4 binary with no font reachable exits 139 rather
