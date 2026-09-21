@@ -329,6 +329,33 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         // pressed the button. That is precisely the refusal WIN-11 claims to
         // have moved earlier. It now lives in names_in_statement, which walks
         // the WHOLE statement, so every spelling passes through it.
+        //
+        // HOW MANY IT WAS GIVEN *IS* CHECKED HERE, and it is the RECEIVER's
+        // business: `w.title("a", "b")` is a window being asked something a
+        // window does not do, and the receiver is what says so. Added
+        // 2026-09-21, because `.pressed` had this and its neighbours did not --
+        // one method refused before the run and the rest at it, for no reason a
+        // person could see.
+        //
+        // ONLY WITH BRACKETS. `w.title`, `b.pressed` and `w.ok` written bare are
+        // a READ, not a call with no arguments, so a missing `(` is not a
+        // missing argument -- and `.close` written bare is already told to put
+        // its brackets on, in the sentence that says a window DOES it.
+        const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+        std::size_t close = k + 2, given = 0;
+        if (bracketed && !brackets_at(row, k + 2, close, given)) {
+            why = spelling + "( is never closed on its line";
+            return satl_line_not_understood;
+        }
+        // `.press` AND `.pressed` SAY IT BETTER THEMSELVES, wherever they are
+        // written, so they are not counted twice and given the duller sentence.
+        if (bracketed && method != token::press_token && !window_method_takes_a_capsule_name(method) &&
+            given != static_cast<std::size_t>(window_method_arity(method))) {
+            why = spelling + " takes " + std::to_string(window_method_arity(method)) +
+                  (window_method_arity(method) == 1 ? " argument, and was given " : " arguments, and was given ") +
+                  std::to_string(given);
+            return satl_line_not_understood;
+        }
         return success;
     }
 
@@ -471,8 +498,23 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             std::size_t k = at;
             const std::string name = text_at(row, k);
             if (code_at(row, k) == token::left_parenthesis_token) {
-                if (capsules.find(name) == capsules.end()) {
+                const CapsuleTable::const_iterator called = capsules.find(name);
+                if (called == capsules.end()) {
                     why = "no capsule named " + name;
+                    return satl_line_not_understood;
+                }
+                // HOW MANY IT WAS GIVEN, before anything runs (2026-09-21).
+                // Until capsules took arguments there was nothing to count.
+                std::size_t close = k, given = 0;
+                if (!brackets_at(row, k, close, given)) {
+                    why = name + "( is never closed on its line";
+                    return satl_line_not_understood;
+                }
+                const std::size_t takes = called->second.parameters.size();
+                if (given != takes) {
+                    why = name + " takes " + std::to_string(takes) +
+                          (takes == 1 ? " argument, and was given " : " arguments, and was given ") +
+                          std::to_string(given);
                     return satl_line_not_understood;
                 }
             } else if (before_this == token::left_parenthesis_token &&
@@ -489,12 +531,34 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 // READ BACKWARDS AND NOT FORWARDS FROM THE METHOD, because a
                 // method CHAINS: `b.title("x").pressed(when_pressed)` puts this
                 // name far past the first method the receiver's own check saw.
-                if (capsules.find(name) == capsules.end()) {
+                const CapsuleTable::const_iterator answers = capsules.find(name);
+                if (answers == capsules.end()) {
                     why = "no capsule named " + name + " -- ." +
                           std::string(token::method_name_of(and_before_that)) +
                           "(...) names a capsule to run, and there is no satellite.capsule " + name +
                           "() in this program";
                     return satl_line_not_understood;
+                }
+                // AND WHAT A PRESS CAN HAND IT (2026-09-21). A press has nobody
+                // to write its arguments -- the program said `.pressed(name)`
+                // and walked away -- so the capsule's own declaration is what
+                // says what it wants, and there are only three things a press
+                // has to give: nothing, the piece, and the window it is in.
+                const std::vector<CapsuleParameter> &wants = answers->second.parameters;
+                if (wants.size() > 2) {
+                    why = name + " takes " + std::to_string(wants.size()) + " arguments, and a press "
+                          "has only two to give: write " + name + "(), " + name +
+                          "(satellite.variable.window the_piece), or " + name +
+                          "(satellite.variable.window the_piece, satellite.variable.window its_window)";
+                    return satl_line_not_understood;
+                }
+                for (const CapsuleParameter &takes : wants) {
+                    if (takes.declared() == word::code_of(1, 6, 18))
+                        continue;
+                    why = name + "'s " + takes.name + " is declared " +
+                          word::spelling_of(takes.declared()) + ", and a press hands it the piece that "
+                          "was pressed and the window it is in -- both are satellite.variable.window";
+                    return types_do_not_meet;
                 }
             } else if (declared.find(name) == declared.end()) {
                 why = name + " has no satellite.variable line declaring it";
@@ -923,11 +987,47 @@ signed long long int check_program(const BytecodeRegistry &registry,
                                    const FunctionTable &functions,
                                    MachineState &state)
 {
+    // EVERY HEADER FIRST, AND THAT ORDER IS NOT TIDINESS. A header capsules_in()
+    // could not read is refused here, where there is a program to stop and a
+    // sentence to print -- that scan has neither. It must happen in a pass of
+    // its own because the CapsuleTable is an unordered_map: with the test inside
+    // the loop below, whether a person was told "a parameter is a TYPE and then
+    // a name" or the far more confusing "show takes 0 arguments, and was given
+    // 1" depended on which capsule the hash happened to put first.
+    for (const std::pair<const std::string, CapsuleSite> &entry : capsules) {
+        if (!entry.second.trouble.empty())
+            return report_error("satl(check): " + entry.second.trouble, satl_line_not_understood);
+    }
+
     for (const std::pair<const std::string, CapsuleSite> &entry : capsules) {
         const std::vector<std::bitset<16>> &row = registry[entry.second.row];
         // One set a capsule: there are no globals, so a name declared elsewhere
         // is not declared here.
         DeclaredNames declared;
+        // ITS PARAMETERS ARE ITS FIRST DECLARED NAMES (2026-09-21). They are
+        // declared by the header rather than by a satellite.variable line, and
+        // without this the body that uses one is refused with "has no
+        // satellite.variable line declaring it" -- a true sentence about a name
+        // that really was declared, just not where the checker was looking.
+        //
+        // EXCEPT satellite.main's, AND THAT IS NOT AN OVERSIGHT. Every other
+        // capsule is entered through run_capsule, which binds what it was handed
+        // before the first line runs. main is entered by run_main, which is
+        // handed nothing and binds nothing -- so `satellite.main(... arguments)`
+        // declares a name that will not be there. Seeding it would move the
+        // refusal from the CHECKER to the WALKER, and check.sh asserts in as
+        // many words that "nothing ran before the refusal". Measured, before
+        // this line existed: the program printed "before" and THEN stopped.
+        //
+        // THE REAL FIX IS TO BIND THEM. 004's own first program has been written
+        // `satellite.main(satellite.container.list<satellite.variable.string> arguments)`
+        // since the beginning, and the words really are there -- as the settings
+        // arguments.argument_1, arguments.length and the rest. Turning those
+        // into the list that declaration promises is a milestone of its own.
+        if (entry.first != "satellite.main") {
+            for (const CapsuleParameter &takes : entry.second.parameters)
+                declared[takes.name] = takes.declared();
+        }
         EndingNames ending;
         std::size_t depth = 0;
         for (std::size_t at = entry.second.body; at < row.size(); ) {

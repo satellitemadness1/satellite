@@ -18,21 +18,33 @@ satellite.include(satellite)
 // all: a button wired to a capsule nobody wrote is refused with the rest of the
 // program, rather than at the moment somebody presses it.
 //
+// WHAT A PRESS HANDS THE CAPSULE is decided by what the capsule DECLARES, because
+// a press has nobody to write its arguments -- this program said `.pressed` and
+// walked away. There are three shapes and no others:
+//
+//     when_pressed()                                     nothing
+//     when_pressed(satellite.variable.window the_piece)  what was pressed
+//     when_pressed(the_piece, its_window)                ...and the window it is in
+//
+// THE SECOND WINDOW IS THE ONLY WAY A PRESS CAN CLOSE WHAT IT WAS PRESSED IN.
+// There are no globals, so `my_window` below is a name this capsule cannot see:
+// a capsule gets its own frame and the arguments are the whole of what reaches it.
+//
 // A PRESS RUNS ON THE INTERPRETER'S THREAD, never the window's, and presses run
-// ONE AT A TIME in the order they were made. So `when_pressed` is an ordinary
-// capsule with an ordinary frame -- it cannot see main's names, because there
-// are no globals and a capsule never could.
+// ONE AT A TIME in the order they were made -- so a press that arrives while the
+// program is still running its own lines waits, and is not lost.
 //
 // THE RUN DOES NOT END WHILE THE WINDOW IS OPEN. There is no wait word here and
-// there does not need to be one -- close the window and the program ends. A
-// program can close it itself with my_window.close().
+// there does not need to be one: press the button, the capsule closes the window,
+// and the program ends. Closing the window by hand ends it too.
 //
 // ON A MACHINE WITH NO SCREEN this refuses with S730 NO_DISPLAY and exits 50,
 // which is not a fault in the program: the same file on a desktop opens a window.
 
-satellite.capsule when_pressed()
+satellite.capsule when_pressed(satellite.variable.window the_piece, satellite.variable.window its_window)
 {
-    satellite.console.display("the button was pressed")
+    satellite.console.display("the button was pressed, and this closes the window it is in")
+    its_window.close()
 }
 
 satellite.capsule satellite.main()

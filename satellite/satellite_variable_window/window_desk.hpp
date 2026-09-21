@@ -88,13 +88,29 @@ unsigned long long int windows_open();
 // REVERSIBLE, AND THIS IS WHERE TO REVERSE IT: running the capsule on the desk
 // would mean giving the walker its own state per thread, which is a language
 // decision and not a window one.
-void the_desk_saw_a_press(const std::string &capsule);
+// ONE PRESS, WAITING TO BE RUN: which capsule answers it, WHAT was pressed, and
+// the window that was pressed in. All three are settled ON THE DESK at the
+// moment of the press and carried, rather than worked out later on the
+// interpreter's thread -- because later the window may be gone. A press that
+// closes the last window and a press queued behind it are both ordinary, and
+// the second one is still owed the window it happened in, closed or not: a
+// closed window is a thing satellite can hold and ask (`w.ok` is false).
+//
+// HANDLES AND NOT POINTERS, so nothing can be freed between the press and the
+// run; the queue's own reference is what guarantees it.
+struct APress {
+    std::string capsule;
+    WindowHandle piece;    // the button
+    WindowHandle window;   // the window it is in, null only if it was in none
+};
+
+void the_desk_saw_a_press(const std::string &capsule, const WindowHandle &piece);
 
 // WAITS FOR THE NEXT PRESS, ON THE INTERPRETER'S THREAD. True with `capsule`
 // filled in when there is one to run; false when every window is closed and no
 // press is left -- which is when the run is over. False at once when the desk
 // was never opened.
-bool the_desk_waits_for_a_press(std::string &capsule);
+bool the_desk_waits_for_a_press(APress &press);
 
 // BLOCKS UNTIL EVERY WINDOW IS CLOSED, then stops the desk and joins it. Returns
 // at once when the desk was never opened.

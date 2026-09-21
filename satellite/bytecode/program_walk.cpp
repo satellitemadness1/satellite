@@ -391,6 +391,54 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry)
                 continue;
             }
 
+            // ITS PARAMETERS, IF IT DECLARED ANY (2026-09-21). A type and then a
+            // name, commas between, exactly the way every other declaration in
+            // satellite is written. Anything else is recorded as `trouble` and
+            // refused by check_program with a line to point at -- this scan has
+            // none, so it must not be the thing that reports.
+            std::vector<CapsuleParameter> parameters;
+            std::string trouble;
+            if (code_at(row, k) == token::left_parenthesis_token) {
+                ++k;
+                if (code_at(row, k) != token::right_parenthesis_token) {
+                    for (;;) {
+                        if (!word::is_word_code(code_at(row, k))) {
+                            trouble = "satellite.capsule " + name + " -- a parameter is a TYPE and "
+                                      "then a name, like " + name + "(satellite.variable.number n)";
+                            break;
+                        }
+                        const Code declared = code_at(row, k);
+                        // THROUGH read_type_shape, so `satellite.container.list<satellite.variable.string>`
+                        // is one parameter and not a word followed by rubbish --
+                        // which is what satellite.main has been declared with
+                        // since 004's first program.
+                        TypeShape shape;
+                        unsigned int pending = 0;
+                        std::string unreadable;
+                        if (!read_type_shape(row, k, shape, pending, unreadable) || pending != 0) {
+                            trouble = "satellite.capsule " + name + " -- " +
+                                      (unreadable.empty() ? std::string("there is a > here with nothing "
+                                                                       "left for it to close")
+                                                          : unreadable);
+                            break;
+                        }
+                        if (code_at(row, k) != token::name_token) {
+                            trouble = "satellite.capsule " + name + " -- " +
+                                      std::string(word::spelling_of(declared)) +
+                                      " declares a name, and there is no name after it";
+                            break;
+                        }
+                        const std::string spelled = text_at(row, k);
+                        parameters.push_back(CapsuleParameter{std::move(shape), spelled});
+                        if (code_at(row, k) != token::comma_token)
+                            break;
+                        ++k;
+                    }
+                }
+                if (trouble.empty() && code_at(row, k) != token::right_parenthesis_token)
+                    trouble = "satellite.capsule " + name + " -- its ( is never closed on its line";
+            }
+
             while (k < row.size() && code_at(row, k) != token::left_brace_token &&
                    code_at(row, k) != token::right_brace_token) {
                 if (token::carries_a_count(code_at(row, k))) { skip_payload(row, k); continue; }
@@ -398,7 +446,7 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry)
             }
             if (code_at(row, k) != token::left_brace_token) { ++i; continue; }
 
-            table[name] = CapsuleSite{r, k + 1};
+            table[name] = CapsuleSite{r, k + 1, std::move(parameters), std::move(trouble)};
             i = k + 1;
         }
     }
@@ -1228,17 +1276,42 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             // A name followed by `(` is a capsule; a name followed by `=` is an
             // assignment. Nothing else is a statement a name can start.
             if (code_at(row, k) == token::left_parenthesis_token) {
-                at = past_the_statement(row, k);
                 const CapsuleTable::const_iterator found = capsules.find(name);
                 if (found == capsules.end()) {
+                    at = past_the_statement(row, k);
                     report_error("satl(run): no capsule named " + name, satl_line_not_understood);
                     continue;
                 }
-                // A NEW TABLE, so the capsule cannot see this body's variables.
-                VariableTable theirs;
-                const signed long long int stopped = close_files(
-                    theirs,
-                    run_statements(registry, capsules, functions, found->second.row, found->second.body, theirs, state));
+                // ITS ARGUMENTS, WORKED OUT IN THE CALLER'S FRAME (2026-09-21),
+                // which is the only frame they could be worked out in: the
+                // capsule's own has nothing in it yet, and that is the point.
+                std::vector<Value> arguments;
+                ExpressionContext context{variables, functions, state};
+                std::size_t a = k + 1;
+                if (code_at(row, a) != token::right_parenthesis_token) {
+                    for (;;) {
+                        arguments.push_back(evaluate_expression(row, a, context));
+                        if (context.code != success || code_at(row, a) != token::comma_token)
+                            break;
+                        ++a;
+                    }
+                }
+                if (context.code != success) {
+                    const std::size_t blame = context.placed ? context.refused_at : at;
+                    at = past_the_statement(row, k);
+                    return raise_at(context.code, context.why, name + "(...)", state, row, blame);
+                }
+                if (code_at(row, a) != token::right_parenthesis_token) {
+                    at = past_the_statement(row, k);
+                    return report_error("satl(run): " + name + "(...) " + kNotReadToTheEnd,
+                                        satl_line_not_understood);
+                }
+                at = past_the_statement(row, k);
+                // AND THE SAME run_capsule A PRESS USES. Two readers of "call a
+                // capsule" is the defect this file exists to not have twice: a
+                // new frame, the arguments bound, close_files on the way out.
+                const signed long long int stopped =
+                    run_capsule(registry, capsules, functions, name, std::move(arguments), state);
                 if (stops_the_program(stopped))
                     return stopped;
                 continue;
@@ -1272,6 +1345,7 @@ signed long long int run_capsule(const BytecodeRegistry &registry,
                                 const CapsuleTable &capsules,
                                 const FunctionTable &functions,
                                 const std::string &name,
+                                std::vector<Value> arguments,
                                 MachineState &state)
 {
     const CapsuleTable::const_iterator found = capsules.find(name);
@@ -1282,6 +1356,28 @@ signed long long int run_capsule(const BytecodeRegistry &registry,
     if (found == capsules.end())
         return report_error("satl(run): no capsule named " + name, satl_line_not_understood);
     VariableTable theirs;   // its own frame, as every capsule called by name has
+
+    // THE ARGUMENTS BECOME THE FIRST NAMES IN THAT FRAME, and they are the only
+    // names it starts with: there are no globals, so what was handed in is the
+    // whole of what a capsule can see of the world outside it.
+    //
+    // MEASURED AGAINST THE DECLARED TYPE, through the same value_fits() a
+    // satellite.variable line uses -- so `when_pressed(satellite.variable.number n)`
+    // handed a window is refused in the same words, and not quietly bound.
+    const std::vector<CapsuleParameter> &wants = found->second.parameters;
+    if (arguments.size() != wants.size())
+        return report_error("satl(run): " + name + " takes " + std::to_string(wants.size()) +
+                                (wants.size() == 1 ? " argument, and was given " : " arguments, and was given ") +
+                                std::to_string(arguments.size()),
+                            satl_line_not_understood);
+    for (std::size_t at = 0; at < arguments.size(); ++at) {
+        std::string why;
+        if (!value_fits(wants[at].shape, arguments[at], why))
+            return report_error("satl(run): " + name + "'s " + wants[at].name + " was declared " +
+                                    word::spelling_of(wants[at].declared()) + ", and " + why,
+                                types_do_not_meet);
+        theirs[wants[at].name] = Variable{wants[at].declared(), wants[at].shape, std::move(arguments[at])};
+    }
     return close_files(theirs,
                        run_statements(registry, capsules, functions, found->second.row, found->second.body,
                                       theirs, state));

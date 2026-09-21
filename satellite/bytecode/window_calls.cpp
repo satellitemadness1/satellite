@@ -303,11 +303,12 @@ void windows_hold_the_run_open(bool the_program_finished)
 }
 
 signed long long int windows_run_until_they_are_closed(
-    const std::function<signed long long int(const std::string &)> &run_a_capsule)
+    const std::function<signed long long int(const std::string &, const WindowHandle &,
+                                             const WindowHandle &)> &run_a_capsule)
 {
-    std::string capsule;
-    while (the_desk_waits_for_a_press(capsule)) {
-        const signed long long int stopped = run_a_capsule(capsule);
+    APress press;
+    while (the_desk_waits_for_a_press(press)) {
+        const signed long long int stopped = run_a_capsule(press.capsule, press.piece, press.window);
         // A CAPSULE THAT STOPPED STOPS THE RUN, the same as a line of main
         // would have. The report is already printed by the time this answers,
         // and main() takes the windows down on a code that stops -- a person
@@ -338,7 +339,8 @@ void windows_hold_the_run_open(bool) {}
 // AND NOTHING TO PRESS. No window word answered a window, so no button was made
 // and no press can be waiting.
 signed long long int windows_run_until_they_are_closed(
-    const std::function<signed long long int(const std::string &)> &)
+    const std::function<signed long long int(const std::string &, const WindowHandle &,
+                                             const WindowHandle &)> &)
 {
     return success;
 }

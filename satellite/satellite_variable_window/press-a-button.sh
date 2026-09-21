@@ -125,6 +125,33 @@ satellite.capsule satellite.main()
 }
 SATL
 
+# THE THIRD PROGRAM: THE CAPSULE CLOSES THE WINDOW IT WAS PRESSED IN. That is
+# the whole point of a press being able to take arguments -- there are no
+# globals, so main's name for the window is not something a capsule can see, and
+# before 2026-09-21 a pressed capsule could print and write files and nothing
+# else. Nobody closes the window here but the capsule, so an exit 0 IS the proof.
+cat > "$work/reach.satl" <<'SATL'
+satellite.include(satellite)
+
+satellite.capsule when_pressed(satellite.variable.window the_piece, satellite.variable.window its_window)
+{
+    satellite.console.display("the capsule was handed the window: " + its_window.title)
+    its_window.close()
+    satellite.console.display("the capsule closed it")
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("reached from a press", 800, 600)
+    satellite.variable.window b = satellite.window.button("press me")
+    b.pressed(when_pressed)
+    w.append(b, 400, 300)
+    b.press()
+    satellite.console.display("main is finished and has NOT closed anything")
+    satellite.return(satellite)
+}
+SATL
+
 # THE CLICKER. One process, one bus connection, one RemoteDesktop session.
 cat > "$work/click.py" <<'PY'
 import sys, time
@@ -202,6 +229,11 @@ env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY=satlwin \
     timeout 30 "$satl" "$work/selfpress.satl" >"$work/self.out" 2>&1
 echo "exit $?" > "$work/self_exit"
 
+# STAGE THREE: nobody closes the window but the capsule.
+env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY=satlwin \
+    timeout 30 "$satl" "$work/reach.satl" >"$work/reach.out" 2>&1
+echo "exit $?" > "$work/reach_exit"
+
 kill $mutter_pid 2>/dev/null
 wait $mutter_pid 2>/dev/null
 INSIDE
@@ -219,6 +251,10 @@ self_presses=$(grep -c '^the button was pressed$' "$work/self.out" 2>/dev/null |
 self_order=$(grep -n -E '^(main pressed it twice and is closing the window|the button was pressed)$' \
              "$work/self.out" 2>/dev/null | cut -d: -f2- | tr '\n' '|')
 
+reach_status=$(cat "$work/reach_exit" 2>/dev/null || echo "exit ?")
+reach_closed=$(grep -c '^the capsule closed it$' "$work/reach.out" 2>/dev/null || echo 0)
+reach_title=$(grep -c '^the capsule was handed the window: reached from a press$' "$work/reach.out" 2>/dev/null || echo 0)
+
 echo "---------------------------------------------------------------"
 echo "A REAL POINTER"
 echo "  satl $status        (0 -- the window was closed and the run ended)"
@@ -229,10 +265,16 @@ echo "THE PROGRAM PRESSING ITSELF -- .press()"
 echo "  satl $self_status        (0 -- drained after the window closed)"
 echo "  capsule runs from .press():         $self_presses   (want 2)"
 sed -n '/^main pressed it twice/,$p' "$work/self.out" 2>/dev/null | sed 's/^/    /'
+echo "THE CAPSULE REACHING ITS OWN WINDOW -- a capsule taking the piece and the window"
+echo "  satl $reach_status        (0 -- and NOBODY closed the window but the capsule)"
+echo "  the window arrived, by name:        $reach_title   (want 1)"
+echo "  the capsule closed it:              $reach_closed   (want 1)"
+sed -n '/^main is finished and has NOT/,$p' "$work/reach.out" 2>/dev/null | sed 's/^/    /'
 echo "---------------------------------------------------------------"
 
 want_order='main pressed it twice and is closing the window|the button was pressed|the button was pressed|'
 [ "$status" = "exit 0" ] && [ "$after" = "1" ] && [ "$presses" = "3" ] &&
-[ "$self_status" = "exit 0" ] && [ "$self_presses" = "2" ] && [ "$self_order" = "$want_order" ] || {
+[ "$self_status" = "exit 0" ] && [ "$self_presses" = "2" ] && [ "$self_order" = "$want_order" ] &&
+[ "$reach_status" = "exit 0" ] && [ "$reach_title" = "1" ] && [ "$reach_closed" = "1" ] || {
     echo "press-a-button.sh: FAILED"; exit 1; }
 echo "press-a-button.sh: a button was pressed -- by a person and by the program -- and satellite ran"

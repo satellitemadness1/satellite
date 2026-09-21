@@ -29,6 +29,7 @@
 #include "expression.hpp"
 #include "function_table.hpp"
 #include "include_shape.hpp"
+#include "type_shape.hpp"
 #include "value.hpp"
 
 #include <string>
@@ -81,10 +82,39 @@ signed long long int for_step_moves_by(const std::vector<std::bitset<16>> &row,
                                        int &moves_by,
                                        std::string &why);
 
+// ONE OF A CAPSULE'S PARAMETERS: what it was declared, and what it is called
+// inside the capsule. A TYPE AND THEN A NAME, which is how every other
+// declaration in satellite is written -- `satellite.variable.number n`.
+//
+// A NAME IS ALL A PARAMETER EVER WAS. satellite_capsule.hpp already says the
+// object model's whole difficulty in one line (the author, 2026-09-16:
+// "building the satellite object model will be very very hard to do, given that
+// names are simply strings"), and records `parameters` as names with no types.
+// A capsule written in a FILE does declare a type, and that type is what the
+// argument is measured against when it arrives, so it is kept here.
+// A SHAPE AND NOT A WORD, because `satellite.main` has taken a shaped parameter
+// since 004's first program: `satellite.main(satellite.container.list<satellite.variable.string> arguments)`.
+// A reader that only took a word refused every program in examples/ (2026-09-21).
+// It is the same TypeShape a satellite.variable line keeps, read by the same
+// read_type_shape, and measured by the same value_fits.
+struct CapsuleParameter {
+    TypeShape shape;            // satellite.variable.number, or a container with its <>
+    std::string name;           // what the capsule's own body calls it
+
+    token::Code declared() const { return shape.word; }
+};
+
 // Where a capsule's body begins: which row, and the code just past its `{`.
 struct CapsuleSite {
     std::size_t row = 0;
     std::size_t body = 0;   // the first code INSIDE the braces
+    std::vector<CapsuleParameter> parameters;   // in written order; empty for `name()`
+
+    // WHY THE HEADER COULD NOT BE READ, empty when it could. capsules_in() is a
+    // SCAN and not a checker -- it has no line to blame and nothing to print --
+    // so a header it cannot make sense of is recorded here and refused by
+    // check_program, before anything runs, with the rest of the program.
+    std::string trouble;
 };
 
 using CapsuleTable = std::unordered_map<std::string, CapsuleSite>;
@@ -139,12 +169,14 @@ signed long long int run_main(const BytecodeRegistry &registry,
 // defect program_walk.hpp already exists to avoid twice over.
 //
 // A NEW VariableTable EVERY TIME, because a capsule cannot see the caller's
-// names and there are no globals. Nothing is kept between one press and the
-// next but what the program itself wrote to a file.
+// names and there are no globals. **THE ARGUMENTS ARE THE ONLY WAY IN**, which
+// is why they exist: until 2026-09-21 a pressed capsule could print and write
+// files and touch nothing else, because nothing could be handed to it.
 signed long long int run_capsule(const BytecodeRegistry &registry,
                                  const CapsuleTable &capsules,
                                  const FunctionTable &functions,
                                  const std::string &name,
+                                 std::vector<Value> arguments,
                                  MachineState &state);
 
 // ONE TYPED LINE, tokenised as row 0 of its own registry: the prompt's way in

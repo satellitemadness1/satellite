@@ -431,10 +431,34 @@ signed long long int run_satl(int argc, char **argv)
     // main()'s, which happens AFTER run_satl has flushed -- so a program that
     // opened a window and printed a line really did print it.
     std::cout.flush();
+    //
+    // WHAT A PRESSED CAPSULE IS HANDED, and it is decided by what the capsule
+    // ITSELF declared (2026-09-21). A press has nobody to write its arguments:
+    // the program said `.pressed(when_pressed)` and then walked away, so the
+    // only thing that can say what `when_pressed` wants is `when_pressed`.
+    //
+    //   ()                       nothing. The capsule answers and asks nothing.
+    //   (piece)                  WHAT was pressed.
+    //   (piece, window)          ...and the window it was pressed in, which is
+    //                            the only way a press can close the window it
+    //                            belongs to: there are no globals, so main's
+    //                            name for that window is not reachable here.
+    //
+    // program_check.cpp refuses any other shape before the program runs, so
+    // this never has to say no.
     const signed long long int pressed = windows_run_until_they_are_closed(
-        [&bytecode_registry, &capsules, &functions, &state](const std::string &capsule) {
+        [&bytecode_registry, &capsules, &functions, &state](const std::string &capsule,
+                                                            const WindowHandle &piece,
+                                                            const WindowHandle &window) {
+            std::vector<Value> arguments;
+            const CapsuleTable::const_iterator wants = capsules.find(capsule);
+            if (wants != capsules.end() && !wants->second.parameters.empty()) {
+                arguments.push_back(Value::of_window(piece));
+                if (wants->second.parameters.size() > 1)
+                    arguments.push_back(Value::of_window(window));
+            }
             const signed long long int stopped =
-                run_capsule(bytecode_registry, capsules, functions, capsule, state);
+                run_capsule(bytecode_registry, capsules, functions, capsule, std::move(arguments), state);
             // AND EACH PRESS SAYS WHAT IT SAID WHEN IT SAID IT. A person who
             // pressed a button is owed the answer to THAT press, not a page of
             // answers when the window finally closes.

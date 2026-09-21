@@ -84,7 +84,13 @@ void windows_hold_the_run_open(bool the_program_finished);
 //
 // ANSWERS success AT ONCE when this satl has no window built in, or no window
 // was ever opened, so a program that draws nothing pays a function call.
+// `run_a_capsule` IS HANDED THE CAPSULE'S NAME, THE PIECE THAT WAS PRESSED AND
+// THE WINDOW IT WAS PRESSED IN. What it does with them is the caller's: a
+// capsule that declared no parameter is given nothing, one that declared one is
+// given the piece, and one that declared two is given the piece and the window
+// (SATELLITE_WINDOW.md Part 2b).
 signed long long int windows_run_until_they_are_closed(
-    const std::function<signed long long int(const std::string &)> &run_a_capsule);
+    const std::function<signed long long int(const std::string &, const WindowHandle &,
+                                             const WindowHandle &)> &run_a_capsule);
 
 } // namespace satellite004

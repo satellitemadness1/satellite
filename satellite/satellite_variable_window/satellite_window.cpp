@@ -37,9 +37,9 @@ void it_was_closed(GtkWidget *, gpointer user_data)
 // reading it without a lock right: window_pressed() sets it inside on_the_desk().
 void it_was_pressed(GtkWidget *, gpointer user_data)
 {
-    const satellite_window *button = static_cast<const satellite_window *>(user_data);
+    satellite_window *button = static_cast<satellite_window *>(user_data);
     if (!button->when_pressed.empty())
-        the_desk_saw_a_press(button->when_pressed);
+        the_desk_saw_a_press(button->when_pressed, button->shared_from_this());
 }
 
 GtkWidget *as_widget(const satellite_window &which) { return static_cast<GtkWidget *>(which.widget); }
@@ -152,6 +152,10 @@ bool window_append(satellite_window &into, const WindowHandle &piece, long long 
     // HELD BY THE WINDOW, so that the window going away can null this piece's
     // GtkWidget * before GTK frees it underneath a handle the program still has.
     into.pieces.push_back(piece);
+    // AND THE PIECE KNOWS WHICH WINDOW IT IS IN, which is how a pressed capsule
+    // reaches the window: `.append` is the one place a piece ever enters one, so
+    // it is the one place that can say so.
+    piece->inside_of = into.weak_from_this();
     return true;
 }
 

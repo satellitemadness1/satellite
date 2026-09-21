@@ -37,7 +37,17 @@ namespace satellite004 {
 class satellite_window;
 using WindowHandle = std::shared_ptr<satellite_window>;
 
-class satellite_window {
+// ENABLE_SHARED_FROM_THIS, and it is here for the press (WIN-11). GTK hands a
+// signal handler a raw pointer, and a press must answer the capsule with the
+// PIECE that was pressed -- which is a Value, which is a handle. Without this
+// the desk would have to search every open window's `pieces` for a matching
+// address to turn one back into the other, which is a lookup that can fail and
+// a null nobody knows what to do with.
+//
+// IT IS ALWAYS VALID WHERE IT IS USED. Every satellite_window is made with
+// make_shared, and the desk holds its own strong reference for as long as the
+// piece is on a screen -- which is the only time a press can arrive.
+class satellite_window : public std::enable_shared_from_this<satellite_window> {
 public:
     // WHICH PIECE OF A WINDOW THIS IS. `window` is the thing with a frame;
     // `button` is a thing put inside one.
@@ -59,6 +69,15 @@ public:
     // and a button's handle that a program still holds would otherwise keep a
     // GtkWidget * that GTK has already freed.
     std::vector<WindowHandle> pieces;
+
+    // AND THE WINDOW A PIECE IS IN, the other way along that same line. WEAK,
+    // because the window already holds this piece STRONGLY: two strong
+    // references in a ring is a window and a button that keep each other alive
+    // for ever, and a weak one back costs nothing and cannot.
+    //
+    // It is what lets a pressed capsule reach the window it was pressed in --
+    // a button's own `.close()` is refused, because only a window closes.
+    std::weak_ptr<satellite_window> inside_of;
 
     std::string title;            // what it was made with, and what .title reads back
     std::string text;             // a button's label

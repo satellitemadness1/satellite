@@ -7,8 +7,10 @@ file: it is what changed, and it moves WIN-1 off the critical path, answers WIN-
 and settles WIN-4. Parts 0 and 1 are still true and still worth not re-measuring.
 
 **A BUTTON TALKS BACK (2026-09-21).** `my_button.pressed(when_pressed)` runs a
-satellite capsule when the button is pressed, and `my_button.press()` is the
-program pressing it itself. **Part 2b is what was built, and
+satellite capsule when the button is pressed, `my_button.press()` is the program
+pressing it itself, and **a capsule now takes ARGUMENTS** — so a press can hand
+one the piece that was pressed and the window it is in. That last piece is a
+LANGUAGE milestone that the window forced; PROGRESS.md carries its row. **Part 2b is what was built, and
 which thread runs it.** It was proved by clicking a real button three times on a
 real compositor, not reasoned about:
 `satellite/satellite_variable_window/press-a-button.sh`.
@@ -481,6 +483,72 @@ argument by naming the other out loud:
 **AND IT MAKES THE PRESS PATH PROVABLE WITH NO POINTER AT ALL**, which is the
 second stage of `press-a-button.sh` below.
 
+## A CAPSULE TAKES ARGUMENTS, AND THAT IS WHAT MAKES A PRESS USEFUL
+
+The first version of this milestone shipped with this written under *what it
+does not give*: *"A pressed capsule cannot reach the window. There are no
+globals and a capsule gets its own frame, so `when_pressed` cannot see main's
+`my_window` and cannot close it. It can print and it can write a file."*
+
+**That is now built.** The author, 2026-09-21: *"let's do the arguments going to
+that capsule when pressed right now, I know it's an entire milestone"*.
+
+    satellite.capsule when_pressed(satellite.variable.window the_piece,
+                                   satellite.variable.window its_window)
+    {
+        its_window.close()
+    }
+
+**THE WALKER IGNORED A CAPSULE'S PARAMETERS ENTIRELY**, and had since 004 began:
+every capsule was entered with a fresh empty `VariableTable`. 004's own first
+program has been written
+`satellite.main(satellite.container.list<satellite.variable.string> arguments)`
+from the start with nothing ever bound to it. So this was never a window
+feature — it is the language, and PROGRESS.md is where its row lives.
+
+**WHAT A PRESS HANDS IT IS DECIDED BY THE CAPSULE, and it has to be.** A press
+has nobody to write its arguments: the program said `.pressed(when_pressed)` and
+walked away. So the only thing that can say what `when_pressed` wants is
+`when_pressed`, and there are exactly three shapes:
+
+| the capsule declares | it is handed |
+|---|---|
+| `when_pressed()` | nothing |
+| `when_pressed(satellite.variable.window p)` | WHAT was pressed |
+| `when_pressed(p, w)` | ...and the window it was pressed in |
+
+Anything else is refused where the capsule is NAMED, before the program runs —
+a third parameter, or one declared anything but `satellite.variable.window`.
+
+**THE PIECE KNOWS ITS WINDOW BECAUSE `.append` WROTE IT DOWN**, which is the one
+place a piece ever enters one. The link is a `std::weak_ptr`: the window already
+holds the piece strongly, and two strong references in a ring is a window and a
+button that keep each other alive for ever.
+
+**BOTH ARE SETTLED ON THE DESK, AT THE MOMENT OF THE PRESS**, and carried in the
+queue rather than worked out later — because later the window may be gone. A
+press that closes the last window and a press queued behind it are both
+ordinary, and the second is still owed the window it happened in, closed or not.
+A closed window is a thing satellite can hold and ask: `w.ok` is false.
+
+**`satellite_window` gained `enable_shared_from_this` for this.** GTK hands a
+handler a raw pointer and a capsule must be handed a VALUE, which is a handle.
+It is always valid where it is used: every one is made with `make_shared`, and
+the desk holds a strong reference for as long as a piece is on a screen — which
+is the only time a press can arrive.
+
+**ONE READER OF "CALL A CAPSULE".** The walker's own inline arm for `my_capsule()`
+now calls the same `run_capsule` a press does, so the new frame, the binding and
+the `close_files` on the way out cannot come to differ between them.
+
+**AND `satellite.main`'s PARAMETERS ARE NOT SEEDED as declared names**, which
+looks like an oversight and is the opposite. `run_main` is handed nothing and
+binds nothing, so seeding them moved the refusal from the CHECKER to the WALKER:
+measured, the program printed `before` and THEN stopped. check.sh asserts in as
+many words that *nothing ran before the refusal*. **The real fix is to bind
+them** — the words really are there, as the settings `arguments.argument_1`,
+`arguments.length` and the rest — and that is a milestone of its own.
+
 ## WHAT WAS BUILT
 
 | where | what |
@@ -488,18 +556,20 @@ second stage of `press-a-button.sh` below.
 | `REGISTRY.satellite` | two method tokens, `pressed` 0x0B29 and `press` 0x0B2A. `token_codes.hpp` is GENERATED from them |
 | `satellite_window.hpp/.cpp` | `when_pressed`, `press_is_connected`, `window_pressed()`, `window_press()`, the `clicked` handler |
 | `window_desk.hpp/.cpp` | the press queue, `the_desk_saw_a_press`, `the_desk_waits_for_a_press` |
-| `bytecode/program_walk.hpp/.cpp` | `run_capsule()` — the walker's own capsule arm, reachable from outside |
+| `bytecode/program_walk.hpp/.cpp` | `run_capsule()`, `CapsuleParameter`, and a header `capsules_in` now READS |
 | `bytecode/window_calls.hpp/.cpp` | `.pressed`, and `windows_run_until_they_are_closed` in BOTH halves |
 | `bytecode/expression.cpp` | the one argument in the language read as written |
-| `bytecode/program_check.cpp` | the capsule must exist, and the argument must be ONE name |
+| `bytecode/program_check.cpp` | the capsule must exist, the argument must be ONE name, and what a press may hand it |
 | `structured-library.cpp` | the pump, after the program's lines and before the profiles print |
-| `examples/window.satl`, `check.sh` | the author's line, and thirteen rows |
+| `satellite_object/` (via the handle) | `enable_shared_from_this`, and a piece's weak link to its window |
+| `examples/window.satl`, `check.sh`, `PROGRESS.md` | a button that closes its window, and twenty-two rows |
 
 ## IT WAS PROVED BY PRESSING ONE
 
 `satellite/satellite_variable_window/press-a-button.sh`, about thirty seconds,
-run by hand. It starts a mutter of its own and proves it **twice**: once with a
-real pointer, and once with `.press()`, which needs no pointer at all.
+run by hand. It starts a mutter of its own and proves it **three ways**: with a
+real pointer, with `.press()` which needs no pointer at all, and with a capsule
+that closes the window it was pressed in.
 
     A REAL POINTER
       satl exit 0        (0 -- the window was closed and the run ended)
@@ -515,6 +585,17 @@ real pointer, and once with `.press()`, which needs no pointer at all.
         main pressed it twice and is closing the window
         the button was pressed
         the button was pressed
+    THE CAPSULE REACHING ITS OWN WINDOW -- a capsule taking the piece and the window
+      satl exit 0        (0 -- and NOBODY closed the window but the capsule)
+      the window arrived, by name:        1   (want 1)
+      the capsule closed it:              1   (want 1)
+        main is finished and has NOT closed anything
+        the capsule was handed the window: reached from a press
+        the capsule closed it
+
+**THE THIRD STAGE'S EXIT 0 IS THE WHOLE PROOF.** Nobody closes that window but
+the capsule: main presses and walks away, and if the argument had not arrived
+the window would still be open when the timeout fired.
 
 **THE SECOND STAGE PROVES WHAT A CLICK CANNOT.** Its program presses twice and
 then CLOSES THE WINDOW on the next line, and both capsules still run — which is
@@ -559,14 +640,13 @@ locking up" is a defect Part 2a already fixed once.
 
 ## WHAT WIN-11 DOES NOT GIVE, and the first is the one that will be felt
 
-- **A pressed capsule cannot reach the window.** There are no globals (the
-  author, 2026-09-16: *"the only globals are the includes, other files"*) and a
-  capsule gets its own frame, so `when_pressed` cannot see main's `my_window` and
-  cannot close it. It can print and it can write a file. **The way out is capsule
-  PARAMETERS** — `.pressed` handing the button to the capsule that answers it —
-  and the walker ignores a capsule's parameters entirely today (`run_statements`
-  calls every capsule with a fresh empty `VariableTable`), so that is a language
-  milestone and not a window one.
+- ~~**A pressed capsule cannot reach the window.**~~ **DONE the same day** — see
+  *A capsule takes arguments* above. It was a language milestone and it was
+  built, on the author's word: *"I know it's an entire milestone, but we can
+  still accomplish it"*.
+- **`satellite.main`'s own declared parameter is still not bound.** 004's first
+  program asks for the program's words as a list and gets nothing; using the name
+  is refused by the checker. The words exist as settings. THAT is the next one.
 - **Nothing is kept between presses.** A press costs a capsule walk from cold
   each time, because there is no frame that outlives one.
 - **A press at the PROMPT is not run**, and the reason it is safe is NOT the one
@@ -937,10 +1017,10 @@ global statement ring. Part 2b has the ruling, what it gives, the two open
 questions it leaves the author, and the `gtk_init_check` D-Bus hang it found on
 the way. Proved by clicking a real button three times, not reasoned about.
 
-**What it does NOT give, and it will be felt first:** a pressed capsule cannot
-reach the window. No globals and no capsule parameters means `when_pressed`
-cannot see main's `my_window`, so it can print and write files and nothing else.
-The way out is capsule parameters, which is a LANGUAGE milestone.
+**A capsule now takes ARGUMENTS**, built the same day and the thing that makes a
+press worth having: a press hands the capsule the piece that was pressed and the
+window it is in, which is the only way it can close what it was pressed in. That
+is a LANGUAGE milestone the window forced; PROGRESS.md carries its row.
 
 ---
 
@@ -953,9 +1033,11 @@ The way out is capsule parameters, which is a LANGUAGE milestone.
   next widget.
 - ~~**No widget can talk back yet.**~~ **DONE 2026-09-21 — WIN-11, Part 2b.**
   A press queues the capsule's name and the INTERPRETER's thread walks it, proved
-  by clicking a real button three times (`press-a-button.sh`). What a press
-  cannot do is reach the window, because a capsule has no globals and no
-  parameters — Part 2b lists that, and the two questions it leaves open.
+  by clicking a real button three times (`press-a-button.sh`). A press hands the
+  capsule the piece that was pressed and the window it is in, so it can close
+  what it was pressed in — which needed capsules to take ARGUMENTS at all, a
+  language milestone built the same day (PROGRESS.md). Part 2b has the two
+  questions it leaves open.
 - **INF-2 was never reviewed by a fresh reader** (all four agents died on the
   account's session limit, 2026-09-18). Its evidence is `check_infinity.py`
   (98,184 cases, two mutants caught) and the suite. **INF-3** is next in

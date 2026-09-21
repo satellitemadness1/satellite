@@ -1883,6 +1883,141 @@ expect "press is a method token at 0000101100101010, generated into token_codes.
 expect "pressed is a method token at 0000101100101001, and token_codes.hpp was generated from it" "1|1" \
        "$(grep -c '^0000101100101001  pressed_token ' REGISTRY.satellite)|$(grep -c 'Code pressed_token = 0x0B29;' satellite/bytecode/token_codes.hpp)"
 
+# ---------------------------------------------------------------------------
+# A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
+# parameters entirely until now -- every capsule was entered with a fresh empty
+# VariableTable -- which is why a pressed capsule could print and write files and
+# touch nothing else. These rows are the language half; the window half is above.
+# ---------------------------------------------------------------------------
+cat > build/capsule_args.satl <<'CAP_EOF'
+satellite.include(satellite)
+satellite.capsule add_them(satellite.variable.number a, satellite.variable.number b)
+{
+    satellite.console.display(a + b)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.number x = 40
+    add_them(2, 3)
+    add_them(x, 2)
+    satellite.return(satellite)
+}
+CAP_EOF
+expect "a capsule is handed its arguments, and an argument may be an expression" "5|42" \
+       "$("$interpreter" build/capsule_args.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+
+cat > build/capsule_count.satl <<'CAP_EOF'
+satellite.include(satellite)
+satellite.capsule show(satellite.variable.number n)
+{
+    satellite.console.display(n)
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    show(1, 2)
+    satellite.return(satellite)
+}
+CAP_EOF
+"$interpreter" build/capsule_count.satl > build/capsule_count.out 2>&1
+expect "a capsule given the wrong number of arguments is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/capsule_count.out)"
+
+cat > build/capsule_type.satl <<'CAP_EOF'
+satellite.include(satellite)
+satellite.capsule show(satellite.variable.number n)
+{
+    satellite.console.display(n)
+}
+satellite.capsule satellite.main()
+{
+    show("text")
+    satellite.return(satellite)
+}
+CAP_EOF
+"$interpreter" build/capsule_type.satl > build/capsule_type.out 2>&1
+expect "an argument that does not fit the declared type is refused" 27 $?
+expect "... and names the parameter and what it was declared" 1 \
+       "$(tr '\n' ' ' < build/capsule_type.out | grep -cF "show's n was declared satellite.variable.number")"
+
+# A HEADER THE SCAN CANNOT READ is refused by the CHECKER, which has a line to
+# blame -- capsules_in() has none. IN A PASS OF ITS OWN, because the CapsuleTable
+# is an unordered_map: inside the body loop, whether a person saw this sentence
+# or the far more confusing "show takes 0 arguments, and was given 1" depended on
+# which capsule the hash happened to put first.
+cat > build/capsule_header.satl <<'CAP_EOF'
+satellite.include(satellite)
+satellite.capsule show(satellite.variable.number)
+{
+    satellite.console.display("x")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    show(1)
+    satellite.return(satellite)
+}
+CAP_EOF
+"$interpreter" build/capsule_header.satl > build/capsule_header.out 2>&1
+expect "a parameter with no name is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/capsule_header.out)"
+expect "... and blames the header, not the call" 1 \
+       "$(tr '\n' ' ' < build/capsule_header.out | grep -cF 'satellite.capsule show -- satellite.variable.number declares a name')"
+
+# satellite.main's OWN declared parameter is NOT bound yet -- run_main is handed
+# nothing -- so using it must stay a CHECKER refusal. Seeded as a declared name
+# it became a walker refusal instead, and the program printed "before" first.
+cat > build/capsule_main_arg.satl <<'CAP_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("before")
+    satellite.console.display(arguments)
+    satellite.return(satellite)
+}
+CAP_EOF
+"$interpreter" build/capsule_main_arg.satl > build/capsule_main_arg.out 2>&1
+expect "satellite.main's declared parameter is refused by the CHECKER, nothing ran" "25|" \
+       "$?|$(grep -x before build/capsule_main_arg.out)"
+
+# WHAT A PRESS CAN HAND A CAPSULE is nothing, the piece, or the piece and its
+# window -- so a capsule wanting anything else is refused where it is named.
+cat > build/window_press3.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed(satellite.variable.window a, satellite.variable.window b, satellite.variable.window c)
+{
+    satellite.console.display("x")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window b = satellite.window.button("x")
+    b.pressed(when_pressed)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_press3.satl > build/window_press3.out 2>&1
+expect "a pressed capsule wanting three arguments is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_press3.out)"
+
+cat > build/window_presstype.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_pressed(satellite.variable.number n)
+{
+    satellite.console.display(n)
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window b = satellite.window.button("x")
+    b.pressed(when_pressed)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_presstype.satl > build/window_presstype.out 2>&1
+expect "a pressed capsule wanting a number is refused -- a press hands it windows" "27|" \
+       "$?|$(grep -x before build/window_presstype.out)"
+
 mkdir -p build/alone && cp "$interpreter" build/alone/satl
 build/alone/satl examples/hello_world.satl > /dev/null 2>&1; expect "no libraries beside the interpreter" 5 $?
 # A satl deeper than the kernel can name (ERROR #8): refused with 5 and the reason, and

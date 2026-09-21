@@ -39,7 +39,7 @@ std::vector<WindowHandle> open_windows;
 // enough to matter, and a bound here would be a limit the language does not
 // have -- a press silently dropped is exactly the answer that is wrong and does
 // not say so.
-std::deque<std::string> presses;
+std::deque<APress> presses;
 
 // THE JOB, AND THE ONE PLACE IT IS WAITED ON. g_main_context_invoke copies
 // nothing and takes a pointer, so the parcel lives on the calling thread's
@@ -169,16 +169,18 @@ unsigned long long int windows_open()
 // ON THE DESK'S OWN THREAD, out of GTK's `clicked` -- the same rule as
 // the_desk_let_go_of above, and for the same reason: the desk must never go
 // through on_the_desk(), which would be the desk waiting on itself.
-void the_desk_saw_a_press(const std::string &capsule)
+void the_desk_saw_a_press(const std::string &capsule, const WindowHandle &piece)
 {
     {
         std::lock_guard<std::mutex> lock(desk_mutex);
-        presses.push_back(capsule);
+        // THE WINDOW IS LOOKED UP HERE, ON THE DESK, while it is certainly
+        // alive -- `.append` wrote the link and the desk holds the window open.
+        presses.push_back(APress{capsule, piece, piece == nullptr ? WindowHandle() : piece->inside_of.lock()});
     }
     desk_changed.notify_all();
 }
 
-bool the_desk_waits_for_a_press(std::string &capsule)
+bool the_desk_waits_for_a_press(APress &press)
 {
     std::unique_lock<std::mutex> lock(desk_mutex);
     if (!desk_thread.joinable())
@@ -190,7 +192,7 @@ bool the_desk_waits_for_a_press(std::string &capsule)
     // where a person pressed something and nothing happened.
     if (presses.empty())
         return false;
-    capsule = presses.front();
+    press = presses.front();
     presses.pop_front();
     return true;
 }
