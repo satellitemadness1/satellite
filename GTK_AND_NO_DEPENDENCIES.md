@@ -4,8 +4,14 @@
 nothing downloaded.** Written 2026-09-20 at the author's asking, diverging from
 SATELLITE_WINDOW.md's plan because the subject turned out to be its own.
 
-Milestones are `DEP-n`. SATELLITE_WINDOW.md keeps `WIN-n` and is still the
-record for the *window*; this file is the record for what the window **costs**.
+**TWO FAMILIES OF MILESTONE LIVE HERE**, one per half of the title.
+`DEP-n` is *no dependencies* — what the window **costs**. `GTK-n` is *GTK* —
+**every widget**, and how one is added (Part 2G, written 2026-09-21 at the
+author's asking). SATELLITE_WINDOW.md keeps `WIN-n` and is still the record for
+the **window itself**: the one GTK thread, the carried data, the press queue.
+
+**Part 00 is the chart**: which milestone calls which vendor library, and which
+of the twenty-four vendored projects no satellite word has ever reached.
 
 The author, 2026-09-20, in his own words:
 
@@ -16,6 +22,130 @@ The author, 2026-09-20, in his own words:
 > *"we don't care how big the executable is — 100mb transfers across the
 > internet in... 2-3 seconds"*, and the ceiling he then worked out:
 > **5 × 60 × 40 = 12,000 MB.** *"12 gigabytes, we are okay"*.
+
+---
+
+# Part 00 — THE CHART: which milestone calls which vendor library
+
+Written 2026-09-21, the author asking for it in these words: *"we need a chart of
+what milestones call which vendor library, at the top of that document"*.
+
+**TWO KINDS OF CALLING, AND THE CHART KEEPS THEM APART**, because they cost
+completely different things:
+
+- **CALLS** — satellite's own C++ names a function in that library. Changing the
+  library can break satellite's own source.
+- **reaches** — GTK does it underneath, because satellite asked GTK for
+  something. Nothing of ours names it; it is in the binary because the thing
+  above it needs it.
+
+Today satellite's own code calls **four** of the twenty-four projects by name:
+gtk, glib, gobject and gio — and gio only for the GResource that WIN-1 carries.
+Everything else in the list below is reached. **That is the number the widget
+milestones move**, and the last table says by how much.
+
+## The stack, as it is actually built
+
+24 projects, 33 archives, `vendor/stage/BUILD_MANIFEST.txt` is the authority and
+is written by the build rather than by hand.
+
+    gtk 4.24.0        glib 2.90.0       pango 1.58.2      cairo 1.18.4
+    harfbuzz 14.4.0   freetype 2.14.3   fontconfig 2.18.3 fribidi 1.0.17
+    gdk-pixbuf 2.44.8 libpng 1.6.58     libjpeg-turbo 3.2.0  libtiff 4.7.2
+    zlib 1.3.2        pixman 0.46.4     graphene 1.10.8   libepoxy 1.5.10
+    libxkbcommon 1.13.2   xkeyboard-config 2.48   expat 2.8.4   pcre2 10.48
+    libffi 3.8.0      wayland-protocols 1.49   gperf 3.3   meson 1.12.0
+
+`xkeyboard-config`, `wayland-protocols`, `gperf` and `meson` link nothing —
+the first two are **data and XML**, the last two are **build tools**. Twenty
+projects produce the archives.
+
+## Table A — every milestone, and what it calls
+
+`✔` is built. `—` is not.
+
+| | milestone | satellite's own code CALLS | reached underneath it |
+|---|---|---|---|
+| ✔ | **WIN-1** the carried data | glib, gio (GResource), zlib (the blob is compressed) | fontconfig, freetype, libxkbcommon + xkeyboard-config **data** |
+| ✔ | **WIN-2** the one GTK thread | gtk (`gtk_init_check`), glib (`GMainContext`, `GMainLoop`) | gdk, gdk-wayland, gsk, graphene, libepoxy, libxkbcommon |
+| ✔ | **WIN-3** window and button | gtk | pango + pangocairo + pangoft2, harfbuzz, fribidi, freetype, fontconfig, expat, cairo, pixman |
+| ✔ | **WIN-11** a press | gtk, gobject (`g_signal_connect`, `g_signal_emit_by_name`) | libffi — the closure marshaller is libffi's |
+| — | **GTK-1** a label | gtk | the whole pango stack, as a button's label already does |
+| — | **GTK-2** a person types | gtk | pango |
+| — | **GTK-3** on and off | gtk | — |
+| — | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
+| — | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
+| — | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
+| — | **GTK-7** rows, columns, a grid | gtk | — |
+| — | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
+| — | **GTK-9** every piece talks back | gtk, gobject | libffi |
+| — | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
+| — | **GTK-11** asking a person | gtk, **gio** (`GFile`, `GAsyncResult`, `GCancellable`) | — |
+| — | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GActionMap`), gtk | — |
+| — | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
+| — | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
+| — | **GTK-15** a canvas | gtk, **cairo directly** | pixman, freetype |
+| — | **GTK-16** more than one screenful | gtk | — |
+| — | **GTK-17** `satellite.console` is a window | **VTE — NOT VENDORED**, gtk, pango | freetype, harfbuzz, fribidi |
+| — | **GTK-18** `satellite.terminal` is a bash prompt | VTE, glib (`g_spawn`) | — |
+| ✔ | **DEP-1** every source in the folder | **all 24** | — |
+| — | **DEP-2** the word libraries link in | none — it is a link shape, not a call | — |
+| — | **DEP-3** prove it on a bare machine | none | all of them, which is the point |
+| — | **DEP-4** the eight that remain | none — libresolv and libwayland are the **machine's** | — |
+| — | **DEP-5** one application | VTE | — |
+| — | **DEP-6** the notices | the licence of every one of the 24 | — |
+| — | **DEP-7** the lower layer's versions | zlib, libpng, freetype, harfbuzz | — |
+| — | **DEP-8** the distribute package | none | — |
+| — | **DEP-9** other machines | the nine X libraries, **none of them vendored** | — |
+
+## Table B — every vendored project, and the first milestone that needs it
+
+The column that matters is the last one. **Ten of the twenty archive-producing
+projects are in satl today and no satellite word has ever reached them.**
+
+| project | archives | what it is there for | first milestone that CALLS it |
+|---|---|---|---|
+| **gtk** | libgtk, libgdk, libgdk-wayland, libgsk, libgtk_css, libgtk_svg | every widget | WIN-2 ✔ |
+| **glib** | libglib-2.0, libgobject-2.0, libgio-2.0, libgmodule-2.0, libgthread-2.0 | the object system, the main loop, the resource | WIN-1 ✔ |
+| **pango** | libpango-1.0, libpangocairo-1.0, libpangoft2-1.0 | laying text out | reached at WIN-3; **called by nothing of ours, ever** |
+| **cairo** | libcairo, libcairo-gobject | drawing | reached at WIN-3; **CALLED at GTK-15** |
+| **pixman** | libpixman-1 (+ mmx, sse2, ssse3) | cairo's rasteriser | reached only |
+| **harfbuzz** | libharfbuzz, libharfbuzz-subset | shaping a run of characters into glyphs | reached only |
+| **freetype** | libfreetype | a glyph out of a `.ttf` | reached only |
+| **fontconfig** | libfontconfig | finding IBM Plex Mono in the spill | reached at WIN-1 |
+| **fribidi** | libfribidi | right-to-left text | reached only |
+| **expat** | libexpat | fontconfig's XML parser, on our own `fonts.conf` | reached at WIN-1 |
+| **gdk-pixbuf** | libgdk_pixbuf-2.0 + 13 loaders | a picture off the disk | **GTK-6 — nothing calls it today** |
+| **libpng** | libpng16 | `.png` | **GTK-6** |
+| **libjpeg-turbo** | libjpeg | `.jpg` | **GTK-6** |
+| **libtiff** | libtiff | `.tif` | **GTK-6** |
+| **zlib** | libz | the compressed GResource; png | WIN-1 ✔ |
+| **graphene** | libgraphene-1.0 | the render node maths | reached only |
+| **libepoxy** | libepoxy | GL entry points for GSK | reached only |
+| **libxkbcommon** | libxkbcommon | a Wayland keymap into keysyms | reached at WIN-2; **CALLED at GTK-14** |
+| **xkeyboard-config** | **data, 293 files** | what libxkbcommon reads | carried since WIN-1 ✔ |
+| **libffi** | libffi | gobject's generic closure marshaller | reached at WIN-11 |
+| **pcre2** | libpcre2-8 | glib's `GRegex` | **nothing here has ever needed one** |
+| **wayland-protocols** | **XML, build time** | the protocol gdk-wayland is generated from | DEP-1 ✔ |
+| **gperf** | **a build tool** | fontconfig's perfect hashes | DEP-1 ✔ |
+| **meson** | **a build tool** | builds the other 23 | DEP-1 ✔ |
+| *(also linked)* | libgirepository-2.0, libcairo-script-interpreter | introspection; a cairo trace replayer | **dead weight — nothing calls either** |
+| **VTE** | **NOT IN vendor/new** | a terminal in a window | **GTK-17, and it has to be vendored first** |
+
+## What the chart is FOR, and the three things it already says
+
+1. **`vendor/new/` is missing one tarball.** Twenty-four projects are frozen
+   there and **VTE is not one of them**, so GTK-17 and GTK-18 — the two the
+   author named by name — cannot start until DEP-1 is extended. That is the
+   single largest thing this chart found.
+2. **libpng, libjpeg-turbo, libtiff and gdk-pixbuf are 2.6 MB of satl that no
+   satellite program can reach.** GTK-6 is what earns them. Until it lands they
+   are carried for GTK's icon loading and nothing else.
+3. **pcre2, libgirepository and libcairo-script-interpreter are called by
+   nobody at all**, and no milestone below ever will. They are in the link
+   because the archive sweep in `047-window.mk` takes every `.a` it finds.
+   **Not a bug** — `--start-group` drops what nothing references — but worth
+   saying once so nobody goes looking for the word that uses them.
 
 ---
 
@@ -187,7 +317,7 @@ produces a real 49 MB archive. Tested.
 
 ---
 
-# Part 2 — the milestones
+# Part 2 — the DEP milestones: what the window COSTS
 
 ## DEP-1 — every source inside the project folder — **DO THIS FIRST**
 
@@ -338,6 +468,524 @@ change.
 
 ---
 
+# Part 2G — the GTK milestones: every widget, and how one is added
+
+**`DEP-n` is the "NO DEPENDENCIES" half of this file's title. `GTK-n` is the
+"GTK" half**, and it was missing until 2026-09-21. The author:
+
+> *"every widget needs to be added somehow, some widgets you can add by
+> yourself, most of them you can add by yourself, we especially need
+> satellite.console to be a window with libvte and satellite.terminal to be a
+> bash prompt"*
+
+SATELLITE_WINDOW.md's `WIN-n` is the record for **the window itself** — the one
+GTK thread, the carried data, the press queue, the purity audit. `GTK-n` is the
+record for **what a program can put in one**. Four `WIN-n` are built and they
+gave satellite exactly **two** pieces: a window and a button.
+
+## GTK-0 — THE RECIPE: the seven places one widget touches
+
+This is not a milestone, it is the thing every milestone below repeats. It was
+worked out by reading what `button` actually cost, and it is written here so the
+tenth widget costs an hour rather than a morning.
+
+**A WIDGET IS NOT A NEW TYPE.** `satellite_window.hpp` settled this on
+2026-09-20 and nothing since has wanted it back: *"A WINDOW AND A BUTTON ARE ONE
+TYPE, not two arms"*. Every piece is `satellite.variable.window` and carries a
+`Piece` saying which it is. Twenty widgets is twenty `Piece` values and **one**
+arm of the object model, one `Value` branch, one entry in every switch over
+`Kind`. Two arms would have been two entries saying the same thing twice; twenty
+would be unmaintainable and the author would be right to refuse it.
+
+**THE SEVEN PLACES**, in the order to touch them:
+
+| | file | what goes in |
+|---|---|---|
+| 1 | `words/words_004.tsv` | one row: `1 27 n<TAB>satellite.window.thing(what)` |
+| 2 | — | `python3 words/make_words.py` then `python3 satellite/bytecode/make_word_codes.py`. **Never edit `word_codes.hpp`.** |
+| 3 | `REGISTRY.satellite` | a row per NEW method, next free code; then `python3 satellite/bytecode/make_token_codes.py` |
+| 4 | `satellite_window.hpp` | a `Piece` value, and the factory's declaration |
+| 5 | `satellite_window.cpp` *(or its successor — see below)* | the factory, **every GTK call inside `on_the_desk()`** |
+| 6 | `bytecode/window_calls.cpp` | `is_window_word`, `window_word_arity`, `window_word_takes`, the `call_window_word` branch, `window_method_arity`, the `call_window_method` branch — **and the `#else` half must still answer the same shapes** |
+| 7 | `check.sh` | at least: the word is refused with the wrong argument count *before anything runs*; the word's numbers are in `words.tsv`; the method is refused on a piece that does not have it |
+
+**THE NUMBER IS FROZEN THE DAY THE ROW LANDS.** `make_words.py` takes the next
+free number under `1 27` and stops rather than write a gap or a clash, so the
+order the milestones are BUILT in is the order the numbers are handed out. The
+spellings below are the intention, not a reservation — a widget not yet built
+has no number.
+
+**AND THE FILES HAVE TO SPLIT FIRST.** `satellite_window.cpp` is 274 lines
+against the author's *"try to build for 300 lines"*, and GTK-1 alone would pass
+it. The split, decided once here so no milestone re-decides it:
+
+    satellite_window.cpp    the window: new, close, focus, title, append, and the run
+    window_pieces.cpp       every factory -- button, label, text box, ... (GTK-1)
+    window_asks.cpp         reading a piece back: .text, .value, .on, .chosen (GTK-2)
+    window_answers.cpp      the signals beyond `clicked` (GTK-9)
+
+`window_calls.cpp` (350 lines) splits the same way when GTK-2 lands, into the
+words and the methods.
+
+**WHAT A WIDGET COSTS IN THE BINARY IS NOTHING.** Every archive is already
+linked, every widget class is already in `libgtk.a`, and `--start-group` drops
+what nothing references — so the first program to say `satellite.window.label`
+pulls in `gtklabel.o` and no library at all. **The exception is GTK-6**, which
+turns on four projects nothing has reached yet, and **GTK-17**, which needs a
+library that is not in the folder.
+
+---
+
+## GTK-1 — a label, and the split that has to happen first
+
+    satellite.variable.window a_line = satellite.window.label("a line of text")
+    my_window.append(a_line, 400, 100)
+
+`gtk_label_new()`. The cheapest possible second widget: it draws and it answers
+nobody, so it proves the **shape** of GTK-0 without also arguing about signals
+or about reading a value back.
+
+**What it forces, and every one of these is paid once for all twenty:**
+
+- `piece_name()` is `piece == window ? "a window" : "a button"` today. It
+  becomes a table, and every refusal that says *"only a window can be closed"*
+  keeps working for pieces that did not exist when it was written.
+- The **file split** of GTK-0. `window_pieces.cpp` starts here.
+- `.text` — a new method token. A label's words, read with no brackets and
+  written with them, the pair `.title` already is on a window.
+- **`.append` stops being about buttons.** Its refusal names what can go in a
+  window; that sentence has to be generated from the piece table, not typed.
+
+**Reversible, and the one worth naming:** a label is not focusable and cannot be
+pressed, so `label.pressed(c)` is refused — *"only a button is pressed"* already
+says it. That refusal gets re-read at GTK-9.
+
+## GTK-2 — a person types: a text box and a text area
+
+    satellite.variable.window a_box = satellite.window.text_box("")
+    satellite.variable.window many  = satellite.window.text_area("")
+    ...
+    satellite.console.display(a_box.text)
+
+`gtk_entry_new()` (one line) and `gtk_text_view_new()` (many). **Two words and
+not one**, because a person typing one line and a person typing a page are
+different things and GTK makes them different widgets; one word with a flag
+would be satellite lying about a distinction it cannot hide.
+
+**THIS IS THE FIRST PIECE WHOSE VALUE A PROGRAM READS BACK, AND IT CROSSES THE
+THREAD LINE THE OTHER WAY.** Everything satellite reads today it already holds:
+`.title` is a `std::string` on our side of the desk. What a person typed is
+**GTK's**, and getting it means going to the desk *and waiting for an answer* —
+`on_the_desk()` already waits, so the mechanism is there, but nothing has used
+it to bring a value back yet. That is the whole of this milestone's risk and it
+is small.
+
+- `.text` reads what is in it and writes what is in it.
+- An empty text box answers `""` and not a refusal. A person who typed nothing
+  typed nothing.
+- **A text area's text is a `GtkTextBuffer`**, not a widget property: two
+  iterators and `gtk_text_buffer_get_text`. The `Piece` is what tells them apart.
+
+## GTK-3 — on and off: a checkbox, a switch, and a group that agrees
+
+    satellite.variable.window agree = satellite.window.checkbox("I agree")
+    ...
+    satellite.console.display(agree.on)
+
+`gtk_check_button_new_with_label()` and `gtk_switch_new()`. `.on` reads it and
+`.on(satellite.true)` sets it.
+
+**The radio is the interesting one and it is deferred inside this milestone.**
+GTK4 makes a radio by giving one check button another as its *group*
+(`gtk_check_button_set_group`), so a radio is not a widget — it is **two pieces
+that know about each other**, and satellite has no spelling for that yet. Two
+shapes, and **this one is the author's**:
+
+    satellite.window.checkbox("yes").group(other_checkbox)     a method on a piece
+    satellite.window.one_of(a_list_of_text)                    one word, many buttons
+
+The second is nicer to write and makes a word that answers **many** pieces,
+which nothing in satellite does. The first is a smaller change. **Not decided.**
+
+## GTK-4 — a number a person chooses: a slider, a spinner, a progress bar
+
+    satellite.variable.window how_much = satellite.window.slider(0, 100)
+    satellite.variable.window getting_on = satellite.window.progress()
+    getting_on.value(50%)
+
+`gtk_scale_new_with_range()`, `gtk_spin_button_new_with_range()`,
+`gtk_progress_bar_new()`.
+
+**A PROGRESS BAR TAKES A PERCENTAGE, AND SATELLITE ALREADY HAS ONE.**
+`satellite.variable.percentage` is `1 6 16` and was the author's own addition on
+2026-09-17. GTK's `gtk_progress_bar_set_fraction` wants 0.0 to 1.0, which is a
+percentage with the sign filed off — so the language's own type is exactly
+right here and a program should never write `0.5` to mean half. `.value` on a
+progress bar reads and writes a **percentage**; `.value` on a slider reads and
+writes a **number**. Same method token, and the `Piece` decides — which is the
+same rule `.text` follows on a label and a text box.
+
+**GTK's ranges are `double` and satellite's numbers are not.** A slider from 0
+to 100 is exact; a slider from 0 to 3 asked for a third is not. The honest rule,
+and it is written here so nobody discovers it in a program: **a slider answers
+whole numbers**, and a slider that needs fractions waits for the float arm
+(arm 14, not built).
+
+## GTK-5 — a list to choose from
+
+    satellite.variable.list colours = satellite.container.list("red", "green")
+    satellite.variable.window pick = satellite.window.choice(colours)
+    ...
+    satellite.console.display(pick.chosen)
+
+`gtk_drop_down_new_from_strings()` and `gtk_list_box_new()`.
+
+**THE FIRST WIDGET MADE OUT OF A SATELLITE CONTAINER RATHER THAN OUT OF TEXT**,
+and that is the whole of its difficulty: a `GtkStringList` is a `GListModel`
+which is a gobject, and it has to be built from satellite's list on the desk's
+thread while the list itself lives on the interpreter's. **Copy it.** A live
+view of a satellite list into a GTK model is a second ownership story across a
+thread boundary, and this project already has one of those.
+
+`.chosen` reads back the **text**, not the index — a program that wanted the
+index can `.index_of` it in the list it already has.
+
+## GTK-6 — a picture, and the four projects it switches on
+
+    my_window.append(satellite.window.picture("logo.png"), 400, 200)
+
+`gtk_picture_new_for_filename()` (which scales) or `gtk_image_new_from_file()`
+(which does not).
+
+**THIS IS THE MILESTONE THE CHART EXISTS TO POINT AT.** gdk-pixbuf with its
+thirteen loaders, libpng, libjpeg-turbo and libtiff are ~2.6 MB of satl right
+now, carried since the first vendored build, and **no satellite program can
+reach a line of it**. GTK-6 is what earns them.
+
+- **A missing file must not take the run down.** `gtk_picture_new_for_filename`
+  on a path that is not there gives a widget that draws nothing and says nothing.
+  satellite refuses at the word instead, the way `satellite.file` does, and for
+  the same reason: an answer that is wrong and does not say so is the one thing
+  this project will not ship.
+- **A path is a path, and `satellite.file` already has the rules for one.** This
+  milestone must not invent a second set.
+- SVG is `libgtk_svg.a` in 4.24 and comes free with the same word.
+
+## GTK-7 — putting a piece somewhere other than by coordinate
+
+    satellite.variable.window a_row = satellite.window.row()
+    a_row.append(satellite.window.button("one"))
+    a_row.append(satellite.window.button("two"))
+    my_window.append(a_row, 400, 300)
+
+`gtk_box_new()` and `gtk_grid_new()`.
+
+**IT CHANGES `.append`, WHICH IS A LANGUAGE-VISIBLE CHANGE AND THE FIRST ONE
+HERE.** A window holds a `GtkFixed` and `.append(piece, x, y)` places by the
+piece's **centre** (WIN-3, and it is the author's spelling). A row has no
+coordinates at all. So:
+
+    .append(piece, across, down)    into a window   -- three, as today
+    .append(piece)                  into a row, a column or a grid
+    .append(piece, across, down)    into a grid     -- a cell, not a pixel
+
+Three arities for one method, told apart by the receiver's `Piece`. The checker
+already asks `window_method_arity()` **before the program runs**, and that
+function takes only the method — so **it has to learn the receiver too**, or
+arity checking for `.append` moves back to the walker and a program prints a
+line before stopping. That regression is exactly the one `7480119` fixed for
+window methods generally, so it must not be reintroduced here.
+
+## GTK-8 — the window itself is more than a rectangle
+
+    my_window.resize(1024, 768)     my_window.wide      my_window.tall
+    my_window.fullscreen()          my_window.icon("logo.png")
+
+`gtk_window_set_default_size`, `gtk_widget_get_width/height`,
+`gtk_window_fullscreen/unfullscreen`, `gtk_window_set_icon_name`.
+
+`.resize` is a method token that **already exists** — `infinity.resize(n)`,
+`0x0B25`. A second receiver for one token is the shape `.append` is already in
+(a file, a list, and now a row), and it is right: one name, one meaning, many
+kinds of thing.
+
+**`.wide` AND `.tall` ANSWER WHAT IS ON THE SCREEN AND NOT WHAT WAS ASKED FOR.**
+A compositor may not have given the window the size it wanted — tiling ones
+routinely do not — and a window that reports its wish rather than its size is
+the failure mode this project keeps naming. Before it is mapped there is no
+answer; it reports the asked-for size and **says so in the documentation**.
+
+## GTK-9 — every piece talks back, not just a button
+
+    a_box.typed(when_typed)          a person typed in it
+    how_much.changed(when_changed)   a slider moved, a checkbox turned
+    pick.chosen(when_chosen)         a different thing was picked
+    my_window.closed(when_closed)    the window went away
+
+**The machinery is done and this milestone is mostly a table.** WIN-11 built the
+press queue, the interpreter-thread ruling, the capsule-name checking and the
+argument binding; the only thing `clicked` has that `changed` does not is a
+line connecting it. What is genuinely new is one question, and **it is the
+author's**:
+
+> **Does a capsule get the NEW VALUE as an argument?**
+
+Today a press hands the capsule what the capsule **declares**: nothing, the
+piece, or the piece and its window (`7480119`). A slider that moved wants to
+hand over **the number**, and a text box that was typed in wants **the text**.
+Three shapes, none chosen:
+
+1. **It does not.** The capsule takes the piece and asks it — `the_piece.value`.
+   Costs nothing, works today, and is one more line in every capsule.
+2. **A third declared parameter**, typed to match the piece. Reads best; means
+   the checker has to know what a slider's capsule may declare, which is a
+   per-widget rule in a place that has none today.
+3. **A general `.was` on the piece**, filled in for the duration of the capsule.
+   Cheap, and it is a global by another name, which this language does not have.
+
+**The recommendation is (1)**, because the piece is already handed over and
+`the_piece.value` is one short line. It is written here rather than decided.
+
+**And one refusal gets re-read here.** `only a button is pressed` is right for
+`.press()`; `.pressed()` on a checkbox is a reasonable thing to want, and GTK
+gives a check button a `toggled` rather than a `clicked`. The rule that survives
+is **a piece answers the signals it has**, and the table says which.
+
+## GTK-10 — the look: colour, a font, a size
+
+    my_window.font("IBM Plex Mono", 12)
+    a_line.colour("#00ff88")
+
+`GtkCssProvider` and `gtk_style_context_add_provider_for_display`. GTK4 has no
+per-widget colour setter at all — **everything is CSS** — so this milestone is
+really "satellite generates a stylesheet", and that is a bigger idea than it
+looks.
+
+**WIN-3'S FONT RULING IS STILL OWED AND LANDS HERE.** IBM Plex Mono is already
+inside the binary (WIN-1 put the whole family in the GResource) and **no font is
+set at all today** — the window uses whatever theme GTK found. 11px or 12px is
+the author's, asked on 2026-09-19 and unanswered. A satl that carries a font and
+does not use it is carrying it for nothing.
+
+**The trap, written down before anybody hits it:** a CSS provider added to the
+display styles **every** window, and a provider added per widget needs the
+widget realized. The desk owns both, so both are `on_the_desk()` work, and
+neither is a reason to hold a second lock.
+
+## GTK-11 — asking a person something: a message, a question, a file
+
+    satellite.window.message("saved")
+    satellite.window.ask("delete it?", when_answered)
+    satellite.window.choose_a_file(when_chosen)
+
+`GtkAlertDialog` and `GtkFileDialog`, both new in 4.10 and both **asynchronous**:
+the answer arrives in a `GAsyncReadyCallback` on the desk's thread, which is the
+press queue again with a different producer.
+
+**AND IT IS WHERE SATELLITE HAS TO DECIDE WHETHER A PROGRAM CAN WAIT.** Every
+window word today answers at once. A question does not have an answer until a
+person gives one, and there are only two honest shapes:
+
+    satellite.window.ask("delete it?", when_answered)     a capsule, like a press
+    satellite.variable.string a = my_window.ask("...")    the program STOPS here
+
+The second blocks the interpreter's thread while the desk runs — which is safe,
+because they are different threads and the desk is the one drawing — but it is
+the first time a satellite line waits for a person, and `satellite.console.input`
+is the only precedent. **The author's**; the recommendation is the capsule,
+because it is the shape a press already taught.
+
+## GTK-12 — a menu, and the only milestone that is gio and not gtk
+
+    satellite.variable.window m = satellite.window.menu()
+    m.append("Open", when_open)
+    my_window.menu(m)
+
+`GMenu`, `GSimpleAction` and `GActionMap` are **gio**, not gtk. Nothing else in
+this list reaches gio for anything but WIN-1's resource, so this is the row in
+the chart that only a menu fills.
+
+**IT IS THE ONE PLACE `GtkApplication` WOULD NORMALLY BE, AND SATELLITE HAS
+NONE.** `satellite_window.cpp` refuses `GtkApplication` on purpose and says why:
+it is a `GApplication`, it registers on the D-Bus session bus, and a machine
+satl ships to may have none — *and a wedged portal hangs `gtk_init_check` for
+ever with nothing printed* (Q-WIN-11a). Actions therefore go on the **window**
+(`gtk_widget_insert_action_group`), never on an application. That is settled by
+the same evidence that settled `gtk_window_new()`.
+
+satl-term already has a menu (`satl-term/menu.cpp`, 003's, ported). **Read it
+before writing this one** — it is the same GMenu and the same actions.
+
+## GTK-13 — time: a capsule every so often
+
+    satellite.window.every(1000, when_a_second_passes)
+
+`g_timeout_add()` — **glib, with no gtk call at all**, the only milestone here
+that touches neither a widget nor a window.
+
+It is the **second producer for the press queue**, and the first proof that the
+queue is a general thing rather than a button's private arrangement. Everything
+WIN-11 ruled applies unchanged: it runs on the interpreter's thread, it waits
+its turn behind whatever is running, and it is drained after the last window
+closed.
+
+**The one new question is what a tick does when its capsule takes longer than
+its interval**, and the answer must be written into the word: **ticks do not
+queue up**. A tick that arrives while the previous one is still running is
+dropped, because the alternative is a program that falls further behind for
+ever and looks like a leak.
+
+## GTK-14 — the keyboard and the mouse, and where 2.8 MB finally earns itself
+
+    my_window.key(when_a_key)        a_row.clicked(when_clicked)
+
+`GtkEventControllerKey`, `GtkGestureClick`, `GtkEventControllerMotion` — GTK4
+has no `key-press-event` on a widget; everything is a controller you add.
+
+**libxkbcommon AND xkeyboard-config'S 293 FILES HAVE BEEN CARRIED SINCE WIN-1
+FOR GTK'S SAKE**, because `gdkkeymap-wayland.c` SIGSEGVs without them before a
+window exists. GTK-14 is the first time **satellite** asks what key was pressed.
+
+**Keysyms are the hard part and it is a language question.** GTK answers a
+`guint keyval` — `GDK_KEY_Escape` is `0xff1b`. A satellite program must not see
+a number. The shapes are `.key` answering the **character** for a printable key
+and a **name** for the rest (`"escape"`, `"up"`), which is what every scripting
+language settles on, and is the recommendation. Whether modifiers are separate
+is the author's.
+
+## GTK-15 — a canvas: satellite draws it itself
+
+    satellite.variable.window c = satellite.window.canvas(400, 300)
+    c.draws(when_drawing)
+
+`gtk_drawing_area_set_draw_func()`, and the callback is handed a `cairo_t *`.
+
+**THE FIRST TIME SATELLITE'S OWN CODE CALLS CAIRO.** Cairo has been linked since
+the first vendored build and every call into it so far has been GTK's.
+
+**And it is the one milestone where the press queue is the WRONG answer.** A
+draw function must return having drawn; queueing it to the interpreter's thread
+and waiting would mean the desk blocks on the interpreter while the interpreter
+may be waiting on the desk — **a deadlock, and the design already has every
+piece needed to build one.** So either:
+
+1. the draw capsule runs on the **desk's** thread, which needs the walker to be
+   re-entrant and is a language decision, not a window one; or
+2. a canvas is **not** a capsule at all — a program draws into it with
+   `c.line(...)`, `c.box(...)` and satellite keeps the display list, which the
+   draw function then replays with no satellite code running at all.
+
+**(2) is the recommendation and it is not a compromise** — it is faster, it
+cannot deadlock, and it is the only one of the two that works before the walker
+is re-entrant. **The author's**, and it should be decided before anything is
+built, because the two share no code.
+
+## GTK-16 — more than one screenful: scroll, tabs, panes, a frame
+
+`gtk_scrolled_window_new()`, `gtk_notebook_new()`, `gtk_paned_new()`,
+`gtk_frame_new()`. Each holds other pieces, so **every one of them depends on
+GTK-7** — a container that is not the window's `GtkFixed`.
+
+Cheap after GTK-7 and worth naming separately only because `satl-term` already
+has tabs (`satl-term/tabs.cpp`) and that file is where to start.
+
+## GTK-17 — `satellite.console` IS A WINDOW, with libvte — **the author's, named 2026-09-21**
+
+> *"we especially need satellite.console to be a window with libvte"*
+
+**AND VTE IS NOT IN THE FOLDER.** `vendor/new/` holds 24 frozen tarballs and
+**not one of them is VTE**. So GTK-17 has a DEP half that has to land first:
+
+- **DEP-1 extends**: a VTE release tarball with its sha256 in `vendor/new/`, and
+  a recipe in `vendor/build_stack.py`. VTE needs gtk4, pango, glib, pcre2 and
+  **libgnutls / systemd optional** — the optional ones must be turned **off** or
+  they become the twenty-fifth and twenty-sixth projects.
+- **VTE hardcodes `shared_library()` upstream**, which is already written down
+  (`satl-term cannot be static`, and DEP-5 says it). **So a vendored VTE has to
+  be patched to build an `.a`, or `satellite.console`'s window is the one thing
+  that un-statics satl.** That is the real cost of this milestone and it should
+  not be discovered later.
+
+**AND IT COLLIDES WITH WIN-9, WHICH IS STILL THE AUTHOR'S.** `satellite.console`
+is `1 5` and is **today's stdout**: `.display`, `.input`, `.typed`, `.width`,
+`.height`, `.clear`, `.home`. A `satellite.console` that is a VTE window is
+**003's console handover**, which 004 removed on purpose — the branch this is
+being written on is literally named `milestones-install-and-no-console-handover`.
+What a handover costs was measured and is not small: a detached window loses the
+program's **exit status** and its **stdout**, and check.sh asserts 44 on one and
+DESIGN §8 spends four bullets on the other.
+
+**So there are two readings of the author's sentence and they are very
+different**, and he has to say which:
+
+1. **`satellite.console.display` starts drawing into a VTE window** instead of
+   writing to the terminal it was run from. That is the handover, and WIN-9's
+   recommendation was *do not*.
+2. **A new word makes a terminal-shaped piece** —
+   `satellite.window.console(80, 24)` — that a program **appends into a window
+   like any other piece**, and `satellite.console.display` keeps writing to
+   stdout exactly as it does. **Nothing is lost and nothing is forced.**
+
+**(2) is the recommendation, and 003 wrote it that way**: `make_words.py` still
+carries 003's removed row `satellite.window.console.new(title, width, height)`
+— the console was a **window word**, not a takeover of `satellite.console`.
+Reading (2) also makes DEP-5's *"single application"* true without deleting
+anything: satl can draw the terminal satl-term draws.
+
+## GTK-18 — `satellite.terminal` is a bash prompt — **the author's, named 2026-09-21**
+
+> *"satellite.terminal to be a bash prompt"*
+
+`satellite.terminal` does not exist as a word; it would be **`1 28`**, the next
+free number under `satellite`, and it is the first new top-level word since
+`satellite.window` took `1 27`.
+
+    satellite.variable.window t = satellite.terminal.new(80, 24)
+    my_window.append(t, 400, 300)
+
+`vte_terminal_new()` and `vte_terminal_spawn_async()` with `$SHELL`. **Every
+line of this exists already** in `satl-term/terminal.cpp` and
+`satl-term/child.cpp`, ported from 003 — including what a held tab says when the
+child dies and how a machine code is turned into a sentence. **That code is the
+starting point, not a reference.**
+
+**What is genuinely new is that the prompt is a REAL SHELL**, which is a
+capability satellite has not had: a program that opens one has handed a person a
+shell with the program's own privileges. That is not a reason not to build it —
+it is a reason for the word to be as plainly named as it is, and for
+`satellite.terminal` never to be something a program does by accident.
+
+**GTK-17 must land first.** A terminal is a VTE widget in a window, and GTK-17
+is the milestone that gets VTE into the folder and into a static archive.
+
+---
+
+## What is DECIDED here, and what is the AUTHOR'S
+
+**Decided, and the milestones below rest on them:**
+
+- A widget is a `Piece`, never a new arm (`satellite_window.hpp`, 2026-09-20).
+- Every GTK call is inside `on_the_desk()` (WIN-2).
+- A capsule runs on the interpreter's thread, always (WIN-11) — and **GTK-15 is
+  the one place that rule does not fit**, which is why GTK-15 asks.
+- Arity is checked **before the program runs**, for every window method
+  (`7480119`). GTK-7 must not undo it.
+- The word numbers are frozen when the row lands, in build order.
+
+**The author's, and none of them are decided:**
+
+| | question | recommendation |
+|---|---|---|
+| GTK-3 | how a radio group is spelled | `one_of(a_list)` — one word, many pieces |
+| GTK-9 | does a capsule get the new value? | no — it gets the piece and asks it |
+| GTK-11 | may a satellite line wait for a person? | no — a capsule, as a press is |
+| GTK-14 | how a key is spelled to a program | the character, or a name for the rest |
+| GTK-15 | a draw capsule, or a display list | **the display list** — the other can deadlock |
+| GTK-17 | does `satellite.console` become a window, or does a window get a console? | a window gets a console; `satellite.console` keeps stdout |
+| GTK-10 | the window font: 11px or 12px | asked 2026-09-19, still open |
+
+---
+
 # Part 3 — what is NOT done, stated plainly
 
 - **DEP-1 IS DONE** (2026-09-21). `vendor/build_stack.py` builds all 24 projects
@@ -356,9 +1004,20 @@ change.
   interpreter as well, but until we do, they are left separate"* — so DEP-2 is
   DECIDED AND DEFERRED, not open.
 - **`bare-machine.sh` has never been run against the real satl.**
-- **No widget can talk back.** A button draws and pressing it reaches no
-  satellite code — there is no path from a GTK signal into a capsule. That is
-  WIN-work, not DEP-work, but it is the most visible thing still missing.
+- ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
+  `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
+  and `my_button.press()` is the program pressing it itself.
+- **THERE ARE TWO WIDGETS.** A window and a button, and nothing else — no label,
+  no place to type, no picture, no row, no menu. **Part 2G is the eighteen
+  milestones that fix that**, and GTK-0 is the recipe each one repeats.
+- **VTE IS NOT IN `vendor/new/`.** The author named `satellite.console` as a
+  libvte window and `satellite.terminal` as a bash prompt on 2026-09-21
+  (GTK-17, GTK-18), and neither can start until DEP-1 is extended by one
+  tarball — **and VTE hardcodes `shared_library()` upstream**, so a vendored one
+  has to be patched to produce an `.a` or it un-statics satl.
+- **2.6 MB OF satl IS UNREACHABLE.** gdk-pixbuf, libpng, libjpeg-turbo and
+  libtiff are linked in and no satellite word can call any of them. GTK-6 is
+  what earns them; Part 00's Table B is the full list.
 - **`THIRD-PARTY-NOTICES.md` is not written**, waiting on DEP-6's two rulings.
 - **WIN-9 — force the satl-term console or not — asked 2026-09-19, still
   unanswered.** The recommendation was: do not.
@@ -367,13 +1026,47 @@ change.
 
 # Part 4 — the order, and why
 
-1. **DEP-7's version decision** — five minutes of the author's time, and it
-   decides what DEP-1 freezes.
-2. **DEP-1** — mechanical, ~85 MB, makes everything after it reproducible.
-3. **DEP-3** — prove the current binary on a bare machine. Cheap, and it either
-   validates WIN-1 or finds the next missing file.
-4. **DEP-2** — the architectural one, and the only one that removes a dependency
-   rather than vendoring it.
-5. **DEP-4**, then DEP-6, DEP-8, DEP-5, DEP-9.
+**DEP-1 IS DONE, so the order the rest are in has changed.** The author's
+instruction on 2026-09-21 was *"only build all of the gtk milestones"*, and the
+GTK family is now what this file is for.
 
-**DEP-1 is the first milestone**, and it is the one to do after `/clear`.
+## The GTK order, and why it is this one
+
+1. **GTK-1 — a label.** Not because a label is important, but because it is the
+   cheapest widget that is not a button, so it pays GTK-0's whole bill once:
+   the piece table, the file split, `.text`, and a `.append` refusal that names
+   pieces it has never heard of.
+2. **GTK-2 — a person types.** The first value read back OUT of GTK, which is
+   the only genuinely new mechanism in the first six.
+3. **GTK-3, GTK-4, GTK-5** — on/off, a number, a list. Each is one factory and
+   one method once GTK-2's reading-back works. Cheap, and they are most of what
+   a person means by "a form".
+4. **GTK-7 — rows and columns**, before GTK-6. A picture placed by coordinate is
+   fine; a picture in a row is what anybody actually wants, and GTK-7 changes
+   `.append`'s arity, so it should change it while there are five widgets rather
+   than fifteen.
+5. **GTK-6 — a picture.** Four vendored projects stop being dead weight.
+6. **GTK-9 — every piece talks back.** Mostly a table once GTK-3/4/5 exist, and
+   it is what makes the first five worth having.
+7. **GTK-8, GTK-10, GTK-16** — the window's own shape, the look (**and the
+   window font ruling, owed since 2026-09-19**), and the containers that hold
+   more than a screenful.
+8. **GTK-13, GTK-14, GTK-11, GTK-12** — time, the keyboard, dialogs, a menu.
+   Each brings one new question and they are in order of how small the question
+   is.
+9. **GTK-15 — a canvas.** Last of the GTK family, because its ruling — a draw
+   capsule or a display list — is the only one that can deadlock the design.
+10. **GTK-17, then GTK-18** — the author's two. They are last **not** because
+    they matter least but because they are the only ones with a DEP half: VTE
+    has to be vendored, and patched to build a static archive, before a line of
+    either can be written.
+
+## The DEP order, for what is left of it
+
+1. **DEP-3** — prove the current binary on a bare machine. Cheap, and it either
+   validates WIN-1 or finds the next missing file.
+2. **DEP-1's remaining gap** — a fresh clone still cannot unpack `vendor/new/`.
+3. **DEP-4**, then DEP-6, DEP-8, DEP-5, DEP-9.
+4. **DEP-2 is DECIDED AND DEFERRED** and is not on this list.
+
+**GTK-1 is the first milestone**, and it is the one to do after `/clear`.
