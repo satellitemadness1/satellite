@@ -35,7 +35,7 @@ import shutil
 import subprocess
 import sys
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_stack_recipes as recipes          # noqa: E402  (needs the line above)
@@ -134,10 +134,103 @@ class Context:
         return env
 
 
+def unpack(c, steps, log, force=False):
+    """vendor/new/*.tar.* IS committed; vendor/<project>/ is NOT. This is the step
+    that turns one into the other, and without it a fresh clone holds every
+    dependency's source and still cannot build a thing -- which is most of the way
+    to the author's rule and not all of it.
+
+    THE HASH IS CHECKED BEFORE ANYTHING IS EXTRACTED, against vendor/new/SHA256SUMS.
+    That pins the file against silent change from here on; it does NOT prove the
+    original download was authentic, and for twelve of the twenty-six there is
+    nothing published upstream to compare against. SHA256SUMS says which tier each
+    file is in and the manifest reprints it -- do not let `sha256sum -c` passing
+    read as more than it is."""
+    hashes = source_hashes()
+    tarballs = {version_of(n): n for n in hashes}
+    # meson is not a Step -- it is what CONFIGURES the steps -- but a fresh clone
+    # has no more of it than of anything else, and preflight dies without it.
+    wanted, seen, made = [("meson", "meson/meson-1.12.0")], set(), 0
+    wanted += [(st.name, st.src) for st in steps]
+    for name, src in wanted:
+        if src in seen:
+            continue
+        seen.add(src)
+        tree = c.vendor / src
+        if tree.is_dir() and not force:
+            continue
+        tar = tarballs.get(version_of(src))
+        if not tar:
+            die(f"{name}: nothing in vendor/new/ matches {src}")
+        path = VENDOR / "new" / tar
+        if not path.exists():
+            die(f"{name}: {path} is missing -- it is committed, so the clone is broken")
+        digest, tier = hashes[tar]
+        got = hashlib.sha256(path.read_bytes()).hexdigest()
+        if got != digest:
+            die(f"{name}: {tar} does not match SHA256SUMS\n  want {digest}\n  got  {got}")
+        parent = (c.vendor / src).parent
+        parent.mkdir(parents=True, exist_ok=True)
+        log(f"# unpacking {tar}  [{tier}]")
+        r = subprocess.run(["tar", "xf", str(path), "-C", str(parent)],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            die(f"{name}: tar failed\n{r.stderr}")
+        if not tree.is_dir():
+            die(f"{name}: {tar} did not produce {tree}")
+        made += 1
+    made += unpack_fonts(c, log, force)
+    if made:
+        log(f"# unpacked {made} tree(s) from vendor/new/")
+    return made
+
+
+def unpack_fonts(c, log, force=False):
+    """IBM Plex Mono, all fourteen faces, from the committed zip.
+
+    WITHOUT THIS THE BINARY DIFFERS BY WHO BUILT IT. make_window_data.py globs
+    vendor/fonts/ibm-plex-mono/*.ttf, and .gitignore tracks exactly ONE face
+    (Regular) while this machine has all fourteen -- so a fresh clone embedded one
+    face and this checkout embedded fourteen, from the same commit. The zip is in
+    vendor/new/ and hashes clean, so there is no reason for that to be true.
+
+    The tracked Regular.ttf is left alone: it is what guarantees a font exists even
+    if this never runs, and a GTK4 binary with no font reachable exits 139 rather
+    than drawing tofu."""
+    import zipfile
+    fonts = c.vendor / "fonts" / "ibm-plex-mono"
+    if len(list(fonts.glob("*.ttf"))) >= 14 and not force:
+        return 0
+    hashes = source_hashes()
+    name = "IBM_Plex_Mono.zip"
+    path = VENDOR / "new" / name
+    if not path.exists():
+        die(f"{path} is missing -- it is committed, so the clone is broken")
+    if name in hashes:
+        digest, tier = hashes[name]
+        got = hashlib.sha256(path.read_bytes()).hexdigest()
+        if got != digest:
+            die(f"{name} does not match SHA256SUMS\n  want {digest}\n  got  {got}")
+        log(f"# unpacking {name}  [{tier}]")
+    fonts.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path) as z:
+        # flat archive, but never trust that: a name with a separator in it would
+        # write outside the directory we meant.
+        for member in z.namelist():
+            leaf = PurePosixPath(member).name
+            if not leaf or (not leaf.endswith(".ttf") and leaf != "OFL.txt"):
+                continue
+            (fonts / leaf).write_bytes(z.read(member))
+    log(f"# {len(list(fonts.glob('*.ttf')))} faces in {fonts}")
+    return 1
+
+
 # ----------------------------------------------------------------- preflight
 
-def preflight(c, log):
-    """Build the wrapper, the curated PATH, the native file and the .pc allow-list."""
+def preflight(c, log, steps):
+    """Unpack what is missing, then build the wrapper, the curated PATH, the native
+    file and the .pc allow-list."""
+    unpack(c, steps, log)
     if not (c.clang / "bin" / "clang").exists():
         die(f"no clang at {c.clang}/bin/clang -- pass --clang <dir>")
 
@@ -560,6 +653,8 @@ def main():
     ap.add_argument("--check", action="store_true", help="verify the stage, build nothing")
     ap.add_argument("--manifest", action="store_true",
                     help="write vendor/stage/BUILD_MANIFEST.txt and stop")
+    ap.add_argument("--unpack", action="store_true",
+                    help="unpack vendor/new/ into the source trees and stop")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -574,6 +669,10 @@ def main():
 
     logdir = Path(args.logs)
     logdir.mkdir(parents=True, exist_ok=True)
+
+    if args.unpack:
+        say(f"unpacked {unpack(c, steps, say)} tree(s)")
+        return 0
 
     if args.manifest:
         write_manifest(c, steps, say)
@@ -590,7 +689,7 @@ def main():
 
     say(f"vendor/build_stack.py -- {len(steps)} projects into {c.stage}")
     say("")
-    preflight(c, say)
+    preflight(c, say, steps)
     chosen = select(steps, args)
     if args.dry_run:
         for i, s in enumerate(chosen, 1):
