@@ -338,8 +338,9 @@ calls gio's network classes — but a static satl will carry that code, and
 
 # Part 2b — A BUTTON TALKS BACK, 2026-09-21 (WIN-11)
 
-Commit `9c94eae`. check.sh 373 passed, 0 failed; `readelf -d` still names
-exactly eight.
+Commits `9c94eae` (the press) and `7480119` (a capsule takes arguments, so a
+press can reach the window it happened in). check.sh 382 passed, 0 failed;
+`readelf -d` still names exactly eight.
 
 Part 2a's list of what was owed opened with *"a button that does something when
 pressed. There is no signal from a widget back into a satellite program yet — that
