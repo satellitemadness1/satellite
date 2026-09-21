@@ -43,11 +43,16 @@ import build_stack_recipes as recipes          # noqa: E402  (needs the line abo
 ROOT = Path(__file__).resolve().parent.parent
 VENDOR = ROOT / "vendor"
 
-# The newest never-used toolchain, built 2026-09-20 21:33 (see its BUILD-INFO.txt).
-# Same LLVM commit as ~/opt/clang-current, so it is ABI-identical to what satellite's
-# own Makefile compiles with -- make_support/010-compiler.mk reads clang-current, and
-# repointing that symlink is a separate decision.
-DEFAULT_CLANG = "/home/madness/opt/clang-24.0.0git-3c2eaf3920a8-r2"
+# THE SYMLINK, NOT A VERSION DIRECTORY -- the same choice make_support/010-compiler.mk
+# makes, and for its stated reason: "clang-current is the symlink each rebuilt toolchain
+# is repointed at, so it cannot go stale the way a version directory would". Naming it
+# here is what makes "the vendored stack and satellite itself are built by one compiler"
+# true by construction instead of by somebody remembering.
+#
+# Context resolves it through the symlink, so the marker fingerprint holds the REAL
+# toolchain directory: repoint clang-current and every project rebuilds, which is the
+# correct answer and not one a symlink-valued fingerprint could give.
+DEFAULT_CLANG = str(Path.home() / "opt" / "clang-current")
 
 # CPython, explicitly. `python3` on this machine's PATH is an alpha PyPy with no
 # `packaging` module, and glib's gdbus-codegen starts `#!/usr/bin/env python3` -- which
@@ -87,7 +92,10 @@ class Context:
         self.native = self.builds / "native.ini"
         self.pcsystem = self.stage / "pkgconfig-system"
         self.markers = self.stage / ".build_stack_done"
-        self.clang = Path(args.clang)
+        # resolve() THROUGH the symlink: the marker fingerprint must name the real
+        # toolchain, or repointing clang-current would leave every project marked
+        # done against a compiler that is no longer there.
+        self.clang = Path(args.clang).expanduser().resolve()
         self.jobs = args.jobs
         self.cc, self.cxx = str(self.ccdir / "cc"), str(self.ccdir / "c++")
 

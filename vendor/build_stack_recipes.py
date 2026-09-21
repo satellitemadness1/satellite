@@ -285,6 +285,11 @@ def steps(c):
                        f"-DCMAKE_C_COMPILER={cc}",
                        f"-DCMAKE_INSTALL_PREFIX={S}", "-DCMAKE_INSTALL_LIBDIR=lib64",
                        "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_POSITION_INDEPENDENT_CODE=1",
+                       # THE ONLY PROJECT HERE CMAKE BUILDS, so --default-library=static
+                       # reaches it nowhere and these two are the whole static rule.
+                       # Dropping them on 2026-09-20 put libjpeg.so.62.4.0 in the prefix
+                       # and the build went green until check_no_shared read the stage.
+                       "-DENABLE_SHARED=0", "-DENABLE_STATIC=1",
                        # the trio below is what stops it compiling a SECOND, bundled zlib
                        # into libturbojpeg and never saying so.
                        "-DWITH_TURBOJPEG=0", "-DWITH_TOOLS=0", "-DWITH_TESTS=0",
@@ -619,8 +624,21 @@ def steps(c):
                                   # still gets libpixbufloader-*.so.
                                   "-Dbuiltin_loaders=all",
                                   "-Dpng=enabled", "-Djpeg=enabled", "-Dtiff=enabled",
-                                  "-Dgif=enabled", "-Dothers=disabled",
-                                  "-Dlegacy_xpm=disabled",
+                                  "-Dgif=enabled",
+                                  # EVERY loader, because this is a shipping build and
+                                  # "others" cannot be added later in any drop-in sense:
+                                  # with builtin_loaders=all there are no loader modules
+                                  # and no loaders.cache, so there is no directory to
+                                  # drop one into. bmp, ico, ani, pnm, xpm, xbm, tga,
+                                  # icns and qtif carry no `deps` key at all -- pure
+                                  # in-tree C -- so they cost nothing against the static
+                                  # rule and nothing outside the process at run time.
+                                  "-Dothers=enabled",
+                                  # and the one function that is compiled in either way
+                                  # but resolves its loader BY NAME at run time, so with
+                                  # xpm off gdk_pixbuf_new_from_xpm_data() is dead code
+                                  # that fails at the call instead of at the link.
+                                  "-Dlegacy_xpm=enabled",
                                   # enable_auto_if(linux) promotes this to REQUIRED, and it
                                   # is not installed -- the DEFAULT configure FAILS here.
                                   # If it were ever found it would replace builtin_loaders
