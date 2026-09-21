@@ -397,14 +397,116 @@ def check_modversions(log, env, wanted, stage):
     return ok
 
 
+def is_shared_object(path):
+    """ELF header, not the file name. glib installs gdb pretty-printers called
+    libglib-2.0.so.0.9000.0-gdb.py, and a *.so* glob calls those shared libraries."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(18)
+    except OSError:
+        return False
+    return len(head) == 18 and head[:4] == b"\x7fELF" and \
+        int.from_bytes(head[16:18], "little") == 3          # ET_DYN
+
+
 def check_no_shared(log, stage):
     """Nothing in this stack may install a shared object. shared_module() ignores
-    --default-library=static, which is how gdk-pixbuf's loaders escape."""
-    found = [p for d in ("lib", "lib64") if (stage / d).is_dir()
-             for p in (stage / d).rglob("*.so*")]
+    --default-library=static, which is how gdk-pixbuf's loaders escape -- and how
+    libjpeg-turbo escaped on 2026-09-20, since cmake never saw that option at all.
+
+    The WHOLE prefix, not just lib/ and lib64/: a shared_module() names its own
+    install_dir and is under no obligation to pick one of those two."""
+    found = [p for p in stage.rglob("*") if p.is_file() and not p.is_symlink()
+             and ".so" in p.name and is_shared_object(p)]
     for p in found:
         log(f"*** a SHARED object is in the stage: {p}")
     return not found
+
+
+# ----------------------------------------------------------------- the manifest
+
+def source_hashes():
+    """vendor/new/SHA256SUMS, with the tier each hash sits under. The tier matters:
+    only the first says the download was ever compared against upstream."""
+    out, tier = {}, "?"
+    f = VENDOR / "new" / "SHA256SUMS"
+    if not f.exists():
+        return out
+    for line in f.read_text().splitlines():
+        if line.startswith("# ") and line[2:3].isupper() and ":" in line:
+            tier = line[2:].split(":")[0].strip()
+        elif line and not line.startswith("#"):
+            digest, _, name = line.partition("  ")
+            out[name.strip()] = (digest, tier)
+    return out
+
+
+def version_of(src):
+    """The trailing version in an unpacked directory name: freetype-2.14.3 -> 2.14.3."""
+    import re
+    m = re.findall(r"\d+(?:\.\d+)+", src.split("/")[-1])
+    return m[-1] if m else ""
+
+
+def write_manifest(c, steps, log):
+    """WHAT IS INSIDE satl, written down once.
+
+    The plan is to freeze these versions for three to five years. Nothing else
+    records what went in: the tarballs are in vendor/new, the recipe is in the two
+    .py files, and the built archives are gitignored -- so in 2031 this file is the
+    only thing that says which source produced the binary somebody is holding. It
+    is also most of what LGPL 2.1 section 6 asks for when satellite_enterprise
+    ships a binary (DEP-6)."""
+    hashes = source_hashes()
+    tarballs = {version_of(n): n for n in hashes}
+    rows = ["# vendor/stage/BUILD_MANIFEST.txt -- what this prefix is made of.",
+            "# WRITTEN by vendor/build_stack.py. Regenerate with --manifest.",
+            "",
+            time.strftime("built    %Y-%m-%d %H:%M:%S"),
+            f"clang    {c.clang}",
+            f"         {run_out([str(c.clang / 'bin' / 'clang'), '--version'])}",
+            f"linker   {default_linker(c)}",
+            f"meson    {run_out([SYSTEM_PYTHON, str(MESON_PY), '--version'])}",
+            f"python   {SYSTEM_PYTHON} {run_out([SYSTEM_PYTHON, '--version'])}",
+            "",
+            "# project            version      source tarball and its sha256 tier",
+            ""]
+    for st in steps:
+        ver = version_of(st.src)
+        tar = tarballs.get(ver, "")
+        digest, tier = hashes.get(tar, ("", "not in SHA256SUMS"))
+        rows.append(f"{st.name:<20} {ver:<12} {tar}")
+        if digest:
+            rows.append(f"{'':<20} {'':<12} {digest}  [{tier}]")
+    rows += ["", "# what pkg-config answers, read back from this prefix", ""]
+    env = c.env_for(steps[-1])
+    seen = set()
+    for st in steps:
+        for mod in sorted(st.modversions):
+            if mod in seen:
+                continue
+            seen.add(mod)
+            v = subprocess.run(["pkg-config", "--modversion", mod], env=env,
+                               capture_output=True, text=True).stdout.strip()
+            rows.append(f"{mod:<26} {v}")
+    rows += ["", "# the archives, which are what actually link into satl", ""]
+    for a in sorted(c.stage.rglob("*.a")):
+        rows.append(f"{a.stat().st_size:>12,}  {a.relative_to(c.stage)}")
+    gtkb = c.vendor / "build" / "gtk"
+    if gtkb.is_dir():
+        rows += ["",
+                 "# GTK is NOT installed (its meson.build calls shared_library explicitly),",
+                 "# so satl links these out of the build tree. They are THIN archives --",
+                 "# members referenced by path -- and cannot be copied or shipped as they are.",
+                 ""]
+        for a in sorted(gtkb.rglob("*.a")):
+            members = run_out(["ar", "t", str(a)])
+            rows.append(f"{a.stat().st_size:>12,}  {a.relative_to(c.vendor)}"
+                        f"   (first member: {members})")
+    path = c.stage / "BUILD_MANIFEST.txt"
+    path.write_text("\n".join(rows) + "\n")
+    log(f"# wrote {path}")
+    return path
 
 
 # ----------------------------------------------------------------- driver
@@ -456,6 +558,8 @@ def main():
     ap.add_argument("--quiet", action="store_true", help="terminal gets progress only")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--check", action="store_true", help="verify the stage, build nothing")
+    ap.add_argument("--manifest", action="store_true",
+                    help="write vendor/stage/BUILD_MANIFEST.txt and stop")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -470,6 +574,10 @@ def main():
 
     logdir = Path(args.logs)
     logdir.mkdir(parents=True, exist_ok=True)
+
+    if args.manifest:
+        write_manifest(c, steps, say)
+        return 0
 
     if args.check:
         ok = True
@@ -514,7 +622,11 @@ def main():
     for name, status, took, logpath in results:
         say(f"  {name:<18} {status:<28} {took:6.1f}s  {logpath.name}")
     say(f"  {'total':<18} {'':<28} {time.time() - t0:6.1f}s")
-    return 0 if all(r[1] in ("ok", "skipped") for r in results) else 1
+    good = all(r[1] in ("ok", "skipped") for r in results)
+    if good and len(chosen) == len(steps):
+        say("")
+        write_manifest(c, steps, say)
+    return 0 if good else 1
 
 
 if __name__ == "__main__":
