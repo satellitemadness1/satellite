@@ -56,17 +56,21 @@ GTK ?= system
 
 GTK_PKGS  = gtk4
 
-# POINTS AT gtk-old ON PURPOSE, 2026-09-20. vendor/gtk was renamed to vendor/gtk-old
-# to free the name for the new stack built from vendor/new/ (GTK 4.24.0 and 25 other
-# frozen sources). gtk-old still holds the ONLY built GTK on this machine -- 2.2 GB,
-# an hour to make -- so `make GTK=vendor` keeps working through the whole changeover
-# rather than going dark until the new stack links. Nothing else in this file changes:
-# every other GTK path is derived from this one line.
+# THE NEW STACK, 2026-09-20. Built by `vendor/build_stack.py` -- 24 projects from
+# the frozen tarballs in vendor/new/, bottom-up into vendor/stage, 172 seconds.
+# This replaced vendor/gtk-old/build-static, which was GTK 4.16.7 and its
+# subprojects and took an hour.
 #
-# **Move this to vendor/gtk the day the new stack links green**, and delete gtk-old
-# only after that -- GTK_AND_NO_DEPENDENCIES.md Part 0 describes the old tree and stops
-# being true the moment it is gone.
-GTK_BUILD = $(CURDIR)/vendor/gtk-old/build-static
+# THE SHAPE IS DIFFERENT, AND THAT IS WHY THREE LINES BELOW CHANGED TOO. In the old
+# build every dependency was a meson SUBPROJECT inside build-static/, so one `find`
+# over one directory gathered all 63 archives and one meson-uninstalled directory
+# answered every pkg-config question. Now GTK is built ALONE against an install
+# prefix: its build tree holds seven archives and vendor/stage holds the other 32.
+#
+# vendor/gtk-old is kept until the vendored satl is proven end to end, and
+# GTK_AND_NO_DEPENDENCIES.md Part 0 describes it -- deleting it makes that untrue.
+GTK_BUILD = $(CURDIR)/vendor/build/gtk
+GTK_STAGE = $(CURDIR)/vendor/stage
 
 ifeq ($(GTK),vendor)
 
@@ -74,18 +78,49 @@ ifeq ($(GTK),vendor)
 # 2026-09-20: `--cflags gtk4` through meson-uninstalled returns ZERO -I/usr paths,
 # which is what makes uninstalling the system GTK unnecessary. The build simply
 # never asks it.
-HAVE_GTK   := $(shell [ -f $(GTK_BUILD)/gtk/libgtk.a ] && echo yes || echo no)
-GTK_CFLAGS := $(shell PKG_CONFIG_PATH=$(GTK_BUILD)/meson-uninstalled pkg-config --cflags $(GTK_PKGS) 2>/dev/null)
+# PKG_CONFIG_LIBDIR, **NOT** PKG_CONFIG_PATH, and this is not a tidy-up -- the old
+# line is measurably wrong against the new stack. PKG_CONFIG_PATH only PREPENDS to
+# pkg-config's built-in path, so /usr/lib64/pkgconfig stays visible. Measured
+# 2026-09-20 with exactly the old line and the new build:
+#
+#     exit=1
+#     Package 'pango' has version '1.54.0', required version is '>= 1.58'
+#     Package 'gio-2.0' has version '2.80.4', required version is '>= 2.89.3'
+#
+# -- it walked straight into the SYSTEM's pango and glib. It failed only because
+# GTK 4.24's floors happen to be higher than what this machine has installed; with
+# lower floors it would have succeeded against system headers and said nothing. And
+# `$(shell ...)` discards the exit status, so GTK_CFLAGS would simply have been
+# EMPTY and the compile would have failed hundreds of lines later, pointing nowhere
+# near here.
+#
+# The uninstalled directory answers for gtk4 itself; the stage answers for
+# everything under it; pkgconfig-system holds the four .pc files no vendored
+# project produces (wayland-client, wayland-egl, wayland-scanner, libdrm).
+GTK_PC_LIBDIR = $(GTK_BUILD)/meson-uninstalled:$(GTK_STAGE)/lib/pkgconfig:$(GTK_STAGE)/lib64/pkgconfig:$(GTK_STAGE)/share/pkgconfig:$(GTK_STAGE)/pkgconfig-system
 
-# EVERY ARCHIVE THE BUILD PRODUCED, gathered exactly as vendor/gtk/hello/build.sh
-# gathers them -- libgtk.a FIRST so its undefined symbols drive the rest, the whole
-# lot in a --start-group because the graph has cycles, and FIVE EXCLUDED BY NAME:
-# libmalloc-stats.a DEFINES malloc/realloc, libcairo-trace.a and libcairo-fdr.a are
-# LD_PRELOAD interposers that redefine cairo_*, libdemo.a is pixman's demo, and
-# libintl.a is a STUB gettext that collides with glibc's own _nl_msg_cat_cntr.
+HAVE_GTK   := $(shell [ -f $(GTK_BUILD)/gtk/libgtk.a ] && echo yes || echo no)
+GTK_CFLAGS := $(shell env -u PKG_CONFIG_PATH PKG_CONFIG_LIBDIR=$(GTK_PC_LIBDIR) pkg-config --cflags $(GTK_PKGS) 2>/dev/null)
+
+# EVERY ARCHIVE, FROM TWO PLACES NOW -- GTK's own build tree (7) and the install
+# prefix everything below it was staged into (32). The old build found all 63 under
+# one directory because they were meson subprojects; these are separate builds, so
+# this searches both. libgtk.a is excluded here and named FIRST in GTK_LIBS below,
+# so its undefined symbols drive the rest, and the whole lot sits in a --start-group
+# because the graph has cycles.
+#
+# FIVE EXCLUDED BY NAME. libmalloc-stats.a DEFINES malloc/realloc; libcairo-trace.a
+# and libcairo-fdr.a are LD_PRELOAD interposers that redefine cairo_*; libdemo.a is
+# pixman's demo; libintl.a is a STUB gettext that collides with glibc's own
+# _nl_msg_cat_cntr. Only libcairo-trace.a is actually present in the new stage --
+# cairo builds it unconditionally, there is no option for it (CAIRO_HAS_TRACE is set
+# whenever the OS can LD_PRELOAD) -- but the other four stay listed, because the
+# cost of a name that matches nothing is zero and the cost of rediscovering why
+# libintl.a breaks a link is an evening.
+#
 # The test is the NAME, not the directory: cairo keeps two REAL libraries under the
 # same util/ that GSK needs, so excluding util/ wholesale breaks the link instead.
-GTK_ARCHIVES := $(shell find $(GTK_BUILD) -name '*.a' ! -name 'libgtk.a' 2>/dev/null | \
+GTK_ARCHIVES := $(shell find $(GTK_BUILD) $(GTK_STAGE) -name '*.a' ! -name 'libgtk.a' 2>/dev/null | \
                         grep -vE '/(libmalloc-stats|libcairo-trace|libcairo-fdr|libdemo|libintl)\.a$$' | sort)
 
 # -static-libstdc++ IS NOT USED, AND THE REASON IS A MEASUREMENT (2026-09-20).
