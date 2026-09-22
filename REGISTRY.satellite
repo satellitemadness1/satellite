@@ -378,7 +378,7 @@ bits              name                         what it is
 0000101100111001  clicked_token                clicked  [METHOD] piece.clicked(a_capsule) -- the capsule to run when a person clicks it; a BUTTON uses .pressed instead (GTK_AND_NO_DEPENDENCIES.md GTK-14)
 0000101100111010  message_token                message  [METHOD] window.message("saved") -- say something to a person, with one button to dismiss it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
 0000101100111011  ask_token                    ask  [METHOD] window.ask(a_capsule, "delete it?") -- ask a person yes or no; the capsule runs with the answer in window.answer. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
-0000101100111100  answer_token                 answer  [METHOD] window.answer -- what a person last answered: "yes", "no", or "" if they dismissed it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101100111100  answer_token                 answer  [METHOD] window.answer -- what a person last answered: "yes", "no", the path of the file they chose, or "" if they dismissed it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
 0000101100111101  menu_token                   menu  [METHOD] window.menu(the_menu) -- put a menu across the top of this window; a second one goes beside the first (GTK_AND_NO_DEPENDENCIES.md GTK-12)
 0000101100111110  item_token                   item  [METHOD] menu.item(a_capsule, "Open") -- an item on a menu, and the capsule that runs when a person picks it. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-12)
 0000101100111111  line_token                   line  [METHOD] canvas.line(from_across, from_down, to_across, to_down) -- a line between two points, in the colour the canvas draws in (GTK_AND_NO_DEPENDENCIES.md GTK-15)
@@ -391,7 +391,8 @@ bits              name                         what it is
 0000101101000110  outline_token                outline  [METHOD] canvas.outline -- whether the pen draws a box, a circle or an arc as an outline; canvas.outline(1) makes it and canvas.outline(0) fills again (GTK_AND_NO_DEPENDENCIES.md GTK-15)
 0000101101000111  thickness_token              thickness  [METHOD] canvas.thickness -- how many pixels wide the pen draws a line or an outline; canvas.thickness(3) sets it (GTK_AND_NO_DEPENDENCIES.md GTK-15)
 0000101101001000  arc_token                    arc  [METHOD] canvas.arc(across, down, radius, from_degrees, to_degrees) -- part of a circle, clockwise from three o'clock; filled it is a slice, outlined it is the curve (GTK_AND_NO_DEPENDENCIES.md GTK-15)
-0000101101001001  free                         to 0000101111111111, free for this family
+0000101101001001  choose_a_file_token          choose_a_file  [METHOD] window.choose_a_file(a_capsule) -- ask a person for a file; the capsule runs with its path in window.answer, or "" if they dismissed it. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101101001010  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

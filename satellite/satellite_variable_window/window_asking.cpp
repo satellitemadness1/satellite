@@ -8,10 +8,13 @@
 // my_window.ask("...")` -- and that stays the author's. Nothing here forecloses
 // it; this is the shape a press already taught.
 //
-// THE FILE DIALOG IS NOT HERE, ON PURPOSE. GtkFileDialog can go out to
-// xdg-desktop-portal, and a wedged portal is exactly Q-WIN-11a -- the D-Bus call
-// that hangs satl for ever with nothing printed. Building a word that can reach
-// it before the author has ruled on that question would be shipping the hang.
+// THE FILE DIALOG IS HERE SINCE 2026-09-22, AND IT WAS NOT BEFORE, ON PURPOSE.
+// GtkFileDialog goes out to xdg-desktop-portal whenever one is on the bus, and
+// a wedged portal was Q-WIN-11a -- the synchronous D-Bus call that hangs satl
+// for ever with nothing printed. The author ruled on 2026-09-22, in one word:
+// "defend". window_desk.cpp turns portals off before the display is opened, so
+// what opens here is GTK's own GtkFileChooserDialog in satl's own process, and
+// the path comes back the way a question's answer does.
 //
 // COMPILED ONLY WHERE pkg-config FINDS gtk4, like its neighbours.
 
@@ -46,6 +49,37 @@ void they_answered(GObject *source, GAsyncResult *result, gpointer user_data)
     }
     if (!window->when_answered.empty())
         the_desk_saw_something(window->when_answered, window->shared_from_this(), false, said,
+                               AnEvent::an_answer);
+    g_object_unref(source);
+}
+
+// A PERSON CHOSE A FILE, OR CLOSED THE DIALOG. ON THE DESK'S THREAD, in GTK's
+// own async callback, and the path travels on the event as a question's answer
+// does -- it IS an answer, and `.answer` is how a program reads it.
+//
+// DISMISSED IS "" AND NOT A REFUSAL, for they_answered's reason. A file with
+// no path -- a GFile that is not on this machine's disk -- is "" too, and
+// cannot happen through GTK's own chooser; it is said here so that a portal
+// chooser one day does not hand a program a URI it cannot open.
+void they_chose(GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    satellite_window *window = static_cast<satellite_window *>(user_data);
+    GError *went_wrong = nullptr;
+    GFile *file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(source), result, &went_wrong);
+    std::string said;
+    if (file == nullptr) {
+        if (went_wrong != nullptr)
+            g_error_free(went_wrong);
+    } else {
+        char *path = g_file_get_path(file);
+        if (path != nullptr) {
+            said = path;
+            g_free(path);
+        }
+        g_object_unref(file);
+    }
+    if (!window->when_a_file_is_chosen.empty())
+        the_desk_saw_something(window->when_a_file_is_chosen, window->shared_from_this(), false, said,
                                AnEvent::an_answer);
     g_object_unref(source);
 }
@@ -104,6 +138,25 @@ bool window_ask(satellite_window &which, const std::string &question, const std:
         // dropping the last reference now would free it before the person has
         // answered. The callback is what unrefs it, once.
         gtk_alert_dialog_choose(asks, GTK_WINDOW(widget), nullptr, they_answered, raw);
+    });
+    return true;
+}
+
+bool window_choose_a_file(satellite_window &which, const std::string &capsule, std::string &why)
+{
+    if (!a_window_that_can_be_asked(which, why))
+        return false;
+    satellite_window *raw = &which;
+    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
+    on_the_desk([raw, widget, &capsule] {
+        raw->when_a_file_is_chosen = capsule;
+        GtkFileDialog *chooses = gtk_file_dialog_new();
+        // MODAL OVER ITS WINDOW, as a question is, and NOT UNREF'ED HERE for
+        // window_ask's reason: gtk_file_dialog_open is asynchronous and
+        // they_chose is handed the dialog as its source, which is what unrefs
+        // it, once.
+        gtk_file_dialog_set_modal(chooses, TRUE);
+        gtk_file_dialog_open(chooses, GTK_WINDOW(widget), nullptr, they_chose, raw);
     });
     return true;
 }

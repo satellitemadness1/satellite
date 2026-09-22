@@ -187,6 +187,13 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         went = window_key(*window, capsule, why);
         break;
     }
+    case token::choose_a_file_token: {
+        std::string capsule;
+        if (!text_of(arguments[0], capsule, what, context))
+            return Value();
+        went = window_choose_a_file(*window, capsule, why);
+        break;
+    }
     case token::item_token: {
         std::string capsule, label;
         if (!text_of(arguments[0], capsule, what, context) ||

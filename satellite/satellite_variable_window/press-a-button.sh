@@ -30,6 +30,10 @@
 #    socket it is told to make.
 #
 # 2. satl MUST NOT SEE THE SESSION BUS, and this one hangs rather than fails.
+#    CLOSED 2026-09-22: the author ruled Q-WIN-11a "defend", the desk turns
+#    portals off before opening a display, and prove-canvas-tabs-menus.sh's
+#    file stage runs satl ON this bus and exits 0. The env -u stays here as
+#    belt and braces, and the history below is why it was ever needed.
 #    `gtk_init_check` calls gdk_display_should_use_portal -> check_portal_interface
 #    (gdk/gdk.c:525), a SYNCHRONOUS g_dbus_connection_call_sync to
 #    org.freedesktop.portal.Settings with no timeout of satl's. Under

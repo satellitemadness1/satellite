@@ -3061,8 +3061,68 @@ expect "a piece inside a window does not hear the keyboard on its own" 1 \
 # xdg-desktop-portal, and a wedged portal is exactly Q-WIN-11a: the D-Bus call
 # that hangs satl for ever with nothing printed. Building a word that can reach
 # it before the author has ruled would be shipping the hang.
-expect "no file-choosing word was minted while Q-WIN-11a is open" 0 \
-       "$(grep -rc 'gtk_file_dialog_' satellite/satellite_variable_window/window_asking.cpp)"
+# Q-WIN-11a WAS DECIDED ON 2026-09-22, IN ONE WORD FROM THE AUTHOR: "defend".
+# The desk turns portals off before it opens a display -- gtk_disable_portals()
+# before gtk_init_check, the same bit as GDK_DEBUG=no-portals -- so satl never
+# makes the synchronous D-Bus call that held it in gtk_init_check for an
+# afternoon with nothing printed. What it costs: the portal's settings (dark
+# mode, the font) fall back to gsettings, and a sandbox gets GTK's own chooser.
+# What it bought: the file dialog, which this row used to assert did not exist.
+#
+# PROVED ON A COMPOSITOR (prove-canvas-tabs-menus.sh, the `file` stage): satl
+# started ON dbus-run-session's bus -- the one that hung it -- opened
+# .choose_a_file's chooser, real keys typed a path and Return, and the capsule
+# read that path back in .answer and closed the window, exit 0.
+expect "the portal is turned off BEFORE the display is opened, and in the desk" "1|1" \
+       "$(grep -c 'gtk_disable_portals();' satellite/satellite_variable_window/window_desk.cpp)|$(awk '/gtk_disable_portals\(\);/ {a=NR} /gtk_init_check\(\) != FALSE/ {b=NR} END {print (a>0 && b>a) ? 1 : 0}' satellite/satellite_variable_window/window_desk.cpp)"
+expect "the file dialog exists now, as GTK's own chooser in satl's process, and unrefs once in its callback" "1|1" \
+       "$(grep -c 'gtk_file_dialog_open(chooses, GTK_WINDOW(widget), nullptr, they_chose, raw)' satellite/satellite_variable_window/window_asking.cpp)|$(grep -c 'gtk_file_dialog_open_finish' satellite/satellite_variable_window/window_asking.cpp)"
+expect "choose_a_file is a method token at 0x0B49 that names a capsule, and has its own name on the piece" "1|1|1" \
+       "$(grep -c 'choose_a_file_token = 0x0B49' satellite/bytecode/token_codes.hpp)|$(grep -c 'method == token::choose_a_file_token;' satellite/bytecode/window_shapes.cpp)|$(grep -c 'std::string when_a_file_is_chosen;' satellite/satellite_variable_window/satellite_window.hpp)"
+
+cat > build/window_file_text.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("f", 800, 600)
+    w.choose_a_file("when_chosen")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_file_text.satl > build/window_file_text.out 2>&1
+expect ".choose_a_file given text and not a name is refused before anything runs" "27|" \
+       "$?|$(grep -x before build/window_file_text.out)"
+
+cat > build/window_file_nocapsule.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("f", 800, 600)
+    w.choose_a_file(nobody_wrote_this)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_file_nocapsule.satl > build/window_file_nocapsule.out 2>&1
+expect ".choose_a_file wired to a capsule nobody wrote is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_file_nocapsule.out)"
+
+cat > build/window_file_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_chosen(satellite.variable.window the_window)
+{
+    satellite.console.display(the_window.answer)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("f", 800, 600)
+    w.choose_a_file(when_chosen)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_file_ok.satl > build/window_file_ok.out 2>&1
+expect ".choose_a_file with a capsule and .answer pass the checker, and stop only for want of a screen" 50 $?
 
 expect "message, ask and answer are method tokens 0000101100111010..1100" "1|1|1" \
        "$(grep -c 'Code message_token = 0x0B3A;' satellite/bytecode/token_codes.hpp)|$(grep -c 'Code ask_token = 0x0B3B;' satellite/bytecode/token_codes.hpp)|$(grep -c 'Code answer_token = 0x0B3C;' satellite/bytecode/token_codes.hpp)"

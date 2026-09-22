@@ -32,7 +32,7 @@ std::string window_methods_are()
            "has .changed(a_capsule); and a window has .closed(a_capsule) and "
            ".every(a_capsule, 1000) and .key(a_capsule); anything that is not a button has "
            ".clicked(a_capsule); and a window has .message(\"saying\"), "
-           ".ask(a_capsule, \"a question?\") and .answer; a menu has .item(a_capsule, \"Open\"), "
+           ".ask(a_capsule, \"a question?\"), .choose_a_file(a_capsule) and .answer; a menu has .item(a_capsule, \"Open\"), "
            ".separator() and .menu(a_menu) for a menu inside it, and a window has .menu(a_menu); "
            "a canvas has .line(from_across, from_down, to_across, to_down), .box(across, down, "
            "wide, tall), .circle(across, down, radius), .arc(across, down, radius, from_degrees, "
@@ -71,6 +71,7 @@ int window_method_arity(Code method)
     case token::clicked_token:    return 1;  // the capsule's name; read with no brackets (GTK-14)
     case token::message_token:    return 1;  // what to say (GTK-11)
     case token::ask_token:        return 2;  // the question, then the capsule's NAME
+    case token::choose_a_file_token: return 1;  // the capsule's NAME; the path arrives in .answer (GTK-11)
     case token::answer_token:     return 0;  // a question, read bare or bracketed
     case token::menu_token:       return 1;  // the menu to put across the top, or inside this one (GTK-12)
     case token::item_token:       return 2;  // the capsule's NAME, then the words on the item
@@ -116,7 +117,8 @@ bool window_method_takes_a_capsule_name(Code method)
     return method == token::pressed_token || method == token::changed_token ||
            method == token::closed_token || method == token::every_token ||
            method == token::key_token || method == token::clicked_token ||
-           method == token::ask_token || method == token::item_token;
+           method == token::ask_token || method == token::item_token ||
+           method == token::choose_a_file_token;
 }
 
 // AND WHETHER ANYTHING MAY FOLLOW THAT NAME (GTK-13). `.pressed`, `.changed`

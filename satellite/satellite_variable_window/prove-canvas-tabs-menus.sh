@@ -36,6 +36,14 @@
 #           Recent with deep.satl in it, Recent renamed in place; real keys --
 #           F10 Down Down Down Right Right Return -- pick deep.satl, and the
 #           capsule is handed the menu it was on and the window.
+#   file    GTK-11's file dialog, built 2026-09-22 on the author's ruling of
+#           Q-WIN-11a ("defend"): .choose_a_file(when_chosen) opens GTK's own
+#           chooser; real keys type a path and Return; the capsule reads it in
+#           .answer and closes the window. AND THIS STAGE RUNS satl ON THE
+#           SESSION BUS dbus-run-session MADE -- the bus that hung satl for
+#           an afternoon (trap 2) -- because the desk turns portals off before
+#           opening a display now. A hang here is the defence failing, and
+#           finish() would report it.
 #
 # THE TRAPS ARE press-a-button.sh'S FOUR; read them there. Two more found here:
 #   5. `wait $pid` on a process started inside $(...) answers 127 -- the child
@@ -169,6 +177,24 @@ satellite.capsule satellite.main()
 }
 SATL
 
+cat > "$work/file.satl" <<'SATL'
+satellite.include(satellite)
+
+satellite.capsule when_chosen(satellite.variable.window the_window, satellite.variable.window its_window)
+{
+    satellite.console.display("chose: " + its_window.answer)
+    its_window.close()
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("a file", 800, 600)
+    w.choose_a_file(when_chosen)
+    satellite.console.display("the chooser is up")
+    satellite.return(satellite)
+}
+SATL
+
 cat > "$work/menus.satl" <<'SATL'
 satellite.include(satellite)
 
@@ -238,7 +264,7 @@ session = Gio.DBusProxy.new_sync(bus, Gio.DBusProxyFlags.NONE, None,
 session.Start()
 BTN_LEFT = 272
 KEYS = {'escape': 0xff1b, 'f10': 0xffc7, 'down': 0xff54, 'up': 0xff52, 'right': 0xff53,
-        'left': 0xff51, 'return': 0xff0d, 'space': 0x020}
+        'left': 0xff51, 'return': 0xff0d, 'space': 0x020, 'shift': 0xffe1}
 
 def click(x, y):
     session.NotifyPointerMotionRelative('(dd)', -9000.0, -9000.0)
@@ -256,8 +282,18 @@ def key(name):
     session.NotifyKeyboardKeysym('(ub)', sym, False)
     time.sleep(0.35)
 
+# "type:some text" TYPES IT, a character at a time: a printable ASCII
+# character's keysym is its own code, and mutter synthesises the Shift a
+# capital or a symbol needs (GTK-14 measured it).
 for step in sys.argv[1:]:
-    if ',' in step:
+    if step.startswith('type:'):
+        for ch in step[5:]:
+            session.NotifyKeyboardKeysym('(ub)', ord(ch), True)
+            time.sleep(0.03)
+            session.NotifyKeyboardKeysym('(ub)', ord(ch), False)
+            time.sleep(0.05)
+        time.sleep(0.3)
+    elif ',' in step:
         x, y = step.split(',')
         click(int(x), int(y))
     else:
@@ -304,6 +340,18 @@ start menus; sleep 4
 /usr/bin/python3 "$work/drive.py" escape f10 down down down right right return >"$work/menus.drive" 2>&1
 finish menus
 
+# THE FILE DIALOG, ON THE BUS THAT USED TO HANG satl. `start_on_the_bus` is
+# `start` without `-u DBUS_SESSION_BUS_ADDRESS`: dbus-run-session's bus, where
+# the portal is activatable and never finishes starting -- the trap that cost
+# an afternoon. With portals turned off before the display opens, satl never
+# asks. Then a warm-up key (the first of a session is swallowed), "/" to open
+# the chooser's location entry, the rest of the path, and Return.
+printf 'the file satellite chose\n' > "$work/chosen.txt"
+start_on_the_bus() { env -u DISPLAY WAYLAND_DISPLAY=satlwin "$satl" "$work/$1.satl" >"$work/$1.out" 2>&1 & pid=$!; }
+start_on_the_bus file; sleep 5
+/usr/bin/python3 "$work/drive.py" shift "type:$work/chosen.txt" return >"$work/file.drive" 2>&1
+finish file
+
 # THE RADIO IS CENTRED AT 400,300 TOO, so its middle button -- "medium", the
 # second of three -- is at the same screen point the canvas's centre was. Two
 # clicks, because the first click on a freshly mapped window can be swallowed
@@ -325,6 +373,9 @@ canvas_size=$(grep -x '400\|300' "$work/canvas.out" 2>/dev/null | tr '\n' ' ')
 canvas_landed=$(grep -A2 '^the click landed at$' "$work/canvas.out" 2>/dev/null | tail -2 | tr '\n' ' ')
 canvas_pen=$(grep -A2 '^the pen is back to$' "$work/canvas.out" 2>/dev/null | tail -2 | tr '\n' ' ')
 oneof_status=$(cat "$work/oneof.exit" 2>/dev/null || echo "exit ?")
+file_status=$(cat "$work/file.exit" 2>/dev/null || echo "exit ?")
+file_chosen=$(grep -c "^chose: $work/chosen.txt\$" "$work/file.out" 2>/dev/null || echo 0)
+file_hung=$(grep -c 'satl did not exit' "$work/file.out" 2>/dev/null); [ -n "$file_hung" ] || file_hung=missing
 oneof_order=$(grep -E '^(ticked from the start: small|now ticked: large|a person picked medium)$' "$work/oneof.out" 2>/dev/null | tr '\n' '|')
 pngs=$(ls "$work"/before.png "$work"/after.png 2>/dev/null | wc -l)
 tabs_status=$(cat "$work/tabs.exit" 2>/dev/null || echo "exit ?")
@@ -350,6 +401,10 @@ echo "  deep.satl picked, capsule handed More and the window: $menus_picked   (w
 echo "A RADIO, TICKED BY A REAL CLICK ON ITS MIDDLE BUTTON"
 echo "  satl $oneof_status"
 echo "  $oneof_order"
+echo "A FILE CHOSEN BY TYPING ITS PATH, ON THE BUS THAT USED TO HANG satl"
+echo "  satl $file_status        (0 -- and it was started WITH the session bus)"
+echo "  satl hung on the bus:               $file_hung   (want 0 -- the defence)"
+echo "  the capsule read the typed path:    $file_chosen   (want 1)"
 [ -n "$keep" ] && echo "the work folder is kept: $work (before.png and after.png are in it)"
 echo "---------------------------------------------------------------"
 
@@ -365,6 +420,7 @@ landed_ok=0
 [ "$canvas_size" = "400 300 400 300 " ] && [ "$landed_ok" = "1" ] && [ "$canvas_pen" = "1 false " ] &&
 [ "$tabs_status" = "exit 0" ] && [ "$tabs_order" = "$want_tabs" ] &&
 [ "$menus_status" = "exit 0" ] && [ "$menus_picked" = "1" ] &&
-[ "$oneof_status" = "exit 0" ] && [ "$oneof_order" = "$want_oneof" ] || {
+[ "$oneof_status" = "exit 0" ] && [ "$oneof_order" = "$want_oneof" ] &&
+[ "$file_status" = "exit 0" ] && [ "$file_hung" = "0" ] && [ "$file_chosen" = "1" ] || {
     echo "prove-canvas-tabs-menus.sh: FAILED"; exit 1; }
-echo "prove-canvas-tabs-menus.sh: a canvas was drawn on and clicked at its centre, a tab was clicked, a menu was walked and a radio was ticked -- and satellite ran"
+echo "prove-canvas-tabs-menus.sh: a canvas was drawn on and clicked at its centre, a tab was clicked, a menu was walked, a radio was ticked and a file was chosen on the bus that used to hang -- and satellite ran"

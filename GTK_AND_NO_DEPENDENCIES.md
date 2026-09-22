@@ -84,7 +84,7 @@ projects produce the archives.
 | ✔ | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
 | ✔ | **GTK-9** every piece talks back | gtk, gobject | libffi |
 | ✔ | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
-| ◑ | **GTK-11** asking a person | gtk, gio (`GAsyncResult`) — **no `GFile`: the file dialog is not built**; the message and the question never reach the portal (read 2026-09-22) | — |
+| ✔ | **GTK-11** asking a person | gtk (`GtkAlertDialog`, `GtkFileDialog`), gio (`GAsyncResult`, `GFile` since the file dialog, 2026-09-22) — and the portal is turned off before any of it (Q-WIN-11a) | — |
 | ✔ | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GSimpleActionGroup`, and since 2026-09-22 `g_menu_append_section` for a separator and a submenu link for a menu inside a menu), gtk (`GtkPopoverMenuBar`, `gtk_widget_insert_action_group`) | — |
 | ✔ | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
 | ✔ | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
@@ -1186,7 +1186,7 @@ on 2026-09-19 and it is unanswered, so no font is set for a window that does not
 ask. What changed is that a program *can* now ask, and the font it asks for is
 the one in the binary.
 
-## GTK-11 — asking a person something: a message, a question, a file — **MESSAGE AND QUESTION BUILT 2026-09-21; THE FILE DIALOG IS NOT**
+## GTK-11 — asking a person something: a message, a question, a file — **MESSAGE AND QUESTION BUILT 2026-09-21; THE FILE DIALOG 2026-09-22, ON THE AUTHOR'S RULING OF Q-WIN-11a: "defend"**
 
     satellite.window.message("saved")
     satellite.window.ask("delete it?", when_answered)
@@ -1281,6 +1281,70 @@ line by line:
 
 The ruling stays the author's: defend and lose the portal, or leave it and say
 so in a refusal. Nothing of it is built.
+
+### Q-WIN-11a DECIDED 2026-09-22, AND THE FILE DIALOG BUILT THE SAME DAY
+
+The author, asked what Q-WIN-11a was and given the two answers and their
+costs, ruled in one word: *"defend"*. Then: *"can you do that now?"*
+
+**THE DEFENCE IS ONE CALL BEFORE THE DISPLAY IS OPENED.** `window_desk.cpp`
+calls `gtk_disable_portals()` before `gtk_init_check` — the same bit as
+`GDK_DEBUG=no-portals`, read inside `gtk_init_check` at `gdk_pre_parse`, so it
+has to come first — and on a system GTK older than 4.18 (`make GTK=system`)
+appends `no-portals` to whatever `GDK_DEBUG` already said. satl never makes
+the synchronous D-Bus call again. **The cost, taken with the word:** the
+desktop's dark mode, font and theme no longer arrive through the portal and
+GTK falls back to gsettings, whose schemas satl already spills (WIN-1); and
+inside a sandbox the file chooser is GTK's own in satl's process, which
+cannot see out of the sandbox. GTK's own note on the call says *"apps must
+not call it"*; satl is a language's runtime shipped to machines it has never
+seen, and a runtime that can hang before its first line is what was ruled
+against.
+
+**MEASURED, NOT ASSUMED:** the proof script's `file` stage starts satl ON the
+bus `dbus-run-session` made — the one where the portal is activatable and
+never finishes starting, the trap that cost an afternoon on 2026-09-21 —
+without the `env -u DBUS_SESSION_BUS_ADDRESS` every other stage carries. It
+opened its window, opened the chooser, and exited 0. Before the defence that
+run sat in `gtk_init_check` for ever.
+
+**THE FILE DIALOG, AS THE CAPSULE**, the shape the message and the question
+already taught:
+
+    my_window.choose_a_file(when_chosen)        the NAME first, as every capsule-naming method
+    ... in the capsule:  its_window.answer      the path they chose, or "" if they closed it
+
+`choose_a_file` is `0x0B49`. `GtkFileDialog`'s `open`, asynchronous, and with
+the portal off it is GTK's own `GtkFileChooserDialog` in this process; the
+callback turns the `GFile` into a path and it travels on the event as a
+question's answer does — it IS an answer, and `.answer` reads it. Dismissed is
+`""` and not a refusal, for the question's reason. The capsule's name is its
+own field on the window and not `when_answered`, because a question and a
+chooser can both be open over one window and the later one's capsule must not
+run for the earlier one's answer. A save dialog and a folder dialog are the
+same shape, one token and one GTK call each, and are not built: the plan
+named one word.
+
+**PROVED ON A COMPOSITOR WITH REAL KEYS:** the chooser up, a warm-up key,
+`/` to open its location entry, the rest of a path typed a character at a
+time, Return — and `when_chosen` ran with `its_window.answer` reading exactly
+that path, and closed the window, exit 0.
+
+**TWO THINGS THE TRANSCRIPT SHOWED, one fixed and one the author's:**
+
+- The chooser adds what a person chose to the desktop's recent-files list
+  under the application's name, and warned on stderr that satl had none.
+  `g_set_application_name("satellite")` before init; the list says
+  *satellite* now.
+- **On that same hostile bus GTK printed three `Gtk-CRITICAL`s — *"Unable to
+  register the application ... org.a11y.atspi.Registry"* — and carried on.**
+  The accessibility bus is the same shape as the portal: a session-bus service
+  GTK reaches for at init. It did not hang, it was noisy, and on a real desktop
+  the registry exists and it is silent. It is NOT defended: `GTK_A11Y=none`
+  would silence it and would also turn off every screen reader for every satl
+  window, which is not a cost to take without asking. **Q-WIN-11c, the
+  author's:** should satl silence the accessibility bus the way it silenced
+  the portal?
 
 ## GTK-12 — a menu, and the only milestone that is gio and not gtk — **BUILT 2026-09-21**
 
@@ -1866,6 +1930,9 @@ is the milestone that gets VTE into the folder and into a static archive.
 - Arity is checked **before the program runs**, for every window method
   (`7480119`). GTK-7 must not undo it.
 - The word numbers are frozen when the row lands, in build order.
+- **satl turns the desktop portal off before it opens a display** (Q-WIN-11a,
+  the author, 2026-09-22: *"defend"*). It never waits on a bus it did not ask
+  for, and the file dialog is GTK's own chooser in satl's process.
 
 **The author's, and none of them are decided:**
 
@@ -1876,7 +1943,8 @@ is the milestone that gets VTE into the folder and into a static archive.
 | GTK-3 | **a `true` and a `false` to type** — a LANGUAGE milestone | there should be one; `c.on(1)` is the stopgap |
 | ~~GTK-9~~ | ~~does a capsule get the new value?~~ | **BUILT as (1)** — it gets the piece and asks it. Still reversible. |
 | ~~GTK-11~~ | ~~may a satellite line wait for a person?~~ | **BUILT as the capsule.** The waiting shape stays open. |
-| GTK-11 | **Q-WIN-11a blocks the file dialog** — may a word reach the portal? | not until the hang has an answer. **The facts are in GTK-11 now** (2026-09-22): `GTK_USE_PORTAL` does not exist in 4.24; `gtk_disable_portals()` before `gtk_init` stops both the hang and the file chooser's portal, at the cost of the portal's settings and a sandbox's file chooser |
+| ~~GTK-11~~ | ~~**Q-WIN-11a blocks the file dialog** — may a word reach the portal?~~ | **DECIDED by the author 2026-09-22, in one word: *"defend"*.** `gtk_disable_portals()` before `gtk_init_check`; the file dialog built the same day as `my_window.choose_a_file(when_chosen)`, its path in `.answer`. |
+| GTK-11 | **Q-WIN-11c: the accessibility bus** — GTK prints three criticals on a bus with no a11y registry and carries on; silence it as the portal was, or leave screen readers on? | leave it on; it did not hang |
 | ~~GTK-14~~ | ~~how a key is spelled to a program~~ | **BUILT as the recommendation, 2026-09-21** — the character, or a lower-case name for the rest; modifiers are keys, shown by pressing them. Still reversible. |
 | ~~GTK-15~~ | ~~a draw capsule, or a display list~~ | **BUILT as the display list, 2026-09-22.** A draw capsule stays the author's to ask for; it needs a re-entrant walker first. |
 | ~~GTK-12~~ | ~~a menu inside a menu, and a line between groups of items~~ | **BUILT 2026-09-22**: `file.menu(recent)` — the piece carries its heading — and `file.separator()`. Still reversible. |
@@ -1913,9 +1981,9 @@ is the milestone that gets VTE into the folder and into a static archive.
   frame, a split, a menu, a canvas, a set of tabs and a one-of.
   ~~No picture, no row, no menu, nothing that talks back but a button.~~ **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-10 and GTK-12 to GTK-16 are built; GTK-11 but for its file
-  dialog; and on 2026-09-22 GTK-3's radio and GTK-15's four leftovers, each as
-  its written recommendation** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-16 are built, GTK-11 in full since the author ruled on
+  Q-WIN-11a on 2026-09-22; and that day GTK-3's radio and GTK-15's four
+  leftovers, each as its written recommendation** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a
@@ -1987,8 +2055,9 @@ GTK family is now what this file is for.
 3. **DEP-4**, then DEP-6, DEP-8, DEP-5, DEP-9.
 4. **DEP-2 is DECIDED AND DEFERRED** and is not on this list.
 
-**WHAT IS LEFT IN THE GTK FAMILY IS THE AUTHOR'S** (2026-09-22): GTK-11's
-file dialog (Q-WIN-11a, with the facts now written under GTK-11), GTK-17 and
-GTK-18 (VTE is not vendored), a `true` and a `false` to type, and the window
-font. Every recommendation the plan wrote has been built and every one of its
-question rows is still reversible. The DEP order below is what follows.
+**WHAT IS LEFT IN THE GTK FAMILY IS THE AUTHOR'S** (2026-09-22, evening):
+GTK-17 and GTK-18 (VTE is not vendored), a `true` and a `false` to type, the
+window font, and Q-WIN-11c (the accessibility bus). Q-WIN-11a was ruled that
+evening — *"defend"* — and the file dialog built on it, so GTK-1 to GTK-16 are
+all built. Every recommendation the plan wrote has been built and every one
+of its question rows is still reversible. The DEP order below is what follows.

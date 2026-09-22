@@ -299,6 +299,14 @@ public:
     std::string when_answered;
     std::string last_answer;
 
+    // AND THE CAPSULE THAT RUNS WHEN A PERSON HAS CHOSEN A FILE (GTK-11's file
+    // dialog, built 2026-09-22 once Q-WIN-11a was decided). ITS OWN NAME and
+    // not `when_answered`: a question and a file dialog can both be open over
+    // one window, and the later one's capsule must not run for the earlier
+    // one's answer. What was chosen is an answer all the same -- the path
+    // travels on the event as `an_answer` and `.answer` reads it.
+    std::string when_a_file_is_chosen;
+
     // WHAT THIS PIECE IS WEARING (GTK-10). GTK4 has no per-widget colour setter
     // -- everything is CSS -- so a piece that has been dressed carries a css
     // class nobody else has and a GtkCssProvider scoped to it, and the parts are
@@ -858,6 +866,14 @@ bool window_clicked(satellite_window &which, const std::string &capsule, std::st
 // in a GAsyncReadyCallback on the desk's thread, which is the press queue again
 // with a different producer -- no new machinery at all.
 bool window_message(satellite_window &which, const std::string &saying, std::string &why);
+
+// `my_window.choose_a_file(when_chosen)` -- ASK A PERSON FOR A FILE (GTK-11,
+// built 2026-09-22 on the author's ruling of Q-WIN-11a: "defend"). The same
+// shape as a question: a capsule, never a wait, and `.answer` is the path they
+// chose or "" if they closed the dialog without choosing. GtkFileDialog would
+// go out to the desktop portal; window_desk.cpp turns portals off before the
+// display is opened, so this is GTK's own chooser in satl's own process.
+bool window_choose_a_file(satellite_window &which, const std::string &capsule, std::string &why);
 bool window_ask(satellite_window &which, const std::string &question, const std::string &capsule,
                 std::string &why);
 

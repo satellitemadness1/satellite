@@ -80,6 +80,45 @@ void be_the_desk()
     std::string spill_trouble;
     const bool spilled = spill_what_gtk_needs(spill_trouble);
 
+    // THE PORTAL IS TURNED OFF BEFORE THE DISPLAY IS OPENED -- Q-WIN-11a, the
+    // author's one word on 2026-09-22: "defend". Opening a display asks
+    // xdg-desktop-portal for the desktop's settings over a SYNCHRONOUS D-Bus
+    // call with no timeout (gdksettings-wayland.c's ReadAll, G_MAXINT), and a
+    // wedged portal held satl in gtk_init_check for an afternoon with nothing
+    // printed -- a hang that reads exactly like the interpreter locking up.
+    // gtk_disable_portals() is the same bit as GDK_DEBUG=no-portals and is
+    // read at gdk_pre_parse, inside gtk_init_check, so it must come before.
+    //
+    // WHAT IT COSTS, and the author took the cost with the word: GTK no longer
+    // learns dark mode, the font or the theme through the portal and falls
+    // back to gsettings (satl spills the schemas, WIN-1), and inside a sandbox
+    // the file chooser is GTK's own in this process, which cannot see out.
+    // What it buys is that satl never waits on a bus it did not ask for, and
+    // GTK-11's file dialog can exist.
+    //
+    // GTK's own note says "apps must not call it"; satl is a language's
+    // runtime shipped to machines it has never seen, and a runtime that can
+    // hang before its first line is what the author ruled against.
+    // AND A NAME, because GTK's file chooser adds what a person chose to the
+    // desktop's list of recent files under the application's name and warns
+    // on stderr when there is none (found by the file stage of the proof,
+    // 2026-09-22). "satellite" is what the recent list will say.
+    g_set_application_name("satellite");
+#if GTK_CHECK_VERSION(4, 18, 0)
+    gtk_disable_portals();
+#else
+    // A SYSTEM GTK OLDER THAN 4.18 (make GTK=system) has no call for it; the
+    // environment is the same bit, APPENDED to whatever GDK_DEBUG already says
+    // so that a person's own flags survive.
+    {
+        const char *already = g_getenv("GDK_DEBUG");
+        const std::string with = already == nullptr || *already == '\0'
+                                     ? std::string("no-portals")
+                                     : std::string(already) + ",no-portals";
+        g_setenv("GDK_DEBUG", with.c_str(), TRUE);
+    }
+#endif
+
     const bool started = spilled && gtk_init_check() != FALSE;
     GMainLoop *loop = started ? g_main_loop_new(nullptr, FALSE) : nullptr;
     {
