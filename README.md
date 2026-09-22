@@ -1,6 +1,6 @@
 # satellite
 
-**satellite 004 revision 06** — the third satellite, and the one being built from
+**satellite 004 revision 07** — the third satellite, and the one being built from
 here on. Its version, revision and build number live in
 `satellite/config/satellite_config.hpp`; `make` raises the build number every time
 it builds, and a new revision restarts the count at 1.
@@ -10,6 +10,12 @@ and its whole stack *into* satl, so the binary needs nothing installed to open a
 window. Every source it is built from is committed under `vendor/`, frozen at one
 version — see [GTK_AND_NO_DEPENDENCIES.md](GTK_AND_NO_DEPENDENCIES.md). `satl
 --license` shows all 26 licences that come with that.
+
+Revision 07 is the one where a file is a namespace: every included file is reached
+by its own name (`other.greet()`), `satellite.namespace name { }` (second spelling
+`satellite.space`) makes a namespace inside one, and a program's own capsules are
+its own -- an included file can no longer answer for them or replace its
+`satellite.main`.
 
 ```satellite
 satellite.include(satellite)
