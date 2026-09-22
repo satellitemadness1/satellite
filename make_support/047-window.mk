@@ -226,7 +226,9 @@ GTK_SOURCES = $(SATELLITE)/satellite_variable_window/window_desk.cpp \
               $(SATELLITE)/satellite_variable_window/window_look.cpp \
               $(SATELLITE)/satellite_variable_window/window_asking.cpp \
               $(SATELLITE)/satellite_variable_window/window_menu.cpp \
+              $(SATELLITE)/satellite_variable_window/window_menu_bar.cpp \
               $(SATELLITE)/satellite_variable_window/window_canvas.cpp \
+              $(SATELLITE)/satellite_variable_window/window_strokes.cpp \
               $(SATELLITE)/satellite_variable_window/window_spill.cpp
 else
 GTK_SOURCES =

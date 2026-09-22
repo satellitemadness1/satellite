@@ -1,7 +1,7 @@
 // satellite/satellite_variable_window/satellite_window.cpp -- what a program can
 // do to a WINDOW. SATELLITE_WINDOW.md WIN-3.
 //
-// SEVEN FILES NOW, and this one is the WINDOW. It makes one, closes it, focuses
+// ELEVEN FILES NOW, and this one is the WINDOW. It makes one, closes it, focuses
 // it, titles it, appends into it and holds the run open:
 //
 //   window_pieces.cpp    MAKING a piece -- four factories, one an argument shape
@@ -10,8 +10,10 @@
 //   window_answers.cpp   what a piece SAYS BACK: .pressed, .press, .changed, .closed
 //   window_look.cpp      what a piece LOOKS LIKE: .colour, .background, .font
 //   window_asking.cpp    SAYING something to a person, and ASKING them
-//   window_menu.cpp      a MENU across the top, and the items on it (GTK-12)
-//   window_canvas.cpp    a CANVAS satellite draws on itself (GTK-15)
+//   window_menu.cpp      a MENU's own model: its items, sections, heading (GTK-12)
+//   window_menu_bar.cpp  a menu meeting a window, or a menu: .menu
+//   window_canvas.cpp    a CANVAS as the desk draws it: the replay (GTK-15)
+//   window_strokes.cpp   a canvas as a program draws on it: the strokes, the pen
 //
 // EVERY GTK CALL IN THIS FILE HAPPENS INSIDE on_the_desk(), which is the rule
 // window_desk.hpp exists to keep: GTK4 is not thread-safe and the interpreter

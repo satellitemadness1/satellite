@@ -2029,7 +2029,7 @@ expect "a text area written and read passes the checker, and stops only for want
 # the thing that would silently rot: a hand-written list would keep passing the
 # compositor test with the widget added this morning missing from it.
 expect "the words that make a piece are generated, not typed into the refusal" "1|0" \
-       "$(grep -c 'the_words_that_make_a_piece() + \" makes one' satellite/bytecode/window_calls.cpp)|$(grep -c 'satellite.window.button(.\"text.\") makes one' satellite/bytecode/window_calls.cpp)"
+       "$(grep -c 'the_words_that_make_a_piece() + \" makes one' satellite/bytecode/window_methods.cpp)|$(grep -c 'satellite.window.button(.\"text.\") makes one' satellite/bytecode/window_calls.cpp)"
 
 # WHAT WAS TYPED CANNOT BE RESCUED AT TEARDOWN, and the measurement that settled
 # it is in window_desk.cpp: gtk_entry_dispose clears the text and
@@ -2097,7 +2097,7 @@ expect "a checkbox turned on and read back passes the checker, and stops only fo
 # that to the author), so a number is how a checkbox is turned on today -- and
 # anything that is neither is refused with the sentence that explains it.
 expect ".on says it takes 1 to turn it on and 0 to turn it off" 1 \
-       "$(grep -c 'takes 1 to turn it on and 0 to turn it off' satellite/bytecode/window_calls.cpp)"
+       "$(grep -c 'takes 1 to turn it on and 0 to turn it off' satellite/bytecode/window_readers.cpp)"
 
 # A PIECE WITH NOTHING TO SAY DISPLAYS AS JUST ITSELF -- (switch), never
 # (switch "").
@@ -2244,12 +2244,12 @@ expect "a slider and a progress bar written and read pass the checker, and stop 
 # itself times 10^32, so the whole of it is 10^34 and a millionth of that is
 # 10^28. This row is what catches somebody "tidying" the two factors.
 expect "a millionth of the whole is 10^16 times 10^12" 1 \
-       "$(grep -c 'satellite_number(10000000000000000ull) \* satellite_number(1000000000000ull)' satellite/bytecode/window_calls.cpp)"
+       "$(grep -c 'satellite_number(10000000000000000ull) \* satellite_number(1000000000000ull)' satellite/bytecode/window_readers.cpp)"
 
 # A SLIDER'S VALUE IS NOT PIXELS. place_of is borrowed for it, and it was saying
 # "takes a number of pixels" in the one place a person reads carefully.
 expect "the borrowed number reader names what the number is OF" 1 \
-       "$(grep -c 'const char \*units = \"a number of pixels\"' satellite/bytecode/window_calls.cpp)"
+       "$(grep -c 'const char \*units = \"a number of pixels\"' satellite/bytecode/window_readers.hpp)"
 
 # A WORD WHOSE ONLY ROW TAKES TWO ARGUMENTS USED TO FALL OUT OF THE LEXER
 # ENTIRELY (found by GTK-4, 2026-09-21). shaped_word_code had two answers -- a
@@ -2322,7 +2322,7 @@ expect "... and says it needs something to choose from" 1 \
 # doing could once fail for one reason -- the window had gone -- and the generic
 # tail said so for all of them. `a_choice.chosen("purple")` broke that.
 expect "the refusal code follows what happened, not what the tail used to assume" 1 \
-       "$(grep -c 'context.refuse(window->widget == nullptr ? window_is_closed : types_do_not_meet,' satellite/bytecode/window_calls.cpp)"
+       "$(grep -c 'context.refuse(window->widget == nullptr ? window_is_closed : types_do_not_meet,' satellite/bytecode/window_methods.cpp)"
 
 # ---------------------------------------------------------------------------
 # ROWS, COLUMNS AND A GRID (GTK_AND_NO_DEPENDENCIES.md GTK-7, 2026-09-21) -- the
@@ -2757,7 +2757,7 @@ expect "tabs, a titled page, .chosen and .changed pass the checker, and stop onl
 expect "a canvas is a display list: the draw function replays it and waits on nobody" "1|1|0" \
        "$(grep -c 'gtk_drawing_area_set_draw_func' satellite/satellite_variable_window/window_canvas.cpp)|$(grep -c '^void replay(' satellite/satellite_variable_window/window_canvas.cpp)|$(grep -c 'the_desk_saw_something\|the_desk_waits_for_something' satellite/satellite_variable_window/window_canvas.cpp)"
 expect "the pen is the canvas's own colour, parsed at the stroke, and not the widget's computed style" 1 \
-       "$(grep -c 'gdk_rgba_parse(&colour, canvas.a_colour.c_str())' satellite/satellite_variable_window/window_canvas.cpp)"
+       "$(grep -c 'gdk_rgba_parse(&colour, canvas.a_colour.c_str())' satellite/satellite_variable_window/window_strokes.cpp)"
 expect "line, box, circle, write and separator are 0x0B3F to 0x0B43, in that order" "1|1|1|1|1" \
        "$(grep -c 'line_token = 0x0B3F' satellite/bytecode/token_codes.hpp)|$(grep -c 'box_token = 0x0B40' satellite/bytecode/token_codes.hpp)|$(grep -c 'circle_token = 0x0B41' satellite/bytecode/token_codes.hpp)|$(grep -c 'write_token = 0x0B42' satellite/bytecode/token_codes.hpp)|$(grep -c 'separator_token = 0x0B43' satellite/bytecode/token_codes.hpp)"
 
@@ -2826,9 +2826,9 @@ expect "a canvas, its five strokes, .clear and .save pass the checker, and stop 
 expect "across, down, outline, thickness and arc are 0x0B44 to 0x0B48, in that order" "1|1|1|1|1" \
        "$(grep -c 'across_token = 0x0B44' satellite/bytecode/token_codes.hpp)|$(grep -c 'down_token = 0x0B45' satellite/bytecode/token_codes.hpp)|$(grep -c 'outline_token = 0x0B46' satellite/bytecode/token_codes.hpp)|$(grep -c 'thickness_token = 0x0B47' satellite/bytecode/token_codes.hpp)|$(grep -c 'arc_token = 0x0B48' satellite/bytecode/token_codes.hpp)"
 expect "where a click landed travels on the event, and the interpreter copies it onto the piece" "1|1" \
-       "$(grep -c 'AnEvent::a_place, static_cast<long long int>(std::floor(x))' satellite/satellite_variable_window/window_answers.cpp)|$(grep -c 'happened.piece->last_across = happened.across' satellite/bytecode/window_calls.cpp)"
+       "$(grep -c 'AnEvent::a_place, static_cast<long long int>(std::floor(x))' satellite/satellite_variable_window/window_answers.cpp)|$(grep -c 'happened.piece->last_across = happened.across' satellite/bytecode/window_run.cpp)"
 expect "the thickness and the outline are copied onto each stroke, as the colour is" "1|1" \
-       "$(grep -c 'stroke.thickness = static_cast<double>(canvas.pen_thickness)' satellite/satellite_variable_window/window_canvas.cpp)|$(grep -c 'stroke.outline = canvas.pen_outline' satellite/satellite_variable_window/window_canvas.cpp)"
+       "$(grep -c 'stroke.thickness = static_cast<double>(canvas.pen_thickness)' satellite/satellite_variable_window/window_strokes.cpp)|$(grep -c 'stroke.outline = canvas.pen_outline' satellite/satellite_variable_window/window_strokes.cpp)"
 
 cat > build/window_canvas_arc_arity.satl <<'WIN_EOF'
 satellite.include(satellite)
@@ -2988,7 +2988,7 @@ expect "a key is a character or a name, never a number" "2|2" \
 # INTERPRETER. Written by the desk and read by a capsule it would have been a
 # std::string with two threads on it -- the very thing GTK-2 refused to add.
 expect "what a key said is written on the interpreter's thread, not the desk's" "1|1" \
-       "$(grep -c 'happened.piece->last_key = happened.said' satellite/bytecode/window_calls.cpp)|$(grep -c 'std::string said;' satellite/satellite_variable_window/window_desk.hpp)"
+       "$(grep -c 'happened.piece->last_key = happened.said' satellite/bytecode/window_run.cpp)|$(grep -c 'std::string said;' satellite/satellite_variable_window/window_desk.hpp)"
 
 # THE HANDLER ANSWERS FALSE, so the key goes on to whatever wanted it. TRUE
 # would mean a program watching for Escape had silently made every text box in
@@ -3230,7 +3230,7 @@ expect "a menu's model and actions are given back when its window goes" "1|1" \
 # gtk_init_check for ever (Q-WIN-11a). One bar a window, above the fixed in the
 # column window_new() has held since this milestone.
 expect "the menu's actions go on the window, and no GtkApplication was made" "1|0" \
-       "$(grep -c 'gtk_widget_insert_action_group(window, menu.action_prefix.c_str()' satellite/satellite_variable_window/window_menu.cpp)|$(grep -rc 'gtk_application_new\|GTK_APPLICATION_WINDOW' satellite/satellite_variable_window/ | awk -F: '{s+=$2} END {print s}')"
+       "$(grep -c 'gtk_widget_insert_action_group(window, menu.action_prefix.c_str()' satellite/satellite_variable_window/window_menu_bar.cpp)|$(grep -rc 'gtk_application_new\|GTK_APPLICATION_WINDOW' satellite/satellite_variable_window/ | awk -F: '{s+=$2} END {print s}')"
 
 # A MENU INSIDE A MENU, AND A SEPARATOR (GTK-12's two leftovers, 2026-09-22,
 # built as the recommendation). `.menu` on a MENU puts the second menu under
@@ -3247,7 +3247,7 @@ expect "the menu's actions go on the window, and no GtkApplication was made" "1|
 # was on and the window -- exit 0. Refused by name: a separator with nothing
 # above it, a menu into itself, a menu into a menu it already holds.
 expect "a menu's model holds sections, a separator opens the next, and the actions of every menu inside go on the window" "1|1|1" \
-       "$(grep -c 'g_menu_append_section' satellite/satellite_variable_window/window_menu.cpp)|$(grep -c '^bool window_separator' satellite/satellite_variable_window/window_menu.cpp)|$(grep -c 'put_the_actions_on(window, \*under)' satellite/satellite_variable_window/window_menu.cpp)"
+       "$(grep -c 'g_menu_append_section' satellite/satellite_variable_window/window_menu.cpp)|$(grep -c '^bool window_separator' satellite/satellite_variable_window/window_menu.cpp)|$(grep -c 'put_the_actions_on(window, \*under)' satellite/satellite_variable_window/window_menu_bar.cpp)"
 expect "an item's action is named by a counter and not by the model's count, which is sections now" "1|0" \
        "$(grep -c '++items_so_far' satellite/satellite_variable_window/window_menu.cpp)|$(grep -c 'g_menu_model_get_n_items(G_MENU_MODEL(model_of(\*raw))) + 1' satellite/satellite_variable_window/window_menu.cpp)"
 
@@ -3287,7 +3287,7 @@ headless build/window_separator_arity.satl > build/window_separator_arity.out 2>
 expect "m.separator with an argument is refused before anything runs" "13|" \
        "$?|$(grep -x before build/window_separator_arity.out)"
 expect "the window holds a column, and the bar goes above the fixed in it" "1|1" \
-       "$(grep -c 'gtk_widget_set_vexpand(inside, TRUE)' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'gtk_box_prepend(GTK_BOX(column), bar)' satellite/satellite_variable_window/window_menu.cpp)"
+       "$(grep -c 'gtk_widget_set_vexpand(inside, TRUE)' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'gtk_box_prepend(GTK_BOX(column), bar)' satellite/satellite_variable_window/window_menu_bar.cpp)"
 
 # ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared

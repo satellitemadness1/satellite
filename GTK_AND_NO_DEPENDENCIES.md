@@ -510,7 +510,7 @@ would be unmaintainable and the author would be right to refuse it.
 | 3 | `REGISTRY.satellite` | a row per NEW method, next free code; then `python3 satellite/bytecode/make_token_codes.py` |
 | 4 | `satellite_window.hpp` | a `Piece` value, and the factory's declaration |
 | 5 | `satellite_window.cpp` *(or its successor — see below)* | the factory, **every GTK call inside `on_the_desk()`** |
-| 6 | `bytecode/window_calls.cpp` | `is_window_word`, `window_word_arity`, `window_word_takes`, the `call_window_word` branch, `window_method_arity`, the `call_window_method` branch — **and the `#else` half must still answer the same shapes** |
+| 6 | `bytecode/window_calls.cpp` — **six files since 2026-09-22**, see below | the table row and the `call_window_word` branch in `window_calls.cpp`; `window_method_arity` in `window_shapes.cpp`; a bare read in `window_questions.cpp`; a doing in `window_methods.cpp` — **and every function's `#else` half must still answer the same shapes, in the same file** |
 | 7 | `check.sh` | at least: the word is refused with the wrong argument count *before anything runs*; the word's numbers are in `words.tsv`; the method is refused on a piece that does not have it |
 
 **THE NUMBER IS FROZEN THE DAY THE ROW LANDS.** `make_words.py` takes the next
@@ -530,6 +530,28 @@ it. The split, decided once here so no milestone re-decides it:
 
 `window_calls.cpp` (350 lines) splits the same way when GTK-2 lands, into the
 words and the methods.
+
+**IT DID NOT, AND IT WAS 1278 LINES WHEN IT WAS SPLIT ON 2026-09-22** — after
+the radio and the canvas's leftovers landed, at the seams above and two more
+the file had grown (`window_readers.hpp` carries the roll):
+
+    window_calls.cpp        the WORDS: kWords, the one table, and call_window_word
+    window_shapes.cpp       what each METHOD takes -- the checker's questions
+    window_questions.cpp    a piece ASKED something: every method read bare
+    window_methods.cpp      a piece TOLD to do something: call_window_method
+    window_run.cpp          events off the desk's queue into capsules
+    window_readers.cpp      a Value into the C++ the desk wants
+
+The same day `window_menu.cpp` (384) became the model and `window_menu_bar.cpp`,
+and `window_canvas.cpp` (442) became the desk's replay and `window_strokes.cpp`,
+each with a small internal header. **The rule the old file kept — both halves
+of the `#if` in one place — is kept per function now**: a function's `#else`
+stub sits in the file with its body, never in another. The one thing the
+split changed in shape is `answer_a_question()`: the bare reads that were the
+first half of a 590-line `call_window_method` answer through it, and a
+refusal made there is a refusal made in the caller, because `context.code`
+says so. Proved by `make`, check.sh and the compositor proof, all unchanged in
+what they assert.
 
 **WHAT A WIDGET COSTS IN THE BINARY IS NOTHING.** Every archive is already
 linked, every widget class is already in `libgtk.a`, and `--start-group` drops
@@ -572,7 +594,7 @@ says it. That refusal gets re-read at GTK-9.
 | `REGISTRY.satellite` | `text_token` `0x0B2B` |
 | `satellite_window.hpp` | `Piece` grew `label` and `how_many_pieces`; `kPieceNames` with a `static_assert` sized by the enum |
 | `window_pieces.cpp` | **new** — every piece that goes INSIDE a window, and `window_piece_of_text` makes all of them |
-| `window_calls.cpp` | `kWords`, the one table; `window_methods_are()`; `the_words_that_make_a_piece()` |
+| `window_calls.cpp` | `kWords`, the one table; `window_methods_are()` (in `window_shapes.cpp` since the 2026-09-22 split); `the_words_that_make_a_piece()` |
 | `program_check.cpp` | its hand-typed method list deleted, asked of `window_calls.hpp` instead |
 | `satellite_object.cpp` | a piece displays as its own name — `(label "hello")` — out of `kPieceNames` |
 
