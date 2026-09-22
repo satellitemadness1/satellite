@@ -791,9 +791,149 @@ def steps(c):
                    "NOT INSTALLED -- see `why`.",
     )
 
+    # ------------------------------------------ VTE, and the four it needs (2026-09-22)
+    # GTK_AND_NO_DEPENDENCIES.md GTK-17/18 named satellite.console as a libvte window and
+    # satellite.terminal as a bash prompt, and VTE was the one tarball vendor/new/ lacked.
+    # VTE 0.84.1 wants, beyond what the stage already has: liblz4 (>= 1.9, required),
+    # simdutf (>= 6.2.0, required), fmt (>= 11, HEADERS ONLY -- vte compiles with
+    # FMT_HEADER_ONLY and takes the include directory), and fast_float (headers only,
+    # asked for only because the compiler's own include path has no fast_float.h). Its
+    # tarball ships fmt, simdutf and fast_float as bundled subprojects with wrapdb
+    # meson.build files dropped in -- an edit somebody else maintains -- and
+    # --wrap-mode=nofallback refuses them; each is built here from its own release
+    # tarball with its own build system, into the stage, found by pkg-config like all
+    # the rest. The versions are the ones VTE's own .wrap files pin.
+
+    lz4 = Step(
+        name="lz4", src="lz4/lz4-1.10.0", build="build/lz4",
+        why="VTE compresses the scrollback it keeps with liblz4 (>= 1.9, required).",
+        commands=[
+            ("cmake", ["cmake", "-G", "Ninja", f"-DCMAKE_C_COMPILER={cc}",
+                       f"-DCMAKE_INSTALL_PREFIX={S}", "-DCMAKE_INSTALL_LIBDIR=lib64",
+                       "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_POSITION_INDEPENDENT_CODE=1",
+                       # BUILD_STATIC_LIBS is a dependent option that flips ON when
+                       # shared is OFF; both are named so the intent is on the line.
+                       "-DBUILD_SHARED_LIBS=OFF", "-DBUILD_STATIC_LIBS=ON",
+                       "-DLZ4_BUILD_CLI=OFF", "-DLZ4_BUILD_LEGACY_LZ4C=OFF",
+                       "-S", f"{V}/lz4/lz4-1.10.0/build/cmake", "-B", f"{V}/build/lz4"]),
+            ("ninja", ninja("build/lz4")),
+            ("install", ["cmake", "--install", f"{V}/build/lz4"]),
+        ],
+        provides=["lib64/liblz4.a", "lib64/pkgconfig/liblz4.pc", "include/lz4.h"],
+        modversions={"liblz4": "1.10.0"},
+    )
+
+    fast_float = Step(
+        name="fast_float", src="fast_float/fast_float-8.1.0", build="build/fast_float",
+        why="VTE parses the numbers in control sequences with fast_float::from_chars. "
+            "Headers only. VTE's meson tries the compiler's own include path first and "
+            "only then asks pkg-config -- and fast_float installs no .pc, so the last "
+            "step writes one: our own file beside upstream's, not an edit (README_FIRST.md).",
+        commands=[
+            ("cmake", ["cmake", "-G", "Ninja", f"-DCMAKE_CXX_COMPILER={cxx}",
+                       f"-DCMAKE_INSTALL_PREFIX={S}",
+                       "-DFASTFLOAT_INSTALL=ON", "-DFASTFLOAT_TEST=OFF",
+                       "-DFASTFLOAT_BENCHMARKS=OFF", "-DFASTFLOAT_SANITIZE=OFF",
+                       "-S", f"{V}/fast_float/fast_float-8.1.0", "-B", f"{V}/build/fast_float"]),
+            ("install", ["cmake", "--install", f"{V}/build/fast_float"]),
+            ("write fast_float.pc", ["sh", "-c",
+                f"mkdir -p {S}/lib/pkgconfig && printf '%s\\n' "
+                f"'# WRITTEN by vendor/build_stack_recipes.py: fast_float installs headers and a cmake config and no .pc' "
+                f"'prefix={S}' 'includedir=${{prefix}}/include' '' 'Name: fast_float' "
+                f"'Description: fast_float, headers only' 'Version: 8.1.0' 'Cflags: -I${{includedir}}' "
+                f"> {S}/lib/pkgconfig/fast_float.pc"]),
+        ],
+        provides=["include/fast_float/fast_float.h", "lib/pkgconfig/fast_float.pc"],
+        modversions={"fast_float": "8.1.0"},
+    )
+
+    fmt = Step(
+        name="fmt", src="fmt/fmt-12.1.0", build="build/fmt",
+        why="VTE formats with {fmt} and compiles it HEADER-ONLY (FMT_HEADER_ONLY), taking "
+            "only the include directory out of fmt.pc; libfmt.a is installed and nothing "
+            "links it.",
+        commands=[
+            ("cmake", ["cmake", "-G", "Ninja", f"-DCMAKE_CXX_COMPILER={cxx}",
+                       f"-DCMAKE_INSTALL_PREFIX={S}", "-DCMAKE_INSTALL_LIBDIR=lib64",
+                       "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_POSITION_INDEPENDENT_CODE=1",
+                       "-DBUILD_SHARED_LIBS=OFF", "-DFMT_INSTALL=ON",
+                       "-DFMT_TEST=OFF", "-DFMT_DOC=OFF", "-DFMT_FUZZ=OFF",
+                       "-S", f"{V}/fmt/fmt-12.1.0", "-B", f"{V}/build/fmt"]),
+            ("ninja", ninja("build/fmt")),
+            ("install", ["cmake", "--install", f"{V}/build/fmt"]),
+        ],
+        provides=["lib64/libfmt.a", "lib64/pkgconfig/fmt.pc", "include/fmt/format.h"],
+        modversions={"fmt": "12.1.0"},
+    )
+
+    simdutf = Step(
+        name="simdutf", src="simdutf/simdutf-8.2.0", build="build/simdutf",
+        why="VTE validates and transcodes UTF-8 with simdutf (>= 6.2.0, required).",
+        commands=[
+            ("cmake", ["cmake", "-G", "Ninja", f"-DCMAKE_CXX_COMPILER={cxx}",
+                       f"-DCMAKE_C_COMPILER={cc}",
+                       f"-DCMAKE_INSTALL_PREFIX={S}", "-DCMAKE_INSTALL_LIBDIR=lib64",
+                       "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_POSITION_INDEPENDENT_CODE=1",
+                       "-DBUILD_SHARED_LIBS=OFF",
+                       "-DSIMDUTF_TESTS=OFF", "-DSIMDUTF_TOOLS=OFF", "-DSIMDUTF_BENCHMARKS=OFF",
+                       # iconv is glibc's here and a libiconv elsewhere; VTE never takes
+                       # simdutf's iconv path, so it is off rather than found by luck.
+                       "-DSIMDUTF_ICONV=OFF", "-DSIMDUTF_FUZZERS=OFF",
+                       "-S", f"{V}/simdutf/simdutf-8.2.0", "-B", f"{V}/build/simdutf"]),
+            ("ninja", ninja("build/simdutf")),
+            ("install", ["cmake", "--install", f"{V}/build/simdutf"]),
+        ],
+        provides=["lib64/libsimdutf.a", "lib64/pkgconfig/simdutf.pc", "include/simdutf.h"],
+        modversions={"simdutf": "8.2.0"},
+    )
+
+    vte = Step(
+        name="vte", src="vte/vte-0.84.1", build="build/vte",
+        why="GTK-17 and GTK-18: satellite.console as a window, satellite.terminal as a "
+            "bash prompt. The one tarball vendor/new/ lacked until 2026-09-22.\n"
+            "gnutls=false: gnutls only encrypts the scrollback VTE spills to an unlinked "
+            "temp file (src/vtestream-file.h, AES-256-GCM); without it VTE feeds a red "
+            "WARNING line into every new terminal (src/vte.cc, Terminal::Terminal). "
+            "Vendoring gnutls means nettle and gmp too, and upstream has deprecated the "
+            "option. THE AUTHOR'S -- Q-VTE-1 in GTK_AND_NO_DEPENDENCIES.md.\n"
+            "_systemd=false: it only moves the spawned shell into a systemd scope of its "
+            "own, over the session bus (src/systemd.cc); satl-term never asks for one and "
+            "a bare machine has no bus (DEP-3). icu=false: legacy charsets; satellite is UTF-8.",
+        requires=["lib/pkgconfig/glib-2.0.pc", "lib/pkgconfig/pango.pc",
+                  "lib/pkgconfig/cairo-gobject.pc", "lib/pkgconfig/fribidi.pc",
+                  "lib/pkgconfig/libpcre2-8.pc", "lib64/pkgconfig/liblz4.pc",
+                  "lib64/pkgconfig/simdutf.pc", "lib64/pkgconfig/fmt.pc",
+                  "lib/pkgconfig/fast_float.pc",
+                  # GTK is not installed (its step says why): its uninstalled .pc
+                  # answers for gtk4, reached from the stage as ../build/gtk
+                  "../build/gtk/meson-uninstalled/gtk4-uninstalled.pc"],
+        pc_dirs=[f"{V}/build/gtk/meson-uninstalled", "{stage}/lib/pkgconfig",
+                 "{stage}/lib64/pkgconfig", "{stage}/share/pkgconfig",
+                 "{stage}/pkgconfig-system"],
+        commands=[
+            ("meson setup", meson("build/vte", "vte/vte-0.84.1", "--libdir=lib",
+                                  "-Dgtk3=false", "-Dgtk4=true",
+                                  "-Dgnutls=false", "-D_systemd=false", "-Dicu=false",
+                                  "-Dgir=false", "-Dvapi=false", "-Ddocs=false",
+                                  "-Dapp=false", "-Dglade=false", "-Dterminfo=false",
+                                  "-Da11y=true", "-Dfribidi=true",
+                                  no_buildtype=True)),
+            ("ninja", ninja("build/vte")),
+            ("meson install", install("build/vte")),
+        ],
+        provides=["lib/libvte-2.91-gtk4.a", "lib/pkgconfig/vte-2.91-gtk4.pc",
+                  "include/vte-2.91-gtk4/vte/vte.h"],
+        modversions={"vte-2.91-gtk4": "0.84.1"},
+        deviations="src/meson.build:490 shared_library -> library, so that "
+                   "--default-library=static yields the archive at all: "
+                   "vendor/edit_journal/vte/001-static-library.patch, applied by "
+                   "build_stack.py's unpack. --buildtype not passed, for gtk's reason.",
+    )
+
     return [zlib, libffi, expat, pcre2, gperf, fribidi, pixman,
             wayland_protocols, xkeyboard_config,
             libpng, libjpeg, libtiff, freetype(1, "disabled"),
             glib, graphene, fontconfig, harfbuzz, freetype(2, "enabled"),
             cairo, pango, gdk_pixbuf,
-            libepoxy, libxkbcommon, gtk]
+            libepoxy, libxkbcommon, gtk,
+            lz4, fast_float, fmt, simdutf, vte]

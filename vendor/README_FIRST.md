@@ -83,7 +83,7 @@ upstream, look first for the option that does the same thing.
 
     vendor/
       README_FIRST.md      this file
-      new/                 THE FROZEN SOURCE. 26 tarballs, sealed, plus SHA256SUMS.
+      new/                 THE FROZEN SOURCE. 31 tarballs, sealed, plus SHA256SUMS.
       <project>/           one folder per project, unpacked from new/
       stage/               the shared install prefix everything is built into
       edit_journal/
@@ -95,16 +95,19 @@ line is for, and its comment says why.
 
 ### vendor/new/SHA256SUMS, and what it does and does not prove
 
-It records a hash for all 26 files, in three tiers, and **says which tier each
+It records a hash for all 31 files, in three tiers, and **says which tier each
 file is in**:
 
-- **Upstream-verified (8)** — compared against a checksum upstream publishes
+- **Upstream-verified (9)** — compared against a checksum upstream publishes
   beside the tarball, and matched. gtk, pango, graphene, glib, gdk-pixbuf,
-  cairo, pixman, meson.
+  cairo, pixman, meson, vte.
 - **GPG-signed upstream, signature not yet checked (6)** — upstream publishes a
   `.sig`/`.asc` but no plain checksum. freetype, libtiff, libjpeg-turbo, expat,
   pcre2, gperf.
-- **Nothing published (12)** — the hash is from our own download.
+- **Nothing published (16)** — the hash is from our own download. The four VTE
+  needs (lz4, fmt, simdutf, fast_float, 2026-09-22) are GitHub tag archives and a
+  release asset with no hash beside them; VTE's own `.wrap` files pin the same
+  versions by git tag, which is a pin and not a checksum.
 
 A hash in the last two tiers **pins the file against silent change from here
 on. It does not prove the first download was authentic.** Say so, rather than

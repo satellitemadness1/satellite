@@ -97,6 +97,13 @@ __pycache__/
 /vendor/wayland-protocols/
 /vendor/xkeyboard-config/
 /vendor/zlib/
+# VTE and the four it needs, vendored 2026-09-22 (GTK_AND_NO_DEPENDENCIES.md GTK-17):
+# the same rule -- the tarballs are in vendor/new/, the trees are not in git.
+/vendor/vte/
+/vendor/lz4/
+/vendor/simdutf/
+/vendor/fmt/
+/vendor/fast_float/
 
 # vendor/stage/ -- the shared install prefix every project is built into. Build output.
 /vendor/stage/
@@ -126,6 +133,12 @@ __pycache__/
 # vendor/gtk build outputs: the experiment binaries (85 MB each, unstripped) and the
 # meson install prefix. Both are made by the scripts beside them.
 /vendor/gtk-old/hello/hello-static
+# vendor/hello-vte: the proof that the static VTE works (2026-09-22). The program,
+# its script and its README are in git; what a run leaves beside them is not.
+/vendor/hello-vte/*
+!/vendor/hello-vte/hello-vte.c
+!/vendor/hello-vte/build-and-run.sh
+!/vendor/hello-vte/README.md
 /vendor/gtk-old/hello/hello-dynamic
 /vendor/gtk-old/stage-static/
 

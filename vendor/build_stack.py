@@ -178,11 +178,33 @@ def unpack(c, steps, log, force=False):
             die(f"{name}: tar failed\n{r.stderr}")
         if not tree.is_dir():
             die(f"{name}: {tar} did not produce {tree}")
+        apply_journal_patches(c, src, log)
         made += 1
     made += unpack_fonts(c, log, force)
     if made:
         log(f"# unpacked {made} tree(s) from vendor/new/")
     return made
+
+
+def apply_journal_patches(c, src, log):
+    """vendor/edit_journal/<project>/NNN-*.patch, in name order, `patch -p1` inside the
+    tree that was just unpacked. README_FIRST.md: an edit lands as a journal entry AND a
+    patch, because the unpacked tree is in no repository and the next unpack would destroy
+    a change made in place with no warning. This is the "command instead of an act of
+    memory" that file promises -- and it runs ONLY on a fresh tree, so a patch added
+    beside an already-unpacked project needs `--unpack --force` to reach it.
+
+    The first patch (2026-09-22) is VTE's: one word, shared_library -> library, so that
+    --default-library=static yields libvte-2.91-gtk4.a at all."""
+    project = src.split("/")[0]
+    patches = sorted((VENDOR / "edit_journal" / project).glob("*.patch"))
+    for p in patches:
+        log(f"# patch -p1 < {p.relative_to(VENDOR)}")
+        r = subprocess.run(["patch", "-p1", "--no-backup-if-mismatch", "-i", str(p)],
+                           cwd=str(c.vendor / src), capture_output=True, text=True)
+        if r.returncode != 0:
+            die(f"{project}: {p.name} did not apply\n{r.stdout}{r.stderr}")
+    return len(patches)
 
 
 def unpack_fonts(c, log, force=False):

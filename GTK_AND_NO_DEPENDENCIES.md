@@ -50,7 +50,9 @@ number the widget milestones move**, and the last table says by how much.
 
 ## The stack, as it is actually built
 
-24 projects, 33 archives, `vendor/stage/BUILD_MANIFEST.txt` is the authority and
+**29 projects, 37 archives** (24 and 33 until 2026-09-22, when VTE and the
+four it needs went in; 43 files end in `.a` if libpng's two names, pixman's
+three SIMD halves and the rest of the manifest's extras are each counted), `vendor/stage/BUILD_MANIFEST.txt` is the authority and
 is written by the build rather than by hand.
 
     gtk 4.24.0        glib 2.90.0       pango 1.58.2      cairo 1.18.4
@@ -59,10 +61,11 @@ is written by the build rather than by hand.
     zlib 1.3.2        pixman 0.46.4     graphene 1.10.8   libepoxy 1.5.10
     libxkbcommon 1.13.2   xkeyboard-config 2.48   expat 2.8.4   pcre2 10.48
     libffi 3.8.0      wayland-protocols 1.49   gperf 3.3   meson 1.12.0
+    vte 0.84.1        lz4 1.10.0        simdutf 8.2.0     fmt 12.1.0    fast_float 8.1.0
 
-`xkeyboard-config`, `wayland-protocols`, `gperf` and `meson` link nothing —
-the first two are **data and XML**, the last two are **build tools**. Twenty
-projects produce the archives.
+`xkeyboard-config`, `wayland-protocols`, `gperf`, `meson` and `fast_float` link
+nothing — the first two are **data and XML**, the next two are **build tools**,
+the last is **headers only**. Twenty-four projects produce the archives.
 
 ## Table A — every milestone, and what it calls
 
@@ -134,14 +137,20 @@ projects are in satl today and no satellite word has ever reached them.**
 | **gperf** | **a build tool** | fontconfig's perfect hashes | DEP-1 ✔ |
 | **meson** | **a build tool** | builds the other 23 | DEP-1 ✔ |
 | *(also linked)* | libgirepository-2.0, libcairo-script-interpreter | introspection; a cairo trace replayer | **dead weight — nothing calls either** |
-| **VTE** | **NOT IN vendor/new** | a terminal in a window | **GTK-17, and it has to be vendored first** |
+| **VTE** | libvte-2.91-gtk4 — **vendored 2026-09-22**, static by a one-word journalled patch | a terminal in a window | GTK-17 — proved working from the archive; nothing in satl calls it yet |
+| **lz4** | liblz4 | VTE's scrollback compression | GTK-17 |
+| **simdutf** | libsimdutf | VTE's UTF-8 validation and transcoding | GTK-17 |
+| **fmt** | libfmt (installed; VTE compiles it header-only) | VTE's formatting | GTK-17 |
+| **fast_float** | **headers only**, our own `.pc` | VTE's number parsing | GTK-17 |
 
 ## What the chart is FOR, and the three things it already says
 
-1. **`vendor/new/` is missing one tarball.** Twenty-four projects are frozen
-   there and **VTE is not one of them**, so GTK-17 and GTK-18 — the two the
-   author named by name — cannot start until DEP-1 is extended. That is the
-   single largest thing this chart found.
+1. ~~**`vendor/new/` is missing one tarball.**~~ **CLOSED 2026-09-22.** It was
+   VTE, and VTE needed four more (lz4, simdutf, fmt, fast_float): five tarballs
+   in `vendor/new/`, five recipes, one patch, 45 seconds to build, and a program
+   linked from the archive that spawned a shell in a terminal on a headless
+   compositor with satl's seven NEEDED. GTK-17 and GTK-18 can start; the one
+   question the vendoring raised is Q-VTE-1, under GTK-17.
 2. **libpng, libjpeg-turbo, libtiff and gdk-pixbuf are 2.6 MB of satl that no
    satellite program can reach.** GTK-6 is what earns them. Until it lands they
    are carried for GTK's icon loading and nothing else.
@@ -559,16 +568,20 @@ draws with cairo (DEP-3).
 ## DEP-5 — satl-term, and the author's "single application"
 
 His original brief was *"wiring in GTK+ so that satl and satl-term become a
-single application"*. Today they are two binaries, and **satl-term cannot be
-static at all** — GTK4 and VTE hardcode `shared_library()` upstream, so there is
-no `.a` to link.
+single application"*. Today they are two binaries, and satl-term as built
+still links the machine's VTE and GTK. ~~**satl-term cannot be static at all**
+— GTK4 and VTE hardcode `shared_library()` upstream, so there is no `.a` to
+link.~~ **Both halves of that are gone**: GTK's archives have been linked out
+of its build tree since 2026-09-20, and **VTE builds a static archive since
+2026-09-22** with a one-word journalled patch (GTK-17).
 
-**So "single application" has to mean something other than one static binary
-containing VTE.** Options, none chosen: satl grows the terminal widget itself;
-satl-term stays dynamic and is the one thing that needs GTK installed; or VTE is
-vendored and patched to build a static library. **The author's call.** And
-whatever is decided, **satl-term is not removed** — he has ruled on that once
-already: the GPU terminal next door does not replace it.
+**So "single application" is now a choice and not a wall.** The third option
+below is built; none is chosen: satl grows the terminal widget itself
+(GTK-17/18); satl-term stays dynamic and is the one thing that needs GTK
+installed; or satl-term links the vendored archives the way satl does. **The
+author's call.** And whatever is decided, **satl-term is not removed** — he
+has ruled on that once already: the GPU terminal next door does not replace
+it.
 
 ## DEP-6 — LGPL §6, which static linking is what gives teeth
 
@@ -2007,18 +2020,68 @@ and the capsule closed the window — exit 0.
 
 > *"we especially need satellite.console to be a window with libvte"*
 
-**AND VTE IS NOT IN THE FOLDER.** `vendor/new/` holds 24 frozen tarballs and
-**not one of them is VTE**. So GTK-17 has a DEP half that has to land first:
+~~**AND VTE IS NOT IN THE FOLDER.**~~ **VENDORED 2026-09-22, at the author's
+"go for it".** The DEP half is done, and it cost more than one tarball:
 
-- **DEP-1 extends**: a VTE release tarball with its sha256 in `vendor/new/`, and
-  a recipe in `vendor/build_stack.py`. VTE needs gtk4, pango, glib, pcre2 and
-  **libgnutls / systemd optional** — the optional ones must be turned **off** or
-  they become the twenty-fifth and twenty-sixth projects.
-- **VTE hardcodes `shared_library()` upstream**, which is already written down
-  (`satl-term cannot be static`, and DEP-5 says it). **So a vendored VTE has to
-  be patched to build an `.a`, or `satellite.console`'s window is the one thing
-  that un-statics satl.** That is the real cost of this milestone and it should
-  not be discovered later.
+- **DEP-1 extended by five.** `vte-0.84.1.tar.xz` (the newest stable; hash
+  matched against the `.sha256sum` upstream publishes), and the four VTE 0.84
+  requires that the stage did not have: **lz4** 1.10.0 (scrollback
+  compression, required since 0.74), **simdutf** 8.2.0 (UTF-8, required since
+  0.80), **fmt** 12.1.0 (compiled header-only; the archive is installed and
+  nothing links it) and **fast_float** 8.1.0 (headers only; it installs no
+  `.pc`, so the recipe writes one — our own file beside upstream's). VTE ships
+  the last three as bundled subprojects with wrapdb `meson.build`s dropped in;
+  those are an edit somebody else maintains, `--wrap-mode=nofallback` refuses
+  them, and each is built from its own release tarball with its own build
+  system at the version VTE's own `.wrap` files pin. Recipes in
+  `vendor/build_stack_recipes.py`; 45 seconds for the five, VTE 27 of them.
+- **The static archive is one word.** `src/meson.build:490`
+  `shared_library(` → `library(`, so `--default-library=static` is honoured:
+  `vendor/edit_journal/vte/001-static-library.patch`, and **`build_stack.py`
+  now applies a project's journalled patches the moment its tarball is
+  unpacked** — the first patch in the journal, and the "command instead of an
+  act of memory" README_FIRST promised. `libvte-2.91-gtk4.a` is 3.6 MB.
+- **PROVED FROM THE ARCHIVE**, not assumed: a 60-line C program (a window, a
+  `VteTerminal`, `/bin/sh -c 'printf ...; exit 7'` spawned in it) linked
+  against `libvte-2.91-gtk4.a` and the whole static stack, **NEEDED exactly
+  satl's seven**, run on a headless mutter with no session bus: the shell's
+  line came back through `vte_terminal_get_text_format`, `child-exited`
+  reported 7, exit 0. `vte_get_features()` says `+BIDI -GNUTLS -ICU -SYSTEMD`.
+  It SIGSEGVed first, for WIN-1's reason exactly — the vendored GTK looks for
+  xkb data at `/nonexistent` unless told — and ran once pointed at the staged
+  xkeyboard-config, which is what satl's spill will do around it.
+- **What the three optional dependencies were for, read from the source, and
+  why two are off without a question:**
+  - **systemd** (`src/systemd.cc`): after spawning the shell, VTE asks the
+    session bus to put it in a transient systemd scope of its own — a cgroup
+    per terminal, so the shell's tree is its own unit. Without it the child
+    stays in satl's cgroup. `satl-term/child.cpp` never asks for a scope, and
+    a bare machine has no bus (DEP-3). **Off.**
+  - **icu**: legacy charsets for `vte_terminal_set_encoding`. satellite is
+    UTF-8. **Off.**
+  - **gnutls** (`src/vtestream-file.h`): VTE keeps scrollback in memory and
+    spills what overflows to an unlinked temp file; with gnutls each block is
+    AES-256-GCM encrypted with a key that lives only in the process, so the
+    file on disk is useless to anyone who reads `/proc/<pid>/fd` or recovers
+    the blocks later. **Without it, VTE feeds a red line into every new
+    terminal** — `src/vte.cc`, `Terminal::Terminal()`: *"WARNING: GnuTLS not
+    enabled; data will be written to disk unencrypted!"* — the proof above
+    shows it as the terminal's first line. And upstream has **deprecated the
+    option** in 0.84, which reads as "gnutls will be required". **Off for
+    now, and that is Q-VTE-1, the author's:** (a) vendor gnutls, which brings
+    nettle and gmp — three more autotools projects, all LGPL, an hour, and
+    what the next VTE will demand anyway; (b) patch the warning out, an edit
+    that grows on every upgrade; (c) live with the line. **Recommendation:
+    (a).** It is what *"include a copy of it"* means, and nothing on the
+    machine is asked for. Nothing in satl links VTE yet, so nothing shows the
+    line today.
+
+The author, the same afternoon, on what this opens: *"this will finally allow
+satl to start a satellite.console.new, and we can incorporate code written in
+satellite into the interpreter"*. That spelling — `satellite.console.new` — is
+reading (2) below, a console a program starts by name, spelled under
+`satellite.console` rather than `satellite.window`; and the second half is
+his to say more about before anyone builds toward it.
 
 **AND IT COLLIDES WITH WIN-9, WHICH IS STILL THE AUTHOR'S.** `satellite.console`
 is `1 5` and is **today's stdout**: `.display`, `.input`, `.typed`, `.width`,
@@ -2105,7 +2168,8 @@ is the milestone that gets VTE into the folder and into a static archive.
 | ~~GTK-15~~ | ~~a draw capsule, or a display list~~ | **BUILT as the display list, 2026-09-22.** A draw capsule stays the author's to ask for; it needs a re-entrant walker first. |
 | ~~GTK-12~~ | ~~a menu inside a menu, and a line between groups of items~~ | **BUILT 2026-09-22**: `file.menu(recent)` — the piece carries its heading — and `file.separator()`. Still reversible. |
 | ~~GTK-15~~ | ~~where a click on a canvas LANDED; an outline, a line's width, an arc~~ | **BUILT as the recommendation, 2026-09-22** — `.across` and `.down` carried on the event as `.key` is; `.outline(1)` and `.thickness(n)` are the pen; `.arc(...)` clockwise from three o'clock. Still reversible — and `across`/`down` is the one spelling chosen here rather than recommended. |
-| GTK-17 | does `satellite.console` become a window, or does a window get a console? | a window gets a console; `satellite.console` keeps stdout |
+| GTK-17 | does `satellite.console` become a window, or does a window get a console? | a window gets a console; `satellite.console` keeps stdout — and his *"satellite.console.new"* (2026-09-22) is that shape |
+| GTK-17 | **Q-VTE-1: gnutls** — VTE without it prints a red warning into every new terminal and upstream has deprecated the option; vendor gnutls + nettle + gmp, patch the line out, or live with it? | vendor the three |
 | GTK-10 | the window font: 11px or 12px | asked 2026-09-19, still open |
 
 ---
@@ -2152,11 +2216,10 @@ is the milestone that gets VTE into the folder and into a static archive.
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a
   capsule nobody wrote.
-- **VTE IS NOT IN `vendor/new/`.** The author named `satellite.console` as a
-  libvte window and `satellite.terminal` as a bash prompt on 2026-09-21
-  (GTK-17, GTK-18), and neither can start until DEP-1 is extended by one
-  tarball — **and VTE hardcodes `shared_library()` upstream**, so a vendored one
-  has to be patched to produce an `.a` or it un-statics satl.
+- ~~**VTE IS NOT IN `vendor/new/`.**~~ **VENDORED 2026-09-22** with the four
+  it needs, static by a one-word patch, proved from the archive. GTK-17 and
+  GTK-18 can start. What is not done: nothing in satl links or calls it yet,
+  and Q-VTE-1 (gnutls) is the author's.
 - ~~**2.6 MB OF satl IS UNREACHABLE.**~~ **EARNED 2026-09-21 by GTK-6.**
   gdk-pixbuf, libpng and libjpeg-turbo are reached by `satellite.window.picture`
   and were proved with a real PNG and a real JPEG. libtiff is the same word and
@@ -2209,7 +2272,7 @@ GTK family is now what this file is for.
 10. **GTK-17, then GTK-18** — the author's two. They are last **not** because
     they matter least but because they are the only ones with a DEP half: VTE
     has to be vendored, and patched to build a static archive, before a line of
-    either can be written.
+    either can be written. **That half is done (2026-09-22).**
 
 ## The DEP order, for what is left of it
 

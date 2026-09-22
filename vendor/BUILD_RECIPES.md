@@ -1398,3 +1398,64 @@ python3 "$V/meson/meson-1.12.0/meson.py" setup \
 **Traps:** 1. **GTK DOES NOT INSTALL A STATIC LIBRARY, AND --default-library=static DOES NOT CHANGE THAT.** gtk/meson.build:1074 reads `libgtk = shared_library('gtk-4', ... install: true)`. `shared_library()` is explicit and meson's default_library option only governs `library()` and `both_libraries()`. `grep -rn shared_library --include=meson.build .` over the whole tree returns exactly ONE hit — that line. `libgtk_static = static_library('gtk', ...)` at :1065 has no `install:` key, so it defaults to false. Consequence: `ninja install` puts `$STAGE/lib/libgtk-4.so.1.2400.0` in the prefix and NO libgtk-4.a, and all four .pc files say -lgtk-4. This is the same in 4.16.7 (gtk-old/gtk-4.16.7/gtk/meson.build:1124) and is why the previous round never installed GTK at all: make_support/047-window.mk points GTK_BUILD at `vendor/gtk-old/build-static` and links the archives out of the BUILD TREE. Two ways forward, and this is a decision for the author, not for me: (a) keep doing what works — link the six build-tree archives $V/gtk/build-static/{gtk/libgtk.a, gtk/css/libgtk_css.a, gtk/svg/libgtk_svg.a, gdk/libgdk.a, gsk/libgsk.a, gsk/libgsk_f16c.a} in a --start-group with libgtk.a first, and take cflags from build-static/meson-uninstalled; or (b) a one-line journalled edit turning :1074 into `library('gtk-4', ...)`, which vendor/README_FIRST.md permits only with an EDITS.md entry written the same sitting. NOTE for (a): libgdk.a already CONTAINS the wayland backend, because gdk/meson.build:302 uses `link_whole: gdk_backends` — but libgtk.a uses `link_with:` (:1071), which does NOT merge, so all 
 
 ---
+
+---
+
+# VTE and the four it needs — added 2026-09-22
+
+These five were BUILT before they were written down, the other way round from
+everything above: `vendor/build_stack_recipes.py` is the authority, this is the
+reading. All five went green on the first run, 45 seconds together.
+
+## lz4 1.10.0
+
+- **source** `lz4/lz4-1.10.0`, GitHub release asset; no hash published.
+- **build system** cmake, from `build/cmake/` inside the tree (the top-level Makefile also works; cmake is what the other non-meson project here uses).
+- **installs** stage/lib64/liblz4.a, stage/lib64/pkgconfig/liblz4.pc, stage/include/lz4*.h.
+
+**Configure:** `-DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DLZ4_BUILD_CLI=OFF -DLZ4_BUILD_LEGACY_LZ4C=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1`. BUILD_STATIC_LIBS is a `CMAKE_DEPENDENT_OPTION` that flips ON by itself when shared is OFF; both are named anyway.
+
+**Depends on:** nothing. **Traps:** none met.
+
+## fast_float 8.1.0
+
+- **source** `fast_float/fast_float-8.1.0`, GitHub tag archive.
+- **build system** cmake; headers only, no compile step.
+- **installs** stage/include/fast_float/*.h and a cmake config — **and no `.pc`**, so the recipe's last command writes `stage/lib/pkgconfig/fast_float.pc` itself (Cflags only). That is our own file beside upstream's, not an edit.
+
+**Why a .pc at all:** VTE's meson first tries `#include <fast_float/fast_float.h>` with the compiler's own include path (`system fast_float usability check`), and only when that fails asks `dependency('fast_float', required: true)`. The stage is not on the compiler's path, so it is always the second route, and the second route is pkg-config.
+
+## fmt 12.1.0
+
+- **source** `fmt/fmt-12.1.0`, GitHub tag archive.
+- **build system** cmake.
+- **installs** stage/lib64/libfmt.a, stage/lib64/pkgconfig/fmt.pc, stage/include/fmt/*.h.
+
+**Configure:** `-DBUILD_SHARED_LIBS=OFF -DFMT_INSTALL=ON -DFMT_TEST=OFF -DFMT_DOC=OFF -DFMT_FUZZ=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1`.
+
+**Note:** VTE compiles fmt HEADER-ONLY on purpose (`-DFMT_HEADER_ONLY -UFMT_SHARED`, taking only the include directory out of fmt.pc — its meson.build cites gitlab issue 2875), so libfmt.a is installed and never linked. It is here because fmt.pc is.
+
+## simdutf 8.2.0
+
+- **source** `simdutf/simdutf-8.2.0`, GitHub tag archive.
+- **build system** cmake.
+- **installs** stage/lib64/libsimdutf.a, stage/lib64/pkgconfig/simdutf.pc, stage/include/simdutf.h.
+
+**Configure:** `-DBUILD_SHARED_LIBS=OFF -DSIMDUTF_TESTS=OFF -DSIMDUTF_TOOLS=OFF -DSIMDUTF_BENCHMARKS=OFF -DSIMDUTF_ICONV=OFF -DSIMDUTF_FUZZERS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1`. ICONV is off because it would be found in glibc here and in a libiconv elsewhere, and VTE never takes that path. 11.5 s, the slowest of the four.
+
+## vte 0.84.1
+
+- **source** `vte/vte-0.84.1`, download.gnome.org; hash matched against upstream's published `.sha256sum` (first tier).
+- **build system** meson; C++20 (gxx ≥ 12.1 / clang ≥ 14 required — clang 24 here).
+- **installs** stage/lib/libvte-2.91-gtk4.a (3.6 MB), stage/lib/pkgconfig/vte-2.91-gtk4.pc, stage/include/vte-2.91-gtk4/vte/*.h, stage/libexec/vte-urlencode-cwd, stage/etc/profile.d/vte.{sh,csh}. The `.pc` Requires every stage dependency by name plus `gtk4 >= 4.14.0`.
+- **the edit** `src/meson.build:490` `shared_library(` → `library(` — `edit_journal/vte/001-static-library.patch`, applied by `build_stack.py` at unpack. Without it there is no archive: upstream hardcodes the shared library.
+
+**Configure:** `--libdir=lib -Dgtk3=false -Dgtk4=true -Dgnutls=false -D_systemd=false -Dicu=false -Dgir=false -Dvapi=false -Ddocs=false -Dapp=false -Dglade=false -Dterminfo=false -Da11y=true -Dfribidi=true`, no `--buildtype` (gtk's reason). PKG_CONFIG_LIBDIR has `vendor/build/gtk/meson-uninstalled` first: GTK is not installed and its uninstalled `.pc` answers for `gtk4`.
+
+**Depends on:** cairo, cairo-gobject, gio, glib ≥ 2.72, gobject, pango, libpcre2-8 ≥ 10.21, threads, liblz4 ≥ 1.9, simdutf ≥ 6.2.0, fmt ≥ 11 (headers), fast_float (headers), fribidi (on), gtk4 ≥ 4.14; gnutls / icu / libsystemd optional and off. msgfmt from the machine for the .po files.
+
+**Traps:**
+1. The tarball bundles fmt, simdutf and fast_float under `subprojects/` with wrapdb `meson.build`s dropped in. `--wrap-mode=nofallback` refuses them, which is right: those are edits somebody else maintains, and the stage has the real ones.
+2. `-Dgnutls=false` is honoured and meson prints `DEPRECATION: Option "gnutls" is deprecated`. Read that as the next VTE requiring gnutls. And without it VTE feeds *"WARNING: GnuTLS not enabled; data will be written to disk unencrypted!"* into every new terminal — measured from the archive. GTK_AND_NO_DEPENDENCIES.md GTK-17, Q-VTE-1.
+3. VTE builds fourteen test executables unconditionally (there is no option); the ones that link gtk4 take `-lgtk-4` from the uninstalled `.pc`, which resolves to the `libgtk-4.so` GTK's build tree does make. They are `install: false`, never run, and cost ~10 s.
+4. A program linked from the archive SIGSEGVs in `gtk_init` unless `XKB_CONFIG_ROOT` names xkb data: the vendored GTK's default is `/nonexistent` on purpose (WIN-1). satl spills its own before `gtk_init`; a bare test program must point at `stage/share/X11/xkb`.
