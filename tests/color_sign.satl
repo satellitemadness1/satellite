@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A COLOUR HAS NO SIGN, where a hex keeps one: x000000 is black, and there is no
+// colour below it. Refused before anything runs.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color my_color = -x00FF00
+    satellite.console.display(my_color)
+    satellite.return(satellite)
+}

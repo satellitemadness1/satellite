@@ -778,7 +778,13 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     ++at;
 
     ExpressionContext context{variables, functions, state};
-    Value value = evaluate_expression(row, at, context);
+    Value value;
+    // satellite.variable.color (2026-09-22): A COLOUR NAME READS ITS OWN VALUE -- `c =
+    // 000000` and `c = ff00aa` as six hex digits, and `c = x000000, 50` with its
+    // transparency after the comma, the author's second way (color_values.cpp). It
+    // answers false for every other name, which is read here as it always was.
+    if (!color_reads_its_value(declared != 0 ? declared : found->second.declared, row, at, value, context))
+        value = evaluate_expression(row, at, context);
     if (context.code != success) {
         const std::size_t blame = context.placed ? context.refused_at : at;
         at = past_the_statement(row, at);
