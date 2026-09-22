@@ -217,13 +217,16 @@ bool refuse_if_reserved(const std::vector<std::bitset<16>> &row, Code code, std:
                         ExpressionContext &context)
 {
     // 5/4 -- the fraction (the author, 2026-09-16: "when you encounter
-    // number/number with NO space -- that becomes a fraction"). The type is not
-    // built, so this says so in the fraction's own words rather than letting the
-    // slash fall through to something that would answer.
+    // number/number with NO space -- that becomes a fraction"). A NUMBER WRITTEN
+    // OUT before the slash never reaches here: the number literal's arm reads 1/3
+    // as the fraction (satellite.variable.fraction, 2026-09-22). What does is a
+    // touching slash after a name, a hex or a binary that ends in a digit --
+    // `n1/2`, `x1F2/3` -- and a fraction of one of those is the author's later
+    // step ("we auto convert for the "another" type"), so it is named as not built.
     if (code == token::fraction_token) {
         context.refuse(not_built_yet,
-                       "a touching / between two numbers is a fraction, and the fraction type is not built yet "
-                       "-- write a space on both sides for whole-number division");
+                       "a touching / makes a fraction only between two numbers written out, like 1/3 -- a fraction "
+                       "of a name, a hex or a binary is not built yet; write a space on both sides for division");
         ++at;
         return true;
     }
@@ -812,6 +815,14 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // turned over, the exponents shared. A negative infinity is below every number.
         if (const satellite_infinity *infinite = inner.as_infinity())
             return Value::of_infinity(satellite_infinity::negated(infinite));
+        // A FLOAT'S SIGN IS ITS OWN BOOL (the author, 2026-09-22: "plus a sign which
+        // is positive by default"), so -12.5 turns the bool over and keeps the digits.
+        if (const satellite_float *real = inner.as_float())
+            return Value::of_float(real->negated());
+        // A FRACTION'S SIGN RIDES ON ITS NUMERATOR (satellite.variable.fraction,
+        // 2026-09-22): -1/3 is (-1, 3), shown -1/3.
+        if (const satellite_fraction *tied = inner.as_fraction())
+            return Value::of_fraction(tied->negated());
         if (!inner.is_number()) {
             if (context.code == success)
                 context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name(),
@@ -957,6 +968,18 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     if (code == token::number_token || code == token::hexadecimal_token) {
         const unsigned int radix = radix_of(code);
         const std::string digits = text_at(row, at);
+        // A NUMBER WITH A TOUCHING SLASH AFTER IT IS A FRACTION -- 1/3, 1.5/2
+        // (satellite.variable.fraction, 2026-09-22) -- read in fraction_values.cpp.
+        if (code == token::number_token && code_at(row, at) == token::fraction_token) {
+            Value made;
+            std::string why;
+            const signed long long int held = fraction_literal(digits, row, at, made, why);
+            if (held != success) {
+                context.refuse(held, why);
+                return Value();
+            }
+            return maybe_a_method(row, at, std::move(made), "that fraction", context);
+        }
         if (code == token::hexadecimal_token || digits.find('.') != std::string::npos) {
             const bool hex = code == token::hexadecimal_token;
             Value made;
@@ -1412,6 +1435,27 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         answer = scenarios->text(satellite_infinity::display(argument.as_infinity()), true);
     else if (argument.is_bool() && scenarios->flag != nullptr)
         answer = scenarios->flag(*argument.as_bool(), true);
+    // A FLOAT LEAVES AS ITS DIGITS ROUND ONE POINT -- 12.34, -0.5, 2.0 -- the same
+    // text `.string` answers (object_float.cpp's float_to_string, 2026-09-22).
+    else if (argument.is_float() && scenarios->text != nullptr) {
+        satellite_string written;
+        std::string why;
+        const signed long long int made = argument.to_string(written, why);
+        if (made != success) {
+            context.refuse(made, std::string(word::spelling_of(code)) + " was given a float, and " + why);
+            return Value();
+        }
+        answer = scenarios->text(written.to_utf8(), true);
+    }
+    // A FRACTION LEAVES AS ITS TWO NUMBERS ROUND THE SLASH -- 1/3, 2/4, 1.5/2 -- the
+    // same text `.string` answers (object_fraction.cpp's fraction_to_string,
+    // satellite.variable.fraction, 2026-09-22).
+    else if (argument.is_fraction() && scenarios->text != nullptr) {
+        satellite_string written;
+        std::string why;
+        argument.to_string(written, why);
+        answer = scenarios->text(written.to_utf8(), true);
+    }
     // A CONTAINER GIVEN TO A WORD THAT ONLY TAKES TEXT reads back as what was
     // typed: {1, "two"}, or {"zoe": 1, "al": 2} for an index. satellite_object.cpp's
     // to_string is the one spelling, so display and a refusal quote it the same way.

@@ -1,0 +1,24 @@
+satellite.include(satellite)
+
+// A float and a plain number, either side of every operator: the number is read
+// as the float it is. Two plain numbers are not a float -- 4 / 3 is still 1 --
+// and 4.0 / 3 is.
+satellite.capsule satellite.main()
+{
+    satellite.console.display(1.5 + 2)
+    satellite.console.display(2 + 1.5)
+    satellite.console.display(10 - 0.5)
+    satellite.console.display(0.5 - 10)
+    satellite.console.display(1.5 * 2)
+    satellite.console.display(3 * 1.5)
+    satellite.console.display(4 / 3)
+    satellite.console.display(4.0 / 3)
+    satellite.console.display(3 / 4.0)
+    satellite.console.display(1.5 < 2)
+    satellite.console.display(3 > 2.5)
+    satellite.console.display(2.0 == 2)
+    satellite.console.display(2 ^ -1)
+    satellite.console.display(2 ^ -1000000000)
+    satellite.console.display(0.5 ^ 1000000000)
+    satellite.return(satellite)
+}

@@ -1,0 +1,10 @@
+satellite.include(satellite)
+
+// A fraction meeting a float is the author's "grand finale" -- the new types
+// mixed together -- and until then it says so.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(1/2 < 0.5)
+    satellite.return(satellite)
+}

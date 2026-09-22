@@ -18,6 +18,14 @@
 
 namespace satellite004 {
 
+class Arguments;
+
+// THE FLOAT'S ROWS INTO THE HOLDER EVERY FLOAT IS ROUNDED BY
+// (satellite_variable_float/float_precision.hpp says why it is one holder).
+// Called once, where satl hands the walker its arguments, before anything runs:
+// arguments.float.whole, arguments.float.decimal and arguments.infinity_display.
+void float_precision_from(const Arguments &arguments);
+
 // A NUMBER LITERAL WITH A POINT IN IT -- 12.34 -- which the lexer already makes one
 // number_token. expression.cpp sends it here and nowhere else.
 signed long long int float_literal(const std::string &digits, Value &out, std::string &why);

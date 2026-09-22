@@ -198,6 +198,24 @@ Value reverse_of(const Value &receiver, bool &handled, std::string &why)
         return Value::of_binary(below_zero ? made.negated() : std::move(made));
     }
 
+    // A FLOAT'S .reverse() IS DECIDED AND NOT BUILT (SATELLITE_INFINITY.md FLT-4:
+    // `12.34.reverse()` is 34.12), so it says so rather than that a float has no
+    // order to reverse -- which would be untrue (2026-09-22).
+    if (receiver.is_float()) {
+        why = "a float's .reverse() is not built yet (SATELLITE_INFINITY.md FLT-4)";
+        handled = false;
+        return Value();
+    }
+
+    // A FRACTION HAS AN ORDER -- 1/3 < 1/2 -- so "no order to reverse" would be
+    // untrue of one too (satellite.variable.fraction, 2026-09-22). Whether its
+    // .reverse() turns 1/3 into 3/1 is not decided, and it is not built.
+    if (receiver.is_fraction()) {
+        why = "a fraction's .reverse() is not built yet -- a fraction has .numerator, .denominator and .string so far";
+        handled = false;
+        return Value();
+    }
+
     // AN INFINITY HAS NO DIGITS TO TURN ROUND (SATELLITE_INFINITY.md Part 3). It is
     // larger than every number, and reversing the digits of some number standing in
     // for it would be an answer that is wrong and does not say so.

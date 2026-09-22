@@ -31,6 +31,7 @@
 #include "bytecode/sate_file.hpp"
 #include "bytecode/window_calls.hpp"
 #include "bytecode/bytecode_registry.hpp"
+#include "bytecode/float_values.hpp"
 #include "bytecode/function_table.hpp"
 #include "bytecode/program_walk.hpp"
 #include "bytecode/word_counts.hpp"
@@ -306,6 +307,10 @@ signed long long int run_satl(int argc, char **argv)
     // AND THE CONFIG ROWS, the same way and for the same reason: `arguments` lives
     // until run_satl returns, which is after every program and prompt line it runs.
     state.arguments = &arguments;
+    // THE FLOAT'S PRECISIONS, COPIED ONCE (2026-09-22): a float is made where there
+    // is no state to read a row through, so its rows go to the one holder
+    // (satellite_variable_float/float_precision.hpp) here, before anything runs.
+    float_precision_from(arguments);
     state.set("satellite " + version_line(arguments) + " (starting)", success);
     state.set("arguments(gathered)", success);
 

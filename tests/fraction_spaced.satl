@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// A spaced slash is whole-number division, and given to a fraction name it would
+// keep 0 without a word. It is refused before anything runs, so "before" never
+// reaches the screen.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.fraction f = 1 / 3
+    satellite.console.display(f)
+    satellite.return(satellite)
+}

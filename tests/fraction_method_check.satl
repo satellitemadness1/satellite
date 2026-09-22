@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A method a fraction does not have yet is refused by the checker, by name,
+// before anything runs.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.fraction f = 1/3
+    satellite.console.display(f.number)
+    satellite.return(satellite)
+}

@@ -1,0 +1,9 @@
+satellite.include(satellite)
+
+// A float meeting a percentage is the author's grand finale -- the new types mixed
+// together -- and says so until it is built.
+satellite.capsule satellite.main()
+{
+    satellite.console.display(1.5 + 50%)
+    satellite.return(satellite)
+}

@@ -29,6 +29,20 @@ struct satellite_float {
     satellite_number whole;              // the digits before the point, never negative
     satellite_number fraction;           // the digits after it, as a whole number ...
     unsigned long long int places = 0;   // ... over 10^places: .05 is 5 at 2 places
+
+    // THE SAME FLOAT WITH ITS SIGN TURNED OVER, for a minus written in front of
+    // one: -12.5. Zero stays positive, as a satellite_number's does, so -0.0 is 0.0.
+    satellite_float negated() const
+    {
+        satellite_float out = *this;
+        out.negative = !negative && !(whole.is_zero() && fraction.is_zero());
+        return out;
+    }
 };
+
+// EVERY FLOAT IS HELD IN ONE FORM -- no zero at the end of the fraction, so 12.50
+// is (12, 5, 1 place) like 12.5 -- and satellite_variable_float/float_scaled.cpp is
+// what keeps it so: every float is made through float_from_scaled or
+// float_from_quotient there.
 
 } // namespace satellite004

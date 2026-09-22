@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// 2.0 / 3 is held to arguments.float.decimal places, the last rounded half away
+// from zero, and shown to arguments.infinity_display places. Times 10 ^ 128 moves
+// every place it holds to the left of the point, where all of them show.
+satellite.capsule satellite.main()
+{
+    satellite.variable.float x = 2.0 / 3
+    satellite.console.display(x)
+    satellite.console.display(x * 10 ^ 128)
+    satellite.return(satellite)
+}
