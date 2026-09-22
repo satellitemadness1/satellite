@@ -711,8 +711,11 @@ because the question a program asks a radio is one question — which one — an
 `.chosen` already asks it of a choice and a set of tabs. `.chosen("purple")`
 on a one-of of three sizes is refused, as it is on a choice. `.changed` is
 `toggled` on every button in it: a pick fires it twice, once for the button
-going off and once for the one going on, and the queue collapses the second
-onto the first, so a pick is one change.
+going off and once for the one going on, and only the one going ON queues a
+change. The first draft queued both and leaned on the queue collapsing the
+pair — and the interpreter can take the first off before the second is on,
+which would have run a capsule twice for one pick. Asking the button is one
+call and no race.
 
 **THE FIRST IS TICKED FROM THE START.** GTK4 would leave none ticked; a choice
 shows its first item from the start, and a one-of that showed nothing picked

@@ -47,6 +47,18 @@ void it_was_noticed(GObject *, GParamSpec *, gpointer user_data)
     it_was_changed(nullptr, user_data);
 }
 
+// ONE OF A one_of WAS TICKED (GTK-3's radio). A pick fires `toggled` TWICE --
+// once on the button going off and once on the one going on -- and only the
+// one going ON is a change. The first draft queued both and leaned on the
+// queue collapsing the pair; the interpreter can take the first off before
+// the second is on, and then a capsule runs twice for one pick. Asking the
+// button is one call and no race.
+void one_was_ticked(GtkCheckButton *button, gpointer user_data)
+{
+    if (gtk_check_button_get_active(button))
+        it_was_changed(nullptr, user_data);
+}
+
 // WHICH SIGNAL MEANS "A PERSON CHANGED THIS", A PIECE AT A TIME. False for a
 // piece nothing a person does can change -- a label, a picture, a row, a
 // progress bar -- and for a BUTTON, which is pressed rather than changed.
@@ -84,14 +96,12 @@ bool connect_what_changing_means(satellite_window &which, GtkWidget *widget)
         g_signal_connect(widget, "notify::page", G_CALLBACK(it_was_noticed), &which);
         return true;
     // A PERSON TICKING ONE OF A one_of CHANGES IT (GTK-3's radio). The box
-    // itself has no signal; each check button in it has `toggled`, and a pick
-    // fires it TWICE -- once on the button going off and once on the one
-    // going on. Both name this piece, and the second is collapsed onto the
-    // first by the queue (window_desk.hpp), so a pick is one change.
+    // itself has no signal; each check button in it has `toggled`, and
+    // one_was_ticked above queues a change only for the button that went ON.
     case satellite_window::one_of:
         for (GtkWidget *button = gtk_widget_get_first_child(widget); button != nullptr;
              button = gtk_widget_get_next_sibling(button))
-            g_signal_connect(button, "toggled", G_CALLBACK(it_was_changed), &which);
+            g_signal_connect(button, "toggled", G_CALLBACK(one_was_ticked), &which);
         return true;
     default:
         return false;
