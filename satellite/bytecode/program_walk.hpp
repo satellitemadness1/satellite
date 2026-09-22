@@ -10,10 +10,13 @@
 //                   author, 2026-09-16: "we have to take in other satellite
 //                   files, like other includes").
 //
-//   CapsuleTable    name -> where its body starts. The language's own words are
-//                   found by CODE in the function table; a user's capsules are
-//                   found by NAME here, because a user's name has no number.
-//                   Two tables, two kinds of name, no search in either.
+//   CapsuleTable    where each capsule's body starts, and in which FILE or
+//                   satellite.namespace it lives (capsule_scopes.hpp). The
+//                   language's own words are found by CODE in the function table;
+//                   a user's capsules are found by NAME there, because a user's
+//                   name has no number. Until 2026-09-22 it was one map by bare
+//                   name across every file, and a program's own capsule could be
+//                   silently replaced by an included file's.
 //
 //   run_main()      walks main's body. A call is a POSITION, never an object:
 //                   nothing is allocated to run a line, which is the whole
@@ -26,6 +29,7 @@
 // result and no moment to run in, and file_can_run() refuses such a file.
 
 #include "bytecode_registry.hpp"
+#include "capsule_scopes.hpp"
 #include "expression.hpp"
 #include "function_table.hpp"
 #include "include_shape.hpp"
@@ -82,42 +86,9 @@ signed long long int for_step_moves_by(const std::vector<std::bitset<16>> &row,
                                        int &moves_by,
                                        std::string &why);
 
-// ONE OF A CAPSULE'S PARAMETERS: what it was declared, and what it is called
-// inside the capsule. A TYPE AND THEN A NAME, which is how every other
-// declaration in satellite is written -- `satellite.variable.number n`.
-//
-// A NAME IS ALL A PARAMETER EVER WAS. satellite_capsule.hpp already says the
-// object model's whole difficulty in one line (the author, 2026-09-16:
-// "building the satellite object model will be very very hard to do, given that
-// names are simply strings"), and records `parameters` as names with no types.
-// A capsule written in a FILE does declare a type, and that type is what the
-// argument is measured against when it arrives, so it is kept here.
-// A SHAPE AND NOT A WORD, because `satellite.main` has taken a shaped parameter
-// since 004's first program: `satellite.main(satellite.container.list<satellite.variable.string> arguments)`.
-// A reader that only took a word refused every program in examples/ (2026-09-21).
-// It is the same TypeShape a satellite.variable line keeps, read by the same
-// read_type_shape, and measured by the same value_fits.
-struct CapsuleParameter {
-    TypeShape shape;            // satellite.variable.number, or a container with its <>
-    std::string name;           // what the capsule's own body calls it
-
-    token::Code declared() const { return shape.word; }
-};
-
-// Where a capsule's body begins: which row, and the code just past its `{`.
-struct CapsuleSite {
-    std::size_t row = 0;
-    std::size_t body = 0;   // the first code INSIDE the braces
-    std::vector<CapsuleParameter> parameters;   // in written order; empty for `name()`
-
-    // WHY THE HEADER COULD NOT BE READ, empty when it could. capsules_in() is a
-    // SCAN and not a checker -- it has no line to blame and nothing to print --
-    // so a header it cannot make sense of is recorded here and refused by
-    // check_program, before anything runs, with the rest of the program.
-    std::string trouble;
-};
-
-using CapsuleTable = std::unordered_map<std::string, CapsuleSite>;
+// A CAPSULE'S PARAMETERS, ITS SITE AND THE TABLE OF THEM ARE capsule_scopes.hpp's,
+// with the scan that finds them (capsules_in) -- a capsule now has a SCOPE, and the
+// scan that knows scopes is the one that knows capsules.
 
 // Reads `main_file` and every file its includes name, breadth first, one row a
 // file. A file already loaded is not loaded twice, so a cycle of includes ends
@@ -128,10 +99,6 @@ signed long long int load_program(const std::string &main_file,
                                   BytecodeRegistry &registry,
                                   BytecodeFilenames &filenames,
                                   MachineState &state);
-
-// Every `satellite.capsule <name>()` in every row, by name. satellite.main is
-// in here too, under "satellite.main".
-CapsuleTable capsules_in(const BytecodeRegistry &registry);
 
 // NOTHING RUNS BEFORE THE WHOLE PROGRAM IS CHECKED. Every capsule body is
 // walked and every statement in it judged BEFORE main is entered, so a program
@@ -159,8 +126,11 @@ signed long long int run_main(const BytecodeRegistry &registry,
                               const FunctionTable &functions,
                               MachineState &state);
 
-// ONE CAPSULE, BY NAME, with its own frame -- the same thing run_statements does
-// for `my_capsule()` written in a program, reached from outside the walker.
+// ONE CAPSULE, BY ITS KEY (CapsuleSite::key), with its own frame -- the same thing
+// run_statements does for `my_capsule()` written in a program, reached from outside
+// the walker. A KEY AND NOT A NAME since scopes (2026-09-22): two files may each have
+// a `when_pressed`, and a button has to run the one its own file meant, so
+// expression.cpp hands the window the key of the capsule the name reached.
 //
 // IT EXISTS FOR A BUTTON (SATELLITE_WINDOW.md WIN-11). A GTK signal has a
 // capsule's NAME and nothing else, and the walker's own capsule arm is inside an
@@ -175,7 +145,7 @@ signed long long int run_main(const BytecodeRegistry &registry,
 signed long long int run_capsule(const BytecodeRegistry &registry,
                                  const CapsuleTable &capsules,
                                  const FunctionTable &functions,
-                                 const std::string &name,
+                                 const std::string &key,
                                  std::vector<Value> arguments,
                                  MachineState &state);
 

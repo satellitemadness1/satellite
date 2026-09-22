@@ -447,7 +447,8 @@ signed long long int run_satl(int argc, char **argv)
     // the first, so it rejected test_programs/hello_world.satl outright (13).
     // The check belongs on the bytecode, walking every capsule body before main
     // is entered, and that is PLAN work rather than a five-line change.
-    const CapsuleTable capsules = capsules_in(bytecode_registry);
+    const CapsuleTable capsules = capsules_in(bytecode_registry, bytecode_filenames);
+    state.capsules = &capsules;
     // NOTHING RUNS BEFORE THE WHOLE PROGRAM IS CHECKED.
     code = check_program(bytecode_registry, capsules, functions, state);
     if (stops_the_program(code))
@@ -514,11 +515,13 @@ signed long long int run_satl(int argc, char **argv)
         [&bytecode_registry, &capsules, &functions, &state](const std::string &capsule,
                                                             const WindowHandle &piece,
                                                             const WindowHandle &window) {
+            // `capsule` IS THE KEY expression.cpp resolved where the button was
+            // wired (capsule_scopes.hpp), so this is the capsule that file meant.
             std::vector<Value> arguments;
-            const CapsuleTable::const_iterator wants = capsules.find(capsule);
-            if (wants != capsules.end() && !wants->second.parameters.empty()) {
+            const CapsuleSite *wants = capsules.by_key(capsule);
+            if (wants != nullptr && !wants->parameters.empty()) {
                 arguments.push_back(Value::of_window(piece));
-                if (wants->second.parameters.size() > 1)
+                if (wants->parameters.size() > 1)
                     arguments.push_back(Value::of_window(window));
             }
             const signed long long int stopped =

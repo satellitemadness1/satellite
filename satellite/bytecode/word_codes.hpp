@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 417;
+inline constexpr unsigned int kWordsInTable = 418;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -80,6 +80,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0201190000000000ULL, 4473},  // 1 25 -- satellite.feedback
     {0x02011A0000000000ULL, 4479},  // 1 26 -- satellite.infinity
     {0x02011B0000000000ULL, 4482},  // 1 27 -- satellite.window
+    {0x02011C0000000000ULL, 4514},  // 1 28 -- satellite.namespace
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -894,12 +895,15 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.window.tabs()", {1, 27, 21, 0, 0, 0, 0}, 4},
     {"satellite.window.one_of(items)", {1, 27, 22, 0, 0, 0, 0}, 3},
     {"satellite.console.new(title, width, height)", {1, 5, 10, 0, 0, 0, 0}, 3},
+    {"satellite.namespace", {1, 28, 0, 0, 0, 0, 0}, 2},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
 
 // The same words sorted by SPELLING, so the lexer can turn the text
-// satellite.console.display into one code without walking 364 rows.
+// satellite.console.display into one code without walking 364 rows --
+// and words/aliases.tsv's second spellings among them, each with its
+// word's code, so satellite.space lexes as satellite.namespace.
 struct SpelledWord { const char *path; token::Code code; };
 
 inline constexpr SpelledWord kSpelledWords[] = {
@@ -912,6 +916,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.capsule", 4102},
     {"satellite.capsule()", 4103},
     {"satellite.capsule.launch", 4104},
+    {"satellite.class", 4315},
     {"satellite.console", 4161},
     {"satellite.console()", 4162},
     {"satellite.console.clear()", 4170},
@@ -1082,6 +1087,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.library.system.min_free_mb", 4386},
     {"satellite.main", 4105},
     {"satellite.main()", 4106},
+    {"satellite.namespace", 4514},
     {"satellite.network", 4407},
     {"satellite.network()", 4408},
     {"satellite.network.http(host, port)", 4414},
@@ -1118,6 +1124,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.return(satellite)", 4390},
     {"satellite.return(value)", 4391},
     {"satellite.returns", 4416},
+    {"satellite.space", 4514},
     {"satellite.spacesuit", 4315},
     {"satellite.spacesuit()", 4316},
     {"satellite.statement", 4321},

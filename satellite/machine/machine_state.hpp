@@ -22,6 +22,7 @@ using BytecodeRegistry = std::vector<std::vector<std::bitset<16>>>;
 using BytecodeFilenames = std::vector<std::string>;
 
 class Arguments;   // arguments/arguments.hpp, which the pointer below needs no more of
+struct CapsuleTable;   // bytecode/capsule_scopes.hpp, the same
 
 signed long long int display_machine_state(const std::string &current_machine_state,
                                            signed long long int machine_code_input);
@@ -85,6 +86,13 @@ struct MachineState {
     // no source to show for it.
     const BytecodeRegistry *program = nullptr;
     const BytecodeFilenames *program_files = nullptr;
+
+    // AND WHERE EACH OF ITS CAPSULES LIVES (capsule_scopes.hpp), for the same reason
+    // and on the same terms: set once after the scan, read-only while the program
+    // runs. What reads it is `.pressed(name)` and its family, which must resolve a
+    // capsule's name from the FILE it is written in and has only a row in its hand.
+    // Nullptr at the prompt, where a typed line has no capsules.
+    const CapsuleTable *capsules = nullptr;
 
     // THE CONFIG ROWS A RUNNING PROGRAM READS, and the first is arguments.infinity: the
     // nines width every satellite.infinity() is made with (SATELLITE_INFINITY.md,

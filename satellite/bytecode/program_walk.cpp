@@ -364,95 +364,6 @@ signed long long int load_program(const std::string &main_file,
     return success;
 }
 
-CapsuleTable capsules_in(const BytecodeRegistry &registry)
-{
-    CapsuleTable table;
-    for (std::size_t r = 0; r < registry.size(); ++r) {
-        const std::vector<std::bitset<16>> &row = registry[r];
-        for (std::size_t i = 0; i < row.size(); ) {
-            // A PAYLOAD'S CODES ARE SKIPPED, as in load_program's include scan: a string
-            // ending in U+1006 ends in 0x1006, satellite.capsule's code, and a word or a
-            // name touching it made the next body a capsule -- a second satellite.main,
-            // the only one checked and the one that ran (the payload sweep, 2026-09-17).
-            if (token::carries_a_count(code_at(row, i))) { skip_payload(row, i); continue; }
-            if (code_at(row, i) != word::code_of(1, 2)) { ++i; continue; }   // satellite.capsule
-
-            // The name is the next code: a word (satellite.main) or a name the
-            // user owns. Then its arguments, then the `{` its body opens with.
-            std::size_t k = i + 1;
-            std::string name;
-            if (word::is_word_code(code_at(row, k))) {
-                name = word::spelling_of(code_at(row, k));
-                ++k;
-            } else if (code_at(row, k) == token::name_token) {
-                name = text_at(row, k);
-            } else {
-                ++i;
-                continue;
-            }
-
-            // ITS PARAMETERS, IF IT DECLARED ANY (2026-09-21). A type and then a
-            // name, commas between, exactly the way every other declaration in
-            // satellite is written. Anything else is recorded as `trouble` and
-            // refused by check_program with a line to point at -- this scan has
-            // none, so it must not be the thing that reports.
-            std::vector<CapsuleParameter> parameters;
-            std::string trouble;
-            if (code_at(row, k) == token::left_parenthesis_token) {
-                ++k;
-                if (code_at(row, k) != token::right_parenthesis_token) {
-                    for (;;) {
-                        if (!word::is_word_code(code_at(row, k))) {
-                            trouble = "satellite.capsule " + name + " -- a parameter is a TYPE and "
-                                      "then a name, like " + name + "(satellite.variable.number n)";
-                            break;
-                        }
-                        const Code declared = code_at(row, k);
-                        // THROUGH read_type_shape, so `satellite.container.list<satellite.variable.string>`
-                        // is one parameter and not a word followed by rubbish --
-                        // which is what satellite.main has been declared with
-                        // since 004's first program.
-                        TypeShape shape;
-                        unsigned int pending = 0;
-                        std::string unreadable;
-                        if (!read_type_shape(row, k, shape, pending, unreadable) || pending != 0) {
-                            trouble = "satellite.capsule " + name + " -- " +
-                                      (unreadable.empty() ? std::string("there is a > here with nothing "
-                                                                       "left for it to close")
-                                                          : unreadable);
-                            break;
-                        }
-                        if (code_at(row, k) != token::name_token) {
-                            trouble = "satellite.capsule " + name + " -- " +
-                                      std::string(word::spelling_of(declared)) +
-                                      " declares a name, and there is no name after it";
-                            break;
-                        }
-                        const std::string spelled = text_at(row, k);
-                        parameters.push_back(CapsuleParameter{std::move(shape), spelled});
-                        if (code_at(row, k) != token::comma_token)
-                            break;
-                        ++k;
-                    }
-                }
-                if (trouble.empty() && code_at(row, k) != token::right_parenthesis_token)
-                    trouble = "satellite.capsule " + name + " -- its ( is never closed on its line";
-            }
-
-            while (k < row.size() && code_at(row, k) != token::left_brace_token &&
-                   code_at(row, k) != token::right_brace_token) {
-                if (token::carries_a_count(code_at(row, k))) { skip_payload(row, k); continue; }
-                ++k;
-            }
-            if (code_at(row, k) != token::left_brace_token) { ++i; continue; }
-
-            table[name] = CapsuleSite{r, k + 1, std::move(parameters), std::move(trouble)};
-            i = k + 1;
-        }
-    }
-    return table;
-}
-
 namespace {
 
 // Every statement from `from` until the `}` that closes the body, or the row's
@@ -464,6 +375,16 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                                     std::size_t from,
                                     VariableTable &variables,
                                     MachineState &state);
+
+// ONE CAPSULE, BY ITS SITE: a new frame, the arguments bound, close_files on the way
+// out. Every road to a capsule ends here -- a call written in a program, a button's
+// press through run_capsule -- so there is one reader of "call a capsule".
+signed long long int run_site(const BytecodeRegistry &registry,
+                              const CapsuleTable &capsules,
+                              const FunctionTable &functions,
+                              const CapsuleSite &site,
+                              std::vector<Value> arguments,
+                              MachineState &state);
 
 // `satellite.statement.while(<expr>) { ... }`. `at` is on the word code and is
 // left past the body's `}`.
@@ -1075,6 +996,62 @@ signed long long int close_files(VariableTable &variables, signed long long int 
     return answer;
 }
 
+// WHAT A DOTTED NAME AT `at` REACHES, from the scope the statement stands in -- or
+// nothing, when it is not a name, the names are not followed by `(`, or the first
+// name is not a file or a space. The same CapsuleTable::reach the checker asked.
+Reached reached_from(const CapsuleTable &capsules, std::size_t which_row, std::size_t at,
+                     const std::vector<std::bitset<16>> &row)
+{
+    std::vector<std::string> names;
+    std::size_t k = at;
+    if (!dotted_names_at(row, k, names) || names.size() < 2 || code_at(row, k) != token::left_parenthesis_token)
+        return Reached();
+    return capsules.reach(capsules.scope_at(which_row, at), names);
+}
+
+// A CAPSULE CALL STANDING AS A STATEMENT -- `greet(1, 2)` or `other.tools.greet(1, 2)`,
+// `at` on its first name and left past the statement. Its arguments are worked out
+// HERE, IN THE CALLER'S FRAME (2026-09-21), which is the only frame they could be
+// worked out in: the capsule's own has nothing in it yet, and that is the point.
+signed long long int call_capsule(const BytecodeRegistry &registry,
+                                  const CapsuleTable &capsules,
+                                  const FunctionTable &functions,
+                                  const CapsuleSite &site,
+                                  const std::vector<std::bitset<16>> &row,
+                                  std::size_t &at,
+                                  VariableTable &variables,
+                                  MachineState &state)
+{
+    std::vector<std::string> names;
+    std::size_t k = at;
+    dotted_names_at(row, k, names);                // k is on the `(`: both callers saw it there
+    std::string written = names.front();
+    for (std::size_t n = 1; n < names.size(); ++n) written += "." + names[n];
+
+    std::vector<Value> arguments;
+    ExpressionContext context{variables, functions, state};
+    std::size_t a = k + 1;
+    if (code_at(row, a) != token::right_parenthesis_token) {
+        for (;;) {
+            arguments.push_back(evaluate_expression(row, a, context));
+            if (context.code != success || code_at(row, a) != token::comma_token)
+                break;
+            ++a;
+        }
+    }
+    if (context.code != success) {
+        const std::size_t blame = context.placed ? context.refused_at : at;
+        at = past_the_statement(row, k);
+        return raise_at(context.code, context.why, written + "(...)", state, row, blame);
+    }
+    if (code_at(row, a) != token::right_parenthesis_token) {
+        at = past_the_statement(row, k);
+        return report_error("satl(run): " + written + "(...) " + kNotReadToTheEnd, satl_line_not_understood);
+    }
+    at = past_the_statement(row, k);
+    return run_site(registry, capsules, functions, site, std::move(arguments), state);
+}
+
 signed long long int run_statements(const BytecodeRegistry &registry,
                                     const CapsuleTable &capsules,
                                     const FunctionTable &functions,
@@ -1256,6 +1233,22 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                 continue;
             }
 
+            // A CAPSULE REACHED THROUGH A FILE OR A SPACE (2026-09-22): `other.greet()`,
+            // `tools.x()`. It starts exactly as a method call does, so it is told apart
+            // by what the first name IS -- a variable is a method's receiver, and a
+            // name no variable has that reaches a capsule is the capsule. The checker
+            // refuses a variable named like a file or a space, so the two cannot meet.
+            const Reached dotted = code_at(row, k) == token::method_token && variables.find(name) == variables.end()
+                                       ? reached_from(capsules, which_row, at, row)
+                                       : Reached();
+            if (dotted.site != nullptr) {
+                const signed long long int stopped =
+                    call_capsule(registry, capsules, functions, *dotted.site, row, at, variables, state);
+                if (stops_the_program(stopped))
+                    return stopped;
+                continue;
+            }
+
             if (code_at(row, k) == token::method_token || code_at(row, k) == token::left_square_bracket_token) {
                 ExpressionContext context{variables, functions, state};
                 std::size_t e = at;
@@ -1276,42 +1269,14 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             // A name followed by `(` is a capsule; a name followed by `=` is an
             // assignment. Nothing else is a statement a name can start.
             if (code_at(row, k) == token::left_parenthesis_token) {
-                const CapsuleTable::const_iterator found = capsules.find(name);
-                if (found == capsules.end()) {
+                const CapsuleSite *found = capsules.bare(capsules.scope_at(which_row, at), name);
+                if (found == nullptr) {
                     at = past_the_statement(row, k);
                     report_error("satl(run): no capsule named " + name, satl_line_not_understood);
                     continue;
                 }
-                // ITS ARGUMENTS, WORKED OUT IN THE CALLER'S FRAME (2026-09-21),
-                // which is the only frame they could be worked out in: the
-                // capsule's own has nothing in it yet, and that is the point.
-                std::vector<Value> arguments;
-                ExpressionContext context{variables, functions, state};
-                std::size_t a = k + 1;
-                if (code_at(row, a) != token::right_parenthesis_token) {
-                    for (;;) {
-                        arguments.push_back(evaluate_expression(row, a, context));
-                        if (context.code != success || code_at(row, a) != token::comma_token)
-                            break;
-                        ++a;
-                    }
-                }
-                if (context.code != success) {
-                    const std::size_t blame = context.placed ? context.refused_at : at;
-                    at = past_the_statement(row, k);
-                    return raise_at(context.code, context.why, name + "(...)", state, row, blame);
-                }
-                if (code_at(row, a) != token::right_parenthesis_token) {
-                    at = past_the_statement(row, k);
-                    return report_error("satl(run): " + name + "(...) " + kNotReadToTheEnd,
-                                        satl_line_not_understood);
-                }
-                at = past_the_statement(row, k);
-                // AND THE SAME run_capsule A PRESS USES. Two readers of "call a
-                // capsule" is the defect this file exists to not have twice: a
-                // new frame, the arguments bound, close_files on the way out.
                 const signed long long int stopped =
-                    run_capsule(registry, capsules, functions, name, std::move(arguments), state);
+                    call_capsule(registry, capsules, functions, *found, row, at, variables, state);
                 if (stops_the_program(stopped))
                     return stopped;
                 continue;
@@ -1330,6 +1295,40 @@ signed long long int run_statements(const BytecodeRegistry &registry,
     return success;
 }
 
+signed long long int run_site(const BytecodeRegistry &registry,
+                              const CapsuleTable &capsules,
+                              const FunctionTable &functions,
+                              const CapsuleSite &site,
+                              std::vector<Value> arguments,
+                              MachineState &state)
+{
+    VariableTable theirs;   // its own frame, as every capsule called by name has
+
+    // THE ARGUMENTS BECOME THE FIRST NAMES IN THAT FRAME, and they are the only
+    // names it starts with: there are no globals, so what was handed in is the
+    // whole of what a capsule can see of the world outside it.
+    //
+    // MEASURED AGAINST THE DECLARED TYPE, through the same value_fits() a
+    // satellite.variable line uses -- so `when_pressed(satellite.variable.number n)`
+    // handed a window is refused in the same words, and not quietly bound.
+    const std::vector<CapsuleParameter> &wants = site.parameters;
+    if (arguments.size() != wants.size())
+        return report_error("satl(run): " + site.shown + " takes " + std::to_string(wants.size()) +
+                                (wants.size() == 1 ? " argument, and was given " : " arguments, and was given ") +
+                                std::to_string(arguments.size()),
+                            satl_line_not_understood);
+    for (std::size_t at = 0; at < arguments.size(); ++at) {
+        std::string why;
+        if (!value_fits(wants[at].shape, arguments[at], why))
+            return report_error("satl(run): " + site.shown + "'s " + wants[at].name + " was declared " +
+                                    word::spelling_of(wants[at].declared()) + ", and " + why,
+                                types_do_not_meet);
+        theirs[wants[at].name] = Variable{wants[at].declared(), wants[at].shape, std::move(arguments[at])};
+    }
+    return close_files(theirs,
+                       run_statements(registry, capsules, functions, site.row, site.body, theirs, state));
+}
+
 } // namespace
 
 signed long long int run_typed_line(const BytecodeRegistry &registry,
@@ -1344,43 +1343,18 @@ signed long long int run_typed_line(const BytecodeRegistry &registry,
 signed long long int run_capsule(const BytecodeRegistry &registry,
                                 const CapsuleTable &capsules,
                                 const FunctionTable &functions,
-                                const std::string &name,
+                                const std::string &key,
                                 std::vector<Value> arguments,
                                 MachineState &state)
 {
-    const CapsuleTable::const_iterator found = capsules.find(name);
+    const CapsuleSite *found = capsules.by_key(key);
     // THE CHECKER HAS ALREADY PROVED THIS, before anything ran: a button whose
     // capsule does not exist is refused with the rest of the program. This is
     // the second reader saying so anyway, because a walker that trusts a name it
     // was handed is a walker that crashes when something else stops checking.
-    if (found == capsules.end())
-        return report_error("satl(run): no capsule named " + name, satl_line_not_understood);
-    VariableTable theirs;   // its own frame, as every capsule called by name has
-
-    // THE ARGUMENTS BECOME THE FIRST NAMES IN THAT FRAME, and they are the only
-    // names it starts with: there are no globals, so what was handed in is the
-    // whole of what a capsule can see of the world outside it.
-    //
-    // MEASURED AGAINST THE DECLARED TYPE, through the same value_fits() a
-    // satellite.variable line uses -- so `when_pressed(satellite.variable.number n)`
-    // handed a window is refused in the same words, and not quietly bound.
-    const std::vector<CapsuleParameter> &wants = found->second.parameters;
-    if (arguments.size() != wants.size())
-        return report_error("satl(run): " + name + " takes " + std::to_string(wants.size()) +
-                                (wants.size() == 1 ? " argument, and was given " : " arguments, and was given ") +
-                                std::to_string(arguments.size()),
-                            satl_line_not_understood);
-    for (std::size_t at = 0; at < arguments.size(); ++at) {
-        std::string why;
-        if (!value_fits(wants[at].shape, arguments[at], why))
-            return report_error("satl(run): " + name + "'s " + wants[at].name + " was declared " +
-                                    word::spelling_of(wants[at].declared()) + ", and " + why,
-                                types_do_not_meet);
-        theirs[wants[at].name] = Variable{wants[at].declared(), wants[at].shape, std::move(arguments[at])};
-    }
-    return close_files(theirs,
-                       run_statements(registry, capsules, functions, found->second.row, found->second.body,
-                                      theirs, state));
+    if (found == nullptr)
+        return report_error("satl(run): no capsule named " + capsule_as_written(key), satl_line_not_understood);
+    return run_site(registry, capsules, functions, *found, std::move(arguments), state);
 }
 
 signed long long int run_main(const BytecodeRegistry &registry,
@@ -1388,13 +1362,17 @@ signed long long int run_main(const BytecodeRegistry &registry,
                               const FunctionTable &functions,
                               MachineState &state)
 {
-    const CapsuleTable::const_iterator main = capsules.find("satellite.main");
-    if (main == capsules.end())
+    // THE MAIN FILE'S satellite.main, and never an included file's. A file may carry a
+    // main of its own to be run by itself, and while the table was one map by name
+    // the LAST file read won -- so including such a file ran ITS main instead of the
+    // program's.
+    const CapsuleSite *main = capsules.main();
+    if (main == nullptr)
         return report_error("satl(run): no satellite.main to begin in",
                             satl_file_missing_satellite_main);
     VariableTable variables;   // main's own, and the program's only frame to start
     return close_files(variables,
-                       run_statements(registry, capsules, functions, main->second.row, main->second.body, variables, state));
+                       run_statements(registry, capsules, functions, main->row, main->body, variables, state));
 }
 
 } // namespace satellite004

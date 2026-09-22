@@ -135,8 +135,9 @@ inline SCode s_code_for(signed long long int machine_code)
                 "be given a type before it can hold anything."};
     case name_declared_twice:
         return {"S202", "NAME_DECLARED_TWICE",
-                "this name already has a satellite.variable line in this capsule. One name, one "
-                "declaration -- the second would quietly replace the first."};
+                "this name is already declared where this line stands -- a variable in its "
+                "capsule, or a capsule, a satellite.namespace or an included file in its file or "
+                "space. One name, one declaration -- the second would quietly replace the first."};
     case types_do_not_meet:
         return {"S301", "TYPES_DO_NOT_MEET",
                 "this operator has no scenario for the two kinds it was given. Nothing was guessed "

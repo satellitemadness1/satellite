@@ -432,6 +432,7 @@ inline constexpr WordRow kWords[] = {
     {"satellite.window.tabs()", {1, 27, 21, 0, 0, 0}, 4},
     {"satellite.window.one_of(items)", {1, 27, 22, 0, 0, 0}, 3},
     {"satellite.console.new(title, width, height)", {1, 5, 10, 0, 0, 0}, 3},
+    {"satellite.namespace", {1, 28, 0, 0, 0, 0}, 2},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -453,7 +454,7 @@ struct NextFree {
 };
 
 inline constexpr NextFree kNextFree[] = {
-    {"satellite", {1, 28, 0, 0, 0, 0, 0}, 2},
+    {"satellite", {1, 29, 0, 0, 0, 0, 0}, 2},
     {"satellite.include", {1, 1, 3, 0, 0, 0, 0}, 3},
     {"satellite.capsule", {1, 2, 2, 0, 0, 0, 0}, 3},
     {"satellite.capsule.launch", {1, 2, 1, 1, 0, 0, 0}, 4},
@@ -677,6 +678,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.window.scroll", {1, 27, 16, 1, 0, 0, 0}, 4},
     {"satellite.window.split", {1, 27, 18, 1, 0, 0, 0}, 4},
     {"satellite.window.tabs", {1, 27, 21, 1, 0, 0, 0}, 4},
+    {"satellite.namespace", {1, 28, 1, 0, 0, 0, 0}, 3},
 };
 
 } // namespace satellite004

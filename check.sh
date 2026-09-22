@@ -3779,6 +3779,202 @@ expect "a config row written -9223372036854775808 is refused" 'refused: write it
        "$(row_read -9223372036854775808)"
 expect "a config row written -1, -9223372036854775807 or quoted still reads" "-1|-9223372036854775807|-9223372036854775808" \
        "$(row_read -1)|$(row_read -9223372036854775807)|$(row_read '"-9223372036854775808"')"
+# WHERE A CAPSULE LIVES: A FILE OR A satellite.namespace (capsule_scopes.hpp, 2026-09-22).
+# Until then every capsule of every file was one map by bare name and the LAST file
+# read won -- so a program's own greet() ran an included file's greet, and an
+# included file's satellite.main ran instead of the program's. `other.greet()` was
+# S201. These rows are the rules the header lists, one program each, and every
+# refusal is asserted to come from the CHECK with nothing printed before it.
+rm -rf build/scopes && mkdir -p build/scopes/chain build/scopes/types/people build/scopes/objects/people
+cat > build/scopes/other.satl <<'SCOPE_EOF'
+satellite.capsule greet()
+{
+    satellite.console.display("other.greet")
+}
+
+satellite.space tools
+{
+    satellite.capsule shout(satellite.variable.string what)
+    {
+        satellite.console.display("other.tools.shout: " + what)
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("the main of other.satl")
+    satellite.return(satellite)
+}
+SCOPE_EOF
+cat > build/scopes/ok.satl <<'SCOPE_EOF'
+satellite.include(satellite)
+satellite.include(other)
+
+satellite.capsule greet()
+{
+    satellite.console.display("ok.greet")
+}
+
+satellite.namespace tools   // a comment after the name
+{
+    // a comment inside a space
+    satellite.capsule add(satellite.variable.number a, satellite.variable.number b)
+    {
+        satellite.variable.number sum = a + b
+        satellite.console.display("tools.add " + sum.to_string())
+        twice(sum)
+        greet()
+    }
+
+    satellite.capsule twice(satellite.variable.number n)
+    {
+        satellite.variable.number doubled = n * 2
+        satellite.console.display("tools.twice " + doubled.to_string())
+    }
+
+    satellite.space inner
+    {
+        satellite.capsule deep()
+        {
+            satellite.console.display("tools.inner.deep")
+            twice(21)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    greet()
+    tools.add(2, 3)
+    other.greet()
+    other.tools.shout("through a file and a space")
+    satellite.statement.if (1 < 2)
+    {
+        tools.inner.deep()
+    }
+    satellite.return(satellite)
+}
+SCOPE_EOF
+"$interpreter" build/scopes/ok.satl > build/scopes/ok.out 2>/dev/null; code=$?
+expect "a program's own greet() is its own, an included file's is other.greet(), and spaces nest" \
+       "0|ok.greet|tools.add 5|tools.twice 10|ok.greet|other.greet|other.tools.shout: through a file and a space|tools.inner.deep|tools.twice 42" \
+       "$code|$(tr '\n' '|' < build/scopes/ok.out | sed 's/|$//')"
+expect "... and an included file's satellite.main never runs as the program's" 0 \
+       "$(grep -c 'the main of other.satl' build/scopes/ok.out)"
+# ONE REFUSAL A PROGRAM: $1 the file, $2 the top of it, $3 main's body.
+scope_probe() {
+    printf 'satellite.include(satellite)\nsatellite.include(other)\n%s\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' \
+        "$2" "$3" > "build/scopes/$1.satl"
+    "$interpreter" "build/scopes/$1.satl" > "build/scopes/$1.out" 2>&1
+}
+scope_refused() {   # $1 the file, $2 the exit, $3 words the refusal must hold, $4 the row's name
+    scope_probe "$1" "$5" "$6"; code=$?
+    expect "$4" "$2|1|0" \
+           "$code|$(tr '\n' ' ' < "build/scopes/$1.out" | sed 's/  */ /g' | grep -c "satl(check): .*$3")|$(grep -cx before "build/scopes/$1.out")"
+}
+scope_refused bare 13 "greet is a capsule of .*other.satl, and a file's capsules are reached through its name -- write other.greet" \
+    "a bare name never reaches into another file, and the refusal says the spelling that does" '' '    greet()'
+scope_refused space_twice 26 "tools is declared twice in this file" "a satellite.namespace declared twice is S202" \
+    'satellite.space tools
+{
+}
+satellite.namespace tools
+{
+}' ''
+scope_refused capsule_twice 26 "twice is declared twice in this file -- it is already a capsule there" \
+    "a capsule declared twice is S202, not the second silently winning" 'satellite.capsule twice()
+{
+}
+satellite.capsule twice()
+{
+}' ''
+scope_refused variable_in_space 13 "holds capsules and other spaces, not variables" \
+    "a variable inside a space is refused (the author: variables belong to a capsule or a spacesuit)" 'satellite.space tools
+{
+    satellite.variable.number n = 5
+}' ''
+scope_refused space_in_capsule 14 "a space declared inside a capsule, that comes to exist when the capsule runs, is not built yet" \
+    "a space declared inside a capsule is S210, not built yet" '' '    satellite.space inside
+    {
+    }'
+scope_refused capsule_in_capsule 13 "satellite.capsule goes at the top of a file or inside a satellite.namespace" \
+    "a capsule declared inside a capsule is refused by name" '' '    satellite.capsule inside()
+    {
+    }'
+scope_refused spacesuit 14 "satellite.spacesuit ship is not built yet" \
+    "satellite.spacesuit is refused as not built yet, and its body is not read as the file's capsules" 'satellite.spacesuit ship()
+{
+    satellite.public
+    {
+        satellite.capsule greet()
+        {
+        }
+    }
+}' ''
+scope_refused class 14 "satellite.spacesuit ship is not built yet" \
+    "satellite.class is a second spelling of satellite.spacesuit (words/aliases.tsv)" 'satellite.class ship()
+{
+}' ''
+scope_refused variable_named_like_a_file 26 "other is already the file other.satl this file includes, so a variable cannot be named other" \
+    "a variable may not take the name of a file its file includes" '' '    satellite.variable.string other = "x"'
+scope_refused no_such_member 13 "the file .*other.satl declares no capsule named nosuch" \
+    "a name a file does not declare says which file" '' '    other.nosuch()'
+scope_refused not_a_capsule 13 "tools.inner is a satellite.namespace and not a capsule" \
+    "a space is not called" 'satellite.space tools
+{
+    satellite.space inner
+    {
+    }
+}' '    tools.inner()'
+scope_refused counted 13 "tools.add takes 2 arguments, and was given 1" \
+    "a capsule reached through a space is given what it takes, before anything runs" 'satellite.space tools
+{
+    satellite.capsule add(satellite.variable.number a, satellite.variable.number b)
+    {
+    }
+}' '    tools.add(1)'
+scope_refused unclosed 13 "satellite.namespace tools is never closed" "a space the file ends inside is refused" \
+    'satellite.space tools
+{
+    satellite.capsule x()
+    {
+    }' ''
+# A FILE REACHES ONLY THE FILES IT INCLUDES ITSELF -- 003's rule, built narrow on
+# purpose: the author is still deciding it (2026-09-22), and CapsuleTable::reach is
+# the one place to widen it. This row pins today's answer and will move with his.
+printf 'satellite.include(b)\n\nsatellite.capsule from_a()\n{\n    b.from_b()\n}\n' > build/scopes/chain/a.satl
+printf 'satellite.capsule from_b()\n{\n    satellite.console.display("from b")\n}\n' > build/scopes/chain/b.satl
+printf 'satellite.include(satellite)\nsatellite.include(a)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    a.from_a()\n    b.from_b()\n    satellite.return(satellite)\n}\n' > build/scopes/chain/main.satl
+"$interpreter" build/scopes/chain/main.satl > build/scopes/chain.out 2>&1; code=$?
+expect "a file a.satl includes is not reached from the file that includes a.satl -- the author's open question" "13|1|0" \
+       "$code|$(tr '\n' ' ' < build/scopes/chain.out | sed 's/  */ /g' | grep -c 'b is a file that .*a.satl includes, and a file reaches only the files it includes itself')|$(grep -cx before build/scopes/chain.out)"
+sed -i '/    b.from_b()$/d' build/scopes/chain/main.satl
+expect "... and through a.satl it is" "0|from b" \
+       "$("$interpreter" build/scopes/chain/main.satl > build/scopes/chain.out 2>/dev/null; echo $?)|$(grep -v '^before$' build/scopes/chain.out)"
+# TWO FILES OF ONE NAME -- the author's view_forge_main.satl includes two people.satl.
+printf 'satellite.capsule return_people_types()\n{\n    satellite.console.display("types/people")\n}\n\nsatellite.capsule both()\n{\n}\n' > build/scopes/types/people/people.satl
+printf 'satellite.capsule return_people()\n{\n    satellite.console.display("objects/people")\n}\n\nsatellite.capsule both()\n{\n}\n' > build/scopes/objects/people/people.satl
+printf 'satellite.include(satellite)\nsatellite.include("types/people/people.satl")\nsatellite.include("objects/people/people.satl")\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    people.return_people_types()\n    people.return_people()\n    satellite.return(satellite)\n}\n' > build/scopes/people.satl
+expect "two files of one name are both reached by it, each for what it declares" "0|before|types/people|objects/people" \
+       "$("$interpreter" build/scopes/people.satl > build/scopes/people.out 2>/dev/null; echo $?)|$(tr '\n' '|' < build/scopes/people.out | sed 's/|$//')"
+sed -i 's/    people.return_people()$/    people.both()/' build/scopes/people.satl
+"$interpreter" build/scopes/people.satl > build/scopes/people.out 2>&1; code=$?
+expect "... and a name BOTH declare is refused, naming both files" "13|1|0" \
+       "$code|$(tr '\n' ' ' < build/scopes/people.out | sed 's/  */ /g' | grep -c 'people.both could be either of two files this file includes')|$(grep -cx before build/scopes/people.out)"
+# A BUTTON NAMES A CAPSULE THROUGH A FILE. No display here, so the proof is that the
+# CHECK passes and the run stops at the screen (S730); a wrong name stops at the check.
+# press-a-button.sh and a press of helper.when_pressed beside main's own when_pressed
+# are the real presses, run by hand on a compositor of their own.
+printf 'satellite.include(satellite)\nsatellite.include(other)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.window w = satellite.window.new("t", 200, 100)\n    satellite.variable.window b = satellite.window.button("press")\n    b.pressed(other.greet)\n    satellite.return(satellite)\n}\n' > build/scopes/press.satl
+headless build/scopes/press.satl > build/scopes/press.out 2>&1; code=$?
+expect "b.pressed(other.greet) names a capsule in another file, and passes the check" "50|1" \
+       "$code|$(grep -c 'S730: NO_DISPLAY' build/scopes/press.out)"
+sed -i 's/other.greet)/other.nosuch)/' build/scopes/press.satl
+headless build/scopes/press.satl > build/scopes/press.out 2>&1; code=$?
+expect "... and b.pressed(other.nosuch) is refused before a window is asked for" "13|1" \
+       "$code|$(tr '\n' ' ' < build/scopes/press.out | sed 's/  */ /g' | grep -c 'the file .*other.satl declares no capsule named nosuch')"
+expect "satellite.space and satellite.class are second spellings, with their words' codes" "2|2" \
+       "$(grep -cE '\{"satellite\.(space|namespace)", 4514\},' satellite/bytecode/word_codes.hpp)|$(grep -cE '\{"satellite\.(class|spacesuit)", 4315\},' satellite/bytecode/word_codes.hpp)"
 # words_004.tsv is typed by hand, so make_words.py refuses a row it cannot trust --
 # checked through the real script and 003's real satl, which is gitignored.
 # THE TWO BYTECODE HEADERS ARE GENERATED, AND NOTHING ELSE CHECKED THAT THEY ARE STILL
@@ -3787,7 +3983,7 @@ expect "a config row written -1, -9223372036854775807 or quoted still reads" "-1
 # header must come out byte-identical -- which also runs make_token_codes.py's own
 # checks (the free rows) on every check.sh.
 rm -rf build/generators && mkdir -p build/generators/satellite/bytecode build/generators/words
-cp REGISTRY.satellite build/generators/ && cp words/words.tsv build/generators/words/
+cp REGISTRY.satellite build/generators/ && cp words/words.tsv words/aliases.tsv build/generators/words/
 cp satellite/bytecode/make_token_codes.py satellite/bytecode/make_word_codes.py build/generators/satellite/bytecode/
 python3 build/generators/satellite/bytecode/make_token_codes.py > build/generators/tokens.out 2>&1; code=$?
 expect "make_token_codes.py runs clean on REGISTRY.satellite" 0 $code

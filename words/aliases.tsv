@@ -1,0 +1,18 @@
+# words/aliases.tsv -- SECOND SPELLINGS of a word: `spelling<TAB>the word it spells`.
+#
+# AN ALIAS HAS NO NUMBER AND NO ROW, which is why it is not in words_004.tsv. A
+# word's 16-bit code is 4097 plus its ROW, so a second row for one word would be a
+# second code for it -- and the checker, the walker and every table that compares a
+# code would then need to be told the two are the same word. Here the lexer turns
+# the second spelling into the FIRST word's code, and nothing after the lexer ever
+# learns there were two. 003 did the same with SAT_ALIAS in words.def.
+#
+# make_word_codes.py reads this file and refuses a row whose spelling is already a
+# word, or whose word is not one: a typo here would otherwise lex as nothing at all.
+#
+# THE AUTHOR, 2026-09-22: "namespace will be namespace/space, and class will be
+# spacesuit alias class, so a class remains a spacesuit and that is my final
+# answer". satellite.namespace and satellite.spacesuit are the words; these are
+# the second spellings, and a refusal names the word, as 003's did for `class`.
+satellite.space	satellite.namespace
+satellite.class	satellite.spacesuit

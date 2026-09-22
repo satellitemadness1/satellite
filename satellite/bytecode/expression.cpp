@@ -10,6 +10,8 @@
 
 #include "expression.hpp"
 
+#include "capsule_scopes.hpp"
+
 #include "file_calls.hpp"
 #include "container_calls.hpp"
 #include "infinity_calls.hpp"
@@ -348,10 +350,20 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                     // THE CHECKER HAS ALREADY PROVED the name is a real capsule
                     // and that this argument IS a name -- that is the whole
                     // reason a name may stand here at all.
+                    //
+                    // AND IT IS KEPT AS THE CAPSULE IT REACHED, NOT AS THE WORDS
+                    // (2026-09-22). Two files may each have a `when_pressed`, and a
+                    // press happens long after this line, with nothing left to say
+                    // which file wrote it -- so the name is resolved HERE, from where
+                    // it stands, and the window holds that capsule's key. A dotted
+                    // name, `.pressed(other.go)`, is one name.
                     if (arguments.empty() && window_method_takes_a_capsule_name(method) &&
                         code_at(row, at) == token::name_token) {
                         std::size_t k = at;
-                        const std::string capsule = text_at(row, k);
+                        std::vector<std::string> names;
+                        dotted_names_at(row, k, names);
+                        const std::string capsule =
+                            capsule_key_at(context.state.capsules, context.state.program, row, at, names);
                         Value named;
                         std::size_t bad_offset = 0;
                         Value::of_utf8(capsule, named, bad_offset);

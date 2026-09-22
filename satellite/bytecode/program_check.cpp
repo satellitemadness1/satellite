@@ -437,6 +437,83 @@ signed long long int a_call_to_its_end(const std::vector<std::bitset<16>> &row, 
     return satl_line_not_understood;
 }
 
+// HOW MANY A CAPSULE CALL WAS GIVEN, before anything runs (2026-09-21). Until
+// capsules took arguments there was nothing to count. `open` is the call's `(`, and
+// `written` is the name as the call wrote it -- `greet`, or `other.greet`.
+signed long long int given_what_it_takes(const std::vector<std::bitset<16>> &row, std::size_t open,
+                                         const CapsuleSite &site, const std::string &written, std::string &why)
+{
+    std::size_t close = open, given = 0;
+    if (!brackets_at(row, open, close, given)) {
+        why = written + "( is never closed on its line";
+        return satl_line_not_understood;
+    }
+    const std::size_t takes = site.parameters.size();
+    if (given != takes) {
+        why = written + " takes " + std::to_string(takes) +
+              (takes == 1 ? " argument, and was given " : " arguments, and was given ") + std::to_string(given);
+        return satl_line_not_understood;
+    }
+    return success;
+}
+
+// A CAPSULE CALLED INSIDE A LINE, where its answer would be used -- and a capsule
+// answering one is not built yet: satellite.return(...) ends a capsule's body and
+// hands nothing back. The author's own programs use answers everywhere
+// (`people_types = return_people_types()`), so this is not built yet and not a
+// shape that is wrong.
+std::string used_as_a_value(const std::string &written)
+{
+    return written + "() is used inside a line, where its answer would be used, and a capsule answering "
+                     "something is not built yet -- satellite.return(...) ends a capsule and hands nothing "
+                     "back, so call " + written + "() on a line of its own";
+}
+
+// AND WHAT A PRESS CAN HAND IT (2026-09-21). A press has nobody to write its
+// arguments -- the program said `.pressed(name)` and walked away -- so the
+// capsule's own declaration is what says what it wants, and there are only three
+// things a press has to give: nothing, the piece, and the window it is in.
+// `method` is the one the program wrote -- .pressed, .changed, .every -- because
+// being told about presses after writing `.changed` is being told about somebody
+// else's line ("a press" was the truth until GTK-9).
+signed long long int a_press_can_run(const CapsuleSite &site, const std::string &name, Code method, std::string &why)
+{
+    const std::vector<CapsuleParameter> &wants = site.parameters;
+    if (wants.size() > 2) {
+        why = name + " takes " + std::to_string(wants.size()) + " arguments, and ." +
+              std::string(token::method_name_of(method)) + " has only two to give: write " + name + "(), " + name +
+              "(satellite.variable.window the_piece), or " + name +
+              "(satellite.variable.window the_piece, satellite.variable.window its_window)";
+        return satl_line_not_understood;
+    }
+    for (const CapsuleParameter &takes : wants) {
+        if (takes.declared() == word::code_of(1, 6, 18))
+            continue;
+        why = name + "'s " + takes.name + " is declared " + word::spelling_of(takes.declared()) + ", and ." +
+              std::string(token::method_name_of(method)) +
+              " hands it the piece it happened to and the window it happened in -- "
+              "both are satellite.variable.window";
+        return types_do_not_meet;
+    }
+    return success;
+}
+
+// A VARIABLE MAY NOT TAKE THE NAME OF A FILE OR A SPACE IT CAN SEE (2026-09-22). A
+// variable called `other`, in a file that includes other.satl, would make
+// `other.greet()` a method on the variable and hide the file -- so the name is
+// refused where it is declared, which is the one line that can change. 003 refused
+// the same collision the other way round (its S1602): a name is declared once.
+signed long long int a_name_it_may_take(const CapsuleTable &capsules, std::size_t scope, const std::string &name,
+                                        std::string &why)
+{
+    const std::string taken = capsules.already_names(scope, name);
+    if (taken.empty())
+        return success;
+    why = name + " is already " + taken + ", so a variable cannot be named " + name + " -- " + name +
+          ".something() could then mean either";
+    return name_declared_twice;
+}
+
 // Every name a statement USES as a value -- so a name with no declaration is
 // caught before anything runs. A name followed by `(` is a capsule and is
 // checked against the capsule table instead.
@@ -445,6 +522,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                                         std::size_t stop,
                                         const DeclaredNames &declared,
                                         const CapsuleTable &capsules,
+                                        std::size_t scope,
                                         const FunctionTable &functions,
                                         std::string &why)
 {
@@ -485,7 +563,10 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             // AND ONE NAME, NOT A NAME AND THEN ANYTHING. Looking only at the
             // code after the `(` let `.pressed(when_pressed, 5)` through to be
             // refused at run time, which is a refusal this checker owes earlier.
-            text_at(row, argument);
+            // ONE NAME MAY BE DOTTED (2026-09-22): `.pressed(other.go)` names the
+            // capsule go in the file other.satl, and is still one name.
+            std::vector<std::string> dotted;
+            dotted_names_at(row, argument, dotted);
             // AND WHAT MAY FOLLOW IT IS THE METHOD'S BUSINESS, asked of
             // window_calls.hpp (GTK-13). `.pressed`, `.changed` and `.closed`
             // take one name and nothing else; `.every` takes the name and then
@@ -519,77 +600,78 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         if (code == token::name_token) {
             std::size_t k = at;
             const std::string name = text_at(row, k);
+
+            // A CAPSULE'S NAME, AND THE ONE PLACE INSIDE A LINE IT MAY STAND
+            // (2026-09-22). A capsule ANSWERS NOTHING yet -- satellite.return(...)
+            // ends its body and hands no value back -- so a call is real only as a
+            // statement of its own, and check_statement judges that one before
+            // this function is handed the line: it passes only the arguments on.
+            // So every capsule CALL met here is inside a line, where the walker
+            // reads its name as a variable and stops after earlier lines have
+            // printed -- found by the review for `display(other.greet())`, and as
+            // true of a bare `greet()` before scopes. What MAY stand in a line is a
+            // capsule's NAME, where a button says what it runs.
+            const bool names_what_a_press_runs =
+                before_this == token::left_parenthesis_token && window_method_takes_a_capsule_name(and_before_that);
+            const bool after_a_dot = before_this == token::method_token;
+            std::vector<std::string> names;
+            std::size_t past = at;
+            dotted_names_at(row, past, names);
+            std::string written = names.front();
+            for (std::size_t n = 1; n < names.size(); ++n) written += "." + names[n];
+
+            // WHAT A PRESS RUNS IS ONE CAPSULE, AND THE WHOLE NAME MUST REACH IT --
+            // `.pressed(go)`, `.pressed(other.go)`. Judging only the first name let
+            // `.pressed(go.reverse)` through to fail at the press (the review).
+            if (names_what_a_press_runs) {
+                const Reached reached = capsules.reach(scope, names);
+                if (reached.site == nullptr) {
+                    why = reached.through_a_scope || reached.why.rfind("no capsule named ", 0) != 0
+                              ? reached.why
+                              : "no capsule named " + written + " -- ." +
+                                    std::string(token::method_name_of(and_before_that)) +
+                                    "(...) names a capsule to run, and there is no satellite.capsule " + written +
+                                    "() in this program";
+                    return satl_line_not_understood;
+                }
+                const signed long long int fits = a_press_can_run(*reached.site, written, and_before_that, why);
+                if (fits != success)
+                    return fits;
+                at = past;
+                continue;
+            }
+
+            // `other.greet(` INSIDE A LINE. Asked only of a name no variable has --
+            // a variable is a method's receiver -- and never of a name after a `.`.
+            // When the first name is neither a file nor a space this says nothing,
+            // and the name is judged below as it always was.
+            if (!after_a_dot && names.size() >= 2 && declared.find(name) == declared.end() &&
+                code_at(row, past) == token::left_parenthesis_token) {
+                const Reached reached = capsules.reach(scope, names);
+                if (reached.site != nullptr) {
+                    why = used_as_a_value(written);
+                    return not_built_yet;
+                }
+                if (reached.through_a_scope) {
+                    why = reached.why;
+                    return reached.code;
+                }
+            }
+
             if (code_at(row, k) == token::left_parenthesis_token) {
-                const CapsuleTable::const_iterator called = capsules.find(name);
-                if (called == capsules.end()) {
-                    why = "no capsule named " + name;
+                // A NAME AFTER A `.` IS A METHOD'S, and a capsule of that name is not
+                // what it means: `s.greet()` on a string is not the capsule greet.
+                // With no such capsule it is told what it was always told.
+                const Reached reached = capsules.reach(scope, {name});
+                if (reached.site == nullptr) {
+                    why = after_a_dot ? "no capsule named " + name : reached.why;
                     return satl_line_not_understood;
                 }
-                // HOW MANY IT WAS GIVEN, before anything runs (2026-09-21).
-                // Until capsules took arguments there was nothing to count.
-                std::size_t close = k, given = 0;
-                if (!brackets_at(row, k, close, given)) {
-                    why = name + "( is never closed on its line";
-                    return satl_line_not_understood;
-                }
-                const std::size_t takes = called->second.parameters.size();
-                if (given != takes) {
-                    why = name + " takes " + std::to_string(takes) +
-                          (takes == 1 ? " argument, and was given " : " arguments, and was given ") +
-                          std::to_string(given);
-                    return satl_line_not_understood;
-                }
-            } else if (before_this == token::left_parenthesis_token &&
-                       window_method_takes_a_capsule_name(and_before_that)) {
-                // A CAPSULE'S NAME STANDING WHERE A VALUE WOULD (WIN-11).
-                // `my_button.pressed(when_pressed)` names a capsule to run, so
-                // the test below -- every name must have a satellite.variable
-                // line -- would refuse the program that is right. What IS owed
-                // is that the capsule exists, and here is where that is cheap:
-                // the whole CapsuleTable is already in hand, so a button wired
-                // to a capsule nobody wrote is refused before the window opens
-                // rather than at the moment somebody presses it.
-                //
-                // READ BACKWARDS AND NOT FORWARDS FROM THE METHOD, because a
-                // method CHAINS: `b.title("x").pressed(when_pressed)` puts this
-                // name far past the first method the receiver's own check saw.
-                const CapsuleTable::const_iterator answers = capsules.find(name);
-                if (answers == capsules.end()) {
-                    why = "no capsule named " + name + " -- ." +
-                          std::string(token::method_name_of(and_before_that)) +
-                          "(...) names a capsule to run, and there is no satellite.capsule " + name +
-                          "() in this program";
-                    return satl_line_not_understood;
-                }
-                // AND WHAT A PRESS CAN HAND IT (2026-09-21). A press has nobody
-                // to write its arguments -- the program said `.pressed(name)`
-                // and walked away -- so the capsule's own declaration is what
-                // says what it wants, and there are only three things a press
-                // has to give: nothing, the piece, and the window it is in.
-                const std::vector<CapsuleParameter> &wants = answers->second.parameters;
-                if (wants.size() > 2) {
-                    // "a press" WAS THE TRUTH UNTIL GTK-9 and is now one of
-                    // three things that can run a capsule. The sentence names
-                    // the method a person actually wrote, because being told
-                    // about presses after writing `.changed` is being told about
-                    // somebody else's line.
-                    why = name + " takes " + std::to_string(wants.size()) + " arguments, and ." +
-                          std::string(token::method_name_of(and_before_that)) +
-                          " has only two to give: write " + name + "(), " + name +
-                          "(satellite.variable.window the_piece), or " + name +
-                          "(satellite.variable.window the_piece, satellite.variable.window its_window)";
-                    return satl_line_not_understood;
-                }
-                for (const CapsuleParameter &takes : wants) {
-                    if (takes.declared() == word::code_of(1, 6, 18))
-                        continue;
-                    why = name + "'s " + takes.name + " is declared " +
-                          word::spelling_of(takes.declared()) + ", and ." +
-                          std::string(token::method_name_of(and_before_that)) +
-                          " hands it the piece it happened to and the window it happened in -- "
-                          "both are satellite.variable.window";
-                    return types_do_not_meet;
-                }
+                why = after_a_dot ? "." + name + "(...) is not a method -- " + name +
+                                        " is a capsule, and a capsule is called on a line of its own, as " +
+                                        reached.site->shown + "()"
+                                  : used_as_a_value(name);
+                return after_a_dot ? satl_line_not_understood : not_built_yet;
             } else if (declared.find(name) == declared.end()) {
                 why = name + " has no satellite.variable line declaring it";
                 return name_not_declared;
@@ -675,6 +757,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
 signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                                      std::size_t &at,
                                      const CapsuleTable &capsules,
+                                     std::size_t scope,
                                      const FunctionTable &functions,
                                      DeclaredNames &declared,
                                      EndingNames &ending,
@@ -698,7 +781,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
     if (code == word::code_of(1, 13, 1)) {
         const std::size_t stop = past_the_statement(row, at);
         const signed long long int held =
-            names_in_statement(row, at + 1, stop, declared, capsules, functions, why);
+            names_in_statement(row, at + 1, stop, declared, capsules, scope, functions, why);
         if (held != success) { at = stop; return held; }
         const std::size_t brace = brace_after(row, stop);
         if (code_at(row, brace) != token::left_brace_token) {
@@ -740,7 +823,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
     if (code == word::code_of(1, 13, 3)) {               // satellite.statement.while
         const std::size_t stop = past_the_statement(row, at);
         const signed long long int held =
-            names_in_statement(row, at + 1, stop, declared, capsules, functions, why);
+            names_in_statement(row, at + 1, stop, declared, capsules, scope, functions, why);
         if (held != success) { at = stop; return held; }
         const std::size_t brace = brace_after(row, stop);
         if (code_at(row, brace) != token::left_brace_token) {
@@ -787,8 +870,12 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // THE VALUE IS READ BEFORE THE NAME IS DECLARED, so `for(number i = i; ...)`
         // is the same "no satellite.variable line" it would be anywhere else.
         signed long long int held =
-            names_in_statement(row, k, parts.condition - 1, declared, capsules, functions, why);
+            names_in_statement(row, k, parts.condition - 1, declared, capsules, scope, functions, why);
         if (held != success) { at = stop; return held; }
+        {
+            const signed long long int named = a_name_it_may_take(capsules, scope, name, why);
+            if (named != success) { at = stop; return named; }
+        }
         if (!declared.emplace(name, word::code_of(1, 6, 4)).second) {
             why = name + " is declared twice in the same capsule";
             at = stop;
@@ -802,7 +889,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             at = stop;
             return satl_line_not_understood;
         }
-        held = names_in_statement(row, parts.condition, parts.closing, declared, capsules, functions, why);
+        held = names_in_statement(row, parts.condition, parts.closing, declared, capsules, scope, functions, why);
         if (held != success) { at = stop; return held; }
         // THE STEP'S SHAPE, which is `i++`, `i--` or a math operation and nothing
         // else. The move itself is a run-time fact; which of the three it is, is
@@ -820,6 +907,25 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         ending.push_back({past_matching_brace(row, brace), name});
         at = brace;                 // ON the brace, as if and while are
         return success;
+    }
+
+    // A CAPSULE OR A SPACE DECLARED INSIDE A CAPSULE (2026-09-22). capsules_in steps
+    // over every capsule's body whole, so neither is declared there -- and without
+    // these two they were told "is a declaration, and only ... are built yet", which
+    // is about variables. A space that comes to exist when its capsule runs is the
+    // author's idea (POLYMORPH M1) and is not built; a capsule inside a capsule has
+    // never been one.
+    if (code == word::code_of(1, 2)) {                   // satellite.capsule
+        why = "satellite.capsule goes at the top of a file or inside a satellite.namespace, not inside another "
+              "capsule";
+        at = past_the_statement(row, at);
+        return satl_line_not_understood;
+    }
+    if (code == word::code_of(1, 28)) {                  // satellite.namespace, and satellite.space
+        why = "satellite.namespace goes at the top of a file or inside another satellite.namespace -- a space "
+              "declared inside a capsule, that comes to exist when the capsule runs, is not built yet";
+        at = past_the_statement(row, at);
+        return not_built_yet;
     }
 
     // A DECLARATION WITH TYPES BETWEEN < AND > -- read here so the checker
@@ -844,6 +950,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             return satl_line_not_understood;
         }
         const std::string name = text_at(row, k);
+        {
+            const signed long long int named = a_name_it_may_take(capsules, scope, name, why);
+            if (named != success) { at = stop; return named; }
+        }
         if (!declared.emplace(name, code).second) {
             why = name + " is declared twice in the same capsule";
             at = stop;
@@ -851,7 +961,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         }
         const signed long long int shaped = after_the_name(row, k, name, true, why);
         if (shaped != success) { at = stop; return shaped; }
-        const signed long long int held = names_in_statement(row, k, stop, declared, capsules, functions, why);
+        const signed long long int held = names_in_statement(row, k, stop, declared, capsules, scope, functions, why);
         at = stop;
         return held;
     }
@@ -889,6 +999,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             at = stop;
             return satl_line_not_understood;
         }
+        {
+            const signed long long int named = a_name_it_may_take(capsules, scope, name, why);
+            if (named != success) { at = stop; return named; }
+        }
         if (!declared.emplace(name, code).second) {
             why = name + " is declared twice in the same capsule";
             at = stop;
@@ -904,7 +1018,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const signed long long int written = percentage_is_written_with_percent(row, k + 1, why);
             if (written != success) { at = stop; return written; }
         }
-        const signed long long int held = names_in_statement(row, k, stop, declared, capsules, functions, why);
+        const signed long long int held = names_in_statement(row, k, stop, declared, capsules, scope, functions, why);
         at = stop;
         return held;
     }
@@ -926,7 +1040,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             if (library != nullptr && library->scenarios.flag_setting != nullptr) {
                 const std::size_t stop = past_the_statement(row, at);
                 const signed long long int held =
-                    names_in_statement(row, at, stop, declared, capsules, functions, why);
+                    names_in_statement(row, at, stop, declared, capsules, scope, functions, why);
                 at = stop;
                 return held;
             }
@@ -948,7 +1062,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                 a_call_to_its_end(row, close + 1, std::string(word::spelling_of(code)) + "(...)", why);
             if (shaped != success) { at = stop; return shaped; }
         }
-        const signed long long int held = names_in_statement(row, at, stop, declared, capsules, functions, why);
+        const signed long long int held = names_in_statement(row, at, stop, declared, capsules, scope, functions, why);
         at = stop;
         return held;
     }
@@ -959,6 +1073,51 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         const std::size_t stop = past_the_statement(row, at);
         // `name(` is a capsule call; `name =` is an assignment to a declared name.
         const DeclaredNames::const_iterator found = declared.find(name);
+        // A CAPSULE CALL STANDING AS ITS OWN STATEMENT -- `greet(1)`, `other.greet()`,
+        // `tools.x(1)` -- the one place a capsule may be called (names_in_statement
+        // says why). The walker takes `name(` as a capsule whatever else the name is,
+        // and `a.b(` as one when no variable is named `a` (a_name_it_may_take keeps a
+        // variable from ever sharing a file's or a space's name); this reads them the
+        // same way, and hands names_in_statement only the ARGUMENTS.
+        {
+            std::vector<std::string> names;
+            std::size_t open = at;
+            dotted_names_at(row, open, names);
+            const bool called = code_at(row, open) == token::left_parenthesis_token;
+            const bool bare = called && names.size() == 1;
+            const bool dotted = called && names.size() >= 2 && found == declared.end();
+            if (bare || dotted) {
+                const Reached reached = capsules.reach(scope, names);
+                if (reached.site == nullptr && (bare || reached.through_a_scope)) {
+                    why = reached.why;
+                    at = stop;
+                    return reached.code;
+                }
+                if (reached.site != nullptr) {
+                    std::string written = names.front();
+                    for (std::size_t n = 1; n < names.size(); ++n) written += "." + names[n];
+                    signed long long int held = given_what_it_takes(row, open, *reached.site, written, why);
+                    if (held != success) { at = stop; return held; }
+                    // NOTHING AFTER ITS `)`. A capsule answers nothing yet, and the
+                    // walker steps from the `)` to the next line: `other.greet().reverse()`
+                    // ran the capsule and dropped the rest without a word (the review,
+                    // 2026-09-22, and as true of `greet().reverse()` before scopes).
+                    std::size_t close = open, given = 0;
+                    brackets_at(row, open, close, given);      // given_what_it_takes proved it closes
+                    const Code after = code_at(row, close + 1);
+                    if (after != token::line_end_token && after != token::comment_token &&
+                        after != token::end_of_file_token) {
+                        why = written + "(...) is a whole statement -- a capsule answers nothing yet, so nothing can "
+                                        "follow its call on the line";
+                        at = stop;
+                        return satl_line_not_understood;
+                    }
+                    held = names_in_statement(row, open + 1, close, declared, capsules, scope, functions, why);
+                    at = stop;
+                    return held;
+                }
+            }
+        }
         if (code_at(row, k) != token::left_parenthesis_token && found == declared.end()) {
             why = name + " has no satellite.variable line declaring it";
             at = stop;
@@ -989,7 +1148,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const signed long long int written = percentage_is_written_with_percent(row, k + 1, why);
             if (written != success) { at = stop; return written; }
         }
-        const signed long long int held = names_in_statement(row, at, stop, declared, capsules, functions, why);
+        const signed long long int held = names_in_statement(row, at, stop, declared, capsules, scope, functions, why);
         at = stop;
         return held;
     }
@@ -1018,7 +1177,7 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
     for (std::size_t at = 0; at < row.size() && code_at(row, at) != token::end_of_file_token; ) {
         const std::size_t was = at;
         std::string why;
-        const signed long long int stopped = check_statement(row, at, none, functions, declared, ending, why);
+        const signed long long int stopped = check_statement(row, at, none, kNoScope, functions, declared, ending, why);
         if (stops_the_program(stopped))
             return report_error("satl(prompt): " + why, stopped);
         if (at <= was)                  // a statement must always move forward
@@ -1033,20 +1192,27 @@ signed long long int check_program(const BytecodeRegistry &registry,
                                    const FunctionTable &functions,
                                    MachineState &state)
 {
-    // EVERY HEADER FIRST, AND THAT ORDER IS NOT TIDINESS. A header capsules_in()
-    // could not read is refused here, where there is a program to stop and a
-    // sentence to print -- that scan has neither. It must happen in a pass of
-    // its own because the CapsuleTable is an unordered_map: with the test inside
-    // the loop below, whether a person was told "a parameter is a TYPE and then
-    // a name" or the far more confusing "show takes 0 arguments, and was given
-    // 1" depended on which capsule the hash happened to put first.
-    for (const std::pair<const std::string, CapsuleSite> &entry : capsules) {
-        if (!entry.second.trouble.empty())
-            return report_error("satl(check): " + entry.second.trouble, satl_line_not_understood);
+    // WHAT THE SCAN FOUND COMES FIRST, AND THE EARLIEST OF IT. capsules_in() has no
+    // program to stop and no sentence to print, so a header it could not read, a
+    // name declared twice in one scope, a variable inside a satellite.namespace or
+    // a spacesuit nobody can declare yet is refused here -- with a caret now, which
+    // the header refusals never had. EARLIEST BY FILE AND POSITION, and not in the
+    // order the passes happened to find them: nobody reads a program by pass.
+    //
+    // AND THEN THE CAPSULES IN FILE ORDER. The table was an unordered_map until
+    // scopes, and which of two wrong capsules a person was told about depended on
+    // which one the hash put first.
+    if (!capsules.troubles.empty()) {
+        const ScopeTrouble *first = &capsules.troubles.front();
+        for (const ScopeTrouble &each : capsules.troubles)
+            if (each.row < first->row || (each.row == first->row && each.at < first->at))
+                first = &each;
+        return raise_at(first->code, first->why, std::string(), state, registry[first->row], first->at,
+                        "satl(check)");
     }
 
-    for (const std::pair<const std::string, CapsuleSite> &entry : capsules) {
-        const std::vector<std::bitset<16>> &row = registry[entry.second.row];
+    for (const CapsuleSite &site : capsules.sites) {
+        const std::vector<std::bitset<16>> &row = registry[site.row];
         // One set a capsule: there are no globals, so a name declared elsewhere
         // is not declared here.
         DeclaredNames declared;
@@ -1070,13 +1236,18 @@ signed long long int check_program(const BytecodeRegistry &registry,
         // since the beginning, and the words really are there -- as the settings
         // arguments.argument_1, arguments.length and the rest. Turning those
         // into the list that declaration promises is a milestone of its own.
-        if (entry.first != "satellite.main") {
-            for (const CapsuleParameter &takes : entry.second.parameters)
+        if (site.name != "satellite.main") {
+            for (const CapsuleParameter &takes : site.parameters) {
+                std::string why;
+                const signed long long int named = a_name_it_may_take(capsules, site.scope, takes.name, why);
+                if (named != success)
+                    return raise_at(named, why, site.shown, state, row, site.declared_at, "satl(check)");
                 declared[takes.name] = takes.declared();
+            }
         }
         EndingNames ending;
         std::size_t depth = 0;
-        for (std::size_t at = entry.second.body; at < row.size(); ) {
+        for (std::size_t at = site.body; at < row.size(); ) {
             const Code code = code_at(row, at);
             if (code == token::right_brace_token) {
                 if (depth == 0) break;      // the capsule's own closing brace
@@ -1088,7 +1259,7 @@ signed long long int check_program(const BytecodeRegistry &registry,
             const std::size_t was = at;
             std::string why;
             const signed long long int code_of_line =
-                check_statement(row, at, capsules, functions, declared, ending, why);
+                check_statement(row, at, capsules, site.scope, functions, declared, ending, why);
             if (stops_the_program(code_of_line))
                 // THE STATEMENT'S OWN START, AND NOT WHERE `at` ENDED UP. A
                 // refusal leaves `at` wherever check_statement stopped reading,
@@ -1096,12 +1267,12 @@ signed long long int check_program(const BytecodeRegistry &registry,
                 // goes under the start of the statement, which always is. The
                 // LINE is exact either way, and that is what a person looks for
                 // first.
-                return raise_at(code_of_line, why, entry.first, state, row, was, "satl(check)");
+                return raise_at(code_of_line, why, site.shown, state, row, was, "satl(check)");
             if (at <= was)                  // a statement must always move forward
                 ++at;
         }
     }
-    state.set("program(checked): " + std::to_string(capsules.size()) + " capsules", success);
+    state.set("program(checked): " + std::to_string(capsules.sites.size()) + " capsules", success);
     return success;
 }
 

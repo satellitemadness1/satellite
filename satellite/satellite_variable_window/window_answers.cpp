@@ -20,6 +20,8 @@
 
 #include "window_desk.hpp"
 
+#include "../bytecode/capsule_key.hpp"
+
 #include <gtk/gtk.h>
 
 #include <cmath>
@@ -244,7 +246,7 @@ bool window_pressed(satellite_window &which, const std::string &capsule, std::st
 bool window_changed(satellite_window &which, const std::string &capsule, std::string &why)
 {
     if (which.piece == satellite_window::button) {
-        why = "a button is not changed, it is pressed -- write .pressed(" + capsule + ") instead";
+        why = "a button is not changed, it is pressed -- write .pressed(" + capsule_as_written(capsule) + ") instead";
         return false;
     }
     if (!a_person_can_change(which.piece)) {
@@ -394,14 +396,14 @@ bool window_key(satellite_window &which, const std::string &capsule, std::string
 bool window_clicked(satellite_window &which, const std::string &capsule, std::string &why)
 {
     if (which.piece == satellite_window::button) {
-        why = "a button already has a word for being clicked -- write .pressed(" + capsule +
+        why = "a button already has a word for being clicked -- write .pressed(" + capsule_as_written(capsule) +
               ") instead";
         return false;
     }
     // A MENU IS NOT CLICKED, ITS ITEMS ARE PICKED (GTK-12) -- and it is not a
     // widget a gesture could be added to.
     if (!which.is_drawn()) {
-        why = "a menu is not clicked, its items are picked -- write .item(" + capsule +
+        why = "a menu is not clicked, its items are picked -- write .item(" + capsule_as_written(capsule) +
               ", \"Open\") to say what runs";
         return false;
     }
