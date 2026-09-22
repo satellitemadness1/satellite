@@ -56,7 +56,29 @@ struct Line {
     // never looks at (the payload sweep, 2026-09-17). put_payload sets it to its marker.
     Code last_token = 0;
 
-    void put(Code code) { row.push_back(std::bitset<16>(code)); last_token = code; }
+    // THE FIRST THREE TOKENS OF THE LINE, for the one rule that needs them: a colour
+    // written without its x on the line that declares it (below, at "WITHOUT ITS
+    // x"). Counted here and nowhere else, so a payload's own codes are never
+    // counted -- put_payload writes its count straight into the row.
+    unsigned int tokens = 0;
+    Code first_three[3] = {0, 0, 0};
+
+    void put(Code code)
+    {
+        row.push_back(std::bitset<16>(code));
+        last_token = code;
+        if (tokens < 3) first_three[tokens] = code;
+        ++tokens;
+    }
+
+    // `<type word> <name> =` AND NOTHING YET AFTER IT: the value's first character
+    // is next. Answers the type word, or 0.
+    Code declaring_a_value() const
+    {
+        return tokens == 3 && first_three[1] == token::name_token && first_three[2] == token::assign_token
+                   ? first_three[0]
+                   : 0;
+    }
 
     // One character of a payload: ASCII in the author's order, anything above
     // 127 behind wide_run_token so it can never be read as a token.
@@ -94,7 +116,7 @@ struct Line {
     {
         put(marker);
         const std::size_t count_at = row.size();
-        put(0); // filled in below, once the codes are counted
+        row.push_back(std::bitset<16>(0)); // filled in below, once the codes are counted
         std::size_t k = from;
         while (k < to) character_codes(one_character(text, k), row);
         put_count(row, count_at, row.size() - count_at - 1);
@@ -346,6 +368,32 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
             line.put_payload(token::option_token, line.i + 2, k);
             line.i = k;
             continue;
+        }
+
+        // A COLOUR WRITTEN WITHOUT ITS x, ON THE LINE THAT DECLARES IT (the author,
+        // 2026-09-22): "satellite.variable.color my_color = x000000 or just 000000
+        // without the x". THE TYPE WORD DECIDES THE READING, because the characters
+        // alone cannot: `000000` is the number 0 with its width gone, `ff00aa` is a
+        // name, and `00ff00` is the number 0 and then a name. Here the line has said
+        // a colour comes next, so the whole run is read as hex digits, b included.
+        //
+        // ONLY THE COLOUR, AND ONLY ITS DECLARING LINE. A binary keeps its b and a
+        // hex its x (the author, the same evening: "just make the prefix b mandatory
+        // and move on"). A later `name = ...` has no type word in front of it, and
+        // the lexer does not know what a name was declared as; the checker does.
+        // A run with anything else in it -- `cafe_1` -- is left to be a name.
+        if (line.declaring_a_value() == word::code_of(1, 6, 19) && identifier_body(c)) {
+            std::size_t k = line.i;
+            bool all = true;
+            while (k < n && identifier_body(text[k])) {
+                all = all && a_hex_digit(text[k]);
+                ++k;
+            }
+            if (all) {
+                line.put_payload(token::hexadecimal_token, line.i, k);
+                line.i = k;
+                continue;
+            }
         }
 
         // A number, the dot joining it only when a digit follows (003's rule).

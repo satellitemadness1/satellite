@@ -16,3 +16,16 @@
 # the second spellings, and a refusal names the word, as 003's did for `class`.
 satellite.space	satellite.namespace
 satellite.class	satellite.spacesuit
+#
+# THE AUTHOR, 2026-09-22, naming five types at once as "real_name/alias":
+# "satellite.variable.float/double, satellite.variable.binary/bin
+# satellite.variable.hex/hexadecimal satellite.variable.percent/percentage". He
+# wrote percent first there, but percentage is the word 004 already has
+# (1 6 16, 2026-09-17), so percent is its second spelling. The colour is spelled
+# `color` every time he writes it; `colour` is how a window piece's method is
+# spelled (`.colour("#rrggbb")`), so either spelling reaches the one word.
+satellite.variable.double	satellite.variable.float
+satellite.variable.bin	satellite.variable.binary
+satellite.variable.hexadecimal	satellite.variable.hex
+satellite.variable.percent	satellite.variable.percentage
+satellite.variable.colour	satellite.variable.color

@@ -6,6 +6,20 @@
 # object's real dependencies. HEADERS is kept for the build fingerprint: a header
 # that changes is a new build.
 
+# THE FOUR TYPES OF 2026-09-22, each with a list of its own so four builders adding
+# files at once each touch a different line. A type's object file answers what the
+# value does; its _values file answers the checker, the walker and the expression.
+FLOAT_SOURCES    = $(OBJECT)/object_float.cpp $(BYTECODE)/float_values.cpp
+HEX_SOURCES      = $(OBJECT)/object_hexadecimal.cpp $(BYTECODE)/hexadecimal_values.cpp
+COLOR_SOURCES    = $(OBJECT)/object_color.cpp $(BYTECODE)/color_values.cpp
+FRACTION_SOURCES = $(OBJECT)/object_fraction.cpp $(BYTECODE)/fraction_values.cpp
+FLOAT_HEADERS    = $(FLOAT_DIR)/satellite_float.hpp $(OBJECT)/object_float.hpp $(BYTECODE)/float_values.hpp
+HEX_HEADERS      = $(HEX_DIR)/satellite_hexadecimal_number.hpp $(OBJECT)/object_hexadecimal.hpp \
+                   $(BYTECODE)/hexadecimal_values.hpp
+COLOR_HEADERS    = $(COLOR_DIR)/satellite_color.hpp $(OBJECT)/object_color.hpp $(BYTECODE)/color_values.hpp
+FRACTION_HEADERS = $(FRACTION_DIR)/satellite_fraction.hpp $(OBJECT)/object_fraction.hpp \
+                   $(BYTECODE)/fraction_values.hpp
+
 INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(ARGUMENTS)/arguments.cpp $(ARGUMENTS)/command_line.cpp \
                       $(SATELLITE)/licenses/licenses.cpp \
@@ -27,6 +41,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(OBJECT)/str_add_str.cpp $(OBJECT)/str_minus_str.cpp $(OBJECT)/str_find_str.cpp \
                       $(OBJECT)/num_add_num.cpp $(OBJECT)/num_sub_num.cpp $(OBJECT)/num_div_num.cpp \
                       $(OBJECT)/object_convert.cpp $(OBJECT)/object_percentage.cpp \
+                      $(FLOAT_SOURCES) $(HEX_SOURCES) $(COLOR_SOURCES) $(FRACTION_SOURCES) \
                       $(NUMBER)/satellite_number.cpp $(NUMBER)/satellite_number_divide.cpp \
                       $(NUMBER)/satellite_number_text.cpp $(NUMBER)/satellite_number_power.cpp \
                       $(STRING16)/satellite_string.cpp \
@@ -65,6 +80,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(STRING16)/conversion_loops.hpp $(STRING16)/string_overwrite.hpp \
           $(BINARY)/satellite_binary_number.hpp \
           $(PERCENTAGE)/satellite_percentage.hpp \
+          $(FLOAT_HEADERS) $(HEX_HEADERS) $(COLOR_HEADERS) $(FRACTION_HEADERS) \
           $(OBJECT)/satellite_object.hpp $(OBJECT)/satellite_spacesuit.hpp \
           $(OBJECT)/satellite_list.hpp $(OBJECT)/satellite_index.hpp \
           $(BYTECODE)/type_shape.hpp \

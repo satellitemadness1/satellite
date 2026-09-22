@@ -13,7 +13,11 @@
 #include "capsule_scopes.hpp"
 
 #include "file_calls.hpp"
+#include "color_values.hpp"
 #include "container_calls.hpp"
+#include "float_values.hpp"
+#include "fraction_values.hpp"
+#include "hexadecimal_values.hpp"
 #include "infinity_calls.hpp"
 #include "window_calls.hpp"
 #include "../machine/stop_flag.hpp"
@@ -438,6 +442,27 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             live = &held;
             on_the_name = false;
             continue;
+        }
+
+        // THE FOUR TYPES OF 2026-09-22 ANSWER THEIR OWN METHODS, each in
+        // bytecode/<name>_values.cpp. `answered` false leaves the method to the
+        // conversions every type shares, below. `slot` is the variable itself, for
+        // a method that changes the value -- the same rule as a list's `.append`.
+        if ((*live).is_float() || (*live).is_hexadecimal() || (*live).is_color() || (*live).is_fraction()) {
+            bool answered = false;
+            Value *slot = on_the_name ? live : nullptr;
+            Value answer = (*live).is_float()       ? float_method(method, *live, slot, arguments, had_parentheses, name, context, answered)
+                         : (*live).is_hexadecimal() ? hexadecimal_method(method, *live, slot, arguments, had_parentheses, name, context, answered)
+                         : (*live).is_color()       ? color_method(method, *live, slot, arguments, had_parentheses, name, context, answered)
+                                                    : fraction_method(method, *live, slot, arguments, had_parentheses, name, context, answered);
+            if (context.code != success)
+                return Value();
+            if (answered) {
+                held = std::move(answer);
+                live = &held;
+                on_the_name = false;
+                continue;
+            }
         }
 
         // A WINDOW ANSWERS ITS OWN (window_calls.cpp), the same way and for the
@@ -924,11 +949,25 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         return maybe_a_method(row, at, Value::of_percentage(std::move(percent)), "that percentage", context);
     }
 
-    // THE TWO NUMBER LITERALS, THROUGH ONE CONVERSION FAST PATH. 34587 and xFFAA
-    // differ only by the radix their token names.
+    // THE NUMBER LITERALS. An x literal is the hex's own (2026-09-22), and a number
+    // with a point in it the float's: each reads its literal in
+    // bytecode/<name>_values.cpp. text_at MOVES `at` past the payload, so the digits
+    // are read once, here, and the choice is made on them.
     if (code == token::number_token || code == token::hexadecimal_token) {
         const unsigned int radix = radix_of(code);
         const std::string digits = text_at(row, at);
+        if (code == token::hexadecimal_token || digits.find('.') != std::string::npos) {
+            const bool hex = code == token::hexadecimal_token;
+            Value made;
+            std::string why;
+            const signed long long int held =
+                hex ? hexadecimal_literal(digits, made, why) : float_literal(digits, made, why);
+            if (held != success) {
+                context.refuse(held, why);
+                return Value();
+            }
+            return maybe_a_method(row, at, std::move(made), hex ? "that hex" : "that float", context);
+        }
         satellite_number value;
         const signed long long int held = fast::from_token_text(digits, radix, value);
         if (held != success) {

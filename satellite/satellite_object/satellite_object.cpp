@@ -17,6 +17,10 @@
 
 #include "satellite_object.hpp"
 #include "fast_paths.hpp"
+#include "object_color.hpp"
+#include "object_float.hpp"
+#include "object_fraction.hpp"
+#include "object_hexadecimal.hpp"
 // The list arm's items, which satellite_object.hpp cannot name: a list holds
 // objects, so its definition has to come after this class is complete.
 #include "satellite_list.hpp"
@@ -146,6 +150,44 @@ bool refuse_infinity_arithmetic(const satelliteObject &left, const satelliteObje
     return true;
 }
 
+// THE FOUR TYPES OF 2026-09-22 ANSWER EVERY PAIR THEY ARE IN, EACH FROM ITS OWN
+// FILE (object_float.hpp says why). Asked after the two-number fast path and the
+// infinity's refusal, and before the percentage and the binary, so `x1F + 1` and
+// `2.5 * 50%` reach the hex's and the float's own files and not a pair written
+// before either type existed. THE ORDER BELOW DECIDES WHICH FILE HEARS A PAIR OF
+// TWO OF THEM -- the fraction first, since a fraction is made of floats.
+bool answered_by_its_own_file(char sign, const satelliteObject &left, const satelliteObject &right,
+                              satelliteObject &out, std::string &why, signed long long int &code)
+{
+    if (left.is_fraction() || right.is_fraction())
+        code = fraction_operation(sign, left, right, out, why);
+    else if (left.is_color() || right.is_color())
+        code = color_operation(sign, left, right, out, why);
+    else if (left.is_hexadecimal() || right.is_hexadecimal())
+        code = hexadecimal_operation(sign, left, right, out, why);
+    else if (left.is_float() || right.is_float())
+        code = float_operation(sign, left, right, out, why);
+    else
+        return false;
+    return true;
+}
+
+bool compared_by_its_own_file(const satelliteObject &left, const satelliteObject &right, int &order,
+                              std::string &why, signed long long int &code)
+{
+    if (left.is_fraction() || right.is_fraction())
+        code = fraction_compare(left, right, order, why);
+    else if (left.is_color() || right.is_color())
+        code = color_compare(left, right, order, why);
+    else if (left.is_hexadecimal() || right.is_hexadecimal())
+        code = hexadecimal_compare(left, right, order, why);
+    else if (left.is_float() || right.is_float())
+        code = float_compare(left, right, order, why);
+    else
+        return false;
+    return true;
+}
+
 } // namespace
 
 // A LITERAL ARRIVES AS UTF-8 BYTES and becomes a satellite_string here -- the
@@ -242,6 +284,11 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     // asking which one it has, not what they have on them.
     case satelliteObject::window:
         return l.as_window() == r.as_window();
+    // THE FOUR OF 2026-09-22 SAY FOR THEMSELVES what makes two of them the same.
+    case satelliteObject::floating: return float_same(*l.as_float(), *r.as_float());
+    case satelliteObject::hexadecimal: return hexadecimal_same(*l.as_hexadecimal(), *r.as_hexadecimal());
+    case satelliteObject::color: return color_same(*l.as_color(), *r.as_color());
+    case satelliteObject::fraction: return fraction_same(*l.as_fraction(), *r.as_fraction());
     case satelliteObject::how_many_kinds: break;
     }
     return false;
@@ -263,6 +310,10 @@ const char *satelliteObject::kind_name() const
     case index: return "an index";
     case infinity: return "an infinity";
     case window: return "a window";
+    case floating: return "a float";
+    case hexadecimal: return "a hex";
+    case color: return "a color";
+    case fraction: return "a fraction";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -287,6 +338,8 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         return run_number_pair(*this, other, number_and_number_add, "+", out, why);
     if (refuse_infinity_arithmetic(*this, other, "+", "INF-3", why))
         return not_built_yet;
+    if (signed long long int code = success; answered_by_its_own_file('+', *this, other, out, why, code))
+        return code;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('+', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -353,6 +406,8 @@ signed long long int satelliteObject::subtract(const satelliteObject &other, sat
         return run_number_pair(*this, other, number_and_number_subtract, "-", out, why);
     if (refuse_infinity_arithmetic(*this, other, "-", "INF-3", why))
         return not_built_yet;
+    if (signed long long int code = success; answered_by_its_own_file('-', *this, other, out, why, code))
+        return code;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('-', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -383,6 +438,8 @@ signed long long int satelliteObject::multiply(const satelliteObject &other, sat
         return run_number_pair(*this, other, number_and_number_multiply, "*", out, why);
     if (refuse_infinity_arithmetic(*this, other, "*", "INF-3 and INF-4", why))
         return not_built_yet;
+    if (signed long long int code = success; answered_by_its_own_file('*', *this, other, out, why, code))
+        return code;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('*', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -404,6 +461,8 @@ signed long long int satelliteObject::divide(const satelliteObject &other, satel
         return run_number_pair(*this, other, number_and_number_divide, "/", out, why);
     if (refuse_infinity_arithmetic(*this, other, "/", "INF-3 and INF-4", why))
         return not_built_yet;
+    if (signed long long int code = success; answered_by_its_own_file('/', *this, other, out, why, code))
+        return code;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('/', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -423,6 +482,8 @@ signed long long int satelliteObject::modulus(const satelliteObject &other, sate
     // and is_percentage() needs one side a percentage.
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_modulus, "%", out, why);
+    if (signed long long int code = success; answered_by_its_own_file('%', *this, other, out, why, code))
+        return code;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('%', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -444,6 +505,8 @@ signed long long int satelliteObject::power(const satelliteObject &other, satell
         return run_number_pair(*this, other, number_and_number_power, "^", out, why);
     if (refuse_infinity_arithmetic(*this, other, "^", "INF-4 and INF-5", why))
         return not_built_yet;
+    if (signed long long int code = success; answered_by_its_own_file('^', *this, other, out, why, code))
+        return code;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('^', worth_of(*this), worth_of(other), out, why);
     if (read_by_worth(*this, other))
@@ -457,6 +520,8 @@ signed long long int satelliteObject::power(const satelliteObject &other, satell
 signed long long int satelliteObject::compare(const satelliteObject &other, int &order,
                                               std::string &why) const
 {
+    if (signed long long int code = success; compared_by_its_own_file(*this, other, order, why, code))
+        return code;
     if (is_percentage() || other.is_percentage())
         return percentage_compare(*this, other, order, why);
     // AN INFINITY IS ORDERED AGAINST AN INFINITY AND AGAINST A NUMBER, and a binary
@@ -643,6 +708,10 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
         std::size_t bad_offset = 0;
         return satellite_string::from_utf8(written, out, bad_offset);
     }
+    case floating: return float_to_string(*as_float(), out, why);
+    case hexadecimal: return hexadecimal_to_string(*as_hexadecimal(), out, why);
+    case color: return color_to_string(*as_color(), out, why);
+    case fraction: return fraction_to_string(*as_fraction(), out, why);
     case how_many_kinds: break;
     }
     why = "there is nothing here to make a string of";
@@ -666,6 +735,10 @@ signed long long int satelliteObject::to_number(satellite_number &out, std::stri
     case infinity:
         why = "an infinity is larger than every number, so no number can be made out of it";
         return types_do_not_meet;
+    case floating: return float_to_number(*as_float(), out, why);
+    case hexadecimal: return hexadecimal_to_number(*as_hexadecimal(), out, why);
+    case color: return color_to_number(*as_color(), out, why);
+    case fraction: return fraction_to_number(*as_fraction(), out, why);
     default: break;
     }
     why = std::string("a number cannot be made out of ") + kind_name();
@@ -680,6 +753,10 @@ signed long long int satelliteObject::to_binary(satellite_string &out, std::stri
         std::size_t bad_offset = 0;
         return satellite_string::from_utf8(as_binary()->digits(), out, bad_offset);
     }
+    if (is_float()) return float_to_binary(*as_float(), out, why);
+    if (is_hexadecimal()) return hexadecimal_to_binary(*as_hexadecimal(), out, why);
+    if (is_color()) return color_to_binary(*as_color(), out, why);
+    if (is_fraction()) return fraction_to_binary(*as_fraction(), out, why);
     why = std::string("base 2 text cannot be made out of ") + kind_name();
     return types_do_not_meet;
 }
@@ -690,6 +767,10 @@ signed long long int satelliteObject::to_hexadecimal(satellite_string &out, std:
         return number_to_hexadecimal(*as_number(), out);
     if (is_binary())
         return number_to_hexadecimal(as_binary()->bits, out);
+    if (is_float()) return float_to_hexadecimal(*as_float(), out, why);
+    if (is_hexadecimal()) return hexadecimal_to_hexadecimal(*as_hexadecimal(), out, why);
+    if (is_color()) return color_to_hexadecimal(*as_color(), out, why);
+    if (is_fraction()) return fraction_to_hexadecimal(*as_fraction(), out, why);
     why = std::string("base 16 text cannot be made out of ") + kind_name();
     return types_do_not_meet;
 }

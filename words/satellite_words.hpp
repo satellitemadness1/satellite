@@ -433,6 +433,8 @@ inline constexpr WordRow kWords[] = {
     {"satellite.window.one_of(items)", {1, 27, 22, 0, 0, 0}, 3},
     {"satellite.console.new(title, width, height)", {1, 5, 10, 0, 0, 0}, 3},
     {"satellite.namespace", {1, 28, 0, 0, 0, 0}, 2},
+    {"satellite.variable.color", {1, 6, 19, 0, 0, 0}, 3},
+    {"satellite.variable.fraction", {1, 6, 20, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -490,7 +492,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.console.display", {1, 5, 1, 1, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},
-    {"satellite.variable", {1, 6, 19, 0, 0, 0, 0}, 3},
+    {"satellite.variable", {1, 6, 21, 0, 0, 0, 0}, 3},
     {"satellite.variable.string", {1, 6, 1, 23, 0, 0, 0}, 4},
     {"satellite.variable.string.size", {1, 6, 1, 1, 1, 0, 0}, 5},
     {"satellite.variable.string.empty", {1, 6, 1, 2, 1, 0, 0}, 5},
@@ -679,6 +681,8 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.window.split", {1, 27, 18, 1, 0, 0, 0}, 4},
     {"satellite.window.tabs", {1, 27, 21, 1, 0, 0, 0}, 4},
     {"satellite.namespace", {1, 28, 1, 0, 0, 0, 0}, 3},
+    {"satellite.variable.color", {1, 6, 19, 1, 0, 0, 0}, 4},
+    {"satellite.variable.fraction", {1, 6, 20, 1, 0, 0, 0}, 4},
 };
 
 } // namespace satellite004

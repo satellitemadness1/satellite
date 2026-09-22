@@ -66,6 +66,10 @@ inline satelliteObject::Kind kind_of_type_word(token::Code word)
     if (word == word::code_of(1, 4, 2)) return satelliteObject::list;
     if (word == word::code_of(1, 4, 5)) return satelliteObject::index;
     if (word == word::code_of(1, 6, 18)) return satelliteObject::window;   // and a button (WIN-3)
+    if (word == word::code_of(1, 6, 10)) return satelliteObject::floating;     // and .double (2026-09-22)
+    if (word == word::code_of(1, 6, 11)) return satelliteObject::hexadecimal;  // and .hexadecimal
+    if (word == word::code_of(1, 6, 19)) return satelliteObject::color;        // and .colour
+    if (word == word::code_of(1, 6, 20)) return satelliteObject::fraction;
     return satelliteObject::how_many_kinds;          // not a type word
 }
 

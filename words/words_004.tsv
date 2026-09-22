@@ -52,3 +52,5 @@
 1 27 22	satellite.window.one_of(items)
 1 5 10	satellite.console.new(title, width, height)
 1 28	satellite.namespace
+1 6 19	satellite.variable.color
+1 6 20	satellite.variable.fraction

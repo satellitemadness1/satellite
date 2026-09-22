@@ -30,7 +30,11 @@
 #include "program_walk.hpp"
 
 #include "file_calls.hpp"
+#include "color_values.hpp"
 #include "container_calls.hpp"
+#include "float_values.hpp"
+#include "fraction_values.hpp"
+#include "hexadecimal_values.hpp"
 #include "infinity_calls.hpp"
 #include "window_calls.hpp"
 #include "word_codes.hpp"
@@ -261,6 +265,34 @@ bool brackets_at(const std::vector<std::bitset<16>> &row, std::size_t open, std:
     return false;
 }
 
+// THE FOUR TYPES OF 2026-09-22 JUDGE THEIR OWN VALUES AND THEIR OWN METHODS, each
+// in bytecode/<name>_values.cpp, so the four could be built side by side without
+// every one of them editing this file. `type` is the declared word; any other
+// word is none of theirs.
+bool one_of_the_four(Code type)
+{
+    return type == word::code_of(1, 6, 10) || type == word::code_of(1, 6, 11) ||
+           type == word::code_of(1, 6, 19) || type == word::code_of(1, 6, 20);
+}
+
+signed long long int written_right_for(Code type, const std::vector<std::bitset<16>> &row, std::size_t at,
+                                       const DeclaredNames &declared, std::string &why)
+{
+    if (type == word::code_of(1, 6, 10)) return float_is_written_right(row, at, declared, why);
+    if (type == word::code_of(1, 6, 11)) return hexadecimal_is_written_right(row, at, declared, why);
+    if (type == word::code_of(1, 6, 19)) return color_is_written_right(row, at, declared, why);
+    if (type == word::code_of(1, 6, 20)) return fraction_is_written_right(row, at, declared, why);
+    return success;
+}
+
+signed long long int method_right_for(Code type, Code method, const std::string &spelling, std::string &why)
+{
+    if (type == word::code_of(1, 6, 10)) return float_method_check(method, spelling, why);
+    if (type == word::code_of(1, 6, 11)) return hexadecimal_method_check(method, spelling, why);
+    if (type == word::code_of(1, 6, 19)) return color_method_check(method, spelling, why);
+    return fraction_method_check(method, spelling, why);
+}
+
 // A METHOD ON A DECLARED NAME, judged by the name's declared TYPE -- which the
 // checker has, since DeclaredNames keeps the declaring word (the review,
 // 2026-09-18: `n.append("x")` on a number and `f.replace(1)` on a file passed the
@@ -292,6 +324,8 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
                              declared_as == word::code_of(1, 4, 6);
     if (method == token::reverse_token)
         return success;                  // every type with an order has one
+    if (one_of_the_four(declared_as))
+        return method_right_for(declared_as, method, spelling, why);
     // AN INFINITY'S OWN METHODS, numbered at INF-1 and built from INF-4, each named
     // with the milestone that builds it -- before anything runs.
     if (declared_as == word::code_of(1, 6, 17)) {
@@ -994,8 +1028,8 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (!is_a_type_word(code)) {
             why = std::string(word::spelling_of(code)) + " " + name +
                   " is a declaration, and only satellite.variable.number, .string, .binary, "
-                  ".percentage, .file, .bool, .infinity and satellite.container.list, .index and "
-                  ".multiple are built yet";
+                  ".percentage, .file, .bool, .infinity, .float, .hex, .color, .fraction and "
+                  "satellite.container.list, .index and .multiple are built yet";
             at = stop;
             return satl_line_not_understood;
         }
@@ -1016,6 +1050,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         }
         if (code == word::code_of(1, 6, 16) && code_at(row, k) == token::assign_token) {
             const signed long long int written = percentage_is_written_with_percent(row, k + 1, why);
+            if (written != success) { at = stop; return written; }
+        }
+        if (one_of_the_four(code) && code_at(row, k) == token::assign_token) {
+            const signed long long int written = written_right_for(code, row, k + 1, declared, why);
             if (written != success) { at = stop; return written; }
         }
         const signed long long int held = names_in_statement(row, k, stop, declared, capsules, scope, functions, why);
@@ -1146,6 +1184,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (found != declared.end() && found->second == word::code_of(1, 6, 16) &&
             code_at(row, k) == token::assign_token) {
             const signed long long int written = percentage_is_written_with_percent(row, k + 1, why);
+            if (written != success) { at = stop; return written; }
+        }
+        if (found != declared.end() && one_of_the_four(found->second) && code_at(row, k) == token::assign_token) {
+            const signed long long int written = written_right_for(found->second, row, k + 1, declared, why);
             if (written != success) { at = stop; return written; }
         }
         const signed long long int held = names_in_statement(row, at, stop, declared, capsules, scope, functions, why);

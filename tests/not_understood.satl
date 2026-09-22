@@ -7,15 +7,16 @@
 // started working and this check went green for the wrong reason -- it was
 // asserting an ABSENCE, and the absence was filled in.
 //
-// satellite.variable.float is the next unbuilt type along (word 1 6 10, and
-// DESIGN has it decided: a bool and two satellite_numbers). When the float is
-// built this file goes red again, and the fix is the same one: move it to
-// whatever is still unbuilt, not to delete the check.
+// REBASED AGAIN 2026-09-22, from satellite.variable.float, when the author asked
+// for the float, the hex, the colour and the fraction at once and all four became
+// words a declaration may use. satellite.variable.time (word 1 6 3) is still
+// unbuilt. When it is built this file goes red again, and the fix is the same
+// one: move it to whatever is still unbuilt, not to delete the check.
 satellite.include(satellite)
 
 satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
 {
     satellite.console.display("before")
-    satellite.variable.float f = 1
+    satellite.variable.time f = 1
     satellite.return(satellite)
 }

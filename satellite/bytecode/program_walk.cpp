@@ -32,6 +32,10 @@
 #include "../machine/s_codes.hpp"
 
 #include "statement_ring.hpp"
+#include "color_values.hpp"
+#include "float_values.hpp"
+#include "fraction_values.hpp"
+#include "hexadecimal_values.hpp"
 
 #include "word_codes.hpp"
 #include "../satl/satl_file.hpp"
@@ -797,6 +801,21 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // author), and program_check.cpp says so before anything runs.
     if (holds == word::code_of(1, 6, 4) && value.is_binary())
         value = Value::of_number(value.as_binary()->bits);
+
+    // THE FOUR TYPES OF 2026-09-22 SAY WHAT A VALUE BECOMES IN A NAME OF THEIRS --
+    // a number given to a float name, a hex given to a colour name -- each in its
+    // own bytecode/<name>_values.cpp, and each answers untouched for a name that is
+    // not its business.
+    for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store}) {
+        std::string refused;
+        const signed long long int stored = on_store(holds, value, refused);
+        if (stored != success) {
+            at = past_the_statement(row, at);
+            return report_error(std::string("satl(run): ") + name + " was declared " + word::spelling_of(holds) +
+                                    ", and " + refused,
+                                stored);
+        }
+    }
 
     // ONE TEST FOR EVERY TYPE, THROUGH THE DECLARED SHAPE. This used to be a
     // chain of `word == this && !value.is_that()`, which grew a row per type and

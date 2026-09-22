@@ -397,7 +397,10 @@ bits              name                         what it is
 0000101101001100  home_token                   home  [METHOD] console.home() -- the cursor to the top-left corner, as satellite.console.home() does on stdout (GTK_AND_NO_DEPENDENCIES.md GTK-17)
 0000101101001101  columns_token                columns  [METHOD] console.columns -- how many characters fit across a console right now (GTK_AND_NO_DEPENDENCIES.md GTK-17)
 0000101101001110  rows_token                   rows  [METHOD] console.rows -- how many lines fit down a console right now (GTK_AND_NO_DEPENDENCIES.md GTK-17)
-0000101101001111  free                         to 0000101111111111, free for this family
+0000101101001111  transparency_token           transparency  [METHOD] color.transparency(50) sets how see-through a colour is, 0 to 99; color.transparency reads it back (the author, 2026-09-22: "my_color.transparency(0 - 99)")
+0000101101010000  numerator_token              numerator  [METHOD] fraction.numerator -- the number above the line of a/b
+0000101101010001  denominator_token            denominator  [METHOD] fraction.denominator -- the number below the line of a/b
+0000101101010010  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

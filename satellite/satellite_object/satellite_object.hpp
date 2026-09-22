@@ -47,7 +47,11 @@
 #include "satellite_bytecode.hpp"
 #include "satellite_capsule.hpp"
 #include "../satellite_variable_binary/satellite_binary_number.hpp"
+#include "../satellite_variable_color/satellite_color.hpp"
 #include "../satellite_variable_file/satellite_file.hpp"
+#include "../satellite_variable_float/satellite_float.hpp"
+#include "../satellite_variable_fraction/satellite_fraction.hpp"
+#include "../satellite_variable_hex/satellite_hexadecimal_number.hpp"
 #include "../satellite_variable_infinity/satellite_infinity.hpp"
 #include "../satellite_variable_window/satellite_window.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
@@ -139,7 +143,11 @@ public:
                               ListHandle,              // 10 {a, b} (2026-09-18)
                               IndexHandle,             // 11 satellite.container.index (2026-09-18)
                               InfinityHandle,          // 12 satellite.variable.infinity (INF-2, 2026-09-19)
-                              WindowHandle             // 13 satellite.variable.window (WIN-3, 2026-09-20)
+                              WindowHandle,            // 13 satellite.variable.window (WIN-3, 2026-09-20)
+                              satellite_float,         // 14 satellite.variable.float (2026-09-22)
+                              satellite_hexadecimal_number, // 15 satellite.variable.hex (2026-09-22)
+                              satellite_color,         // 16 satellite.variable.color (2026-09-22)
+                              satellite_fraction       // 17 satellite.variable.fraction (2026-09-22)
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
@@ -163,8 +171,14 @@ public:
                               // guessed 15 for the window and said why it might not
                               // be: "15 is right only if the float and hex ... are
                               // built first". They were not.
-                              // 14  satellite_float
-                              // 15  satellite_hexadecimal_number
+                              //
+                              // FOUR AT ONCE, 2026-09-22. The author asked for the
+                              // float, the hex, the colour and the fraction in one
+                              // message, to be built side by side -- so they take
+                              // their numbers in the order he NAMED them, the float
+                              // and the hex keeping the 14 and 15 reserved above.
+                              // Each arm's whole behaviour is in its own
+                              // satellite_object/object_<name>.cpp.
                               >;
 
     enum Kind : std::size_t {
@@ -182,7 +196,11 @@ public:
         index = 11,
         infinity = 12,
         window = 13,
-        how_many_kinds = 14
+        floating = 14,          // `float` is C++'s own word
+        hexadecimal = 15,
+        color = 16,
+        fraction = 17,
+        how_many_kinds = 18
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -197,6 +215,10 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<index, Held>, IndexHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<infinity, Held>, InfinityHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<window, Held>, WindowHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<floating, Held>, satellite_float>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<hexadecimal, Held>, satellite_hexadecimal_number>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<color, Held>, satellite_color>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<fraction, Held>, satellite_fraction>, "");
 
     Held held;
 
@@ -214,6 +236,10 @@ public:
     satelliteObject(IndexHandle from) : held(std::move(from)) {}
     satelliteObject(InfinityHandle from) : held(std::move(from)) {}
     satelliteObject(WindowHandle from) : held(std::move(from)) {}
+    satelliteObject(satellite_float from) : held(std::move(from)) {}
+    satelliteObject(satellite_hexadecimal_number from) : held(std::move(from)) {}
+    satelliteObject(satellite_color from) : held(std::move(from)) {}
+    satelliteObject(satellite_fraction from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -229,6 +255,10 @@ public:
     static satelliteObject of_index(IndexHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_infinity(InfinityHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_window(WindowHandle from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_float(satellite_float from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_hexadecimal(satellite_hexadecimal_number from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_color(satellite_color from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_fraction(satellite_fraction from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -254,6 +284,10 @@ public:
     bool is_index() const { return held.index() == index; }
     bool is_infinity() const { return held.index() == infinity; }
     bool is_window() const { return held.index() == window; }
+    bool is_float() const { return held.index() == floating; }
+    bool is_hexadecimal() const { return held.index() == hexadecimal; }
+    bool is_color() const { return held.index() == color; }
+    bool is_fraction() const { return held.index() == fraction; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -317,6 +351,16 @@ public:
     UserDefinedHandle *as_user_defined() { return std::get_if<UserDefinedHandle>(&held); }
     satellite_binary_number *as_binary() { return std::get_if<satellite_binary_number>(&held); }
     satellite_percentage *as_percentage() { return std::get_if<satellite_percentage>(&held); }
+
+    // THE FOUR OF 2026-09-22, each a plain value held inline, as the binary is.
+    const satellite_float *as_float() const { return std::get_if<satellite_float>(&held); }
+    const satellite_hexadecimal_number *as_hexadecimal() const { return std::get_if<satellite_hexadecimal_number>(&held); }
+    const satellite_color *as_color() const { return std::get_if<satellite_color>(&held); }
+    const satellite_fraction *as_fraction() const { return std::get_if<satellite_fraction>(&held); }
+    satellite_float *as_float() { return std::get_if<satellite_float>(&held); }
+    satellite_hexadecimal_number *as_hexadecimal() { return std::get_if<satellite_hexadecimal_number>(&held); }
+    satellite_color *as_color() { return std::get_if<satellite_color>(&held); }
+    satellite_fraction *as_fraction() { return std::get_if<satellite_fraction>(&held); }
 
     // The name of the arm, for a refusal a person has to act on.
     const char *kind_name() const;

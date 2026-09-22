@@ -3998,5 +3998,11 @@ if [ $code = 2 ]; then echo "  skip  make_words.py's checks: no 003 satl at old_
 else expect "make_words.py against rows typed by hand: $(tail -1 build/check_make_words.out) (build/check_make_words.out)" 0 $code; fi
 expect "the start-up threads are warm" 1 "$(grep -cE "^\[satellite\] threads.startup\(warm\): $(config_row threads_startup) threads parked in [0-9.]+ ms" build/debug.out)"
 
+# THE FOUR TYPES OF 2026-09-22 KEEP THEIR ROWS BESIDE THEIR CODE (each file says why).
+for rows in satellite/satellite_variable_float/check_float.sh satellite/satellite_variable_hex/check_hex.sh \
+            satellite/satellite_variable_color/check_color.sh satellite/satellite_variable_fraction/check_fraction.sh; do
+    . "./$rows"
+done
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]
