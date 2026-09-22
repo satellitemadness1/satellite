@@ -67,13 +67,37 @@ Spot place(std::string_view text, std::size_t width, Spot from);
 void watch_resizes();
 bool take_resize();
 
+// A PROMPT, AS IT IS MEASURED AND AS IT IS DRAWN (the author, 2026-09-22: "all
+// in white lettering with black [ and ] and the white lettering is bold").
+//
+// `text` IS WHAT IT SAYS, and the only thing that is counted: every column the
+// renderer works out is worked out on shown(text), exactly as before a prompt
+// had colour. `drawn` IS THE SAME CHARACTERS DRESSED -- shown(text) with SGR
+// sequences between them, and a reset at the end so the line a person types is
+// in the terminal's own colour. The renderer writes `drawn` where it would
+// have written shown(text), and nothing else about it changes.
+//
+// THE ESCAPES IN `drawn` ARE THE ONLY ONES THAT EVER REACH THE TERMINAL, and
+// they are the caller's own, never a person's: whoever builds one must put
+// every field through shown() and add nothing but SGR (session.cpp does). With
+// `drawn` empty, shown(text) is drawn plain -- which is every prompt before
+// this one, and the reader's own harness.
+struct Prompt {
+    std::string text;
+    std::string drawn;
+};
+
 class Renderer {
 public:
     explicit Renderer(int out);
 
     // Draw `prompt` then `line`, and leave the cursor at `cursor`, a byte offset
     // into `line` that is always on a character's first byte (editor.hpp).
-    void draw(const std::string &prompt, const std::string &line, std::size_t cursor);
+    void draw(const Prompt &prompt, const std::string &line, std::size_t cursor);
+    void draw(const std::string &prompt, const std::string &line, std::size_t cursor)
+    {
+        draw(Prompt{prompt, std::string()}, line, cursor);
+    }
 
     // The window changed size: ask the width again, and count what the last draw
     // left on the screen at it, before the next draw.

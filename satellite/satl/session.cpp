@@ -15,8 +15,11 @@
 #include "../prompt/raw_mode.hpp"
 #include "../prompt/render.hpp"
 
+#include <cerrno>
 #include <csignal>
+#include <cstdlib>
 #include <iostream>
+#include <pwd.h>
 #include <string>
 #include <unistd.h>
 
@@ -64,6 +67,60 @@ void watch_for_keys()
     sigaction(SIGINT, &action, nullptr);
     action.sa_handler = on_hangup;
     sigaction(SIGHUP, &action, nullptr);
+}
+
+// THE PROMPT, the author's own spelling of 2026-09-22:
+//
+//     [satellite][linux_username][cwd]>>
+//
+// *"all in white lettering with black [ and ] and the white lettering is bold"*.
+// BUILT AGAIN FOR EVERY LINE, because the folder is the one part that changes
+// while a session runs -- satellite.directory.change moves it -- and a prompt
+// naming the folder a person left is the answer that is wrong and does not say so.
+//
+// TWO FORMS FROM THE SAME PIECES (render.hpp's Prompt): `text` is what the
+// renderer counts, and `drawn` is each piece through shown() with the colour
+// between them. A user name or a folder may hold any byte a file system allows,
+// and shown() is what keeps an ESC in a folder's name from reaching the terminal
+// -- the colour here is the only escape that does.
+//
+// WHITE IS 97 AND NOT 37: 37 is the palette's light grey, which is what "white"
+// draws as on most terminals. BLACK IS 30, and on a terminal whose background is
+// black the brackets are there and cannot be seen -- asked for exactly, and said
+// so in the record.
+std::string linux_username()
+{
+    if (const passwd *who = getpwuid(geteuid()); who != nullptr && who->pw_name != nullptr && *who->pw_name)
+        return who->pw_name;
+    if (const char *user = std::getenv("USER"); user != nullptr && *user)
+        return user;
+    return std::to_string(static_cast<unsigned long long int>(geteuid()));
+}
+
+std::string where_the_session_is()
+{
+    std::string here(256, '\0');
+    while (getcwd(here.data(), here.size()) == nullptr) {
+        if (errno != ERANGE)
+            return "a folder that is no longer there";
+        here.resize(here.size() * 2);
+    }
+    here.resize(here.find('\0'));
+    return here;
+}
+
+prompt::Prompt the_prompt_now()
+{
+    static const std::string bracket = "\033[0;30m";     // black, not bold
+    static const std::string lettering = "\033[0;1;97m"; // bold, bright white
+    prompt::Prompt made;
+    for (const std::string &field : {std::string("satellite"), linux_username(), where_the_session_is()}) {
+        made.text += "[" + field + "]";
+        made.drawn += bracket + "[" + lettering + shown(field) + bracket + "]";
+    }
+    made.text += ">> ";
+    made.drawn += lettering + ">>" + "\033[0m" + " ";
+    return made;
 }
 
 std::string without_spaces_around(const std::string &line)
@@ -213,7 +270,7 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
                 first_failure = display_error;
         }
 
-        const prompt::LineStatus status = reader.read("satl> ", line);
+        const prompt::LineStatus status = reader.read(the_prompt_now(), line);
         if (status == prompt::LineStatus::EndOfFile)
             break;
         if (status == prompt::LineStatus::Interrupted) {

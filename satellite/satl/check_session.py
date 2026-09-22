@@ -20,6 +20,14 @@ exec(text[:text.index('\nt = Terminal()')])       # Screen, Terminal, check(), f
 SATL = os.environ.get('SATL', os.path.join(ROOT, 'build', 'satl'))
 READER_ARGS = [SATL, '--repl']
 
+# THE SESSION'S PROMPT (the author, 2026-09-22): [satellite][user][folder]>>, in
+# bold bright white with black brackets. The folder is wherever the session is.
+import pwd
+USER = pwd.getpwuid(os.geteuid()).pw_name
+def prompt_in(folder):
+    return '[satellite][%s][%s]>> ' % (USER, folder)
+Terminal.is_a_prompt = staticmethod(lambda row: row.startswith('[satellite][' + USER + '][') and row.endswith(']>>'))
+
 room = tempfile.mkdtemp(prefix='session_check_')
 open(os.path.join(room, 'alpha'), 'w').close()
 open(os.path.join(room, '.hidden'), 'w').close()
@@ -27,13 +35,28 @@ os.mkdir(os.path.join(room, 'nested'))
 
 t = Terminal(width=100)
 check(t.wait_for('One statement a line'), 'the session says how to leave it')
-check(t.wait_for('satl>'), 'the prompt is drawn')
+check(t.wait_for(prompt_in(os.getcwd()).rstrip()), 'the prompt is [satellite][user][folder]>>')
+row = t.screen.row
+drawn = t.screen.text()[row]
+BLACK, WHITE = (False, 30), (True, 97)
+brackets = [i for i, ch in enumerate(drawn) if ch in '[]']
+letters = [i for i, ch in enumerate(drawn) if ch not in '[] ']
+check(len(brackets) == 6 and all(t.screen.look(row, i) == BLACK for i in brackets),
+      '... its six brackets are black')
+check(letters and all(t.screen.look(row, i) == WHITE for i in letters),
+      '... and every letter of it is bold white, the >> too')
+t.type(b'x')
+check(t.wait_for(lambda t: t.screen.text()[row].endswith('>> x')) and
+      t.screen.look(row, len(drawn) + 1) == (False, None),
+      '... and what a person types after it is in the terminal\'s own colour')
+t.type(b'\x7f')
+t.at_prompt()
 
 t.type(b'satellite.console.display("typed and ran")\r')
 # The needle must be the OUTPUT row and not the echo of the line that typed it,
 # which holds the same words.
 check(t.wait_for(lambda t: 'typed and ran' in t.screen.text()) and
-      screen_order(t, 'satl> satellite.console.display("typed and ran")', 'typed and ran'),
+      screen_order(t, prompt_in(os.getcwd()) + 'satellite.console.display("typed and ran")', 'typed and ran'),
       'a typed line runs, below the line that typed it')
 
 t.at_prompt()
@@ -47,6 +70,8 @@ t.type(b'satellite.directory.list()\r')
 check(t.wait_for(lambda t: t.screen.shows('name') and t.screen.shows('permissions')), 'list() draws the table')
 check(t.wait_for(lambda t: t.screen.shows('alpha') and t.screen.shows('.hidden') and t.screen.shows('nested')),
       '... of the directory change() moved to, dotfiles kept')
+check(t.at_prompt() and t.screen.text()[t.screen.row] == prompt_in(os.path.realpath(room)).rstrip(),
+      'the prompt names the folder change() moved to')
 check(not t.screen.shows(' .  ') and not t.screen.shows('..'), '... without . and ..')
 
 t.at_prompt()
@@ -85,7 +110,7 @@ check(modes & __import__('termios').ICANON and modes & __import__('termios').ECH
       'the terminal is cooked again after the session')
 
 piped = subprocess.run([SATL, '--repl'], input=b'satellite.console.display("from a pipe")\n', capture_output=True)
-check(piped.returncode == 0 and b'from a pipe\n' in piped.stdout and b'satl>' not in piped.stdout,
+check(piped.returncode == 0 and b'from a pipe\n' in piped.stdout and b'[satellite][' not in piped.stdout,
       'from a pipe: the line runs, with no prompt text and no banner')
 piped = subprocess.run([SATL, '--repl'], input=b'nonsense\nsatellite.console.display("still here")\n', capture_output=True)
 check(piped.returncode == 25 and b'still here\n' in piped.stdout,

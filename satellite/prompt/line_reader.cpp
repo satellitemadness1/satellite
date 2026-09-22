@@ -78,6 +78,11 @@ void LineReader::drop_what_was_typed()
 
 LineStatus LineReader::read(const std::string &prompt, std::string &line)
 {
+    return read(Prompt{prompt, std::string()}, line);
+}
+
+LineStatus LineReader::read(const Prompt &prompt, std::string &line)
+{
     line.clear();
     return interactive_ ? read_typed(prompt, line) : read_piped(line);
 }
@@ -130,14 +135,14 @@ LineStatus LineReader::read_piped(std::string &line)
     }
 }
 
-LineStatus LineReader::read_typed(const std::string &prompt, std::string &line)
+LineStatus LineReader::read_typed(const Prompt &prompt, std::string &line)
 {
     // A LINE A PASTE ALREADY BROUGHT is answered without reading, drawn after the
     // prompt as if it had been typed.
     if (!pasted_.empty()) {
         line = std::move(pasted_.front());
         pasted_.pop_front();
-        write_all(out_, shown(prompt) + shown(line) + "\r\n");
+        write_all(out_, (prompt.drawn.empty() ? shown(prompt.text) : prompt.drawn) + shown(line) + "\r\n");
         return LineStatus::Line;
     }
 

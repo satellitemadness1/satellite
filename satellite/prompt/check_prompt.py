@@ -33,6 +33,10 @@ class Screen:
     def __init__(self, width, height):
         self.width, self.height = width, height
         self.rows = [[' '] * width for _ in range(height)]
+        # EACH CELL'S LOOK, as (bold, foreground) -- SGR, which is all the
+        # session's prompt uses (2026-09-22). None for the terminal's own colour.
+        self.pen = (False, None)
+        self.looks = [[self.pen] * width for _ in range(height)]
         self.row = self.col = 0
         self.held = False
         self.paste_mode = self.paste_was_on = False
@@ -45,6 +49,8 @@ class Screen:
         if self.row == self.height:
             self.rows.pop(0)
             self.rows.append([' '] * self.width)
+            self.looks.pop(0)
+            self.looks.append([(False, None)] * self.width)
             self.row = self.height - 1
 
     def put(self, ch):
@@ -55,14 +61,39 @@ class Screen:
             self.col, self.held = 0, False
             self.line_feed()
         self.rows[self.row][self.col] = ch
+        self.looks[self.row][self.col] = self.pen
         if w == 2 and self.col + 1 < self.width:
             self.rows[self.row][self.col + 1] = ''
         self.col += w
         if self.col >= self.width:
             self.col, self.held = self.width - 1, True
 
+    def sgr(self, params):
+        bold, fg = self.pen
+        for p in (params.split(';') if params else ['0']):
+            p = int(p) if p.isdigit() else 0
+            if p == 0:
+                bold, fg = False, None
+            elif p == 1:
+                bold = True
+            elif p == 22:
+                bold = False
+            elif 30 <= p <= 37 or 90 <= p <= 97:
+                fg = p
+            elif p == 39:
+                fg = None
+        self.pen = (bold, fg)
+
+    def look(self, row, col):
+        return self.looks[row][col]
+
     def csi(self, text):
         final, params = text[-1], text[:-1]
+        # SGR FIRST, AND IT DOES NOT CLEAR A HELD WRAP: a real terminal's colour
+        # change leaves the cursor where it is, wrap pending and all.
+        if final == 'm':
+            self.sgr(params)
+            return
         n = int(params) if params.isdigit() and int(params) > 0 else 1
         self.held = False
         if final == 'A':
@@ -75,8 +106,10 @@ class Screen:
             self.col = max(0, self.col - n)
         elif final == 'K':
             self.rows[self.row][self.col:] = [' '] * (self.width - self.col)
+            self.looks[self.row][self.col:] = [(False, None)] * (self.width - self.col)
         elif final == 'J':
             self.rows = [[' '] * self.width for _ in range(self.height)]
+            self.looks = [[(False, None)] * self.width for _ in range(self.height)]
         elif final == 'H':
             self.row = self.col = 0
         elif params == '?2004':
@@ -159,8 +192,14 @@ class Terminal:
     # WAIT FOR AN EMPTY PROMPT BEFORE TYPING A NEW LINE after a long answer: keys
     # that arrive before the reader is back at the prompt were typed while a line
     # ran, and D0.6.5 drops them.
+    #
+    # WHAT A PROMPT LOOKS LIKE IS THE CALLER'S: the reader's harness draws
+    # 'satl> ', and the session draws [satellite][user][folder]>> (2026-09-22),
+    # whose folder changes as the session moves. check_session.py sets its own.
+    is_a_prompt = staticmethod(lambda row: row == 'satl>')
+
     def at_prompt(self):
-        return self.wait_for(lambda t: t.screen.text()[t.screen.row] == 'satl>')
+        return self.wait_for(lambda t: self.is_a_prompt(t.screen.text()[t.screen.row]))
 
     def resize(self, width, height=30):
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack('HHHH', height, width, 0, 0))

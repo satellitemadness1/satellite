@@ -43,6 +43,7 @@
 // its own line left; 004's prompt refuses blocks until M6, and gets it back then.
 
 #include "history.hpp"
+#include "render.hpp"
 
 #include <cstddef>
 #include <deque>
@@ -65,6 +66,8 @@ public:
     LineReader &operator=(const LineReader &) = delete;
 
     LineStatus read(const std::string &prompt, std::string &line);
+    // THE SAME, WITH A PROMPT THAT HAS COLOUR (render.hpp's Prompt).
+    LineStatus read(const Prompt &prompt, std::string &line);
 
     // Add an accepted line to the history. The caller decides what is worth
     // remembering.
@@ -81,7 +84,7 @@ public:
 
 private:
     LineStatus read_piped(std::string &line);
-    LineStatus read_typed(const std::string &prompt, std::string &line);
+    LineStatus read_typed(const Prompt &prompt, std::string &line);
 
     // read(2) once more onto the end of input_; false at the end of input.
     bool fill();

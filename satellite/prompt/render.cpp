@@ -172,12 +172,13 @@ void Renderer::resize()
     rows_ = (s.end.row > s.cursor.row ? s.end.row : s.cursor.row) + 1;
 }
 
-void Renderer::draw(const std::string &prompt, const std::string &line, std::size_t cursor)
+void Renderer::draw(const Prompt &prompt, const std::string &line, std::size_t cursor)
 {
     // shown(line) is shown(before) + shown(after): the cursor is on a character's
     // first byte, and shown() decides each character from its own bytes.
     const std::string_view whole(line);
-    std::string text = shown(prompt);
+    std::string text = shown(prompt.text);
+    const std::size_t prompt_ends = text.size();
     text += shown(whole.substr(0, cursor));
     const std::size_t at = text.size();
     text += shown(whole.substr(cursor));
@@ -207,7 +208,12 @@ void Renderer::draw(const std::string &prompt, const std::string &line, std::siz
         for (std::size_t i = 1; i < rows_; ++i)
             out += "\r\033[0K\033[1A";
         out += "\r\033[0K";
-        out += text;
+        // THE PROMPT DRESSED, THEN THE LINE: the same characters as `text`, so
+        // every column counted above is still true (render.hpp's Prompt).
+        if (prompt.drawn.empty())
+            out += text;
+        else
+            out.append(prompt.drawn).append(text, prompt_ends, std::string::npos);
     }
 
     // THE HELD WRAP. A terminal that has just filled its last column does not
