@@ -79,7 +79,7 @@ projects produce the archives.
 | ✔ | **GTK-7** rows, columns, a grid | gtk | — |
 | ✔ | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
 | ✔ | **GTK-9** every piece talks back | gtk, gobject | libffi |
-| — | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
+| ✔ | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
 | — | **GTK-11** asking a person | gtk, **gio** (`GFile`, `GAsyncResult`, `GCancellable`) | — |
 | — | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GActionMap`), gtk | — |
 | — | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
@@ -1038,7 +1038,7 @@ writes to its own piece runs again, for ever. That is the program's own
 keeps the queue from GROWING, which is the part that would have looked like a
 leak rather than a loop.
 
-## GTK-10 — the look: colour, a font, a size
+## GTK-10 — the look: colour, a font, a size — **BUILT 2026-09-21** (the DEFAULT font is still the author's)
 
     my_window.font("IBM Plex Mono", 12)
     a_line.colour("#00ff88")
@@ -1058,6 +1058,56 @@ does not use it is carrying it for nothing.
 display styles **every** window, and a provider added per widget needs the
 widget realized. The desk owns both, so both are `on_the_desk()` work, and
 neither is a reason to hold a second lock.
+
+**AS BUILT** — `.colour("#00ff88")` (and `.color`, two spellings one meaning),
+`.background("#222228")`, `.font("IBM Plex Mono", 12)`. Any piece, **including a
+window**: GTK styles a `GtkWindow` like anything else.
+
+**The trap above is exactly what happened, and the class is the answer.** Each
+piece that is dressed gets a css class nobody else has — `satl-1`, `satl-7` —
+and its provider is scoped to that class, so a rule added to the display reaches
+only the piece that asked. The provider is **kept and reloaded**, because a
+provider holds **one** stylesheet: setting `.colour` after `.font` has to say the
+font again or it would take it away.
+
+**NOT `gtk_widget_get_style_context()`.** GTK deprecated it in 4.10 and **4.24
+has removed the header** — `gtkstylecontext.h` is not in the tarball. The class
+and the display are the way that is left, and it is the better one anyway.
+
+### The finding: a dropped rule says nothing at all
+
+`gtk_css_provider_load_from_string()` **answers nothing**. A rule it cannot read
+is dropped, the piece stays exactly as it was, and the program carries on
+believing it asked for something — and a stylesheet is the easiest place in this
+whole module to produce that, because `.colour("orange juice")` gets through any
+character filter worth writing and means nothing to GTK.
+
+**The `parsing-error` signal is the only way to hear about it**, so it is
+connected and a rule GTK will not read is a **refusal**:
+
+    a.colour could not be done -- GTK could not read "notacolour" as a colour,
+    so nothing was changed
+
+**And a refused colour puts the old one back**, so a piece is never left wearing
+a rule with a hole in it. *That refusal is also what proves the good ones
+parsed* — the working program produces no error, which now means something.
+
+### The font is carried AND findable, measured rather than assumed
+
+`fc-match` through **satl's own spilled fontconfig**, not the machine's:
+
+    FONTCONFIG_FILE=$SPILL/fonts.conf fc-match "IBM Plex Mono"
+    IBMPlexMono-Regular.ttf: "IBM Plex Mono" "Regular"
+
+So `.font("IBM Plex Mono", 12)` genuinely uses the family WIN-1 put in the
+binary. **And `fc-match "NoSuchFamilyAtAll"` answers the same file**, which is
+the asymmetry worth knowing: **a bad colour is refused and a bad font family
+cannot be**, because fontconfig always answers something.
+
+**THE DEFAULT IS STILL UNSET AND STILL THE AUTHOR'S.** WIN-3 asked 11px or 12px
+on 2026-09-19 and it is unanswered, so no font is set for a window that does not
+ask. What changed is that a program *can* now ask, and the font it asks for is
+the one in the binary.
 
 ## GTK-11 — asking a person something: a message, a question, a file
 
@@ -1300,7 +1350,7 @@ is the milestone that gets VTE into the folder and into a static archive.
   progress bar, a choice, a row, a column, a grid and a picture.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-9 are built** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-10 are built** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a

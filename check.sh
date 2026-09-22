@@ -2494,6 +2494,65 @@ expect "no .icon method was minted for a window" 0 \
        "$(grep -c 'icon_token' satellite/bytecode/token_codes.hpp)"
 
 # ---------------------------------------------------------------------------
+# THE LOOK (GTK_AND_NO_DEPENDENCIES.md GTK-10, 2026-09-21): colour, what is
+# behind a piece, and the font its words are drawn in.
+# ---------------------------------------------------------------------------
+#
+# GTK4 HAS NO PER-WIDGET COLOUR SETTER AT ALL -- everything is CSS -- so this is
+# really "satellite generates a stylesheet". One css class and one provider a
+# piece: a provider added to the DISPLAY would style every window, and the class
+# is what keeps a rule to the piece that asked for it.
+#
+# PROVED ON A COMPOSITOR: a window given a background, a label given #00ff88 and
+# IBM Plex Mono at 24, a button given `red` through the `.color` spelling and
+# rgb(30, 30, 40) behind it -- no GTK warning and exit 0 -- and then
+# `.colour("notacolour")` REFUSED, which is what says the good ones parsed.
+
+expect "colour has two spellings and background and font have one each" "1|1|1" \
+       "$(grep -c 'if (spelling == \"color\") return colour_token;' satellite/bytecode/token_codes.hpp)|$(grep -c 'Code background_token = 0x0B35;' satellite/bytecode/token_codes.hpp)|$(grep -c 'Code font_token = 0x0B36;' satellite/bytecode/token_codes.hpp)"
+
+# A RULE GTK CANNOT READ IS **DROPPED** and gtk_css_provider_load_from_string
+# answers nothing at all -- the piece stays as it was and the program carries on
+# believing it asked for something. The `parsing-error` signal is the only way to
+# hear about it, and without this row somebody could delete the handler and every
+# test here would still pass.
+expect "a stylesheet GTK cannot read is a refusal, not a silent no-op" "1|2" \
+       "$(grep -c 'g_signal_connect(wearing, \"parsing-error\"' satellite/satellite_variable_window/window_look.cpp)|$(grep -c 'GTK could not read' satellite/satellite_variable_window/window_look.cpp)"
+
+# AND A REFUSED COLOUR LEAVES THE PIECE WEARING WHAT IT WAS WEARING, not a rule
+# with a hole in it where the bad line was dropped.
+expect "a refused colour puts the old one back" 1 \
+       "$(grep -c 'THE OLD ONE IS PUT BACK IF GTK WILL NOT HAVE THE NEW ONE' satellite/satellite_variable_window/window_look.cpp)"
+
+cat > build/window_look_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.background("#202028")
+    satellite.variable.window a = satellite.window.label("x")
+    a.colour("#00ff88")
+    a.font("IBM Plex Mono", 12)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_look_ok.satl > build/window_look_ok.out 2>&1
+expect ".colour, .background and .font pass the checker, and stop only for want of a screen" 50 $?
+
+# THE FONT satl CARRIES IS FINDABLE BY THE NAME A PROGRAM WOULD WRITE. Measured
+# 2026-09-21 through satl's OWN spilled fontconfig, not the machine's:
+#
+#     FONTCONFIG_FILE=$SPILL/fonts.conf fc-match "IBM Plex Mono"
+#     IBMPlexMono-Regular.ttf: "IBM Plex Mono" "Regular"
+#
+# AND fc-match "NoSuchFamilyAtAll" ANSWERS THE SAME FILE, which is the asymmetry
+# worth knowing: a bad COLOUR is refused and a bad FONT FAMILY cannot be,
+# because fontconfig always answers something. This row keeps the family name
+# the spill provides matching the one the documentation tells people to write.
+expect "the carried font family is spelled the way a program would write it" "1|1" \
+       "$(grep -c 'IBM Plex Mono' satellite/satellite_variable_window/satellite_window.hpp)|$(ls vendor/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf >/dev/null 2>&1 && echo 1 || echo 0)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

@@ -156,6 +156,21 @@ public:
     bool changed_is_connected = false;
     std::string when_closed;
 
+    // WHAT THIS PIECE IS WEARING (GTK-10). GTK4 has no per-widget colour setter
+    // -- everything is CSS -- so a piece that has been dressed carries a css
+    // class nobody else has and a GtkCssProvider scoped to it, and the parts are
+    // kept because a provider holds ONE stylesheet: setting `.colour` after
+    // `.font` has to say the font again or it would take it away.
+    //
+    // ALL OF THEM WRITTEN AND READ ON THE DESK'S THREAD ONLY, inside
+    // on_the_desk(), which is the same rule `when_pressed` follows.
+    void *look = nullptr;             // the GtkCssProvider, as a void * (no GTK in this header)
+    std::string style_class;          // "satl-7", handed out by the desk and nobody else
+    std::string a_colour;
+    std::string a_background;
+    std::string a_font;
+    int a_font_size = 0;
+
     satellite_window() = default;
     explicit satellite_window(Piece which) : piece(which) {}
 
@@ -496,6 +511,27 @@ bool window_size_of(satellite_window &which, bool the_height, long long int &out
 // not immediately after asking.
 bool window_fullscreen_of(satellite_window &which, bool &out, std::string &why);
 bool window_set_fullscreen(satellite_window &which, bool on, std::string &why);
+
+// `a_piece.colour("#00ff88")`, `a_piece.background("#222222")` and
+// `a_piece.font("IBM Plex Mono", 12)` -- WHAT A PIECE LOOKS LIKE (GTK-10).
+//
+// ANY PIECE, INCLUDING A WINDOW. GTK styles a GtkWindow like anything else, and
+// a program that wants a dark window should be able to say so.
+//
+// THERE IS NO READING THEM BACK, and that is on purpose rather than unfinished.
+// What a piece is WEARING is not what it LOOKS like: a theme, a parent's rule
+// and the desktop's own settings all reach a widget, and answering only the part
+// satellite wrote would be an answer that is wrong and does not say so. A
+// program that wants to know what it asked for already knows.
+//
+// A COLOUR OR A FONT NAME SATELLITE WILL NOT PASS ON IS REFUSED. GTK parses
+// these out of a stylesheet and a bad one is a parse error that takes the whole
+// rule with it -- so `.colour("orange juice")` would leave the piece unstyled
+// and say nothing at all.
+bool window_set_colour(satellite_window &which, const std::string &colour, bool behind,
+                       std::string &why);
+bool window_set_font(satellite_window &which, const std::string &face, long long int size,
+                     std::string &why);
 
 // THE RUN DOES NOT END WHILE A WINDOW IS OPEN. Called once, from main(), after
 // the program has returned: a program that opens a window and stops would

@@ -317,7 +317,8 @@ std::string window_word_takes(Code code)
 std::string window_methods_are()
 {
     return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\"), "
-           ".resize(wide, tall), .fullscreen and .ok; every piece has .width and .height; "
+           ".resize(wide, tall), .fullscreen and .ok; every piece has .width, .height, "
+           ".colour(\"#00ff88\"), .background(...) and .font(\"a face\", 12); "
            "a row, a column or a grid has .append too -- .append(piece) for a row, "
            ".append(piece, across, down) for a grid's cell; "
            "a piece in one has .text; a checkbox or a switch has .on; a slider, a number box or "
@@ -347,6 +348,9 @@ int window_method_arity(Code method)
     case token::width_token:   return 0;     // a question, read bare or bracketed (GTK-8)
     case token::height_token:  return 0;     // a question, read bare or bracketed (GTK-8)
     case token::fullscreen_token: return 1;  // written; read with no brackets (GTK-8)
+    case token::colour_token:     return 1;  // GTK-10; there is no reading one back
+    case token::background_token: return 1;
+    case token::font_token:       return 2;  // the face and the size
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -835,6 +839,23 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         if (!on_of(arguments[0], on, what, context))
             return Value();
         went = window_set_fullscreen(*window, on, why);
+        break;
+    }
+    case token::colour_token:
+    case token::background_token: {
+        std::string colour;
+        if (!text_of(arguments[0], colour, what, context))
+            return Value();
+        went = window_set_colour(*window, colour, method == token::background_token, why);
+        break;
+    }
+    case token::font_token: {
+        std::string face;
+        long long int size = 0;
+        if (!text_of(arguments[0], face, what + "'s face", context) ||
+            !place_of(arguments[1], size, what + "'s size", context, "a size in pixels"))
+            return Value();
+        went = window_set_font(*window, face, size, why);
         break;
     }
     case token::append_token: {

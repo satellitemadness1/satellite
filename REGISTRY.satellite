@@ -370,7 +370,10 @@ bits              name                         what it is
 0000101100110001  width_token                  width  [METHOD] object.width -- how wide it is on the screen right now, in pixels (GTK_AND_NO_DEPENDENCIES.md GTK-8)
 0000101100110010  height_token                 height  [METHOD] object.height -- how tall it is on the screen right now, in pixels (GTK_AND_NO_DEPENDENCIES.md GTK-8)
 0000101100110011  fullscreen_token             fullscreen  [METHOD] window.fullscreen -- whether it fills the screen; window.fullscreen(1) makes it and window.fullscreen(0) gives it back (GTK_AND_NO_DEPENDENCIES.md GTK-8)
-0000101100110100  free                         to 0000101111111111, free for this family
+0000101100110100  colour_token                 colour/color  [METHOD] piece.colour("#00ff88") -- the colour its words are drawn in; two spellings, one meaning (GTK_AND_NO_DEPENDENCIES.md GTK-10)
+0000101100110101  background_token             background  [METHOD] piece.background("#222222") -- the colour behind it (GTK_AND_NO_DEPENDENCIES.md GTK-10)
+0000101100110110  font_token                   font  [METHOD] piece.font("IBM Plex Mono", 12) -- the face and the size its words are drawn in (GTK_AND_NO_DEPENDENCIES.md GTK-10)
+0000101100110111  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it
