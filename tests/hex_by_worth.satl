@@ -1,0 +1,19 @@
+satellite.include(satellite)
+
+// A HEX MEETS A NUMBER BY WHAT ITS DIGITS ARE WORTH, and the answer is a number --
+// what every x literal did when it was a number, and what a binary does. Two hexes
+// are equal only when they are as wide as each other, as two binaries are.
+satellite.capsule satellite.main()
+{
+    satellite.console.display(x1F + 1)
+    satellite.console.display(x1F == 31)
+    satellite.console.display(x00FF == xFF)
+    satellite.console.display(x00ff == x00FF)
+    satellite.console.display(x10 * x10)
+    satellite.console.display(b1100 + xFF)
+    // A hex in a number name keeps what it is worth.
+    satellite.variable.number n = x1F
+    satellite.console.display(n)
+    satellite.console.display(n + 1)
+    satellite.return(satellite)
+}

@@ -174,6 +174,19 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
             }
             return Value::of_bool((left == right) == (op == token::equals_token));
         }
+        // satellite.variable.color (2026-09-22): TWO COLOURS ARE THE SAME OR NOT, AND HAVE
+        // NO ORDER -- is red before blue? -- so == and != ask color_same (the digits AND
+        // the transparency), and an ordering is refused by name, as for two files.
+        if (left.is_color() && right.is_color()) {
+            if (an_ordering(op)) {
+                context.refuse(types_do_not_meet,
+                               std::string(spelling_of(op)) + " was given two colors, and only == and != compare "
+                                                              "those -- there is no order between two colors",
+                               op_at);
+                return Value();
+            }
+            return Value::of_bool((left == right) == (op == token::equals_token));
+        }
         int order = 0;
         const signed long long int code = left.compare(right, order, why);
         if (code != success) {
@@ -808,6 +821,10 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // It was the number -10 until then.
         if (const satellite_binary_number *bits = inner.as_binary())
             return Value::of_binary(bits->negated());
+        // satellite.variable.hex (2026-09-22): A HEX KEEPS ITS SIGN and stays a hex, as a
+        // binary does -- -x1F is -x1F, worth -31, width 2. It was the number -31 until then.
+        if (const satellite_hexadecimal_number *hex = inner.as_hexadecimal())
+            return Value::of_hexadecimal(hex->negated());
         // -50% is a percentage below zero: `200 - -50%` grows 200 by half.
         if (const satellite_percentage *percent = inner.as_percentage())
             return Value::of_percentage(satellite_percentage{-percent->scaled});
@@ -1427,6 +1444,14 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // A binary leaves as the text it was written as, b and leading zeros and all.
     else if (argument.is_binary() && scenarios->text != nullptr)
         answer = scenarios->text(argument.as_binary()->written(), true);
+    // satellite.variable.hex (2026-09-22): a hex leaves as its x and its digits, upper
+    // case and as wide as written -- x00FF, -x1F.
+    else if (argument.is_hexadecimal() && scenarios->text != nullptr)
+        answer = scenarios->text(argument.as_hexadecimal()->written(), true);
+    // satellite.variable.color (2026-09-22): a colour leaves as the author writes one --
+    // x00FF00, and x00FF00, 50 when it is see-through at all.
+    else if (argument.is_color() && scenarios->text != nullptr)
+        answer = scenarios->text(argument.as_color()->written(), true);
     // A percentage leaves as its digits and its %: 50%, 12.5%.
     else if (argument.is_percentage() && scenarios->text != nullptr)
         answer = scenarios->text(argument.as_percentage()->written(), true);

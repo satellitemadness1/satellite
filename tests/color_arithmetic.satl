@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// A COLOUR HAS NO ARITHMETIC: adding two could mean mixing paint, mixing light or
+// adding the digits, and the author has named none of them. The refusal says where
+// the number is.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color red = xFF0000
+    satellite.console.display(red + 1)
+    satellite.return(satellite)
+}

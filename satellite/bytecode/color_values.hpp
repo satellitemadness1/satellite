@@ -25,13 +25,29 @@ signed long long int color_is_written_right(const std::vector<std::bitset<16>> &
                                             const std::unordered_map<std::string, token::Code> &declared,
                                             std::string &why);
 
+// THE CHECKER: where the names of `c = ...` start, for a name declared satellite.variable.color.
+// `at` is the first code after the `=` and `from` is where the checker would start.
+// SIX HEX DIGITS WRITTEN WITHOUT THE x -- `c = ff00aa` -- ARE NOT A NAME, so this
+// answers the code after them; for any other value it answers `from` untouched.
+std::size_t color_names_start(const std::vector<std::bitset<16>> &row, std::size_t at, std::size_t from,
+                              const std::unordered_map<std::string, token::Code> &declared);
+
 // THE CHECKER: the first method written on a name declared satellite.variable.color. `spelling`
 // is `name.method`, for the sentence.
 signed long long int color_method_check(token::Code method, const std::string &spelling, std::string &why);
 
+// THE WALKER: the value given to a name declared `holds`, `at` just past the `=`.
+// FALSE, `at` untouched, for every name that is not a colour's -- the walker then
+// reads the value as it reads every other. For a colour name it reads the value
+// itself: `000000` and `ff00aa` as six hex digits, anything else as the expression
+// it is, and then `, 50` after it, the transparency. `at` is left on what follows,
+// and a refusal is in `context`, as evaluate_expression leaves one.
+bool color_reads_its_value(token::Code holds, const std::vector<std::bitset<16>> &row, std::size_t &at, Value &value,
+                           ExpressionContext &context);
+
 // THE WALKER: a value arriving in a name declared `holds` -- ANY name, so this
 // answers success untouched for every `holds` that is not its business. It may
-// change `value` (a number given to a color name becomes a color).
+// change `value` (a six-digit hex given to a color name becomes a color).
 signed long long int color_on_store(token::Code holds, Value &value, std::string &why);
 
 // THE WALKER: a method on a value of this type. `slot` is the variable itself when

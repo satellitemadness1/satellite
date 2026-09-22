@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// THE CHECKER'S ANSWER IS FINAL FOR A HEX NAME, so a method a hex does not have is
+// refused before anything runs, with the list of what a hex does have.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.hex my_number = x1F
+    satellite.console.display(my_number.append("x"))
+    satellite.return(satellite)
+}

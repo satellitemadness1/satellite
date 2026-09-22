@@ -34,8 +34,8 @@ signed long long int hexadecimal_is_written_right(const std::vector<std::bitset<
 signed long long int hexadecimal_method_check(token::Code method, const std::string &spelling, std::string &why);
 
 // THE WALKER: a value arriving in a name declared `holds` -- ANY name, so this
-// answers success untouched for every `holds` that is not its business. It may
-// change `value` (a number given to a hex name becomes a hex).
+// answers success untouched for every `holds` that is not its business. A hex given
+// to a number name becomes its worth; a number given to a hex name is refused.
 signed long long int hexadecimal_on_store(token::Code holds, Value &value, std::string &why);
 
 // THE WALKER: a method on a value of this type. `slot` is the variable itself when

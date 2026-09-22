@@ -11,13 +11,14 @@
 # value does; its _values file answers the checker, the walker and the expression.
 FLOAT_SOURCES    = $(OBJECT)/object_float.cpp $(BYTECODE)/float_values.cpp $(FLOAT_DIR)/float_scaled.cpp
 HEX_SOURCES      = $(OBJECT)/object_hexadecimal.cpp $(BYTECODE)/hexadecimal_values.cpp
-COLOR_SOURCES    = $(OBJECT)/object_color.cpp $(BYTECODE)/color_values.cpp
+COLOR_SOURCES    = $(OBJECT)/object_color.cpp $(BYTECODE)/color_values.cpp $(BYTECODE)/color_check.cpp
 FRACTION_SOURCES = $(OBJECT)/object_fraction.cpp $(BYTECODE)/fraction_values.cpp
 FLOAT_HEADERS    = $(FLOAT_DIR)/satellite_float.hpp $(OBJECT)/object_float.hpp $(BYTECODE)/float_values.hpp \
                    $(FLOAT_DIR)/float_scaled.hpp $(FLOAT_DIR)/float_precision.hpp
 HEX_HEADERS      = $(HEX_DIR)/satellite_hexadecimal_number.hpp $(OBJECT)/object_hexadecimal.hpp \
                    $(BYTECODE)/hexadecimal_values.hpp
-COLOR_HEADERS    = $(COLOR_DIR)/satellite_color.hpp $(OBJECT)/object_color.hpp $(BYTECODE)/color_values.hpp
+COLOR_HEADERS    = $(COLOR_DIR)/satellite_color.hpp $(OBJECT)/object_color.hpp $(BYTECODE)/color_values.hpp \
+                   $(BYTECODE)/color_reading.hpp
 FRACTION_HEADERS = $(FRACTION_DIR)/satellite_fraction.hpp $(OBJECT)/object_fraction.hpp \
                    $(BYTECODE)/fraction_values.hpp
 

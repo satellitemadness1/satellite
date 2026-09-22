@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// MIXING THE NEW TYPES IS THE AUTHOR'S "GRAND FINALE", not this run: a hex meeting a
+// percentage says it is not built yet, rather than that there is no scenario.
+satellite.capsule satellite.main()
+{
+    satellite.variable.hex my_number = x1F
+    satellite.console.display("before")
+    satellite.console.display(my_number + 50%)
+    satellite.return(satellite)
+}

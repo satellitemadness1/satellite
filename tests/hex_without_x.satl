@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// THE x IS REQUIRED, as a binary's b is (the author, 2026-09-22: "just make the
+// prefix b mandatory and move on"). The lexer reads 1F as the number 1 and the name
+// F, and the checker puts them back together to say what to write instead -- before
+// anything runs, so "before" is never shown.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.hex my_number = 1F
+    satellite.console.display(my_number)
+    satellite.return(satellite)
+}

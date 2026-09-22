@@ -1199,7 +1199,12 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const signed long long int written = written_right_for(found->second, row, k + 1, declared, why);
             if (written != success) { at = stop; return written; }
         }
-        const signed long long int held = names_in_statement(row, at, stop, declared, capsules, scope, functions, why);
+        // satellite.variable.color (2026-09-22): `c = ff00aa` IS SIX HEX DIGITS AND NOT A
+        // NAME (color_check.cpp's color_names_start), so the names are looked for after it.
+        std::size_t names_from = at;
+        if (found != declared.end() && found->second == word::code_of(1, 6, 19) && code_at(row, k) == token::assign_token)
+            names_from = color_names_start(row, k + 1, at, declared);
+        const signed long long int held = names_in_statement(row, names_from, stop, declared, capsules, scope, functions, why);
         at = stop;
         return held;
     }

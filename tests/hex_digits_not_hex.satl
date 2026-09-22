@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// A HEX DIGIT IS 0 TO 9 OR A TO F (the author: "with hex numbers only for it 0 - 9
+// A - F"). x1G is not a hex literal -- the lexer makes a name of it -- and the checker
+// says why before anything runs.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.hex my_number = x1G
+    satellite.console.display(my_number)
+    satellite.return(satellite)
+}

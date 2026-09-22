@@ -216,6 +216,21 @@ Value reverse_of(const Value &receiver, bool &handled, std::string &why)
         return Value();
     }
 
+    // satellite.variable.hex (2026-09-22): ITS DIGITS, AND THE WIDTH IS KEPT, as a
+    // binary's bits are -- the author asked for .reverse() on "binary numbers hex".
+    // x00FF reverses to xFF00; the sign stays where it is.
+    if (const satellite_hexadecimal_number *hex = receiver.as_hexadecimal()) {
+        std::string digits = (hex->negative() ? hex->negated() : *hex).digits();
+        std::reverse(digits.begin(), digits.end());
+        satellite_hexadecimal_number made;
+        if (satellite_hexadecimal_number::from_digits(digits, made) != success) {
+            why = "its digits reversed are not a hex this can read";
+            handled = false;
+            return Value();
+        }
+        return Value::of_hexadecimal(hex->negative() ? made.negated() : std::move(made));
+    }
+
     // AN INFINITY HAS NO DIGITS TO TURN ROUND (SATELLITE_INFINITY.md Part 3). It is
     // larger than every number, and reversing the digits of some number standing in
     // for it would be an answer that is wrong and does not say so.
