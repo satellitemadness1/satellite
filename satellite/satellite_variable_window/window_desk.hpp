@@ -113,7 +113,8 @@ struct AnEvent {
     WindowHandle piece;    // what it happened to: the button, the text box, the window
     WindowHandle window;   // the window it happened in, null only if it was in none
 
-    // AND WHAT IT SAID, for the one kind that has anything to say: a key (GTK-14).
+    // AND WHAT IT SAID, for the kinds that have anything to say: a key (GTK-14)
+    // and a person's answer to a question (GTK-11).
     //
     // IT TRAVELS ON THE EVENT AND NOT ON THE PIECE, and that is what keeps this
     // module free of a std::string written on the desk and read on the
@@ -121,6 +122,13 @@ struct AnEvent {
     // piece as it takes the event off the queue, on its own thread, just before
     // running the capsule. So `the_window.key` reads a string only one thread
     // ever writes.
+    //
+    // `said_what` SAYS WHICH FIELD IT GOES IN, and it is an enum rather than one
+    // shared string because a key pressed while a question is open would
+    // otherwise overwrite the answer -- two different things a window is holding
+    // at the same moment.
+    enum What { nothing_said, a_key, an_answer };
+    What said_what = nothing_said;
     std::string said;
 };
 
@@ -139,7 +147,8 @@ struct AnEvent {
 // two things a person did; two positions of one slider on the way somewhere are
 // not two things a person did.
 void the_desk_saw_something(const std::string &capsule, const WindowHandle &piece,
-                            bool may_collapse = false, const std::string &said = std::string());
+                            bool may_collapse = false, const std::string &said = std::string(),
+                            AnEvent::What said_what = AnEvent::nothing_said);
 
 // WAITS FOR THE NEXT ONE, ON THE INTERPRETER'S THREAD. True with `capsule`
 // filled in when there is one to run; false when every window is closed and

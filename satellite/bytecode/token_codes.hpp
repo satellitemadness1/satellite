@@ -183,6 +183,9 @@ inline constexpr Code font_token = 0x0B36;  // font  [METHOD] piece.font("IBM Pl
 inline constexpr Code every_token = 0x0B37;  // every  [METHOD] window.every(a_capsule, 1000) -- run that capsule every so many millisec
 inline constexpr Code key_token = 0x0B38;  // key  [METHOD] window.key(a_capsule) -- the capsule to run when a key is pressed; window.
 inline constexpr Code clicked_token = 0x0B39;  // clicked  [METHOD] piece.clicked(a_capsule) -- the capsule to run when a person clicks it
+inline constexpr Code message_token = 0x0B3A;  // message  [METHOD] window.message("saved") -- say something to a person, with one button 
+inline constexpr Code ask_token = 0x0B3B;  // ask  [METHOD] window.ask(a_capsule, "delete it?") -- ask a person yes or no; the capsule
+inline constexpr Code answer_token = 0x0B3C;  // answer  [METHOD] window.answer -- what a person last answered: "yes", "no", or "" if the
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
@@ -250,6 +253,9 @@ inline constexpr const char *method_name_of(Code code)
     if (code == every_token) return "every";
     if (code == key_token) return "key";
     if (code == clicked_token) return "clicked";
+    if (code == message_token) return "message";
+    if (code == ask_token) return "ask";
+    if (code == answer_token) return "answer";
     return "";
 }
 
@@ -327,6 +333,9 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "every") return every_token;
     if (spelling == "key") return key_token;
     if (spelling == "clicked") return clicked_token;
+    if (spelling == "message") return message_token;
+    if (spelling == "ask") return ask_token;
+    if (spelling == "answer") return answer_token;
     return 0;
 }
 
@@ -334,11 +343,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token || code == text_token || code == on_token || code == value_token || code == chosen_token || code == changed_token || code == closed_token || code == width_token || code == height_token || code == fullscreen_token || code == colour_token || code == background_token || code == font_token || code == every_token || code == key_token || code == clicked_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token || code == text_token || code == on_token || code == value_token || code == chosen_token || code == changed_token || code == closed_token || code == width_token || code == height_token || code == fullscreen_token || code == colour_token || code == background_token || code == font_token || code == every_token || code == key_token || code == clicked_token || code == message_token || code == ask_token || code == answer_token;
 }
 
 
-inline constexpr int kTokenCount = 136;
+inline constexpr int kTokenCount = 139;
 
 } // namespace token
 } // namespace satellite004

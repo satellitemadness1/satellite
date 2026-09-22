@@ -80,7 +80,7 @@ projects produce the archives.
 | ✔ | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
 | ✔ | **GTK-9** every piece talks back | gtk, gobject | libffi |
 | ✔ | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
-| — | **GTK-11** asking a person | gtk, **gio** (`GFile`, `GAsyncResult`, `GCancellable`) | — |
+| ◑ | **GTK-11** asking a person | gtk, gio (`GAsyncResult`) — **no `GFile`: the file dialog is not built** | — |
 | — | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GActionMap`), gtk | — |
 | ✔ | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
 | ✔ | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
@@ -1109,7 +1109,7 @@ on 2026-09-19 and it is unanswered, so no font is set for a window that does not
 ask. What changed is that a program *can* now ask, and the font it asks for is
 the one in the binary.
 
-## GTK-11 — asking a person something: a message, a question, a file
+## GTK-11 — asking a person something: a message, a question, a file — **MESSAGE AND QUESTION BUILT 2026-09-21; THE FILE DIALOG IS NOT**
 
     satellite.window.message("saved")
     satellite.window.ask("delete it?", when_answered)
@@ -1131,6 +1131,42 @@ because they are different threads and the desk is the one drawing — but it is
 the first time a satellite line waits for a person, and `satellite.console.input`
 is the only precedent. **The author's**; the recommendation is the capsule,
 because it is the shape a press already taught.
+
+**AS BUILT, AS THE CAPSULE** — `my_window.message("saved")`,
+`my_window.ask(when_answered, "delete it?")`, and `my_window.answer` reading
+`"yes"`, `"no"` or `""`. **The other shape stays open**; nothing here forecloses
+it.
+
+**THE CAPSULE'S NAME COMES FIRST, AND THAT IS NOW A LANGUAGE RULE.**
+`.ask(when_answered, "delete it?")` reads less like English than the other way
+round and is spelled this way because `.pressed`, `.changed`, `.closed`,
+`.every` and `.key` all are: the checker looks for a capsule's name at the
+**first** argument and `expression.cpp` reads a name there instead of working
+out a value. **One rule a person can hold in their head beats one line that
+reads slightly better.** Written the other way round it is refused before a line
+runs.
+
+**Proved on a compositor**: a message shown, a question asked, and a **real
+Return keypress** through mutter's RemoteDesktop answering it — the capsule ran
+with `its_window.answer` reading `"yes"`.
+
+**Two things GTK would have got wrong quietly, both fixed here:**
+
+- **`gtk_alert_dialog_new` TAKES A PRINTF FORMAT.** A person's own text
+  containing a `%` would be read as a conversion and GTK would walk off the end
+  of an argument list with nothing in it — **a crash a program could cause by
+  displaying a percentage.** It is `"%s"` and the text as an argument.
+- **DISMISSED IS NOT A FAILURE.** Closing a question without choosing is a thing
+  a person is entitled to do, and GTK reports it as a `GError`. It becomes `""`,
+  not a refusal of a program that did nothing wrong.
+
+### THE FILE DIALOG IS NOT BUILT, AND THAT IS Q-WIN-11a
+
+`GtkFileDialog` can go out to **xdg-desktop-portal**, and a wedged portal is
+exactly the question the author has open: the synchronous D-Bus call that
+**hangs satl for ever with nothing printed**. Building a word that can reach it
+before he has ruled would be shipping the hang. check.sh asserts no
+`gtk_file_dialog_` call exists, so nobody adds one without answering it.
 
 ## GTK-12 — a menu, and the only milestone that is gio and not gtk
 
@@ -1408,7 +1444,8 @@ is the milestone that gets VTE into the folder and into a static archive.
 | GTK-16 | how a TAB gets its name | the piece carries it — `the_piece.title("Open files")` |
 | GTK-3 | **a `true` and a `false` to type** — a LANGUAGE milestone | there should be one; `c.on(1)` is the stopgap |
 | ~~GTK-9~~ | ~~does a capsule get the new value?~~ | **BUILT as (1)** — it gets the piece and asks it. Still reversible. |
-| GTK-11 | may a satellite line wait for a person? | no — a capsule, as a press is |
+| ~~GTK-11~~ | ~~may a satellite line wait for a person?~~ | **BUILT as the capsule.** The waiting shape stays open. |
+| GTK-11 | **Q-WIN-11a blocks the file dialog** — may a word reach the portal? | not until the hang has an answer |
 | GTK-14 | how a key is spelled to a program | the character, or a name for the rest |
 | GTK-15 | a draw capsule, or a display list | **the display list** — the other can deadlock |
 | GTK-17 | does `satellite.console` become a window, or does a window get a console? | a window gets a console; `satellite.console` keeps stdout |
@@ -1443,7 +1480,8 @@ is the milestone that gets VTE into the folder and into a static archive.
   and a split.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-10, GTK-13 and GTK-14 are built, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-10, GTK-13 and GTK-14 are built; GTK-11 but for its file
+  dialog, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a

@@ -159,7 +159,7 @@ gboolean a_key_went_down(GtkEventControllerKey *, guint keyval, guint, GdkModifi
     satellite_window *window = static_cast<satellite_window *>(user_data);
     if (!window->when_a_key.empty())
         the_desk_saw_something(window->when_a_key, window->shared_from_this(), false,
-                               what_key_that_was(keyval));
+                               what_key_that_was(keyval), AnEvent::a_key);
     // FALSE, SO THE KEY GOES ON TO THE WIDGET THAT WANTED IT. Answering TRUE
     // would mean a program that watches for Escape has silently made every text
     // box in the window unusable.

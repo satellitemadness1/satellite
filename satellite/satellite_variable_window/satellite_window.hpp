@@ -198,6 +198,13 @@ public:
     std::string when_clicked;
     bool click_is_connected = false;
 
+    // AND WHAT A PERSON LAST ANSWERED A QUESTION (GTK-11). Written by the
+    // INTERPRETER off the event, exactly as `last_key` is, and for the same
+    // reason. A SEPARATE FIELD and not one shared with the key: a key pressed
+    // while a question is open would otherwise overwrite the answer.
+    std::string when_answered;
+    std::string last_answer;
+
     // WHAT THIS PIECE IS WEARING (GTK-10). GTK4 has no per-widget colour setter
     // -- everything is CSS -- so a piece that has been dressed carries a css
     // class nobody else has and a GtkCssProvider scoped to it, and the parts are
@@ -573,6 +580,33 @@ bool window_key(satellite_window &which, const std::string &capsule, std::string
 // being clicked, and two names for one thing is what this language spends its
 // refusals avoiding.
 bool window_clicked(satellite_window &which, const std::string &capsule, std::string &why);
+
+// `my_window.message("saved")` -- SAY SOMETHING TO A PERSON, with one button to
+// dismiss it (GTK-11). It answers at once: there is nothing to wait for, and
+// the dialog stays up until the person is done with it.
+//
+// `my_window.ask(when_answered, "delete it?")` -- ASK YES OR NO. THE NAME COMES
+// FIRST, as it does in `.every` and for the same reason: that is where the
+// checker looks for a capsule's name and where expression.cpp reads a name
+// instead of working out a value. It reads less like English than the other way
+// round; one rule a person can hold in their head beats one line that reads
+// slightly better. The capsule
+// runs when they answer, and `its_window.answer` is "yes", "no", or "" if they
+// dismissed it without choosing.
+//
+// A QUESTION IS A CAPSULE AND NOT A WAIT, and that is GTK-11's open question
+// answered the way a press already taught. The other shape --
+// `satellite.variable.string a = my_window.ask("...")`, the program STOPPING
+// until a person answers -- would be the first satellite line that waits for a
+// human, and `satellite.console.input` is the only precedent. It stays the
+// author's; nothing here forecloses it.
+//
+// GtkAlertDialog IS ASYNCHRONOUS AND THAT IS WHY THIS FITS. The answer arrives
+// in a GAsyncReadyCallback on the desk's thread, which is the press queue again
+// with a different producer -- no new machinery at all.
+bool window_message(satellite_window &which, const std::string &saying, std::string &why);
+bool window_ask(satellite_window &which, const std::string &question, const std::string &capsule,
+                std::string &why);
 
 bool window_close(satellite_window &which, std::string &why);
 bool window_focus(satellite_window &which, std::string &why);

@@ -335,7 +335,8 @@ std::string window_methods_are()
            "brackets; a button has .pressed(a_capsule) and .press(); anything a person can change "
            "has .changed(a_capsule); and a window has .closed(a_capsule) and "
            ".every(a_capsule, 1000) and .key(a_capsule); anything that is not a button has "
-           ".clicked(a_capsule) "
+           ".clicked(a_capsule); and a window has .message(\"saying\"), "
+           ".ask(a_capsule, \"a question?\") and .answer "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -365,6 +366,9 @@ int window_method_arity(Code method)
     case token::every_token:      return 2;  // the capsule's NAME, then how often (GTK-13)
     case token::key_token:        return 1;  // the capsule's name; read bare for the last key (GTK-14)
     case token::clicked_token:    return 1;  // the capsule's name; read with no brackets (GTK-14)
+    case token::message_token:    return 1;  // what to say (GTK-11)
+    case token::ask_token:        return 2;  // the question, then the capsule's NAME
+    case token::answer_token:     return 0;  // a question, read bare or bracketed
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -394,7 +398,8 @@ bool window_method_takes_a_capsule_name(Code method)
 {
     return method == token::pressed_token || method == token::changed_token ||
            method == token::closed_token || method == token::every_token ||
-           method == token::key_token || method == token::clicked_token;
+           method == token::key_token || method == token::clicked_token ||
+           method == token::ask_token;
 }
 
 // AND WHETHER ANYTHING MAY FOLLOW THAT NAME (GTK-13). `.pressed`, `.changed`
@@ -402,7 +407,17 @@ bool window_method_takes_a_capsule_name(Code method)
 // name and then how often. The name comes FIRST in both shapes, which is not a
 // style choice -- it is where the checker looks for it, and it is where
 // expression.cpp reads a name instead of working out a value.
-bool window_method_takes_more_after_the_name(Code method) { return method == token::every_token; }
+// THE NAME COMES FIRST IN EVERY ONE OF THEM, and that is a LANGUAGE rule rather
+// than a convenience (GTK-11). `.ask(when_answered, "delete it?")` reads less
+// like English than the other way round, and it is spelled this way because
+// every capsule-naming method spells it this way: the checker looks for a name
+// at the first argument and expression.cpp reads a name there instead of working
+// out a value. One rule a person can hold in their head beats one line that
+// reads slightly better.
+bool window_method_takes_more_after_the_name(Code method)
+{
+    return method == token::every_token || method == token::ask_token;
+}
 
 
 // ---------------------------------------------------------------------------
@@ -560,6 +575,16 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
     // doing -- `f.ok` is how a file is asked the same thing
     // (SATELLITE_FILE_OPERATIONS). `.close` and `.focus` are doings and want
     // their brackets; `.ok` written bare reads exactly as what it means.
+    // `.answer` IS A QUESTION, so it reads with or without its brackets -- the
+    // rule `.ok`, `.width` and `.height` already follow. Empty until a person
+    // has answered one.
+    if (method == token::answer_token) {
+        satellite_window *piece = which.get();
+        Value out;
+        std::size_t bad_offset = 0;
+        Value::of_utf8(piece == nullptr ? std::string() : piece->last_answer, out, bad_offset);
+        return out;
+    }
     if (method == token::ok_token) {
         satellite_window *asked = which.get();
         return Value::of_bool(asked != nullptr && asked->on_the_screen);
@@ -882,6 +907,21 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         went = window_set_colour(*window, colour, method == token::background_token, why);
         break;
     }
+    case token::message_token: {
+        std::string saying;
+        if (!text_of(arguments[0], saying, what, context))
+            return Value();
+        went = window_message(*window, saying, why);
+        break;
+    }
+    case token::ask_token: {
+        std::string capsule, question;
+        if (!text_of(arguments[0], capsule, what, context) ||
+            !text_of(arguments[1], question, what + "'s question", context))
+            return Value();
+        went = window_ask(*window, question, capsule, why);
+        break;
+    }
     case token::key_token: {
         std::string capsule;
         if (!text_of(arguments[0], capsule, what, context))
@@ -968,8 +1008,12 @@ signed long long int windows_run_until_they_are_closed(
         // (GTK-14). A key's name written by the desk and read by a capsule
         // would be a std::string with two threads on it; written here it has
         // one writer, and the capsule that is about to run is the only reader.
-        if (happened.piece != nullptr && !happened.said.empty())
-            happened.piece->last_key = happened.said;
+        if (happened.piece != nullptr) {
+            if (happened.said_what == AnEvent::a_key)
+                happened.piece->last_key = happened.said;
+            else if (happened.said_what == AnEvent::an_answer)
+                happened.piece->last_answer = happened.said;
+        }
         const signed long long int stopped = run_a_capsule(happened.capsule, happened.piece, happened.window);
         // A CAPSULE THAT STOPPED STOPS THE RUN, the same as a line of main
         // would have. The report is already printed by the time this answers,

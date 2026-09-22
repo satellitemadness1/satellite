@@ -376,7 +376,10 @@ bits              name                         what it is
 0000101100110111  every_token                  every  [METHOD] window.every(a_capsule, 1000) -- run that capsule every so many milliseconds, for as long as the window is open (GTK_AND_NO_DEPENDENCIES.md GTK-13)
 0000101100111000  key_token                    key  [METHOD] window.key(a_capsule) -- the capsule to run when a key is pressed; window.key reads which key it was (GTK_AND_NO_DEPENDENCIES.md GTK-14)
 0000101100111001  clicked_token                clicked  [METHOD] piece.clicked(a_capsule) -- the capsule to run when a person clicks it; a BUTTON uses .pressed instead (GTK_AND_NO_DEPENDENCIES.md GTK-14)
-0000101100111010  free                         to 0000101111111111, free for this family
+0000101100111010  message_token                message  [METHOD] window.message("saved") -- say something to a person, with one button to dismiss it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101100111011  ask_token                    ask  [METHOD] window.ask(a_capsule, "delete it?") -- ask a person yes or no; the capsule runs with the answer in window.answer. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101100111100  answer_token                 answer  [METHOD] window.answer -- what a person last answered: "yes", "no", or "" if they dismissed it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101100111101  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

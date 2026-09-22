@@ -2749,6 +2749,85 @@ expect "a piece inside a window does not hear the keyboard on its own" 1 \
        "$(grep -c 'only a window hears the keyboard' satellite/satellite_variable_window/window_answers.cpp)"
 
 # ---------------------------------------------------------------------------
+# ASKING A PERSON SOMETHING (GTK_AND_NO_DEPENDENCIES.md GTK-11, 2026-09-21).
+# ---------------------------------------------------------------------------
+#
+# A QUESTION IS A CAPSULE AND NOT A WAIT. GtkAlertDialog is asynchronous, so the
+# answer arrives in a GAsyncReadyCallback on the desk's thread -- the press queue
+# again with a different producer, and no new machinery at all. The OTHER shape,
+# a satellite line that STOPS until a person answers, stays the author's and
+# nothing here forecloses it.
+#
+# PROVED ON A COMPOSITOR: a message shown, then `w.ask(when_answered, "delete
+# it?")`, then a REAL Return keypress through mutter's RemoteDesktop -- and the
+# capsule ran with `its_window.answer` reading "yes". `w.answer` read before
+# anybody answered is "".
+#
+# THE FILE DIALOG IS NOT BUILT, ON PURPOSE. GtkFileDialog can go out to
+# xdg-desktop-portal, and a wedged portal is exactly Q-WIN-11a: the D-Bus call
+# that hangs satl for ever with nothing printed. Building a word that can reach
+# it before the author has ruled would be shipping the hang.
+expect "no file-choosing word was minted while Q-WIN-11a is open" 0 \
+       "$(grep -rc 'gtk_file_dialog_' satellite/satellite_variable_window/window_asking.cpp)"
+
+expect "message, ask and answer are method tokens 0000101100111010..1100" "1|1|1" \
+       "$(grep -c 'Code message_token = 0x0B3A;' satellite/bytecode/token_codes.hpp)|$(grep -c 'Code ask_token = 0x0B3B;' satellite/bytecode/token_codes.hpp)|$(grep -c 'Code answer_token = 0x0B3C;' satellite/bytecode/token_codes.hpp)"
+
+# THE CAPSULE'S NAME COMES FIRST IN EVERY METHOD THAT NAMES ONE. `.ask` reads
+# less like English that way round and is spelled that way because `.pressed`,
+# `.changed`, `.closed`, `.every` and `.key` all are: the checker looks for a
+# name at the first argument and expression.cpp reads one there instead of
+# working out a value. One rule a person can hold in their head.
+cat > build/window_ask_backwards.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_answered()
+{
+    satellite.console.display("answered")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.ask("delete it?", when_answered)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_ask_backwards.satl > build/window_ask_backwards.out 2>&1
+expect ".ask with the question first is refused before anything runs" "27|" \
+       "$?|$(grep -x before build/window_ask_backwards.out)"
+
+cat > build/window_ask_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_answered(satellite.variable.window the_piece, satellite.variable.window its_window)
+{
+    satellite.console.display(its_window.answer)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.message("hello")
+    w.ask(when_answered, "delete it?")
+    satellite.console.display(w.answer)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_ask_ok.satl > build/window_ask_ok.out 2>&1
+expect ".message, .ask and .answer pass the checker, and stop only for want of a screen" 50 $?
+
+# "%s" AND NOT THE TEXT ITSELF. gtk_alert_dialog_new takes a PRINTF FORMAT, so a
+# person's own text containing a % would be read as a conversion and GTK would
+# walk off the end of an argument list with nothing in it -- a crash a program
+# could cause by displaying a percentage.
+expect "a person's own words are never a printf format" "2|0" \
+       "$(grep -c 'gtk_alert_dialog_new(\"%s\"' satellite/satellite_variable_window/window_asking.cpp)|$(grep -c 'gtk_alert_dialog_new(saying' satellite/satellite_variable_window/window_asking.cpp)"
+
+# DISMISSED IS NOT A FAILURE. Closing a question without choosing is a thing a
+# person is entitled to do, and GTK reports it as an ERROR -- so it becomes ""
+# rather than a refusal of a program that did nothing wrong.
+expect "dismissing a question is an empty answer, not a refusal" 1 \
+       "$(grep -c 'DISMISSED IS NOT A FAILURE' satellite/satellite_variable_window/window_asking.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

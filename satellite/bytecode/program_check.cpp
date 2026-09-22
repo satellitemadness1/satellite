@@ -497,8 +497,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 return satl_line_not_understood;
             }
             if (more_may_follow && after != token::comma_token) {
-                why = spelled + " takes a capsule's name and then how often: " + spelled +
-                      "(when_it_ticks, 1000)";
+                why = spelled + " takes a capsule's NAME first and then the rest: " +
+                      (code == token::ask_token ? spelled + "(when_answered, \"delete it?\")"
+                                                : spelled + "(when_it_ticks, 1000)");
                 return satl_line_not_understood;
             }
         }
