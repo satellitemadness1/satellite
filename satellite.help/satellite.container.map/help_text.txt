@@ -1,0 +1,62 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.container.map
+--------------------------------------------------------------------------------
+
+satellite.container.map is the word satellite numbered for a std::map, a
+container of keys and the values filed under them (word 1 4 1, with .set(k, v)
+.get(k) .has(k) .remove(k) .keys .values and more numbered under it). It is not
+built yet in satellite 004, and a line that declares one is refused (S110)
+before anything runs. Write satellite.container.index (word 1 4 5) instead: it
+is the key-to-value container that is built, and it is a python dict rather
+than a std::map. Its keys come back in the order you put them in, not sorted,
+and finding a key costs one hash.
+
+satellite.container.index<key, value> age declares an empty one, and with no <>
+it takes any key and any value. age["al"] = 4 puts a key in, or changes the
+value of a key already there without moving it. age["al"] reads it, and a key
+that is not there is refused (S501) rather than answered with nothing. A key
+must be a number, a string, a bool, a binary or a percentage, never a list or
+another index, because a key must not be able to change after it is filed; 1
+and "1" are two different keys. A value can be anything, a list included, and
+teams["red"][2] reaches into the list filed under "red".
+
+The words numbered under map are spelled this way on an index: .set(k, v) is
+age[k] = v, .get(k) is age[k], .has(k) is .contains(k), and .remove(k), .keys,
+.values, .size, .empty and .clear are spelled the same. .keys and .values
+answer two lists in the same order, .first and .last are the first and last
+key, and .remove_first() and .remove_last() take out the oldest and the newest
+entry. .append .insert .remove_at .truncate .index_of and .search are refused,
+because an index has keys and not positions. Two indexes are == when they hold
+the same entries, whatever order those went in.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.index<satellite.variable.string, satellite.variable.number> age
+    age["zoe"] = 30
+    age["al"] = 4
+    age["bo"] = 100
+    age["zoe"] = 31
+    satellite.console.display(age) // {"zoe": 31, "al": 4, "bo": 100}
+    satellite.console.display(age["al"]) // 4
+    satellite.console.display(age.keys) // {"zoe", "al", "bo"}
+    satellite.console.display(age.values) // {31, 4, 100}
+    satellite.console.display(age.contains("bo")) // true
+    age.remove("al")
+    satellite.console.display(age.size) // 2
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.map age // refused: S110, LINE_NOT_UNDERSTOOD
+    satellite.return(satellite)
+}

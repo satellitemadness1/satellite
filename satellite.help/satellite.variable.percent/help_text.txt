@@ -1,0 +1,65 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.percent
+--------------------------------------------------------------------------------
+
+satellite.variable.percent holds a percentage, written with its % touching the
+digits: 50%, 12.5%, -50%, 1000000000000%. The word is
+satellite.variable.percentage, and percent is its second spelling, so both
+declare the same type. It keeps 32 digits after the point, exactly: it is held
+as a whole number of 10^-32 percents, so 0.1% + 0.2% is 0.3%, and a 33rd digit
+is rounded half away from zero. There is no ceiling above.
+
+The % is required. A percentage name given 50 is refused before anything runs,
+with "ERROR: expected 50%", and given -50 with "ERROR: expected -50%".
+
+What each pair answers:
+
+    50% + 25%     75%      two percentages stay a percentage
+    50% - 25%     25%
+    50% * 50%     25%      a percentage of a percentage
+    50% / 4       12.5%    a share of it
+    200 * 50%     100      a number and a percentage answer a number
+    50% * 200     100      ... either way round for *
+    200 - 50%     100      reduced by it
+    200 + 50%     300      grown by it
+    200 / 50%     400      what 200 is 50% of
+
+For + and - the number goes first: 50% + 5 is refused, "the number goes first
+-- 5 + 50%". % and ^ with a percentage are refused, and so is 50% / 50%. A
+percentage compares only with a percentage, so 50% == 50 is refused (S301).
+3 * 50% is 1.5, which a whole number cannot hold, so it is refused today
+(S402): the float exists now, but a percentage answering a float waits for the
+new types to be mixed together (SATELLITE_INFINITY.md FLT-2 wants 3 - 50% to
+print 1.5). A percentage name holds only a percentage, so
+half = half * 2 is refused at run time, because that answers a number. .string
+is its text, and .number, .binary, .hex and .reverse() are refused.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.percent half = 50%
+    satellite.console.display(half)             // 50%
+    satellite.console.display(200 * half)       // 100
+    satellite.console.display(200 - half)       // 100
+    satellite.console.display(half + 25%)       // 75%
+    satellite.console.display(half / 4)         // 12.5%
+    satellite.console.display(100% / 3)         // 33.33333333333333333333333333333333%
+    satellite.console.display(half < 75%)       // true
+    half = half - 75%
+    satellite.console.display(half)             // -25%
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.console.display(50% + 5)
+
+prints:
+
+S301: TYPES_DO_NOT_MEET
+satl(run): 50% + 5: a percentage is taken off or added onto a number, so the
+number goes first -- 5 + 50%

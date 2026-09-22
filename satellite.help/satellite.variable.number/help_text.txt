@@ -1,0 +1,64 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.number
+--------------------------------------------------------------------------------
+
+satellite.variable.number is a whole number made of integers laid out next to
+each other: unsigned long long ints side by side, with the sign carried as a
+bool beside them. So it has no size limit but your memory, and it never wraps
+around. A number that fits in one unsigned long long stays on a fast path, and
+it spreads into more of them only when it has to.
+
+You write it as digits, with a touching - in front for below zero: 34587, -7.
+The operators are + - * / % and ^ for power (** is its second spelling), and
+every one of them is written with a space on both sides. * / % bind tighter
+than + and -, and ^ groups right to left, so 2 ^ 3 ^ 2 is 2 ^ 9. == != < >
+<= and >= answer true or false.
+
+/ is whole-number division, so 4 / 3 is 1. It cuts toward zero, and % takes the
+sign of the number being divided: -7 / 2 is -3 and -7 % 2 is -1. 1 / 0 is
+refused (S401). 2 ^ -1 is 0.5: an answer a whole number cannot hold becomes a
+satellite.variable.float, while 4 / 3 stays 1 -- write 4.0 / 3 for the float
+(satellite.help(float)).
+
+A number converts nothing on its own: 5 + "a" is refused (S301), so you say
+the conversion out loud with a method. .string (also .to_string and .str) is
+its base 10 text, .binary (also .bin) its base 2 text, .hex its base 16 text,
+.reverse() turns its digits round and keeps the sign, and .add(x) is +.
+
+What it refuses today: a touching sign, 4+3 (S110), and n += 1 (S210, "write
+n = n + ..."). A number with a point in it, 12.34, is a float, not a number, and
+a number name given one is refused ("it holds a float"). n.power(2) is refused
+as not built (S210), and max, min, abs, clamp, floor, ceil, round, truncate,
+sqrt, modulus, shift_left, shift_right and digits are numbered words with no
+library wired to them yet (MILESTONES.md M17): n.max(3) says "no capsule named
+max".
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.number n = 87
+    satellite.console.display(n + 13)           // 100
+    satellite.console.display(4 / 3)            // 1
+    satellite.console.display(-7 % 2)           // -1
+    satellite.console.display(2 ^ 3 ^ 2)        // 512
+    satellite.console.display(2 ^ 70)           // 1180591620717411303424
+    satellite.console.display(n > 50)           // true
+    satellite.console.display(n.binary)         // 1010111
+    satellite.console.display(n.hex)            // 57
+    satellite.console.display(n.reverse())      // 78
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.console.display(4+3)
+
+prints:
+
+S110: LINE_NOT_UNDERSTOOD
+satl(run): every math operation is written with a space on both sides of the
+sign, and this + has none

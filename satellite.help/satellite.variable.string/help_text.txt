@@ -1,0 +1,67 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.string
+--------------------------------------------------------------------------------
+
+satellite.variable.string holds text, written between double quotes. satellite
+keeps it as characters, not bytes, in its own 16/32-bit form, so an accent or
+an arrow is one character and .reverse() turns a string round by character. A
+string name refuses a value that is not a string (machine code 27).
+
++ joins two strings, and .add(x) is the same join. satellite converts nothing
+on its own, so "n = " + 4 is refused (S301): write the conversion out loud, as
+"n = " + n.to_string(). - takes away the FIRST place the right string occurs,
+and answers the left string unchanged when it is not there. == and != compare
+two strings, and < and > order them by satellite's own character table: a to
+z, then A to Z, then digits, then signs, then the space, so "a" < "B" is true.
+
+.find(x) answers where x first begins, counting from 0, so "abc".find("b") is
+1; a string that is not there is refused (S420) rather than answered as -1.
+.number (or .as_number, .to_number) reads a whole number out of the text and
+refuses anything else, "3.5" included (S120). .binary (or .bin, .as_binary)
+and .hex (or .as_hex, .to_hex) read that same number and answer its base-2 or
+base-16 digits as a string, so "1010".bin is the bits of one thousand and ten,
+not b1010. .string (or .str, .to_string) answers the text unchanged. A
+conversion may be written with or without (), and methods chain left to
+right, as "87".bin.find("111") does below.
+
+Numbered under word 1 6 1 and not built yet in satellite 004: .size .empty
+.contains(x) .replace(a, b) .append(x) .clear .at(n) .substring(start, end)
+.starts_with(x) .ends_with(x) .lower .upper .split(separator) .trim .resolved
+and satellite.variable.string(x) as a call. Each is refused today, and so is
+reading one character with s[n]. There are no escapes yet: a backslash stays in
+the text as written, so "\t" is a backslash and a t.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "hello world"
+    satellite.variable.number n = 4
+    satellite.console.display(s + "!") // hello world!
+    satellite.console.display("n = " + n.to_string()) // n = 4
+    satellite.console.display(s - "o") // hell world
+    satellite.console.display(s.find("world")) // 6
+    satellite.console.display(s.reverse()) // dlrow olleh
+    satellite.console.display("héllo→".reverse()) // →olléh
+    satellite.console.display("42".number + 1) // 43
+    satellite.console.display("42".bin) // 101010
+    satellite.console.display("255".hex) // FF
+    satellite.console.display("87".bin.find("111")) // 4
+    satellite.console.display("apple" < "banana") // true
+    satellite.console.display("tab\there") // tab\there
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 4
+    satellite.console.display("n = " + n) // refused: S301, converts nothing
+    satellite.return(satellite)
+}

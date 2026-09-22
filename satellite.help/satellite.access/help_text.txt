@@ -1,0 +1,60 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.access()
+--------------------------------------------------------------------------------
+
+satellite.access(object_name) is meant to give you the type and value of the
+last instance of a name -- the last known name, type and value of every object,
+kept in memory for as long as the interpreter runs, so you can still ask about
+an object after the program has stopped. It is on by default.
+
+Only its switch is built in satellite 004. satellite.access is not a word yet:
+satellite.access(x) is refused S110, "no capsule named access", before anything
+runs. The store it would read -- one row a name, only the last value -- is not
+built either, so today the switch turns nothing on or off. satl --rebuild lists
+access as built; what is built is the switch.
+
+The switch is satellite.library.main.arguments.access, 1 14 1 1 10, which the
+design documents write arguments.access. Spell it in full anywhere, or read it
+short as a row of the arguments variable when main declares one --
+satellite.main(satellite.variable.arguments arguments), then arguments.access
+(satellite.help(arguments)).
+You read it with no brackets and write it with =, and it lasts: writing it
+rewrites the row access = true or access = false in ~/.satl/config.ini, adds
+the row when there is none, and leaves every other line of that file as it
+was. With no row it reads true -- the author: "arguments.access will always be
+on, on this machine, as we are testing it". It takes satellite.bool.true or
+satellite.bool.false and nothing else; = 5 stops the program with machine code
+34 setting_is_not_a_flag.
+
+What satl reads at start-up is not that row but bit 0 of "features = b..." in
+the same file, which satl --rebuild composes from the rows. When a row and the
+register disagree, every run prints S011 REGISTER_IS_STALE and uses the old
+register until you run satl --rebuild.
+
+access is not satellite.help. The author: "access is a little bit of info about
+the object, the objects value and type only, whereas satellite.help is
+information on that type". satellite.history is the other half: every value a
+name ever held, written to disk, and off by default.
+
+example (it writes your config.ini, and puts access back to true at the end):
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(satellite.library.main.arguments.access) // true
+    satellite.library.main.arguments.access = satellite.bool.false
+    satellite.console.display(satellite.library.main.arguments.access) // false
+    satellite.library.main.arguments.access = satellite.bool.true
+
+    satellite.statement.if(satellite.library.main.arguments.access)
+    {
+        satellite.console.display("access is on") // access is on
+    }
+
+    satellite.return(satellite)
+}
+
+// refused today, before anything runs -- S110 LINE_NOT_UNDERSTOOD:
+// satellite.console.display(satellite.access(x))

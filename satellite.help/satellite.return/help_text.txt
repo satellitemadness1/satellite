@@ -1,0 +1,63 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.return()
+--------------------------------------------------------------------------------
+
+satellite.return(args) ends the capsule it is written in. In main,
+satellite.return(satellite) ends the program, and satl exits 0. In any other
+capsule it ends that capsule, and the caller carries on from the line after the
+call. A capsule other than main may leave it out: reaching its closing } ends it
+the same way.
+
+A program needs at least one. satl looks for a satellite.return anywhere in the
+file you run, and refuses a file with none before anything runs (S103, exit
+12) -- execution ends inside main, and the file has to say so. Its place is the
+last line of main.
+
+satellite.return(x) today does exactly what satellite.return(satellite) does.
+It ends the capsule and hands nothing back, and x is neither checked nor worked
+out: satellite.return(5) and satellite.return(a_name_nobody_declared) both just
+end the body. A capsule answering a value is not built yet in satellite 004, so
+a capsule used inside a line, where its answer would be used, is refused before
+anything runs:
+
+satellite.variable.number n = five() // refused: S210, not built yet
+
+The author's own programs use answers everywhere. They declare what a capsule
+answers with satellite.returns(type) after its brackets, and hand it back with
+satellite.return(x):
+
+satellite.capsule call_name() satellite.returns(satellite.variable.string)
+
+satl reads past satellite.returns today and uses nothing from it.
+
+Not fixed yet: satellite.return inside a satellite.statement.if, while or for
+body ends only that body, not the capsule. The line after the if still runs,
+and a loop goes round again. MILESTONES records it as a bug, and the fix waits
+on two things for the author to rule on: whether return leaves the whole
+capsule or only the loop, and what its argument means.
+
+At the satl prompt there is nothing to return from, and satellite.return is
+refused there by name.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule check(satellite.variable.number n)
+{
+    satellite.console.display(n)
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main()
+{
+    check(7)
+    satellite.console.display("done")
+    satellite.return(satellite)
+}
+
+prints:
+
+7
+done

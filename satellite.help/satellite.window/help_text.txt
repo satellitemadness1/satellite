@@ -1,0 +1,70 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.window
+--------------------------------------------------------------------------------
+
+satellite.window is the family of words that make a window and the pieces you
+put in one, each a satellite.variable.window. A piece is on no screen until you
+.append it into a window, or into something that is in one:
+
+  new(title, width, height)  button(text)  label(text)  text_box(text)
+  text_area(text)  checkbox(text)  switch()  slider(least, most)
+  number_box(least, most)  progress()  choice(list)  row()  column()  grid()
+  picture(path)  scroll()  frame(title)  split()  menu(title)
+  canvas(width, height)  tabs()  one_of(list)
+
+my_window.append(piece, across, down) puts the piece's CENTRE there; 400, 300 is
+the middle of an 800 by 600 window. A row and a column take .append(piece), a
+grid .append(piece, across, down) as a cell counting from 1. A scroll and a
+frame hold one piece, a split two, and a set of tabs names each tab by its
+piece's .title("a name"). my_window.menu(a_menu) puts a menu across the top; a
+menu has .item(a_capsule, "Open") and .separator().
+
+.text, .on, .value, .chosen, .path and .title read with no brackets and set with
+them: .text("hi"), .on(1), .value(50), .chosen("red"). A progress bar's .value
+is a percentage, .value(50%). There is no true to type yet, so .on takes 1 or 0.
+
+A piece talks back by running a capsule, named bare and first: .pressed on a
+button, .changed on anything a person can change, .clicked on anything but a
+button or a menu; and on a window .closed, .key, .every(a_capsule, 1000) in
+milliseconds, and .ask(a_capsule, "sure?") and .choose_a_file(a_capsule), whose
+answer is its_window.answer. The capsule may declare nothing, the piece, or the
+piece and its window. .press() is your program pressing a button itself.
+
+A window also has .close(), .focus(), .resize(1024, 768), .fullscreen(1) and
+.message("saved"). Every piece but a menu has .width, .height, .colour("red")
+(or .color), .background("#222228") and .font("IBM Plex Mono", 12). A canvas
+draws with .line, .box, .circle, .arc and .write; .clear() and .save("a.png").
+
+satl refuses a wrong argument count, a method no piece has and a capsule nobody
+wrote before a line runs, and a method this piece lacks (.resize on a button)
+when its line runs. Write 800, 600, not 800x600: x600 reads as hex. With no
+screen, the first window word stops with S730 NO_DISPLAY and satl exits 50.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule when_typed(satellite.variable.window the_box)
+{
+    satellite.console.display(the_box.text)
+}
+
+satellite.capsule when_done(satellite.variable.window the_button, satellite.variable.window its_window)
+{
+    its_window.close()
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.window my_window = satellite.window.new("a form", 400, 300)
+    satellite.variable.window a_column = satellite.window.column()
+    satellite.variable.window your_name = satellite.window.text_box("")
+    your_name.changed(when_typed)
+    satellite.variable.window done = satellite.window.button("done")
+    done.pressed(when_done)
+    a_column.append(your_name)
+    a_column.append(done)
+    my_window.append(a_column, 200, 150)
+    satellite.return(satellite)
+}

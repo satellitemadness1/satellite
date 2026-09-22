@@ -1,0 +1,68 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.console
+--------------------------------------------------------------------------------
+
+satellite.console is where your program talks to a person.
+satellite.console.display(value) writes one line to satl's standard output:
+text as it is, a number as its digits, a comparison as true or false, a list as
+{1, "two"}, a window as (window "its title"). It takes exactly one value. satl's
+own title block goes to standard error, so what your program displays can be
+piped or written to a file on its own.
+
+Not built yet in satellite 004: satellite.console.input(), .input(prompt),
+.input(prompt, target), .typed(), .clear(), .home(), .width and .height. They
+are words of the language with no library behind them yet, and satl refuses
+them with S210 NOT_BUILT_YET, exit 14, before a line runs -- all but .width and
+.height written with no brackets, which get past that check and stop when their
+line runs. A console you make yourself, below, has its own .typed, .clear() and
+.home(), and those are built.
+
+satellite.console.new(title, width, height) makes a console of your own: a
+window whose whole inside is a terminal. It answers a satellite.variable.window
+and has every method a window has -- .close(), .title, .resize, .closed, .key,
+.every, .message, .ask, .menu -- and these of its own:
+
+  c.display("words")   one line into the console; a number shows as its digits
+  c.typed(a_capsule)   the capsule that runs when a person finishes a line
+  c.typed              read bare, the last line a person finished
+  c.clear()  c.home()  empty the screen; put the cursor in the top-left corner
+  c.columns  c.rows    how many characters fit across, and lines fit down
+  c.colour("#000000")  c.background("#90D5FF")  c.font("IBM Plex Mono", 12)
+
+A console holds no pieces: .append is refused, and .text is sent to .display.
+satellite.console.display still writes to standard output, never into a console
+you made -- c.display is how words get into that one.
+
+satl --console [file.satl] [words...] runs your program -- or, with no file,
+the prompt -- in a console of satl's own. satl's input and output ARE that
+console, in the same process, so the exit status is still your program's. A
+program that finishes closes it; one that stops holds it open with
+"[satl] stopped on machine code N (its name) -- press any key to close". satl
+opens this console by itself when nothing gave it one -- no terminal, output
+that is not a pipe or a file, and a display -- unless SATL_NO_WINDOW is set.
+With no screen, satl --console says the console could not be opened, exit 50.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule when_typed(satellite.variable.window the_console)
+{
+    the_console.display("you typed " + the_console.typed)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 4
+    satellite.console.display("hello")       // hello
+    satellite.console.display(n + 1)         // 5
+    satellite.console.display(n > 3)         // true
+    satellite.console.display({1, "two"})    // {1, "two"}
+
+    satellite.variable.window c = satellite.console.new("a console", 800, 600)
+    c.display("type a line and press Enter")
+    c.typed(when_typed)
+
+    satellite.return(satellite)
+}

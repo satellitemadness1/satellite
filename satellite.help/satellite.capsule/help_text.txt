@@ -1,0 +1,68 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.capsule
+--------------------------------------------------------------------------------
+
+satellite.capsule is how you write a function in satellite. You declare one at
+the top of a file, or inside a satellite.namespace, with its name, its
+parameters in brackets and its body between { and }. A parameter is a type and
+then a name, the way every declaration in satellite is written, with commas
+between them. A capsule that takes nothing is written with empty brackets.
+
+You call a capsule on a line of its own: greet("world", 2). The arguments are
+worked out where the call is, and each one is measured against the type its
+parameter was declared with. The capsule then runs in a frame of its own and
+cannot see the caller's variables -- there are no globals in satellite, so what
+you hand a capsule is all it has. A capsule may call other capsules and itself,
+and the order capsules are declared in does not matter.
+
+A capsule inside satellite.namespace tools is called tools.twice(21). One in a
+file you include is called through that file's name: satellite.include(shapes),
+then shapes.area(2, 3). A bare name is looked for in its own space, then in each
+space around it, and stops at its file. It never reaches into another file, and
+satl tells you the spelling that does.
+
+satl refuses these before anything runs: a name declared twice in one file or
+space (S202), a capsule declared inside another capsule (S110), and a call
+given the wrong number of arguments (S110). An argument of the wrong type is
+refused when the call is reached (machine code 27).
+
+A capsule answers nothing yet. satellite.return(...) ends it and hands nothing
+back, so a capsule used inside a line, where its answer would be used, is
+refused before anything runs (S210): satellite.variable.number n = five() is
+not built yet in satellite 004. See satellite.return.
+
+example:
+
+satellite.include(satellite)
+
+satellite.namespace tools
+{
+    satellite.capsule twice(satellite.variable.number n)
+    {
+        satellite.console.display(n * 2)
+    }
+}
+
+satellite.capsule greet(satellite.variable.string who, satellite.variable.number times)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while (i < times)
+    {
+        satellite.console.display("hello, " + who)
+        i = i + 1
+    }
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    greet("world", 2)
+    tools.twice(21)
+    satellite.return(satellite)
+}
+
+prints:
+
+hello, world
+hello, world
+42

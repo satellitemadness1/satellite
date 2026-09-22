@@ -1,0 +1,70 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: arguments
+--------------------------------------------------------------------------------
+
+arguments is the special variable that controls the interpreter: the settings
+satl starts with, the words it was given on the command line, and what it can
+read about the machine it runs on. It is filled from four places:
+
+1) the author's rows, compiled into satl (satellite/config/satellite_config.hpp)
+   -- arguments.version, arguments.threads_startup, arguments.infinity and more.
+2) ~/.satl/config.ini, your own file: one "key = value" a line, # for comments.
+   A row can be set for one machine by its name without "arguments." --
+   directory.default, float.whole and float.decimal are the rows read from this
+   file today; any other number row there is not read. The switches live here
+   too (access = true), and "features = b..." is what satl really reads: satl
+   --rebuild writes it from the switches. No config.ini is only a notice (S010),
+   and the run carries on.
+3) the command line: satl prog.satl one two gives arguments.program,
+   arguments.argument_1, arguments.argument_2 and arguments.length = 3, the
+   program counted. satl --debug prints every argument, these included.
+4) the machine, read fresh each time a program asks. satl --config [most]
+   measures once how many threads this machine can hold and keeps the count in
+   ~/.satl/machine.conf; until then machine.threads answers the lowest of the
+   thread limits the system states.
+
+satellite.main hands a program all of it as ONE variable, when main asks for it
+by declaring it -- satellite.main() with nothing between its brackets asks for
+nothing:
+
+    satellite.capsule satellite.main(satellite.variable.arguments args)
+
+The name is yours: arguments, args, anything. Each row is read by its name
+after the variable's, with no brackets -- args.username, args.memory.total,
+args.argument_1, args.float.decimal. A row satl gathered when it started is
+that row; a row only a library answers, like memory.used and memory.free, is
+read fresh each time, so it is what the machine is using now.
+satellite.console.display(args) shows every row there is (51 on one machine). A
+name that is not a row is refused where it is read: "args.usernme is not one of
+the arguments". The older spelling,
+satellite.container.list<satellite.variable.string> arguments, is the same
+variable.
+
+The same facts are words of the language too, read by their full name with no
+brackets: satellite.library.main.arguments.cores,
+satellite.library.main.arguments.memory.used and the rest. access is the one a
+program can also write.
+
+example (run as: satl prog.satl one two -- the comments are one machine's):
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display(args.username) // madness
+    satellite.console.display(args.argument_1) // one
+    satellite.console.display(args.length) // 3
+    satellite.console.display(args.float.decimal) // 128
+    satellite.console.display(args.memory.used > 0) // true
+    satellite.console.display(satellite.library.main.arguments.machine.pointer_bits) // 64
+
+    satellite.return(satellite)
+}
+
+satl --debug prog.satl one two prints, among its other lines:
+
+[satellite] arguments.program = prog.satl (machine_code: 0 success)
+[satellite] arguments.argument_1 = one (machine_code: 0 success)
+[satellite] arguments.argument_2 = two (machine_code: 0 success)
+[satellite] arguments.length = 3 (machine_code: 0 success)

@@ -1,0 +1,63 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.history()
+--------------------------------------------------------------------------------
+
+satellite.history is the record of everything: the name, type and value of
+every object, every value it ever held, written to disk, and off by default. It
+is NOT BUILT YET in satellite 004. satellite.history is not a word yet: written
+bare it is refused S201, a name nobody declared, and satellite.history(x) is
+refused S110, "no capsule named history", both before anything runs.
+
+What exists is its switch, and only as a number in the word table:
+satellite.library.main.arguments.history, 1 14 1 1 11 -- the design documents
+write it arguments.history. It has no library, so a program that reads it is
+refused S110 ("there is no value here to work with"), and a program that writes
+it is refused S110 before anything runs. In ~/.satl/config.ini the switch is the
+row history = true or history = false, and a missing row means false. satl
+--rebuild folds it into bit 1 of the feature register, and says that nothing
+will happen yet.
+
+What is planned, in the author's words (MILESTONES.md M20.B and M20.C):
+"arguments.history is a satellite.variable.bool, when set to true, it records
+type name and value of every object, and writes it to disk, then
+satellite.history(object_name) will be the way to access the disk..." The files
+go in arguments.history_path, which "must be a directory", saving
+"name_of_satl_file.history files with the extension .number.history for each
+time that file is ran". Before it turns on it checks the free space there --
+"at least... 32 gigabytes?", still his question -- or sets arguments.history to
+false, so that "if set to false, then none of the satellite.history stuff has
+to be accessed".
+
+It is the lasting half of satellite.access (SATELLITE_ARGUMENTS.md Part 4B):
+access keeps only the last name, type and value of everything, in memory,
+"UNLESS satellite.history is turned on, then we keep everything saved onto
+disk". A for loop's number is the first thing meant for it (M20.A): today it is
+erased when the loop ends, and a use after the loop is refused before anything
+runs, so the loop below never prints.
+
+example:
+
+// refused today -- S110, satl(run): there is no value here to work with
+satellite.console.display(satellite.library.main.arguments.history)
+
+// in ~/.satl/config.ini
+history = true
+
+satl --rebuild prints, among its other lines:
+
+    turned on but NOT BUILT YET, so nothing will happen:
+        history
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.statement.for(satellite.variable.number i = 0; i < 3; i + 1)
+    {
+        satellite.console.display(i)
+    }
+    satellite.console.display(i) // refused -- S201 NAME_NOT_DECLARED
+
+    satellite.return(satellite)
+}

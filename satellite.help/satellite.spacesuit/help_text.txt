@@ -1,0 +1,69 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.spacesuit
+--------------------------------------------------------------------------------
+
+satellite.spacesuit is satellite's class: a type you write yourself, with its
+own variables and its own capsules, that your program makes objects of.
+satellite.class is its second spelling and is the same word -- the author,
+2026-09-22: "class will be spacesuit alias class, so a class remains a
+spacesuit and that is my final answer".
+
+It is not built yet in satellite 004. 004 has the spacesuit object, and not yet
+the grammar that declares one (MILESTONES M8); it is the next piece after
+satellite.namespace. Today a file that declares a spacesuit, under either
+spelling, is refused before anything runs:
+
+S210: NOT_BUILT_YET
+satl(check): satellite.spacesuit greeter is not built yet -- 004 has the
+spacesuit object and not the grammar that declares one (MILESTONES M8), and it
+is the next piece after satellite.namespace
+
+What is planned: spacesuits as satellite 003 has them (PLAN M8), with the
+author's decisions of 2026-09-22:
+
+- A spacesuit has sections. satellite.protected { } holds what belongs to the
+  spacesuit and is not seen outside it, and satellite.public { } holds what
+  whoever uses it can reach. satellite.constructor(args) { } sits beside them,
+  not inside one, and runs when an object is made.
+- An object is declared by the spacesuit's name and then its own name, with the
+  constructor's arguments given right there: greeter host("satl"). One that
+  takes none is just major_satellite made, and one from another file is named
+  through that file, narration.narrator voice("main", "full") -- those two are
+  lines from the author's own programs.
+- A spacesuit will take a supertype: "a spacesuit still has to take a
+  supertype, that is certain" (MILESTONES M35). Whether that supertype must be a
+  built type or may be another spacesuit is still his to decide, and
+  satellite.protected(args) is parked -- "we'll just never get to it".
+
+planned, not runnable today (refused with the S210 above):
+
+satellite.include(satellite)
+
+satellite.spacesuit greeter()
+{
+    satellite.protected
+    {
+        satellite.variable.string name = ""
+    }
+
+    satellite.constructor(satellite.variable.string given)
+    {
+        name = given
+    }
+
+    satellite.public
+    {
+        satellite.capsule greet()
+        {
+            satellite.console.display("hello from " + name)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    greeter host("satl")
+    host.greet()
+    satellite.return(satellite)
+}

@@ -8,6 +8,7 @@
 #include "../machine/machine_codes.hpp"
 #include "../machine/shown.hpp"
 
+#include <algorithm>
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
@@ -15,6 +16,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vector>
 
 namespace satellite004 {
 namespace {
@@ -50,33 +52,55 @@ std::string last_part(const std::string &name)
     return dot == std::string::npos ? name : name.substr(dot + 1);
 }
 
-// WHICH TOPIC A WORD MEANS. The whole name first -- satellite.include is the folder
+// WHICH TOPICS A WORD MEANS. The whole name first -- satellite.include is the folder
 // satellite.include -- and then the last part of it, so satellite.help(include)
 // finds the same folder the author's usage line promises. A last part that is the
-// start of a topic's, or starts with it, counts only when ONE topic answers:
-// percentage finds satellite.variable.percent, and `variable` finds nothing rather
-// than whichever folder happened to be read first.
-std::string topic_folder(const std::string &folder, const std::string &asked)
+// start of a topic's, or starts with it, counts when `by_prefix` is asked for:
+// percentage finds satellite.variable.percent. More than one answer is
+// said as that -- window is satellite.window AND satellite.variable.window -- and
+// never settled by whichever folder happened to be read first.
+std::vector<std::string> topic_folders(const std::string &folder, const std::string &asked, bool by_prefix)
 {
     if (a_folder(folder + "/" + asked))
-        return asked;
+        return {asked};
     const std::string wanted = last_part(asked);
-    std::string exact, prefixed;
-    int exacts = 0, prefixes = 0;
+    std::vector<std::string> exact, prefixed;
     if (DIR *listing = opendir(folder.c_str())) {
         while (const dirent *entry = readdir(listing)) {
             const std::string name = entry->d_name;
             if (name == "." || name == ".." || !a_folder(folder + "/" + name))
                 continue;
             const std::string part = last_part(name);
-            if (part == wanted || name == wanted) { exact = name; ++exacts; }
-            else if (part.rfind(wanted, 0) == 0 || wanted.rfind(part, 0) == 0) { prefixed = name; ++prefixes; }
+            if (part == wanted || name == wanted) exact.push_back(name);
+            else if (part.rfind(wanted, 0) == 0 || wanted.rfind(part, 0) == 0) prefixed.push_back(name);
         }
         closedir(listing);
     }
-    if (exacts == 1) return exact;
-    if (exacts == 0 && prefixes == 1) return prefixed;
-    return std::string();
+    std::vector<std::string> &found = exact.empty() && by_prefix ? prefixed : exact;
+    std::sort(found.begin(), found.end());
+    return found;
+}
+
+// A SECOND SPELLING FINDS ITS WORD'S TOPIC (words/aliases.tsv): double is
+// satellite.variable.float, colour is satellite.variable.color. Every spelling the
+// lexer knows whose last part is the one asked for is turned into the word it
+// spells, and that word's own last part is looked for instead.
+std::vector<std::string> through_a_second_spelling(const std::string &folder, const std::string &asked)
+{
+    const std::string wanted = last_part(asked);
+    for (std::size_t at = 0; at < word::kSpelledWordCount; ++at) {
+        const std::string spelling = word::kSpelledWords[at].path;
+        if (last_part(spelling) != wanted)
+            continue;
+        std::string meant = word::spelling_of(word::kSpelledWords[at].code);
+        meant = meant.substr(0, meant.find('('));
+        if (meant != spelling) {
+            std::vector<std::string> found = topic_folders(folder, meant, false);
+            if (!found.empty())
+                return found;
+        }
+    }
+    return {};
 }
 
 signed long long int print_file(const std::string &path)
@@ -136,14 +160,30 @@ bool answer_help(const std::vector<std::bitset<16>> &row, signed long long int &
         answer = print_file(folder + "/help.txt");
         return true;
     }
-    const std::string topic = topic_folder(folder, asked);
-    if (topic.empty()) {
+    // THE NAME ITSELF, THEN A SECOND SPELLING, THEN THE START OF A NAME -- in that
+    // order, so `bin` is the binary's second spelling before it is the start of two
+    // topics' names.
+    std::vector<std::string> topics = topic_folders(folder, asked, false);
+    if (topics.empty())
+        topics = through_a_second_spelling(folder, asked);
+    if (topics.empty())
+        topics = topic_folders(folder, asked, true);
+    if (topics.empty()) {
         std::cerr << "satl(prompt): there is no help on " << shown(asked)
                   << " yet -- satellite.help() lists the topics there are\n";
         answer = file_not_found;
         return true;
     }
-    answer = print_file(folder + "/" + topic + "/help_text.txt");
+    if (topics.size() > 1) {
+        std::string which;
+        for (std::size_t at = 0; at < topics.size(); ++at)
+            which += (at == 0 ? "" : at + 1 == topics.size() ? " or " : ", ") + std::string("satellite.help(") +
+                     topics[at] + ")";
+        std::cerr << "satl(prompt): " << shown(asked) << " is more than one topic -- write " << which << "\n";
+        answer = satl_line_not_understood;
+        return true;
+    }
+    answer = print_file(folder + "/" + topics.front() + "/help_text.txt");
     return true;
 }
 

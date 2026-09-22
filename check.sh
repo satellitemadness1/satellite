@@ -1326,6 +1326,10 @@ expect "the five spellings and a help with no topic are refused by name, and the
 printf 'satellite.help()\nsatellite.help(include)\nsatellite.help(satellite.include)\n' | "$interpreter" --repl > build/repl_help.out 2>&1; code=$?
 expect "satellite.help() lists the topics, and include and satellite.include both find one" "0|1|2" \
        "$code|$(grep -c 'THE SATELLITE HELP SYSTEM' build/repl_help.out)|$(grep -c '^SATELLITE 004: satellite.include()$' build/repl_help.out)"
+# A SECOND SPELLING FINDS ITS WORD'S TOPIC, AND A NAME TWO TOPICS SHARE NAMES BOTH.
+printf 'satellite.help(double)\nsatellite.help(bin)\nsatellite.help(window)\n' | "$interpreter" --repl > build/repl_help2.out 2>&1
+expect "satellite.help(double) is the float, (bin) the binary, and (window) names both window topics" "1|1|1" \
+       "$(grep -c '^SATELLITE 004: satellite.variable.float$' build/repl_help2.out)|$(grep -c '^SATELLITE 004: satellite.variable.binary$' build/repl_help2.out)|$(grep -c 'window is more than one topic -- write satellite.help(satellite.variable.window) or satellite.help(satellite.window)' build/repl_help2.out)"
 # A brace inside a string is text and not a block: the refusals are read from the CODES.
 printf 'satellite.console.display("{ not a block }")\n' | "$interpreter" --repl 2>/dev/null | grep -q '{ not a block }'
 expect "a brace inside a string literal is not a block" 0 $?

@@ -1,0 +1,44 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.hex
+--------------------------------------------------------------------------------
+
+satellite.variable.hex (second spelling satellite.variable.hexadecimal) is a
+number written in base 16, with an x in front of it: x1F, x00FF, xDEADBEEF. The
+digits are 0 to 9 and A to F; a lower-case digit is read the same and always
+shown in upper case. The x is required, as a binary's b is: a hex name given
+1F or FF is refused before anything runs, "ERROR: expected x1F".
+
+A hex keeps the width it was written with, so x00FF and xFF are two different
+values that are worth the same, and it keeps a sign: -x1F is a hex worth -31.
+
+In a sum a hex counts as the number its digits are worth, and the answer is a
+number: x1F + 1 is 32 and x1F == 31 is true. So a hex name holds only a hex --
+h = h + x01 is refused, and the refusal tells you to keep the answer in a
+satellite.variable.number, or to write the hex it should be. A hex given to a
+number name keeps its worth.
+
+.number is what it is worth, .string is how it is shown, .hex is its digits,
+.binary is its bits, four to each digit, .width counts those bits, and
+.reverse() turns its digits round with the width and sign kept. Adding a hex to
+a binary and getting a hex or a binary back is not built yet: the new types are
+mixed together later.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.variable.hex mask = x00ff
+    satellite.variable.hexadecimal red = xFF
+    satellite.console.display(mask) // x00FF
+    satellite.console.display(mask + 1) // 256
+    satellite.console.display(mask == red) // false
+    satellite.console.display(mask.number) // 255
+    satellite.console.display(mask.binary) // 0000000011111111
+    satellite.console.display(mask.width) // 16
+    satellite.console.display(mask.reverse()) // xFF00
+    satellite.console.display(-x1F) // -x1F
+    satellite.return(satellite)
+}

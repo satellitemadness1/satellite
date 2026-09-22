@@ -1,0 +1,55 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.window
+--------------------------------------------------------------------------------
+
+satellite.variable.window is the type that holds a window, or any piece you put
+in one. It is one type for all of them: a window, a button, a label, a text box,
+a canvas and a console are each a satellite.variable.window, and the piece
+itself knows which one it is. You get one from a window word, like
+satellite.window.new or satellite.window.button, or from satellite.console.new;
+satellite.help(satellite.window) lists them all.
+
+A window is a thing on a screen, not a value, so it is never copied: two names
+given one window are the same window. satellite.console.display shows which one
+you are holding -- (window "window_title") for a window, (button "text") for a
+piece, (switch) for a piece with no words, and (closed window "window_title")
+once it has gone. my_window.ok answers whether it is still on the screen.
+
+A capsule can take one as an argument, and that is how a press reaches your
+program. A capsule named by .pressed may declare nothing, the piece that was
+pressed, or the piece and the window it is in -- each one a
+satellite.variable.window -- and satl refuses any other shape before the
+program runs. There are no globals, so the window a capsule is handed is the
+only window it can close.
+
+It refuses anything that is not a window: satellite.variable.window w = 5 stops
+with machine code 27 types_do_not_meet. A name declared with no value holds
+nothing until you give it one with =. On a machine with no screen the first
+window word stops with S730 NO_DISPLAY and satl exits 50 -- that is the
+machine, not your program. And satl does not end while a window is open: the
+program's last line runs, then satl waits until the last window is closed.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule when_pressed(satellite.variable.window the_piece, satellite.variable.window its_window)
+{
+    satellite.console.display("the button was pressed")
+    its_window.close()
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.window my_window = satellite.window.new("window_title", 800, 600)
+
+    satellite.variable.window my_button = satellite.window.button("text")
+    my_button.pressed(when_pressed)
+
+    my_window.append(my_button, 400, 300)
+
+    satellite.console.display(my_window) // (window "window_title")
+
+    satellite.return(satellite)
+}
