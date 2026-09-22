@@ -149,17 +149,27 @@ bool window_arc(satellite_window &which, long long int x, long long int y, long 
         why = "an arc's radius is 0 or more";
         return false;
     }
-    // THE ANGLES ARE ANY WHOLE NUMBER OF DEGREES. 370 is 10 and -90 is 270,
-    // which cairo already reads that way, and refusing them would be refusing
-    // a program that added a turn on the way round.
+    // THE ANGLES ARE POSITIONS ON A CLOCK FACE, so 370 is 10 and -90 is 270
+    // -- AND CAIRO DOES NOT READ THEM SO (a fresh reader, 2026-09-22): cairo
+    // reads `to - from` as a SWEEP and adds a turn only when `to` is behind
+    // `from`, so 0 to 370 handed straight through would be a full turn and
+    // ten degrees more, a whole disc where a person asked for a sliver. Both
+    // angles are brought onto the face here, and an arc from an angle round
+    // to the same angle is the whole circle: clockwise from three o'clock all
+    // the way round IS a circle, so `arc(.., 0, 0)` and `arc(.., 0, 360)` both
+    // draw one, and there is no sweep a program can write that draws nothing.
+    const long long int from = ((from_degrees % 360) + 360) % 360;
+    long long int to = ((to_degrees % 360) + 360) % 360;
+    if (to <= from)
+        to += 360;
     satellite_window *raw = &which;
     AStroke stroke;
     stroke.shape = AStroke::an_arc;
     stroke.x = static_cast<double>(x);
     stroke.y = static_cast<double>(y);
     stroke.a = static_cast<double>(radius);
-    stroke.b = static_cast<double>(from_degrees);
-    stroke.c = static_cast<double>(to_degrees);
+    stroke.b = static_cast<double>(from);
+    stroke.c = static_cast<double>(to);
     on_the_desk([raw, &stroke] { stroke_it(*raw, stroke); });
     return true;
 }

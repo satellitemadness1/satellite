@@ -286,7 +286,9 @@ public:
     // pixels from the piece's own top-left corner -- so on a canvas they are
     // the same numbers `.line` and `.box` take. Written by the INTERPRETER off
     // the event, exactly as `last_key` is, and for the same reason; 0 and 0
-    // until a click has happened, as `.key` is "" until a key has.
+    // until a click has happened, as `.key` is "" until a key has -- and a
+    // click is noticed only on a piece told `.clicked(a_capsule)`. A press
+    // RELEASED off the piece lands outside it, negative or past `.width`.
     long long int last_across = 0;
     long long int last_down = 0;
 

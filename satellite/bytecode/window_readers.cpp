@@ -136,7 +136,14 @@ bool place_of(const Value &value, long long int &out, const std::string &what,
         context.refuse(types_do_not_meet, what + " takes " + units + ", and was given " + value.kind_name());
         return false;
     }
-    const unsigned long long int size = fast::fits_a_count(*number) ? fast::as_count(*number) : ~0ull;
+    // THE MAGNITUDE, WHATEVER THE SIGN -- and not fits_a_count(), which was
+    // what stood here from 2026-09-20 to 2026-09-22 and refuses every NEGATIVE
+    // number, because a count is never negative. So a slider from -50, the
+    // very example the comment above gives, was refused as "further than any
+    // screen reaches", and so was an arc from -90 -- which is how it was
+    // found, by drawing one. A number too big for one limb is still refused
+    // below, as it was.
+    const unsigned long long int size = number->fits_one_limb() ? number->limb(0) : ~0ull;
     if (size > 2147483647ull) {
         context.refuse(not_a_position, what + " was given " + fast::to_text(*number) +
                                            ", which is further than any screen reaches");

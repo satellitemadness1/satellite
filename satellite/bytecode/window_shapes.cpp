@@ -37,8 +37,8 @@ std::string window_methods_are()
            "a canvas has .line(from_across, from_down, to_across, to_down), .box(across, down, "
            "wide, tall), .circle(across, down, radius), .arc(across, down, radius, from_degrees, "
            "to_degrees), .write(across, down, \"words\"), .clear() and .save(\"picture.png\"), "
-           "and its pen has .thickness(3) and .outline(1); anything that is not a button has "
-           ".across and .down, where the last click on it landed; a piece going into a set of "
+           "and its pen has .thickness(3) and .outline(1); anything that is not a button or a menu "
+           "has .across and .down, where the last click on it landed; a piece going into a set of "
            "tabs is named by its .title(\"a name\"), and the tabs' .chosen is the one in front "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }

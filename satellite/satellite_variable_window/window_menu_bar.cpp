@@ -3,9 +3,10 @@
 // GTK_AND_NO_DEPENDENCIES.md GTK-12.
 //
 // SPLIT OUT OF window_menu.cpp ON 2026-09-22 (window_menu.hpp says how). That
-// file is a menu's own MODEL and never touches gtk; this one is where a menu
-// meets a window, and it is the only place the bar -- a GtkPopoverMenuBar --
-// and gtk_widget_insert_action_group are called. The decision the whole thing
+// file is a menu's own MODEL and touches gtk once, to put a changed heading
+// back on the bar the menu is already on; this one is where a menu meets a
+// window, the only place the bar -- a GtkPopoverMenuBar -- is MADE and
+// gtk_widget_insert_action_group is called. The decision the whole thing
 // rests on, no GtkApplication, is written at the top of window_menu.cpp and
 // holds here: the actions go on the WINDOW, under each menu's own prefix.
 //

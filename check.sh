@@ -2827,6 +2827,25 @@ expect "across, down, outline, thickness and arc are 0x0B44 to 0x0B48, in that o
        "$(grep -c 'across_token = 0x0B44' satellite/bytecode/token_codes.hpp)|$(grep -c 'down_token = 0x0B45' satellite/bytecode/token_codes.hpp)|$(grep -c 'outline_token = 0x0B46' satellite/bytecode/token_codes.hpp)|$(grep -c 'thickness_token = 0x0B47' satellite/bytecode/token_codes.hpp)|$(grep -c 'arc_token = 0x0B48' satellite/bytecode/token_codes.hpp)"
 expect "where a click landed travels on the event, and the interpreter copies it onto the piece" "1|1" \
        "$(grep -c 'AnEvent::a_place, static_cast<long long int>(std::floor(x))' satellite/satellite_variable_window/window_answers.cpp)|$(grep -c 'happened.piece->last_across = happened.across' satellite/bytecode/window_run.cpp)"
+expect "an arc's angles are positions on the face: brought into [0, 360), and round to itself is a circle" "1|1" \
+       "$(grep -c 'const long long int from = ((from_degrees % 360) + 360) % 360;' satellite/satellite_variable_window/window_strokes.cpp)|$(grep -c 'if (to <= from)' satellite/satellite_variable_window/window_strokes.cpp)"
+# A NEGATIVE NUMBER WHERE A PLACE IS EXPECTED (found 2026-09-22 by drawing an
+# arc from -90): place_of borrowed fits_a_count(), which refuses every negative
+# number because a count is never negative -- so from 2026-09-20 a slider from
+# -50, the reader's own example, was refused as "further than any screen
+# reaches". It reads the magnitude now, whatever the sign.
+cat > build/window_negative_place.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window s = satellite.window.slider(-50, 50)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_negative_place.satl > build/window_negative_place.out 2>&1
+expect "a slider from -50 passes the checker and stops only for want of a screen, not as a bad position" 50 $?
+expect ".across and .down refuse a button and a menu by name, which are never clicked" 1 \
+       "$(grep -c 'is pressed and never clicked, so no click lands on it' satellite/bytecode/window_questions.cpp)"
 expect "the thickness and the outline are copied onto each stroke, as the colour is" "1|1" \
        "$(grep -c 'stroke.thickness = static_cast<double>(canvas.pen_thickness)' satellite/satellite_variable_window/window_strokes.cpp)|$(grep -c 'stroke.outline = canvas.pen_outline' satellite/satellite_variable_window/window_strokes.cpp)"
 

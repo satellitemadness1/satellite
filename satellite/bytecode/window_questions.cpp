@@ -85,10 +85,30 @@ bool answer_a_question(token::Code method, const WindowHandle &which, bool had_p
     // happened, as `.key` is "" until a key has. THE HANDLE'S OWN, written by
     // THIS thread off the event as `.key` is, so no desk is asked and a closed
     // piece still answers where it was last clicked.
+    //
+    // A BUTTON AND A MENU ARE REFUSED BY NAME (a fresh reader, 2026-09-22):
+    // neither can ever be `.clicked` -- a button is pressed, a menu's items
+    // are picked -- so 0 from them would not be "not yet", it would be never,
+    // which is the answer that is wrong and does not say so. Everything else
+    // answers 0 until a click has landed, which is only noticed on a piece
+    // told `.clicked(a_capsule)`; and a press RELEASED off the piece lands
+    // outside it -- negative, or past `.width` -- which is the truth of where
+    // it was let go.
     if (method == token::across_token || method == token::down_token) {
         satellite_window *piece = which.get();
         if (piece == nullptr) {
             context.refuse(window_is_closed, what + ": there is no piece here");
+            answered = Value();
+            return true;
+        }
+        if (piece->piece == satellite_window::button || !piece->is_drawn()) {
+            context.refuse(types_do_not_meet,
+                           what + " -- " + std::string(piece->piece_name()) +
+                               (piece->piece == satellite_window::button
+                                    ? " is pressed and never clicked, so no click lands on it"
+                                    : " is not clicked, its items are picked") +
+                               "; .across and .down are where the last click landed on a piece "
+                               "told .clicked(a_capsule)");
             answered = Value();
             return true;
         }

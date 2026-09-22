@@ -10,7 +10,9 @@
 // THE PEN HAS FOUR PARTS SINCE 2026-09-22: a colour, a font, a thickness and
 // whether it outlines. `.arc` joined the strokes the same day, and `.across`
 // and `.down` read where a click landed -- those two live in window_answers.cpp
-// and window_calls.cpp, because a click is an event and not a stroke. All four
+// (the desk noticing it), bytecode/window_run.cpp (the interpreter copying it
+// onto the piece) and bytecode/window_questions.cpp (answering it), because a
+// click is an event and not a stroke. All four
 // were GTK-15's open questions and were built as the recommendation, still
 // reversible; GTK_AND_NO_DEPENDENCIES.md says what changes if the author rules
 // otherwise.

@@ -6,7 +6,8 @@
 // "try to build for 300 lines". The seam is the MODEL against the BAR:
 //
 //   window_menu.cpp       a menu's own model -- made, its items, its sections,
-//                         its heading; gio and never gtk
+//                         its heading; gio, but for the one gtk call a heading
+//                         changed on a bar makes to reach that bar's model
 //   window_menu_bar.cpp   a menu meeting a window, or a menu: the bar that draws
 //                         it and the actions put on the window
 //

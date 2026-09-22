@@ -17,7 +17,9 @@
 // ruled out for a file. A widget's DRAWING could still live in a `.so` one day;
 // the word that answers a handle cannot.
 //
-// THIS IS THE ONE FILE THAT KNOWS WHETHER THIS satl HAS A WINDOW.
+// THE FILES BEHIND THIS HEADER ARE THE ONES THAT KNOW WHETHER THIS satl HAS A
+// WINDOW -- six since the 2026-09-22 split, and window_readers.hpp is where
+// the default is set so all six read the same one.
 // SATELLITE_HAS_WINDOW is 1 when pkg-config found gtk4 at build time
 // (make_support/047-window.mk) and 0 otherwise, and satl builds either way --
 // 047-window.mk's rule, older than this file: "a Makefile that dies there has

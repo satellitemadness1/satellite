@@ -1654,13 +1654,19 @@ writes the point GTK hands it — in the piece's own pixels, which on a canvas
 are the pixels `.line` draws in — and the INTERPRETER copies it onto the piece
 as it takes the event off the queue, so the two numbers have one writer.
 `.across` and `.down` are questions, read bare or bracketed, and they answer 0
-and 0 until a click has happened, as `.key` is `""` until a key has. They are
-every clickable piece's, not only a canvas's. **The spelling was not chosen in
-the plan and is chosen here:** `across` and `down` are the words every canvas
-method already uses for its two coordinates, so a person reads `.across`
-beside `.line(from_across, ...)` and learns no second vocabulary. If the
-author wants `.x` and `.y`, or one `.clicked_at`, it is two registry rows and
-the one branch in `call_window_method` that answers them.
+and 0 until a click has happened, as `.key` is `""` until a key has — a click
+is noticed only on a piece told `.clicked(a_capsule)`, and a press released
+off the piece lands outside it, negative or past `.width`, which is the truth
+of where it was let go. They are every clickable piece's, not only a
+canvas's; **a button and a menu are refused by name** (a fresh reader found
+them answering 0), because neither is ever clicked — a button is pressed and
+a menu's items are picked — so 0 from them would be *never*, not *not yet*.
+**The spelling was not chosen in the plan and is chosen here:** `across` and
+`down` are the words every canvas method already uses for its two coordinates,
+so a person reads `.across` beside `.line(from_across, ...)` and learns no
+second vocabulary. If the author wants `.x` and `.y`, or one `.clicked_at`, it
+is two registry rows and the one branch in `answer_a_question`
+(`bytecode/window_questions.cpp`) that answers them.
 
 **AN OUTLINE AND A LINE'S WIDTH ARE THE PEN**, as `.colour` and `.font` are:
 `.thickness(n)` and `.outline(1)` change what is drawn after them and nothing
@@ -1675,8 +1681,24 @@ answer what the pen is now.
 **AN ARC IS PART OF A CIRCLE, CLOCKWISE, IN WHOLE DEGREES FROM THREE O'CLOCK.**
 That is cairo's own convention, and on a screen whose `down` grows downward it
 is a clock's. Filled it is a SLICE from the centre — what a pie chart and a
-clock face want; outlined it is the curve alone — what a drawing wants. Any
-whole number of degrees is taken: 370 is 10, and cairo already reads it so.
+clock face want; outlined it is the curve alone — what a drawing wants. **The
+angles are positions on the face**: 370 is 10 and -90 is 270 — **and cairo
+does not read them so**, which a fresh reader caught in the first draft's
+sentence: cairo reads `to - from` as a sweep, so 0 to 370 handed straight
+through is a full turn and ten degrees more, a whole disc where a sliver was
+asked for. Both angles are brought onto the face before the stroke, and an
+arc from an angle round to itself is the whole circle — `arc(.., 0, 0)` and
+`arc(.., 0, 360)` both draw one, and no sweep a program can write draws
+nothing.
+
+**AND DRAWING ONE FROM -90 FOUND A DEFECT TWO DAYS OLD.** The reader every
+place, range and angle goes through (`place_of`, now in
+`bytecode/window_readers.cpp`) borrowed the number fast path's `fits_a_count`,
+which refuses every NEGATIVE number because a count is never negative — so
+since 2026-09-20 `satellite.window.slider(-50, 50)`, the very example written
+in that reader's own comment, was refused as *"further than any screen
+reaches"*, and nobody had written a negative one. It reads the magnitude
+whatever the sign now, and check.sh has the row.
 
 **PROVED ON A COMPOSITOR, AND READ BACK BY EYE:** `before.png` shows a
 four-pixel magenta outlined box, circle and three-quarter arc with its gap in
