@@ -18,6 +18,14 @@
 
 namespace satellite004 {
 
+// A FRACTION LITERAL -- 1/3, 1.5/2 -- a number, a TOUCHING slash and a number
+// (the author, 2026-09-16: "when you encounter number/number with NO space --
+// that becomes a fraction"). expression.cpp has read the number before the slash
+// as `top` and sends it here with `at` on the fraction_token; `at` is left past
+// the number after it.
+signed long long int fraction_literal(const std::string &top, const std::vector<std::bitset<16>> &row,
+                                      std::size_t &at, Value &out, std::string &why);
+
 // THE CHECKER, BEFORE ANYTHING RUNS: the value given to a name declared satellite.variable.fraction,
 // `at` on the first code straight after the `=` -- in the declaration and in every
 // later `name = ...`. `declared` is every name the checker knows and its type word.

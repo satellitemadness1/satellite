@@ -28,4 +28,17 @@ signed long long int fraction_to_number(const satellite_fraction &value, satelli
 signed long long int fraction_to_binary(const satellite_fraction &value, satellite_string &out, std::string &why);
 signed long long int fraction_to_hexadecimal(const satellite_fraction &value, satellite_string &out, std::string &why);
 
+// ONE OF ITS TWO NUMBERS AS DISPLAY WRITES IT -- "display them as just the whole
+// number" (the author, 2026-09-22): 3 for a float with nothing after its point,
+// never 3.0, and 1.5 for one that has something there.
+std::string fraction_part_written(const satellite_float &part);
+
+// WHAT satellite.console.display PRINTS AND `.string` ANSWERS: the two numbers as
+// they were written, round a touching slash -- 1/3, 2/4, -1/3, 1.5/2.
+std::string fraction_written(const satellite_fraction &value);
+
+// A PLAIN NUMBER AS A FRACTION: 3 is 3/1. How a number given to a fraction name is
+// kept, and how a number is read when it is compared with a fraction.
+satellite_fraction fraction_of_number(const satellite_number &value);
+
 } // namespace satellite004
