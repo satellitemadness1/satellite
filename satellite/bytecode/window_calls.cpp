@@ -321,7 +321,8 @@ std::string window_methods_are()
            ".append(piece, across, down) for a grid's cell; "
            "a piece in one has .text; a checkbox or a switch has .on; a slider, a number box or "
            "a progress bar has .value; a choice has .chosen -- all read bare and written with "
-           "brackets; and a button has .pressed(a_capsule) and .press() "
+           "brackets; a button has .pressed(a_capsule) and .press(); anything a person can change "
+           "has .changed(a_capsule); and a window has .closed(a_capsule) "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -339,6 +340,8 @@ int window_method_arity(Code method)
     case token::value_token:   return 1;     // written; read with no brackets (GTK-4)
     case token::chosen_token:  return 1;     // written; read with no brackets (GTK-5)
     case token::path_token:    return 1;     // written; read with no brackets (GTK-6)
+    case token::changed_token: return 1;     // the capsule's name; read with no brackets (GTK-9)
+    case token::closed_token:  return 1;     // the capsule's name; read with no brackets (GTK-9)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -359,7 +362,16 @@ int window_method_also_takes(Code method)
     return method == token::append_token ? 1 : -1;
 }
 
-bool window_method_takes_a_capsule_name(Code method) { return method == token::pressed_token; }
+// THREE METHODS NAME A CAPSULE NOW (GTK-9), and every rule WIN-11 wrote for
+// `.pressed` holds for all of them without a line changing: the name is read as
+// written and not as text, only one name may stand there, the capsule must
+// exist, and it may declare at most the piece and its window. That is what this
+// one predicate buys -- extending it extended the checker.
+bool window_method_takes_a_capsule_name(Code method)
+{
+    return method == token::pressed_token || method == token::changed_token ||
+           method == token::closed_token;
+}
 
 
 // ---------------------------------------------------------------------------
@@ -537,11 +549,17 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
     // READ HERE ON THE INTERPRETER'S THREAD while the desk may be reading it in
     // `clicked`, and that is safe because both are READS: the only writer is
     // window_pressed(), which is this same thread going through on_the_desk().
-    if (method == token::pressed_token && !had_parentheses) {
-        satellite_window *button = which.get();
+    if ((method == token::pressed_token || method == token::changed_token ||
+         method == token::closed_token) && !had_parentheses) {
+        satellite_window *piece = which.get();
+        std::string named;
+        if (piece != nullptr)
+            named = method == token::pressed_token   ? piece->when_pressed
+                    : method == token::changed_token ? piece->when_changed
+                                                     : piece->when_closed;
         Value out;
         std::size_t bad_offset = 0;
-        Value::of_utf8(button == nullptr ? std::string() : button->when_pressed, out, bad_offset);
+        Value::of_utf8(named, out, bad_offset);
         return out;
     }
     // `.text` WITH NO BRACKETS READS THE WORDS ON A PIECE, and since GTK-2 it is
@@ -752,6 +770,20 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         went = window_set_path(*window, shown, why);
         break;
     }
+    case token::changed_token: {
+        std::string capsule;
+        if (!text_of(arguments[0], capsule, what, context))
+            return Value();
+        went = window_changed(*window, capsule, why);
+        break;
+    }
+    case token::closed_token: {
+        std::string capsule;
+        if (!text_of(arguments[0], capsule, what, context))
+            return Value();
+        went = window_closed(*window, capsule, why);
+        break;
+    }
     case token::append_token: {
         const WindowHandle *piece = arguments[0].window_handle();
         if (piece == nullptr) {
@@ -799,9 +831,9 @@ signed long long int windows_run_until_they_are_closed(
     const std::function<signed long long int(const std::string &, const WindowHandle &,
                                              const WindowHandle &)> &run_a_capsule)
 {
-    APress press;
-    while (the_desk_waits_for_a_press(press)) {
-        const signed long long int stopped = run_a_capsule(press.capsule, press.piece, press.window);
+    AnEvent happened;
+    while (the_desk_waits_for_something(happened)) {
+        const signed long long int stopped = run_a_capsule(happened.capsule, happened.piece, happened.window);
         // A CAPSULE THAT STOPPED STOPS THE RUN, the same as a line of main
         // would have. The report is already printed by the time this answers,
         // and main() takes the windows down on a code that stops -- a person

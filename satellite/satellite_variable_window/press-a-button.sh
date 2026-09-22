@@ -98,7 +98,7 @@ SATL
 #   * presses run in the order they were made
 #   * a press is still DRAINED after the window has been closed. main closes the
 #     window on the line after pressing twice, and both capsules still run. That
-#     is the_desk_waits_for_a_press testing the queue BEFORE the windows, and it
+#     is the_desk_waits_for_something testing the queue BEFORE the windows, and it
 #     is the one case where a person pressed something and would otherwise have
 #     watched nothing happen.
 cat > "$work/selfpress.satl" <<'SATL'

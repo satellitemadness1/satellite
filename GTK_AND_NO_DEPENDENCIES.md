@@ -78,7 +78,7 @@ projects produce the archives.
 | ✔ | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
 | ✔ | **GTK-7** rows, columns, a grid | gtk | — |
 | — | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
-| — | **GTK-9** every piece talks back | gtk, gobject | libffi |
+| ✔ | **GTK-9** every piece talks back | gtk, gobject | libffi |
 | — | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
 | — | **GTK-11** asking a person | gtk, **gio** (`GFile`, `GAsyncResult`, `GCancellable`) | — |
 | — | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GActionMap`), gtk | — |
@@ -927,7 +927,7 @@ routinely do not — and a window that reports its wish rather than its size is
 the failure mode this project keeps naming. Before it is mapped there is no
 answer; it reports the asked-for size and **says so in the documentation**.
 
-## GTK-9 — every piece talks back, not just a button
+## GTK-9 — every piece talks back, not just a button — **BUILT 2026-09-21**
 
     a_box.typed(when_typed)          a person typed in it
     how_much.changed(when_changed)   a slider moved, a checkbox turned
@@ -962,6 +962,47 @@ Three shapes, none chosen:
 `.press()`; `.pressed()` on a checkbox is a reasonable thing to want, and GTK
 gives a check button a `toggled` rather than a `clicked`. The rule that survives
 is **a piece answers the signals it has**, and the table says which.
+
+**AS BUILT — TWO METHODS, NOT FOUR.** `.typed`, `.changed` and `.chosen` above
+were three names for one question, and one question gets one method:
+
+    a_piece.changed(when_changed)    typed in, moved, ticked, picked in
+    my_window.closed(when_closed)    the window went away, whoever closed it
+
+`changed` is `0x0B2F`, `closed` is `0x0B30`. **A button is refused and sent to
+`.pressed`** — a button is not changed, it is pressed. **A label, a picture, a
+row and a progress bar are refused by name**, because nothing a *person* does
+changes any of them and a capsule wired to one would simply never run — the
+quietest possible way for a program to be wrong.
+
+**EXTENDING ONE PREDICATE EXTENDED THE WHOLE CHECKER.** Every rule WIN-11 wrote
+for `.pressed` — the name is read as written and not as text, only one name may
+stand there, the capsule must exist, it may declare at most the piece and its
+window — now holds for all three, and **not one line of the checker changed**.
+`window_method_takes_a_capsule_name()` is the whole of it.
+
+**`APress` BECAME `AnEvent`, AND THAT IS A RENAME AND NOT A REDEFINITION.** A
+button being pressed was the only thing that could reach satellite code, so the
+name was the truth. Five things arrive on that queue now, and a struct saying
+"press" for all five would have been a comment that lies.
+
+**A DRAG IS ONE CHANGE; THREE CLICKS ARE THREE PRESSES.** A slider dragged
+across the screen emits `value-changed` dozens of times, and the capsule runs
+*after* the program's own lines and reads the value that is there **then** — so
+consecutive identical changes collapse into one. Collapsing loses nothing a
+capsule could have observed. **A press never collapses**: three clicks are three
+things a person did, and `press-a-button.sh` counts them.
+
+**THE AUTHOR'S QUESTION ABOVE IS STILL HIS, AND (1) IS WHAT WAS BUILT.** A
+changed capsule is handed what a press is handed — nothing, the piece, or the
+piece and its window — and **not the new value**. `the_piece.text` is one short
+line and it reads the live piece.
+
+**THE FOOTGUN, WRITTEN DOWN RATHER THAN FENCED OFF:** a `.changed` capsule that
+writes to its own piece runs again, for ever. That is the program's own
+`while(true)` and the language has no limits, so it is not fenced — the collapse
+keeps the queue from GROWING, which is the part that would have looked like a
+leak rather than a loop.
 
 ## GTK-10 — the look: colour, a font, a size
 
@@ -1190,7 +1231,7 @@ is the milestone that gets VTE into the folder and into a static archive.
 |---|---|---|
 | GTK-3 | how a radio group is spelled | `one_of(a_list)` — one word, many pieces |
 | GTK-3 | **a `true` and a `false` to type** — a LANGUAGE milestone | there should be one; `c.on(1)` is the stopgap |
-| GTK-9 | does a capsule get the new value? | no — it gets the piece and asks it |
+| ~~GTK-9~~ | ~~does a capsule get the new value?~~ | **BUILT as (1)** — it gets the piece and asks it. Still reversible. |
 | GTK-11 | may a satellite line wait for a person? | no — a capsule, as a press is |
 | GTK-14 | how a key is spelled to a program | the character, or a name for the rest |
 | GTK-15 | a draw capsule, or a display list | **the display list** — the other can deadlock |
@@ -1225,7 +1266,7 @@ is the milestone that gets VTE into the folder and into a static archive.
   progress bar, a choice, a row, a column, a grid and a picture.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-7 are built** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-7 and GTK-9 are built** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a

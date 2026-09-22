@@ -64,8 +64,14 @@ void the_desk_let_go_of(satellite_window *window);
 unsigned long long int windows_open();
 
 // ---------------------------------------------------------------------------
-// A PRESS, AND WHICH THREAD RUNS THE CAPSULE FOR IT (WIN-11).
+// SOMETHING HAPPENED, AND WHICH THREAD RUNS THE CAPSULE FOR IT (WIN-11, GTK-9).
 // ---------------------------------------------------------------------------
+//
+// IT WAS CALLED A PRESS UNTIL GTK-9 and it was renamed rather than redefined. A
+// button being pressed was the only thing that could reach satellite code, so
+// `APress` was the truth; a text box typed in, a slider moved, a checkbox
+// ticked and a window closed all arrive on this same queue now, and a name that
+// said "press" for all five would have been a comment that lies.
 //
 // THE INTERPRETER'S THREAD RUNS IT, ALWAYS, AND THE DESK NEVER DOES. A capsule
 // is walked by run_statements, which reads the one BytecodeRegistry and writes
@@ -78,39 +84,58 @@ unsigned long long int windows_open();
 // SO A PRESS IS A QUEUE AND NOT A CALL, and the consequences are worth saying
 // out loud rather than discovering:
 //
-//   * A press that arrives while the program is still running its own lines
+//   * Something that happens while the program is still running its own lines
 //     WAITS. It is not lost and it is not run underneath the program.
-//   * Presses run ONE AT A TIME, in the order they were made. A press made
-//     while a capsule is running waits for that capsule to finish.
-//   * A press that arrives after the last window closed is still drained, so a
-//     button pressed at the moment the window went away is not silently dropped.
+//   * They run ONE AT A TIME, in the order they happened. A press made while a
+//     capsule is running waits for that capsule to finish.
+//   * Something that happens after the last window closed is still drained, so
+//     a button pressed at the moment the window went away is not silently
+//     dropped -- and a window's own `.closed` capsule is only ever drained.
 //
 // REVERSIBLE, AND THIS IS WHERE TO REVERSE IT: running the capsule on the desk
 // would mean giving the walker its own state per thread, which is a language
 // decision and not a window one.
-// ONE PRESS, WAITING TO BE RUN: which capsule answers it, WHAT was pressed, and
-// the window that was pressed in. All three are settled ON THE DESK at the
-// moment of the press and carried, rather than worked out later on the
+// ONE THING THAT HAPPENED, WAITING TO BE RUN: which capsule answers it, WHAT it
+// happened to, and the window it happened in. All three are settled ON THE DESK
+// at the moment it happens and carried, rather than worked out later on the
 // interpreter's thread -- because later the window may be gone. A press that
 // closes the last window and a press queued behind it are both ordinary, and
 // the second one is still owed the window it happened in, closed or not: a
 // closed window is a thing satellite can hold and ask (`w.ok` is false).
 //
+// THE WINDOW IS FOUND BY WALKING UP (GTK-7), never by reading `inside_of`
+// directly -- a button in a row points at the ROW.
+//
 // HANDLES AND NOT POINTERS, so nothing can be freed between the press and the
 // run; the queue's own reference is what guarantees it.
-struct APress {
+struct AnEvent {
     std::string capsule;
-    WindowHandle piece;    // the button
-    WindowHandle window;   // the window it is in, null only if it was in none
+    WindowHandle piece;    // what it happened to: the button, the text box, the window
+    WindowHandle window;   // the window it happened in, null only if it was in none
 };
 
-void the_desk_saw_a_press(const std::string &capsule, const WindowHandle &piece);
+// `may_collapse` IS TRUE FOR A CHANGE AND FALSE FOR A PRESS, and the difference
+// is not a tuning knob (GTK-9).
+//
+// A SLIDER DRAGGED ACROSS THE SCREEN EMITS `value-changed` DOZENS OF TIMES. The
+// capsule runs after the program's own lines, reads the value that is there
+// THEN, and would answer the same number dozens of times over -- so consecutive
+// identical events collapse into one. The capsule reads the live piece, so the
+// one that runs sees the latest state: collapsing loses nothing a capsule could
+// have observed.
+//
+// A PRESS NEVER COLLAPSES. Pressing a button three times IS three presses, and
+// press-a-button.sh clicks three times and counts three lines. Two presses are
+// two things a person did; two positions of one slider on the way somewhere are
+// not two things a person did.
+void the_desk_saw_something(const std::string &capsule, const WindowHandle &piece,
+                            bool may_collapse = false);
 
-// WAITS FOR THE NEXT PRESS, ON THE INTERPRETER'S THREAD. True with `capsule`
-// filled in when there is one to run; false when every window is closed and no
-// press is left -- which is when the run is over. False at once when the desk
+// WAITS FOR THE NEXT ONE, ON THE INTERPRETER'S THREAD. True with `capsule`
+// filled in when there is one to run; false when every window is closed and
+// nothing is left -- which is when the run is over. False at once when the desk
 // was never opened.
-bool the_desk_waits_for_a_press(APress &press);
+bool the_desk_waits_for_something(AnEvent &happened);
 
 // BLOCKS UNTIL EVERY WINDOW IS CLOSED, then stops the desk and joins it. Returns
 // at once when the desk was never opened.

@@ -2356,6 +2356,96 @@ expect "a picture that could not be swapped still says what it actually shows" 1
        "$(grep -cF 'if (!swapped)' satellite/satellite_variable_window/window_pieces.cpp)"
 
 # ---------------------------------------------------------------------------
+# EVERY PIECE TALKS BACK (GTK_AND_NO_DEPENDENCIES.md GTK-9, 2026-09-21).
+# ---------------------------------------------------------------------------
+#
+# WIN-11 built the queue for one signal. GTK-9 is two more methods and a rename:
+# `APress` became `AnEvent` and `the_desk_saw_a_press` became
+# `the_desk_saw_something`, because a text box typed in, a slider moved, a
+# checkbox ticked and a window closed all arrive on that same queue now, and a
+# name saying "press" for all five would be a comment that lies.
+#
+# PROVED ON A COMPOSITOR: `.changed` on a text box reading what it now says;
+# `.changed` on a slider; `.closed` on a window running AFTER it went away and
+# still answering `.title`; and three `s.value()` calls in a row collapsing into
+# ONE capsule run that read 44 -- the latest.
+
+expect "changed and closed are method tokens at 0000101100101111 and 0000101100110000" "1|1|1|1" \
+       "$(grep -c '^0000101100101111  changed_token ' REGISTRY.satellite)|$(grep -c 'Code changed_token = 0x0B2F;' satellite/bytecode/token_codes.hpp)|$(grep -c '^0000101100110000  closed_token ' REGISTRY.satellite)|$(grep -c 'Code closed_token = 0x0B30;' satellite/bytecode/token_codes.hpp)"
+
+# EXTENDING ONE PREDICATE EXTENDED THE WHOLE CHECKER. Every rule WIN-11 wrote
+# for `.pressed` -- the name is read as written and not as text, only one name
+# may stand there, the capsule must exist, it may declare at most the piece and
+# its window -- holds for `.changed` and `.closed` without a line changing.
+cat > build/window_changed_nocapsule.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window a = satellite.window.text_box("x")
+    a.changed(nobody_wrote_this)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_changed_nocapsule.satl > build/window_changed_nocapsule.out 2>&1
+expect ".changed wired to a capsule nobody wrote is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_changed_nocapsule.out)"
+expect "... and the sentence names .changed and not .pressed" 1 \
+       "$(tr '\n' ' ' < build/window_changed_nocapsule.out | grep -cF '.changed(...) names a capsule to run')"
+
+cat > build/window_changed_text.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_changed()
+{
+    satellite.console.display("changed")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window a = satellite.window.text_box("x")
+    a.changed("when_changed")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_changed_text.satl > build/window_changed_text.out 2>&1
+expect ".changed given TEXT where a name goes is refused before anything runs" "27|" \
+       "$?|$(grep -x before build/window_changed_text.out)"
+
+# A CAPSULE WIRED TO A PIECE NOTHING A PERSON CAN CHANGE WOULD NEVER RUN, which
+# is the quietest possible way for a program to be wrong. A BUTTON is refused
+# too and sent to `.pressed` -- a button is not changed, it is pressed.
+cat > build/window_changed_label.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule c()
+{
+    satellite.console.display("ran")
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window a = satellite.window.label("x")
+    a.changed(c)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_changed_label.satl > build/window_changed_label.out 2>&1
+expect ".changed on a label passes the checker, and stops only for want of a screen" 50 $?
+expect "... and the sentence that WOULD refuse it says a capsule there would never run" 1 \
+       "$(grep -c 'so a capsule here would never run' satellite/satellite_variable_window/window_answers.cpp)"
+expect "... and a button is sent to .pressed rather than told it cannot change" 1 \
+       "$(grep -c 'a button is not changed, it is pressed' satellite/satellite_variable_window/window_answers.cpp)"
+
+# A DRAG IS ONE CHANGE AND THREE CLICKS ARE THREE PRESSES. Consecutive identical
+# events collapse; a press never does, and press-a-button.sh counts on it.
+expect "a change may collapse and a press may not" "1|1" \
+       "$(grep -c 'the_desk_saw_something(piece->when_changed, piece->shared_from_this(), true)' satellite/satellite_variable_window/window_answers.cpp)|$(grep -c 'the_desk_saw_something(button->when_pressed, button->shared_from_this())' satellite/satellite_variable_window/window_answers.cpp)"
+
+# THE QUEUE IS DRAINED BEFORE THE WINDOWS ARE TESTED, which is what guarantees a
+# window's own `.closed` capsule runs at all: that one is queued BY the handler
+# that empties open_windows.
+expect "the queue is tested before the windows, so .closed is never lost" 1 \
+       "$(grep -c 'THE QUEUE FIRST, AND THAT ORDER IS THE POINT' satellite/satellite_variable_window/window_desk.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

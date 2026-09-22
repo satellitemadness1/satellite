@@ -39,7 +39,7 @@ std::vector<WindowHandle> open_windows;
 // enough to matter, and a bound here would be a limit the language does not
 // have -- a press silently dropped is exactly the answer that is wrong and does
 // not say so.
-std::deque<APress> presses;
+std::deque<AnEvent> presses;
 
 // THE JOB, AND THE ONE PLACE IT IS WAITED ON. g_main_context_invoke copies
 // nothing and takes a pointer, so the parcel lives on the calling thread's
@@ -210,35 +210,45 @@ unsigned long long int windows_open()
 // ON THE DESK'S OWN THREAD, out of GTK's `clicked` -- the same rule as
 // the_desk_let_go_of above, and for the same reason: the desk must never go
 // through on_the_desk(), which would be the desk waiting on itself.
-void the_desk_saw_a_press(const std::string &capsule, const WindowHandle &piece)
+void the_desk_saw_something(const std::string &capsule, const WindowHandle &piece, bool may_collapse)
 {
     {
         std::lock_guard<std::mutex> lock(desk_mutex);
+        // THE SAME CHANGE, AGAIN, WITH NOTHING RUN IN BETWEEN. A slider dragged
+        // across the screen emits `value-changed` dozens of times and the
+        // capsule would answer the same number dozens of times over. Only the
+        // BACK of the queue is looked at: anything further in was separated by
+        // something else happening, which makes it a different moment.
+        if (may_collapse && !presses.empty() && presses.back().capsule == capsule &&
+            presses.back().piece == piece)
+            return;
         // THE WINDOW IS LOOKED UP HERE, ON THE DESK, while it is certainly
         // alive -- `.append` wrote the link and the desk holds the window open.
         // THE WINDOW AND NOT THE IMMEDIATE PARENT (GTK-7). A button in a row
         // points at the ROW, and handing a capsule a row where it declared a
         // window would fail at `its_window.close()` -- "only a window can be
         // closed" -- which is a refusal about a line that is right.
-        presses.push_back(APress{capsule, piece,
+        presses.push_back(AnEvent{capsule, piece,
                                  piece == nullptr ? WindowHandle() : the_window_holding(*piece)});
     }
     desk_changed.notify_all();
 }
 
-bool the_desk_waits_for_a_press(APress &press)
+bool the_desk_waits_for_something(AnEvent &happened)
 {
     std::unique_lock<std::mutex> lock(desk_mutex);
     if (!desk_thread.joinable())
         return false;                                // no window was ever opened
     desk_changed.wait(lock, [] { return !presses.empty() || open_windows.empty(); });
-    // THE PRESSES FIRST, AND THAT ORDER IS THE POINT. A button pressed in the
+    // THE QUEUE FIRST, AND THAT ORDER IS THE POINT. A button pressed in the
     // same instant its window was closed has both conditions true at once, and
     // testing the windows first would throw that press away -- the one case
-    // where a person pressed something and nothing happened.
+    // where a person pressed something and nothing happened. Since GTK-9 it also
+    // guarantees a window's own `.closed` capsule runs: that one is queued by
+    // the `destroy` handler, which is the very thing that empties open_windows.
     if (presses.empty())
         return false;
-    press = presses.front();
+    happened = presses.front();
     presses.pop_front();
     return true;
 }

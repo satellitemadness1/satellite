@@ -555,8 +555,14 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 // has to give: nothing, the piece, and the window it is in.
                 const std::vector<CapsuleParameter> &wants = answers->second.parameters;
                 if (wants.size() > 2) {
-                    why = name + " takes " + std::to_string(wants.size()) + " arguments, and a press "
-                          "has only two to give: write " + name + "(), " + name +
+                    // "a press" WAS THE TRUTH UNTIL GTK-9 and is now one of
+                    // three things that can run a capsule. The sentence names
+                    // the method a person actually wrote, because being told
+                    // about presses after writing `.changed` is being told about
+                    // somebody else's line.
+                    why = name + " takes " + std::to_string(wants.size()) + " arguments, and ." +
+                          std::string(token::method_name_of(and_before_that)) +
+                          " has only two to give: write " + name + "(), " + name +
                           "(satellite.variable.window the_piece), or " + name +
                           "(satellite.variable.window the_piece, satellite.variable.window its_window)";
                     return satl_line_not_understood;
@@ -565,8 +571,10 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     if (takes.declared() == word::code_of(1, 6, 18))
                         continue;
                     why = name + "'s " + takes.name + " is declared " +
-                          word::spelling_of(takes.declared()) + ", and a press hands it the piece that "
-                          "was pressed and the window it is in -- both are satellite.variable.window";
+                          word::spelling_of(takes.declared()) + ", and ." +
+                          std::string(token::method_name_of(and_before_that)) +
+                          " hands it the piece it happened to and the window it happened in -- "
+                          "both are satellite.variable.window";
                     return types_do_not_meet;
                 }
             } else if (declared.find(name) == declared.end()) {

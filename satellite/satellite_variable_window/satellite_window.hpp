@@ -130,6 +130,19 @@ public:
     std::string when_pressed;
     bool press_is_connected = false;   // `clicked` is connected once, not once a call
 
+    // AND THE SAME AGAIN FOR THE OTHER TWO THINGS A PIECE CAN SAY (GTK-9).
+    // `when_changed` is a person changing this piece -- typing in it, moving it,
+    // ticking it, picking in it. `when_closed` is a WINDOW going away, whoever
+    // took it away.
+    //
+    // THREE STRINGS AND NOT ONE MAP, because there are three and a map would be
+    // a lookup on the desk's thread inside a signal handler to answer a question
+    // with three possible keys. A fourth signal is a fourth string; a tenth
+    // would be the map.
+    std::string when_changed;
+    bool changed_is_connected = false;
+    std::string when_closed;
+
     satellite_window() = default;
     explicit satellite_window(Piece which) : piece(which) {}
 
@@ -393,7 +406,7 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
 //
 // THE CAPSULE IS NOT RUN HERE AND NOT ON THIS THREAD. A press puts the name on
 // the desk's queue (window_desk.hpp) and the INTERPRETER's thread takes it off
-// and walks it -- see the_desk_waits_for_a_press for why that is the only safe
+// and walks it -- see the_desk_waits_for_something for why that is the only safe
 // thread for it.
 bool window_pressed(satellite_window &which, const std::string &capsule, std::string &why);
 
@@ -408,6 +421,34 @@ bool window_pressed(satellite_window &which, const std::string &capsule, std::st
 // that is wrong and does not say so. A mouse release emits `clicked` directly
 // (gtkbutton.c:802), which is what this does.
 bool window_press(satellite_window &which, std::string &why);
+
+// `a_piece.changed(when_changed)` -- THE CAPSULE A PERSON CHANGING THIS PIECE
+// RUNS (GTK-9). Typed in, moved, ticked, picked in -- one question and one
+// method, not a name a widget.
+//
+// ONLY A PIECE THAT A PERSON CAN CHANGE. A label, a picture, a row and a
+// progress bar are refused by name: nothing a PERSON does changes any of them,
+// and a capsule wired to one would simply never run, which is the quietest
+// possible way for a program to be wrong. A BUTTON is refused too, and sent to
+// `.pressed` -- a button is not changed, it is pressed.
+//
+// WHAT THE CAPSULE IS HANDED IS WHAT A PRESS IS HANDED: nothing, the piece, or
+// the piece and its window. **IT IS NOT HANDED THE NEW VALUE**, and that is the
+// author's open question in GTK-9 -- the recommendation was that it should not
+// be, because the piece is already there and `the_piece.text` is one short line.
+bool window_changed(satellite_window &which, const std::string &capsule, std::string &why);
+
+// `my_window.closed(when_closed)` -- THE CAPSULE A WINDOW GOING AWAY RUNS
+// (GTK-9), whoever took it away: the program calling `.close()` and a person
+// clicking the close button are the same event, because both are GTK's
+// `destroy`. That is the same reason the desk's own bookkeeping lives there.
+//
+// IT IS ALWAYS DRAINED AND NEVER WAITED FOR. By the time it runs the window is
+// gone -- `w.ok` is false and `.text` on a text box inside it refuses -- so a
+// capsule that wants what was in a window must read it before closing, not
+// after. NO SIGNAL IS CONNECTED HERE: `destroy` is already connected by
+// window_new, and this only writes the name that handler reads.
+bool window_closed(satellite_window &which, const std::string &capsule, std::string &why);
 
 bool window_close(satellite_window &which, std::string &why);
 bool window_focus(satellite_window &which, std::string &why);

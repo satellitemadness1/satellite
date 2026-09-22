@@ -172,6 +172,8 @@ inline constexpr Code text_token = 0x0B2B;  // text  [METHOD] object.text -- the
 inline constexpr Code on_token = 0x0B2C;  // on  [METHOD] object.on -- whether a checkbox or a switch is turned on; object.on(1) turn
 inline constexpr Code value_token = 0x0B2D;  // value  [METHOD] object.value -- the number a slider or a number box is at, or the percen
 inline constexpr Code chosen_token = 0x0B2E;  // chosen  [METHOD] choice.chosen -- which of its items is picked, as TEXT; choice.chosen("
+inline constexpr Code changed_token = 0x0B2F;  // changed  [METHOD] piece.changed(a_capsule) -- the capsule to run when a person changes i
+inline constexpr Code closed_token = 0x0B30;  // closed  [METHOD] window.closed(a_capsule) -- the capsule to run when the window goes awa
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
@@ -228,6 +230,8 @@ inline constexpr const char *method_name_of(Code code)
     if (code == on_token) return "on";
     if (code == value_token) return "value";
     if (code == chosen_token) return "chosen";
+    if (code == changed_token) return "changed";
+    if (code == closed_token) return "closed";
     return "";
 }
 
@@ -293,6 +297,8 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "on") return on_token;
     if (spelling == "value") return value_token;
     if (spelling == "chosen") return chosen_token;
+    if (spelling == "changed") return changed_token;
+    if (spelling == "closed") return closed_token;
     return 0;
 }
 
@@ -300,11 +306,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token || code == text_token || code == on_token || code == value_token || code == chosen_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token || code == text_token || code == on_token || code == value_token || code == chosen_token || code == changed_token || code == closed_token;
 }
 
 
-inline constexpr int kTokenCount = 125;
+inline constexpr int kTokenCount = 127;
 
 } // namespace token
 } // namespace satellite004
