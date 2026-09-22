@@ -811,6 +811,10 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // turned over, the exponents shared. A negative infinity is below every number.
         if (const satellite_infinity *infinite = inner.as_infinity())
             return Value::of_infinity(satellite_infinity::negated(infinite));
+        // A FLOAT'S SIGN IS ITS OWN BOOL (the author, 2026-09-22: "plus a sign which
+        // is positive by default"), so -12.5 turns the bool over and keeps the digits.
+        if (const satellite_float *real = inner.as_float())
+            return Value::of_float(real->negated());
         if (!inner.is_number()) {
             if (context.code == success)
                 context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name(),
@@ -1400,6 +1404,18 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         answer = scenarios->text(satellite_infinity::display(argument.as_infinity()), true);
     else if (argument.is_bool() && scenarios->flag != nullptr)
         answer = scenarios->flag(*argument.as_bool(), true);
+    // A FLOAT LEAVES AS ITS DIGITS ROUND ONE POINT -- 12.34, -0.5, 2.0 -- the same
+    // text `.string` answers (object_float.cpp's float_to_string, 2026-09-22).
+    else if (argument.is_float() && scenarios->text != nullptr) {
+        satellite_string written;
+        std::string why;
+        const signed long long int made = argument.to_string(written, why);
+        if (made != success) {
+            context.refuse(made, std::string(word::spelling_of(code)) + " was given a float, and " + why);
+            return Value();
+        }
+        answer = scenarios->text(written.to_utf8(), true);
+    }
     // A CONTAINER GIVEN TO A WORD THAT ONLY TAKES TEXT reads back as what was
     // typed: {1, "two"}, or {"zoe": 1, "al": 2} for an index. satellite_object.cpp's
     // to_string is the one spelling, so display and a refusal quote it the same way.

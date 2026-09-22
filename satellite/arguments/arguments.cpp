@@ -213,6 +213,38 @@ signed long long int Arguments::gather_config()
             return refuse(std::string(name) + " is a number row of at least 1 digit");
     }
 
+    // THE FLOAT'S TWO PRECISIONS (the author, 2026-09-22: "arguments.float.whole(4096)
+    // and arguments.float.decimal(4096) ... I think we should have the different
+    // values thing"). The same rule as the infinity's two: a missing row takes its
+    // default, and a row that is there is a count of at least one digit.
+    //
+    // AND ONE MACHINE MAY SET EITHER, in ~/.satl/config.ini by its name without
+    // `arguments.` -- `float.decimal = 10` -- the way directory.default is set. A
+    // precision is a thing a person tunes for the machine they run on, which is what
+    // that file is for. What it says must be a count too, and is REFUSED rather than
+    // quietly replaced by the default when it is not: a person who asked for 10
+    // places and silently got 128 would not know to look.
+    for (const auto &[name, fallback] : {std::pair<const char *, unsigned long long int>{"arguments.float.whole", 4096},
+                                         std::pair<const char *, unsigned long long int>{"arguments.float.decimal", 128}}) {
+        const Argument *entry = find(name);
+        if (entry == nullptr)
+            add_number(name, satellite_number(fallback));
+        else if (entry->kind != ArgumentKind::number || entry->number.negative() || entry->number.is_zero())
+            return refuse(std::string(name) + " is a number row of at least 1 digit");
+        std::string said;
+        const std::string key = std::string(name).substr(10);
+        if (config_file::read_value(key, said) && !said.empty()) {
+            satellite_number value;
+            std::size_t bad_offset = 0;
+            if (satellite_number::from_text(said, value, bad_offset) != success || value.negative() || value.is_zero())
+                return report_error(config_file::path() + ": " + key + " = " + said +
+                                        " is not a precision -- write a whole number of at least 1 digit, "
+                                        "such as " + key + " = " + std::to_string(fallback),
+                                    config_value_not_understood);
+            add_number(name, std::move(value));
+        }
+    }
+
     // THE INFINITY COUNTER (the author, 2026-09-18): how many calculations one
     // infinity-family object may take without reaching the next type before satl
     // prints the SATELLITE INFINITY WARNING and counts again. The same rule as the two

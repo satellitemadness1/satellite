@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A method a float does not have is refused BEFORE ANYTHING RUNS, so "before"
+// never reaches the screen.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.float f = 2.5
+    satellite.console.display(f.find("x"))
+    satellite.return(satellite)
+}

@@ -108,8 +108,12 @@ signed long long int percentage_operation(char sign, const satelliteObject &left
     }
 
     const std::string both = shown(left) + " " + sign + " " + shown(right);
+    // THE FLOAT EXISTS SINCE 2026-09-22, and a percentage answering one is the
+    // author's grand finale -- the new types mixed together -- so `3 - 50%` says
+    // that, and is still refused until then (SATELLITE_INFINITY.md FLT-2).
     if (code == answer_is_not_whole)
-        why = both + " is not a whole number, and there is no satellite_float yet";
+        why = both + " is not a whole number, and a percentage answering a float is not built yet -- "
+                     "the new types are mixed together later";
     else if (code == division_by_zero)
         why = both + " is a division by zero";
     else if (left_percent != nullptr && right_number != nullptr && (sign == '+' || sign == '-'))

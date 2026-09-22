@@ -123,7 +123,7 @@ inline SCode s_code_for(signed long long int machine_code)
     case int_error:
         return {"S120", "NUMBER_NOT_READ",
                 "this is not a number satellite can read. A number is an optional '-' then digits, "
-                "with no spaces, separators or decimal point."};
+                "with no spaces or separators, and a float has one point in it: 12.34."};
     case string_error:
         return {"S121", "TEXT_NOT_UTF8",
                 "these bytes are not valid UTF-8. satellite's strings hold text, so bytes that "

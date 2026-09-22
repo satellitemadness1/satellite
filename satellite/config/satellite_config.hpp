@@ -99,6 +99,24 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.infinity", 128, false, false});
     arguments_vector.push_back({"arguments.infinity_display", 32, false, false});
 
+    // THE FLOAT'S TWO PRECISIONS (the author, 2026-09-22): "should we divide the
+    // precision to arguments.float.whole(4096) and arguments.float.decimal(4096) so
+    // users can set different precisions? I dunno, I think we should have the
+    // different values thing". whole is the most significant digits a float keeps
+    // left of its point -- past them the low digits round to zeros -- and decimal
+    // the most places right of it, the last rounded half away from zero. Any count
+    // of at least 1, in quotes when it is long; one machine may set either in
+    // ~/.satl/config.ini as `float.whole = ...` and `float.decimal = ...`.
+    //
+    // 4096 ON THE WHOLE SIDE IS HIS NUMBER. 128 ON THE DECIMAL SIDE IS A
+    // RECOMMENDATION, reversible here: it is arguments.infinity's width, so a float
+    // always fits inside an infinity's count with no second rounding when the two
+    // are mixed. What 4096 would cost instead is measured in the commit that built
+    // these rows. A float SHOWS arguments.infinity_display places (SATELLITE_INFINITY.md
+    // Q43), rounded, however many it holds.
+    arguments_vector.push_back({"arguments.float.whole", 4096, false, false});
+    arguments_vector.push_back({"arguments.float.decimal", 128, false, false});
+
     // THE INFINITY COUNTER (the author, 2026-09-18): "after 1 billion (999,999,999)
     // ... set inside of arguments.infinity.counter(999,999,999)". After that many
     // calculations with one infinity-family object that never reaches the next type,

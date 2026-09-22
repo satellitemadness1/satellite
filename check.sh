@@ -1518,7 +1518,9 @@ expect "** is the second spelling of ^: 2 ** 3 ** 2, 2 ^ 3 ^ 2, 2 ** 10, 3 ** 2 
        "512|512|1024|10|512" "$("$interpreter" tests/power_stars.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 "$interpreter" tests/arithmetic.satl > /dev/null 2>&1; expect "tests/arithmetic.satl runs" 0 $?
 "$interpreter" tests/divide_by_zero.satl > /dev/null 2>&1; expect "a divisor of zero" 22 $?
-"$interpreter" tests/negative_exponent.satl > /dev/null 2>&1; expect "2 ^ -1 is not a whole number" 24 $?
+# 2 ^ -1 WAS REFUSED FOR WANT OF A FLOAT, AND IS ONE SINCE 2026-09-22 (SATELLITE_INFINITY.md
+# FLT-2 and Q13): an answer refused for want of a float becomes a float.
+expect "2 ^ -1 is the float 0.5 (FLT-2)" 0.5 "$("$interpreter" tests/negative_exponent.satl 2>/dev/null)"
 "$interpreter" tests/undeclared.satl > build/un.out 2>&1; expect "a name nothing declared" 25 $?
 expect "nothing ran before THAT refusal" "" "$(grep -x before build/un.out)"
 # A STRAY CHARACTER AT A LINE'S START IS ONE CODE, and the check and the run agree on what

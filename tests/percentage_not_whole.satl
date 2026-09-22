@@ -1,4 +1,6 @@
-// 3 * 50% is 1.5, and a number holds whole numbers until satellite_float lands.
+// 3 * 50% is 1.5. satellite_float landed on 2026-09-22, and a percentage answering
+// a float is the author's grand finale -- the new types mixed together -- so it is
+// refused until then.
 
 satellite.include(satellite)
 

@@ -9,11 +9,12 @@
 # THE FOUR TYPES OF 2026-09-22, each with a list of its own so four builders adding
 # files at once each touch a different line. A type's object file answers what the
 # value does; its _values file answers the checker, the walker and the expression.
-FLOAT_SOURCES    = $(OBJECT)/object_float.cpp $(BYTECODE)/float_values.cpp
+FLOAT_SOURCES    = $(OBJECT)/object_float.cpp $(BYTECODE)/float_values.cpp $(FLOAT_DIR)/float_scaled.cpp
 HEX_SOURCES      = $(OBJECT)/object_hexadecimal.cpp $(BYTECODE)/hexadecimal_values.cpp
 COLOR_SOURCES    = $(OBJECT)/object_color.cpp $(BYTECODE)/color_values.cpp
 FRACTION_SOURCES = $(OBJECT)/object_fraction.cpp $(BYTECODE)/fraction_values.cpp
-FLOAT_HEADERS    = $(FLOAT_DIR)/satellite_float.hpp $(OBJECT)/object_float.hpp $(BYTECODE)/float_values.hpp
+FLOAT_HEADERS    = $(FLOAT_DIR)/satellite_float.hpp $(OBJECT)/object_float.hpp $(BYTECODE)/float_values.hpp \
+                   $(FLOAT_DIR)/float_scaled.hpp $(FLOAT_DIR)/float_precision.hpp
 HEX_HEADERS      = $(HEX_DIR)/satellite_hexadecimal_number.hpp $(OBJECT)/object_hexadecimal.hpp \
                    $(BYTECODE)/hexadecimal_values.hpp
 COLOR_HEADERS    = $(COLOR_DIR)/satellite_color.hpp $(OBJECT)/object_color.hpp $(BYTECODE)/color_values.hpp

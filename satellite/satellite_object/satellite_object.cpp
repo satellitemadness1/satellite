@@ -501,8 +501,15 @@ signed long long int satelliteObject::power(const satelliteObject &other, satell
     // are both false whenever both sides are numbers. Hoisting is behaviour-
     // identical for exactly that reason: read_by_worth() needs one side BINARY,
     // and is_percentage() needs one side a percentage.
-    if (pair_of(kind(), other.kind()) == pair_of(number, number))
-        return run_number_pair(*this, other, number_and_number_power, "^", out, why);
+    if (pair_of(kind(), other.kind()) == pair_of(number, number)) {
+        const signed long long int code = run_number_pair(*this, other, number_and_number_power, "^", out, why);
+        // A NUMBER TO A NEGATIVE POWER IS A FLOAT (SATELLITE_INFINITY.md FLT-2 and
+        // Q13, 2026-09-22): `2 ^ -1` is 0.5, an answer that was refused for want of
+        // one. Asked only on that refusal, so every whole answer keeps its path.
+        if (code == answer_is_not_whole)
+            return float_operation('^', *this, other, out, why);
+        return code;
+    }
     if (refuse_infinity_arithmetic(*this, other, "^", "INF-4 and INF-5", why))
         return not_built_yet;
     if (signed long long int code = success; answered_by_its_own_file('^', *this, other, out, why, code))
