@@ -2828,6 +2828,138 @@ expect "dismissing a question is an empty answer, not a refusal" 1 \
        "$(grep -c 'DISMISSED IS NOT A FAILURE' satellite/satellite_variable_window/window_asking.cpp)"
 
 # ---------------------------------------------------------------------------
+# A MENU (GTK_AND_NO_DEPENDENCIES.md GTK-12, 2026-09-21): the only milestone
+# that is gio and not gtk.
+# ---------------------------------------------------------------------------
+#
+#     satellite.variable.window file = satellite.window.menu("File")
+#     file.item(when_open, "Open")
+#     my_window.menu(file)
+#
+# A MENU IS MADE FROM ITS HEADING, AND THAT IS GTK'S RULING BEFORE IT IS OURS:
+# gtkpopovermenubar.c's tracker_insert puts an item on the bar ONLY when it has
+# a submenu, and drops one without a word said -- so `satellite.window.menu()`
+# with nothing on the bar would have been a menu that is nowhere. The row is
+# `1 27 19 satellite.window.menu(title)`, one row and not two: a word that
+# takes something has no `()` row, exactly as a frame has none.
+expect "menu is 1 27 19, made from its heading, and has no bare-call row" "1|0" \
+       "$(grep -cP '^1 27 19\tsatellite.window.menu\(title\)\t' words/words.tsv)|$(grep -cP '^1 27 19 0\t' words/words.tsv)"
+
+# `.add` WOULD HAVE READ BETTER AND IS `+` ALREADY. The checker's capsule-name
+# rule is receiver-blind on purpose (names_in_statement walks every statement),
+# so making `.add` name a capsule would have made every `x.add(...)` in the
+# language a capsule. `.item` is its own token, and `.add` still adds.
+expect "menu and item are method tokens 0000101100111101 and ...1110" "1|1|1|1" \
+       "$(grep -c '^0000101100111101  menu_token ' REGISTRY.satellite)|$(grep -c 'Code menu_token = 0x0B3D;' satellite/bytecode/token_codes.hpp)|$(grep -c '^0000101100111110  item_token ' REGISTRY.satellite)|$(grep -c 'Code item_token = 0x0B3E;' satellite/bytecode/token_codes.hpp)"
+
+cat > build/window_menu_add.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "ab"
+    satellite.console.display(s.add("cd"))
+    satellite.variable.number n = 40
+    satellite.console.display(n.add(2))
+    satellite.return(satellite)
+}
+WIN_EOF
+expect ".add is still +, which is why an item is .item and not .add" "abcd|42" \
+       "$("$interpreter" build/window_menu_add.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+
+# THE CAPSULE'S NAME COMES FIRST, as in every method that names one.
+cat > build/window_item_backwards.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_open()
+{
+    satellite.console.display("open")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window m = satellite.window.menu("File")
+    m.item("Open", when_open)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_item_backwards.satl > build/window_item_backwards.out 2>&1
+expect ".item with the words first is refused before anything runs" "27|" \
+       "$?|$(grep -x before build/window_item_backwards.out)"
+
+cat > build/window_item_nocapsule.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window m = satellite.window.menu("File")
+    m.item(nobody_wrote_this, "Open")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_item_nocapsule.satl > build/window_item_nocapsule.out 2>&1
+expect ".item wired to a capsule nobody wrote is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_item_nocapsule.out)"
+
+# `satellite.window.menu()` IS THE FIRST WORD WHOSE LAST SEGMENT IS ALSO A
+# METHOD'S NAME, and it found a hole: with no `menu()` row the lexer answered
+# nothing for the shaped call, fell back to `satellite.window` and then read
+# `.menu` as the METHOD -- so the wrong count was refused at RUN time, after
+# "before" had printed, with a sentence about a value that was not there. An
+# empty call on a word that takes something now lexes as that word with 0
+# arguments, and the checker refuses it by name before a line runs -- for
+# `frame()` and `label()` as well, which used to be "no capsule named frame".
+cat > build/window_menu_noheading.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window m = satellite.window.menu()
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_menu_noheading.satl > build/window_menu_noheading.out 2>&1
+expect "satellite.window.menu() with no heading is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_menu_noheading.out)"
+expect "... and says what a menu takes, and that it was given 0 arguments" "1|1" \
+       "$(tr '\n' ' ' < build/window_menu_noheading.out | grep -cF 'takes the word that goes on the bar')|$(tr '\n' ' ' < build/window_menu_noheading.out | grep -cF 'was given 0 arguments')"
+
+cat > build/window_menu_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_open(satellite.variable.window the_menu, satellite.variable.window its_window)
+{
+    satellite.console.display("open was picked on " + the_menu.text)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    satellite.variable.window m = satellite.window.menu("File")
+    m.item(when_open, "Open")
+    w.menu(m)
+    m.text("Edit")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_menu_ok.satl > build/window_menu_ok.out 2>&1
+expect "a menu, an item and .menu pass the checker, and stop only for want of a screen" 50 $?
+
+# A MENU IS THE ONE PIECE THAT IS NOT A WIDGET: its `widget` holds a GMenu.
+# Every gtk_widget_* caller asks is_drawn() first and refuses a menu by name --
+# measuring it, dressing it, watching it for a click, putting it in a fixed --
+# and the teardown gives back the two references GTK never took.
+expect "everything that hands a menu's widget to GTK asks is_drawn() first" "yes" \
+       "$([ "$(cat satellite/satellite_variable_window/satellite_window.cpp satellite/satellite_variable_window/window_answers.cpp satellite/satellite_variable_window/window_look.cpp satellite/satellite_variable_window/window_desk.cpp | grep -c 'is_drawn()')" -ge 5 ] && echo yes || echo no)"
+expect "a menu's model and actions are given back when its window goes" "1|1" \
+       "$(grep -c 'g_object_unref(G_OBJECT(piece->widget))' satellite/satellite_variable_window/window_desk.cpp)|$(grep -c 'g_object_unref(G_OBJECT(piece->actions))' satellite/satellite_variable_window/window_desk.cpp)"
+
+# ACTIONS GO ON THE WINDOW AND NEVER ON AN APPLICATION. A GtkApplication is a
+# GApplication, which registers on the session bus, and a wedged portal hangs
+# gtk_init_check for ever (Q-WIN-11a). One bar a window, above the fixed in the
+# column window_new() has held since this milestone.
+expect "the menu's actions go on the window, and no GtkApplication was made" "1|0" \
+       "$(grep -c 'gtk_widget_insert_action_group(static_cast<GtkWidget \*>(window->widget)' satellite/satellite_variable_window/window_menu.cpp)|$(grep -rc 'gtk_application_new\|GTK_APPLICATION_WINDOW' satellite/satellite_variable_window/ | awk -F: '{s+=$2} END {print s}')"
+expect "the window holds a column, and the bar goes above the fixed in it" "1|1" \
+       "$(grep -c 'gtk_widget_set_vexpand(inside, TRUE)' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'gtk_box_prepend(GTK_BOX(column), bar)' satellite/satellite_variable_window/window_menu.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

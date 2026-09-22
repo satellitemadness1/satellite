@@ -106,6 +106,11 @@ constexpr AWord kWords[] = {
     {18, "split", 0, satellite_window::split, AWord::words,
      "satellite.window.split takes nothing -- the two pieces either side are .append'ed: "
      "satellite.window.split()"},
+    // A MENU TAKES ITS HEADING, and that is GTK's ruling: a menu bar drops a
+    // top-level item that has no submenu, silently, so a menu with no word on
+    // the bar would be a menu that is nowhere (window_menu.cpp).
+    {19, "menu", 1, satellite_window::menu, AWord::words,
+     "satellite.window.menu takes the word that goes on the bar: satellite.window.menu(\"File\")"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
@@ -336,7 +341,8 @@ std::string window_methods_are()
            "has .changed(a_capsule); and a window has .closed(a_capsule) and "
            ".every(a_capsule, 1000) and .key(a_capsule); anything that is not a button has "
            ".clicked(a_capsule); and a window has .message(\"saying\"), "
-           ".ask(a_capsule, \"a question?\") and .answer "
+           ".ask(a_capsule, \"a question?\") and .answer; a menu has .item(a_capsule, \"Open\") "
+           "and a window has .menu(a_menu) "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -369,6 +375,8 @@ int window_method_arity(Code method)
     case token::message_token:    return 1;  // what to say (GTK-11)
     case token::ask_token:        return 2;  // the question, then the capsule's NAME
     case token::answer_token:     return 0;  // a question, read bare or bracketed
+    case token::menu_token:       return 1;  // the menu to put across the top (GTK-12)
+    case token::item_token:       return 2;  // the capsule's NAME, then the words on the item
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -399,7 +407,7 @@ bool window_method_takes_a_capsule_name(Code method)
     return method == token::pressed_token || method == token::changed_token ||
            method == token::closed_token || method == token::every_token ||
            method == token::key_token || method == token::clicked_token ||
-           method == token::ask_token;
+           method == token::ask_token || method == token::item_token;
 }
 
 // AND WHETHER ANYTHING MAY FOLLOW THAT NAME (GTK-13). `.pressed`, `.changed`
@@ -416,7 +424,7 @@ bool window_method_takes_a_capsule_name(Code method)
 // reads slightly better.
 bool window_method_takes_more_after_the_name(Code method)
 {
-    return method == token::every_token || method == token::ask_token;
+    return method == token::every_token || method == token::ask_token || method == token::item_token;
 }
 
 
@@ -601,7 +609,12 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         long long int got = 0;
         std::string why;
         if (!window_size_of(*piece, method == token::height_token, got, why)) {
-            context.refuse(window_is_closed, what + " -- " + why);
+            // TWO REFUSALS AND TWO CODES, as `.text` has: a closed piece is
+            // window_is_closed, and a MENU -- which has no size of its own,
+            // open or closed -- is a kind that does not meet (GTK-12). One code
+            // for both printed S505 under a sentence that was not about closing.
+            context.refuse(piece->widget == nullptr ? window_is_closed : types_do_not_meet,
+                           what + " -- " + why);
             return Value();
         }
         return Value::of_number(satellite_number(static_cast<unsigned long long int>(got)));
@@ -927,6 +940,26 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         if (!text_of(arguments[0], capsule, what, context))
             return Value();
         went = window_key(*window, capsule, why);
+        break;
+    }
+    case token::item_token: {
+        std::string capsule, label;
+        if (!text_of(arguments[0], capsule, what, context) ||
+            !text_of(arguments[1], label, what + "'s words", context))
+            return Value();
+        went = window_item(*window, capsule, label, why);
+        break;
+    }
+    case token::menu_token: {
+        // THE SAME READER `.append` USES: a handle or a refusal naming the kind.
+        const WindowHandle *menu = arguments[0].window_handle();
+        if (menu == nullptr) {
+            context.refuse(types_do_not_meet, what + " takes a menu to put across the top -- "
+                                                  "satellite.window.menu(\"File\") makes one -- and "
+                                                  "was given " + arguments[0].kind_name());
+            return Value();
+        }
+        went = window_menu(*window, *menu, why);
         break;
     }
     case token::clicked_token: {

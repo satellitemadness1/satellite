@@ -498,8 +498,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             }
             if (more_may_follow && after != token::comma_token) {
                 why = spelled + " takes a capsule's NAME first and then the rest: " +
-                      (code == token::ask_token ? spelled + "(when_answered, \"delete it?\")"
-                                                : spelled + "(when_it_ticks, 1000)");
+                      (code == token::ask_token    ? spelled + "(when_answered, \"delete it?\")"
+                       : code == token::item_token ? spelled + "(when_open, \"Open\")"
+                                                   : spelled + "(when_it_ticks, 1000)");
                 return satl_line_not_understood;
             }
         }
@@ -645,11 +646,21 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                           (given == 1 ? " argument" : " arguments");
                     return satl_line_not_understood;
                 }
-                if (!is_file_word(code) && !is_window_word(code) && given > 1) {
+                if (!is_file_word(code) && !is_window_word(code)) {
                     const std::string spelled(word::spelling_of(code));
-                    why = spelled.substr(0, spelled.find('(')) + " takes one argument, and was given " +
-                          std::to_string(given);
-                    return satl_line_not_understood;
+                    // A WORD THAT TAKES ONE, GIVEN NONE (GTK-12). Since the lexer
+                    // stopped answering nothing for empty brackets, `display()`
+                    // lexes as display(text) with 0 arguments; it is refused
+                    // here by name rather than at run time by a value that is
+                    // not there. A word whose row IS `path()` takes none and is
+                    // not this.
+                    const bool takes_one = spelled.find('(') != std::string::npos &&
+                                           spelled.find("()") == std::string::npos;
+                    if (given > 1 || (given == 0 && takes_one)) {
+                        why = spelled.substr(0, spelled.find('(')) + " takes one argument, and was given " +
+                              std::to_string(given);
+                        return satl_line_not_understood;
+                    }
                 }
             }
         }

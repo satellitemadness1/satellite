@@ -409,3 +409,4 @@
 1 27 17	satellite.window.frame(title)	
 1 27 18	satellite.window.split	
 1 27 18 0	satellite.window.split()	
+1 27 19	satellite.window.menu(title)	

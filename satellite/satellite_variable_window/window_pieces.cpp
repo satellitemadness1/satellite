@@ -112,6 +112,10 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     case satellite_window::progress:
     case satellite_window::choice:
     case satellite_window::picture:
+    // AND A MENU IS NOT A WIDGET AT ALL (GTK-12): window_menu.cpp makes it, out
+    // of a GMenu and an action group, and window_piece_of_text routes there
+    // before it ever asks this function.
+    case satellite_window::menu:
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -140,6 +144,10 @@ WindowHandle window_piece_of_text(satellite_window::Piece which, const std::stri
         why = "that is not a piece made from a line of text";
         return nullptr;
     }
+    // A MENU IS MADE FROM A LINE OF TEXT -- its heading -- AND IS NOT A WIDGET,
+    // so it has a factory of its own (window_menu.cpp) and goes there.
+    if (which == satellite_window::menu)
+        return window_piece_of_a_menu(text, why);
     if (!open_the_desk(why))
         return nullptr;
     WindowHandle made = std::make_shared<satellite_window>(which);

@@ -64,19 +64,52 @@ public:
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
                  slider, number_box, progress, choice,
                  row, column, grid, picture,
-                 scroll, frame, split, how_many_pieces };
+                 scroll, frame, split, menu, how_many_pieces };
 
     Piece piece = window;
 
     // THE GtkWidget *, AS A void *. Only window_desk.cpp, satellite_window.cpp and
     // window_pieces.cpp ever cast it back, and all three are compiled only where
     // GTK is.
+    //
+    // EXCEPT FOR A MENU, WHICH IS THE ONE PIECE THAT IS NOT A WIDGET (GTK-12).
+    // A menu is not drawn where it is; the WINDOW's own bar draws it, so what a
+    // menu holds here is its GMenu -- the MODEL of its items, a GObject and not a
+    // GtkWidget. `is_drawn()` below is what every gtk_widget_* caller asks first.
     void *widget = nullptr;
+
+    // A MENU IS NOT A WIDGET, AND THIS IS THE ONE QUESTION THAT SAYS SO. Every
+    // method that would hand `widget` to a gtk_widget_* call -- measuring it,
+    // dressing it, watching it for a click, putting it in a GtkFixed -- asks
+    // this first and refuses a menu by name. Adding a second undrawn piece one
+    // day is one more `||` here and nothing anywhere else.
+    bool is_drawn() const { return piece != menu; }
+
+    // AND A MENU'S OTHER HALF (GTK-12): its GSimpleActionGroup, one action an
+    // item, and the prefix those actions are known by on the window --
+    // "menu3.item2" -- handed out by the desk and nobody else. Both are made
+    // with the menu and put on the window when the menu is, so a menu can be
+    // built in full BEFORE it has a window, which is the ordinary order to
+    // write those lines in.
+    void *actions = nullptr;
+    std::string action_prefix;
 
     // THE GtkFixed INSIDE A WINDOW, which is what `.append` puts a piece into.
     // GTK4 has no absolute position in a box, so a window that a program places
     // things in BY COORDINATE must hold a GtkFixed (WIN-3).
+    //
+    // SINCE GTK-12 THE FIXED IS THE SECOND CHILD OF A VERTICAL BOX and not the
+    // window's child itself, because a menu bar has to go somewhere and a
+    // GtkWindow holds exactly one child. With no menu the box holds only the
+    // fixed, expanded to fill it, and nothing measures or places differently.
     void *inside = nullptr;
+
+    // A WINDOW'S MENU BAR, once it has one (GTK-12) -- the GtkPopoverMenuBar at
+    // the top of that box, made the first time `.menu(a_menu)` is called and
+    // shared by every menu after it. ONE bar and not one a menu: GTK's own
+    // theme draws a rule under a bar, and two bars side by side would show
+    // the seam, and F10 opens only the first bar it finds.
+    void *bar = nullptr;
 
     // WHAT WAS APPENDED INTO IT, held so that a window going away can say so to
     // every piece inside it. GTK destroys a window's children with the window,
@@ -275,6 +308,7 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a scroll", "scroll"},
     {"a frame", "frame"},
     {"a split", "split"},
+    {"a menu", "menu"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -374,6 +408,53 @@ WindowHandle window_piece_of_items(satellite_window::Piece which,
 // (GTK_AND_NO_DEPENDENCIES.md Part 00, Table B).
 WindowHandle window_piece_of_a_file(satellite_window::Piece which, const std::string &path,
                                     std::string &why);
+
+// AND THE ONE PIECE THAT IS NOT A WIDGET (GTK-12): `satellite.window.menu("File")`.
+//
+// A MENU IS MADE FROM ITS HEADING, and that is GTK's ruling before it is ours:
+// gtkpopovermenubar.c's tracker_insert puts an item on the bar ONLY when it has
+// a submenu, and an item without one is dropped with nothing said -- so a menu
+// with no heading would be a menu that is nowhere. The heading is the word on
+// the bar; the items are under it. A frame is the same shape: the one holder
+// whose word takes its words.
+//
+// gio AND NOT gtk. What is made here is a GMenu and a GSimpleActionGroup, and
+// nothing of GTK's until the menu meets a window.
+WindowHandle window_piece_of_a_menu(const std::string &heading, std::string &why);
+
+// `a_menu.item(when_open, "Open")` -- AN ITEM ON A MENU, and the capsule that
+// runs when a person picks it (GTK-12). THE NAME COMES FIRST, as every
+// capsule-naming method spells it. `.add` would have read better and is `+`
+// already: `.item` is its own word because the checker's capsule-name rule is
+// receiver-blind on purpose and would have made every `x.add(...)` a capsule.
+//
+// AN ITEM RUNS ITS CAPSULE THE WAY A BUTTON DOES: the action fires on the desk's
+// thread, the desk writes the NAME on its queue, and the interpreter's thread
+// takes it off. What the capsule is handed is what a press is handed -- nothing,
+// the MENU, or the menu and its window.
+//
+// ITEMS MAY BE ADDED BEFORE OR AFTER THE MENU IS ON A WINDOW. Before is the
+// ordinary order; after works because a GMenu is a model and the bar tracks it.
+bool window_item(satellite_window &which, const std::string &capsule, const std::string &label,
+                 std::string &why);
+
+// `my_window.menu(a_menu)` -- PUT A MENU ACROSS THE TOP OF A WINDOW (GTK-12). A
+// second menu goes BESIDE the first on the same bar, which is what a bar is.
+// It is not `.append`: a menu has no coordinate and no place in a row, and
+// `.append` growing a third shape for it is the point at which one method stops
+// being one method (GTK-16 says the same of a tab).
+//
+// ACTIONS GO ON THE WINDOW AND NEVER ON AN APPLICATION.
+// gtk_widget_insert_action_group on the GtkWindow is the whole of it; a
+// GtkApplication is a GApplication, which registers on the session bus, and a
+// wedged portal hangs gtk_init_check for ever (Q-WIN-11a). satellite_window.cpp
+// refused GtkApplication for that reason on 2026-09-20 and this does not reopen it.
+bool window_menu(satellite_window &which, const WindowHandle &menu, std::string &why);
+
+// `a_menu.text("Edit")` -- THE HEADING, CHANGED. A menu already on a bar is
+// taken off it and put back with the new word at the same place; one that is
+// not on a bar yet simply remembers. window_set_text routes here.
+bool window_menu_heading(satellite_window &which, const std::string &heading, std::string &why);
 
 // `a_piece.text("what it says now")` -- the words ON a piece. A window is
 // REFUSED here and told to use `.title` instead: a window's words are its title,

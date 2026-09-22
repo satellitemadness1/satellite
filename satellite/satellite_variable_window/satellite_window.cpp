@@ -1,13 +1,16 @@
 // satellite/satellite_variable_window/satellite_window.cpp -- what a program can
 // do to a WINDOW. SATELLITE_WINDOW.md WIN-3.
 //
-// FIVE FILES NOW, and this one is the WINDOW. It makes one, closes it, focuses
+// SEVEN FILES NOW, and this one is the WINDOW. It makes one, closes it, focuses
 // it, titles it, appends into it and holds the run open:
 //
 //   window_pieces.cpp    MAKING a piece -- four factories, one an argument shape
 //   window_asks.cpp      a piece's WORDS: .text and .path
 //   window_state.cpp     what a piece is SET TO: .on, .value, .chosen
 //   window_answers.cpp   what a piece SAYS BACK: .pressed, .press, .changed, .closed
+//   window_look.cpp      what a piece LOOKS LIKE: .colour, .background, .font
+//   window_asking.cpp    SAYING something to a person, and ASKING them
+//   window_menu.cpp      a MENU across the top, and the items on it (GTK-12)
 //
 // EVERY GTK CALL IN THIS FILE HAPPENS INSIDE on_the_desk(), which is the rule
 // window_desk.hpp exists to keep: GTK4 is not thread-safe and the interpreter
@@ -104,8 +107,18 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
         gtk_window_set_default_size(GTK_WINDOW(window), wide, tall);
         // GTK4 HAS NO ABSOLUTE POSITION IN A BOX, and `.append` places by
         // coordinate, so every window holds a GtkFixed to put pieces into (WIN-3).
+        //
+        // INSIDE A VERTICAL BOX SINCE GTK-12, because a GtkWindow holds exactly
+        // one child and a menu bar has to go somewhere: window_menu.cpp puts
+        // the bar ABOVE the fixed in this column. With no menu the column holds
+        // only the fixed, expanded to fill it, and the fixed sits at the same
+        // 0,0 it did as the window's own child -- nothing measures or places
+        // differently, and press-a-button.sh's coordinates still land.
+        GtkWidget *column = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
         GtkWidget *inside = gtk_fixed_new();
-        gtk_window_set_child(GTK_WINDOW(window), inside);
+        gtk_widget_set_vexpand(inside, TRUE);
+        gtk_box_append(GTK_BOX(column), inside);
+        gtk_window_set_child(GTK_WINDOW(window), column);
         g_signal_connect(window, "destroy", G_CALLBACK(it_was_closed), raw);
         raw->widget = window;
         raw->inside = inside;
@@ -158,6 +171,14 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     }
     if (piece == nullptr || piece->widget == nullptr) {
         why = "there is nothing here to append";
+        return false;
+    }
+    // A MENU IS NOT A WIDGET AND HAS NO PLACE IN A FIXED OR A ROW (GTK-12). It
+    // goes across the top of a window, and `.menu` is the word for that --
+    // handing GTK a GMenu where it wants a GtkWidget is a crash, not a refusal.
+    if (!piece->is_drawn()) {
+        why = "a menu is not appended -- it goes across the top of a window: "
+              "my_window.menu(the_menu)";
         return false;
     }
     if (piece->widget == into.widget) {
@@ -347,6 +368,12 @@ bool window_resize(satellite_window &which, long long int wide, long long int ta
 
 bool window_size_of(satellite_window &which, bool the_height, long long int &out, std::string &why)
 {
+    // A MENU HAS NO SIZE OF ITS OWN (GTK-12): the window's bar draws it, and
+    // what it holds is a model, which gtk_widget_get_width cannot be handed.
+    if (!which.is_drawn()) {
+        why = "a menu has no size of its own -- it is drawn across the top of its window";
+        return false;
+    }
     if (which.widget == nullptr) {
         why = "it is closed -- ask its size while the window is still open";
         return false;

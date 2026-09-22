@@ -146,6 +146,16 @@ void let_go_of_every_piece(satellite_window &holder)
     for (const WindowHandle &piece : holder.pieces) {
         if (piece->holds_pieces())
             let_go_of_every_piece(*piece);
+        // A MENU IS NOT A WIDGET AND GTK DOES NOT FREE IT WITH THE WINDOW
+        // (GTK-12). The bar's model and the window's action muxer each held a
+        // reference and are letting go of theirs with the window; this is the
+        // menu's own two, taken when window_menu.cpp made it. A widget's piece
+        // owns nothing here -- GTK freed it -- so only a menu unrefs.
+        if (!piece->is_drawn()) {
+            g_object_unref(G_OBJECT(piece->widget));
+            g_object_unref(G_OBJECT(piece->actions));
+            piece->actions = nullptr;
+        }
         piece->on_the_screen = false;
         piece->widget = nullptr;
     }
@@ -194,6 +204,7 @@ void the_desk_let_go_of(satellite_window *window)
             open_windows[at]->on_the_screen = false;
             open_windows[at]->widget = nullptr;
             open_windows[at]->inside = nullptr;
+            open_windows[at]->bar = nullptr;
             open_windows.erase(open_windows.begin() + static_cast<long>(at));
             break;
         }

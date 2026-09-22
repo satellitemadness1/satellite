@@ -362,6 +362,13 @@ bool window_clicked(satellite_window &which, const std::string &capsule, std::st
               ") instead";
         return false;
     }
+    // A MENU IS NOT CLICKED, ITS ITEMS ARE PICKED (GTK-12) -- and it is not a
+    // widget a gesture could be added to.
+    if (!which.is_drawn()) {
+        why = "a menu is not clicked, its items are picked -- write .item(" + capsule +
+              ", \"Open\") to say what runs";
+        return false;
+    }
     if (which.widget == nullptr) {
         why = "it is closed";
         return false;

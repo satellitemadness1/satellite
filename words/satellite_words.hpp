@@ -426,6 +426,7 @@ inline constexpr WordRow kWords[] = {
     {"satellite.window.frame(title)", {1, 27, 17, 0, 0, 0}, 3},
     {"satellite.window.split", {1, 27, 18, 0, 0, 0}, 3},
     {"satellite.window.split()", {1, 27, 18, 0, 0, 0}, 4},
+    {"satellite.window.menu(title)", {1, 27, 19, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -662,7 +663,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.infinity", {1, 6, 17, 1, 0, 0, 0}, 4},
     {"satellite.infinity", {1, 26, 1, 0, 0, 0, 0}, 3},
     {"satellite.variable.window", {1, 6, 18, 1, 0, 0, 0}, 4},
-    {"satellite.window", {1, 27, 19, 0, 0, 0, 0}, 3},
+    {"satellite.window", {1, 27, 20, 0, 0, 0, 0}, 3},
     {"satellite.window.switch", {1, 27, 7, 1, 0, 0, 0}, 4},
     {"satellite.window.progress", {1, 27, 10, 1, 0, 0, 0}, 4},
     {"satellite.window.row", {1, 27, 12, 1, 0, 0, 0}, 4},

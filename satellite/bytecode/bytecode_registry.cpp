@@ -221,8 +221,22 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
     while (inside < text.size() && (text[inside] == ' ' || text[inside] == '\t')) ++inside;
 
     const std::string path(text.substr(from, run - from));
-    if (inside < text.size() && text[inside] == ')')
-        return word::code_of_spelling(path + "()");
+    // EMPTY BRACKETS ARE THE `path()` ROW WHEN THERE IS ONE. When there is NOT
+    // -- the word takes something -- the call falls through with 0 arguments,
+    // so the scan below answers the word it names and the CHECKER refuses the
+    // count by name, before a line runs (GTK-12, 2026-09-21). This used to
+    // answer nothing here, and the shortening then read `satellite.window` and
+    // `.menu` as a METHOD -- menu is the first word whose last segment is also
+    // a method's name -- so `satellite.window.menu()` printed the lines above
+    // it and was refused at run time by a value that was not there. `frame()`
+    // had the milder half of the same hole: it became a NAME and was refused
+    // as "no capsule named frame", a word that exists told it does not.
+    const bool empty = inside < text.size() && text[inside] == ')';
+    if (empty) {
+        const token::Code bare = word::code_of_spelling(path + "()");
+        if (bare != 0)
+            return bare;
+    }
 
     // THE ROW WITH AS MANY PARAMETERS AS THE CALL HAS ARGUMENTS WINS (2026-09-18).
     // Until then every non-empty call took the ONE-parameter row, so
@@ -231,7 +245,7 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
     // commas chooses `new(path, mode)`. When no row has that many parameters, the
     // one-parameter rule below still answers, so a call with too many arguments is
     // refused by the word and not turned into a name.
-    const std::size_t given = arguments_in(text, inside);
+    const std::size_t given = empty ? 0 : arguments_in(text, inside);
     const std::string opened = path + "(";
     std::size_t low = 0, high = word::kSpelledWordCount;
     while (low < high) {

@@ -40,7 +40,9 @@ completely different things:
   above it needs it.
 
 Today satellite's own code calls **four** of the twenty-four projects by name:
-gtk, glib, gobject and gio — and gio only for the GResource that WIN-1 carries.
+gtk, glib, gobject and gio — gio for the GResource that WIN-1 carries, for
+GTK-11's `GAsyncResult`, and since GTK-12 for a menu's `GMenu` and
+`GSimpleActionGroup`, which is the one milestone that is gio before it is gtk.
 Everything else in the list below is reached. **That is the number the widget
 milestones move**, and the last table says by how much.
 
@@ -81,7 +83,7 @@ projects produce the archives.
 | ✔ | **GTK-9** every piece talks back | gtk, gobject | libffi |
 | ✔ | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
 | ◑ | **GTK-11** asking a person | gtk, gio (`GAsyncResult`) — **no `GFile`: the file dialog is not built** | — |
-| — | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GActionMap`), gtk | — |
+| ✔ | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GSimpleActionGroup`), gtk (`GtkPopoverMenuBar`, `gtk_widget_insert_action_group`) | — |
 | ✔ | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
 | ✔ | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
 | — | **GTK-15** a canvas | gtk, **cairo directly** | pixman, freetype |
@@ -1168,7 +1170,7 @@ exactly the question the author has open: the synchronous D-Bus call that
 before he has ruled would be shipping the hang. check.sh asserts no
 `gtk_file_dialog_` call exists, so nobody adds one without answering it.
 
-## GTK-12 — a menu, and the only milestone that is gio and not gtk
+## GTK-12 — a menu, and the only milestone that is gio and not gtk — **BUILT 2026-09-21**
 
     satellite.variable.window m = satellite.window.menu()
     m.append("Open", when_open)
@@ -1188,6 +1190,93 @@ the same evidence that settled `gtk_window_new()`.
 
 satl-term already has a menu (`satl-term/menu.cpp`, 003's, ported). **Read it
 before writing this one** — it is the same GMenu and the same actions.
+
+**AS BUILT** — three lines, and two of them are not the three above:
+
+    satellite.variable.window file = satellite.window.menu("File")
+    file.item(when_open, "Open")
+    my_window.menu(file)
+
+`menu` is `1 27 19`, **one row and not two**; `menu` is `0x0B3D` and `item` is
+`0x0B3E`. A second `my_window.menu(edit)` goes **beside** the first on the same
+bar. What an item's capsule is handed is what a press is handed: nothing, the
+**menu**, or the menu and its window.
+
+**A MENU IS MADE FROM ITS HEADING, AND THAT IS GTK'S RULING BEFORE IT IS
+OURS.** `gtkpopovermenubar.c`'s `tracker_insert` puts an item on the bar *only
+when it has a submenu*, and an item without one is dropped with nothing said —
+the doc string is *"The model should only contain submenus as toplevel
+elements."* So `satellite.window.menu()` with nothing on the bar would have
+been a menu that is nowhere, which is the answer this project does not ship. A
+frame is the same shape already: the one holder whose word takes its words.
+
+**`.item` AND NOT `.add`, AND NOT `.append`.** `.append` growing a third shape
+for "a capsule and a name" is the point at which one method stops being one
+method — GTK-16 says exactly that of a tab. `.add` reads better and **is `+`
+already** (`s.add("x")` joins, `n.add(2)` sums), and the checker's capsule-name
+rule is receiver-blind *on purpose* (`names_in_statement` walks every
+statement, because a chain's second method has no declared receiver) — so
+making `.add` name a capsule would have made every `x.add(...)` in the language
+a capsule. `.item` is its own token. **The name comes first**, as in every
+method that names one; the other way round is refused before a line runs.
+
+**A MENU IS THE ONE PIECE THAT IS NOT A WIDGET.** Its `widget` holds the
+`GMenu` — the model of its items — and a `GSimpleActionGroup` beside it, made
+with the menu so that it can be built in full **before it has a window**, which
+is the ordinary order to write those lines in. `satellite_window.hpp`'s
+`is_drawn()` is the one question that says so, and **five** places ask it and
+refuse a menu by name: measuring it, dressing it, watching it for a click,
+putting it in a fixed or a row, and reading its words off a widget. What that
+buys is **one bar for a whole window** — GTK's theme draws a rule under a bar,
+so two bars side by side would show the seam, and F10 opens only the first bar
+it finds — with the keyboard walking across it, which was **measured**: F10,
+Right, Down, Return picked Edit's item from a bar that began on File.
+
+**THE WINDOW'S CHILD IS NOW A VERTICAL BOX** with the `GtkFixed` as its
+expanding child, because a `GtkWindow` holds exactly one child and a bar has to
+go somewhere. With no menu the box holds only the fixed, and nothing measures
+or places differently — check.sh's 475 rows and press-a-button.sh's
+coordinates are the evidence.
+
+**TEARDOWN GIVES BACK WHAT GTK NEVER TOOK.** A widget's piece owns nothing
+after the window goes — GTK freed it. A menu's piece owns two references, and
+`let_go_of_every_piece` returns them. A menu never put on a window is leaked at
+exit exactly as a button never appended is; that rule did not change.
+
+**Proved on a compositor**, by both routes a person has: a real pointer click on
+File and then on Open ran `when_open` with `the_menu.text` reading `"File"` and
+`its_window.title` reading the window's; a real F10 opened the bar and the arrow
+keys walked it; an item picked after the menu was already on the bar ran; an
+item whose capsule closed the window ended the run, exit 0; and `m.text("Edit")`
+changed a heading already on the bar in place. Two windows open at once, one
+closed with the other still up, also ran clean — the desk is one thread and
+holds as many windows as a program opens.
+
+**Three things found by running it, all fixed here:**
+
+- **`satellite.window.menu()` ran the lines above it before refusing.** `menu`
+  is the first word whose last segment is also a method's name: with no `menu()`
+  row the lexer answered nothing for the shaped call, the shortening then read
+  `satellite.window` and `.menu` as the *method*, and the wrong count was refused
+  at run time with "there is no value here to work with". An empty call on a
+  word that takes something now lexes as that word with 0 arguments and the
+  checker refuses it by name before a line runs — `frame()` and `label()` too,
+  which used to be **"no capsule named frame"**, a word that exists told it does
+  not.
+- **`m.width` on a menu exited 51 `WINDOW_IS_CLOSED`** under a sentence about
+  a menu having no size — the code/sentence mismatch GTK-5 already fixed once
+  for `.chosen`. It is `types_do_not_meet` unless the piece is actually closed.
+- **A flat menu is not a menu bar.** The first design had `menu()` take
+  nothing and its items sit on the bar directly; GTK's own source says a
+  top-level item with no submenu is silently dropped. The heading is not a style
+  choice.
+
+**THE AUTHOR'S, and nothing here decides it:** a menu *inside* a menu, and a
+line between groups of items. A submenu needs a heading, which is exactly
+GTK-16's question about a tab's name asked again — the recommendation is the
+same answer, the piece carries it, and `satellite.window.menu("Recent")` already
+does. A separator is `g_menu_append_section` and one line; it is not built
+because nothing has said how it is spelled.
 
 ## GTK-13 — time: a capsule every so often — **BUILT 2026-09-21**
 
@@ -1448,6 +1537,7 @@ is the milestone that gets VTE into the folder and into a static archive.
 | GTK-11 | **Q-WIN-11a blocks the file dialog** — may a word reach the portal? | not until the hang has an answer |
 | GTK-14 | how a key is spelled to a program | the character, or a name for the rest |
 | GTK-15 | a draw capsule, or a display list | **the display list** — the other can deadlock |
+| GTK-12 | a menu inside a menu, and a line between groups of items | the piece carries its heading, as a tab would; a separator waits for a spelling |
 | GTK-17 | does `satellite.console` become a window, or does a window get a console? | a window gets a console; `satellite.console` keeps stdout |
 | GTK-10 | the window font: 11px or 12px | asked 2026-09-19, still open |
 
@@ -1474,13 +1564,13 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE EIGHTEEN WIDGETS** as of 2026-09-21: a window, a button, a label,
+- **THERE ARE NINETEEN WIDGETS** as of 2026-09-21: a window, a button, a label,
   a text box, a text area, a checkbox, a switch, a slider, a number box, a
-  progress bar, a choice, a row, a column, a grid, a picture, a scroll, a frame
-  and a split.
-  No picture, no row, no menu, nothing that talks back but a button. **Part 2G
+  progress bar, a choice, a row, a column, a grid, a picture, a scroll, a frame,
+  a split and a menu.
+  ~~No picture, no row, no menu, nothing that talks back but a button.~~ **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-10, GTK-13 and GTK-14 are built; GTK-11 but for its file
+  **GTK-1 to GTK-10, GTK-12, GTK-13 and GTK-14 are built; GTK-11 but for its file
   dialog, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the

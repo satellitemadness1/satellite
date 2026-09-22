@@ -96,6 +96,9 @@ std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
     // `.title` -- a path is not words on a piece, it is where a piece got what
     // it draws.
     case satellite_window::picture: break;
+    // A MENU'S WORDS ARE ITS HEADING AND THE HANDLE HOLDS THEM (GTK-12); it
+    // never reaches here, because a menu is not a widget to be asked.
+    case satellite_window::menu: break;
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -117,6 +120,10 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
         why = "a picture's words are the file it shows -- write .path(\"other.png\") instead";
         return false;
     }
+    // A MENU'S WORDS ARE ITS HEADING, and changing one on a bar is a remove and
+    // an insert on the bar's model rather than a setter on a widget (GTK-12).
+    if (which.piece == satellite_window::menu)
+        return window_menu_heading(which, text, why);
     // NOT still_there(): a piece is on no screen until it is appended, and
     // saying what it says BEFORE putting it in a window is the ordinary order to
     // write it in. What must be true is that the widget still exists -- a piece
@@ -160,6 +167,13 @@ bool window_text_of(satellite_window &which, std::string &out, std::string &why)
     if (which.piece == satellite_window::picture) {
         why = "a picture's words are the file it shows -- write .path instead";
         return false;
+    }
+    // A MENU'S HEADING IS OURS, LIKE A LABEL'S WORDS: satellite put it there and
+    // nothing else writes it, so the handle answers, open or closed, and the
+    // desk is never asked (GTK-12).
+    if (which.piece == satellite_window::menu) {
+        out = which.text;
+        return true;
     }
     // A BUTTON'S AND A LABEL'S WORDS ARE OURS. Nothing but satellite ever writes
     // them, so the handle is the truth -- and it stays the truth after the window

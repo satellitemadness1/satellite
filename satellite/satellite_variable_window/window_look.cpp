@@ -134,6 +134,15 @@ bool wear_it(satellite_window &which, GtkWidget *widget)
 // GtkWindow, and a program that wants a dark window should be able to say so.
 bool it_can_be_dressed(satellite_window &which, std::string &why)
 {
+    // A MENU WEARS ITS WINDOW'S LOOK (GTK-12). The window's bar draws it, and
+    // GTK's own CSS hands a window's colour and font down to everything in it
+    // -- so `my_window.font(...)` reaches the menu, and a menu of its own to
+    // dress would be a class on a model GTK never draws.
+    if (!which.is_drawn()) {
+        why = "a menu wears its window's look -- dress the window, and the menu across "
+              "its top follows";
+        return false;
+    }
     if (which.widget == nullptr) {
         why = "it is closed";
         return false;
