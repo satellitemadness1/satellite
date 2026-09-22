@@ -333,7 +333,8 @@ std::string window_methods_are()
            "a piece in one has .text; a checkbox or a switch has .on; a slider, a number box or "
            "a progress bar has .value; a choice has .chosen -- all read bare and written with "
            "brackets; a button has .pressed(a_capsule) and .press(); anything a person can change "
-           "has .changed(a_capsule); and a window has .closed(a_capsule) "
+           "has .changed(a_capsule); and a window has .closed(a_capsule) and "
+           ".every(a_capsule, 1000) "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -360,6 +361,7 @@ int window_method_arity(Code method)
     case token::colour_token:     return 1;  // GTK-10; there is no reading one back
     case token::background_token: return 1;
     case token::font_token:       return 2;  // the face and the size
+    case token::every_token:      return 2;  // the capsule's NAME, then how often (GTK-13)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -388,8 +390,15 @@ int window_method_also_takes(Code method)
 bool window_method_takes_a_capsule_name(Code method)
 {
     return method == token::pressed_token || method == token::changed_token ||
-           method == token::closed_token;
+           method == token::closed_token || method == token::every_token;
 }
+
+// AND WHETHER ANYTHING MAY FOLLOW THAT NAME (GTK-13). `.pressed`, `.changed`
+// and `.closed` take one capsule's name and nothing else; `.every` takes the
+// name and then how often. The name comes FIRST in both shapes, which is not a
+// style choice -- it is where the checker looks for it, and it is where
+// expression.cpp reads a name instead of working out a value.
+bool window_method_takes_more_after_the_name(Code method) { return method == token::every_token; }
 
 
 // ---------------------------------------------------------------------------
@@ -856,6 +865,15 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         if (!text_of(arguments[0], colour, what, context))
             return Value();
         went = window_set_colour(*window, colour, method == token::background_token, why);
+        break;
+    }
+    case token::every_token: {
+        std::string capsule;
+        long long int how_often = 0;
+        if (!text_of(arguments[0], capsule, what, context) ||
+            !place_of(arguments[1], how_often, what + "'s how often", context, "a number of milliseconds"))
+            return Value();
+        went = window_every(*window, capsule, how_often, why);
         break;
     }
     case token::font_token: {

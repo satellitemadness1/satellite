@@ -176,6 +176,17 @@ public:
     bool changed_is_connected = false;
     std::string when_closed;
 
+    // AND A CAPSULE ON A CLOCK (GTK-13). `tick` is the GLib source id, kept so
+    // that closing the window takes the timer down with it -- a timer holding a
+    // raw pointer into a window that has gone is the one way this module could
+    // reach freed memory.
+    //
+    // THE WINDOW IS THE TIMER'S LIFETIME, and that is why `.every` is a window's
+    // method rather than a word of its own: a word would have had no owner and
+    // no way to be stopped.
+    std::string when_it_ticks;
+    unsigned int tick = 0;
+
     // WHAT THIS PIECE IS WEARING (GTK-10). GTK4 has no per-widget colour setter
     // -- everything is CSS -- so a piece that has been dressed carries a css
     // class nobody else has and a GtkCssProvider scoped to it, and the parts are
@@ -500,6 +511,28 @@ bool window_changed(satellite_window &which, const std::string &capsule, std::st
 // after. NO SIGNAL IS CONNECTED HERE: `destroy` is already connected by
 // window_new, and this only writes the name that handler reads.
 bool window_closed(satellite_window &which, const std::string &capsule, std::string &why);
+
+// `my_window.every(when_a_second_passes, 1000)` -- RUN A CAPSULE EVERY SO MANY
+// MILLISECONDS (GTK-13). THE CAPSULE'S NAME COMES FIRST, written as it is
+// written, because that is where the checker proves a capsule exists.
+//
+// glib AND NOT gtk. g_timeout_add() on the desk's own GMainContext is the whole
+// of it -- the only milestone here that touches neither a widget nor a window's
+// drawing, and the second producer for the queue WIN-11 built for one button.
+//
+// FOR AS LONG AS THE WINDOW IS OPEN, and not a moment past it: closing the
+// window removes the source. A timer holding a raw pointer into a window that
+// has gone is the one way this module could reach freed memory.
+//
+// TICKS DO NOT QUEUE UP. A tick that arrives while the previous one is still
+// running is dropped -- GTK-9's collapse is exactly this -- because the
+// alternative is a program that falls further behind for ever and looks like a
+// leak rather than a loop.
+//
+// A SECOND `.every` REPLACES THE FIRST. One window, one clock; a program that
+// wants two rhythms can count in its own capsule.
+bool window_every(satellite_window &which, const std::string &capsule, long long int milliseconds,
+                  std::string &why);
 
 bool window_close(satellite_window &which, std::string &why);
 bool window_focus(satellite_window &which, std::string &why);

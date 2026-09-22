@@ -82,7 +82,7 @@ projects produce the archives.
 | ✔ | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
 | — | **GTK-11** asking a person | gtk, **gio** (`GFile`, `GAsyncResult`, `GCancellable`) | — |
 | — | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GActionMap`), gtk | — |
-| — | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
+| ✔ | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
 | — | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
 | — | **GTK-15** a canvas | gtk, **cairo directly** | pixman, freetype |
 | ◑ | **GTK-16** more than one screenful | gtk | — |
@@ -1153,7 +1153,7 @@ the same evidence that settled `gtk_window_new()`.
 satl-term already has a menu (`satl-term/menu.cpp`, 003's, ported). **Read it
 before writing this one** — it is the same GMenu and the same actions.
 
-## GTK-13 — time: a capsule every so often
+## GTK-13 — time: a capsule every so often — **BUILT 2026-09-21**
 
     satellite.window.every(1000, when_a_second_passes)
 
@@ -1171,6 +1171,37 @@ its interval**, and the answer must be written into the word: **ticks do not
 queue up**. A tick that arrives while the previous one is still running is
 dropped, because the alternative is a program that falls further behind for
 ever and looks like a leak.
+
+**AS BUILT** — `my_window.every(when_it_ticks, 1000)`, `every` is `0x0B37`.
+
+**IT IS A WINDOW'S METHOD AND NOT A WORD, and that is the whole design.** A word
+would have had **no owner and no way to be stopped**; a window has a lifetime
+already, so the clock simply stops when the window does. A second `.every`
+replaces the first: one window, one clock.
+
+**"TICKS DO NOT QUEUE UP" IS GTK-9'S COLLAPSE**, not a second mechanism. A tick
+arriving while the previous one is still waiting its turn is dropped, exactly as
+a dragged slider's repeated changes are.
+
+**THE CAPSULE'S NAME COMES FIRST** — `.every(when_it_ticks, 1000)` — because
+that is where the checker looks for a name and where `expression.cpp` reads one
+instead of working out a value. **What may follow the name is now the method's
+business**, asked of `window_calls.hpp`: `.pressed` takes a name and nothing
+else, `.every` takes a name and then how often. Writing it the other way round
+is refused before a line runs.
+
+**A TICK OF 0 IS REFUSED.** It is not a rhythm, it is a busy loop with a capsule
+in it — glib would run it as fast as the main loop turns and the queue would
+fill faster than the interpreter could drain it.
+
+**MEASURED ON A COMPOSITOR:** `w.every(when_it_ticks, 120)` ran the capsule **49
+times in six seconds** — 50 is what 120 ms gives. And a second program whose
+button closed the window **ended, exit 0**, rather than ticking for ever.
+
+**The clock stops with the window, and it stops FIRST.** The source holds a raw
+pointer into the `satellite_window`, so a tick firing between the close and the
+desk letting go would queue a capsule for a window that is already gone — the
+one way this module could reach freed memory.
 
 ## GTK-14 — the keyboard and the mouse, and where 2.8 MB finally earns itself
 
@@ -1378,7 +1409,7 @@ is the milestone that gets VTE into the folder and into a static archive.
   and a split.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-10 are built, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-10 and GTK-13 are built, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a

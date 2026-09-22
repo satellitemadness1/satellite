@@ -373,7 +373,8 @@ bits              name                         what it is
 0000101100110100  colour_token                 colour/color  [METHOD] piece.colour("#00ff88") -- the colour its words are drawn in; two spellings, one meaning (GTK_AND_NO_DEPENDENCIES.md GTK-10)
 0000101100110101  background_token             background  [METHOD] piece.background("#222222") -- the colour behind it (GTK_AND_NO_DEPENDENCIES.md GTK-10)
 0000101100110110  font_token                   font  [METHOD] piece.font("IBM Plex Mono", 12) -- the face and the size its words are drawn in (GTK_AND_NO_DEPENDENCIES.md GTK-10)
-0000101100110111  free                         to 0000101111111111, free for this family
+0000101100110111  every_token                  every  [METHOD] window.every(a_capsule, 1000) -- run that capsule every so many milliseconds, for as long as the window is open (GTK_AND_NO_DEPENDENCIES.md GTK-13)
+0000101100111000  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

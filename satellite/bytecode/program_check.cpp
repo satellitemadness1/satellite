@@ -486,8 +486,19 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             // code after the `(` let `.pressed(when_pressed, 5)` through to be
             // refused at run time, which is a refusal this checker owes earlier.
             text_at(row, argument);
-            if (code_at(row, argument) != token::right_parenthesis_token) {
+            // AND WHAT MAY FOLLOW IT IS THE METHOD'S BUSINESS, asked of
+            // window_calls.hpp (GTK-13). `.pressed`, `.changed` and `.closed`
+            // take one name and nothing else; `.every` takes the name and then
+            // how often, so a comma is what it wants there.
+            const bool more_may_follow = window_method_takes_more_after_the_name(code);
+            const token::Code after = code_at(row, argument);
+            if (!more_may_follow && after != token::right_parenthesis_token) {
                 why = spelled + " takes one capsule's name and nothing else";
+                return satl_line_not_understood;
+            }
+            if (more_may_follow && after != token::comma_token) {
+                why = spelled + " takes a capsule's name and then how often: " + spelled +
+                      "(when_it_ticks, 1000)";
                 return satl_line_not_understood;
             }
         }

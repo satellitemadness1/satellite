@@ -74,6 +74,12 @@ std::string window_methods_are();
 // checker proves it names a real capsule before the program runs.
 bool window_method_takes_a_capsule_name(token::Code method);
 
+// AND WHETHER ANYTHING MAY FOLLOW THAT NAME. False for `.pressed`, `.changed`
+// and `.closed`, which take one capsule's name and nothing else; TRUE for
+// `.every`, which takes the name and then how often. The checker asks this
+// rather than carrying its own list, for the reason above.
+bool window_method_takes_more_after_the_name(token::Code method);
+
 // One of those words, its arguments already evaluated.
 Value call_window_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context);
 

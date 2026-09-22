@@ -104,6 +104,22 @@ void it_was_pressed(GtkWidget *, gpointer user_data)
         the_desk_saw_something(button->when_pressed, button->shared_from_this());
 }
 
+// THE CLOCK STRUCK (GTK-13). ON THE DESK'S THREAD, doing the one safe thing --
+// writing the capsule's name on the queue -- exactly as a press does.
+//
+// COLLAPSED, and that is what "ticks do not queue up" means in practice: a tick
+// arriving while the previous one is still waiting its turn is dropped rather
+// than stacked, because the alternative is a program falling further behind for
+// ever and looking like a leak rather than a loop.
+gboolean it_ticked(gpointer user_data)
+{
+    satellite_window *window = static_cast<satellite_window *>(user_data);
+    if (window->when_it_ticks.empty())
+        return G_SOURCE_CONTINUE;
+    the_desk_saw_something(window->when_it_ticks, window->shared_from_this(), true);
+    return G_SOURCE_CONTINUE;
+}
+
 } // namespace
 
 bool window_pressed(satellite_window &which, const std::string &capsule, std::string &why)
@@ -214,6 +230,47 @@ bool window_press(satellite_window &which, std::string &why)
     // does, and is QUEUED there rather than run: a program that presses its own
     // button does not recurse into the walker, it adds a press to the line.
     on_the_desk([widget] { g_signal_emit_by_name(widget, "clicked"); });
+    return true;
+}
+
+bool window_every(satellite_window &which, const std::string &capsule, long long int milliseconds,
+                  std::string &why)
+{
+    if (which.piece != satellite_window::window) {
+        why = "only a window keeps time -- a piece inside one lives as long as the window does";
+        return false;
+    }
+    // A TICK OF 0 IS NOT A RHYTHM, it is a busy loop with a capsule in it: glib
+    // would run it as fast as the main loop turns, the queue would fill faster
+    // than the interpreter could drain it, and the program would look like a
+    // leak. Refused where it is written.
+    if (milliseconds <= 0) {
+        why = "how often must be more than 0 milliseconds";
+        return false;
+    }
+    if (milliseconds > 86400000) {
+        why = "how often must be a day (86400000 milliseconds) or less";
+        return false;
+    }
+    if (which.widget == nullptr || !which.on_the_screen) {
+        why = "it is closed";
+        return false;
+    }
+    satellite_window *raw = &which;
+    const unsigned int how_often = static_cast<unsigned int>(milliseconds);
+    on_the_desk([raw, &capsule, how_often] {
+        raw->when_it_ticks = capsule;
+        // A SECOND `.every` REPLACES THE FIRST. Leaving the old source running
+        // would give one window two clocks with no way to tell them apart and no
+        // way to stop either.
+        if (raw->tick != 0)
+            g_source_remove(raw->tick);
+        // ON THE DESK'S OWN CONTEXT, which is what g_timeout_add attaches to
+        // when it is called from the thread that owns it -- the desk parks in
+        // g_main_loop_run there, so the source fires on the desk and nowhere
+        // else.
+        raw->tick = g_timeout_add(how_often, it_ticked, raw);
+    });
     return true;
 }
 

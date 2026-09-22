@@ -2599,6 +2599,88 @@ expect "no tabs word was minted, because a tab needs a name .append cannot carry
        "$(grep -c 'satellite.window.tabs' words/words.tsv)"
 
 # ---------------------------------------------------------------------------
+# TIME (GTK_AND_NO_DEPENDENCIES.md GTK-13, 2026-09-21): a capsule on a clock.
+# ---------------------------------------------------------------------------
+#
+# glib AND NOT gtk -- g_timeout_add() on the desk's own context is the whole of
+# it, and it is the only milestone here that touches neither a widget nor a
+# window's drawing. It is the SECOND producer for the queue WIN-11 built for one
+# button, which is what says that queue was a general thing and not a button's
+# private arrangement.
+#
+# MEASURED ON A COMPOSITOR: `w.every(when_it_ticks, 120)` ran the capsule 49
+# times in six seconds -- 50 is what 120ms gives -- and a second program whose
+# button closed the window ENDED, exit 0, rather than ticking for ever. The
+# clock stops with the window, and it stops FIRST: the source holds a raw
+# pointer into the satellite_window, and a tick firing between the close and the
+# desk letting go would queue a capsule for a window that is already gone.
+
+expect "every is a method token at 0000101100110111" "1|1" \
+       "$(grep -c '^0000101100110111  every_token ' REGISTRY.satellite)|$(grep -c 'Code every_token = 0x0B37;' satellite/bytecode/token_codes.hpp)"
+
+# THE CAPSULE'S NAME COMES FIRST, because that is where the checker looks for it
+# and where expression.cpp reads a name instead of working out a value. What may
+# FOLLOW it is the method's business, asked of window_calls.hpp -- `.pressed`
+# takes a name and nothing else, `.every` takes a name and then how often.
+cat > build/window_every_noname.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_it_ticks()
+{
+    satellite.console.display("tick")
+}
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.every(1000, when_it_ticks)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_every_noname.satl > build/window_every_noname.out 2>&1
+expect ".every with how often FIRST is refused before anything runs" "27|" \
+       "$?|$(grep -x before build/window_every_noname.out)"
+
+cat > build/window_every_nocapsule.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.every(nobody_wrote_this, 1000)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_every_nocapsule.satl > build/window_every_nocapsule.out 2>&1
+expect ".every wired to a capsule nobody wrote is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_every_nocapsule.out)"
+
+cat > build/window_every_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_it_ticks()
+{
+    satellite.console.display("tick")
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.every(when_it_ticks, 1000)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_every_ok.satl > build/window_every_ok.out 2>&1
+expect ".every passes the checker, and stops only for want of a screen" 50 $?
+
+# A TICK OF 0 IS NOT A RHYTHM, it is a busy loop with a capsule in it: glib
+# would run it as fast as the main loop turns and the queue would fill faster
+# than the interpreter could drain it. Refused where it is written.
+expect "how often must be more than 0" 1 \
+       "$(grep -c 'how often must be more than 0 milliseconds' satellite/satellite_variable_window/window_answers.cpp)"
+
+# AND THE CLOCK IS REMOVED BEFORE THE DESK LETS GO OF THE WINDOW.
+expect "closing a window stops its clock, and stops it first" 1 \
+       "$(grep -c 'THE CLOCK STOPS WITH THE WINDOW (GTK-13), and it stops FIRST' satellite/satellite_variable_window/satellite_window.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

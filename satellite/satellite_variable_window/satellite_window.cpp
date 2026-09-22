@@ -34,6 +34,15 @@ namespace {
 void it_was_closed(GtkWidget *, gpointer user_data)
 {
     satellite_window *window = static_cast<satellite_window *>(user_data);
+    // THE CLOCK STOPS WITH THE WINDOW (GTK-13), and it stops FIRST. The source
+    // holds a raw pointer into this satellite_window, and a tick that fired
+    // between here and the desk letting go would queue a capsule for a window
+    // that is already gone. This is the desk's own thread, which is the only
+    // thread that may touch a GLib source of the desk's.
+    if (window->tick != 0) {
+        g_source_remove(window->tick);
+        window->tick = 0;
+    }
     // THE CAPSULE IS QUEUED BEFORE THE DESK LETS GO, and the order matters: the
     // queue carries a HANDLE to the window, and the_desk_let_go_of drops the
     // desk's own reference. Queueing second would still work -- the program's
