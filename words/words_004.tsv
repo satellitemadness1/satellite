@@ -39,3 +39,4 @@
 1 27 13 0	satellite.window.column()
 1 27 14	satellite.window.grid
 1 27 14 0	satellite.window.grid()
+1 27 15	satellite.window.picture(path)

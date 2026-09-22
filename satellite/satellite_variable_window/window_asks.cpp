@@ -83,6 +83,11 @@ std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
     case satellite_window::row:
     case satellite_window::column:
     case satellite_window::grid: break;
+    // A PICTURE'S WORDS ARE ITS FILE, AND `.path` IS THE WORD FOR THAT. It is
+    // refused here rather than answered, the same way a window is sent to
+    // `.title` -- a path is not words on a piece, it is where a piece got what
+    // it draws.
+    case satellite_window::picture: break;
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -98,6 +103,10 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
     // wrote `.text` on a window meant `.title` -- so say that.
     if (which.piece == satellite_window::window) {
         why = "a window's words are its title -- write .title(\"text\") instead";
+        return false;
+    }
+    if (which.piece == satellite_window::picture) {
+        why = "a picture's words are the file it shows -- write .path(\"other.png\") instead";
         return false;
     }
     // NOT still_there(): a piece is on no screen until it is appended, and
@@ -135,6 +144,10 @@ bool window_text_of(satellite_window &which, std::string &out, std::string &why)
 {
     if (which.piece == satellite_window::window) {
         why = "a window's words are its title -- write .title instead";
+        return false;
+    }
+    if (which.piece == satellite_window::picture) {
+        why = "a picture's words are the file it shows -- write .path instead";
         return false;
     }
     // A BUTTON'S AND A LABEL'S WORDS ARE OURS. Nothing but satellite ever writes

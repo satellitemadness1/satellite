@@ -2306,6 +2306,56 @@ expect "a piece cannot be put inside something it already holds" "1|1" \
        "$(grep -c 'a piece cannot be put inside something it already holds' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'steps < 4096' satellite/satellite_variable_window/satellite_window.cpp)"
 
 # ---------------------------------------------------------------------------
+# A PICTURE (GTK_AND_NO_DEPENDENCIES.md GTK-6, 2026-09-21), and the four
+# vendored projects it makes reachable.
+# ---------------------------------------------------------------------------
+#
+# gdk-pixbuf, libpng, libjpeg-turbo and libtiff are ~2.6 MB of satl and had been
+# carried since the first vendored build with NO satellite word able to touch a
+# line of them (Part 00, Table B). satellite.window.picture is what earns them.
+#
+# PROVED ON A COMPOSITOR with real files written by GdkPixbuf: a 64x48 PNG
+# loaded and shown, `.path` reading it back, `.path("...jpg")` swapping it for a
+# JPEG -- which is libpng and libjpeg-turbo both reached from a satellite
+# program -- and `.text` on a picture refused and sent to `.path`.
+
+expect "picture is 1 27 15" 1 \
+       "$(grep -cP '^1 27 15\tsatellite.window.picture\(path\)\t' words/words.tsv)"
+
+# A FILE THAT IS NOT THERE IS REFUSED WHERE IT IS WRITTEN, and with a FILE's
+# machine code. gtk_picture_new_for_filename would have handed back a widget
+# that draws nothing and says nothing -- a person seeing an empty space where
+# their logo should be, with no way to find out why. gdk_texture_new_from_filename
+# is used instead because it is the one with a GError.
+cat > build/window_picture_missing.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    satellite.variable.window p = satellite.window.picture("build/no_such_picture.png")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_picture_missing.satl > build/window_picture_missing.out 2>&1
+expect "a picture of a file that is not there stops for want of a SCREEN when headless" 50 $?
+
+# ... and the file's own codes are the ones it uses when there IS a screen. The
+# row above cannot reach them: reading a file needs GDK started, so a headless
+# run says NO_DISPLAY first and is right to.
+expect "a bad picture file answers file_not_found or file_unreadable, never line_not_understood" "1|1" \
+       "$(grep -c '? file_not_found' satellite/bytecode/window_calls.cpp)|$(grep -c ': file_unreadable' satellite/bytecode/window_calls.cpp)"
+
+# A PICTURE'S WORDS ARE ITS FILE, and `.text` says so rather than answering
+# something else -- the same pairing a window has with `.title`.
+expect "a picture asked for .text is sent to .path" "2" \
+       "$(grep -cF 'a picture'"'"'s words are the file it shows -- write .path' satellite/satellite_variable_window/window_asks.cpp)"
+
+# A FAILED .path LEAVES THE OLD PICTURE AND THE OLD ANSWER. Writing the new path
+# before checking would have left a piece saying it shows a file it does not.
+expect "a picture that could not be swapped still says what it actually shows" 1 \
+       "$(grep -cF 'if (!swapped)' satellite/satellite_variable_window/window_pieces.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

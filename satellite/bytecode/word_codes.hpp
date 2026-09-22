@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 405;
+inline constexpr unsigned int kWordsInTable = 406;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -214,6 +214,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x03011B0C00000000ULL, 4496},  // 1 27 12 -- satellite.window.row
     {0x03011B0D00000000ULL, 4498},  // 1 27 13 -- satellite.window.column
     {0x03011B0E00000000ULL, 4500},  // 1 27 14 -- satellite.window.grid
+    {0x03011B0F00000000ULL, 4502},  // 1 27 15 -- satellite.window.picture(path)
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -870,6 +871,7 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.window.column()", {1, 27, 13, 0, 0, 0, 0}, 4},
     {"satellite.window.grid", {1, 27, 14, 0, 0, 0, 0}, 3},
     {"satellite.window.grid()", {1, 27, 14, 0, 0, 0, 0}, 4},
+    {"satellite.window.picture(path)", {1, 27, 15, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1275,6 +1277,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.window.label(text)", 4485},
     {"satellite.window.new(title, width, height)", 4483},
     {"satellite.window.number_box(least, most)", 4492},
+    {"satellite.window.picture(path)", 4502},
     {"satellite.window.progress", 4493},
     {"satellite.window.progress()", 4494},
     {"satellite.window.row", 4496},

@@ -51,7 +51,7 @@ struct AWord {
     // words, two numbers, one list. A widget added with a fifth shape is one
     // more value here and one more branch in call_window_word -- not a fifth
     // field and not a second table.
-    enum Takes { words, numbers, items } takes_what;
+    enum Takes { words, numbers, items, a_file } takes_what;
     const char *takes;                    // and what to say when the count is wrong
 };
 
@@ -94,6 +94,9 @@ constexpr AWord kWords[] = {
     {14, "grid", 0, satellite_window::grid, AWord::words,
      "satellite.window.grid takes nothing -- what goes in it is .append'ed at a cell: "
      "satellite.window.grid()"},
+    {15, "picture", 1, satellite_window::picture, AWord::a_file,
+     "satellite.window.picture takes the name of a file to show: "
+     "satellite.window.picture(\"logo.png\")"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
@@ -335,6 +338,7 @@ int window_method_arity(Code method)
     case token::on_token:      return 1;     // written; read with no brackets (GTK-3)
     case token::value_token:   return 1;     // written; read with no brackets (GTK-4)
     case token::chosen_token:  return 1;     // written; read with no brackets (GTK-5)
+    case token::path_token:    return 1;     // written; read with no brackets (GTK-6)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -393,7 +397,12 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
         // two do not need one.
         WindowHandle made;
         long long int least = 0, most = 0;
-        if (row->takes_what == AWord::items) {
+        if (row->takes_what == AWord::a_file) {
+            std::string path;
+            if (!text_of(arguments[0], path, called, context))
+                return Value();
+            made = window_piece_of_a_file(row->makes, path, why);
+        } else if (row->takes_what == AWord::items) {
             // A LIST OF WORDS. Each item goes through text_of, so a list of
             // numbers is a choice of their digits -- the author's own rule for a
             // number where text is expected, applied one item at a time rather
@@ -438,11 +447,33 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
             // wrong and got it wrong quietly -- a slider on a machine with no
             // screen exited 13 while printing "there is no display to draw on",
             // which is a code and a sentence disagreeing about what happened.
+            // A FILE THAT IS NOT THERE IS THE PROGRAM'S, and so is an empty
+            // list and a range of nothing. No screen is the machine's. They are
+            // told apart the same way satellite.window.new tells them apart --
+            // by testing the very thing the factory checks -- except for a
+            // picture, which needs GDK started before it can read a file at all,
+            // so `why` is the only thing that knows.
+            const bool a_bad_file = row->takes_what == AWord::a_file &&
+                                    why.find("no display to draw on") == std::string::npos;
             const bool the_program = (row->takes_what == AWord::numbers && row->arity == 2 &&
                                       least >= most) ||
-                                     row->takes_what == AWord::items;
-            context.refuse(the_program ? satl_line_not_understood : no_display,
-                           called + " could not be made -- " + why);
+                                     row->takes_what == AWord::items || a_bad_file;
+            // A FILE GETS A FILE'S CODE. satellite.variable.file already has the
+            // scale -- file_not_found for nothing at that path,
+            // file_unreadable for a file that is there and cannot be used -- and
+            // a picture is a file like any other. satl_line_not_understood would
+            // say the LINE was wrong, and the line is fine: the file is not.
+            //
+            // GLib's own message is what tells the two apart, because GLib is
+            // what looked. It is better than anything written here would be: it
+            // names the path, and it knows a missing file from one that is there
+            // and is not a picture.
+            const signed long long int code =
+                a_bad_file ? (why.find("No such file or directory") != std::string::npos
+                                  ? file_not_found
+                                  : file_unreadable)
+                           : (the_program ? satl_line_not_understood : no_display);
+            context.refuse(code, called + " could not be made -- " + why);
             return Value();
         }
         return Value::of_window(std::move(made));
@@ -590,6 +621,25 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
                                 got < 0);
         return Value::of_number(std::move(answer));
     }
+    // `.path` WITH NO BRACKETS ASKS WHICH FILE A PICTURE SHOWS, and it never
+    // crosses to the desk: satellite opened that file, so the path is ours and
+    // stays true after the window has gone. A label's rule, not a text box's.
+    if (method == token::path_token && !had_parentheses) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        std::string shown, why;
+        if (!window_path_of(*piece, shown, why)) {
+            context.refuse(types_do_not_meet, what + " -- " + why);
+            return Value();
+        }
+        Value out;
+        std::size_t bad_offset = 0;
+        Value::of_utf8(shown, out, bad_offset);
+        return out;
+    }
     // `.chosen` WITH NO BRACKETS ASKS WHICH ITEM IS PICKED, as TEXT. Nothing
     // picked is "" and not a refusal: a choice a person has not touched is an
     // ordinary state of a choice.
@@ -693,6 +743,13 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         if (!text_of(arguments[0], pick, what, context))
             return Value();
         went = window_set_chosen(*window, pick, why);
+        break;
+    }
+    case token::path_token: {
+        std::string shown;
+        if (!text_of(arguments[0], shown, what, context))
+            return Value();
+        went = window_set_path(*window, shown, why);
         break;
     }
     case token::append_token: {

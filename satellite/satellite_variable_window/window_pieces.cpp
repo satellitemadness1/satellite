@@ -95,6 +95,7 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     case satellite_window::number_box:
     case satellite_window::progress:
     case satellite_window::choice:
+    case satellite_window::picture:
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -208,6 +209,120 @@ WindowHandle window_piece_of_items(satellite_window::Piece which,
     const char *const *strings = as_gtk_wants.data();
     on_the_desk([raw, strings] { raw->widget = gtk_drop_down_new_from_strings(strings); });
     return made;
+}
+
+// ---------------------------------------------------------------------------
+// A PICTURE (GTK-6), AND THE FOUR PROJECTS IT SWITCHES ON.
+// ---------------------------------------------------------------------------
+namespace {
+
+// A FILE INTO SOMETHING THAT CAN BE DRAWN, WITH ITS ERROR. ON THE DESK'S THREAD.
+//
+// gdk_texture_new_from_filename IS THE ONE WITH A GError, which is the whole
+// reason it is used instead of gtk_picture_new_for_filename: that one takes a
+// path that is not there, hands back a widget that draws nothing, and says
+// nothing at all. A person would see an empty space where their logo should be
+// and have no way to find out why.
+//
+// THE MESSAGE IS GLib'S OWN and it is better than anything we would write: it
+// names the file, and it tells a missing file apart from an unreadable one and
+// from one that is there and is not a picture.
+GdkTexture *a_texture_from(const std::string &path, std::string &why)
+{
+    GError *went_wrong = nullptr;
+    GdkTexture *made = gdk_texture_new_from_filename(path.c_str(), &went_wrong);
+    if (made == nullptr) {
+        why = went_wrong != nullptr && went_wrong->message != nullptr
+                  ? std::string(went_wrong->message)
+                  : "it could not be read as a picture";
+        if (went_wrong != nullptr)
+            g_error_free(went_wrong);
+        return nullptr;
+    }
+    return made;
+}
+
+} // namespace
+
+WindowHandle window_piece_of_a_file(satellite_window::Piece which, const std::string &path,
+                                    std::string &why)
+{
+    if (which != satellite_window::picture) {
+        why = "that is not a piece made from a file";
+        return nullptr;
+    }
+    if (path.empty()) {
+        why = "a picture needs the name of a file, and it was given nothing";
+        return nullptr;
+    }
+    // THE DESK IS OPENED BEFORE THE FILE IS READ, and that order is not free
+    // choice: gdk_texture_new_from_filename wants GDK started. A machine with no
+    // screen therefore says NO_DISPLAY rather than complaining about the file,
+    // which is right -- the file is not the reason that run cannot draw.
+    if (!open_the_desk(why))
+        return nullptr;
+    WindowHandle made = std::make_shared<satellite_window>(which);
+    satellite_window *raw = made.get();
+    std::string went_wrong;
+    on_the_desk([raw, &path, &went_wrong] {
+        GdkTexture *drawn = a_texture_from(path, went_wrong);
+        if (drawn == nullptr)
+            return;
+        raw->widget = gtk_picture_new_for_paintable(GDK_PAINTABLE(drawn));
+        // THE PICTURE TOOK ITS OWN REFERENCE. Ours is spent.
+        g_object_unref(drawn);
+    });
+    if (raw->widget == nullptr) {
+        why = went_wrong;
+        return nullptr;
+    }
+    // WHERE IT GOT WHAT IT DRAWS, kept so `.path` can answer after the window
+    // has closed -- satellite opened that file, so it is ours to remember.
+    made->text = path;
+    return made;
+}
+
+bool window_path_of(satellite_window &which, std::string &out, std::string &why)
+{
+    if (which.piece != satellite_window::picture) {
+        why = std::string(which.piece_name()) + " shows no file -- a picture does";
+        return false;
+    }
+    out = which.text;
+    return true;
+}
+
+bool window_set_path(satellite_window &which, const std::string &to, std::string &why)
+{
+    if (which.piece != satellite_window::picture) {
+        why = std::string(which.piece_name()) + " shows no file -- a picture does";
+        return false;
+    }
+    if (which.widget == nullptr) {
+        why = "it is closed";
+        return false;
+    }
+    GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
+    std::string went_wrong;
+    bool swapped = false;
+    on_the_desk([widget, &to, &went_wrong, &swapped] {
+        GdkTexture *drawn = a_texture_from(to, went_wrong);
+        if (drawn == nullptr)
+            return;
+        gtk_picture_set_paintable(GTK_PICTURE(widget), GDK_PAINTABLE(drawn));
+        g_object_unref(drawn);
+        swapped = true;
+    });
+    if (!swapped) {
+        // THE OLD PICTURE IS STILL THERE, and `.path` still answers it. A
+        // failed change must not leave a piece saying it shows a file it does
+        // not -- which is what writing `which.text` before checking would have
+        // done.
+        why = went_wrong;
+        return false;
+    }
+    which.text = to;
+    return true;
 }
 
 } // namespace satellite004

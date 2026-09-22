@@ -63,7 +63,7 @@ public:
     // been letting C++ choose satellite's words.
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
                  slider, number_box, progress, choice,
-                 row, column, grid, how_many_pieces };
+                 row, column, grid, picture, how_many_pieces };
 
     Piece piece = window;
 
@@ -177,6 +177,7 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a row", "row"},
     {"a column", "column"},
     {"a grid", "grid"},
+    {"a picture", "picture"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -262,6 +263,21 @@ WindowHandle window_piece_of_numbers(satellite_window::Piece which, long long in
 WindowHandle window_piece_of_items(satellite_window::Piece which,
                                    const std::vector<std::string> &items, std::string &why);
 
+// AND THE FOURTH (GTK-6): a piece made from a FILE on the disk.
+//
+// A FILE THAT IS NOT THERE IS REFUSED WHERE IT IS WRITTEN.
+// gtk_picture_new_for_filename() on a path that does not exist gives a widget
+// that draws nothing and says nothing, which is the one kind of answer this
+// project will not ship -- so the texture is loaded HERE, with its GError, and a
+// missing or unreadable or corrupt file comes back as a sentence.
+//
+// IT IS WHAT MAKES gdk-pixbuf, libpng, libjpeg-turbo AND libtiff REACHABLE.
+// Those four are ~2.6 MB of satl and had been carried since the first vendored
+// build with no satellite word able to touch a line of them
+// (GTK_AND_NO_DEPENDENCIES.md Part 00, Table B).
+WindowHandle window_piece_of_a_file(satellite_window::Piece which, const std::string &path,
+                                    std::string &why);
+
 // `a_piece.text("what it says now")` -- the words ON a piece. A window is
 // REFUSED here and told to use `.title` instead: a window's words are its title,
 // and answering the title to `.text` would be two names for one thing, which is
@@ -341,6 +357,19 @@ bool window_set_value(satellite_window &which, long long int to, std::string &wh
 // wrong and does not say so.
 bool window_chosen_of(satellite_window &which, std::string &out, std::string &why);
 bool window_set_chosen(satellite_window &which, const std::string &to, std::string &why);
+
+// `a_picture.path` AND `a_picture.path("other.png")` -- THE FILE A PICTURE SHOWS
+// (GTK-6).
+//
+// `.path` AND NOT `.text`, and `.text` on a picture is refused and told to write
+// this instead -- the same pairing a window has with `.title`. A path is not
+// words on a piece; it is where a piece got what it draws.
+//
+// READING NEVER CROSSES TO THE DESK and answers after the window has closed,
+// because a picture's path is satellite's own: we opened that file. It is a
+// label's rule, not a text box's.
+bool window_path_of(satellite_window &which, std::string &out, std::string &why);
+bool window_set_path(satellite_window &which, const std::string &to, std::string &why);
 
 // `my_window.append(piece, x, y)` -- BY ITS CENTRE (WIN-3): 400, 300 is the
 // middle of an 800x600 window, not a corner. The piece's own measured size is

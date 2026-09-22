@@ -75,7 +75,7 @@ projects produce the archives.
 | ✔ | **GTK-3** on and off | gtk | — |
 | ✔ | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
 | ✔ | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
-| — | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
+| ✔ | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
 | ✔ | **GTK-7** rows, columns, a grid | gtk | — |
 | — | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
 | — | **GTK-9** every piece talks back | gtk, gobject | libffi |
@@ -115,10 +115,10 @@ projects are in satl today and no satellite word has ever reached them.**
 | **fontconfig** | libfontconfig | finding IBM Plex Mono in the spill | reached at WIN-1 |
 | **fribidi** | libfribidi | right-to-left text | reached only |
 | **expat** | libexpat | fontconfig's XML parser, on our own `fonts.conf` | reached at WIN-1 |
-| **gdk-pixbuf** | libgdk_pixbuf-2.0 + 13 loaders | a picture off the disk | **GTK-6 — nothing calls it today** |
-| **libpng** | libpng16 | `.png` | **GTK-6** |
-| **libjpeg-turbo** | libjpeg | `.jpg` | **GTK-6** |
-| **libtiff** | libtiff | `.tif` | **GTK-6** |
+| **gdk-pixbuf** | libgdk_pixbuf-2.0 + 13 loaders | a picture off the disk | GTK-6 ✔ |
+| **libpng** | libpng16 | `.png` | GTK-6 ✔ — proved with a real 64×48 PNG |
+| **libjpeg-turbo** | libjpeg | `.jpg` | GTK-6 ✔ — proved with a real JPEG |
+| **libtiff** | libtiff | `.tif` | GTK-6 — same word, not yet proved with a `.tif` |
 | **zlib** | libz | the compressed GResource; png | WIN-1 ✔ |
 | **graphene** | libgraphene-1.0 | the render node maths | reached only |
 | **libepoxy** | libepoxy | GL entry points for GSK | reached only |
@@ -796,7 +796,7 @@ could once fail for exactly one reason — the window had gone — so the tail o
 sentence reading *"there is no purple to choose here"* is a code and a sentence
 disagreeing about what went wrong. The tail now asks the widget.
 
-## GTK-6 — a picture, and the four projects it switches on
+## GTK-6 — a picture, and the four projects it switches on — **BUILT 2026-09-21**
 
     my_window.append(satellite.window.picture("logo.png"), 400, 200)
 
@@ -816,6 +816,32 @@ reach a line of it**. GTK-6 is what earns them.
 - **A path is a path, and `satellite.file` already has the rules for one.** This
   milestone must not invent a second set.
 - SVG is `libgtk_svg.a` in 4.24 and comes free with the same word.
+
+**AS BUILT** — `picture` is `1 27 15`, and `.path` reads which file it shows and
+writes a different one. **`.text` on a picture is refused and sent to `.path`**,
+the same pairing a window has with `.title`: a path is not words on a piece, it
+is where a piece got what it draws.
+
+**`gdk_texture_new_from_filename()` AND NOT `gtk_picture_new_for_filename()`**,
+and that is the whole of the first bullet above made real. The second takes a
+path that is not there, hands back a widget that draws nothing, and **says
+nothing at all** — a person would see an empty space where their logo should be
+and have no way to find out why. The first has a `GError`, and **GLib's own
+message is better than anything written here**: it names the file, and it knows
+a missing file from one that is there and is not a picture.
+
+**AND THE MACHINE CODE IS A FILE'S.** `satellite.variable.file` already has the
+scale, so a missing picture answers `39 file_not_found` and a file that is not a
+picture answers `42 file_unreadable`. `satl_line_not_understood` would have said
+the LINE was wrong, and the line is fine.
+
+**A FAILED `.path` LEAVES THE OLD PICTURE AND THE OLD ANSWER.** Writing the new
+path before checking would have left a piece saying it shows a file it does not.
+
+**Proved with real files**, written by GdkPixbuf on this machine: a 64×48 PNG
+loaded and shown, then swapped for a JPEG — **libpng and libjpeg-turbo both
+reached from a satellite program for the first time.** libtiff is the same word
+and the same code path and has not been proved with a `.tif`.
 
 ## GTK-7 — putting a piece somewhere other than by coordinate — **BUILT 2026-09-21**
 
@@ -1194,12 +1220,12 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE FOURTEEN WIDGETS** as of 2026-09-21: a window, a button, a label,
+- **THERE ARE FIFTEEN WIDGETS** as of 2026-09-21: a window, a button, a label,
   a text box, a text area, a checkbox, a switch, a slider, a number box, a
-  progress bar, a choice, a row, a column and a grid.
+  progress bar, a choice, a row, a column, a grid and a picture.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-5 and GTK-7 are built** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-7 are built** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a
@@ -1209,9 +1235,12 @@ is the milestone that gets VTE into the folder and into a static archive.
   (GTK-17, GTK-18), and neither can start until DEP-1 is extended by one
   tarball — **and VTE hardcodes `shared_library()` upstream**, so a vendored one
   has to be patched to produce an `.a` or it un-statics satl.
-- **2.6 MB OF satl IS UNREACHABLE.** gdk-pixbuf, libpng, libjpeg-turbo and
-  libtiff are linked in and no satellite word can call any of them. GTK-6 is
-  what earns them; Part 00's Table B is the full list.
+- ~~**2.6 MB OF satl IS UNREACHABLE.**~~ **EARNED 2026-09-21 by GTK-6.**
+  gdk-pixbuf, libpng and libjpeg-turbo are reached by `satellite.window.picture`
+  and were proved with a real PNG and a real JPEG. libtiff is the same word and
+  has not been proved with a `.tif`. **pcre2, libgirepository and
+  libcairo-script-interpreter are still called by nobody** and no milestone
+  below ever will — Part 00's Table B is the list.
 - **`THIRD-PARTY-NOTICES.md` is not written**, waiting on DEP-6's two rulings.
 - **WIN-9 — force the satl-term console or not — asked 2026-09-19, still
   unanswered.** The recommendation was: do not.
