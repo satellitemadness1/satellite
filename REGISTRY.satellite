@@ -367,7 +367,10 @@ bits              name                         what it is
 0000101100101110  chosen_token                 chosen  [METHOD] choice.chosen -- which of its items is picked, as TEXT; choice.chosen("green") picks that one (GTK_AND_NO_DEPENDENCIES.md GTK-5)
 0000101100101111  changed_token                changed  [METHOD] piece.changed(a_capsule) -- the capsule to run when a person changes it: typed in it, moved it, ticked it, picked in it (GTK_AND_NO_DEPENDENCIES.md GTK-9)
 0000101100110000  closed_token                 closed  [METHOD] window.closed(a_capsule) -- the capsule to run when the window goes away, whoever closed it (GTK_AND_NO_DEPENDENCIES.md GTK-9)
-0000101100110001  free                         to 0000101111111111, free for this family
+0000101100110001  width_token                  width  [METHOD] object.width -- how wide it is on the screen right now, in pixels (GTK_AND_NO_DEPENDENCIES.md GTK-8)
+0000101100110010  height_token                 height  [METHOD] object.height -- how tall it is on the screen right now, in pixels (GTK_AND_NO_DEPENDENCIES.md GTK-8)
+0000101100110011  fullscreen_token             fullscreen  [METHOD] window.fullscreen -- whether it fills the screen; window.fullscreen(1) makes it and window.fullscreen(0) gives it back (GTK_AND_NO_DEPENDENCIES.md GTK-8)
+0000101100110100  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

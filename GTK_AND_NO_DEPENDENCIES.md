@@ -77,7 +77,7 @@ projects produce the archives.
 | ✔ | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
 | ✔ | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
 | ✔ | **GTK-7** rows, columns, a grid | gtk | — |
-| — | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
+| ✔ | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
 | ✔ | **GTK-9** every piece talks back | gtk, gobject | libffi |
 | — | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
 | — | **GTK-11** asking a person | gtk, **gio** (`GFile`, `GAsyncResult`, `GCancellable`) | — |
@@ -908,7 +908,7 @@ press**, which is the one place a hang looks exactly like satl locking up
 (Q-WIN-11a's whole subject). `the_window_holding()` caps its walk anyway, so a
 defect in that refusal is a refusal rather than a hang.
 
-## GTK-8 — the window itself is more than a rectangle
+## GTK-8 — the window itself is more than a rectangle — **BUILT 2026-09-21** (no icon; see below)
 
     my_window.resize(1024, 768)     my_window.wide      my_window.tall
     my_window.fullscreen()          my_window.icon("logo.png")
@@ -926,6 +926,40 @@ A compositor may not have given the window the size it wanted — tiling ones
 routinely do not — and a window that reports its wish rather than its size is
 the failure mode this project keeps naming. Before it is mapped there is no
 answer; it reports the asked-for size and **says so in the documentation**.
+
+**AS BUILT** — `.resize(wide, tall)`, `.width`, `.height`, `.fullscreen`.
+
+**`.wide` AND `.tall` WERE SPELLED `.width` AND `.height`**, and not by
+preference: **`wide_token` already exists** at `0x9C40` and is the marker for a
+32-bit character in a payload (D3.1). Two things called `wide` in one registry
+is exactly the confusion the registry exists to prevent.
+
+**`.resize` IS A TOKEN THAT ALREADY EXISTED** — `infinity.resize(n)`, `0x0B25`.
+One name, one meaning, many kinds of thing: the shape `.append` has had since a
+file and a list shared it.
+
+**`.width` AND `.height` ARE EVERY PIECE'S, NOT JUST A WINDOW'S**, and what they
+answer when nothing is on a screen yet was chosen rather than defaulted:
+
+1. the real size, if a compositor has given it one;
+2. for a **window**, the size it asked for;
+3. for anything else, its **measured natural size** — which is the very number
+   `.append` uses to centre it.
+
+**Never 0 for a piece that exists**, because 0 is an answer a program would act
+on and it would be acting on nothing. Measured: a button in no window at all
+answers 105 × 34.
+
+**AND THE COMPOSITOR DECLINING IS VISIBLE IN THE PROOF.** `w.resize(1024, 768)`
+followed by `w.width` answered **800** under headless mutter — the request was
+made and not granted, and `.width` reported what *is*.
+
+**THERE IS NO `.icon`, AND THAT IS A FINDING RATHER THAN AN OMISSION.** GTK4 has
+no per-window icon from a file: `gtk_window_set_icon_name` takes a **theme
+name**, and a Wayland compositor takes a window's icon from the `.desktop` file
+it matches by app id. A word that took a path and quietly did nothing is the
+answer that is wrong and does not say so, so none was minted — and check.sh has
+a row asserting none exists, so nobody adds one by accident.
 
 ## GTK-9 — every piece talks back, not just a button — **BUILT 2026-09-21**
 
@@ -1266,7 +1300,7 @@ is the milestone that gets VTE into the folder and into a static archive.
   progress bar, a choice, a row, a column, a grid and a picture.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-7 and GTK-9 are built** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-9 are built** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a

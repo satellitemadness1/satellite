@@ -77,6 +77,8 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
 
     WindowHandle made = std::make_shared<satellite_window>(satellite_window::window);
     made->title = title;
+    made->asked_wide = static_cast<int>(width);
+    made->asked_tall = static_cast<int>(height);
     // TOLD TO THE DESK BEFORE IT IS PRESENTED, so a window that is closed the
     // instant it appears is still a window the desk knows how to let go of.
     made->on_the_screen = true;
@@ -270,6 +272,97 @@ bool window_set_title(satellite_window &which, const std::string &title, std::st
     GtkWidget *widget = as_widget(which);
     on_the_desk([widget, &title] { gtk_window_set_title(GTK_WINDOW(widget), title.c_str()); });
     which.title = title;
+    return true;
+}
+
+bool window_resize(satellite_window &which, long long int wide, long long int tall, std::string &why)
+{
+    if (which.piece != satellite_window::window) {
+        why = "only a window is given a size -- a piece inside one is sized by what holds it";
+        return false;
+    }
+    if (wide <= 0 || tall <= 0) {
+        why = "a window's width and height must both be more than 0";
+        return false;
+    }
+    if (wide > 32767 || tall > 32767) {
+        why = "a window's width and height must each be 32767 or less";
+        return false;
+    }
+    if (!still_there(which, why))
+        return false;
+    GtkWidget *widget = as_widget(which);
+    const int to_wide = static_cast<int>(wide), to_tall = static_cast<int>(tall);
+    on_the_desk([widget, to_wide, to_tall] {
+        gtk_window_set_default_size(GTK_WINDOW(widget), to_wide, to_tall);
+    });
+    which.asked_wide = to_wide;
+    which.asked_tall = to_tall;
+    return true;
+}
+
+bool window_size_of(satellite_window &which, bool the_height, long long int &out, std::string &why)
+{
+    if (which.widget == nullptr) {
+        why = "it is closed -- ask its size while the window is still open";
+        return false;
+    }
+    GtkWidget *widget = as_widget(which);
+    int got = 0, natural = 0;
+    const bool a_window = which.piece == satellite_window::window;
+    on_the_desk([widget, the_height, &got, &natural] {
+        got = the_height ? gtk_widget_get_height(widget) : gtk_widget_get_width(widget);
+        if (got > 0)
+            return;
+        // NOTHING ON A SCREEN YET, so ask what it WOULD measure. This is the
+        // same question `.append` asks to centre a piece, which is why a button
+        // can answer it before it is in a window at all.
+        int least = 0;
+        gtk_widget_measure(widget, the_height ? GTK_ORIENTATION_VERTICAL : GTK_ORIENTATION_HORIZONTAL,
+                           -1, &least, &natural, nullptr, nullptr);
+    });
+    if (got > 0)
+        out = got;
+    else if (a_window)
+        out = the_height ? which.asked_tall : which.asked_wide;
+    else
+        out = natural;
+    return true;
+}
+
+bool window_fullscreen_of(satellite_window &which, bool &out, std::string &why)
+{
+    if (which.piece != satellite_window::window) {
+        why = "only a window fills the screen";
+        return false;
+    }
+    if (!still_there(which, why))
+        return false;
+    GtkWidget *widget = as_widget(which);
+    bool got = false;
+    on_the_desk([widget, &got] { got = gtk_window_is_fullscreen(GTK_WINDOW(widget)) != FALSE; });
+    out = got;
+    return true;
+}
+
+bool window_set_fullscreen(satellite_window &which, bool on, std::string &why)
+{
+    if (which.piece != satellite_window::window) {
+        why = "only a window fills the screen";
+        return false;
+    }
+    if (!still_there(which, why))
+        return false;
+    GtkWidget *widget = as_widget(which);
+    // ASKED, NEVER TAKEN. A compositor decides, and it may refuse -- which is a
+    // normal answer and not a failure, so this reports true either way. A
+    // program that needs to know asks `.fullscreen` when it matters.
+    on_the_desk([widget, on] {
+        if (on)
+            gtk_window_fullscreen(GTK_WINDOW(widget));
+        else
+            gtk_window_unfullscreen(GTK_WINDOW(widget));
+    });
     return true;
 }
 

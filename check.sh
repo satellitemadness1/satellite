@@ -2446,6 +2446,54 @@ expect "the queue is tested before the windows, so .closed is never lost" 1 \
        "$(grep -c 'THE QUEUE FIRST, AND THAT ORDER IS THE POINT' satellite/satellite_variable_window/window_desk.cpp)"
 
 # ---------------------------------------------------------------------------
+# THE WINDOW'S OWN SHAPE (GTK_AND_NO_DEPENDENCIES.md GTK-8, 2026-09-21).
+# ---------------------------------------------------------------------------
+#
+# PROVED ON A COMPOSITOR: `w.width` answering 800 before anything was mapped --
+# the size it ASKED for, because gtk_widget_get_width is 0 until a compositor
+# has given it one, and 0 is not what a program that wrote new("t", 800, 600)
+# means; `b.width` answering 105 for a button that is in NO window, which is its
+# measured natural size and the very number `.append` uses to centre it; and
+# `w.width` still answering 800 after `w.resize(1024, 768)` -- the compositor
+# declined, and `.width` reports what IS rather than what was asked for. A
+# window that reported its wish would be the failure this project keeps naming.
+
+expect "width, height and fullscreen are method tokens 0000101100110001..0011" "1|1|1|1|1|1" \
+       "$(grep -c '^0000101100110001  width_token ' REGISTRY.satellite)|$(grep -c 'Code width_token = 0x0B31;' satellite/bytecode/token_codes.hpp)|$(grep -c '^0000101100110010  height_token ' REGISTRY.satellite)|$(grep -c 'Code height_token = 0x0B32;' satellite/bytecode/token_codes.hpp)|$(grep -c '^0000101100110011  fullscreen_token ' REGISTRY.satellite)|$(grep -c 'Code fullscreen_token = 0x0B33;' satellite/bytecode/token_codes.hpp)"
+
+# `.resize` IS A TOKEN THAT ALREADY EXISTED -- infinity.resize(n), 0x0B25. One
+# name, one meaning, many kinds of thing, which is the shape `.append` has had
+# since a file and a list shared it.
+expect ".resize is the token infinity already had, not a second one" 1 \
+       "$(grep -c 'Code resize_token = 0x0B25;' satellite/bytecode/token_codes.hpp)"
+
+cat > build/window_shape_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.resize(1024, 768)
+    satellite.console.display(w.width)
+    satellite.console.display(w.fullscreen)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_shape_ok.satl > build/window_shape_ok.out 2>&1
+expect ".resize, .width and .fullscreen pass the checker, and stop only for want of a screen" 50 $?
+
+# ONLY A WINDOW IS GIVEN A SIZE. A piece inside one is sized by what holds it,
+# and a button told to be 300 wide in a row is a button arguing with the row.
+expect "a piece is not given a size, and the sentence says why" 1 \
+       "$(grep -c 'a piece inside one is sized by what holds it' satellite/satellite_variable_window/satellite_window.cpp)"
+
+# GTK4 HAS NO WINDOW ICON FROM A FILE, so `.icon(path)` is NOT built and is not
+# pretended. A Wayland compositor takes a window's icon from the .desktop file
+# it matches by app id; gtk_window_set_icon_name takes a THEME name, not a path.
+# Written down so nobody adds a word that quietly does nothing.
+expect "no .icon method was minted for a window" 0 \
+       "$(grep -c 'icon_token' satellite/bytecode/token_codes.hpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

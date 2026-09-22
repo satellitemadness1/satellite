@@ -107,6 +107,19 @@ public:
 
     std::string title;            // what it was made with, and what .title reads back
 
+    // WHAT SIZE A WINDOW ASKED FOR (GTK-8). A window that is not on the screen
+    // yet has no size at all -- gtk_widget_get_width answers 0 until a
+    // compositor has mapped it -- and 0 is not what a program that just wrote
+    // `new("t", 800, 600)` means by `.width`. This is what it answers instead,
+    // and it stops being the answer the moment there is a real one.
+    //
+    // A COMPOSITOR MAY NOT GIVE A WINDOW THE SIZE IT ASKED FOR. Tiling ones
+    // routinely do not, so the real size wins wherever there is one: a window
+    // that reports its wish rather than its size is the failure this project
+    // keeps naming.
+    int asked_wide = 0;
+    int asked_tall = 0;
+
     // THE WORDS ON A PIECE: a button's label, a label's line, what a person
     // typed. FOR A BUTTON AND A LABEL THIS IS THE TRUTH -- nothing but satellite
     // ever writes them. FOR A TEXT BOX IT IS A CACHE and GTK holds the original:
@@ -453,6 +466,36 @@ bool window_closed(satellite_window &which, const std::string &capsule, std::str
 bool window_close(satellite_window &which, std::string &why);
 bool window_focus(satellite_window &which, std::string &why);
 bool window_set_title(satellite_window &which, const std::string &title, std::string &why);
+
+// `my_window.resize(1024, 768)` -- ASK FOR A SIZE (GTK-8). ONLY A WINDOW: a
+// piece inside one is sized by what holds it, and a button told to be 300 wide
+// in a row is a button arguing with the row.
+//
+// ASKED, NEVER TAKEN, which is the same sentence `.focus()` carries. A
+// compositor decides; a tiling one will ignore this entirely, and that is not a
+// failure and must not be reported as one.
+bool window_resize(satellite_window &which, long long int wide, long long int tall, std::string &why);
+
+// `a_piece.width` AND `a_piece.height` -- HOW BIG IT IS ON THE SCREEN RIGHT NOW.
+// Any piece, not just a window: what a button turned out to measure is a real
+// question, and it is the one `.append` answers by centring.
+//
+// WHAT IT ANSWERS WHEN THERE IS NOTHING ON A SCREEN YET, in this order: the real
+// size if a compositor has given it one; the size a WINDOW asked for; and for
+// any other piece its own MEASURED natural size, which is what GTK would give it
+// if it were placed now. Never 0 for a piece that exists, because 0 is an answer
+// a program would act on and it would be acting on nothing.
+bool window_size_of(satellite_window &which, bool the_height, long long int &out, std::string &why);
+
+// `my_window.fullscreen` AND `my_window.fullscreen(1)` -- WHETHER IT FILLS THE
+// SCREEN, read and written (GTK-8). ONLY A WINDOW.
+//
+// ASKED, NEVER TAKEN, again: gtk_window_fullscreen() is a request, and reading
+// it back straight afterwards can still answer false because the compositor has
+// not answered yet. A program that wants to know should ask when it matters,
+// not immediately after asking.
+bool window_fullscreen_of(satellite_window &which, bool &out, std::string &why);
+bool window_set_fullscreen(satellite_window &which, bool on, std::string &why);
 
 // THE RUN DOES NOT END WHILE A WINDOW IS OPEN. Called once, from main(), after
 // the program has returned: a program that opens a window and stops would

@@ -316,7 +316,8 @@ std::string window_word_takes(Code code)
 // this and it went stale the same afternoon it was written.
 std::string window_methods_are()
 {
-    return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\") and .ok; "
+    return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\"), "
+           ".resize(wide, tall), .fullscreen and .ok; every piece has .width and .height; "
            "a row, a column or a grid has .append too -- .append(piece) for a row, "
            ".append(piece, across, down) for a grid's cell; "
            "a piece in one has .text; a checkbox or a switch has .on; a slider, a number box or "
@@ -342,6 +343,10 @@ int window_method_arity(Code method)
     case token::path_token:    return 1;     // written; read with no brackets (GTK-6)
     case token::changed_token: return 1;     // the capsule's name; read with no brackets (GTK-9)
     case token::closed_token:  return 1;     // the capsule's name; read with no brackets (GTK-9)
+    case token::resize_token:  return 2;     // a width and a height (GTK-8)
+    case token::width_token:   return 0;     // a question, read bare or bracketed (GTK-8)
+    case token::height_token:  return 0;     // a question, read bare or bracketed (GTK-8)
+    case token::fullscreen_token: return 1;  // written; read with no brackets (GTK-8)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -532,6 +537,39 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
     if (method == token::ok_token) {
         satellite_window *asked = which.get();
         return Value::of_bool(asked != nullptr && asked->on_the_screen);
+    }
+    // `.width` AND `.height` ARE QUESTIONS, so they read with or without their
+    // brackets -- the rule `.ok` already follows. A doing wants its brackets; a
+    // question written bare reads exactly as what it means.
+    if (method == token::width_token || method == token::height_token) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        long long int got = 0;
+        std::string why;
+        if (!window_size_of(*piece, method == token::height_token, got, why)) {
+            context.refuse(window_is_closed, what + " -- " + why);
+            return Value();
+        }
+        return Value::of_number(satellite_number(static_cast<unsigned long long int>(got)));
+    }
+    // `.fullscreen` WITH NO BRACKETS ASKS WHETHER IT FILLS THE SCREEN.
+    if (method == token::fullscreen_token && !had_parentheses) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        bool got = false;
+        std::string why;
+        if (!window_fullscreen_of(*piece, got, why)) {
+            context.refuse(piece->widget == nullptr ? window_is_closed : types_do_not_meet,
+                           what + " -- " + why);
+            return Value();
+        }
+        return Value::of_bool(got);
     }
     if (method == token::title_token && !had_parentheses) {
         satellite_window *window = which.get();
@@ -782,6 +820,21 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         if (!text_of(arguments[0], capsule, what, context))
             return Value();
         went = window_closed(*window, capsule, why);
+        break;
+    }
+    case token::resize_token: {
+        long long int wide = 0, tall = 0;
+        if (!place_of(arguments[0], wide, what + "'s width", context) ||
+            !place_of(arguments[1], tall, what + "'s height", context))
+            return Value();
+        went = window_resize(*window, wide, tall, why);
+        break;
+    }
+    case token::fullscreen_token: {
+        bool on = false;
+        if (!on_of(arguments[0], on, what, context))
+            return Value();
+        went = window_set_fullscreen(*window, on, why);
         break;
     }
     case token::append_token: {
