@@ -83,7 +83,7 @@ projects produce the archives.
 | — | **GTK-11** asking a person | gtk, **gio** (`GFile`, `GAsyncResult`, `GCancellable`) | — |
 | — | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GActionMap`), gtk | — |
 | ✔ | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
-| — | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
+| ✔ | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
 | — | **GTK-15** a canvas | gtk, **cairo directly** | pixman, freetype |
 | ◑ | **GTK-16** more than one screenful | gtk | — |
 | — | **GTK-17** `satellite.console` is a window | **VTE — NOT VENDORED**, gtk, pango | freetype, harfbuzz, fribidi |
@@ -122,7 +122,7 @@ projects are in satl today and no satellite word has ever reached them.**
 | **zlib** | libz | the compressed GResource; png | WIN-1 ✔ |
 | **graphene** | libgraphene-1.0 | the render node maths | reached only |
 | **libepoxy** | libepoxy | GL entry points for GSK | reached only |
-| **libxkbcommon** | libxkbcommon | a Wayland keymap into keysyms | reached at WIN-2; **CALLED at GTK-14** |
+| **libxkbcommon** | libxkbcommon | a Wayland keymap into keysyms | reached at WIN-2; **CALLED at GTK-14 ✔** |
 | **xkeyboard-config** | **data, 293 files** | what libxkbcommon reads | carried since WIN-1 ✔ |
 | **libffi** | libffi | gobject's generic closure marshaller | reached at WIN-11 |
 | **pcre2** | libpcre2-8 | glib's `GRegex` | **nothing here has ever needed one** |
@@ -1203,7 +1203,7 @@ pointer into the `satellite_window`, so a tick firing between the close and the
 desk letting go would queue a capsule for a window that is already gone — the
 one way this module could reach freed memory.
 
-## GTK-14 — the keyboard and the mouse, and where 2.8 MB finally earns itself
+## GTK-14 — the keyboard and the mouse, and where 2.8 MB finally earns itself — **BUILT 2026-09-21**
 
     my_window.key(when_a_key)        a_row.clicked(when_clicked)
 
@@ -1220,6 +1220,40 @@ a number. The shapes are `.key` answering the **character** for a printable key
 and a **name** for the rest (`"escape"`, `"up"`), which is what every scripting
 language settles on, and is the recommendation. Whether modifiers are separate
 is the author's.
+
+**AS BUILT, AND THE RECOMMENDATION IS WHAT WAS BUILT.** `.key(a_capsule)` on a
+window, `.key` read bare for the last one; `.clicked(a_capsule)` on anything
+that is not a button. `key` is `0x0B38`, `clicked` is `0x0B39`.
+
+**PROVED BY PRESSING REAL KEYS** on a headless mutter, through its own
+`RemoteDesktop.NotifyKeyboardKeysym` — the route `press-a-button.sh` already
+uses for the pointer:
+
+    sent  a  a  c  d  7            answered  a  c  d  7
+    sent  B  Escape Up Return F1   answered  shift_l  B  escape  up  return  f1
+
+**`shift_l` is right**: mutter synthesises a Shift press to type a capital, and
+a modifier **is** a key press — so modifiers are not separate, they are keys,
+and that answers the author's question above by demonstration. **The first key
+of a remote-desktop session is swallowed** — `a a c d 7` answers `a c d 7` —
+and that is mutter settling, not satl: the second `a` arrives.
+
+**`.key` READ BARE ANSWERS THE LAST KEY, NOT THE CAPSULE'S NAME**, and it is the
+only one of the capsule-naming methods that does. Which key was pressed is the
+thing a program wants; a capsule it wrote itself is not.
+
+**WHAT A KEY SAID TRAVELS ON THE EVENT, NOT ON THE PIECE**, and that is the same
+single-writer discipline GTK-2 settled. `AnEvent` gained a `said`; the desk
+fills it in; **the INTERPRETER copies it onto the piece** as it takes the event
+off the queue, just before running the capsule. Written by the desk and read by
+a capsule it would have been a `std::string` with two threads on it.
+
+**THE HANDLER ANSWERS `FALSE`, so the key goes on to whatever wanted it.** `TRUE`
+would mean a program watching for Escape had silently made every text box in its
+window unusable — which is the quiet kind of wrongness this project refuses.
+
+**A button asked for `.clicked` is sent to `.pressed`**: a button already has a
+word for being clicked.
 
 ## GTK-15 — a canvas: satellite draws it itself
 
@@ -1409,7 +1443,7 @@ is the milestone that gets VTE into the folder and into a static archive.
   and a split.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-10 and GTK-13 are built, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-10, GTK-13 and GTK-14 are built, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a

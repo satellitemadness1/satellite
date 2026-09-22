@@ -120,6 +120,60 @@ gboolean it_ticked(gpointer user_data)
     return G_SOURCE_CONTINUE;
 }
 
+// WHAT A KEY IS CALLED, AND A PROGRAM NEVER SEES A KEYVAL (GTK-14).
+//
+// A PRINTABLE KEY IS ITS CHARACTER and everything else is a NAME in lower case.
+// gdk_keyval_to_unicode() answers 0 for a key that draws nothing, which is
+// exactly the test wanted; gdk_keyval_name() gives GDK's own spelling --
+// "Escape", "Up", "Return", "F1" -- and lower case is satellite's.
+//
+// THE CHARACTER IS ENCODED AS UTF-8, because that is what a satellite string is.
+// g_unichar_to_utf8 into six bytes is glib's own documented maximum.
+std::string what_key_that_was(guint keyval)
+{
+    const gunichar drawn = gdk_keyval_to_unicode(keyval);
+    if (drawn != 0 && g_unichar_isprint(drawn)) {
+        char bytes[8] = {0};
+        const gint many = g_unichar_to_utf8(drawn, bytes);
+        return std::string(bytes, static_cast<std::size_t>(many));
+    }
+    const char *named = gdk_keyval_name(keyval);
+    if (named == nullptr)
+        return std::string();
+    std::string out(named);
+    for (char &c : out)
+        if (c >= 'A' && c <= 'Z')
+            c = static_cast<char>(c - 'A' + 'a');
+    return out;
+}
+
+// A KEY WAS PRESSED. ON THE DESK'S THREAD, and what it SAID travels on the
+// event rather than being written onto the piece here -- window_desk.hpp says
+// why that is the difference between one writer and a race.
+//
+// NOT COLLAPSED. Two presses of the same key are two presses, the same way three
+// clicks are three clicks; it is a slider's DRAG that is one change.
+gboolean a_key_went_down(GtkEventControllerKey *, guint keyval, guint, GdkModifierType,
+                         gpointer user_data)
+{
+    satellite_window *window = static_cast<satellite_window *>(user_data);
+    if (!window->when_a_key.empty())
+        the_desk_saw_something(window->when_a_key, window->shared_from_this(), false,
+                               what_key_that_was(keyval));
+    // FALSE, SO THE KEY GOES ON TO THE WIDGET THAT WANTED IT. Answering TRUE
+    // would mean a program that watches for Escape has silently made every text
+    // box in the window unusable.
+    return FALSE;
+}
+
+// AND A CLICK ON SOMETHING THAT IS NOT A BUTTON.
+void it_was_clicked(GtkGestureClick *, gint, gdouble, gdouble, gpointer user_data)
+{
+    satellite_window *piece = static_cast<satellite_window *>(user_data);
+    if (!piece->when_clicked.empty())
+        the_desk_saw_something(piece->when_clicked, piece->shared_from_this());
+}
+
 } // namespace
 
 bool window_pressed(satellite_window &which, const std::string &capsule, std::string &why)
@@ -270,6 +324,58 @@ bool window_every(satellite_window &which, const std::string &capsule, long long
         // g_main_loop_run there, so the source fires on the desk and nowhere
         // else.
         raw->tick = g_timeout_add(how_often, it_ticked, raw);
+    });
+    return true;
+}
+
+bool window_key(satellite_window &which, const std::string &capsule, std::string &why)
+{
+    if (which.piece != satellite_window::window) {
+        why = "only a window hears the keyboard -- a key goes to whatever has the focus, and the "
+              "window is what sees them all";
+        return false;
+    }
+    if (which.widget == nullptr || !which.on_the_screen) {
+        why = "it is closed";
+        return false;
+    }
+    satellite_window *raw = &which;
+    on_the_desk([raw, &capsule] {
+        raw->when_a_key = capsule;
+        // THE CONTROLLER IS ADDED ONCE. GTK4 has no key signal on a widget --
+        // everything is a controller you add -- and adding a second would run
+        // the capsule twice for one key.
+        if (raw->key_is_connected)
+            return;
+        GtkEventController *hears = gtk_event_controller_key_new();
+        g_signal_connect(hears, "key-pressed", G_CALLBACK(a_key_went_down), raw);
+        gtk_widget_add_controller(static_cast<GtkWidget *>(raw->widget), hears);
+        raw->key_is_connected = true;
+    });
+    return true;
+}
+
+bool window_clicked(satellite_window &which, const std::string &capsule, std::string &why)
+{
+    if (which.piece == satellite_window::button) {
+        why = "a button already has a word for being clicked -- write .pressed(" + capsule +
+              ") instead";
+        return false;
+    }
+    if (which.widget == nullptr) {
+        why = "it is closed";
+        return false;
+    }
+    satellite_window *raw = &which;
+    on_the_desk([raw, &capsule] {
+        raw->when_clicked = capsule;
+        if (raw->click_is_connected)
+            return;
+        GtkGesture *notices = gtk_gesture_click_new();
+        g_signal_connect(notices, "released", G_CALLBACK(it_was_clicked), raw);
+        gtk_widget_add_controller(static_cast<GtkWidget *>(raw->widget),
+                                  GTK_EVENT_CONTROLLER(notices));
+        raw->click_is_connected = true;
     });
     return true;
 }

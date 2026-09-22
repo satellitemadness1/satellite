@@ -187,6 +187,17 @@ public:
     std::string when_it_ticks;
     unsigned int tick = 0;
 
+    // AND THE KEYBOARD AND THE MOUSE (GTK-14). `last_key` is what `.key` reads
+    // back, and it is WRITTEN BY THE INTERPRETER -- window_calls.cpp copies it
+    // off the event as it takes one from the queue, on its own thread, just
+    // before running the capsule. The desk never touches it, which is what keeps
+    // it a string with one writer.
+    std::string when_a_key;
+    std::string last_key;
+    bool key_is_connected = false;
+    std::string when_clicked;
+    bool click_is_connected = false;
+
     // WHAT THIS PIECE IS WEARING (GTK-10). GTK4 has no per-widget colour setter
     // -- everything is CSS -- so a piece that has been dressed carries a css
     // class nobody else has and a GtkCssProvider scoped to it, and the parts are
@@ -216,6 +227,10 @@ public:
 // THE WINDOW A PIECE IS IN, however deep it is (GTK-7). Walks `inside_of` up
 // until it finds the thing with a frame, and answers null for a piece that is in
 // nothing yet -- which is every piece before it is appended.
+//
+// A WINDOW'S OWN WINDOW IS ITSELF. Every caller wants "the window this happened
+// in", and for something that happened TO a window -- it closed, its clock
+// struck, a key was pressed in it -- that is the window itself.
 //
 // IT CANNOT LOOP. `.append` refuses to put a piece into something already inside
 // it, so the chain it walks is a tree by construction; the step count is capped
@@ -533,6 +548,31 @@ bool window_closed(satellite_window &which, const std::string &capsule, std::str
 // wants two rhythms can count in its own capsule.
 bool window_every(satellite_window &which, const std::string &capsule, long long int milliseconds,
                   std::string &why);
+
+// `my_window.key(when_a_key)` AND `my_window.key` -- A KEY WAS PRESSED, and
+// WHICH ONE (GTK-14). ONLY A WINDOW: GTK4 delivers a key to whatever has the
+// focus, and a controller on the window sees every one of them, which is what a
+// program asking "was Escape pressed" actually means.
+//
+// HOW A KEY IS SPELLED TO A PROGRAM, and this is the language decision GTK-14
+// existed to make: a PRINTABLE key is its character -- "a", "A", "7" -- and
+// every other key is a NAME in lower case: "escape", "up", "return", "f1".
+// **A PROGRAM NEVER SEES A KEYVAL.** GDK_KEY_Escape is 0xff1b and a satellite
+// program has no business knowing that.
+//
+// `.key` READ BARE ANSWERS THE LAST ONE, and it is empty until one is pressed.
+// It is the same pair `.pressed` is: written with brackets, read without.
+//
+// libxkbcommon AND xkeyboard-config'S 293 FILES HAVE BEEN CARRIED SINCE WIN-1
+// FOR GTK'S SAKE -- gdkkeymap-wayland.c SIGSEGVs without them before a window
+// exists. This is the first time SATELLITE asks what key was pressed.
+bool window_key(satellite_window &which, const std::string &capsule, std::string &why);
+
+// `a_piece.clicked(when_clicked)` -- A PERSON CLICKED IT (GTK-14). Any piece
+// EXCEPT a button, which is sent to `.pressed`: a button already has a word for
+// being clicked, and two names for one thing is what this language spends its
+// refusals avoiding.
+bool window_clicked(satellite_window &which, const std::string &capsule, std::string &why);
 
 bool window_close(satellite_window &which, std::string &why);
 bool window_focus(satellite_window &which, std::string &why);

@@ -253,6 +253,13 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
 
 WindowHandle the_window_holding(const satellite_window &piece)
 {
+    // A WINDOW'S OWN WINDOW IS ITSELF (GTK-13/14). Every caller wants "the
+    // window this happened in", and for something that happened TO a window --
+    // it closed, its clock struck, a key was pressed in it -- that is the window
+    // itself. Walking up from a window finds nothing, and a capsule declaring
+    // `its_window` would have been handed nothing.
+    if (piece.piece == satellite_window::window)
+        return const_cast<satellite_window &>(piece).shared_from_this();
     // CAPPED, AND THE CAP IS NOT THE DESIGN. `.append` refuses to make a loop,
     // so this walks a tree; the count is here so that a defect in that refusal
     // is a refusal here rather than a hang inside a press, which is the one

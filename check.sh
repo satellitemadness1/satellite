@@ -2681,6 +2681,74 @@ expect "closing a window stops its clock, and stops it first" 1 \
        "$(grep -c 'THE CLOCK STOPS WITH THE WINDOW (GTK-13), and it stops FIRST' satellite/satellite_variable_window/satellite_window.cpp)"
 
 # ---------------------------------------------------------------------------
+# THE KEYBOARD AND THE MOUSE (GTK_AND_NO_DEPENDENCIES.md GTK-14, 2026-09-21).
+# ---------------------------------------------------------------------------
+#
+# libxkbcommon and xkeyboard-config's 293 files have been carried since WIN-1
+# FOR GTK'S SAKE -- gdkkeymap-wayland.c SIGSEGVs without them before a window
+# exists. This is the first time SATELLITE asks what key was pressed.
+#
+# PROVED BY PRESSING REAL KEYS on a headless mutter, through its own
+# RemoteDesktop NotifyKeyboardKeysym -- the same route press-a-button.sh uses for
+# the pointer:
+#
+#     sent  a  a  c  d  7          answered  a  c  d  7
+#     sent  B  Escape Up Return F1 answered  shift_l  B  escape  up  return  f1
+#
+# A PRINTABLE KEY IS ITS CHARACTER and every other key is a NAME in lower case.
+# `shift_l` is right: mutter synthesises a Shift press to type a capital, and a
+# modifier IS a key press. THE FIRST KEY OF A REMOTE-DESKTOP SESSION IS SWALLOWED
+# -- sending `a a c d 7` answers `a c d 7` -- and that is mutter settling, not
+# satl: the second `a` arrives. Written down so nobody chases it.
+
+expect "key and clicked are method tokens at 0000101100111000 and ...1001" "1|1|1|1" \
+       "$(grep -c '^0000101100111000  key_token ' REGISTRY.satellite)|$(grep -c 'Code key_token = 0x0B38;' satellite/bytecode/token_codes.hpp)|$(grep -c '^0000101100111001  clicked_token ' REGISTRY.satellite)|$(grep -c 'Code clicked_token = 0x0B39;' satellite/bytecode/token_codes.hpp)"
+
+# A PROGRAM NEVER SEES A KEYVAL. GDK_KEY_Escape is 0xff1b and a satellite
+# program has no business knowing that.
+expect "a key is a character or a name, never a number" "2|2" \
+       "$(grep -c 'gdk_keyval_to_unicode' satellite/satellite_variable_window/window_answers.cpp)|$(grep -c 'gdk_keyval_name' satellite/satellite_variable_window/window_answers.cpp)"
+
+# WHAT A KEY SAID TRAVELS ON THE EVENT AND IS COPIED ONTO THE PIECE BY THE
+# INTERPRETER. Written by the desk and read by a capsule it would have been a
+# std::string with two threads on it -- the very thing GTK-2 refused to add.
+expect "what a key said is written on the interpreter's thread, not the desk's" "1|1" \
+       "$(grep -c 'happened.piece->last_key = happened.said' satellite/bytecode/window_calls.cpp)|$(grep -c 'std::string said;' satellite/satellite_variable_window/window_desk.hpp)"
+
+# THE HANDLER ANSWERS FALSE, so the key goes on to whatever wanted it. TRUE
+# would mean a program watching for Escape had silently made every text box in
+# its window unusable.
+expect "watching for a key does not eat it" 1 \
+       "$(grep -c 'SO THE KEY GOES ON TO THE WIDGET THAT WANTED IT' satellite/satellite_variable_window/window_answers.cpp)"
+
+cat > build/window_key_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_a_key(satellite.variable.window the_piece)
+{
+    satellite.console.display(the_piece.key)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    w.key(when_a_key)
+    satellite.console.display(w.key)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_key_ok.satl > build/window_key_ok.out 2>&1
+expect ".key written and read passes the checker, and stops only for want of a screen" 50 $?
+
+# A BUTTON ALREADY HAS A WORD FOR BEING CLICKED, and two names for one thing is
+# what this language spends its refusals avoiding.
+expect "a button asked for .clicked is sent to .pressed" 1 \
+       "$(grep -c 'a button already has a word for being clicked' satellite/satellite_variable_window/window_answers.cpp)"
+
+# ONLY A WINDOW HEARS THE KEYBOARD: a key goes to whatever has the focus, and
+# the window is the thing that sees them all.
+expect "a piece inside a window does not hear the keyboard on its own" 1 \
+       "$(grep -c 'only a window hears the keyboard' satellite/satellite_variable_window/window_answers.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

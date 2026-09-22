@@ -210,7 +210,8 @@ unsigned long long int windows_open()
 // ON THE DESK'S OWN THREAD, out of GTK's `clicked` -- the same rule as
 // the_desk_let_go_of above, and for the same reason: the desk must never go
 // through on_the_desk(), which would be the desk waiting on itself.
-void the_desk_saw_something(const std::string &capsule, const WindowHandle &piece, bool may_collapse)
+void the_desk_saw_something(const std::string &capsule, const WindowHandle &piece, bool may_collapse,
+                            const std::string &said)
 {
     {
         std::lock_guard<std::mutex> lock(desk_mutex);
@@ -229,7 +230,8 @@ void the_desk_saw_something(const std::string &capsule, const WindowHandle &piec
         // window would fail at `its_window.close()` -- "only a window can be
         // closed" -- which is a refusal about a line that is right.
         presses.push_back(AnEvent{capsule, piece,
-                                 piece == nullptr ? WindowHandle() : the_window_holding(*piece)});
+                                  piece == nullptr ? WindowHandle() : the_window_holding(*piece),
+                                  said});
     }
     desk_changed.notify_all();
 }

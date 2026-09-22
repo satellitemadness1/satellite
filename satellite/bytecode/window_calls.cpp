@@ -334,7 +334,8 @@ std::string window_methods_are()
            "a progress bar has .value; a choice has .chosen -- all read bare and written with "
            "brackets; a button has .pressed(a_capsule) and .press(); anything a person can change "
            "has .changed(a_capsule); and a window has .closed(a_capsule) and "
-           ".every(a_capsule, 1000) "
+           ".every(a_capsule, 1000) and .key(a_capsule); anything that is not a button has "
+           ".clicked(a_capsule) "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -362,6 +363,8 @@ int window_method_arity(Code method)
     case token::background_token: return 1;
     case token::font_token:       return 2;  // the face and the size
     case token::every_token:      return 2;  // the capsule's NAME, then how often (GTK-13)
+    case token::key_token:        return 1;  // the capsule's name; read bare for the last key (GTK-14)
+    case token::clicked_token:    return 1;  // the capsule's name; read with no brackets (GTK-14)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -390,7 +393,8 @@ int window_method_also_takes(Code method)
 bool window_method_takes_a_capsule_name(Code method)
 {
     return method == token::pressed_token || method == token::changed_token ||
-           method == token::closed_token || method == token::every_token;
+           method == token::closed_token || method == token::every_token ||
+           method == token::key_token || method == token::clicked_token;
 }
 
 // AND WHETHER ANYTHING MAY FOLLOW THAT NAME (GTK-13). `.pressed`, `.changed`
@@ -609,13 +613,24 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
     // READ HERE ON THE INTERPRETER'S THREAD while the desk may be reading it in
     // `clicked`, and that is safe because both are READS: the only writer is
     // window_pressed(), which is this same thread going through on_the_desk().
+    // `.key` READ BARE IS THE ODD ONE: it answers the LAST KEY and not the
+    // capsule's name, because which key was pressed is the thing a program
+    // actually wants and a capsule it wrote itself is not. Empty until one is.
+    if (method == token::key_token && !had_parentheses) {
+        satellite_window *piece = which.get();
+        Value out;
+        std::size_t bad_offset = 0;
+        Value::of_utf8(piece == nullptr ? std::string() : piece->last_key, out, bad_offset);
+        return out;
+    }
     if ((method == token::pressed_token || method == token::changed_token ||
-         method == token::closed_token) && !had_parentheses) {
+         method == token::closed_token || method == token::clicked_token) && !had_parentheses) {
         satellite_window *piece = which.get();
         std::string named;
         if (piece != nullptr)
             named = method == token::pressed_token   ? piece->when_pressed
                     : method == token::changed_token ? piece->when_changed
+                    : method == token::clicked_token ? piece->when_clicked
                                                      : piece->when_closed;
         Value out;
         std::size_t bad_offset = 0;
@@ -867,6 +882,20 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         went = window_set_colour(*window, colour, method == token::background_token, why);
         break;
     }
+    case token::key_token: {
+        std::string capsule;
+        if (!text_of(arguments[0], capsule, what, context))
+            return Value();
+        went = window_key(*window, capsule, why);
+        break;
+    }
+    case token::clicked_token: {
+        std::string capsule;
+        if (!text_of(arguments[0], capsule, what, context))
+            return Value();
+        went = window_clicked(*window, capsule, why);
+        break;
+    }
     case token::every_token: {
         std::string capsule;
         long long int how_often = 0;
@@ -934,6 +963,13 @@ signed long long int windows_run_until_they_are_closed(
 {
     AnEvent happened;
     while (the_desk_waits_for_something(happened)) {
+        // WHAT IT SAID IS COPIED ONTO THE PIECE **HERE**, ON THE INTERPRETER'S
+        // THREAD, and that is the whole reason it travelled on the event
+        // (GTK-14). A key's name written by the desk and read by a capsule
+        // would be a std::string with two threads on it; written here it has
+        // one writer, and the capsule that is about to run is the only reader.
+        if (happened.piece != nullptr && !happened.said.empty())
+            happened.piece->last_key = happened.said;
         const signed long long int stopped = run_a_capsule(happened.capsule, happened.piece, happened.window);
         // A CAPSULE THAT STOPPED STOPS THE RUN, the same as a line of main
         // would have. The report is already printed by the time this answers,
