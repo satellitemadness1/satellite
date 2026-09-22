@@ -36,7 +36,7 @@ language work happens. Still owed, no longer first.
 **AND WHAT THE WINDOW COSTS IS IN GTK_AND_NO_DEPENDENCIES.md** (2026-09-20),
 `DEP-1` to `DEP-9`. The author asked for it as its own file: *"we need no
 dependencies, if you need something, include a copy of it so it exists inside of
-this project folder"*. It holds the eight libraries satl still needs and why each,
+this project folder"*. It holds the seven libraries satl still needs (eight until 2026-09-22) and why each,
 the 12 GB size ceiling he set, the measurement that shows uninstalling the system
 GTK would not work, and the vendoring a fresh clone needs to build at all.
 **DEP-1 is next.**

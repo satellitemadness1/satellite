@@ -342,6 +342,17 @@ expect "satl imports no network entry point of its own" 0 \
 # libgio either, and the count is 0.
 expect "... and libgio, which CAN reach one, is linked by GTK and never called" "yes" \
        "$(gio_linked=$(readelf -d "$interpreter" 2>/dev/null | grep -c 'libgio-2.0'); gio_called=$(nm -D "$interpreter" 2>/dev/null | awk '{print $NF}' | grep -cE '^g_(socket|network|resolver|inet|tls|proxy)'); if [ "$gio_called" = 0 ] && [ "$gio_linked" -le 1 ]; then echo yes; else echo "linked=$gio_linked called=$gio_called"; fi)"
+# THE RUN-TIME FLOOR, WRITTEN DOWN AS A NUMBER (GTK_AND_NO_DEPENDENCIES.md DEP-3
+# and DEP-4, 2026-09-22). satl and every word library beside it ask the machine's
+# libc and libstdc++ for these symbol versions and nothing newer: GLIBC_2.38 (the
+# __isoc23_strtol family, strlcat, fmod -- clang 24 against glibc 2.39's headers)
+# and GLIBCXX_3.4.32 (gcc 13's std::ios_base_library_init, one symbol). AlmaLinux
+# 10 ships 2.39 and 3.4.33 and runs this binary on its own /lib64, proved in an
+# empty root by prove-bare-machine.sh; AlmaLinux 9 (2.34, 3.4.29) cannot. The day
+# a change moves either number, in either direction, this row fails and somebody
+# decides whether the floor moves -- it must not move quietly.
+expect "the run-time floor is glibc 2.38 and GLIBCXX 3.4.32, satl and its words alike (DEP-4: EL10, not EL9)" "GLIBC_2.38|GLIBCXX_3.4.32" \
+       "$(objdump -T "$interpreter" "$(dirname "$interpreter")"/satellite-numbers/*.so 2>/dev/null | grep -oE 'GLIBC_2\.[0-9]+' | sort -V | tail -1)|$(objdump -T "$interpreter" "$(dirname "$interpreter")"/satellite-numbers/*.so 2>/dev/null | grep -oE 'GLIBCXX_3\.4\.[0-9]+' | sort -V | tail -1)"
 
 # THE BRACED LIST -- `{a, b}` WHERE A VALUE BELONGS (the author, 2026-09-18: "we
 # need to build satellite object definitions to be this: = {series_of_objects,

@@ -53,7 +53,7 @@ WINDOW_LIBS   := $(shell pkg-config --libs $(WINDOW_PKGS) 2>/dev/null)
 # of 2026-09-20, so the reason `system` was the default is gone. What was
 # measured before flipping, on the vendored binary and not on hello:
 #
-#     readelf -d              the eight allowed, and nothing else
+#     readelf -d              the seven allowed, and nothing else
 #     check.sh                353 passed, 0 failed
 #     examples/window.satl    opens a window under headless mutter
 #     LD_DEBUG=libs           no GTK-stack library loaded from /usr at run time
@@ -176,8 +176,20 @@ GTK_LINK_FLAGS =
 # cross into a dlopened driver cannot be static. -ldl is the honest other half:
 # libepoxy dlopens libGL/libEGL by design, because the driver belongs to the
 # machine's graphics card and not to satellite.
+#
+# NO -lresolv, SINCE 2026-09-22 (GTK_AND_NO_DEPENDENCIES.md DEP-4). It was here
+# from the first vendored link and made libresolv.so.2 the eighth NEEDED entry --
+# and satl never took one symbol from it: glibc 2.34 moved res_nquery, dn_expand,
+# __res_ninit and __res_nclose (the four gio's threaded resolver names) into
+# libc.so.6, satl's floor is glibc 2.38, `readelf -V` had no version-needs for
+# libresolv at all, and gio's own .pc never asked for it (gio/meson.build adds
+# -lresolv only where res_query does NOT link plainly). A -l with no --as-needed
+# is a NEEDED entry whether or not anything binds to it. Seven now.
+# -lpthread and -lrt are the same shape and cost nothing: glibc 2.34+ has no
+# separate .so for either, so they add no NEEDED entry; they stay for the day a
+# link is tried against an older glibc, where they would be the honest answer.
 GTK_LIBS = -Wl,--start-group $(GTK_BUILD)/gtk/libgtk.a $(GTK_ARCHIVES) -Wl,--end-group \
-           -lm -lpthread -lrt -lresolv -lwayland-client -lwayland-egl
+           -lm -lpthread -lrt -lwayland-client -lwayland-egl
 
 GTK_KIND = vendored (GTK carried inside satl)
 

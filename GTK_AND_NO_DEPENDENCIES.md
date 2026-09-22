@@ -92,10 +92,10 @@ projects produce the archives.
 | ✔ | **GTK-16** more than one screenful | gtk (`GtkNotebook` since 2026-09-22) | — |
 | — | **GTK-17** `satellite.console` is a window | **VTE — NOT VENDORED**, gtk, pango | freetype, harfbuzz, fribidi |
 | — | **GTK-18** `satellite.terminal` is a bash prompt | VTE, glib (`g_spawn`) | — |
-| ✔ | **DEP-1** every source in the folder | **all 24** | — |
+| ✔ | **DEP-1** every source in the folder — and **PROVED ON A FRESH CLONE WITH NO NETWORK, 2026-09-22**: 24 of 24 built in 216 s, `make` linked the same eight, check.sh green | **all 24** | — |
 | — | **DEP-2** the word libraries link in | none — it is a link shape, not a call | — |
-| — | **DEP-3** prove it on a bare machine | none | all of them, which is the point |
-| — | **DEP-4** the eight that remain | none — libresolv and libwayland are the **machine's** | — |
+| ✔ | **DEP-3** prove it on a bare machine — **PROVED 2026-09-22**: in an empty root, a window, two capsules, the carried font in a PNG byte-identical to this machine's; and again with **no GPU driver at all** | none | all of them, which is the point |
+| ✔ | **DEP-4** the eight that remain — **MEASURED 2026-09-22: SEVEN is the floor.** libresolv bound nothing and was a `-lresolv` on the link line; gone | none — libwayland is the **machine's** | — |
 | — | **DEP-5** one application | VTE | — |
 | — | **DEP-6** the notices | the licence of every one of the 24 | — |
 | — | **DEP-7** the lower layer's versions | zlib, libpng, freetype, harfbuzz | — |
@@ -166,7 +166,9 @@ now, on any machine:
 `vendor/gtk-old` — the GTK 4.16.7 tree that made the first proof — **has been
 deleted** (3.0 GB reclaimed, 2026-09-21). Its seven scripts are still in git at
 `vendor/gtk-old/*.sh` and `vendor/gtk-old/hello/`, including the `bare-machine.sh`
-that DEP-3 needs; only the build output, the source trees and the tarballs went.
+that DEP-3 grew out of — its successor, for the real satl, is
+`satellite/satellite_variable_window/prove-bare-machine.sh` (2026-09-22); only the
+build output, the source trees and the tarballs went.
 Every measurement taken from it is in Part 1 and does not need it back.
 
     make                53 MB   GTK compiled in            <- the default since 2026-09-21
@@ -207,10 +209,10 @@ graphene or vulkan loaded from the machine**. 136 gio symbols are compiled in.
 check.sh **351 passed, 0 failed, twice**. A rebuild is **5.67 seconds** — GTK
 itself was built once, on 2026-09-19, and is not rebuilt.
 
-## The eight it still needs, and why each
+## The eight it still needs, and why each — **SEVEN since 2026-09-22**
 
-    libc  libm  libresolv  ld-linux  libwayland-client  libwayland-egl
-    libstdc++  libgcc_s
+    libc  libm  ld-linux  libwayland-client  libwayland-egl
+    libstdc++  libgcc_s              (libresolv was the eighth, and bound nothing: DEP-4)
 
 `make_support/050-build.mk` holds this as `ALLOWED_NEEDED` and **fails the build
 and deletes the binary** if `readelf -d` ever names anything else.
@@ -221,9 +223,11 @@ and deletes the binary** if `readelf -d` ever names anything else.
   object. Measured in *both* link modes, so it is not the static-glibc hazard.
 - **libstdc++, libgcc_s — removable, and DEP-2 is how.** See below.
 - **libc, libm, ld-linux** — every Linux.
-- **libresolv — NOT yet understood.** It is in the proved `hello` binary too, so
-  it comes from the GTK stack rather than from satl. **DEP-4 asks whether it can
-  go**; nobody has looked.
+- **libresolv — GONE 2026-09-22 (DEP-4).** It was `-lresolv` on the link line
+  and nothing more: satl bound no symbol to it (glibc 2.34 folded the resolver
+  into `libc.so.6`, below satl's floor), `readelf -V` had no version-needs for
+  it, and gio never asked for it. A fresh reader caught the first write-up
+  calling it gio's. The flag is dropped and NEEDED is seven.
 
 ## The finding that cost the six-library target
 
@@ -348,6 +352,27 @@ SHA; fribidi is whatever `master` was that morning.
 network (`unshare -rn`, or bwrap with no `--share-net`). A wrap that still
 reaches out will simply fail there, which is the only honest test.
 
+**VERIFIED 2026-09-22, exactly that way.** A fresh `git clone` of `3613af0` into
+a scratch folder, every step inside `bwrap --unshare-net` (uid unchanged, so
+`tar` never tries to chown), the sandbox first proving the network was gone
+(`connect` to 1.1.1.1: *Network is unreachable*):
+
+    /usr/bin/python3 vendor/build_stack.py    unpacked 26 files from vendor/new/, 24 of 24 ok, 216 s
+    make -j16                                 satl in 15 s, "carries GTK -- needs only" the eight of that
+                                              morning (seven since DEP-4, later the same day);
+                                              62 word libraries built; satl-term too, because THIS
+                                              machine has vte -- 047-window.mk skips it where it does not
+    ./check.sh                                525 passed, 0 failed -- 526 here; the one row it did not
+                                              run is the `skip` for old_versions/second_satellite/satl,
+                                              a built 003 binary that is gitignored
+
+The clone's `BUILD_MANIFEST.txt` names the same 24 versions and the same 26
+hashes as this checkout's; the archives differ in size by a few hundred bytes
+each, which is the longer build path the members carry. **1.7 GB on disk, built.**
+So the gap Part 3 carried since 2026-09-21 — *"a fresh clone still cannot run
+it"* — was closed by `1e5a960` four minutes after it was written, and is now
+measured closed rather than believed closed.
+
 **Cost:** ~85 MB committed once, 0.7% of the ceiling. It is also what makes the
 author's 3–5 year freeze possible, and what LGPL §6 needs anyway (DEP-6).
 
@@ -380,28 +405,156 @@ Likely fragile — each `.so` still has its own `DT_NEEDED`, so the loader maps
 libstdc++ anyway and interposition order decides. **Measure it with the
 `/dev/full` row, which is the one that catches this.**
 
-## DEP-3 — prove it on a machine with nothing
+## DEP-3 — prove it on a machine with nothing — **PROVED 2026-09-22**
 
-`vendor/gtk/hello/bare-machine.sh` already does this for `hello`: `bwrap` into a
-root holding only the binary, the GL driver, the Wayland socket and glibc,
-binding libraries one at a time. **Point it at the real `satl`, and drop
-`--with-xkb --with-fonts`** — carrying those is exactly what WIN-1 built.
+`vendor/gtk-old/hello/bare-machine.sh` did this for `hello` on 2026-09-19, with
+`--with-xkb --with-fonts` bound in because WIN-1 had not been built. The plan
+here said: point it at the real satl and drop those two. That is
+**`satellite/satellite_variable_window/prove-bare-machine.sh`**, run by hand like
+the other two compositor proofs, thirty seconds, four stages on one headless
+mutter of its own (`satlbare`, so it can run beside `prove-canvas-tabs-menus.sh`
+in another session):
 
-It needs `satellite-numbers/` beside the binary (satl loads from
-`/proc/self/exe`'s folder), which is itself an argument for DEP-2.
+    XDG_RUNTIME_DIR=/run/user/1000 sh satellite/satellite_variable_window/prove-bare-machine.sh
+    KEEP_WORK=1 ...     keeps every stage's output and binds.txt, the list of what was bound
 
-**The script binds `/opt/amdgpu/lib64` and a fixed list of AMD/mesa paths — on a
-non-AMD machine it needs editing before it proves anything.**
+**THE ROOT IS EMPTY, and what goes into it is named one path at a time** so the
+list IS the dependency list. Forty-four paths on this machine, every one printed:
+eight for satl's own runtime — the seven NEEDED, resolved as a machine with no
+`LD_LIBRARY_PATH` resolves them, plus `libffi.so.8`, which is libwayland-client's
+own NEEDED — and thirty-six for the GPU driver, found the way the loader finds it
+rather than by a list of AMD paths: glvnd's `egl_vendor.d` names the vendor
+library by SONAME, `ldconfig` turns that into a path, `ldd` gives its closure,
+and mesa's gallium/dri neighbours and `drirc.d` come with it. Plus `/dev/dri`,
+`/sys`, `/etc/ld.so.cache`, and the Wayland socket alone in a fresh tmpfs
+runtime directory, which is also where WIN-1's spill lands (5.3 MB — the byte
+count is in the folder's name). **Nothing from `/usr/share` but the driver's
+three data folders (`drirc.d`, `glvnd`, `libdrm`, and only in the driver
+stage), no `/etc/fonts`, no xkb data, no schemas, no icon theme, no
+`/etc/passwd`, no session bus, no accessibility bus, no network
+(`--unshare-net`), and no `vendor/stage/`** — whose paths are compiled into
+fontconfig, gdk-pixbuf, glib and GTK and exist on no other machine.
 
-## DEP-4 — the six that remain, and whether it is really six
+**The program** opens a 640×480 window, appends a label, a button and a canvas,
+writes *"carried IBM Plex Mono"* on the canvas in that face at 18px, saves it to
+`bare.png`, presses its own button (`.press()`, WIN-11), and the capsule reads
+the window's title and closes it; the `.closed` capsule runs; exit 0. The same
+program runs first **outside** any sandbox on the same compositor, and its PNG
+is the reference.
 
-- **libresolv: nobody has looked.** It is in `hello` too, so it is the GTK
-  stack's. If it is gio's DNS resolver it may be configurable away. Worth an
-  hour; it would make five.
+**MEASURED, all four stages, first on `3613af0`'s binary and again on the
+seven-NEEDED relink DEP-4 made the same afternoon:**
+
+| stage | root | result |
+|---|---|---|
+| outside | this machine as it is | exit 0, six lines |
+| **driver** | empty + the 44 paths | **exit 0, six lines, `bare.png` byte-identical to the reference**, EGL found through the driver, `GskGLRenderer` |
+| **no_driver** | empty + the 8 runtime paths, no `/dev/dri`, no `/sys` | **exit 0, six lines, `bare.png` identical**; GTK: *"Not using GL: libEGL not available"*, `GskCairoRenderer` |
+| no_display | the same, no socket | **exit 50, S730 NO_DISPLAY** — a refusal, not a crash |
+
+**WHAT IT FOUND, beyond "it works":**
+
+1. **The GPU driver is not on satl's floor.** With no EGL at all GTK falls back
+   to its cairo renderer over `wl_shm`, and the program, its output and its PNG
+   are the same. A machine whose graphics stack is missing costs the GL
+   renderer and nothing else. So the floor is the eight runtime paths.
+2. **The distribution's libstdc++ is enough, and the version floor is now a
+   number.** satl asks for `GLIBCXX_3.4.32` — one symbol,
+   `std::ios_base_library_init`, which gcc 13's `<iostream>` emits — and
+   `GLIBC_2.38` — the `__isoc23_strtol` family, `strlcat`, `fmod`, which clang 24
+   picks off glibc 2.39's headers. AlmaLinux 10 ships `GLIBCXX_3.4.33` and glibc
+   2.39, so the distro's `/lib64` runs it. **AlmaLinux 9 cannot** (glibc 2.34,
+   gcc 11's `GLIBCXX_3.4.29`): satl as built is an EL10-class binary. check.sh
+   asserts both numbers; the day a change raises either, the row fails and
+   somebody decides. And the proof runs `ldd` with `LD_LIBRARY_PATH` unset and
+   **stops if any library resolves into `$HOME`** — with it set, this shell binds
+   `~/opt/gcc-17`'s libstdc++ and would have called a compiler's runtime the
+   machine's.
+3. **One warning on stderr, and it is the accessibility layer asking for a
+   bus.** `gtk/a11y/gtkatspicontext.c:1877` — *"Unable to acquire session
+   bus"*: with no session bus the AT-SPI context cannot ask `org.a11y.Bus`
+   where the accessibility bus is, GLib tries to autolaunch one and cannot
+   *"without a machine-id"*, naming `vendor/stage/var/lib/dbus/machine-id` —
+   glib's compiled-in localstatedir, a path inside this checkout printed on
+   somebody else's machine — and GTK carries on. Every systemd Linux has
+   `/etc/machine-id`, so the wording there differs and the outcome does not.
+   **So Q-WIN-11c has its numbers: a bus with no registry costs three
+   `Gtk-CRITICAL`s, no bus at all costs one warning, a real desktop costs
+   nothing.** The reference stage prints none because `env -u
+   DBUS_SESSION_BUS_ADDRESS` does not make a run bus-less — GLib falls back to
+   the real `$XDG_RUNTIME_DIR/bus` (press-a-button.sh's trap 2) and that stage
+   reached the user's real bus and registry, measured in its trace.
+4. **What satl reaches for on a machine that has things, traced outside the
+   sandbox, none of it needed:** `/usr/share/icons/Adwaita` for the three
+   window-decoration icons (absent, GTK uses its own), `vendor/stage`'s
+   `loaders.cache`, `gio/modules`, `immodules`, `media` and fontconfig's
+   `conf.avail` (absent, nothing changes — the loaders are built in), the
+   session bus, the accessibility bus, `/etc/passwd`, `/usr/share/locale`.
+5. **Two libffi in one process, measured working.** satl carries libffi as
+   `libffi.a` for gobject's closures; the machine's `libwayland-client.so.0`
+   brings `/lib64/libffi.so.8`. No shared state between them, and the same
+   shape as the machine's `libz.so.1` beside satl's static zlib.
+6. **Every path the old script hardcoded is gone — for a stock mesa behind
+   glvnd.** On such a machine the vendor library is `/usr/lib64/libEGL_mesa.so.0`
+   and the same derivation binds its closure out of `/usr/lib64` one file at a
+   time, never the folder, so DEP-9's *"on a non-AMD machine it needs editing"*
+   no longer applies there. What it does not cover: a driver that dlopens
+   libraries no `ldd` names (NVIDIA's `libnvidia-*`) is not in the closure —
+   that stage then finds no EGL and the report **fails loudly** rather than
+   passing driverless; an absolute `library_path` in the vendor file is
+   honoured.
+
+What it does not prove: that the window's *pixels* were right in the cairo
+stage — the PNG is cairo's image surface, drawn by satl's own display list, not
+the compositor's frame. That the window was mapped, the capsules ran and GTK
+named its renderer is what is asserted.
+
+## DEP-4 — the eight that remain, and whether it is really six — **MEASURED 2026-09-22: it is SEVEN, and the floor is written down**
+
+- **libresolv: LOOKED AT, AND IT WAS NEVER A DEPENDENCY.** The first write-up
+  of this bullet, the same afternoon, said it was gio's: `nm` over the staged
+  archives shows `libgio-2.0.a(gthreadedresolver.c.o)` naming `res_nquery`,
+  `dn_expand`, `__res_ninit` and `__res_nclose`, `gresolver.c.o` naming the
+  threaded resolver from `g_resolver_get_default`, and GDBus naming that — all
+  true, and beside the point. **A fresh reader refuted the conclusion with one
+  command:** `readelf -V build/satl` lists version-needs for libm, libstdc++,
+  libgcc_s, libc and ld-linux and **nothing for libresolv** — the linker took no
+  symbol from it. glibc 2.34 moved all four resolver symbols into `libc.so.6`
+  (`res_nquery@@GLIBC_2.34`, `dn_expand@@GLIBC_2.34`); satl's floor is 2.38, so
+  on no machine satl can run does libresolv supply anything, and
+  `LD_DEBUG=bindings` shows every one binding to libc. And gio never asked:
+  `gio/meson.build:52` adds `-lresolv` only where `res_query` does **not** link
+  plainly, the vendored build's meson log says it did, and `gio-2.0.pc` has no
+  `-lresolv`. **It was NEEDED because `047-window.mk` said `-lresolv`**, and a
+  `-l` with no `--as-needed` is a NEEDED entry whether or not anything binds.
+  The flag is dropped, `ALLOWED_NEEDED` is seven, `make` prints seven, and the
+  bare-machine proof binds seven. (`-lpthread -lrt` on the same line are the
+  same shape and produce no entry — glibc 2.34+ has no separate `.so` for
+  either; they stay, harmless.)
 - **libwayland-client, libwayland-egl: settled, cannot go.** Part 1 says why.
+  libwayland-client's own NEEDED brings the machine's `libffi.so.8` in beside
+  satl's static libffi — two in one process, no shared state, measured working
+  in DEP-3's empty root.
 - **libc, libm, ld-linux: settled.** A fully static glibc binary links and
   cannot draw (measured, 21 MB, SIGSEGV in EGL).
-- **Write down the floor once it is known**, so nobody reopens it every time.
+- **libstdc++, libgcc_s: DEP-2's**, decided and deferred by the author.
+
+**THE FLOOR, written down once so nobody reopens it — SEVEN:**
+
+    ld-linux-x86-64.so.2  libc.so.6  libm.so.6                      glibc, every Linux
+    libstdc++.so.6  libgcc_s.so.1                                   the distribution's; DEP-2 removes them
+    libwayland-client.so.0  libwayland-egl.so.1  (+ libffi.so.8)    the machine's, cannot be carried
+
+**And what "measured" has to mean here, learned the same day:** the archive
+chain was real and the conclusion was still wrong, because the question was
+never *who references the symbol* but *who defines it at run time*. `readelf -V`
+answers that in one line, and it is the check to make before any NEEDED entry
+is called a dependency.
+
+and a **version floor: glibc ≥ 2.38 and libstdc++ ≥ `GLIBCXX_3.4.32` (gcc 13)**
+— AlmaLinux 10 yes, AlmaLinux 9 no, measured symbol by symbol in DEP-3 and
+asserted by check.sh. The GPU driver is **not** on the floor: without one GTK
+draws with cairo (DEP-3).
 
 ## DEP-5 — satl-term, and the author's "single application"
 
@@ -467,8 +620,11 @@ change.
   Wayland only** until someone vendors them. (WIN-10.)
 - **Windows and macOS**: see the porting notes; VTE makes satl-term Linux-only
   regardless.
-- **Non-AMD GPUs**: nothing here should care, but `bare-machine.sh` does
-  (DEP-3).
+- **Non-AMD GPUs**: nothing here should care, and since 2026-09-22 the
+  bare-machine proof does not either for a stock mesa behind glvnd — it finds
+  the driver through glvnd's vendor file — and it runs without one at all
+  (DEP-3). A driver whose pieces no `ldd` names (NVIDIA) fails that stage
+  loudly.
 
 ---
 
@@ -1958,20 +2114,28 @@ is the milestone that gets VTE into the folder and into a static archive.
 
 - **DEP-1 IS DONE** (2026-09-21). `vendor/build_stack.py` builds all 24 projects
   from the frozen tarballs in `vendor/new/` into `vendor/stage` in 172 seconds, and
-  `make` links them. One gap remains and it is named below.
-- **A FRESH CLONE STILL CANNOT RUN IT**: `vendor/new/*.tar.*` is committed but
+  `make` links them. ~~One gap remains and it is named below.~~
+- ~~**A FRESH CLONE STILL CANNOT RUN IT**: `vendor/new/*.tar.*` is committed but
   nothing UNPACKS it, and `vendor/<project>/` is gitignored. Until there is an
-  unpack step the build works only where the trees already exist.
+  unpack step the build works only where the trees already exist.~~ **STALE
+  WHEN THE CHART WAS WRITTEN, AND PROVED CLOSED 2026-09-22.** `1e5a960`
+  (2026-09-21 16:36, four minutes after this bullet) gave `build_stack.py` an
+  `unpack()` step and `--unpack`; the bullet survived that evening's rewrite.
+  The test DEP-1 itself asked for — a fresh clone, no network — was then never
+  run until 2026-09-22: 24 of 24, `make`, check.sh green. DEP-1 has the numbers.
 - **`vendor/xkb/xkb-data` is GONE** — it was xkeyboard-config 2.41 copied out of
   this machine's `/usr/share/X11/xkb`. satl now carries xkeyboard-config 2.48 built
   from the frozen tarball: 293 files rather than 254, `geometry/` included.
 - **`fribidi` is no longer pinned to `master`** — it is the 1.0.17 release tarball,
   like every other dependency.
-- **NEEDED is eight, not six.** DEP-2 is the way to six. The author ruled on
+- **NEEDED is seven, not six** — eight until 2026-09-22, when DEP-4 found libresolv
+  bound nothing. DEP-2 is the way to six. The author ruled on
   2026-09-21: *"eventually we will build all the satellite-number's into the satl
   interpreter as well, but until we do, they are left separate"* — so DEP-2 is
   DECIDED AND DEFERRED, not open.
-- **`bare-machine.sh` has never been run against the real satl.**
+- ~~**`bare-machine.sh` has never been run against the real satl.**~~ **DONE
+  2026-09-22 — DEP-3.** `prove-bare-machine.sh` runs the real satl in an empty
+  root, with and without a GPU driver, and it draws; the floor is DEP-4's.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
@@ -2049,10 +2213,19 @@ GTK family is now what this file is for.
 
 ## The DEP order, for what is left of it
 
-1. **DEP-3** — prove the current binary on a bare machine. Cheap, and it either
-   validates WIN-1 or finds the next missing file.
-2. **DEP-1's remaining gap** — a fresh clone still cannot unpack `vendor/new/`.
-3. **DEP-4**, then DEP-6, DEP-8, DEP-5, DEP-9.
+**Three of the four were done on 2026-09-22, in this order, the author having
+said the GTK family was finished enough to *"move on to another .md"*:**
+
+1. ~~**DEP-3** — prove the current binary on a bare machine.~~ **PROVED.** It
+   validated WIN-1 — nothing was missing — and found the floor instead: the
+   distro's libstdc++ suffices, EL10 yes, EL9 no; and the GPU driver is not on
+   it at all.
+2. ~~**DEP-1's remaining gap** — a fresh clone still cannot unpack `vendor/new/`.~~
+   **It could since `1e5a960`; PROVED with no network.**
+3. ~~**DEP-4**~~ **MEASURED — seven is the floor; libresolv, the eighth, bound
+   nothing and is off the link line.** Then **DEP-6, DEP-8, DEP-5, DEP-9**, which is what is
+   left: the notices (two rulings of the author's first), the distribute package
+   at 54 MB, satl-term's *"single application"* (the author's), and X11.
 4. **DEP-2 is DECIDED AND DEFERRED** and is not on this list.
 
 **WHAT IS LEFT IN THE GTK FAMILY IS THE AUTHOR'S** (2026-09-22, evening):
@@ -2060,4 +2233,5 @@ GTK-17 and GTK-18 (VTE is not vendored), a `true` and a `false` to type, the
 window font, and Q-WIN-11c (the accessibility bus). Q-WIN-11a was ruled that
 evening — *"defend"* — and the file dialog built on it, so GTK-1 to GTK-16 are
 all built. Every recommendation the plan wrote has been built and every one
-of its question rows is still reversible. The DEP order below is what follows.
+of its question rows is still reversible. The DEP order above is what followed,
+the same evening: DEP-3 proved, DEP-1 proved on a fresh clone, DEP-4 measured.

@@ -55,8 +55,23 @@ define shows_the_build_row
 endef
 
 # WHAT satl IS ALLOWED TO NEED AT RUN TIME, WHEN IT CARRIES GTK. Exactly these
-# six, which is what the proved binary has (SATELLITE_WINDOW.md Part 1). Nobody
-# installs any of them: a machine without them cannot draw anything at all.
+# SEVEN -- six was the target, and DEP-2 (deferred by the author) is the way
+# back to it. Nobody installs any of them: a machine without them cannot draw
+# anything at all. PROVED 2026-09-22 (GTK_AND_NO_DEPENDENCIES.md DEP-3):
+# satellite/satellite_variable_window/prove-bare-machine.sh binds exactly these
+# into an EMPTY root -- plus libffi.so.8, which is libwayland-client's own NEEDED
+# and not satl's -- and satl draws a window, runs a capsule and finds its
+# carried font. With the GPU driver bound in too, and with none at all.
+#
+# libresolv WAS THE EIGHTH, and it was never a dependency (DEP-4, 2026-09-22):
+# 047-window.mk passed -lresolv, so the linker wrote a NEEDED entry for it, and
+# satl bound not one symbol to it -- gio's resolver symbols live in libc.so.6
+# since glibc 2.34, below satl's floor. A fresh reader caught the first version
+# of this comment calling it "a measurement"; the measurement was `readelf -V`,
+# which had no version-needs for libresolv at all. The flag is gone.
+#
+# THE VERSION FLOOR is GLIBC_2.38 and GLIBCXX_3.4.32 (check.sh asserts both):
+# AlmaLinux 10's /lib64 runs this binary, AlmaLinux 9's does not.
 #
 # THIS GATE IS WHY NO GTK HAS TO BE UNINSTALLED from a development machine. The
 # author proposed removing it to force the vendored stack; that would have taken
@@ -72,7 +87,7 @@ endef
 # removes them and gives satl a SECOND std::cout, which made a failed write to a
 # full device report success (047-window.mk has the whole finding). They come off
 # this list the day the word libraries stop being dlopened.
-ALLOWED_NEEDED = libm libresolv libwayland-client libwayland-egl libc ld-linux \
+ALLOWED_NEEDED = libm libwayland-client libwayland-egl libc ld-linux \
                  libstdc++ libgcc_s
 
 define carries_its_own_gtk

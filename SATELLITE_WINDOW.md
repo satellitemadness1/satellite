@@ -18,7 +18,7 @@ real compositor, not reasoned about:
 **WIN-1 IS ALSO BUILT (2026-09-20).** `make GTK=vendor` opens a window with no
 GTK stack loaded from the machine: xkeyboard-config, the IBM Plex Mono family,
 satl's own fonts.conf and GTK's schemas are carried as a GResource and spilled
-before `gtk_init`. **What that cost, and the eight libraries satl still needs,
+before `gtk_init`. **What that cost, and the seven libraries satl still needs (eight until 2026-09-22),
 moved to its own file: GTK_AND_NO_DEPENDENCIES.md, `DEP-1` to `DEP-9`.** Read it
 for anything about dependencies, vendoring or the static link; this file stays the
 record for the window itself.
@@ -77,6 +77,9 @@ unpacked GTK, ~3,200 ninja targets, and six tarball downloads. Budget an hour.
 - **`bwrap`, a live Wayland session, and unprivileged user namespaces** for
   `bare-machine.sh` — and that script binds `/opt/amdgpu/lib64` and a fixed list of
   AMD/mesa paths. **On a non-AMD machine it needs editing before it proves anything.**
+  *Superseded 2026-09-22:* `satellite/satellite_variable_window/prove-bare-machine.sh`
+  runs the **real satl** the same way, finds the driver through glvnd's vendor file,
+  and proves it with no driver at all (GTK_AND_NO_DEPENDENCIES.md DEP-3).
 
 **One more mismatch worth knowing:** GTK's archives are built by **clang 24** through
 the generated `-w` wrapper, but `hello/build.sh` links with **`/usr/bin/gcc`** by
@@ -340,7 +343,7 @@ calls gio's network classes — but a static satl will carry that code, and
 
 Commits `9c94eae` (the press) and `7480119` (a capsule takes arguments, so a
 press can reach the window it happened in). check.sh 382 passed, 0 failed;
-`readelf -d` still names exactly eight.
+`readelf -d` still names exactly eight — seven since 2026-09-22, DEP-4.
 
 Part 2a's list of what was owed opened with *"a button that does something when
 pressed. There is no signal from a widget back into a satellite program yet — that
