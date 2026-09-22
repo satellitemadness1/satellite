@@ -33,6 +33,11 @@
 #            .typed(when_typed); real keys type "abc" and Return; the capsule
 #            reads .typed and .columns and closes the window. The kernel did
 #            the echo and the line, the desk read it, the interpreter ran it.
+#            AND IT STARTS IN arguments.directory.default (2026-09-22): satl
+#            runs here with a home of its own whose config.ini sets
+#            `directory.default` to $work/where, and the typed line's file must
+#            land THERE -- which also keeps this proof out of the author's
+#            real default folder.
 #   bare     PLAIN `satl`, NO FLAG, started the way a launcher starts it: no
 #            controlling terminal (setsid), stdin and stdout on /dev/null. It
 #            must take you to its prompt in a console of its own -- WIN-9, the
@@ -201,8 +206,11 @@ while [ ! -S "$XDG_RUNTIME_DIR/satlcon" ] && [ $tries -lt 60 ]; do sleep 0.25; t
 # NO SESSION BUS FOR satl, NO DISPLAY EITHER -- press-a-button.sh's traps 1 and 2.
 # stdin IS /dev/null ON PURPOSE: that is exactly what a launcher gives, and the
 # console must not need anything else. `$@` after the name is the command line.
+# A HOME OF satl'S OWN, whose config.ini names the folder the prompt starts in.
+mkdir -p "$work/home/.satl" "$work/where"
+printf 'directory.default = %s\n' "$work/where" > "$work/home/.satl/config.ini"
 start() { name=$1; shift
-    env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY=satlcon "$satl" "$@" </dev/null >"$work/$name.out" 2>&1 & pid=$!; }
+    env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS HOME="$work/home" WAYLAND_DISPLAY=satlcon "$satl" "$@" </dev/null >"$work/$name.out" 2>&1 & pid=$!; }
 alive() { kill -0 $pid 2>/dev/null && echo alive > "$work/$1.alive"; }
 finish() { waited=0
     while kill -0 $pid 2>/dev/null && [ $waited -lt 60 ]; do sleep 0.5; waited=$((waited + 1)); done
@@ -222,7 +230,7 @@ finish prompt
 # PLAIN satl, AS A LAUNCHER STARTS IT: no flag, no controlling terminal, stdin
 # and stdout on /dev/null, SATL_NO_WINDOW unset. setsid -w so that a terminal
 # this proof was started from is not satl's, and so $! is satl's exit.
-env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS -u SATL_NO_WINDOW WAYLAND_DISPLAY=satlcon \
+env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS -u SATL_NO_WINDOW HOME="$work/home" WAYLAND_DISPLAY=satlcon \
     setsid -w "$satl" </dev/null >/dev/null 2>"$work/bare.err" & pid=$!
 sleep 5
 /usr/bin/python3 "$work/drive.py" shift 'type:satellite.file.new("bare.se").append("a launcher reached the prompt")' return \
@@ -252,7 +260,7 @@ finish piece
 # never does. G_ENABLE_DEBUG is on in the vendored GTK, so GDK_DEBUG=frames
 # prints from the desk on every frame; a release GTK prints nothing and the
 # stage still proves the run ends.
-loud_start() { env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY=satlcon GDK_DEBUG=frames "$satl" --console "$work/loud.satl" </dev/null >"$work/loud.out" 2>&1 & pid=$!; }
+loud_start() { env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS HOME="$work/home" WAYLAND_DISPLAY=satlcon GDK_DEBUG=frames "$satl" --console "$work/loud.satl" </dev/null >"$work/loud.out" 2>&1 & pid=$!; }
 loud_start
 finish loud
 
@@ -262,7 +270,7 @@ INSIDE
 work="$work" satl="$satl" dbus-run-session -- sh "$work/inside.sh"
 
 prompt_status=$(cat "$work/prompt.exit" 2>/dev/null || echo "exit ?")
-prompt_typed=$(cat "$work/typed.se" 2>/dev/null | tr '\n' '|')
+prompt_typed=$(cat "$work/where/typed.se" 2>/dev/null | tr '\n' '|')
 prompt_hung=$(grep -c 'satl did not exit' "$work/prompt.out" 2>/dev/null); [ -n "$prompt_hung" ] || prompt_hung=0
 prompt_stdout=$(wc -c < "$work/prompt.out" 2>/dev/null || echo ?)
 stopped_status=$(cat "$work/stopped.exit" 2>/dev/null || echo "exit ?")
@@ -274,7 +282,7 @@ prompt_alive=$(cat "$work/prompt.alive" 2>/dev/null || echo dead)
 stopped_alive=$(cat "$work/stopped.alive" 2>/dev/null || echo dead)
 stopped_stdout=$(wc -c < "$work/stopped.out" 2>/dev/null || echo ?)
 bare_status=$(cat "$work/bare.exit" 2>/dev/null || echo "exit ?")
-bare_wrote=$(cat "$work/bare.se" 2>/dev/null | tr '\n' '|')
+bare_wrote=$(cat "$work/where/bare.se" 2>/dev/null | tr '\n' '|')
 bare_alive=$(cat "$work/bare.alive" 2>/dev/null || echo dead)
 loud_status=$(cat "$work/loud.exit" 2>/dev/null || echo "exit ?")
 loud_wrote=$(cat "$work/loud.se" 2>/dev/null | tr '\n' '|')
@@ -287,7 +295,7 @@ piece_cells=$(grep -A2 '^typed: abc$' "$work/piece.out" 2>/dev/null | tail -2 | 
 echo "---------------------------------------------------------------"
 echo "THE PROMPT, IN A CONSOLE OF satl'S OWN, TYPED AT WITH REAL KEYS"
 echo "  satl $prompt_status        (0 -- exit ended the session, a key closed the hold)"
-echo "  the typed line wrote:               $prompt_typed  (want hello from the console|)"
+echo "  the typed line wrote, in the default folder: $prompt_typed  (want hello from the console|)"
 echo "  bytes on satl's ORIGINAL stdout:    $prompt_stdout   (want 0 -- everything went to the pty)"
 echo "  still alive when the key was sent:  $prompt_alive   (want alive -- the hold was up)"
 echo "  satl hung:                          $prompt_hung   (want 0)"

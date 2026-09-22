@@ -2968,6 +2968,20 @@ expect "satl-term is gone: no folder, no build rule, and the launcher starts sat
 expect "satl's own console carries satl-term's id, File menu and priority, and leaves F10 to the program" "1|1|1|1" \
        "$(grep -c 'g_set_prgname("org.satellite.terminal");' satellite/satellite_variable_window/console_launch.cpp)|$(grep -c 'setpriority(PRIO_PROCESS, 0, 19);' satellite/satellite_variable_window/console_launch.cpp)|$(grep -c 'gtk_window_set_handle_menubar_accel(GTK_WINDOW(window), FALSE);' satellite/satellite_variable_window/console_menu.cpp)|$(grep -c '{"New window", "satl.new-window"}' satellite/satellite_variable_window/console_menu.cpp)"
 
+# THE FOLDER THE PROMPT STARTS IN (the author, 2026-09-22): the row is words,
+# "~" by default, and config.ini sets it for one machine by its name without
+# `arguments.`. --debug lists every argument, so it is read back there.
+"$interpreter" --debug build/auto_console/auto_console.satl > build/directory_default.out 2>&1
+expect "arguments.directory.default is a row of words, ~ by default" 1 \
+       "$(grep -cF 'arguments.directory.default = ~ (machine_code' build/directory_default.out)"
+mkdir -p build/directory_home/.satl
+printf 'directory.default = /somewhere/else\n' > build/directory_home/.satl/config.ini
+HOME="$PWD/build/directory_home" "$interpreter" --debug build/auto_console/auto_console.satl > build/directory_set.out 2>&1
+expect "... and config.ini sets it for one machine, as directory.default" 1 \
+       "$(grep -cF 'arguments.directory.default = /somewhere/else (machine_code' build/directory_set.out)"
+expect "... and only the prompt in satl's own console goes there" 1 \
+       "$(grep -c 'if (satls_own_console_is_open() && command_line.command == Command::repl)' satellite/structured-library.cpp)"
+
 # THE CONSOLE satl LAUNCHES: refused for want of a screen BEFORE the program runs,
 # with the machine's code and not the build's; and refused by the command line
 # beside anything that prints and exits, because a window that shows a licence

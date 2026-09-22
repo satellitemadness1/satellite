@@ -93,6 +93,37 @@ std::string numbers_folder()
     return path.substr(0, path.rfind('/')) + "/satellite-numbers";
 }
 
+// THE PROMPT IN satl'S OWN CONSOLE STARTS IN arguments.directory.default (the
+// author, 2026-09-22: "on this machine set it to /home/madness/code/satl, as
+// thats where all of the satl programs are"). "~" and "~/..." are the home
+// folder. BEFORE arguments.gather(), so arguments.session.directory -- the
+// folder the session is in -- names the folder it moved to.
+//
+// A FOLDER THAT CANNOT BE ENTERED IS SAID, AND THE PROMPT STARTS WHERE satl DID:
+// a setting that points somewhere gone is not a reason to refuse a person the
+// prompt. The sentence lands in the console, which is where they are looking.
+void go_to_the_default_directory(const satellite004::Arguments &arguments)
+{
+    const satellite004::Argument *row = arguments.find("arguments.directory.default");
+    if (row == nullptr)
+        return;
+    std::string where = arguments.text("arguments.directory.default");
+    if (where == "~" || where.rfind("~/", 0) == 0) {
+        const char *home = std::getenv("HOME");
+        if (home == nullptr || *home == '\0') {
+            satellite004::report_error("satl(directory): arguments.directory.default is \"" + where +
+                                           "\" and $HOME is not set, so the prompt starts where satl did",
+                                       satellite004::success);
+            return;
+        }
+        where = std::string(home) + where.substr(1);
+    }
+    if (chdir(where.c_str()) != 0)
+        satellite004::report_error("satl(directory): arguments.directory.default is " + where + ", which cannot be "
+                                       "entered (" + std::strerror(errno) + "), so the prompt starts where satl did",
+                                   satellite004::success);
+}
+
 // Every argument, one line each, while debug mode is on.
 void display_arguments(const satellite004::Arguments &arguments, satellite004::MachineState &state)
 {
@@ -149,6 +180,8 @@ signed long long int run_satl(int argc, char **argv)
         if (on_its_own && !satls_own_console_is_open())
             command_line.command = asked;
     }
+    if (satls_own_console_is_open() && command_line.command == Command::repl)
+        go_to_the_default_directory(arguments);
 
     if (command_line.command == Command::version || command_line.command == Command::help ||
         command_line.command == Command::opening) {

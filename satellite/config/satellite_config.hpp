@@ -31,6 +31,8 @@ struct satellite_argument_row {
     satellite_argument_number number;  // 2)
     bool flag;                         // 3)
     bool is_flag;                      // 4)
+    std::string text = {};             // 5) -- only a row of WORDS has these two, and
+    bool is_text = false;              // 6)    every row above leaves them off
 };
 
 inline std::vector<satellite_argument_row> return_arguments_vector()
@@ -53,6 +55,11 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // it IS the numbered program (one code a word), its strings are codes inline
     // and counted, and the registry already reserves batch_start/batch_end/wait/
     // batch_size for the marks. So there is one file and one flag.
+    // 5) and 6), since 2026-09-22: a row can be WORDS -- 6) true, and 5) is the
+    // words; 2), 3) and 4) are then unused and written 0, false, false. A row of
+    // words may be set on ONE MACHINE in ~/.satl/config.ini, by its name without
+    // `arguments.` -- `directory.default = /home/madness/code/satl` -- and this
+    // file keeps the default every other machine gets.
     arguments_vector.push_back({"arguments.sate", 0, true, true});
 
     // THE STEP (the author, 2026-09-16): "the magic is step, so it just jumps at
@@ -65,10 +72,18 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // it to a thread costs ~12,486 ns. A step is what makes the handoff worth
     // making. Raising it trades latency for throughput; 0 would mean no lookahead.
     arguments_vector.push_back({"arguments.magic", 5, false, false});
+    // THE FOLDER THE PROMPT STARTS IN (the author, 2026-09-22): "create an
+    // argument, arguments.directory.default = "~" but on this machine set it to
+    // /home/madness/code/satl, as thats where all of the satl programs are".
+    // "~" is the home folder. It is where the prompt in satl's OWN console
+    // starts -- a double-click, a menu, `satl --console` -- which is where a
+    // person has no folder of their own yet; a prompt started from a shell stays
+    // in the shell's folder, and a program runs where it was started.
+    arguments_vector.push_back({"arguments.directory.default", 0, false, false, "~", true});
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 6, false, false});
-    arguments_vector.push_back({"arguments.build", 68, false, false});
+    arguments_vector.push_back({"arguments.build", 69, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});

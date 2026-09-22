@@ -2,6 +2,7 @@
 
 #include "../machine/machine_codes.hpp"
 #include "../machine/machine_state.hpp"
+#include "../config/config_file.hpp"
 #include "../config/satellite_config.hpp"
 
 #include <cstdio>
@@ -151,6 +152,17 @@ signed long long int Arguments::gather_config()
             return refuse(row.name + " is filled in by satl itself (the command line or the machine), so it cannot be a row");
         if (row.is_flag) {
             add_flag(row.name, row.flag);
+            continue;
+        }
+        // A ROW OF WORDS (2026-09-22), and the one kind config.ini may set for
+        // this machine, under its name without `arguments.`. Read here, once,
+        // with the row; an empty value keeps the row's own, because "set to
+        // nothing" is not a folder or a word anybody meant.
+        if (row.is_text) {
+            std::string value = row.text, said;
+            if (config_file::read_value(row.name.substr(10), said) && !said.empty())
+                value = said;
+            add_text(row.name, value);
             continue;
         }
         // THE DIGITS BECOME A satellite_number HERE, and nowhere earlier: the row
