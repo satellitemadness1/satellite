@@ -144,7 +144,11 @@ namespace {
 void let_go_of_every_piece(satellite_window &holder)
 {
     for (const WindowHandle &piece : holder.pieces) {
-        if (piece->holds_pieces())
+        // WHATEVER IT HOLDS, and not only what `.append` could put there: a
+        // menu holds the menus inside it (GTK-12) and refuses `.append`, so
+        // asking holds_pieces() here would have walked past a submenu and
+        // left it open with its window gone.
+        if (!piece->pieces.empty())
             let_go_of_every_piece(*piece);
         // A MENU IS NOT A WIDGET AND GTK DOES NOT FREE IT WITH THE WINDOW
         // (GTK-12). The bar's model and the window's action muxer each held a
@@ -155,6 +159,7 @@ void let_go_of_every_piece(satellite_window &holder)
             g_object_unref(G_OBJECT(piece->widget));
             g_object_unref(G_OBJECT(piece->actions));
             piece->actions = nullptr;
+            piece->section = nullptr;   // the model's, and it went with the model
         }
         piece->on_the_screen = false;
         piece->widget = nullptr;

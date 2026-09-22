@@ -104,6 +104,12 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
         gtk_grid_set_column_spacing(GTK_GRID(made), 6);
         return made;
     }
+    // A SET OF TABS TAKES NO WORDS: each tab's name is its PIECE's own `.title`
+    // (GTK-16), read when the piece is appended. THE BAR IS ALWAYS SHOWN, unlike
+    // satl-term's, which hides it with one page: a program that made tabs wants
+    // to see tabs, and a set with one page that looked like a plain piece would
+    // be a widget saying nothing about what it is.
+    case satellite_window::tabs: return gtk_notebook_new();
     // MADE FROM NUMBERS AND NOT FROM WORDS, so they are not this function's --
     // window_piece_of_numbers below is where they are made, and reaching here
     // with one is window_calls.cpp having read the table wrongly.
@@ -116,6 +122,8 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     // of a GMenu and an action group, and window_piece_of_text routes there
     // before it ever asks this function.
     case satellite_window::menu:
+    // AND A CANVAS IS MADE FROM ITS SIZE (GTK-15), in window_canvas.cpp.
+    case satellite_window::canvas:
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }

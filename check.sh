@@ -2292,8 +2292,12 @@ expect ".append with TWO arguments is still refused before anything runs" "13|" 
 # the window; walking only the window's direct children would leave a button in
 # a row holding a GtkWidget * that has been freed -- and it would read as a live
 # button right up until something touched it.
+# AND SINCE A MENU CAN HOLD MENUS (GTK-12's submenus, 2026-09-22) the walk asks
+# `pieces` itself and not holds_pieces(): a menu refuses .append and holds
+# pieces all the same, and holds_pieces() would have walked past a submenu and
+# left it open with its window gone.
 expect "a window going away lets go of every piece, however deep" "1|1" \
-       "$(grep -c 'let_go_of_every_piece(\*open_windows\[at\])' satellite/satellite_variable_window/window_desk.cpp)|$(grep -c 'if (piece->holds_pieces())' satellite/satellite_variable_window/window_desk.cpp)"
+       "$(grep -c 'let_go_of_every_piece(\*open_windows\[at\])' satellite/satellite_variable_window/window_desk.cpp)|$(grep -c 'if (!piece->pieces.empty())' satellite/satellite_variable_window/window_desk.cpp)"
 
 # AND A PRESS REPORTS THE WINDOW, NEVER THE ROW.
 expect "a press walks up to the window it happened in" "1|0" \
@@ -2590,13 +2594,135 @@ WIN_EOF
 headless build/window_holders_ok.satl > build/window_holders_ok.out 2>&1
 expect "a frame, a scroll and a split pass the checker, and stop only for want of a screen" 50 $?
 
-# TABS ARE NOT BUILT, and it is a LANGUAGE question rather than a missing
-# afternoon: a tab needs a NAME, and `.append` has no shape for "a piece and a
-# name". `.append` already means one thing for a row (the piece) and another for
-# a window and a grid (the piece and where it goes); a third would be the point
-# at which one method stops being one method. GTK-16 leaves it to the author.
-expect "no tabs word was minted, because a tab needs a name .append cannot carry" 0 \
-       "$(grep -c 'satellite.window.tabs' words/words.tsv)"
+# TABS ARE BUILT (2026-09-22), AND THE RECOMMENDATION IS WHAT WAS BUILT: the
+# PIECE carries its tab's name -- `the_piece.title("Open files")`, then
+# `a_tabs.append(the_piece)` -- so `.append` kept its two shapes and grew no
+# third. Until then a row here asserted that no tabs word existed, so that
+# nobody minted one without answering that question; it was answered the way
+# GTK-16 recommended, and the plan keeps the question as still reversible.
+#
+# PROVED ON A COMPOSITOR: two pages named First and Second; .chosen read First,
+# .chosen("Second") brought the second forward and .chosen read it back; a page
+# renamed with .title while in the set was relabelled in place; and a REAL
+# POINTER CLICK on the renamed tab ran the .changed capsule, whose .chosen read
+# the new name, and closed the window -- exit 0.
+expect "tabs is 1 27 21, made from nothing, and canvas is 1 27 20, made from a size" "1|1|1" \
+       "$(grep -cP '^1 27 21\tsatellite.window.tabs\t' words/words.tsv)|$(grep -cP '^1 27 21 0\tsatellite.window.tabs\(\)\t' words/words.tsv)|$(grep -cP '^1 27 20\tsatellite.window.canvas\(width, height\)\t' words/words.tsv)"
+expect "a tab is named by its piece's .title, and an unnamed piece is refused at the tabs" "1|1" \
+       "$(grep -c 'gtk_notebook_set_tab_label_text' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'a tab is named by its piece' satellite/satellite_variable_window/satellite_window.cpp)"
+expect "a set of tabs answers .chosen and .changed, as a choice does" "1|1" \
+       "$(grep -c 'piece == satellite_window::choice || which.piece == satellite_window::tabs' satellite/satellite_variable_window/window_state.cpp)|$(grep -c 'g_signal_connect(widget, "notify::page"' satellite/satellite_variable_window/window_answers.cpp)"
+
+cat > build/window_tabs_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window t = satellite.window.tabs("x")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_tabs_arity.satl > build/window_tabs_arity.out 2>&1
+expect "satellite.window.tabs with an argument is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_tabs_arity.out)"
+expect "... and says a tab is named by its piece's .title" 1 \
+       "$(tr '\n' ' ' < build/window_tabs_arity.out | grep -cF "named by that piece's .title")"
+
+cat > build/window_tabs_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_switched(satellite.variable.window the_tabs)
+{
+    satellite.console.display(the_tabs.chosen)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window t = satellite.window.tabs()
+    satellite.variable.window first = satellite.window.label("the first page")
+    first.title("First")
+    t.append(first)
+    t.chosen("First")
+    t.changed(when_switched)
+    satellite.console.display(t.chosen)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_tabs_ok.satl > build/window_tabs_ok.out 2>&1
+expect "tabs, a titled page, .chosen and .changed pass the checker, and stop only for want of a screen" 50 $?
+
+# ---------------------------------------------------------------------------
+# A CANVAS (GTK_AND_NO_DEPENDENCIES.md GTK-15, 2026-09-22): satellite draws it
+# itself, and IT IS A DISPLAY LIST AND NOT A DRAW CAPSULE. .line, .box, .circle
+# and .write append a stroke to the piece and ask for a redraw; GTK's draw
+# function replays the list and waits on nobody -- so the deadlock GTK-15 was
+# ordered last to avoid (the desk blocked on the interpreter while the
+# interpreter is blocked on the desk) cannot be built out of it. The first time
+# satellite's own code calls cairo, and pango.
+#
+# PROVED ON A COMPOSITOR, AND READ BACK BY EYE: a 400x300 canvas drew two
+# lines, a box, a circle and words in IBM Plex Mono 18, and .save wrote them to
+# a PNG; a REAL POINTER CLICK on the canvas ran its .clicked capsule, which drew
+# a red circle and red words AFTER the canvas was on the screen, saved a second
+# PNG, and closed the window -- exit 0. The second picture is the first plus
+# the red. THE PICTURE ALSO FOUND A DEFECT: with the pen read off the widget's
+# computed style, a canvas told .colour twice before it was in a window drew
+# the second batch in the FIRST colour -- reloading a CSS provider does not
+# reach a widget with no root. The pen is the canvas's own string now.
+# ---------------------------------------------------------------------------
+expect "a canvas is a display list: the draw function replays it and waits on nobody" "1|1|0" \
+       "$(grep -c 'gtk_drawing_area_set_draw_func' satellite/satellite_variable_window/window_canvas.cpp)|$(grep -c '^void replay(' satellite/satellite_variable_window/window_canvas.cpp)|$(grep -c 'the_desk_saw_something\|the_desk_waits_for_something' satellite/satellite_variable_window/window_canvas.cpp)"
+expect "the pen is the canvas's own colour, parsed at the stroke, and not the widget's computed style" 1 \
+       "$(grep -c 'gdk_rgba_parse(&colour, canvas.a_colour.c_str())' satellite/satellite_variable_window/window_canvas.cpp)"
+expect "line, box, circle, write and separator are 0x0B3F to 0x0B43, in that order" "1|1|1|1|1" \
+       "$(grep -c 'line_token = 0x0B3F' satellite/bytecode/token_codes.hpp)|$(grep -c 'box_token = 0x0B40' satellite/bytecode/token_codes.hpp)|$(grep -c 'circle_token = 0x0B41' satellite/bytecode/token_codes.hpp)|$(grep -c 'write_token = 0x0B42' satellite/bytecode/token_codes.hpp)|$(grep -c 'separator_token = 0x0B43' satellite/bytecode/token_codes.hpp)"
+
+cat > build/window_canvas_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window c = satellite.window.canvas(400)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_canvas_arity.satl > build/window_canvas_arity.out 2>&1
+expect "satellite.window.canvas with one argument is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_canvas_arity.out)"
+
+cat > build/window_canvas_method.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window c = satellite.window.canvas(400, 300)
+    c.line(0, 0, 100)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_canvas_method.satl > build/window_canvas_method.out 2>&1
+expect "c.line with three arguments is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_canvas_method.out)"
+expect "... and says .line takes 4 arguments" 1 \
+       "$(tr '\n' ' ' < build/window_canvas_method.out | grep -cF 'c.line takes 4 arguments, and was given 3')"
+
+cat > build/window_canvas_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window c = satellite.window.canvas(400, 300)
+    c.colour("#40c8ff")
+    c.line(0, 0, 399, 299)
+    c.box(20, 20, 80, 50)
+    c.circle(100, 200, 30)
+    c.font("IBM Plex Mono", 18)
+    c.write(150, 40, "hello from satellite")
+    c.save("build/canvas.png")
+    c.clear()
+    satellite.console.display(c.width)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_canvas_ok.satl > build/window_canvas_ok.out 2>&1
+expect "a canvas, its five strokes, .clear and .save pass the checker, and stop only for want of a screen" 50 $?
 
 # ---------------------------------------------------------------------------
 # TIME (GTK_AND_NO_DEPENDENCIES.md GTK-13, 2026-09-21): a capsule on a clock.
@@ -2955,7 +3081,62 @@ expect "a menu's model and actions are given back when its window goes" "1|1" \
 # gtk_init_check for ever (Q-WIN-11a). One bar a window, above the fixed in the
 # column window_new() has held since this milestone.
 expect "the menu's actions go on the window, and no GtkApplication was made" "1|0" \
-       "$(grep -c 'gtk_widget_insert_action_group(static_cast<GtkWidget \*>(window->widget)' satellite/satellite_variable_window/window_menu.cpp)|$(grep -rc 'gtk_application_new\|GTK_APPLICATION_WINDOW' satellite/satellite_variable_window/ | awk -F: '{s+=$2} END {print s}')"
+       "$(grep -c 'gtk_widget_insert_action_group(window, menu.action_prefix.c_str()' satellite/satellite_variable_window/window_menu.cpp)|$(grep -rc 'gtk_application_new\|GTK_APPLICATION_WINDOW' satellite/satellite_variable_window/ | awk -F: '{s+=$2} END {print s}')"
+
+# A MENU INSIDE A MENU, AND A SEPARATOR (GTK-12's two leftovers, 2026-09-22,
+# built as the recommendation). `.menu` on a MENU puts the second menu under
+# the first, as an item with an arrow, and its heading is the word on that item
+# -- satellite.window.menu("Recent") already carries it, as a tab's piece
+# carries its title. A menu's model holds SECTIONS and nothing else now: a
+# GMenu has no separator item, it draws the line between sections, so a menu is
+# made with one and `.separator()` opens the next. The actions of every menu
+# inside a menu go on the window with its parent's, recursively.
+#
+# PROVED ON A COMPOSITOR BY REAL KEYS: File with Open, Save, a separator and
+# Recent under it, More under Recent with deep.satl in it; F10 Down Down Down
+# Right Right Return picked deep.satl, and the capsule was handed the menu it
+# was on and the window -- exit 0. Refused by name: a separator with nothing
+# above it, a menu into itself, a menu into a menu it already holds.
+expect "a menu's model holds sections, a separator opens the next, and the actions of every menu inside go on the window" "1|1|1" \
+       "$(grep -c 'g_menu_append_section' satellite/satellite_variable_window/window_menu.cpp)|$(grep -c '^bool window_separator' satellite/satellite_variable_window/window_menu.cpp)|$(grep -c 'put_the_actions_on(window, \*under)' satellite/satellite_variable_window/window_menu.cpp)"
+expect "an item's action is named by a counter and not by the model's count, which is sections now" "1|0" \
+       "$(grep -c '++items_so_far' satellite/satellite_variable_window/window_menu.cpp)|$(grep -c 'g_menu_model_get_n_items(G_MENU_MODEL(model_of(\*raw))) + 1' satellite/satellite_variable_window/window_menu.cpp)"
+
+cat > build/window_submenu_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_open(satellite.variable.window the_menu, satellite.variable.window its_window)
+{
+    satellite.console.display(the_menu.text)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("t", 800, 600)
+    satellite.variable.window file = satellite.window.menu("File")
+    satellite.variable.window recent = satellite.window.menu("Recent")
+    recent.item(when_open, "one.satl")
+    file.item(when_open, "Open")
+    file.separator()
+    file.menu(recent)
+    w.menu(file)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_submenu_ok.satl > build/window_submenu_ok.out 2>&1
+expect "a separator and a menu inside a menu pass the checker, and stop only for want of a screen" 50 $?
+
+cat > build/window_separator_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window m = satellite.window.menu("File")
+    m.separator(1)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_separator_arity.satl > build/window_separator_arity.out 2>&1
+expect "m.separator with an argument is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_separator_arity.out)"
 expect "the window holds a column, and the bar goes above the fixed in it" "1|1" \
        "$(grep -c 'gtk_widget_set_vexpand(inside, TRUE)' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'gtk_box_prepend(GTK_BOX(column), bar)' satellite/satellite_variable_window/window_menu.cpp)"
 

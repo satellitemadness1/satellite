@@ -48,10 +48,15 @@ struct AWord {
     satellite_window::Piece makes;        // what a program gets back
     // WHAT ITS ARGUMENTS ARE. `arity` says how many and this says of what, and
     // together they are every shape a window word has: nothing, one line of
-    // words, two numbers, one list. A widget added with a fifth shape is one
-    // more value here and one more branch in call_window_word -- not a fifth
-    // field and not a second table.
-    enum Takes { words, numbers, items, a_file } takes_what;
+    // words, two numbers, one list, one file, a size. A widget added with a
+    // seventh shape is one more value here and one more branch in
+    // call_window_word -- not a seventh field and not a second table.
+    //
+    // `a_size` IS NOT `numbers` (GTK-15): a slider's two numbers are a range and
+    // the least must be the smaller, while a canvas's two are a width and a
+    // height and 400 by 300 is the ordinary case. One shape with a flag would
+    // have been the range rule refusing every landscape canvas.
+    enum Takes { words, numbers, items, a_file, a_size } takes_what;
     const char *takes;                    // and what to say when the count is wrong
 };
 
@@ -111,6 +116,13 @@ constexpr AWord kWords[] = {
     // the bar would be a menu that is nowhere (window_menu.cpp).
     {19, "menu", 1, satellite_window::menu, AWord::words,
      "satellite.window.menu takes the word that goes on the bar: satellite.window.menu(\"File\")"},
+    {20, "canvas", 2, satellite_window::canvas, AWord::a_size,
+     "satellite.window.canvas takes how wide and how tall it is: satellite.window.canvas(400, 300)"},
+    // A SET OF TABS TAKES NOTHING: each tab is named by its PIECE's own .title
+    // (GTK-16), so there is nothing here for the adding to carry.
+    {21, "tabs", 0, satellite_window::tabs, AWord::words,
+     "satellite.window.tabs takes nothing -- each piece .append'ed is a tab, named by that "
+     "piece's .title: satellite.window.tabs()"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
@@ -341,8 +353,12 @@ std::string window_methods_are()
            "has .changed(a_capsule); and a window has .closed(a_capsule) and "
            ".every(a_capsule, 1000) and .key(a_capsule); anything that is not a button has "
            ".clicked(a_capsule); and a window has .message(\"saying\"), "
-           ".ask(a_capsule, \"a question?\") and .answer; a menu has .item(a_capsule, \"Open\") "
-           "and a window has .menu(a_menu) "
+           ".ask(a_capsule, \"a question?\") and .answer; a menu has .item(a_capsule, \"Open\"), "
+           ".separator() and .menu(a_menu) for a menu inside it, and a window has .menu(a_menu); "
+           "a canvas has .line(from_across, from_down, to_across, to_down), .box(across, down, "
+           "wide, tall), .circle(across, down, radius), .write(across, down, \"words\"), .clear() "
+           "and .save(\"picture.png\"); a piece going into a set of tabs is named by its "
+           ".title(\"a name\"), and the tabs' .chosen is the one in front "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -375,8 +391,15 @@ int window_method_arity(Code method)
     case token::message_token:    return 1;  // what to say (GTK-11)
     case token::ask_token:        return 2;  // the question, then the capsule's NAME
     case token::answer_token:     return 0;  // a question, read bare or bracketed
-    case token::menu_token:       return 1;  // the menu to put across the top (GTK-12)
+    case token::menu_token:       return 1;  // the menu to put across the top, or inside this one (GTK-12)
     case token::item_token:       return 2;  // the capsule's NAME, then the words on the item
+    case token::separator_token:  return 0;  // a line under the items so far (GTK-12)
+    case token::line_token:       return 4;  // from a point to a point (GTK-15)
+    case token::box_token:        return 4;  // a corner, a width and a height
+    case token::circle_token:     return 3;  // a centre and a radius
+    case token::write_token:      return 3;  // a point and the words
+    case token::clear_token:      return 0;  // nothing drawn any more
+    case token::save_token:       return 1;  // the file to write the picture to
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -488,6 +511,14 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
                 wanted.push_back(std::move(one));
             }
             made = window_piece_of_items(row->makes, wanted, why);
+        } else if (row->takes_what == AWord::a_size) {
+            // A WIDTH AND A HEIGHT (GTK-15). The same reader as a place, for
+            // the same reason a slider's range borrows it: a whole number that
+            // must fit a screen's worth of int.
+            if (!place_of(arguments[0], least, called + "'s width", context) ||
+                !place_of(arguments[1], most, called + "'s height", context))
+                return Value();
+            made = window_piece_of_a_size(row->makes, least, most, why);
         } else if (row->takes_what == AWord::numbers) {
             // TWO NUMBERS OR NONE. place_of is borrowed on purpose rather than
             // copied: a slider's least and most are the same kind of thing as a
@@ -523,6 +554,8 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
                                     why.find("no display to draw on") == std::string::npos;
             const bool the_program = (row->takes_what == AWord::numbers && row->arity == 2 &&
                                       least >= most) ||
+                                     (row->takes_what == AWord::a_size &&
+                                      (least <= 0 || most <= 0 || least > 32767 || most > 32767)) ||
                                      row->takes_what == AWord::items || a_bad_file;
             // A FILE GETS A FILE'S CODE. satellite.variable.file already has the
             // scale -- file_not_found for nothing at that path,
@@ -954,12 +987,76 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         // THE SAME READER `.append` USES: a handle or a refusal naming the kind.
         const WindowHandle *menu = arguments[0].window_handle();
         if (menu == nullptr) {
-            context.refuse(types_do_not_meet, what + " takes a menu to put across the top -- "
-                                                  "satellite.window.menu(\"File\") makes one -- and "
-                                                  "was given " + arguments[0].kind_name());
+            context.refuse(types_do_not_meet, what + " takes a menu to put across the top, or inside "
+                                                  "this one -- satellite.window.menu(\"File\") makes "
+                                                  "one -- and was given " + arguments[0].kind_name());
             return Value();
         }
         went = window_menu(*window, *menu, why);
+        break;
+    }
+    case token::separator_token: went = window_separator(*window, why); break;
+    // WHAT A PROGRAM DRAWS ON A CANVAS (GTK-15). Every number is a place -- a
+    // whole number that may be negative and must fit a screen -- read by the
+    // one reader every place here goes through; what may NOT be negative is
+    // the canvas's own business and is refused there, by name.
+    case token::line_token: {
+        long long int x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+        if (!place_of(arguments[0], x1, what + "'s from across", context) ||
+            !place_of(arguments[1], y1, what + "'s from down", context) ||
+            !place_of(arguments[2], x2, what + "'s to across", context) ||
+            !place_of(arguments[3], y2, what + "'s to down", context))
+            return Value();
+        went = window_line(*window, x1, y1, x2, y2, why);
+        break;
+    }
+    case token::box_token: {
+        long long int x = 0, y = 0, wide = 0, tall = 0;
+        if (!place_of(arguments[0], x, what + "'s across", context) ||
+            !place_of(arguments[1], y, what + "'s down", context) ||
+            !place_of(arguments[2], wide, what + "'s width", context) ||
+            !place_of(arguments[3], tall, what + "'s height", context))
+            return Value();
+        went = window_box(*window, x, y, wide, tall, why);
+        break;
+    }
+    case token::circle_token: {
+        long long int x = 0, y = 0, radius = 0;
+        if (!place_of(arguments[0], x, what + "'s across", context) ||
+            !place_of(arguments[1], y, what + "'s down", context) ||
+            !place_of(arguments[2], radius, what + "'s radius", context))
+            return Value();
+        went = window_circle(*window, x, y, radius, why);
+        break;
+    }
+    case token::write_token: {
+        long long int x = 0, y = 0;
+        std::string words;
+        if (!place_of(arguments[0], x, what + "'s across", context) ||
+            !place_of(arguments[1], y, what + "'s down", context) ||
+            !text_of(arguments[2], words, what + "'s words", context))
+            return Value();
+        went = window_write(*window, x, y, words, why);
+        break;
+    }
+    case token::clear_token: went = window_clear(*window, why); break;
+    case token::save_token: {
+        std::string path;
+        if (!text_of(arguments[0], path, what, context))
+            return Value();
+        went = window_save(*window, path, why);
+        // A PICTURE THAT COULD NOT BE WRITTEN GETS A FILE'S CODE (GTK-15).
+        // file_unwritable is "a save could not write; the reason is said",
+        // which is exactly this, and the tail below would have printed
+        // types_do_not_meet under a sentence about a file -- the code and the
+        // sentence disagreeing, which this module has fixed three times now.
+        // Told apart by the sentence window_save wrote, the way
+        // call_window_word tells "no display" apart. A closed canvas, a piece
+        // that is not a canvas and an empty path still fall to the tail.
+        if (!went && window->widget != nullptr && why.find("could not be written to") != std::string::npos) {
+            context.refuse(file_unwritable, what + " could not be done -- " + why);
+            return Value();
+        }
         break;
     }
     case token::clicked_token: {

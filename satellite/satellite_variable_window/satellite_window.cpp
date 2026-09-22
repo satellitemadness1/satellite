@@ -11,6 +11,7 @@
 //   window_look.cpp      what a piece LOOKS LIKE: .colour, .background, .font
 //   window_asking.cpp    SAYING something to a person, and ASKING them
 //   window_menu.cpp      a MENU across the top, and the items on it (GTK-12)
+//   window_canvas.cpp    a CANVAS satellite draws on itself (GTK-15)
 //
 // EVERY GTK CALL IN THIS FILE HAPPENS INSIDE on_the_desk(), which is the rule
 // window_desk.hpp exists to keep: GTK4 is not thread-safe and the interpreter
@@ -132,8 +133,8 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
 {
     const bool a_window = into.piece == satellite_window::window;
     if (!a_window && !into.holds_pieces()) {
-        why = std::string(into.piece_name()) + " holds nothing -- a window, a row, a column and a "
-              "grid do";
+        why = std::string(into.piece_name()) + " holds nothing -- a window, a row, a column, a "
+              "grid, a scroll, a frame, a split and a set of tabs do";
         return false;
     }
     // AND SOME OF THEM HOLD A FIXED NUMBER (GTK-16). Refused rather than
@@ -185,6 +186,15 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
         why = "a piece cannot be put inside itself";
         return false;
     }
+    // A TAB IS NAMED BY ITS PIECE (GTK-16), so a piece with no name yet has no
+    // tab to go on. Refused here, with the line to write, rather than given a
+    // blank tab a person cannot tell from the next one -- the same answer a
+    // menu with no heading gets.
+    if (into.piece == satellite_window::tabs && piece->title.empty()) {
+        why = "a tab is named by its piece's title, and " + std::string(piece->piece_name()) +
+              " has none yet -- give it one first: the_piece.title(\"Open files\")";
+        return false;
+    }
     // ALREADY SOMEWHERE. GTK refuses to give a widget a second parent and prints
     // its own critical warning; satellite says it in a sentence first.
     if (piece->inside_of.lock() != nullptr) {
@@ -205,9 +215,20 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     void *inside = a_window ? into.inside : into.widget;
     const satellite_window::Piece holder = into.piece;
     const int at_x = static_cast<int>(x), at_y = static_cast<int>(y);
-    on_the_desk([raw, inside, holder, at_x, at_y] {
+    // THE TAB'S NAME IS COPIED HERE, ON THE INTERPRETER'S THREAD, and carried
+    // into the lambda by value: `title` has one writer and it is this thread,
+    // and the desk reading it through the pointer would be the second reader
+    // this module is written to avoid.
+    const std::string tab = piece->title;
+    on_the_desk([raw, inside, holder, at_x, at_y, &tab] {
         GtkWidget *widget = static_cast<GtkWidget *>(raw->widget);
         GtkWidget *into_this = static_cast<GtkWidget *>(inside);
+        if (holder == satellite_window::tabs) {
+            // ONE AFTER ANOTHER, LEFT TO RIGHT, which is what a row already
+            // means -- and the label on the tab is a GtkLabel GTK owns from here.
+            gtk_notebook_append_page(GTK_NOTEBOOK(into_this), widget, gtk_label_new(tab.c_str()));
+            return;
+        }
         if (holder == satellite_window::grid) {
             // A CELL, COUNTING FROM 1, which is how satellite counts a file's
             // lines (SATELLITE_FILE_OPERATIONS, the author: "all line numbers
@@ -328,14 +349,39 @@ bool window_focus(satellite_window &which, std::string &why)
 
 bool window_set_title(satellite_window &which, const std::string &title, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
-        why = "only a window has a title";
+    // A MENU'S WORD IS ITS HEADING AND `.text` IS THE METHOD FOR IT (GTK-12).
+    // Two names for one thing is what this language spends its refusals
+    // avoiding, so a menu is sent to the one it has.
+    if (which.piece == satellite_window::menu) {
+        why = "a menu's words are its heading -- write .text(\"File\") instead";
         return false;
     }
-    if (!still_there(which, why))
+    if (which.piece == satellite_window::window) {
+        if (!still_there(which, why))
+            return false;
+        GtkWidget *widget = as_widget(which);
+        on_the_desk([widget, &title] { gtk_window_set_title(GTK_WINDOW(widget), title.c_str()); });
+        which.title = title;
+        return true;
+    }
+    // ANY OTHER PIECE'S TITLE IS THE NAME ON ITS TAB (GTK-16). Written BEFORE
+    // the piece goes into a set of tabs, which is the ordinary order, it is
+    // simply remembered; written after, the tab is relabelled where it is.
+    // NOT still_there(): a piece is on no screen until it is appended, and
+    // naming it first is the whole point.
+    if (which.widget == nullptr) {
+        why = "it is closed";
         return false;
+    }
+    const WindowHandle in = which.inside_of.lock();
+    GtkWidget *holder = in != nullptr && in->piece == satellite_window::tabs && in->widget != nullptr
+                            ? as_widget(*in)
+                            : nullptr;
     GtkWidget *widget = as_widget(which);
-    on_the_desk([widget, &title] { gtk_window_set_title(GTK_WINDOW(widget), title.c_str()); });
+    on_the_desk([holder, widget, &title] {
+        if (holder != nullptr)
+            gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(holder), widget, title.c_str());
+    });
     which.title = title;
     return true;
 }

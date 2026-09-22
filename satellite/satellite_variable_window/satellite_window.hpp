@@ -38,6 +38,28 @@ namespace satellite004 {
 class satellite_window;
 using WindowHandle = std::shared_ptr<satellite_window>;
 
+// ONE THING DRAWN ON A CANVAS (GTK-15): a line, a box, a circle or some words,
+// and the colour it was drawn in. Plain numbers and no cairo type, because this
+// header has no GTK in it (above) -- window_canvas.cpp is what turns one of
+// these into cairo calls, on the desk, every time the canvas is redrawn.
+//
+// `x, y` is where it starts; what `a` and `b` mean is the shape's: a line's far
+// end, a box's width and height, a circle's radius in `a` alone.
+//
+// THE COLOUR AND THE FONT ARE THE CANVAS'S AT THE MOMENT OF THE STROKE, copied
+// in, so `.colour(...)` and `.font(...)` on a canvas are a pen: they change what
+// is drawn AFTER them and nothing drawn before. `font` is pango's own spelling
+// of one -- the face, a space, the size and "px" -- and empty means the
+// widget's own.
+struct AStroke {
+    enum Shape { a_line, a_box, a_circle, some_words };
+    Shape shape = a_line;
+    double x = 0.0, y = 0.0, a = 0.0, b = 0.0;
+    double red = 0.0, green = 0.0, blue = 0.0, alpha = 1.0;
+    std::string words;
+    std::string font;
+};
+
 // ENABLE_SHARED_FROM_THIS, and it is here for the press (WIN-11). GTK hands a
 // signal handler a raw pointer, and a press must answer the capsule with the
 // PIECE that was pressed -- which is a Value, which is a handle. Without this
@@ -64,7 +86,7 @@ public:
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
                  slider, number_box, progress, choice,
                  row, column, grid, picture,
-                 scroll, frame, split, menu, how_many_pieces };
+                 scroll, frame, split, menu, canvas, tabs, how_many_pieces };
 
     Piece piece = window;
 
@@ -94,6 +116,13 @@ public:
     void *actions = nullptr;
     std::string action_prefix;
 
+    // AND WHERE ITS ITEMS GO NOW (GTK-12's separator): the GMenu SECTION at the
+    // end of its model. A menu's model holds sections and nothing else -- one
+    // from the day it is made and one more for every `.separator()` -- and GTK
+    // draws the line between them. Owned by the model, so nothing here unrefs
+    // it; nulled with `widget` when the window goes.
+    void *section = nullptr;
+
     // THE GtkFixed INSIDE A WINDOW, which is what `.append` puts a piece into.
     // GTK4 has no absolute position in a box, so a window that a program places
     // things in BY COORDINATE must hold a GtkFixed (WIN-3).
@@ -118,13 +147,19 @@ public:
     std::vector<WindowHandle> pieces;
 
     // WHETHER THIS PIECE HOLDS OTHERS (GTK-7). A row, a column and a grid do;
-    // everything else is a leaf. It is asked in four places -- what `.append`
-    // takes, where a piece is put, what a teardown has to walk, and which window
-    // a press happened in -- so it is one question here and not four tests.
+    // everything else is a leaf. It is asked in three places -- what `.append`
+    // takes, where a piece is put, and which window a press happened in -- so
+    // it is one question here and not three tests. A TEARDOWN NO LONGER ASKS
+    // IT: a menu holds the menus inside it (GTK-12) and refuses `.append`, so
+    // what a teardown walks is `pieces` itself, whoever filled it.
+    //
+    // A SET OF TABS HOLDS PIECES TOO (GTK-16), as many as it is given, and each
+    // one's tab is named by the PIECE's own `title` -- which is how a tab gets
+    // its name without `.append` growing a third shape.
     bool holds_pieces() const
     {
         return piece == row || piece == column || piece == grid || piece == scroll ||
-               piece == frame || piece == split;
+               piece == frame || piece == split || piece == tabs;
     }
 
     // AND HOW MANY IT WILL HOLD (GTK-16). A row takes as many as it is given; a
@@ -158,7 +193,12 @@ public:
     // since rows existed.
     std::weak_ptr<satellite_window> inside_of;
 
-    std::string title;            // what it was made with, and what .title reads back
+    // WHAT IT WAS MADE WITH, AND WHAT .title READS BACK. A WINDOW'S is the
+    // words on its frame. ANY OTHER PIECE'S IS THE NAME ON ITS TAB (GTK-16):
+    // a piece carries its own name, and a set of tabs reads it when the piece
+    // is appended -- so `.title` is written on the piece and never on the
+    // adding, which is the shape GTK-16 asked for and the recommendation.
+    std::string title;
 
     // WHAT SIZE A WINDOW ASKED FOR (GTK-8). A window that is not on the screen
     // yet has no size at all -- gtk_widget_get_width answers 0 until a
@@ -253,6 +293,19 @@ public:
     std::string a_font;
     int a_font_size = 0;
 
+    // WHAT A CANVAS HAS DRAWN, IN ORDER (GTK-15). A CANVAS IS A DISPLAY LIST
+    // AND NOT A CAPSULE: `.line`, `.box`, `.circle` and `.write` append to this
+    // and GTK's draw function replays it with NO satellite code running at all
+    // -- which is what makes it impossible to deadlock. The other shape, a draw
+    // capsule, would have had the desk waiting on the interpreter to draw while
+    // the interpreter waits on the desk for everything else, and this design
+    // already had every piece needed to build that hang.
+    //
+    // WRITTEN AND READ ON THE DESK'S THREAD ONLY -- inside on_the_desk(), or
+    // inside the draw function, which is the desk's -- the same rule
+    // `when_pressed` follows.
+    std::vector<AStroke> drawn;
+
     satellite_window() = default;
     explicit satellite_window(Piece which) : piece(which) {}
 
@@ -309,6 +362,8 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a frame", "frame"},
     {"a split", "split"},
     {"a menu", "menu"},
+    {"a canvas", "canvas"},
+    {"a set of tabs", "tabs"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -422,6 +477,50 @@ WindowHandle window_piece_of_a_file(satellite_window::Piece which, const std::st
 // nothing of GTK's until the menu meets a window.
 WindowHandle window_piece_of_a_menu(const std::string &heading, std::string &why);
 
+// AND THE FIFTH SHAPE (GTK-15): `satellite.window.canvas(400, 300)`, a piece
+// made from its SIZE. A GtkDrawingArea of that content size, and the first
+// piece satellite draws on itself.
+//
+// A SIZE OF 0 IS REFUSED, as a window's is: a canvas nobody can see is not what
+// was asked for.
+WindowHandle window_piece_of_a_size(satellite_window::Piece which, long long int wide,
+                                    long long int tall, std::string &why);
+
+// WHAT A PROGRAM DRAWS ON A CANVAS (GTK-15), each one appended to the display
+// list and the canvas asked to redraw. ONLY A CANVAS; everything else is
+// refused by name.
+//
+//   c.line(from_across, from_down, to_across, to_down)   one pixel wide
+//   c.box(across, down, wide, tall)                       filled, from its top-left
+//   c.circle(across, down, radius)                        filled, around its centre
+//   c.write(across, down, "words")                        in the canvas's font
+//   c.clear()                                             nothing drawn any more
+//   c.save("picture.png")                                 the same list, to a PNG
+//
+// THE COLOUR IS THE CANVAS'S OWN, read off the widget at the moment of the
+// stroke: `.colour("#ff0000")` on a canvas is the pen for everything drawn
+// AFTER it, and what was drawn before keeps the colour it had. With no
+// `.colour` at all a canvas draws in the theme's own foreground, which is right
+// in a dark theme and in a light one. `.font` is the words' font the same way.
+//
+// A NEGATIVE WIDTH, HEIGHT OR RADIUS IS REFUSED where it is written. A line
+// from a point to itself and a box of no size draw nothing, which is the
+// honest answer to what they are, and are not refused.
+//
+// `.save` REPLAYS THE SAME LIST INTO A PNG at the canvas's size, with whatever
+// `.background` the canvas wears painted first and nothing else -- cairo's own
+// PNG writer, which is what libpng has been in satl for since GTK-6.
+bool window_line(satellite_window &which, long long int x1, long long int y1, long long int x2,
+                 long long int y2, std::string &why);
+bool window_box(satellite_window &which, long long int x, long long int y, long long int wide,
+                long long int tall, std::string &why);
+bool window_circle(satellite_window &which, long long int x, long long int y, long long int radius,
+                   std::string &why);
+bool window_write(satellite_window &which, long long int x, long long int y, const std::string &words,
+                  std::string &why);
+bool window_clear(satellite_window &which, std::string &why);
+bool window_save(satellite_window &which, const std::string &path, std::string &why);
+
 // `a_menu.item(when_open, "Open")` -- AN ITEM ON A MENU, and the capsule that
 // runs when a person picks it (GTK-12). THE NAME COMES FIRST, as every
 // capsule-naming method spells it. `.add` would have read better and is `+`
@@ -438,11 +537,26 @@ WindowHandle window_piece_of_a_menu(const std::string &heading, std::string &why
 bool window_item(satellite_window &which, const std::string &capsule, const std::string &label,
                  std::string &why);
 
+// `a_menu.separator()` -- A LINE UNDER THE ITEMS SO FAR (GTK-12). The items
+// added after it go below the line. It is g_menu_append_section: a menu's model
+// holds SECTIONS, and GTK draws the line between one section and the next.
+//
+// REFUSED WHEN THERE IS NOTHING ABOVE IT YET -- a separator first, or two in a
+// row, is a section with no items, and GTK draws nothing at all for one.
+bool window_separator(satellite_window &which, std::string &why);
+
 // `my_window.menu(a_menu)` -- PUT A MENU ACROSS THE TOP OF A WINDOW (GTK-12). A
 // second menu goes BESIDE the first on the same bar, which is what a bar is.
 // It is not `.append`: a menu has no coordinate and no place in a row, and
 // `.append` growing a third shape for it is the point at which one method stops
 // being one method (GTK-16 says the same of a tab).
+//
+// AND `file.menu(recent)` -- A MENU INSIDE A MENU. The same method on a MENU
+// puts the second menu under the first, as an item with an arrow, and its
+// heading is the word on that item: `satellite.window.menu("Recent")` already
+// carries it, which is what the recommendation said a submenu should do. Its
+// actions go on the window with its parent's -- at once if the parent is on
+// one, and when the parent gets there if not.
 //
 // ACTIONS GO ON THE WINDOW AND NEVER ON AN APPLICATION.
 // gtk_widget_insert_action_group on the GtkWindow is the whole of it; a
@@ -522,7 +636,9 @@ bool window_value_of(satellite_window &which, long long int &out, std::string &w
 bool window_set_value(satellite_window &which, long long int to, std::string &why);
 
 // `a_choice.chosen` AND `a_choice.chosen("green")` -- WHICH ITEM IS PICKED, AS
-// TEXT (GTK-5).
+// TEXT (GTK-5). AND ON A SET OF TABS (GTK-16), WHICH TAB IS IN FRONT, by the
+// name on it -- the same question with the same answer, and writing it brings
+// that tab to the front.
 //
 // TEXT AND NOT AN INDEX, on purpose. A program that wanted the position has the
 // list it made the choice from and can `.index_of` it; a program that has the
@@ -691,6 +807,13 @@ bool window_ask(satellite_window &which, const std::string &question, const std:
 
 bool window_close(satellite_window &which, std::string &why);
 bool window_focus(satellite_window &which, std::string &why);
+
+// `my_window.title("saved")` -- THE WORDS ON A WINDOW'S FRAME (WIN-3), and
+// `a_piece.title("Open files")` -- THE NAME ON A PIECE'S TAB (GTK-16). One
+// method, because it is one idea: what this thing is called where it is held.
+// A piece already in a set of tabs is relabelled in place; one not yet in any
+// simply remembers, for when it is appended. A MENU is refused and sent to
+// `.text`: its heading already has a word.
 bool window_set_title(satellite_window &which, const std::string &title, std::string &why);
 
 // `my_window.resize(1024, 768)` -- ASK FOR A SIZE (GTK-8). ONLY A WINDOW: a

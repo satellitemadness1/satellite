@@ -39,12 +39,14 @@ completely different things:
   something. Nothing of ours names it; it is in the binary because the thing
   above it needs it.
 
-Today satellite's own code calls **four** of the twenty-four projects by name:
-gtk, glib, gobject and gio — gio for the GResource that WIN-1 carries, for
+Today satellite's own code calls **six** of the twenty-four projects by name:
+gtk, glib, gobject, gio — gio for the GResource that WIN-1 carries, for
 GTK-11's `GAsyncResult`, and since GTK-12 for a menu's `GMenu` and
-`GSimpleActionGroup`, which is the one milestone that is gio before it is gtk.
-Everything else in the list below is reached. **That is the number the widget
-milestones move**, and the last table says by how much.
+`GSimpleActionGroup`, which is the one milestone that is gio before it is gtk —
+and, since GTK-15 on 2026-09-22, **cairo and pango**: cairo for a canvas's
+lines, boxes and circles and for the PNG `.save` writes, pango (pangocairo) for
+the words on it. Everything else in the list below is reached. **That is the
+number the widget milestones move**, and the last table says by how much.
 
 ## The stack, as it is actually built
 
@@ -83,11 +85,11 @@ projects produce the archives.
 | ✔ | **GTK-9** every piece talks back | gtk, gobject | libffi |
 | ✔ | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
 | ◑ | **GTK-11** asking a person | gtk, gio (`GAsyncResult`) — **no `GFile`: the file dialog is not built** | — |
-| ✔ | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GSimpleActionGroup`), gtk (`GtkPopoverMenuBar`, `gtk_widget_insert_action_group`) | — |
+| ✔ | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GSimpleActionGroup`, and since 2026-09-22 `g_menu_append_section` for a separator and a submenu link for a menu inside a menu), gtk (`GtkPopoverMenuBar`, `gtk_widget_insert_action_group`) | — |
 | ✔ | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
 | ✔ | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
-| — | **GTK-15** a canvas | gtk, **cairo directly** | pixman, freetype |
-| ◑ | **GTK-16** more than one screenful | gtk | — |
+| ✔ | **GTK-15** a canvas | gtk (`GtkDrawingArea`), **cairo directly** (a line, a box, a circle, an image surface, `cairo_surface_write_to_png`), **pango directly** (`pango_cairo_show_layout`) | pixman, freetype, **libpng** for `.save` |
+| ✔ | **GTK-16** more than one screenful | gtk (`GtkNotebook` since 2026-09-22) | — |
 | — | **GTK-17** `satellite.console` is a window | **VTE — NOT VENDORED**, gtk, pango | freetype, harfbuzz, fribidi |
 | — | **GTK-18** `satellite.terminal` is a bash prompt | VTE, glib (`g_spawn`) | — |
 | ✔ | **DEP-1** every source in the folder | **all 24** | — |
@@ -109,8 +111,8 @@ projects are in satl today and no satellite word has ever reached them.**
 |---|---|---|---|
 | **gtk** | libgtk, libgdk, libgdk-wayland, libgsk, libgtk_css, libgtk_svg | every widget | WIN-2 ✔ |
 | **glib** | libglib-2.0, libgobject-2.0, libgio-2.0, libgmodule-2.0, libgthread-2.0 | the object system, the main loop, the resource | WIN-1 ✔ |
-| **pango** | libpango-1.0, libpangocairo-1.0, libpangoft2-1.0 | laying text out | reached at WIN-3; **called by nothing of ours, ever** |
-| **cairo** | libcairo, libcairo-gobject | drawing | reached at WIN-3; **CALLED at GTK-15** |
+| **pango** | libpango-1.0, libpangocairo-1.0, libpangoft2-1.0 | laying text out | reached at WIN-3; **CALLED at GTK-15 ✔** — `pango_cairo_show_layout` draws the words on a canvas |
+| **cairo** | libcairo, libcairo-gobject | drawing | reached at WIN-3; **CALLED at GTK-15 ✔** (2026-09-22) |
 | **pixman** | libpixman-1 (+ mmx, sse2, ssse3) | cairo's rasteriser | reached only |
 | **harfbuzz** | libharfbuzz, libharfbuzz-subset | shaping a run of characters into glyphs | reached only |
 | **freetype** | libfreetype | a glyph out of a `.ttf` | reached only |
@@ -118,7 +120,7 @@ projects are in satl today and no satellite word has ever reached them.**
 | **fribidi** | libfribidi | right-to-left text | reached only |
 | **expat** | libexpat | fontconfig's XML parser, on our own `fonts.conf` | reached at WIN-1 |
 | **gdk-pixbuf** | libgdk_pixbuf-2.0 + 13 loaders | a picture off the disk | GTK-6 ✔ |
-| **libpng** | libpng16 | `.png` | GTK-6 ✔ — proved with a real 64×48 PNG |
+| **libpng** | libpng16 | `.png` | GTK-6 ✔ — proved with a real 64×48 PNG; and GTK-15's `.save` **writes** one |
 | **libjpeg-turbo** | libjpeg | `.jpg` | GTK-6 ✔ — proved with a real JPEG |
 | **libtiff** | libtiff | `.tif` | GTK-6 — same word, not yet proved with a `.tif` |
 | **zlib** | libz | the compressed GResource; png | WIN-1 ✔ |
@@ -1271,12 +1273,50 @@ holds as many windows as a program opens.
   top-level item with no submenu is silently dropped. The heading is not a style
   choice.
 
-**THE AUTHOR'S, and nothing here decides it:** a menu *inside* a menu, and a
-line between groups of items. A submenu needs a heading, which is exactly
-GTK-16's question about a tab's name asked again — the recommendation is the
-same answer, the piece carries it, and `satellite.window.menu("Recent")` already
-does. A separator is `g_menu_append_section` and one line; it is not built
-because nothing has said how it is spelled.
+**A MENU INSIDE A MENU AND A SEPARATOR — BUILT 2026-09-22, as the
+recommendation, and still reversible.** The author's word was *"do the next
+one, or do 3 even"*; the question row below is kept and marked, not removed.
+`.menu` on a MENU puts the second menu under the first, as an item with an
+arrow, and its heading is the word on that item — `satellite.window.menu("Recent")`
+already carries it, so the piece carries its own name, as a tab's does now
+(GTK-16). `.separator()` is `0x0B43`.
+
+    satellite.variable.window file = satellite.window.menu("File")
+    satellite.variable.window recent = satellite.window.menu("Recent")
+    recent.item(when_one, "one.satl")
+    file.item(when_open, "Open")
+    file.separator()
+    file.menu(recent)
+    my_window.menu(file)
+
+**A MENU'S MODEL HOLDS SECTIONS AND NOTHING ELSE NOW.** A `GMenu` has no
+separator item; it draws a line between one section and the next, and that is
+the only line it has. So a menu is made with one section, `.separator()` opens
+the next, and items go into the last one. A menu that never says `.separator()`
+has one section and looks exactly as it did. **A separator with nothing above
+it is refused** — first, or two in a row — because a section with no items
+draws no line, and a person asked for one. An item's action is named by a
+counter across every menu now, not by the model's count: the model's count is
+the number of sections, and two items either side of a line would have shared
+a name.
+
+**THE ACTIONS OF EVERY MENU INSIDE A MENU GO ON THE WINDOW WITH ITS PARENT'S**,
+recursively, under each menu's own prefix and still with no `GtkApplication` —
+at once if the parent is already on a window, and when the parent gets there
+if not. The teardown walks `pieces` itself now rather than asking
+`holds_pieces()`: a menu holds the menus inside it and refuses `.append`, and
+the old question would have walked past a submenu and left it open with its
+window gone.
+
+**Refused by name:** a menu into itself; a menu into a menu it already holds
+(the loop `.append` already refuses, for the same walk); a separator first or
+twice. `.title` on a menu is sent to `.text`, which is the word it has.
+
+**PROVED ON A COMPOSITOR BY REAL KEYS:** File with Open, Save, a separator and
+Recent under it; More under Recent with `deep.satl` in it; `recent.text("Recently")`
+renamed the submenu in place. F10, Down, Down, Down, Right, Right, Return picked
+`deep.satl` — the capsule was handed the menu it was on (`the_menu.text` read
+`More`) and the window (`its_window.title` read `menus`), and closed it, exit 0.
 
 ## GTK-13 — time: a capsule every so often — **BUILT 2026-09-21**
 
@@ -1380,7 +1420,7 @@ window unusable — which is the quiet kind of wrongness this project refuses.
 **A button asked for `.clicked` is sent to `.pressed`**: a button already has a
 word for being clicked.
 
-## GTK-15 — a canvas: satellite draws it itself
+## GTK-15 — a canvas: satellite draws it itself — **BUILT 2026-09-22, as the display list**
 
     satellite.variable.window c = satellite.window.canvas(400, 300)
     c.draws(when_drawing)
@@ -1407,7 +1447,84 @@ cannot deadlock, and it is the only one of the two that works before the walker
 is re-entrant. **The author's**, and it should be decided before anything is
 built, because the two share no code.
 
-## GTK-16 — more than one screenful: scroll, tabs, panes, a frame — **SCROLL, FRAME AND SPLIT BUILT 2026-09-21; TABS ARE THE AUTHOR'S**
+**AS BUILT 2026-09-22, AND THE RECOMMENDATION IS WHAT WAS BUILT** — on the
+author's *"do the next one, or do 3 even"*, with the question kept below as
+still reversible. `canvas` is `1 27 20`, made from its size; `line` is
+`0x0B3F`, `box` `0x0B40`, `circle` `0x0B41`, `write` `0x0B42`; `.clear()` and
+`.save("picture.png")` reuse a file's `clear` and `save`, which mean the same
+thing on a canvas.
+
+    satellite.variable.window c = satellite.window.canvas(400, 300)
+    c.colour("#40c8ff")
+    c.line(0, 0, 399, 299)                  one pixel wide, on the pixel it names
+    c.box(20, 20, 80, 50)                   filled, from its top-left corner
+    c.circle(100, 200, 30)                  filled, around its centre
+    c.font("IBM Plex Mono", 18)
+    c.write(150, 40, "hello from satellite")
+    c.save("before.png")
+    c.clicked(when_clicked)                 the capsule is handed the canvas
+
+**A CANVAS IS A DISPLAY LIST.** Every one of those appends an `AStroke` to the
+piece and asks GTK to redraw; the function `gtk_drawing_area_set_draw_func`
+was given replays the list and waits on nobody. No satellite code runs on the
+desk, and the deadlock this milestone was ordered last to avoid cannot be built
+out of it. The draw capsule stays the author's to ask for — nothing here
+forecloses it, and it needs the walker to be re-entrant first.
+
+**`.colour` AND `.font` ARE A PEN.** They change what is drawn after them and
+nothing drawn before: the colour and the font are copied onto each stroke at
+the moment it is made. With no `.colour` a canvas draws in the theme's own
+foreground, which is right in a dark theme and in a light one. `.background`
+is CSS, as on every piece, and GTK paints it under the list; `.save` paints the
+same colour first so the file looks like the window, and nothing said is
+nothing painted — the PNG is transparent there.
+
+**THE PEN IS THE CANVAS'S OWN STRING AND NOT THE WIDGET'S COMPUTED STYLE, and
+the picture is what found that.** The first draft read `gtk_widget_get_color`,
+and a canvas told `.colour` twice before it was in a window drew the second
+batch in the FIRST colour — the saved PNG showed a blue circle where a yellow
+one was asked for. Adding the css class invalidates the node; reloading the
+provider does not reach a widget that has no root. `a_colour` parsed with
+`gdk_rgba_parse` at the stroke is the truth of what was asked for, and the
+theme's colour is read off the widget only when nothing was asked.
+
+**`.save` IS THE FIRST TIME satl WRITES A PICTURE** — cairo's own PNG writer,
+through the libpng GTK-6 earned. The same replay draws the file and the
+screen, so the two cannot differ. It is also how this milestone was proved: the
+PNGs below were written by satl on a headless compositor and read back by eye,
+which no other window milestone could offer.
+
+**PROVED ON A COMPOSITOR:** a 400×300 canvas in an 800×600 window; `.width` and
+`.height` answered 400 and 300; a REAL POINTER CLICK on the canvas ran its
+`.clicked` capsule, which was handed the canvas and its window, drew a red
+circle and red words on it AFTER it was on the screen, saved `after.png`, and
+closed the window — exit 0. `before.png` showed the two blue diagonals, the
+blue box, the yellow circle and the words in IBM Plex Mono 18; `after.png`
+showed those and the red.
+
+**cairo AND pango ARE CALLED BY NAME NOW** — Part 00 moved from four projects
+to six. What is called is small and named in full: `cairo_move_to`, `_line_to`,
+`_stroke`, `_rectangle`, `_arc`, `_fill`, `_set_source_rgba`, `_set_line_width`,
+an image surface and `cairo_surface_write_to_png`; `pango_cairo_show_layout`
+and a font description, on a layout GTK made from the widget. A line is drawn
+at the half-pixel so it lands on the pixel it names rather than smearing over
+two.
+
+**A NEGATIVE WIDTH, HEIGHT OR RADIUS IS REFUSED where it is written.** A line
+from a point to itself and a box of no size draw nothing, which is the honest
+answer to what they are, and are let through — a program plotting data has
+equal neighbours all the time. `.text` on a canvas is refused and sent to
+`.write`; `.changed` is refused as on every piece nothing a person does can
+change.
+
+**OPEN, and the author's:** where a click on a canvas LANDED. `.clicked` runs
+the capsule and says nothing about the point, and a drawing program wants it;
+the shape would be what `.key` already does — the desk carries it on the event
+and the interpreter copies it onto the piece — and no spelling has been
+chosen. An outline (an unfilled box or circle), a line's width and an arc are
+the same kind of question: cheap, and not decided.
+
+## GTK-16 — more than one screenful: scroll, tabs, panes, a frame — **BUILT: SCROLL, FRAME AND SPLIT 2026-09-21; TABS 2026-09-22, as the recommendation**
 
 `gtk_scrolled_window_new()`, `gtk_notebook_new()`, `gtk_paned_new()`,
 `gtk_frame_new()`. Each holds other pieces, so **every one of them depends on
@@ -1441,6 +1558,46 @@ one method stops being one method. The shapes, none chosen:
 piece rather than of the adding, which is how `.title` already works on a
 window. **Not decided**, and check.sh has a row asserting no `tabs` word exists,
 so nobody adds one without answering this.
+
+### TABS BUILT 2026-09-22, as the recommendation: the piece carries its name
+
+On the author's *"do the next one, or do 3 even"*; the question stays in the
+table below as still reversible. `tabs` is `1 27 21` — two rows, it takes
+nothing. `gtk_notebook_new()`.
+
+    satellite.variable.window t = satellite.window.tabs()
+    satellite.variable.window first = satellite.window.label("the first page")
+    first.title("First")
+    t.append(first)
+    t.chosen("First")                    which tab is in front, read and written
+    t.changed(when_switched)             a person clicking a tab
+
+**`.title` IS EVERY PIECE'S NOW.** On a window it is the frame's words, as it
+always was; on any other piece it is the name on its tab. One method because it
+is one idea — what this thing is called where it is held — and it is how a tab
+got its name without `.append` growing a third shape. A piece already in a set
+of tabs is relabelled in place; one not in any simply remembers, for when it is
+appended. A menu is sent to `.text`, the word it already has.
+
+**AN UNNAMED PIECE IS REFUSED AT THE TABS**, with the line to write, rather than
+given a blank tab a person cannot tell from the next: *"a tab is named by its
+piece's title, and a label has none yet -- give it one first:
+the_piece.title("Open files")"*. The same answer a menu with no heading gets.
+
+**`.chosen` AND `.changed` ARE A CHOICE'S, REUSED**, because it is the same
+question with the same answer: which one is picked, as text. `.chosen` reads
+the name on the tab in front and `.chosen("Second")` brings that tab forward; a
+name that is not there is refused, because `gtk_notebook_set_current_page` past
+the end goes to the last page and says nothing. `.changed` is `notify::page`.
+
+**THE BAR IS ALWAYS SHOWN**, unlike satl-term's, which hides it with one page: a
+program that made tabs wants to see tabs.
+
+**PROVED ON A COMPOSITOR:** two pages named First and Second; `.chosen` read
+First; `.chosen("Second")`, and it read Second; `first.title("Alpha")` renamed
+the tab while it was in the set; the set measured 302 by 189; a REAL POINTER
+CLICK on the Alpha tab ran `when_switched` with `.chosen` answering `"Alpha"`,
+and the capsule closed the window — exit 0.
 
 ## GTK-17 — `satellite.console` IS A WINDOW, with libvte — **the author's, named 2026-09-21**
 
@@ -1520,7 +1677,8 @@ is the milestone that gets VTE into the folder and into a static archive.
 - A widget is a `Piece`, never a new arm (`satellite_window.hpp`, 2026-09-20).
 - Every GTK call is inside `on_the_desk()` (WIN-2).
 - A capsule runs on the interpreter's thread, always (WIN-11) — and **GTK-15 is
-  the one place that rule does not fit**, which is why GTK-15 asks.
+  the one place that rule does not fit**, which is why GTK-15 asked. Built as a
+  display list, no capsule draws, and the rule holds unbroken.
 - Arity is checked **before the program runs**, for every window method
   (`7480119`). GTK-7 must not undo it.
 - The word numbers are frozen when the row lands, in build order.
@@ -1530,14 +1688,15 @@ is the milestone that gets VTE into the folder and into a static archive.
 | | question | recommendation |
 |---|---|---|
 | GTK-3 | how a radio group is spelled | `one_of(a_list)` — one word, many pieces |
-| GTK-16 | how a TAB gets its name | the piece carries it — `the_piece.title("Open files")` |
+| ~~GTK-16~~ | ~~how a TAB gets its name~~ | **BUILT as the recommendation, 2026-09-22** — the piece carries it, `the_piece.title("Open files")`. Still reversible. |
 | GTK-3 | **a `true` and a `false` to type** — a LANGUAGE milestone | there should be one; `c.on(1)` is the stopgap |
 | ~~GTK-9~~ | ~~does a capsule get the new value?~~ | **BUILT as (1)** — it gets the piece and asks it. Still reversible. |
 | ~~GTK-11~~ | ~~may a satellite line wait for a person?~~ | **BUILT as the capsule.** The waiting shape stays open. |
 | GTK-11 | **Q-WIN-11a blocks the file dialog** — may a word reach the portal? | not until the hang has an answer |
 | GTK-14 | how a key is spelled to a program | the character, or a name for the rest |
-| GTK-15 | a draw capsule, or a display list | **the display list** — the other can deadlock |
-| GTK-12 | a menu inside a menu, and a line between groups of items | the piece carries its heading, as a tab would; a separator waits for a spelling |
+| ~~GTK-15~~ | ~~a draw capsule, or a display list~~ | **BUILT as the display list, 2026-09-22.** A draw capsule stays the author's to ask for; it needs a re-entrant walker first. |
+| ~~GTK-12~~ | ~~a menu inside a menu, and a line between groups of items~~ | **BUILT 2026-09-22**: `file.menu(recent)` — the piece carries its heading — and `file.separator()`. Still reversible. |
+| GTK-15 | where a click on a canvas LANDED; an outline, a line's width, an arc | carry the point on the event, as `.key` does; not spelled |
 | GTK-17 | does `satellite.console` become a window, or does a window get a console? | a window gets a console; `satellite.console` keeps stdout |
 | GTK-10 | the window font: 11px or 12px | asked 2026-09-19, still open |
 
@@ -1564,14 +1723,14 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE NINETEEN WIDGETS** as of 2026-09-21: a window, a button, a label,
-  a text box, a text area, a checkbox, a switch, a slider, a number box, a
-  progress bar, a choice, a row, a column, a grid, a picture, a scroll, a frame,
-  a split and a menu.
+- **THERE ARE TWENTY-ONE WIDGETS** as of 2026-09-22: a window, a button, a
+  label, a text box, a text area, a checkbox, a switch, a slider, a number box,
+  a progress bar, a choice, a row, a column, a grid, a picture, a scroll, a
+  frame, a split, a menu, a canvas and a set of tabs.
   ~~No picture, no row, no menu, nothing that talks back but a button.~~ **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-10, GTK-12, GTK-13 and GTK-14 are built; GTK-11 but for its file
-  dialog, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-10 and GTK-12 to GTK-16 are built; GTK-11 but for its file
+  dialog** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a
@@ -1625,6 +1784,8 @@ GTK family is now what this file is for.
    is.
 9. **GTK-15 — a canvas.** Last of the GTK family, because its ruling — a draw
    capsule or a display list — is the only one that can deadlock the design.
+   **Built 2026-09-22 as the display list**, with GTK-16's tabs and GTK-12's
+   submenu and separator the same day, each as its written recommendation.
 10. **GTK-17, then GTK-18** — the author's two. They are last **not** because
     they matter least but because they are the only ones with a DEP half: VTE
     has to be vendored, and patched to build a static archive, before a line of

@@ -381,7 +381,12 @@ bits              name                         what it is
 0000101100111100  answer_token                 answer  [METHOD] window.answer -- what a person last answered: "yes", "no", or "" if they dismissed it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
 0000101100111101  menu_token                   menu  [METHOD] window.menu(the_menu) -- put a menu across the top of this window; a second one goes beside the first (GTK_AND_NO_DEPENDENCIES.md GTK-12)
 0000101100111110  item_token                   item  [METHOD] menu.item(a_capsule, "Open") -- an item on a menu, and the capsule that runs when a person picks it. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-12)
-0000101100111111  free                         to 0000101111111111, free for this family
+0000101100111111  line_token                   line  [METHOD] canvas.line(from_across, from_down, to_across, to_down) -- a line between two points, in the colour the canvas draws in (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000000  box_token                    box  [METHOD] canvas.box(across, down, wide, tall) -- a filled box, from its top-left corner (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000001  circle_token                 circle  [METHOD] canvas.circle(across, down, radius) -- a filled circle, around its centre (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000010  write_token                  write  [METHOD] canvas.write(across, down, "words") -- words with their top-left corner at a point, in the canvas's font (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000011  separator_token              separator  [METHOD] menu.separator() -- a line under the items above it; the items added after it go below the line (GTK_AND_NO_DEPENDENCIES.md GTK-12)
+0000101101000100  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

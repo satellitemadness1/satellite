@@ -99,6 +99,11 @@ std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
     // A MENU'S WORDS ARE ITS HEADING AND THE HANDLE HOLDS THEM (GTK-12); it
     // never reaches here, because a menu is not a widget to be asked.
     case satellite_window::menu: break;
+    // A CANVAS HAS NO WORDS OF ITS OWN -- `.write` draws some (GTK-15) -- and
+    // it is refused before it reaches here. A SET OF TABS is a holder, and
+    // says nothing, as the holders above do.
+    case satellite_window::canvas:
+    case satellite_window::tabs: break;
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -118,6 +123,10 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
     }
     if (which.piece == satellite_window::picture) {
         why = "a picture's words are the file it shows -- write .path(\"other.png\") instead";
+        return false;
+    }
+    if (which.piece == satellite_window::canvas) {
+        why = "a canvas has no words of its own -- .write(across, down, \"words\") draws some";
         return false;
     }
     // A MENU'S WORDS ARE ITS HEADING, and changing one on a bar is a remove and
@@ -166,6 +175,10 @@ bool window_text_of(satellite_window &which, std::string &out, std::string &why)
     }
     if (which.piece == satellite_window::picture) {
         why = "a picture's words are the file it shows -- write .path instead";
+        return false;
+    }
+    if (which.piece == satellite_window::canvas) {
+        why = "a canvas has no words of its own -- .write(across, down, \"words\") draws some";
         return false;
     }
     // A MENU'S HEADING IS OURS, LIKE A LABEL'S WORDS: satellite put it there and

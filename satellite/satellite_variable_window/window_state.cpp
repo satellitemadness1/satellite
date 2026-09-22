@@ -219,12 +219,50 @@ bool pick_it(GtkWidget *widget, const std::string &wanted)
     return false;
 }
 
+// AND THE SAME TWO QUESTIONS OF A SET OF TABS (GTK-16): which tab is in front,
+// by the name on it, and bringing a named one forward. THE NAME IS READ OFF THE
+// TAB and not off the piece's `title`, because the tab is what a person sees,
+// and the two are the same by construction anyway -- `.title` relabels the tab
+// as it writes the piece.
+bool which_tab_is_in_front(GtkWidget *widget, std::string &out)
+{
+    GtkNotebook *tabs = GTK_NOTEBOOK(widget);
+    const gint at = gtk_notebook_get_current_page(tabs);
+    if (at < 0)
+        return false;
+    GtkWidget *page = gtk_notebook_get_nth_page(tabs, at);
+    const char *got = page == nullptr ? nullptr : gtk_notebook_get_tab_label_text(tabs, page);
+    out = got == nullptr ? std::string() : std::string(got);
+    return true;
+}
+
+bool bring_the_tab_forward(GtkWidget *widget, const std::string &wanted)
+{
+    GtkNotebook *tabs = GTK_NOTEBOOK(widget);
+    const gint many = gtk_notebook_get_n_pages(tabs);
+    for (gint at = 0; at < many; ++at) {
+        GtkWidget *page = gtk_notebook_get_nth_page(tabs, at);
+        const char *got = page == nullptr ? nullptr : gtk_notebook_get_tab_label_text(tabs, page);
+        if (got != nullptr && wanted == got) {
+            gtk_notebook_set_current_page(tabs, at);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool has_something_chosen(const satellite_window &which)
+{
+    return which.piece == satellite_window::choice || which.piece == satellite_window::tabs;
+}
+
 } // namespace
 
 bool window_chosen_of(satellite_window &which, std::string &out, std::string &why)
 {
-    if (which.piece != satellite_window::choice) {
-        why = std::string(which.piece_name()) + " has nothing to choose from -- a choice does";
+    if (!has_something_chosen(which)) {
+        why = std::string(which.piece_name()) + " has nothing to choose from -- a choice and a set "
+              "of tabs do";
         return false;
     }
     if (which.widget == nullptr) {
@@ -232,18 +270,26 @@ bool window_chosen_of(satellite_window &which, std::string &out, std::string &wh
         return false;
     }
     GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
+    const satellite_window::Piece piece = which.piece;
     std::string got;
     // NOTHING PICKED IS "" AND NOT A REFUSAL. A choice a person has not touched
-    // is an ordinary state of a choice, not a mistake anybody made.
-    on_the_desk([widget, &got] { what_is_picked(widget, got); });
+    // is an ordinary state of a choice, not a mistake anybody made -- and a set
+    // of tabs with no tabs in it yet has nothing in front, the same way.
+    on_the_desk([widget, piece, &got] {
+        if (piece == satellite_window::tabs)
+            which_tab_is_in_front(widget, got);
+        else
+            what_is_picked(widget, got);
+    });
     out = got;
     return true;
 }
 
 bool window_set_chosen(satellite_window &which, const std::string &to, std::string &why)
 {
-    if (which.piece != satellite_window::choice) {
-        why = std::string(which.piece_name()) + " has nothing to choose from -- a choice does";
+    if (!has_something_chosen(which)) {
+        why = std::string(which.piece_name()) + " has nothing to choose from -- a choice and a set "
+              "of tabs do";
         return false;
     }
     if (which.widget == nullptr) {
@@ -251,13 +297,18 @@ bool window_set_chosen(satellite_window &which, const std::string &to, std::stri
         return false;
     }
     GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
+    const satellite_window::Piece piece = which.piece;
     bool found = false;
-    on_the_desk([widget, &to, &found] { found = pick_it(widget, to); });
+    on_the_desk([widget, piece, &to, &found] {
+        found = piece == satellite_window::tabs ? bring_the_tab_forward(widget, to) : pick_it(widget, to);
+    });
     if (!found) {
         // REFUSED AND NOT SILENTLY IGNORED. gtk_drop_down_set_selected on a
         // position that is not there simply picks nothing, and a program that
         // asked for an item this choice does not offer has said something untrue
-        // about itself -- it should hear so.
+        // about itself -- it should hear so. A tab that is not there is the
+        // same sentence: gtk_notebook_set_current_page past the end goes to
+        // the last page, which is an answer nobody asked for.
         why = "there is no \"" + to + "\" to choose here";
         return false;
     }

@@ -74,6 +74,13 @@ bool connect_what_changing_means(satellite_window &which, GtkWidget *widget)
     case satellite_window::choice:
         g_signal_connect(widget, "notify::selected", G_CALLBACK(it_was_noticed), &which);
         return true;
+    // A PERSON CLICKING A TAB CHANGES WHICH ONE IS IN FRONT (GTK-16). `page`
+    // and not `switch-page`: the latter hands a handler the page and its
+    // number, a shape neither function above has, and `notify::page` says the
+    // same thing in the shape `notify::selected` already uses.
+    case satellite_window::tabs:
+        g_signal_connect(widget, "notify::page", G_CALLBACK(it_was_noticed), &which);
+        return true;
     default:
         return false;
     }
@@ -87,7 +94,7 @@ bool a_person_can_change(satellite_window::Piece piece)
     return piece == satellite_window::text_box || piece == satellite_window::text_area ||
            piece == satellite_window::checkbox || piece == satellite_window::a_switch ||
            piece == satellite_window::slider || piece == satellite_window::number_box ||
-           piece == satellite_window::choice;
+           piece == satellite_window::choice || piece == satellite_window::tabs;
 }
 
 // A BUTTON WAS PRESSED (WIN-11). ON THE DESK'S THREAD, so it does the one thing
