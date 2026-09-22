@@ -1,5 +1,5 @@
 #!/bin/sh
-# install.sh -- install satellite 004 (satl, its libraries and satl-term) into a
+# install.sh -- install satellite 004 (satl and its libraries) into a
 # folder you name.
 #
 #     sh satellite_enterprise/install.sh --root <folder>
@@ -18,7 +18,6 @@
 #
 #     <root>/satl                   the interpreter
 #     <root>/satellite-numbers/     every numbered library, which satl loads
-#     <root>/satl-term              the window, when this machine could build it
 #     <root>/.satellite-004-install what this installer put there, and each file's sha256
 #
 # The record is how a later install knows a satl in the root is its own: it is

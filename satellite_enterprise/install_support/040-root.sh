@@ -72,7 +72,8 @@ else
 fi
 
 # WHAT THIS INSTALLER PUT IN A ROOT IS KNOWN FROM ITS RECORD, NEVER BY RUNNING A
-# FILE: a satl or satl-term there is ours only when the record holds its exact
+# FILE: a satl there -- or a satl-term an earlier install left, which 060
+# removes -- is ours only when the record holds its exact
 # sha256, and satellite-numbers/ only when there is a record at all. A symlink is
 # never ours, because this installer writes plain files. Asked here, before make,
 # and again in 060 just before anything is written, because make takes minutes.

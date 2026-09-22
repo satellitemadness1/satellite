@@ -125,12 +125,29 @@ signed long long int run_satl(int argc, char **argv)
     // after it land on a screen. In THIS process, so the code this function
     // answers is still the exit status. window_run.cpp reports why when it
     // cannot, and that report goes where satl was pointed before.
-    if (command_line.console) {
+    //
+    // AND WHEN NOBODY GAVE satl A CONSOLE, IT OPENS ONE OF ITS OWN (WIN-9, the
+    // author, 2026-09-22: "satl has to, when it's not ran in a console, take you
+    // to it's prompt"). Only for what RUNS -- a file, the prompt, or bare satl,
+    // which is the prompt in a console; never for a command that prints and
+    // exits, which would flash a window and be gone, and never for a command
+    // line that was refused, which has returned above. If the console cannot be
+    // had, satl carries on where it was pointed: that is where it would have
+    // been anyway.
+    const bool runs_something = command_line.command == Command::run || command_line.command == Command::repl ||
+                                command_line.command == Command::opening;
+    const bool on_its_own = !command_line.console && runs_something && nobody_gave_satl_a_console();
+    if (command_line.console || on_its_own) {
+        const Command asked = command_line.command;
+        if (on_its_own && asked == Command::opening)
+            command_line.command = Command::repl;
         const bool the_prompt = command_line.command == Command::repl;
         code = open_satls_own_console(the_prompt ? std::string("satellite") : "satellite -- " + command_line.file,
-                                      the_prompt);
+                                      the_prompt, on_its_own);
         if (stops_the_program(code))
             return code;
+        if (on_its_own && !satls_own_console_is_open())
+            command_line.command = asked;
     }
 
     if (command_line.command == Command::version || command_line.command == Command::help ||

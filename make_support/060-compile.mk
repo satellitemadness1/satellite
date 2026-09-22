@@ -17,14 +17,6 @@ $(COMPILE_STAMP): FORCE
 	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' | cmp -s - $@ || \
 	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' > $@
 
-# The window's own stamp, so gtk's include paths appearing or vanishing recompiles
-# the window and not all of satl.
-TERM_COMPILE_STAMP = $(BUILD)/.compile-flags-window
-$(TERM_COMPILE_STAMP): FORCE
-	@mkdir -p $(BUILD)
-	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS)' | cmp -s - $@ || \
-	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS)' > $@
-
 # ORDER-ONLY ON THE BUILD STAMP: every object waits until build_number.py has
 # decided this build's number and written it into satellite_config.hpp, so none is
 # compiled from the row it is about to replace.
@@ -32,16 +24,10 @@ $(OBJECTS)/%.o: %.cpp $(COMPILE_STAMP) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
 
-# THE WINDOW'S OBJECTS, which need gtk's include paths. The shorter stem wins, so
-# this rule, and not the one above, compiles satl-term/*.cpp.
-$(OBJECTS)/$(TERM_DIR)/%.o: $(TERM_DIR)/%.cpp $(TERM_COMPILE_STAMP) | $(BUILD_STAMP)
-	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_CFLAGS) $(DEPENDENCY_FLAGS) -c $< -o $@
-
 # THE INTERPRETER'S OWN WINDOW OBJECTS, which need GTK's include paths and not
 # VTE's -- a longer stem than the plain rule above, so this one wins for them.
-# They have their own stamp for the same reason satl-term's do: gtk4 appearing or
-# vanishing must recompile the window and not all of satl.
+# They have their own stamp so that gtk4 appearing or vanishing recompiles the
+# window and not all of satl.
 # AND VTE'S, SINCE THE CONSOLE (GTK-17): GTK_CFLAGS carries VTE's include path
 # when the stage has it, and CONSOLE_DEFINE says whether it does -- both in the
 # stamp, so VTE appearing or vanishing recompiles the window folder and nothing
@@ -88,8 +74,7 @@ $(WINDOW_DATA_OBJECT): $(WINDOW_DATA_SOURCE) $(GTK_COMPILE_STAMP) | $(BUILD_STAM
 # nothing. The stamp is a target with a recipe, which make looks at again after
 # the recipe runs. 050-build.mk checks every link against the row, so a file that
 # reads the rows and is missing here fails the build rather than lying.
-ROW_READERS = $(OBJECTS)/$(ARGUMENTS)/arguments.o $(OBJECTS)/$(SATELLITE)/structured-library.o \
-              $(OBJECTS)/$(TERM_DIR)/window.o
+ROW_READERS = $(OBJECTS)/$(ARGUMENTS)/arguments.o $(OBJECTS)/$(SATELLITE)/structured-library.o
 $(ROW_READERS): $(BUILD_STAMP)
 
--include $(INTERPRETER_OBJECTS:.o=.d) $(TERM_OBJECTS:.o=.d) $(GTK_OBJECTS:.o=.d)
+-include $(INTERPRETER_OBJECTS:.o=.d) $(GTK_OBJECTS:.o=.d)

@@ -47,11 +47,10 @@ trap 'exit 129' HUP
 cp -- "$build/satl" "$stage/satl" || die "cannot copy $build/satl into $root"
 mkdir -- "$stage/satellite-numbers" || die "cannot write in $root"
 cp -- "$build"/satellite-numbers/*.so "$stage/satellite-numbers/" || die "cannot copy the libraries into $root"
-[ "$with_window" = no ] || cp -- "$build/satl-term" "$stage/satl-term" || die "cannot copy $build/satl-term into $root"
 
 (
     cd -- "$stage"
-    if [ "$with_window" = yes ]; then sha256sum satl satl-term satellite-numbers/*.so; else sha256sum satl satellite-numbers/*.so; fi
+    sha256sum satl satellite-numbers/*.so
 ) > "$stage/record" || die "cannot write the record in $root"
 
 cat -- "$stage/record" > "$stage/record.while_installing" || die "cannot write the record in $root"
@@ -71,12 +70,11 @@ else
     mv -T -- "$stage/satellite-numbers" "$root/satellite-numbers" || die "cannot put satellite-numbers/ in $root"
 fi
 mv -fT -- "$stage/satl" "$root/satl" || die "cannot put satl in $root (its libraries are already the new ones)"
-if [ "$with_window" = yes ]; then
-    mv -fT -- "$stage/satl-term" "$root/satl-term" || die "cannot put satl-term in $root"
-elif [ -f "$root/satl-term" ]; then
-    # Ours (040-root.sh checked), from an install on a machine that could build it.
+if [ -f "$root/satl-term" ]; then
+    # Ours (040-root.sh checked it against the record), from an install made
+    # before satl-term was removed: satl opens its own console now.
     rm -f -- "$root/satl-term"
-    step "removed the satl-term an earlier install left: this build has none"
+    step "removed the satl-term an earlier install left: satl opens its own console now"
 fi
 
 mv -fT -- "$stage/record" "$record" || die "cannot rewrite $record"

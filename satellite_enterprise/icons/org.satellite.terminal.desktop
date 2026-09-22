@@ -1,26 +1,32 @@
-# Desktop entry for satl-term, the GTK4/VTE window.
+# Desktop entry for satl, which opens its own console (GTK_AND_NO_DEPENDENCIES.md
+# GTK-17). Until 2026-09-22 this entry started satl-term, a second binary that
+# ran satl in a terminal; the author removed it that day -- "we are getting rid
+# of satl-term and replacing it with something built in to the satl exe" -- and
+# satl draws the same window itself, in the same process, so the exit status of
+# the program is satl's own.
 #
-# The file name is the GApplication id that window.cpp registers, and it has to
-# be: GTK puts that id on the toplevel -- as the Wayland app_id, and as the
-# X11 WM_CLASS instance because window.cpp sets prgname to it -- and a desktop
-# shell then looks for <that id>.desktop. Named satl-term.desktop the window
-# arrives associated with no launcher at all: no icon in the switcher, nothing
-# to pin. StartupWMClass says the same thing a second time for shells that
-# match on WM_CLASS rather than on the file name.
+# The file name is the app id satl gives its own console, and it has to be:
+# console_launch.cpp sets prgname to org.satellite.terminal before GTK starts,
+# GDK hands that to the compositor as the Wayland app_id, and a desktop shell
+# then looks for <that id>.desktop. Named anything else, the window arrives
+# associated with no launcher: no icon in the switcher, nothing to pin.
+# StartupWMClass says the same thing a second time for shells that match on
+# WM_CLASS. The id keeps satl-term's name on purpose: it is the id installs,
+# pins and the .satl association already carry.
 #
-# Only satl-term gets an entry. The interpreter is a command-line program with
-# no window of its own, and a launcher entry for it would open something the
-# user cannot see.
+# --console AND NOT A BARE satl, although a bare satl opens its console too when
+# nothing gave it one: a launcher that hands satl a pipe or a file for its
+# output would be read as "somebody is reading this", and the window would not
+# open. The flag says what is meant.
 #
 # Exec is the bare command name rather than an absolute path, because the prefix
 # is not known when this file is written and a hard-coded /usr/local would be
 # wrong in every distribution package. TryExec makes the entry hide itself if
 # the binary is not on PATH, which is the correct behaviour for a menu.
 #
-# %f is honest only because window.cpp passes G_APPLICATION_NON_UNIQUE: under
-# the single-instance default a second launch handed its argument to the
-# already-running process, which read its own empty copy of the variable and
-# opened a plain REPL, so the file the user asked for was dropped.
+# %f is honest because every launch is its own satl process: there is no
+# single-instance application to hand a second file to and drop it. With no file
+# -- the menu entry -- `satl --console` is the prompt in a console.
 #
 # Icon is the application id rather than a file path, because that is how the
 # icon theme spec is looked up: the shell searches every theme directory for
@@ -37,17 +43,17 @@
 #
 # %f in Exec above is what carries the file through, and is already correct for
 # this: it is a single-file placeholder, which matches a handler launched once
-# per file. It is NOT upgraded to %F -- window.cpp opens one window on one
-# path, so a multi-file selection has to arrive as several launches rather than
-# as one launch that would silently drop every path but the first.
+# per file. It is NOT upgraded to %F -- satl runs one program in one console,
+# so a multi-file selection has to arrive as several launches rather than as
+# one launch that would silently drop every path but the first.
 [Desktop Entry]
 Type=Application
 Version=1.0
 Name=Satellite
 GenericName=Satellite Terminal
 Comment=Interactive terminal for the satellite programming language
-Exec=satl-term %f
-TryExec=satl-term
+Exec=satl --console %f
+TryExec=satl
 Icon=org.satellite.terminal
 Terminal=false
 Categories=Development;IDE;

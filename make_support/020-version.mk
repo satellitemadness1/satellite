@@ -23,8 +23,8 @@
 # nothing, so upgrading never throws a count away. Nothing needs to change in this file
 # when a revision is raised: edit the row, run make.
 #
-# satl and satl-term both show the three numbers (satellite/version/), and each
-# carries the rows it was compiled with.
+# satl shows the three numbers (satellite/version/) and carries the rows it was
+# compiled with.
 BUILD_STAMP = .satellite_build
 
 # The build machine's operating system for the title's third line ("CLANG++ 24
@@ -34,9 +34,10 @@ BUILD_OS := $(shell (. /etc/os-release 2>/dev/null && echo "$$NAME $$VERSION_ID"
 OS_DEFINE = -DSATELLITE_BUILD_OS='"$(BUILD_OS)"'
 
 # What the fingerprint is told about the compiler and the links. EVERY FLAG THAT
-# CHANGES A BINARY IS IN IT (review of M0.5): LDFLAGS and the window's pkg-config
-# flags relinked satl, satl-term and every library under the same number before.
+# CHANGES A BINARY IS IN IT (review of M0.5): LDFLAGS relinked satl and every
+# library under the same number before. Which GTK is linked and whether the
+# console is in it say what the window half of satl is.
 # CXX_VERSION is the compiler's own first line, because clang-current is a symlink
 # repointed at each rebuilt clang -- the same CXX string, a different compiler.
 CXX_VERSION := $(shell $(CXX) --version 2>/dev/null | head -n 1)
-BUILD_DESCRIPTION = $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(BUILD_OS) | $(LDFLAGS) | $(WINDOW_CFLAGS) | $(WINDOW_LIBS)
+BUILD_DESCRIPTION = $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(BUILD_OS) | $(LDFLAGS) | $(GTK_KIND) | $(CONSOLE_DEFINE)

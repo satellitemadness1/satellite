@@ -6,9 +6,10 @@
 //   window_console.cpp    a PROGRAM's console: satellite.console.new, and what a
 //                         program does to one -- .display, .typed, .clear,
 //                         .home, .columns, .rows, its colours and its font
-//   console_launch.cpp    satl's OWN console: `satl --console`, satl's stdio
-//                         moved onto its pty, Ctrl-C by hand, the hold at the
-//                         end and the key that closes it
+//   console_launch.cpp    satl's OWN console: `satl --console`, or satl with no
+//                         console of its own, its stdio moved onto the pty, the
+//                         keyboard, the hold at the end and the key that closes it
+//   console_menu.cpp      the File menu across satl's own console
 //
 // VTE IS IN THIS HEADER, AND THAT IS ALLOWED HERE AND NOWHERE PUBLIC: it is
 // included by two files, and by them only where VTE was found
@@ -41,5 +42,9 @@ bool a_console_that_is_open(const satellite_window &which, std::string &why);
 // is not the first thing on it. Shared so that satl's own console and a
 // program's are dressed exactly alike. ON THE DESK.
 void dress_the_terminal(VteTerminal *terminal);
+
+// THE FILE MENU ACROSS satl'S OWN CONSOLE -- New window, Open…, Save output as…
+// -- and F10 left to the program. ON THE DESK. console_menu.cpp.
+void give_it_a_file_menu(satellite_window &console);
 
 } // namespace satellite004

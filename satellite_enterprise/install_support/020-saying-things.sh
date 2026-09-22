@@ -57,7 +57,7 @@ usage: sh $self --root <folder>
        sh $self --help
 
 Builds satellite 004 with make, then installs satl, its libraries
-(satellite-numbers/) and satl-term into <folder>, and proves the install by
+(satellite-numbers/) into <folder>, and proves the install by
 running examples/hello_world.satl with the installed satl.
 
 WHERE 004 INSTALLS IS NOT DECIDED YET (PLAN M0.5, D0.5.1), so <folder> is

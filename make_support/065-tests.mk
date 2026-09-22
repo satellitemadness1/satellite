@@ -92,7 +92,7 @@ $(BUILD)/file_cases: $(FILE_CASES_SOURCES) $(FILE_CASES_HEADERS)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_CASES_SOURCES) -o $@
 
 # The build fingerprint's inputs, one a line: check.sh compares them with the
-# headers the compiler says satl and satl-term are made from.
+# headers the compiler says satl is made from.
 build-inputs:
 	@printf '%s\n' $(BUILD_INPUTS)
 

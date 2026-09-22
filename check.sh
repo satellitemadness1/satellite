@@ -32,6 +32,15 @@ CHECK_HOME=$PWD/build/check-home
 rm -rf -- "$CHECK_HOME"
 mkdir -p -- "$CHECK_HOME/.satl"
 export HOME=$CHECK_HOME
+
+# AND NO WINDOW OF satl'S OWN, FOR THE WHOLE SUITE (WIN-9, ruled 2026-09-22):
+# satl opens its own console when it has no terminal, its output is going
+# nowhere anybody reads, and there is a display. A harness with no controlling
+# terminal -- CI, cron, an editor's shell -- that sends a row's stdout to
+# /dev/null on a desktop is exactly that, and would put a window on the
+# screen of whoever ran the suite and wait for them. The rows that test the rule
+# unset this on purpose, with no display to reach.
+export SATL_NO_WINDOW=1
 "$interpreter" --rebuild > build/check-home-rebuild.out 2>&1 ||
     echo "  note  --rebuild could not write $CHECK_HOME/.satl/config.ini; the suite may see S010"
 
@@ -182,7 +191,7 @@ expect "... and satl's main returns through exit_status_of, the one place a code
 # A config row may never hold a name satl fills in, however many words a run has.
 build/arguments_cases > build/arguments_cases.out 2>&1; code=$?
 expect "names satl fills in are refused as rows, and gather adds no other ($(grep -c '^ok' build/arguments_cases.out) cases)" 0 $code
-# Every header satl and satl-term are compiled from is a build input, or an edit to it
+# Every header satl is compiled from is a build input, or an edit to it
 # makes a different binary under the same build number (review of M0.5).
 expect "every header the compiler reads is in the build fingerprint" "" "$(make -s --no-print-directory build-inputs | python3 -c "
 import glob, os, sys
@@ -2836,6 +2845,15 @@ expect "a canvas, its five strokes, .clear and .save pass the checker, and stop 
 # code a run stops on is still the exit status, which is what 003's handover to
 # satl-term lost and why 004 removed it. prove-console.sh drives both on a
 # compositor; these rows are what a machine with no screen can assert.
+#
+# AND satl OPENS IT ON ITS OWN WHEN NOBODY GAVE IT A CONSOLE (WIN-9, the author,
+# 2026-09-22: "satl has to, when it's not ran in a console, take you to it's
+# prompt"), and satl-term is gone. The four reasons it does NOT are in
+# window_run.cpp; the row below takes all four away but the display -- no
+# controlling terminal (setsid), stdout on /dev/null, SATL_NO_WINDOW unset --
+# and points WAYLAND_DISPLAY at a socket that is not there, in a runtime folder
+# of the suite's own, so the real desktop cannot be reached. satl tries, cannot,
+# and runs the program where it was pointed: the file it writes says it ran.
 expect "satellite.console.new is 1 5 10, under satellite.console" 1 \
        "$(grep -cP '^1 5 10\tsatellite.console.new\(title, width, height\)\t' words/words.tsv)"
 expect "display, typed, home, columns and rows are 0x0B4A to 0x0B4E, in that order" "1|1|1|1|1" \
@@ -2926,6 +2944,30 @@ expect "c.typed naming a capsule nobody wrote is refused before anything runs" "
        "$?|$(grep -x before build/console_typed_nobody.out)"
 expect "... and names the capsule" 1 "$(grep -c 'no capsule named nobody' build/console_typed_nobody.out)"
 
+mkdir -p build/no_display build/auto_console
+rm -f build/auto_console/auto_console.se
+cat > build/auto_console/auto_console.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.file.new("auto_console.se").append("it ran where it was pointed")
+    satellite.return(satellite)
+}
+WIN_EOF
+env -u SATL_NO_WINDOW -u DISPLAY -u XAUTHORITY WAYLAND_DISPLAY=satl-no-such-display XDG_RUNTIME_DIR="$PWD/build/no_display" \
+    setsid -w timeout 30 "$interpreter" build/auto_console/auto_console.satl < /dev/null > /dev/null 2> build/auto_console.err
+expect "with no terminal and no screen to reach, satl runs the program where it was pointed and exits 0" "0|it ran where it was pointed" \
+       "$?|$(cat build/auto_console/auto_console.se 2>/dev/null)"
+# THE START-UP BLOCK IS ON stderr AT EVERY RUN, by design; what must not be
+# there is a word about a console that satl asked for itself and could not have.
+expect "... and says nothing about the console it could not have" 0 "$(grep -ci 'console' build/auto_console.err)"
+expect "the rule's four reasons are asked in order, and bare satl with no console is the prompt in one" "1|1|1|1" \
+       "$(grep -c 'const char \*off = std::getenv("SATL_NO_WINDOW");' satellite/bytecode/window_run.cpp)|$(grep -c 'open("/dev/tty", O_RDONLY | O_NOCTTY | O_CLOEXEC)' satellite/bytecode/window_run.cpp)|$(grep -c 'S_ISFIFO(out.st_mode) || S_ISREG(out.st_mode)' satellite/bytecode/window_run.cpp)|$(grep -c 'if (on_its_own && asked == Command::opening)' satellite/structured-library.cpp)"
+expect "satl-term is gone: no folder, no build rule, and the launcher starts satl --console" "0|0|1" \
+       "$([ -d satl-term ] && echo 1 || echo 0)|$(grep -c 'satl-term:' make_support/050-build.mk)|$(grep -cx 'Exec=satl --console %f' satellite_enterprise/icons/org.satellite.terminal.desktop)"
+expect "satl's own console carries satl-term's id, File menu and priority, and leaves F10 to the program" "1|1|1|1" \
+       "$(grep -c 'g_set_prgname("org.satellite.terminal");' satellite/satellite_variable_window/console_launch.cpp)|$(grep -c 'setpriority(PRIO_PROCESS, 0, 19);' satellite/satellite_variable_window/console_launch.cpp)|$(grep -c 'gtk_window_set_handle_menubar_accel(GTK_WINDOW(window), FALSE);' satellite/satellite_variable_window/console_menu.cpp)|$(grep -c '{"New window", "satl.new-window"}' satellite/satellite_variable_window/console_menu.cpp)"
+
 # THE CONSOLE satl LAUNCHES: refused for want of a screen BEFORE the program runs,
 # with the machine's code and not the build's; and refused by the command line
 # beside anything that prints and exits, because a window that shows a licence
@@ -2968,8 +3010,11 @@ expect "the desk's stdout and stderr are kept off satl's own console pty, before
        "$(grep -c 'keep_the_c_streams_off_the_pty();' satellite/satellite_variable_window/console_launch.cpp)|$(grep -c '        stderr = err;' satellite/satellite_variable_window/console_launch.cpp)"
 expect "a frame is refused as a piece to append, and Ctrl-D does not stop a console's reader" "1|1" \
        "$(grep -c 'is a frame of its own and goes inside nothing' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'if (got == 0)' satellite/satellite_variable_window/window_console.cpp)"
-expect "the reader is armed on the desk's own view of the console, and Ctrl-Shift-C copies at the hold" "1|1" \
-       "$(grep -c 'raw->typed_watch = g_unix_fd_add(raw->slave, G_IO_IN, a_line_was_finished, raw);' satellite/satellite_variable_window/window_console.cpp)|$(grep -c 'vte_terminal_copy_clipboard_format(terminal_of(\*console), VTE_FORMAT_TEXT);' satellite/satellite_variable_window/console_launch.cpp)"
+# CTRL-C AT THE HOLD COPIES WHAT IS HIGHLIGHTED, satl-term's rule, ported when
+# satl-term went (Shift allowed, so Ctrl-Shift-C copies too); with nothing
+# highlighted it closes, as any key does.
+expect "the reader is armed on the desk's own view of the console, and Ctrl-C at the hold copies what is highlighted" "1|1" \
+       "$(grep -c 'raw->typed_watch = g_unix_fd_add(raw->slave, G_IO_IN, a_line_was_finished, raw);' satellite/satellite_variable_window/window_console.cpp)|$(grep -c 'vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);' satellite/satellite_variable_window/console_launch.cpp)"
 expect "a console refuses .append by name, and .text sends to .display" "1|1" \
        "$(grep -c 'a console holds nothing but its terminal' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'a console is written into a line at a time' satellite/satellite_variable_window/window_asks.cpp)"
 expect "the run never waits on satl's own console, and a person closing it hangs up" "1|1" \

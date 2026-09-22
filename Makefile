@@ -1,6 +1,6 @@
 # satellite 004 -- the build.
 #
-#     make                 build/satl, every numbered library and build/satl-term
+#     make                 build/satl and every numbered library
 #     make test            check.sh and the string checks
 #     make check           check.sh alone
 #     make clean
@@ -18,7 +18,7 @@
 #     the build number and what it covers  020-version.mk
 #     a new source directory .............. 030-directories.mk
 #     what satl is compiled from .......... 040-sources.mk
-#     satl-term and whether it is built ... 047-window.mk
+#     the window and the console .......... 047-window.mk
 #     what a link is allowed to record .... 048-link.mk
 #     a new binary ........................ 050-build.mk
 #     how a .cpp becomes a .o ............. 060-compile.mk
@@ -31,9 +31,9 @@
 # 067 (003's start-up rows are 003 commands) and 080 (a bare `make` installs
 # nothing while D0.5.1, where 004 installs, is open).
 #
-# ORDER IS LOAD-BEARING in two places: 047 sets HAVE_WINDOW before 050 tests it
-# with an ifeq, which make evaluates as it reads; and 050 is the first fragment
-# that declares a target, which is what makes `all` the default goal.
+# ORDER IS LOAD-BEARING: 050 is the first fragment that declares a target, which
+# is what makes `all` the default goal. (047 used to set HAVE_WINDOW for 050's
+# satl-term ifeq; satl-term is gone since 2026-09-22.)
 #
 # NAMED ONE BY ONE, never $(wildcard make_support/*.mk): a wildcard sorts 100-
 # before 020- and takes in an editor's backup. The paths are relative, so make

@@ -1,32 +1,25 @@
-# satellite 004 -- satl-term, and whether this machine can build it.
+# satellite 004 -- the window satl draws, and the console in it.
 #
-# BEFORE 050-build.mk, which tests HAVE_WINDOW with an ifeq as it reads.
-#
-# CONDITIONAL, AND satl IS NOT (003's reason). gtk4 and vte are a desktop's
-# libraries, and a build machine or a container routinely has neither; a Makefile
-# that dies there has made the interpreter unbuildable to deliver a window. So
-# `make` builds satl-term when it CAN and says one line when it cannot, and `make
-# build/satl-term` asked for by name fails loudly with the reason.
+# satl-term WAS BUILT HERE UNTIL 2026-09-22, and is gone: the author, that day,
+# "we are getting rid of satl-term and replacing it with something built in to
+# the satl exe". satl opens its own console (GTK-17, console_launch.cpp) -- when
+# it is asked with --console, and when nobody gave it one -- and satl-term's
+# window, menu, keys and end-of-run policy are in it. What is below is satl's.
 #
 # vte-2.91-gtk4 AND NOT vte-2.91, which is the GTK3 build of the same library. On
-# AlmaLinux the package is vte291-gtk4-devel, in CRB. Linux only: VTE is a Linux
-# terminal widget.
-WINDOW_PKGS = vte-2.91-gtk4
-
-HAVE_WINDOW   := $(shell pkg-config --exists $(WINDOW_PKGS) 2>/dev/null && echo yes || echo no)
-WINDOW_CFLAGS := $(shell pkg-config --cflags $(WINDOW_PKGS) 2>/dev/null)
-WINDOW_LIBS   := $(shell pkg-config --libs $(WINDOW_PKGS) 2>/dev/null)
+# AlmaLinux the package is vte291-gtk4-devel, in CRB; the vendored stack builds
+# its own. Linux only: VTE is a Linux terminal widget.
 
 # ---------------------------------------------------------------------------
 # AND NOW satl ITSELF DRAWS -- satellite.window, 2026-09-20 (SATELLITE_WINDOW.md
-# WIN-3). GTK4 ONLY, NOT VTE: satl opens a window, satl-term is a terminal in
-# one, and satl must not link a terminal widget to do it.
+# WIN-3) -- and since GTK-17 (2026-09-22) its console too, which is VTE.
 # ---------------------------------------------------------------------------
 #
-# SEPARATE FROM HAVE_WINDOW ABOVE, on purpose. A machine can have gtk4 and no
-# vte -- that is the ordinary case outside a desktop distribution's CRB repo --
-# and there satl draws while satl-term is not built. Sharing one flag would have
-# made satl's window depend on a terminal library it never calls.
+# THE WINDOW AND THE CONSOLE ARE ASKED SEPARATELY, on purpose: HAVE_GTK and
+# HAVE_CONSOLE. A machine can have gtk4 and no vte -- the ordinary case outside
+# a desktop distribution's CRB repo -- and there satl draws its windows and
+# refuses the console words by name. One flag would have made every window
+# depend on a terminal library most of them never call.
 #
 # satl STILL BUILDS WITH NEITHER, which is 047's oldest rule: "a Makefile that
 # dies there has made the interpreter unbuildable to deliver a window". With no
@@ -208,9 +201,9 @@ GTK_KIND = vendored (GTK carried inside satl)
 
 else
 
-# THE SYSTEM'S VTE IS THE CONSOLE'S, when the system has one: HAVE_WINDOW above
-# already asked pkg-config for vte-2.91-gtk4, and its .pc names gtk4 too.
-HAVE_CONSOLE := $(HAVE_WINDOW)
+# THE SYSTEM'S VTE IS THE CONSOLE'S, when the system has one; its .pc names
+# gtk4 too.
+HAVE_CONSOLE := $(shell pkg-config --exists vte-2.91-gtk4 2>/dev/null && echo yes || echo no)
 ifeq ($(HAVE_CONSOLE),yes)
 GTK_PKGS = gtk4 vte-2.91-gtk4
 endif
@@ -237,20 +230,7 @@ else
   CONSOLE_DEFINE = -DSATELLITE_HAS_CONSOLE=0
 endif
 
-# satl-term links the window and NOTHING of the runtime. What it shares with satl
-# is headers only -- satellite/version/title_lines.hpp, which reads the rows, and
-# satellite/machine/machine_codes.hpp and shown.hpp -- so no .cpp of the
-# interpreter may appear here. From the outside in: the command line, the menu,
-# the tabs, one terminal, the satl inside it, and what a keystroke means.
-TERM_SOURCES = $(TERM_DIR)/window.cpp $(TERM_DIR)/menu.cpp $(TERM_DIR)/tabs.cpp \
-               $(TERM_DIR)/terminal.cpp $(TERM_DIR)/child.cpp $(TERM_DIR)/keys.cpp
-TERM_HEADERS = $(TERM_DIR)/menu.hpp $(TERM_DIR)/tabs.hpp $(TERM_DIR)/terminal.hpp \
-               $(TERM_DIR)/child.hpp $(TERM_DIR)/keys.hpp
-
-TERM_OBJECTS = $(TERM_SOURCES:%.cpp=$(OBJECTS)/%.o)
-
-# THE WINDOW SOURCES satl LINKS IN, and they are the interpreter's, not
-# satl-term's: the desk that owns the one GTK thread, what a program can do to a
+# THE WINDOW SOURCES satl LINKS IN: the desk that owns the one GTK thread, what a program can do to a
 # window, and the pieces that go inside one (window_pieces.cpp, split out at
 # GTK-1 for the line rule). Empty when there is no gtk4, which is what makes satl buildable
 # without one. bytecode/window_calls.cpp is NOT here -- it is in
@@ -271,7 +251,8 @@ GTK_SOURCES = $(SATELLITE)/satellite_variable_window/window_desk.cpp \
               $(SATELLITE)/satellite_variable_window/window_strokes.cpp \
               $(SATELLITE)/satellite_variable_window/window_spill.cpp \
               $(SATELLITE)/satellite_variable_window/window_console.cpp \
-              $(SATELLITE)/satellite_variable_window/console_launch.cpp
+              $(SATELLITE)/satellite_variable_window/console_launch.cpp \
+              $(SATELLITE)/satellite_variable_window/console_menu.cpp
 else
 GTK_SOURCES =
 endif

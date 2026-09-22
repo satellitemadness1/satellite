@@ -33,6 +33,10 @@
 #            .typed(when_typed); real keys type "abc" and Return; the capsule
 #            reads .typed and .columns and closes the window. The kernel did
 #            the echo and the line, the desk read it, the interpreter ran it.
+#   bare     PLAIN `satl`, NO FLAG, started the way a launcher starts it: no
+#            controlling terminal (setsid), stdin and stdout on /dev/null. It
+#            must take you to its prompt in a console of its own -- WIN-9, the
+#            author, 2026-09-22 -- and it is typed at, exits 0 and holds.
 #   loud     THE DEADLOCK A FRESH READER FOUND (2026-09-22): 3000 lines of
 #            4000 characters printed into satl's own console while GDK_DEBUG
 #            makes the desk print a line on every frame. Before the fix the
@@ -215,6 +219,18 @@ alive prompt
 /usr/bin/python3 "$work/drive.py" shift space >"$work/prompt.drive2" 2>&1
 finish prompt
 
+# PLAIN satl, AS A LAUNCHER STARTS IT: no flag, no controlling terminal, stdin
+# and stdout on /dev/null, SATL_NO_WINDOW unset. setsid -w so that a terminal
+# this proof was started from is not satl's, and so $! is satl's exit.
+env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS -u SATL_NO_WINDOW WAYLAND_DISPLAY=satlcon \
+    setsid -w "$satl" </dev/null >/dev/null 2>"$work/bare.err" & pid=$!
+sleep 5
+/usr/bin/python3 "$work/drive.py" shift 'type:satellite.file.new("bare.se").append("a launcher reached the prompt")' return \
+    wait:2 'type:exit' return wait:3 >"$work/bare.drive" 2>&1
+alive bare
+/usr/bin/python3 "$work/drive.py" shift space >"$work/bare.drive2" 2>&1
+finish bare
+
 # A PROGRAM THAT STOPS. Nothing to type until it has: the console holds with
 # the code on it, and one key closes it.
 start stopped --console "$work/fail.satl"; sleep 5
@@ -257,6 +273,9 @@ clean_hung=$(grep -c 'satl did not exit' "$work/clean.out" 2>/dev/null); [ -n "$
 prompt_alive=$(cat "$work/prompt.alive" 2>/dev/null || echo dead)
 stopped_alive=$(cat "$work/stopped.alive" 2>/dev/null || echo dead)
 stopped_stdout=$(wc -c < "$work/stopped.out" 2>/dev/null || echo ?)
+bare_status=$(cat "$work/bare.exit" 2>/dev/null || echo "exit ?")
+bare_wrote=$(cat "$work/bare.se" 2>/dev/null | tr '\n' '|')
+bare_alive=$(cat "$work/bare.alive" 2>/dev/null || echo dead)
 loud_status=$(cat "$work/loud.exit" 2>/dev/null || echo "exit ?")
 loud_wrote=$(cat "$work/loud.se" 2>/dev/null | tr '\n' '|')
 loud_desk_lines=$(grep -c 'Gdk-Message' "$work/loud.out" 2>/dev/null); [ -n "$loud_desk_lines" ] || loud_desk_lines=0
@@ -272,6 +291,10 @@ echo "  the typed line wrote:               $prompt_typed  (want hello from the 
 echo "  bytes on satl's ORIGINAL stdout:    $prompt_stdout   (want 0 -- everything went to the pty)"
 echo "  still alive when the key was sent:  $prompt_alive   (want alive -- the hold was up)"
 echo "  satl hung:                          $prompt_hung   (want 0)"
+echo "PLAIN satl, STARTED AS A LAUNCHER STARTS IT: IT TAKES YOU TO ITS PROMPT"
+echo "  satl $bare_status        (0 -- exit ended the session, a key closed the hold)"
+echo "  the typed line wrote:               $bare_wrote  (want a launcher reached the prompt|)"
+echo "  still alive when the key was sent:  $bare_alive   (want alive)"
 echo "A PROGRAM THAT STOPPED, IN A CONSOLE: THE CODE SURVIVES THE WINDOW"
 echo "  satl $stopped_status        (22 -- the refused line's own code, through the window)"
 echo "  still alive when the key was sent:  $stopped_alive   (want alive -- the hold was up)"
@@ -300,6 +323,7 @@ piece_cells_ok=0; echo "$piece_cells" | grep -qE '^[0-9]+ [0-9]+ $' && piece_cel
 [ "$clean_status" = "exit 0" ] && [ "$clean_wrote" = "the program ran in a console and finished|" ] && [ "$clean_hung" = "0" ] &&
 [ "$piece_status" = "exit 0" ] && [ "$piece_lines" = "main is finished, and the console is waiting|typed: abc|" ] && [ "$piece_cells_ok" = "1" ] &&
 [ "$loud_status" = "exit 0" ] && [ "$loud_wrote" = "printed every line|" ] && [ "$loud_hung" = "0" ] &&
+[ "$bare_status" = "exit 0" ] && [ "$bare_wrote" = "a launcher reached the prompt|" ] && [ "$bare_alive" = "alive" ] &&
 { echo "prove-console.sh: PASS"; exit 0; }
 echo "prove-console.sh: FAIL"
 exit 1

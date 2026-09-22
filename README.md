@@ -62,11 +62,11 @@ Revision 02 is early. What runs:
 and every measurement behind them, and [ERROR.md](ERROR.md) for every known error.
 
 ```
-make                                  # build/satl, every numbered library and build/satl-term
+make                                  # build/satl and every numbered library
 make test                             # check.sh and the string checks
 build/satl examples/hello_world.satl  # run a program; build/satl --help lists every way
-build/satl-term examples/hello_world.satl
-sh satellite_enterprise/install.sh --root <folder>   # satl, its libraries and satl-term, into <folder>
+build/satl --console examples/hello_world.satl   # the same, in a console window of satl's own
+sh satellite_enterprise/install.sh --root <folder>   # satl and its libraries, into <folder>
 ```
 
 **004's interpreter is `satl`** (`build/satellite-004` is a link to it). It is

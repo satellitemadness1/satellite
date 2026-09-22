@@ -12,11 +12,13 @@
 // puts what the program prints on a screen, and exits with what the program
 // stopped on.
 //
-// IT IS EXPLICIT AND NEVER FORCED. `--console` is the one way in; satl with no
-// terminal and no flag still prints where it was pointed, as it has since 004
-// removed the handover on purpose (PLAN M0.5). Whether satl should ever open a
-// console on its own -- WIN-9 -- stays the author's, and this is the shape
-// WIN-9 recommended in the meantime.
+// AND IT OPENS ON ITS OWN WHEN NOTHING GAVE satl A CONSOLE -- WIN-9, ruled by
+// the author on 2026-09-22: *"satl has to, when it's not ran in a console, take
+// you to it's prompt"*, and *"we are getting rid of satl-term and replacing it
+// with something built in to the satl exe"*. `--console` asks for it outright;
+// window_run.cpp's nobody_gave_satl_a_console() is when satl asks for itself.
+// satl-term is gone, and its File menu, its keys, its size, its look, its
+// niceness and its end-of-run policy are here.
 //
 // WHAT HAPPENS AT THE END IS satl-term'S POLICY, PORTED: a file that finished
 // cleanly closes the console at once (a window that outlived every clean run
@@ -45,8 +47,10 @@
 #include <fcntl.h>
 #include <iostream>
 #include <sys/ioctl.h>
+#include <sys/resource.h>
 #include <termios.h>
 #include <unistd.h>
+#include <vector>
 
 namespace satellite004 {
 namespace {
@@ -132,70 +136,95 @@ gboolean fit_cells(GtkWidget *widget, GdkFrameClock *, gpointer data)
     return G_SOURCE_REMOVE;
 }
 
-// CTRL-C, WHEN THE KERNEL WILL NOT SAY IT. A pty carries Ctrl-C as SIGINT only
-// to the foreground process group of the session it controls; a pty that is
-// nobody's controlling terminal -- satl started from a shell, see open below
-// -- DROPS the byte in cooked mode and sends nothing (n_tty's isig has no
-// group to send to). This controller is added only then, on the window, in
-// the CAPTURE phase so it sees the key before VTE does, and it does what the
-// line discipline would have done: with ISIG on it sends SIGINT and swallows
-// the key; with ISIG off -- the prompt reading a line raw, which wants the
-// byte 0x03 (raw_mode.hpp) -- it lets VTE write the byte. Ctrl-Shift-C is
-// VTE's own copy and is left alone.
-gboolean ctrl_c_by_hand(GtkEventControllerKey *, guint keyval, guint, GdkModifierType state, gpointer user_data)
+// ---------------------------------------------------------------------------
+// THE KEYBOARD, satl-term'S RULES PORTED (satl-term/keys.cpp, removed 2026-09-22
+// when satl became the one application). ONE CONTROLLER, on the window, in the
+// capture phase, so it sees a key before the terminal does -- and the rule the
+// whole of it is built on, in satl-term's words: THE KEY IS ONLY EVER TAKEN
+// WHEN THERE IS NOBODY TO GIVE IT TO.
+//
+//   Ctrl-V               pastes, always: somebody answering a program with a
+//                        path on their clipboard should not have to type it.
+//                        The byte it replaces, 0x16, nothing here asks for.
+//   Ctrl-C, running      the program's. From a launcher the pty is satl's
+//                        controlling terminal and the kernel makes it SIGINT;
+//                        from a shell it is not, and n_tty would DROP the byte
+//                        with no group to signal, so this sends SIGINT itself
+//                        when the pty is cooked -- and lets the byte through
+//                        when the prompt has it raw, which wants 0x03.
+//   Ctrl-C, held         copies what is highlighted; with nothing highlighted
+//                        it closes, as any key does.
+//   any key, held        closes -- but NOT a modifier on its own, which is the
+//                        first half of every Ctrl-C and would close the window
+//                        a moment before the C arrived (satl-term's trap).
+//
+// Shift is allowed through with Control, as satl-term allowed it; Alt and Super
+// are the window manager's. There is deliberately no Ctrl-Shift-C that copies
+// while a program runs: the author asked for Ctrl-C to stop a run, and a second
+// spelling doing the opposite is a decision satl-term already made.
+// ---------------------------------------------------------------------------
+
+// WRITTEN ONCE ON THE INTERPRETER'S THREAD, before the parcel that installs the
+// controller -- which is what orders it for the desk -- and read on the desk.
+bool the_pty_is_satls_terminal = false;
+
+// WRITTEN AND READ ON THE DESK ONLY: set by the parcel that puts up the hold.
+bool the_console_is_held = false;
+
+bool is_only_a_modifier(guint keyval)
 {
-    if ((state & GDK_CONTROL_MASK) == 0 || (state & GDK_SHIFT_MASK) != 0 ||
-        (keyval != GDK_KEY_c && keyval != GDK_KEY_C))
-        return FALSE;
-    satellite_window *console = static_cast<satellite_window *>(user_data);
-    struct termios now;
-    if (console->slave < 0 || tcgetattr(console->slave, &now) != 0 || (now.c_lflag & ISIG) == 0)
-        return FALSE;
-    kill(getpid(), SIGINT);
-    return TRUE;
+    switch (keyval) {
+    case GDK_KEY_Control_L: case GDK_KEY_Control_R: case GDK_KEY_Shift_L: case GDK_KEY_Shift_R:
+    case GDK_KEY_Alt_L: case GDK_KEY_Alt_R: case GDK_KEY_Super_L: case GDK_KEY_Super_R:
+    case GDK_KEY_Meta_L: case GDK_KEY_Meta_R: case GDK_KEY_ISO_Level3_Shift:
+    case GDK_KEY_Caps_Lock: case GDK_KEY_Num_Lock:
+        return true;
+    default:
+        return false;
+    }
 }
 
-// ANY KEY CLOSES A HELD CONSOLE -- the promise its own last line makes -- BUT
-// NOT THE KEYS THAT COPY IT. A modifier on its own is not a key pressed, and
-// a person taking the report with Ctrl-Shift-C gets it on the clipboard: VTE
-// 0.84 binds only Ctrl-Insert for that itself, so the chord is done here, and
-// Ctrl-Insert is left to VTE. (A fresh reader, 2026-09-22: the first draft
-// promised this in its comment and closed on the C.)
-gboolean any_key_closes(GtkEventControllerKey *, guint keyval, guint, GdkModifierType state, gpointer user_data)
+// THE HOLD IS OVER, ON THE DESK: closed on purpose, so it is not read as a
+// person hanging up on the interpreter.
+void close_it_on_purpose(satellite_window &console)
+{
+    console.closing_on_purpose = true;
+    gtk_window_destroy(GTK_WINDOW(static_cast<GtkWidget *>(console.widget)));
+}
+
+gboolean the_keys(GtkEventControllerKey *, guint keyval, guint, GdkModifierType state, gpointer user_data)
 {
     satellite_window *console = static_cast<satellite_window *>(user_data);
     if (console->widget == nullptr || console->terminal == nullptr)
         return FALSE;
-    switch (keyval) {
-    case GDK_KEY_Shift_L: case GDK_KEY_Shift_R: case GDK_KEY_Control_L: case GDK_KEY_Control_R:
-    case GDK_KEY_Alt_L: case GDK_KEY_Alt_R: case GDK_KEY_Super_L: case GDK_KEY_Super_R:
-    case GDK_KEY_Meta_L: case GDK_KEY_Meta_R: case GDK_KEY_Caps_Lock:
-        return FALSE;
-    default:
-        break;
+    VteTerminal *terminal = terminal_of(*console);
+    const bool a_control_chord = (state & GDK_CONTROL_MASK) != 0 && (state & (GDK_ALT_MASK | GDK_SUPER_MASK)) == 0;
+    if (a_control_chord && (keyval == GDK_KEY_v || keyval == GDK_KEY_V)) {
+        vte_terminal_paste_clipboard(terminal);
+        return TRUE;
     }
-    if ((state & GDK_CONTROL_MASK) != 0) {
-        if ((keyval == GDK_KEY_c || keyval == GDK_KEY_C) && (state & GDK_SHIFT_MASK) != 0) {
-            vte_terminal_copy_clipboard_format(terminal_of(*console), VTE_FORMAT_TEXT);
+    if (a_control_chord && (keyval == GDK_KEY_c || keyval == GDK_KEY_C)) {
+        if (the_console_is_held) {
+            // _format AND NOT vte_terminal_copy_clipboard(), satl-term's reason:
+            // the other would paste this window's colours into whatever got it.
+            if (vte_terminal_get_has_selection(terminal))
+                vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);
+            else
+                close_it_on_purpose(*console);
             return TRUE;
         }
-        if (keyval == GDK_KEY_Insert || keyval == GDK_KEY_KP_Insert)
-            return FALSE;
+        struct termios now;
+        if (!the_pty_is_satls_terminal && tcgetattr(console->slave, &now) == 0 && (now.c_lflag & ISIG) != 0) {
+            kill(getpid(), SIGINT);
+            return TRUE;
+        }
+        return FALSE;
     }
-    console->closing_on_purpose = true;
-    gtk_window_destroy(GTK_WINDOW(static_cast<GtkWidget *>(console->widget)));
-    return TRUE;
-}
-
-// ON THE DESK. In the capture phase, on the window, so the key is seen before
-// the terminal has it.
-void hear_keys_first(satellite_window &console,
-                     gboolean (*hears)(GtkEventControllerKey *, guint, guint, GdkModifierType, gpointer))
-{
-    GtkEventController *controller = gtk_event_controller_key_new();
-    gtk_event_controller_set_propagation_phase(controller, GTK_PHASE_CAPTURE);
-    g_signal_connect(controller, "key-pressed", G_CALLBACK(hears), &console);
-    gtk_widget_add_controller(static_cast<GtkWidget *>(console.widget), controller);
+    if (the_console_is_held && !is_only_a_modifier(keyval)) {
+        close_it_on_purpose(*console);
+        return TRUE;
+    }
+    return FALSE;
 }
 
 } // namespace
@@ -206,12 +235,32 @@ bool open_the_interpreters_console(const std::string &title, std::string &why)
         why = "satl's own console is already open";
         return false;
     }
+    // THE LAUNCHER'S NAME FOR IT, SET BEFORE THE DESK STARTS GTK. With no
+    // GtkApplication, GDK hands the compositor g_get_prgname() as the window's
+    // app id, and a desktop shell matches a window to its launcher by that id:
+    // this is what puts the Satellite icon on the window and lets a person pin
+    // it. It is the .desktop file's own name (satellite_enterprise/icons/), and
+    // satl-term's, whose launcher satl now is.
+    g_set_prgname("org.satellite.terminal");
     // THE PIXEL SIZE IS A STARTING POINT: fit_cells makes it 120 by 48 cells on
     // the first frame, whatever the font measured.
     WindowHandle console = console_new(title, 1000, 700, why);
     if (console == nullptr)
         return false;
     console->is_satls_own = true;
+
+    // THE INTERPRETER RUNS AT THE LOWEST PRIORITY THERE IS, and the window does
+    // not -- satl-term's rule (satl-term/child.cpp), ported. Measured there on
+    // 2026-09-12: an interpreter running 23 compute threads at priority 0 on this
+    // 24-thread machine took every core and the desktop stopped answering. A
+    // launcher's satl cannot be niced by a shell alias, so it nices itself; it
+    // costs an idle machine nothing. ON LINUX A NICE VALUE IS A THREAD'S, and new
+    // threads inherit their creator's: called here, on the interpreter's thread,
+    // after console_new started the desk and before run_satl starts the startup
+    // threads, it lowers the interpreter and every thread it will start and
+    // leaves the desk -- which draws this window -- where it was. A refusal
+    // leaves it where it was, which is what not asking would have done.
+    setpriority(PRIO_PROCESS, 0, 19);
 
     // THE PTY BECOMES satl'S TERMINAL, AS FAR AS IT CAN. setsid() so that the
     // pty CAN be the controlling terminal; it fails when satl is already a
@@ -222,10 +271,10 @@ bool open_the_interpreters_console(const std::string &title, std::string &why)
     // session leader with no terminal, the launcher case and the one this
     // exists for, and fails from a shell, whose own terminal satl keeps. Both
     // are fine: the pty carries every byte either way, and the one thing a
-    // controlling terminal adds -- Ctrl-C as a signal -- ctrl_c_by_hand adds
-    // where the kernel will not.
+    // controlling terminal adds -- Ctrl-C as a signal -- the_keys adds where
+    // the kernel will not.
     setsid();
-    const bool controlling = ioctl(console->slave, TIOCSCTTY, 0) == 0;
+    the_pty_is_satls_terminal = ioctl(console->slave, TIOCSCTTY, 0) == 0;
 
     // NOTHING SAID SO FAR IS LOST: what is buffered goes where it was pointed
     // before the switch, and everything after it lands in the window -- except
@@ -243,14 +292,17 @@ bool open_the_interpreters_console(const std::string &title, std::string &why)
         return false;
     }
     // `slave` STAYS OPEN ON THE HANDLE, as every console's does, and here
-    // ctrl_c_by_hand's tcgetattr reads it. Nothing of a program's ever reaches
-    // it: this handle is never a Value.
+    // the_keys' tcgetattr reads it. Nothing of a program's ever reaches it:
+    // this handle is never a Value.
 
     satellite_window *raw = console.get();
-    on_the_desk([raw, controlling] {
+    on_the_desk([raw] {
         gtk_widget_add_tick_callback(static_cast<GtkWidget *>(raw->terminal), fit_cells, raw->widget, nullptr);
-        if (!controlling)
-            hear_keys_first(*raw, ctrl_c_by_hand);
+        give_it_a_file_menu(*raw);
+        GtkEventController *keys = gtk_event_controller_key_new();
+        gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
+        g_signal_connect(keys, "key-pressed", G_CALLBACK(the_keys), raw);
+        gtk_widget_add_controller(static_cast<GtkWidget *>(raw->widget), keys);
     });
     the_interpreters_console = console;
     return true;
@@ -275,10 +327,7 @@ void the_interpreters_console_is_done(bool hold, const std::string &message)
     std::signal(SIGHUP, SIG_IGN);
     satellite_window *raw = console.get();
     if (!hold) {
-        on_the_desk([raw] {
-            raw->closing_on_purpose = true;
-            gtk_window_destroy(GTK_WINDOW(static_cast<GtkWidget *>(raw->widget)));
-        });
+        on_the_desk([raw] { close_it_on_purpose(*raw); });
         return;
     }
     // THE PROGRAM'S OWN WINDOWS GO DOWN, as they do on a stopped run with no
@@ -291,7 +340,7 @@ void the_interpreters_console_is_done(bool hold, const std::string &message)
     const std::string line = "\n" + message + "\n";
     const ssize_t wrote = write(STDERR_FILENO, line.data(), line.size());
     (void)wrote;   // the pty may be gone; then there is nobody to tell
-    on_the_desk([raw] { hear_keys_first(*raw, any_key_closes); });
+    on_the_desk([] { the_console_is_held = true; });
 }
 
 } // namespace satellite004

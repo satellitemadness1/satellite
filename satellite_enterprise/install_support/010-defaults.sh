@@ -18,7 +18,7 @@ a // inside a string is not a comment
 true'
 
 # Machine codes (satellite/machine/machine_codes.hpp): a command line this
-# installer does not take is 23, as it is for satl and satl-term. Anything else
+# installer does not take is 23, as it is for satl. Anything else
 # that stops it is 1.
 command_line_not_understood=23
 

@@ -1005,7 +1005,22 @@ recommended, same as GTK). FTL wants this line in the documentation: *"Portions 
 says to replace it with the version actually vendored, and the line is meant to be
 pasted verbatim.
 
-## WIN-9 — force the satl-term console, or not — **THE AUTHOR'S, STILL UNANSWERED — and the recommended shape is BUILT (GTK-17, 2026-09-22)**
+## WIN-9 — force the satl-term console, or not — **DECIDED BY THE AUTHOR 2026-09-22, AND BUILT: satl opens its own console, and satl-term is gone**
+
+> *"yes satl has to, when it's not ran in a console, take you to it's prompt, is
+> the prompt built yet? I think it is, because when I open satl-term it takes me
+> to that prompt, so we are getting rid of satl-term and replacing it with
+> something built in to the satl exe"* — the author, 2026-09-22, late
+
+So the answer is yes, and not the way it was asked: not satl-term forced, but
+satl's own console opened in satl's own process when nothing gave satl one —
+no controlling terminal, stdout going nowhere anybody reads, a display, and no
+`SATL_NO_WINDOW` (`nobody_gave_satl_a_console()`, `window_run.cpp`). A bare
+`satl` gets the prompt; a file gets the program; a command that prints and
+exits never opens one. The two losses this section weighed against forcing
+are not paid: the exit status is satl's own, and stdout is the pty. satl-term
+is removed (GTK_AND_NO_DEPENDENCIES.md DEP-5). What follows is the question as
+it stood before.
 
 **Since 2026-09-22 there is `satl --console [file]`**, and it is what the
 recommendation below asked for, one better: satl opens a console **of its own**

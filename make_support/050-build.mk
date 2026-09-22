@@ -2,9 +2,10 @@
 #
 # THE FIRST FRAGMENT THAT DECLARES A TARGET; .DEFAULT_GOAL says so outright anyway.
 #
-# THE THREE ARE BUILT INTO ONE FOLDER (PLAN M0.5): build/satl loads the libraries
-# in the satellite-numbers/ beside its own path, and build/satl-term runs the satl
-# beside its own. So they are built together and installed together.
+# THE TWO ARE BUILT INTO ONE FOLDER (PLAN M0.5): build/satl loads the libraries
+# in the satellite-numbers/ beside its own path, so they are built together and
+# installed together. There were three until 2026-09-22; satl-term is gone, and
+# satl opens its own console (047-window.mk says so at the top).
 .DEFAULT_GOAL := all
 
 # The three harnesses check.sh runs are built too, so ./check.sh works after a plain
@@ -12,18 +13,14 @@
 ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases \
               $(BUILD)/count_cases $(BUILD)/prompt_cases $(BUILD)/prompt_reader $(BUILD)/directory_cases \
               $(BUILD)/file_cases $(BUILD)/infinity_cases
-ifeq ($(HAVE_WINDOW),yes)
-  ALL_TARGETS += $(BUILD)/satl-term
-endif
 
-# WITHOUT THE WINDOW, AN EARLIER satl-term IS REMOVED: the three are one set, and
-# a satl-term from an older build would run the newer satl beside it and be
-# installed with it.
+# AN EARLIER BUILD'S satl-term IS REMOVED, with its objects: it would run the
+# newer satl beside it and be installed with it, and its .d files would name
+# headers that no longer exist to check.sh's fingerprint row.
 all: $(ALL_TARGETS)
-ifneq ($(HAVE_WINDOW),yes)
-	@if [ -e $(BUILD)/satl-term ]; then rm -f $(BUILD)/satl-term && echo "removed $(BUILD)/satl-term, which an earlier build made"; fi
-	@echo "note: satl-term not built -- pkg-config finds no $(WINDOW_PKGS). satl is unaffected."
-endif
+	@if [ -e $(BUILD)/satl-term ] || [ -d $(OBJECTS)/satl-term ]; then \
+	     rm -rf $(BUILD)/satl-term $(OBJECTS)/satl-term && \
+	     echo "removed $(BUILD)/satl-term, which an earlier build made -- satl opens its own console now"; fi
 
 # Runs on every make; build_number.py decides whether this make is a build, and
 # rewrites the stamp only when it is -- which is what recompiles the objects that
@@ -106,8 +103,8 @@ define carries_its_own_gtk
  echo "$(1): carries GTK -- needs only$$(for l in $$found; do printf ' %s' $$l; done)"
 endef
 
-# $(GTK_LIBS) AFTER the objects, and for the same reason satl-term's are: a
-# linker resolves an -l only against the symbols it has already been asked for.
+# $(GTK_LIBS) AFTER the objects: a linker resolves an -l only against the
+# symbols it has already been asked for.
 # Both are empty when pkg-config found no gtk4, and this is then exactly the link
 # line it was before the window (047-window.mk).
 $(BUILD)/satl: $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
@@ -135,27 +132,6 @@ libraries: $(BUILD_STAMP) $(LINK_STAMP)
 	@SATELLITE_CXX="$(CXX)" SATELLITE_CXX_VERSION="$(CXX_VERSION)" SATELLITE_CXXFLAGS="$(CXXFLAGS)" \
 	    SATELLITE_LDFLAGS="$(LDFLAGS)" SATELLITE_JOBS="$(patsubst -j%,%,$(filter -j%,$(MAKEFLAGS)))" \
 	    $(LINK_ENV) python3 $(NUMBERS)/build_libraries.py
-
-# $(WINDOW_LIBS) AFTER the objects: a linker resolves an -l only against the
-# symbols it has already been asked for.
-ifeq ($(HAVE_WINDOW),yes)
-
-$(BUILD)/satl-term: $(TERM_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
-	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(TERM_OBJECTS) -o $@ $(WINDOW_LIBS)
-	$(call shows_the_build_row,$@)
-
-else
-
-# NO PREREQUISITES, so nothing is compiled before the reason is given.
-.PHONY: $(BUILD)/satl-term
-$(BUILD)/satl-term:
-	@echo "satl-term needs $(WINDOW_PKGS), which pkg-config cannot find." >&2
-	@echo "  AlmaLinux/RHEL: dnf --enablerepo=crb install vte291-gtk4-devel" >&2
-	@echo "  Debian/Ubuntu:  apt install libvte-2.91-gtk4-dev" >&2
-	@echo "satl and its libraries do not need it." >&2
-	@false
-
-endif
 
 FORCE:
 

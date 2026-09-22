@@ -126,8 +126,19 @@ signed long long int windows_run_until_they_are_closed(
 // exit status -- or the code it has already reported: no_display, or
 // not_built_yet for a satl made without a console. `holds_after_a_clean_run`
 // is true for the prompt, whose screen is a person's to read when it ends.
-signed long long int open_satls_own_console(const std::string &title, bool holds_after_a_clean_run);
+//
+// `quietly` IS satl ASKING FOR ITSELF (nobody_gave_satl_a_console below): a
+// console it cannot have is not a failure then, and it answers success with no
+// console open and carries on where it was pointed.
+signed long long int open_satls_own_console(const std::string &title, bool holds_after_a_clean_run,
+                                            bool quietly = false);
 bool satls_own_console_is_open();
+
+// WHETHER satl SHOULD OPEN ITS OWN CONSOLE WITH NOBODY ASKING (WIN-9, the
+// author 2026-09-22): no controlling terminal, output going nowhere anybody
+// reads, a display, and no SATL_NO_WINDOW. window_run.cpp names the four.
+// False always in a satl built without a window.
+bool nobody_gave_satl_a_console();
 
 // AND WHAT BECOMES OF IT WHEN THE RUN IS OVER, called by main() before it
 // waits for the windows: a run that STOPPED keeps the console up with the code

@@ -34,9 +34,6 @@ printf '\n%s\n\n' "$title"
 printf 'installed into %s:\n' "$(shown "$root")"
 printf '    satl                  the interpreter -- run it by its path: %s/satl <file.satl>\n' "$(shown "$root")"
 printf '    satellite-numbers/    %s libraries\n' "$libraries"
-if [ "$with_window" = yes ]; then
-    printf '    satl-term             the window, which runs the satl beside it\n'
-fi
 printf '    %s   the record of what this installer put there\n' "$record_name"
 
 # THE WORD satl IS NOT THIS INSTALL'S, on purpose (D0.5.1). Said, so nobody types

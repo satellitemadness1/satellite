@@ -14,9 +14,6 @@ for _library in "$build"/satellite-numbers/*.so; do
     [ -f "$_library" ] || die "make finished without a library in $build/satellite-numbers/, so nothing was installed"
     break
 done
-if [ -f "$build/satl-term" ]; then
-    with_window=yes
-else
-    with_window=no
-    step "satl-term was not built on this machine (no vte-2.91-gtk4), so it is not installed"
-fi
+# NO satl-term SINCE 2026-09-22: satl opens its own console (GTK-17), and the
+# author said "we are getting rid of satl-term". 060 still removes one an
+# earlier install left, once 040 has proved it was this installer's.

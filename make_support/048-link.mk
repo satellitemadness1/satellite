@@ -5,7 +5,7 @@
 # std::cout (DESIGN §3.4) -- and GTK4 and VTE ship no .a anyway. So `make
 # STATIC=full` builds exactly what `make` does, and says so once.
 #
-# LD_RUN_PATH IS REMOVED FOR EVERY LINK: satl, satl-term and every library.
+# LD_RUN_PATH IS REMOVED FOR EVERY LINK: satl and every library.
 # This shell exports it, and GNU ld silently writes it into the binary as an
 # RPATH naming directories in one home -- a binary that then finds libstdc++ in
 # /home/madness/opt/gcc-17 here and something else everywhere else. `env -u` and

@@ -576,13 +576,35 @@ link.~~ **Both halves of that are gone**: GTK's archives have been linked out
 of its build tree since 2026-09-20, and **VTE builds a static archive since
 2026-09-22** with a one-word journalled patch (GTK-17).
 
-**So "single application" is now a choice and not a wall.** The third option
-below is built; none is chosen: satl grows the terminal widget itself
-(GTK-17/18); satl-term stays dynamic and is the one thing that needs GTK
-installed; or satl-term links the vendored archives the way satl does. **The
-author's call.** And whatever is decided, **satl-term is not removed** — he
-has ruled on that once already: the GPU terminal next door does not replace
-it.
+~~**So "single application" is now a choice and not a wall.** ... And whatever
+is decided, **satl-term is not removed**.~~ **DECIDED 2026-09-22, and satl-term
+IS removed — by the author, the same evening GTK-17 gave satl a console of its
+own:**
+
+> *"yes satl has to, when it's not ran in a console, take you to it's prompt, is
+> the prompt built yet? I think it is, because when I open satl-term it takes me
+> to that prompt, so we are getting rid of satl-term and replacing it with
+> something built in to the satl exe"* — the author, 2026-09-22, late
+
+**BUILT THE SAME NIGHT.** satl is the single application. `satl-term/` is out of
+the tree (git history keeps all twelve files), out of the build, out of the
+installer — which still removes one an earlier install left, once its record
+says it was its own — and the `.desktop` starts `satl --console %f`. What
+satl-term did, satl's own console does (GTK-17): its window, 120 by 48 cells in
+IBM Plex Mono on light blue; its end-of-run policy; its keys (Ctrl-V pastes;
+Ctrl-C is the program's while it runs and copies or closes once it has
+stopped; any key but a modifier closes a held console); its File menu — New
+window, Open…, Save output as… — mouse only, with F10 left to the program;
+its app id, `org.satellite.terminal`, so the launcher's icon lands on the
+window; and its niceness, 19 for the interpreter and its threads and not for
+the thread that draws. **Two things did not carry over:** tabs, because one
+satl process runs one program and New window is the same act; and Open…
+running a program in *this* window, which is satl itself, still running — it
+opens a window of its own. satl-term's `--size`, `--hold`, `--nice` and
+`--title` flags went with it. The two earlier rulings kept satl-term because
+a person must not have to download a terminal and a `.satl` must open from a
+file manager; satl now does both itself, in one binary with the same seven
+NEEDED.
 
 ## DEP-6 — LGPL §6, which static linking is what gives teeth
 
@@ -2157,13 +2179,17 @@ than argued: on a compositor, `satl --console fail.satl` exited **22** through
 the window, the refused line's own code. `satl --console` alone is the prompt
 in a console. `console_launch.cpp`.
 
-- **Explicit, never forced.** satl with no terminal and no flag prints where it
-  was pointed, as it has since 004 removed the handover on purpose (PLAN
-  M0.5). Whether satl should ever open a console **on its own** — 003's six
-  reasons — stays WIN-9, the author's; this is the shape WIN-9 recommended in
-  the meantime. When he wants the launcher to start satl itself (DEP-5's
-  *"single application"*), it is one line in the `.desktop`: `Exec=satl
-  --console %f`. **satl-term is untouched.**
+- ~~**Explicit, never forced.**~~ **AND ON ITS OWN, since the author ruled
+  WIN-9 the same night** (*"satl has to, when it's not ran in a console, take
+  you to it's prompt"*): satl with no controlling terminal, its stdout going
+  nowhere anybody reads (not a pipe, not a file), a display, and no
+  `SATL_NO_WINDOW` opens its own console — the prompt for a bare `satl`, the
+  program for a file — and carries on where it was pointed, silently, if it
+  cannot. Only for what runs; never for a command that prints and exits. The
+  four reasons are `nobody_gave_satl_a_console()` in `window_run.cpp`, 003's six
+  less satl-term. **And satl-term is gone** (DEP-5). `/dev/null` is the case it
+  exists for, so check.sh sets `SATL_NO_WINDOW` for the whole suite, and a
+  sweep from a harness with no terminal must write to a file.
 - **satl-term's end-of-run policy, ported.** A file that finished closes the
   console at once; a run that STOPPED holds it with `[satl] stopped on machine
   code 22 (division_by_zero) -- press any key to close` as its last line,
@@ -2212,7 +2238,8 @@ gives.
 - **`.typed` is a capsule, not a wait.** GTK-11's open shape — may a satellite
   line wait for a person — is kept open; a blocking `c.input()` is the author's
   to ask for, and the pty is already there to read it from.
-- **`--console` is explicit.** Forcing it is WIN-9's, still his.
+- ~~**`--console` is explicit.**~~ **DECIDED by the author the same night**
+  (WIN-9): satl opens it on its own when nothing gave it a console.
 - **`.display` takes text or a number.** A list or a file is refused as `.text`
   would refuse it; the whole `satellite.console.display` set is one reader away.
 - **No `--hold`.** satl-term's flag; a run that stopped already holds.
@@ -2251,8 +2278,10 @@ makes for the child instead of the one satl holds an end of.
   check and the parcel would have had a watch on whatever the program opened
   next. The parcel asks the desk's own view now, and the slave is closed only
   with the handle, never by the desk.
-- **Ctrl-Shift-C closed the hold** it promised to survive; it copies now, and
-  Ctrl-Insert is left to VTE.
+- **Ctrl-Shift-C closed the hold** it promised to survive. When satl-term went
+  the same night its whole key rule was ported instead: Ctrl-C (Shift
+  allowed) at the hold copies what is highlighted, and closes when nothing
+  is.
 - **The no-VTE stubs blamed the build for a button.** `a_button.display(...)`
   on a satl without VTE said "built without a console"; the kind is refused
   first now, on every build, and a size of 0 is the program's on every build.
@@ -2327,7 +2356,7 @@ is the milestone that gets VTE into the folder and into a static archive.
 | ~~GTK-15~~ | ~~where a click on a canvas LANDED; an outline, a line's width, an arc~~ | **BUILT as the recommendation, 2026-09-22** — `.across` and `.down` carried on the event as `.key` is; `.outline(1)` and `.thickness(n)` are the pen; `.arc(...)` clockwise from three o'clock. Still reversible — and `across`/`down` is the one spelling chosen here rather than recommended. |
 | ~~GTK-17~~ | ~~does `satellite.console` become a window, or does a window get a console?~~ | **BUILT as the recommendation, 2026-09-22** — a window gets a console, spelled as he spelled it: `satellite.console.new(title, width, height)`; `satellite.console.display` keeps stdout; and `satl --console` is the console satl launches, in one process. Still reversible. |
 | GTK-17 | **`.typed` is a capsule** — may a console line WAIT for a person (`c.input()`)? GTK-11's question, met again | a capsule; the pty is there to read from when he wants the wait |
-| GTK-17 | **`--console` is explicit** — should satl open a console on its own with no terminal, 003's six reasons? This is WIN-9 | do not force it; the `.desktop` can say `satl --console %f` |
+| ~~GTK-17~~ | ~~**`--console` is explicit** — should satl open a console on its own with no terminal? This is WIN-9~~ | **DECIDED by the author, 2026-09-22:** *"satl has to, when it's not ran in a console, take you to it's prompt ... we are getting rid of satl-term"*. **BUILT the same night**, and satl-term removed (DEP-5). |
 | GTK-17 | **Q-VTE-1: gnutls** — VTE without it prints a red warning into every new terminal and upstream has deprecated the option; vendor gnutls + nettle + gmp, patch the line out, or live with it? **Meanwhile the terminal is reset once at birth and the line never shows.** | vendor the three |
 | GTK-10 | the window font: 11px or 12px | asked 2026-09-19, still open |
 
@@ -2388,10 +2417,9 @@ is the milestone that gets VTE into the folder and into a static archive.
   libcairo-script-interpreter are still called by nobody** and no milestone
   below ever will — Part 00's Table B is the list.
 - **`THIRD-PARTY-NOTICES.md` is not written**, waiting on DEP-6's two rulings.
-- **WIN-9 — force the satl-term console or not — asked 2026-09-19, still
-  unanswered.** The recommendation was: do not — and since 2026-09-22 the
-  explicit shape it recommended exists, `satl --console`, in one process, with
-  the exit status kept (GTK-17). Forcing it stays his.
+- ~~**WIN-9 — force the satl-term console or not.**~~ **DECIDED by the author
+  2026-09-22 and BUILT:** satl opens its own console when nothing gave it one,
+  in one process, the exit status kept — and satl-term is removed (DEP-5).
 
 ---
 

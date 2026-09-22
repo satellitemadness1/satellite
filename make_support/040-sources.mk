@@ -90,13 +90,13 @@ LICENCE_DATA_INPUTS = $(SATELLITE)/licenses/make_license_data.py \
 INTERPRETER_OBJECTS = $(INTERPRETER_SOURCES:%.cpp=$(OBJECTS)/%.o) $(LICENCE_DATA_OBJECT)
 
 # THE FILES THE APPLICATION IS MADE FROM, for the build number (020-version.mk):
-# satl, satl-term and their build. build_number.py adds every
+# satl and its build. build_number.py adds every
 # satellite-numbers/*/*.satellite.cpp itself -- their names hold brackets and
-# spaces, which make cannot list. TERM_SOURCES is 047-window.mk's, read when this
-# is expanded, and counted whether or not this machine can build the window.
+# spaces, which make cannot list. GTK_SOURCES is 047-window.mk's, read when this
+# is expanded.
 MAKE_FRAGMENTS = make_support/005-jobs.mk make_support/010-compiler.mk make_support/020-version.mk \
                  make_support/030-directories.mk make_support/040-sources.mk make_support/047-window.mk \
                  make_support/048-link.mk make_support/050-build.mk make_support/060-compile.mk \
                  make_support/065-tests.mk make_support/070-clean.mk
-BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) $(GTK_SOURCES) $(TERM_SOURCES) $(TERM_HEADERS) Makefile $(MAKE_FRAGMENTS) \
+BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) $(GTK_SOURCES) Makefile $(MAKE_FRAGMENTS) \
                $(SATELLITE)/config/build_number.py words/words.tsv $(NUMBERS)/build_libraries.py
