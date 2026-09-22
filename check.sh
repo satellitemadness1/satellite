@@ -1323,6 +1323,14 @@ expect "the five spellings and help are refused by name, and the line after them
 # A brace inside a string is text and not a block: the refusals are read from the CODES.
 printf 'satellite.console.display("{ not a block }")\n' | "$interpreter" --repl 2>/dev/null | grep -q '{ not a block }'
 expect "a brace inside a string literal is not a block" 0 $?
+# `interpret <file>` AND `run <file>` (the author, 2026-09-22: "In 003, I would always
+# type "interpret file.satl" into the prompt"): the prompt's own words, as `exit` is, and
+# the program runs as `satl <file>` runs it -- its output, its refusals, its status. From
+# a pipe the session's status is the first failing line's, so a failing program is it.
+printf 'interpret examples/hello_world.satl\nrun "tests/missing_main.satl"\ninterpret\nsatellite.console.display("still here")\n' | \
+    "$interpreter" --repl > build/repl_interpret.out 2>&1; code=$?
+expect "interpret runs a program, run runs one that fails, and the session goes on" "11|1|1|1|1" \
+       "$code|$(grep -c '^Hello, World!$' build/repl_interpret.out)|$(grep -c 'S102' build/repl_interpret.out)|$(grep -c '`interpret` needs a file after it' build/repl_interpret.out)|$(grep -c '^still here$' build/repl_interpret.out)"
 
 # A PAYLOAD'S CODES ARE NEVER READ AS TOKENS. A character's own number can be any 16 bits,
 # so a string's last code can equal a word's or a token's (the payload sweep, 2026-09-17).

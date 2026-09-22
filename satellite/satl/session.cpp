@@ -3,6 +3,7 @@
 #include "session.hpp"
 
 #include "listing.hpp"
+#include "prompt_run.hpp"
 
 #include "../bytecode/bytecode_registry.hpp"
 #include "../bytecode/program_walk.hpp"
@@ -254,7 +255,7 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
                                                ? arguments.number("arguments.threads_startup").limb(0)
                                                : 1;
     if (reader.interactive())
-        std::cout << "One statement a line. exit, quit or Ctrl-D leaves.\n";
+        std::cout << "One statement a line. interpret <file> runs a program. exit, quit or Ctrl-D leaves.\n";
 
     signed long long int first_failure = success;
     std::string line;
@@ -284,6 +285,13 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
         reader.remember(line);
         if (typed == "exit" || typed == "quit")
             break;
+        // `interpret <file>` AND `run <file>`, the prompt's own words as `exit` is
+        // (prompt_run.hpp): a whole program, run exactly as `satl <file>` runs it.
+        if (signed long long int ran = success; run_a_file_from_the_prompt(typed, ran)) {
+            if (stops_the_program(ran) && first_failure == success)
+                first_failure = ran;
+            continue;
+        }
 
         asked_to_stop = 0;
         presses = 0;
