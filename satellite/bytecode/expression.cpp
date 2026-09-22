@@ -15,6 +15,7 @@
 #include "file_calls.hpp"
 #include "color_values.hpp"
 #include "container_calls.hpp"
+#include "main_arguments.hpp"
 #include "float_values.hpp"
 #include "fraction_values.hpp"
 #include "hexadecimal_values.hpp"
@@ -1069,6 +1070,17 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         if (found == context.variables.end()) {
             context.refuse(name_not_declared, name + " has no satellite.variable line declaring it", name_at);
             return Value();
+        }
+        // THE ARGUMENTS VARIABLE'S ROWS BY NAME (main_arguments.hpp):
+        // `arguments.username`, `arguments.memory.total`, and whatever follows the
+        // row is a method on it -- `arguments.username.upper()`.
+        if (found->second.declared == word::code_of(1, 6, 21) && code_at(row, at) == token::method_token) {
+            bool read = false;
+            Value answer = read_an_argument(row, at, name, found->second.value, context, read);
+            if (context.code != success)
+                return Value();
+            if (read)
+                return maybe_a_method(row, at, std::move(answer), "that argument", context);
         }
         // `f[n]` -- LINE n OF A FILE, and `a[n]` -- ITEM n OF A LIST, both
         // counting from 1 (the author, 2026-09-18: "we'll build it so you can

@@ -32,6 +32,7 @@
 #include "../machine/s_codes.hpp"
 
 #include "statement_ring.hpp"
+#include "main_arguments.hpp"
 #include "color_values.hpp"
 #include "float_values.hpp"
 #include "fraction_values.hpp"
@@ -1390,6 +1391,17 @@ signed long long int run_main(const BytecodeRegistry &registry,
         return report_error("satl(run): no satellite.main to begin in",
                             satl_file_missing_satellite_main);
     VariableTable variables;   // main's own, and the program's only frame to start
+    // THE ARGUMENTS VARIABLE (main_arguments.hpp): main's parameter, when it
+    // declares one, is every row satl holds -- `satellite.main()` asks for nothing.
+    // It is written `satellite.variable.arguments anything_typed_in_here`, and the
+    // older `satellite.container.list<satellite.variable.string> arguments` is the
+    // same object: main's parameter is the arguments whatever it was declared as.
+    if (!main->parameters.empty()) {
+        TypeShape arguments_shape;
+        arguments_shape.word = word::code_of(1, 6, 21);
+        variables[main->parameters.front().name] =
+            Variable{arguments_shape.word, arguments_shape, the_arguments_value(state.arguments, functions)};
+    }
     return close_files(variables,
                        run_statements(registry, capsules, functions, main->row, main->body, variables, state));
 }

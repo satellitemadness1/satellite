@@ -1,0 +1,10 @@
+// The spelling every 004 program had before satellite.variable.arguments: main's
+// parameter is the arguments variable whatever type it was declared as.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display(arguments.argument_1)
+    satellite.return(satellite)
+}

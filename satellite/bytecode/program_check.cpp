@@ -32,6 +32,7 @@
 #include "file_calls.hpp"
 #include "color_values.hpp"
 #include "container_calls.hpp"
+#include "main_arguments.hpp"
 #include "float_values.hpp"
 #include "fraction_values.hpp"
 #include "hexadecimal_values.hpp"
@@ -321,7 +322,9 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
     // written, refusing `n.first` before the program ran while the walker had it.
     const bool of_a_container = container_arity(method) >= 0;
     const bool a_container = declared_as == word::code_of(1, 4, 2) || declared_as == word::code_of(1, 4, 5) ||
-                             declared_as == word::code_of(1, 4, 6);
+                             declared_as == word::code_of(1, 4, 6) ||
+                             declared_as == word::code_of(1, 6, 21);   // the arguments: an index
+
     if (method == token::reverse_token)
         return success;                  // every type with an order has one
     if (one_of_the_four(declared_as))
@@ -709,6 +712,12 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             } else if (declared.find(name) == declared.end()) {
                 why = name + " has no satellite.variable line declaring it";
                 return name_not_declared;
+            } else if (declared.find(name)->second == word::code_of(1, 6, 21) &&
+                       past_the_argument_names(row, k) != k) {
+                // THE ARGUMENTS VARIABLE'S ROWS ARE NAMES, NOT VARIABLES:
+                // `arguments.memory.total` is one row (main_arguments.hpp), and which
+                // rows there are is the machine's to say, so the walker says it.
+                k = past_the_argument_names(row, k);
             } else {
                 const signed long long int judged = method_on_a_name(row, k, name, declared.find(name)->second, why);
                 if (judged != success) return judged;
@@ -1264,28 +1273,17 @@ signed long long int check_program(const BytecodeRegistry &registry,
         // satellite.variable line declaring it" -- a true sentence about a name
         // that really was declared, just not where the checker was looking.
         //
-        // EXCEPT satellite.main's, AND THAT IS NOT AN OVERSIGHT. Every other
-        // capsule is entered through run_capsule, which binds what it was handed
-        // before the first line runs. main is entered by run_main, which is
-        // handed nothing and binds nothing -- so `satellite.main(... arguments)`
-        // declares a name that will not be there. Seeding it would move the
-        // refusal from the CHECKER to the WALKER, and check.sh asserts in as
-        // many words that "nothing ran before the refusal". Measured, before
-        // this line existed: the program printed "before" and THEN stopped.
-        //
-        // THE REAL FIX IS TO BIND THEM. 004's own first program has been written
-        // `satellite.main(satellite.container.list<satellite.variable.string> arguments)`
-        // since the beginning, and the words really are there -- as the settings
-        // arguments.argument_1, arguments.length and the rest. Turning those
-        // into the list that declaration promises is a milestone of its own.
-        if (site.name != "satellite.main") {
-            for (const CapsuleParameter &takes : site.parameters) {
-                std::string why;
-                const signed long long int named = a_name_it_may_take(capsules, site.scope, takes.name, why);
-                if (named != success)
-                    return raise_at(named, why, site.shown, state, row, site.declared_at, "satl(check)");
-                declared[takes.name] = takes.declared();
-            }
+        // satellite.main's TOO, SINCE 2026-09-22. It was left out on purpose while
+        // run_main bound nothing -- a declared name that would not be there moves
+        // the refusal from the checker to the walker. run_main binds it now: it is
+        // the arguments variable, every row satl holds (main_arguments.hpp).
+        for (const CapsuleParameter &takes : site.parameters) {
+            std::string why;
+            const signed long long int named = a_name_it_may_take(capsules, site.scope, takes.name, why);
+            if (named != success)
+                return raise_at(named, why, site.shown, state, row, site.declared_at, "satl(check)");
+            // main's is the arguments variable, whatever type it was written with.
+            declared[takes.name] = site.name == "satellite.main" ? word::code_of(1, 6, 21) : takes.declared();
         }
         EndingNames ending;
         std::size_t depth = 0;

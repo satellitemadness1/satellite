@@ -25,7 +25,8 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(SATELLITE)/licenses/licenses.cpp \
                       $(MACHINE)/machine_state.cpp $(SATELLITE)/satl/satl_file.cpp \
                       $(SATELLITE)/satl/session.cpp $(SATELLITE)/satl/listing.cpp \
-                      $(SATELLITE)/satl/prompt_run.cpp \
+                      $(SATELLITE)/satl/prompt_run.cpp $(SATELLITE)/satl/prompt_help.cpp \
+                      $(BYTECODE)/main_arguments.cpp \
                       $(PROMPT)/raw_mode.cpp $(PROMPT)/keys.cpp $(PROMPT)/editor.cpp \
                       $(PROMPT)/history.cpp $(PROMPT)/render.cpp $(PROMPT)/line_reader.cpp \
                       $(SATELLITE)/threads/startup_threads.cpp \
@@ -58,7 +59,8 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(MACHINE)/critical_report.hpp $(MACHINE)/source_position.hpp $(MACHINE)/s_codes.hpp \
           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
           $(MACHINE)/stop_flag.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp \
-          $(SATELLITE)/satl/prompt_run.hpp \
+          $(SATELLITE)/satl/prompt_run.hpp $(SATELLITE)/satl/prompt_help.hpp \
+          $(BYTECODE)/main_arguments.hpp \
           $(PROMPT)/raw_mode.hpp $(PROMPT)/keys.hpp $(PROMPT)/editor.hpp $(PROMPT)/history.hpp \
           $(PROMPT)/render.hpp $(PROMPT)/line_reader.hpp $(NUMBERS)/directory_words.hpp \
           $(SATELLITE)/satl/satl_file.hpp $(SATELLITE)/threads/startup_threads.hpp \

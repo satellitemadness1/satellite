@@ -1,0 +1,61 @@
+
+--------------------------------------------------------------------------------
+ THE SATELLITE HELP SYSTEM
+--------------------------------------------------------------------------------
+ usage: type satellite.help(include) or satellite.help(satellite.include)
+ to bring up info on including other files
+TOPICS:
+
+1) satellite.include (other files)
+
+2) satellite.help (the help system)
+
+3) satellite.capsule (functions)
+
+4) satellite.main (int main, the entry point for the app)
+
+5) arguments variable (special variable that controls the interpreter)
+
+6) satellite.variable.number (integers layed out next to each other)
+
+7) satellite.container (special type that has different
+
+8) satellite.variable.string
+
+9) satellite.variable.float
+
+10) satellite.variable.infinity
+
+11) satellite.variable.window
+
+12) satellite.window
+
+13) satellite.variable.binary
+
+14) satellite.variable.hex
+
+15) satellite.return(args)
+
+16) satellite.variable.fraction
+
+17) satellite.variable.color
+
+18) satellite.console
+
+19) satellite.terminal
+
+20) using binary and hexadecimal numbers together
+
+21) satellite.variable.percent
+
+22) satellite.container.multiple (std::variant)
+
+23) satellite.container.list (std::vector)
+
+24) satellite.container.map (std::map)
+
+25) satellite.spacesuit (classes)
+
+26) satellite.history (off by default, record of everything)
+
+27) satellite.access (on by default, type/value for last instance)

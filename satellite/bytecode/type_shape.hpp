@@ -70,6 +70,7 @@ inline satelliteObject::Kind kind_of_type_word(token::Code word)
     if (word == word::code_of(1, 6, 11)) return satelliteObject::hexadecimal;  // and .hexadecimal
     if (word == word::code_of(1, 6, 19)) return satelliteObject::color;        // and .colour
     if (word == word::code_of(1, 6, 20)) return satelliteObject::fraction;
+    if (word == word::code_of(1, 6, 21)) return satelliteObject::index;       // the arguments (main_arguments.hpp)
     return satelliteObject::how_many_kinds;          // not a type word
 }
 

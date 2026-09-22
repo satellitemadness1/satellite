@@ -1316,10 +1316,16 @@ SATL="$interpreter" timeout 600 python3 -u satellite/satl/check_session.py > bui
 expect "satl --repl at a real terminal: $(grep -c '^ok' build/check_session.out) checks (build/check_session.out)" 0 $code
 # The prompt's own refusals, from a pipe: each says which spelling it refused, and the
 # session goes on to the line after them.
-printf 'satellite.include(satellite)\n{\nsatellite.capsule satellite.main()\nsatellite.return(satellite)\nsatellite.help(x)\nsatellite.console.display("after them all")\n' | \
+printf 'satellite.include(satellite)\n{\nsatellite.capsule satellite.main()\nsatellite.return(satellite)\nsatellite.help(no_such_topic)\nsatellite.console.display("after them all")\n' | \
     "$interpreter" --repl > build/repl_refusals.out 2>&1
-expect "the five spellings and help are refused by name, and the line after them still runs" "1|1|1|1|1|1" \
-       "$(grep -c 'a session has already taken satellite in' build/repl_refusals.out)|$(grep -c 'a block has nowhere to live' build/repl_refusals.out)|$(grep -c 'a capsule belongs to a program' build/repl_refusals.out)|$(grep -c 'nothing here to return from' build/repl_refusals.out)|$(grep -c 'satellite.help is not built yet' build/repl_refusals.out)|$(grep -c '^after them all$' build/repl_refusals.out)"
+expect "the five spellings and a help with no topic are refused by name, and the line after them still runs" "1|1|1|1|1|1" \
+       "$(grep -c 'a session has already taken satellite in' build/repl_refusals.out)|$(grep -c 'a block has nowhere to live' build/repl_refusals.out)|$(grep -c 'a capsule belongs to a program' build/repl_refusals.out)|$(grep -c 'nothing here to return from' build/repl_refusals.out)|$(grep -c 'there is no help on no_such_topic yet' build/repl_refusals.out)|$(grep -c '^after them all$' build/repl_refusals.out)"
+# satellite.help() AND satellite.help(topic) READ THE TEXT FILES IN satellite.help/ (the
+# author, 2026-09-22: "you just need to write text files ... then a function that reads
+# them"): the list, a topic by its last part, and the same topic by its whole name.
+printf 'satellite.help()\nsatellite.help(include)\nsatellite.help(satellite.include)\n' | "$interpreter" --repl > build/repl_help.out 2>&1; code=$?
+expect "satellite.help() lists the topics, and include and satellite.include both find one" "0|1|2" \
+       "$code|$(grep -c 'THE SATELLITE HELP SYSTEM' build/repl_help.out)|$(grep -c '^SATELLITE 004: satellite.include()$' build/repl_help.out)"
 # A brace inside a string is text and not a block: the refusals are read from the CODES.
 printf 'satellite.console.display("{ not a block }")\n' | "$interpreter" --repl 2>/dev/null | grep -q '{ not a block }'
 expect "a brace inside a string literal is not a block" 0 $?
@@ -3696,9 +3702,10 @@ expect "a parameter with no name is refused before anything runs" "13|" \
 expect "... and blames the header, not the call" 1 \
        "$(tr '\n' ' ' < build/capsule_header.out | grep -cF 'satellite.capsule show -- satellite.variable.number declares a name')"
 
-# satellite.main's OWN declared parameter is NOT bound yet -- run_main is handed
-# nothing -- so using it must stay a CHECKER refusal. Seeded as a declared name
-# it became a walker refusal instead, and the program printed "before" first.
+# satellite.main's OWN declared parameter IS BOUND SINCE 2026-09-22 -- it is the
+# arguments variable (main_arguments.hpp). Until then run_main was handed nothing,
+# and this row asserted it stayed a CHECKER refusal; now it asserts the program
+# runs to the end and prints the arguments, "before" first.
 cat > build/capsule_main_arg.satl <<'CAP_EOF'
 satellite.include(satellite)
 satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
@@ -3709,8 +3716,8 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 }
 CAP_EOF
 "$interpreter" build/capsule_main_arg.satl > build/capsule_main_arg.out 2>&1
-expect "satellite.main's declared parameter is refused by the CHECKER, nothing ran" "25|" \
-       "$?|$(grep -x before build/capsule_main_arg.out)"
+expect "satellite.main's declared parameter is bound: the program runs and shows the arguments" "0|before|1" \
+       "$?|$(grep -x before build/capsule_main_arg.out)|$(grep -c '"username": ' build/capsule_main_arg.out)"
 
 # WHAT A PRESS CAN HAND A CAPSULE is nothing, the piece, or the piece and its
 # window -- so a capsule wanting anything else is refused where it is named.
@@ -4012,6 +4019,19 @@ python3 words/check_make_words.py > build/check_make_words.out 2>&1; code=$?
 if [ $code = 2 ]; then echo "  skip  make_words.py's checks: no 003 satl at old_versions/second_satellite/satl"
 else expect "make_words.py against rows typed by hand: $(tail -1 build/check_make_words.out) (build/check_make_words.out)" 0 $code; fi
 expect "the start-up threads are warm" 1 "$(grep -cE "^\[satellite\] threads.startup\(warm\): $(config_row threads_startup) threads parked in [0-9.]+ ms" build/debug.out)"
+
+# THE ARGUMENTS VARIABLE (the author, 2026-09-22: "so main will become satellite.capsule
+# satellite.main(satellite.variable.arguments anything_typed_in_here)"): every row satl
+# holds, by its name after the variable's -- a config row, a command-line word, a fact
+# gathered at start-up, and a live one (memory.used).
+"$interpreter" tests/arguments_variable.satl one "two words" > build/arguments_variable.out 2>/dev/null; code=$?
+expect "main's satellite.variable.arguments reads rows by name" "0|$(id -un)|one|two words|3|true|true|128|$(id -un)" \
+       "$code|$(tr '\n' '|' < build/arguments_variable.out | sed 's/|$//')"
+expect "... and the older list<string> spelling is the same arguments" "one" \
+       "$("$interpreter" tests/arguments_old_spelling.satl one 2>/dev/null)"
+"$interpreter" tests/arguments_misspelled.satl > build/arguments_bad.out 2>&1; code=$?
+expect "a row that is not an argument is refused by name" "25|1" \
+       "$code|$(tr '\n' ' ' < build/arguments_bad.out | grep -c 'args.usernme is not one of the arguments')"
 
 # THE FOUR TYPES OF 2026-09-22 KEEP THEIR ROWS BESIDE THEIR CODE (each file says why).
 for rows in satellite/satellite_variable_float/check_float.sh satellite/satellite_variable_hex/check_hex.sh \

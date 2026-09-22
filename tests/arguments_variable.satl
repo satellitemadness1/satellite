@@ -1,0 +1,19 @@
+// THE ARGUMENTS VARIABLE (the author, 2026-09-22): "so main will become
+// satellite.capsule satellite.main(satellite.variable.arguments anything_typed_in_here)"
+// -- every row satl holds, read by its name after the variable's. check.sh runs this
+// with two words after the file and asserts every line, in order.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments anything_typed_in_here)
+{
+    satellite.console.display(anything_typed_in_here.username)
+    satellite.console.display(anything_typed_in_here.argument_1)
+    satellite.console.display(anything_typed_in_here.argument_2)
+    satellite.console.display(anything_typed_in_here.length)
+    satellite.console.display(anything_typed_in_here.memory.total > 0)
+    satellite.console.display(anything_typed_in_here.memory.used > 0)
+    satellite.console.display(anything_typed_in_here.infinity)
+    satellite.console.display(anything_typed_in_here.username.string())
+    satellite.return(satellite)
+}

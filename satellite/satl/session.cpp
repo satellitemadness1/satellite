@@ -3,6 +3,7 @@
 #include "session.hpp"
 
 #include "listing.hpp"
+#include "prompt_help.hpp"
 #include "prompt_run.hpp"
 
 #include "../bytecode/bytecode_registry.hpp"
@@ -148,8 +149,14 @@ signed long long int refuse_by_name(const std::vector<std::bitset<16>> &row, Mac
         {word::code_of(1, 2), "a capsule belongs to a program, not to a line", satl_line_not_understood},
         {word::code_of(1, 15), "there is nothing here to return from", satl_line_not_understood},
         {word::code_of(1, 15, 1), "there is nothing here to return from", satl_line_not_understood},
-        {word::code_of(1, 19), "satellite.help is not built yet", not_built_yet},
-        {word::code_of(1, 19, 1), "satellite.help is not built yet", not_built_yet},
+        // satellite.help() and satellite.help(topic) are answered before this list
+        // is read (prompt_help.hpp); what reaches it is help written some other way.
+        {word::code_of(1, 19), "satellite.help is written satellite.help() or satellite.help(topic), on a line of its own",
+         satl_line_not_understood},
+        {word::code_of(1, 19, 0), "satellite.help is written satellite.help() or satellite.help(topic), on a line of its own",
+         satl_line_not_understood},
+        {word::code_of(1, 19, 1), "satellite.help is written satellite.help() or satellite.help(topic), on a line of its own",
+         satl_line_not_understood},
     };
 
     for (std::size_t at = 0; at < row.size(); ) {
@@ -224,6 +231,8 @@ signed long long int run_one_line(const std::string &line, const FunctionTable &
     if (registry.empty())
         return success;
 
+    if (signed long long int helped = success; answer_help(registry.front(), helped))
+        return helped;
     const signed long long int refused = refuse_by_name(registry.front(), state);
     if (stops_the_program(refused))
         return refused;

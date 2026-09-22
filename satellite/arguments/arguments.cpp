@@ -97,6 +97,7 @@ void Arguments::add_bytes(const std::string &name, unsigned long long int bytes)
     Argument &entry = add(name, ArgumentKind::size);
     entry.size = value;
     entry.unit = units[unit];
+    entry.count = bytes;   // the exact figure, for the arguments variable (main_arguments.cpp)
 }
 
 const Argument *Arguments::find(const std::string &name) const
