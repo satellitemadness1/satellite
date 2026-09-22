@@ -404,3 +404,8 @@
 1 27 14	satellite.window.grid	
 1 27 14 0	satellite.window.grid()	
 1 27 15	satellite.window.picture(path)	
+1 27 16	satellite.window.scroll	
+1 27 16 0	satellite.window.scroll()	
+1 27 17	satellite.window.frame(title)	
+1 27 18	satellite.window.split	
+1 27 18 0	satellite.window.split()	

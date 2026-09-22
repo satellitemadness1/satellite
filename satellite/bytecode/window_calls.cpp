@@ -97,6 +97,15 @@ constexpr AWord kWords[] = {
     {15, "picture", 1, satellite_window::picture, AWord::a_file,
      "satellite.window.picture takes the name of a file to show: "
      "satellite.window.picture(\"logo.png\")"},
+    {16, "scroll", 0, satellite_window::scroll, AWord::words,
+     "satellite.window.scroll takes nothing -- the one piece it shows is .append'ed: "
+     "satellite.window.scroll()"},
+    {17, "frame", 1, satellite_window::frame, AWord::words,
+     "satellite.window.frame takes the words on its edge, and \"\" for none: "
+     "satellite.window.frame(\"a title\")"},
+    {18, "split", 0, satellite_window::split, AWord::words,
+     "satellite.window.split takes nothing -- the two pieces either side are .append'ed: "
+     "satellite.window.split()"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a

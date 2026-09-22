@@ -82,7 +82,15 @@ std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
     // answering the words of its first piece would be a guess nobody asked for.
     case satellite_window::row:
     case satellite_window::column:
-    case satellite_window::grid: break;
+    case satellite_window::grid:
+    case satellite_window::scroll:
+    case satellite_window::split: break;
+    // A FRAME'S WORDS ARE THE ONES ON ITS EDGE, which is the one holder that has
+    // any -- so `.text` answers them and `.text("...")` writes them.
+    case satellite_window::frame: {
+        const char *edge = gtk_frame_get_label(GTK_FRAME(widget));
+        return edge == nullptr ? std::string() : std::string(edge);
+    }
     // A PICTURE'S WORDS ARE ITS FILE, AND `.path` IS THE WORD FOR THAT. It is
     // refused here rather than answered, the same way a window is sent to
     // `.title` -- a path is not words on a piece, it is where a piece got what
@@ -131,6 +139,9 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
             gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(widget)), text.c_str(), -1);
             break;
         case satellite_window::checkbox: gtk_check_button_set_label(GTK_CHECK_BUTTON(widget), text.c_str()); break;
+        case satellite_window::frame:
+            gtk_frame_set_label(GTK_FRAME(widget), text.empty() ? nullptr : text.c_str());
+            break;
         default: break;
         }
     });

@@ -2553,6 +2553,52 @@ expect "the carried font family is spelled the way a program would write it" "1|
        "$(grep -c 'IBM Plex Mono' satellite/satellite_variable_window/satellite_window.hpp)|$(ls vendor/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf >/dev/null 2>&1 && echo 1 || echo 0)"
 
 # ---------------------------------------------------------------------------
+# MORE THAN ONE SCREENFUL (GTK_AND_NO_DEPENDENCIES.md GTK-16, 2026-09-21): a
+# scroll, a frame and a split. TABS ARE NOT BUILT and the reason is below.
+# ---------------------------------------------------------------------------
+#
+# PROVED ON A COMPOSITOR: a frame with words on its edge holding a label, a
+# scroll holding a text area, a split holding a label either side, all three
+# appended into one window -- and a second `.append` into the scroll REFUSED.
+#
+# THE REFUSAL IS THE POINT. gtk_scrolled_window_set_child on a scroll that
+# already has one silently DROPS the first: the piece is still a piece, the
+# program still holds it, and it is simply not on the screen any more and
+# nothing said so.
+
+expect "scroll is 1 27 16, frame 1 27 17 and split 1 27 18" "1|1|1" \
+       "$(grep -cP '^1 27 16\tsatellite.window.scroll\t' words/words.tsv)|$(grep -cP '^1 27 17\tsatellite.window.frame\(title\)\t' words/words.tsv)|$(grep -cP '^1 27 18\tsatellite.window.split\t' words/words.tsv)"
+
+expect "a holder that holds a fixed number refuses the one too many" 1 \
+       "$(grep -c 'and it already has' satellite/satellite_variable_window/satellite_window.cpp)"
+
+cat > build/window_holders_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window f = satellite.window.frame("edge")
+    f.append(satellite.window.label("inside"))
+    satellite.variable.window s = satellite.window.scroll()
+    s.append(satellite.window.text_area(""))
+    satellite.variable.window p = satellite.window.split()
+    p.append(satellite.window.label("left"))
+    p.append(satellite.window.label("right"))
+    satellite.console.display(f.text)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_holders_ok.satl > build/window_holders_ok.out 2>&1
+expect "a frame, a scroll and a split pass the checker, and stop only for want of a screen" 50 $?
+
+# TABS ARE NOT BUILT, and it is a LANGUAGE question rather than a missing
+# afternoon: a tab needs a NAME, and `.append` has no shape for "a piece and a
+# name". `.append` already means one thing for a row (the piece) and another for
+# a window and a grid (the piece and where it goes); a third would be the point
+# at which one method stops being one method. GTK-16 leaves it to the author.
+expect "no tabs word was minted, because a tab needs a name .append cannot carry" 0 \
+       "$(grep -c 'satellite.window.tabs' words/words.tsv)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

@@ -114,6 +114,16 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
               "grid do";
         return false;
     }
+    // AND SOME OF THEM HOLD A FIXED NUMBER (GTK-16). Refused rather than
+    // ignored: gtk_scrolled_window_set_child on a scroll that already has one
+    // silently DROPS the first -- the piece is still a piece, the program still
+    // holds it, and it is simply not on the screen any more and nothing said so.
+    const unsigned int room = into.holds_how_many();
+    if (room != 0 && into.pieces.size() >= room) {
+        why = std::string(into.piece_name()) + " holds " + (room == 1 ? "one piece" : "two pieces") +
+              ", and it already has " + (into.pieces.size() == 1 ? "one" : "two");
+        return false;
+    }
     // A WINDOW AND A GRID PLACE BY COORDINATE; A ROW AND A COLUMN DO NOT. Which
     // one is right is the RECEIVER'S, and the checker cannot know it -- a
     // satellite.variable.window name may hold either, and which it holds is not
@@ -174,6 +184,24 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
             // start at 1"). GTK counts cells from 0, and the one subtraction is
             // here so that no program ever has to know that.
             gtk_grid_attach(GTK_GRID(into_this), widget, at_x - 1, at_y - 1, 1, 1);
+            return;
+        }
+        if (holder == satellite_window::scroll) {
+            gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(into_this), widget);
+            return;
+        }
+        if (holder == satellite_window::frame) {
+            gtk_frame_set_child(GTK_FRAME(into_this), widget);
+            return;
+        }
+        if (holder == satellite_window::split) {
+            // FIRST ONE ON THE LEFT, SECOND ON THE RIGHT, which is what "one
+            // after another" already means everywhere else here -- a split is a
+            // row of exactly two with a handle between them.
+            if (gtk_paned_get_start_child(GTK_PANED(into_this)) == nullptr)
+                gtk_paned_set_start_child(GTK_PANED(into_this), widget);
+            else
+                gtk_paned_set_end_child(GTK_PANED(into_this), widget);
             return;
         }
         if (holder != satellite_window::window) {

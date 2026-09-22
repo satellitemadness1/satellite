@@ -82,6 +82,22 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
         return gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
     case satellite_window::column:
         return gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    case satellite_window::scroll: {
+        GtkWidget *made = gtk_scrolled_window_new();
+        // A SCROLL WITH NO SIZE MEASURES ALMOST NOTHING, the trap the text area
+        // and the slider both walked into: `.append` places by the measured
+        // size, so a scroll left to itself is a few pixels nobody can see into.
+        gtk_widget_set_size_request(made, 300, 200);
+        return made;
+    }
+    // A FRAME IS THE ONE HOLDER WITH WORDS: they are drawn on its edge, which is
+    // what a frame is for.
+    case satellite_window::frame: return gtk_frame_new(text.empty() ? nullptr : text.c_str());
+    case satellite_window::split: {
+        GtkWidget *made = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+        gtk_widget_set_size_request(made, 300, 200);
+        return made;
+    }
     case satellite_window::grid: {
         GtkWidget *made = gtk_grid_new();
         gtk_grid_set_row_spacing(GTK_GRID(made), 6);

@@ -63,7 +63,8 @@ public:
     // been letting C++ choose satellite's words.
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
                  slider, number_box, progress, choice,
-                 row, column, grid, picture, how_many_pieces };
+                 row, column, grid, picture,
+                 scroll, frame, split, how_many_pieces };
 
     Piece piece = window;
 
@@ -87,7 +88,26 @@ public:
     // everything else is a leaf. It is asked in four places -- what `.append`
     // takes, where a piece is put, what a teardown has to walk, and which window
     // a press happened in -- so it is one question here and not four tests.
-    bool holds_pieces() const { return piece == row || piece == column || piece == grid; }
+    bool holds_pieces() const
+    {
+        return piece == row || piece == column || piece == grid || piece == scroll ||
+               piece == frame || piece == split;
+    }
+
+    // AND HOW MANY IT WILL HOLD (GTK-16). A row takes as many as it is given; a
+    // scroll and a frame hold exactly ONE and a split holds exactly TWO, because
+    // that is what the GTK widget underneath each of them is.
+    //
+    // IT IS REFUSED RATHER THAN IGNORED. gtk_scrolled_window_set_child on a
+    // scroll that already has one silently DROPS the first -- the piece is still
+    // a piece, the program still holds it, and it is simply not on the screen any
+    // more and nothing said so.
+    unsigned int holds_how_many() const
+    {
+        if (piece == scroll || piece == frame) return 1;
+        if (piece == split) return 2;
+        return 0;   // 0 means no limit, which is a row, a column and a grid
+    }
 
     // AND THE WINDOW A PIECE IS IN, the other way along that same line. WEAK,
     // because the window already holds this piece STRONGLY: two strong
@@ -219,6 +239,9 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a column", "column"},
     {"a grid", "grid"},
     {"a picture", "picture"},
+    {"a scroll", "scroll"},
+    {"a frame", "frame"},
+    {"a split", "split"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,

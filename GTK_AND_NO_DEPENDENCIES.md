@@ -62,7 +62,7 @@ projects produce the archives.
 
 ## Table A — every milestone, and what it calls
 
-`✔` is built. `—` is not.
+`✔` is built. `◑` is part-built and says which part. `—` is not.
 
 | | milestone | satellite's own code CALLS | reached underneath it |
 |---|---|---|---|
@@ -85,7 +85,7 @@ projects produce the archives.
 | — | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
 | — | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
 | — | **GTK-15** a canvas | gtk, **cairo directly** | pixman, freetype |
-| — | **GTK-16** more than one screenful | gtk | — |
+| ◑ | **GTK-16** more than one screenful | gtk | — |
 | — | **GTK-17** `satellite.console` is a window | **VTE — NOT VENDORED**, gtk, pango | freetype, harfbuzz, fribidi |
 | — | **GTK-18** `satellite.terminal` is a bash prompt | VTE, glib (`g_spawn`) | — |
 | ✔ | **DEP-1** every source in the folder | **all 24** | — |
@@ -1217,7 +1217,7 @@ cannot deadlock, and it is the only one of the two that works before the walker
 is re-entrant. **The author's**, and it should be decided before anything is
 built, because the two share no code.
 
-## GTK-16 — more than one screenful: scroll, tabs, panes, a frame
+## GTK-16 — more than one screenful: scroll, tabs, panes, a frame — **SCROLL, FRAME AND SPLIT BUILT 2026-09-21; TABS ARE THE AUTHOR'S**
 
 `gtk_scrolled_window_new()`, `gtk_notebook_new()`, `gtk_paned_new()`,
 `gtk_frame_new()`. Each holds other pieces, so **every one of them depends on
@@ -1225,6 +1225,32 @@ GTK-7** — a container that is not the window's `GtkFixed`.
 
 Cheap after GTK-7 and worth naming separately only because `satl-term` already
 has tabs (`satl-term/tabs.cpp`) and that file is where to start.
+
+**AS BUILT** — `scroll` `1 27 16`, `frame(title)` `1 27 17`, `split` `1 27 18`.
+A frame is the one holder with words of its own, drawn on its edge, so `.text`
+reads and writes them.
+
+**THEY HOLD A FIXED NUMBER AND THE ONE TOO MANY IS REFUSED.** A scroll and a
+frame hold one; a split holds two, first on the left. **Refused rather than
+ignored**, because `gtk_scrolled_window_set_child` on a scroll that already has
+one **silently drops the first** — the piece is still a piece, the program still
+holds it, and it is simply not on the screen any more and nothing said so.
+
+### TABS ARE NOT BUILT, and it is a language question rather than a missing afternoon
+
+**A tab needs a NAME, and `.append` has no shape for "a piece and a name".**
+`.append` already means one thing for a row (the piece) and another for a window
+and a grid (the piece and where it goes); a third meaning is the point at which
+one method stops being one method. The shapes, none chosen:
+
+    a_tabs.append(the_piece, "Open files")     a third arity for .append
+    a_tabs.add(the_piece, "Open files")        a different method for it
+    the_piece.title("Open files")              the PIECE carries its own name
+
+**The third is the interesting one** — it makes a tab's name a property of the
+piece rather than of the adding, which is how `.title` already works on a
+window. **Not decided**, and check.sh has a row asserting no `tabs` word exists,
+so nobody adds one without answering this.
 
 ## GTK-17 — `satellite.console` IS A WINDOW, with libvte — **the author's, named 2026-09-21**
 
@@ -1314,6 +1340,7 @@ is the milestone that gets VTE into the folder and into a static archive.
 | | question | recommendation |
 |---|---|---|
 | GTK-3 | how a radio group is spelled | `one_of(a_list)` — one word, many pieces |
+| GTK-16 | how a TAB gets its name | the piece carries it — `the_piece.title("Open files")` |
 | GTK-3 | **a `true` and a `false` to type** — a LANGUAGE milestone | there should be one; `c.on(1)` is the stopgap |
 | ~~GTK-9~~ | ~~does a capsule get the new value?~~ | **BUILT as (1)** — it gets the piece and asks it. Still reversible. |
 | GTK-11 | may a satellite line wait for a person? | no — a capsule, as a press is |
@@ -1345,12 +1372,13 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE FIFTEEN WIDGETS** as of 2026-09-21: a window, a button, a label,
+- **THERE ARE EIGHTEEN WIDGETS** as of 2026-09-21: a window, a button, a label,
   a text box, a text area, a checkbox, a switch, a slider, a number box, a
-  progress bar, a choice, a row, a column, a grid and a picture.
+  progress bar, a choice, a row, a column, a grid, a picture, a scroll, a frame
+  and a split.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-10 are built** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-10 are built, and GTK-16 but for its tabs** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a
