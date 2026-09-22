@@ -1583,11 +1583,18 @@ expect "... is still ERROR: expected b10101010, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected b10101010$' build/binary_b.out)|$(grep -x before build/binary_b.out)"
 "$interpreter" tests/binary_0b.satl > build/binary_b.out 2>&1; expect "0b10101010, the C spelling" 27 $?
 expect "... is told ERROR: expected b10101010, not b0" 1 "$(grep -c 'ERROR: expected b10101010$' build/binary_b.out)"
-# A binary keeps a sign (the author, 2026-09-17: "give it a different number and keep a
-# sign with all of these things"): -b0101 is a binary, worth -5, width kept.
+# A binary keeps a sign -- our reading of words the author said about percentages and
+# infinities (2026-09-17), which he kept on 2026-09-22: "I just didn't think of having
+# negative binary numbers, but thats better than not having them anyways". -b0101 is a
+# binary, worth -5, width kept.
 expect "a binary below zero: shown, worth, converted, compared, turned over, given" \
        "-b0101|-5|-0101|-b0101|-5|-4|true|false|true|b0101|b0101|b0000|-b0011|-3" \
        "$("$interpreter" tests/binary_negative.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+# "we'll have to test it" (the same day): the sign through .string, .hex, order against a
+# positive binary and against 0, .reverse, and arithmetic -- which answers a NUMBER today.
+expect "a negative binary through every conversion, order, reverse and sum" \
+       "-b0101|-5|-b0101|-5|-0101|false|true|true|-b0101|-b1010|b0000|0|-5" \
+       "$("$interpreter" tests/binary_sign.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 "$interpreter" tests/binary_negative_without_b.satl > build/binary_b.out 2>&1; expect "a binary given -1010" 27 $?
 expect "... says ERROR: expected -b1010, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: expected -b1010$' build/binary_b.out)|$(grep -x before build/binary_b.out)"

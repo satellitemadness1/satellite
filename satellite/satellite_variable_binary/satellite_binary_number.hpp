@@ -20,11 +20,18 @@
 // (DESIGN 1.2) and everything that asks what it is WORTH -- arithmetic, `.number`,
 // `.hex` -- reaches the number hub in one step with nothing re-parsed.
 //
-// A BINARY KEEPS A SIGN (the author, 2026-09-17: "give it a different number and
-// keep a sign with all of these things a satellite.variable.bool with percentages
-// and with infinities keep satellite.variable.bool with them"). -b0101 is a
-// binary, not a refusal and not the number -5: it displays as -b0101, is worth -5,
-// and keeps its width. The sign is the bool the bits' satellite_number already
+// A BINARY KEEPS A SIGN -- OUR READING, WHICH THE AUTHOR KEPT. His words of
+// 2026-09-17, "keep a sign with all of these things a satellite.variable.bool with
+// percentages and with infinities keep satellite.variable.bool with them", were
+// about percentages and infinities; carrying them to the binary was ours, and this
+// comment used to quote them as if they were about binaries. On 2026-09-22 he said
+// so, and kept it: "I just didn't think of having negative binary numbers, but thats
+// better than not having them anyways, it's just the sign will have to be ignored
+// for some things, like printing to a file". WHICH things leave the sign out is
+// still his to say; today .string() writes -b0101 and .binary() writes -0101.
+//
+// -b0101 is a binary, not a refusal and not the number -5: it displays as -b0101,
+// is worth -5, and keeps its width. The sign is the bool the bits' satellite_number already
 // carries -- the author's own rule for that type, "the sign is carried as a bool
 // with the object" -- so there is one bool and nothing to keep in step with it.
 // negative() reads it. Zero is never negative, as for satellite_number: -b0000 is
