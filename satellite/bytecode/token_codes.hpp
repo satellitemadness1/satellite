@@ -199,6 +199,11 @@ inline constexpr Code outline_token = 0x0B46;  // outline  [METHOD] canvas.outli
 inline constexpr Code thickness_token = 0x0B47;  // thickness  [METHOD] canvas.thickness -- how many pixels wide the pen draws a line or an 
 inline constexpr Code arc_token = 0x0B48;  // arc  [METHOD] canvas.arc(across, down, radius, from_degrees, to_degrees) -- part of a ci
 inline constexpr Code choose_a_file_token = 0x0B49;  // choose_a_file  [METHOD] window.choose_a_file(a_capsule) -- ask a person for a file; the 
+inline constexpr Code display_token = 0x0B4A;  // display  [METHOD] console.display("words") -- a line into a console, as satellite.consol
+inline constexpr Code typed_token = 0x0B4B;  // typed  [METHOD] console.typed(a_capsule) -- the capsule to run when a person finishes a 
+inline constexpr Code home_token = 0x0B4C;  // home  [METHOD] console.home() -- the cursor to the top-left corner, as satellite.console
+inline constexpr Code columns_token = 0x0B4D;  // columns  [METHOD] console.columns -- how many characters fit across a console right now 
+inline constexpr Code rows_token = 0x0B4E;  // rows  [METHOD] console.rows -- how many lines fit down a console right now (GTK_AND_NO_D
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
@@ -282,6 +287,11 @@ inline constexpr const char *method_name_of(Code code)
     if (code == thickness_token) return "thickness";
     if (code == arc_token) return "arc";
     if (code == choose_a_file_token) return "choose_a_file";
+    if (code == display_token) return "display";
+    if (code == typed_token) return "typed";
+    if (code == home_token) return "home";
+    if (code == columns_token) return "columns";
+    if (code == rows_token) return "rows";
     return "";
 }
 
@@ -375,6 +385,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "thickness") return thickness_token;
     if (spelling == "arc") return arc_token;
     if (spelling == "choose_a_file") return choose_a_file_token;
+    if (spelling == "display") return display_token;
+    if (spelling == "typed") return typed_token;
+    if (spelling == "home") return home_token;
+    if (spelling == "columns") return columns_token;
+    if (spelling == "rows") return rows_token;
     return 0;
 }
 
@@ -382,11 +397,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token || code == text_token || code == on_token || code == value_token || code == chosen_token || code == changed_token || code == closed_token || code == width_token || code == height_token || code == fullscreen_token || code == colour_token || code == background_token || code == font_token || code == every_token || code == key_token || code == clicked_token || code == message_token || code == ask_token || code == answer_token || code == menu_token || code == item_token || code == line_token || code == box_token || code == circle_token || code == write_token || code == separator_token || code == across_token || code == down_token || code == outline_token || code == thickness_token || code == arc_token || code == choose_a_file_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token || code == text_token || code == on_token || code == value_token || code == chosen_token || code == changed_token || code == closed_token || code == width_token || code == height_token || code == fullscreen_token || code == colour_token || code == background_token || code == font_token || code == every_token || code == key_token || code == clicked_token || code == message_token || code == ask_token || code == answer_token || code == menu_token || code == item_token || code == line_token || code == box_token || code == circle_token || code == write_token || code == separator_token || code == across_token || code == down_token || code == outline_token || code == thickness_token || code == arc_token || code == choose_a_file_token || code == display_token || code == typed_token || code == home_token || code == columns_token || code == rows_token;
 }
 
 
-inline constexpr int kTokenCount = 152;
+inline constexpr int kTokenCount = 157;
 
 } // namespace token
 } // namespace satellite004

@@ -42,16 +42,20 @@ $(OBJECTS)/$(TERM_DIR)/%.o: $(TERM_DIR)/%.cpp $(TERM_COMPILE_STAMP) | $(BUILD_ST
 # VTE's -- a longer stem than the plain rule above, so this one wins for them.
 # They have their own stamp for the same reason satl-term's do: gtk4 appearing or
 # vanishing must recompile the window and not all of satl.
+# AND VTE'S, SINCE THE CONSOLE (GTK-17): GTK_CFLAGS carries VTE's include path
+# when the stage has it, and CONSOLE_DEFINE says whether it does -- both in the
+# stamp, so VTE appearing or vanishing recompiles the window folder and nothing
+# else.
 GTK_COMPILE_STAMP = $(BUILD)/.compile-flags-gtk
 $(GTK_COMPILE_STAMP): FORCE
 	@mkdir -p $(BUILD)
-	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS)' | cmp -s - $@ || \
-	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS)' > $@
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE)' > $@
 
 $(OBJECTS)/$(SATELLITE)/satellite_variable_window/%.o: $(SATELLITE)/satellite_variable_window/%.cpp \
                                                        $(GTK_COMPILE_STAMP) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(DEPENDENCY_FLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
 
 # THE CARRIED DATA. glib-compile-resources writes the .c; this compiles it. It is
 # C and not C++, and it is generated, so -Wall -Wextra would report other

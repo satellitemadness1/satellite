@@ -33,6 +33,8 @@
 #include <string>
 #include <vector>
 
+#include <unistd.h>
+
 namespace satellite004 {
 
 class satellite_window;
@@ -94,10 +96,16 @@ public:
     // ticked. It is one piece and not a list of them because what a program
     // asks it is one question -- which one -- and `.chosen` already asks that
     // of a choice and a set of tabs.
+    //
+    // `console` IS A WINDOW WITH A TERMINAL IN IT (GTK-17, built 2026-09-22):
+    // the thing with a frame, exactly as `window` is, and `is_a_window()` below
+    // is what every method that wants a frame asks. What it does not do is hold
+    // pieces -- its terminal fills it -- and what it does that a window does
+    // not is `.display`, `.typed`, `.clear`, `.home`, `.columns` and `.rows`.
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
                  slider, number_box, progress, choice,
                  row, column, grid, picture,
-                 scroll, frame, split, menu, canvas, tabs, one_of, how_many_pieces };
+                 scroll, frame, split, menu, canvas, tabs, one_of, console, how_many_pieces };
 
     Piece piece = window;
 
@@ -117,6 +125,59 @@ public:
     // this first and refuses a menu by name. Adding a second undrawn piece one
     // day is one more `||` here and nothing anywhere else.
     bool is_drawn() const { return piece != menu; }
+
+    // THE THING WITH A FRAME: a window, or a console (GTK-17). Every method a
+    // window has -- closing, focusing, its title, its size, its clock, its
+    // keys, a message over it -- asks this and not `piece == window`, so a
+    // console answers to all of them without a second branch anywhere.
+    bool is_a_window() const { return piece == window || piece == console; }
+
+    // A CONSOLE'S TERMINAL AND ITS PTY (GTK-17). `widget` is the GtkWindow, as
+    // it is for a window; `terminal` is the VteTerminal inside it, and `pty`
+    // the VtePty the terminal reads and writes -- a `void *` for the reason
+    // `widget` is one, and cast back only in the two files compiled where VTE is.
+    //
+    // `slave` IS satl'S OWN END OF THAT PTY: `.display` writes a line to it and
+    // the kernel's line discipline carries it to the terminal; the desk reads
+    // whole lines from it for `.typed`, with the kernel having done the echo
+    // and the editing. It is what makes a console a console rather than a
+    // text area -- and it is the same end satl's own stdin, stdout and stderr
+    // sit on in the console satl launches for itself (`is_satls_own`).
+    //
+    // OPENED ONCE AND CLOSED ONLY WITH THE HANDLE (the destructor below), never
+    // by the desk when the window goes: a number the desk had closed could be
+    // reused by the program's next open() before the interpreter's write()
+    // reached it, and that write would have gone into somebody's file. Held
+    // open, a write after the window has gone meets the closed MASTER and is
+    // refused as EIO, which is the truth. One writer thread: the interpreter.
+    void *terminal = nullptr;
+    void *pty = nullptr;
+    int slave = -1;
+
+    // WHAT A FINISHED LINE RUNS, and the last line a person finished. The same
+    // three-part shape as a key: the capsule's name is the desk's (written
+    // inside on_the_desk(), read by the desk's reader), `typed_watch` is the
+    // desk's GLib source for the slave as `tick` is for the clock, and
+    // `last_typed` is written by the INTERPRETER off the event, so it has one
+    // writer.
+    std::string when_typed;
+    unsigned int typed_watch = 0;
+    std::string last_typed;
+
+    // WHAT HAS BEEN READ OF A LINE NOT YET FINISHED. Canonical mode hands over
+    // a whole line at Enter -- and what was typed so far at a mid-line Ctrl-D,
+    // with no newline; that is not a line a person entered, so it waits here
+    // for the rest of itself. THE DESK'S THREAD ONLY: the reader is the one
+    // writer and the one reader.
+    std::string line_so_far;
+
+    // THE CONSOLE satl LAUNCHED FOR ITSELF (`satl --console`). The desk never
+    // waits for it -- a program's run ends when the program's own windows
+    // close, and this one is the interpreter's -- and a person closing it is
+    // hanging up on the interpreter, unless satl closed it itself because the
+    // run was over (`closing_on_purpose`, the desk's thread only).
+    bool is_satls_own = false;
+    bool closing_on_purpose = false;
 
     // AND A MENU'S OTHER HALF (GTK-12): its GSimpleActionGroup, one action an
     // item, and the prefix those actions are known by on the window --
@@ -345,6 +406,14 @@ public:
 
     satellite_window() = default;
     explicit satellite_window(Piece which) : piece(which) {}
+    // THE PTY'S SLAVE GOES WITH THE HANDLE, and with nothing else -- see `slave`.
+    ~satellite_window()
+    {
+        if (slave >= 0)
+            close(slave);
+    }
+    satellite_window(const satellite_window &) = delete;
+    satellite_window &operator=(const satellite_window &) = delete;
 
     // WHAT THIS PIECE IS CALLED. A TABLE AND NOT A `?:` SINCE GTK-1: two pieces
     // fit in a conditional and eighteen do not, and every refusal in this module
@@ -402,6 +471,7 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a canvas", "canvas"},
     {"a set of tabs", "tabs"},
     {"a one-of", "one of"},
+    {"a console", "console"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -950,5 +1020,57 @@ bool window_set_font(satellite_window &which, const std::string &face, long long
 // was still up and nothing was ever going to close it. A person who has just been
 // told their program stopped is owed the prompt back, not a wait with no end.
 void windows_stay_open_until_closed(bool the_program_finished);
+
+// ---------------------------------------------------------------------------
+// A CONSOLE (GTK-17): `satellite.console.new("a title", 800, 600)`.
+// ---------------------------------------------------------------------------
+//
+// A WINDOW WHOSE WHOLE INSIDE IS A TERMINAL, with a pty of its own. It is a
+// window everywhere a window is one (`is_a_window()`), it holds no pieces, and
+// these are the six things it does that a window does not. Every one of them
+// is refused by name on a piece that is not a console, and refused as "it is
+// closed" once the window has gone. window_console.cpp; and every function has
+// a second half there for a satl built without VTE, answering that.
+//
+//   c.display("words")     a line into the console -- written to the pty, so it
+//                          lands after everything already on its way there
+//   c.typed(when_typed)    the capsule that runs when a person finishes a line;
+//                          the kernel has done the echo and the editing, and
+//                          `c.typed` read bare is that line
+//   c.clear()              nothing on the screen or in the scrollback any more
+//   c.home()               the cursor to the top-left corner
+//   c.columns  c.rows      how many characters fit across and down, right now
+//
+// `.colour`, `.background` AND `.font` ON A CONSOLE GO TO THE TERMINAL ITSELF
+// (VTE draws its own text and GTK's stylesheet does not reach it), so
+// window_look.cpp routes a console here.
+WindowHandle console_new(const std::string &title, unsigned long long int width,
+                         unsigned long long int height, std::string &why);
+bool console_display(satellite_window &which, const std::string &line, std::string &why);
+bool console_typed(satellite_window &which, const std::string &capsule, std::string &why);
+bool console_clear(satellite_window &which, std::string &why);
+bool console_home(satellite_window &which, std::string &why);
+bool console_cells_of(satellite_window &which, bool the_rows, long long int &out, std::string &why);
+bool console_set_colour(satellite_window &which, const std::string &colour, bool behind,
+                        std::string &why);
+bool console_set_font(satellite_window &which, const std::string &face, long long int size,
+                      std::string &why);
+
+// THE CONSOLE satl LAUNCHES FOR ITSELF (`satl --console`, GTK-17). The same
+// window as above, and then satl's own stdin, stdout and stderr are moved onto
+// its pty -- in THIS process, which is what keeps the exit status and is the
+// whole difference from 003's handover to satl-term. console_launch.cpp.
+//
+// `open` is called once, before a line is printed, and answers false with `why`
+// when there is no display or no console in this build. `is_done` is called by
+// main() once the run is over: `hold` keeps the console up with `message` on
+// it until a person presses a key, and false closes it at once.
+bool open_the_interpreters_console(const std::string &title, std::string &why);
+bool the_interpreters_console_is_open();
+void the_interpreters_console_is_done(bool hold, const std::string &message);
+
+// THE ONE SENTENCE A satl BUILT WITHOUT VTE SAYS, wherever it says it: answers
+// false with `why` filled in. window_console.cpp, in both halves.
+bool without_a_console(std::string &why);
 
 } // namespace satellite004

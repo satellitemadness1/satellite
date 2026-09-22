@@ -8,13 +8,17 @@
 //     satl [--debug] --run <file> [words...] run <file>
 //     satl [--debug] <file> [words...]       the same, when <file> does not begin with -
 //     satl [--debug] --repl                  the prompt (M0.6); until then 14 not_built_yet
+//     satl --console [file] [words...]       the same, in a console of satl's own (GTK-17): the
+//                                            program, or with no file the prompt
 //     satl --rebuild                         compose every setting into one binary and save it
 //     satl --config [most]                   measure what this machine can do, once
 //     satl --feedback                        show what satellite.feedback has kept here
 //     satl --license [n|name|all]            the MIT licence and a menu, or one of them
 //
-// --debug IS THE ONLY OPTION AND IT COMES BEFORE THE COMMAND WORD. --version and
-// --help are the whole command line. After the file EVERY word is the program's,
+// --debug AND --console ARE THE ONLY OPTIONS AND THEY COME BEFORE THE COMMAND
+// WORD, in either order. --version and --help are the whole command line, and
+// so is everything that prints and exits: --console with one of those is
+// refused, because a window that shows a licence and vanishes shows nothing. After the file EVERY word is the program's,
 // --version, --debug and "" included, kept in order. --run takes the next word
 // as the file whatever it is, so `satl --run -x.satl` runs -x.satl and satl needs
 // no `--`. Anything else is refused by name with command_line_not_understood.
@@ -37,6 +41,13 @@ enum class Command { opening, version, help, run, repl, rebuild, config, feedbac
 struct CommandLine {
     Command command = Command::opening;
     bool debug = false;
+
+    // THE CONSOLE satl LAUNCHES FOR ITSELF (GTK-17, `satl --console`): a window
+    // with a terminal in it, and satl's own stdin, stdout and stderr on its pty
+    // before a line is printed. With `run` it runs the file there; with nothing
+    // after it, it is the prompt there -- `satl --console` alone is Command::repl,
+    // because the opening lines would flash in a window and be gone.
+    bool console = false;
     std::string file;                  // Command::run only
     std::vector<std::string> words;    // Command::run only: the program's own, in order
 

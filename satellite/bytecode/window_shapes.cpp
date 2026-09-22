@@ -39,7 +39,9 @@ std::string window_methods_are()
            "to_degrees), .write(across, down, \"words\"), .clear() and .save(\"picture.png\"), "
            "and its pen has .thickness(3) and .outline(1); anything that is not a button or a menu "
            "has .across and .down, where the last click on it landed; a piece going into a set of "
-           "tabs is named by its .title(\"a name\"), and the tabs' .chosen is the one in front "
+           "tabs is named by its .title(\"a name\"), and the tabs' .chosen is the one in front; "
+           "a console has .display(\"words\"), .typed(a_capsule) -- and .typed read bare is the last "
+           "line a person finished -- .clear(), .home(), .columns and .rows "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -85,8 +87,13 @@ int window_method_arity(Code method)
     case token::outline_token:    return 1;  // whether the pen outlines; read bare for what it is
     case token::across_token:     return 0;  // a question: where the last click landed
     case token::down_token:       return 0;  // a question: where the last click landed
-    case token::clear_token:      return 0;  // nothing drawn any more
+    case token::clear_token:      return 0;  // nothing drawn any more; on a console, nothing on the screen
     case token::save_token:       return 1;  // the file to write the picture to
+    case token::display_token:    return 1;  // a line into a console (GTK-17)
+    case token::typed_token:      return 1;  // the capsule's name; read bare for the last line finished
+    case token::home_token:       return 0;  // the cursor to the top-left corner
+    case token::columns_token:    return 0;  // a question: how many characters fit across
+    case token::rows_token:       return 0;  // a question: how many lines fit down
     case token::ok_token:      return 0;
     default:                   return -1;
     }
@@ -117,7 +124,7 @@ bool window_method_takes_a_capsule_name(Code method)
     return method == token::pressed_token || method == token::changed_token ||
            method == token::closed_token || method == token::every_token ||
            method == token::key_token || method == token::clicked_token ||
-           method == token::ask_token || method == token::item_token ||
+           method == token::ask_token || method == token::item_token || method == token::typed_token ||
            method == token::choose_a_file_token;
 }
 

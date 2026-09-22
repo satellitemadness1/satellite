@@ -1005,7 +1005,20 @@ recommended, same as GTK). FTL wants this line in the documentation: *"Portions 
 says to replace it with the version actually vendored, and the line is meant to be
 pasted verbatim.
 
-## WIN-9 — force the satl-term console, or not — **THE AUTHOR'S, STILL UNANSWERED**
+## WIN-9 — force the satl-term console, or not — **THE AUTHOR'S, STILL UNANSWERED — and the recommended shape is BUILT (GTK-17, 2026-09-22)**
+
+**Since 2026-09-22 there is `satl --console [file]`**, and it is what the
+recommendation below asked for, one better: satl opens a console **of its own**
+— a `VteTerminal` inside satl, GTK-17 — and moves its own stdin, stdout and
+stderr onto that console's pty, **in this process**. So the two things a
+handover loses are not lost: the exit status is satl's own (measured: a
+program that stopped exited 22 through the window), and stdout is the pty,
+which is the window. Nothing is forced: satl with no terminal and no flag
+prints where it was pointed, exactly as before. What stays the author's is the
+one question this section always was — should satl open one **on its own**,
+by 003's six reasons — and the `.desktop` can name the explicit form
+(`Exec=satl --console %f`) whenever he wants the launcher to start satl itself.
+GTK_AND_NO_DEPENDENCIES.md GTK-17 has the whole of it.
 
 He asked it on 2026-09-19 and has not ruled. The recommendation given was: **do
 not force it.** Static removes the "satl would not start where GTK is missing"

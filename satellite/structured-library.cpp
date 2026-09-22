@@ -119,6 +119,20 @@ signed long long int run_satl(int argc, char **argv)
     if (stops_the_program(code))
         return code;
 
+    // THE CONSOLE satl LAUNCHES FOR ITSELF (GTK-17, `satl --console`): a window
+    // with a terminal in it, and satl's own stdin, stdout and stderr moved onto
+    // its pty -- BEFORE a line is printed, so the start-up block and everything
+    // after it land on a screen. In THIS process, so the code this function
+    // answers is still the exit status. window_run.cpp reports why when it
+    // cannot, and that report goes where satl was pointed before.
+    if (command_line.console) {
+        const bool the_prompt = command_line.command == Command::repl;
+        code = open_satls_own_console(the_prompt ? std::string("satellite") : "satellite -- " + command_line.file,
+                                      the_prompt);
+        if (stops_the_program(code))
+            return code;
+    }
+
     if (command_line.command == Command::version || command_line.command == Command::help ||
         command_line.command == Command::opening) {
         // licence_rows().size() AND NOT A TYPED NUMBER. The two places that state
@@ -560,6 +574,14 @@ int main(int argc, char **argv)
 
     try {
         const signed long long int code = run_satl(argc, argv);
+        // THE CONSOLE satl LAUNCHED IS CLOSED OR HELD FIRST (GTK-17): a run that
+        // stopped keeps it up with the code on its last line until a person
+        // presses a key, the prompt keeps it up when it ends, and a file that
+        // finished closes it. Then the wait below waits for it like any window
+        // -- and never takes it down, because the person is reading it.
+        const bool in_a_console = satellite004::satls_own_console_is_open();
+        if (in_a_console)
+            satellite004::satls_own_console_is_done(code);
         // THE RUN DOES NOT END WHILE A WINDOW IS OPEN (SATELLITE_WINDOW.md WIN-3).
         // A program that opens a window and returns would otherwise take it down
         // with it before anybody saw it -- and the author's own example is four
@@ -573,7 +595,7 @@ int main(int argc, char **argv)
         // A REFUSED RUN TAKES ITS WINDOWS DOWN rather than waiting on them: the
         // report is already printed, and a person told their program stopped
         // must not then be left at a prompt that never comes back.
-        satellite004::windows_hold_the_run_open(!satellite004::stops_the_program(code));
+        satellite004::windows_hold_the_run_open(in_a_console || !satellite004::stops_the_program(code));
         return satellite004::exit_status_of(code);
     } catch (const std::bad_alloc &) {
         // S999, THE TOP OF THE SCALE. Before this, an allocation that failed was

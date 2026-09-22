@@ -51,6 +51,17 @@ struct Parcel {
     bool done = false;
 };
 
+// A WINDOW THE RUN WAITS ON: any open window that is the program's, and not
+// the console satl launched for itself (GTK-17) -- which is the interpreter's
+// and outlives the program's run on purpose. UNDER desk_mutex.
+bool a_program_window_is_open()
+{
+    for (const WindowHandle &one : open_windows)
+        if (!one->is_satls_own)
+            return true;
+    return false;
+}
+
 gboolean run_the_parcel(gpointer as_pointer)
 {
     Parcel *parcel = static_cast<Parcel *>(as_pointer);
@@ -249,6 +260,7 @@ void the_desk_let_go_of(satellite_window *window)
             open_windows[at]->widget = nullptr;
             open_windows[at]->inside = nullptr;
             open_windows[at]->bar = nullptr;
+            open_windows[at]->terminal = nullptr;
             open_windows.erase(open_windows.begin() + static_cast<long>(at));
             break;
         }
@@ -297,7 +309,7 @@ bool the_desk_waits_for_something(AnEvent &happened)
     std::unique_lock<std::mutex> lock(desk_mutex);
     if (!desk_thread.joinable())
         return false;                                // no window was ever opened
-    desk_changed.wait(lock, [] { return !presses.empty() || open_windows.empty(); });
+    desk_changed.wait(lock, [] { return !presses.empty() || !a_program_window_is_open(); });
     // THE QUEUE FIRST, AND THAT ORDER IS THE POINT. A button pressed in the
     // same instant its window was closed has both conditions true at once, and
     // testing the windows first would throw that press away -- the one case
@@ -311,7 +323,7 @@ bool the_desk_waits_for_something(AnEvent &happened)
     return true;
 }
 
-void close_the_desk_now()
+void close_the_program_windows_now()
 {
     {
         std::unique_lock<std::mutex> lock(desk_mutex);
@@ -321,16 +333,36 @@ void close_the_desk_now()
     // THE WINDOWS GO DOWN ON THE DESK'S THREAD, as every other GTK call does.
     // The list is copied under the lock and walked outside it, because each
     // destroy calls the_desk_let_go_of, which takes that same lock.
+    //
+    // NOT satl'S OWN CONSOLE (GTK-17). It is the interpreter's, not the
+    // program's, and console_launch.cpp is what closes it -- on purpose, with
+    // its flag set, so the closing is not read as a person hanging up.
     std::vector<WindowHandle> taking_down;
     {
         std::lock_guard<std::mutex> lock(desk_mutex);
-        taking_down = open_windows;
+        for (const WindowHandle &one : open_windows)
+            if (!one->is_satls_own)
+                taking_down.push_back(one);
     }
     for (const WindowHandle &one : taking_down) {
         GtkWidget *widget = static_cast<GtkWidget *>(one->widget);
         if (widget != nullptr)
             on_the_desk([widget] { gtk_window_destroy(GTK_WINDOW(widget)); });
     }
+}
+
+// NEVER WHILE satl'S OWN CONSOLE IS OPEN: main() holds or closes that console
+// first and then WAITS (close_the_desk_when_the_windows_are), because a
+// person who was told their program stopped is owed the report on the screen,
+// not a window that vanishes with it.
+void close_the_desk_now()
+{
+    {
+        std::unique_lock<std::mutex> lock(desk_mutex);
+        if (!desk_thread.joinable())
+            return;
+    }
+    close_the_program_windows_now();
     // NOTHING WAITING IS RUN AFTER A REFUSAL. The report is printed and the run
     // has stopped; a capsule walked now would be a program running on after it
     // was told it could not.

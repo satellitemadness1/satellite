@@ -141,7 +141,7 @@ def main():
     #   - numbers, a tab, and a path with no blanks at either end -- an empty path
     #     or an editor's trailing space was a second word with a code of its own;
     #   - the parent NUMBERS must be the word the PATH names as its parent, so
-    #     `1 5 10 satellite.variable.foo` is refused: 1 5 is satellite.console, and
+    #     `1 5 11 satellite.variable.foo` is refused: 1 5 is satellite.console, and
     #     that one mistyped digit is what this file exists to stop. An argument
     #     form sits under the word itself (string(x) is under string), as in 003;
     #   - nothing goes under a bare shape -- `number()` holds no words;

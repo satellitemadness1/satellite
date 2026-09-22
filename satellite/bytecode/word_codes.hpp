@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 416;
+inline constexpr unsigned int kWordsInTable = 417;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -103,6 +103,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301050700000000ULL, 4169},  // 1 5 7 -- satellite.console.height
     {0x0301050800000000ULL, 4170},  // 1 5 8 -- satellite.console.clear()
     {0x0301050900000000ULL, 4171},  // 1 5 9 -- satellite.console.home()
+    {0x0301050A00000000ULL, 4513},  // 1 5 10 -- satellite.console.new(title, width, height)
     {0x0301060000000000ULL, 4173},  // 1 6 0 -- satellite.variable()
     {0x0301060100000000ULL, 4174},  // 1 6 1 -- satellite.variable.string
     {0x0301060200000000ULL, 4198},  // 1 6 2 -- satellite.variable.file
@@ -892,6 +893,7 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.window.tabs", {1, 27, 21, 0, 0, 0, 0}, 3},
     {"satellite.window.tabs()", {1, 27, 21, 0, 0, 0, 0}, 4},
     {"satellite.window.one_of(items)", {1, 27, 22, 0, 0, 0, 0}, 3},
+    {"satellite.console.new(title, width, height)", {1, 5, 10, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -919,6 +921,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.console.input()", 4164},
     {"satellite.console.input(prompt)", 4165},
     {"satellite.console.input(prompt, target)", 4166},
+    {"satellite.console.new(title, width, height)", 4513},
     {"satellite.console.typed()", 4167},
     {"satellite.console.width", 4168},
     {"satellite.constructor", 4459},

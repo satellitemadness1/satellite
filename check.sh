@@ -2821,6 +2821,168 @@ WIN_EOF
 headless build/window_canvas_ok.satl > build/window_canvas_ok.out 2>&1
 expect "a canvas, its five strokes, .clear and .save pass the checker, and stop only for want of a screen" 50 $?
 
+# A CONSOLE (GTK-17, built 2026-09-22): `satellite.console.new("a title", 800, 600)`,
+# a window whose whole inside is a VTE terminal with a pty of its own, UNDER
+# satellite.console and not satellite.window -- the author's own spelling. It is
+# `1 5 10`, the first word 004 has put under satellite.console (003 ended at 1 5 9).
+# satellite.console.display keeps writing to stdout; a console is a piece a program
+# makes by name (GTK-17's reading 2, the recommendation). Five method tokens, 0x0B4A
+# to 0x0B4E in that order: .display("words"), .typed(a_capsule) -- and .typed read
+# bare is the last line a person finished -- .home(); .columns and .rows are
+# questions. .clear() is the canvas's token, answered by the receiver.
+#
+# AND THE CONSOLE satl LAUNCHES FOR ITSELF: `satl --console [file]`, the same window
+# with satl's own stdin, stdout and stderr on its pty, IN THIS PROCESS -- so the
+# code a run stops on is still the exit status, which is what 003's handover to
+# satl-term lost and why 004 removed it. prove-console.sh drives both on a
+# compositor; these rows are what a machine with no screen can assert.
+expect "satellite.console.new is 1 5 10, under satellite.console" 1 \
+       "$(grep -cP '^1 5 10\tsatellite.console.new\(title, width, height\)\t' words/words.tsv)"
+expect "display, typed, home, columns and rows are 0x0B4A to 0x0B4E, in that order" "1|1|1|1|1" \
+       "$(grep -c 'display_token = 0x0B4A' satellite/bytecode/token_codes.hpp)|$(grep -c 'typed_token = 0x0B4B' satellite/bytecode/token_codes.hpp)|$(grep -c 'home_token = 0x0B4C' satellite/bytecode/token_codes.hpp)|$(grep -c 'columns_token = 0x0B4D' satellite/bytecode/token_codes.hpp)|$(grep -c 'rows_token = 0x0B4E' satellite/bytecode/token_codes.hpp)"
+
+cat > build/console_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window c = satellite.console.new("a console", 800)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/console_arity.satl > build/console_arity.out 2>&1
+expect "satellite.console.new with two arguments is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/console_arity.out)"
+expect "... and says what it takes" 1 \
+       "$(tr '\n' ' ' < build/console_arity.out | grep -cF 'satellite.console.new takes a title, a width and a height')"
+
+cat > build/console_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_typed(satellite.variable.window the_console)
+{
+    satellite.console.display(the_console.typed)
+    satellite.console.display(the_console.columns)
+    satellite.console.display(the_console.rows)
+    the_console.clear()
+    the_console.home()
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window c = satellite.console.new("a console", 800, 600)
+    c.display("hello")
+    c.display(42)
+    c.typed(when_typed)
+    c.title("renamed").font("IBM Plex Mono", 12).colour("#000000").background("#90D5FF")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/console_ok.satl > build/console_ok.out 2>&1
+expect "a console and every one of its methods pass the checker, and stop only for want of a screen" 50 $?
+expect "... with S730 NO_DISPLAY and the reason" "1|1" \
+       "$(grep -c 'S730: NO_DISPLAY' build/console_ok.out)|$(tr '\n' ' ' < build/console_ok.out | grep -c 'satellite.console.new could not open a window -- there is no display to draw on')"
+
+cat > build/console_method_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window c = satellite.console.new("a console", 800, 600)
+    c.display()
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/console_method_arity.satl > build/console_method_arity.out 2>&1
+expect "c.display with no argument is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/console_method_arity.out)"
+expect "... and says .display takes 1 argument" 1 \
+       "$(tr '\n' ' ' < build/console_method_arity.out | grep -cF 'c.display takes 1 argument, and was given 0')"
+
+cat > build/console_typed_text.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window c = satellite.console.new("a console", 800, 600)
+    c.typed("when_typed")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/console_typed_text.satl > build/console_typed_text.out 2>&1
+expect "c.typed given text and not a capsule's name is refused before anything runs" "27|" \
+       "$?|$(grep -x before build/console_typed_text.out)"
+
+cat > build/console_typed_nobody.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window c = satellite.console.new("a console", 800, 600)
+    c.typed(nobody)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/console_typed_nobody.satl > build/console_typed_nobody.out 2>&1
+expect "c.typed naming a capsule nobody wrote is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/console_typed_nobody.out)"
+expect "... and names the capsule" 1 "$(grep -c 'no capsule named nobody' build/console_typed_nobody.out)"
+
+# THE CONSOLE satl LAUNCHES: refused for want of a screen BEFORE the program runs,
+# with the machine's code and not the build's; and refused by the command line
+# beside anything that prints and exits, because a window that shows a licence
+# and vanishes has shown nothing.
+headless --console > build/console_launch.out 2>&1
+expect "satl --console on a machine with no screen is refused with no_display, not hung" 50 $?
+expect "... and says the console could not be opened" 1 "$(grep -c 'the console could not be opened' build/console_launch.out)"
+cat > build/console_launch_file.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless --console build/console_launch_file.satl > build/console_launch_file.out 2>&1
+expect "satl --console <file> with no screen is refused before the program runs" "50|" \
+       "$?|$(grep -x before build/console_launch_file.out)"
+"$interpreter" --console --version > /dev/null 2>&1; expect "--console --version is refused: --version is the whole command line" 23 $?
+"$interpreter" --console --rebuild > /dev/null 2>&1; expect "--console --rebuild is refused: it prints and exits" 23 $?
+"$interpreter" --console --license > /dev/null 2>&1; expect "--console --license is refused the same way" 23 $?
+expect "--help names --console" 1 "$("$interpreter" --help | grep -c 'satl --console \[file.satl\]')"
+
+# THE SHAPE, PINNED IN THE SOURCE: a console is a window everywhere a window is
+# one, holds no pieces, is written into and not .text'ed; the run never waits on
+# satl's own console; a person closing that console hangs up on the interpreter;
+# a finished line travels on the event as a key does; and the pty's slave is
+# opened by hand -- vte_pty_child_setup() is for a forked child and would _exit
+# THIS process when setsid() fails.
+# THE THREE `== window` LEFT ARE NAMED, so a fourth is noticed: .append's own
+# a_window (satellite_window.cpp), and .text written and read on a window
+# (window_asks.cpp), each of which branches the console off just above it.
+expect "a console answers to every window method through is_a_window(): no `!= window` refusal is left, and exactly three `== window` remain" "0|3" \
+       "$(grep -c 'piece != satellite_window::window' satellite/satellite_variable_window/*.cpp | awk -F: '{s+=$2} END {print s+0}')|$(grep -c 'piece == satellite_window::window' satellite/satellite_variable_window/*.cpp | awk -F: '{s+=$2} END {print s+0}')"
+# WHAT A FRESH READER FOUND (2026-09-22), each pinned so it cannot come back: the
+# desk's C streams stay off the pty (the deadlock); a frame is refused as a
+# piece; Ctrl-D at the start of a line keeps the reader; the reader is re-armed
+# only on the desk's own view of the console; the copy chords copy at the hold.
+expect "the desk's stdout and stderr are kept off satl's own console pty, before the dup2" "1|1" \
+       "$(grep -c 'keep_the_c_streams_off_the_pty();' satellite/satellite_variable_window/console_launch.cpp)|$(grep -c '        stderr = err;' satellite/satellite_variable_window/console_launch.cpp)"
+expect "a frame is refused as a piece to append, and Ctrl-D does not stop a console's reader" "1|1" \
+       "$(grep -c 'is a frame of its own and goes inside nothing' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'if (got == 0)' satellite/satellite_variable_window/window_console.cpp)"
+expect "the reader is armed on the desk's own view of the console, and Ctrl-Shift-C copies at the hold" "1|1" \
+       "$(grep -c 'raw->typed_watch = g_unix_fd_add(raw->slave, G_IO_IN, a_line_was_finished, raw);' satellite/satellite_variable_window/window_console.cpp)|$(grep -c 'vte_terminal_copy_clipboard_format(terminal_of(\*console), VTE_FORMAT_TEXT);' satellite/satellite_variable_window/console_launch.cpp)"
+expect "a console refuses .append by name, and .text sends to .display" "1|1" \
+       "$(grep -c 'a console holds nothing but its terminal' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'a console is written into a line at a time' satellite/satellite_variable_window/window_asks.cpp)"
+expect "the run never waits on satl's own console, and a person closing it hangs up" "1|1" \
+       "$(grep -c 'return !presses.empty() || !a_program_window_is_open();' satellite/satellite_variable_window/window_desk.cpp)|$(grep -c 'kill(getpid(), SIGHUP);' satellite/satellite_variable_window/window_console.cpp)"
+expect "a finished line travels on the event, and the interpreter copies it onto the piece" "1|1" \
+       "$(grep -c 'AnEvent::a_line);' satellite/satellite_variable_window/window_console.cpp)|$(grep -c 'happened.piece->last_typed = happened.said' satellite/bytecode/window_run.cpp)"
+expect "the pty's slave is opened by hand from the master's name, with no controlling terminal taken" 1 \
+       "$(grep -c 'ptsname_r(vte_pty_get_fd(pty)' satellite/satellite_variable_window/window_console.cpp)"
+# TWO MESSAGES END IN "press any key to close": a run that stopped, and the
+# prompt when it ends. A file that finished has no message; it closes.
+expect "satl's own console is closed on purpose with SIGHUP ignored first, and a stopped run or the prompt holds it" "1|2" \
+       "$(grep -c 'std::signal(SIGHUP, SIG_IGN);' satellite/satellite_variable_window/console_launch.cpp)|$(grep -c 'press any key to close' satellite/bytecode/window_run.cpp)"
+
 # THE FOUR LEFTOVERS (GTK-15, 2026-09-22), each built as the recommendation and
 # still reversible: WHERE A CLICK LANDED -- `.across` and `.down`, carried on
 # the event as a key's name is and copied onto the piece by the interpreter,

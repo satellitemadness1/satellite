@@ -125,6 +125,8 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     case satellite_window::menu:
     // AND A CANVAS IS MADE FROM ITS SIZE (GTK-15), in window_canvas.cpp.
     case satellite_window::canvas:
+    // AND A CONSOLE IS A FRAME, MADE AS A WINDOW IS (GTK-17), in window_console.cpp.
+    case satellite_window::console:
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -149,7 +151,8 @@ WindowHandle window_piece_of_text(satellite_window::Piece which, const std::stri
     // compositor and a program that asked for something that is not a piece
     // should not pay for one. A window is the case that gets here in practice --
     // window_new() is what makes one of those.
-    if (which == satellite_window::window || which >= satellite_window::how_many_pieces) {
+    if (which == satellite_window::window || which == satellite_window::console ||
+        which >= satellite_window::how_many_pieces) {
         why = "that is not a piece made from a line of text";
         return nullptr;
     }

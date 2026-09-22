@@ -119,4 +119,21 @@ signed long long int windows_run_until_they_are_closed(
     const std::function<signed long long int(const std::string &, const WindowHandle &,
                                              const WindowHandle &)> &run_a_capsule);
 
+// THE CONSOLE satl LAUNCHES FOR ITSELF (GTK-17): `satl --console [file]`.
+// Called by run_satl once the command line is read and BEFORE a line is
+// printed; answers success with satl's own stdin, stdout and stderr on the
+// console's pty -- in this process, so the code the run stops on is still the
+// exit status -- or the code it has already reported: no_display, or
+// not_built_yet for a satl made without a console. `holds_after_a_clean_run`
+// is true for the prompt, whose screen is a person's to read when it ends.
+signed long long int open_satls_own_console(const std::string &title, bool holds_after_a_clean_run);
+bool satls_own_console_is_open();
+
+// AND WHAT BECOMES OF IT WHEN THE RUN IS OVER, called by main() before it
+// waits for the windows: a run that STOPPED keeps the console up with the code
+// and its name on the last line until a person presses a key; the prompt keeps
+// it up the same way; a file that finished closes it at once. Then the wait in
+// main() waits for it as it waits for any window.
+void satls_own_console_is_done(signed long long int code);
+
 } // namespace satellite004

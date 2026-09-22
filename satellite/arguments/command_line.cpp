@@ -27,22 +27,38 @@ signed long long int read_command_line(int argc, char **argv, CommandLine &into)
 {
     into = CommandLine{};
     int i = 1;
-    while (i < argc && std::strcmp(argv[i], "--debug") == 0) {
-        into.debug = true;
+    while (i < argc && (std::strcmp(argv[i], "--debug") == 0 || std::strcmp(argv[i], "--console") == 0)) {
+        if (std::strcmp(argv[i], "--debug") == 0)
+            into.debug = true;
+        else
+            into.console = true;
         ++i;
     }
-    if (i >= argc)
-        return success;   // `satl`, or `satl --debug`: the opening lines
+    if (i >= argc) {
+        // `satl`, or `satl --debug`: the opening lines. `satl --console` IS THE
+        // PROMPT, in a console (GTK-17): the opening lines would flash in a
+        // window and be gone, and a console with nothing to run in it is what a
+        // person asked for when they asked for a console and named no file.
+        into.command = into.console ? Command::repl : Command::opening;
+        return success;
+    }
 
     const std::string word = argv[i];
     if (alone(word)) {
         if (i > 1)
-            return refuse(word + " is the whole command line, and --debug came before it");
+            return refuse(word + " is the whole command line, and " + argv[1] + " came before it");
         if (i + 1 < argc)
             return refuse(word + " takes no other words, and \"" + argv[i + 1] + "\" was given");
         into.command = word == "--version" || word == "-V" ? Command::version : Command::help;
         return success;
     }
+    // A COMMAND THAT PRINTS AND EXITS TAKES NO CONSOLE (GTK-17): a window that
+    // shows a licence, or a rebuilt config, and vanishes as the command exits
+    // has shown nothing. Said by name, before the command's own words are read.
+    if (into.console && (word == "--rebuild" || word == "--config" || word == "--feedback" ||
+                         word == "--license" || word == "--licence" || word == "--licenses" ||
+                         word == "--licences"))
+        return refuse(word + " prints and exits, so it takes no --console -- run it in a terminal");
     if (word == "--rebuild") {
         // THE WHOLE COMMAND LINE, like --version, and for a plainer reason:
         // it takes nothing, it runs once, and a word after it is a word somebody
@@ -136,6 +152,8 @@ std::string usage_lines()
            "    satl --run <file> [words...]          the same; the file may begin with -\n"
            "    satl --debug <file.satl> [words...]   run it, showing every state and argument\n"
            "    satl --repl                           the prompt: type a line, see it run\n"
+           "    satl --console [file.satl] [words...] the same, in a console of satl's own: the\n"
+           "                                          program, or with no file the prompt\n"
            "    satl --rebuild                        compose every setting into one binary\n"
            "    satl --config [most]                  measure what this machine can do, once\n"
            "    satl --feedback                       show what satellite.feedback has kept here\n"
@@ -143,8 +161,8 @@ std::string usage_lines()
            "    satl --version, -V                    the version, revision and build\n"
            "    satl --help, -h                       this\n"
            "\n"
-           "    --debug comes before the file, --run or --repl. --version and --help\n"
-           "    are the whole command line. Every word after the file is the\n"
+           "    --debug and --console come before the file, --run or --repl. --version\n"
+           "    and --help are the whole command line. Every word after the file is the\n"
            "    program's, --version and --debug included: arguments.program,\n"
            "    arguments.argument_1 ... and arguments.length.\n"
            "\n"

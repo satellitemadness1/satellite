@@ -162,6 +162,11 @@ bool window_set_colour(satellite_window &which, const std::string &colour, bool 
               "name like red, or as rgb(0, 255, 136)";
         return false;
     }
+    // A CONSOLE'S COLOURS ARE THE TERMINAL'S OWN (GTK-17). VTE draws its text
+    // itself and a stylesheet on the widget does not reach it; the same words
+    // go to vte_terminal_set_color_* instead, through the same filter above.
+    if (which.piece == satellite_window::console)
+        return console_set_colour(which, colour, behind, why);
     satellite_window *raw = &which;
     GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
     // THE OLD ONE IS PUT BACK IF GTK WILL NOT HAVE THE NEW ONE, so a refused
@@ -201,6 +206,10 @@ bool window_set_font(satellite_window &which, const std::string &face, long long
         why = "a font size is between 1 and 400";
         return false;
     }
+    // AND SO IS ITS FONT (GTK-17): vte_terminal_set_font, the same face and
+    // the same pixels, through the same filter above.
+    if (which.piece == satellite_window::console)
+        return console_set_font(which, face, size, why);
     satellite_window *raw = &which;
     GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
     const int points = static_cast<int>(size);

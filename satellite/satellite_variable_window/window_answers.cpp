@@ -273,7 +273,7 @@ bool window_changed(satellite_window &which, const std::string &capsule, std::st
 
 bool window_closed(satellite_window &which, const std::string &capsule, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window is closed";
         return false;
     }
@@ -326,7 +326,7 @@ bool window_press(satellite_window &which, std::string &why)
 bool window_every(satellite_window &which, const std::string &capsule, long long int milliseconds,
                   std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window keeps time -- a piece inside one lives as long as the window does";
         return false;
     }
@@ -366,7 +366,7 @@ bool window_every(satellite_window &which, const std::string &capsule, long long
 
 bool window_key(satellite_window &which, const std::string &capsule, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window hears the keyboard -- a key goes to whatever has the focus, and the "
               "window is what sees them all";
         return false;

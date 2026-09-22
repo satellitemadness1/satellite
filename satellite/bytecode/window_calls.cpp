@@ -35,8 +35,15 @@ Code window_word() { return word::code_of(1, 27); }
 // nothing, and it is refused by name -- a row with no arity and no Piece would
 // be a word that exists, which it is not.
 struct AWord {
-    unsigned int number;                  // its number under 1 27
-    const char *spelling;                 // satellite.window.<this>
+    // WHICH FAMILY IT IS UNDER, AND WHAT THAT FAMILY IS CALLED: 27 and "window"
+    // for every piece, 5 and "console" for the one word that is under
+    // satellite.console instead (GTK-17). Two families in one table, because
+    // the table is what every arity, refusal and `.append` sentence is written
+    // FROM, and a second table would be the stale-list mistake again.
+    unsigned int family;
+    const char *family_name;
+    unsigned int number;                  // its number under 1 <family>
+    const char *spelling;                 // satellite.<family>.<this>
     std::size_t arity;
     satellite_window::Piece makes;        // what a program gets back
     // WHAT ITS ARGUMENTS ARE. `arity` says how many and this says of what, and
@@ -54,76 +61,91 @@ struct AWord {
 };
 
 constexpr AWord kWords[] = {
-    {1, "new", 3, satellite_window::window, AWord::words,
+    {27, "window", 1, "new", 3, satellite_window::window, AWord::words,
      "satellite.window.new takes a title, a width and a height: "
      "satellite.window.new(\"my window\", 800, 600)"},
-    {2, "button", 1, satellite_window::button, AWord::words,
+    {27, "window", 2, "button", 1, satellite_window::button, AWord::words,
      "satellite.window.button takes the text on it: satellite.window.button(\"press me\")"},
-    {3, "label", 1, satellite_window::label, AWord::words,
+    {27, "window", 3, "label", 1, satellite_window::label, AWord::words,
      "satellite.window.label takes the text it shows: satellite.window.label(\"a line of text\")"},
-    {4, "text_box", 1, satellite_window::text_box, AWord::words,
+    {27, "window", 4, "text_box", 1, satellite_window::text_box, AWord::words,
      "satellite.window.text_box takes the text already in it, and \"\" for an empty one: "
      "satellite.window.text_box(\"\")"},
-    {5, "text_area", 1, satellite_window::text_area, AWord::words,
+    {27, "window", 5, "text_area", 1, satellite_window::text_area, AWord::words,
      "satellite.window.text_area takes the text already in it, and \"\" for an empty one: "
      "satellite.window.text_area(\"\")"},
-    {6, "checkbox", 1, satellite_window::checkbox, AWord::words,
+    {27, "window", 6, "checkbox", 1, satellite_window::checkbox, AWord::words,
      "satellite.window.checkbox takes the text beside it: satellite.window.checkbox(\"I agree\")"},
-    {7, "switch", 0, satellite_window::a_switch, AWord::words,
+    {27, "window", 7, "switch", 0, satellite_window::a_switch, AWord::words,
      "satellite.window.switch takes nothing -- a switch says nothing, it is only on or off: "
      "satellite.window.switch()"},
-    {8, "slider", 2, satellite_window::slider, AWord::numbers,
+    {27, "window", 8, "slider", 2, satellite_window::slider, AWord::numbers,
      "satellite.window.slider takes the least and the most it runs between: "
      "satellite.window.slider(0, 100)"},
-    {9, "number_box", 2, satellite_window::number_box, AWord::numbers,
+    {27, "window", 9, "number_box", 2, satellite_window::number_box, AWord::numbers,
      "satellite.window.number_box takes the least and the most it runs between: "
      "satellite.window.number_box(1, 12)"},
-    {10, "progress", 0, satellite_window::progress, AWord::numbers,
+    {27, "window", 10, "progress", 0, satellite_window::progress, AWord::numbers,
      "satellite.window.progress takes nothing -- how far along it is, is .value: "
      "satellite.window.progress()"},
-    {11, "choice", 1, satellite_window::choice, AWord::items,
+    {27, "window", 11, "choice", 1, satellite_window::choice, AWord::items,
      "satellite.window.choice takes a list of what a person may pick: "
      "satellite.window.choice({\"red\", \"green\"})"},
-    {12, "row", 0, satellite_window::row, AWord::words,
+    {27, "window", 12, "row", 0, satellite_window::row, AWord::words,
      "satellite.window.row takes nothing -- what goes in it is .append'ed: satellite.window.row()"},
-    {13, "column", 0, satellite_window::column, AWord::words,
+    {27, "window", 13, "column", 0, satellite_window::column, AWord::words,
      "satellite.window.column takes nothing -- what goes in it is .append'ed: "
      "satellite.window.column()"},
-    {14, "grid", 0, satellite_window::grid, AWord::words,
+    {27, "window", 14, "grid", 0, satellite_window::grid, AWord::words,
      "satellite.window.grid takes nothing -- what goes in it is .append'ed at a cell: "
      "satellite.window.grid()"},
-    {15, "picture", 1, satellite_window::picture, AWord::a_file,
+    {27, "window", 15, "picture", 1, satellite_window::picture, AWord::a_file,
      "satellite.window.picture takes the name of a file to show: "
      "satellite.window.picture(\"logo.png\")"},
-    {16, "scroll", 0, satellite_window::scroll, AWord::words,
+    {27, "window", 16, "scroll", 0, satellite_window::scroll, AWord::words,
      "satellite.window.scroll takes nothing -- the one piece it shows is .append'ed: "
      "satellite.window.scroll()"},
-    {17, "frame", 1, satellite_window::frame, AWord::words,
+    {27, "window", 17, "frame", 1, satellite_window::frame, AWord::words,
      "satellite.window.frame takes the words on its edge, and \"\" for none: "
      "satellite.window.frame(\"a title\")"},
-    {18, "split", 0, satellite_window::split, AWord::words,
+    {27, "window", 18, "split", 0, satellite_window::split, AWord::words,
      "satellite.window.split takes nothing -- the two pieces either side are .append'ed: "
      "satellite.window.split()"},
     // A MENU TAKES ITS HEADING, and that is GTK's ruling: a menu bar drops a
     // top-level item that has no submenu, silently, so a menu with no word on
     // the bar would be a menu that is nowhere (window_menu.cpp).
-    {19, "menu", 1, satellite_window::menu, AWord::words,
+    {27, "window", 19, "menu", 1, satellite_window::menu, AWord::words,
      "satellite.window.menu takes the word that goes on the bar: satellite.window.menu(\"File\")"},
-    {20, "canvas", 2, satellite_window::canvas, AWord::a_size,
+    {27, "window", 20, "canvas", 2, satellite_window::canvas, AWord::a_size,
      "satellite.window.canvas takes how wide and how tall it is: satellite.window.canvas(400, 300)"},
     // A SET OF TABS TAKES NOTHING: each tab is named by its PIECE's own .title
     // (GTK-16), so there is nothing here for the adding to carry.
-    {21, "tabs", 0, satellite_window::tabs, AWord::words,
+    {27, "window", 21, "tabs", 0, satellite_window::tabs, AWord::words,
      "satellite.window.tabs takes nothing -- each piece .append'ed is a tab, named by that "
      "piece's .title: satellite.window.tabs()"},
     // THE RADIO (GTK-3, built 2026-09-22 as the recommendation): one word that
     // draws many buttons, made from a list as a choice is, and asked `.chosen`
     // as a choice is. The other spelling -- `.group(other_checkbox)` on a
     // checkbox -- stays the author's to ask for; nothing here forecloses it.
-    {22, "one_of", 1, satellite_window::one_of, AWord::items,
+    {27, "window", 22, "one_of", 1, satellite_window::one_of, AWord::items,
      "satellite.window.one_of takes a list of what a person may pick one of: "
      "satellite.window.one_of({\"small\", \"large\"})"},
+    // A CONSOLE IS UNDER satellite.console AND NOT satellite.window (GTK-17, the
+    // author's own spelling of 2026-09-22: "satellite.console.new"): a window
+    // whose whole inside is a terminal, made from the three things a window is
+    // made from. `1 5 10`, the next number free under satellite.console -- the
+    // first word 004 has put under satellite.console (003 ended at 1 5 9).
+    {5, "console", 10, "new", 3, satellite_window::console, AWord::words,
+     "satellite.console.new takes a title, a width and a height: "
+     "satellite.console.new(\"my console\", 800, 600)"},
 };
+
+// A WINDOW AND A CONSOLE ARE FRAMES; everything else is a piece that goes in
+// one. Asked wherever the table's `makes` used to be compared with `window`.
+constexpr bool a_frame(satellite_window::Piece piece)
+{
+    return piece == satellite_window::window || piece == satellite_window::console;
+}
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
 // program, not once a line, and seven rows -- eighteen one day -- is nothing
@@ -140,9 +162,9 @@ constexpr AWord kWords[] = {
 const AWord *word_at(Code code)
 {
     for (const AWord &row : kWords) {
-        if (code == word::code_of(1, 27, row.number))
+        if (code == word::code_of(1, row.family, row.number))
             return &row;
-        if (row.arity == 0 && code == word::code_of(1, 27, row.number, 0))
+        if (row.arity == 0 && code == word::code_of(1, row.family, row.number, 0))
             return &row;
     }
     return nullptr;
@@ -165,10 +187,10 @@ std::string the_words_that_make_a_piece()
     std::string out;
     std::size_t left = 0;
     for (const AWord &row : kWords)
-        if (row.makes != satellite_window::window)
+        if (!a_frame(row.makes))
             ++left;
     for (const AWord &row : kWords) {
-        if (row.makes == satellite_window::window)
+        if (a_frame(row.makes))
             continue;
         if (out.empty())
             out = "satellite.window." + std::string(row.spelling) + "(\"text\")";
@@ -216,13 +238,13 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
     }
 
     std::string why;
-    const std::string called = "satellite.window." + std::string(row->spelling);
+    const std::string called = "satellite." + std::string(row->family_name) + "." + std::string(row->spelling);
 
     // EVERY PIECE MADE FROM ONE LINE OF TEXT GOES THROUGH HERE, and a widget
     // added to the table above needs no branch of its own -- the Piece in its row
     // is what window_pieces.cpp turns into a GtkWidget. `new` is the one word
     // that is not this shape, and it falls past.
-    if (row->makes != satellite_window::window) {
+    if (!a_frame(row->makes)) {
         // A PIECE'S WORD TAKES ITS WORDS OR IT TAKES NOTHING, and the table's own
         // arity is what says which -- `satellite.window.switch()` is the first
         // piece with nothing to say. A third shape one day is a third branch;
@@ -319,31 +341,40 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
             // what looked. It is better than anything written here would be: it
             // names the path, and it knows a missing file from one that is there
             // and is not a picture.
+            // AND A satl BUILT WITHOUT VTE SAYS SO WITH THE BUILD'S CODE, not the
+            // machine's (GTK-17): "built without a console" is not_built_yet,
+            // told apart by the sentence as "no display" is.
+            const bool not_built = why.find("built without a console") != std::string::npos;
             const signed long long int code =
                 a_bad_file ? (why.find("No such file or directory") != std::string::npos
                                   ? file_not_found
                                   : file_unreadable)
-                           : (the_program ? satl_line_not_understood : no_display);
+                           : (the_program ? satl_line_not_understood
+                                          : not_built ? not_built_yet : no_display);
             context.refuse(code, called + " could not be made -- " + why);
             return Value();
         }
         return Value::of_window(std::move(made));
     }
 
+    // A FRAME: a window, or a console (GTK-17), made from the same three things.
     std::string title;
     unsigned long long int wide = 0, tall = 0;
-    if (!text_of(arguments[0], title, "satellite.window.new", context) ||
-        !size_of(arguments[1], wide, "satellite.window.new's width", context) ||
-        !size_of(arguments[2], tall, "satellite.window.new's height", context))
+    if (!text_of(arguments[0], title, called, context) ||
+        !size_of(arguments[1], wide, called + "'s width", context) ||
+        !size_of(arguments[2], tall, called + "'s height", context))
         return Value();
-    WindowHandle made = window_new(title, wide, tall, why);
+    WindowHandle made = row->makes == satellite_window::console ? console_new(title, wide, tall, why)
+                                                                : window_new(title, wide, tall, why);
     if (made == nullptr) {
         // NO SCREEN IS THE MACHINE'S ANSWER AND A BAD SIZE IS THE PROGRAM'S, and
         // they are told apart by which one window_new checked first: it refuses a
-        // size before it ever asks for a display.
+        // size before it ever asks for a display. A satl WITHOUT VTE is the
+        // build's, and the sentence says so (window_console.cpp).
         const bool the_program = wide == 0 || tall == 0 || wide > 32767 || tall > 32767;
-        context.refuse(the_program ? satl_line_not_understood : no_display,
-                       "satellite.window.new could not open a window -- " + why);
+        const bool not_built = why.find("built without a console") != std::string::npos;
+        context.refuse(the_program ? satl_line_not_understood : not_built ? not_built_yet : no_display,
+                       called + " could not open a window -- " + why);
         return Value();
     }
     return Value::of_window(std::move(made));

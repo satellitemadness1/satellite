@@ -191,6 +191,48 @@ bool answer_a_question(token::Code method, const WindowHandle &which, bool had_p
         answered = out;
         return true;
     }
+    // `.typed` READ BARE IS THE LAST LINE A PERSON FINISHED IN A CONSOLE
+    // (GTK-17), `.key`'s shape exactly: the desk read it off the pty, the
+    // event carried it, and the interpreter wrote it onto the piece before
+    // the capsule ran -- one writer. Empty until a line has been finished.
+    // ONLY A CONSOLE has lines typed into it; anything else is refused by
+    // name, because "" from a button would not be "not yet", it would be never.
+    if (method == token::typed_token && !had_parentheses) {
+        satellite_window *piece = which.get();
+        if (piece != nullptr && piece->piece != satellite_window::console) {
+            context.refuse(types_do_not_meet, what + " -- " + std::string(piece->piece_name()) +
+                                                  " is not a console, and only a console has lines "
+                                                  "typed into it");
+            answered = Value();
+            return true;
+        }
+        Value out;
+        std::size_t bad_offset = 0;
+        Value::of_utf8(piece == nullptr ? std::string() : piece->last_typed, out, bad_offset);
+        answered = out;
+        return true;
+    }
+    // `.columns` AND `.rows` ARE QUESTIONS (GTK-17), read with or without their
+    // brackets as `.width` and `.height` are: how many characters fit across a
+    // console and how many lines fit down it, right now, asked of the terminal.
+    if (method == token::columns_token || method == token::rows_token) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            answered = Value();
+            return true;
+        }
+        long long int got = 0;
+        std::string why;
+        if (!console_cells_of(*piece, method == token::rows_token, got, why)) {
+            context.refuse(piece->widget == nullptr ? window_is_closed : types_do_not_meet,
+                           what + " -- " + why);
+            answered = Value();
+            return true;
+        }
+        answered = Value::of_number(satellite_number(static_cast<unsigned long long int>(got)));
+        return true;
+    }
     if ((method == token::pressed_token || method == token::changed_token ||
          method == token::closed_token || method == token::clicked_token) && !had_parentheses) {
         satellite_window *piece = which.get();

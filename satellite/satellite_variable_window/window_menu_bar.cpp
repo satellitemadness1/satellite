@@ -46,7 +46,7 @@ void now_on_the_screen(satellite_window &menu)
 
 bool window_menu(satellite_window &which, const WindowHandle &menu, std::string &why)
 {
-    const bool on_a_window = which.piece == satellite_window::window;
+    const bool on_a_window = which.is_a_window();
     if (!on_a_window && which.piece != satellite_window::menu) {
         why = "only a window has a menu across its top, and only a menu has one inside it";
         return false;
@@ -76,7 +76,7 @@ bool window_menu(satellite_window &which, const WindowHandle &menu, std::string 
     // and fire its actions from whichever window has the group; satellite says
     // it in a sentence first, as `.append` does for a piece already somewhere.
     if (const WindowHandle holding = menu->inside_of.lock()) {
-        why = holding->piece == satellite_window::window ? "that menu is already across the top of a window"
+        why = holding->is_a_window() ? "that menu is already across the top of a window"
                                                          : "that menu is already inside a menu";
         return false;
     }
@@ -103,7 +103,10 @@ bool window_menu(satellite_window &which, const WindowHandle &menu, std::string 
                 bar = gtk_popover_menu_bar_new_from_model(G_MENU_MODEL(bar_model));
                 // THE BAR HOLDS THE MODEL NOW. Ours is spent.
                 g_object_unref(bar_model);
-                GtkWidget *column = gtk_widget_get_parent(static_cast<GtkWidget *>(holder->inside));
+                // THE WINDOW'S OWN CHILD IS THE COLUMN, for a window and for a
+                // console alike (window_frame.hpp) -- a console has no fixed to
+                // ask the parent of, so the column is asked for as what it is.
+                GtkWidget *column = gtk_window_get_child(GTK_WINDOW(static_cast<GtkWidget *>(holder->widget)));
                 gtk_box_prepend(GTK_BOX(column), bar);
                 holder->bar = bar;
             }

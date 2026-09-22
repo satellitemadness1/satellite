@@ -86,7 +86,7 @@ void they_chose(GObject *source, GAsyncResult *result, gpointer user_data)
 
 bool a_window_that_can_be_asked(satellite_window &which, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window says things to a person -- a question needs a window to sit over";
         return false;
     }

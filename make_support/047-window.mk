@@ -116,6 +116,19 @@ ifeq ($(GTK),vendor)
 GTK_PC_LIBDIR = $(GTK_BUILD)/meson-uninstalled:$(GTK_STAGE)/lib/pkgconfig:$(GTK_STAGE)/lib64/pkgconfig:$(GTK_STAGE)/share/pkgconfig:$(GTK_STAGE)/pkgconfig-system
 
 HAVE_GTK   := $(shell [ -f $(GTK_BUILD)/gtk/libgtk.a ] && echo yes || echo no)
+
+# AND THE CONSOLE (GTK-17, 2026-09-22). VTE has been in the stage since the
+# same day, its archive -- with lz4's and simdutf's -- is already among
+# GTK_ARCHIVES below, and satl's link group pulls in whatever the console
+# references: all a console costs the build is VTE's include path, which is
+# what adding it to GTK_PKGS buys. ASKED SEPARATELY from HAVE_GTK, for 047's
+# oldest reason: a stage built without VTE still makes a satl that draws, and
+# that satl refuses the console words by name (window_console.cpp's other
+# half) rather than failing to build.
+HAVE_CONSOLE := $(shell [ -f $(GTK_STAGE)/lib/libvte-2.91-gtk4.a ] && echo yes || echo no)
+ifeq ($(HAVE_CONSOLE),yes)
+GTK_PKGS = gtk4 vte-2.91-gtk4
+endif
 GTK_CFLAGS := $(shell env -u PKG_CONFIG_PATH PKG_CONFIG_LIBDIR=$(GTK_PC_LIBDIR) pkg-config --cflags $(GTK_PKGS) 2>/dev/null)
 
 # EVERY ARCHIVE, FROM TWO PLACES NOW -- GTK's own build tree (7) and the install
@@ -195,6 +208,12 @@ GTK_KIND = vendored (GTK carried inside satl)
 
 else
 
+# THE SYSTEM'S VTE IS THE CONSOLE'S, when the system has one: HAVE_WINDOW above
+# already asked pkg-config for vte-2.91-gtk4, and its .pc names gtk4 too.
+HAVE_CONSOLE := $(HAVE_WINDOW)
+ifeq ($(HAVE_CONSOLE),yes)
+GTK_PKGS = gtk4 vte-2.91-gtk4
+endif
 HAVE_GTK       := $(shell pkg-config --exists $(GTK_PKGS) 2>/dev/null && echo yes || echo no)
 GTK_CFLAGS     := $(shell pkg-config --cflags $(GTK_PKGS) 2>/dev/null)
 GTK_LIBS       := $(shell pkg-config --libs $(GTK_PKGS) 2>/dev/null)
@@ -207,6 +226,15 @@ ifeq ($(HAVE_GTK),yes)
   WINDOW_DEFINE = -DSATELLITE_HAS_WINDOW=1
 else
   WINDOW_DEFINE = -DSATELLITE_HAS_WINDOW=0
+endif
+
+# READ BY THE WINDOW FOLDER'S OBJECTS ONLY (060-compile.mk): window_console.cpp
+# and console_launch.cpp are compiled wherever GTK is, and this is what picks
+# their VTE half or their refusing half. The bytecode files never see it.
+ifeq ($(HAVE_CONSOLE),yes)
+  CONSOLE_DEFINE = -DSATELLITE_HAS_CONSOLE=1
+else
+  CONSOLE_DEFINE = -DSATELLITE_HAS_CONSOLE=0
 endif
 
 # satl-term links the window and NOTHING of the runtime. What it shares with satl
@@ -241,7 +269,9 @@ GTK_SOURCES = $(SATELLITE)/satellite_variable_window/window_desk.cpp \
               $(SATELLITE)/satellite_variable_window/window_menu_bar.cpp \
               $(SATELLITE)/satellite_variable_window/window_canvas.cpp \
               $(SATELLITE)/satellite_variable_window/window_strokes.cpp \
-              $(SATELLITE)/satellite_variable_window/window_spill.cpp
+              $(SATELLITE)/satellite_variable_window/window_spill.cpp \
+              $(SATELLITE)/satellite_variable_window/window_console.cpp \
+              $(SATELLITE)/satellite_variable_window/console_launch.cpp
 else
 GTK_SOURCES =
 endif

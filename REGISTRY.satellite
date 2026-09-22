@@ -392,7 +392,12 @@ bits              name                         what it is
 0000101101000111  thickness_token              thickness  [METHOD] canvas.thickness -- how many pixels wide the pen draws a line or an outline; canvas.thickness(3) sets it (GTK_AND_NO_DEPENDENCIES.md GTK-15)
 0000101101001000  arc_token                    arc  [METHOD] canvas.arc(across, down, radius, from_degrees, to_degrees) -- part of a circle, clockwise from three o'clock; filled it is a slice, outlined it is the curve (GTK_AND_NO_DEPENDENCIES.md GTK-15)
 0000101101001001  choose_a_file_token          choose_a_file  [METHOD] window.choose_a_file(a_capsule) -- ask a person for a file; the capsule runs with its path in window.answer, or "" if they dismissed it. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
-0000101101001010  free                         to 0000101111111111, free for this family
+0000101101001010  display_token                display  [METHOD] console.display("words") -- a line into a console, as satellite.console.display puts one on stdout (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001011  typed_token                  typed  [METHOD] console.typed(a_capsule) -- the capsule to run when a person finishes a line in a console; console.typed reads that line back. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001100  home_token                   home  [METHOD] console.home() -- the cursor to the top-left corner, as satellite.console.home() does on stdout (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001101  columns_token                columns  [METHOD] console.columns -- how many characters fit across a console right now (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001110  rows_token                   rows  [METHOD] console.rows -- how many lines fit down a console right now (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001111  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

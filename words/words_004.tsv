@@ -50,3 +50,4 @@
 1 27 21	satellite.window.tabs
 1 27 21 0	satellite.window.tabs()
 1 27 22	satellite.window.one_of(items)
+1 5 10	satellite.console.new(title, width, height)

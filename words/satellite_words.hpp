@@ -431,6 +431,7 @@ inline constexpr WordRow kWords[] = {
     {"satellite.window.tabs", {1, 27, 21, 0, 0, 0}, 3},
     {"satellite.window.tabs()", {1, 27, 21, 0, 0, 0}, 4},
     {"satellite.window.one_of(items)", {1, 27, 22, 0, 0, 0}, 3},
+    {"satellite.console.new(title, width, height)", {1, 5, 10, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -484,7 +485,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.container.arguments.first", {1, 4, 3, 8, 1, 0, 0}, 5},
     {"satellite.container.arguments.last", {1, 4, 3, 9, 1, 0, 0}, 5},
     {"satellite.container.result", {1, 4, 4, 1, 0, 0, 0}, 4},
-    {"satellite.console", {1, 5, 10, 0, 0, 0, 0}, 3},
+    {"satellite.console", {1, 5, 11, 0, 0, 0, 0}, 3},
     {"satellite.console.display", {1, 5, 1, 1, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},

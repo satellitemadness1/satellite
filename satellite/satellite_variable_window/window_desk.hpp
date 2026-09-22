@@ -132,7 +132,11 @@ struct AnEvent {
     // point on the piece, in its own pixels. `a_place` says the two numbers
     // are filled in, and the interpreter copies them onto the piece the same
     // way it copies `said` -- one writer, on its own thread.
-    enum What { nothing_said, a_key, an_answer, a_place };
+    //
+    // AND A LINE A PERSON FINISHED IN A CONSOLE (GTK-17), the same way: the
+    // desk read it off the pty, and the interpreter copies it onto the piece
+    // for `.typed` to answer.
+    enum What { nothing_said, a_key, an_answer, a_place, a_line };
     What said_what = nothing_said;
     std::string said;
     long long int across = 0;
@@ -162,7 +166,17 @@ void the_desk_saw_something(const std::string &capsule, const WindowHandle &piec
 // filled in when there is one to run; false when every window is closed and
 // nothing is left -- which is when the run is over. False at once when the desk
 // was never opened.
+//
+// EVERY WINDOW OF THE PROGRAM'S, THAT IS. The console satl launched for itself
+// (`is_satls_own`, GTK-17) is not one the run waits on: a program that printed
+// three lines into it and returned is finished, and main() is what closes or
+// holds that console afterwards.
 bool the_desk_waits_for_something(AnEvent &happened);
+
+// TAKES THE PROGRAM'S WINDOWS DOWN and leaves satl's own console, if there is
+// one, on the screen: what a run that STOPPED inside a console does, so the
+// person reads the report there without a dead button beside it (GTK-17).
+void close_the_program_windows_now();
 
 // BLOCKS UNTIL EVERY WINDOW IS CLOSED, then stops the desk and joins it. Returns
 // at once when the desk was never opened.

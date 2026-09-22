@@ -47,6 +47,9 @@ signed long long int windows_run_until_they_are_closed(
                 happened.piece->last_across = happened.across;
                 happened.piece->last_down = happened.down;
             }
+            // AND A LINE FINISHED IN A CONSOLE (GTK-17), the same way again.
+            else if (happened.said_what == AnEvent::a_line)
+                happened.piece->last_typed = happened.said;
         }
         const signed long long int stopped = run_a_capsule(happened.capsule, happened.piece, happened.window);
         // A CAPSULE THAT STOPPED STOPS THE RUN, the same as a line of main
@@ -60,10 +63,63 @@ signed long long int windows_run_until_they_are_closed(
     return success;
 }
 
+// ---------------------------------------------------------------------------
+// THE CONSOLE satl LAUNCHES FOR ITSELF (GTK-17): `satl --console`.
+// ---------------------------------------------------------------------------
+namespace {
+
+// WHETHER A CLEAN END HOLDS THE CONSOLE: true for the prompt, false for a file.
+// Set when it is opened, read when the run is done -- satl-term's policy, in
+// console_launch.cpp's own words.
+bool console_holds_after_a_clean_run = false;
+
+} // namespace
+
+signed long long int open_satls_own_console(const std::string &title, bool holds_after_a_clean_run)
+{
+    std::string why;
+    if (!open_the_interpreters_console(title, why)) {
+        // NO DISPLAY IS THE MACHINE'S; NO CONSOLE IN THIS satl IS THE BUILD'S.
+        // Told apart by the sentence, as call_window_word tells "no display".
+        const bool not_built = why.find("built without a console") != std::string::npos;
+        return report_error("satl(console): the console could not be opened -- " + why,
+                            not_built ? not_built_yet : no_display);
+    }
+    console_holds_after_a_clean_run = holds_after_a_clean_run;
+    return success;
+}
+
+bool satls_own_console_is_open() { return the_interpreters_console_is_open(); }
+
+void satls_own_console_is_done(signed long long int code)
+{
+    const bool stopped = stops_the_program(code);
+    std::string message;
+    if (stopped)
+        message = "[satl] stopped on machine code " + std::to_string(code) + " (" + machine_code_name(code) +
+                  ") -- press any key to close";
+    else if (console_holds_after_a_clean_run)
+        message = "[satl] the session is over -- press any key to close";
+    the_interpreters_console_is_done(stopped || console_holds_after_a_clean_run, message);
+}
+
 #else
 
 // NOTHING TO HOLD OPEN: no window word ever answered a window in this build.
 void windows_hold_the_run_open(bool) {}
+
+// AND NO CONSOLE TO LAUNCH: the one sentence a satl without a window says,
+// with the code a thing not built answers.
+signed long long int open_satls_own_console(const std::string &, bool)
+{
+    return report_error("satl(console): this satl was built without a window -- pkg-config found no gtk4 "
+                        "when it was made, so it has no console to open. Install gtk4-devel and "
+                        "vte291-gtk4-devel (AlmaLinux/RHEL, the second from CRB; Debian/Ubuntu: "
+                        "libgtk-4-dev and libvte-2.91-gtk4-dev) and build again",
+                        not_built_yet);
+}
+bool satls_own_console_is_open() { return false; }
+void satls_own_console_is_done(signed long long int) {}
 
 // AND NOTHING TO PRESS. No window word answered a window, so no button was made
 // and no press can be waiting.

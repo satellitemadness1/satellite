@@ -231,7 +231,7 @@ bool window_menu_heading(satellite_window &which, const std::string &heading, st
     // somewhere.
     const WindowHandle on = which.inside_of.lock();
     satellite_window *raw = &which;
-    GtkWidget *bar = on != nullptr && on->piece == satellite_window::window
+    GtkWidget *bar = on != nullptr && on->is_a_window()
                          ? static_cast<GtkWidget *>(on->bar) : nullptr;
     satellite_window *parent = on != nullptr && on->piece == satellite_window::menu ? on.get() : nullptr;
     on_the_desk([raw, bar, parent, &heading] {

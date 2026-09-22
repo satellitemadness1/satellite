@@ -93,7 +93,7 @@ the last is **headers only**. Twenty-four projects produce the archives.
 | ✔ | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
 | ✔ | **GTK-15** a canvas | gtk (`GtkDrawingArea`), **cairo directly** (a line, a box, a circle, an arc and a slice, an outline, a pen width, an image surface, `cairo_surface_write_to_png`), **pango directly** (`pango_cairo_show_layout`) | pixman, freetype, **libpng** for `.save` |
 | ✔ | **GTK-16** more than one screenful | gtk (`GtkNotebook` since 2026-09-22) | — |
-| — | **GTK-17** `satellite.console` is a window | **VTE — NOT VENDORED**, gtk, pango | freetype, harfbuzz, fribidi |
+| ✔ | **GTK-17** `satellite.console` is a window — **BUILT 2026-09-22**, and `satl --console` with it | **VTE** (`VteTerminal`, `VtePty`), gtk, pango | lz4, simdutf, freetype, harfbuzz, fribidi |
 | — | **GTK-18** `satellite.terminal` is a bash prompt | VTE, glib (`g_spawn`) | — |
 | ✔ | **DEP-1** every source in the folder — and **PROVED ON A FRESH CLONE WITH NO NETWORK, 2026-09-22**: 24 of 24 built in 216 s, `make` linked the same eight, check.sh green | **all 24** | — |
 | — | **DEP-2** the word libraries link in | none — it is a link shape, not a call | — |
@@ -137,7 +137,7 @@ projects are in satl today and no satellite word has ever reached them.**
 | **gperf** | **a build tool** | fontconfig's perfect hashes | DEP-1 ✔ |
 | **meson** | **a build tool** | builds the other 23 | DEP-1 ✔ |
 | *(also linked)* | libgirepository-2.0, libcairo-script-interpreter | introspection; a cairo trace replayer | **dead weight — nothing calls either** |
-| **VTE** | libvte-2.91-gtk4 — **vendored 2026-09-22**, static by a one-word journalled patch | a terminal in a window | GTK-17 — proved working from the archive; nothing in satl calls it yet |
+| **VTE** | libvte-2.91-gtk4 — **vendored 2026-09-22**, static by a one-word journalled patch | a terminal in a window | GTK-17 ✔ — `satellite.console.new` and `satl --console` link it since the same evening; NEEDED stayed seven |
 | **lz4** | liblz4 | VTE's scrollback compression | GTK-17 |
 | **simdutf** | libsimdutf | VTE's UTF-8 validation and transcoding | GTK-17 |
 | **fmt** | libfmt (installed; VTE compiles it header-only) | VTE's formatting | GTK-17 |
@@ -149,8 +149,9 @@ projects are in satl today and no satellite word has ever reached them.**
    VTE, and VTE needed four more (lz4, simdutf, fmt, fast_float): five tarballs
    in `vendor/new/`, five recipes, one patch, 45 seconds to build, and a program
    linked from the archive that spawned a shell in a terminal on a headless
-   compositor with satl's seven NEEDED. GTK-17 and GTK-18 can start; the one
-   question the vendoring raised is Q-VTE-1, under GTK-17.
+   compositor with satl's seven NEEDED. **GTK-17 was built the same evening**;
+   GTK-18 can start; the one question the vendoring raised is Q-VTE-1, under
+   GTK-17, still the author's and reset off the screen meanwhile.
 2. **libpng, libjpeg-turbo, libtiff and gdk-pixbuf are 2.6 MB of satl that no
    satellite program can reach.** GTK-6 is what earns them. Until it lands they
    are carried for GTK's icon loading and nothing else.
@@ -2016,7 +2017,7 @@ the tab while it was in the set; the set measured 302 by 189; a REAL POINTER
 CLICK on the Alpha tab ran `when_switched` with `.chosen` answering `"Alpha"`,
 and the capsule closed the window — exit 0.
 
-## GTK-17 — `satellite.console` IS A WINDOW, with libvte — **the author's, named 2026-09-21**
+## GTK-17 — `satellite.console` IS A WINDOW, with libvte — **BUILT 2026-09-22: the console a program makes, and the console satl launches**
 
 > *"we especially need satellite.console to be a window with libvte"*
 
@@ -2109,6 +2110,162 @@ carries 003's removed row `satellite.window.console.new(title, width, height)`
 Reading (2) also makes DEP-5's *"single application"* true without deleting
 anything: satl can draw the terminal satl-term draws.
 
+### BUILT 2026-09-22, as reading (2), in the author's spelling — and both halves are one widget
+
+The author, that afternoon: *"I think we are ready to build satellite.console
+and the console that satl launches"*. Both, and they turned out to be one thing.
+
+**A CONSOLE IS A PTY, AND THAT IS THE WHOLE DESIGN.**
+`satellite.console.new("a title", 800, 600)` — **`1 5 10`**, the next number
+free under `satellite.console`, and the first word 004 has put under it (003
+ended at `1 5 9`) — answers a window whose whole inside is a
+`VteTerminal` with a `VtePty` of its own. satl holds the pty's OTHER end, the
+slave: `.display("words")` is one `write()` to it, and `.typed(when_typed)` is
+the desk reading a whole line off it the moment the kernel's line discipline
+says one is finished. The kernel did the echo, the backspaces and the editing
+— as it has for every terminal since before GTK existed — and satl
+re-implements none of it. **`satellite.console.display` keeps writing to
+stdout, untouched.**
+
+    satellite.variable.window c = satellite.console.new("a console", 800, 600)
+    c.display("type a line and press Enter")     one write() to the pty; ends the line
+    c.typed(when_typed)                          the capsule a finished line runs
+    ... in the capsule:  the_console.typed       that line, as .key is the last key
+    c.clear()   c.home()   c.columns   c.rows
+    c.colour("#000000")  c.background("#90D5FF")  c.font("IBM Plex Mono", 12)   VTE's own setters
+
+**A console is a window everywhere a window is one.** `is_a_window()` in
+`satellite_window.hpp`, and every `piece == window` in the folder that meant
+"the thing with a frame" now asks it, so `.close()`, `.title`, `.resize`,
+`.fullscreen`, `.closed`, `.every`, `.key`, `.message`, `.ask` and `.menu` all
+work on a console with no second branch anywhere; check.sh asserts no
+`piece != window` refusal is left and names the three `== window` that remain.
+`.append` is refused by name — a console holds nothing but its terminal — and
+`.text` is sent to `.display`. Five method
+tokens, `0x0B4A`–`0x0B4E`: `display`, `typed`, `home`, `columns`, `rows`;
+`.clear()` is the canvas's token, answered by the receiver. The window's own
+`frame_new` was split out (`window_frame.hpp`) so the two frames share one
+GtkWindow-and-column, and the console's `destroy` handler is connected
+**before** the desk's, so its pty is let go of while the handle is whole.
+
+**THE CONSOLE satl LAUNCHES: `satl --console [file] [words...]`.** The same
+window, and then satl's own stdin, stdout and stderr are `dup2`'d onto its
+pty — **in THIS process**. No exec, no fork, no satl-term: the exit status is
+satl's own, and stdout is the pty, which is the window. That is WIN-9's two
+objections to a handover answered by construction, and it was measured rather
+than argued: on a compositor, `satl --console fail.satl` exited **22** through
+the window, the refused line's own code. `satl --console` alone is the prompt
+in a console. `console_launch.cpp`.
+
+- **Explicit, never forced.** satl with no terminal and no flag prints where it
+  was pointed, as it has since 004 removed the handover on purpose (PLAN
+  M0.5). Whether satl should ever open a console **on its own** — 003's six
+  reasons — stays WIN-9, the author's; this is the shape WIN-9 recommended in
+  the meantime. When he wants the launcher to start satl itself (DEP-5's
+  *"single application"*), it is one line in the `.desktop`: `Exec=satl
+  --console %f`. **satl-term is untouched.**
+- **satl-term's end-of-run policy, ported.** A file that finished closes the
+  console at once; a run that STOPPED holds it with `[satl] stopped on machine
+  code 22 (division_by_zero) -- press any key to close` as its last line,
+  written to satl's own stderr so it queues behind whatever the program
+  printed last; the prompt holds the same way when it ends. Any key but a
+  modifier closes it. A stopped run's other windows are taken down first, as
+  they are with no console.
+- **The controlling terminal, as far as it goes.** `setsid()` then
+  `TIOCSCTTY`. From a launcher — measured on this desktop: nautilus and ptyxis
+  are their own session leaders, `pid == pgid == sid` — the pty becomes satl's
+  controlling terminal and Ctrl-C is SIGINT by the kernel's hand. From a
+  shell, satl already leads a process group, `setsid` fails, and a key
+  controller on the window in the capture phase sends SIGINT itself when the
+  pty is cooked and lets the byte through when the prompt has it raw — which
+  is exactly what the line discipline would have done. Closing the console
+  hangs up on the interpreter (SIGHUP), as closing any terminal does: the
+  kernel's when it can, satl's own when it cannot — and never when satl closed
+  it itself, which ignores SIGHUP first, or the clean exit code would be lost
+  to the hangup the master's closing raises.
+- **Q-VTE-1's stopgap.** Without gnutls VTE feeds its red warning into every
+  terminal at construction. The terminal is reset once, before anything of
+  ours is on it, so the line never shows. One call to remove when gnutls is
+  in. **The question is still the author's.**
+- 120 by 48 cells — satl-term's, the author's ask of 2026-09-12 — by
+  satl-term's own fit-on-first-frame; satl-term's black on light blue and IBM
+  Plex Mono 11, the font satl carries.
+- **NEEDED is still seven.** VTE, lz4 and simdutf were already in the link
+  group; the console cost the build one include path. 56 MB.
+- **A satl without VTE still builds** (`SATELLITE_HAS_CONSOLE`, asked
+  separately from the window): every console word lexes, checks, and refuses
+  by name with the package to install — 047's oldest rule, one library further
+  down. Both halves compiled and `nm`'d on their own.
+
+**PROVED ON A COMPOSITOR** — `prove-console.sh`, four stages, all green on the
+first run: the prompt in a console, typed at with real keys — the typed line
+wrote a file, `exit` ended the session, one key closed the hold, exit 0, and
+**nothing** landed on satl's original stdout; a program that stopped held its
+console and exited 22 through the window; a program that finished closed its
+console itself with no key pressed; and a program's own console, typed `abc`
+into, ran `when_typed` with `.typed` answering `abc` and `.columns`/`.rows`
+answering 77 and 17. stdin was `/dev/null` throughout, which is what a launcher
+gives.
+
+**DECIDED HERE AS RECOMMENDATIONS, ALL REVERSIBLE:**
+
+- **`.typed` is a capsule, not a wait.** GTK-11's open shape — may a satellite
+  line wait for a person — is kept open; a blocking `c.input()` is the author's
+  to ask for, and the pty is already there to read it from.
+- **`--console` is explicit.** Forcing it is WIN-9's, still his.
+- **`.display` takes text or a number.** A list or a file is refused as `.text`
+  would refuse it; the whole `satellite.console.display` set is one reader away.
+- **No `--hold`.** satl-term's flag; a run that stopped already holds.
+
+**NOT BUILT:** GTK-18 (`satellite.terminal`, a shell in a console) is the next
+word over — `vte_terminal_spawn_async` into this same widget, with the pty VTE
+makes for the child instead of the one satl holds an end of.
+
+### What a fresh reader found the same evening, and all of it was real
+
+- **The desk could deadlock on satl's own console, and it printed nothing.**
+  The pty's master is drained by VTE on the desk's thread and by nobody else,
+  and a pty holds about twelve kilobytes. A program printing faster than the
+  terminal draws fills it and the interpreter waits for room, which is plain
+  flow control; then the desk prints one line to stderr — a Gtk-CRITICAL, a
+  Gtk-WARNING, GDK_DEBUG's chatter — and blocks on the same buffer, which only
+  it can empty. Reproduced on the binary with `GDK_DEBUG=frames` and twelve
+  megabytes of output: the interpreter in `write(1)`, the desk in
+  `file_tty_write`, for ever. **The fix is where the desk's words go**: the
+  desk prints through the C streams (GLib's writer is `fputs(stderr)`, GDK's
+  is `vfprintf(stderr)`), the interpreter through `std::cout` and `std::cerr`,
+  which write to the descriptors; so the descriptors move to the pty and
+  `stdout` and `stderr` are reassigned to dups of what satl was started with —
+  a shell, or a launcher's journal, where a GTK application's warnings go
+  anyway. `prove-console.sh`'s `loud` stage is that reproduction, green.
+- **Ctrl-D at the start of a line stopped `.typed` for good.** Canonical mode
+  answers a `read()` of nothing for VEOF and the reader took that as the pty
+  gone. It stays now; nothing typed delivers nothing; and a mid-line Ctrl-D,
+  which hands over half a line with no newline, waits for the rest of itself.
+- **A frame could be appended into a row.** `a_row.append(a_window)` reached
+  GTK, which only asks whether a widget has a parent, and a toplevel has
+  none. The hole was there for a window before a console existed; refused by
+  name now.
+- **The reader could be armed on a stale fd.** `.typed`'s parcel captured the
+  fd number on the interpreter; a person closing the console between the
+  check and the parcel would have had a watch on whatever the program opened
+  next. The parcel asks the desk's own view now, and the slave is closed only
+  with the handle, never by the desk.
+- **Ctrl-Shift-C closed the hold** it promised to survive; it copies now, and
+  Ctrl-Insert is left to VTE.
+- **The no-VTE stubs blamed the build for a button.** `a_button.display(...)`
+  on a satl without VTE said "built without a console"; the kind is refused
+  first now, on every build, and a size of 0 is the program's on every build.
+- **A closed button asked `.columns` said "is not a console" under
+  window_is_closed.** Closed is asked first now, so the sentence is the one
+  the code means.
+- Two proof stages passed without the hold happening (the closing key landed
+  on nothing either way); they record liveness before the key now, and the
+  stopped stage's original stdout must be empty. And the record had called
+  `1 5 10` "the first word a milestone has put under a family from 003", which
+  sixteen earlier rows of words_004.tsv contradict; it is the first under
+  `satellite.console`.
+
 ## GTK-18 — `satellite.terminal` is a bash prompt — **the author's, named 2026-09-21**
 
 > *"satellite.terminal to be a bash prompt"*
@@ -2168,8 +2325,10 @@ is the milestone that gets VTE into the folder and into a static archive.
 | ~~GTK-15~~ | ~~a draw capsule, or a display list~~ | **BUILT as the display list, 2026-09-22.** A draw capsule stays the author's to ask for; it needs a re-entrant walker first. |
 | ~~GTK-12~~ | ~~a menu inside a menu, and a line between groups of items~~ | **BUILT 2026-09-22**: `file.menu(recent)` — the piece carries its heading — and `file.separator()`. Still reversible. |
 | ~~GTK-15~~ | ~~where a click on a canvas LANDED; an outline, a line's width, an arc~~ | **BUILT as the recommendation, 2026-09-22** — `.across` and `.down` carried on the event as `.key` is; `.outline(1)` and `.thickness(n)` are the pen; `.arc(...)` clockwise from three o'clock. Still reversible — and `across`/`down` is the one spelling chosen here rather than recommended. |
-| GTK-17 | does `satellite.console` become a window, or does a window get a console? | a window gets a console; `satellite.console` keeps stdout — and his *"satellite.console.new"* (2026-09-22) is that shape |
-| GTK-17 | **Q-VTE-1: gnutls** — VTE without it prints a red warning into every new terminal and upstream has deprecated the option; vendor gnutls + nettle + gmp, patch the line out, or live with it? | vendor the three |
+| ~~GTK-17~~ | ~~does `satellite.console` become a window, or does a window get a console?~~ | **BUILT as the recommendation, 2026-09-22** — a window gets a console, spelled as he spelled it: `satellite.console.new(title, width, height)`; `satellite.console.display` keeps stdout; and `satl --console` is the console satl launches, in one process. Still reversible. |
+| GTK-17 | **`.typed` is a capsule** — may a console line WAIT for a person (`c.input()`)? GTK-11's question, met again | a capsule; the pty is there to read from when he wants the wait |
+| GTK-17 | **`--console` is explicit** — should satl open a console on its own with no terminal, 003's six reasons? This is WIN-9 | do not force it; the `.desktop` can say `satl --console %f` |
+| GTK-17 | **Q-VTE-1: gnutls** — VTE without it prints a red warning into every new terminal and upstream has deprecated the option; vendor gnutls + nettle + gmp, patch the line out, or live with it? **Meanwhile the terminal is reset once at birth and the line never shows.** | vendor the three |
 | GTK-10 | the window font: 11px or 12px | asked 2026-09-19, still open |
 
 ---
@@ -2217,9 +2376,11 @@ is the milestone that gets VTE into the folder and into a static archive.
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a
   capsule nobody wrote.
 - ~~**VTE IS NOT IN `vendor/new/`.**~~ **VENDORED 2026-09-22** with the four
-  it needs, static by a one-word patch, proved from the archive. GTK-17 and
-  GTK-18 can start. What is not done: nothing in satl links or calls it yet,
-  and Q-VTE-1 (gnutls) is the author's.
+  it needs, static by a one-word patch, proved from the archive — **and linked
+  and called since the same evening: GTK-17 is built**, `satellite.console.new`
+  and `satl --console`, proved on a compositor. GTK-18 can start. What is not
+  done: Q-VTE-1 (gnutls) is the author's, and its warning is reset off the
+  screen meanwhile.
 - ~~**2.6 MB OF satl IS UNREACHABLE.**~~ **EARNED 2026-09-21 by GTK-6.**
   gdk-pixbuf, libpng and libjpeg-turbo are reached by `satellite.window.picture`
   and were proved with a real PNG and a real JPEG. libtiff is the same word and
@@ -2228,7 +2389,9 @@ is the milestone that gets VTE into the folder and into a static archive.
   below ever will — Part 00's Table B is the list.
 - **`THIRD-PARTY-NOTICES.md` is not written**, waiting on DEP-6's two rulings.
 - **WIN-9 — force the satl-term console or not — asked 2026-09-19, still
-  unanswered.** The recommendation was: do not.
+  unanswered.** The recommendation was: do not — and since 2026-09-22 the
+  explicit shape it recommended exists, `satl --console`, in one process, with
+  the exit status kept (GTK-17). Forcing it stays his.
 
 ---
 
@@ -2272,7 +2435,9 @@ GTK family is now what this file is for.
 10. **GTK-17, then GTK-18** — the author's two. They are last **not** because
     they matter least but because they are the only ones with a DEP half: VTE
     has to be vendored, and patched to build a static archive, before a line of
-    either can be written. **That half is done (2026-09-22).**
+    either can be written. **That half is done (2026-09-22) — and GTK-17 was
+    built the same evening**, both halves: `satellite.console.new` and `satl
+    --console`, proved on a compositor. GTK-18 is the next word over.
 
 ## The DEP order, for what is left of it
 
@@ -2292,8 +2457,8 @@ said the GTK family was finished enough to *"move on to another .md"*:**
 4. **DEP-2 is DECIDED AND DEFERRED** and is not on this list.
 
 **WHAT IS LEFT IN THE GTK FAMILY IS THE AUTHOR'S** (2026-09-22, evening):
-GTK-17 and GTK-18 (VTE is not vendored), a `true` and a `false` to type, the
-window font, and Q-WIN-11c (the accessibility bus). Q-WIN-11a was ruled that
+GTK-18 (GTK-17 is built and VTE is in), a `true` and a `false` to type, the
+window font, Q-VTE-1 (gnutls), and Q-WIN-11c (the accessibility bus). Q-WIN-11a was ruled that
 evening — *"defend"* — and the file dialog built on it, so GTK-1 to GTK-16 are
 all built. Every recommendation the plan wrote has been built and every one
 of its question rows is still reversible. The DEP order above is what followed,

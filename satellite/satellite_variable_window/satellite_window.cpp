@@ -27,6 +27,7 @@
 #include "satellite_window.hpp"
 
 #include "window_desk.hpp"
+#include "window_frame.hpp"
 
 #include <gtk/gtk.h>
 
@@ -70,10 +71,22 @@ bool still_there(const satellite_window &which, std::string &why)
     return false;
 }
 
+// WHAT A WINDOW'S COLUMN HOLDS: the GtkFixed that `.append` places pieces in
+// (WIN-3). ON THE DESK, from frame_new. A console fills its column with a
+// terminal instead (window_console.cpp), which is the whole difference.
+void a_fixed_to_place_pieces_in(satellite_window &made, GtkWidget *, GtkWidget *column)
+{
+    GtkWidget *inside = gtk_fixed_new();
+    gtk_widget_set_vexpand(inside, TRUE);
+    gtk_box_append(GTK_BOX(column), inside);
+    made.inside = inside;
+}
+
 } // namespace
 
-WindowHandle window_new(const std::string &title, unsigned long long int width,
-                        unsigned long long int height, std::string &why)
+WindowHandle frame_new(satellite_window::Piece which, const std::string &title,
+                       unsigned long long int width, unsigned long long int height, std::string &why,
+                       void (*fill)(satellite_window &, GtkWidget *, GtkWidget *))
 {
     // A WINDOW NOBODY CAN SEE IS NOT WHAT WAS ASKED FOR. GTK takes a 0 and draws
     // a window of whatever size it likes, which is an answer that is wrong and
@@ -90,7 +103,7 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
     if (!open_the_desk(why))
         return nullptr;
 
-    WindowHandle made = std::make_shared<satellite_window>(satellite_window::window);
+    WindowHandle made = std::make_shared<satellite_window>(which);
     made->title = title;
     made->asked_wide = static_cast<int>(width);
     made->asked_tall = static_cast<int>(height);
@@ -101,7 +114,7 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
 
     satellite_window *raw = made.get();
     const int wide = static_cast<int>(width), tall = static_cast<int>(height);
-    on_the_desk([raw, &title, wide, tall] {
+    on_the_desk([raw, &title, wide, tall, fill] {
         // NO GtkApplication, ON PURPOSE (hello-static.c:17-22): GtkApplication is
         // GApplication, which registers on the D-Bus session bus, and a machine
         // that satl is shipped to may have none. gtk_window_new() needs none of it.
@@ -117,22 +130,35 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
         // only the fixed, expanded to fill it, and the fixed sits at the same
         // 0,0 it did as the window's own child -- nothing measures or places
         // differently, and press-a-button.sh's coordinates still land.
+        //
+        // WHAT THE COLUMN HOLDS IS THE CALLER'S (GTK-17): a fixed for a window,
+        // a terminal for a console. It goes in BEFORE `destroy` is connected --
+        // window_frame.hpp says why that order matters.
         GtkWidget *column = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-        GtkWidget *inside = gtk_fixed_new();
-        gtk_widget_set_vexpand(inside, TRUE);
-        gtk_box_append(GTK_BOX(column), inside);
         gtk_window_set_child(GTK_WINDOW(window), column);
-        g_signal_connect(window, "destroy", G_CALLBACK(it_was_closed), raw);
         raw->widget = window;
-        raw->inside = inside;
+        fill(*raw, window, column);
+        g_signal_connect(window, "destroy", G_CALLBACK(it_was_closed), raw);
         gtk_window_present(GTK_WINDOW(window));
     });
     return made;
 }
 
+WindowHandle window_new(const std::string &title, unsigned long long int width,
+                        unsigned long long int height, std::string &why)
+{
+    return frame_new(satellite_window::window, title, width, height, why, a_fixed_to_place_pieces_in);
+}
+
 bool window_append(satellite_window &into, const WindowHandle &piece, bool by_place,
                    long long int x, long long int y, std::string &why)
 {
+    // A CONSOLE HOLDS NOTHING BUT ITS TERMINAL (GTK-17): what goes into one is
+    // written, not appended. Refused by name, with the line to write instead.
+    if (into.piece == satellite_window::console) {
+        why = "a console holds nothing but its terminal -- .display(\"words\") is how something goes into one";
+        return false;
+    }
     const bool a_window = into.piece == satellite_window::window;
     if (!a_window && !into.holds_pieces()) {
         why = std::string(into.piece_name()) + " holds nothing -- a window, a row, a column, a "
@@ -174,6 +200,17 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     }
     if (piece == nullptr || piece->widget == nullptr) {
         why = "there is nothing here to append";
+        return false;
+    }
+    // A FRAME GOES INSIDE NOTHING (a fresh reader, 2026-09-22, GTK-17). GTK's
+    // only guard is "has no parent", and a GtkWindow has none, so
+    // `a_row.append(a_window)` would quietly make a mapped toplevel a box's
+    // child -- and then the window's own teardown would null a handle that is
+    // still on the screen. The hole was there for a window before a console
+    // existed; a second frame made it worth closing.
+    if (piece->is_a_window()) {
+        why = std::string(piece->piece_name()) + " is a frame of its own and goes inside nothing -- what goes in " +
+              into.piece_name() + " is a piece, the kind satellite.window.button(\"text\") makes";
         return false;
     }
     // A MENU IS NOT A WIDGET AND HAS NO PLACE IN A FIXED OR A ROW (GTK-12). It
@@ -302,7 +339,7 @@ WindowHandle the_window_holding(const satellite_window &piece)
     // it closed, its clock struck, a key was pressed in it -- that is the window
     // itself. Walking up from a window finds nothing, and a capsule declaring
     // `its_window` would have been handed nothing.
-    if (piece.piece == satellite_window::window)
+    if (piece.is_a_window())
         return const_cast<satellite_window &>(piece).shared_from_this();
     // CAPPED, AND THE CAP IS NOT THE DESIGN. `.append` refuses to make a loop,
     // so this walks a tree; the count is here so that a defect in that refusal
@@ -310,7 +347,7 @@ WindowHandle the_window_holding(const satellite_window &piece)
     // place a hang would look exactly like satl locking up.
     WindowHandle above = piece.inside_of.lock();
     for (int steps = 0; above != nullptr && steps < 4096; ++steps) {
-        if (above->piece == satellite_window::window)
+        if (above->is_a_window())
             return above;
         above = above->inside_of.lock();
     }
@@ -319,7 +356,7 @@ WindowHandle the_window_holding(const satellite_window &piece)
 
 bool window_close(satellite_window &which, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window can be closed";
         return false;
     }
@@ -335,7 +372,7 @@ bool window_close(satellite_window &which, std::string &why)
 
 bool window_focus(satellite_window &which, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window can be brought to the front";
         return false;
     }
@@ -358,7 +395,7 @@ bool window_set_title(satellite_window &which, const std::string &title, std::st
         why = "a menu's words are its heading -- write .text(\"File\") instead";
         return false;
     }
-    if (which.piece == satellite_window::window) {
+    if (which.is_a_window()) {
         if (!still_there(which, why))
             return false;
         GtkWidget *widget = as_widget(which);
@@ -390,7 +427,7 @@ bool window_set_title(satellite_window &which, const std::string &title, std::st
 
 bool window_resize(satellite_window &which, long long int wide, long long int tall, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window is given a size -- a piece inside one is sized by what holds it";
         return false;
     }
@@ -428,7 +465,7 @@ bool window_size_of(satellite_window &which, bool the_height, long long int &out
     }
     GtkWidget *widget = as_widget(which);
     int got = 0, natural = 0;
-    const bool a_window = which.piece == satellite_window::window;
+    const bool a_window = which.is_a_window();
     on_the_desk([widget, the_height, &got, &natural] {
         got = the_height ? gtk_widget_get_height(widget) : gtk_widget_get_width(widget);
         if (got > 0)
@@ -451,7 +488,7 @@ bool window_size_of(satellite_window &which, bool the_height, long long int &out
 
 bool window_fullscreen_of(satellite_window &which, bool &out, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window fills the screen";
         return false;
     }
@@ -466,7 +503,7 @@ bool window_fullscreen_of(satellite_window &which, bool &out, std::string &why)
 
 bool window_set_fullscreen(satellite_window &which, bool on, std::string &why)
 {
-    if (which.piece != satellite_window::window) {
+    if (!which.is_a_window()) {
         why = "only a window fills the screen";
         return false;
     }

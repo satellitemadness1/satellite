@@ -283,7 +283,32 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         went = window_write(*window, x, y, words, why);
         break;
     }
-    case token::clear_token: went = window_clear(*window, why); break;
+    // `.clear()` IS TWO PIECES' WORD (GTK-17): a canvas's list emptied, or a
+    // console's screen and scrollback. The receiver says which, at the one
+    // moment that is known.
+    case token::clear_token:
+        went = window->piece == satellite_window::console ? console_clear(*window, why)
+                                                          : window_clear(*window, why);
+        break;
+    // A CONSOLE'S OWN (GTK-17). `.display` takes what satellite.console.display
+    // takes at its simplest -- text, or a number as its digits -- and writes it
+    // as one line; `.typed` names the capsule a finished line runs; `.home`
+    // sends the cursor to the corner.
+    case token::display_token: {
+        std::string line;
+        if (!text_of(arguments[0], line, what, context))
+            return Value();
+        went = console_display(*window, line, why);
+        break;
+    }
+    case token::typed_token: {
+        std::string capsule;
+        if (!text_of(arguments[0], capsule, what, context))
+            return Value();
+        went = console_typed(*window, capsule, why);
+        break;
+    }
+    case token::home_token: went = console_home(*window, why); break;
     case token::save_token: {
         std::string path;
         if (!text_of(arguments[0], path, what, context))

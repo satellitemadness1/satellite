@@ -107,6 +107,9 @@ std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
     // says nothing, as the holders above do.
     case satellite_window::canvas:
     case satellite_window::tabs: break;
+    // A CONSOLE'S WORDS ARE ON ITS SCREEN (GTK-17), and it is refused before
+    // it reaches here: `.typed` is the last line a person finished.
+    case satellite_window::console:
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }
@@ -122,6 +125,12 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
     // wrote `.text` on a window meant `.title` -- so say that.
     if (which.piece == satellite_window::window) {
         why = "a window's words are its title -- write .title(\"text\") instead";
+        return false;
+    }
+    // A CONSOLE IS WRITTEN INTO, A LINE AT A TIME (GTK-17): `.text` on one
+    // would be a second word for `.display`, so it is sent to the first.
+    if (which.piece == satellite_window::console) {
+        why = "a console is written into a line at a time -- write .display(\"words\") instead";
         return false;
     }
     if (which.piece == satellite_window::picture) {
@@ -174,6 +183,10 @@ bool window_text_of(satellite_window &which, std::string &out, std::string &why)
 {
     if (which.piece == satellite_window::window) {
         why = "a window's words are its title -- write .title instead";
+        return false;
+    }
+    if (which.piece == satellite_window::console) {
+        why = "a console's words are on its screen -- .typed is the last line a person finished in it";
         return false;
     }
     if (which.piece == satellite_window::picture) {
