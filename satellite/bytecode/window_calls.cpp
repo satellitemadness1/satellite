@@ -86,6 +86,14 @@ constexpr AWord kWords[] = {
     {11, "choice", 1, satellite_window::choice, AWord::items,
      "satellite.window.choice takes a list of what a person may pick: "
      "satellite.window.choice(satellite.container.list(\"red\", \"green\"))"},
+    {12, "row", 0, satellite_window::row, AWord::words,
+     "satellite.window.row takes nothing -- what goes in it is .append'ed: satellite.window.row()"},
+    {13, "column", 0, satellite_window::column, AWord::words,
+     "satellite.window.column takes nothing -- what goes in it is .append'ed: "
+     "satellite.window.column()"},
+    {14, "grid", 0, satellite_window::grid, AWord::words,
+     "satellite.window.grid takes nothing -- what goes in it is .append'ed at a cell: "
+     "satellite.window.grid()"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
@@ -306,6 +314,8 @@ std::string window_word_takes(Code code)
 std::string window_methods_are()
 {
     return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\") and .ok; "
+           "a row, a column or a grid has .append too -- .append(piece) for a row, "
+           ".append(piece, across, down) for a grid's cell; "
            "a piece in one has .text; a checkbox or a switch has .on; a slider, a number box or "
            "a progress bar has .value; a choice has .chosen -- all read bare and written with "
            "brackets; and a button has .pressed(a_capsule) and .press() "
@@ -328,6 +338,21 @@ int window_method_arity(Code method)
     case token::ok_token:      return 0;
     default:                   return -1;
     }
+}
+
+int window_method_also_takes(Code method)
+{
+    // `.append` IS THE FIRST METHOD WITH TWO RIGHT COUNTS (GTK-7). A window and
+    // a grid place what goes in them, so they take the piece and where it goes;
+    // a row and a column put their pieces one after another and take just the
+    // piece.
+    //
+    // WHICH ONE IS RIGHT IS THE RECEIVER'S AND THE CHECKER CANNOT KNOW IT. A
+    // `satellite.variable.window` name may hold a window or a row, and which it
+    // holds is not decided until the line that makes it RUNS. So the checker
+    // lets both counts through and window_append() names the wrong one with the
+    // piece it actually got -- which is the one place that can.
+    return method == token::append_token ? 1 : -1;
 }
 
 bool window_method_takes_a_capsule_name(Code method) { return method == token::pressed_token; }
@@ -590,7 +615,8 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
                                                         "its brackets: " + what + "()");
         return Value();
     }
-    if (arguments.size() != static_cast<std::size_t>(wanted)) {
+    if (arguments.size() != static_cast<std::size_t>(wanted) &&
+        static_cast<int>(arguments.size()) != window_method_also_takes(method)) {
         context.refuse(satl_line_not_understood, what + " takes " + std::to_string(wanted) +
                                                      (wanted == 1 ? " argument, and was given " :
                                                                     " arguments, and was given ") +
@@ -677,11 +703,14 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
                                                   "given " + arguments[0].kind_name());
             return Value();
         }
+        // ONE ARGUMENT OR THREE, and which is right is decided by what the
+        // RECEIVER turned out to be -- window_append() is what knows.
+        const bool by_place = arguments.size() == 3;
         long long int x = 0, y = 0;
-        if (!place_of(arguments[1], x, what + "'s across", context) ||
-            !place_of(arguments[2], y, what + "'s down", context))
+        if (by_place && (!place_of(arguments[1], x, what + "'s across", context) ||
+                         !place_of(arguments[2], y, what + "'s down", context)))
             return Value();
-        went = window_append(*window, *piece, x, y, why);
+        went = window_append(*window, *piece, by_place, x, y, why);
         break;
     }
     default: break;

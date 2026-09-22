@@ -74,6 +74,20 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     // nothing -- satellite.window.switch(). A switch with a label beside it is a
     // switch and a label, which is two pieces and GTK-7's business.
     case satellite_window::a_switch: return gtk_switch_new();
+    // A ROW, A COLUMN AND A GRID TAKE NO WORDS EITHER, and they are here rather
+    // than in a factory of their own because a container IS a widget -- what
+    // makes them different is what `.append` does with them, not how they are
+    // made.
+    case satellite_window::row:
+        return gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    case satellite_window::column:
+        return gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    case satellite_window::grid: {
+        GtkWidget *made = gtk_grid_new();
+        gtk_grid_set_row_spacing(GTK_GRID(made), 6);
+        gtk_grid_set_column_spacing(GTK_GRID(made), 6);
+        return made;
+    }
     // MADE FROM NUMBERS AND NOT FROM WORDS, so they are not this function's --
     // window_piece_of_numbers below is where they are made, and reaching here
     // with one is window_calls.cpp having read the table wrongly.

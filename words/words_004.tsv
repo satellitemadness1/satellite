@@ -33,3 +33,9 @@
 1 27 10	satellite.window.progress
 1 27 10 0	satellite.window.progress()
 1 27 11	satellite.window.choice(items)
+1 27 12	satellite.window.row
+1 27 12 0	satellite.window.row()
+1 27 13	satellite.window.column
+1 27 13 0	satellite.window.column()
+1 27 14	satellite.window.grid
+1 27 14 0	satellite.window.grid()

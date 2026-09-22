@@ -352,8 +352,14 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         }
         // `.press` AND `.pressed` SAY IT BETTER THEMSELVES, wherever they are
         // written, so they are not counted twice and given the duller sentence.
+        // `.append` HAS TWO RIGHT COUNTS AND THE CHECKER LETS BOTH THROUGH
+        // (GTK-7). It cannot do better: which one is right depends on what the
+        // receiver turned out to BE, and a satellite.variable.window name may
+        // hold a window or a row. window_append() names the wrong one at the
+        // moment it knows, with the piece it actually got.
         if (bracketed && method != token::press_token && !window_method_takes_a_capsule_name(method) &&
-            given != static_cast<std::size_t>(window_method_arity(method))) {
+            given != static_cast<std::size_t>(window_method_arity(method)) &&
+            static_cast<int>(given) != window_method_also_takes(method)) {
             why = spelling + " takes " + std::to_string(window_method_arity(method)) +
                   (window_method_arity(method) == 1 ? " argument, and was given " : " arguments, and was given ") +
                   std::to_string(given);

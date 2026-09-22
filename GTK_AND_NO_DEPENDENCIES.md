@@ -76,7 +76,7 @@ projects produce the archives.
 | ✔ | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
 | ✔ | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
 | — | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
-| — | **GTK-7** rows, columns, a grid | gtk | — |
+| ✔ | **GTK-7** rows, columns, a grid | gtk | — |
 | — | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
 | — | **GTK-9** every piece talks back | gtk, gobject | libffi |
 | — | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
@@ -817,7 +817,7 @@ reach a line of it**. GTK-6 is what earns them.
   milestone must not invent a second set.
 - SVG is `libgtk_svg.a` in 4.24 and comes free with the same word.
 
-## GTK-7 — putting a piece somewhere other than by coordinate
+## GTK-7 — putting a piece somewhere other than by coordinate — **BUILT 2026-09-21**
 
     satellite.variable.window a_row = satellite.window.row()
     a_row.append(satellite.window.button("one"))
@@ -841,6 +841,46 @@ function takes only the method — so **it has to learn the receiver too**, or
 arity checking for `.append` moves back to the walker and a program prints a
 line before stopping. That regression is exactly the one `7480119` fixed for
 window methods generally, so it must not be reintroduced here.
+
+**AS BUILT, and the arity question above has an answer that neither shape
+offered.** **The checker cannot know the receiver — ever.** A
+`satellite.variable.window` name may hold a window or a row, and which it holds
+is not decided until the line that makes it **runs**. So:
+
+- the checker accepts **one argument or three**, and nothing else — `.append(a, b)`
+  is still refused before a line runs;
+- `window_append()` names the wrong one at the moment it knows, **with the piece
+  it actually got**: *"a row puts its pieces one after another, so .append takes
+  just the piece"*.
+
+Nothing moved back to the walker that the checker could have caught. `1 27 12`
+row, `1 27 13` column, `1 27 14` grid, all taking nothing.
+
+**A GRID'S CELLS COUNT FROM 1**, because that is how satellite counts a file's
+lines (the author: *"all line numbers start at 1"*). GTK counts from 0 and the
+one subtraction lives in `window_append` so that no program ever has to know it.
+
+### Nesting broke two things that already worked, and both were found by running it
+
+1. **A press inside a row handed its capsule the ROW.** `inside_of` names the
+   *immediate* parent, which was the window for every piece that had ever
+   existed — so `when_pressed(the_piece, its_window)` would have received a row
+   where it declared a window, and `its_window.close()` would have answered
+   *"only a window can be closed"*: a refusal about a line that is right.
+   `the_window_holding()` walks the rest of the way, and **everything that wants
+   "the window this happened in" must go through it**.
+2. **A teardown let go of only the window's direct children.** GTK frees the
+   whole tree with the window, so a button inside a row would have kept a
+   `GtkWidget *` that had been freed — and **it would have read as a live button
+   right up until something touched it**, which is the exact failure that loop
+   was written to prevent in the first place.
+
+**And one hang was designed out rather than found.** `.append` refuses to put a
+piece inside something it already holds, because that is the only way the
+`inside_of` chain could be made to loop — and a loop there is a hang **inside a
+press**, which is the one place a hang looks exactly like satl locking up
+(Q-WIN-11a's whole subject). `the_window_holding()` caps its walk anyway, so a
+defect in that refusal is a refusal rather than a hang.
 
 ## GTK-8 — the window itself is more than a rectangle
 
@@ -1154,12 +1194,12 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE ELEVEN WIDGETS** as of 2026-09-21: a window, a button, a label, a
-  text box, a text area, a checkbox, a switch, a slider, a number box, a
-  progress bar and a choice.
+- **THERE ARE FOURTEEN WIDGETS** as of 2026-09-21: a window, a button, a label,
+  a text box, a text area, a checkbox, a switch, a slider, a number box, a
+  progress bar, a choice, a row, a column and a grid.
   No picture, no row, no menu, nothing that talks back but a button. **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
-  **GTK-1 to GTK-5 are built** — the first paid GTK-0's bill, the second proved a
+  **GTK-1 to GTK-5 and GTK-7 are built** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a

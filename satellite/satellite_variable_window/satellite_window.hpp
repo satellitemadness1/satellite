@@ -51,7 +51,8 @@ using WindowHandle = std::shared_ptr<satellite_window>;
 class satellite_window : public std::enable_shared_from_this<satellite_window> {
 public:
     // WHICH PIECE OF A WINDOW THIS IS. `window` is the thing with a frame;
-    // everything after it is a thing put inside one.
+    // everything after it is a thing put inside one -- and since GTK-7 some of
+    // those hold pieces of their own.
     //
     // `how_many_pieces` IS NOT A PIECE, it is the count -- and it is what makes
     // adding one below without naming it a COMPILE ERROR rather than a widget
@@ -61,7 +62,8 @@ public:
     // language's spelling and C++'s disagree, and renaming the piece would have
     // been letting C++ choose satellite's words.
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
-                 slider, number_box, progress, choice, how_many_pieces };
+                 slider, number_box, progress, choice,
+                 row, column, grid, how_many_pieces };
 
     Piece piece = window;
 
@@ -81,6 +83,12 @@ public:
     // GtkWidget * that GTK has already freed.
     std::vector<WindowHandle> pieces;
 
+    // WHETHER THIS PIECE HOLDS OTHERS (GTK-7). A row, a column and a grid do;
+    // everything else is a leaf. It is asked in four places -- what `.append`
+    // takes, where a piece is put, what a teardown has to walk, and which window
+    // a press happened in -- so it is one question here and not four tests.
+    bool holds_pieces() const { return piece == row || piece == column || piece == grid; }
+
     // AND THE WINDOW A PIECE IS IN, the other way along that same line. WEAK,
     // because the window already holds this piece STRONGLY: two strong
     // references in a ring is a window and a button that keep each other alive
@@ -88,6 +96,13 @@ public:
     //
     // It is what lets a pressed capsule reach the window it was pressed in --
     // a button's own `.close()` is refused, because only a window closes.
+    //
+    // IT POINTS AT THE IMMEDIATE PARENT AND NOT AT THE WINDOW (GTK-7). A button
+    // in a row in a window points at the ROW. `the_window_holding()` below is
+    // what walks the rest of the way, and everything that wants "the window this
+    // happened in" must go through it -- reading `inside_of` directly was right
+    // when a window was the only thing a piece could be in, and has been wrong
+    // since rows existed.
     std::weak_ptr<satellite_window> inside_of;
 
     std::string title;            // what it was made with, and what .title reads back
@@ -126,6 +141,15 @@ public:
     const char *piece_shown() const;    // "label"    -- what display() prints
 };
 
+// THE WINDOW A PIECE IS IN, however deep it is (GTK-7). Walks `inside_of` up
+// until it finds the thing with a frame, and answers null for a piece that is in
+// nothing yet -- which is every piece before it is appended.
+//
+// IT CANNOT LOOP. `.append` refuses to put a piece into something already inside
+// it, so the chain it walks is a tree by construction; the step count is capped
+// anyway, because a bug in that refusal must not become a hang.
+WindowHandle the_window_holding(const satellite_window &piece);
+
 // EVERY PIECE, NAMED ONCE, IN Piece's OWN ORDER. `the` is what a refusal calls
 // it; `shown` is the word a program sees when it displays one -- (label "text").
 //
@@ -150,6 +174,9 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a number box", "number box"},
     {"a progress bar", "progress bar"},
     {"a choice", "choice"},
+    {"a row", "row"},
+    {"a column", "column"},
+    {"a grid", "grid"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -318,8 +345,18 @@ bool window_set_chosen(satellite_window &which, const std::string &to, std::stri
 // `my_window.append(piece, x, y)` -- BY ITS CENTRE (WIN-3): 400, 300 is the
 // middle of an 800x600 window, not a corner. The piece's own measured size is
 // halved and taken off at placement, which is the whole difference.
-bool window_append(satellite_window &into, const WindowHandle &piece, long long int x,
-                   long long int y, std::string &why);
+// `my_window.append(piece, x, y)` -- BY ITS CENTRE (WIN-3), and
+// `a_row.append(piece)` -- ONE AFTER ANOTHER (GTK-7).
+//
+// `by_place` IS FALSE FOR A ROW OR A COLUMN, which have no coordinates at all,
+// and true for a window (pixels) and a grid (CELLS, counting from 1 the way
+// satellite counts a file's lines). Giving the wrong one is refused with a
+// sentence naming the piece it was actually given, because WHICH ONE IS RIGHT IS
+// THE RECEIVER'S and the checker cannot know it -- a satellite.variable.window
+// name may hold a window or a row, and which it holds is not decided until the
+// line that makes it RUNS.
+bool window_append(satellite_window &into, const WindowHandle &piece, bool by_place,
+                   long long int x, long long int y, std::string &why);
 
 // `my_button.pressed(when_pressed)` -- the capsule to run when it is pressed
 // (WIN-11). ONLY A BUTTON, because only a button is pressed; a window is

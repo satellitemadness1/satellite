@@ -106,49 +106,128 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
     return made;
 }
 
-bool window_append(satellite_window &into, const WindowHandle &piece, long long int x,
-                   long long int y, std::string &why)
+bool window_append(satellite_window &into, const WindowHandle &piece, bool by_place,
+                   long long int x, long long int y, std::string &why)
 {
-    if (into.piece != satellite_window::window) {
-        why = "only a window can have something appended into it";
+    const bool a_window = into.piece == satellite_window::window;
+    if (!a_window && !into.holds_pieces()) {
+        why = std::string(into.piece_name()) + " holds nothing -- a window, a row, a column and a "
+              "grid do";
         return false;
     }
-    if (!still_there(into, why))
+    // A WINDOW AND A GRID PLACE BY COORDINATE; A ROW AND A COLUMN DO NOT. Which
+    // one is right is the RECEIVER'S, and the checker cannot know it -- a
+    // satellite.variable.window name may hold either, and which it holds is not
+    // decided until the line that makes it runs. So the checker lets both counts
+    // through and this is where the wrong one is named.
+    const bool wants_a_place = a_window || into.piece == satellite_window::grid;
+    if (wants_a_place != by_place) {
+        why = wants_a_place
+                  ? std::string(into.piece_name()) + " places what is put in it, so .append takes the "
+                    "piece and where it goes: .append(the_piece, across, down)"
+                  : std::string(into.piece_name()) + " puts its pieces one after another, so .append "
+                    "takes just the piece: .append(the_piece)";
         return false;
+    }
+    // A WINDOW MUST BE ON A SCREEN; A ROW NEED NOT BE. A row is built and filled
+    // BEFORE it goes into a window, which is the ordinary order to write those
+    // lines in -- so what must be true of a container is only that its widget is
+    // still there.
+    if (a_window ? !still_there(into, why) : into.widget == nullptr) {
+        if (!a_window)
+            why = "it is closed";
+        return false;
+    }
     if (piece == nullptr || piece->widget == nullptr) {
         why = "there is nothing here to append";
         return false;
     }
-    if (piece->on_the_screen) {
-        why = "that piece is already in a window";
+    if (piece->widget == into.widget) {
+        why = "a piece cannot be put inside itself";
         return false;
     }
+    // ALREADY SOMEWHERE. GTK refuses to give a widget a second parent and prints
+    // its own critical warning; satellite says it in a sentence first.
+    if (piece->inside_of.lock() != nullptr) {
+        why = "that piece is already in " + std::string(piece->inside_of.lock()->piece_name());
+        return false;
+    }
+    // AND NOT INTO SOMETHING IT ALREADY HOLDS, which is the only way the
+    // `inside_of` chain could be made to loop -- and a loop there is a hang in
+    // the_window_holding(), which every press walks.
+    for (WindowHandle above = into.weak_from_this().lock(); above != nullptr;
+         above = above->inside_of.lock()) {
+        if (above.get() == piece.get()) {
+            why = "a piece cannot be put inside something it already holds";
+            return false;
+        }
+    }
     satellite_window *raw = piece.get();
-    void *inside = into.inside;
+    void *inside = a_window ? into.inside : into.widget;
+    const satellite_window::Piece holder = into.piece;
     const int at_x = static_cast<int>(x), at_y = static_cast<int>(y);
-    on_the_desk([raw, inside, at_x, at_y] {
+    on_the_desk([raw, inside, holder, at_x, at_y] {
+        GtkWidget *widget = static_cast<GtkWidget *>(raw->widget);
+        GtkWidget *into_this = static_cast<GtkWidget *>(inside);
+        if (holder == satellite_window::grid) {
+            // A CELL, COUNTING FROM 1, which is how satellite counts a file's
+            // lines (SATELLITE_FILE_OPERATIONS, the author: "all line numbers
+            // start at 1"). GTK counts cells from 0, and the one subtraction is
+            // here so that no program ever has to know that.
+            gtk_grid_attach(GTK_GRID(into_this), widget, at_x - 1, at_y - 1, 1, 1);
+            return;
+        }
+        if (holder != satellite_window::window) {
+            gtk_box_append(GTK_BOX(into_this), widget);
+            return;
+        }
         // BY ITS CENTRE, NOT ITS CORNER (WIN-3): 400, 300 is the middle of an
         // 800x600 window. GtkFixed places by the top-left, so the piece is
         // measured and half of each side is taken off -- which is the whole
         // difference between the author's spelling and GTK's.
-        GtkWidget *widget = static_cast<GtkWidget *>(raw->widget);
         int least = 0, natural = 0, wide = 0, tall = 0;
         gtk_widget_measure(widget, GTK_ORIENTATION_HORIZONTAL, -1, &least, &natural, nullptr, nullptr);
         wide = natural;
         gtk_widget_measure(widget, GTK_ORIENTATION_VERTICAL, wide, &least, &natural, nullptr, nullptr);
         tall = natural;
-        gtk_fixed_put(GTK_FIXED(static_cast<GtkWidget *>(inside)), widget,
+        gtk_fixed_put(GTK_FIXED(into_this), widget,
                       static_cast<double>(at_x) - wide / 2.0, static_cast<double>(at_y) - tall / 2.0);
     });
-    piece->on_the_screen = true;
+    // ON A SCREEN ONLY IF WHAT IT WENT INTO IS. A button appended into a row
+    // that is not in a window yet is not on any screen, and saying it was would
+    // let `.press()` pretend a person clicked something nobody could see.
+    piece->on_the_screen = a_window || into.on_the_screen;
     // HELD BY THE WINDOW, so that the window going away can null this piece's
     // GtkWidget * before GTK frees it underneath a handle the program still has.
     into.pieces.push_back(piece);
-    // AND THE PIECE KNOWS WHICH WINDOW IT IS IN, which is how a pressed capsule
-    // reaches the window: `.append` is the one place a piece ever enters one, so
-    // it is the one place that can say so.
+    // AND THE PIECE KNOWS WHAT IT IS IN, which is how a pressed capsule reaches
+    // the window: `.append` is the one place a piece ever enters anything, so it
+    // is the one place that can say so. IT NAMES THE IMMEDIATE PARENT -- a row,
+    // if that is what it went into -- and the_window_holding() walks the rest.
     piece->inside_of = into.weak_from_this();
+    // AND A ROW THAT IS ALREADY IN A WINDOW PUTS EVERYTHING IT HOLDS ON THE
+    // SCREEN WITH IT. Filling a row first and appending it after is the ordinary
+    // order; appending it first and filling it later is just as legal, and the
+    // pieces inside were marked not-on-a-screen when they went in.
+    if (piece->holds_pieces() && piece->on_the_screen)
+        for (const WindowHandle &inside_it : piece->pieces)
+            inside_it->on_the_screen = true;
     return true;
+}
+
+WindowHandle the_window_holding(const satellite_window &piece)
+{
+    // CAPPED, AND THE CAP IS NOT THE DESIGN. `.append` refuses to make a loop,
+    // so this walks a tree; the count is here so that a defect in that refusal
+    // is a refusal here rather than a hang inside a press, which is the one
+    // place a hang would look exactly like satl locking up.
+    WindowHandle above = piece.inside_of.lock();
+    for (int steps = 0; above != nullptr && steps < 4096; ++steps) {
+        if (above->piece == satellite_window::window)
+            return above;
+        above = above->inside_of.lock();
+    }
+    return nullptr;
 }
 
 bool window_pressed(satellite_window &which, const std::string &capsule, std::string &why)

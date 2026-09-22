@@ -2239,6 +2239,73 @@ expect "the refusal code follows what happened, not what the tail used to assume
        "$(grep -c 'context.refuse(window->widget == nullptr ? window_is_closed : types_do_not_meet,' satellite/bytecode/window_calls.cpp)"
 
 # ---------------------------------------------------------------------------
+# ROWS, COLUMNS AND A GRID (GTK_AND_NO_DEPENDENCIES.md GTK-7, 2026-09-21) -- the
+# first pieces that HOLD other pieces, and the first change to `.append`.
+# ---------------------------------------------------------------------------
+#
+# PROVED ON A COMPOSITOR: a row of two buttons and a column of two labels and a
+# grid of three labels all appended into one window; `a_row.append(one)` with no
+# coordinates; `a_grid.append(label, 1, 1)` by CELL counting from 1; and -- the
+# part worth having -- a button pressed INSIDE A ROW handing its capsule the
+# WINDOW, not the row.
+#
+# THAT LAST ONE WAS A REAL BUG NESTING WOULD HAVE INTRODUCED. `inside_of` names
+# the immediate parent, so a press in a row would have handed a capsule a row
+# where it declared a window, and `its_window.close()` would have answered "only
+# a window can be closed" -- a refusal about a line that is right.
+# the_window_holding() walks the rest of the way.
+
+expect "row is 1 27 12, column 1 27 13 and grid 1 27 14, each with its call" "1|1|1|1|1|1" \
+       "$(grep -cP '^1 27 12\tsatellite.window.row\t' words/words.tsv)|$(grep -cP '^1 27 12 0\tsatellite.window.row\(\)\t' words/words.tsv)|$(grep -cP '^1 27 13\tsatellite.window.column\t' words/words.tsv)|$(grep -cP '^1 27 13 0\tsatellite.window.column\(\)\t' words/words.tsv)|$(grep -cP '^1 27 14\tsatellite.window.grid\t' words/words.tsv)|$(grep -cP '^1 27 14 0\tsatellite.window.grid\(\)\t' words/words.tsv)"
+
+# `.append` TAKES ONE ARGUMENT **OR** THREE, and the checker lets both through
+# because which is right depends on what the receiver turned out to BE -- a
+# satellite.variable.window name may hold a window or a row, and that is not
+# decided until the line that makes it runs.
+cat > build/window_append_one.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window r = satellite.window.row()
+    r.append(satellite.window.button("a"))
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_append_one.satl > build/window_append_one.out 2>&1
+expect ".append with one argument passes the checker, and stops only for want of a screen" 50 $?
+
+cat > build/window_append_two.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window r = satellite.window.row()
+    r.append(satellite.window.button("a"), 10)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_append_two.satl > build/window_append_two.out 2>&1
+expect ".append with TWO arguments is still refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_append_two.out)"
+
+# A CONTAINER NESTS, SO THE TEARDOWN HAS TO WALK. GTK frees the whole tree with
+# the window; walking only the window's direct children would leave a button in
+# a row holding a GtkWidget * that has been freed -- and it would read as a live
+# button right up until something touched it.
+expect "a window going away lets go of every piece, however deep" "1|1" \
+       "$(grep -c 'let_go_of_every_piece(\*open_windows\[at\])' satellite/satellite_variable_window/window_desk.cpp)|$(grep -c 'if (piece->holds_pieces())' satellite/satellite_variable_window/window_desk.cpp)"
+
+# AND A PRESS REPORTS THE WINDOW, NEVER THE ROW.
+expect "a press walks up to the window it happened in" "1|0" \
+       "$(grep -c 'the_window_holding(\*piece)' satellite/satellite_variable_window/window_desk.cpp)|$(grep -c 'piece->inside_of.lock()});' satellite/satellite_variable_window/window_desk.cpp)"
+
+# A LOOP IN `inside_of` WOULD BE A HANG INSIDE A PRESS, which is the one place a
+# hang looks exactly like satl locking up. .append refuses to make one, and
+# the_window_holding caps its walk anyway.
+expect "a piece cannot be put inside something it already holds" "1|1" \
+       "$(grep -c 'a piece cannot be put inside something it already holds' satellite/satellite_variable_window/satellite_window.cpp)|$(grep -c 'steps < 4096' satellite/satellite_variable_window/satellite_window.cpp)"
+
+# ---------------------------------------------------------------------------
 # A CAPSULE TAKES ARGUMENTS (2026-09-21). The walker ignored a capsule's declared
 # parameters entirely until now -- every capsule was entered with a fresh empty
 # VariableTable -- which is why a pressed capsule could print and write files and

@@ -78,6 +78,11 @@ std::string what_a_piece_says(GtkWidget *widget, satellite_window::Piece piece)
     // A CHOICE'S WORDS ARE WHICH ITEM IS PICKED, and `.chosen` is the word for
     // that. `.text` answering the same thing would be two names for one thing.
     case satellite_window::choice: break;
+    // A CONTAINER SAYS NOTHING OF ITS OWN. What is IN it says things, and a row
+    // answering the words of its first piece would be a guess nobody asked for.
+    case satellite_window::row:
+    case satellite_window::column:
+    case satellite_window::grid: break;
     case satellite_window::window:
     case satellite_window::how_many_pieces: break;
     }

@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 399;
+inline constexpr unsigned int kWordsInTable = 405;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -211,6 +211,9 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x03011B0900000000ULL, 4492},  // 1 27 9 -- satellite.window.number_box(least, most)
     {0x03011B0A00000000ULL, 4493},  // 1 27 10 -- satellite.window.progress
     {0x03011B0B00000000ULL, 4495},  // 1 27 11 -- satellite.window.choice(items)
+    {0x03011B0C00000000ULL, 4496},  // 1 27 12 -- satellite.window.row
+    {0x03011B0D00000000ULL, 4498},  // 1 27 13 -- satellite.window.column
+    {0x03011B0E00000000ULL, 4500},  // 1 27 14 -- satellite.window.grid
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -376,6 +379,9 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x040116040C000000ULL, 4450},  // 1 22 4 12 -- satellite.system.memory.used(unit)
     {0x04011B0700000000ULL, 4490},  // 1 27 7 0 -- satellite.window.switch()
     {0x04011B0A00000000ULL, 4494},  // 1 27 10 0 -- satellite.window.progress()
+    {0x04011B0C00000000ULL, 4497},  // 1 27 12 0 -- satellite.window.row()
+    {0x04011B0D00000000ULL, 4499},  // 1 27 13 0 -- satellite.window.column()
+    {0x04011B0E00000000ULL, 4501},  // 1 27 14 0 -- satellite.window.grid()
     {0x05010E0101000000ULL, 4332},  // 1 14 1 1 0 -- satellite.library.main.arguments()
     {0x05010E0101010000ULL, 4333},  // 1 14 1 1 1 -- satellite.library.main.arguments.machine
     {0x05010E0101020000ULL, 4342},  // 1 14 1 1 2 -- satellite.library.main.arguments.memory
@@ -858,6 +864,12 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.window.progress", {1, 27, 10, 0, 0, 0, 0}, 3},
     {"satellite.window.progress()", {1, 27, 10, 0, 0, 0, 0}, 4},
     {"satellite.window.choice(items)", {1, 27, 11, 0, 0, 0, 0}, 3},
+    {"satellite.window.row", {1, 27, 12, 0, 0, 0, 0}, 3},
+    {"satellite.window.row()", {1, 27, 12, 0, 0, 0, 0}, 4},
+    {"satellite.window.column", {1, 27, 13, 0, 0, 0, 0}, 3},
+    {"satellite.window.column()", {1, 27, 13, 0, 0, 0, 0}, 4},
+    {"satellite.window.grid", {1, 27, 14, 0, 0, 0, 0}, 3},
+    {"satellite.window.grid()", {1, 27, 14, 0, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1256,11 +1268,17 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.window.button(text)", 4484},
     {"satellite.window.checkbox(text)", 4488},
     {"satellite.window.choice(items)", 4495},
+    {"satellite.window.column", 4498},
+    {"satellite.window.column()", 4499},
+    {"satellite.window.grid", 4500},
+    {"satellite.window.grid()", 4501},
     {"satellite.window.label(text)", 4485},
     {"satellite.window.new(title, width, height)", 4483},
     {"satellite.window.number_box(least, most)", 4492},
     {"satellite.window.progress", 4493},
     {"satellite.window.progress()", 4494},
+    {"satellite.window.row", 4496},
+    {"satellite.window.row()", 4497},
     {"satellite.window.slider(least, most)", 4491},
     {"satellite.window.switch", 4489},
     {"satellite.window.switch()", 4490},

@@ -46,6 +46,13 @@ std::string window_word_takes(token::Code code);
 // have. `.append` takes three -- the piece and where its centre goes.
 int window_method_arity(token::Code method);
 
+// AND A SECOND COUNT THE SAME METHOD ACCEPTS, or -1 for one that takes exactly
+// what window_method_arity says. `.append` is the first and so far the only one:
+// a window and a grid take the piece and where it goes, a row and a column take
+// just the piece, and which is right is the RECEIVER's -- which the checker
+// cannot know, because a satellite.variable.window name may hold either.
+int window_method_also_takes(token::Code method);
+
 // AND WHAT TO SAY WHEN IT IS -1: the methods a window and the pieces in one do
 // have, in one sentence. The CHECKER prints this, and it is asked for rather
 // than copied for the reason the paragraph below gives about capsule names --

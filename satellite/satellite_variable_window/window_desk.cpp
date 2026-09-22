@@ -134,6 +134,25 @@ void the_desk_holds(const WindowHandle &window)
 // CALLED ON THE DESK'S OWN THREAD, out of GTK's `destroy` signal. It takes the
 // same mutex as everything else and must never go through on_the_desk(), which
 // would be the desk waiting on itself.
+namespace {
+
+// A PIECE AND EVERYTHING UNDER IT. Depth-first, and it does not clear the
+// `pieces` vectors on the way down: a program still holding a row is entitled to
+// ask that row what it held, and those handles are what keep the answer alive.
+// Only the WINDOW's own vector is cleared, by the caller, because the window is
+// what the desk was holding open.
+void let_go_of_every_piece(satellite_window &holder)
+{
+    for (const WindowHandle &piece : holder.pieces) {
+        if (piece->holds_pieces())
+            let_go_of_every_piece(*piece);
+        piece->on_the_screen = false;
+        piece->widget = nullptr;
+    }
+}
+
+} // namespace
+
 void the_desk_let_go_of(satellite_window *window)
 {
     {
@@ -164,10 +183,13 @@ void the_desk_let_go_of(satellite_window *window)
             // whole module free of a std::string written on the desk's thread and
             // read on the interpreter's: `text` has exactly one writer, and it is
             // not this thread.
-            for (const WindowHandle &piece : open_windows[at]->pieces) {
-                piece->on_the_screen = false;
-                piece->widget = nullptr;
-            }
+            // EVERY PIECE, HOWEVER DEEP (GTK-7). A row inside a window holds
+            // pieces of its own and GTK frees the whole tree with the window, so
+            // walking only the window's direct children would leave a button in
+            // a row holding a GtkWidget * that has been freed -- and it would
+            // read as a live button right up until something touched it, which
+            // is the exact failure this loop was written to prevent.
+            let_go_of_every_piece(*open_windows[at]);
             open_windows[at]->pieces.clear();
             open_windows[at]->on_the_screen = false;
             open_windows[at]->widget = nullptr;
@@ -194,7 +216,12 @@ void the_desk_saw_a_press(const std::string &capsule, const WindowHandle &piece)
         std::lock_guard<std::mutex> lock(desk_mutex);
         // THE WINDOW IS LOOKED UP HERE, ON THE DESK, while it is certainly
         // alive -- `.append` wrote the link and the desk holds the window open.
-        presses.push_back(APress{capsule, piece, piece == nullptr ? WindowHandle() : piece->inside_of.lock()});
+        // THE WINDOW AND NOT THE IMMEDIATE PARENT (GTK-7). A button in a row
+        // points at the ROW, and handing a capsule a row where it declared a
+        // window would fail at `its_window.close()` -- "only a window can be
+        // closed" -- which is a refusal about a line that is right.
+        presses.push_back(APress{capsule, piece,
+                                 piece == nullptr ? WindowHandle() : the_window_holding(*piece)});
     }
     desk_changed.notify_all();
 }
