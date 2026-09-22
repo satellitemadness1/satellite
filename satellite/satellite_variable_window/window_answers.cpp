@@ -22,6 +22,8 @@
 
 #include <gtk/gtk.h>
 
+#include <cmath>
+
 namespace satellite004 {
 namespace {
 
@@ -81,6 +83,16 @@ bool connect_what_changing_means(satellite_window &which, GtkWidget *widget)
     case satellite_window::tabs:
         g_signal_connect(widget, "notify::page", G_CALLBACK(it_was_noticed), &which);
         return true;
+    // A PERSON TICKING ONE OF A one_of CHANGES IT (GTK-3's radio). The box
+    // itself has no signal; each check button in it has `toggled`, and a pick
+    // fires it TWICE -- once on the button going off and once on the one
+    // going on. Both name this piece, and the second is collapsed onto the
+    // first by the queue (window_desk.hpp), so a pick is one change.
+    case satellite_window::one_of:
+        for (GtkWidget *button = gtk_widget_get_first_child(widget); button != nullptr;
+             button = gtk_widget_get_next_sibling(button))
+            g_signal_connect(button, "toggled", G_CALLBACK(it_was_changed), &which);
+        return true;
     default:
         return false;
     }
@@ -94,7 +106,8 @@ bool a_person_can_change(satellite_window::Piece piece)
     return piece == satellite_window::text_box || piece == satellite_window::text_area ||
            piece == satellite_window::checkbox || piece == satellite_window::a_switch ||
            piece == satellite_window::slider || piece == satellite_window::number_box ||
-           piece == satellite_window::choice || piece == satellite_window::tabs;
+           piece == satellite_window::choice || piece == satellite_window::tabs ||
+           piece == satellite_window::one_of;
 }
 
 // A BUTTON WAS PRESSED (WIN-11). ON THE DESK'S THREAD, so it does the one thing
@@ -173,12 +186,18 @@ gboolean a_key_went_down(GtkEventControllerKey *, guint keyval, guint, GdkModifi
     return FALSE;
 }
 
-// AND A CLICK ON SOMETHING THAT IS NOT A BUTTON.
-void it_was_clicked(GtkGestureClick *, gint, gdouble, gdouble, gpointer user_data)
+// AND A CLICK ON SOMETHING THAT IS NOT A BUTTON. WHERE IT LANDED TRAVELS ON THE
+// EVENT (GTK-15's leftover), as a key's name does: GTK hands the point in the
+// widget's own pixels, which on a canvas are the pixels `.line` draws in, and
+// the interpreter copies it onto the piece for `.across` and `.down` to read.
+// Rounded down to a whole pixel, because a satellite number is whole.
+void it_was_clicked(GtkGestureClick *, gint, gdouble x, gdouble y, gpointer user_data)
 {
     satellite_window *piece = static_cast<satellite_window *>(user_data);
     if (!piece->when_clicked.empty())
-        the_desk_saw_something(piece->when_clicked, piece->shared_from_this());
+        the_desk_saw_something(piece->when_clicked, piece->shared_from_this(), false, std::string(),
+                               AnEvent::a_place, static_cast<long long int>(std::floor(x)),
+                               static_cast<long long int>(std::floor(y)));
 }
 
 } // namespace

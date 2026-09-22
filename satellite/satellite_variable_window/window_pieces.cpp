@@ -117,6 +117,7 @@ GtkWidget *a_widget_for(satellite_window::Piece which, const std::string &text)
     case satellite_window::number_box:
     case satellite_window::progress:
     case satellite_window::choice:
+    case satellite_window::one_of:
     case satellite_window::picture:
     // AND A MENU IS NOT A WIDGET AT ALL (GTK-12): window_menu.cpp makes it, out
     // of a GMenu and an action group, and window_piece_of_text routes there
@@ -214,15 +215,47 @@ WindowHandle window_piece_of_numbers(satellite_window::Piece which, long long in
     return made;
 }
 
+namespace {
+
+// A RADIO GROUP, AS GTK4 MAKES ONE (GTK-3's radio, built 2026-09-22): a check
+// button a word, in a column, and every button after the first given the
+// FIRST as its group -- which is what turns a check button into a radio. ON
+// THE DESK.
+//
+// THE FIRST IS TICKED FROM THE START. GTK4 would leave none ticked, and a
+// choice shows its first item from the start; a one-of that showed nothing
+// picked would have `.chosen` answer "" for a control that looks like it has
+// an answer, and a person cannot un-pick a radio once one is picked anyway.
+GtkWidget *a_radio_group_of(const char *const *words)
+{
+    GtkWidget *column = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    GtkCheckButton *first = nullptr;
+    for (; *words != nullptr; ++words) {
+        GtkWidget *button = gtk_check_button_new_with_label(*words);
+        if (first == nullptr) {
+            first = GTK_CHECK_BUTTON(button);
+            gtk_check_button_set_active(first, TRUE);
+        } else {
+            gtk_check_button_set_group(GTK_CHECK_BUTTON(button), first);
+        }
+        gtk_box_append(GTK_BOX(column), button);
+    }
+    return column;
+}
+
+} // namespace
+
 WindowHandle window_piece_of_items(satellite_window::Piece which,
                                    const std::vector<std::string> &items, std::string &why)
 {
-    if (which != satellite_window::choice) {
+    const bool a_radio = which == satellite_window::one_of;
+    if (which != satellite_window::choice && !a_radio) {
         why = "that is not a piece made from a list";
         return nullptr;
     }
     if (items.empty()) {
-        why = "a choice needs something to choose from, and it was given an empty list";
+        why = std::string(a_radio ? "a one-of" : "a choice") +
+              " needs something to choose from, and it was given an empty list";
         return nullptr;
     }
     if (!open_the_desk(why))
@@ -239,7 +272,9 @@ WindowHandle window_piece_of_items(satellite_window::Piece which,
         as_gtk_wants.push_back(item.c_str());
     as_gtk_wants.push_back(nullptr);
     const char *const *strings = as_gtk_wants.data();
-    on_the_desk([raw, strings] { raw->widget = gtk_drop_down_new_from_strings(strings); });
+    on_the_desk([raw, strings, a_radio] {
+        raw->widget = a_radio ? a_radio_group_of(strings) : gtk_drop_down_new_from_strings(strings);
+    });
     return made;
 }
 

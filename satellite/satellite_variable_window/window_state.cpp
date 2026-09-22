@@ -1,6 +1,7 @@
 // satellite/satellite_variable_window/window_state.cpp -- WHAT A PIECE IS SET
 // TO, read and written: `.on`, `.value` and `.chosen`.
-// GTK_AND_NO_DEPENDENCIES.md GTK-3, GTK-4 and GTK-5.
+// GTK_AND_NO_DEPENDENCIES.md GTK-3, GTK-4, GTK-5 and GTK-16; and `.chosen` on
+// a one-of, which is GTK-3's radio (2026-09-22).
 //
 // SPLIT OUT OF window_asks.cpp AT GTK-5, at 398 lines against the author's "try
 // to build for 300 lines". Its neighbour keeps a piece's WORDS; this keeps its
@@ -251,9 +252,41 @@ bool bring_the_tab_forward(GtkWidget *widget, const std::string &wanted)
     return false;
 }
 
+// AND THE SAME TWO QUESTIONS OF A one_of (GTK-3's radio, 2026-09-22): which
+// check button in the column is ticked, by the words beside it, and ticking a
+// named one. THE WORDS ARE READ OFF THE BUTTON, as a tab's name is read off the
+// tab, and exactly one is ticked by construction -- the factory ticks the first
+// and GTK keeps it so.
+bool which_is_ticked(GtkWidget *widget, std::string &out)
+{
+    for (GtkWidget *button = gtk_widget_get_first_child(widget); button != nullptr;
+         button = gtk_widget_get_next_sibling(button)) {
+        if (!gtk_check_button_get_active(GTK_CHECK_BUTTON(button)))
+            continue;
+        const char *got = gtk_check_button_get_label(GTK_CHECK_BUTTON(button));
+        out = got == nullptr ? std::string() : std::string(got);
+        return true;
+    }
+    return false;
+}
+
+bool tick_the_one(GtkWidget *widget, const std::string &wanted)
+{
+    for (GtkWidget *button = gtk_widget_get_first_child(widget); button != nullptr;
+         button = gtk_widget_get_next_sibling(button)) {
+        const char *got = gtk_check_button_get_label(GTK_CHECK_BUTTON(button));
+        if (got != nullptr && wanted == got) {
+            gtk_check_button_set_active(GTK_CHECK_BUTTON(button), TRUE);
+            return true;
+        }
+    }
+    return false;
+}
+
 bool has_something_chosen(const satellite_window &which)
 {
-    return which.piece == satellite_window::choice || which.piece == satellite_window::tabs;
+    return which.piece == satellite_window::choice || which.piece == satellite_window::tabs ||
+           which.piece == satellite_window::one_of;
 }
 
 } // namespace
@@ -261,8 +294,8 @@ bool has_something_chosen(const satellite_window &which)
 bool window_chosen_of(satellite_window &which, std::string &out, std::string &why)
 {
     if (!has_something_chosen(which)) {
-        why = std::string(which.piece_name()) + " has nothing to choose from -- a choice and a set "
-              "of tabs do";
+        why = std::string(which.piece_name()) + " has nothing to choose from -- a choice, a set "
+              "of tabs and a one-of do";
         return false;
     }
     if (which.widget == nullptr) {
@@ -278,6 +311,8 @@ bool window_chosen_of(satellite_window &which, std::string &out, std::string &wh
     on_the_desk([widget, piece, &got] {
         if (piece == satellite_window::tabs)
             which_tab_is_in_front(widget, got);
+        else if (piece == satellite_window::one_of)
+            which_is_ticked(widget, got);
         else
             what_is_picked(widget, got);
     });
@@ -288,8 +323,8 @@ bool window_chosen_of(satellite_window &which, std::string &out, std::string &wh
 bool window_set_chosen(satellite_window &which, const std::string &to, std::string &why)
 {
     if (!has_something_chosen(which)) {
-        why = std::string(which.piece_name()) + " has nothing to choose from -- a choice and a set "
-              "of tabs do";
+        why = std::string(which.piece_name()) + " has nothing to choose from -- a choice, a set "
+              "of tabs and a one-of do";
         return false;
     }
     if (which.widget == nullptr) {
@@ -300,7 +335,9 @@ bool window_set_chosen(satellite_window &which, const std::string &to, std::stri
     const satellite_window::Piece piece = which.piece;
     bool found = false;
     on_the_desk([widget, piece, &to, &found] {
-        found = piece == satellite_window::tabs ? bring_the_tab_forward(widget, to) : pick_it(widget, to);
+        found = piece == satellite_window::tabs     ? bring_the_tab_forward(widget, to)
+                : piece == satellite_window::one_of ? tick_the_one(widget, to)
+                                                    : pick_it(widget, to);
     });
     if (!found) {
         // REFUSED AND NOT SILENTLY IGNORED. gtk_drop_down_set_selected on a

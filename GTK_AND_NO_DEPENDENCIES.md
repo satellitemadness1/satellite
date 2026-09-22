@@ -76,7 +76,7 @@ projects produce the archives.
 | ✔ | **WIN-11** a press | gtk, gobject (`g_signal_connect`, `g_signal_emit_by_name`) | libffi — the closure marshaller is libffi's |
 | ✔ | **GTK-1** a label | gtk | the whole pango stack, as a button's label already does |
 | ✔ | **GTK-2** a person types | gtk | pango |
-| ✔ | **GTK-3** on and off | gtk | — |
+| ✔ | **GTK-3** on and off | gtk (and `gtk_check_button_set_group` for the radio, 2026-09-22) | — |
 | ✔ | **GTK-4** a number chosen | gtk | pango (the number is drawn as text) |
 | ✔ | **GTK-5** a list to choose from | gtk, gobject (`GtkStringList` is a GListModel) | — |
 | ✔ | **GTK-6** a picture | gtk, **gdk-pixbuf** | **libpng, libjpeg-turbo, libtiff**, zlib, gtk_svg |
@@ -84,11 +84,11 @@ projects produce the archives.
 | ✔ | **GTK-8** the window itself | gtk, gdk | gdk-wayland |
 | ✔ | **GTK-9** every piece talks back | gtk, gobject | libffi |
 | ✔ | **GTK-10** the look | gtk (`GtkCssProvider`), gtk_css | pango, fontconfig, freetype |
-| ◑ | **GTK-11** asking a person | gtk, gio (`GAsyncResult`) — **no `GFile`: the file dialog is not built** | — |
+| ◑ | **GTK-11** asking a person | gtk, gio (`GAsyncResult`) — **no `GFile`: the file dialog is not built**; the message and the question never reach the portal (read 2026-09-22) | — |
 | ✔ | **GTK-12** a menu | **gio** (`GMenu`, `GSimpleAction`, `GSimpleActionGroup`, and since 2026-09-22 `g_menu_append_section` for a separator and a submenu link for a menu inside a menu), gtk (`GtkPopoverMenuBar`, `gtk_widget_insert_action_group`) | — |
 | ✔ | **GTK-13** time | **glib alone** (`g_timeout_add`) — no gtk call at all | — |
 | ✔ | **GTK-14** the keyboard and the mouse | gtk | **libxkbcommon + xkeyboard-config**, this time for satellite and not for GTK |
-| ✔ | **GTK-15** a canvas | gtk (`GtkDrawingArea`), **cairo directly** (a line, a box, a circle, an image surface, `cairo_surface_write_to_png`), **pango directly** (`pango_cairo_show_layout`) | pixman, freetype, **libpng** for `.save` |
+| ✔ | **GTK-15** a canvas | gtk (`GtkDrawingArea`), **cairo directly** (a line, a box, a circle, an arc and a slice, an outline, a pen width, an image surface, `cairo_surface_write_to_png`), **pango directly** (`pango_cairo_show_layout`) | pixman, freetype, **libpng** for `.save` |
 | ✔ | **GTK-16** more than one screenful | gtk (`GtkNotebook` since 2026-09-22) | — |
 | — | **GTK-17** `satellite.console` is a window | **VTE — NOT VENDORED**, gtk, pango | freetype, harfbuzz, fribidi |
 | — | **GTK-18** `satellite.terminal` is a bash prompt | VTE, glib (`g_spawn`) | — |
@@ -648,7 +648,7 @@ lambda that has **finished** before the assignment happens.
 a text area would be a few pixels a person cannot find. It asks for 300×150.
 GTK-8's `.resize` is how a program says otherwise.
 
-## GTK-3 — on and off: a checkbox, a switch, and a group that agrees — **BUILT 2026-09-21** (the radio is not)
+## GTK-3 — on and off: a checkbox, a switch, and a group that agrees — **BUILT 2026-09-21; THE RADIO 2026-09-22, as the recommendation**
 
     satellite.variable.window agree = satellite.window.checkbox("I agree")
     ...
@@ -669,6 +669,54 @@ shapes, and **this one is the author's**:
 The second is nicer to write and makes a word that answers **many** pieces,
 which nothing in satellite does. The first is a smaller change. **Not decided**,
 and the checkbox and the switch were built without it.
+
+### THE RADIO, BUILT 2026-09-22 AS THE RECOMMENDATION
+
+On the author's *"we are almost done with GTK stuff"*, with the question kept
+in the table below as still reversible. `one_of` is `1 27 22`, made from a
+list exactly as a choice is:
+
+    satellite.variable.window size = satellite.window.one_of({"small", "medium", "large"})
+    satellite.console.display(size.chosen)      small -- the first is ticked from the start
+    size.chosen("large")
+    size.changed(when_picked)                   a person ticking one
+
+**ONE WORD THAT DRAWS MANY, AND ONE PIECE.** GTK4 makes a radio by giving a
+check button another as its group (`gtk_check_button_set_group`), so a one-of
+is a column of check buttons, each after the first grouped to the first, and
+what a program holds is the column. One piece and not a list of pieces,
+because the question a program asks a radio is one question — which one — and
+`.chosen` already asks it of a choice and a set of tabs. `.chosen("purple")`
+on a one-of of three sizes is refused, as it is on a choice. `.changed` is
+`toggled` on every button in it: a pick fires it twice, once for the button
+going off and once for the one going on, and the queue collapses the second
+onto the first, so a pick is one change.
+
+**THE FIRST IS TICKED FROM THE START.** GTK4 would leave none ticked; a choice
+shows its first item from the start, and a one-of that showed nothing picked
+would have `.chosen` answer `""` for a control that looks as though it has an
+answer. A person cannot un-pick a radio anyway.
+
+**WHAT CHANGES IF THE AUTHOR RULES FOR `.group(other_checkbox)`:** the word
+row and the `one_of` piece go, and `.group` is one method token on a checkbox
+calling `gtk_check_button_set_group` — but then there is nothing to ask
+`.chosen` of, and a program reads each `.on` in turn, which is the reason the
+recommendation was this one.
+
+**AND IT FOUND A DEFECT THREE DAYS OLD, by being run on a machine with no
+screen.** A valid choice — `satellite.window.choice({"red", "green"})` — with
+no display exited 13 `LINE_NOT_UNDERSTOOD` over a sentence saying there was no
+display to draw on: the items branch of `call_window_word` marked EVERY
+failure as the program's. Only an empty list is, and the test is the very
+thing the factory checks now — as it already was for a range and a size — and
+check.sh has the row. The two refusals also told a person to write
+`satellite.container.list("red", "green")`, a word with no library; they say
+`{"red", "green"}` now.
+
+**PROVED ON A COMPOSITOR:** three words; `.chosen` reading `small` from the
+start; `.chosen("large")` and reading it back; the group measuring; and a REAL
+POINTER CLICK on the middle button running `when_picked` with `.chosen`
+answering `medium` — and the capsule closed the window, exit 0.
 
 **AS BUILT** — `checkbox` is `1 27 6`, `switch` is `1 27 7`, `.on` is `0x0B2C`,
 read bare and written with brackets. A piece that is neither on nor off is
@@ -1172,6 +1220,43 @@ exactly the question the author has open: the synchronous D-Bus call that
 before he has ruled would be shipping the hang. check.sh asserts no
 `gtk_file_dialog_` call exists, so nobody adds one without answering it.
 
+**THE FACTS BEHIND Q-WIN-11a, read from the vendored 4.24.0 source on
+2026-09-22 so the ruling can be made on them** — a fresh reader, spot-checked
+line by line:
+
+- **`GTK_USE_PORTAL` does not exist in GTK 4.24** — zero hits in `gdk/` and
+  `gtk/` — so SATELLITE_WINDOW.md's *"`GTK_USE_PORTAL=0` before `gtk_init`
+  would take the hang away"* was wrong, and is corrected there.
+- **The only unbounded wait on the path is `gdksettings-wayland.c:477`**: a
+  synchronous `ReadAll` on `org.freedesktop.portal.Settings` with timeout
+  `G_MAXINT`, reached from `gdk_display_open_default` inside `gtk_init_check`.
+  The two probes before it (`environment_has_portals` at `gdk.c:466`,
+  `check_portal_interface` at `gdk.c:525`) are synchronous too, but capped at
+  25 seconds each. **Which stage held satl for an afternoon on 2026-09-21 is
+  NOT settled**: the gdb trace was caught inside `check_portal_interface`, the
+  capped one, and nobody waited to see whether it moved on. What is settled is
+  what turns the whole path off.
+- **What turns it off, and turns the file chooser's portal off with it:**
+  `gtk_disable_portals()` — public since 4.18, `gtkmain.h:87`, called before
+  `gtk_init` — or `GDK_DEBUG=no-portals`. Both short-circuit
+  `gdk_display_should_use_portal` (`gdk.c:623` and `:629`), which is also the
+  gate the file chooser asks (`gtkfilechoosernativeportal.c:487`).
+  `gtk_disable_portal_interfaces()` can name one interface and leave the rest.
+- **The message and the question never reach the portal**: `gtkalertdialog.c`
+  has no portal and no D-Bus in it. What GTK-11 built cannot hang this way.
+- `env -u DBUS_SESSION_BUS_ADDRESS` in the proof scripts does not remove the
+  bus: GLib falls back to `$XDG_RUNTIME_DIR/bus`, the user's real one, whose
+  portal answers. The scripts work because they swap buses, not because satl
+  runs without one.
+- **The cost of disabling, which is the other half of the ruling:** no portal
+  settings — dark mode, the font and the theme come through that interface,
+  and GTK falls back to gsettings — and no portal file chooser inside a
+  sandbox, so a flatpak satl would get the in-process dialog, which cannot see
+  outside its sandbox.
+
+The ruling stays the author's: defend and lose the portal, or leave it and say
+so in a refusal. Nothing of it is built.
+
 ## GTK-12 — a menu, and the only milestone that is gio and not gtk — **BUILT 2026-09-21**
 
     satellite.variable.window m = satellite.window.menu()
@@ -1524,6 +1609,58 @@ and the interpreter copies it onto the piece — and no spelling has been
 chosen. An outline (an unfilled box or circle), a line's width and an arc are
 the same kind of question: cheap, and not decided.
 
+### THE FOUR LEFTOVERS, BUILT 2026-09-22 AS THE RECOMMENDATION
+
+On the author's *"we are almost done with GTK stuff"*, and each stays in the
+table below as still reversible. `across` is `0x0B44`, `down` `0x0B45`,
+`outline` `0x0B46`, `thickness` `0x0B47` and `arc` `0x0B48`.
+
+    c.clicked(when_clicked)
+    ... and in the capsule:  the_canvas.across    the_canvas.down
+    c.thickness(4)                             the pen, from here on
+    c.outline(1)                               boxes, circles and arcs as edges
+    c.box(300, 20, 80, 50)                     a four-pixel outline
+    c.arc(200, 150, 60, 0, 270)                three quarters, clockwise from three o'clock
+    c.outline(0)
+    c.arc(200, 150, 40, 270, 360)              a filled slice, twelve to three
+
+**WHERE A CLICK LANDED TRAVELS ON THE EVENT**, exactly as `.key` does: the desk
+writes the point GTK hands it — in the piece's own pixels, which on a canvas
+are the pixels `.line` draws in — and the INTERPRETER copies it onto the piece
+as it takes the event off the queue, so the two numbers have one writer.
+`.across` and `.down` are questions, read bare or bracketed, and they answer 0
+and 0 until a click has happened, as `.key` is `""` until a key has. They are
+every clickable piece's, not only a canvas's. **The spelling was not chosen in
+the plan and is chosen here:** `across` and `down` are the words every canvas
+method already uses for its two coordinates, so a person reads `.across`
+beside `.line(from_across, ...)` and learns no second vocabulary. If the
+author wants `.x` and `.y`, or one `.clicked_at`, it is two registry rows and
+the one branch in `call_window_method` that answers them.
+
+**AN OUTLINE AND A LINE'S WIDTH ARE THE PEN**, as `.colour` and `.font` are:
+`.thickness(n)` and `.outline(1)` change what is drawn after them and nothing
+before, because both are copied onto each stroke as it is made. `.outline`
+takes 1 or 0, which is `.on`'s stopgap for the `true` satellite still cannot
+spell. An even thickness gets no half-pixel: a one-pixel line wants the half
+so that it lands on the pixel it names, and a two-pixel line already sits
+evenly across the boundary. A thickness of 0 is refused — a line nobody can
+see — and so is one past a thousand. `.thickness` and `.outline` read bare
+answer what the pen is now.
+
+**AN ARC IS PART OF A CIRCLE, CLOCKWISE, IN WHOLE DEGREES FROM THREE O'CLOCK.**
+That is cairo's own convention, and on a screen whose `down` grows downward it
+is a clock's. Filled it is a SLICE from the centre — what a pie chart and a
+clock face want; outlined it is the curve alone — what a drawing wants. Any
+whole number of degrees is taken: 370 is 10, and cairo already reads it so.
+
+**PROVED ON A COMPOSITOR, AND READ BACK BY EYE:** `before.png` shows a
+four-pixel magenta outlined box, circle and three-quarter arc with its gap in
+the top-right quarter, and a filled green slice in that same quarter; a REAL
+POINTER CLICK at the canvas's centre ran `when_clicked` with `.across`
+answering 200 and `.down` 148 — the two pixels are the compositor rounding a
+relative pointer move, and the proof script judges within five — and the pen
+read back 1 and false after `.thickness(1)` and `.outline(0)`.
+
 ## GTK-16 — more than one screenful: scroll, tabs, panes, a frame — **BUILT: SCROLL, FRAME AND SPLIT 2026-09-21; TABS 2026-09-22, as the recommendation**
 
 `gtk_scrolled_window_new()`, `gtk_notebook_new()`, `gtk_paned_new()`,
@@ -1687,16 +1824,16 @@ is the milestone that gets VTE into the folder and into a static archive.
 
 | | question | recommendation |
 |---|---|---|
-| GTK-3 | how a radio group is spelled | `one_of(a_list)` — one word, many pieces |
+| ~~GTK-3~~ | ~~how a radio group is spelled~~ | **BUILT as the recommendation, 2026-09-22** — `satellite.window.one_of({"small", "large"})`: one word, one piece, many buttons, asked `.chosen`. Still reversible. |
 | ~~GTK-16~~ | ~~how a TAB gets its name~~ | **BUILT as the recommendation, 2026-09-22** — the piece carries it, `the_piece.title("Open files")`. Still reversible. |
 | GTK-3 | **a `true` and a `false` to type** — a LANGUAGE milestone | there should be one; `c.on(1)` is the stopgap |
 | ~~GTK-9~~ | ~~does a capsule get the new value?~~ | **BUILT as (1)** — it gets the piece and asks it. Still reversible. |
 | ~~GTK-11~~ | ~~may a satellite line wait for a person?~~ | **BUILT as the capsule.** The waiting shape stays open. |
-| GTK-11 | **Q-WIN-11a blocks the file dialog** — may a word reach the portal? | not until the hang has an answer |
-| GTK-14 | how a key is spelled to a program | the character, or a name for the rest |
+| GTK-11 | **Q-WIN-11a blocks the file dialog** — may a word reach the portal? | not until the hang has an answer. **The facts are in GTK-11 now** (2026-09-22): `GTK_USE_PORTAL` does not exist in 4.24; `gtk_disable_portals()` before `gtk_init` stops both the hang and the file chooser's portal, at the cost of the portal's settings and a sandbox's file chooser |
+| ~~GTK-14~~ | ~~how a key is spelled to a program~~ | **BUILT as the recommendation, 2026-09-21** — the character, or a lower-case name for the rest; modifiers are keys, shown by pressing them. Still reversible. |
 | ~~GTK-15~~ | ~~a draw capsule, or a display list~~ | **BUILT as the display list, 2026-09-22.** A draw capsule stays the author's to ask for; it needs a re-entrant walker first. |
 | ~~GTK-12~~ | ~~a menu inside a menu, and a line between groups of items~~ | **BUILT 2026-09-22**: `file.menu(recent)` — the piece carries its heading — and `file.separator()`. Still reversible. |
-| GTK-15 | where a click on a canvas LANDED; an outline, a line's width, an arc | carry the point on the event, as `.key` does; not spelled |
+| ~~GTK-15~~ | ~~where a click on a canvas LANDED; an outline, a line's width, an arc~~ | **BUILT as the recommendation, 2026-09-22** — `.across` and `.down` carried on the event as `.key` is; `.outline(1)` and `.thickness(n)` are the pen; `.arc(...)` clockwise from three o'clock. Still reversible — and `across`/`down` is the one spelling chosen here rather than recommended. |
 | GTK-17 | does `satellite.console` become a window, or does a window get a console? | a window gets a console; `satellite.console` keeps stdout |
 | GTK-10 | the window font: 11px or 12px | asked 2026-09-19, still open |
 
@@ -1723,14 +1860,15 @@ is the milestone that gets VTE into the folder and into a static archive.
 - ~~**No widget can talk back.**~~ **DONE 2026-09-21 — WIN-11.**
   `my_button.pressed(when_pressed)` runs a capsule on the interpreter's thread,
   and `my_button.press()` is the program pressing it itself.
-- **THERE ARE TWENTY-ONE WIDGETS** as of 2026-09-22: a window, a button, a
+- **THERE ARE TWENTY-TWO WIDGETS** as of 2026-09-22: a window, a button, a
   label, a text box, a text area, a checkbox, a switch, a slider, a number box,
   a progress bar, a choice, a row, a column, a grid, a picture, a scroll, a
-  frame, a split, a menu, a canvas and a set of tabs.
+  frame, a split, a menu, a canvas, a set of tabs and a one-of.
   ~~No picture, no row, no menu, nothing that talks back but a button.~~ **Part 2G
   is the eighteen milestones**, GTK-0 is the recipe each one repeats, and
   **GTK-1 to GTK-10 and GTK-12 to GTK-16 are built; GTK-11 but for its file
-  dialog** — the first paid GTK-0's bill, the second proved a
+  dialog; and on 2026-09-22 GTK-3's radio and GTK-15's four leftovers, each as
+  its written recommendation** — the first paid GTK-0's bill, the second proved a
   value can be read back out of GTK at all, the third found that **satellite has
   no `true` to type**, and the fourth found a **three-day-old hole in the
   lexer** that had been refusing `satellite.window.new("a title", 800)` as a
@@ -1768,7 +1906,8 @@ GTK family is now what this file is for.
    the only genuinely new mechanism in the first six.
 3. **GTK-3, GTK-4, GTK-5** — on/off, a number, a list. Each is one factory and
    one method once GTK-2's reading-back works. Cheap, and they are most of what
-   a person means by "a form".
+   a person means by "a form". GTK-3's radio came last of the family, on
+   2026-09-22, as `one_of` — once `.chosen` existed to ask it.
 4. **GTK-7 — rows and columns**, before GTK-6. A picture placed by coordinate is
    fine; a picture in a row is what anybody actually wants, and GTK-7 changes
    `.append`'s arity, so it should change it while there are five widgets rather
@@ -1785,7 +1924,9 @@ GTK family is now what this file is for.
 9. **GTK-15 — a canvas.** Last of the GTK family, because its ruling — a draw
    capsule or a display list — is the only one that can deadlock the design.
    **Built 2026-09-22 as the display list**, with GTK-16's tabs and GTK-12's
-   submenu and separator the same day, each as its written recommendation.
+   submenu and separator the same day, each as its written recommendation —
+   and its own four leftovers (where a click landed, an outline, a width, an
+   arc) later that day, the same way.
 10. **GTK-17, then GTK-18** — the author's two. They are last **not** because
     they matter least but because they are the only ones with a DEP half: VTE
     has to be vendored, and patched to build a static archive, before a line of
@@ -1799,4 +1940,8 @@ GTK family is now what this file is for.
 3. **DEP-4**, then DEP-6, DEP-8, DEP-5, DEP-9.
 4. **DEP-2 is DECIDED AND DEFERRED** and is not on this list.
 
-**GTK-1 is the first milestone**, and it is the one to do after `/clear`.
+**WHAT IS LEFT IN THE GTK FAMILY IS THE AUTHOR'S** (2026-09-22): GTK-11's
+file dialog (Q-WIN-11a, with the facts now written under GTK-11), GTK-17 and
+GTK-18 (VTE is not vendored), a `true` and a `false` to type, and the window
+font. Every recommendation the plan wrote has been built and every one of its
+question rows is still reversible. The DEP order below is what follows.

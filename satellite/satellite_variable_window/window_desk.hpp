@@ -127,9 +127,16 @@ struct AnEvent {
     // shared string because a key pressed while a question is open would
     // otherwise overwrite the answer -- two different things a window is holding
     // at the same moment.
-    enum What { nothing_said, a_key, an_answer };
+    //
+    // AND WHERE IT HAPPENED, FOR A CLICK (GTK-15's leftover, 2026-09-22): the
+    // point on the piece, in its own pixels. `a_place` says the two numbers
+    // are filled in, and the interpreter copies them onto the piece the same
+    // way it copies `said` -- one writer, on its own thread.
+    enum What { nothing_said, a_key, an_answer, a_place };
     What said_what = nothing_said;
     std::string said;
+    long long int across = 0;
+    long long int down = 0;
 };
 
 // `may_collapse` IS TRUE FOR A CHANGE AND FALSE FOR A PRESS, and the difference
@@ -148,7 +155,8 @@ struct AnEvent {
 // not two things a person did.
 void the_desk_saw_something(const std::string &capsule, const WindowHandle &piece,
                             bool may_collapse = false, const std::string &said = std::string(),
-                            AnEvent::What said_what = AnEvent::nothing_said);
+                            AnEvent::What said_what = AnEvent::nothing_said,
+                            long long int across = 0, long long int down = 0);
 
 // WAITS FOR THE NEXT ONE, ON THE INTERPRETER'S THREAD. True with `capsule`
 // filled in when there is one to run; false when every window is closed and

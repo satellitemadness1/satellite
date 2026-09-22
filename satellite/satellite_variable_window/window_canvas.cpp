@@ -7,6 +7,14 @@
 // and named in full: cairo for a line, a box and a circle; pango_cairo for the
 // words, on a layout GTK made from the widget's own font.
 //
+// THE PEN HAS FOUR PARTS SINCE 2026-09-22: a colour, a font, a thickness and
+// whether it outlines. `.arc` joined the strokes the same day, and `.across`
+// and `.down` read where a click landed -- those two live in window_answers.cpp
+// and window_calls.cpp, because a click is an event and not a stroke. All four
+// were GTK-15's open questions and were built as the recommendation, still
+// reversible; GTK_AND_NO_DEPENDENCIES.md says what changes if the author rules
+// otherwise.
+//
 // A DISPLAY LIST AND NOT A DRAW CAPSULE, and that is the whole design. GTK's
 // draw function must return having drawn. Queueing a satellite capsule to the
 // interpreter's thread and WAITING for it would have the desk blocked on the
@@ -43,29 +51,70 @@ namespace {
 // `.save` inside on_the_desk(). One replay for both, so a saved picture is the
 // picture on the screen and not a second drawing that could drift from it.
 //
-// A LINE IS ONE PIXEL WIDE AND IT LANDS ON THE PIXEL IT NAMES. Cairo's
-// coordinates run between pixels, so a one-pixel line at a whole number is two
-// half-covered pixels -- a grey smear where a person asked for a line. The
-// half is added here so nobody writing satellite ever has to know that.
+// A LINE LANDS ON THE PIXEL IT NAMES. Cairo's coordinates run between pixels,
+// so a one-pixel line at a whole number is two half-covered pixels -- a grey
+// smear where a person asked for a line. The half is added here so nobody
+// writing satellite ever has to know that; a pen of EVEN width sits evenly
+// across the line between two pixels already and wants no half. An outline
+// is a line too, so it gets the same half; a filled shape has no edge to
+// land, and is drawn where it was asked.
+double on_the_pixel(double thickness)
+{
+    return (static_cast<long long int>(thickness) % 2) == 1 ? 0.5 : 0.0;
+}
+
+// AN ARC IS PART OF A CIRCLE, CLOCKWISE FROM ONE ANGLE TO THE NEXT, in degrees
+// with 0 at three o'clock (GTK-15's leftover, 2026-09-22). That is cairo's own
+// convention, and on a screen whose `down` grows downward it is a clock's.
+// cairo_arc always runs the increasing way round, adding a turn when `to` is
+// behind `from`, so `arc(.., 270, 0)` is the quarter from twelve to three.
+// FILLED IT IS A SLICE from the centre -- a pie chart's, a clock face's --
+// and as an OUTLINE it is the curve alone, which is what a drawing wants.
 void replay(const satellite_window &canvas, GtkWidget *widget, cairo_t *cr)
 {
     for (const AStroke &stroke : canvas.drawn) {
         cairo_set_source_rgba(cr, stroke.red, stroke.green, stroke.blue, stroke.alpha);
+        cairo_set_line_width(cr, stroke.thickness);
+        const double off = on_the_pixel(stroke.thickness);
         switch (stroke.shape) {
         case AStroke::a_line:
-            cairo_set_line_width(cr, 1.0);
-            cairo_move_to(cr, stroke.x + 0.5, stroke.y + 0.5);
-            cairo_line_to(cr, stroke.a + 0.5, stroke.b + 0.5);
+            cairo_move_to(cr, stroke.x + off, stroke.y + off);
+            cairo_line_to(cr, stroke.a + off, stroke.b + off);
             cairo_stroke(cr);
             break;
         case AStroke::a_box:
-            cairo_rectangle(cr, stroke.x, stroke.y, stroke.a, stroke.b);
-            cairo_fill(cr);
+            if (stroke.outline) {
+                cairo_rectangle(cr, stroke.x + off, stroke.y + off, stroke.a, stroke.b);
+                cairo_stroke(cr);
+            } else {
+                cairo_rectangle(cr, stroke.x, stroke.y, stroke.a, stroke.b);
+                cairo_fill(cr);
+            }
             break;
         case AStroke::a_circle:
-            cairo_arc(cr, stroke.x, stroke.y, stroke.a, 0.0, 2.0 * M_PI);
-            cairo_fill(cr);
+            cairo_new_path(cr);
+            if (stroke.outline) {
+                cairo_arc(cr, stroke.x + off, stroke.y + off, stroke.a, 0.0, 2.0 * M_PI);
+                cairo_stroke(cr);
+            } else {
+                cairo_arc(cr, stroke.x, stroke.y, stroke.a, 0.0, 2.0 * M_PI);
+                cairo_fill(cr);
+            }
             break;
+        case AStroke::an_arc: {
+            const double from = stroke.b * M_PI / 180.0, to = stroke.c * M_PI / 180.0;
+            cairo_new_path(cr);
+            if (stroke.outline) {
+                cairo_arc(cr, stroke.x + off, stroke.y + off, stroke.a, from, to);
+                cairo_stroke(cr);
+            } else {
+                cairo_move_to(cr, stroke.x, stroke.y);
+                cairo_arc(cr, stroke.x, stroke.y, stroke.a, from, to);
+                cairo_close_path(cr);
+                cairo_fill(cr);
+            }
+            break;
+        }
         case AStroke::some_words: {
             // A LAYOUT FROM THE WIDGET, so with no `.font` the words are drawn
             // the way a label's would be; with one, the font the stroke carries
@@ -124,9 +173,13 @@ bool a_canvas_that_is_open(satellite_window &which, std::string &why)
 // is right for that -- there is nothing pending to miss.
 //
 // THE FONT IS THE SAME STORY: `a_font` and `a_font_size`, as pango spells a
-// description, and "" for a canvas nobody gave one.
+// description, and "" for a canvas nobody gave one. AND THE REST OF THE PEN
+// (2026-09-22): the thickness and whether it outlines, copied the same way,
+// so a `.thickness(3)` after a box changes nothing about that box.
 void stroke_it(satellite_window &canvas, AStroke stroke)
 {
+    stroke.thickness = static_cast<double>(canvas.pen_thickness);
+    stroke.outline = canvas.pen_outline;
     GtkWidget *widget = static_cast<GtkWidget *>(canvas.widget);
     GdkRGBA colour;
     if (canvas.a_colour.empty() || !gdk_rgba_parse(&colour, canvas.a_colour.c_str()))
@@ -236,6 +289,30 @@ bool window_circle(satellite_window &which, long long int x, long long int y, lo
     return true;
 }
 
+bool window_arc(satellite_window &which, long long int x, long long int y, long long int radius,
+                long long int from_degrees, long long int to_degrees, std::string &why)
+{
+    if (!a_canvas_that_is_open(which, why))
+        return false;
+    if (radius < 0) {
+        why = "an arc's radius is 0 or more";
+        return false;
+    }
+    // THE ANGLES ARE ANY WHOLE NUMBER OF DEGREES. 370 is 10 and -90 is 270,
+    // which cairo already reads that way, and refusing them would be refusing
+    // a program that added a turn on the way round.
+    satellite_window *raw = &which;
+    AStroke stroke;
+    stroke.shape = AStroke::an_arc;
+    stroke.x = static_cast<double>(x);
+    stroke.y = static_cast<double>(y);
+    stroke.a = static_cast<double>(radius);
+    stroke.b = static_cast<double>(from_degrees);
+    stroke.c = static_cast<double>(to_degrees);
+    on_the_desk([raw, &stroke] { stroke_it(*raw, stroke); });
+    return true;
+}
+
 bool window_write(satellite_window &which, long long int x, long long int y, const std::string &words,
                   std::string &why)
 {
@@ -248,6 +325,66 @@ bool window_write(satellite_window &which, long long int x, long long int y, con
     stroke.y = static_cast<double>(y);
     stroke.words = words;
     on_the_desk([raw, &stroke] { stroke_it(*raw, stroke); });
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// THE REST OF THE PEN: its thickness and whether it outlines (2026-09-22).
+// ---------------------------------------------------------------------------
+namespace {
+
+bool a_canvas_with_a_pen(satellite_window &which, std::string &why)
+{
+    if (which.piece != satellite_window::canvas) {
+        why = "only a canvas has a pen -- " + std::string(which.piece_name()) + " does not";
+        return false;
+    }
+    if (which.widget == nullptr) {
+        why = "it is closed";
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
+bool window_set_thickness(satellite_window &which, long long int pixels, std::string &why)
+{
+    if (!a_canvas_with_a_pen(which, why))
+        return false;
+    // A PEN OF NO WIDTH DRAWS LINES NOBODY CAN SEE, which is the answer that is
+    // wrong and does not say so; past a thousand it is a typo and not a wish.
+    if (pixels <= 0 || pixels > 1000) {
+        why = "a pen's thickness is between 1 and 1000 pixels";
+        return false;
+    }
+    satellite_window *raw = &which;
+    const int wide = static_cast<int>(pixels);
+    on_the_desk([raw, wide] { raw->pen_thickness = wide; });
+    return true;
+}
+
+bool window_set_outline(satellite_window &which, bool outline, std::string &why)
+{
+    if (!a_canvas_with_a_pen(which, why))
+        return false;
+    satellite_window *raw = &which;
+    on_the_desk([raw, outline] { raw->pen_outline = outline; });
+    return true;
+}
+
+bool window_pen_of(satellite_window &which, bool the_thickness, long long int &out, std::string &why)
+{
+    if (!a_canvas_with_a_pen(which, why))
+        return false;
+    satellite_window *raw = &which;
+    long long int got = 0;
+    // READ ON THE DESK, because that is the thread that writes the pen -- the
+    // same crossing `.on` makes for a checkbox, and for the same reason.
+    on_the_desk([raw, the_thickness, &got] {
+        got = the_thickness ? raw->pen_thickness : (raw->pen_outline ? 1 : 0);
+    });
+    out = got;
     return true;
 }
 

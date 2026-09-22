@@ -37,8 +37,13 @@
 #    the call never returns: satl sits in gtk_init_check for ever, the desk never
 #    sets desk_tried, and the interpreter waits in open_the_desk. It reads
 #    exactly like satl locking up and it is not satl. `env -u
-#    DBUS_SESSION_BUS_ADDRESS` is the whole fix -- satl wants no bus; mutter and
-#    the clicker do.
+#    DBUS_SESSION_BUS_ADDRESS` is the whole fix -- and NOT because satl then has
+#    no bus (read from GLib's source, 2026-09-22): with the variable unset GLib
+#    falls back to $XDG_RUNTIME_DIR/bus, the user's REAL session bus, whose
+#    portal answers. satl is moved to a bus that works; mutter and the clicker
+#    keep the one dbus-run-session made. The capped probe at gdk.c:525 is where
+#    the trace was caught; the unbounded wait on that path is the ReadAll at
+#    gdksettings-wayland.c:477, and which one held is not settled.
 #
 # 3. MUTTER IS KILLED BY PID, never `pkill -f mutter` -- that pattern matches
 #    inside this file and kills the shell running it.

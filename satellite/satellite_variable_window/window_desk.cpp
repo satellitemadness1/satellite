@@ -227,7 +227,8 @@ unsigned long long int windows_open()
 // the_desk_let_go_of above, and for the same reason: the desk must never go
 // through on_the_desk(), which would be the desk waiting on itself.
 void the_desk_saw_something(const std::string &capsule, const WindowHandle &piece, bool may_collapse,
-                            const std::string &said, AnEvent::What said_what)
+                            const std::string &said, AnEvent::What said_what, long long int across,
+                            long long int down)
 {
     {
         std::lock_guard<std::mutex> lock(desk_mutex);
@@ -247,7 +248,7 @@ void the_desk_saw_something(const std::string &capsule, const WindowHandle &piec
         // closed" -- which is a refusal about a line that is right.
         presses.push_back(AnEvent{capsule, piece,
                                   piece == nullptr ? WindowHandle() : the_window_holding(*piece),
-                                  said_what, said});
+                                  said_what, said, across, down});
     }
     desk_changed.notify_all();
 }

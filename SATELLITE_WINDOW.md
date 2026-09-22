@@ -634,7 +634,10 @@ It cost an afternoon, and it was found only by attaching gdb:
     #11 gtk_init_check () at gtk/gtkmain.c:695
 
 `env -u DBUS_SESSION_BUS_ADDRESS` is the fix for the test, and the script carries
-it with the reason. **THE AUTHOR HAS TO RULE ON THE REAL VERSION OF THIS**, which
+it with the reason — **and the reason is not that satl then runs without a bus**
+(read from GLib's source, 2026-09-22): with that variable unset GLib falls back
+to `$XDG_RUNTIME_DIR/bus`, the user's real session bus, whose portal answers.
+The test works because satl is moved to a bus with a working portal. **THE AUTHOR HAS TO RULE ON THE REAL VERSION OF THIS**, which
 is Q-WIN-11a below: on a machine whose portal is wedged, `satl window.satl` hangs
 with no message at all — and "a hang that reads exactly like the interpreter
 locking up" is a defect Part 2a already fixed once.
@@ -711,11 +714,18 @@ than a page of them when the window finally closes.
 
 ## OPEN, AND THE AUTHOR'S — do not decide these
 
-- **Q-WIN-11a: should satl defend against a wedged portal?** `GTK_USE_PORTAL=0`
-  before `gtk_init` would take the hang away, and would also take away whatever
-  the portal gives a sandboxed satl. The other answer is to leave it and say so
-  in the refusal. Today satl does neither, and a hang is the failure a person can
-  learn nothing at all from.
+- **Q-WIN-11a: should satl defend against a wedged portal?** ~~`GTK_USE_PORTAL=0`~~
+  **— that variable does not exist in GTK 4.24 (read from the vendored source,
+  2026-09-22); it is `gtk_disable_portals()` before `gtk_init`, or
+  `GDK_DEBUG=no-portals` —** would take the hang away, and would also take
+  away what the portal gives: its settings (dark mode, the font) on every
+  machine, and the file chooser inside a sandbox. The one unbounded wait on
+  that path is the `ReadAll` at `gdksettings-wayland.c:477` with timeout
+  `G_MAXINT`; the probe the trace above was caught in is capped at 25 seconds,
+  and which of the two held for the afternoon was never settled.
+  GTK_AND_NO_DEPENDENCIES.md GTK-11 has every line. The other answer is to
+  leave it and say so in the refusal. Today satl does neither, and a hang is
+  the failure a person can learn nothing at all from.
 - **Q-WIN-11b: should a press that refuses take the whole run down?** It does
   today, on the argument that a capsule's refusal is the program's refusal. The
   other answer is that a GUI reports and carries on — which is what every other

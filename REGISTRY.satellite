@@ -386,7 +386,12 @@ bits              name                         what it is
 0000101101000001  circle_token                 circle  [METHOD] canvas.circle(across, down, radius) -- a filled circle, around its centre (GTK_AND_NO_DEPENDENCIES.md GTK-15)
 0000101101000010  write_token                  write  [METHOD] canvas.write(across, down, "words") -- words with their top-left corner at a point, in the canvas's font (GTK_AND_NO_DEPENDENCIES.md GTK-15)
 0000101101000011  separator_token              separator  [METHOD] menu.separator() -- a line under the items above it; the items added after it go below the line (GTK_AND_NO_DEPENDENCIES.md GTK-12)
-0000101101000100  free                         to 0000101111111111, free for this family
+0000101101000100  across_token                 across  [METHOD] piece.across -- how far across a piece the last click on it landed, in pixels from its left edge; 0 until one has (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000101  down_token                   down  [METHOD] piece.down -- how far down a piece the last click on it landed, in pixels from its top edge; 0 until one has (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000110  outline_token                outline  [METHOD] canvas.outline -- whether the pen draws a box, a circle or an arc as an outline; canvas.outline(1) makes it and canvas.outline(0) fills again (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000111  thickness_token              thickness  [METHOD] canvas.thickness -- how many pixels wide the pen draws a line or an outline; canvas.thickness(3) sets it (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101001000  arc_token                    arc  [METHOD] canvas.arc(across, down, radius, from_degrees, to_degrees) -- part of a circle, clockwise from three o'clock; filled it is a slice, outlined it is the curve (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101001001  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

@@ -90,7 +90,7 @@ constexpr AWord kWords[] = {
      "satellite.window.progress()"},
     {11, "choice", 1, satellite_window::choice, AWord::items,
      "satellite.window.choice takes a list of what a person may pick: "
-     "satellite.window.choice(satellite.container.list(\"red\", \"green\"))"},
+     "satellite.window.choice({\"red\", \"green\"})"},
     {12, "row", 0, satellite_window::row, AWord::words,
      "satellite.window.row takes nothing -- what goes in it is .append'ed: satellite.window.row()"},
     {13, "column", 0, satellite_window::column, AWord::words,
@@ -123,6 +123,13 @@ constexpr AWord kWords[] = {
     {21, "tabs", 0, satellite_window::tabs, AWord::words,
      "satellite.window.tabs takes nothing -- each piece .append'ed is a tab, named by that "
      "piece's .title: satellite.window.tabs()"},
+    // THE RADIO (GTK-3, built 2026-09-22 as the recommendation): one word that
+    // draws many buttons, made from a list as a choice is, and asked `.chosen`
+    // as a choice is. The other spelling -- `.group(other_checkbox)` on a
+    // checkbox -- stays the author's to ask for; nothing here forecloses it.
+    {22, "one_of", 1, satellite_window::one_of, AWord::items,
+     "satellite.window.one_of takes a list of what a person may pick one of: "
+     "satellite.window.one_of({\"small\", \"large\"})"},
 };
 
 // A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
@@ -348,7 +355,7 @@ std::string window_methods_are()
            "a row, a column or a grid has .append too -- .append(piece) for a row, "
            ".append(piece, across, down) for a grid's cell; "
            "a piece in one has .text; a checkbox or a switch has .on; a slider, a number box or "
-           "a progress bar has .value; a choice has .chosen -- all read bare and written with "
+           "a progress bar has .value; a choice or a one-of has .chosen -- all read bare and written with "
            "brackets; a button has .pressed(a_capsule) and .press(); anything a person can change "
            "has .changed(a_capsule); and a window has .closed(a_capsule) and "
            ".every(a_capsule, 1000) and .key(a_capsule); anything that is not a button has "
@@ -356,9 +363,11 @@ std::string window_methods_are()
            ".ask(a_capsule, \"a question?\") and .answer; a menu has .item(a_capsule, \"Open\"), "
            ".separator() and .menu(a_menu) for a menu inside it, and a window has .menu(a_menu); "
            "a canvas has .line(from_across, from_down, to_across, to_down), .box(across, down, "
-           "wide, tall), .circle(across, down, radius), .write(across, down, \"words\"), .clear() "
-           "and .save(\"picture.png\"); a piece going into a set of tabs is named by its "
-           ".title(\"a name\"), and the tabs' .chosen is the one in front "
+           "wide, tall), .circle(across, down, radius), .arc(across, down, radius, from_degrees, "
+           "to_degrees), .write(across, down, \"words\"), .clear() and .save(\"picture.png\"), "
+           "and its pen has .thickness(3) and .outline(1); anything that is not a button has "
+           ".across and .down, where the last click on it landed; a piece going into a set of "
+           "tabs is named by its .title(\"a name\"), and the tabs' .chosen is the one in front "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -398,6 +407,11 @@ int window_method_arity(Code method)
     case token::box_token:        return 4;  // a corner, a width and a height
     case token::circle_token:     return 3;  // a centre and a radius
     case token::write_token:      return 3;  // a point and the words
+    case token::arc_token:        return 5;  // a centre, a radius and two angles (2026-09-22)
+    case token::thickness_token:  return 1;  // the pen's width; read bare for what it is
+    case token::outline_token:    return 1;  // whether the pen outlines; read bare for what it is
+    case token::across_token:     return 0;  // a question: where the last click landed
+    case token::down_token:       return 0;  // a question: where the last click landed
     case token::clear_token:      return 0;  // nothing drawn any more
     case token::save_token:       return 1;  // the file to write the picture to
     case token::ok_token:      return 0;
@@ -486,6 +500,7 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
         // two do not need one.
         WindowHandle made;
         long long int least = 0, most = 0;
+        bool an_empty_list = false;
         if (row->takes_what == AWord::a_file) {
             std::string path;
             if (!text_of(arguments[0], path, called, context))
@@ -510,6 +525,7 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
                     return Value();
                 wanted.push_back(std::move(one));
             }
+            an_empty_list = wanted.empty();
             made = window_piece_of_items(row->makes, wanted, why);
         } else if (row->takes_what == AWord::a_size) {
             // A WIDTH AND A HEIGHT (GTK-15). The same reader as a place, for
@@ -552,11 +568,18 @@ Value call_window_word(Code code, const std::vector<Value> &arguments, Expressio
             // so `why` is the only thing that knows.
             const bool a_bad_file = row->takes_what == AWord::a_file &&
                                     why.find("no display to draw on") == std::string::npos;
+            // AN EMPTY LIST IS THE PROGRAM'S; A LIST WITH NO SCREEN TO DRAW IT
+            // ON IS THE MACHINE'S (found 2026-09-22, by running the one-of
+            // headless). This line once read `row->takes_what == AWord::items`,
+            // so a valid choice on a machine with no display printed S110
+            // LINE_NOT_UNDERSTOOD over a sentence saying there was no display
+            // -- the code and the sentence disagreeing, again. The test is the
+            // very thing the factory checks, as it is for every shape here.
             const bool the_program = (row->takes_what == AWord::numbers && row->arity == 2 &&
                                       least >= most) ||
                                      (row->takes_what == AWord::a_size &&
                                       (least <= 0 || most <= 0 || least > 32767 || most > 32767)) ||
-                                     row->takes_what == AWord::items || a_bad_file;
+                                     an_empty_list || a_bad_file;
             // A FILE GETS A FILE'S CODE. satellite.variable.file already has the
             // scale -- file_not_found for nothing at that path,
             // file_unreadable for a file that is there and cannot be used -- and
@@ -650,6 +673,44 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
                            what + " -- " + why);
             return Value();
         }
+        return Value::of_number(satellite_number(static_cast<unsigned long long int>(got)));
+    }
+    // `.across` AND `.down` ARE QUESTIONS TOO (GTK-15's leftover, 2026-09-22):
+    // where the last click on this piece landed, in its own pixels, which on a
+    // canvas are the pixels `.line` draws in. 0 and 0 until a click has
+    // happened, as `.key` is "" until a key has. THE HANDLE'S OWN, written by
+    // THIS thread off the event as `.key` is, so no desk is asked and a closed
+    // piece still answers where it was last clicked.
+    if (method == token::across_token || method == token::down_token) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        const long long int got = method == token::across_token ? piece->last_across : piece->last_down;
+        satellite_number answer(got < 0 ? static_cast<unsigned long long int>(-got)
+                                        : static_cast<unsigned long long int>(got),
+                                got < 0);
+        return Value::of_number(std::move(answer));
+    }
+    // `.thickness` AND `.outline` WITH NO BRACKETS READ THE PEN BACK, and with
+    // brackets set it -- `.on`'s shape, and it crosses to the desk as `.on`
+    // does because the desk is the thread that holds the pen.
+    if ((method == token::thickness_token || method == token::outline_token) && !had_parentheses) {
+        satellite_window *piece = which.get();
+        if (piece == nullptr) {
+            context.refuse(window_is_closed, what + ": there is no piece here");
+            return Value();
+        }
+        long long int got = 0;
+        std::string why;
+        if (!window_pen_of(*piece, method == token::thickness_token, got, why)) {
+            context.refuse(piece->widget == nullptr ? window_is_closed : types_do_not_meet,
+                           what + " -- " + why);
+            return Value();
+        }
+        if (method == token::outline_token)
+            return Value::of_bool(got != 0);
         return Value::of_number(satellite_number(static_cast<unsigned long long int>(got)));
     }
     // `.fullscreen` WITH NO BRACKETS ASKS WHETHER IT FILLS THE SCREEN.
@@ -1029,6 +1090,31 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
         went = window_circle(*window, x, y, radius, why);
         break;
     }
+    case token::arc_token: {
+        long long int x = 0, y = 0, radius = 0, from = 0, to = 0;
+        if (!place_of(arguments[0], x, what + "'s across", context) ||
+            !place_of(arguments[1], y, what + "'s down", context) ||
+            !place_of(arguments[2], radius, what + "'s radius", context) ||
+            !place_of(arguments[3], from, what + "'s from", context, "a number of degrees") ||
+            !place_of(arguments[4], to, what + "'s to", context, "a number of degrees"))
+            return Value();
+        went = window_arc(*window, x, y, radius, from, to, why);
+        break;
+    }
+    case token::thickness_token: {
+        long long int pixels = 0;
+        if (!place_of(arguments[0], pixels, what, context))
+            return Value();
+        went = window_set_thickness(*window, pixels, why);
+        break;
+    }
+    case token::outline_token: {
+        bool outline = false;
+        if (!on_of(arguments[0], outline, what, context))
+            return Value();
+        went = window_set_outline(*window, outline, why);
+        break;
+    }
     case token::write_token: {
         long long int x = 0, y = 0;
         std::string words;
@@ -1143,6 +1229,12 @@ signed long long int windows_run_until_they_are_closed(
                 happened.piece->last_key = happened.said;
             else if (happened.said_what == AnEvent::an_answer)
                 happened.piece->last_answer = happened.said;
+            // AND WHERE A CLICK LANDED (GTK-15's leftover), the same way and
+            // for the same reason: two numbers with one writer.
+            else if (happened.said_what == AnEvent::a_place) {
+                happened.piece->last_across = happened.across;
+                happened.piece->last_down = happened.down;
+            }
         }
         const signed long long int stopped = run_a_capsule(happened.capsule, happened.piece, happened.window);
         // A CAPSULE THAT STOPPED STOPS THE RUN, the same as a line of main

@@ -2105,6 +2105,92 @@ expect "a wordless piece displays with no empty quotes" 1 \
        "$(grep -c 'which->text.empty()' satellite/satellite_object/satellite_object.cpp)"
 
 # ---------------------------------------------------------------------------
+# THE RADIO (GTK_AND_NO_DEPENDENCIES.md GTK-3's leftover, 2026-09-22), BUILT AS
+# THE RECOMMENDATION and still reversible: `satellite.window.one_of(a_list)` is
+# ONE word that draws MANY check buttons, each after the first given the first
+# as its group (gtk_check_button_set_group) so that exactly one is ticked, and
+# asked `.chosen` as a choice is. The other spelling in the plan --
+# `.group(other_checkbox)` on a checkbox -- stays the author's to ask for.
+#
+# PROVED ON A COMPOSITOR (prove-canvas-tabs-menus.sh): three words, .chosen
+# reading the first from the start, .chosen("large") and reading it back, and a
+# REAL POINTER CLICK on the middle button running the .changed capsule with
+# .chosen answering "medium".
+# ---------------------------------------------------------------------------
+expect "one_of is 1 27 22, made from a list" 1 \
+       "$(grep -cP '^1 27 22\tsatellite.window.one_of\(items\)\t' words/words.tsv)"
+expect "a one-of is one piece: every button grouped to the first, and the first ticked" "1|1" \
+       "$(grep -c 'gtk_check_button_set_group(GTK_CHECK_BUTTON(button), first)' satellite/satellite_variable_window/window_pieces.cpp)|$(grep -c 'gtk_check_button_set_active(first, TRUE)' satellite/satellite_variable_window/window_pieces.cpp)"
+expect "a one-of answers .chosen and .changed, as a choice does" "1|1" \
+       "$(grep -c 'which.piece == satellite_window::one_of;' satellite/satellite_variable_window/window_state.cpp)|$(grep -c 'case satellite_window::one_of:' satellite/satellite_variable_window/window_answers.cpp)"
+
+cat > build/window_oneof_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window g = satellite.window.one_of()
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_oneof_arity.satl > build/window_oneof_arity.out 2>&1
+expect "satellite.window.one_of given nothing is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_oneof_arity.out)"
+expect "... and says it takes a list of what a person may pick one of" 1 \
+       "$(tr '\n' ' ' < build/window_oneof_arity.out | grep -cF 'takes a list of what a person may pick one of')"
+
+cat > build/window_oneof_empty.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list nothing = {}
+    satellite.variable.window g = satellite.window.one_of(nothing)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_oneof_empty.satl > build/window_oneof_empty.out 2>&1
+expect "a one-of of nothing is refused, and NOT as a machine with no screen" 13 $?
+expect "... and says a one-of needs something to choose from" 1 \
+       "$(tr '\n' ' ' < build/window_oneof_empty.out | grep -cF 'a one-of needs something to choose from')"
+
+cat > build/window_oneof_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_picked(satellite.variable.window the_group)
+{
+    satellite.console.display(the_group.chosen)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window g = satellite.window.one_of({"small", "medium", "large"})
+    g.chosen("large")
+    satellite.console.display(g.chosen)
+    g.changed(when_picked)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_oneof_ok.satl > build/window_oneof_ok.out 2>&1
+expect "a one-of, .chosen read and written and .changed pass the checker, and stop only for want of a screen" 50 $?
+
+# A CHOICE OR A ONE-OF WITH NO SCREEN TO DRAW IT ON IS THE MACHINE'S ANSWER AND
+# NOT THE PROGRAM'S (found 2026-09-22 by running the one-of headless). The
+# items branch of call_window_word marked EVERY failure as the program's, so a
+# valid choice on a machine with no display printed S110 LINE_NOT_UNDERSTOOD
+# over a sentence saying there was no display -- the code and the sentence
+# disagreeing, which that file has now fixed four times. Only an EMPTY list is
+# the program's, and that is what is tested now, as the factory tests it.
+cat > build/window_choice_nodisplay.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.window c = satellite.window.choice({"red", "green"})
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_choice_nodisplay.satl > build/window_choice_nodisplay.out 2>&1
+expect "a choice of two on a machine with no screen is S730 NO_DISPLAY, not S110" "50|1" \
+       "$?|$(grep -c 'S730: NO_DISPLAY' build/window_choice_nodisplay.out)"
+
+# ---------------------------------------------------------------------------
 # A NUMBER A PERSON CHOOSES (GTK_AND_NO_DEPENDENCIES.md GTK-4, 2026-09-21): a
 # slider, a number box and a progress bar, and `.value` read and written.
 # ---------------------------------------------------------------------------
@@ -2723,6 +2809,69 @@ satellite.capsule satellite.main()
 WIN_EOF
 headless build/window_canvas_ok.satl > build/window_canvas_ok.out 2>&1
 expect "a canvas, its five strokes, .clear and .save pass the checker, and stop only for want of a screen" 50 $?
+
+# THE FOUR LEFTOVERS (GTK-15, 2026-09-22), each built as the recommendation and
+# still reversible: WHERE A CLICK LANDED -- `.across` and `.down`, carried on
+# the event as a key's name is and copied onto the piece by the interpreter,
+# so no string or number has two threads on it; an OUTLINE -- `.outline(1)`,
+# a pen setting like `.colour`; a line's WIDTH -- `.thickness(3)`, the pen
+# again, and an even width gets no half-pixel; and an ARC --
+# `.arc(across, down, radius, from_degrees, to_degrees)`, clockwise from three
+# o'clock, a slice when filled and the curve alone when outlined.
+#
+# PROVED ON A COMPOSITOR (prove-canvas-tabs-menus.sh): a real click at the
+# canvas's centre answered .across 200 and .down 150 inside the capsule, and
+# the saved PNGs show a four-pixel outlined box, circle and arc beside the
+# filled ones.
+expect "across, down, outline, thickness and arc are 0x0B44 to 0x0B48, in that order" "1|1|1|1|1" \
+       "$(grep -c 'across_token = 0x0B44' satellite/bytecode/token_codes.hpp)|$(grep -c 'down_token = 0x0B45' satellite/bytecode/token_codes.hpp)|$(grep -c 'outline_token = 0x0B46' satellite/bytecode/token_codes.hpp)|$(grep -c 'thickness_token = 0x0B47' satellite/bytecode/token_codes.hpp)|$(grep -c 'arc_token = 0x0B48' satellite/bytecode/token_codes.hpp)"
+expect "where a click landed travels on the event, and the interpreter copies it onto the piece" "1|1" \
+       "$(grep -c 'AnEvent::a_place, static_cast<long long int>(std::floor(x))' satellite/satellite_variable_window/window_answers.cpp)|$(grep -c 'happened.piece->last_across = happened.across' satellite/bytecode/window_calls.cpp)"
+expect "the thickness and the outline are copied onto each stroke, as the colour is" "1|1" \
+       "$(grep -c 'stroke.thickness = static_cast<double>(canvas.pen_thickness)' satellite/satellite_variable_window/window_canvas.cpp)|$(grep -c 'stroke.outline = canvas.pen_outline' satellite/satellite_variable_window/window_canvas.cpp)"
+
+cat > build/window_canvas_arc_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window c = satellite.window.canvas(400, 300)
+    c.arc(200, 150, 60, 0)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_canvas_arc_arity.satl > build/window_canvas_arc_arity.out 2>&1
+expect "c.arc with four arguments is refused before anything runs" "13|" \
+       "$?|$(grep -x before build/window_canvas_arc_arity.out)"
+expect "... and says .arc takes 5 arguments" 1 \
+       "$(tr '\n' ' ' < build/window_canvas_arc_arity.out | grep -cF 'c.arc takes 5 arguments, and was given 4')"
+
+cat > build/window_canvas_pen_ok.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule when_clicked(satellite.variable.window the_canvas)
+{
+    satellite.console.display(the_canvas.across)
+    satellite.console.display(the_canvas.down)
+}
+satellite.capsule satellite.main()
+{
+    satellite.variable.window c = satellite.window.canvas(400, 300)
+    c.thickness(4)
+    c.outline(1)
+    c.box(20, 20, 80, 50)
+    c.circle(100, 200, 30)
+    c.arc(200, 150, 60, 0, 270)
+    c.outline(0)
+    c.arc(200, 150, 40, 270, 360)
+    satellite.console.display(c.thickness)
+    satellite.console.display(c.outline)
+    satellite.console.display(c.across)
+    c.clicked(when_clicked)
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_canvas_pen_ok.satl > build/window_canvas_pen_ok.out 2>&1
+expect "the pen, an arc, and .across and .down pass the checker, and stop only for want of a screen" 50 $?
 
 # ---------------------------------------------------------------------------
 # TIME (GTK_AND_NO_DEPENDENCIES.md GTK-13, 2026-09-21): a capsule on a clock.

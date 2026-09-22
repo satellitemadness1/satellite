@@ -43,19 +43,24 @@ using WindowHandle = std::shared_ptr<satellite_window>;
 // header has no GTK in it (above) -- window_canvas.cpp is what turns one of
 // these into cairo calls, on the desk, every time the canvas is redrawn.
 //
-// `x, y` is where it starts; what `a` and `b` mean is the shape's: a line's far
-// end, a box's width and height, a circle's radius in `a` alone.
+// `x, y` is where it starts; what `a`, `b` and `c` mean is the shape's: a line's
+// far end, a box's width and height, a circle's radius in `a` alone, an arc's
+// radius and then the two angles it runs between, in degrees.
 //
-// THE COLOUR AND THE FONT ARE THE CANVAS'S AT THE MOMENT OF THE STROKE, copied
-// in, so `.colour(...)` and `.font(...)` on a canvas are a pen: they change what
-// is drawn AFTER them and nothing drawn before. `font` is pango's own spelling
-// of one -- the face, a space, the size and "px" -- and empty means the
-// widget's own.
+// THE COLOUR, THE FONT, THE THICKNESS AND WHETHER IT IS AN OUTLINE ARE THE
+// CANVAS'S AT THE MOMENT OF THE STROKE, copied in, so `.colour(...)`,
+// `.font(...)`, `.thickness(...)` and `.outline(...)` on a canvas are a pen:
+// they change what is drawn AFTER them and nothing drawn before. `font` is
+// pango's own spelling of one -- the face, a space, the size and "px" -- and
+// empty means the widget's own. `thickness` is a line's width and an outline's;
+// `outline` is a box, a circle or an arc drawn as its edge and not filled in.
 struct AStroke {
-    enum Shape { a_line, a_box, a_circle, some_words };
+    enum Shape { a_line, a_box, a_circle, an_arc, some_words };
     Shape shape = a_line;
-    double x = 0.0, y = 0.0, a = 0.0, b = 0.0;
+    double x = 0.0, y = 0.0, a = 0.0, b = 0.0, c = 0.0;
     double red = 0.0, green = 0.0, blue = 0.0, alpha = 1.0;
+    double thickness = 1.0;
+    bool outline = false;
     std::string words;
     std::string font;
 };
@@ -83,10 +88,16 @@ public:
     // sees is in kPieceNames and is "a switch"; this is the only place the
     // language's spelling and C++'s disagree, and renaming the piece would have
     // been letting C++ choose satellite's words.
+    //
+    // `one_of` IS THE RADIO (GTK-3, built 2026-09-22): one piece that draws as
+    // many check buttons as it was given words, grouped so that exactly one is
+    // ticked. It is one piece and not a list of them because what a program
+    // asks it is one question -- which one -- and `.chosen` already asks that
+    // of a choice and a set of tabs.
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
                  slider, number_box, progress, choice,
                  row, column, grid, picture,
-                 scroll, frame, split, menu, canvas, tabs, how_many_pieces };
+                 scroll, frame, split, menu, canvas, tabs, one_of, how_many_pieces };
 
     Piece piece = window;
 
@@ -271,6 +282,14 @@ public:
     std::string when_clicked;
     bool click_is_connected = false;
 
+    // AND WHERE THE LAST CLICK ON IT LANDED (GTK-15's leftover, 2026-09-22), in
+    // pixels from the piece's own top-left corner -- so on a canvas they are
+    // the same numbers `.line` and `.box` take. Written by the INTERPRETER off
+    // the event, exactly as `last_key` is, and for the same reason; 0 and 0
+    // until a click has happened, as `.key` is "" until a key has.
+    long long int last_across = 0;
+    long long int last_down = 0;
+
     // AND WHAT A PERSON LAST ANSWERED A QUESTION (GTK-11). Written by the
     // INTERPRETER off the event, exactly as `last_key` is, and for the same
     // reason. A SEPARATE FIELD and not one shared with the key: a key pressed
@@ -305,6 +324,14 @@ public:
     // inside the draw function, which is the desk's -- the same rule
     // `when_pressed` follows.
     std::vector<AStroke> drawn;
+
+    // THE REST OF THE PEN (GTK-15's leftovers, 2026-09-22): how wide it draws
+    // a line or an outline, and whether a box, a circle or an arc is its edge
+    // or filled in. Copied onto each stroke as `a_colour` is, and under the
+    // same thread rule as `drawn`. A pen nobody set draws one pixel wide and
+    // fills, which is what GTK-15 drew before these existed.
+    int pen_thickness = 1;
+    bool pen_outline = false;
 
     satellite_window() = default;
     explicit satellite_window(Piece which) : piece(which) {}
@@ -364,6 +391,7 @@ inline constexpr PieceNames kPieceNames[] = {
     {"a menu", "menu"},
     {"a canvas", "canvas"},
     {"a set of tabs", "tabs"},
+    {"a one-of", "one of"},
 };
 
 static_assert(sizeof(kPieceNames) / sizeof(*kPieceNames) == satellite_window::how_many_pieces,
@@ -409,9 +437,11 @@ WindowHandle window_new(const std::string &title, unsigned long long int width,
 // somebody. A switch takes no words at all -- it is the one piece so far whose
 // word takes nothing.
 //
-// A RADIO GROUP IS NOT HERE. GTK4 makes one by giving a check button ANOTHER as
-// its group, so a radio is not a widget -- it is two pieces that know about each
-// other, and satellite has no spelling for that. GTK-3 leaves it to the author.
+// A RADIO GROUP IS NOT HERE EITHER -- it is `one_of`, made from a LIST below
+// (GTK-3, built 2026-09-22 as the recommendation). GTK4 makes a radio by giving
+// a check button ANOTHER as its group, so a radio is not one widget; satellite
+// spells it as one word that draws many, `satellite.window.one_of(a_list)`, and
+// asks it `.chosen` as it asks a choice.
 //
 // A TEXT BOX IS ONE LINE AND A TEXT AREA IS MANY, and they are TWO PIECES rather
 // than one with a flag, because GTK makes them two widgets and a person typing a
@@ -446,6 +476,11 @@ WindowHandle window_piece_of_numbers(satellite_window::Piece which, long long in
 //
 // AN EMPTY LIST IS REFUSED: a choice with nothing to choose from is a control a
 // person can do nothing with.
+//
+// A `one_of` IS THE SAME SHAPE (GTK-3's radio, 2026-09-22): a column of check
+// buttons, one a word, grouped so that exactly one is ticked -- and the FIRST
+// is ticked from the start, as a choice shows its first item, so that what a
+// person sees is what `.chosen` answers.
 WindowHandle window_piece_of_items(satellite_window::Piece which,
                                    const std::vector<std::string> &items, std::string &why);
 
@@ -490,12 +525,15 @@ WindowHandle window_piece_of_a_size(satellite_window::Piece which, long long int
 // list and the canvas asked to redraw. ONLY A CANVAS; everything else is
 // refused by name.
 //
-//   c.line(from_across, from_down, to_across, to_down)   one pixel wide
+//   c.line(from_across, from_down, to_across, to_down)   as wide as the pen
 //   c.box(across, down, wide, tall)                       filled, from its top-left
 //   c.circle(across, down, radius)                        filled, around its centre
+//   c.arc(across, down, radius, from, to)                 a slice, clockwise, in degrees
 //   c.write(across, down, "words")                        in the canvas's font
 //   c.clear()                                             nothing drawn any more
 //   c.save("picture.png")                                 the same list, to a PNG
+//   c.thickness(3)                                        the pen, from here on
+//   c.outline(1)                                          boxes, circles and arcs as edges
 //
 // THE COLOUR IS THE CANVAS'S OWN, read off the widget at the moment of the
 // stroke: `.colour("#ff0000")` on a canvas is the pen for everything drawn
@@ -516,10 +554,26 @@ bool window_box(satellite_window &which, long long int x, long long int y, long 
                 long long int tall, std::string &why);
 bool window_circle(satellite_window &which, long long int x, long long int y, long long int radius,
                    std::string &why);
+// AN ARC IS PART OF A CIRCLE, from one angle to another CLOCKWISE, in whole
+// degrees with 0 at three o'clock -- which is cairo's own convention on a
+// screen whose `down` grows downward, and a clock's. FILLED IT IS A SLICE from
+// the centre, which is what a pie chart and a clock face want; as an OUTLINE it
+// is the curve alone, which is what a drawing wants.
+bool window_arc(satellite_window &which, long long int x, long long int y, long long int radius,
+                long long int from_degrees, long long int to_degrees, std::string &why);
 bool window_write(satellite_window &which, long long int x, long long int y, const std::string &words,
                   std::string &why);
 bool window_clear(satellite_window &which, std::string &why);
 bool window_save(satellite_window &which, const std::string &path, std::string &why);
+
+// THE PEN'S WIDTH AND WHETHER IT OUTLINES, written and read back (GTK-15's
+// leftovers). `a_canvas.thickness(3)` and `a_canvas.outline(1)`; `.thickness`
+// and `.outline` read bare answer what the pen is now. Only a canvas has a pen;
+// everything else is refused by name. A thickness of 0 is a line nobody can
+// see and is refused where it is written.
+bool window_set_thickness(satellite_window &which, long long int pixels, std::string &why);
+bool window_set_outline(satellite_window &which, bool outline, std::string &why);
+bool window_pen_of(satellite_window &which, bool the_thickness, long long int &out, std::string &why);
 
 // `a_menu.item(when_open, "Open")` -- AN ITEM ON A MENU, and the capsule that
 // runs when a person picks it (GTK-12). THE NAME COMES FIRST, as every
