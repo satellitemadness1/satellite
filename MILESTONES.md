@@ -57,8 +57,11 @@ and how it is checked. `make` builds `build/satl`, its libraries and
 `build/satl-term`; `make test` runs check.sh, `satellite_enterprise/check_install.sh`
 and the string checks. What is still the author's:
 
-- **D0.5.1** where 004 installs, and whether its window keeps
-  `org.satellite.terminal`. Until then `install.sh --root <folder>` only.
+- **D0.5.1** where 004 installs -- **RULED 2026-09-22:** *"yes let's install 004
+  to ~/.satl with every make"*. A bare `make` runs install.sh
+  (make_support/080-install.mk); 003's satl there is kept as satl.bak-<date>, its
+  satl-term is left alone. Still the author's: whether 004's window keeps
+  `org.satellite.terminal` -- no launcher is installed until then.
 - **D0.5.2** taken as PLAN recommends: a code below 0 or above 254 exits 255,
   and 255 is never given to a code.
 - **Readings to confirm:** `satl --debug` alone is bare `satl`; `--debug` twice is

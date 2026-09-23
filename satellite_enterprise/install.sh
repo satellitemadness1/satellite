@@ -1,18 +1,24 @@
 #!/bin/sh
-# install.sh -- install satellite 004 (satl and its libraries) into a
-# folder you name.
+# install.sh -- install satellite 004 (satl and its libraries) into $HOME/.satl,
+# or into a folder you name.
 #
+#     sh satellite_enterprise/install.sh                  into $HOME/.satl
 #     sh satellite_enterprise/install.sh --root <folder>
 #
-# WHERE 004 INSTALLS IS NOT DECIDED YET (PLAN M0.5, D0.5.1), so this installs
-# ONLY into a --root it is given, and refuses the places that already mean
-# something: $HOME/.satl and /usr/local, which are satellite 003's; any folder on
-# PATH, where a file named satl would change what the word `satl` runs; the
-# repository's top folder, which is on the author's PATH; and a root holding a satl
-# this installer did not put there. It refuses 003's --link, --desktop and
-# --system rather than half-doing them. 003's installer is unchanged in
-# old_versions/second_satellite/satellite_enterprise/, and 003's install is not
-# touched by this one.
+# 004 INSTALLS INTO $HOME/.satl, AND EVERY make DOES IT (D0.5.1, the author,
+# 2026-09-22: "yes let's install 004 to ~/.satl with every make" --
+# make_support/080-install.mk). ~/.local/bin/satl is a link to $HOME/.satl/satl,
+# so the word `satl` is 004's from the first install. A satl already there that
+# this installer did not put there -- satellite 003's -- is KEPT beside it as
+# satl.bak-<date>, never deleted; 003's satl-term and everything else of 003's in
+# that folder is left alone.
+#
+# ANY OTHER ROOT keeps every refusal it had: /usr/local, which is 003's --system;
+# a folder on PATH, where a second satl would compete for the word; the
+# repository's top folder; and a root holding a satl this installer did not put
+# there. It refuses 003's --link, --desktop and --system rather than half-doing
+# them. Whether 004's window keeps org.satellite.terminal -- the other half of
+# D0.5.1 -- is still the author's, so no launcher is installed.
 #
 # WHAT IT INSTALLS, together, because each finds the others beside its own path:
 #
@@ -39,7 +45,7 @@
 #     020-saying-things.sh .. die, refuse, usage
 #     030-arguments.sh ...... the command line
 #     040-root.sh ........... the root, and every root that is refused
-#     050-building.sh ....... make
+#     050-building.sh ....... make, unless make has just run (SATELLITE_JUST_BUILT)
 #     060-install-tree.sh ... the copy, the rename and the record
 #     080-report.sh ......... the proof and the title lines
 #

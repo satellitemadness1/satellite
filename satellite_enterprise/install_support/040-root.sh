@@ -19,21 +19,26 @@ refuse_root() {
     die "will not install into $root: $1"
 }
 
-# \$HOME/.satl IS 003's, AND SO IS THE ONE IN THIS ACCOUNT'S passwd ENTRY: a HOME
-# changed by sudo or env would otherwise let a root inside the real one through.
-[ -n "${HOME:-}" ] || die "HOME is not set, so \$HOME/.satl, satellite 003's install, cannot be told apart from --root"
+# \$HOME/.satl IS WHERE 004 INSTALLS (D0.5.1, ruled 2026-09-22), and so is the one
+# in this account's passwd entry -- a HOME changed by sudo or env still names the
+# same folder. That root takes over 003's satl there (060 keeps it as satl.bak-)
+# and may be on PATH, because becoming the word satl is the point of it. A root
+# INSIDE it is refused: a second satl under the first.
+[ -n "${HOME:-}" ] || die "HOME is not set, so \$HOME/.satl cannot be told apart from --root"
 passwd_home=$(getent passwd "$(id -u)" 2>/dev/null | cut -d: -f6) || passwd_home=
+home_root=no
 for _home in "$HOME" ${passwd_home:+"$passwd_home"}; do
     _home_satl=$(real_path "$_home/.satl" && echo .)
     _home_satl=${_home_satl%.}
     case $root_real in
-        "$_home_satl" | "$_home_satl"/*)
-            refuse_root "$_home/.satl is satellite 003's install, and satellite 004 does not install over it or inside it" ;;
+        "$_home_satl") home_root=yes ;;
+        "$_home_satl"/*)
+            refuse_root "it is inside $_home/.satl, where satellite 004 itself installs" ;;
     esac
 done
 case $root_real in
     /usr/local | /usr/local/bin | /usr/local/share | /usr/local/share/*)
-        refuse_root "/usr/local, its bin/ and its share/ are where satellite 003's --system install goes, and where 004 installs is not decided yet (PLAN D0.5.1)" ;;
+        refuse_root "/usr/local, its bin/ and its share/ are where satellite 003's --system install goes, and a system install of 004 is not decided (PLAN D0.5.1)" ;;
 esac
 
 repo_real=$(real_path "$repo" && echo .)
@@ -41,9 +46,9 @@ repo_real=${repo_real%.}
 [ "$root_real" != "$repo_real" ] ||
     refuse_root "it is the repository's top folder, which is on the author's PATH -- a file named satl there would become the word satl"
 
-# ANY FOLDER ON PATH: a satl there would change what `satl` runs -- which is 003's
-# today (D0.5.1). An empty entry means the current folder, and the ':' added here
-# keeps a TRAILING empty entry, which field splitting would otherwise drop.
+# ANY OTHER FOLDER ON PATH: a satl there would compete with \$HOME/.satl's for the
+# word satl. An empty entry means the current folder, and the ':' added here keeps
+# a TRAILING empty entry, which field splitting would otherwise drop.
 _saved_ifs=$IFS
 IFS=:
 set -f
@@ -52,10 +57,10 @@ for _entry in $_path; do
     [ -n "$_entry" ] || _entry=.
     _entry_real=$(real_path "$_entry" && echo .)
     _entry_real=${_entry_real%.}
-    if [ "$_entry_real" = "$root_real" ]; then
+    if [ "$_entry_real" = "$root_real" ] && [ "$home_root" = no ]; then
         IFS=$_saved_ifs
         set +f
-        refuse_root "it is on PATH ($_entry), where a file named satl would change what the word satl runs -- today satellite 003's (PLAN D0.5.1)"
+        refuse_root "it is on PATH ($_entry), where a file named satl would compete with \$HOME/.satl's for the word satl"
     fi
 done
 IFS=$_saved_ifs
@@ -84,12 +89,22 @@ ours() {
     grep -qxF -- "${_sum%% *}  $1" "$record"
 }
 
+# IN \$HOME/.satl, A PLAIN satl THAT IS NOT OURS IS 003's, AND IS KEPT: 060 links it
+# to satl.bak-<date> before the new one takes the name (set_aside_satl). A
+# satl-term that is not ours is 003's too, and is not this installer's to judge or
+# to remove, so it is passed over.
 check_the_root_is_ours() {
+    set_aside_satl=no
     if [ -e "$record" ] || [ -L "$record" ]; then
         [ -f "$record" ] && [ ! -L "$record" ] || refuse_root "its $record_name is not a plain file, so it is not this installer's record"
     fi
     for _name in satl satl-term; do
         [ -e "$root/$_name" ] || [ -L "$root/$_name" ] || continue
+        if [ "$home_root" = yes ] && [ -f "$root/$_name" ] && [ ! -L "$root/$_name" ] &&
+            ! { [ -f "$record" ] && ours "$_name"; }; then
+            [ "$_name" = satl-term ] || set_aside_satl=yes
+            continue
+        fi
         [ ! -L "$root/$_name" ] || refuse_root "its $_name is a symlink, and this installer writes only plain files"
         [ -f "$root/$_name" ] || refuse_root "its $_name is not a plain file"
         [ -f "$record" ] || refuse_root "it holds a $_name this installer did not put there (there is no $record_name) -- satellite 003's, or someone else's. Move it, or choose another folder"

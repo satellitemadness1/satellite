@@ -5,8 +5,9 @@
 #     sh satellite_enterprise/check_install.sh
 #
 # Every install goes into build/install_checks/ and runs with MAKE=true, so it
-# installs what make already built and builds nothing. Nothing outside build/ is
-# written: the refusals of $HOME/.satl and of PATH are checked by the refusal alone.
+# installs what make already built and builds nothing. \$HOME/.satl -- where a
+# bare install goes since D0.5.1 was ruled -- is checked under a HOME of its own
+# in there, with stand-ins for 003's satl and satl-term: never the real one.
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repo=$(dirname -- "$here")
@@ -28,10 +29,18 @@ hello() { "$1/satl" --run "$repo/examples/hello_world.satl" 2> /dev/null | head 
 
 [ -x "$repo/build/satl" ] || { echo "check_install.sh: build/satl is not built; run make first"; exit 1; }
 
-MAKE=true sh "$installer" > "$scratch/out" 2>&1
-expect "no --root" "23|1" "$?|$(says 'root <folder> is required')"
-install_into "$HOME/.satl"
-expect "\$HOME/.satl is 003's" "1|1" "$status|$(says "satellite 003's install")"
+home="$scratch/home"
+mkdir -p "$home/.satl" && cp /bin/true "$home/.satl/satl" && cp /bin/false "$home/.satl/satl-term"
+HOME=$home MAKE=true sh "$installer" > "$scratch/out" 2>&1
+expect "no --root installs into \$HOME/.satl, over a satl it did not put there, proven" "0|Hello, World!" \
+       "$?|$(hello "$home/.satl")"
+expect "... keeping that satl as satl.bak-<date>, and leaving 003's satl-term alone" "1|same|same" \
+       "$(ls "$home/.satl" | grep -c '^satl\.bak-')|$(cmp -s /bin/true "$home/.satl"/satl.bak-* && echo same)|$(cmp -s /bin/false "$home/.satl/satl-term" && echo same)"
+HOME=$home PATH="$home/.satl:$PATH" MAKE=true sh "$installer" > "$scratch/out" 2>&1
+expect "\$HOME/.satl on PATH, installed over its own install, keeps no second copy" "0|1|1" \
+       "$?|$(ls "$home/.satl" | grep -c '^satl\.bak-')|$(says 'the word satl runs this install')"
+HOME=$home MAKE=true sh "$installer" --root "$home/.satl/inner" > "$scratch/out" 2>&1
+expect "a root inside \$HOME/.satl" "1|1" "$?|$(says 'inside')"
 install_into x --link
 expect "--link is 003's" "23|1" "$status|$(says "is satellite 003's installer's")"
 

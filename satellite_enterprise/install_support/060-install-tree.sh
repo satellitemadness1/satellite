@@ -31,6 +31,15 @@ fi
 # make has run since 040 looked: look again, just before writing.
 check_the_root_is_ours
 
+# 003's satl, KEPT BEFORE ANYTHING IS REPLACED: a second name for the same file, so
+# `satl` never stops existing, and the new one then takes the name by rename.
+if [ "$set_aside_satl" = yes ]; then
+    _kept=$root/satl.bak-$(date +%Y%m%d-%H%M%S)
+    ln -- "$root/satl" "$_kept" 2> /dev/null || cp -p -- "$root/satl" "$_kept" ||
+        die "cannot keep the satl this installer did not put in $root; nothing was replaced"
+    step "kept the satl that was in $root, which this installer did not put there, as $(basename -- "$_kept")"
+fi
+
 stage=$(mktemp -d -- "$root/.satellite-004-staging.XXXXXX") || die "cannot write in $root"
 put_back_old_libraries() {
     if [ ! -e "$root/satellite-numbers" ] && [ -d "$stage/satellite-numbers.old" ]; then
@@ -70,9 +79,9 @@ else
     mv -T -- "$stage/satellite-numbers" "$root/satellite-numbers" || die "cannot put satellite-numbers/ in $root"
 fi
 mv -fT -- "$stage/satl" "$root/satl" || die "cannot put satl in $root (its libraries are already the new ones)"
-if [ -f "$root/satl-term" ]; then
-    # Ours (040-root.sh checked it against the record), from an install made
-    # before satl-term was removed: satl opens its own console now.
+if [ -f "$root/satl-term" ] && [ ! -L "$root/satl-term" ] && [ -f "$record" ] && ours satl-term; then
+    # Ours, from an install made before satl-term was removed: satl opens its own
+    # console now. One that is not ours -- 003's, in \$HOME/.satl -- stays.
     rm -f -- "$root/satl-term"
     step "removed the satl-term an earlier install left: satl opens its own console now"
 fi

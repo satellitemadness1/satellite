@@ -1,6 +1,7 @@
 # satellite 004 -- the build.
 #
-#     make                 build/satl and every numbered library
+#     make                 build/satl and every numbered library, then install them
+#                          into ~/.satl (080-install.mk; INSTALL_AFTER_BUILD=no skips it)
 #     make test            check.sh and the string checks
 #     make check           check.sh alone
 #     make clean
@@ -24,12 +25,13 @@
 #     how a .cpp becomes a .o ............. 060-compile.mk
 #     a test, a harness or a race ......... 065-tests.mk
 #     what `make clean` removes ........... 070-clean.mk
+#     the install after every make ........ 080-install.mk
 #
 # NOT PORTED from 003, and why: 045 (the haswell pair and satl-cpu-level --
 # 004 builds one satl), 048's STATIC (004 is dynamic on purpose: satl and every
 # library must share ONE libstdc++, or each has its own std::cout -- DESIGN §3.4),
-# 067 (003's start-up rows are 003 commands) and 080 (a bare `make` installs
-# nothing while D0.5.1, where 004 installs, is open).
+# and 067 (003's start-up rows are 003 commands). 080 came across on 2026-09-22,
+# when the author ruled D0.5.1: 004 installs into ~/.satl with every make.
 #
 # ORDER IS LOAD-BEARING: 050 is the first fragment that declares a target, which
 # is what makes `all` the default goal. (047 used to set HAVE_WINDOW for 050's
@@ -50,3 +52,4 @@ include make_support/050-build.mk
 include make_support/060-compile.mk
 include make_support/065-tests.mk
 include make_support/070-clean.mk
+include make_support/080-install.mk

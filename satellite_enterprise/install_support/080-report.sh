@@ -32,15 +32,17 @@ trap - EXIT
 libraries=$(ls -- "$root/satellite-numbers" | grep -c '\.so$' || :)
 printf '\n%s\n\n' "$title"
 printf 'installed into %s:\n' "$(shown "$root")"
-printf '    satl                  the interpreter -- run it by its path: %s/satl <file.satl>\n' "$(shown "$root")"
+printf '    satl                  the interpreter: %s/satl <file.satl>\n' "$(shown "$root")"
 printf '    satellite-numbers/    %s libraries\n' "$libraries"
 printf '    %s   the record of what this installer put there\n' "$record_name"
 
-# THE WORD satl IS NOT THIS INSTALL'S, on purpose (D0.5.1). Said, so nobody types
-# satl expecting 004.
+# WHAT THE WORD satl RUNS, said either way, so nobody types satl expecting one
+# satellite and gets another. A shell alias is the shell's, and not seen here.
 word=$(command -v satl 2>/dev/null || :)
-if [ -n "$word" ]; then
-    printf '\nthe word satl still runs %s, which this installer did not touch.\n' "$(shown "$word")"
-else
+if [ -z "$word" ]; then
     printf '\nthe word satl runs nothing on this PATH; this installer did not add it.\n'
+elif [ "$(realpath -- "$word" 2>/dev/null)" = "$(realpath -- "$root/satl" 2>/dev/null)" ]; then
+    printf '\nthe word satl runs this install (%s).\n' "$(shown "$word")"
+else
+    printf '\nthe word satl runs %s, not this install.\n' "$(shown "$word")"
 fi

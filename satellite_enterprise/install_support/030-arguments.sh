@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
             exit 0
             ;;
         --link | --desktop | --system | --no-link | --prefix | --prefix=* | --uninstall | --static | --no-static)
-            refuse_command_line "$1 is satellite 003's installer's (old_versions/second_satellite/satellite_enterprise/install.sh). Where 004 installs is not decided yet (PLAN D0.5.1), so this one installs only into a --root, and does nothing outside it"
+            refuse_command_line "$1 is satellite 003's installer's (old_versions/second_satellite/satellite_enterprise/install.sh). This one installs into \$HOME/.satl or a --root, and does nothing outside it"
             ;;
         *)
             refuse_command_line "\"$1\" is not a word this installer takes"
@@ -33,5 +33,9 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-[ "$root_given" = yes ] || refuse_command_line "--root <folder> is required: where satellite 004 installs is not decided yet (PLAN D0.5.1)"
+# NO --root IS $HOME/.satl (D0.5.1, ruled 2026-09-22).
+if [ "$root_given" = no ]; then
+    [ -n "${HOME:-}" ] || refuse_command_line "HOME is not set, so there is no \$HOME/.satl to install into; name a folder with --root"
+    root=$HOME/.satl
+fi
 [ -n "$root" ] || refuse_command_line "--root was given an empty folder name"
