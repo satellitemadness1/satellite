@@ -10,6 +10,7 @@
 
 #include "expression.hpp"
 
+#include "capsule_calls.hpp"
 #include "capsule_scopes.hpp"
 
 #include "file_calls.hpp"
@@ -339,7 +340,20 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
     // becomes the next turn's (*live), and `s.bin.find("1010111")` is two turns
     // with nothing in this file knowing that pairing exists. A chain of any
     // length costs one local.
-    while (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1))) {
+    while (code_at(row, at) == token::method_token &&
+           (token::is_method_code(code_at(row, at + 1)) || a_member_next(row, at, *live))) {
+        // AN OBJECT'S MEMBER (2026-09-22, capsule_calls.hpp): its spacesuit says what the
+        // name is, whether or not the lexer made it a method code -- an object's capsule
+        // may be called `size` as well as `call_name`. What it answers goes on down the chain.
+        if ((*live).is_user_defined()) {
+            Value answer = call_member(row, at, *live, name, context);
+            if (context.code != success)
+                return Value();
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
+            continue;
+        }
         const Code method = code_at(row, at + 1);
         const char *spelling = spelling_of_method(method);
         at += 2;
@@ -711,7 +725,8 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
 Value maybe_a_method(const std::vector<std::bitset<16>> &row, std::size_t &at, Value value,
                      const char *what, ExpressionContext &context)
 {
-    if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
+    if ((code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1))) ||
+        a_member_next(row, at, value))
         return call_method(row, at, value, what, context);
     return value;
 }
@@ -1106,17 +1121,41 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         const std::string name = text_at(row, k);
         const std::size_t name_at = at;   // text_at walked past it; the caret wants the name
         at = k;
-        const VariableTable::const_iterator found = context.variables.find(name);
-        if (found == context.variables.end()) {
+
+        // A CAPSULE, CALLED FOR ITS ANSWER (2026-09-22, capsule_calls.hpp) -- `five()`,
+        // and `other.greet(x)` or `tools.x()` when the first name is not a variable of
+        // this body's: a variable is a method's receiver, and the checker refuses a
+        // variable named like a file or a space, so the two cannot meet.
+        if (code_at(row, at) == token::left_parenthesis_token) {
+            at = name_at;
+            Value answer = call_capsule_for_its_answer(row, at, {name}, k, context);
+            if (context.code != success)
+                return Value();
+            return maybe_a_method(row, at, std::move(answer), "that answer", context);
+        }
+        Seen found = context.variables.seen(name);
+        if (!found && code_at(row, at) == token::method_token) {
+            std::size_t past = name_at;
+            std::vector<std::string> names;
+            dotted_names_at(row, past, names);
+            if (names.size() >= 2 && code_at(row, past) == token::left_parenthesis_token) {
+                at = name_at;
+                Value answer = call_capsule_for_its_answer(row, at, names, past, context);
+                if (context.code != success)
+                    return Value();
+                return maybe_a_method(row, at, std::move(answer), "that answer", context);
+            }
+        }
+        if (!found) {
             context.refuse(name_not_declared, name + " has no satellite.variable line declaring it", name_at);
             return Value();
         }
         // THE ARGUMENTS VARIABLE'S ROWS BY NAME (main_arguments.hpp):
         // `arguments.username`, `arguments.memory.total`, and whatever follows the
         // row is a method on it -- `arguments.username.upper()`.
-        if (found->second.declared == word::code_of(1, 6, 21) && code_at(row, at) == token::method_token) {
+        if (found.declared == word::code_of(1, 6, 21) && code_at(row, at) == token::method_token) {
             bool read = false;
-            Value answer = read_an_argument(row, at, name, found->second.value, context, read);
+            Value answer = read_an_argument(row, at, name, *found.value, context, read);
             if (context.code != success)
                 return Value();
             if (read)
@@ -1132,7 +1171,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // while instead of an if, because each step just indexes whatever the
         // last one answered -- a list of lists is not a second kind of thing.
         if (code_at(row, at) == token::left_square_bracket_token) {
-            Value current = found->second.value;
+            Value current = *found.value;
             std::string what = name;
             // KEPT SO A MUTATOR AT THE END OF THE CHAIN CAN BE WALKED AGAIN,
             // this time reaching the real slot rather than a copy of it. Reading
@@ -1163,14 +1202,19 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                     return Value();
                 what += "[...]";
             }
+            // `list[i].call_x()` -- A CAPSULE OF THE OBJECT AN ITEM HOLDS (the author's
+            // programs do it 48 times). An object is a reference, so the copy read above
+            // IS the object, and nothing needs walking to again.
+            if (a_member_next(row, at, current))
+                return call_method(row, at, current, what, context);
             if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1))) {
                 // A MUTATOR AT THE END OF A CHAIN GETS THE REAL SLOT.
                 // `grid[1].append(3)` has to change grid, and `current` above is
                 // a copy -- so the path is walked a second time, by reference,
                 // and ONLY when the method really changes something.
                 if (container_arity(code_at(row, at + 1)) >= 0 && changes_a_container(code_at(row, at + 1))) {
-                    const VariableTable::iterator writable = context.variables.find(name);
-                    if (writable != context.variables.end()) {
+                    const Seen writable = context.variables.seen(name);
+                    if (writable) {
                         // LET GO OF THE ITEM WE READ BEFORE WALKING TO IT AGAIN.
                         //
                         // `current` holds a handle to the very item about to be
@@ -1185,8 +1229,8 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                         // the output is identical either way.
                         current = Value();
                         const TypeShape *inner = nullptr;
-                        Value *slot = slot_through_index(writable->second.value, used, name, chain_at,
-                                                         &writable->second.shape, &inner, context);
+                        Value *slot = slot_through_index(*writable.value, used, name, chain_at,
+                                                         writable.shape, &inner, context);
                         if (context.code != success)
                             return Value();
                         if (slot != nullptr)
@@ -1198,18 +1242,15 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             return current;
         }
         // THE THREE TOKENS TOGETHER (the author): a period, a method's own code,
-        // and a `(`. call_method above says what happens then.
-        if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
-            // THE VARIABLE'S OWN OBJECT, so `names.append("x")` changes names
-            // rather than a copy of it. `find` is a const_iterator, so the
-            // non-const one is taken here and nowhere else.
-            {
-                const VariableTable::iterator writable = context.variables.find(name);
-                Value *home = writable == context.variables.end() ? nullptr : &writable->second.value;
-                const TypeShape *shape = writable == context.variables.end() ? nullptr : &writable->second.shape;
-                return call_method(row, at, found->second.value, name, context, home, shape);
-            }
-        return found->second.value;
+        // and a `(`. call_method above says what happens then. After an OBJECT, the
+        // name is one of its spacesuit's capsules, whatever it is spelled.
+        //
+        // THE VARIABLE'S OWN OBJECT -- or the field of this body's object -- so
+        // `names.append("x")` changes names rather than a copy of it (value.hpp's Seen).
+        if ((code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1))) ||
+            a_member_next(row, at, *found.value))
+            return call_method(row, at, *found.value, name, context, found.value, found.shape);
+        return *found.value;
     }
 
     if (context.code == success)

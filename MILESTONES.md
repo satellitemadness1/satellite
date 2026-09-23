@@ -237,7 +237,33 @@ shape in the checker and the walker. What is still owed under this heading is on
 the GRAMMAR that has no shape yet -- blocks that are not `while` bodies, and the
 declarations M8 describes.
 
-## M8 — user-defined classes (spacesuits) — **the machine is built, the grammar is not**
+## M8 — user-defined classes (spacesuits) — **BUILT 2026-09-22** (commit below)
+
+**What runs.** `satellite.spacesuit name()` (and `satellite.class`) with the
+author's sections -- `satellite.protected`, `satellite.public`, and
+`satellite.constructor(args) { }` beside them; objects made by declaring them,
+`tagged_report.run_log log(log_path)`; methods called as `obj.m(...)` anywhere a
+value goes; fields by their bare names inside, never from outside (003's S0517);
+a spacesuit inside another's section (**new -- 003 had none**; `outer.inner` from
+outside only when public); one spacesuit extending another, `eclipse(view)`, by
+003's rules; a user type as a parameter, a `satellite.returns`, a `list<T>` and a
+dotted `file.Type`. **And capsule answers**: `satellite.returns(T)` read,
+`satellite.return(x)` hands x back and ends the capsule FROM ANY DEPTH -- the
+M20 item 1 bug below, settled by the author's own programs (tagged_report's
+role_of returns from inside two ifs). Files: `bytecode/suit_scan.cpp`,
+`suit_reach.cpp`, `suit_layout.hpp`, `suit_run.cpp`, `capsule_calls.cpp`;
+`tests/spacesuits.satl` and 24 refusal rows in check.sh.
+
+**Chosen here, his to overrule** (each is one place): a method dispatches on the
+OBJECT's spacesuit, not the declared one (003 was static); a field declared again
+in a subtype is a second slot and the supertype's capsules read theirs (003's
+rule); `darkening() { }` -- C++'s constructor, 20 of his lines -- is refused with
+the sentence to write instead (003 refused it too); a spacesuit-typed field with
+nothing after its name starts empty (003's rule, and 4 of his are self-typed).
+**Still his:** a built type as a supertype (M35); a spacesuit inside a CAPSULE
+(POLYMORPH M1's D1/D2); `Type(args)` inside a line (neither 003 nor 004).
+
+**History** -- the entry as it stood before:
 
 `satelliteSpacesuit` and `satelliteUserDefinedObject` exist and compile.
 **Nothing can declare one yet, and the seam is exact** (checked 2026-09-17):

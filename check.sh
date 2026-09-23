@@ -3916,7 +3916,7 @@ scope_refused capsule_twice 26 "twice is declared twice in this file -- it is al
 satellite.capsule twice()
 {
 }' ''
-scope_refused variable_in_space 13 "holds capsules and other spaces, not variables" \
+scope_refused variable_in_space 13 "holds capsules, spacesuits and other spaces, not variables" \
     "a variable inside a space is refused (the author: variables belong to a capsule or a spacesuit)" 'satellite.space tools
 {
     satellite.variable.number n = 5
@@ -3929,20 +3929,26 @@ scope_refused capsule_in_capsule 13 "satellite.capsule goes at the top of a file
     "a capsule declared inside a capsule is refused by name" '' '    satellite.capsule inside()
     {
     }'
-scope_refused spacesuit 14 "satellite.spacesuit ship is not built yet" \
-    "satellite.spacesuit is refused as not built yet, and its body is not read as the file's capsules" 'satellite.spacesuit ship()
+scope_refused spacesuit 13 "no capsule named hail" \
+    "a spacesuit's capsules are its own, and never read as its file's (2026-09-22)" 'satellite.spacesuit ship()
 {
     satellite.public
     {
-        satellite.capsule greet()
+        satellite.capsule hail()
         {
         }
     }
-}' ''
-scope_refused class 14 "satellite.spacesuit ship is not built yet" \
-    "satellite.class is a second spelling of satellite.spacesuit (words/aliases.tsv)" 'satellite.class ship()
+}' '    hail()'
+scope_refused class 13 "no capsule named hail" \
+    "satellite.class is a second spelling of satellite.spacesuit (words/aliases.tsv), and declares one" 'satellite.class ship()
 {
-}' ''
+    satellite.public
+    {
+        satellite.capsule hail()
+        {
+        }
+    }
+}' '    hail()'
 scope_refused variable_named_like_a_file 26 "other is already the file other.satl this file includes, so a variable cannot be named other" \
     "a variable may not take the name of a file its file includes" '' '    satellite.variable.string other = "x"'
 scope_refused no_such_member 13 "the file .*other.satl declares no capsule named nosuch" \
@@ -4003,6 +4009,234 @@ expect "... and b.pressed(other.nosuch) is refused before a window is asked for"
        "$code|$(tr '\n' ' ' < build/scopes/press.out | sed 's/  */ /g' | grep -c 'the file .*other.satl declares no capsule named nosuch')"
 expect "satellite.space and satellite.class are second spellings, with their words' codes" "2|2" \
        "$(grep -cE '\{"satellite\.(space|namespace)", 4514\},' satellite/bytecode/word_codes.hpp)|$(grep -cE '\{"satellite\.(class|spacesuit)", 4315\},' satellite/bytecode/word_codes.hpp)"
+# SPACESUITS (2026-09-22): satellite.spacesuit, and satellite.class, declared as the
+# author writes them -- satellite.protected, satellite.public and satellite.constructor
+# beside them; an object made by declaring it, its constructor's arguments at the
+# declaration; a spacesuit inside a spacesuit; one extending another; and capsules
+# answering what satellite.return hands back, which ends the capsule from any depth.
+# tests/spacesuits.satl walks all of it; each refusal below is one program, and every
+# one the checker can make is asserted to come before anything ran.
+"$interpreter" tests/spacesuits.satl > build/spacesuits.out 2>&1; code=$?
+expect "spacesuits: objects, sections, nesting, a supertype and capsule answers" \
+       "0|counter 2|8|10|more than five|1 0|7|kestrel has 7 plates, logged 2|osprey has 3 plates, logged 2|900|42|9|left the for at 3|[moon: depth 4] eclipse|11|view|view" \
+       "$code|$(grep -v -e '^THE SATELLITE' -e '^VERSION' -e '^CLANG' -e '^G++' -e '^---' -e '^$' build/spacesuits.out | tr '\n' '|' | sed 's/|$//')"
+rm -rf build/suits && mkdir -p build/suits
+# ONE PROGRAM A REFUSAL: $1 the file, $2 the exit, $3 words the report must hold,
+# $4 how many "before" lines ran first (0: the check refused it), $5 the row's name,
+# $6 the top of the file after a counter spacesuit, $7 main's body.
+suit_refused() {
+    printf 'satellite.include(satellite)\n\nsatellite.spacesuit counter()\n{\n    satellite.protected\n    {\n        satellite.variable.number count = 0\n        satellite.capsule bump_by(satellite.variable.number n)\n        {\n            count = count + n\n        }\n    }\n\n    satellite.constructor(satellite.variable.number start)\n    {\n        count = start\n    }\n\n    satellite.public\n    {\n        satellite.capsule call_count() satellite.returns(satellite.variable.number)\n        {\n            satellite.return(count)\n        }\n        satellite.capsule call_nothing()\n        {\n            count = count + 1\n        }\n    }\n}\n%s\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' \
+        "$6" "$7" > "build/suits/$1.satl"
+    "$interpreter" "build/suits/$1.satl" > "build/suits/$1.out" 2>&1; code=$?
+    expect "$5" "$2|1|$4" \
+           "$code|$(tr '\n' ' ' < "build/suits/$1.out" | sed 's/  */ /g' | grep -c -- "$3")|$(grep -cx before "build/suits/$1.out")"
+}
+suit_refused field_outside 52 "S230: MEMBER_IS_PROTECTED .*count is a field of counter and fields are reached from inside the spacesuit only" 0 \
+    "obj.field is refused, public or not -- a field is reached inside its spacesuit only (003's S0517)" '' '    counter c(1)
+    satellite.console.display(c.count)'
+suit_refused field_written 52 "count is a field of counter" 0 "... and so is obj.field = x" '' '    counter c(1)
+    c.count = 5'
+suit_refused protected_outside 52 "bump_by is inside the satellite.protected part of counter" 0 \
+    "a protected capsule is refused from outside its spacesuit (003's S0516)" '' '    counter c(1)
+    c.bump_by(2)'
+suit_refused no_member 13 "counter has no nosuch" 0 "a name the spacesuit does not have says so" '' '    counter c(1)
+    c.nosuch()'
+suit_refused constructor_count 13 "counter's satellite.constructor takes 1 argument, and c was given 0" 0 \
+    "an object is given what its constructor takes, counted before anything runs" '' '    counter c'
+suit_refused no_constructor 13 "plain p is declared with arguments, and plain has no satellite.constructor to take them" 0 \
+    "arguments with no constructor to take them are refused (003's S0526)" 'satellite.spacesuit plain()
+{
+    satellite.public
+    {
+    }
+}' '    plain p(3)'
+suit_refused never_answers 53 "S240: CAPSULE_GAVE_NO_ANSWER .*c.call_nothing() is used where its answer would be, and it never hands one back" 0 \
+    "a capsule that can never answer is refused where its answer is used" '' '    counter c(1)
+    satellite.variable.number n = c.call_nothing()'
+suit_refused ended_without 53 "maybe's answer is used, and it ended without handing one back" 1 \
+    "a capsule that ended without one, the way it went, is refused when the answer is used" 'satellite.capsule maybe(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.statement.if (n > 0)
+    {
+        satellite.return(n)
+    }
+}' '    satellite.console.display(maybe(0))'
+suit_refused wrong_answer 27 "five answers satellite.variable.number, and what this satellite.return handed back does not fit -- it holds a string" 1 \
+    "an answer is measured against satellite.returns" 'satellite.capsule five() satellite.returns(satellite.variable.number)
+{
+    satellite.return("five")
+}' '    satellite.console.display(five())'
+suit_refused declared_but_empty 53 "five answers satellite.variable.number, and this satellite.return hands back nothing" 0 \
+    "a capsule that declares satellite.returns must hand something back" 'satellite.capsule five() satellite.returns(satellite.variable.number)
+{
+    satellite.return()
+}' ''
+suit_refused in_a_capsule 14 "a satellite.spacesuit declared inside a capsule, that comes to exist when the capsule runs, is not built yet (POLYMORPH M1)" 0 \
+    "a spacesuit inside a capsule is POLYMORPH M1, and not built" '' '    satellite.spacesuit inner()
+    {
+    }'
+suit_refused no_such_type 25 "no spacesuit named ghost" 0 "a type nothing declares is refused by name" '' '    ghost g'
+suit_refused protected_inner 25 "counter2.part is declared inside the satellite.protected part of the spacesuit counter2" 0 \
+    "a spacesuit inside another one's satellite.protected is not named from outside it" 'satellite.spacesuit counter2()
+{
+    satellite.protected
+    {
+        satellite.spacesuit part()
+        {
+        }
+    }
+}' '    counter2.part p'
+suit_refused field_names_field 25 "a is a field of early, and a field's value is worked out before there is an object" 0 \
+    "a field's value cannot name another field (003's S0511)" 'satellite.spacesuit early()
+{
+    satellite.protected
+    {
+        satellite.variable.number a = 1
+        satellite.variable.number b = a + 1
+    }
+}' ''
+suit_refused parameter_like_field 26 "n is a field of clash, and a name is declared once" 0 \
+    "a capsule's parameter cannot take a field's name" 'satellite.spacesuit clash()
+{
+    satellite.protected
+    {
+        satellite.variable.number n = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_set(satellite.variable.number n)
+        {
+        }
+    }
+}' ''
+suit_refused bare_method_from_outside 13 "no capsule named call_count" 0 \
+    "a spacesuit's capsule is not reached by its bare name from outside it" '' '    call_count()'
+suit_refused cxx_constructor 13 "view() with a body is how C++ writes a constructor -- a satellite spacesuit's is satellite.constructor" 0 \
+    "C++'s constructor spelling is named, not taken (003 refused it too, S0207)" 'satellite.spacesuit view()
+{
+    satellite.public
+    {
+        view()
+        {
+        }
+    }
+}' ''
+suit_refused section_in_section 13 "satellite.public is written inside another section of the spacesuit odd" 0 \
+    "a section inside a section is refused -- it means nothing" 'satellite.spacesuit odd()
+{
+    satellite.protected
+    {
+        satellite.public
+        {
+        }
+    }
+}' ''
+suit_refused cycle 13 "a extends itself -- following the brackets from a leads back to a" 0 \
+    "a spacesuit extending itself, however far round, is refused (003's S0520)" 'satellite.spacesuit a(b)
+{
+}
+satellite.spacesuit b(a)
+{
+}' ''
+suit_refused built_supertype 14 "satellite.spacesuit a(satellite.variable.string) -- a spacesuit extending a built type is MILESTONES M35" 0 \
+    "a built type as a supertype is M35, still the author's to decide" 'satellite.spacesuit a(satellite.variable.string)
+{
+}' ''
+suit_refused two_supertypes 13 "extends ONE spacesuit" 0 "a spacesuit has one supertype or none" 'satellite.spacesuit a(counter, counter)
+{
+}' ''
+suit_refused supertype_arguments 13 "more extends counter, whose satellite.constructor takes 1 argument, and nothing can hand them over" 0 \
+    "a supertype's constructor that wants arguments, under a subtype's own, is refused" 'satellite.spacesuit more(counter)
+{
+    satellite.constructor(satellite.variable.string word)
+    {
+    }
+}' ''
+suit_refused protected_through_a_subtype 52 "bump_by is inside the satellite.protected part of counter" 0 \
+    "a supertype's protected capsule is not reached through a subtype's object from outside" 'satellite.spacesuit more(counter)
+{
+}' '    more m(1)
+    m.bump_by(3)'
+suit_refused made_in_a_line 13 "hull is a spacesuit, and an object of it is made by declaring one on a line of its own" 0 \
+    "a spacesuit's name with brackets inside a line says how an object is made" 'satellite.spacesuit hull()
+{
+}' '    satellite.variable.number n = hull()'
+# A CAPSULE A SUBTYPE DECLARES AGAIN must be called as the one it replaces is, because a
+# name declared as the supertype may hold the subtype's object (the review, 2026-09-22).
+suit_refused override_protected 13 "hidden's call_count replaces counter's for its objects, and it is in satellite.protected and the one it replaces is public" 0 \
+    "an override may not be less reachable than what it replaces" 'satellite.spacesuit hidden(counter)
+{
+    satellite.protected
+    {
+        satellite.capsule call_count() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(0)
+        }
+    }
+}' ''
+suit_refused override_arguments 13 "wide's call_count replaces counter's for its objects, and it takes different arguments" 0 \
+    "... nor take different arguments" 'satellite.spacesuit wide(counter)
+{
+    satellite.public
+    {
+        satellite.capsule call_count(satellite.variable.number n) satellite.returns(satellite.variable.number)
+        {
+            satellite.return(n)
+        }
+    }
+}' ''
+suit_refused override_answer 13 "it answers satellite.variable.string and the one it replaces answers satellite.variable.number" 0 \
+    "... nor answer something else" 'satellite.spacesuit worded(counter)
+{
+    satellite.public
+    {
+        satellite.capsule call_count() satellite.returns(satellite.variable.string)
+        {
+            satellite.return("many")
+        }
+    }
+}' ''
+suit_refused ring 13 "making a node makes a node for its field next, and that comes back round to making a node again" 0 \
+    "a field that makes its own spacesuit, however far round, is refused -- it would never finish" 'satellite.spacesuit node()
+{
+    satellite.protected
+    {
+        node next(1)
+    }
+    satellite.constructor(satellite.variable.number n)
+    {
+    }
+}' ''
+suit_refused pressed_a_method 13 "call_tick is a capsule of the spacesuit ticker, and it runs on an object" 0 \
+    "a button cannot run a spacesuit's capsule -- a press has no object to give it" 'satellite.spacesuit ticker()
+{
+    satellite.public
+    {
+        satellite.capsule call_tick()
+        {
+        }
+        satellite.capsule call_wire()
+        {
+            satellite.variable.window b = satellite.window.button("x")
+            b.pressed(call_tick)
+        }
+    }
+}' ''
+suit_refused list_item_member 53 "xs\[...\].call_nothing() is used where its answer would be" 0 \
+    "an item's member is judged by what its list was declared to hold, before anything runs" '' '    satellite.container.list<counter> xs = {}
+    satellite.console.display(xs[1].call_nothing())'
+# A METHOD FOLLOWS THE OBJECT, CALLED BARE OR WITH A DOT: the supertype's capsule calls
+# call_name bare, and on a circle the circle's runs (the review's question, 2026-09-22).
+printf 'satellite.include(satellite)\n\nsatellite.spacesuit shape()\n{\n    satellite.public\n    {\n        satellite.capsule call_name() satellite.returns(satellite.variable.string)\n        {\n            satellite.return("a shape")\n        }\n        satellite.capsule call_describe() satellite.returns(satellite.variable.string)\n        {\n            satellite.return("I am " + call_name())\n        }\n    }\n}\n\nsatellite.spacesuit circle(shape)\n{\n    satellite.public\n    {\n        satellite.capsule call_name() satellite.returns(satellite.variable.string)\n        {\n            satellite.return("a circle")\n        }\n    }\n}\n\nsatellite.capsule satellite.main()\n{\n    circle c\n    shape s\n    satellite.console.display(c.call_describe())\n    satellite.console.display(s.call_describe())\n    satellite.return(satellite)\n}\n' > build/suits/follows.satl
+expect "a bare call to a replaced capsule runs the object's own, as a dotted one does" "0|I am a circle|I am a shape" \
+       "$("$interpreter" build/suits/follows.satl > build/suits/follows.out 2>/dev/null; echo $?)|$(grep -e '^I am' build/suits/follows.out | tr '\n' '|' | sed 's/|$//')"
+# A CALL TO ITSELF AND THEN A satellite.return THAT HANDS BACK NOTHING, anywhere in the
+# capsule, is a last call now that return ends the capsule from any depth -- on 8 MiB,
+# 100,000 deep, where a real frame a level dies near 2,500 (the review, 2026-09-22).
+printf 'satellite.include(satellite)\n\nsatellite.capsule down(satellite.variable.number n)\n{\n    satellite.statement.if (n > 0)\n    {\n        down(n - 1)\n        satellite.return()\n    }\n    satellite.console.display("reached the bottom")\n}\n\nsatellite.capsule satellite.main()\n{\n    down(100000)\n    satellite.return(satellite)\n}\n' > build/suits/call_then_return.satl
+( ulimit -Ss 8192; ulimit -Hs 8192; "$interpreter" build/suits/call_then_return.satl > build/suits/call_then_return.out 2>/dev/null ) 2>/dev/null; code=$?
+expect "a call to itself followed by satellite.return() is a last call, 100,000 deep on 8 MiB" "0|1" \
+       "$code|$(grep -c 'reached the bottom' build/suits/call_then_return.out)"
 # words_004.tsv is typed by hand, so make_words.py refuses a row it cannot trust --
 # checked through the real script and 003's real satl, which is gitignored.
 # THE TWO BYTECODE HEADERS ARE GENERATED, AND NOTHING ELSE CHECKED THAT THEY ARE STILL

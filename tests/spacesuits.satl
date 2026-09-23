@@ -1,0 +1,280 @@
+satellite.include(satellite)
+satellite.include(spacesuit_parts)
+
+// tests/spacesuits.satl -- SPACESUITS, AS THE AUTHOR WRITES THEM (2026-09-22): the
+// sections protected, public and constructor; objects made by declaring them, with the
+// constructor's arguments at the declaration; a spacesuit inside a spacesuit; one
+// spacesuit extending another; and capsules answering what satellite.return hands back.
+// check.sh runs this and compares every line.
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.string spacesuit_name = "counter"
+        satellite.variable.number count = 0
+        satellite.variable.number step = 1
+
+        satellite.capsule bump_by(satellite.variable.number n)
+        {
+            count = count + n
+        }
+    }
+
+    satellite.constructor(satellite.variable.number step_input)
+    {
+        step = step_input
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_name() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(spacesuit_name)
+        }
+
+        satellite.capsule call_bump()
+        {
+            bump_by(step)
+        }
+
+        satellite.capsule call_count() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(count)
+        }
+    }
+}
+
+// A SPACESUIT INSIDE A SPACESUIT: `hull` in satellite.public, so the program may make
+// one as ship.hull; `log` in satellite.protected, so only ship's capsules may.
+satellite.spacesuit ship()
+{
+    satellite.protected
+    {
+        satellite.variable.string name = "unnamed"
+        hull the_hull
+        satellite.container.list<satellite.variable.string> lines = {}
+
+        satellite.spacesuit log()
+        {
+            satellite.protected
+            {
+                satellite.variable.number written = 0
+            }
+
+            satellite.public
+            {
+                satellite.capsule call_write() satellite.returns(satellite.variable.number)
+                {
+                    written = written + 1
+                    satellite.return(written)
+                }
+            }
+        }
+    }
+
+    satellite.constructor(satellite.variable.string name_input)
+    {
+        name = name_input
+        hull made(3)
+        the_hull = made
+    }
+
+    satellite.public
+    {
+        satellite.spacesuit hull()
+        {
+            satellite.protected
+            {
+                satellite.variable.number plates = 0
+            }
+
+            satellite.constructor(satellite.variable.number plates_input)
+            {
+                plates = plates_input
+            }
+
+            satellite.public
+            {
+                satellite.capsule call_plates() satellite.returns(satellite.variable.number)
+                {
+                    satellite.return(plates)
+                }
+            }
+        }
+
+        satellite.capsule call_report() satellite.returns(satellite.variable.string)
+        {
+            log fresh
+            fresh.call_write()
+            satellite.variable.number times = fresh.call_write()
+            satellite.return(name + " has " + the_hull.call_plates().to_string() + " plates, logged " + times.to_string())
+        }
+
+        satellite.capsule call_set_hull(hull given)
+        {
+            the_hull = given
+        }
+    }
+}
+
+// ONE SPACESUIT EXTENDING ANOTHER, as the author's eclipse extends view_forge: the
+// supertype's fields come first, its protected capsule is called bare, its public one
+// on an object of the subtype, and a field declared again is the subtype's own.
+satellite.class view()
+{
+    satellite.protected
+    {
+        satellite.variable.string spacesuit_name = "view"
+        satellite.variable.string title = "a view"
+        satellite.variable.number made = 0
+
+        satellite.capsule banner(satellite.variable.string word) satellite.returns(satellite.variable.string)
+        {
+            satellite.return("[" + title + ": " + word + "]")
+        }
+    }
+
+    satellite.constructor()
+    {
+        made = made + 1
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_set_title(satellite.variable.string title_input)
+        {
+            title = title_input
+        }
+
+        satellite.capsule call_kind() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(spacesuit_name)
+        }
+
+        satellite.capsule call_made() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(made)
+        }
+    }
+}
+
+satellite.spacesuit eclipse(view)
+{
+    satellite.protected
+    {
+        satellite.variable.string spacesuit_name = "eclipse"
+        satellite.variable.number depth = 0
+    }
+
+    satellite.constructor(satellite.variable.number depth_input)
+    {
+        depth = depth_input
+        made = made + 10
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_show() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(banner("depth " + depth.to_string()) + " " + spacesuit_name)
+        }
+    }
+}
+
+satellite.namespace tools
+{
+    // AN ANSWER WITH NO satellite.returns, as 578 of the author's capsules are written.
+    satellite.capsule twice(satellite.variable.number n)
+    {
+        satellite.return(n * 2)
+    }
+}
+
+satellite.capsule bump_three(counter c)
+{
+    c.call_bump()
+    c.call_bump()
+    c.call_bump()
+}
+
+satellite.capsule first_over(satellite.container.list<satellite.variable.number> numbers, satellite.variable.number limit) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number i = 1
+    satellite.statement.while (i <= numbers.size())
+    {
+        satellite.statement.if (numbers[i] > limit)
+        {
+            satellite.return(numbers[i])
+        }
+        i = i + 1
+    }
+    satellite.return(0)
+}
+
+satellite.capsule counted() satellite.returns(satellite.variable.string)
+{
+    satellite.statement.for(satellite.variable.number n = 0; n < 10; n++)
+    {
+        satellite.statement.if (n == 3)
+        {
+            satellite.return("left the for at 3")
+        }
+    }
+    satellite.return("never")
+}
+
+satellite.capsule kind_of(view any) satellite.returns(satellite.variable.string)
+{
+    satellite.return(any.call_kind())
+}
+
+satellite.capsule satellite.main()
+{
+    // an object, its constructor, its protected capsule, its answers
+    counter a(2)
+    a.call_bump()
+    satellite.console.display(a.call_name() + " " + a.call_count().to_string())
+    // an object is a reference: a capsule changes the caller's, and = shares it
+    bump_three(a)
+    satellite.console.display(a.call_count())
+    counter b = a
+    b.call_bump()
+    satellite.console.display(a.call_count())
+    satellite.statement.if (a.call_count() > 5)
+    {
+        satellite.console.display("more than five")
+    }
+    // a name declared again is a new object; the old one is still in the list
+    satellite.container.list<counter> all = {}
+    counter c(1)
+    c.call_bump()
+    all.append(c)
+    counter c(5)
+    all.append(c)
+    satellite.console.display(all[1].call_count().to_string() + " " + all[2].call_count().to_string())
+    // spacesuits inside a spacesuit
+    ship.hull h(7)
+    satellite.console.display(h.call_plates())
+    ship s("kestrel")
+    s.call_set_hull(h)
+    satellite.console.display(s.call_report())
+    ship t("osprey")
+    satellite.console.display(t.call_report())
+    // a spacesuit of another file
+    spacesuit_parts.engine e(900)
+    satellite.console.display(e.call_power())
+    // capsules answering
+    satellite.console.display(tools.twice(21))
+    satellite.console.display(first_over({1, 5, 9, 12}, 6))
+    satellite.console.display(counted())
+    // one spacesuit extending another
+    eclipse moon(4)
+    moon.call_set_title("moon")
+    satellite.console.display(moon.call_show())
+    satellite.console.display(moon.call_made())
+    satellite.console.display(kind_of(moon))
+    view plain
+    satellite.console.display(kind_of(plain))
+    satellite.return(satellite)
+}

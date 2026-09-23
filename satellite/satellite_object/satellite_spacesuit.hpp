@@ -21,9 +21,10 @@
 // functions that we defined then".
 //
 // A SPACESUIT IS JUST A COLLECTION OF BYTECODE (the author, and this file is
-// built on that line). satelliteUserDefinedObject holds `body` -- the codes its
-// declaration is made of -- and nothing here re-derives what the registry
-// already has.
+// built on that line). Its bytecode is where the registry already has it: the
+// scan (bytecode/capsule_scopes.cpp) finds a spacesuit's fields and capsules as
+// POSITIONS in its file's row, and an object points at the layout built from them
+// -- nothing here re-derives, or copies, what the registry already has.
 //
 // THE USER-DEFINED ARM IS A HANDLE AND THE HAND-DESIGNED ONE IS NOT, which is
 // one difference from the author's line and it is worth the sentence. A
@@ -44,69 +45,32 @@
 namespace satellite004 {
 
 // ---------------------------------------------------------------------------
-// ONE THEY INSERT THE PIECES INTO (the author). Its codes, its fields, and the
-// spots for satelliteCapsule.
+// ONE OBJECT: ITS SPACESUIT'S LAYOUT, AND ITS OWN VALUES.
 // ---------------------------------------------------------------------------
 //
-// FIELDS ARE TWO PARALLEL VECTORS, name beside value, and the name is resolved
-// ONCE to a slot. A map per instance is what makes an interpreter slow -- 004
-// already loses 5x to CPython on `i = i + 1` for that exact reason -- so the
-// string compare happens in `slot_of` and everything on a hot path holds the
-// integer instead.
+// WHAT CHANGED, 2026-09-22 (MILESTONES M8's "owed inside this one"). This struct
+// used to carry its spacesuit's name, a COPY of its bytecode, its field names and
+// a satelliteCapsule per method -- in every object. A thousand objects were a
+// thousand copies of one declaration, and two sources of truth for each method:
+// the copy, and the site the walker actually runs. 003 had already solved it
+// (src/satellite_spacesuit/suit_object.hpp): what every object of one spacesuit
+// shares is ITS LAYOUT, made once, and an object is a pointer to that and its
+// own values. That is this struct now.
+//
+// THE LAYOUT IS DEFINED IN bytecode/suit_layout.hpp, because a field's declared
+// type is a TypeShape and TypeShape is the bytecode's -- this file only needs to
+// know there is one. A std::shared_ptr of an incomplete type is complete, the same
+// trick satellite_object.hpp plays with this struct.
+//
+// FIELDS ARE ONE VECTOR IN THE LAYOUT'S ORDER, and a name is resolved to its slot
+// by the layout (slot_of) -- the string compare happens there and nowhere else, as
+// it did before. What an object holds is values and nothing else.
+struct satelliteSuitLayout;
+
 struct satelliteUserDefinedObject {
-    std::string name;
-    satellite_bytecode body;                 // a spacesuit is just a collection of bytecode
-    std::vector<std::string> field_names;    // name -> slot
-    std::vector<satelliteObject> fields;     // one per name, same order
-    std::vector<satelliteCapsule> capsules;  // the spots for methods
-
-    satelliteUserDefinedObject() = default;
-    explicit satelliteUserDefinedObject(std::string its_name) : name(std::move(its_name)) {}
-
-    std::size_t how_many_fields() const { return field_names.size(); }
-    std::size_t how_many_capsules() const { return capsules.size(); }
-
-    // THE STRING COMPARE HAPPENS HERE AND NOWHERE ELSE.
-    std::size_t slot_of(const std::string &field) const
-    {
-        for (std::size_t i = 0; i < field_names.size(); ++i)
-            if (field_names[i] == field)
-                return i;
-        return (std::size_t)-1;
-    }
-
-    // The fast way in: an integer index, no compare and no hash.
-    const satelliteObject *field_at(std::size_t slot) const
-    {
-        return slot < fields.size() ? &fields[slot] : nullptr;
-    }
-    satelliteObject *field_at(std::size_t slot)
-    {
-        return slot < fields.size() ? &fields[slot] : nullptr;
-    }
-
-    // Answers the slot it went into, so whatever is building keeps the integer.
-    std::size_t insert_field(std::string field, satelliteObject held)
-    {
-        field_names.push_back(std::move(field));
-        fields.push_back(std::move(held));
-        return field_names.size() - 1;
-    }
-
-    const satelliteCapsule *capsule_of(const std::string &its_name) const
-    {
-        for (std::size_t i = 0; i < capsules.size(); ++i)
-            if (capsules[i].name == its_name)
-                return &capsules[i];
-        return nullptr;
-    }
-    void insert_capsule(satelliteCapsule its_capsule) { capsules.push_back(std::move(its_capsule)); }
+    std::shared_ptr<const satelliteSuitLayout> layout;   // shared by every object of its spacesuit
+    std::vector<satelliteObject> fields;                 // one per field, in the layout's order
 };
-
-inline UserDefinedHandle make_user_defined(std::string name)
-{
-    return std::make_shared<satelliteUserDefinedObject>(std::move(name));
-}
 
 // ---------------------------------------------------------------------------
 // THE SPACESUIT. Same shape as satelliteObject, one layer up.

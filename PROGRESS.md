@@ -492,11 +492,11 @@ tellable apart while it is done.
 
 **OWED, AND THE FIRST IS THE ONE THAT MATTERS:**
 
-1. **NOTHING CAN DECLARE A SPACESUIT YET.** The classes are built and the value
-   type runs the interpreter, but `satellite.spacesuit` has no parse rule in
-   004 — no lexer shape, no `capsules_in` sibling, no constructor. **The object
-   model is the machine; the grammar is not written.** 003's
-   `parser_declarations.cpp` and `resolve.cpp` are the port.
+1. ~~**NOTHING CAN DECLARE A SPACESUIT YET.**~~ **BUILT 2026-09-22** (MILESTONES
+   M8): a spacesuit is a third scope kind in the scan (`suit_scan.cpp`), its
+   objects share one layout (`suit_layout.hpp`), are made by `suit_run.cpp` and
+   called through `capsule_calls.cpp`; 003's rules are ported, and
+   `tests/spacesuits.satl` plus 24 refusal rows in check.sh hold them.
 2. `satellite/bytecode/number_methods.cpp` **is still dead code, third session.**
    It is now one hop from real: its methods are `satelliteValue`'s pair files
    already. Either finish it or delete it.

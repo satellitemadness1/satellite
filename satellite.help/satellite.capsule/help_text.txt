@@ -9,7 +9,8 @@ parameters in brackets and its body between { and }. A parameter is a type and
 then a name, the way every declaration in satellite is written, with commas
 between them. A capsule that takes nothing is written with empty brackets.
 
-You call a capsule on a line of its own: greet("world", 2). The arguments are
+You call a capsule on a line of its own, greet("world", 2), or inside a line for
+what it answers, satellite.variable.number n = twice(21). The arguments are
 worked out where the call is, and each one is measured against the type its
 parameter was declared with. The capsule then runs in a frame of its own and
 cannot see the caller's variables -- there are no globals in satellite, so what
@@ -27,10 +28,10 @@ space (S202), a capsule declared inside another capsule (S110), and a call
 given the wrong number of arguments (S110). An argument of the wrong type is
 refused when the call is reached (machine code 27).
 
-A capsule answers nothing yet. satellite.return(...) ends it and hands nothing
-back, so a capsule used inside a line, where its answer would be used, is
-refused before anything runs (S210): satellite.variable.number n = five() is
-not built yet in satellite 004. See satellite.return.
+A capsule answers what its satellite.return(...) hands back, and says what that
+is after its brackets with satellite.returns(type). satellite.return ends the
+capsule wherever it stands. See satellite.return. A capsule inside a
+satellite.spacesuit runs on an object of it -- see satellite.spacesuit.
 
 example:
 
@@ -38,9 +39,9 @@ satellite.include(satellite)
 
 satellite.namespace tools
 {
-    satellite.capsule twice(satellite.variable.number n)
+    satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
     {
-        satellite.console.display(n * 2)
+        satellite.return(n * 2)
     }
 }
 
@@ -57,7 +58,7 @@ satellite.capsule greet(satellite.variable.string who, satellite.variable.number
 satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
 {
     greet("world", 2)
-    tools.twice(21)
+    satellite.console.display(tools.twice(21))
     satellite.return(satellite)
 }
 

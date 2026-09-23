@@ -46,10 +46,45 @@
 
 namespace satellite004 {
 
+inline constexpr std::size_t kNoSuit = static_cast<std::size_t>(-1);
+
 struct TypeShape {
     token::Code word = 0;                  // satellite.variable.string, satellite.container.list, ...
     std::vector<TypeShape> parameters;     // what is between its < and >
+
+    // A SPACESUIT'S NAME IS A TYPE TOO (2026-09-22): `tagged_report.run_log log`,
+    // `satellite.container.list<energy_flight.satellite_flight>`. A user's type has no
+    // word, so `word` is satellite.spacesuit's own code and the name is kept AS WRITTEN;
+    // `suit` is the spacesuit it reached, which only the scope table can say --
+    // capsules_in resolves every header's, and the checker and the walker a body's.
+    std::vector<std::string> suit_names;   // `run_log`, or `tagged_report.run_log`
+    std::size_t suit = kNoSuit;            // its scope in the CapsuleTable, once resolved
+
+    bool is_a_suit() const { return !suit_names.empty(); }
 };
+
+// A WORD WITH NOTHING BETWEEN < AND > -- `satellite.variable.number`.
+inline TypeShape plain_shape(token::Code word)
+{
+    TypeShape shape;
+    shape.word = word;
+    return shape;
+}
+
+// A SPACESUIT'S NAME AS WRITTEN, joined -- for a sentence about it.
+inline std::string suit_written(const TypeShape &shape)
+{
+    std::string written;
+    for (const std::string &each : shape.suit_names) written += (written.empty() ? "" : ".") + each;
+    return written;
+}
+
+// WHAT A SHAPE WAS WRITTEN AS, for a sentence: the word, or the spacesuit's name --
+// never "satellite.spacesuit", which is the word standing in for every one of them.
+inline std::string shape_written(const TypeShape &shape)
+{
+    return shape.is_a_suit() ? suit_written(shape) : std::string(word::spelling_of(shape.word));
+}
 
 // EVERY WORD THAT NAMES A TYPE, and the arm it means. One function, so the
 // checker and the walker cannot come to disagree about what a word accepts --

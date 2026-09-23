@@ -138,6 +138,17 @@ inline SCode s_code_for(signed long long int machine_code)
                 "this name is already declared where this line stands -- a variable in its "
                 "capsule, or a capsule, a satellite.namespace or an included file in its file or "
                 "space. One name, one declaration -- the second would quietly replace the first."};
+    // THE TWO OF 2026-09-22, in the names block: a name inside a spacesuit that the
+    // line cannot reach, and a capsule that had no answer to give.
+    case member_is_protected:
+        return {"S230", "MEMBER_IS_PROTECTED",
+                "this is inside a spacesuit, where only its own capsules can reach it -- every field "
+                "is, and so is a capsule written in satellite.protected. A capsule in satellite.public "
+                "that answers it is the way in from outside."};
+    case capsule_gave_no_answer:
+        return {"S240", "CAPSULE_GAVE_NO_ANSWER",
+                "this capsule's answer was used, and the way it went reached no satellite.return(...) "
+                "-- so there was nothing to hand back."};
     case types_do_not_meet:
         return {"S301", "TYPES_DO_NOT_MEET",
                 "this operator has no scenario for the two kinds it was given. Nothing was guessed "

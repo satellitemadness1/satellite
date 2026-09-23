@@ -102,6 +102,13 @@ enum MachineCode : signed long long int {
     no_display = 50,                    // GTK found no Wayland or X11 session to draw on
     window_is_closed = 51,              // a window word used on a window that is not on a screen
 
+    // 52-53 WERE ADDED 2026-09-22 with spacesuits and capsule answers. 52 is 003's
+    // S0516 and S0517 in one: a field, or a capsule in satellite.protected, reached
+    // from outside its spacesuit. 53 is a capsule whose answer is USED and which
+    // reached no satellite.return(...) on the way it went -- only knowable running.
+    member_is_protected = 52,           // obj.field, or obj.m() for a protected m, from outside the spacesuit
+    capsule_gave_no_answer = 53,        // a capsule's answer was used, and it handed none back
+
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
     // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
@@ -152,6 +159,8 @@ inline const char *machine_code_name(signed long long int code)
     case machine_conf_unwritable: return "machine_conf_unwritable";
     case no_display: return "no_display";
     case window_is_closed: return "window_is_closed";
+    case member_is_protected: return "member_is_protected";
+    case capsule_gave_no_answer: return "capsule_gave_no_answer";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

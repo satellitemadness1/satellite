@@ -1,0 +1,23 @@
+// tests/spacesuit_parts.satl -- a spacesuit in a file of its own, reached from
+// tests/spacesuits.satl as spacesuit_parts.engine.
+
+satellite.spacesuit engine()
+{
+    satellite.protected
+    {
+        satellite.variable.number power = 0
+    }
+
+    satellite.constructor(satellite.variable.number power_input)
+    {
+        power = power_input
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_power() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(power)
+        }
+    }
+}

@@ -38,6 +38,7 @@
 // n a string. satellite is typed by its declaration, and this is where that
 // survives past the line that wrote it.
 
+#include "suit_layout.hpp"
 #include "token_codes.hpp"
 #include "type_shape.hpp"
 #include "../satellite_object/satellite_spacesuit.hpp"
@@ -66,7 +67,50 @@ struct Variable {
     Value value;
 };
 
+// A NAME AS A BODY SEES IT: one of its own variables, or a field of the object its
+// method runs on. `value` is null when it is neither. Pointers into the table or the
+// object, never copies -- a list's `.append` must reach the real one (satellite_list.hpp).
+struct Seen {
+    Value *value = nullptr;
+    token::Code declared = 0;
+    const TypeShape *shape = nullptr;
+    bool field = false;
+
+    explicit operator bool() const { return value != nullptr; }
+};
+
 // One running body's variables. Created per body, never shared: see the header.
-using VariableTable = std::unordered_map<std::string, Variable>;
+//
+// AND, FOR A METHOD, THE OBJECT IT RUNS ON (2026-09-22). A spacesuit's capsules read
+// and write its fields by their bare names -- the author's `path = path_input` in a
+// constructor, `satellite.return(spacesuit_name)` in a method -- and the fields are
+// the OBJECT's, so they live there and not in this table: a method calling another
+// method of the same object must see what the first one wrote. `self` is that object,
+// and null for every capsule that is not a spacesuit's. There are still no globals:
+// a field is reached only by a body running on its object.
+//
+// ITS OWN NAMES COME FIRST, then the object's -- and the checker refuses a variable
+// or a parameter named like a field, so the order is never what decides.
+struct VariableTable : std::unordered_map<std::string, Variable> {
+    UserDefinedHandle self;
+    // HOW MANY OF ITS FIELDS THIS CAPSULE'S SPACESUIT HAS: a supertype's capsule, running
+    // on an object of a spacesuit that extends it, sees the supertype's (suit_layout.hpp).
+    std::size_t fields_seen = kNoSlot;
+
+    Seen seen(const std::string &name)
+    {
+        const iterator own = find(name);
+        if (own != end())
+            return Seen{&own->second.value, own->second.declared, &own->second.shape, false};
+        if (self != nullptr && self->layout != nullptr) {
+            const std::size_t slot = self->layout->slot_of(name, fields_seen);
+            if (slot != kNoSlot) {
+                const SuitField &field = self->layout->fields[slot];
+                return Seen{&self->fields[slot], field.shape.word, &field.shape, true};
+            }
+        }
+        return Seen{};
+    }
+};
 
 } // namespace satellite004

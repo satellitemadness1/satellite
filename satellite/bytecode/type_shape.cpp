@@ -7,6 +7,8 @@
 
 #include "type_shape.hpp"
 
+#include "capsule_scopes.hpp"
+#include "suit_layout.hpp"
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
 
@@ -14,6 +16,23 @@ namespace satellite004 {
 
 bool value_fits(const TypeShape &shape, const satelliteObject &value, std::string &why)
 {
+    // AN OBJECT OF THAT SPACESUIT AND NO OTHER (2026-09-22). Which spacesuit is the
+    // SCOPE it resolved to, never the name: two files may each declare a `people`,
+    // and an object of one is not an object of the other.
+    if (shape.is_a_suit()) {
+        const UserDefinedHandle *object = value.as_user_defined();
+        if (object == nullptr || *object == nullptr || (*object)->layout == nullptr) {
+            why = "it holds " + std::string(value.kind_name());
+            return false;
+        }
+        // AN OBJECT OF A SPACESUIT THAT EXTENDS IT FITS TOO: it is one of those as well.
+        if (!(*object)->layout->is_a(shape.suit)) {
+            why = "it holds an object of the spacesuit " + (*object)->layout->shown;
+            return false;
+        }
+        return true;
+    }
+
     // `multiple<a, b>` -- ANY ONE OF THEM. The value is an ordinary value of
     // whichever it matched; nothing is wrapped and nothing remembers which.
     if (shape.word == word::code_of(1, 4, 6)) {
@@ -105,6 +124,15 @@ bool read_type_shape(const std::vector<std::bitset<16>> &row, std::size_t &at, T
                      unsigned int &pending_closes, std::string &why)
 {
     const token::Code word = static_cast<token::Code>(at < row.size() ? row[at].to_ulong() : 0);
+    // A SPACESUIT'S NAME IS A TYPE (2026-09-22): `run_log`, `tagged_report.run_log`,
+    // wherever a type is written -- a capsule's parameter, a satellite.returns, between
+    // a list's < and >. It is read as written and resolved by whoever holds the scope
+    // table; here there is none. A spacesuit takes nothing between < and >.
+    if (word == token::name_token) {
+        dotted_names_at(row, at, out.suit_names);
+        out.word = word::code_of(1, 10);
+        return true;
+    }
     if (!word::is_word_code(word)) {
         why = "a type was expected here, and this is not one";
         return false;

@@ -65,6 +65,17 @@ const CapsuleSite *CapsuleTable::bare(std::size_t scope, const std::string &name
         const std::unordered_map<std::string, std::size_t>::const_iterator found = scopes[at].capsules.find(name);
         if (found != scopes[at].capsules.end())
             return &sites[found->second];
+        // A SPACESUIT'S SUPERTYPES' CAPSULES ARE ITS OWN TOO (2026-09-22): the author's
+        // eclipse, which extends view_forge, calls view_forge's `find_link_name(...)` by
+        // its bare name. Its own come first, then each supertype's, nearest first.
+        if (scopes[at].is_a_suit() && scopes[at].layout != nullptr)
+            for (std::size_t n = 1; n < scopes[at].layout->lineage.size(); ++n) {
+                const CapsuleScope &super = scopes[scopes[at].layout->lineage[n]];
+                const std::unordered_map<std::string, std::size_t>::const_iterator inherited =
+                    super.capsules.find(name);
+                if (inherited != super.capsules.end())
+                    return &sites[inherited->second];
+            }
     }
     return nullptr;
 }

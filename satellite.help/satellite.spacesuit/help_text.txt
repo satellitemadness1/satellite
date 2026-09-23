@@ -1,4 +1,3 @@
-
 --------------------------------------------------------------------------------
 SATELLITE 004: satellite.spacesuit
 --------------------------------------------------------------------------------
@@ -9,34 +8,55 @@ satellite.class is its second spelling and is the same word -- the author,
 2026-09-22: "class will be spacesuit alias class, so a class remains a
 spacesuit and that is my final answer".
 
-It is not built yet in satellite 004. 004 has the spacesuit object, and not yet
-the grammar that declares one (MILESTONES M8); it is the next piece after
-satellite.namespace. Today a file that declares a spacesuit, under either
-spelling, is refused before anything runs:
+A spacesuit has sections, written side by side between its { and }:
 
-S210: NOT_BUILT_YET
-satl(check): satellite.spacesuit greeter is not built yet -- 004 has the
-spacesuit object and not the grammar that declares one (MILESTONES M8), and it
-is the next piece after satellite.namespace
+- satellite.protected { } holds its fields -- a type and a name, and a value if
+  you give one -- and the capsules only its own capsules may call.
+- satellite.public { } holds the capsules whoever has an object may call.
+- satellite.constructor(args) { } sits beside them and runs when an object is
+  made, after every field has its first value. It is public, and hands nothing
+  back.
 
-What is planned: spacesuits as satellite 003 has them (PLAN M8), with the
-author's decisions of 2026-09-22:
+An object is made by declaring it: the spacesuit's name, the object's name, and
+the constructor's arguments right there -- greeter host("satl"). One whose
+constructor takes nothing is just greeter host. A spacesuit of another file is
+named through that file, narration.narrator voice("main", "full"). Declaring the
+same name again makes a new object; the old one lives on in whatever still holds
+it.
 
-- A spacesuit has sections. satellite.protected { } holds what belongs to the
-  spacesuit and is not seen outside it, and satellite.public { } holds what
-  whoever uses it can reach. satellite.constructor(args) { } sits beside them,
-  not inside one, and runs when an object is made.
-- An object is declared by the spacesuit's name and then its own name, with the
-  constructor's arguments given right there: greeter host("satl"). One that
-  takes none is just major_satellite made, and one from another file is named
-  through that file, narration.narrator voice("main", "full") -- those two are
-  lines from the author's own programs.
-- A spacesuit will take a supertype: "a spacesuit still has to take a
-  supertype, that is certain" (MILESTONES M35). Whether that supertype must be a
-  built type or may be another spacesuit is still his to decide, and
-  satellite.protected(args) is parked -- "we'll just never get to it".
+Inside its capsules a spacesuit's fields and capsules are their bare names --
+there is no "this". From outside, an object's public capsules are called on it,
+host.greet(), inside any line: satellite.variable.string said = host.greet().
+Fields are reached from inside the spacesuit only, never as host.name, so a
+public capsule that answers one is the way to read it.
 
-planned, not runnable today (refused with the S210 above):
+An object is a reference: greeter other = host names the same object, and a
+capsule handed one changes the caller's. Its type can be a capsule's parameter,
+what satellite.returns says a capsule answers, or what a list holds:
+satellite.container.list<greeter>. A field of a spacesuit's type with nothing
+after its name starts empty, until a capsule gives it an object.
+
+A spacesuit may hold spacesuits of its own, written in its satellite.public or
+satellite.protected. The outer one's capsules and fields name it bare; from
+outside a public one is outer.inner, and a protected one cannot be named. Its
+capsules run on an object of it, and see its own fields -- not the outer one's.
+
+A spacesuit may extend one other spacesuit, named in its brackets:
+satellite.spacesuit eclipse(view). Its objects have view's fields first and then
+its own, and view's capsules too: eclipse's capsules call view's by their bare
+names, and a view name may hold an eclipse. A capsule it declares again replaces
+view's for its objects. Every constructor runs, view's first; the arguments go
+to the nearest one. A built type in the brackets --
+satellite.spacesuit name(satellite.variable.string) -- is MILESTONES M35, and not
+built yet.
+
+satl refuses these before anything runs: a field or a protected capsule reached
+from outside (S230), a name the spacesuit does not have, an object given the
+wrong number of arguments, arguments with no constructor to take them, a field
+whose value names another field, and a spacesuit declared inside a capsule
+(S210).
+
+example:
 
 satellite.include(satellite)
 
@@ -45,6 +65,7 @@ satellite.spacesuit greeter()
     satellite.protected
     {
         satellite.variable.string name = ""
+        satellite.variable.number times = 0
     }
 
     satellite.constructor(satellite.variable.string given)
@@ -54,9 +75,10 @@ satellite.spacesuit greeter()
 
     satellite.public
     {
-        satellite.capsule greet()
+        satellite.capsule greet() satellite.returns(satellite.variable.string)
         {
-            satellite.console.display("hello from " + name)
+            times = times + 1
+            satellite.return("hello from " + name + ", " + times.to_string())
         }
     }
 }
@@ -64,6 +86,13 @@ satellite.spacesuit greeter()
 satellite.capsule satellite.main()
 {
     greeter host("satl")
-    host.greet()
+    satellite.console.display(host.greet())
+    greeter same = host
+    satellite.console.display(same.greet())
     satellite.return(satellite)
 }
+
+prints:
+
+hello from satl, 1
+hello from satl, 2

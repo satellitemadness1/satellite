@@ -1,41 +1,31 @@
-
 --------------------------------------------------------------------------------
 SATELLITE 004: satellite.return()
 --------------------------------------------------------------------------------
 
-satellite.return(args) ends the capsule it is written in. In main,
-satellite.return(satellite) ends the program, and satl exits 0. In any other
-capsule it ends that capsule, and the caller carries on from the line after the
-call. A capsule other than main may leave it out: reaching its closing } ends it
-the same way.
+satellite.return(args) ends the capsule it is written in -- from wherever it
+stands, inside an if, a while or a for -- and hands back what is between its
+brackets. In main, satellite.return(satellite) ends the program, and satl exits
+0. satellite.return() and satellite.return(satellite) hand back nothing. A
+capsule other than main may leave it out: reaching its closing } ends it the
+same way, with nothing handed back.
 
 A program needs at least one. satl looks for a satellite.return anywhere in the
 file you run, and refuses a file with none before anything runs (S103, exit
 12) -- execution ends inside main, and the file has to say so. Its place is the
 last line of main.
 
-satellite.return(x) today does exactly what satellite.return(satellite) does.
-It ends the capsule and hands nothing back, and x is neither checked nor worked
-out: satellite.return(5) and satellite.return(a_name_nobody_declared) both just
-end the body. A capsule answering a value is not built yet in satellite 004, so
-a capsule used inside a line, where its answer would be used, is refused before
-anything runs:
+What a capsule answers is said after its brackets with satellite.returns(type),
+and whatever its satellite.return hands back is measured against that type when
+it runs. A capsule written without satellite.returns may still hand a value
+back; the author's programs have hundreds that do. A capsule is called for its
+answer inside any line:
 
-satellite.variable.number n = five() // refused: S210, not built yet
+satellite.variable.number n = five()
 
-The author's own programs use answers everywhere. They declare what a capsule
-answers with satellite.returns(type) after its brackets, and hand it back with
-satellite.return(x):
-
-satellite.capsule call_name() satellite.returns(satellite.variable.string)
-
-satl reads past satellite.returns today and uses nothing from it.
-
-Not fixed yet: satellite.return inside a satellite.statement.if, while or for
-body ends only that body, not the capsule. The line after the if still runs,
-and a loop goes round again. MILESTONES records it as a bug, and the fix waits
-on two things for the author to rule on: whether return leaves the whole
-capsule or only the loop, and what its argument means.
+A capsule that declares satellite.returns and hands back nothing, and a call
+whose answer is used from a capsule that can never hand one back, are refused
+before anything runs (S240). One whose answer is used and that ended without
+handing one back, the way it went, is refused when it happens -- also S240.
 
 At the satl prompt there is nothing to return from, and satellite.return is
 refused there by name.
@@ -44,20 +34,29 @@ example:
 
 satellite.include(satellite)
 
-satellite.capsule check(satellite.variable.number n)
+satellite.capsule sign_of(satellite.variable.number n) satellite.returns(satellite.variable.string)
 {
-    satellite.console.display(n)
-    satellite.return(satellite)
+    satellite.statement.if (n < 0)
+    {
+        satellite.return("below zero")
+    }
+    satellite.statement.if (n == 0)
+    {
+        satellite.return("zero")
+    }
+    satellite.return("above zero")
 }
 
 satellite.capsule satellite.main()
 {
-    check(7)
-    satellite.console.display("done")
+    satellite.console.display(sign_of(-5))
+    satellite.console.display(sign_of(0))
+    satellite.console.display(sign_of(7))
     satellite.return(satellite)
 }
 
 prints:
 
-7
-done
+below zero
+zero
+above zero

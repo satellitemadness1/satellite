@@ -52,6 +52,7 @@
 
 #include "bytecode_registry.hpp"
 #include "capsule_key.hpp"
+#include "suit_layout.hpp"
 #include "type_shape.hpp"
 
 #include <bitset>
@@ -91,25 +92,67 @@ struct CapsuleSite {
     std::string shown;              // as a report names it: greet, tools.greet, other.greet
     std::string key;                // unique in the program -- what a button keeps (capsule_key.hpp)
 
+    // WHAT IT ANSWERS: `satellite.returns(satellite.variable.string)` after its
+    // parameters. `returns.word` is 0 for a capsule that answers nothing, which is
+    // every capsule until 2026-09-22 and still most of them.
+    TypeShape returns;
+    bool answers() const { return returns.word != 0; }
+
+    // A SPACESUIT'S CAPSULE (2026-09-22): `suit` is that spacesuit's scope, and the
+    // capsule runs on one of its objects. kNoScope for a capsule of a file or a space.
+    std::size_t suit = kNoScope;
+    bool is_public = true;          // false in satellite.protected, or outside any section
+    bool constructor = false;       // its satellite.constructor: public, answers nothing
+
     // WHERE THE STATEMENTS START THAT ARE THE LAST THING IT DOES (program_walk.cpp's
     // TailCall): worked out by the walker the first time the capsule runs, so a
     // call asks one short list and nothing is walked twice.
     mutable std::vector<std::size_t> last_statements;
     mutable bool last_statements_known = false;
+
+    // WHETHER A satellite.return WITH A VALUE STANDS IN ITS BODY (hands_back_a_value),
+    // worked out once, the first time the checker asks.
+    mutable bool hands_back = false;
+    mutable bool hands_back_known = false;
 };
 
-// A FILE OR A satellite.namespace. A file's `parent` is kNoScope.
+// A FILE, A satellite.namespace, OR A satellite.spacesuit. A file's `parent` is kNoScope.
+//
+// A SPACESUIT IS THE THIRD KIND (2026-09-22), and it is a scope for the same reason a
+// space is: its capsules are found by name through it, and a name is declared once
+// in it. What only a spacesuit has is a LAYOUT -- its fields, shared by every object
+// (suit_layout.hpp) -- a constructor, and the rule that its capsules run on an object.
+enum class ScopeKind { file, space, spacesuit };
+
+inline constexpr std::size_t kNoSite = static_cast<std::size_t>(-1);
+
 struct CapsuleScope {
-    std::string name;               // a file's stem, or the space's own name
-    std::string within;             // the spaces from the file down, dotted; "" for a file
-    std::string file;               // a file's path as load_program read it; "" for a space
+    ScopeKind kind = ScopeKind::file;
+    std::string name;               // a file's stem, or the space's or spacesuit's own name
+    std::string within;             // the spaces and spacesuits from the file down, dotted; "" for a file
+    std::string file;               // a file's path as load_program read it; "" for the others
     std::size_t parent = kNoScope;
     std::size_t row = 0;
-    std::size_t begins = 0;         // the codes it holds in its row: a space's body,
+    std::size_t begins = 0;         // the codes it holds in its row: a body,
     std::size_t ends = 0;           // or the whole row for a file
-    std::size_t declared_at = 0;    // its satellite.namespace code; 0 for a file
+    std::size_t declared_at = 0;    // its satellite.namespace or satellite.spacesuit code; 0 for a file
     std::unordered_map<std::string, std::size_t> capsules;   // name -> CapsuleTable::sites
     std::unordered_map<std::string, std::size_t> spaces;     // name -> CapsuleTable::scopes
+    std::unordered_map<std::string, std::size_t> suits;      // name -> CapsuleTable::scopes
+
+    // A SPACESUIT'S OWN. `is_public` is whether a spacesuit declared INSIDE another may
+    // be named from outside that one (it was written in its satellite.public); every
+    // other spacesuit is reached as a file's or a space's capsules are.
+    std::shared_ptr<satelliteSuitLayout> layout;
+    std::size_t constructor = kNoSite;                        // its satellite.constructor, in sites
+    bool is_public = true;
+
+    // WHAT IT EXTENDS, as its header's brackets name it -- `eclipse(view_forge)` -- and the
+    // spacesuit that reached, once resolve_types has run (suit_reach.cpp).
+    std::vector<std::string> super_names;
+    std::size_t super = kNoScope;
+
+    bool is_a_suit() const { return kind == ScopeKind::spacesuit; }
 };
 
 // A REFUSAL THE SCAN FOUND, with the place it points at. The scan has no program to
@@ -164,7 +207,42 @@ struct CapsuleTable {
     const CapsuleSite *main() const;
 
     const CapsuleSite *by_key(const std::string &key) const;
+
+    // A SPACESUIT'S NAME AS A TYPE IS WRITTEN -- `run_log`, `tagged_report.run_log`,
+    // `ship.engine`, `tools.ship` -- from `scope`: its scope, or kNoScope with the
+    // sentence in `why`. A bare name is looked for in `scope` and each scope around
+    // it; a dotted one starts at a spacesuit, a space or an included file, and a
+    // spacesuit declared inside another is reached from outside that one only when
+    // it was written in its satellite.public (suit_reach.cpp).
+    std::size_t suit_named(std::size_t scope, const std::vector<std::string> &names, std::string &why) const;
+
+    // THE CAPSULE A BARE CALL MEANS ON THIS OBJECT: `site`, or the one the object's own
+    // spacesuit declared again in its place. A method follows the object, called bare or
+    // with a dot (2026-09-22) -- the rule is one, so which one runs never depends on how
+    // the call was written.
+    const CapsuleSite &on_the_object(const CapsuleSite &site, const UserDefinedHandle &self) const;
+
+    // THE CONSTRUCTOR AN OBJECT'S ARGUMENTS GO TO: its spacesuit's own, or -- when it has
+    // none -- its nearest supertype's (003's rule). kNoSite when none in the line has one.
+    std::size_t constructor_of(std::size_t suit) const;
+
+    // THE SPACESUIT `scope` IS INSIDE, ITSELF INCLUDED: the innermost one around it,
+    // or kNoScope when it is in none. A capsule of a spacesuit runs on its object.
+    std::size_t suit_around(std::size_t scope) const;
+
+    // A MEMBER OF AN OBJECT OF `suit`, as `obj.name` reaches it from `from` (the scope the
+    // line stands in): its capsule, or null -- and then `why` says why, `code` which
+    // refusal: member_is_protected for a field or a protected capsule reached from
+    // outside, satl_line_not_understood for a name the spacesuit does not have.
+    const CapsuleSite *member(std::size_t suit, const std::string &name, std::size_t from, signed long long int &code,
+                              std::string &why) const;
 };
+
+// EVERY SPACESUIT NAME IN A SHAPE -- itself, or between its < and > -- made into the
+// scope it reaches from `scope`. False, with the sentence in `why`, at the first that
+// reaches none. The scan does this for every header and field; the checker and the
+// walker for a declaration inside a body.
+bool resolve_shape(const CapsuleTable &table, std::size_t scope, TypeShape &shape, std::string &why);
 
 // Every file's scopes and capsules, and every include resolved to the row it loaded.
 // `filenames` is row for row with `registry` (bytecode_registry.hpp).

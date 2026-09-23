@@ -66,6 +66,17 @@ struct ExpressionContext {
     signed long long int code = success;  // the FIRST refusal; success while none
     std::string why;                      // and what to say about it
 
+    // THE WHOLE LINE IS THIS EXPRESSION AND ITS ANSWER IS LET GO (2026-09-22): a method
+    // call standing as a statement, `log.call_append(text)`. The call that ends the line
+    // is then not asked for an answer -- a capsule that hands back nothing is not wrong
+    // there, only where its answer is used (capsule_calls.cpp).
+    bool statement = false;
+
+    // THE REFUSAL HAS ALREADY BEEN SHOWN (2026-09-22): a capsule this expression called
+    // stopped, and printed its own report with its own line and caret. What called it
+    // stops too, and must not print a second report about the same failure.
+    bool reported = false;
+
     // WHERE IT WENT WRONG, for the caret. SATELLITE_ERROR E6.
     //
     // RECORDED ON THE REFUSAL AND NEVER PER TOKEN. A position kept as the

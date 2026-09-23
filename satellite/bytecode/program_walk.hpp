@@ -77,6 +77,18 @@ struct ForHeader {
 };
 ForHeader for_header(const std::vector<std::bitset<16>> &row, std::size_t at);
 
+// WHERE A satellite.return's ANSWER BEGINS, `at` on the return -- or 0 when it hands
+// back nothing: `satellite.return()`, and `satellite.return(satellite)`, which is how
+// main ends a program. Shared by the walker and the checker, one reader of one shape.
+std::size_t return_value_at(const std::vector<std::bitset<16>> &row, std::size_t at);
+
+// CAN THIS CAPSULE EVER HAND BACK A VALUE: it declares satellite.returns, or a
+// satellite.return with a value stands somewhere in its body. The author's programs
+// have 578 capsules that return a value with no satellite.returns (written for 003,
+// which took it), so the header alone cannot say -- and a capsule that can never
+// answer is refused where its answer would be used, before anything runs.
+bool hands_back_a_value(const BytecodeRegistry &registry, const CapsuleSite &site);
+
 // What the third part IS: +1 for `<name>++`, -1 for `<name>--`, 0 for an ordinary
 // expression. Shared for the same reason for_header is, and because the two
 // refusals it gives are shape and belong to the checker. program_walk.cpp says why.
@@ -148,6 +160,35 @@ signed long long int run_capsule(const BytecodeRegistry &registry,
                                  const std::string &key,
                                  std::vector<Value> arguments,
                                  MachineState &state);
+
+// ONE DECLARATION STATEMENT, `at` on it and left past it -- `satellite.variable.number n
+// = 5`, `satellite.container.list<x> xs`, `run_log log(path)` -- the same reader a
+// capsule's body and an object's fields both run their declarations through (2026-09-22).
+// `was_one` false, and nothing done, when the statement is not a declaration.
+// `as_a_field` is true while an object's own fields are made (suit_run.hpp).
+signed long long int run_declaration(const BytecodeRegistry &registry,
+                                     const CapsuleTable &capsules,
+                                     const FunctionTable &functions,
+                                     std::size_t which_row,
+                                     std::size_t &at,
+                                     VariableTable &variables,
+                                     MachineState &state,
+                                     bool as_a_field,
+                                     bool &was_one);
+
+// ONE CAPSULE BY ITS SITE, FOR ITS ANSWER (2026-09-22) -- what expression.cpp calls for
+// `n = five()`, `x = other.greet()` and `log.call_open()`: the same run_site every
+// other road to a capsule ends in. `self` is the object a spacesuit's capsule runs on
+// (null for any other capsule), and `answer`, when not null, receives what its
+// satellite.return handed back -- refused with capsule_gave_no_answer (53) when none did.
+signed long long int run_capsule_for(const BytecodeRegistry &registry,
+                                     const CapsuleTable &capsules,
+                                     const FunctionTable &functions,
+                                     const CapsuleSite &site,
+                                     std::vector<Value> arguments,
+                                     const UserDefinedHandle &self,
+                                     MachineState &state,
+                                     Value *answer);
 
 // ONE TYPED LINE, tokenised as row 0 of its own registry: the prompt's way in
 // (PLAN M0.6). The same six shapes a capsule's body has, checked and then run --

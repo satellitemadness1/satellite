@@ -32,6 +32,7 @@
 #include "../machine/s_codes.hpp"
 
 #include "statement_ring.hpp"
+#include "suit_run.hpp"
 #include "main_arguments.hpp"
 #include "color_values.hpp"
 #include "float_values.hpp"
@@ -72,6 +73,16 @@ bool read_to_the_end(const std::vector<std::bitset<16>> &row, std::size_t at)
 const char *const kNotReadToTheEnd =
     "could not be read to the end -- it stops at something with no meaning there yet "
     "(& | << >> !! are undecided), so the part before it is not the whole value";
+
+// AN EXPRESSION'S REFUSAL, SHOWN ONCE: raise_at, unless a capsule the expression called
+// already printed the report (ExpressionContext::reported).
+signed long long int raise_context(const ExpressionContext &context, const std::string &doing,
+                                   const MachineState &state, const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    if (context.reported)
+        return context.code;
+    return raise_at(context.code, context.why, doing, state, row, at);
+}
 
 } // namespace
 
@@ -149,6 +160,40 @@ ForHeader for_header(const std::vector<std::bitset<16>> &row, std::size_t at)
         ++k;
     }
     return ForHeader();
+}
+
+std::size_t return_value_at(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    std::size_t k = at + 1;
+    if (code_at(row, k) != token::left_parenthesis_token)
+        return 0;
+    ++k;
+    const Code first = code_at(row, k);
+    if (first == token::right_parenthesis_token)
+        return 0;
+    if (first == word::code_of(1) && code_at(row, k + 1) == token::right_parenthesis_token)
+        return 0;
+    return k;
+}
+
+bool hands_back_a_value(const BytecodeRegistry &registry, const CapsuleSite &site)
+{
+    if (site.answers())
+        return true;
+    if (site.hands_back_known)
+        return site.hands_back;
+    const std::vector<std::bitset<16>> &row = registry[site.row];
+    const std::size_t end = past_matching_brace(row, site.body - 1);
+    bool found = false;
+    for (std::size_t at = site.body; at < end && !found;) {
+        const Code code = code_at(row, at);
+        if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
+        found = code == word::code_of(1, 15) && return_value_at(row, at) != 0;
+        ++at;
+    }
+    site.hands_back = found;
+    site.hands_back_known = true;
+    return found;
 }
 
 // WHAT A for's THIRD PART IS, without running any of it. The step is EXACTLY
@@ -393,12 +438,29 @@ namespace {
 // first a walk of every if/else chain each time one ran, and a capsule calling
 // itself mid-body paid 5% for it: measured 2026-09-22, and taken out.)
 //
-// run_site owns one of these for the body it runs and passes it down through if
-// and else; a while or for body gets none.
-struct TailCall {
-    const CapsuleSite *site = nullptr;     // the capsule whose body this is
+// run_site owns one of these for the body it runs and passes it down through every
+// block of it. A call inside a while or for body is never one of the last
+// statements, so handing the frame into a loop does not make one a tail call.
+//
+// AND satellite.return ENDS THE CAPSULE, FROM ANY DEPTH, WITH ITS ANSWER (2026-09-22).
+// It used to end only the block it stood in: inside a while it went round again, and
+// inside an if the capsule carried on after the if (MILESTONES M20's item 1, and the
+// help writers' first finding). The author left open whether it leaves the capsule
+// and what its argument means; his own programs answer both, written for 003 --
+// tagged_report.satl's role_of returns "void" from inside two ifs and "recovery"
+// after them, which is only right if a return leaves the capsule with its value.
+// So `returned` is set where it stands, every block above it stops, and `answer`
+// is what it handed back.
+struct Frame {
+    const CapsuleSite *site = nullptr;     // the capsule whose body this is; null for a typed line
     std::vector<Value> arguments;          // the next turn's, once it calls itself last
     bool pending = false;
+    bool returned = false;                 // satellite.return was reached: the body ends here
+    bool answered = false;                 // ...and it handed back a value, in `answer`
+    Value answer;
+    std::size_t returned_at = 0;           // where that satellite.return stands, for a report
+
+    bool ending() const { return pending || returned; }
 };
 
 // Past an if's whole chain -- its body and every else after it, `else if`
@@ -430,44 +492,77 @@ std::size_t walk_the_if_chain(const std::vector<std::bitset<16>> &row, std::size
     }
 }
 
-// The last statement of the body starting at `from` -- the one before its `}`, or
-// before a satellite.return, which ends the body where it stands -- and, when that
-// is an if, the last of each of its branches, as deep as they go.
 void find_the_last_statements(const std::vector<std::bitset<16>> &row, std::size_t from,
-                              std::vector<std::size_t> &into)
+                              std::vector<std::size_t> &into, bool ends_it);
+
+constexpr std::size_t kNoStatement = static_cast<std::size_t>(-1);
+
+// `last` IS THE LAST THING THE CAPSULE DOES -- itself, or, when it is an if, the last of
+// each of its branches, as deep as they go.
+void mark_last(const std::vector<std::bitset<16>> &row, std::size_t last, const std::vector<std::size_t> &bodies,
+               std::vector<std::size_t> &into)
 {
-    constexpr std::size_t kNone = static_cast<std::size_t>(-1);
-    std::size_t last = kNone;
-    std::vector<std::size_t> bodies;
-    for (std::size_t at = from;;) {
-        while (code_at(row, at) == token::line_end_token) ++at;
-        const Code code = code_at(row, at);
-        if (at >= row.size() || code == token::right_brace_token || code == word::code_of(1, 15))
-            break;
-        last = at;
-        bodies.clear();
-        if (code == word::code_of(1, 13, 1))                                          // if
-            at = walk_the_if_chain(row, at, bodies);
-        else if (code == word::code_of(1, 13, 3) || code == word::code_of(1, 13, 2))  // while, for
-            at = past_matching_brace(row, brace_after(row, past_the_statement(row, at)));
-        else
-            at = past_the_statement(row, at);
-    }
-    if (last == kNone)
+    if (last == kNoStatement)
         return;
     if (code_at(row, last) != word::code_of(1, 13, 1)) {
         into.push_back(last);
         return;
     }
     for (const std::size_t body : bodies)
-        find_the_last_statements(row, body, into);
+        find_the_last_statements(row, body, into, true);
+}
+
+// THE STATEMENTS OF THE BLOCK AT `from` THAT ARE THE LAST THING THE CAPSULE DOES: the one
+// straight before a satellite.return that hands back nothing -- in ANY block, since a
+// return ends the whole capsule wherever it stands (2026-09-22; the review found
+// `down(n - 1)` then `satellite.return()` inside an if still recursing) -- and, when
+// `ends_it`, the block's own last statement. A loop's body never ends the capsule, the
+// loop goes round again, but a call and a return inside it do.
+void find_the_last_statements(const std::vector<std::bitset<16>> &row, std::size_t from,
+                              std::vector<std::size_t> &into, bool ends_it)
+{
+    std::size_t last = kNoStatement;
+    std::vector<std::size_t> last_bodies;
+    for (std::size_t at = from;;) {
+        while (code_at(row, at) == token::line_end_token) ++at;
+        const Code code = code_at(row, at);
+        if (at >= row.size() || code == token::right_brace_token)
+            break;
+        // A RETURN ENDS THE CAPSULE HERE. One handing back nothing makes what came
+        // before it last; ONE THAT HANDS BACK A VALUE IS ITSELF LAST: `f(n - 1)` and then
+        // `satellite.return(n)` answers n, and a loop that ran f again instead would
+        // answer what the deepest turn did.
+        if (code == word::code_of(1, 15)) {
+            if (return_value_at(row, at) == 0)
+                mark_last(row, last, last_bodies, into);
+            return;
+        }
+        std::vector<std::size_t> bodies;
+        const std::size_t here = at;
+        if (code == word::code_of(1, 13, 1)) {                                           // if
+            at = walk_the_if_chain(row, at, bodies);
+            for (const std::size_t body : bodies)
+                find_the_last_statements(row, body, into, false);
+        } else if (code == word::code_of(1, 13, 3) || code == word::code_of(1, 13, 2)) { // while, for
+            const std::size_t brace = brace_after(row, past_the_statement(row, at));
+            if (code_at(row, brace) == token::left_brace_token)
+                find_the_last_statements(row, brace + 1, into, false);
+            at = past_matching_brace(row, brace);
+        } else {
+            at = past_the_statement(row, at);
+        }
+        last = here;
+        last_bodies = std::move(bodies);
+    }
+    if (ends_it)
+        mark_last(row, last, last_bodies, into);
 }
 
 // Does the statement at `at` stand where it is the last thing `site` does.
 bool is_last_in(const CapsuleSite &site, const std::vector<std::bitset<16>> &row, std::size_t at)
 {
     if (!site.last_statements_known) {
-        find_the_last_statements(row, site.body, site.last_statements);
+        find_the_last_statements(row, site.body, site.last_statements, true);
         site.last_statements_known = true;
     }
     for (const std::size_t last : site.last_statements)
@@ -477,8 +572,8 @@ bool is_last_in(const CapsuleSite &site, const std::vector<std::bitset<16>> &row
 }
 
 // Every statement from `from` until the `}` that closes the body, or the row's
-// end. `variables` is THIS body's own table. `tail` is the capsule's own
-// (TailCall), handed through if and else, and null in a loop's body.
+// end. `variables` is THIS body's own table. `frame` is the capsule's own (Frame),
+// handed through every block of it, so a return anywhere ends the whole body.
 signed long long int run_statements(const BytecodeRegistry &registry,
                                     const CapsuleTable &capsules,
                                     const FunctionTable &functions,
@@ -486,17 +581,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                                     std::size_t from,
                                     VariableTable &variables,
                                     MachineState &state,
-                                    TailCall *tail = nullptr);
-
-// ONE CAPSULE, BY ITS SITE: a new frame, the arguments bound, close_files on the way
-// out. Every road to a capsule ends here -- a call written in a program, a button's
-// press through run_capsule -- so there is one reader of "call a capsule".
-signed long long int run_site(const BytecodeRegistry &registry,
-                              const CapsuleTable &capsules,
-                              const FunctionTable &functions,
-                              const CapsuleSite &site,
-                              std::vector<Value> arguments,
-                              MachineState &state);
+                                    Frame &frame);
 
 // `satellite.statement.while(<expr>) { ... }`. `at` is on the word code and is
 // left past the body's `}`.
@@ -525,7 +610,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
                             VariableTable &variables,
                             MachineState &state,
                             bool may_run,
-                            TailCall *tail = nullptr);
+                            Frame &frame);
 
 signed long long int run_while(const BytecodeRegistry &registry,
                                const CapsuleTable &capsules,
@@ -533,7 +618,8 @@ signed long long int run_while(const BytecodeRegistry &registry,
                                std::size_t which_row,
                                std::size_t &at,
                                VariableTable &variables,
-                               MachineState &state)
+                               MachineState &state,
+                               Frame &frame)
 {
     const std::vector<std::bitset<16>> &row = registry[which_row];
     const std::size_t condition_at = at + 1;          // the `(`
@@ -553,7 +639,7 @@ signed long long int run_while(const BytecodeRegistry &registry,
         if (opened) ++here;
         const Value holds = evaluate_expression(row, here, context);
         if (context.code != success)
-            return raise_at(context.code, context.why, "satellite.statement.while",
+            return raise_context(context, "satellite.statement.while",
                             state, row,
                             context.placed ? context.refused_at : condition_at);
         // The condition's own `)`, then the line's end -- nothing between.
@@ -573,9 +659,11 @@ signed long long int run_while(const BytecodeRegistry &registry,
         // author's own program writes `counter = counter + 1` inside one and
         // expects the counter outside it to move.
         const signed long long int code =
-            run_statements(registry, capsules, functions, which_row, brace + 1, variables, state);
+            run_statements(registry, capsules, functions, which_row, brace + 1, variables, state, frame);
         if (stops_the_program(code))
             return code;
+        if (frame.ending())
+            return success;         // a satellite.return in the body left the capsule
     }
 }
 
@@ -587,7 +675,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
                             VariableTable &variables,
                             MachineState &state,
                             bool may_run,
-                            TailCall *tail)
+                            Frame &frame)
 {
     const std::vector<std::bitset<16>> &row = registry[which_row];
     const std::size_t condition_at = at + 1;
@@ -608,7 +696,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
         if (opened) ++here;
         const Value holds = evaluate_expression(row, here, context);
         if (context.code != success)
-            return raise_at(context.code, context.why, "satellite.statement.if",
+            return raise_context(context, "satellite.statement.if",
                             state, row,
                             context.placed ? context.refused_at : condition_at);
         bool closed = true;
@@ -623,7 +711,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
         held = *holds.as_bool();
         if (held) {
             const signed long long int code =
-                run_statements(registry, capsules, functions, which_row, brace + 1, variables, state, tail);
+                run_statements(registry, capsules, functions, which_row, brace + 1, variables, state, frame);
             if (stops_the_program(code))
                 return code;
         }
@@ -642,7 +730,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
     if (code_at(row, after_else) == word::code_of(1, 13, 1)) {   // else written onto another if
         std::size_t chained = after_else;
         const signed long long int code =
-            run_if(registry, capsules, functions, which_row, chained, variables, state, run_the_else, tail);
+            run_if(registry, capsules, functions, which_row, chained, variables, state, run_the_else, frame);
         at = chained;
         return code;
     }
@@ -653,7 +741,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
     at = past_matching_brace(row, after_else);
     if (!run_the_else)
         return success;
-    return run_statements(registry, capsules, functions, which_row, after_else + 1, variables, state, tail);
+    return run_statements(registry, capsules, functions, which_row, after_else + 1, variables, state, frame);
 }
 
 // THE THIRD PART OF A for, WHICH IS NOT AN EXPRESSION AND NOT AN ASSIGNMENT
@@ -712,7 +800,7 @@ signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
     ExpressionContext context{variables, functions, state};
     answer = evaluate_expression(row, at, context);
     if (context.code != success)
-        return raise_at(context.code, context.why, "satellite.statement.for",
+        return raise_context(context, "satellite.statement.for",
                         state, row,
                         context.placed ? context.refused_at : at);
     if (at != parts.closing)
@@ -749,7 +837,8 @@ signed long long int run_for(const BytecodeRegistry &registry,
                              std::size_t which_row,
                              std::size_t &at,
                              VariableTable &variables,
-                             MachineState &state)
+                             MachineState &state,
+                             Frame &frame)
 {
     const std::vector<std::bitset<16>> &row = registry[which_row];
     const ForHeader parts = for_header(row, at);
@@ -772,7 +861,7 @@ signed long long int run_for(const BytecodeRegistry &registry,
     ExpressionContext opening{variables, functions, state};
     Value start = evaluate_expression(row, k, opening);
     if (opening.code != success)
-        return raise_at(opening.code, opening.why, "satellite.statement.for",
+        return raise_context(opening, "satellite.statement.for",
                         state, row,
                         opening.placed ? opening.refused_at : k);
     if (k != parts.condition - 1)
@@ -783,7 +872,7 @@ signed long long int run_for(const BytecodeRegistry &registry,
                                 std::string(word::spelling_of(word::code_of(1, 6, 4))) + " " + name +
                                 ", and it was given " + start.kind_name(),
                             types_do_not_meet);
-    variables[name] = Variable{word::code_of(1, 6, 4), TypeShape{word::code_of(1, 6, 4), {}}, std::move(start)};
+    variables[name] = Variable{word::code_of(1, 6, 4), plain_shape(word::code_of(1, 6, 4)), std::move(start)};
 
     // ONCE, NOT PER TURN -- and the checker has already refused the two shapes
     // this can turn down, so a program reaching here has a step that is one of
@@ -802,7 +891,7 @@ signed long long int run_for(const BytecodeRegistry &registry,
         ExpressionContext turn{variables, functions, state};
         const Value holds = evaluate_expression(row, here, turn);
         if (turn.code != success) {
-            stopped = raise_at(turn.code, turn.why, "satellite.statement.for",
+            stopped = raise_context(turn, "satellite.statement.for",
                                state, row,
                                turn.placed ? turn.refused_at : here);
             break;
@@ -821,8 +910,8 @@ signed long long int run_for(const BytecodeRegistry &registry,
         if (!*holds.as_bool())
             break;
 
-        stopped = run_statements(registry, capsules, functions, which_row, brace + 1, variables, state);
-        if (stops_the_program(stopped))
+        stopped = run_statements(registry, capsules, functions, which_row, brace + 1, variables, state, frame);
+        if (stops_the_program(stopped) || frame.ending())
             break;
         stopped = run_for_step(row, parts, name, moves_by, functions, variables, state);
         if (stops_the_program(stopped))
@@ -872,8 +961,9 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // error -- two declarations of one name in one capsule -- is caught by
     // program_check.cpp BEFORE anything runs, which is the right place for it:
     // the checker walks the text, so it sees each declaration exactly once.
-    const VariableTable::iterator found = variables.find(name);
-    if (declared == 0 && found == variables.end()) {
+    // A NAME ALREADY DECLARED IS ONE OF THIS BODY'S, OR A FIELD OF ITS OBJECT (value.hpp).
+    const Seen found = declared == 0 ? variables.seen(name) : Seen{};
+    if (declared == 0 && !found) {
         at = past_the_statement(row, at);
         return report_error("satl(run): " + name + " has no satellite.variable line declaring it", name_not_declared);
     }
@@ -893,12 +983,12 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // 000000` and `c = ff00aa` as six hex digits, and `c = x000000, 50` with its
     // transparency after the comma, the author's second way (color_values.cpp). It
     // answers false for every other name, which is read here as it always was.
-    if (!color_reads_its_value(declared != 0 ? declared : found->second.declared, row, at, value, context))
+    if (!color_reads_its_value(declared != 0 ? declared : found.declared, row, at, value, context))
         value = evaluate_expression(row, at, context);
     if (context.code != success) {
         const std::size_t blame = context.placed ? context.refused_at : at;
         at = past_the_statement(row, at);
-        return raise_at(context.code, context.why, name + " = ...",
+        return raise_context(context, name + " = ...",
                         state, row, blame);
     }
     if (!read_to_the_end(row, at)) {
@@ -908,7 +998,7 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
 
     // THE DECLARED TYPE OUTLIVES THE LINE THAT WROTE IT. `n = "text"` on a
     // number is refused rather than quietly making n a string (value.hpp).
-    const Code holds = declared != 0 ? declared : found->second.declared;
+    const Code holds = declared != 0 ? declared : found.declared;
 
     // A NUMBER VARIABLE GIVEN A BINARY KEEPS WHAT IT IS WORTH, which is what
     // `satellite.variable.number n = b1010` did when a b literal was a number, so
@@ -937,15 +1027,20 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // chain of `word == this && !value.is_that()`, which grew a row per type and
     // could say nothing about what was between a `<` and a `>`. type_shape.hpp
     // answers both, and answers them the same way for the checker.
-    const TypeShape &against = declared != 0 ? shape : found->second.shape;
+    const TypeShape &against = declared != 0 ? shape : *found.shape;
     std::string why;
     if (against.word != 0 && !value_fits(against, value, why)) {
         at = past_the_statement(row, at);
-        return report_error(std::string("satl(run): ") + name + " was declared " +
-                                word::spelling_of(holds) + ", and " + why,
+        return report_error(std::string("satl(run): ") + name + " was declared " + shape_written(against) + ", and " +
+                                why,
                             types_do_not_meet);
     }
-    variables[name] = Variable{holds, against, std::move(value)};
+    // A NAME ALREADY THERE KEEPS ITS DECLARATION AND TAKES THE VALUE -- in this body's
+    // table, or in the field of the object, which every holder of it then sees.
+    if (declared == 0)
+        *found.value = std::move(value);
+    else
+        variables[name] = Variable{holds, against, std::move(value)};
     at = past_the_statement(row, at);
     return success;
 }
@@ -991,8 +1086,8 @@ signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &
                                             MachineState &state)
 {
     const std::size_t opened_at = at;
-    const VariableTable::iterator found = variables.find(name);
-    if (found == variables.end()) {
+    const Seen found = variables.seen(name);     // this body's, or a field of its object
+    if (!found) {
         at = past_the_statement(row, at);
         return report_error("satl(run): " + name + " has no satellite.variable line declaring it", name_not_declared);
     }
@@ -1028,14 +1123,13 @@ signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &
         if (context.code == success && !read_to_the_end(row, at))
             context.refuse(satl_line_not_understood, name + "[...] = ... " + kNotReadToTheEnd, opened_at);
         if (context.code == success)
-            write_through_index(found->second.value, indices, std::move(value), name, opened_at,
-                                found->second.shape, context);
+            write_through_index(*found.value, indices, std::move(value), name, opened_at, *found.shape, context);
     }
 
     const std::size_t blame = context.placed ? context.refused_at : opened_at;
     at = past_the_statement(row, at);
     if (context.code != success)
-        return raise_at(context.code, context.why, name + "[...] = ...", state, row, blame);
+        return raise_context(context, name + "[...] = ...", state, row, blame);
     return success;
 }
 
@@ -1073,7 +1167,7 @@ signed long long int run_setting_assignment(const std::vector<std::bitset<16>> &
     ExpressionContext context{variables, functions, state};
     Value value = evaluate_expression(row, at, context);
     if (context.code != success)
-        return raise_at(context.code, context.why, spelling + " = ...",
+        return raise_context(context, spelling + " = ...",
                         state, row,
                         context.placed ? context.refused_at : at);
     if (!read_to_the_end(row, at))
@@ -1144,10 +1238,29 @@ Reached reached_from(const CapsuleTable &capsules, std::size_t which_row, std::s
     return capsules.reach(capsules.scope_at(which_row, at), names);
 }
 
+// ONE CAPSULE, BY ITS SITE: a new frame, the arguments bound, close_files on the way
+// out. Every road to a capsule ends here -- a call written in a program, a capsule
+// inside an expression, a method on an object, a button's press through run_capsule
+// -- so there is one reader of "call a capsule". `self` is the object a spacesuit's
+// capsule runs on, null for any other; `answer` is where what it hands back goes,
+// null when nothing will read it.
+signed long long int run_site(const BytecodeRegistry &registry,
+                              const CapsuleTable &capsules,
+                              const FunctionTable &functions,
+                              const CapsuleSite &site,
+                              std::vector<Value> arguments,
+                              const UserDefinedHandle &self,
+                              MachineState &state,
+                              Value *answer);
+
 // A CAPSULE CALL STANDING AS A STATEMENT -- `greet(1, 2)` or `other.tools.greet(1, 2)`,
 // `at` on its first name and left past the statement. Its arguments are worked out
 // HERE, IN THE CALLER'S FRAME (2026-09-21), which is the only frame they could be
 // worked out in: the capsule's own has nothing in it yet, and that is the point.
+//
+// A SPACESUIT'S CAPSULE CALLED BY ITS BARE NAME runs on THIS body's object -- the
+// author's `call_open()` inside another of run_log's capsules. The checker has proved
+// the caller is a capsule of the same spacesuit, so `variables.self` is that object.
 signed long long int call_capsule(const BytecodeRegistry &registry,
                                   const CapsuleTable &capsules,
                                   const FunctionTable &functions,
@@ -1156,7 +1269,7 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
                                   std::size_t &at,
                                   VariableTable &variables,
                                   MachineState &state,
-                                  TailCall *tail)
+                                  Frame &frame)
 {
     const std::size_t started = at;
     std::vector<std::string> names;
@@ -1179,7 +1292,7 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
     if (context.code != success) {
         const std::size_t blame = context.placed ? context.refused_at : at;
         at = past_the_statement(row, k);
-        return raise_at(context.code, context.why, written + "(...)", state, row, blame);
+        return raise_context(context, written + "(...)", state, row, blame);
     }
     if (code_at(row, a) != token::right_parenthesis_token) {
         at = past_the_statement(row, k);
@@ -1188,14 +1301,91 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
     at = past_the_statement(row, k);
     // ITS OWN CAPSULE, CALLED LAST: the arguments were worked out in this frame,
     // which is all the frame was still needed for, so run_site takes them and
-    // lets it go (TailCall).
-    if (tail != nullptr && tail->site == &site && is_last_in(site, row, started)) {
-        tail->arguments = std::move(arguments);
-        tail->pending = true;
+    // lets it go (Frame).
+    const UserDefinedHandle none;
+    const UserDefinedHandle &self = site.suit != kNoScope ? variables.self : none;
+    const CapsuleSite &runs = capsules.on_the_object(site, self);
+    if (frame.site == &runs && is_last_in(runs, row, started)) {
+        frame.arguments = std::move(arguments);
+        frame.pending = true;
         return success;
     }
-    return run_site(registry, capsules, functions, site, std::move(arguments), state);
+    return run_site(registry, capsules, functions, runs, std::move(arguments), self, state, nullptr);
 }
+
+} // namespace
+
+signed long long int run_declaration(const BytecodeRegistry &registry,
+                                     const CapsuleTable &capsules,
+                                     const FunctionTable &functions,
+                                     std::size_t which_row,
+                                     std::size_t &at,
+                                     VariableTable &variables,
+                                     MachineState &state,
+                                     bool as_a_field,
+                                     bool &was_one)
+{
+    const std::vector<std::bitset<16>> &row = registry[which_row];
+    const Code code = code_at(row, at);
+    was_one = true;
+
+    // A DECLARATION WITH TYPES BETWEEN < AND > (the author, 2026-09-18):
+    // `satellite.container.index<satellite.variable.string, satellite.variable.number> scores`.
+    // Read as a shape first, because the name is on the far side of the `>`
+    // and the plain test below looks only at the next code.
+    if (word::is_word_code(code) && code_at(row, at + 1) == token::less_than_token) {
+        std::size_t k = at;
+        TypeShape shape;
+        unsigned int pending = 0;
+        std::string why;
+        if (!read_type_shape(row, k, shape, pending, why) || pending != 0) {
+            if (pending != 0)
+                why = "there is a > here with nothing left for it to close";
+            at = past_the_statement(row, at);
+            report_error("satl(run): " + why, satl_line_not_understood);
+            return success;
+        }
+        if (code_at(row, k) != token::name_token) {
+            at = past_the_statement(row, at);
+            report_error(std::string("satl(run): ") + word::spelling_of(code) +
+                             "<...> declares a name, and there is no name after the >",
+                         satl_line_not_understood);
+            return success;
+        }
+        // `satellite.container.list<data_unit> units` NAMES A SPACESUIT, and which one is
+        // the scope table's to say, from where the line stands (2026-09-22).
+        if (names_a_suit(shape) && !resolve_shape(capsules, capsules.scope_at(which_row, at), shape, why)) {
+            const std::size_t started = at;
+            at = past_the_statement(row, at);
+            return raise_at(name_not_declared, why, std::string(), state, row, started);
+        }
+        const std::string name = text_at(row, k);
+        at = k;
+        const signed long long int stopped =
+            run_assignment(row, at, code, shape, name, functions, variables, state);
+        return stopped;
+    }
+
+    // A DECLARATION IS A WORD FOLLOWED BY A NAME; a call is a word followed
+    // by `(`. That one test tells them apart with no list of types.
+    if (word::is_word_code(code) && code_at(row, at + 1) == token::name_token) {
+        std::size_t k = at + 1;
+        const std::string name = text_at(row, k);
+        at = k;
+        const signed long long int stopped =
+            run_assignment(row, at, code, plain_shape(code), name, functions, variables, state);
+        return stopped;
+    }
+
+    // A SPACESUIT'S NAME AND THEN A NAME: an object (suit_run.cpp).
+    if (an_object_declaration_at(row, at))
+        return run_object_declaration(registry, capsules, functions, which_row, at, variables, state, as_a_field);
+
+    was_one = false;
+    return success;
+}
+
+namespace {
 
 signed long long int run_statements(const BytecodeRegistry &registry,
                                     const CapsuleTable &capsules,
@@ -1204,7 +1394,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                                     std::size_t from,
                                     VariableTable &variables,
                                     MachineState &state,
-                                    TailCall *tail)
+                                    Frame &frame)
 {
     const std::vector<std::bitset<16>> &row = registry[which_row];
 
@@ -1231,16 +1421,37 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             statement_ring().saw(which_row, at);
         }
 
-        if (code == word::code_of(1, 15)) {          // satellite.return
+        // satellite.return, AND WHAT IT HANDS BACK (Frame says why it ends the whole
+        // capsule). Worked out in THIS frame, before it goes; run_site measures it
+        // against the capsule's satellite.returns.
+        if (code == word::code_of(1, 15)) {
+            const std::size_t value_at = return_value_at(row, at);
+            if (value_at != 0) {
+                ExpressionContext context{variables, functions, state};
+                std::size_t k = value_at;
+                Value handed = evaluate_expression(row, k, context);
+                if (context.code != success)
+                    return raise_context(context, "satellite.return(...)", state, row,
+                                    context.placed ? context.refused_at : value_at);
+                if (code_at(row, k) != token::right_parenthesis_token || !read_to_the_end(row, k + 1))
+                    return report_error(std::string("satl(run): satellite.return(...) ") + kNotReadToTheEnd,
+                                        satl_line_not_understood);
+                frame.answer = std::move(handed);
+                frame.answered = true;
+            }
+            frame.returned = true;
+            frame.returned_at = at;
             state.set("satellite.return", success);
             return success;
         }
 
         if (code == word::code_of(1, 13, 1)) {       // satellite.statement.if
             const signed long long int stopped =
-                run_if(registry, capsules, functions, which_row, at, variables, state, true, tail);
+                run_if(registry, capsules, functions, which_row, at, variables, state, true, frame);
             if (stops_the_program(stopped))
                 return stopped;
+            if (frame.ending())
+                return success;
             continue;
         }
 
@@ -1255,60 +1466,31 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
         if (code == word::code_of(1, 13, 3)) {       // satellite.statement.while
             const signed long long int stopped =
-                run_while(registry, capsules, functions, which_row, at, variables, state);
+                run_while(registry, capsules, functions, which_row, at, variables, state, frame);
             if (stops_the_program(stopped))
                 return stopped;
+            if (frame.ending())
+                return success;
             continue;
         }
 
         if (code == word::code_of(1, 13, 2)) {       // satellite.statement.for
             const signed long long int stopped =
-                run_for(registry, capsules, functions, which_row, at, variables, state);
+                run_for(registry, capsules, functions, which_row, at, variables, state, frame);
             if (stops_the_program(stopped))
                 return stopped;
+            if (frame.ending())
+                return success;
             continue;
         }
 
-        // A DECLARATION WITH TYPES BETWEEN < AND > (the author, 2026-09-18):
-        // `satellite.container.index<satellite.variable.string, satellite.variable.number> scores`.
-        // Read as a shape first, because the name is on the far side of the `>`
-        // and the plain test below looks only at the next code.
-        if (word::is_word_code(code) && code_at(row, at + 1) == token::less_than_token) {
-            std::size_t k = at;
-            TypeShape shape;
-            unsigned int pending = 0;
-            std::string why;
-            if (!read_type_shape(row, k, shape, pending, why) || pending != 0) {
-                if (pending != 0)
-                    why = "there is a > here with nothing left for it to close";
-                at = past_the_statement(row, at);
-                report_error("satl(run): " + why, satl_line_not_understood);
-                continue;
-            }
-            if (code_at(row, k) != token::name_token) {
-                at = past_the_statement(row, at);
-                report_error(std::string("satl(run): ") + word::spelling_of(code) +
-                                 "<...> declares a name, and there is no name after the >",
-                             satl_line_not_understood);
-                continue;
-            }
-            const std::string name = text_at(row, k);
-            at = k;
+        // A DECLARATION: a word and a name, a word and its <>, or a spacesuit's name and a
+        // name (run_declaration, below, is the one reader of all three).
+        if (word::is_word_code(code) &&
+            (code_at(row, at + 1) == token::less_than_token || code_at(row, at + 1) == token::name_token)) {
+            bool was_one = false;
             const signed long long int stopped =
-                run_assignment(row, at, code, shape, name, functions, variables, state);
-            if (stops_the_program(stopped))
-                return stopped;
-            continue;
-        }
-
-        // A DECLARATION IS A WORD FOLLOWED BY A NAME; a call is a word followed
-        // by `(`. That one test tells them apart with no list of types.
-        if (word::is_word_code(code) && code_at(row, at + 1) == token::name_token) {
-            std::size_t k = at + 1;
-            const std::string name = text_at(row, k);
-            at = k;
-            const signed long long int stopped =
-                run_assignment(row, at, code, TypeShape{code, {}}, name, functions, variables, state);
+                run_declaration(registry, capsules, functions, which_row, at, variables, state, false, was_one);
             if (stops_the_program(stopped))
                 return stopped;
             continue;
@@ -1345,7 +1527,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             evaluate_expression(row, k, context);
             at = past_the_statement(row, k);
             if (context.code != success)
-                return raise_at(context.code, context.why, std::string(),
+                return raise_context(context, std::string(),
                                 state, row,
                                 context.placed ? context.refused_at : started);
             if (!read_to_the_end(row, k))
@@ -1356,6 +1538,16 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         }
 
         if (code == token::name_token) {
+            // AN OBJECT BEING DECLARED -- `run_log log(path)`, `tagged_report.run_signal
+            // signal` -- a name and then a name, which no other statement starts with.
+            if (an_object_declaration_at(row, at)) {
+                const signed long long int stopped =
+                    run_object_declaration(registry, capsules, functions, which_row, at, variables, state, false);
+                if (stops_the_program(stopped))
+                    return stopped;
+                continue;
+            }
+
             std::size_t k = at;
             const std::string name = text_at(row, k);
 
@@ -1384,25 +1576,28 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             // by what the first name IS -- a variable is a method's receiver, and a
             // name no variable has that reaches a capsule is the capsule. The checker
             // refuses a variable named like a file or a space, so the two cannot meet.
-            const Reached dotted = code_at(row, k) == token::method_token && variables.find(name) == variables.end()
+            const Reached dotted = code_at(row, k) == token::method_token && !variables.seen(name)
                                        ? reached_from(capsules, which_row, at, row)
                                        : Reached();
             if (dotted.site != nullptr) {
                 const signed long long int stopped =
-                    call_capsule(registry, capsules, functions, *dotted.site, row, at, variables, state, tail);
+                    call_capsule(registry, capsules, functions, *dotted.site, row, at, variables, state, frame);
                 if (stops_the_program(stopped))
                     return stopped;
+                if (frame.ending())
+                    return success;
                 continue;
             }
 
             if (code_at(row, k) == token::method_token || code_at(row, k) == token::left_square_bracket_token) {
                 ExpressionContext context{variables, functions, state};
+                context.statement = true;      // `log.call_append(x)`: its answer is let go
                 std::size_t e = at;
                 evaluate_expression(row, e, context);
                 if (context.code != success) {
                     const std::size_t blame = context.placed ? context.refused_at : at;
                     at = past_the_statement(row, e);
-                    return raise_at(context.code, context.why, name, state, row, blame);
+                    return raise_context(context, name, state, row, blame);
                 }
                 if (!read_to_the_end(row, e)) {
                     at = past_the_statement(row, e);
@@ -1422,9 +1617,11 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                     continue;
                 }
                 const signed long long int stopped =
-                    call_capsule(registry, capsules, functions, *found, row, at, variables, state, tail);
+                    call_capsule(registry, capsules, functions, *found, row, at, variables, state, frame);
                 if (stops_the_program(stopped))
                     return stopped;
+                if (frame.ending())
+                    return success;
                 continue;
             }
             at = k;
@@ -1448,10 +1645,14 @@ signed long long int run_turn(const BytecodeRegistry &registry,
                               const FunctionTable &functions,
                               const CapsuleSite &site,
                               std::vector<Value> &arguments,
+                              const UserDefinedHandle &self,
                               MachineState &state,
-                              TailCall &tail)
+                              Frame &frame)
 {
     VariableTable theirs;   // its own frame, as every capsule called by name has
+    theirs.self = self;     // and a spacesuit's capsule, its object (value.hpp)
+    if (site.suit != kNoScope)
+        theirs.fields_seen = capsules.scopes[site.suit].layout->fields.size();
 
     // THE ARGUMENTS BECOME THE FIRST NAMES IN THAT FRAME, and they are the only
     // names it starts with: there are no globals, so what was handed in is the
@@ -1470,31 +1671,70 @@ signed long long int run_turn(const BytecodeRegistry &registry,
         std::string why;
         if (!value_fits(wants[at].shape, arguments[at], why))
             return report_error("satl(run): " + site.shown + "'s " + wants[at].name + " was declared " +
-                                    word::spelling_of(wants[at].declared()) + ", and " + why,
+                                    shape_written(wants[at].shape) + ", and " + why,
                                 types_do_not_meet);
         theirs[wants[at].name] = Variable{wants[at].declared(), wants[at].shape, std::move(arguments[at])};
     }
     return close_files(theirs,
-                       run_statements(registry, capsules, functions, site.row, site.body, theirs, state, &tail));
+                       run_statements(registry, capsules, functions, site.row, site.body, theirs, state, frame));
 }
 
 // ONE TURN PER CALL, and a call to itself made last is the next turn rather than a
-// frame inside this one (TailCall): the frame, its files and its names go at the
+// frame inside this one (Frame): the frame, its files and its names go at the
 // end of every turn, exactly as they would have at the end of a call.
+//
+// WHAT IT HANDS BACK IS MEASURED AGAINST ITS satellite.returns ON EVERY TURN, read or
+// not -- a capsule answering the wrong type is wrong whether or not this caller
+// looked. And a turn that CALLED ITSELF LAST answers nothing, however the deepest
+// turn ended: written as the recursion it replaces, the outer call runs `f(n - 1)`,
+// drops its answer and reaches its `}`. `satellite.return(f(n - 1))` is a different
+// statement, and is a call in the middle (the author's ruling, 2026-09-22).
 signed long long int run_site(const BytecodeRegistry &registry,
                               const CapsuleTable &capsules,
                               const FunctionTable &functions,
                               const CapsuleSite &site,
                               std::vector<Value> arguments,
-                              MachineState &state)
+                              const UserDefinedHandle &given,
+                              MachineState &state,
+                              Value *answer)
 {
+    // THE OBJECT IS HELD BY A HANDLE OF ITS OWN FOR EVERY TURN: `given` is a reference
+    // into whoever called, and a capsule may give the name it came from another object.
+    const UserDefinedHandle self = given;
+    bool called_itself_last = false;
     for (;;) {
-        TailCall tail;
-        tail.site = &site;
-        const signed long long int code = run_turn(registry, capsules, functions, site, arguments, state, tail);
-        if (!tail.pending || stops_the_program(code))
+        Frame frame;
+        frame.site = &site;
+        const signed long long int code =
+            run_turn(registry, capsules, functions, site, arguments, self, state, frame);
+        if (stops_the_program(code))
             return code;
-        arguments = std::move(tail.arguments);
+        const std::vector<std::bitset<16>> &row = registry[site.row];
+        if (frame.answered) {
+            std::string why;
+            if (!value_fits(site.returns, frame.answer, why))
+                return raise_at(types_do_not_meet,
+                                site.shown + " answers " + shape_written(site.returns) +
+                                    ", and what this satellite.return handed back does not fit -- " + why,
+                                std::string(), state, row, frame.returned_at);
+        }
+        if (frame.pending) {
+            called_itself_last = true;
+            arguments = std::move(frame.arguments);
+            continue;
+        }
+        if (answer != nullptr) {
+            if (!frame.answered || called_itself_last)
+                return raise_at(capsule_gave_no_answer,
+                                site.shown + "'s answer is used, and it ended without handing one back -- " +
+                                    (called_itself_last
+                                         ? std::string("its last line calls itself and drops that answer")
+                                         : std::string("the way it went reached no satellite.return(...) with a "
+                                                       "value")),
+                                std::string(), state, row, site.declared_at);
+            *answer = std::move(frame.answer);
+        }
+        return code;
     }
 }
 
@@ -1506,7 +1746,20 @@ signed long long int run_typed_line(const BytecodeRegistry &registry,
 {
     static const CapsuleTable none;   // a typed line stands alone: there are no capsules around it
     VariableTable variables;          // and no name outlives the line that wrote it, until M6
-    return close_files(variables, run_statements(registry, none, functions, 0, 0, variables, state));
+    Frame frame;                      // nothing to return from: the checker refuses a return here
+    return close_files(variables, run_statements(registry, none, functions, 0, 0, variables, state, frame));
+}
+
+signed long long int run_capsule_for(const BytecodeRegistry &registry,
+                                     const CapsuleTable &capsules,
+                                     const FunctionTable &functions,
+                                     const CapsuleSite &site,
+                                     std::vector<Value> arguments,
+                                     const UserDefinedHandle &self,
+                                     MachineState &state,
+                                     Value *answer)
+{
+    return run_site(registry, capsules, functions, site, std::move(arguments), self, state, answer);
 }
 
 signed long long int run_capsule(const BytecodeRegistry &registry,
@@ -1523,7 +1776,7 @@ signed long long int run_capsule(const BytecodeRegistry &registry,
     // was handed is a walker that crashes when something else stops checking.
     if (found == nullptr)
         return report_error("satl(run): no capsule named " + capsule_as_written(key), satl_line_not_understood);
-    return run_site(registry, capsules, functions, *found, std::move(arguments), state);
+    return run_site(registry, capsules, functions, *found, std::move(arguments), UserDefinedHandle(), state, nullptr);
 }
 
 signed long long int run_main(const BytecodeRegistry &registry,
@@ -1551,8 +1804,11 @@ signed long long int run_main(const BytecodeRegistry &registry,
         variables[main->parameters.front().name] =
             Variable{arguments_shape.word, arguments_shape, the_arguments_value(state.arguments, functions)};
     }
+    // MAIN'S FRAME HAS NO SITE, as it had no TailCall before one: main calling itself
+    // last is not made a loop, and a return anywhere in it still ends the program.
+    Frame frame;
     return close_files(variables,
-                       run_statements(registry, capsules, functions, main->row, main->body, variables, state));
+                       run_statements(registry, capsules, functions, main->row, main->body, variables, state, frame));
 }
 
 } // namespace satellite004
