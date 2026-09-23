@@ -236,6 +236,11 @@ const char *method_spelling(Code method)
 
 const char *so_far_whose(token::Code method)
 {
+    // A COLOUR IS TEXT'S (console_style.hpp), and .background is a window piece's too.
+    if (method == token::foreground_token)
+        return "so far it is a string's: \"text\".foreground(xFF8800)";
+    if (method == token::background_token)
+        return "so far a string and a window piece have it";
     const bool a_file = file_method_arity(method) >= 0;
     const bool a_container = container_arity(method) >= 0;
     if (a_file && a_container)

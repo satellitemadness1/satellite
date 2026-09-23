@@ -8,6 +8,7 @@
 #include "word_codes.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <atomic>
 #include <cstdint>
 #include <string_view>
@@ -212,12 +213,27 @@ Code one_character_token(char c)
 // `path()` row; anything else asks for the row with ONE parameter, whatever that
 // parameter is called -- `(d)`, `(x)`, `(value)` are all one argument. A path with
 // several one-parameter rows is left alone rather than guessed at.
-// HOW MANY ARGUMENTS the brackets opened just before `inside` hold: the commas
-// at their own depth, plus one. A comma inside a string or inside nested
-// brackets is not one of theirs. The brackets are known not to be empty.
+// DOES AN ARGUMENT STARTING AT `k` BEGIN `name =`, a named option (console_calls.hpp)?
+// A name, spaces, and an `=` that is not the first half of `==`.
+static bool an_option_starts(std::string_view text, std::size_t k)
+{
+    while (k < text.size() && (text[k] == ' ' || text[k] == '\t')) ++k;
+    if (k >= text.size() || !(std::isalpha(static_cast<unsigned char>(text[k])) || text[k] == '_'))
+        return false;
+    while (k < text.size() && (std::isalnum(static_cast<unsigned char>(text[k])) || text[k] == '_')) ++k;
+    while (k < text.size() && (text[k] == ' ' || text[k] == '\t')) ++k;
+    return k + 1 < text.size() && text[k] == '=' && text[k + 1] != '=';
+}
+
+// HOW MANY PLAIN ARGUMENTS the brackets opened just before `inside` hold: the
+// commas at their own depth, plus one, less every argument that is a named option
+// -- `input("name? ", foreground=xFF8800)` is input(prompt), one argument and an
+// option, and counting the option chose input(prompt, target) (2026-09-23). A comma
+// inside a string, nested brackets or a braced list is not one of theirs: `{1, 2}`
+// is ONE argument. The brackets are known not to be empty.
 static std::size_t arguments_in(std::string_view text, std::size_t inside)
 {
-    std::size_t depth = 1, commas = 0;
+    std::size_t depth = 1, commas = 0, options = an_option_starts(text, inside) ? 1 : 0;
     for (std::size_t k = inside; k < text.size(); ++k) {
         const char c = text[k];
         if (c == '"') {
@@ -226,11 +242,14 @@ static std::size_t arguments_in(std::string_view text, std::size_t inside)
             continue;
         }
         if (c == '/' && k + 1 < text.size() && text[k + 1] == '/') break;   // the rest is a comment
-        if (c == '(' || c == '[') ++depth;
-        else if ((c == ')' || c == ']') && --depth == 0) break;
-        else if (c == ',' && depth == 1) ++commas;
+        if (c == '(' || c == '[' || c == '{') ++depth;
+        else if ((c == ')' || c == ']' || c == '}') && --depth == 0) break;
+        else if (c == ',' && depth == 1) {
+            ++commas;
+            if (an_option_starts(text, k + 1)) ++options;
+        }
     }
-    return commas + 1;
+    return commas + 1 - options;
 }
 
 token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_t run)
@@ -254,7 +273,10 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
     // had the milder half of the same hole: it became a NAME and was refused
     // as "no capsule named frame", a word that exists told it does not.
     const bool empty = inside < text.size() && text[inside] == ')';
-    if (empty) {
+    // NOTHING BUT OPTIONS IS EMPTY TOO: `input(foreground=xFF8800)` is input() with an
+    // option, so it takes the `path()` row as a call with nothing in it does.
+    const std::size_t given = empty ? 0 : arguments_in(text, inside);
+    if (given == 0) {
         const token::Code bare = word::code_of_spelling(path + "()");
         if (bare != 0)
             return bare;
@@ -267,7 +289,6 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
     // commas chooses `new(path, mode)`. When no row has that many parameters, the
     // one-parameter rule below still answers, so a call with too many arguments is
     // refused by the word and not turned into a name.
-    const std::size_t given = empty ? 0 : arguments_in(text, inside);
     const std::string opened = path + "(";
     std::size_t low = 0, high = word::kSpelledWordCount;
     while (low < high) {
@@ -313,7 +334,13 @@ token::Code shaped_word_code(std::string_view text, std::size_t from, std::size_
         return exact_twice ? 0 : exact;                     // two rows could be meant: say nothing
     if (only != 0)
         return only_twice ? 0 : only;
-    return any_twice ? 0 : any;
+    if (any != 0)
+        return any_twice ? 0 : any;
+    // A WORD WHOSE ONLY ROW IS `path()`, GIVEN SOMETHING (2026-09-23): that row, so the
+    // checker can say it takes nothing. Without it `satellite.console.home(5)` was
+    // shortened to `satellite.console` and `.home` and told "satellite.console is not a
+    // call" -- a word that exists, described as something else.
+    return given == 0 ? 0 : word::code_of_spelling(path + "()");
 }
 
 void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,

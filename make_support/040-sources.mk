@@ -39,7 +39,8 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/suit_scan.cpp $(BYTECODE)/suit_reach.cpp $(BYTECODE)/suit_run.cpp \
                       $(BYTECODE)/capsule_calls.cpp $(BYTECODE)/library_values.cpp \
                       $(BYTECODE)/expression.cpp $(BYTECODE)/sate_file.cpp \
-                      $(BYTECODE)/file_calls.cpp $(BYTECODE)/container_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
+                      $(BYTECODE)/file_calls.cpp $(BYTECODE)/container_calls.cpp \
+                      $(BYTECODE)/console_style.cpp $(BYTECODE)/console_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
                       $(BYTECODE)/infinity_calls.cpp $(INFINITY)/satellite_infinity.cpp \
                       $(BYTECODE)/window_calls.cpp $(BYTECODE)/window_readers.cpp $(BYTECODE)/window_shapes.cpp \
                       $(BYTECODE)/window_questions.cpp $(BYTECODE)/window_methods.cpp $(BYTECODE)/window_run.cpp \
@@ -62,7 +63,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(SATELLITE)/config/run_feedback.hpp $(NUMBERS)/feedback_book.hpp \
           $(MACHINE)/critical_report.hpp $(MACHINE)/source_position.hpp $(MACHINE)/s_codes.hpp \
           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
-          $(MACHINE)/stop_flag.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp \
+          $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp \
           $(SATELLITE)/satl/prompt_run.hpp $(SATELLITE)/satl/prompt_help.hpp \
           $(BYTECODE)/main_arguments.hpp \
           $(PROMPT)/raw_mode.hpp $(PROMPT)/keys.hpp $(PROMPT)/editor.hpp $(PROMPT)/history.hpp \
@@ -77,7 +78,8 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(BYTECODE)/capsule_scan.hpp $(BYTECODE)/suit_layout.hpp $(BYTECODE)/suit_run.hpp \
           $(BYTECODE)/capsule_calls.hpp $(BYTECODE)/library_values.hpp \
           $(BYTECODE)/expression.hpp $(BYTECODE)/value.hpp \
-          $(BYTECODE)/file_calls.hpp $(BYTECODE)/container_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
+          $(BYTECODE)/file_calls.hpp $(BYTECODE)/container_calls.hpp \
+          $(BYTECODE)/console_style.hpp $(BYTECODE)/console_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
           $(BYTECODE)/infinity_calls.hpp $(INFINITY)/satellite_infinity.hpp \
           $(BYTECODE)/window_calls.hpp $(BYTECODE)/window_readers.hpp \
           $(WINDOW_DIR)/satellite_window.hpp $(WINDOW_DIR)/window_desk.hpp \

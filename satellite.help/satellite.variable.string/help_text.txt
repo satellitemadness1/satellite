@@ -25,6 +25,16 @@ not b1010. .string (or .str, .to_string) answers the text unchanged. A
 conversion may be written with or without (), and methods chain left to
 right, as "87".bin.find("111") does below.
 
+.foreground(c) and .background(c) answer the string in a colour -- c is six hex
+digits or a satellite.variable.color -- so "status: " + "OK".foreground(x00FF00)
+colours one word of a line. The colour is part of the string wherever the
+program runs, as the terminal's own codes, so .find and == see them and a file
+written with the string holds them; satellite.console.display is what leaves
+them out, writing the string plain into a pipe or a file, and without its
+colours under NO_COLOR. A colour put round a string that already holds one comes
+back after it, so ("a" + "b".foreground(x0000FF) + "c").foreground(xFF0000)
+draws c red.
+
 Numbered under word 1 6 1 and not built yet in satellite 004: .size .empty
 .contains(x) .replace(a, b) .append(x) .clear .at(n) .substring(start, end)
 .starts_with(x) .ends_with(x) .lower .upper .split(separator) .trim .resolved
@@ -50,6 +60,7 @@ satellite.capsule satellite.main()
     satellite.console.display("42".bin) // 101010
     satellite.console.display("255".hex) // FF
     satellite.console.display("87".bin.find("111")) // 4
+    satellite.console.display("status: " + "OK".foreground(x00FF00)) // status: OK -- the OK green at a terminal
     satellite.console.display("apple" < "banana") // true
     satellite.console.display("tab\there") // tab\there
     satellite.return(satellite)

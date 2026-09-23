@@ -32,6 +32,7 @@
 #include "suit_run.hpp"
 #include "file_calls.hpp"
 #include "color_values.hpp"
+#include "console_calls.hpp"
 #include "container_calls.hpp"
 #include "main_arguments.hpp"
 #include "float_values.hpp"
@@ -477,6 +478,19 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         return success;
     }
 
+    // A STRING'S COLOUR (console_style.hpp): one colour, in brackets, and a literal that
+    // cannot be one is refused now.
+    if (declared_as == word::code_of(1, 6, 1) &&
+        (method == token::foreground_token || method == token::background_token)) {
+        std::size_t close = k + 2, given = 0;
+        const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+        if (!bracketed || !brackets_at(row, k + 2, close, given) || given != 1) {
+            why = spelling + " takes one colour, in brackets: " + spelling + "(xFF8800)";
+            return satl_line_not_understood;
+        }
+        why = colour_literal_refused(row, k + 3, spelling);
+        return why.empty() ? success : types_do_not_meet;
+    }
     if (declared_as != word::code_of(1, 6, 2)) {
         if (of_a_string_or_number) return success;
         why = spelling + " is not built for " + word::spelling_of(declared_as) + " yet -- " + so_far_whose(method);
@@ -759,6 +773,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
     // payload, so the codes it visited are the only ones that are really tokens.
     Code one_back = 0, two_back = 0;
     std::vector<std::size_t> judged;     // members judged through a list of objects
+    std::vector<std::size_t> option_names;   // `foreground` in foreground=..., judged by its word
     for (std::size_t at = from; at < stop && at < row.size(); ) {
         const Code code = code_at(row, at);
         const Code before_this = one_back, and_before_that = two_back;
@@ -836,6 +851,28 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         if (code == token::name_token) {
             std::size_t k = at;
             const std::string name = text_at(row, k);
+
+            // A NAMED OPTION'S NAME (console_calls.hpp) is the option and not a variable:
+            // judged by name with its word, below, and stepped over here with its `=`, so
+            // its value is judged as the loop goes on.
+            bool an_option = false;
+            for (const std::size_t each : option_names) an_option = an_option || each == at;
+            if (an_option) {
+                at = k + 1;
+                continue;
+            }
+            // AND ONE NOBODY TAKES: `twice(x=2)` gives a capsule an option, and a capsule's
+            // arguments are given in order. Said as that, not as a variable x nobody declared
+            // -- and ONLY straight after a call's `(`, a name's or a method's: after a comma
+            // it may be `satellite.variable.number a = 1, b = 2`, and after a bare `(` it may
+            // be `while((i = 3) > 0)`, and both are judged as they always were (the review).
+            if (before_this == token::left_parenthesis_token &&
+                (and_before_that == token::name_token || token::is_method_code(and_before_that)) &&
+                code_at(row, k) == token::assign_token) {
+                why = name + "= is a named option, and only satellite.console.display and satellite.console.input "
+                             "take them -- a capsule is given its arguments in order, without names";
+                return satl_line_not_understood;
+            }
 
             // A MEMBER ALREADY JUDGED, through the list its object came out of (below).
             bool already_judged = false;
@@ -1000,6 +1037,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             continue;
         }
 
+        // satellite.console.width AND .height ARE READ, NOT CALLED (console_calls.hpp),
+        // so `width()` is told that rather than that it has no library.
+        if (is_console_fact(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
+            why = std::string(word::spelling_of(code)) + " is read with no brackets: " + word::spelling_of(code);
+            return satl_line_not_understood;
+        }
+
         // A WORD USED AS A CALL MUST HAVE A LIBRARY. A word with none is
         // not_built_yet (14) with its own name, which is what 003 did and what a
         // person can act on (function_table.hpp).
@@ -1010,7 +1054,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // make.
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
             functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code) &&
-            !is_window_word(code) && !is_container_word(code)) {
+            !is_window_word(code) && !is_container_word(code) && !is_console_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
         }
@@ -1023,6 +1067,33 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
             std::size_t close = at + 1, given = 0;
             if (brackets_at(row, at + 1, close, given)) {
+                const std::string spelled_word(word::spelling_of(code));
+                // NAMED OPTIONS, `foreground=xFF8800` (console_calls.hpp): judged by name
+                // and by literal here, never counted as arguments, and their names
+                // stepped over as options rather than judged as variables nobody declared.
+                // Not in satellite.statement's own brackets, where `(d = 0; ...)` starts a loop.
+                if (spelled_word.rfind("satellite.statement.", 0) != 0) {
+                    std::vector<WrittenOption> options;
+                    if (!options_written_in(row, at + 1, options, why)) {
+                        why = spelled_word.substr(0, spelled_word.find('(')) + " -- " + why;
+                        return satl_line_not_understood;
+                    }
+                    for (std::size_t n = 0; n < options.size(); ++n) {
+                        const signed long long int refused = option_refused(code, row, options, n, why);
+                        if (refused != success) return refused;
+                        option_names.push_back(options[n].name_at);
+                    }
+                    given -= options.size();
+                }
+                // A COLOUR WORD GIVEN A LITERAL THAT CANNOT BE A COLOUR, said now.
+                if (a_colour_word_given_one(code) && given == 1) {
+                    const std::string refused =
+                        colour_literal_refused(row, at + 2, spelled_word.substr(0, spelled_word.find('(')));
+                    if (!refused.empty()) {
+                        why = refused;
+                        return types_do_not_meet;
+                    }
+                }
                 // satellite.infinity(x) is infinity ** x, and INF-5 builds it.
                 const std::string not_yet = infinity_word_not_built(code, given);
                 if (!not_yet.empty()) {
@@ -1068,6 +1139,14 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                               std::to_string(given);
                         return satl_line_not_understood;
                     }
+                    // A WORD WHOSE ONLY ROW IS `path()`, GIVEN SOMETHING: the lexer hands
+                    // it that row now (bytecode_registry.cpp), so `satellite.console.home(5)`
+                    // is told it takes nothing, not that satellite.console is not a call.
+                    if (spelled.size() > 2 && spelled.compare(spelled.size() - 2, 2, "()") == 0 && given > 0) {
+                        why = spelled + " takes nothing, and was given " + std::to_string(given) +
+                              (given == 1 ? " argument" : " arguments");
+                        return satl_line_not_understood;
+                    }
                 }
             }
         }
@@ -1084,6 +1163,23 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             std::size_t past = at;
             text_at(row, past);
             const Code method = code_at(row, past + 1);
+            if (code_at(row, past) == token::method_token &&
+                (method == token::foreground_token || method == token::background_token)) {
+                const std::string spelled = std::string("that ") + (code == token::string_token ? "string" : "literal") +
+                                            "." + method_spelling(method);
+                if (code != token::string_token) {
+                    why = spelled + " -- a colour is given to text: \"...\"." + method_spelling(method) + "(xFF8800)";
+                    return types_do_not_meet;
+                }
+                std::size_t close = past + 2, given = 0;
+                if (code_at(row, past + 2) != token::left_parenthesis_token ||
+                    !brackets_at(row, past + 2, close, given) || given != 1) {
+                    why = spelled + " takes one colour, in brackets";
+                    return satl_line_not_understood;
+                }
+                why = colour_literal_refused(row, past + 3, spelled);
+                if (!why.empty()) return types_do_not_meet;
+            }
             if (code_at(row, past) == token::method_token && container_arity(method) >= 0 &&
                 method != token::reverse_token) {
                 const char *kind = code == token::string_token   ? "a string"

@@ -4468,5 +4468,170 @@ printf 'satellite.console.display(satellite.library.span)\nsatellite.console.dis
 expect "a typed line has no file, so it has no satellite.library values -- and the next line still runs" "1|1" \
        "$(grep -c 'a line typed at the prompt has no file behind it' build/library/prompt.out)|$(grep -cx 'after it' build/library/prompt.out)"
 
+
+# ---------------------------------------------------------------------------
+# display's NAMED OPTIONS AND satellite.console's SCREEN WORDS, WHICH 003 BUILT (its M30,
+# "what ncurses does, without ncurses", and M14), AND THE COLOURS 004 ADDED (2026-09-23).
+# The author, shown 003 refusing s.foreground(c), "text".foreground(c),
+# satellite.console.foreground(c), satellite.terminal.foreground(c) and
+# input(prompt, foreground=c): "Let's build 004 differently then, so every single one of
+# those errors is legal". bytecode/console_style.hpp says what each colour means.
+# ---------------------------------------------------------------------------
+# INTO A FILE, EVERY LINE IS PLAIN TEXT (003's rule): no colour code anywhere, and the
+# terminal's colours are not touched. home() is 003's bytes whatever stdout is.
+printf 'bob\n' | "$interpreter" tests/console_from_003.satl > build/console_plain.out 2>/dev/null; code=$?
+expect "into a file: display's options, end=, coloured strings, console colours, width, home, input -- all plain" \
+       "0|warning|Loading... done|status: OK now|abc|sky|orange|green wins|plain|true|^[[Hname? hello bob" \
+       "$code|$(cat -v build/console_plain.out | tr '\n' '|' | sed 's/|$//')"
+
+# AT A TERMINAL, THE BYTES. display's options are 003's own bytes (ESC[1;3;38;2;...m,
+# checked against 003 running under a pty); a string's colour ends with ESC[39m and an
+# outer colour is re-opened after an inner one; a line's own foreground= wins over the
+# console's; the terminal's background is OSC 11, and only it is put back (OSC 111) at the end.
+at_a_terminal() {   # at_a_terminal <program> [typed] [--ctrl-c]: the bytes after the title, repr'd
+    python3 - "$interpreter" "$@" <<'PTY_EOF'
+import os, pty, select, sys
+satl, program = sys.argv[1], sys.argv[2]
+typed = sys.argv[3].encode() if len(sys.argv) > 3 and sys.argv[3] != "--ctrl-c" else b""
+ctrl_c = "--ctrl-c" in sys.argv
+pid, fd = pty.fork()
+if pid == 0:
+    env = dict(os.environ); env["TERM"] = "xterm-256color"; env.pop("NO_COLOR", None)
+    if os.environ.get("CHECK_NO_COLOR"): env["NO_COLOR"] = "1"
+    os.execve(satl, ["satl", program], env)
+out, sent = b"", False
+while True:
+    ready, _, _ = select.select([fd], [], [], 20)
+    if not ready: os.kill(pid, 9); out += b"<<TIMEOUT>>"; break
+    try: chunk = os.read(fd, 65536)
+    except OSError: break
+    if not chunk: break
+    out += chunk
+    if not sent and b"? " in out:
+        os.write(fd, b"\x03" if ctrl_c else typed + b"\r"); sent = True
+_, status = os.waitpid(pid, 0)
+text = out.decode("utf-8", "replace")
+text = text[text.find("-----\r\n") + 7:] if "-----\r\n" in text else text
+print(repr(text) + "|" + ("signal %d" % os.WTERMSIG(status) if os.WIFSIGNALED(status) else "exit %d" % os.WEXITSTATUS(status)))
+PTY_EOF
+}
+expect "at a terminal: 003's bytes for display's options, and every colour 004 added, put back at the end" \
+       "'\\r\\n\\x1b[1;3;38;2;255;136;0;48;2;0;0;0mwarning\\x1b[0m\\r\\nLoading... done\\r\\nstatus: \\x1b[38;2;0;255;0mOK\\x1b[39m now\\r\\n\\x1b[38;2;255;0;0ma\\x1b[38;2;0;0;255mb\\x1b[38;2;255;0;0mc\\x1b[39m\\r\\n\\x1b[48;2;135;206;235msky\\x1b[0m\\r\\n\\x1b[38;2;255;136;0morange\\x1b[0m\\r\\n\\x1b[38;2;0;255;0mgreen wins\\x1b[0m\\r\\nplain\\r\\ntrue\\r\\n\\x1b[H\\x1b]11;rgb:10/10/10\\x1b\\\\\\x1b[38;2;255;136;0mname? \\x1b[0mbob\\r\\nhello bob\\r\\n\\x1b]111\\x1b\\\\'|exit 0" \
+       "$(at_a_terminal tests/console_from_003.satl bob)"
+
+# NO_COLOR SET AND NOT EMPTY DROPS THE COLOURS AND KEEPS BOLD AND ITALIC (no-color.org),
+# and leaves the terminal's own colours alone.
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.terminal.foreground(xFF8800)\n    satellite.console.display("warning", foreground=xFF8800, bold=satellite.bool.true)\n    satellite.console.display("x".foreground(x00FF00))\n}\nsatellite.return(satellite)\n' > build/console_no_color.satl
+expect "NO_COLOR: bold kept, every colour dropped, the terminal untouched" \
+       "'\\r\\n\\x1b[1mwarning\\x1b[0m\\r\\nx\\r\\n'|exit 0" "$(CHECK_NO_COLOR=1 at_a_terminal build/console_no_color.satl)"
+
+# CTRL-C PUTS THE TERMINAL'S COLOURS BACK before satl goes, and it still goes by SIGINT.
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.terminal.foreground(xFF8800)\n    satellite.variable.string a = satellite.console.input("waiting? ")\n}\nsatellite.return(satellite)\n' > build/console_ctrl_c.satl
+expect "Ctrl-C at the prompt after satellite.terminal.foreground writes OSC 110 -- only what it changed -- then dies of SIGINT" \
+       "'\\r\\n\\x1b]10;rgb:ff/88/00\\x1b\\\\waiting? ^C\\x1b]110\\x1b\\\\'|signal 2" \
+       "$(at_a_terminal build/console_ctrl_c.satl --ctrl-c)"
+
+# THE END OF THE INPUT IS S830, EXIT 55 -- never an empty line answered forever.
+"$interpreter" build/console_ctrl_c.satl < /dev/null > build/console_ended.out 2>&1; code=$?
+expect "input() with the input ended stops with S830 INPUT_ENDED, exit 55" "55|1" \
+       "$code|$(grep -c 'S830: INPUT_ENDED' build/console_ended.out)"
+
+# EVERY WRONG SPELLING IS REFUSED BEFORE ANYTHING RUNS -- the "before" line is never
+# printed -- except a see-through colour held in a variable, which is only a value running.
+console_says() {   # console_says <lines> <sentence>: machine code | sentence found | "before" printed
+    printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n}\nsatellite.return(satellite)\n' "$1" > build/console_bad.satl
+    "$interpreter" build/console_bad.satl > build/console_bad.out 2>&1
+    printf '%s|%s|%s' "$?" "$(tr '\n' ' ' < build/console_bad.out | sed 's/  */ /g' | grep -c "$2")" "$(grep -cx before build/console_bad.out)"
+}
+expect "an option display does not take is refused, naming the five it does" "13|1|0" \
+       "$(console_says '    satellite.console.display("x", colour=xFF8800)' 'has no option called colour= -- it takes end=, foreground=, background=, bold= and italic=')"
+expect "an option given twice is refused" "13|1|0" \
+       "$(console_says '    satellite.console.display("x", end="", end="!")' 'end= is given twice')"
+expect "a plain argument after a named one is refused" "13|1|0" \
+       "$(console_says '    satellite.console.display(end="", "x")' 'a plain argument comes before every named one')"
+expect "foreground= given text is refused before the run" "27|1|0" \
+       "$(console_says '    satellite.console.display("x", foreground="red")' 'takes a colour -- six hex digits like xFF8800')"
+expect "foreground= given three hex digits is refused before the run" "27|1|0" \
+       "$(console_says '    satellite.console.display("x", foreground=xFFF)' 'exactly six hex digits like xFF8800, and xFFF has 3')"
+expect "bold= given a number is refused before the run" "27|1|0" \
+       "$(console_says '    satellite.console.display("x", bold=5)' 'bold= takes satellite.bool.true or satellite.bool.false')"
+expect "a word with no options is told it takes none" "13|1|0" \
+       "$(console_says '    satellite.feedback("x", end="")' 'satellite.feedback has no option called end= -- it takes no named options')"
+expect "input takes the style options and not end=" "13|1|0" \
+       "$(console_says '    satellite.variable.string a = satellite.console.input("a", end="")' 'it takes foreground=, background=, bold= and italic=')"
+expect "a capsule given a named option is told a capsule's arguments go in order" "13|1|0" \
+       "$(console_says '    satellite.console.display(twice(x=2))
+}
+satellite.capsule twice(satellite.variable.number x) satellite.returns(satellite.variable.number)
+{
+    satellite.return(x * 2)' 'x= is a named option, and only satellite.console.display and satellite.console.input take them')"
+expect "satellite.console.foreground given text is refused before the run" "27|1|0" \
+       "$(console_says '    satellite.console.foreground("red")' 'satellite.console.foreground takes a colour')"
+expect "s.foreground() with no colour is refused before the run" "13|1|0" \
+       "$(console_says '    satellite.variable.string s = "t"
+    satellite.console.display(s.foreground())' 's.foreground takes one colour, in brackets')"
+expect "a colour is given to text: 5.foreground(...) is refused before the run" "27|1|0" \
+       "$(console_says '    satellite.console.display(5.foreground(xFF8800))' 'a colour is given to text')"
+expect "a number variable has no .foreground" "14|1|0" \
+       "$(console_says '    satellite.variable.number n = 5
+    satellite.console.display(n.foreground(xFF8800))' 'so far it is a string.s')"
+expect "a see-through colour is refused -- a terminal draws nothing see-through -- when the line runs" "27|1|1" \
+       "$(console_says '    satellite.variable.color c = x000000, 50
+    satellite.console.display("x", foreground=c)' 'a terminal draws nothing see-through')"
+expect "input(prompt, target) is still not built" "14|1|0" \
+       "$(console_says '    satellite.variable.string a = "z"
+    satellite.console.input("p", a)' 'satellite.console.input(prompt, target) has no library built')"
+expect "a variable named end is still a variable, and == is not an option" "0|1|1" \
+       "$(console_says '    satellite.variable.string end = "e"
+    satellite.console.display(end == "e")' 'before true')"
+# THE FRESH READER'S FINDINGS, 2026-09-23, each pinned.
+# A COLOURED STRING IS THE SAME STRING WHEREVER THE PROGRAM RUNS: .find and == answered
+# one thing at a terminal and another in a pipe while the codes were only put in at a
+# terminal. They are always in it now, and display is what leaves them out.
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "q".foreground(xFF0000)\n    satellite.console.display(s.find("q"))\n    satellite.console.display("OK".foreground(x00FF00) == "OK")\n}\nsatellite.return(satellite)\n' > build/console_same.satl
+"$interpreter" build/console_same.satl > build/console_same.out 2>/dev/null
+expect "a coloured string answers .find and == the same into a pipe as at a terminal" "15|false|'\\r\\n15\\r\\nfalse\\r\\n'|exit 0" \
+       "$(tr '\n' '|' < build/console_same.out)$(at_a_terminal build/console_same.satl)"
+# THE OPTION REFUSAL ONLY STRAIGHT AFTER A CALL'S `(`: a declaration with a comma in it
+# is judged as it always was.
+expect "a = 1, b = 2 is still a name nobody declared, not a named option" "25|1|0" \
+       "$(console_says '    satellite.variable.number a = 1, b = 2' 'b has no satellite.variable line declaring it')"
+expect "satellite.console.width() is told it is read with no brackets" "13|1|0" \
+       "$(console_says '    satellite.console.display(satellite.console.width())' 'satellite.console.width is read with no brackets')"
+expect "satellite.console.home(5) is told home() takes nothing" "13|1|0" \
+       "$(console_says '    satellite.console.home(5)' 'satellite.console.home() takes nothing, and was given 1 argument')"
+# AT THE PROMPT, input() READS THROUGH THE SESSION'S OWN READER: the next piped line
+# was already in its buffer, and std::cin found the input ended.
+printf 'satellite.console.display("got " + satellite.console.input("q? ", foreground=xFF8800))\nanswer\nsatellite.console.display("third line ran")\n' | \
+    "$interpreter" --repl > build/console_repl.out 2>/dev/null; code=$?
+expect "satl --repl: input() reads the next piped line, and the line after it still runs" "0|q? got answer|third line ran" \
+       "$code|$(tail -2 build/console_repl.out | tr '\n' '|' | sed 's/|$//')"
+# AND CTRL-C AT input() AT THE PROMPT stops that line with S810 and gives the prompt back.
+python3 - "$interpreter" > build/console_repl_ctrl_c.out 2>&1 <<'PTY_EOF'
+import os, pty, select, sys, time
+pid, fd = pty.fork()
+if pid == 0:
+    env = dict(os.environ); env["TERM"] = "xterm-256color"
+    os.execve(sys.argv[1], ["satl", "--repl"], env)
+def drain(seconds):
+    out = b""; end = time.time() + seconds
+    while time.time() < end:
+        ready, _, _ = select.select([fd], [], [], 0.2)
+        if ready:
+            try: out += os.read(fd, 65536)
+            except OSError: break
+    return out
+drain(2)
+os.write(fd, b'satellite.variable.string s = satellite.console.input("x? ")\r'); drain(2)
+os.write(fd, b"\x03"); after = drain(3)
+os.write(fd, b"exit\r"); drain(2)
+_, status = os.waitpid(pid, 0)
+print(int(b"S810: INTERRUPTED" in after), int(after.rstrip().endswith(b"C") and b">>" in after), os.waitstatus_to_exitcode(status))
+PTY_EOF
+expect "satl --repl: Ctrl-C at input() stops the line with S810 and the prompt comes back, then exit is 0" "1 1 0" \
+       "$(tail -1 build/console_repl_ctrl_c.out)"
+expect "foreground is registry row 0x0B57, and token_codes.hpp agrees" "1|1" \
+       "$(grep -c '^0000101101010111  foreground_token ' REGISTRY.satellite)|$(grep -c 'Code foreground_token = 0x0B57;' satellite/bytecode/token_codes.hpp)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

@@ -16,6 +16,7 @@
 #include "file_calls.hpp"
 #include "color_values.hpp"
 #include "container_calls.hpp"
+#include "console_calls.hpp"
 #include "main_arguments.hpp"
 #include "float_values.hpp"
 #include "fraction_values.hpp"
@@ -461,6 +462,18 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 live = &held;
                 on_the_name = false;
             }
+            continue;
+        }
+
+        // A STRING'S COLOUR, .foreground(c) and .background(c) (console_style.hpp):
+        // the string answered in that colour, or unchanged where no colour is drawn.
+        if ((*live).is_string() && (method == token::foreground_token || method == token::background_token)) {
+            Value answer = string_coloured(*live, method, arguments, had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
             continue;
         }
 
@@ -1090,6 +1103,13 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             return Value::of_bool(said.flag);
         }
 
+        // THE TERMINAL'S SIZE, satellite.console.width and .height (console_calls.hpp):
+        // asked fresh every time, because a terminal is resized while a program runs.
+        if (is_console_fact(code)) {
+            ++at;
+            return console_fact(code);
+        }
+
         // A FACT ABOUT THE MACHINE, read the same way and for the same reason:
         // it is a VALUE with no brackets, so without this arm it looks like a
         // word the expression reader has no scenario for. SATELLITE_ARGUMENTS
@@ -1373,11 +1393,23 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // `satellite.file.new(path, "text")` is the first word a program can call with
     // two. A library still takes one, and says so below when it is given more.
     std::vector<Value> arguments;
+    // AND ITS NAMED OPTIONS, `foreground=xFF8800` (console_calls.hpp) -- which the
+    // checker has already judged by name, so here they are only read and worked out.
+    std::vector<NamedOption> options;
     if (code_at(row, at) == token::left_parenthesis_token) {
         ++at;
         if (code_at(row, at) != token::right_parenthesis_token) {
             for (;;) {
-                arguments.push_back(evaluate_at(row, at, 1, context));
+                // AN OPTION IS MADE ONLY WHEN THERE IS ONE: a NamedOption built and
+                // thrown away for every argument was part of what a plain display paid.
+                std::string option_name;
+                std::size_t value_at = 0;
+                if (an_option_at(row, at, option_name, value_at)) {
+                    at = value_at;
+                    options.push_back(NamedOption{std::move(option_name), evaluate_at(row, at, 1, context)});
+                } else {
+                    arguments.push_back(evaluate_at(row, at, 1, context));
+                }
                 if (context.code != success || code_at(row, at) != token::comma_token)
                     break;
                 ++at;
@@ -1412,6 +1444,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // ...and satellite.container.list(), a list of nothing (container_calls.hpp).
     if (is_container_word(code))
         return call_container_word(code, arguments, context);
+    // ...and satellite.console's own words and satellite.terminal's (console_calls.hpp).
+    if (is_console_word(code))
+        return call_console_word(code, arguments, options, context);
 
     if (arguments.size() > 1) {
         context.refuse(satl_line_not_understood, std::string(word::spelling_of(code)) +
@@ -1426,6 +1461,12 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         context.refuse(not_built_yet, std::string(word::spelling_of(code)) + " has no library built yet");
         return Value();
     }
+    // display WITH OPTIONS, OR WITH THE CONSOLE'S COLOURS SET, is one styled line
+    // (console_calls.hpp). Without either it takes the path below untouched, so a
+    // plain display pays one test and nothing else.
+    const bool to_the_screen = is_display_word(code);
+    if (to_the_screen && (!options.empty() || (console_colours_ever_set() && console_colours().any())))
+        return display_with_options(code, *scenarios, argument, options, context);
     if (scenarios->directory != nullptr)
         return call_directory_word(code, *scenarios, argument, context);
 
@@ -1492,8 +1533,10 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         }
         answer = scenarios->list(items, true);
     }
+    // A COLOURED STRING'S CODES ARE LEFT OUT INTO A PIPE (console_style.hpp's
+    // for_the_screen) -- by display only; any other word is handed the string whole.
     else if (argument.is_string() && scenarios->text != nullptr)
-        answer = scenarios->text(argument.text_utf8(), true);
+        answer = scenarios->text(to_the_screen ? screen_text(argument.text_utf8()) : argument.text_utf8(), true);
     else if (argument.is_number())
         answer = display_a_number(*scenarios, *argument.as_number());
     // A binary leaves as the text it was written as, b and leading zeros and all.
@@ -1554,7 +1597,7 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
                                      argument.kind_name() + ", and " + why);
             return Value();
         }
-        answer = scenarios->text(written.to_utf8(), true);
+        answer = scenarios->text(to_the_screen ? screen_text(written.to_utf8()) : written.to_utf8(), true);
     }
     else {
         context.refuse(not_built_yet, std::string(word::spelling_of(code)) + " has no scenario for " +

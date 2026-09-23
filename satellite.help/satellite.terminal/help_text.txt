@@ -3,12 +3,25 @@
 SATELLITE 004: satellite.terminal
 --------------------------------------------------------------------------------
 
-satellite.terminal is not built yet in satellite 004. It is not a word yet, so
-satl does not know the name: satellite.terminal.new(80, 24) is refused before a
-line runs, read as a name nothing declared -- S201 NAME_NOT_DECLARED, exit 25.
+satellite.terminal is the terminal satl is running in -- the window around the
+text, whether that is a terminal program of yours or satl's own console.
 
-What is planned is a shell prompt in a window. The author, 2026-09-21: "we
-especially need satellite.console to be a window with libvte and
+satellite.terminal.foreground(xFF8800) and
+satellite.terminal.background(x101010) change the terminal's own colours:
+everything drawn in its default colour and the empty rows too, not only the
+lines written after them. A colour is six hex digits or a
+satellite.variable.color. satellite.terminal.foreground() and .background() put
+the terminal's own colours back -- and satl puts back what it changed by itself
+when the program ends, whether it finishes, stops on a refusal, is stopped with
+Ctrl-C or crashes, so a program never leaves your shell orange. Back means the
+colours of the terminal's own profile: a theme your shell set by the same codes
+is not remembered. Nothing is changed when satl's output is a pipe or a file, or
+when NO_COLOR is set. To colour the lines your program writes rather than the
+whole terminal, satellite.console.foreground is the word:
+satellite.help(satellite.console).
+
+Planned, and not a word yet: a shell prompt in a window. The author, 2026-09-21:
+"we especially need satellite.console to be a window with libvte and
 satellite.terminal to be a bash prompt". It is GTK-18 in
 GTK_AND_NO_DEPENDENCIES.md, and the shape written there is a piece like any
 other, made with a size and appended into a window:
@@ -30,15 +43,15 @@ a console is the terminal a program can make, and it talks to your program, not
 to a shell. The desktop launcher named org.satellite.terminal is that console,
 satl --console, and not this word.
 
-example (refused today -- satellite.terminal is not built):
+example:
 
 satellite.include(satellite)
 
 satellite.capsule satellite.main()
 {
-    satellite.variable.window t = satellite.terminal.new(80, 24)
+    satellite.terminal.background(x101010)
+    satellite.terminal.foreground(x33FF33)
+    satellite.console.display("green on near-black, the whole terminal")
+    satellite.console.display("and your own colours back when this ends")
     satellite.return(satellite)
 }
-
-// satl(check): in satellite.main, terminal has no satellite.variable line
-// declaring it -- S201 NAME_NOT_DECLARED, machine code 25, and nothing ran

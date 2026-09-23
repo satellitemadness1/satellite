@@ -48,13 +48,16 @@ def next_under(parent):
 # being a gap and failed, and two others went on passing for a reason that was no
 # longer the one they named. Read from the table, no word taking a number can do that.
 NEXT = next_under((1, 6))
+# THE NEXT FREE NUMBER UNDER satellite.console, asked and never typed: it was 1 5 10,
+# then 1 5 11, and each word 004 put under console moved these cases by hand.
+CONSOLE_NEXT = next_under((1, 5))
 
 # (what it proves, rows after the committed ones, what make_words.py must say)
 # A REFUSAL is its exit 1 and a sentence of make_words.py's own -- never a traceback.
 # An ACCEPTANCE is exit 0 with the rows written at the end of words.tsv as typed.
 REFUSED = [
     ("numbers under another word than the name says",
-     "1 5 11\tsatellite.variable.foo\n", "satellite.variable.foo is numbered under 1 5, which is satellite.console"),
+     f"1 5 {CONSOLE_NEXT}\tsatellite.variable.foo\n", "satellite.variable.foo is numbered under 1 5, which is satellite.console"),
     ("an empty path", f"1 6 {NEXT}\t\n", "write numbers, a tab, then the path"),
     ("a path with a trailing space", f"1 6 {NEXT}\tsatellite.variable.percentage \n", "write numbers, a tab, then the path"),
     ("numbers that are not numbers", "1 6 x\tsatellite.variable.y\n", "write numbers, a tab, then the path"),
@@ -73,11 +76,9 @@ ACCEPTED = [
      "1 6 16 0\tsatellite.variable.percentage()\n1 6 16 1\tsatellite.variable.percentage.round\n"
      "1 6 16 1 1\tsatellite.variable.percentage.round.up\n"),
     ("an argument form under the word itself", "1 6 16 1\tsatellite.variable.percentage(x)\n"),
-    # 1 5 11 AND NOT 1 5 10 SINCE 2026-09-22: GTK-17 put satellite.console.new at
-    # 1 5 10, the first word 004 has put under satellite.console, and these two
-    # cases had named that number as free. The next milestone that adds
-    # a word under satellite.console takes 1 5 11 and moves these again.
-    ("a word numbered under its own parent", "1 5 11\tsatellite.console.foo\n"),
+    # CONSOLE_NEXT, ASKED: GTK-17 took 1 5 10 and satellite.console.foreground and
+    # .background took 1 5 11 and 1 5 12 (2026-09-23), and a typed number went stale twice.
+    ("a word numbered under its own parent", f"1 5 {CONSOLE_NEXT}\tsatellite.console.foo\n"),
 ]
 
 

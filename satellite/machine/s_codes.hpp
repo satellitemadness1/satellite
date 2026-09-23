@@ -234,6 +234,11 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S820", "DISPLAY_REFUSED",
                 "the output refused the line. A satellite program writing into a pipe whose reader "
                 "has gone is the usual way this happens."};
+    case input_ended:
+        return {"S830", "INPUT_ENDED",
+                "satellite.console.input() waited for a line and the input has ended -- a file piped "
+                "in ran out, or Ctrl-D was pressed. There will never be another line, so this stops "
+                "rather than answering an empty one forever."};
     case interrupted:
         return {"S810", "INTERRUPTED",
                 "Ctrl-C stopped this between statements. satl exits 130, which is 128 + SIGINT -- "

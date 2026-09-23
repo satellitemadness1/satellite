@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 421;
+inline constexpr unsigned int kWordsInTable = 434;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -81,6 +81,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x02011A0000000000ULL, 4479},  // 1 26 -- satellite.infinity
     {0x02011B0000000000ULL, 4482},  // 1 27 -- satellite.window
     {0x02011C0000000000ULL, 4514},  // 1 28 -- satellite.namespace
+    {0x02011D0000000000ULL, 4524},  // 1 29 -- satellite.terminal
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -105,6 +106,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301050800000000ULL, 4170},  // 1 5 8 -- satellite.console.clear()
     {0x0301050900000000ULL, 4171},  // 1 5 9 -- satellite.console.home()
     {0x0301050A00000000ULL, 4513},  // 1 5 10 -- satellite.console.new(title, width, height)
+    {0x0301050B00000000ULL, 4518},  // 1 5 11 -- satellite.console.foreground
+    {0x0301050C00000000ULL, 4521},  // 1 5 12 -- satellite.console.background
     {0x0301060000000000ULL, 4173},  // 1 6 0 -- satellite.variable()
     {0x0301060100000000ULL, 4174},  // 1 6 1 -- satellite.variable.string
     {0x0301060200000000ULL, 4198},  // 1 6 2 -- satellite.variable.file
@@ -227,6 +230,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x03011B1400000000ULL, 4509},  // 1 27 20 -- satellite.window.canvas(width, height)
     {0x03011B1500000000ULL, 4510},  // 1 27 21 -- satellite.window.tabs
     {0x03011B1600000000ULL, 4512},  // 1 27 22 -- satellite.window.one_of(items)
+    {0x03011D0100000000ULL, 4525},  // 1 29 1 -- satellite.terminal.foreground
+    {0x03011D0200000000ULL, 4528},  // 1 29 2 -- satellite.terminal.background
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -275,6 +280,10 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401040308000000ULL, 4157},  // 1 4 3 8 -- satellite.container.arguments.first
     {0x0401040309000000ULL, 4158},  // 1 4 3 9 -- satellite.container.arguments.last
     {0x040104030A000000ULL, 4159},  // 1 4 3 10 -- satellite.container.arguments.contains(x)
+    {0x0401050B00000000ULL, 4519},  // 1 5 11 0 -- satellite.console.foreground()
+    {0x0401050B01000000ULL, 4520},  // 1 5 11 1 -- satellite.console.foreground(color)
+    {0x0401050C00000000ULL, 4522},  // 1 5 12 0 -- satellite.console.background()
+    {0x0401050C01000000ULL, 4523},  // 1 5 12 1 -- satellite.console.background(color)
     {0x0401060100000000ULL, 4175},  // 1 6 1 0 -- satellite.variable.string()
     {0x0401060101000000ULL, 4176},  // 1 6 1 1 -- satellite.variable.string.size
     {0x0401060102000000ULL, 4177},  // 1 6 1 2 -- satellite.variable.string.empty
@@ -398,6 +407,10 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x04011B1000000000ULL, 4504},  // 1 27 16 0 -- satellite.window.scroll()
     {0x04011B1200000000ULL, 4507},  // 1 27 18 0 -- satellite.window.split()
     {0x04011B1500000000ULL, 4511},  // 1 27 21 0 -- satellite.window.tabs()
+    {0x04011D0100000000ULL, 4526},  // 1 29 1 0 -- satellite.terminal.foreground()
+    {0x04011D0101000000ULL, 4527},  // 1 29 1 1 -- satellite.terminal.foreground(color)
+    {0x04011D0200000000ULL, 4529},  // 1 29 2 0 -- satellite.terminal.background()
+    {0x04011D0201000000ULL, 4530},  // 1 29 2 1 -- satellite.terminal.background(color)
     {0x05010E0101000000ULL, 4332},  // 1 14 1 1 0 -- satellite.library.main.arguments()
     {0x05010E0101010000ULL, 4333},  // 1 14 1 1 1 -- satellite.library.main.arguments.machine
     {0x05010E0101020000ULL, 4342},  // 1 14 1 1 2 -- satellite.library.main.arguments.memory
@@ -902,6 +915,19 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.color", {1, 6, 19, 0, 0, 0, 0}, 3},
     {"satellite.variable.fraction", {1, 6, 20, 0, 0, 0, 0}, 3},
     {"satellite.variable.arguments", {1, 6, 21, 0, 0, 0, 0}, 3},
+    {"satellite.console.foreground", {1, 5, 11, 0, 0, 0, 0}, 3},
+    {"satellite.console.foreground()", {1, 5, 11, 0, 0, 0, 0}, 4},
+    {"satellite.console.foreground(color)", {1, 5, 11, 1, 0, 0, 0}, 4},
+    {"satellite.console.background", {1, 5, 12, 0, 0, 0, 0}, 3},
+    {"satellite.console.background()", {1, 5, 12, 0, 0, 0, 0}, 4},
+    {"satellite.console.background(color)", {1, 5, 12, 1, 0, 0, 0}, 4},
+    {"satellite.terminal", {1, 29, 0, 0, 0, 0, 0}, 2},
+    {"satellite.terminal.foreground", {1, 29, 1, 0, 0, 0, 0}, 3},
+    {"satellite.terminal.foreground()", {1, 29, 1, 0, 0, 0, 0}, 4},
+    {"satellite.terminal.foreground(color)", {1, 29, 1, 1, 0, 0, 0}, 4},
+    {"satellite.terminal.background", {1, 29, 2, 0, 0, 0, 0}, 3},
+    {"satellite.terminal.background()", {1, 29, 2, 0, 0, 0, 0}, 4},
+    {"satellite.terminal.background(color)", {1, 29, 2, 1, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -925,8 +951,14 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.class", 4315},
     {"satellite.console", 4161},
     {"satellite.console()", 4162},
+    {"satellite.console.background", 4521},
+    {"satellite.console.background()", 4522},
+    {"satellite.console.background(color)", 4523},
     {"satellite.console.clear()", 4170},
     {"satellite.console.display", 4163},
+    {"satellite.console.foreground", 4518},
+    {"satellite.console.foreground()", 4519},
+    {"satellite.console.foreground(color)", 4520},
     {"satellite.console.height", 4169},
     {"satellite.console.home()", 4171},
     {"satellite.console.input()", 4164},
@@ -1178,6 +1210,13 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.system.persist(x)", 4454},
     {"satellite.system.threshold()", 4451},
     {"satellite.system.threshold(n)", 4452},
+    {"satellite.terminal", 4524},
+    {"satellite.terminal.background", 4528},
+    {"satellite.terminal.background()", 4529},
+    {"satellite.terminal.background(color)", 4530},
+    {"satellite.terminal.foreground", 4525},
+    {"satellite.terminal.foreground()", 4526},
+    {"satellite.terminal.foreground(color)", 4527},
     {"satellite.thread", 4456},
     {"satellite.thread()", 4457},
     {"satellite.thread.new", 4458},

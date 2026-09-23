@@ -30,6 +30,7 @@
 #include "arguments/arguments.hpp"
 #include "bytecode/sate_file.hpp"
 #include "bytecode/window_calls.hpp"
+#include "bytecode/console_style.hpp"
 #include "bytecode/bytecode_registry.hpp"
 #include "bytecode/float_values.hpp"
 #include "bytecode/function_table.hpp"
@@ -642,6 +643,10 @@ int main(int argc, char **argv)
 
     try {
         const signed long long int code = run_satl(argc, argv);
+        // THE TERMINAL'S OWN COLOURS BACK, if satellite.terminal.foreground or
+        // .background changed them (console_style.hpp) -- the program is over, and a
+        // shell left orange is a shell somebody else has to fix.
+        satellite004::put_the_terminal_back();
         // THE CONSOLE satl LAUNCHED IS CLOSED OR HELD FIRST (GTK-17): a run that
         // stopped keeps it up with the code on its last line until a person
         // presses a key, the prompt keeps it up when it ends, and a file that
@@ -666,6 +671,7 @@ int main(int argc, char **argv)
         satellite004::windows_hold_the_run_open(in_a_console || !satellite004::stops_the_program(code));
         return satellite004::exit_status_of(code);
     } catch (const std::bad_alloc &) {
+        satellite004::put_the_terminal_back();
         // S999, THE TOP OF THE SCALE. Before this, an allocation that failed was
         // std::terminate and a core dump -- the one failure a person could learn
         // nothing at all from.

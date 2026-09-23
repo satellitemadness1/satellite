@@ -1,0 +1,38 @@
+// display's named options and satellite.console's screen words, which 003 built (M30
+// and M14), and the colours 004 added on 2026-09-23 when the author asked for every
+// spelling 003 refused to be legal. check.sh runs this twice: into a file, where every
+// line is plain text, and at a terminal (a pty), where the bytes are the terminal's own.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    // 003's options, exactly: one line, and the next one plain.
+    satellite.console.display("warning", foreground=xFF8800, background=x000000, bold=satellite.bool.true, italic=satellite.bool.true)
+    satellite.console.display("Loading", end="...")
+    satellite.console.display(" done")
+
+    // a string in a colour, joined into a line; a colour inside a colour comes back.
+    satellite.variable.string ok = "OK".foreground(x00FF00)
+    satellite.console.display("status: " + ok + " now")
+    satellite.console.display(("a" + "b".foreground(x0000FF) + "c").foreground(xFF0000))
+    satellite.variable.color sky = 87ceeb
+    satellite.console.display("sky", background=sky)
+
+    // the console's colour for every later line, a line's own over it, () back.
+    satellite.console.foreground(xFF8800)
+    satellite.console.display("orange")
+    satellite.console.display("green wins", foreground=x00FF00)
+    satellite.console.foreground()
+    satellite.console.display("plain")
+
+    // the screen: its size, and the cursor home.
+    satellite.console.display(satellite.console.width > 0)
+    satellite.console.home()
+
+    // the terminal's own colours, put back when satl ends; a styled prompt.
+    satellite.terminal.background(x101010)
+    satellite.variable.string name = satellite.console.input("name? ", foreground=xFF8800)
+    satellite.console.display("hello " + name)
+}
+
+satellite.return(satellite)

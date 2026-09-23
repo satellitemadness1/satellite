@@ -7,6 +7,7 @@
 #include "prompt_run.hpp"
 
 #include "../bytecode/bytecode_registry.hpp"
+#include "../bytecode/console_style.hpp"
 #include "../bytecode/program_walk.hpp"
 #include "../bytecode/word_codes.hpp"
 #include "../machine/machine_codes.hpp"
@@ -14,6 +15,7 @@
 #include "../machine/run_state.hpp"
 #include "../machine/shown.hpp"
 #include "../machine/stop_flag.hpp"
+#include "../machine/input_source.hpp"
 #include "../prompt/line_reader.hpp"
 #include "../prompt/raw_mode.hpp"
 #include "../prompt/render.hpp"
@@ -48,6 +50,7 @@ void on_interrupt(int)
     presses = presses + 1;
     if (presses >= 2) {
         prompt::restore_terminal();
+        put_the_terminal_back_now();   // satellite.terminal's colours, if a line changed them
         _exit(static_cast<int>(interrupted));
     }
 }
@@ -55,7 +58,27 @@ void on_interrupt(int)
 void on_hangup(int)
 {
     prompt::restore_terminal();
+    put_the_terminal_back_now();
     _exit(128 + SIGHUP);   // the status a shell gives for a closed terminal
+}
+
+// satellite.console.input() READS THROUGH THE SESSION'S OWN READER while a session
+// runs (machine/input_source.hpp): a line piped or pasted after the one that asked may
+// already be in its buffer, and a typed one is edited and drawn as the prompt's are.
+// Piped, the reader draws nothing, so the prompt is written here, as a file run writes it.
+prompt::LineReader *the_sessions_reader = nullptr;
+
+InputAnswer read_for_the_program(const std::string &text, const std::string &drawn, std::string &line)
+{
+    if (!the_sessions_reader->interactive())
+        std::cout << (drawn.empty() ? text : drawn);
+    std::cout.flush();
+    switch (the_sessions_reader->read(prompt::Prompt{text, drawn}, line)) {
+    case prompt::LineStatus::Line: return InputAnswer::line;
+    case prompt::LineStatus::Interrupted: return InputAnswer::interrupted;
+    case prompt::LineStatus::EndOfFile: break;
+    }
+    return InputAnswer::ended;
 }
 
 // SA_RESTART ON PURPOSE: a listing's getdents must not fail half way through
@@ -259,6 +282,8 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
 {
     prompt::LineReader reader;
     stop_flag() = &asked_to_stop;
+    the_sessions_reader = &reader;
+    input_source() = read_for_the_program;
     watch_for_keys();
 
     const unsigned long long int batches = arguments.number("arguments.threads_startup").fits_one_limb()
@@ -316,6 +341,8 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
 
     std::cout.flush();
     stop_flag() = nullptr;
+    input_source() = nullptr;
+    the_sessions_reader = nullptr;
     // A PERSON HAS ALREADY SEEN EVERY REFUSAL, so leaving is 0 for them: `exit`
     // after a line that was refused is not itself a failure, and satl-term closes
     // a tab on 0. D0.6.2's "the first failing line's code" is about PIPED input,

@@ -6,17 +6,47 @@ SATELLITE 004: satellite.console
 satellite.console is where your program talks to a person.
 satellite.console.display(value) writes one line to satl's standard output:
 text as it is, a number as its digits, a comparison as true or false, a list as
-{1, "two"}, a window as (window "its title"). It takes exactly one value. satl's
-own title block goes to standard error, so what your program displays can be
-piped or written to a file on its own.
+{1, "two"}, a window as (window "its title"). It takes one value, and after it
+any of five named options, each written name=value, once, after the value:
 
-Not built yet in satellite 004: satellite.console.input(), .input(prompt),
-.input(prompt, target), .typed(), .clear(), .home(), .width and .height. They
-are words of the language with no library behind them yet, and satl refuses
-them with S210 NOT_BUILT_YET, exit 14, before a line runs -- all but .width and
-.height written with no brackets, which get past that check and stop when their
-line runs. A console you make yourself, below, has its own .typed, .clear() and
-.home(), and those are built.
+  end="..."                  what ends the line instead of a newline;
+                             end="" stays on the same line
+  foreground=xFF8800         the colour of the text: six hex digits, or a
+                             satellite.variable.color
+  background=x000000         the colour behind it
+  bold=satellite.bool.true   italic=satellite.bool.true
+
+The style lasts for that one line. satl writes it as the terminal's own codes,
+so it shows in any terminal and in satl's own console; into a pipe or a file the
+text goes plain, and NO_COLOR set drops the colours and keeps bold and italic. A
+colour written into the line that is not six hex digits -- xFFF, "red" -- is
+refused before a line runs; one held in a name is judged when its line runs, and
+is checked even when it will not be shown. satl's own title block goes to
+standard error, so what your program displays can be piped or written to a file
+on its own.
+
+satellite.console.foreground(xFF8800) and .background(x000000) colour every line
+display writes from then on, until .foreground() or .background() puts the
+terminal's own colour back; a line's own foreground= or background= wins over
+them. satellite.terminal.foreground and .background colour the whole terminal
+instead -- satellite.help(satellite.terminal) -- and a string can carry a colour
+of its own, "OK".foreground(x00FF00): satellite.help(satellite.variable.string).
+
+satellite.console.input() and .input(prompt) wait for a person to type a line,
+and answer it as a string without its newline. The prompt goes out with no
+newline after it and takes display's foreground=, background=, bold= and
+italic=. When the input has ended -- a file piped in ran out, or Ctrl-D -- satl
+stops with S830 INPUT_ENDED, exit 55, rather than answering an empty line
+forever.
+
+satellite.console.width and .height, with no brackets, are how many characters
+fit across the terminal and lines fit down it, asked fresh every time -- 80 and
+24 when there is no terminal. satellite.console.clear() empties the screen and
+puts the cursor in the top-left corner; .home() only moves the cursor there,
+for a frame drawn over the last one.
+
+Not built yet in satellite 004: .input(prompt, target) and .typed(). A console
+you make yourself, below, has its own .typed, and that is built.
 
 satellite.console.new(title, width, height) makes a console of your own: a
 window whose whole inside is a terminal. It answers a satellite.variable.window
@@ -59,6 +89,12 @@ satellite.capsule satellite.main()
     satellite.console.display(n + 1)         // 5
     satellite.console.display(n > 3)         // true
     satellite.console.display({1, "two"})    // {1, "two"}
+    satellite.console.display("careful", foreground=xFF8800, bold=satellite.bool.true) // careful, orange and bold
+    satellite.console.display("Loading", end="...")
+    satellite.console.display(" done")       // Loading... done
+    satellite.console.foreground(x33FF33)
+    satellite.console.display("green")       // green, in green
+    satellite.console.foreground()
 
     satellite.variable.window c = satellite.console.new("a console", 800, 600)
     c.display("type a line and press Enter")

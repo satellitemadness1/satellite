@@ -436,6 +436,19 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.color", {1, 6, 19, 0, 0, 0}, 3},
     {"satellite.variable.fraction", {1, 6, 20, 0, 0, 0}, 3},
     {"satellite.variable.arguments", {1, 6, 21, 0, 0, 0}, 3},
+    {"satellite.console.foreground", {1, 5, 11, 0, 0, 0}, 3},
+    {"satellite.console.foreground()", {1, 5, 11, 0, 0, 0}, 4},
+    {"satellite.console.foreground(color)", {1, 5, 11, 1, 0, 0}, 4},
+    {"satellite.console.background", {1, 5, 12, 0, 0, 0}, 3},
+    {"satellite.console.background()", {1, 5, 12, 0, 0, 0}, 4},
+    {"satellite.console.background(color)", {1, 5, 12, 1, 0, 0}, 4},
+    {"satellite.terminal", {1, 29, 0, 0, 0, 0}, 2},
+    {"satellite.terminal.foreground", {1, 29, 1, 0, 0, 0}, 3},
+    {"satellite.terminal.foreground()", {1, 29, 1, 0, 0, 0}, 4},
+    {"satellite.terminal.foreground(color)", {1, 29, 1, 1, 0, 0}, 4},
+    {"satellite.terminal.background", {1, 29, 2, 0, 0, 0}, 3},
+    {"satellite.terminal.background()", {1, 29, 2, 0, 0, 0}, 4},
+    {"satellite.terminal.background(color)", {1, 29, 2, 1, 0, 0}, 4},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -457,7 +470,7 @@ struct NextFree {
 };
 
 inline constexpr NextFree kNextFree[] = {
-    {"satellite", {1, 29, 0, 0, 0, 0, 0}, 2},
+    {"satellite", {1, 30, 0, 0, 0, 0, 0}, 2},
     {"satellite.include", {1, 1, 3, 0, 0, 0, 0}, 3},
     {"satellite.capsule", {1, 2, 2, 0, 0, 0, 0}, 3},
     {"satellite.capsule.launch", {1, 2, 1, 1, 0, 0, 0}, 4},
@@ -489,7 +502,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.container.arguments.first", {1, 4, 3, 8, 1, 0, 0}, 5},
     {"satellite.container.arguments.last", {1, 4, 3, 9, 1, 0, 0}, 5},
     {"satellite.container.result", {1, 4, 4, 1, 0, 0, 0}, 4},
-    {"satellite.console", {1, 5, 11, 0, 0, 0, 0}, 3},
+    {"satellite.console", {1, 5, 13, 0, 0, 0, 0}, 3},
     {"satellite.console.display", {1, 5, 1, 1, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},
@@ -685,6 +698,11 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.color", {1, 6, 19, 1, 0, 0, 0}, 4},
     {"satellite.variable.fraction", {1, 6, 20, 1, 0, 0, 0}, 4},
     {"satellite.variable.arguments", {1, 6, 21, 1, 0, 0, 0}, 4},
+    {"satellite.console.foreground", {1, 5, 11, 2, 0, 0, 0}, 4},
+    {"satellite.console.background", {1, 5, 12, 2, 0, 0, 0}, 4},
+    {"satellite.terminal", {1, 29, 3, 0, 0, 0, 0}, 3},
+    {"satellite.terminal.foreground", {1, 29, 1, 2, 0, 0, 0}, 4},
+    {"satellite.terminal.background", {1, 29, 2, 2, 0, 0, 0}, 4},
 };
 
 } // namespace satellite004

@@ -419,3 +419,16 @@
 1 6 19	satellite.variable.color	
 1 6 20	satellite.variable.fraction	
 1 6 21	satellite.variable.arguments	
+1 5 11	satellite.console.foreground	
+1 5 11 0	satellite.console.foreground()	
+1 5 11 1	satellite.console.foreground(color)	
+1 5 12	satellite.console.background	
+1 5 12 0	satellite.console.background()	
+1 5 12 1	satellite.console.background(color)	
+1 29	satellite.terminal	
+1 29 1	satellite.terminal.foreground	
+1 29 1 0	satellite.terminal.foreground()	
+1 29 1 1	satellite.terminal.foreground(color)	
+1 29 2	satellite.terminal.background	
+1 29 2 0	satellite.terminal.background()	
+1 29 2 1	satellite.terminal.background(color)	
