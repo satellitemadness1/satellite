@@ -276,7 +276,15 @@ int main(int argc, char **argv)
     //
     // The window TITLE is a separate thing and is the user's string; this is
     // the identity the desktop files under, and it does not vary per window.
-    g_set_prgname("org.satellite.terminal");
+    //
+    // org.satellite.terminal003 SINCE 2026-09-23, when the author asked for 003 and
+    // 004 side by side, "a button for 003 and a button for 004". 004's own console
+    // kept org.satellite.terminal (its launcher, his pin and the .satl association
+    // carry it -- his ruling of 2026-09-22), and two windows under one id are one
+    // app to a desktop shell: pressing 004's button while a 003 window was open
+    // would raise the 003 window instead of starting 004. Its launcher is
+    // ~/.local/share/applications/org.satellite.terminal003.desktop, "Satellite 003".
+    g_set_prgname("org.satellite.terminal003");
 
     // NON_UNIQUE rather than the single-instance default, and the reason is the
     // file argument. Under the default, a second process registering the same
@@ -287,7 +295,7 @@ int main(int argc, char **argv)
     // was asked to run. One process per invocation also gives the spawned
     // interpreter the directory the user typed the command in, which is what
     // makes a relative path resolve.
-    GtkApplication *app = gtk_application_new("org.satellite.terminal",
+    GtkApplication *app = gtk_application_new("org.satellite.terminal003",
                                               G_APPLICATION_NON_UNIQUE);
     g_signal_connect(app, "activate", G_CALLBACK(activate), nullptr);
     const int status = g_application_run(G_APPLICATION(app), 1, gtk_argv);

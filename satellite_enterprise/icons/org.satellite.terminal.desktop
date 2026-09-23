@@ -28,6 +28,12 @@
 # single-instance application to hand a second file to and drop it. With no file
 # -- the menu entry -- `satl --console` is the prompt in a console.
 #
+# "Satellite 004" AND NOT "Satellite" SINCE 2026-09-23, when the author asked for
+# 003 back beside it -- "a button for 003 and a button for 004 on my machine, as
+# some programs will run in 003, some in 004". 003's is
+# org.satellite.terminal003.desktop, "Satellite 003", running satl-term from
+# ~/.satl-003; 003's window took the new id so this one could keep its own.
+#
 # Icon is the application id rather than a file path, because that is how the
 # icon theme spec is looked up: the shell searches every theme directory for
 # <name> with any extension it understands, so the id names the artwork we
@@ -49,9 +55,9 @@
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=Satellite
+Name=Satellite 004
 GenericName=Satellite Terminal
-Comment=Interactive terminal for the satellite programming language
+Comment=Interactive terminal for the satellite programming language, version 004
 Exec=satl --console %f
 TryExec=satl
 Icon=org.satellite.terminal
