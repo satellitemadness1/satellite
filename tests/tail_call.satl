@@ -1,0 +1,91 @@
+satellite.include(satellite)
+
+// A CAPSULE WHOSE LAST ACT IS TO CALL ITSELF IS A LOOP (the author, 2026-09-22:
+// "allow capsules to call themselves only as the last line ... and do the tail
+// call thing"). Each capsule here goes 100,000 deep, and check.sh runs this file
+// on an 8 MiB stack, where a real frame a level dies near 2,500 -- so a shape
+// that is not a tail call ends the run with signal 11. Every shape a last call
+// can take is here once.
+
+// Last in an if, with an else after it. `next` is declared on every turn, which
+// works only because every turn has a frame of its own, and the argument is
+// worked out in the old frame before it goes.
+satellite.capsule in_an_if(satellite.variable.number n)
+{
+    satellite.variable.number next = n - 1
+    satellite.statement.if(n > 0)
+    {
+        in_an_if(next)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("last in an if")
+    }
+}
+
+// Last in the else, the if having said no.
+satellite.capsule in_the_else(satellite.variable.number n)
+{
+    satellite.statement.if(n == 0)
+    {
+        satellite.console.display("last in an else")
+    }
+    satellite.statement.else
+    {
+        in_the_else(n - 1)
+    }
+}
+
+// Last in an else written onto another if.
+satellite.capsule in_an_else_if(satellite.variable.number n)
+{
+    satellite.statement.if(n == 0)
+    {
+        satellite.console.display("last in an else if")
+    }
+    satellite.statement.else satellite.statement.if(n > 0)
+    {
+        in_an_else_if(n - 1)
+    }
+}
+
+// Followed only by satellite.return, which ends the body where it stands.
+satellite.capsule before_a_return(satellite.variable.number n)
+{
+    satellite.statement.if(n == 0)
+    {
+        satellite.console.display("before a return")
+    }
+    satellite.statement.if(n > 0)
+    {
+        before_a_return(n - 1)
+    }
+    satellite.return(satellite)
+}
+
+// Through its own space's name.
+satellite.namespace tools
+{
+    satellite.capsule count(satellite.variable.number n)
+    {
+        satellite.statement.if(n > 0)
+        {
+            tools.count(n - 1)
+        }
+        satellite.statement.else
+        {
+            satellite.console.display("through its space")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    in_an_if(100000)
+    in_the_else(100000)
+    in_an_else_if(100000)
+    before_a_return(100000)
+    tools.count(100000)
+    satellite.console.display("back in main")
+    satellite.return(satellite)
+}

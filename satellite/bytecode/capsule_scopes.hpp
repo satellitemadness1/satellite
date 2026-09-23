@@ -90,6 +90,12 @@ struct CapsuleSite {
     std::string name;               // as its declaration writes it: greet, satellite.main
     std::string shown;              // as a report names it: greet, tools.greet, other.greet
     std::string key;                // unique in the program -- what a button keeps (capsule_key.hpp)
+
+    // WHERE THE STATEMENTS START THAT ARE THE LAST THING IT DOES (program_walk.cpp's
+    // TailCall): worked out by the walker the first time the capsule runs, so a
+    // call asks one short list and nothing is walked twice.
+    mutable std::vector<std::size_t> last_statements;
+    mutable bool last_statements_known = false;
 };
 
 // A FILE OR A satellite.namespace. A file's `parent` is kNoScope.

@@ -1,0 +1,18 @@
+satellite.include(satellite)
+
+// A CALL MADE LAST IS STILL A CALL: its arguments are measured against the
+// parameters on every turn, as any call's are, and the wrong type is refused.
+satellite.capsule down(satellite.variable.number n)
+{
+    satellite.statement.if(n > 0)
+    {
+        down("not a number")
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    down(1)
+    satellite.console.display("NOT REACHED")
+    satellite.return(satellite)
+}

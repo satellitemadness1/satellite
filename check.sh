@@ -4058,5 +4058,22 @@ else
            "$code|$(tr '\n' '|' < build/recursion.out | sed 's/|$//')"
 fi
 
+# A CAPSULE'S LAST CALL TO ITSELF IS A LOOP (the author, 2026-09-22: "allow capsules to
+# call themselves only as the last line ... and do the tail call thing, and specifically
+# leave it broken -- we'll just crash the interpreter when a capsule calls itself in the
+# middle"). Run on an 8 MiB stack, where a shape that is still a frame a level dies near
+# 2,500 of the 100,000 each capsule goes. A call that is not last is an ordinary call and
+# runs what follows it, in order; a last call still measures its arguments.
+( ulimit -Ss 8192; ulimit -Hs 8192; "$interpreter" tests/tail_call.satl > build/tail_call.out 2>/dev/null ) 2>/dev/null; code=$?
+expect "every shape of a capsule's last call to itself, 100,000 deep on 8 MiB" \
+       "0|last in an if|last in an else|last in an else if|before a return|through its space|back in main" \
+       "$code|$(tr '\n' '|' < build/tail_call.out | sed 's/|$//')"
+"$interpreter" tests/tail_call_not_last.satl > build/tail_call.out 2>/dev/null; code=$?
+expect "a call to itself that is not last runs what follows it" \
+       "0|2|1|0|0|1|0|0|2|1|0|0|1|0|0|0|1|2|3|1|2|3" "$code|$(tr '\n' '|' < build/tail_call.out | sed 's/|$//')"
+"$interpreter" tests/tail_call_wrong_type.satl > build/tail_call.out 2>&1; code=$?
+expect "a last call to itself still measures its arguments" "27|1|0" \
+       "$code|$(grep -c "down's n was declared satellite.variable.number, and it holds a string" build/tail_call.out)|$(grep -c 'NOT REACHED' build/tail_call.out)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

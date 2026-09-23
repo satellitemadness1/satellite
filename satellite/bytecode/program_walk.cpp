@@ -371,15 +371,122 @@ signed long long int load_program(const std::string &main_file,
 
 namespace {
 
+// A CAPSULE'S LAST CALL TO ITSELF IS A LOOP, NOT A DEEPER FRAME (the author,
+// 2026-09-22): "Let's allow capsules to call themselves only as the last line ...
+// and do the tail call thing, and specifically leave it broken -- we'll just crash
+// the interpreter when a capsule calls itself in the middle, adding almost nothing
+// to anything this way!" So a capsule whose last act is to call itself hands its
+// arguments back to run_site, which lets the frame go and runs the body again --
+// the recursion never stops and never grows. A call anywhere else recurses in C++
+// as it always has, and past the stack (machine/stack_share.hpp) it crashes: his
+// ruling, not an oversight.
+//
+// LAST MEANS NOTHING OF THIS CAPSULE RUNS AFTER IT: the body's last statement, or
+// one followed only by satellite.return, or the same inside an if or else branch
+// when that if is itself last. A while or for body is never last -- the loop goes
+// round again. Only a call to ITSELF, as he said: a call to another capsule, even
+// last, is an ordinary call.
+//
+// WHICH STATEMENTS ARE LAST IS A SHAPE, so it is worked out once per capsule, the
+// first time it runs, into its CapsuleSite -- a call to itself then asks whether it
+// stands at one of those places, and nothing else the walker does changes. (It was
+// first a walk of every if/else chain each time one ran, and a capsule calling
+// itself mid-body paid 5% for it: measured 2026-09-22, and taken out.)
+//
+// run_site owns one of these for the body it runs and passes it down through if
+// and else; a while or for body gets none.
+struct TailCall {
+    const CapsuleSite *site = nullptr;     // the capsule whose body this is
+    std::vector<Value> arguments;          // the next turn's, once it calls itself last
+    bool pending = false;
+};
+
+// Past an if's whole chain -- its body and every else after it, `else if`
+// included -- with where each branch's statements begin put in `bodies`. run_if's
+// own steps, taken without running anything; the checker has already refused a
+// chain missing a brace, and one still ends where run_if would stop.
+std::size_t walk_the_if_chain(const std::vector<std::bitset<16>> &row, std::size_t at,
+                              std::vector<std::size_t> &bodies)
+{
+    for (;;) {
+        const std::size_t brace = brace_after(row, past_the_statement(row, at));
+        if (code_at(row, brace) != token::left_brace_token)
+            return past_the_statement(row, at);
+        bodies.push_back(brace + 1);
+        const std::size_t past = past_matching_brace(row, brace);
+        std::size_t next = past;
+        while (code_at(row, next) == token::line_end_token) ++next;
+        if (code_at(row, next) != word::code_of(1, 13, 4))
+            return past;
+        const std::size_t after_else = brace_after(row, next + 1);
+        if (code_at(row, after_else) == word::code_of(1, 13, 1)) {
+            at = after_else;
+            continue;
+        }
+        if (code_at(row, after_else) != token::left_brace_token)
+            return next + 1;
+        bodies.push_back(after_else + 1);
+        return past_matching_brace(row, after_else);
+    }
+}
+
+// The last statement of the body starting at `from` -- the one before its `}`, or
+// before a satellite.return, which ends the body where it stands -- and, when that
+// is an if, the last of each of its branches, as deep as they go.
+void find_the_last_statements(const std::vector<std::bitset<16>> &row, std::size_t from,
+                              std::vector<std::size_t> &into)
+{
+    constexpr std::size_t kNone = static_cast<std::size_t>(-1);
+    std::size_t last = kNone;
+    std::vector<std::size_t> bodies;
+    for (std::size_t at = from;;) {
+        while (code_at(row, at) == token::line_end_token) ++at;
+        const Code code = code_at(row, at);
+        if (at >= row.size() || code == token::right_brace_token || code == word::code_of(1, 15))
+            break;
+        last = at;
+        bodies.clear();
+        if (code == word::code_of(1, 13, 1))                                          // if
+            at = walk_the_if_chain(row, at, bodies);
+        else if (code == word::code_of(1, 13, 3) || code == word::code_of(1, 13, 2))  // while, for
+            at = past_matching_brace(row, brace_after(row, past_the_statement(row, at)));
+        else
+            at = past_the_statement(row, at);
+    }
+    if (last == kNone)
+        return;
+    if (code_at(row, last) != word::code_of(1, 13, 1)) {
+        into.push_back(last);
+        return;
+    }
+    for (const std::size_t body : bodies)
+        find_the_last_statements(row, body, into);
+}
+
+// Does the statement at `at` stand where it is the last thing `site` does.
+bool is_last_in(const CapsuleSite &site, const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    if (!site.last_statements_known) {
+        find_the_last_statements(row, site.body, site.last_statements);
+        site.last_statements_known = true;
+    }
+    for (const std::size_t last : site.last_statements)
+        if (last == at)
+            return true;
+    return false;
+}
+
 // Every statement from `from` until the `}` that closes the body, or the row's
-// end. `variables` is THIS body's own table.
+// end. `variables` is THIS body's own table. `tail` is the capsule's own
+// (TailCall), handed through if and else, and null in a loop's body.
 signed long long int run_statements(const BytecodeRegistry &registry,
                                     const CapsuleTable &capsules,
                                     const FunctionTable &functions,
                                     std::size_t which_row,
                                     std::size_t from,
                                     VariableTable &variables,
-                                    MachineState &state);
+                                    MachineState &state,
+                                    TailCall *tail = nullptr);
 
 // ONE CAPSULE, BY ITS SITE: a new frame, the arguments bound, close_files on the way
 // out. Every road to a capsule ends here -- a call written in a program, a button's
@@ -417,7 +524,8 @@ signed long long int run_if(const BytecodeRegistry &registry,
                             std::size_t &at,
                             VariableTable &variables,
                             MachineState &state,
-                            bool may_run);
+                            bool may_run,
+                            TailCall *tail = nullptr);
 
 signed long long int run_while(const BytecodeRegistry &registry,
                                const CapsuleTable &capsules,
@@ -478,7 +586,8 @@ signed long long int run_if(const BytecodeRegistry &registry,
                             std::size_t &at,
                             VariableTable &variables,
                             MachineState &state,
-                            bool may_run)
+                            bool may_run,
+                            TailCall *tail)
 {
     const std::vector<std::bitset<16>> &row = registry[which_row];
     const std::size_t condition_at = at + 1;
@@ -514,7 +623,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
         held = *holds.as_bool();
         if (held) {
             const signed long long int code =
-                run_statements(registry, capsules, functions, which_row, brace + 1, variables, state);
+                run_statements(registry, capsules, functions, which_row, brace + 1, variables, state, tail);
             if (stops_the_program(code))
                 return code;
         }
@@ -533,7 +642,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
     if (code_at(row, after_else) == word::code_of(1, 13, 1)) {   // else written onto another if
         std::size_t chained = after_else;
         const signed long long int code =
-            run_if(registry, capsules, functions, which_row, chained, variables, state, run_the_else);
+            run_if(registry, capsules, functions, which_row, chained, variables, state, run_the_else, tail);
         at = chained;
         return code;
     }
@@ -544,7 +653,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
     at = past_matching_brace(row, after_else);
     if (!run_the_else)
         return success;
-    return run_statements(registry, capsules, functions, which_row, after_else + 1, variables, state);
+    return run_statements(registry, capsules, functions, which_row, after_else + 1, variables, state, tail);
 }
 
 // THE THIRD PART OF A for, WHICH IS NOT AN EXPRESSION AND NOT AN ASSIGNMENT
@@ -1046,8 +1155,10 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
                                   const std::vector<std::bitset<16>> &row,
                                   std::size_t &at,
                                   VariableTable &variables,
-                                  MachineState &state)
+                                  MachineState &state,
+                                  TailCall *tail)
 {
+    const std::size_t started = at;
     std::vector<std::string> names;
     std::size_t k = at;
     dotted_names_at(row, k, names);                // k is on the `(`: both callers saw it there
@@ -1075,6 +1186,14 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
         return report_error("satl(run): " + written + "(...) " + kNotReadToTheEnd, satl_line_not_understood);
     }
     at = past_the_statement(row, k);
+    // ITS OWN CAPSULE, CALLED LAST: the arguments were worked out in this frame,
+    // which is all the frame was still needed for, so run_site takes them and
+    // lets it go (TailCall).
+    if (tail != nullptr && tail->site == &site && is_last_in(site, row, started)) {
+        tail->arguments = std::move(arguments);
+        tail->pending = true;
+        return success;
+    }
     return run_site(registry, capsules, functions, site, std::move(arguments), state);
 }
 
@@ -1084,7 +1203,8 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                                     std::size_t which_row,
                                     std::size_t from,
                                     VariableTable &variables,
-                                    MachineState &state)
+                                    MachineState &state,
+                                    TailCall *tail)
 {
     const std::vector<std::bitset<16>> &row = registry[which_row];
 
@@ -1118,7 +1238,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
         if (code == word::code_of(1, 13, 1)) {       // satellite.statement.if
             const signed long long int stopped =
-                run_if(registry, capsules, functions, which_row, at, variables, state, true);
+                run_if(registry, capsules, functions, which_row, at, variables, state, true, tail);
             if (stops_the_program(stopped))
                 return stopped;
             continue;
@@ -1269,7 +1389,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                                        : Reached();
             if (dotted.site != nullptr) {
                 const signed long long int stopped =
-                    call_capsule(registry, capsules, functions, *dotted.site, row, at, variables, state);
+                    call_capsule(registry, capsules, functions, *dotted.site, row, at, variables, state, tail);
                 if (stops_the_program(stopped))
                     return stopped;
                 continue;
@@ -1302,7 +1422,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                     continue;
                 }
                 const signed long long int stopped =
-                    call_capsule(registry, capsules, functions, *found, row, at, variables, state);
+                    call_capsule(registry, capsules, functions, *found, row, at, variables, state, tail);
                 if (stops_the_program(stopped))
                     return stopped;
                 continue;
@@ -1321,12 +1441,15 @@ signed long long int run_statements(const BytecodeRegistry &registry,
     return success;
 }
 
-signed long long int run_site(const BytecodeRegistry &registry,
+// ONE TURN OF A CAPSULE: its frame, the arguments bound into it, the body, and
+// close_files on the way out.
+signed long long int run_turn(const BytecodeRegistry &registry,
                               const CapsuleTable &capsules,
                               const FunctionTable &functions,
                               const CapsuleSite &site,
-                              std::vector<Value> arguments,
-                              MachineState &state)
+                              std::vector<Value> &arguments,
+                              MachineState &state,
+                              TailCall &tail)
 {
     VariableTable theirs;   // its own frame, as every capsule called by name has
 
@@ -1352,7 +1475,27 @@ signed long long int run_site(const BytecodeRegistry &registry,
         theirs[wants[at].name] = Variable{wants[at].declared(), wants[at].shape, std::move(arguments[at])};
     }
     return close_files(theirs,
-                       run_statements(registry, capsules, functions, site.row, site.body, theirs, state));
+                       run_statements(registry, capsules, functions, site.row, site.body, theirs, state, &tail));
+}
+
+// ONE TURN PER CALL, and a call to itself made last is the next turn rather than a
+// frame inside this one (TailCall): the frame, its files and its names go at the
+// end of every turn, exactly as they would have at the end of a call.
+signed long long int run_site(const BytecodeRegistry &registry,
+                              const CapsuleTable &capsules,
+                              const FunctionTable &functions,
+                              const CapsuleSite &site,
+                              std::vector<Value> arguments,
+                              MachineState &state)
+{
+    for (;;) {
+        TailCall tail;
+        tail.site = &site;
+        const signed long long int code = run_turn(registry, capsules, functions, site, arguments, state, tail);
+        if (!tail.pending || stops_the_program(code))
+            return code;
+        arguments = std::move(tail.arguments);
+    }
 }
 
 } // namespace
