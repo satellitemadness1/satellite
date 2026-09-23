@@ -73,7 +73,10 @@ def main():
         "// reformatted is no longer the licence, and several of these require the notice",
         "// be reproduced exactly.",
         "",
-        '#include "../../satellite/licenses/licenses.hpp"',
+        # RELATIVE TO WHERE IT IS WRITTEN: build/generated/ is two folders down, and one
+        # processor's build/cpu/<processor>/generated/ four (make_support/055-cpus.mk).
+        '#include "%s"' % os.path.relpath(os.path.join(ROOT, "satellite", "licenses", "licenses.hpp"),
+                                         os.path.dirname(os.path.abspath(target))),
         "",
         "namespace satellite004 {",
         "",

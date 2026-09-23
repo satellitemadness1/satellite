@@ -50,7 +50,9 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-OUT = os.path.join(ROOT, "build", "satellite-numbers")
+# ONE PROCESSOR'S BUILD (make_support/055-cpus.mk) puts its libraries beside its own satl,
+# build/cpu/<processor>/satellite-numbers/ -- satl loads the folder beside itself.
+OUT = os.path.join(ROOT, os.environ.get("SATELLITE_NUMBERS_OUT") or os.path.join("build", "satellite-numbers"))
 # A CXX of several words ("ccache clang++", "env clang++") is a command, not a name.
 CXX = shlex.split(os.environ.get("SATELLITE_CXX") or os.environ.get("CXX") or "c++")
 # The compiler's own first line, from make: clang-current is repointed at each

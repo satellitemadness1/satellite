@@ -4390,6 +4390,33 @@ expect "arguments.cpu.architecture and arguments.cpu.features say what /proc/cpu
        "0|$cpu_word|$cpu_v3|$(cpu_flag_is avx2)|$(cpu_flag_is avx512f)|$([ "$(uname -m)" = x86_64 ] && echo true || echo false)" \
        "$code|$(tr '\n' '|' < build/arguments_cpu.out | sed 's/|$//')"
 
+# satl-cpu-level CHOOSES BY WHAT A BUILD NEEDS (MILESTONES M37, make_support/055-cpus.mk): a
+# folder of three builds -- x86-64-v2's real list, which a machine with /proc/cpuinfo's
+# sse4_2 popcnt ssse3 cx16 lahf_lm runs; one needing a macro nobody can ask about; and one
+# whose list is empty, as a failed compiler once left it. Neither of the last two is ever
+# chosen. The lists are asserted not empty by themselves, so an empty one cannot pass.
+#
+# THE COMPILER THE BUILD USED, from its own record, and unquoted, since it may be two words
+# (ccache clang++) -- not $CXX, which a shell may not have, and not $HOME/opt, which is the
+# suite's own home by here.
+cpu_compiler=$(sed 's/ \[.*//' build/.compile-flags)
+cpu_macros='s/^#define \(__[A-Z0-9_]*__\) 1$/\1/p; s/^#define \(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_16\) 1$/\1/p'
+cpu_probe=build/cpu-level-probe
+rm -rf -- "$cpu_probe"
+mkdir -p -- "$cpu_probe/x86-64-v2" "$cpu_probe/unknowable" "$cpu_probe/empty"
+$cpu_compiler -dM -E -x c++ /dev/null | sed -n "$cpu_macros" | LC_ALL=C sort > "$cpu_probe/base"
+$cpu_compiler -march=x86-64-v2 -dM -E -x c++ /dev/null | sed -n "$cpu_macros" | \
+    LC_ALL=C sort | LC_ALL=C comm -23 - "$cpu_probe/base" > "$cpu_probe/x86-64-v2/needs"
+echo __NOT_A_FEATURE__ > "$cpu_probe/unknowable/needs"
+: > "$cpu_probe/empty/needs"
+for probe in x86-64-v2 unknowable empty; do printf '#!/bin/sh\n' > "$cpu_probe/$probe/satl"; chmod +x "$cpu_probe/$probe/satl"; done
+cpu_v2=x86-64-v2
+for flag in sse4_2 popcnt ssse3 cx16 lahf_lm; do [ "$(cpu_flag_is $flag)" = true ] || cpu_v2=baseline; done
+build/satl-cpu-level --explain "$cpu_probe" > build/cpu-level-probe.out 2>&1
+expect "satl-cpu-level chooses a build this machine can run, never one it cannot ask about or an empty list" \
+       "yes|yes|$cpu_v2|1|1|1" \
+       "$([ -s "$cpu_probe/base" ] && echo yes)|$(grep -qx __GCC_HAVE_SYNC_COMPARE_AND_SWAP_16 "$cpu_probe/x86-64-v2/needs" && echo yes)|$(build/satl-cpu-level "$cpu_probe")|$(grep -c 'unknowable .*lacks 1: __NOT_A_FEATURE__ (satl-cpu-level cannot ask about it)' build/cpu-level-probe.out)|$(grep -c 'empty .*lacks 1: an empty list' build/cpu-level-probe.out)|$(build/satl-cpu-level --runs "$cpu_probe/unknowable/needs" > /dev/null; echo $?)"
+
 # THE FOUR TYPES OF 2026-09-22 KEEP THEIR ROWS BESIDE THEIR CODE (each file says why).
 for rows in satellite/satellite_variable_float/check_float.sh satellite/satellite_variable_hex/check_hex.sh \
             satellite/satellite_variable_color/check_color.sh satellite/satellite_variable_fraction/check_fraction.sh; do

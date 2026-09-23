@@ -1255,3 +1255,72 @@ colours, and Ctrl-Z, leave them changed until satl ends. **The author's to
 overrule:** a coloured string holds its codes everywhere (display leaves them out of
 a pipe); a see-through colour is refused; `()` puts back the terminal PROFILE's
 colours, not a theme a shell set with the same codes.
+
+## M37 — satl for every processor, and `satl-cpu-level` to choose — **BUILT 2026-09-23**
+
+The author, 2026-09-23: *"let's build more satl.cpu things for cpu's that I don't
+currently have ... we just can't test the latest stuff, but we can still compile for
+it"*, then *"if there are 137 targets, we could technically just build all targets, and
+alter satl-cpu-level to check for them"*. 003 built two (baseline, haswell) and chose
+between them at install; 004 built one.
+
+**What runs.** `make cpus` builds the ordinary satl, then one satl and its 62 libraries
+for each of **53 processors** into `build/cpu/<processor>/`, then `build/satl-cpu-level`.
+`make CPU=haswell` builds one. `build/satl-cpu-level` prints the build this machine runs
+best (`haswell` here); `--explain` lists every build and what each needs that the
+machine lacks. make_support/055-cpus.mk has the whole argument; the numbers:
+
+| clang 24 names | build a 64-bit satl | distinct instruction sets | built |
+|---|---|---|---|
+| 136 | 79 (the rest are 32-bit chips and `__builtin_cpu_is` spellings) | 54 | 53 + the ordinary build (plain x86-64) |
+
+**Chosen by what a build needs, never by a name** (003's rule: *"check what you compiled
+for; compile for what you check"*). Each build carries `needs`, the macros `-march` made the
+compiler define (CMPXCHG16B's `__GCC_HAVE_SYNC_COMPARE_AND_SWAP_16` included); satl-cpu-level
+asks the processor and kernel about every one -- 81 through `__builtin_cpu_supports`, LAHF/SAHF,
+CMPXCHG16B and AVX10 through CPUID -- and picks the runnable build whose deciding list is
+longest; a tie goes to the build whose system instructions the machine has (a Panther Lake
+gets pantherlake, not clearwaterforest). A need it cannot ask about makes a build unrunnable
+-- never a crash; today that is AVX512BMM, so **znver6 is never chosen** until a compiler can
+ask. Not asked: system instructions no compiler writes on its own (SGX, TSX, key locker,
+CET ...), which firmware and hypervisors switch off most often; and AMX and MOVRS, which a
+compiler writes only when called by name -- satl's source calls none (no intrinsics anywhere).
+Every question compiles under g++ 14, the system compiler the Makefile falls back to, and is
+one g++ 14's runtime can answer (clang links libgcc's `__cpu_indicator_init`).
+
+**What a processor's build never does:** raise the build number (`build_number.py
+--same`: it is BUILD N for that processor, and refuses when a source changed since the
+ordinary BUILD N); install (080-install.mk); or get deleted because this machine cannot run
+it -- an illegal instruction (132) is kept only when `satl-cpu-level --runs` confirms this
+machine lacks something the build needs; on a machine that has everything it is a defect,
+and deleted (050-build.mk). Its `needs` is written last and removed when its make begins,
+so a half-built folder is never offered. `CPU` comes from the command line only, and must be
+one name.
+
+**One fresh reader found nine defects, all fixed:** the chooser did not compile under g++ 14
+(so a plain `make` failed there); a failed compiler call left an empty `needs` that ran
+"anywhere"; any 132 was kept; CMPXCHG16B was never checked; g++'s `__EVEX256__` and
+`__USER_MSR__` stranded 19 builds; three builds needed names g++ 14's runtime never sets; a
+half-built folder was offered; ties went to another chip's tuning; the check.sh row passed on
+an empty list. **Found on the way, fixed:** the licence data included its header by a fixed `../../`, and
+the window data wrote to a fixed `build/generated/`; both follow where make writes now. And
+satellite.help() looks beside satl or one folder up, which from `build/cpu/<processor>/` is
+not the tree's `satellite.help/` -- each processor's build carries a link to it.
+
+**Tested:** the chooser against all 53 `needs` lists and against /proc/cpuinfo's own flags
+(ADX, RDSEED, PREFETCHW, SSE4A absent here, LAHF/SAHF present); the whole suite run against
+`build/cpu/haswell/satl` -- 783 of 786, the three being the help folder above, which pass
+against it since the link. A check.sh row pins the chooser: a real list it must take, and a
+need nobody can ask about that it must never guess at. **Not testable here:** anything this Xeon lacks -- raptorlake on
+the author's 13700K; AVX-512, AMX and APX builds only under an emulator (Intel SDE), which
+is not installed.
+
+**Known:** `make clean` removes `build/cpu/` with the rest of `build/` (about 13 minutes to
+make again); `make cpus` raises the build number without installing, so `~/.satl` is the last
+bare `make`'s; and the fingerprint has never covered the licences, the window data or the two
+scripts that generate them (older than this).
+
+**Still the author's:** whether an install should put the chosen build into `~/.satl`
+(today `make` installs the ordinary build, as always); and whether
+`arguments.cpu.architecture` should answer satl-cpu-level's word (`raptorlake` on the
+13700K) instead of 003's two (`haswell` / `baseline`).

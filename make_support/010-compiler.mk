@@ -25,7 +25,31 @@ endif
 # not a port. The order of the words is the old Makefile's, so the build
 # fingerprint (020-version.mk) describes the same compiler command it did.
 OPT ?= -O2
-CXXFLAGS = -std=c++20 $(OPT) -Wall -Wextra
+
+# ONE PROCESSOR'S BUILD (the author, 2026-09-23: "we could technically just build all
+# targets, and alter satl-cpu-level to check for them"). `make CPU=haswell` builds satl
+# and its libraries with -march=haswell into build/cpu/haswell/ (030-directories.mk),
+# installs nothing, and never raises the build number -- 055-cpus.mk says why, and
+# builds every processor at once. Empty, the ordinary build: no -march, the x86-64
+# baseline every processor runs.
+#
+# -march GOES LAST, AND ONLY WHEN THERE IS ONE, so the ordinary build's flags are the
+# same string they always were: 020-version.mk fingerprints them, and a stray space
+# would have raised the build number for nothing.
+#
+# FROM THE COMMAND LINE ONLY: an exported CPU in a shell would turn every make into a
+# processor's build that installs nothing, silently (the review, 2026-09-23). And ONE
+# name, with no / or .. in it -- `make clean CPU=...` removes build/cpu/$(CPU).
+ifeq ($(origin CPU),environment)
+override CPU :=
+endif
+CPU ?=
+ifneq ($(CPU),)
+ifneq ($(words $(CPU))$(findstring /,$(CPU))$(findstring ..,$(CPU)),1)
+$(error CPU=$(CPU) is not one processor's name -- make_support/055-cpus.mk lists them)
+endif
+endif
+CXXFLAGS = -std=c++20 $(OPT) -Wall -Wextra$(if $(CPU), -march=$(CPU))
 
 # Set nowhere here, so a distribution's link hardening -- or this machine's
 # -fuse-ld=lld, which the environment exports -- reaches every link.

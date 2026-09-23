@@ -22,13 +22,15 @@
 #     the window and the console .......... 047-window.mk
 #     what a link is allowed to record .... 048-link.mk
 #     a new binary ........................ 050-build.mk
+#     a build for one processor, or all ... 055-cpus.mk
 #     how a .cpp becomes a .o ............. 060-compile.mk
 #     a test, a harness or a race ......... 065-tests.mk
 #     what `make clean` removes ........... 070-clean.mk
 #     the install after every make ........ 080-install.mk
 #
-# NOT PORTED from 003, and why: 045 (the haswell pair and satl-cpu-level --
-# 004 builds one satl), 048's STATIC (004 is dynamic on purpose: satl and every
+# NOT PORTED from 003, and why: 045 (the haswell pair and satl-cpu-level) -- 004's
+# answer is 055, every processor clang can build for, and `make` still builds one;
+# 048's STATIC (004 is dynamic on purpose: satl and every
 # library must share ONE libstdc++, or each has its own std::cout -- DESIGN §3.4),
 # and 067 (003's start-up rows are 003 commands). 080 came across on 2026-09-22,
 # when the author ruled D0.5.1: 004 installs into ~/.satl with every make.
@@ -49,6 +51,7 @@ include make_support/040-sources.mk
 include make_support/047-window.mk
 include make_support/048-link.mk
 include make_support/050-build.mk
+include make_support/055-cpus.mk
 include make_support/060-compile.mk
 include make_support/065-tests.mk
 include make_support/070-clean.mk

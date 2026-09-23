@@ -32,7 +32,9 @@ import xml.sax.saxutils as sax
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
-OUT = os.path.join(ROOT, "build", "generated")
+# WHERE MAKE ASKED FOR IT (060-compile.mk): build/generated/, or one processor's
+# build/cpu/<processor>/generated/ (make_support/055-cpus.mk).
+OUT = os.path.join(ROOT, os.environ.get("SATL_GENERATED_OUT") or os.path.join("build", "generated"))
 PREFIX = "/org/satellite/window"
 
 # WHAT GOES IN, and where it comes from. Each is (resource path, file on disk).

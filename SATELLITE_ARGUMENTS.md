@@ -746,7 +746,9 @@ instructions. check.sh asks /proc/cpuinfo anyway, as the independent second opin
 
 **THE ARCHITECTURE IS A BUILD'S NAME, NOT THE CHIP'S CODE NAME** -- a choice the author may
 overrule: a Raptor Lake or a Zen 4 answers `haswell` too, because each runs what 003's
-satl.haswell was compiled for. 004 builds one satl today (Makefile: 045 was not ported).
+satl.haswell was compiled for. Since MILESTONES M37 (`make cpus`) there are 53 processor
+builds and `satl-cpu-level` names the best of them for a machine; whether this row should
+answer that word instead is the author's.
 
 Code: satellite/arguments/cpu_facts.hpp, two rows in arguments.cpp's gather().
 

@@ -48,7 +48,7 @@ $(OBJECTS)/$(SATELLITE)/satellite_variable_window/%.o: $(SATELLITE)/satellite_va
 # people's style -- the warnings that matter about it are in the script.
 $(WINDOW_DATA_SOURCE): $(WINDOW_DATA_INPUTS)
 	@mkdir -p $(dir $@)
-	@SATL_GTK_BUILD=$(if $(filter vendor,$(GTK)),$(GTK_BUILD)) \
+	@SATL_GTK_BUILD=$(if $(filter vendor,$(GTK)),$(GTK_BUILD)) SATL_GENERATED_OUT=$(dir $@) \
 	 python3 $(SATELLITE)/satellite_variable_window/make_window_data.py
 
 # THE LICENCES. Regenerated whenever a licences/ file changes, so a licence added

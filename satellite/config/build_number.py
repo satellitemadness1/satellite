@@ -4,6 +4,7 @@
 #
 #     python3 build_number.py <stamp> [--also <text>] -- <input file> ...   (make, before compiling)
 #     python3 build_number.py <stamp> --verify                              (make, after linking)
+#     python3 build_number.py <stamp> --same [--also <text>] -- <input> ... (one processor's build)
 #     python3 build_number.py --print <row name>                            (check.sh)
 #
 # (the author, 2026-09-15) "a build number (start at... 0050) and increase the
@@ -222,6 +223,12 @@ def main():
                  "the binary may show either number -- run make again" % (used, row))
         return
 
+    # --same: ONE PROCESSOR'S BUILD (make_support/055-cpus.mk) never raises the number. It
+    # is BUILD N for that processor, so it asks whether the inputs are still exactly what
+    # the ordinary BUILD N was made from, writes nothing, and refuses when they are not.
+    same = len(arguments) >= 2 and arguments[1] == "--same"
+    if same:
+        del arguments[1]
     also = ""
     if len(arguments) >= 3 and arguments[1] == "--also":
         also = arguments[2]
@@ -255,6 +262,10 @@ def main():
 
         if current == recorded and row["number"] == used and not restarted:
             return
+        if same:
+            fail(("no ordinary build has been made yet" if used is None else
+                  "the sources changed since BUILD %s was made" % str(used).zfill(4)) +
+                 ", and a processor's build never makes a new number -- run make first, then build the processors")
 
         if restarted:
             number = FIRST_BUILD

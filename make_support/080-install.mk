@@ -30,7 +30,9 @@
 # `make INSTALL_AFTER_BUILD=no` builds without installing.
 INSTALL_AFTER_BUILD ?= yes
 
-ifeq ($(INSTALL_AFTER_BUILD)$(MAKELEVEL),yes0)
+# AND NEVER ONE PROCESSOR'S BUILD (010-compiler.mk's CPU): which of those this machine
+# gets is satl-cpu-level's to say (055-cpus.mk), not whichever was built last.
+ifeq ($(INSTALL_AFTER_BUILD)$(MAKELEVEL)$(CPU),yes0)
 ifeq ($(filter-out all,$(MAKECMDGOALS)),)
 all: install-after-build
 endif

@@ -12,11 +12,20 @@
 # make or an install. They do not depend on the build stamp and raise no number.
 ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases \
               $(BUILD)/count_cases $(BUILD)/prompt_cases $(BUILD)/prompt_reader $(BUILD)/directory_cases \
-              $(BUILD)/file_cases $(BUILD)/infinity_cases
+              $(BUILD)/file_cases $(BUILD)/infinity_cases $(BUILD)/satl-cpu-level
 
 # AN EARLIER BUILD'S satl-term IS REMOVED, with its objects: it would run the
 # newer satl beside it and be installed with it, and its .d files would name
 # headers that no longer exist to check.sh's fingerprint row.
+# ONE PROCESSOR'S BUILD IS satl AND ITS LIBRARIES, and what it was compiled to need
+# (055-cpus.mk): the harnesses test the language, which one build already does.
+ifneq ($(CPU),)
+ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite.help $(BUILD)/needs
+# AND THE CHOOSER BEFORE ITS LINK, which asks it whether an illegal instruction was this
+# machine's lack or the build's defect (shows_the_build_row).
+$(BUILD)/satl: | $(CPU_LEVEL)
+endif
+
 all: $(ALL_TARGETS)
 	@if [ -e $(BUILD)/satl-term ] || [ -d $(OBJECTS)/satl-term ]; then \
 	     rm -rf $(BUILD)/satl-term $(OBJECTS)/satl-term && \
@@ -25,8 +34,13 @@ all: $(ALL_TARGETS)
 # Runs on every make; build_number.py decides whether this make is a build, and
 # rewrites the stamp only when it is -- which is what recompiles the objects that
 # read the rows (060-compile.mk) and so relinks.
+#
+# ONE PROCESSOR'S BUILD (010-compiler.mk's CPU) ASKS AND NEVER RAISES: it is the ordinary
+# BUILD N for that processor, so it refuses when a source changed since BUILD N was made.
+# AND ITS LIST OF NEEDS GOES FIRST (055-cpus.mk writes it last), so a build that fails or
+# is stopped half way is not a build satl-cpu-level offers.
 $(BUILD_STAMP): FORCE
-	@python3 $(SATELLITE)/config/build_number.py $@ --also "$(BUILD_DESCRIPTION)" -- $(BUILD_INPUTS)
+	@$(if $(CPU),rm -f $(BUILD)/needs && )python3 $(SATELLITE)/config/build_number.py $@ $(if $(CPU),--same) --also "$(BUILD_DESCRIPTION)" -- $(BUILD_INPUTS)
 
 $(LINK_STAMP): FORCE
 	@mkdir -p $(BUILD)
@@ -40,11 +54,27 @@ $(LINK_STAMP): FORCE
 # DEPEND ON THE BUILD STAMP, so this runs after every raise, not only when an
 # object changed; the row is padded in the shell, because printf %04d stops at
 # 2^63-1 and a row in quotes has no ceiling (review of M0.5).
+#
+# A PROCESSOR'S BUILD THIS MACHINE CANNOT RUN (010-compiler.mk's CPU) dies of an illegal
+# instruction, 132, before it can show anything: that one is kept and said, because
+# building for processors nobody here owns is the point (055-cpus.mk). BUT ONLY WHEN
+# satl-cpu-level CONFIRMS this machine lacks something the build was compiled to need --
+# an illegal instruction on a machine that has all of it is a defect in the build (a
+# compiler's trap, a bad flag), and is deleted like any other failure (the review,
+# 2026-09-23: every 132 was kept, whatever raised it). Any other failure is a failure.
 define shows_the_build_row
 @python3 $(SATELLITE)/config/build_number.py $(BUILD_STAMP) --verify
 @row=$$(python3 $(SATELLITE)/config/build_number.py --print arguments.build) && \
  want=$$row && while [ $${#want} -lt 4 ]; do want=0$$want; done && \
- lines=$$($(1) --version) || { echo "$(1) --version failed" >&2; rm -f $(1); exit 1; }; \
+ lines=$$($(1) --version); status=$$?; \
+ if [ $$status = 132 ] && [ -n "$(CPU)" ]; then \
+     $(call write_needs,$(1).needs); \
+     lacking=$$($(CPU_LEVEL) --runs $(1).needs); runs=$$?; rm -f $(1).needs; \
+     if [ $$runs = 1 ]; then \
+         echo "$(1): this processor lacks what a $(CPU) build needs ($$(echo $$lacking | cut -c1-60) ...), so it is kept without showing its BUILD row"; exit 0; fi; \
+     echo "$(1) died of an illegal instruction on a processor satl-cpu-level says has all it needs -- deleted" >&2; \
+     rm -f $(1); exit 1; fi; \
+ [ $$status = 0 ] || { echo "$(1) --version failed" >&2; rm -f $(1); exit 1; }; \
  shown=$$(printf '%s\n' "$$lines" | sed -n 2p); \
  case "$$shown" in *" BUILD $$want") ;; \
  *) echo "$(1) shows \"$$shown\" but arguments.build is $$row: an object that reads the rows was not rebuilt (060-compile.mk ROW_READERS)" >&2; \
@@ -131,6 +161,7 @@ $(BUILD)/satellite-004: FORCE | $(BUILD)/satl
 libraries: $(BUILD_STAMP) $(LINK_STAMP)
 	@SATELLITE_CXX="$(CXX)" SATELLITE_CXX_VERSION="$(CXX_VERSION)" SATELLITE_CXXFLAGS="$(CXXFLAGS)" \
 	    SATELLITE_LDFLAGS="$(LDFLAGS)" SATELLITE_JOBS="$(patsubst -j%,%,$(filter -j%,$(MAKEFLAGS)))" \
+	    SATELLITE_NUMBERS_OUT="$(BUILD)/satellite-numbers" \
 	    $(LINK_ENV) python3 $(NUMBERS)/build_libraries.py
 
 FORCE:

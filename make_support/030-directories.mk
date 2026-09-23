@@ -4,7 +4,7 @@
 # directory that moves is one edit here. The interpreter's sources are under
 # satellite/, one folder a subject (the author, 2026-09-15).
 
-BUILD      = build
+BUILD      = $(if $(CPU),build/cpu/$(CPU),build)
 OBJECTS    = $(BUILD)/objects
 SATELLITE  = satellite
 NUMBERS    = satellite-numbers
