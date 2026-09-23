@@ -1,5 +1,5 @@
 // satellite/satellite_variable_window/console_menu.cpp -- THE FILE MENU ACROSS
-// satl'S OWN CONSOLE: New window, Open…, Save output as…. GTK-17, satl-term's
+// satl'S OWN CONSOLE: New window, Open…, Save output as…, Settings…. GTK-17, satl-term's
 // menu ported the day satl-term was removed (the author, 2026-09-22: "we are
 // getting rid of satl-term and replacing it with something built in to the satl
 // exe").
@@ -28,8 +28,10 @@ namespace satellite004 {
 namespace {
 
 // THE FILE MENU, satl-term'S PORTED (satl-term/menu.cpp, removed 2026-09-22). New window, Open…,
-// Save output as…, and NO FIFTH: the close button is the desktop's, and a menu
-// item repeating it is a second spelling of something already spelled.
+// Save output as…, and Settings… (the author, 2026-09-22: "we need a file >
+// settings like right away" -- console_settings.cpp). No Close: the close button
+// is the desktop's, and a menu item repeating it is a second spelling of
+// something already spelled.
 //
 // MOUSE ONLY, and that is satl-term's rule too: no Ctrl-O, no Ctrl-S -- a menu
 // shortcut is a key taken from every program that will ever run on the other
@@ -188,6 +190,11 @@ void when_a_place_to_save_was_chosen(GObject *source, GAsyncResult *result, gpoi
     g_object_unref(source);
 }
 
+void when_settings(GSimpleAction *, GVariant *, gpointer user_data)
+{
+    open_the_console_settings(*static_cast<satellite_window *>(user_data));
+}
+
 void when_save(GSimpleAction *, GVariant *, gpointer user_data)
 {
     satellite_window *console = static_cast<satellite_window *>(user_data);
@@ -213,7 +220,8 @@ void give_it_a_file_menu(satellite_window &console)
     const struct {
         const char *name;
         void (*does)(GSimpleAction *, GVariant *, gpointer);
-    } items[] = {{"new-window", when_a_new_window}, {"open", when_open}, {"save", when_save}};
+    } items[] = {{"new-window", when_a_new_window}, {"open", when_open}, {"save", when_save},
+                 {"settings", when_settings}};
     for (const auto &item : items) {
         GSimpleAction *action = g_simple_action_new(item.name, nullptr);
         g_signal_connect(action, "activate", G_CALLBACK(item.does), &console);
@@ -227,7 +235,8 @@ void give_it_a_file_menu(satellite_window &console)
     const struct {
         const char *label;
         const char *action;
-    } sections[] = {{"New window", "satl.new-window"}, {"Open…", "satl.open"}, {"Save output as…", "satl.save"}};
+    } sections[] = {{"New window", "satl.new-window"}, {"Open…", "satl.open"}, {"Save output as…", "satl.save"},
+                    {"Settings…", "satl.settings"}};
     for (const auto &section : sections) {
         GMenu *one = g_menu_new();
         g_menu_append(one, section.label, section.action);

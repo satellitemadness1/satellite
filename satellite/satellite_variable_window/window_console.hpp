@@ -10,6 +10,7 @@
 //                         console of its own, its stdio moved onto the pty, the
 //                         keyboard, the hold at the end and the key that closes it
 //   console_menu.cpp      the File menu across satl's own console
+//   console_settings.cpp  File > Settings…, and the font size config.ini keeps
 //
 // VTE IS IN THIS HEADER, AND THAT IS ALLOWED HERE AND NOWHERE PUBLIC: it is
 // included by two files, and by them only where VTE was found
@@ -38,13 +39,21 @@ inline VteTerminal *terminal_of(const satellite_window &which)
 bool a_console_that_is_open(const satellite_window &which, std::string &why);
 
 // satl-term's LOOK, ON A TERMINAL: black on the light blue field, IBM Plex Mono
-// 11 -- and Q-VTE-1's stopgap, the screen reset once so VTE's own warning line
-// is not the first thing on it. Shared so that satl's own console and a
-// program's are dressed exactly alike. ON THE DESK.
+// at the size config.ini keeps -- and Q-VTE-1's stopgap, the screen reset once
+// so VTE's own warning line is not the first thing on it. Shared so that satl's
+// own console and a program's are dressed exactly alike. ON THE DESK.
 void dress_the_terminal(VteTerminal *terminal);
 
-// THE FILE MENU ACROSS satl'S OWN CONSOLE -- New window, Open…, Save output as…
-// -- and F10 left to the program. ON THE DESK. console_menu.cpp.
+// THE FILE MENU ACROSS satl'S OWN CONSOLE -- New window, Open…, Save output as…,
+// Settings… -- and F10 left to the program. ON THE DESK. console_menu.cpp.
 void give_it_a_file_menu(satellite_window &console);
+
+// THE CONSOLE'S FONT SIZE, IN POINTS: `console.font_size` in ~/.satl/config.ini,
+// and 11 when the row is absent or not a whole number from 1 up. The second puts
+// a size on a terminal (ON THE DESK); the third is File > Settings… (ON THE
+// DESK). console_settings.cpp.
+long long int console_font_points();
+void set_console_font_points(VteTerminal *terminal, long long int points);
+void open_the_console_settings(satellite_window &console);
 
 } // namespace satellite004

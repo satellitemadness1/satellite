@@ -100,14 +100,14 @@ void dress_the_terminal(VteTerminal *terminal)
     // and the comma is doing real work: a Pango family list falls through to
     // the system's monospace rather than to whatever fontconfig picks for a
     // name it does not have -- which can be proportional, and a proportional
-    // terminal is unusable rather than merely different.
+    // terminal is unusable rather than merely different. ITS SIZE IS THE
+    // PERSON'S (the author, 2026-09-22: "I want to make my font way smaller"):
+    // config.ini's console.font_size, which File > Settings… writes.
     GdkRGBA background, foreground;
     gdk_rgba_parse(&background, "#90D5FF");
     gdk_rgba_parse(&foreground, "#000000");
     vte_terminal_set_colors(terminal, &foreground, &background, nullptr, 0);
-    PangoFontDescription *font = pango_font_description_from_string("IBM Plex Mono,monospace 11");
-    vte_terminal_set_font(terminal, font);
-    pango_font_description_free(font);
+    set_console_font_points(terminal, console_font_points());
     vte_terminal_set_scrollback_lines(terminal, 10000);
     // Q-VTE-1'S STOPGAP. Built without gnutls, VTE feeds a red WARNING into
     // every terminal it makes, at construction, about scrollback spilled to
