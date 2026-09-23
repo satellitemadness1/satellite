@@ -1409,6 +1409,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // families now, which is why that header stops calling it a departure.
     if (is_window_word(code))
         return call_window_word(code, arguments, context);
+    // ...and satellite.container.list(), a list of nothing (container_calls.hpp).
+    if (is_container_word(code))
+        return call_container_word(code, arguments, context);
 
     if (arguments.size() > 1) {
         context.refuse(satl_line_not_understood, std::string(word::spelling_of(code)) +

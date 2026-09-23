@@ -68,6 +68,7 @@
 
 #include "expression.hpp"
 
+#include <string>
 #include <vector>
 
 namespace satellite004 {
@@ -91,6 +92,8 @@ inline int container_arity(token::Code method)
     switch (method) {
     case token::insert_token: return 2;
     case token::append_token:
+    case token::join_token:
+    case token::reserve_token:
     case token::contains_token:
     case token::index_of_token:
     case token::search_token:
@@ -109,6 +112,9 @@ inline int container_arity(token::Code method)
     case token::sort_token:
     case token::by_name_token:
     case token::by_value_token:
+    case token::sum_token:
+    case token::max_token:
+    case token::min_token:
     case token::reverse_token: return 0;
     default: return -1;
     }
@@ -118,6 +124,10 @@ inline int container_arity(token::Code method)
 // the header above says why the line is drawn here: a statement that is nothing
 // but `names.clear` has to mean the list emptied, or it is a line that does
 // nothing.
+//
+// `.reserve(n)` IS ONE OF THEM THOUGH NO ITEM MOVES: the room it makes belongs to
+// the list it was made in, so it has to reach the variable's own -- room made in
+// a copy is room nothing will ever append into.
 //
 // IN THE HEADER because one_operand reads it too: a chain ending in one of these
 // is walked a SECOND time, by reference, so `grid[1].append(3)` reaches the real
@@ -133,6 +143,7 @@ inline bool changes_a_container(token::Code method)
     case token::remove_at_token:
     case token::remove_first_token:
     case token::remove_last_token:
+    case token::reserve_token:
     case token::truncate_token: return true;
     default: return false;
     }
@@ -156,6 +167,46 @@ inline bool changes_a_container(token::Code method)
 Value call_container_method(token::Code method, Value &receiver, Value *home, const TypeShape *shape,
                             const std::vector<Value> &arguments, bool had_parentheses,
                             const std::string &name, ExpressionContext &context);
+
+// ---------------------------------------------------------------------------
+// `satellite.container.list()` -- AN EMPTY LIST, MADE BY NAMING THE TYPE.
+// ---------------------------------------------------------------------------
+//
+// 003's constructor (the author, 2026-09-05, 003 MILESTONES/M16.md §2), taken into
+// 004 on 2026-09-23 because 272 lines of his programs are written with it:
+//
+//     satellite.container.list<madness_type> type_dna = satellite.container.list()
+//
+// It is `= {}` in other words, and answers exactly what `{}` answers -- a list of
+// nothing, which fits every list<type> because there is nothing in it not to fit.
+// In 003 it was the ONLY way to get a list (a declaration there held nothing); in
+// 004 a bare declaration and `{}` already make one, so this is the third spelling
+// of the same value and not a new idea.
+//
+// NO LIBRARY, for file_calls.hpp's reason: a list is a HANDLE and a library cannot
+// answer one. So the checker knows the word by is_container_word(), as it knows
+// satellite.infinity() and satellite.file's words.
+//
+// TWO CODES, ONE WORD. `satellite.container.list()` lexes to `1 4 2 0`; with
+// anything between the brackets it falls back to `1 4 2`, which is also the TYPE
+// word in `satellite.container.list<...> name`. A type word is followed by `<` or
+// a name and never by `(`, and only a call reaches these functions, so the two
+// uses never meet.
+bool is_container_word(token::Code code);
+
+// "" when the call is one that runs, or what to say instead: the constructor takes
+// nothing, because a list that holds something is written `{1, 2}`.
+std::string container_word_refused(token::Code code, std::size_t given);
+
+// The empty list. The arguments are already evaluated (and there are none).
+Value call_container_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context);
+
+// WHAT AN INDEX SAYS TO .sum .max .min .join AND .reserve, or "" for any other
+// method: which half to ask (`scores.values.sum`), or that room is a list's. ONE
+// SENTENCE FOR THE CHECKER AND THE WALKER, so a name declared an index is refused
+// before anything runs and a value that turns out to be one is refused in the same
+// words.
+std::string index_refuses(token::Code method, const std::string &name);
 
 // `.reverse()` ON THE TYPES THAT ARE NOT CONTAINERS: a string, a number, a
 // binary. Answers `handled` false when this kind has no reverse, so the caller

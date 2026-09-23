@@ -6,31 +6,37 @@ SATELLITE 004: satellite.container.list
 satellite.container.list is satellite's std::vector: a row of objects, kept in
 the order you put them in. You write one with braces wherever a value goes, so
 {1, 2, 3} is a list, {} is a list of nothing, {1, "two"} is a list of mixed
-items and {{1, 2}, {3}} is a list of lists. satellite.container.list<type>
+items and {{1, 2}, {3}} is a list of lists. satellite.container.list() is {}
+said in words, as 003 spelled it -- a list of nothing, in a capsule or as a
+spacesuit's field -- and it takes nothing. satellite.container.list<type>
 checks every item against that type on every way in (the declaration, a[n] = x,
 .append and .insert) and refuses one that does not fit; with no <> a list holds
 anything.
 
 a[n] reads item n and a[n] = x replaces it, counting from 1, as a file's lines
-do. a[0], or an n past the end, is refused (S501), and writing past the end
+do; in a list of lists a[x][y] reads item y of item x, and a[x][y] = v and
+a[x].append(v) change it. a[0], or an n past the end, is refused (S501), and writing past the end
 does not make the list longer: .append does that. b = a COPIES the list, so
 changing b leaves a alone, and the copy costs nothing until one of them is
 written to.
 
 .append(x) .insert(n, x) .remove(x) .remove_at(n) .remove_first()
-.remove_last() .truncate(n) and .clear change the list itself, so they need a
-name to change: {1, 2}.append(3) is refused. Everything else answers a new
-value and leaves the list alone: .size .empty .first .last .contains(x) (or
-.contain), .index_of(x) and .search(x), which answer a position or 0, and
-.reverse(). .sort() orders nothing on its own; follow it with .by_name(), which
+.remove_last() .truncate(n) .reserve(n) and .clear change the list itself, so
+they need a name to change: {1, 2}.append(3) is refused. .reserve(n) makes room
+for n items at once and changes no item. Everything else answers a new value
+and leaves the list alone: .size .empty .first .last .contains(x) (or
+.contain), .index_of(x) and .search(x), which answer a position or 0,
+.reverse(), .sum (every item added with +, and 0 for a list of nothing),
+.max and .min (the largest and smallest by what each is worth), and
+.join(separator), one string of every item's text with separator between. .sort() orders nothing on its own; follow it with .by_name(), which
 orders by how each item reads (a to z, then A to Z, then digits), or
 .by_value(), which puts the smallest first, and put .reverse() after either to
 go the other way. There is no for-each loop yet, so walk a list with
 satellite.statement.for and a[i].
 
-Not built yet in satellite 004: .sum .max .min .join(separator) and
-.reserve(n) are numbered and refused. The old .sort("down"), .sort_down() and
-.sort_up() are refused too: .sort().by_name().reverse() replaced them.
+The old .sort("down"), .sort_down() and .sort_up() are refused:
+.sort().by_name().reverse() replaced them. On an index, .sum .max .min and .join
+ask you to say which half -- scores.values.sum, scores.keys.join(", ").
 
 example:
 
@@ -52,6 +58,17 @@ satellite.capsule satellite.main()
     satellite.container.list row = {30, 4, 100}
     satellite.console.display(row.sort().by_value()) // {4, 30, 100}
     satellite.console.display(row.sort().by_name()) // {100, 30, 4}
+    satellite.console.display(row.sum) // 134
+    satellite.console.display(row.max) // 100
+    satellite.console.display(names.join(", ")) // zoe, al, bo
+
+    satellite.container.list<satellite.container.list<satellite.variable.number>> grid = satellite.container.list()
+    grid.append({1, 2})
+    grid.append(satellite.container.list())
+    grid[2].append(3)
+    satellite.console.display(grid[2][1]) // 3
+    grid[1][2] = 20
+    satellite.console.display(grid) // {{1, 20}, {3}}
 
     satellite.container.list copy = names
     copy[1] = "ZOE"

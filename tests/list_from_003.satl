@@ -1,0 +1,122 @@
+// satellite.container.list, what 004 took from 003 on 2026-09-23: the constructor
+// satellite.container.list() -- in a capsule and as a spacesuit's field, which is how
+// infinity_data writes it -- and .sum .max .min .join(separator) .reserve(n). Beside
+// them, the author's my_list[x][y] on a list of lists built with the constructor.
+// check.sh holds every line of the output.
+satellite.include(satellite)
+
+satellite.spacesuit dna()
+{
+    satellite.protected
+    {
+        satellite.variable.number id = 0
+    }
+
+    satellite.constructor(satellite.variable.number id_input)
+    {
+        id = id_input
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_id() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(id)
+        }
+    }
+}
+
+// THE FIELDS ARE MADE BY THE CONSTRUCTOR, as infinity_data's are.
+satellite.spacesuit madness()
+{
+    satellite.protected
+    {
+        satellite.container.list<dna> type_dna = satellite.container.list()
+        satellite.container.list<satellite.container.list<satellite.variable.number>> grid = satellite.container.list()
+    }
+
+    satellite.public
+    {
+        satellite.capsule add_type_dna(dna type_input)
+        {
+            type_dna.append(type_input)
+        }
+
+        satellite.capsule add_row(satellite.container.list<satellite.variable.number> row)
+        {
+            grid.append(row)
+        }
+
+        satellite.capsule call_report() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(type_dna.size.to_string() + " dna, grid[2][1] = " + grid[2][1].to_string() + ", total " + grid[2].sum.to_string())
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    // my_list[x][y]: a list of lists, every list made by the constructor.
+    satellite.container.list<satellite.container.list<satellite.variable.number>> grid = satellite.container.list()
+    grid.append(satellite.container.list())
+    grid.append(satellite.container.list())
+    grid[1].append(7)
+    grid[2].append(8)
+    grid[2].append(9)
+    satellite.variable.number x = 2
+    satellite.variable.number y = 1
+    satellite.console.display(grid)
+    satellite.console.display(grid[x][y])
+    grid[x][y] = grid[1][1] + grid[x][2]
+    satellite.console.display(grid[x][y])
+    satellite.console.display(grid[x].sum)
+
+    // sum, max and min by worth; an empty list sums to 0.
+    satellite.container.list<satellite.variable.number> numbers = {3, 1, 2}
+    satellite.console.display(numbers.sum())
+    satellite.console.display(numbers.max)
+    satellite.console.display(numbers.min())
+    satellite.container.list<satellite.variable.string> words = {"pear", "apple", "zoo"}
+    satellite.console.display(words.max)
+    satellite.console.display(words.min)
+    satellite.container.list<satellite.variable.number> none = satellite.container.list()
+    satellite.console.display(none.sum)
+
+    // between equal items max is the sort's last and min its first.
+    satellite.container.list ties = {1.0, 2, 1, 2.0}
+    satellite.console.display(ties.max)
+    satellite.console.display(ties.min)
+    satellite.console.display(ties.sort().by_value())
+
+    // join: each item as it reads, the separator between.
+    satellite.container.list<satellite.variable.string> path = {"home", "madness", "code"}
+    satellite.console.display(path.join("/"))
+    satellite.console.display(numbers.join(", "))
+
+    // reserve makes room and changes no item; truncate past the end keeps them all.
+    satellite.container.list<satellite.variable.number> held = satellite.container.list()
+    held.reserve(1000)
+    satellite.console.display(held.size)
+    held.append(5)
+    grid[1].reserve(10)
+    satellite.console.display(held)
+    numbers.truncate(100000000000000000000000000000)
+    satellite.console.display(numbers)
+
+    // an index says which half: its values summed, its keys joined.
+    satellite.container.index<satellite.variable.string, satellite.variable.number> scores
+    scores["zoe"] = 1
+    scores["al"] = 41
+    satellite.console.display(scores.values.sum)
+    satellite.console.display(scores.keys.join(","))
+
+    // a spacesuit whose fields were made by the constructor.
+    madness m
+    dna d(7)
+    m.add_type_dna(d)
+    m.add_row({1, 2})
+    m.add_row({30, 40})
+    satellite.console.display(m.call_report())
+}
+
+satellite.return(satellite)

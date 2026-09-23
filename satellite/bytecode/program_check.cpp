@@ -383,10 +383,38 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         }
     }
     if (a_container) {
-        if (of_a_container || of_a_string_or_number) return success;
+        if (of_a_container) {
+            // HOW MANY IT WAS GIVEN, judged here as a file's and a window's are (the
+            // review, 2026-09-23): `a.reserve()` and `a.sum(1)` printed whatever came
+            // before them and then stopped. Brackets are needed only by a method that
+            // takes something -- `a.size` and `a.size()` are one read.
+            const int wanted = container_arity(method);
+            const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+            std::size_t close = k + 2, given = 0;
+            if (bracketed && !brackets_at(row, k + 2, close, given)) {
+                why = spelling + "( is never closed on its line";
+                return satl_line_not_understood;
+            }
+            if (given != static_cast<std::size_t>(wanted) || (wanted > 0 && !bracketed)) {
+                why = spelling + " takes " + std::to_string(wanted) + (wanted == 1 ? " argument" : " arguments") +
+                      (bracketed ? ", and was given " + std::to_string(given) : ", in brackets after it");
+                return satl_line_not_understood;
+            }
+            // A NAME DECLARED AN INDEX is told which half to ask, before the run, in
+            // the walker's own sentence (container_calls.hpp).
+            if (declared_as == word::code_of(1, 4, 5)) {
+                const std::string refused = index_refuses(method, name);
+                if (!refused.empty()) {
+                    why = spelling + " -- " + refused;
+                    return types_do_not_meet;
+                }
+            }
+            return success;
+        }
+        if (of_a_string_or_number) return success;
         why = spelling + " is not built for " + word::spelling_of(declared_as) +
-              " yet -- a container has .append, .size, .contains, .sort().by_name(), "
-              ".sort().by_value() and .reverse()";
+              " yet -- a container has .append, .size, .contains, .sum, .max, .min, .join, .reserve, "
+              ".sort().by_name(), .sort().by_value() and .reverse()";
         return not_built_yet;
     }
 
@@ -975,13 +1003,14 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // A WORD USED AS A CALL MUST HAVE A LIBRARY. A word with none is
         // not_built_yet (14) with its own name, which is what 003 did and what a
         // person can act on (function_table.hpp).
-        // satellite.file's words, satellite.infinity() and satellite.window's are the
-        // object model's and have none (file_calls.hpp, infinity_calls.hpp,
-        // window_calls.hpp) -- each of them answers a HANDLE, which is the one thing
-        // a library cannot make.
+        // satellite.file's words, satellite.infinity(), satellite.window's and
+        // satellite.container.list() are the object model's and have none
+        // (file_calls.hpp, infinity_calls.hpp, window_calls.hpp, container_calls.hpp)
+        // -- each of them answers a HANDLE, which is the one thing a library cannot
+        // make.
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
             functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code) &&
-            !is_window_word(code)) {
+            !is_window_word(code) && !is_container_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
         }
@@ -999,6 +1028,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 if (!not_yet.empty()) {
                     why = not_yet;
                     return not_built_yet;
+                }
+                // satellite.container.list() takes nothing: a list that holds
+                // something is written with braces.
+                const std::string no_arguments = container_word_refused(code, given);
+                if (!no_arguments.empty()) {
+                    why = no_arguments;
+                    return satl_line_not_understood;
                 }
                 if (is_file_word(code) && given != file_word_arity(code)) {
                     why = file_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
@@ -1036,6 +1072,31 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             }
         }
 
+        // A CONTAINER'S METHOD ON A LITERAL (the review, 2026-09-23): `", ".join({"a",
+        // "b"})` -- Python's spelling -- and `3.max(5)`. A literal has no declaration
+        // for method_on_a_name to judge it by, and until join and max were method
+        // names this was caught by accident, as a call to a capsule nobody wrote;
+        // after, only once the line ran, with output already printed. The literal's
+        // kind is known right here, so it is refused before anything runs, in the
+        // walker's own words. `.reverse()` is every ordered type's and is left alone.
+        if (code == token::string_token || code == token::number_token || code == token::binary_token ||
+            code == token::hexadecimal_token || code == token::percentage_token) {
+            std::size_t past = at;
+            text_at(row, past);
+            const Code method = code_at(row, past + 1);
+            if (code_at(row, past) == token::method_token && container_arity(method) >= 0 &&
+                method != token::reverse_token) {
+                const char *kind = code == token::string_token   ? "a string"
+                                   : code == token::number_token ? "a number"
+                                   : code == token::binary_token ? "a binary"
+                                   : code == token::hexadecimal_token ? "a hex"
+                                                                      : "a percentage";
+                const char *bare = kind + 2;    // "string" out of "a string"
+                why = std::string("that ") + bare + "." + method_spelling(method) + " is not built for " + kind +
+                      " yet -- " + so_far_whose(method);
+                return not_built_yet;
+            }
+        }
         if (token::carries_a_count(code)) { text_at(row, at); continue; }
         ++at;
     }

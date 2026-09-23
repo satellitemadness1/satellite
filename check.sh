@@ -582,6 +582,67 @@ expect "[ ] on something with no items says what it is" "27|1" \
 expect "a list given to a number name is refused" "27|1" \
        "$(list_says '    satellite.variable.number bad = {1, 2}' 'it holds a list')"
 
+# WHAT 004 TOOK FROM 003 FOR THE LIST, 2026-09-23: the constructor
+# satellite.container.list() -- 473 lines of the author's programs are written with it,
+# many as a spacesuit's field -- and .sum .max .min .join(separator) .reserve(n), which
+# 003 numbered and gave meanings at M16. The program walks all of it, and the
+# author's my_list[x][y] on a list of lists the constructor made.
+"$interpreter" tests/list_from_003.satl > build/list_from_003.out 2>&1; code=$?
+expect "list(): in a capsule and as a spacesuit field; grid[x][y]; sum max min join reserve; truncate past the end keeps all" \
+       "0|{{7}, {8, 9}}|8|16|25|6|3|1|zoo|apple|0|2.0|1.0|{1.0, 1, 2, 2.0}|home/madness/code|3, 1, 2|0|{5}|{3, 1, 2}|42|zoe,al|1 dna, grid[2][1] = 30, total 70" \
+       "$code|$(grep -v -e '^THE SATELLITE' -e '^VERSION' -e '^CLANG' -e '^G++' -e '^---' -e '^$' build/list_from_003.out | tr '\n' '|' | sed 's/|$//')"
+expect "satellite.container.list(1, 2) is refused before anything runs: a list that holds something is braces" "13|1" \
+       "$(list_says '    satellite.container.list b = satellite.container.list(1, 2)' 'satl(check): in satellite.main, satellite.container.list() makes a list of nothing and takes nothing')"
+expect "the constructor's list given to a number name is refused" "27|1" \
+       "$(list_says '    satellite.variable.number n = satellite.container.list()' 'it holds a list')"
+expect ".sum adds numbers, and points a list of strings at .join" "27|1" \
+       "$(list_says '    satellite.console.display(a.sum)' 'a.sum adds numbers, and item 1 is a string -- .join(separator) makes one string of them')"
+expect ".max of a number and a string says they have no order between them" "27|1" \
+       "$(list_says '    satellite.container.list m = {1, "b"}
+    satellite.console.display(m.max)' 'max finds the largest by what each item is worth, and item 1 and item 2 have no order between them')"
+expect ".min of an empty list has nothing to answer" "47|1" \
+       "$(list_says '    satellite.container.list e = {}
+    satellite.console.display(e.min)' 'the list is empty, so nothing in it is the smallest')"
+expect ".join's separator must be a string" "27|1" \
+       "$(list_says '    satellite.console.display(a.join(5))' 'puts a string between the items, and was given a number')"
+expect ".reserve(-1) is not a count" "19|1" \
+       "$(list_says '    a.reserve(-1)' 'a count is 0 or more')"
+expect ".reserve past what any machine holds is out_of_memory, not a crash" "48|1" \
+       "$(list_says '    a.reserve(100000000000000000000000000000)' 'no machine holds that many items')"
+expect ".reserve needs a name to make room in" "13|1" \
+       "$(list_says '    satellite.console.display({1}.reserve(3))' 'changes a container, and this one has no name to change')"
+expect "an index is told to say which half: .values.sum or .keys.sum" "27|1" \
+       "$(list_says '    satellite.container.index<satellite.variable.string, satellite.variable.number> s
+    s["k"] = 1
+    satellite.console.display(s.sum)' 'say which: s.values.sum or s.keys.sum')"
+# THE FRESH READER'S FINDINGS, 2026-09-23, each pinned. Every pair of KINDS present is
+# asked whether it has an order -- asking item 1 against the rest let {1, b10, 9.5}.max
+# answer b10 with exit 0 -- and the refusal carries compare's own code (14 for a pair
+# decided and not built, as `b10 < 9.5` says). A method's argument count, an index's
+# which-half, and a container method on a literal are refused before anything runs.
+expect ".max over three kinds finds the one pair with no order (item 2 and 3), not built yet" "14|1" \
+       "$(list_says '    satellite.container.list m = {1, b10, 9.5}
+    satellite.console.display(m.max)' 'item 2 and item 3 have no order between them')"
+expect ".sort().by_value() refuses the same list rather than leave it unsorted" "14|1" \
+       "$(list_says '    satellite.container.list m = {1, b10, 9.5}
+    satellite.console.display(m.sort().by_value())' 'by_value orders by what each item is worth, and item 2 and item 3')"
+expect "a container method given the wrong count is refused before the run" "13|1" \
+       "$(list_says '    a.reserve()' 'satl(check): in satellite.main, a.reserve takes 1 argument, and was given 0')"
+expect "a container method on a literal is refused before the run: Python's \", \".join(list)" "14|1" \
+       "$(list_says '    satellite.console.display(", ".join(a))' 'satl(check): in satellite.main, that string.join is not built for a string yet')"
+expect "a name declared an index is told which half before the run, join with its (separator)" "27|1" \
+       "$(list_says '    satellite.container.index s
+    satellite.console.display(s.join(","))' 'satl(check): in satellite.main, s.join -- an index holds keys and values, so say which: s.values.join(separator) or s.keys.join(separator)')"
+expect "a multiple<list, number> name appends anything, as its [n] = x already did" "0|1" \
+       "$(list_says '    satellite.container.multiple<satellite.container.list, satellite.variable.number> m = {1}
+    m.append("text")
+    satellite.console.display(m)' '{1, "text"}')"
+expect "sum max min join reserve are registry rows 0x0B52 to 0x0B56, and token_codes.hpp agrees" "1|1|1|1|1|1|1|1|1|1" \
+       "$(for pair in sum:0B52:0000101101010010 max:0B53:0000101101010011 min:0B54:0000101101010100 join:0B55:0000101101010101 reserve:0B56:0000101101010110; do
+              n=${pair%%:*}; rest=${pair#*:}; hex=${rest%%:*}; bits=${rest#*:}
+              printf '%s|%s|' "$(grep -c "^$bits  ${n}_token " REGISTRY.satellite)" "$(grep -c "Code ${n}_token = 0x$hex;" satellite/bytecode/token_codes.hpp)"
+          done | sed 's/|$//')"
+
 # satellite.container.index -- A PYTHON DICT, NOT A std::map (the author,
 # 2026-09-18: "an index is a python dictionary, but I think it's just a std::map,
 # but I could be wrong").

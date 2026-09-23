@@ -12,6 +12,9 @@
 #include "../satellite_variable_number/number_conversions.hpp"
 
 #include <algorithm>
+#include <limits>
+#include <new>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -69,22 +72,69 @@ bool text_of_each(const std::vector<satelliteObject> &items, std::vector<satelli
 }
 
 // CAN EVERY ITEM BE ORDERED AGAINST EVERY OTHER? Asked BEFORE sorting, never
-// during. A comparison that refuses halfway through std::sort is an inconsistent
-// ordering, which is undefined behaviour -- the sort may read past the end of
-// its own range. So the question is settled first, against item 1, which is
-// enough: ordering is transitive for every pair the object model allows.
-bool all_comparable(const std::vector<satelliteObject> &items, std::string &why)
+// during. A comparison that refuses halfway through a sort is an inconsistent
+// ordering, and the sort's answer means nothing. So the question is settled first.
+//
+// EVERY PAIR OF KINDS PRESENT IS ASKED, and asking item 1 against the rest was not
+// enough (the review, 2026-09-23). Whether two items have an order is decided by
+// their KINDS -- compare routes on the pair of tags -- and "1 has an order with b10
+// and with 9.5" says nothing about b10 against 9.5, which has none yet. So
+// {1, b10, 9.5}.max answered b10 with exit 0, and .sort().by_value() left the list
+// as it was and said nothing. Now one item of each kind meets one of every other
+// kind, and a second of its own kind when there is one (two lists have no order
+// with each other): at most 36 items, however long the list.
+//
+// Answers success, or compare's own machine code -- not_built_yet for a pair whose
+// order is decided and not built, as `b10 < 9.5` says -- with `why` naming the two
+// items. `asking` is which method wants to know, so the sentence names the line the
+// person wrote.
+signed long long int all_comparable(const std::vector<satelliteObject> &items, const char *asking, std::string &why)
 {
-    for (std::size_t at = 1; at < items.size(); ++at) {
-        int order = 0;
-        std::string inner;
-        if (items[0].compare(items[at], order, inner) != success) {
-            why = "by_value orders by what each item is worth, and item 1 and item " + std::to_string(at + 1) +
-                  " have no order between them: " + inner;
-            return false;
+    constexpr std::size_t none = static_cast<std::size_t>(-1);
+    std::size_t first_of[satelliteObject::how_many_kinds], second_of[satelliteObject::how_many_kinds];
+    for (std::size_t kind = 0; kind < satelliteObject::how_many_kinds; ++kind) first_of[kind] = second_of[kind] = none;
+    for (std::size_t at = 0; at < items.size(); ++at) {
+        const std::size_t kind = items[at].kind();
+        if (first_of[kind] == none) first_of[kind] = at;
+        else if (second_of[kind] == none) second_of[kind] = at;
+    }
+    std::vector<std::size_t> asked;
+    for (std::size_t kind = 0; kind < satelliteObject::how_many_kinds; ++kind) {
+        if (first_of[kind] != none) asked.push_back(first_of[kind]);
+        if (second_of[kind] != none) asked.push_back(second_of[kind]);
+    }
+    std::sort(asked.begin(), asked.end());           // so the sentence names the earlier item first
+    for (std::size_t one = 0; one < asked.size(); ++one) {
+        for (std::size_t other = one + 1; other < asked.size(); ++other) {
+            int order = 0;
+            std::string inner;
+            const signed long long int code = items[asked[one]].compare(items[asked[other]], order, inner);
+            if (code != success) {
+                why = std::string(asking) + " by what each item is worth, and item " + std::to_string(asked[one] + 1) +
+                      " and item " + std::to_string(asked[other] + 1) + " have no order between them: " + inner;
+                return code;
+            }
         }
     }
-    return true;
+    return success;
+}
+
+// WHAT `.sum` ADDS: THE KINDS THAT ARE NUMBERS. `+` also joins two strings and mixes
+// two colours, and a list of either "summed" would be an answer nobody asked `.sum`
+// for -- 003 held sum to numbers for the same reason. Strings have `.join`.
+bool a_number_kind(const satelliteObject &item)
+{
+    return item.is_number() || item.is_float() || item.is_fraction() || item.is_binary() ||
+           item.is_hexadecimal() || item.is_percentage() || item.is_infinity();
+}
+
+// THE ONES THAT ASK WHAT A LIST HOLDS, TAKEN FROM 003 ON 2026-09-23. An index holds
+// keys AND values, and each of these could mean either -- the sum of the scores or
+// of the names? -- so an index is told to say which rather than having one chosen.
+bool asks_what_it_holds(token::Code method)
+{
+    return method == token::sum_token || method == token::max_token || method == token::min_token ||
+           method == token::join_token;
 }
 
 
@@ -118,6 +168,44 @@ void take_entry_out(satelliteIndex &index, std::size_t at)
 }
 
 } // namespace
+
+std::string index_refuses(token::Code method, const std::string &name)
+{
+    if (asks_what_it_holds(method)) {
+        const std::string called = std::string(name_of(method)) + (method == token::join_token ? "(separator)" : "");
+        return "an index holds keys and values, so say which: " + name + ".values." + called + " or " + name +
+               ".keys." + called;
+    }
+    if (method == token::reserve_token)
+        return "an index makes its room as keys arrive; .reserve(n) is a list's";
+    return "";
+}
+
+// ---------------------------------------------------------------------------
+// `satellite.container.list()` -- the header says why it has no library.
+// ---------------------------------------------------------------------------
+bool is_container_word(token::Code code)
+{
+    return code == word::code_of(1, 4, 2) || code == word::code_of(1, 4, 2, 0);
+}
+
+std::string container_word_refused(token::Code code, std::size_t given)
+{
+    if (!is_container_word(code) || given == 0)
+        return "";
+    return "satellite.container.list() makes a list of nothing and takes nothing -- a list that holds "
+           "something is written with braces, {1, 2}";
+}
+
+Value call_container_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context)
+{
+    const std::string refused = container_word_refused(code, arguments.size());
+    if (!refused.empty()) {
+        context.refuse(satl_line_not_understood, refused);
+        return Value();
+    }
+    return Value::of_list(make_list());
+}
 
 // ---------------------------------------------------------------------------
 // `.reverse()` ON THE TYPES THAT ARE NOT CONTAINERS.
@@ -261,7 +349,8 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
                        what + " -- a container has no " + name_of(method) +
                            " (a list and an index have .append, .size, .empty, .first, .last, .contains, "
                            ".index_of, .search, .insert, .remove, .remove_at, .remove_first, .remove_last, "
-                           ".clear, .truncate, .keys, .values, .sort().by_name(), .sort().by_value() and .reverse())");
+                           ".clear, .truncate, .reserve, .sum, .max, .min, .join, .keys, .values, .sort().by_name(), "
+                           ".sort().by_value() and .reverse())");
         return Value();
     }
     // A DICT HAS NO POSITIONS, so the methods that count along one are refused
@@ -274,6 +363,13 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
                                 : std::string(", so nothing counts along it. Take its keys first: ") + name +
                                       ".keys." + name_of(method) + "(...)"));
         return Value();
+    }
+    {
+        const std::string refused = index_refuses(method, name);
+        if (is_index && !refused.empty()) {
+            context.refuse(types_do_not_meet, what + " -- " + refused);
+            return Value();
+        }
     }
     if ((method == token::keys_token || method == token::values_token) && !is_index) {
         context.refuse(types_do_not_meet,
@@ -304,6 +400,7 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
     case token::remove_at_token:
     case token::remove_first_token:
     case token::remove_last_token:
+    case token::reserve_token:
     case token::truncate_token: {
         // A METHOD THAT CHANGES SOMETHING NEEDS SOMETHING TO CHANGE.
         // `{1, 2}.append(3)` is a list nothing is holding: the append would be
@@ -364,8 +461,13 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
         // them is worth nothing.
         if (method == token::append_token || method == token::insert_token) {
             const Value &going_in = method == token::append_token ? arguments.front() : arguments[1];
+            // ONLY A LIST'S <type> DESCRIBES AN ITEM. A `multiple<A, B>` name
+            // constrains ITSELF and not what is inside it -- write_through_index's
+            // rule -- and reading its A as the item type refused
+            // `multiple<list, number> m = {1}` then m.append(3), "it holds a number",
+            // while m[1] = 3 went in (the review, 2026-09-23).
             std::string unfit;
-            if (shape != nullptr && shape->word != 0 && !shape->parameters.empty() &&
+            if (shape != nullptr && shape->word == word::code_of(1, 4, 2) && !shape->parameters.empty() &&
                 !value_fits(shape->parameters[0], going_in, unfit)) {
                 context.refuse(types_do_not_meet, what + ": " + unfit);
                 return Value();
@@ -384,19 +486,53 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
         // THE ONES THAT NAME A POSITION. `.insert` may name one PAST the last
         // item -- inserting at size + 1 is appending, and refusing it would make
         // a loop that fills a list from the end stop one short for no reason.
-        if (method == token::insert_token || method == token::remove_at_token || method == token::truncate_token) {
+        // `.reserve(n)` names a COUNT and not a position, but it is read the same way:
+        // a whole number no less than 0.
+        if (method == token::insert_token || method == token::remove_at_token || method == token::truncate_token ||
+            method == token::reserve_token) {
             const satellite_number *number = arguments.front().as_number();
             if (number == nullptr) {
                 context.refuse(types_do_not_meet,
-                               what + " takes an item number, and was given " + arguments.front().kind_name());
+                               what + " takes " +
+                                   (method == token::reserve_token ? "a count of items" : "an item number") +
+                                   ", and was given " + arguments.front().kind_name());
                 return Value();
             }
             if (number->negative()) {
                 context.refuse(not_a_position, what + " was given " + fast::to_text(*number) +
-                                                   ", and items count from 1");
+                                                   (method == token::reserve_token ? ", and a count is 0 or more"
+                                                                                   : ", and items count from 1"));
                 return Value();
             }
-            const unsigned long long int position = fast::fits_a_count(*number) ? fast::as_count(*number) : 0;
+            // A NUMBER TOO BIG FOR A MACHINE WORD IS PAST THE END OF EVERY LIST. It
+            // read as position 0 until 2026-09-23, so `a.truncate(10^29)` -- keep more
+            // than there are, which changes nothing -- emptied the list instead.
+            const std::string written = fast::to_text(*number);
+            const unsigned long long int position = fast::fits_a_count(*number)
+                                                        ? fast::as_count(*number)
+                                                        : std::numeric_limits<unsigned long long int>::max();
+
+            // `.reserve(n)` -- ROOM FOR n ITEMS, MADE ONCE, 003's list_reserve. No item
+            // moves and .size answers what it did; what changes is that the next n
+            // appends find the room already there. Room the machine will not give is
+            // out_of_memory (48), said here -- never a crash, and never a quiet no.
+            if (method == token::reserve_token) {
+                const std::string no_room = what + "(" + written + "): ";
+                if (position > body.items.max_size()) {
+                    context.refuse(out_of_memory, no_room + "no machine holds that many items");
+                    return Value();
+                }
+                try {
+                    body.items.reserve(static_cast<std::size_t>(position));
+                } catch (const std::bad_alloc &) {
+                    context.refuse(out_of_memory, no_room + "the machine would not give satl the memory for that many");
+                    return Value();
+                } catch (const std::length_error &) {
+                    context.refuse(out_of_memory, no_room + "no machine holds that many items");
+                    return Value();
+                }
+                return *home;
+            }
 
             if (method == token::truncate_token) {
                 // KEEPING MORE THAN THERE ARE CHANGES NOTHING and is not an
@@ -410,7 +546,7 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
             const unsigned long long int most = method == token::insert_token ? held + 1 : held;
             if (position == 0 || position > most) {
                 context.refuse(line_past_the_end,
-                               what + "(" + std::to_string(position) + "): " +
+                               what + "(" + written + "): " +
                                    (held == 0 ? std::string("the list is empty")
                                               : "the list holds " + std::to_string(held) +
                                                     (held == 1 ? " item" : " items") + ", counting from 1") +
@@ -590,8 +726,9 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
             for (const std::size_t which : order) sorted.push_back(items[which]);
             items.swap(sorted);
         } else {
-            if (!all_comparable(items, why)) {
-                context.refuse(types_do_not_meet, what + ": " + why);
+            const signed long long int comparable = all_comparable(items, "by_value orders", why);
+            if (comparable != success) {
+                context.refuse(comparable, what + ": " + why);
                 return Value();
             }
             std::stable_sort(items.begin(), items.end(),
@@ -609,6 +746,118 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
         std::vector<satelliteObject> items = *items_of(receiver, borrowed);
         std::reverse(items.begin(), items.end());
         return Value::of_list(make_list(std::move(items)));
+    }
+
+    // -----------------------------------------------------------------------
+    // TAKEN FROM 003, 2026-09-23: .sum .max .min .join(separator). 003 numbered
+    // them at M16 and gave each its meaning there; these are those meanings,
+    // counted from 1 where a position is said, as everything in 004 is.
+    // -----------------------------------------------------------------------
+
+    // `.sum` -- EVERY ITEM ADDED WITH +, left to right, by the object model's own
+    // add: a list of floats sums as a float and a fraction stays a fraction, exactly
+    // as `a + b + c` written out would. A LIST OF NOTHING SUMS TO 0 -- not a
+    // sentinel but the sum of no numbers, 003's one row where "nothing to answer
+    // with" has an answer.
+    case token::sum_token: {
+        std::vector<satelliteObject> borrowed;
+        const std::vector<satelliteObject> &items = *items_of(receiver, borrowed);
+        if (items.empty())
+            return a_count(0);
+        for (std::size_t at = 0; at < items.size(); ++at) {
+            if (!a_number_kind(items[at])) {
+                context.refuse(types_do_not_meet,
+                               what + " adds numbers, and item " + std::to_string(at + 1) + " is " +
+                                   items[at].kind_name() +
+                                   (items[at].is_string() ? " -- .join(separator) makes one string of them" : ""));
+                return Value();
+            }
+        }
+        Value total = items.front();
+        for (std::size_t at = 1; at < items.size(); ++at) {
+            Value next;
+            std::string why;
+            const signed long long int added = total.add(items[at], next, why);
+            if (added != success) {
+                context.refuse(added, what + ": item " + std::to_string(at + 1) +
+                                          " cannot be added to the items before it -- " + why);
+                return Value();
+            }
+            total = std::move(next);
+        }
+        return total;
+    }
+
+    // `.max` AND `.min` -- THE ORDERING ASKED ONCE. Not a sort that keeps one end: a
+    // sort is n log n and copies the list, and asking which item is largest is one
+    // pass. Worth is `.sort().by_value()`'s own comparison, so `.max` IS
+    // `.sort().by_value().last` and `.min` IS `.sort().by_value().first` -- EVEN
+    // BETWEEN EQUAL ITEMS: a stable sort keeps equals in the order they came, so of
+    // {2, 1, 2.0} the last is 2.0, and .max answers 2.0 (it answered 2 until the
+    // review, 2026-09-23). So .max keeps the LATER of two equals and .min the earlier.
+    case token::max_token:
+    case token::min_token: {
+        std::vector<satelliteObject> borrowed;
+        const std::vector<satelliteObject> &items = *items_of(receiver, borrowed);
+        const bool largest = method == token::max_token;
+        if (items.empty()) {
+            context.refuse(line_past_the_end, what + ": the list is empty, so nothing in it is the " +
+                                                  (largest ? "largest" : "smallest"));
+            return Value();
+        }
+        std::string why;
+        const signed long long int comparable =
+            all_comparable(items, largest ? "max finds the largest" : "min finds the smallest", why);
+        if (comparable != success) {
+            context.refuse(comparable, what + ": " + why);
+            return Value();
+        }
+        // AND EVERY COMPARISON THE PASS MAKES IS STILL ASKED WHETHER IT ANSWERED. The
+        // kinds were judged above; a refusal here would be one that depends on the
+        // values, and skipping it is how a wrong item came back with exit 0 before.
+        const satelliteObject *best = &items.front();
+        for (std::size_t at = 1; at < items.size(); ++at) {
+            int order = 0;
+            std::string inner;
+            const signed long long int code = items[at].compare(*best, order, inner);
+            if (code != success) {
+                context.refuse(code, what + ": item " + std::to_string(at + 1) + " has no order with the " +
+                                         (largest ? "largest" : "smallest") + " before it: " + inner);
+                return Value();
+            }
+            if (largest ? order >= 0 : order < 0)
+                best = &items[at];
+        }
+        return *best;
+    }
+
+    // `.join(separator)` -- ONE STRING: every item as it reads, with the separator
+    // between and nothing at either end. A string item is its own text and anything
+    // else is what .string would make of it -- `{1, 2}.join("-")` is "1-2". The
+    // separator must be a string, because what goes between text is text.
+    case token::join_token: {
+        const satellite_string *separator = arguments.front().as_string();
+        if (separator == nullptr) {
+            context.refuse(types_do_not_meet, what + " puts a string between the items, and was given " +
+                                                  arguments.front().kind_name());
+            return Value();
+        }
+        std::vector<satelliteObject> borrowed;
+        const std::vector<satelliteObject> &items = *items_of(receiver, borrowed);
+        satellite_string out;
+        for (std::size_t at = 0; at < items.size(); ++at) {
+            if (at != 0)
+                out.append(*separator);
+            satellite_string text;
+            std::string why;
+            if (items[at].to_string(text, why) != success) {
+                context.refuse(types_do_not_meet,
+                               what + ": item " + std::to_string(at + 1) + " has no text to join -- " + why);
+                return Value();
+            }
+            out.append(text);
+        }
+        return Value::of_string(std::move(out));
     }
 
     default:
