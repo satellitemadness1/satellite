@@ -827,6 +827,52 @@ Value *slot_through_index(Value &root, const std::vector<Value> &indices, const 
     return target;
 }
 
+// WHAT FOLLOWS A ROW OF THE ARGUMENTS VARIABLE (2026-09-23). A program's row can hold a
+// container since `args.l = satellite.container.list()` was built, so it is read and
+// changed the way a named container is: `args.l[1]`, `args.l[1][2]`, `args.l.append(5)`,
+// `args.grid[1].append(3)`. `current` is the row as read, `key` its name.
+//
+// THE READ IS ON THE COPY AND ONLY A MUTATOR WALKS TO THE ROW ITSELF -- the bracket chain
+// in one_operand says why, and why the copy is let go of first.
+Value after_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at, Value current,
+                        const std::string &name, const std::string &key, Value &arguments, ExpressionContext &context)
+{
+    std::string what = name + "." + key;
+    std::vector<Value> used;
+    const std::size_t chain_at = at;
+    while (code_at(row, at) == token::left_square_bracket_token) {
+        const std::size_t opened_at = at;
+        ++at;
+        const Value index = evaluate_at(row, at, 1, context);
+        if (context.code != success)
+            return Value();
+        if (code_at(row, at) != token::right_square_bracket_token) {
+            context.refuse(satl_line_not_understood,
+                           what + "[...] was given something it could not read to the end of", opened_at);
+            return Value();
+        }
+        ++at;
+        used.push_back(index);
+        current = index_into(current, index, what, opened_at, context);
+        if (context.code != success)
+            return Value();
+        what += "[...]";
+    }
+    const Code method = code_at(row, at) == token::method_token ? code_at(row, at + 1) : 0;
+    if (token::is_method_code(method) && container_arity(method) >= 0 && changes_a_container(method) &&
+        !a_member_next(row, at, current)) {
+        current = Value();
+        Value *slot = an_argument_to_change(key, name, arguments, context);
+        const TypeShape *inner = nullptr;
+        if (slot != nullptr && !used.empty())
+            slot = slot_through_index(*slot, used, name + "." + key, chain_at, nullptr, &inner, context);
+        if (slot == nullptr || context.code != success)
+            return Value();
+        return call_method(row, at, *slot, what, context, slot, inner);
+    }
+    return maybe_a_method(row, at, std::move(current), "that argument", context);
+}
+
 Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     const Code code = code_at(row, at);
@@ -1186,11 +1232,12 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // row is a method on it -- `arguments.username.upper()`.
         if (found.declared == word::code_of(1, 6, 21) && code_at(row, at) == token::method_token) {
             bool read = false;
-            Value answer = read_an_argument(row, at, name, *found.value, context, read);
+            std::string key;
+            Value answer = read_an_argument(row, at, name, *found.value, context, read, key);
             if (context.code != success)
                 return Value();
             if (read)
-                return maybe_a_method(row, at, std::move(answer), "that argument", context);
+                return after_an_argument(row, at, std::move(answer), name, key, *found.value, context);
         }
         // `f[n]` -- LINE n OF A FILE, and `a[n]` -- ITEM n OF A LIST, both
         // counting from 1 (the author, 2026-09-18: "we'll build it so you can

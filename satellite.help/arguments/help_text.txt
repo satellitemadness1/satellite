@@ -41,6 +41,15 @@ the arguments". The older spelling,
 satellite.container.list<satellite.variable.string> arguments, is the same
 variable.
 
+A row is written the same way, when its name is the program's own:
+args.some_var = 5 adds it, a second args.some_var = 6 changes it, and
+satellite.console.display(args) shows it after satl's rows. A row can hold a
+list and change it: args.l = satellite.container.list(), then args.l.append(5)
+and args.l[1]. A row satl holds -- username, memory.total, argument_1,
+infinity -- is read and never written, and a line writing one is refused before
+the program runs. access is the one setting among them:
+args.access = satellite.bool.false turns it off in ~/.satl/config.ini.
+
 The same facts are words of the language too, read by their full name with no
 brackets: satellite.library.main.arguments.cores,
 satellite.library.main.arguments.memory.used and the rest. access is the one a
@@ -57,6 +66,9 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
     satellite.console.display(args.length) // 3
     satellite.console.display(args.float.decimal) // 128
     satellite.console.display(args.memory.used > 0) // true
+    args.some_var = 5
+    args.some_var = args.some_var + 1
+    satellite.console.display(args.some_var) // 6
     satellite.console.display(satellite.library.main.arguments.machine.pointer_bits) // 64
 
     satellite.return(satellite)

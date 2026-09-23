@@ -172,8 +172,9 @@ inline SCode s_code_for(signed long long int machine_code)
                 "this setting is true or false and was given something that is neither."};
     case word_takes_no_assignment:
         return {"S220", "WORD_TAKES_NO_ASSIGNMENT",
-                "this word is not a setting and not a variable, so there is nothing for an `=` to "
-                "write to."};
+                "this is not a place a program can write: a word that is not a setting and not a "
+                "variable, or a row of the arguments that the machine, the command line or config.ini "
+                "says -- a program reads it, and gives a name of its own a value instead."};
     case config_file_unreadable:
         return {"S013", "CONFIG_FILE_UNREADABLE",
                 "config.ini is there and could not be read. Every setting still has its built-in "

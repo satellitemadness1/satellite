@@ -1,0 +1,42 @@
+// WRITING THE ARGUMENTS VARIABLE (the author, 2026-09-23): "satellite.variable.arguments
+// any_name then any_name.some_var = some_value". A name of the program's own is added,
+// then overwritten; a dotted name is one row; satl's rows are still read beside them;
+// the rows are an index, so [] and .contains find a written row; a row can hold a
+// container and change it in place, and the list it was given keeps its own; and
+// satellite.console.display(any_name) shows the program's rows after satl's.
+// check.sh runs this with one word after the file and asserts every line, in order.
+//
+// THE REMOVE AND THE WRITE AFTER IT ARE THE REVIEW'S (2026-09-23): the rows were filed
+// under bare names, so a removed row's name pointed past the end, the next write went
+// into the destroyed slot, and `kept` came out holding `other`'s items.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments any_name)
+{
+    any_name.some_var = 5
+    satellite.console.display(any_name.some_var)
+    any_name.some_var = any_name.some_var + 1
+    satellite.console.display(any_name.some_var)
+    any_name.deep.row = "text"
+    satellite.console.display(any_name.deep.row)
+    satellite.console.display(any_name.argument_1)
+    satellite.console.display(any_name.username)
+    satellite.console.display(any_name["some_var"])
+    satellite.console.display(any_name.contains("deep.row"))
+    satellite.container.list<satellite.variable.string> kept
+    kept.append("kept")
+    any_name.saved = kept
+    any_name.saved.append("more")
+    satellite.console.display(any_name.saved[2])
+    any_name.saved[1] = "first"
+    satellite.console.display(any_name.saved)
+    any_name.remove("saved")
+    any_name.saved = "new"
+    satellite.container.list<satellite.variable.string> other
+    other.append("other")
+    satellite.console.display(kept)
+    satellite.console.display(any_name.saved)
+    satellite.console.display(any_name)
+    satellite.return(satellite)
+}

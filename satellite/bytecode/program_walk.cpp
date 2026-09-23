@@ -1117,12 +1117,28 @@ signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &
         context.refuse(satl_line_not_understood,
                        name + "[...] needs an = and a value after it", opened_at);
 
+    // `args["username"] = x` IS `args.username = x` (main_arguments.hpp), refused as that is
+    // -- after the key filing was fixed it would have overwritten satl's row -- and, with one
+    // key, written as that is, so `args["access"] = 7` meets the setting's own rule.
+    satellite_string key_text;
+    std::string unused, row_key;
+    if (context.code == success && found.declared == word::code_of(1, 6, 21) && !indices.empty() &&
+        indices.front().kind() == satelliteObject::string && indices.front().to_string(key_text, unused) == success) {
+        row_key = key_text.to_utf8();
+        const std::string refused =
+            why_an_argument_is_not_written(row_key, name, found.value, state.arguments, functions);
+        if (!refused.empty())
+            context.refuse(word_takes_no_assignment, refused, opened_at);
+    }
+
     if (context.code == success) {
         ++at;
         Value value = evaluate_expression(row, at, context);
         if (context.code == success && !read_to_the_end(row, at))
             context.refuse(satl_line_not_understood, name + "[...] = ... " + kNotReadToTheEnd, opened_at);
-        if (context.code == success)
+        if (context.code == success && !row_key.empty() && indices.size() == 1)
+            write_an_argument(row_key, std::move(value), name, *found.value, context);
+        else if (context.code == success)
             write_through_index(*found.value, indices, std::move(value), name, opened_at, *found.shape, context);
     }
 
@@ -1130,6 +1146,58 @@ signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &
     at = past_the_statement(row, at);
     if (context.code != success)
         return raise_context(context, name + "[...] = ...", state, row, blame);
+    return success;
+}
+
+// `argz.some_var = <expr>` -- A ROW OF THE ARGUMENTS VARIABLE BEING WRITTEN (the author,
+// 2026-09-23), and `argz.l[1] = <expr>`, an item of a row that holds a container. `at` is
+// on the `.` after `name`; the run of row names ends on `=` or `[`. main_arguments.hpp
+// says which rows a program may write and what writing one does; this is the statement
+// around it, in run_setting_assignment's order: the row is judged before the value is
+// worked out, so a refused row never asks anybody for input.
+signed long long int run_argument_assignment(const std::vector<std::bitset<16>> &row,
+                                             std::size_t &at,
+                                             const std::string &name,
+                                             Value &arguments,
+                                             const FunctionTable &functions,
+                                             VariableTable &variables,
+                                             MachineState &state)
+{
+    const std::size_t opened_at = at;
+    std::string key;
+    at = past_the_argument_names(row, at, key);      // on the `=`, or the first `[`
+    ExpressionContext context{variables, functions, state};
+    std::vector<Value> indices;
+    while (context.code == success && code_at(row, at) == token::left_square_bracket_token) {
+        ++at;
+        indices.push_back(evaluate_expression(row, at, context));
+        if (context.code == success && code_at(row, at) != token::right_square_bracket_token)
+            context.refuse(satl_line_not_understood,
+                           name + "." + key + "[...] was given something it could not read to the end of", opened_at);
+        ++at;
+    }
+    std::size_t blame = opened_at;
+    const std::string refused =
+        indices.empty() ? why_an_argument_is_not_written(key, name, &arguments, state.arguments, functions) : "";
+    if (!refused.empty())
+        context.refuse(word_takes_no_assignment, refused, opened_at);
+    Value *slot = nullptr;
+    if (context.code == success && !indices.empty())
+        slot = an_argument_to_change(key, name, arguments, context);
+    if (context.code == success) {
+        blame = ++at;                                // `a.access = 2` is refused under the 2
+        Value value = evaluate_expression(row, at, context);
+        if (context.code == success && !read_to_the_end(row, at))
+            context.refuse(satl_line_not_understood, name + "." + key + " = ... " + kNotReadToTheEnd, opened_at);
+        if (context.code == success && slot != nullptr)
+            write_through_index(*slot, indices, std::move(value), name + "." + key, opened_at, TypeShape{}, context);
+        else if (context.code == success)
+            write_an_argument(key, std::move(value), name, arguments, context);
+    }
+    at = past_the_statement(row, at);
+    if (context.code != success)
+        return raise_context(context, name + "." + key + (indices.empty() ? "" : "[...]") + " = ...", state, row,
+                             context.placed ? context.refused_at : blame);
     return success;
 }
 
@@ -1587,6 +1655,25 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                 if (frame.ending())
                     return success;
                 continue;
+            }
+
+            // `argz.some_var = value` (run_argument_assignment). It starts as a method call
+            // does, and is told apart by the `=` after the run of row names -- looked for
+            // first, so a method call pays for the look and not for a second lookup.
+            const std::size_t past_rows = code_at(row, k) == token::method_token ? past_the_argument_names(row, k) : k;
+            if (past_rows != k && (code_at(row, past_rows) == token::assign_token ||
+                                   (code_at(row, past_rows) == token::left_square_bracket_token &&
+                                    assign_after_the_brackets(row, past_rows)))) {
+                const Seen arguments = variables.seen(name);
+                if (arguments && arguments.declared == word::code_of(1, 6, 21)) {
+                    std::size_t b = k;
+                    const signed long long int stopped =
+                        run_argument_assignment(row, b, name, *arguments.value, functions, variables, state);
+                    at = b;
+                    if (stops_the_program(stopped))
+                        return stopped;
+                    continue;
+                }
             }
 
             if (code_at(row, k) == token::method_token || code_at(row, k) == token::left_square_bracket_token) {

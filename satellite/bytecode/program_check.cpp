@@ -83,6 +83,7 @@ struct Where {
     // `units[i].call_x()` is judged by what the list was declared to hold.
     DeclaredObjects lists;
     std::size_t statement = kNowhere;    // where the statement being judged starts
+    const Arguments *arguments = nullptr;  // the rows satl holds, which `argz.row = x` may not write
 };
 
 // A NAME THAT HOLDS OBJECTS, OR A LIST OF THEM, FROM ITS DECLARED SHAPE -- kept or
@@ -1767,6 +1768,35 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const signed long long int shaped = after_the_name(row, k, name, false, why);
             if (shaped != success) { at = stop; return shaped; }
         }
+        // `argz.some_var = value` -- A ROW OF THE ARGUMENTS VARIABLE BEING WRITTEN (2026-09-23).
+        // A row satl holds is refused here, before anything runs, by the same words the
+        // walker asks (main_arguments.hpp); a name of the program's own is a shape to allow,
+        // and its value is judged. `argz.n += 1` is refused as every name's `+=` is.
+        if (a_method_call && found != declared.end() && found->second == word::code_of(1, 6, 21)) {
+            std::string key;
+            const std::size_t past = past_the_argument_names(row, k, key);
+            const Code after = code_at(row, past);
+            if (past != k && after >= token::assign_token && after <= token::modulus_assign_token) {
+                signed long long int held = after_the_name(row, past, name + "." + key, false, why);
+                if (held == success) {
+                    why = why_an_argument_is_not_written(key, name, nullptr, where.arguments, where.functions);
+                    held = why.empty() ? names_in_statement(row, past + 1, stop, declared, where, why)
+                                       : word_takes_no_assignment;
+                }
+                at = stop;
+                return held;
+            }
+            // `argz.l[1] = v`, AN ITEM OF A ROW: allowed below as `a[i] = v` is, and refused
+            // here only when the row is satl's -- which rows the program wrote, only the
+            // walker knows.
+            std::size_t end = past, close = 0, count = 0;
+            while (code_at(row, end) == token::left_square_bracket_token && brackets_at(row, end, close, count))
+                end = close + 1;
+            if (past != k && end != past && code_at(row, end) == token::assign_token) {
+                why = why_an_argument_is_not_written(key, name, nullptr, where.arguments, where.functions);
+                if (!why.empty()) { at = stop; return word_takes_no_assignment; }
+            }
+        }
         // AN OBJECT'S MEMBER IS JUDGED FIRST (2026-09-22), so `log.path = x` is told that a
         // field is reached from inside its spacesuit only, and not that a call's answer
         // cannot be given a value -- true, and about the wrong thing.
@@ -1877,6 +1907,7 @@ signed long long int check_program(const BytecodeRegistry &registry,
         DeclaredNames declared;
         Where where{registry, capsules, site.scope, functions};
         where.site = &site;
+        where.arguments = state.arguments;
         // A SPACESUIT'S CAPSULE SEES ITS OBJECT'S FIELDS BY THEIR BARE NAMES (2026-09-22):
         // the author's `path = path_input`, `satellite.return(spacesuit_name)`. They are
         // its first declared names, as its parameters are, and a field that holds an

@@ -11,6 +11,8 @@ this file is that prompt turned into milestones, and the milestones are Part 4.
 and what all of it is for: the last known name, type and value of everything. It is
 Part 4B, its milestones are Part 4C, and `arguments.access` from it is BUILT.
 
+**WRITING A ROW ARRIVED 2026-09-23** -- `any_name.some_var = some_value`. Part 4D.
+
 **THE ACCEPTANCE TEST IS THE COMPILER.** The author, in the brief: *"none of
 this will be tested or checked or anything -- we just write it, make sure it
 compiles, and if it compiles then we just accept it as the gospel!"* No check.sh
@@ -648,6 +650,74 @@ the hard way; written here so the next person does not.
 - **B19** — `satellite.variable.memory` as a `1 6 n` declaration row.
 - **B20** — `program_check.cpp` refuses one written without a unit, the way it refuses a percentage without its `%`.
 - **B21** — Every Phase C and D value re-answers as one.
+
+---
+
+# Part 4D — writing a row, 2026-09-23
+
+The author: *"the syntax is: satellite.variable.arguments any_name then
+any_name.some_var = some_value"*, after the variable itself (8b8b66c) was built.
+
+**003 refused both halves**, run on the exact spelling: a new row was S0532 (*"the
+arguments object has no `some_var` on it"*) and a held one S0724 (*"is not a place a
+program can write"*). So the new half is new in 004, and the held half keeps 003's rule.
+
+| written | what happens |
+|---|---|
+| `any_name.some_var = 5` -- a name of the program's own | added; a second write changes it (A21: overwritten, never added twice); `satellite.console.display(any_name)` shows it after satl's rows. Any value, and a dotted name is one row: `any_name.deep.row` |
+| `any_name.access = satellite.bool.false` -- a setting | written through, as B2's `satellite.library.main.arguments.access = ...` is, so it lasts in `$HOME/.satl/config.ini`; true or false only (34) |
+| `any_name.memory.total = 5` -- a row satl holds | refused, 35 `word_takes_no_assignment`, **before anything runs** |
+| `any_name.n += 1` | refused `not_built_yet`, as `+=` is for every name |
+
+**THE ROWS ARE AN INDEX, AND EVERYTHING AN INDEX DOES FINDS THEM.** `any_name["some_var"]`,
+`.contains("some_var")`, `.remove("some_var")` and `==` see a written row, because every row
+is filed as every index key is (`key_name_of`). They were filed under bare names until the
+review of 2026-09-23 found what that did: a removed row's name pointed past the end, the next
+write went into the destroyed slot, and a list the program still held came out holding
+another list's items. `any_name["x"] = v` is `any_name.x = v`, refused and written the same.
+
+**A ROW CAN HOLD A CONTAINER, AND CHANGE IT IN PLACE:** `any_name.l = satellite.container.list()`,
+then `any_name.l.append(5)`, `any_name.l[1]`, `any_name.l[1] = 7`, `any_name.grid[1].append(3)`.
+The row is its own copy: a list handed to it with `any_name.l = kept` leaves `kept` as it was.
+
+**A NAME INSIDE A ROW IS NOT A ROW.** `any_name.l.size = 99` names something of the row `l`;
+filed as a row of its own it answered every later read of `any_name.l.size` while `any_name.l`
+said otherwise, so it is refused -- by the checker when the row is satl's (`any_name.length.hex`),
+by the walker when it is the program's.
+
+**A ROW SATL HOLDS** is one a library answers or groups (`memory.used`, `memory`), one
+gathered at start-up (`username`, `infinity`, `argument_1`), or one satl fills on some
+run (`argument_7` on a run given two words -- written, `length` would disagree with it).
+Part 4C's rule for facts is the reason, kept: *read-only by having no write path*. A copy
+that said the machine had 5 bytes would be the program lying to itself about the machine,
+and one that changed `infinity` would look like a setting and change nothing.
+
+**THE ORDER IS run_setting_assignment's:** the row is judged before the value is worked out,
+so `any_name.memory.total = satellite.console.input("n")` never asks anybody anything. The
+checker asks the same question (`why_an_argument_is_not_written`, main_arguments.hpp)
+with the rows satl gathered, which is why the refusal comes before the first line runs.
+
+**A CAPSULE HANDED THE VARIABLE WRITES ITS OWN COPY.** The rows are an index, and an index is
+copy-on-write: a capsule's `a.inside = 2` is not seen by main's `argz` afterwards, which is
+what every index handed to a capsule does.
+
+**KNOWN, AND LEFT AS THEY ARE:**
+- **A row wins over a method read without brackets**, as satl's own `length` row already
+  did: after `any_name.keys = "mine"`, `any_name.keys` is "mine"; `any_name.size()` with its
+  brackets still counts the rows.
+- **A name the lexer knows as a method is kept by its first spelling.** `any_name.color` is
+  filed as `colour`, and `any_name.str` and `any_name.string` are one row, because the lexer
+  hands the walker the method's code and not the letters written. Reading and writing agree;
+  only the name displayed differs.
+- **`.remove` and `.clear` take satl's rows out of the variable's copy** as readily as the
+  program's. The machine is not changed, and a live row (`memory.used`) still answers.
+- **Older, reached through this:** a `satellite.main` with two parameters -- the checker
+  takes both for the arguments, and only the first is handed them.
+
+Code: satellite/bytecode/main_arguments.cpp, `run_argument_assignment` in program_walk.cpp
+(and `args["x"] = v` in run_indexed_assignment), `after_an_argument` in expression.cpp, one
+arm in program_check.cpp. check.sh rows after "a row that is not an argument is refused by
+name"; tests/arguments_written.satl and tests/arguments_not_written.satl.
 
 ---
 

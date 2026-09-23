@@ -4334,6 +4334,46 @@ expect "... and the older list<string> spelling is the same arguments" "one" \
 expect "a row that is not an argument is refused by name" "25|1" \
        "$code|$(tr '\n' ' ' < build/arguments_bad.out | grep -c 'args.usernme is not one of the arguments')"
 
+# AND WRITTEN (the author, 2026-09-23: "satellite.variable.arguments any_name then
+# any_name.some_var = some_value"): a name of the program's own is added and then
+# changed, found by [] and .contains, holds a container it changes in place, and is
+# shown after satl's rows (tests/arguments_written.satl says what each line is).
+"$interpreter" tests/arguments_written.satl one > build/arguments_written.out 2>/dev/null; code=$?
+expect "a name of the program's own is written into the arguments, and shown after satl's rows" \
+       "0|5|6|text|one|$(id -un)|6|true|more|{\"first\", \"more\"}|{\"kept\"}|new|1" \
+       "$code|$(head -11 build/arguments_written.out | tr '\n' '|')$(tail -1 build/arguments_written.out | grep -c ', "some_var": 6, "deep.row": "text", "saved": "new"}$')"
+"$interpreter" tests/arguments_not_written.satl > build/arguments_not_written.out 2>&1; code=$?
+expect "... and a row satl holds is refused before anything runs" "35|0|1" \
+       "$code|$(grep -cx before build/arguments_not_written.out)|$(tr '\n' ' ' < build/arguments_not_written.out | grep -c 'args.memory.total is a row satl holds')"
+# EVERY WAY A WRITE IS REFUSED (the review, 2026-09-23, found three of them untested): a
+# row config.ini gave, a command-line name this run was not given, a name inside satl's
+# row, a name inside the program's own row (only the walker knows those, so "before"
+# prints), the same row written with brackets, and +=. <line> <wanted> <words it says>.
+arguments_refuses() {
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments args)\n{\n    satellite.console.display("before")\n    args.l = satellite.container.list()\n%s\n    satellite.return(satellite)\n}\n' "$1" > build/arguments_refused.satl
+    "$interpreter" build/arguments_refused.satl one two > build/arguments_refused.out 2>&1; code=$?
+    expect "... refused: ${1#    }" "$2" \
+           "$code|$(grep -cx before build/arguments_refused.out)|$(tr '\n' ' ' < build/arguments_refused.out | grep -cF "$3")"
+}
+arguments_refuses '    args.infinity = 64' "35|0|1" 'args.infinity is a row satl holds'
+arguments_refuses '    args.argument_7 = "x"' "35|0|1" 'args.argument_7 is a row satl holds'
+arguments_refuses '    args.length.hex = 5' "35|0|1" 'args.length.hex is inside args.length, a name satl holds'
+arguments_refuses '    args.l.size = 99' "35|1|1" "args.l.size is inside args.l, a row of the program's own"
+arguments_refuses '    args["username"] = "x"' "35|1|1" 'args.username is a row satl holds'
+arguments_refuses '    args.n += 1' "14|0|1" 'args.n += ... is not built yet'
+# AND access, A SETTING, IS WRITTEN THROUGH -- to config.ini and to the variable's own
+# copy -- in a home of its own, so the suite's config.ini is not the one changed under
+# the rows after this; and it takes true or false only, by either spelling.
+access_home=$PWD/build/arguments-access-home
+rm -rf -- "$access_home"
+mkdir -p -- "$access_home/.satl"
+HOME=$access_home "$interpreter" --rebuild > build/arguments-access-rebuild.out 2>&1
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments a)\n{\n    satellite.console.display(a.access)\n    a.access = satellite.bool.false\n    satellite.console.display(a.access)\n    satellite.console.display(a)\n    a["access"] = 7\n}\n\nsatellite.return(satellite)\n' > build/arguments_access.satl
+HOME=$access_home "$interpreter" build/arguments_access.satl > build/arguments_access.out 2>&1; code=$?
+expect "... and access, a setting, is written through to config.ini and the copy, and takes true or false only" \
+       "34|true|false|1|1|1" \
+       "$code|$(grep -xE 'true|false' build/arguments_access.out | tr '\n' '|')$(grep -cx 'access = false' "$access_home/.satl/config.ini")|$(grep -c '"access": false' build/arguments_access.out)|$(tr '\n' ' ' < build/arguments_access.out | grep -c 'a.access is true or false, and was given a number')"
+
 # THE FOUR TYPES OF 2026-09-22 KEEP THEIR ROWS BESIDE THEIR CODE (each file says why).
 for rows in satellite/satellite_variable_float/check_float.sh satellite/satellite_variable_hex/check_hex.sh \
             satellite/satellite_variable_color/check_color.sh satellite/satellite_variable_fraction/check_fraction.sh; do
