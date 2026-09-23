@@ -12,16 +12,14 @@
 #include <utility>
 
 namespace satellite004 {
-namespace {
 
 using token::Code;
 
-// EVERY FILE `row` INCLUDES, IN THE ORDER THEY WERE LOADED, with the name it reaches
-// each by. A sentence that names one of them must name the same one every run, and
-// an unordered_map would let the hash choose.
-std::vector<std::pair<std::string, std::size_t>> files_of(const CapsuleTable &table, std::size_t row)
+std::vector<std::pair<std::string, std::size_t>> files_included_by(const CapsuleTable &table, std::size_t row)
 {
     std::vector<std::pair<std::string, std::size_t>> files;
+    if (row >= table.included.size())
+        return files;
     for (const auto &[stem, scopes] : table.included[row])
         for (const std::size_t file : scopes)
             files.emplace_back(stem, file);
@@ -29,6 +27,8 @@ std::vector<std::pair<std::string, std::size_t>> files_of(const CapsuleTable &ta
               [&table](const auto &a, const auto &b) { return table.scopes[a.second].row < table.scopes[b.second].row; });
     return files;
 }
+
+namespace {
 
 // HOW A SENTENCE NAMES WHERE A WALK HAS GOT TO: a file, two files of one name, or a space.
 std::string describe(const CapsuleTable &table, const std::vector<std::size_t> &at, const std::string &walked)
@@ -96,7 +96,7 @@ Reached CapsuleTable::reach(std::size_t scope, const std::vector<std::string> &n
             return answer;
         // NOT DRAGGED INTO THE GLOBAL NAMESPACE (the author, 2026-09-13) -- but the
         // person is told the spelling that does reach it, which is all that is missing.
-        for (const auto &[stem, file] : files_of(*this, row))
+        for (const auto &[stem, file] : files_included_by(*this, row))
             if (scopes[file].capsules.count(names.front()) != 0) {
                 answer.why = names.front() + " is a capsule of " + scopes[file].file + ", and a file's capsules are "
                              "reached through its name -- write " + stem + "." + names.front() + "(...)";
@@ -128,7 +128,7 @@ Reached CapsuleTable::reach(std::size_t scope, const std::vector<std::string> &n
     // here: give `at` the files that the included files include, instead of saying
     // below that they are not reached. Nothing else in satl assumes the narrow rule.
     if (at.empty()) {
-        for (const auto &[stem, file] : files_of(*this, row)) {
+        for (const auto &[stem, file] : files_included_by(*this, row)) {
             if (included[scopes[file].row].count(names.front()) == 0)
                 continue;
             answer.through_a_scope = true;

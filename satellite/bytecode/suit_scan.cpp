@@ -396,6 +396,10 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
     else if (code == word::code_of(1, 1))
         refuse(table, r, i, satl_line_not_understood,
                "satellite.include goes at the top of the file, not inside the spacesuit " + suit);
+    else if (starts_a_library_line(code))
+        refuse(table, r, i, satl_line_not_understood,
+               "a satellite.library value is written at the top of its file, not inside the spacesuit " + suit +
+                   " -- a field is a satellite.variable line, and each object has its own");
     else if (code == token::left_brace_token)
         refuse(table, r, i, satl_line_not_understood, holds + ", and this { opens none of them");
     else

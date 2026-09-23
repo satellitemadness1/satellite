@@ -1,8 +1,8 @@
 #pragma once
-// satellite/bytecode/capsule_scan.hpp -- THE SCAN'S OWN PIECES, shared by the two files
-// that make it: capsule_scopes.cpp (files, spaces, capsules, includes) and
-// suit_scan.cpp (a spacesuit's body). Nothing outside those two includes this; what
-// the rest of satl reads is capsule_scopes.hpp.
+// satellite/bytecode/capsule_scan.hpp -- THE SCAN'S OWN PIECES, shared by the files that
+// make it: capsule_scopes.cpp (files, spaces, capsules, includes), suit_scan.cpp (a
+// spacesuit's body) and library_values.cpp (a satellite.library line). Nothing else
+// includes this; what the rest of satl reads is capsule_scopes.hpp.
 
 #include "capsule_scopes.hpp"
 
@@ -62,6 +62,15 @@ bool open_suit(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
 // suit_scan.cpp: ONE LINE INSIDE A SPACESUIT, `i` on its first code and left past it.
 void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std::size_t r, std::size_t file_scope,
                std::vector<Open> &open, std::size_t &i);
+
+// library_values.cpp: WHETHER `code` BEGINS A satellite.library LINE at a file's top --
+// satellite.library itself, or a word the language owns under it, refused by name.
+bool starts_a_library_line(token::Code code);
+
+// library_values.cpp: ONE satellite.library LINE AT A FILE'S TOP, `i` on its first code
+// and left past the line -- its value recorded in the file's scope, or the line refused.
+void library_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std::size_t r, std::size_t file_scope,
+                  std::size_t &i);
 
 // suit_reach.cpp: every spacesuit NAME written as a type in a header or a field, made
 // into the scope it reaches -- once every file is scanned and joined to its includes.

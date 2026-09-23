@@ -1,0 +1,88 @@
+satellite.include(satellite)
+satellite.include(library_settings)
+
+// tests/library.satl -- satellite.library, AS THE AUTHOR RULED IT (2026-09-23): "we need to
+// design it so that globals don't work, but satellite.library does work". A value is written
+// once at the top of its file, one literal, and every capsule of the file reads it; a file
+// that includes this one reads it through the file's name. Nothing changes one -- the
+// refusals are check.sh's, one program each. check.sh runs this and compares every line.
+
+satellite.library.span = 25
+satellite.library.below = -3
+satellite.library.ratio = 1.25
+satellite.library.name = "blue"
+satellite.library.bits = b1010
+satellite.library.shade = x1E2A3A
+satellite.library.half = 50%
+satellite.library.third = 1/3
+satellite.library.on = satellite.bool.true    // a comment may follow the value
+satellite.library.size = 3
+
+satellite.spacesuit board()
+{
+    satellite.protected
+    {
+        satellite.variable.number width = satellite.library.span
+    }
+    satellite.public
+    {
+        satellite.capsule call_width() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(width + satellite.library.size)
+        }
+    }
+}
+
+satellite.namespace tools
+{
+    satellite.capsule twice() satellite.returns(satellite.variable.number)
+    {
+        satellite.return(satellite.library.span * 2)
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    // EVERY LITERAL A VALUE MAY BE, read back as it was written.
+    satellite.console.display(satellite.library.span)
+    satellite.console.display(satellite.library.below)
+    satellite.console.display(satellite.library.ratio)
+    satellite.console.display(satellite.library.name)
+    satellite.console.display(satellite.library.bits)
+    satellite.console.display(satellite.library.shade)
+    satellite.console.display(satellite.library.half)
+    satellite.console.display(satellite.library.third)
+    satellite.console.display(satellite.library.on)
+    satellite.console.display(satellite.library.size)
+
+    // ANOTHER FILE'S, THROUGH ITS NAME, and a method on a value.
+    satellite.console.display(satellite.library.library_settings.majors + satellite.library.span)
+    satellite.console.display(satellite.library.name.reverse())
+
+    // COPIED INTO A VARIABLE, WHICH CHANGES; THE VALUE DOES NOT.
+    satellite.variable.number n = satellite.library.span
+    n = n + 1
+    satellite.console.display(n)
+    satellite.console.display(satellite.library.span)
+    satellite.variable.binary b = satellite.library.bits
+    satellite.variable.color c = satellite.library.shade
+    satellite.console.display(b)
+    satellite.console.display(c)
+
+    // IN A CONDITION, A LOOP, A FIELD, A SPACE, AND THE INCLUDED FILE'S OWN CAPSULE.
+    satellite.statement.if (satellite.library.span == 25)
+    {
+        satellite.console.display("the if reads it")
+    }
+    satellite.variable.number count = 0
+    satellite.statement.for (satellite.variable.number i = 0; i < satellite.library.size; i++)
+    {
+        count = count + 1
+    }
+    satellite.console.display(count)
+    board w
+    satellite.console.display(w.call_width())
+    satellite.console.display(tools.twice())
+    library_settings.show()
+    satellite.return(satellite)
+}

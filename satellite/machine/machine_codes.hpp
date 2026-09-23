@@ -109,6 +109,12 @@ enum MachineCode : signed long long int {
     member_is_protected = 52,           // obj.field, or obj.m() for a protected m, from outside the spacesuit
     capsule_gave_no_answer = 53,        // a capsule's answer was used, and it handed none back
 
+    // 54 WAS ADDED 2026-09-23 with satellite.library (bytecode/library_values.hpp): a value
+    // written at the top of a file that a line tries to change, or that is given something
+    // to work out instead of a literal. ONE code, because both break the one rule -- a
+    // satellite.library value is written down and nothing changes it, or it is a global.
+    library_value_is_fixed = 54,        // satellite.library.x changed in a capsule, or given more than a literal
+
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
     // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
@@ -161,6 +167,7 @@ inline const char *machine_code_name(signed long long int code)
     case window_is_closed: return "window_is_closed";
     case member_is_protected: return "member_is_protected";
     case capsule_gave_no_answer: return "capsule_gave_no_answer";
+    case library_value_is_fixed: return "library_value_is_fixed";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

@@ -37,7 +37,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/program_walk.cpp $(BYTECODE)/program_check.cpp $(BYTECODE)/type_shape.cpp \
                       $(BYTECODE)/capsule_scopes.cpp $(BYTECODE)/capsule_reach.cpp \
                       $(BYTECODE)/suit_scan.cpp $(BYTECODE)/suit_reach.cpp $(BYTECODE)/suit_run.cpp \
-                      $(BYTECODE)/capsule_calls.cpp \
+                      $(BYTECODE)/capsule_calls.cpp $(BYTECODE)/library_values.cpp \
                       $(BYTECODE)/expression.cpp $(BYTECODE)/sate_file.cpp \
                       $(BYTECODE)/file_calls.cpp $(BYTECODE)/container_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
                       $(BYTECODE)/infinity_calls.cpp $(INFINITY)/satellite_infinity.cpp \
@@ -75,7 +75,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
           $(BYTECODE)/include_shape.hpp $(BYTECODE)/program_walk.hpp \
           $(BYTECODE)/capsule_scopes.hpp $(BYTECODE)/capsule_key.hpp \
           $(BYTECODE)/capsule_scan.hpp $(BYTECODE)/suit_layout.hpp $(BYTECODE)/suit_run.hpp \
-          $(BYTECODE)/capsule_calls.hpp \
+          $(BYTECODE)/capsule_calls.hpp $(BYTECODE)/library_values.hpp \
           $(BYTECODE)/expression.hpp $(BYTECODE)/value.hpp \
           $(BYTECODE)/file_calls.hpp $(BYTECODE)/container_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
           $(BYTECODE)/infinity_calls.hpp $(INFINITY)/satellite_infinity.hpp \

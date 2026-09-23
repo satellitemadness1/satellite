@@ -6,6 +6,7 @@
 #include "capsule_scan.hpp"
 
 #include "include_shape.hpp"
+#include "library_values.hpp"
 #include "program_walk.hpp"
 #include "word_codes.hpp"
 
@@ -225,10 +226,20 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
     table.in_row.emplace_back(1, file_scope);
 
     std::vector<Open> open{{file_scope, Opened::file}};
+    bool line_begins = true;
     for (std::size_t i = 0; i < row.size();) {
         const Code code = code_at(row, i);
         const std::size_t here = open.back().scope;
         const bool in_a_space = open.back().what == Opened::space;
+        // WHETHER THIS CODE BEGINS A LINE. A satellite.library value is a line of its own,
+        // so a satellite.library met in the middle of some other line is not one.
+        // A CHARACTER WITH NO CODE -- a no-break space pasted as indentation, a byte-order
+        // mark -- changes nothing: the line still begins at the next code, as a body and a
+        // spacesuit step over one (the review, 2026-09-23: a satellite.library line behind
+        // one was neither recorded nor refused).
+        const bool begins_a_line = line_begins;
+        if (code != token::error_token)
+            line_begins = code == token::line_end_token || code == token::comment_token;
 
         // A SPACESUIT'S BODY IS ITS OWN SET OF LINES (suit_scan.cpp): its sections, its
         // fields, its constructor, its capsules and the spacesuits inside it.
@@ -339,6 +350,14 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             continue;
         }
 
+        // A satellite.library VALUE (2026-09-23), written at a file's top and nowhere else:
+        // `satellite.library.span = 25` (library_values.hpp).
+        if (!in_a_space && begins_a_line && starts_a_library_line(code)) {
+            library_line(table, row, r, file_scope, i);
+            line_begins = true;      // library_line stepped past the line's end
+            continue;
+        }
+
         // A BLOCK NOBODY DECLARED. Inside a space it is refused: stepping over it
         // hid whatever it held, a variable or a capsule, and nothing said so (the
         // review, 2026-09-22). At a file's top it is TRANSPARENT, as every block there
@@ -369,6 +388,10 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             refuse(table, r, i, satl_line_not_understood,
                    "satellite.include goes at the top of the file, not inside " + where_is(in) +
                        " -- a space is part of its file, and the file's includes are its includes");
+        else if (starts_a_library_line(code))
+            refuse(table, r, i, satl_line_not_understood,
+                   "a satellite.library value is written at the top of its file, not inside " + where_is(in) +
+                       " -- a file has one satellite.library, and every capsule in it reads the same values");
         else if (word::is_word_code(code) && code_at(row, i + 1) == token::name_token)
             refuse(table, r, i, satl_line_not_understood,
                    where_is(in) + " holds capsules, spacesuits and other spaces, not variables -- a variable belongs "
@@ -421,7 +444,9 @@ void join_includes(CapsuleTable &table, const BytecodeRegistry &registry, const 
             const CapsuleScope &mine = table.scopes[table.file_scope[r]];
             const char *taken = mine.capsules.count(shape.name) != 0 ? "a capsule"
                                 : mine.spaces.count(shape.name) != 0 ? "a satellite.namespace"
-                                : mine.suits.count(shape.name) != 0  ? "a spacesuit" : nullptr;
+                                : mine.suits.count(shape.name) != 0  ? "a spacesuit"
+                                : mine.library.count(library_name_of(shape.name)) != 0 ? "a satellite.library value"
+                                                                                        : nullptr;
             if (taken != nullptr)
                 refuse(table, r, at, name_declared_twice,
                        "the file " + shape.name + ".satl is reached as " + shape.name + ", and this file already has " +

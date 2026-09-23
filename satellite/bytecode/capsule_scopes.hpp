@@ -27,6 +27,12 @@
 //     don't need to fit variables into satellite.space, variables belong to a capsule
 //     or a spacesuit ... we can add variables later if we want".
 //
+//   - A FILE HAS ONE satellite.library, ITS VALUES WRITTEN AT ITS TOP (2026-09-23):
+//     `satellite.library.span = 25`, read as satellite.library.span by the file's own
+//     capsules and as satellite.library.settings.span by a file that includes it. They are
+//     literals nothing changes -- (the author) "globals don't work, but satellite.library
+//     does work". library_values.hpp.
+//
 //   - A BARE NAME IS LOOKED FOR IN ITS OWN SCOPE, THEN IN EACH SCOPE AROUND IT, and
 //     stops at the file. So a capsule inside `tools` calls its neighbour as `y()` and
 //     the file's own capsules as `helper()`, and the file calls it `tools.y()`.
@@ -54,11 +60,13 @@
 #include "capsule_key.hpp"
 #include "suit_layout.hpp"
 #include "type_shape.hpp"
+#include "value.hpp"
 
 #include <bitset>
 #include <cstddef>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace satellite004 {
@@ -116,6 +124,21 @@ struct CapsuleSite {
     mutable bool hands_back_known = false;
 };
 
+// ONE satellite.library VALUE (2026-09-23): `satellite.library.span = 25`, written at the
+// top of its file. (the author) "we need to design it so that globals don't work, but
+// satellite.library does work" -- so a value is WRITTEN DOWN, one literal, read by every
+// capsule of its file as satellite.library.span and by a file that includes it as
+// satellite.library.settings.span, and nothing runs to make it and nothing changes it: a
+// value every capsule could change IS a global. library_values.hpp has the rest.
+struct LibraryValue {
+    std::size_t row = 0;
+    std::size_t declared_at = 0;    // its satellite.library code, for a refusal's caret
+    std::size_t value_at = 0;       // the first code after its `=`
+    // READ ONCE, BY THE CHECK, BEFORE ANYTHING RUNS (read_library_values), and only ever
+    // copied after that -- so every body that reads it copies a value nothing writes.
+    mutable Value value;
+};
+
 // A FILE, A satellite.namespace, OR A satellite.spacesuit. A file's `parent` is kNoScope.
 //
 // A SPACESUIT IS THE THIRD KIND (2026-09-22), and it is a scope for the same reason a
@@ -139,6 +162,10 @@ struct CapsuleScope {
     std::unordered_map<std::string, std::size_t> capsules;   // name -> CapsuleTable::sites
     std::unordered_map<std::string, std::size_t> spaces;     // name -> CapsuleTable::scopes
     std::unordered_map<std::string, std::size_t> suits;      // name -> CapsuleTable::scopes
+
+    // A FILE'S satellite.library VALUES, by name (2026-09-23). Empty for a space and a
+    // spacesuit: a file has one satellite.library, and its values stand at its top.
+    std::unordered_map<std::string, LibraryValue> library;
 
     // A SPACESUIT'S OWN. `is_public` is whether a spacesuit declared INSIDE another may
     // be named from outside that one (it was written in its satellite.public); every
@@ -247,6 +274,11 @@ bool resolve_shape(const CapsuleTable &table, std::size_t scope, TypeShape &shap
 // Every file's scopes and capsules, and every include resolved to the row it loaded.
 // `filenames` is row for row with `registry` (bytecode_registry.hpp).
 CapsuleTable capsules_in(const BytecodeRegistry &registry, const BytecodeFilenames &filenames);
+
+// EVERY FILE `row` INCLUDES, IN THE ORDER THEY WERE LOADED, with the name it reaches
+// each by. A sentence that names one of them must name the same one every run, and
+// an unordered_map would let the hash choose.
+std::vector<std::pair<std::string, std::size_t>> files_included_by(const CapsuleTable &table, std::size_t row);
 
 // A DOTTED NAME, READ FROM THE TOKENS: `at` on a name, then any run of `.` and a
 // name. A segment after a `.` may have lexed as a METHOD CODE -- `other.find()` when a

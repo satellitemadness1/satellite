@@ -21,6 +21,7 @@
 #include "fraction_values.hpp"
 #include "hexadecimal_values.hpp"
 #include "infinity_calls.hpp"
+#include "library_values.hpp"
 #include "window_calls.hpp"
 #include "../machine/stop_flag.hpp"
 
@@ -1049,6 +1050,16 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         if (code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1)))
             return call_method(row, at, answer, spelled.substr(0, spelled.find('(')), context);
         return answer;
+    }
+
+    // A satellite.library VALUE (2026-09-23) -- `satellite.library.span`, or
+    // `satellite.library.settings.span` from a file this one includes: written at the top of
+    // its file, read here, changed nowhere (library_values.hpp). A method may follow it.
+    if (is_library_word(code) && code_at(row, at + 1) == token::method_token) {
+        Value held = library_value_at(row, at, context);
+        if (context.code != success)
+            return Value();
+        return maybe_a_method(row, at, std::move(held), "that satellite.library value", context);
     }
 
     // A SETTING READ BY ITS BARE NAME -- `arguments.access`, no parentheses.

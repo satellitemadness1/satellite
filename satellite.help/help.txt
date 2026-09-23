@@ -59,3 +59,5 @@ TOPICS:
 26) satellite.history (off by default, record of everything)
 
 27) satellite.access (on by default, type/value for last instance)
+
+28) satellite.library (values written at the top of a file)

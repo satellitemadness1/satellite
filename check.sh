@@ -4309,5 +4309,103 @@ expect "a call to itself that is not last runs what follows it" \
 expect "a last call to itself still measures its arguments" "27|1|0" \
        "$code|$(grep -c "down's n was declared satellite.variable.number, and it holds a string" build/tail_call.out)|$(grep -c 'NOT REACHED' build/tail_call.out)"
 
+# satellite.library (the author, 2026-09-23: "we need to design it so that globals don't
+# work, but satellite.library does work"): a value written once at the top of its file, one
+# literal, read by every capsule of the file and through the file's name by a file that
+# includes it -- and changed by nothing, or it would be a global (library_values.hpp).
+"$interpreter" tests/library.satl > build/library.out 2>&1; code=$?
+expect "satellite.library: every literal, another file's through its name, and read everywhere a value goes" \
+       "0|25|-3|1.25|blue|b1010|x1E2A3A|50%|1/3|true|3|75|eulb|26|25|b1010|x1E2A3A|the if reads it|3|28|50|its own capsule reads settings label" \
+       "$code|$(grep -v -e '^THE SATELLITE' -e '^VERSION' -e '^CLANG' -e '^G++' -e '^---' -e '^$' build/library.out | tr '\n' '|' | sed 's/|$//')"
+rm -rf build/library && mkdir -p build/library/deep
+printf 'satellite.include(satellite)\nsatellite.include("deep/inner")\n\nsatellite.library.majors = 50\n' > build/library/shelf.satl
+printf 'satellite.include(satellite)\nsatellite.library.hidden = 7\n' > build/library/deep/inner.satl
+# ONE PROGRAM A REFUSAL: $1 the file, $2 the exit, $3 words the report must hold, $4 the
+# row's name, $5 lines at the top after `satellite.library.span = 25`, $6 main's body. The
+# check refuses every one, so "before" never prints.
+library_refused() {
+    printf 'satellite.include(satellite)\nsatellite.include(shelf)\n\nsatellite.library.span = 25\n%s\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' \
+        "$5" "$6" > "build/library/$1.satl"
+    "$interpreter" "build/library/$1.satl" > "build/library/$1.out" 2>&1; code=$?
+    expect "$4" "$2|1|0" \
+           "$code|$(tr '\n' ' ' < "build/library/$1.out" | sed 's/  */ /g' | grep -c -- "$3")|$(grep -cx before "build/library/$1.out")"
+}
+library_refused written 54 "S250: LIBRARY_VALUE_IS_FIXED .*satellite.library.span is written at the top of its file and never changes" \
+    "a capsule writing a satellite.library value is refused -- that would be a global" '' '    satellite.library.span = 30'
+library_refused added_to 54 "satellite.library.span is written at the top of its file and never changes" \
+    "... and so is += on one" '' '    satellite.library.span += 1'
+library_refused appended 54 "satellite.library.span is written at the top of its file and never changes" \
+    "... and a method that changes it" '' '    satellite.library.span.append(1)'
+library_refused made_in_a_capsule 54 "satellite.library.fresh is written at the top of its file and never changes" \
+    "a capsule cannot make one either" '' '    satellite.library.fresh = 1'
+library_refused only_read 13 "satellite.library.span is a value, and a line that only reads one does nothing" \
+    "a line that only reads one is refused -- it does nothing" '' '    satellite.library.span'
+library_refused never_written 25 "S201: NAME_NOT_DECLARED .*this file writes no satellite.library.nope" \
+    "a value nothing wrote is refused by name" '' '    satellite.console.display(satellite.library.nope)'
+library_refused another_files_bare 25 "satellite.library.majors is written in .*shelf.satl, and another file's values are reached through its name -- write satellite.library.shelf.majors" \
+    "another file's value written bare is told the spelling that reaches it" '' '    satellite.console.display(satellite.library.majors)'
+library_refused the_file_alone 25 "shelf is a file this file includes, and satellite.library.shelf names the file and no value in it" \
+    "a file's name alone is not a value" '' '    satellite.console.display(satellite.library.shelf)'
+library_refused not_in_the_file 25 "shelf.satl writes no satellite.library.nope" \
+    "a value the included file does not write is refused" '' '    satellite.console.display(satellite.library.shelf.nope)'
+library_refused not_included_here 25 "inner is a file that .*shelf.satl includes, and a file reaches only the files it includes itself" \
+    "a file reaches only the values of files it includes itself, as it reaches capsules" '' '    satellite.console.display(satellite.library.inner.hidden)'
+library_refused worked_out 54 "satellite.library.x is given something to work out, and a satellite.library value is written down" \
+    "a value is one literal -- nothing runs outside a capsule to work one out" 'satellite.library.x = satellite.library.span + 1' ''
+library_refused no_value 13 "satellite.library.x needs its value after an =" "a value with no = is refused" 'satellite.library.x' ''
+library_refused two_names 13 "satellite.library.a.b has more than one name, and a satellite.library value has one" \
+    "a value has one name -- the second name is a file's" 'satellite.library.a.b = 5' ''
+library_refused written_twice 26 "S202: NAME_DECLARED_TWICE .*satellite.library.span is written twice in this file" \
+    "a value written twice is refused" 'satellite.library.span = 26' ''
+library_refused the_languages_own 13 "satellite.library.main is the language's own word" \
+    "a name the language already has under satellite.library is refused" 'satellite.library.main = 5' ''
+library_refused hash_colour 13 "a colour is written x000000 here, the hex it holds" \
+    "003's #000000 is said by name -- 004 reads a colour's value as x000000" 'satellite.library.ground = #000000' ''
+library_refused named_like_a_file 26 "this file already has a satellite.library value named shelf" \
+    "a value named like a file this file includes is refused -- satellite.library.shelf.x would mean either" \
+    'satellite.library.shelf = 5' ''
+library_refused in_a_space 13 "a satellite.library value is written at the top of its file, not inside the satellite.namespace tools" \
+    "a value inside a satellite.namespace is refused" 'satellite.namespace tools
+{
+    satellite.library.x = 1
+}' ''
+library_refused in_a_spacesuit 13 "a satellite.library value is written at the top of its file, not inside the spacesuit holder" \
+    "a value inside a spacesuit is refused" 'satellite.spacesuit holder()
+{
+    satellite.library.x = 1
+}' ''
+# WHAT FOLLOWS A VALUE'S NAMES IS JUDGED BEFORE ANYTHING RUNS, as it is after a variable's
+# (the review, 2026-09-23: each of these printed first and was refused running).
+library_refused called 13 "satellite.library.span is a value, and a value is not called" \
+    "brackets after a value are refused before anything runs" '' '    satellite.console.display(satellite.library.span(1))'
+library_refused not_a_method 13 "satellite.library.span is satellite.variable.number, and y is not one of its methods" \
+    "a name after a value that is no method is refused before anything runs" '' '    satellite.variable.number y = 1
+    satellite.console.display(satellite.library.span.y)'
+library_refused method_of_its_type 14 "satellite.library.span.size is not built for" \
+    "a method is judged by the type the value's literal is, before anything runs" '' '    satellite.console.display(satellite.library.span.size)'
+# A CHARACTER WITH NO CODE BEFORE A VALUE'S LINE -- a no-break space as indentation, a
+# byte-order mark -- still leaves it a line of its own (the review, 2026-09-23: it was
+# neither recorded nor refused).
+printf '\357\273\277satellite.include(satellite)\n\302\240satellite.library.span = 25\n\302\240satellite.library.main = 5\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.library.span)\n    satellite.return(satellite)\n}\n' > build/library/no_code.satl
+"$interpreter" build/library/no_code.satl > build/library/no_code.out 2>&1; code=$?
+expect "a value behind a no-break space is recorded, and a refused line behind one is refused" "13|1" \
+       "$code|$(tr '\n' ' ' < build/library/no_code.out | sed 's/  */ /g' | grep -c 'satellite.library.main is the language.s own word')"
+sed -i '/satellite.library.main = 5/d' build/library/no_code.satl
+"$interpreter" build/library/no_code.satl > build/library/no_code.out 2>&1; code=$?
+expect "... and read back" "0|25" "$code|$(grep -x 25 build/library/no_code.out)"
+# A FILE NAMED LIKE A METHOD -- color.satl -- lexes as the method's code after the dot, and is
+# still reached by the stem it was included by (the review, 2026-09-23).
+printf 'satellite.include(satellite)\nsatellite.library.x = 5\n' > build/library/color.satl
+printf 'satellite.include(satellite)\nsatellite.include(color)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.library.color.x)\n    satellite.return(satellite)\n}\n' > build/library/method_stem.satl
+"$interpreter" build/library/method_stem.satl > build/library/method_stem.out 2>&1; code=$?
+expect "a file named like a method has its values read through its stem" "0|5" "$code|$(grep -x 5 build/library/method_stem.out)"
+sed -i 's/^satellite.include(color)$/satellite.include(color)\nsatellite.library.color = 9/' build/library/method_stem.satl
+"$interpreter" build/library/method_stem.satl > build/library/method_stem.out 2>&1; code=$?
+expect "... and a value named like it is refused as a name declared twice" "26|1" \
+       "$code|$(tr '\n' ' ' < build/library/method_stem.out | sed 's/  */ /g' | grep -c 'this file already has a satellite.library value named color')"
+printf 'satellite.console.display(satellite.library.span)\nsatellite.console.display("after it")\n' | "$interpreter" --repl > build/library/prompt.out 2>&1
+expect "a typed line has no file, so it has no satellite.library values -- and the next line still runs" "1|1" \
+       "$(grep -c 'a line typed at the prompt has no file behind it' build/library/prompt.out)|$(grep -cx 'after it' build/library/prompt.out)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

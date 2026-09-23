@@ -149,6 +149,12 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S240", "CAPSULE_GAVE_NO_ANSWER",
                 "this capsule's answer was used, and the way it went reached no satellite.return(...) "
                 "-- so there was nothing to hand back."};
+    // AND 2026-09-23's, with satellite.library: a value nothing may change or work out.
+    case library_value_is_fixed:
+        return {"S250", "LIBRARY_VALUE_IS_FIXED",
+                "a satellite.library value is written down at the top of its file -- one number, text or other "
+                "literal -- and nothing works it out or changes it afterwards. A value every capsule could "
+                "change would be a global, and satellite has none."};
     case types_do_not_meet:
         return {"S301", "TYPES_DO_NOT_MEET",
                 "this operator has no scenario for the two kinds it was given. Nothing was guessed "

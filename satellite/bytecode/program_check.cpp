@@ -38,6 +38,7 @@
 #include "fraction_values.hpp"
 #include "hexadecimal_values.hpp"
 #include "infinity_calls.hpp"
+#include "library_values.hpp"
 #include "window_calls.hpp"
 #include "word_codes.hpp"
 #include "../machine/s_codes.hpp"
@@ -792,6 +793,18 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             return satl_line_not_understood;
         }
 
+        // A satellite.library VALUE READ IN THE LINE (library_values.hpp): its names judged
+        // here and stepped over, so a method after them is judged as the loop goes on.
+        if (is_library_word(code) && code_at(row, at + 1) == token::method_token) {
+            std::string written;
+            Code type = 0;
+            const signed long long int read = library_read_is_right(capsules, where.registry, row, at, written, type, why);
+            if (read != success) return read;
+            const signed long long int method = method_on_a_name(row, at, written, type, why);
+            if (method != success) return method;
+            continue;
+        }
+
         if (code == token::name_token) {
             std::size_t k = at;
             const std::string name = text_at(row, k);
@@ -1475,6 +1488,11 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         return held;
     }
 
+    // A LINE THAT STARTS WITH A satellite.library VALUE (library_values.hpp): writing one is
+    // S250, and a line that only reads one does nothing -- both refused before anything runs.
+    if (is_library_word(code) && code_at(row, at + 1) == token::method_token)
+        return library_statement(capsules, where.registry, row, at, why);
+
     if (word::is_word_code(code)) {
         // A WORD FOLLOWED BY `=` IS A SETTING BEING WRITTEN -- the third shape a
         // statement can start with, checked here so the walker's arm for it is
@@ -1685,6 +1703,14 @@ signed long long int check_program(const BytecodeRegistry &registry,
                 first = &each;
         return raise_at(first->code, first->why, std::string(), state, registry[first->row], first->at,
                         "satl(check)");
+    }
+
+    // EVERY satellite.library VALUE, READ ONCE (library_values.hpp) -- before any capsule
+    // is judged, and so before anything runs. Values, not globals: nothing changes one.
+    {
+        const signed long long int read = read_library_values(registry, capsules, functions, state);
+        if (stops_the_program(read))
+            return read;
     }
 
     for (const CapsuleSite &site : capsules.sites) {
