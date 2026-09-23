@@ -23,7 +23,11 @@ Revision 08 is the one where objects arrive and 003's list comes across:
 `satellite.library.x = <value>` written once at a file's top and read by every
 capsule, changed by nothing; and `satellite.container.list()` with `.sum`, `.max`,
 `.min`, `.join(separator)` and `.reserve(n)` beside the lists of lists 004 already
-had (`grid[x][y]`).
+had (`grid[x][y]`); and colour on the console -- 003's `display(text,
+foreground=xFF8800, bold=satellite.bool.true, end="")`, `satellite.console.input`,
+`.width`, `.height`, `.clear()` and `.home()`, and what 003 refused:
+`"OK".foreground(x00FF00)`, `satellite.console.foreground(c)` for every line after,
+and `satellite.terminal.foreground(c)` for the terminal's own colours.
 
 ```satellite
 satellite.include(satellite)

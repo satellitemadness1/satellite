@@ -2299,9 +2299,11 @@ makes for the child instead of the one satl holds an end of.
 
 > *"satellite.terminal to be a bash prompt"*
 
-`satellite.terminal` does not exist as a word; it would be **`1 28`**, the next
-free number under `satellite`, and it is the first new top-level word since
-`satellite.window` took `1 27`.
+`satellite.terminal` IS A WORD SINCE 2026-09-23 -- **`1 29`**, with
+`.foreground(c)` and `.background(c)` for the terminal's own colours (MILESTONES
+M36) -- and `.new` would be the next number under it, `1 29 3`. When this was
+written it did not exist; it would have been **`1 28`**, the next free number
+under `satellite`, which `satellite.namespace` took the next day.
 
     satellite.variable.window t = satellite.terminal.new(80, 24)
     my_window.append(t, 400, 300)

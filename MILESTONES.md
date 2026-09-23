@@ -381,7 +381,18 @@ the pair files, not the conversions, not the token family.
 **Open:** does a position survive a conversion? `s.find("a").bin` — the position
 in base 2, or the origin lost?
 
-## M14 — satelliteContainer: list, map, variant
+## M14 — satelliteContainer: list, map, variant — **the list BUILT 2026-09-18 and 2026-09-23**, `7263d2c`
+
+**What runs (2026-09-23).** `satellite.container.list<T>`, lists of lists to any
+depth, `grid[x][y]` read and written, `b = a` copying, the `<T>` checked on every
+way in, twenty-five methods, and the constructor `satellite.container.list()`.
+`satellite.container.index` (a Python dict, insertion order) is 004's answer to
+`map`, and `multiple<A, B>` to the variant's type half. **Still owed:**
+`satellite.variable.variant`'s asking half (`.holding .holds .held .clear`) --
+whether it is `multiple` with no `<>` or a word of its own is the author's; and
+`satellite.container.map` itself, which 004 refuses as not a type it has built.
+Also found and not fixed: `{1, 2}` alone on a line ends the capsule silently with
+exit 0, because a line-leading `{` is walked as a block.
 
 **The author:** *"a satelliteContainer which is satellite.container.list
 satellite.container.map satellite.container.variant and containers can hold other
@@ -1224,3 +1235,23 @@ there is no parser (M6/M7 above): what it waits on is the three decisions below.
 **Decisions:** what `satellite.protected(args)` takes, exactly; whether a
 supertype must be a built type or may be another spacesuit; what
 `satellite.supertype.<name>` is when the supertype has no such parameter.
+
+## M36 — the console's colour and 003's screen words — **BUILT 2026-09-23**, `dfdc64b`
+
+**What runs.** 003's M30 ("what ncurses does, without ncurses" -- 003 never linked
+ncurses) and M14's screen words: `display`'s `end= foreground= background= bold=
+italic=`, `satellite.console.input()` and `input(prompt)`, `.width`, `.height`,
+`.clear()`, `.home()`. And, at the author's *"build 004 differently then, so every
+single one of those errors is legal"*, what 003 refused: `"OK".foreground(c)`,
+`s.background(c)`, `satellite.console.foreground(c)` / `.background(c)`,
+`satellite.terminal.foreground(c)` / `.background(c)`, and
+`input(prompt, foreground=c)`. bytecode/console_style.hpp says what each means.
+
+**Still owed:** `satellite.console.input(prompt, target)` (`1 5 4`) and
+`satellite.console.typed()` (`1 5 5`) are numbered and refused. Regions,
+`line=` / `column=` and the alternate screen were 003's plan and never built there
+either. A stack overflow on a thread other than the one that changed the terminal's
+colours, and Ctrl-Z, leave them changed until satl ends. **The author's to
+overrule:** a coloured string holds its codes everywhere (display leaves them out of
+a pipe); a see-through colour is refused; `()` puts back the terminal PROFILE's
+colours, not a theme a shell set with the same codes.
