@@ -17,6 +17,7 @@
 #if SATELLITE_HAS_CONSOLE
 
 #include "window_console.hpp"
+#include "../machine/stack_share.hpp"
 
 #include <cstdio>
 #include <string>
@@ -89,7 +90,7 @@ void start_another_satl(satellite_window *console, const char *file)
     GError *trouble = nullptr;
     const int where_satl_started = fileno(stderr);
     if (!g_spawn_async_with_fds(nullptr, words.data(), nullptr, G_SPAWN_STDIN_FROM_DEV_NULL,
-                                [](gpointer) { setsid(); }, nullptr, nullptr, -1, where_satl_started,
+                                [](gpointer) { setsid(); hand_a_child_the_stack_satl_was_given(); }, nullptr, nullptr, -1, where_satl_started,
                                 where_satl_started, &trouble)) {
         say_it_in_a_box(console, std::string("could not start another satl -- ") +
                                      (trouble != nullptr ? trouble->message : "no reason given"));

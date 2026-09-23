@@ -4045,5 +4045,18 @@ for rows in satellite/satellite_variable_float/check_float.sh satellite/satellit
     . "./$rows"
 done
 
+# THE STACK satl RUNS ON (machine/stack_share.hpp; the author, 2026-09-22: "32 kb for
+# 1 megabyte of ram"). A capsule calling itself with work left after the call is a C++
+# frame a level, and died at 2,526 deep on a shell's 8 MiB. 10,000 fits the 128 MiB
+# floor on any machine -- unless a hard limit keeps satl from raising it at all.
+hard_stack=$(ulimit -Hs)
+if [ "$hard_stack" != unlimited ] && [ "$hard_stack" -lt 131072 ]; then
+    echo "  skip  a capsule 10,000 deep: the hard stack limit here is $hard_stack KiB"
+else
+    "$interpreter" tests/recursion_in_the_middle.satl > build/recursion.out 2>/dev/null; code=$?
+    expect "a capsule calling itself mid-body, 10,000 deep, on the raised stack" "0|reached the bottom|back in main" \
+           "$code|$(tr '\n' '|' < build/recursion.out | sed 's/|$//')"
+fi
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

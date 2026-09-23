@@ -1,0 +1,25 @@
+satellite.include(satellite)
+
+// A capsule that calls itself with work left after the call: not a tail call, so
+// every level is a C++ frame, and 10,000 of them run only because satl raises its
+// stack to 32 KiB for every MiB of memory (machine/stack_share.hpp). On a shell's
+// 8 MiB it died at 2,526.
+satellite.capsule down(satellite.variable.number n)
+{
+    satellite.statement.if(n > 0)
+    {
+        down(n - 1)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("reached the bottom")
+    }
+    satellite.variable.number after = n
+}
+
+satellite.capsule satellite.main()
+{
+    down(10000)
+    satellite.console.display("back in main")
+    satellite.return(satellite)
+}

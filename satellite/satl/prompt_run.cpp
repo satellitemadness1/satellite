@@ -3,6 +3,7 @@
 #include "prompt_run.hpp"
 
 #include "../machine/machine_codes.hpp"
+#include "../machine/stack_share.hpp"
 #include "../machine/shown.hpp"
 
 #include <algorithm>
@@ -122,6 +123,7 @@ bool run_a_file_from_the_prompt(const std::string &typed, signed long long int &
     const pid_t child = fork();
     if (child == 0) {
         signal(SIGINT, SIG_DFL);
+        hand_a_child_the_stack_satl_was_given();   // machine/stack_share.hpp
         execv(satl.c_str(), argv.data());
         std::cerr << "satl(prompt): " << shown(satl) << " could not be started: " << std::strerror(errno) << "\n";
         _exit(127);

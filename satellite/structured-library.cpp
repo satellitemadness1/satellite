@@ -48,6 +48,7 @@
 #include "machine/exit_status.hpp"
 #include "machine/machine_codes.hpp"
 #include "machine/machine_state.hpp"
+#include "machine/stack_share.hpp"
 #include "../satellite-numbers/call_number.hpp"
 #include "satl/satl_file.hpp"
 #include "satl/session.hpp"
@@ -621,6 +622,11 @@ void out_of_memory_handler()
 int main(int argc, char **argv)
 {
     std::ios::sync_with_stdio(false);
+
+    // 32 KiB OF STACK FOR EVERY MiB OF MEMORY, before anything runs (the author,
+    // 2026-09-22; machine/stack_share.hpp): a capsule calling itself died at
+    // 2,526 deep on the 8 MiB a shell hands out.
+    satellite004::widen_the_stack();
 
     // A closed pipe is a refused write, reported with its machine code, never a
     // silent death by SIGPIPE (ERROR #3; the start-up block made it happen before
