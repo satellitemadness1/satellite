@@ -48,6 +48,7 @@
 #include "machine/exit_status.hpp"
 #include "machine/machine_codes.hpp"
 #include "machine/machine_state.hpp"
+#include "machine/run_state.hpp"
 #include "machine/stack_share.hpp"
 #include "../satellite-numbers/call_number.hpp"
 #include "satl/satl_file.hpp"
@@ -471,7 +472,10 @@ signed long long int run_satl(int argc, char **argv)
     // features -- fourteen features one to a switch would be 16,384 leaves.
     if (state.debug_mode)
         state.set(std::string("features.plan = ") + plan_name(plan_for(features)), success);
+    // RUNNING FOR THE WHOLE OF THE PROGRAM'S LINES (machine/run_state.hpp).
+    the_interpreter_is_running().store(true, std::memory_order_relaxed);
     code = run_through_the_hierarchy(features, bytecode_registry, capsules, functions, state);
+    the_interpreter_is_running().store(false, std::memory_order_relaxed);
     if (stops_the_program(code))
         return code;
 

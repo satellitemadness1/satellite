@@ -299,6 +299,7 @@ bool open_the_interpreters_console(const std::string &title, std::string &why)
     on_the_desk([raw] {
         gtk_widget_add_tick_callback(static_cast<GtkWidget *>(raw->terminal), fit_cells, raw->widget, nullptr);
         give_it_a_file_menu(*raw);
+        give_it_a_status_bar(*raw);
         GtkEventController *keys = gtk_event_controller_key_new();
         gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
         g_signal_connect(keys, "key-pressed", G_CALLBACK(the_keys), raw);

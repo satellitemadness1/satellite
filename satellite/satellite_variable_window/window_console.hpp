@@ -11,6 +11,8 @@
 //                         keyboard, the hold at the end and the key that closes it
 //   console_menu.cpp      the File menu across satl's own console
 //   console_settings.cpp  File > Settings…, and the font size config.ini keeps
+//   console_status.cpp    the bar along the bottom: idle or running, memory,
+//                         threads active, and the size in characters
 //
 // VTE IS IN THIS HEADER, AND THAT IS ALLOWED HERE AND NOWHERE PUBLIC: it is
 // included by two files, and by them only where VTE was found
@@ -55,5 +57,10 @@ void give_it_a_file_menu(satellite_window &console);
 long long int console_font_points();
 void set_console_font_points(VteTerminal *terminal, long long int points);
 void open_the_console_settings(satellite_window &console);
+
+// THE BAR ALONG THE BOTTOM OF satl'S OWN CONSOLE -- "idle   19 MB",
+// "0/1024 threads active", "120x48" -- refreshed twice a second. ON THE DESK.
+// console_status.cpp.
+void give_it_a_status_bar(satellite_window &console);
 
 } // namespace satellite004

@@ -4,6 +4,7 @@
 
 #include "../machine/machine_codes.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <exception>
@@ -11,6 +12,14 @@
 #include <utility>
 
 namespace satellite004 {
+
+namespace {
+std::atomic<unsigned long long int> threads_up{0};
+std::atomic<unsigned long long int> threads_busy{0};
+} // namespace
+
+unsigned long long int pool_threads_up() { return threads_up.load(std::memory_order_relaxed); }
+unsigned long long int pool_threads_busy() { return threads_busy.load(std::memory_order_relaxed); }
 
 StartupThreads::~StartupThreads()
 {
@@ -37,15 +46,20 @@ void StartupThreads::park_and_run()
 {
     std::unique_lock<std::mutex> lock(mutex_);
     parked_count_++;
+    threads_up.fetch_add(1, std::memory_order_relaxed);
     parked_.notify_all();
     for (;;) {
         work_arrived_.wait(lock, [this] { return stopping_ || !jobs_.empty(); });
-        if (jobs_.empty())
+        if (jobs_.empty()) {
+            threads_up.fetch_sub(1, std::memory_order_relaxed);
             return;
+        }
         std::function<void()> job = std::move(jobs_.front());
         jobs_.pop_front();
         lock.unlock();
+        threads_busy.fetch_add(1, std::memory_order_relaxed);
         job();
+        threads_busy.fetch_sub(1, std::memory_order_relaxed);
         lock.lock();
     }
 }

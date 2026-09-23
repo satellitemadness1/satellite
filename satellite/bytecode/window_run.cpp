@@ -11,6 +11,7 @@
 
 #include "window_readers.hpp"
 
+#include "../machine/run_state.hpp"
 #include "../satellite_variable_window/window_desk.hpp"
 
 #include <functional>
@@ -56,7 +57,11 @@ signed long long int windows_run_until_they_are_closed(
             else if (happened.said_what == AnEvent::a_line)
                 happened.piece->last_typed = happened.said;
         }
+        // RUNNING WHILE A CAPSULE ANSWERS, IDLE WHILE THE DESK WAITS FOR A PERSON
+        // (machine/run_state.hpp).
+        the_interpreter_is_running().store(true, std::memory_order_relaxed);
         const signed long long int stopped = run_a_capsule(happened.capsule, happened.piece, happened.window);
+        the_interpreter_is_running().store(false, std::memory_order_relaxed);
         // A CAPSULE THAT STOPPED STOPS THE RUN, the same as a line of main
         // would have. The report is already printed by the time this answers,
         // and main() takes the windows down on a code that stops -- a person

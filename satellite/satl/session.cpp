@@ -11,6 +11,7 @@
 #include "../bytecode/word_codes.hpp"
 #include "../machine/machine_codes.hpp"
 #include "../machine/machine_state.hpp"
+#include "../machine/run_state.hpp"
 #include "../machine/shown.hpp"
 #include "../machine/stop_flag.hpp"
 #include "../prompt/line_reader.hpp"
@@ -280,7 +281,11 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
                 first_failure = display_error;
         }
 
+        // IDLE WHILE IT WAITS FOR A LINE, RUNNING FROM THE MOMENT ONE ARRIVES
+        // (machine/run_state.hpp -- the status bar across satl's own console).
+        the_interpreter_is_running().store(false, std::memory_order_relaxed);
         const prompt::LineStatus status = reader.read(the_prompt_now(), line);
+        the_interpreter_is_running().store(true, std::memory_order_relaxed);
         if (status == prompt::LineStatus::EndOfFile)
             break;
         if (status == prompt::LineStatus::Interrupted) {

@@ -89,4 +89,11 @@ private:
     long double milliseconds_ = 0;
 };
 
+// WHAT THE STATUS BAR ACROSS satl'S OWN CONSOLE COUNTS (console_status.cpp): the
+// pool's threads that are up, and those running a job this instant. One pool a
+// process, so two counters for the process; a job moves the second once each way,
+// relaxed, and the desk reads them twice a second.
+unsigned long long int pool_threads_up();
+unsigned long long int pool_threads_busy();
+
 } // namespace satellite004
