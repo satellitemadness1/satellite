@@ -82,8 +82,8 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.directory.default", 0, false, false, "~", true});
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
-    arguments_vector.push_back({"arguments.revision", 7, false, false});
-    arguments_vector.push_back({"arguments.build", 43, false, false});
+    arguments_vector.push_back({"arguments.revision", 8, false, false});
+    arguments_vector.push_back({"arguments.build", 1, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});

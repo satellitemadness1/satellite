@@ -1,6 +1,6 @@
 # satellite
 
-**satellite 004 revision 07** — the third satellite, and the one being built from
+**satellite 004 revision 08** — the third satellite, and the one being built from
 here on. Its version, revision and build number live in
 `satellite/config/satellite_config.hpp`; `make` raises the build number every time
 it builds, and a new revision restarts the count at 1.
@@ -16,6 +16,14 @@ by its own name (`other.greet()`), `satellite.namespace name { }` (second spelli
 `satellite.space`) makes a namespace inside one, and a program's own capsules are
 its own -- an included file can no longer answer for them or replace its
 `satellite.main`.
+
+Revision 08 is the one where objects arrive and 003's list comes across:
+`satellite.spacesuit` objects made by declaring them, with their sections, their
+`satellite.constructor`, a spacesuit inside a spacesuit and one extending another;
+`satellite.library.x = <value>` written once at a file's top and read by every
+capsule, changed by nothing; and `satellite.container.list()` with `.sum`, `.max`,
+`.min`, `.join(separator)` and `.reserve(n)` beside the lists of lists 004 already
+had (`grid[x][y]`).
 
 ```satellite
 satellite.include(satellite)
