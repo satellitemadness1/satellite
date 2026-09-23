@@ -1256,7 +1256,7 @@ overrule:** a coloured string holds its codes everywhere (display leaves them ou
 a pipe); a see-through colour is refused; `()` puts back the terminal PROFILE's
 colours, not a theme a shell set with the same codes.
 
-## M37 — satl for every processor, and `satl-cpu-level` to choose — **BUILT 2026-09-23**
+## M37 — satl for every processor, and `satl-cpu-level` to choose — **BUILT 2026-09-23**, `0d875d1`
 
 The author, 2026-09-23: *"let's build more satl.cpu things for cpu's that I don't
 currently have ... we just can't test the latest stuff, but we can still compile for
