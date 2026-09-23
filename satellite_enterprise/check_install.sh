@@ -30,16 +30,20 @@ hello() { "$1/satl" --run "$repo/examples/hello_world.satl" 2> /dev/null | head 
 [ -x "$repo/build/satl" ] || { echo "check_install.sh: build/satl is not built; run make first"; exit 1; }
 
 home="$scratch/home"
-mkdir -p "$home/.satl" && cp /bin/true "$home/.satl/satl" && cp /bin/false "$home/.satl/satl-term"
-HOME=$home MAKE=true sh "$installer" > "$scratch/out" 2>&1
+mkdir -p "$home/.satl" "$home/.local/share/applications" && cp /bin/true "$home/.satl/satl" && cp /bin/false "$home/.satl/satl-term"
+printf '[Desktop Entry]\nType=Application\nName=Satellite\nExec=satl-term %%f\n' > "$home/.local/share/applications/org.satellite.terminal.desktop"
+launcher="$home/.local/share/applications/org.satellite.terminal.desktop"
+env -u XDG_DATA_HOME HOME=$home MAKE=true sh "$installer" > "$scratch/out" 2>&1
 expect "no --root installs into \$HOME/.satl, over a satl it did not put there, proven" "0|Hello, World!" \
        "$?|$(hello "$home/.satl")"
 expect "... keeping that satl as satl.bak-<date>, and leaving 003's satl-term alone" "1|same|same" \
        "$(ls "$home/.satl" | grep -c '^satl\.bak-')|$(cmp -s /bin/true "$home/.satl"/satl.bak-* && echo same)|$(cmp -s /bin/false "$home/.satl/satl-term" && echo same)"
-HOME=$home PATH="$home/.satl:$PATH" MAKE=true sh "$installer" > "$scratch/out" 2>&1
-expect "\$HOME/.satl on PATH, installed over its own install, keeps no second copy" "0|1|1" \
-       "$?|$(ls "$home/.satl" | grep -c '^satl\.bak-')|$(says 'the word satl runs this install')"
-HOME=$home MAKE=true sh "$installer" --root "$home/.satl/inner" > "$scratch/out" 2>&1
+expect "... and the launcher opens that satl by its absolute path, 003's kept as a .bak" "1|1|1|0" \
+       "$(grep -cxF "Exec=$home/.satl/satl --console %f" "$launcher")|$(grep -cxF "TryExec=$home/.satl/satl" "$launcher")|$(ls "$home/.local/share/applications" | grep -c '\.desktop\.bak-')|$(desktop-file-validate "$launcher" 2>&1 | grep -c 'error')"
+env -u XDG_DATA_HOME HOME=$home PATH="$home/.satl:$PATH" MAKE=true sh "$installer" > "$scratch/out" 2>&1
+expect "\$HOME/.satl on PATH, installed over its own install, keeps no second copy of satl or the launcher" "0|1|1|1" \
+       "$?|$(ls "$home/.satl" | grep -c '^satl\.bak-')|$(ls "$home/.local/share/applications" | grep -c '\.desktop\.bak-')|$(says 'the word satl runs this install')"
+env -u XDG_DATA_HOME HOME=$home MAKE=true sh "$installer" --root "$home/.satl/inner" > "$scratch/out" 2>&1
 expect "a root inside \$HOME/.satl" "1|1" "$?|$(says 'inside')"
 install_into x --link
 expect "--link is 003's" "23|1" "$status|$(says "is satellite 003's installer's")"

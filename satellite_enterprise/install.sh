@@ -17,8 +17,11 @@
 # a folder on PATH, where a second satl would compete for the word; the
 # repository's top folder; and a root holding a satl this installer did not put
 # there. It refuses 003's --link, --desktop and --system rather than half-doing
-# them. Whether 004's window keeps org.satellite.terminal -- the other half of
-# D0.5.1 -- is still the author's, so no launcher is installed.
+# them.
+#
+# THE LAUNCHER TOO, for $HOME/.satl: the rest of D0.5.1 was settled the same day,
+# when the author clicked the app and got 003's satl-term around 004's satl.
+# 004's window keeps org.satellite.terminal; 070-desktop.sh writes its entry.
 #
 # WHAT IT INSTALLS, together, because each finds the others beside its own path:
 #
@@ -47,6 +50,8 @@
 #     040-root.sh ........... the root, and every root that is refused
 #     050-building.sh ....... make, unless make has just run (SATELLITE_JUST_BUILT)
 #     060-install-tree.sh ... the copy, the rename and the record
+#     065-config.sh ......... $HOME/.satl/config.ini, never overwritten
+#     070-desktop.sh ........ the Satellite launcher, for $HOME/.satl only
 #     080-report.sh ......... the proof and the title lines
 #
 # check_install.sh beside this file runs the installer against the refusals and
@@ -81,4 +86,5 @@ fi
 . "$support/050-building.sh"
 . "$support/060-install-tree.sh"
 . "$support/065-config.sh"
+. "$support/070-desktop.sh"
 . "$support/080-report.sh"

@@ -64,7 +64,9 @@ does not).
 
 In \$HOME/.satl, a satl this installer did not put there -- satellite
 003's -- is kept beside the new one as satl.bak-<date>, and 003's
-satl-term is left alone. Anywhere else, these are refused:
+satl-term is left alone; the Satellite launcher is written to open
+\$HOME/.satl/satl --console, keeping 003's as a .bak. Anywhere else,
+these are refused:
 
   - anything inside \$HOME/.satl, and /usr/local, which is 003's --system;
   - a folder on PATH, where a second satl would compete for \`satl\`;
@@ -73,7 +75,8 @@ satl-term is left alone. Anywhere else, these are refused:
     did not put there, which it knows from its record, .satellite-004-install;
   - --link, --desktop and --system, which are 003's installer's.
 
-Nothing outside the root is written, and no shell startup file is edited.
+Nothing outside the root is written but that launcher, and no shell startup
+file is edited.
 
 It exits 0 when the install is proven, 23 for a command line it does not take,
 and 1 for anything else, with the reason.
