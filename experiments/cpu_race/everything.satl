@@ -1,0 +1,223 @@
+// EVERYTHING AT ONCE -- the author, 2026-09-23: "the program has to do a few things: do
+// alot with large numbers, do alot with small numbers at the same time, do alot with
+// large strings, large containers, small strings, small containers, and do it all at the
+// same time", then "we need to do stuff with classes, capsules, large capsules, large
+// classes, small classes small capsules, etc". ONE loop, and every turn of it does all
+// ten, so the race times the mix a real program is rather than one kind of work (the
+// other .satl files here time one kind each, to say where a difference comes from).
+
+satellite.include(satellite)
+
+// A SMALL SPACESUIT: one field, one capsule. A new one is made every turn.
+satellite.spacesuit point()
+{
+    satellite.protected
+    {
+        satellite.variable.number x = 0
+    }
+    satellite.constructor(satellite.variable.number x_input)
+    {
+        x = x_input
+    }
+    satellite.public
+    {
+        satellite.capsule call_x() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(x)
+        }
+    }
+}
+
+// A LARGE SPACESUIT: fourteen fields -- numbers, strings, a list -- a constructor, a
+// protected capsule and five public ones. One lives the whole run and is worked every
+// turn; another is built new every turn.
+satellite.spacesuit station()
+{
+    satellite.protected
+    {
+        satellite.variable.string name = "station"
+        satellite.variable.string log = ""
+        satellite.variable.string status = "idle"
+        satellite.variable.number crew = 0
+        satellite.variable.number fuel = 1000
+        satellite.variable.number oxygen = 1000
+        satellite.variable.number power = 500
+        satellite.variable.number heading = 0
+        satellite.variable.number speed = 0
+        satellite.variable.number docked = 0
+        satellite.variable.number alarms = 0
+        satellite.variable.number turns = 0
+        satellite.variable.number checksum = 7
+        satellite.container.list<satellite.variable.number> readings = {}
+
+        satellite.capsule settle()
+        {
+            fuel = fuel % 1000 + 1
+            oxygen = oxygen % 1000 + 1
+            power = power % 500 + 1
+        }
+    }
+    satellite.constructor(satellite.variable.string name_input)
+    {
+        name = name_input
+        crew = 3
+        status = "ready"
+    }
+    satellite.public
+    {
+        satellite.capsule call_tick(satellite.variable.number n)
+        {
+            turns = turns + 1
+            fuel = fuel - n % 3
+            oxygen = oxygen - crew % 2
+            power = power + n % 5
+            heading = (heading + n) % 360
+            speed = speed + 1
+            checksum = (checksum * 31 + n) % 1000003
+            settle()
+        }
+        satellite.capsule call_record(satellite.variable.number reading)
+        {
+            readings.append(reading)
+            satellite.statement.if(reading % 97 == 0)
+            {
+                alarms = alarms + 1
+                status = "alarm"
+            }
+        }
+        satellite.capsule call_dock()
+        {
+            docked = docked + 1
+            log = name + " docked"
+        }
+        satellite.capsule call_checksum() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(checksum + alarms + docked)
+        }
+        satellite.capsule call_readings() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(readings.size)
+        }
+    }
+}
+
+// A SMALL CAPSULE: one line.
+satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.return(n * 2)
+}
+
+// A LARGE CAPSULE: about twenty-five statements of mixed work -- numbers, strings, a list
+// of its own -- every call.
+satellite.capsule churn(satellite.variable.number n, satellite.variable.string text) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number a = n % 1000
+    satellite.variable.number b = a * a + 17
+    satellite.variable.number c = b % 13 + a % 7
+    satellite.variable.number d = (a + b + c) % 101
+    satellite.variable.string label = text + "/" + "churn"
+    satellite.variable.string again = "churn" + "/" + text
+    satellite.variable.number matches = 0
+    satellite.statement.if(label == again)
+    {
+        matches = matches + 1
+    }
+    satellite.statement.if(label == text + "/churn")
+    {
+        matches = matches + 2
+    }
+    satellite.container.list<satellite.variable.number> local = {a, b, c, d}
+    local.append(a + d)
+    local.append(b % 9)
+    satellite.variable.number total = local.sum
+    satellite.variable.number biggest = local.max
+    satellite.variable.number e = total % 1000 + biggest % 100
+    satellite.variable.number f = e * 3 + matches
+    satellite.variable.number g = f % 17 + d
+    satellite.variable.number h = g + c * 2
+    satellite.variable.number i = h % 11
+    satellite.variable.number j = i + a % 5
+    satellite.return(j + local.size)
+}
+
+satellite.capsule satellite.main()
+{
+    // THE LARGE THINGS, made once before the loop: a 978-digit number (3 to the 2048th)
+    // and two 30,208-character strings, built apart so comparing them compares every
+    // character rather than finding one string twice.
+    satellite.variable.number modulus = 3
+    satellite.variable.number k = 0
+    satellite.statement.while(k < 11)
+    {
+        modulus = modulus * modulus
+        k = k + 1
+    }
+    satellite.variable.number big = modulus - 12345
+    satellite.variable.string large = "the satellite programming language, raced against itself. "
+    satellite.variable.string large_copy = "the satellite programming language, raced against itself. "
+    k = 0
+    satellite.statement.while(k < 9)
+    {
+        large = large + large
+        large_copy = large_copy + large_copy
+        k = k + 1
+    }
+
+    satellite.container.list<satellite.variable.number> items
+    satellite.container.list<satellite.variable.number> tiny = {0, 0, 0}
+    satellite.variable.string word = ""
+    satellite.variable.string joined = ""
+    satellite.variable.number small = 0
+    satellite.variable.number same = 0
+    satellite.variable.number counter = 0
+    station hq("hq")
+    satellite.statement.while(counter < 60000)
+    {
+        // SMALL NUMBERS
+        small = small + counter * 3 % 7
+        // LARGE NUMBERS: a 978-digit multiply and remainder
+        big = (big * 1000003 + counter) % modulus
+        // SMALL STRINGS
+        word = "satl" + "-" + "004"
+        satellite.statement.if(word == "satl-004")
+        {
+            same = same + 1
+        }
+        // LARGE STRINGS: 30,208 characters compared, and copied into a join
+        satellite.statement.if(large == large_copy)
+        {
+            same = same + 1
+        }
+        joined = large + word
+        // SMALL CONTAINERS
+        tiny = {counter, small, counter % 11}
+        small = small + tiny.sum % 5
+        // THE LARGE CONTAINER: grows by one a turn, and an item read back from it
+        items.append(counter * 7919 % 1000003)
+        small = small + items[counter % items.size + 1] % 3
+        // A SMALL CAPSULE AND A LARGE ONE
+        small = small + twice(counter) % 3
+        satellite.variable.number churned = churn(counter, word)
+        small = small + churned % 5
+        // A SMALL SPACESUIT, new every turn
+        point p(counter)
+        small = small + p.call_x() % 2
+        // A LARGE SPACESUIT: the one that lives the whole run, worked, and one built new
+        hq.call_tick(counter)
+        hq.call_record(counter * 13 % 1009)
+        station visitor("visitor")
+        visitor.call_dock()
+        visitor.call_tick(counter)
+        small = small + visitor.call_checksum() % 3
+        counter = counter + 1
+    }
+
+    satellite.console.display(small)
+    satellite.console.display(same)
+    satellite.console.display(big % 1000000007)
+    satellite.console.display(items.sum)
+    satellite.console.display(items.sort().first)
+    satellite.console.display(hq.call_checksum())
+    satellite.console.display(hq.call_readings())
+    satellite.return(satellite)
+}

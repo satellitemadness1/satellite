@@ -1,0 +1,17 @@
+// BIG NUMBERS: satellite numbers have no ceiling, so x * 3 grows past a machine word
+// within 40 turns and is a many-limb multiply after that -- the arithmetic -march=haswell
+// may do with BMI2's mulx.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number x = 1
+    satellite.variable.number counter = 0
+    satellite.statement.while(counter < 150000)
+    {
+        x = x * 3
+        counter = counter + 1
+    }
+    satellite.console.display(x % 1000000007)
+    satellite.return(satellite)
+}
