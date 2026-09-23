@@ -496,7 +496,7 @@ tellable apart while it is done.
    M8): a spacesuit is a third scope kind in the scan (`suit_scan.cpp`), its
    objects share one layout (`suit_layout.hpp`), are made by `suit_run.cpp` and
    called through `capsule_calls.cpp`; 003's rules are ported, and
-   `tests/spacesuits.satl` plus 24 refusal rows in check.sh hold them.
+   `tests/spacesuits.satl` plus 32 rows in check.sh hold them (`b6b2a98`).
 2. `satellite/bytecode/number_methods.cpp` **is still dead code, third session.**
    It is now one hop from real: its methods are `satelliteValue`'s pair files
    already. Either finish it or delete it.

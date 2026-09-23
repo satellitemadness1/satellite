@@ -237,7 +237,7 @@ shape in the checker and the walker. What is still owed under this heading is on
 the GRAMMAR that has no shape yet -- blocks that are not `while` bodies, and the
 declarations M8 describes.
 
-## M8 — user-defined classes (spacesuits) — **BUILT 2026-09-22** (commit below)
+## M8 — user-defined classes (spacesuits) — **BUILT 2026-09-22**, `b6b2a98`
 
 **What runs.** `satellite.spacesuit name()` (and `satellite.class`) with the
 author's sections -- `satellite.protected`, `satellite.public`, and
@@ -252,7 +252,7 @@ dotted `file.Type`. **And capsule answers**: `satellite.returns(T)` read,
 M20 item 1 bug below, settled by the author's own programs (tagged_report's
 role_of returns from inside two ifs). Files: `bytecode/suit_scan.cpp`,
 `suit_reach.cpp`, `suit_layout.hpp`, `suit_run.cpp`, `capsule_calls.cpp`;
-`tests/spacesuits.satl` and 24 refusal rows in check.sh.
+`tests/spacesuits.satl` and 32 rows in check.sh (701 passed).
 
 **Chosen here, his to overrule** (each is one place): a method dispatches on the
 OBJECT's spacesuit, not the declared one (003 was static); a field declared again
