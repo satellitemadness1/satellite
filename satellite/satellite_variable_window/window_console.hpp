@@ -39,9 +39,9 @@ inline VteTerminal *terminal_of(const satellite_window &which)
 bool a_console_that_is_open(const satellite_window &which, std::string &why);
 
 // satl-term's LOOK, ON A TERMINAL: black on the light blue field, IBM Plex Mono
-// at the size config.ini keeps -- and Q-VTE-1's stopgap, the screen reset once
-// so VTE's own warning line is not the first thing on it. Shared so that satl's
-// own console and a program's are dressed exactly alike. ON THE DESK.
+// at the size config.ini keeps. Shared so that satl's own console and a
+// program's are dressed exactly alike. ON THE DESK. (Q-VTE-1's stopgap, which
+// drops VTE's own warning line, needs a pty, so it is a_terminal_to_type_in's.)
 void dress_the_terminal(VteTerminal *terminal);
 
 // THE FILE MENU ACROSS satl'S OWN CONSOLE -- New window, Open…, Save output as…,

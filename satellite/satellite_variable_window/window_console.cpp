@@ -109,13 +109,6 @@ void dress_the_terminal(VteTerminal *terminal)
     vte_terminal_set_colors(terminal, &foreground, &background, nullptr, 0);
     set_console_font_points(terminal, console_font_points());
     vte_terminal_set_scrollback_lines(terminal, 10000);
-    // Q-VTE-1'S STOPGAP. Built without gnutls, VTE feeds a red WARNING into
-    // every terminal it makes, at construction, about scrollback spilled to
-    // disk unencrypted. Whether to vendor gnutls is the author's question and
-    // is not answered here; until it is, the screen is reset once, here,
-    // before anything of ours is on it, and that line is gone. One call to
-    // remove when gnutls is in -- vte_get_features() says +GNUTLS then.
-    vte_terminal_reset(terminal, TRUE, TRUE);
 }
 
 namespace {
@@ -247,6 +240,24 @@ void a_terminal_to_type_in(satellite_window &made, GtkWidget *window, GtkWidget 
         if (trouble != nullptr)
             g_error_free(trouble);
     } else {
+        // Q-VTE-1'S STOPGAP. Built without gnutls, VTE feeds a red WARNING into
+        // every terminal it makes, about scrollback spilled to disk unencrypted.
+        // Whether to vendor gnutls is the author's question; until it is, the
+        // line is DROPPED here. Not cleared: VTE only QUEUES it at construction,
+        // and vte_terminal_reset -- this stopgap until 2026-09-22 -- cleared a
+        // screen the line had not reached yet, so it arrived anyway, the first
+        // line of every console (the author saw it; Save output as… proved it).
+        // A terminal empties that queue when it lets go of a pty
+        // (Terminal::unset_pty), and here the queue holds that line and nothing
+        // else -- so it is given a spare pty first and then its own. NEVER
+        // vte_terminal_set_pty(nullptr), which segfaults VTE 0.84.1
+        // (Widget::set_pty takes the impl of null): tried, every console
+        // died with signal 11. Remove the spare when gnutls is in --
+        // vte_get_features() says +GNUTLS then.
+        if (VtePty *spare = vte_pty_new_sync(VTE_PTY_DEFAULT, nullptr, nullptr)) {
+            vte_terminal_set_pty(VTE_TERMINAL(terminal), spare);
+            g_object_unref(spare);   // the terminal lets it go on the next line
+        }
         vte_terminal_set_pty(VTE_TERMINAL(terminal), pty);
         made.pty = pty;   // OURS: the terminal took a reference of its own
     }
