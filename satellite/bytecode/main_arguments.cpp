@@ -7,6 +7,7 @@
 #include "word_codes.hpp"
 #include "../arguments/arguments.hpp"
 #include "../satellite_object/satellite_index.hpp"
+#include "../satellite_object/satellite_list.hpp"
 
 #include <string>
 #include <utility>
@@ -110,6 +111,13 @@ Value the_arguments_value(const Arguments *arguments, const FunctionTable &funct
             case ArgumentKind::number: value = Value::of_number(row.number); break;
             case ArgumentKind::flag: value = Value::of_bool(row.flag); break;
             case ArgumentKind::size: value = Value::of_number(satellite_number(row.count)); break;
+            case ArgumentKind::list: {
+                std::vector<Value> items;
+                for (const std::string &item : row.items)
+                    items.push_back(text_value(item));
+                value = Value::of_list(make_list(std::move(items)));
+                break;
+            }
             }
             value_for_writing(rows, filed(key), text_value(key)) = std::move(value);
         }

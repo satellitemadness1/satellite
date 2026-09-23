@@ -4374,6 +4374,22 @@ expect "... and access, a setting, is written through to config.ini and the copy
        "34|true|false|1|1|1" \
        "$code|$(grep -xE 'true|false' build/arguments_access.out | tr '\n' '|')$(grep -cx 'access = false' "$access_home/.satl/config.ini")|$(grep -c '"access": false' build/arguments_access.out)|$(tr '\n' ' ' < build/arguments_access.out | grep -c 'a.access is true or false, and was given a number')"
 
+# WHAT THE PROCESSOR CAN RUN (the author, 2026-09-23: "arguments.cpu.architecture =
+# "haswell" ... arguments.cpu.features = AVX, AVX2, 512-bit stuff, all that in a single
+# list"; satellite/arguments/cpu_facts.hpp): asked against /proc/cpuinfo's own flags and
+# not against the builtin satl asks -- x86-64-v3 is avx avx2 bmi1 bmi2 f16c fma abm
+# movbe xsave there, and 003's word for a machine with all of it is haswell.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments a)\n{\n    satellite.console.display(a.cpu.architecture)\n    satellite.console.display(a.cpu.features.contains("x86-64-v3"))\n    satellite.console.display(a.cpu.features.contains("avx2"))\n    satellite.console.display(a.cpu.features.contains("avx512f"))\n    satellite.console.display(a.cpu.features.contains("x86-64"))\n    satellite.return(satellite)\n}\n' > build/arguments_cpu.satl
+"$interpreter" build/arguments_cpu.satl > build/arguments_cpu.out 2>/dev/null; code=$?
+cpu_flags=" $(grep -m1 '^flags' /proc/cpuinfo | sed 's/^flags[^:]*://') "
+cpu_flag_is() { case "$cpu_flags" in *" $1 "*) echo true;; *) echo false;; esac; }
+cpu_v3=true
+for flag in avx avx2 bmi1 bmi2 f16c fma abm movbe xsave; do [ "$(cpu_flag_is $flag)" = true ] || cpu_v3=false; done
+cpu_word=baseline; [ $cpu_v3 = true ] && cpu_word=haswell
+expect "arguments.cpu.architecture and arguments.cpu.features say what /proc/cpuinfo says" \
+       "0|$cpu_word|$cpu_v3|$(cpu_flag_is avx2)|$(cpu_flag_is avx512f)|$([ "$(uname -m)" = x86_64 ] && echo true || echo false)" \
+       "$code|$(tr '\n' '|' < build/arguments_cpu.out | sed 's/|$//')"
+
 # THE FOUR TYPES OF 2026-09-22 KEEP THEIR ROWS BESIDE THEIR CODE (each file says why).
 for rows in satellite/satellite_variable_float/check_float.sh satellite/satellite_variable_hex/check_hex.sh \
             satellite/satellite_variable_color/check_color.sh satellite/satellite_variable_fraction/check_fraction.sh; do

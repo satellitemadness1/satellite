@@ -35,11 +35,17 @@ after the variable's, with no brackets -- args.username, args.memory.total,
 args.argument_1, args.float.decimal. A row satl gathered when it started is
 that row; a row only a library answers, like memory.used and memory.free, is
 read fresh each time, so it is what the machine is using now.
-satellite.console.display(args) shows every row there is (51 on one machine). A
+satellite.console.display(args) shows every row there is (57 on one machine). A
 name that is not a row is refused where it is read: "args.usernme is not one of
 the arguments". The older spelling,
 satellite.container.list<satellite.variable.string> arguments, is the same
 variable.
+
+What the processor can run is two rows: args.cpu.architecture is haswell when
+it runs everything Haswell brought (the x86-64-v3 set: AVX, AVX2, FMA, BMI1,
+BMI2 ...) and baseline when it does not, and args.cpu.features is one list of
+every instruction set the processor and the kernel both allow --
+args.cpu.features.contains("avx2") asks for one.
 
 A row is written the same way, when its name is the program's own:
 args.some_var = 5 adds it, a second args.some_var = 6 changes it, and
@@ -66,6 +72,8 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
     satellite.console.display(args.length) // 3
     satellite.console.display(args.float.decimal) // 128
     satellite.console.display(args.memory.used > 0) // true
+    satellite.console.display(args.cpu.architecture) // haswell
+    satellite.console.display(args.cpu.features.contains("avx2")) // true
     args.some_var = 5
     args.some_var = args.some_var + 1
     satellite.console.display(args.some_var) // 6

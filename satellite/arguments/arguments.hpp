@@ -12,6 +12,8 @@
 //     flag   true or false    arguments.debug_mode        true
 //     size   an amount of memory or disk, as a long double plus its unit:
 //            "bytes", "kilobytes", "megabytes", "gigabytes" or "terabytes"
+//     list   some words, in order     arguments.cpu.features   {"sse", "avx", "avx2" ...}
+//            (2026-09-23, the author: "all that in a single list"; cpu_facts.hpp)
 //
 // WHY A long double FOR SIZES: it is the sharpest standard C++ float (18 exact
 // digits here, against double's 15), it holds every 64-bit byte count exactly,
@@ -27,7 +29,7 @@
 
 namespace satellite004 {
 
-enum class ArgumentKind { text, count, number, flag, size };
+enum class ArgumentKind { text, count, number, flag, size, list };
 
 struct Argument {
     std::string name;
@@ -38,6 +40,7 @@ struct Argument {
     bool flag = false;
     long double size = 0.0L;
     std::string unit;              // only for a size
+    std::vector<std::string> items;  // only for a list
 };
 
 class Arguments {
@@ -56,6 +59,7 @@ public:
     void add_number(const std::string &name, satellite_number value);
     void add_flag(const std::string &name, bool value);
     void add_bytes(const std::string &name, unsigned long long int bytes);
+    void add_list(const std::string &name, std::vector<std::string> items);
 
     const Argument *find(const std::string &name) const;
     bool flag(const std::string &name) const;
@@ -73,7 +77,7 @@ private:
     std::string overwritten_; // the first config row gather() found a second value for
 };
 
-// "24", "true", "62.5 gigabytes", or the text itself.
+// "24", "true", "62.5 gigabytes", "sse, avx, avx2", or the text itself.
 std::string describe(const Argument &argument);
 
 // Whether satl fills this name in itself -- from the command line or the machine

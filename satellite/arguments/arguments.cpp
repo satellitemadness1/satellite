@@ -1,4 +1,5 @@
 #include "arguments.hpp"
+#include "cpu_facts.hpp"
 
 #include "../machine/machine_codes.hpp"
 #include "../machine/machine_state.hpp"
@@ -72,6 +73,11 @@ void Arguments::add_text(const std::string &name, const std::string &value)
 void Arguments::add_count(const std::string &name, unsigned long long int value)
 {
     add(name, ArgumentKind::count).count = value;
+}
+
+void Arguments::add_list(const std::string &name, std::vector<std::string> items)
+{
+    add(name, ArgumentKind::list).items = std::move(items);
 }
 
 void Arguments::add_number(const std::string &name, satellite_number value)
@@ -295,6 +301,10 @@ signed long long int Arguments::gather(const CommandLine &command_line)
     const unsigned long long int cores = physical_cores();
     add_count("arguments.machine.threads", thread_count);
     add_count("arguments.machine.cores", cores > 0 ? cores : thread_count);
+    // WHAT THE PROCESSOR CAN RUN (cpu_facts.hpp): 003's build name, and every instruction
+    // set the processor and the kernel both allow, in one list.
+    add_text("arguments.cpu.architecture", cpu_architecture());
+    add_list("arguments.cpu.features", cpu_features());
 
     const long page = sysconf(_SC_PAGESIZE);
     const long pages = sysconf(_SC_PHYS_PAGES);
@@ -335,6 +345,7 @@ bool filled_in_by_satl(const std::string &name)
     static const char *const names[] = {
         "arguments.debug_mode", "arguments.file", "arguments.program", "arguments.length",
         "arguments.session.directory", "arguments.machine.threads", "arguments.machine.cores",
+        "arguments.cpu.architecture", "arguments.cpu.features",
         "arguments.machine.page_size", "arguments.memory.total", "arguments.disk.total", "arguments.disk.free",
         "arguments.username", "arguments.system.hostname", "arguments.system.kernel", "arguments.system.kernel_version"};
     for (const char *filled : names)
@@ -360,6 +371,12 @@ std::string describe(const Argument &argument)
         char digits[64];
         std::snprintf(digits, sizeof digits, "%.18Lg", argument.size);
         return std::string(digits) + " " + argument.unit;
+    }
+    case ArgumentKind::list: {
+        std::string words;
+        for (const std::string &item : argument.items)
+            words += (words.empty() ? "" : ", ") + item;
+        return words;
     }
     }
     return "";

@@ -12,6 +12,7 @@ and what all of it is for: the last known name, type and value of everything. It
 Part 4B, its milestones are Part 4C, and `arguments.access` from it is BUILT.
 
 **WRITING A ROW ARRIVED 2026-09-23** -- `any_name.some_var = some_value`. Part 4D.
+**AND WHAT THE PROCESSOR CAN RUN** -- `arguments.cpu.architecture`, `arguments.cpu.features`. Part 4E.
 
 **THE ACCEPTANCE TEST IS THE COMPILER.** The author, in the brief: *"none of
 this will be tested or checked or anything -- we just write it, make sure it
@@ -718,6 +719,36 @@ Code: satellite/bytecode/main_arguments.cpp, `run_argument_assignment` in progra
 (and `args["x"] = v` in run_indexed_assignment), `after_an_argument` in expression.cpp, one
 arm in program_check.cpp. check.sh rows after "a row that is not an argument is refused by
 name"; tests/arguments_written.satl and tests/arguments_not_written.satl.
+
+---
+
+# Part 4E — what the processor can run, 2026-09-23
+
+The author: *"there's no argument that has "haswell" like, arguments.cpu.architecture =
+"haswell" then there's no argument that displays what features are on this machine, like
+arguments.cpu.features = AVX, AVX2, 512-bit stuff, all that in a single list ... we should
+keep a list of features, as we enable all haswell features"*.
+
+| row | here (Xeon E5-2670 v3) | what it is |
+|---|---|---|
+| `arguments.cpu.architecture` | `haswell` | 003's word (its `satl-cpu-level`): `haswell` when the processor runs the whole x86-64-v3 set, `baseline` when not, or not x86 |
+| `arguments.cpu.features` | 23 words, `cmov` ... `avx2` ... `x86-64-v3` | every instruction set the processor AND the kernel allow, in the order they arrived, then the x86-64 levels reached |
+
+**003 HAD NO FEATURE LIST**, only the one word, so the list is new. It is the first row that
+is a LIST: `ArgumentKind::list`, appended last; `satl --debug` prints it comma-separated,
+and the variable hands it to a program as a satellite.container.list of strings, so
+`.contains("avx2")`, `.size()` and `[1]` work on it.
+
+**ASKED WITH __builtin_cpu_supports, NOT /proc/cpuinfo**, because the builtin says yes to AVX
+and AVX-512 only when the kernel has switched their registers on -- a feature on the list is
+one a program can use. /proc/cpuinfo's flags line is 105 words here, most of them not
+instructions. check.sh asks /proc/cpuinfo anyway, as the independent second opinion.
+
+**THE ARCHITECTURE IS A BUILD'S NAME, NOT THE CHIP'S CODE NAME** -- a choice the author may
+overrule: a Raptor Lake or a Zen 4 answers `haswell` too, because each runs what 003's
+satl.haswell was compiled for. 004 builds one satl today (Makefile: 045 was not ported).
+
+Code: satellite/arguments/cpu_facts.hpp, two rows in arguments.cpp's gather().
 
 ---
 

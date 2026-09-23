@@ -54,7 +54,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(STRING16)/satellite_string.cpp \
                       $(NUMBERS)/call_number.satellite.cpp
 
-HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp \
+HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/cpu_facts.hpp \
           $(ARGUMENTS)/argument_value.hpp $(ARGUMENTS)/argument_case.hpp \
           $(ARGUMENTS)/satellite_arguments.hpp $(SATELLITE)/config/satellite_config.hpp \
           $(SATELLITE)/config/config_file.hpp $(SATELLITE)/config/feature_register.hpp \
