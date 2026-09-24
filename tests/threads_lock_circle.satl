@@ -1,0 +1,47 @@
+// Two objects locked in opposite orders by two threads: each holds one and waits for the other, so
+// the line is S728 WAIT_NEVER_ENDS, not a frozen program (satellite's own lock, 2026-09-24).
+satellite.include(satellite)
+
+satellite.spacesuit cell()
+{
+    satellite.protected
+    {
+        satellite.variable.number n = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_both(cell other)
+        {
+            satellite.variable.number i = 0
+            satellite.statement.while(i < 2000)
+            {
+                n = n + other.call_get()
+                i = i + 1
+            }
+        }
+        satellite.capsule call_get() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(n - n + 1)
+        }
+        satellite.capsule call_n() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(n)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    cell a()
+    cell b()
+    a.lock()
+    b.lock()
+    satellite.variable.thread x = satellite.thread.new(a.call_both(b))
+    satellite.variable.thread y = satellite.thread.new(b.call_both(a))
+    x.start()
+    y.start()
+    x.join()
+    y.join()
+    satellite.console.display(a.call_n() + b.call_n())
+    satellite.return(satellite)
+}

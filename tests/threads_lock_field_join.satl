@@ -1,0 +1,47 @@
+// A thread kept in a locked object's field, joined from that object's own capsule: the join lets go of
+// the object's lock while it waits (the author, 2026-09-24), so the thread can write the object. Prints 1.
+satellite.include(satellite)
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 0
+        satellite.variable.thread worker = satellite.thread.new(idle())
+    }
+    satellite.public
+    {
+        satellite.capsule call_add()
+        {
+            total = total + 1
+        }
+        satellite.capsule call_begin()
+        {
+            worker = satellite.thread.new(call_add())
+            worker.start()
+        }
+        satellite.capsule call_finish()
+        {
+            worker.join()
+        }
+        satellite.capsule call_total() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(total)
+        }
+    }
+}
+
+satellite.capsule idle()
+{
+    satellite.variable.number i = 0
+}
+
+satellite.capsule satellite.main()
+{
+    counter c()
+    c.lock()
+    c.call_begin()
+    c.call_finish()
+    satellite.console.display(c.call_total())
+    satellite.return(satellite)
+}

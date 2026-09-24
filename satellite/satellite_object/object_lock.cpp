@@ -67,7 +67,7 @@ bool a_holder_waits_for(const ObjectLock &lock, const WaitNode *me)
     return false;
 }
 
-thread_local std::vector<std::pair<const ObjectLock *, LockUse>> held_here;
+thread_local std::vector<std::pair<ObjectLock *, LockUse>> held_here;
 
 } // namespace
 
@@ -151,6 +151,22 @@ void done_waiting_for_a_thread()
 {
     const std::lock_guard<std::mutex> hold(graph());
     this_threads_node().waiting_thread = nullptr;
+}
+
+void let_go_while_waiting()
+{
+    for (auto each = held_here.rbegin(); each != held_here.rend(); ++each)
+        give_back_object_lock(*each->first, each->second);
+}
+
+signed long long int take_back_after_waiting()
+{
+    for (const auto &[lock, use] : held_here) {
+        const signed long long int taken = take_object_lock(*lock, use);
+        if (taken != success)
+            return taken;     // the holds give back what they hold; one not taken back is a no-op
+    }
+    return success;
 }
 
 void this_thread_runs(satellite_thread &thread)

@@ -1,5 +1,5 @@
-// `total = w.join()` on a locked object: the line holds the lock while it waits for a thread that needs
-// it. That can never end, so it is S728 WAIT_NEVER_ENDS, not a frozen program (the second review, 2026-09-24).
+// `total = w.join()` on a locked object: the join lets go of the line's lock while it waits (the author,
+// 2026-09-24), so the thread it waits for can read `total`, and the line ends with 1. Before that, S728.
 satellite.include(satellite)
 
 satellite.spacesuit counter()

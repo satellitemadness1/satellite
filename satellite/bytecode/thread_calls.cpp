@@ -202,6 +202,9 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
     // it waits for is -- through locks and joins -- waiting for this one. If that thread
     // closes the circle later, by waiting for a lock this one holds, ITS check says so and
     // it stops, and this join answers its S728.
+    // AND IT LETS GO OF THIS LINE'S OBJECT LOCKS WHILE IT WAITS (object_lock.hpp), so the
+    // thread it waits for can take them -- and then takes them back.
+    let_go_while_waiting();
     if (start_waiting_for(thread) != success) {
         context.refuse(wait_never_ends, name + "." + spelling + "() would never return -- " + thread.name +
                                             " is waiting, through locks and joins, for this thread");
@@ -209,6 +212,12 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
     }
     reap(thread);
     done_waiting_for_a_thread();
+    const signed long long int back = take_back_after_waiting();
+    if (back != success) {
+        context.refuse(back, name + "." + spelling + "() returned, and taking this line's object locks back would "
+                                 "never end");
+        return Value();
+    }
     bool again = false;
     signed long long int code = success;
     Value answer;

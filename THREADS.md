@@ -172,9 +172,10 @@ check.sh row.
      what it waits for, a lock or a join. Before a thread sleeps, it follows that chain;
      when the chain comes back to itself, the line stops with **S728 WAIT_NEVER_ENDS**
      (code 63) instead of freezing.
-   - **Test:** `tests/threads_lock_wait_never_ends.satl`, which is `total = w.join()`.
+   - **Test:** `tests/threads_lock_circle.satl`: two objects locked in opposite orders by
+     two threads. It gives S728 in five runs of five.
    - **The author on it:** *"Is total = w.join() even necessary ... let's do it anyway"*.
-     It stays, and is caught.
+     It stays, and since 2026-09-24 it works (below).
    - **Writers first:** a waiting writer now goes ahead of new readers, so reads cannot
      starve a write.
 4. **`for`'s first part and its step took no hold.** They do now.
@@ -184,6 +185,22 @@ check.sh row.
    now resolves through `on_the_object`. `tests/threads_override.satl` gives dog, dog, dog.
 7. **A window inside an object could reach a thread.** `call_window_method` now refuses on
    a program thread, S727, wherever the window came from.
+
+**A JOIN LETS GO OF ITS LINE'S LOCKS WHILE IT WAITS (2026-09-24).** The author, asked
+whether `total = w.join()` should work rather than be caught: *"I don't know, i'm not going
+to use total = total + w.join() but should we have it?"* The recommendation was yes, and it
+is built. `join()` and `wait()` give back every object lock their line holds, wait, then
+take them back in the order they were first taken. Java's `wait()`, C#'s `Monitor.Wait` and
+C++'s `condition_variable::wait` do the same with their one lock.
+
+- `total = w.join()` on a locked object answers now, where it was S728.
+  `tests/threads_lock_wait_never_ends.satl` prints 1.
+- A thread kept in a locked object's field can be joined from that object's own capsule,
+  and write the object while it is joined. `tests/threads_lock_field_join.satl` prints 1.
+- **The one cost:** in `total = total + w.join()`, another thread may change `total`
+  between the line's read of it and its write. The line holds the lock before and after
+  the join, but not during it.
+- A true circle is still caught. Taking a lock back after the join can itself answer S728.
 
 **Still open:**
 

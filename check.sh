@@ -4773,9 +4773,16 @@ expect "threads: an append on an ITEM of a locked object's list field is a write
 "$interpreter" tests/threads_lock_method_name.satl > build/threads_lmn.out 2>/dev/null; code=$?
 expect "threads: a line calling a capsule named like a method (add) is a write -- 4 x 5,000 = 20000" "0|20000" \
        "$code|$(tr -d '\n' < build/threads_lmn.out)"
-timeout 20 "$interpreter" tests/threads_lock_wait_never_ends.satl > /dev/null 2> build/threads_wne.err; code=$?
-expect "threads: total = w.join() holding the lock w needs is S728 WAIT_NEVER_ENDS, not a frozen program" "63|1" \
-       "$code|$(grep -c 'S728: WAIT_NEVER_ENDS' build/threads_wne.err)"
+# A JOIN LETS GO OF ITS LINE'S LOCKS WHILE IT WAITS (the author, 2026-09-24); a real circle is still S728.
+timeout 20 "$interpreter" tests/threads_lock_wait_never_ends.satl > build/threads_wne.out 2>/dev/null; code=$?
+expect "threads: total = w.join() lets go of the lock w needs while it waits, and answers" "0|1" \
+       "$code|$(tr -d '\n' < build/threads_wne.out)"
+timeout 20 "$interpreter" tests/threads_lock_field_join.satl > build/threads_lfj.out 2>/dev/null; code=$?
+expect "threads: a thread kept in a locked object's field is joined from its capsule, and writes it" "0|1" \
+       "$code|$(tr -d '\n' < build/threads_lfj.out)"
+timeout 20 "$interpreter" tests/threads_lock_circle.satl > /dev/null 2> build/threads_circle.err; code=$?
+expect "threads: two objects locked in opposite orders by two threads is S728 WAIT_NEVER_ENDS, not a frozen program" "63|1" \
+       "$code|$(grep -c 'S728: WAIT_NEVER_ENDS' build/threads_circle.err)"
 "$interpreter" tests/threads_override.satl > build/threads_override.out 2>/dev/null; code=$?
 expect "threads: satellite.thread.new(call_speak()) in a dog runs the dog's override" "0|dog|dog|dog|" \
        "$code|$(tr '\n' '|' < build/threads_override.out)"

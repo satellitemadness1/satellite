@@ -78,6 +78,17 @@ void give_back_object_lock(ObjectLock &lock, LockUse use);
 signed long long int start_waiting_for(const satellite_thread &thread);
 void done_waiting_for_a_thread();
 
+// A JOIN LETS GO WHILE IT WAITS (the author, 2026-09-24, on the question put to him: "should
+// we have it?" -- yes). join() and wait() give back every object lock this thread's line
+// holds, wait, and take them back in the order they were first taken -- as Java's wait(),
+// C#'s Monitor.Wait and C++'s condition_variable::wait let go of their lock. So
+// `total = w.join()`, and joining a thread kept in a field, never wait on a lock their
+// own line holds. The one cost: in `total = total + w.join()` another thread may change
+// `total` between its read and the write. take_back answers S728 when taking one back
+// would never end.
+void let_go_while_waiting();
+signed long long int take_back_after_waiting();
+
 // A PROGRAM THREAD'S OWN NODE, set by the thread when its body starts and cleared when it
 // ends, so a join() on it can see what it waits for.
 void this_thread_runs(satellite_thread &thread);
