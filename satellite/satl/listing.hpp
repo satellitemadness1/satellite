@@ -22,6 +22,10 @@
 // reads -- a listing should cost one stat an entry. If the author wants 003's
 // column back it is one function here and no change anywhere else.
 //
+// THE SIZE COLUMN FOLLOWS TYPE (the author, 2026-09-24): bytes under 1024, then kb
+// and mb to three places, a file's only -- size_of() in listing.cpp has the rule.
+// It made the table 13 cells wider, and satl's console with it (console_launch.cpp).
+//
 // A NAME THAT CANNOT BE STAT'ED still lists, with `-` in every column but its
 // own: a file deleted between the read and the stat is not a reason to refuse
 // the whole table.

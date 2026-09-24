@@ -4830,5 +4830,27 @@ printf 'satellite.console.display("typed \\"here\\"")\n' | "$interpreter" --repl
 expect "strings: a line typed at the prompt reads its escapes the same way" 1 \
        "$(grep -cx 'typed "here"' build/repl_escapes.out)"
 
+# THE LISTING'S SIZE COLUMN (the author, 2026-09-24): after type; under 1024 a whole
+# number of bytes written out in full, then kb and mb -- and on, as gb tb pb eb -- to
+# three places, the bytes divided by 1024 per unit and rounded to the nearest
+# thousandth; a file's only. The two big files are sparse, so they cost no disk.
+size_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_sizes.XXXXXX")
+: > "$size_room/a_empty"; head -c 1 /dev/zero > "$size_room/b_one"; head -c 538 /dev/zero > "$size_room/c_538"
+head -c 1023 /dev/zero > "$size_room/d_1023"; head -c 1024 /dev/zero > "$size_room/e_1024"
+head -c 53248 /dev/zero > "$size_room/f_52kb"; head -c 1048575 /dev/zero > "$size_room/g_just_under_mb"
+head -c 1536000 /dev/zero > "$size_room/h_1500kb"; truncate -s 1073741823 "$size_room/i_rounds_to_gb"
+truncate -s 5368709120 "$size_room/j_5gb"; mkdir "$size_room/k_dir"; ln -s c_538 "$size_room/l_link"
+printf 'satellite.directory.list("%s")\n' "$size_room" | "$interpreter" --repl > build/listing_sizes.out 2>/dev/null
+expect "listing: size comes after type" "name type size permissions owner created modified" \
+       "$(head -1 build/listing_sizes.out | tr -s ' ')"
+expect "listing: bytes whole and written out, kb and mb to three places, 1024.000 mb is 1.000 gb, a dir and a link a dash" \
+       "a_empty=0 bytes|b_one=1 byte|c_538=538 bytes|d_1023=1023 bytes|e_1024=1.000 kb|f_52kb=52.000 kb|g_just_under_mb=1023.999 kb|h_1500kb=1.465 mb|i_rounds_to_gb=1.000 gb|j_5gb=5.000 gb|k_dir=-|l_link=-" \
+       "$(awk 'NR > 1 { print $1 "=" ($3 == "-" ? "-" : $3 " " $4) }' build/listing_sizes.out | tr '\n' '|' | sed 's/|$//')"
+expect "listing: sizes are written from the right, so every kb, mb and gb point lines up" 1 \
+       "$(grep -E ' (kb|mb|gb)  ' build/listing_sizes.out | awk '{ print index($0, ".") }' | sort -u | wc -l)"
+rm -rf "$size_room"
+expect "satl's console is 133 columns: the listing's 120 and its size column's 13" 1 \
+       "$(grep -c '^constexpr long kColumns = 133;$' satellite/satellite_variable_window/console_launch.cpp)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

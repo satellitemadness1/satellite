@@ -115,7 +115,11 @@ WindowHandle the_interpreters_console;
 // how many fit, and resizes the window by the difference. Adding whole cells
 // to an allocation adds exactly that many columns, whatever chrome the frame
 // holds, so it is exact rather than estimated. Once; then it removes itself.
-constexpr long kColumns = 120;
+//
+// 133 SINCE 2026-09-24, when the listing gained its size column after type: the
+// widest size, "1023.999 kb", and the two spaces after it are 13 cells, so a name
+// keeps the room it had at 120.
+constexpr long kColumns = 133;
 constexpr long kRows = 48;
 
 gboolean fit_cells(GtkWidget *widget, GdkFrameClock *, gpointer data)
@@ -242,7 +246,7 @@ bool open_the_interpreters_console(const std::string &title, std::string &why)
     // it. It is the .desktop file's own name (satellite_enterprise/icons/), and
     // satl-term's, whose launcher satl now is.
     g_set_prgname("org.satellite.terminal");
-    // THE PIXEL SIZE IS A STARTING POINT: fit_cells makes it 120 by 48 cells on
+    // THE PIXEL SIZE IS A STARTING POINT: fit_cells makes it 133 by 48 cells on
     // the first frame, whatever the font measured.
     WindowHandle console = console_new(title, 1000, 700, why);
     if (console == nullptr)

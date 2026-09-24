@@ -590,7 +590,7 @@ own:**
 the tree (git history keeps all twelve files), out of the build, out of the
 installer — which still removes one an earlier install left, once its record
 says it was its own — and the `.desktop` starts `satl --console %f`. What
-satl-term did, satl's own console does (GTK-17): its window, 120 by 48 cells in
+satl-term did, satl's own console does (GTK-17): its window, 133 by 48 cells in
 IBM Plex Mono on light blue; its end-of-run policy; its keys (Ctrl-V pastes;
 Ctrl-C is the program's while it runs and copies or closes once it has
 stopped; any key but a modifier closes a held console); its File menu — New
@@ -2213,7 +2213,8 @@ in a console. `console_launch.cpp`.
   terminal at construction. The terminal is reset once, before anything of
   ours is on it, so the line never shows. One call to remove when gnutls is
   in. **The question is still the author's.**
-- 120 by 48 cells — satl-term's, the author's ask of 2026-09-12 — by
+- 133 by 48 cells — satl-term's 120, the author's ask of 2026-09-12, and 13 more
+  since 2026-09-24 for the listing's size column — by
   satl-term's own fit-on-first-frame; satl-term's black on light blue and IBM
   Plex Mono 11, the font satl carries.
 - **NEEDED is still seven.** VTE, lz4 and simdutf were already in the link
