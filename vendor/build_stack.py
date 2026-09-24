@@ -304,8 +304,8 @@ def preflight(c, log, steps):
                if shutil.which(t) is None]
     if missing:
         die("missing build tools: " + ", ".join(missing))
-    if not Path("/usr/local/bin/nasm").exists():
-        die("libjpeg-turbo needs /usr/local/bin/nasm (REQUIRE_SIMD=1)")
+    if recipes.NASM is None:
+        die("libjpeg-turbo needs nasm (REQUIRE_SIMD=1) -- AlmaLinux: sudo dnf install --enablerepo=crb nasm")
     if not MESON_PY.exists():
         die(f"no vendored meson at {MESON_PY}")
 

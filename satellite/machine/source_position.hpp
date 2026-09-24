@@ -4,10 +4,12 @@
 //
 // The author's sketch of the report has a row nothing has ever filled in:
 //
+/*
 //     directory: path
 //     syntax: code here
 //                          /\
 //                        however you had 003
+*/
 //
 // This is what fills it. Three questions, and SATELLITE_ERROR Part 3 measured
 // what each one costs before any of it was written:

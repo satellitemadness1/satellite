@@ -30,6 +30,13 @@ all: $(ALL_TARGETS)
 	@if [ -e $(BUILD)/satl-term ] || [ -d $(OBJECTS)/satl-term ]; then \
 	     rm -rf $(BUILD)/satl-term $(OBJECTS)/satl-term && \
 	     echo "removed $(BUILD)/satl-term, which an earlier build made -- satl opens its own console now"; fi
+ifneq ($(HAVE_GTK),yes)
+	@echo "" && \
+	 echo "  THIS satl HAS NO WINDOW. It runs every program; the window and console words refuse by name." && \
+	 echo "  $(if $(filter vendor,$(GTK)),The GTK it carries is built from vendor/new/ and is not built in this checkout yet:,GTK=system found no gtk4 on this machine.)" && \
+	 echo "  $(if $(filter vendor,$(GTK)),make window    (about three minutes; make_support/047-window.mk says what it needs),make GTK=vendor window)" && \
+	 echo ""
+endif
 
 # Runs on every make; build_number.py decides whether this make is a build, and
 # rewrites the stamp only when it is -- which is what recompiles the objects that
@@ -141,7 +148,7 @@ $(BUILD)/satl: $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP
 	@echo "linking $@ -- $(GTK_KIND)"
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(GTK_LINK_FLAGS) $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) -o $@ -ldl $(GTK_LIBS)
 	$(call shows_the_build_row,$@)
-ifeq ($(GTK),vendor)
+ifeq ($(GTK)$(HAVE_GTK),vendoryes)
 	$(call carries_its_own_gtk,$@)
 endif
 

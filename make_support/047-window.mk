@@ -194,10 +194,20 @@ GTK_LINK_FLAGS =
 # -lpthread and -lrt are the same shape and cost nothing: glibc 2.34+ has no
 # separate .so for either, so they add no NEEDED entry; they stay for the day a
 # link is tried against an older glibc, where they would be the honest answer.
+#
+# ONLY WHEN THE STACK IS BUILT (a fresh clone, 2026-09-23: `ld: cannot find
+# vendor/build/gtk/gtk/libgtk.a`). HAVE_GTK above was already `no` and the window
+# sources already left out, but the link still named the archive, so a checkout
+# without vendor/stage could never link at all -- the opposite of 047's oldest rule.
+ifeq ($(HAVE_GTK),yes)
 GTK_LIBS = -Wl,--start-group $(GTK_BUILD)/gtk/libgtk.a $(GTK_ARCHIVES) -Wl,--end-group \
            -lm -lpthread -lrt -lwayland-client -lwayland-egl
 
 GTK_KIND = vendored (GTK carried inside satl)
+else
+GTK_LIBS =
+GTK_KIND = no window (vendor/stage is not built -- make window)
+endif
 
 else
 
@@ -276,3 +286,19 @@ WINDOW_DATA_INPUTS = $(SATELLITE)/satellite_variable_window/make_window_data.py 
 ifeq ($(HAVE_GTK),yes)
 GTK_OBJECTS += $(WINDOW_DATA_OBJECT)
 endif
+
+# `make window` BUILDS THE GTK satl CARRIES, from the tarballs in vendor/new/, into
+# vendor/stage and vendor/build/gtk -- neither is in git, so a fresh clone's `make`
+# builds a satl with no window and says so at the end (050-build.mk). Then `make`
+# builds satl with it and installs. vendor/build_stack.py checks what it needs before
+# it starts and names anything missing: a clang, ninja, cmake, bison, perl,
+# pkg-config, the three wayland .pc files (wayland-devel) and /usr/local/bin/nasm.
+# NOT RUN BY A PLAIN `make`: three minutes, and a machine without those tools would
+# fail every make rather than build the interpreter it can.
+# THE STACK'S CLANG: the one this make found, else the system's.
+VENDOR_CLANG = $(firstword $(wildcard $(LLVM_BIN)/clang) $(wildcard /usr/bin/clang))
+.PHONY: window
+window:
+	@$(if $(VENDOR_CLANG),,echo "make window: the carried GTK is built with clang, and this machine has none (AlmaLinux: sudo dnf install clang)" >&2; exit 1)
+	/usr/bin/python3 vendor/build_stack.py --clang $(patsubst %/bin/clang,%,$(VENDOR_CLANG))
+	@echo "the carried GTK is built -- now run: make"

@@ -11,7 +11,17 @@ documents and find every change with its reason attached.
 NOTHING HERE HAS BEEN RUN. Expect the first pass to find defects; correct both files.
 """
 
+import shutil
 from dataclasses import dataclass, field
+from pathlib import Path
+
+# THE ASSEMBLER libjpeg-turbo's SIMD needs (REQUIRE_SIMD=1). /usr/local/bin/nasm is the
+# one this stack was first built with (NASM 3.02rc13, built by hand; BUILD_RECIPES.md
+# item 3) and stays first, so this machine's recipe is the command it always was.
+# ANYWHERE ELSE, the nasm on PATH -- AlmaLinux ships it in CRB -- because a fixed path
+# refused a nasm installed by dnf at /usr/bin (a fresh clone, 2026-09-23). None when
+# there is none; build_stack.py says what to install.
+NASM = "/usr/local/bin/nasm" if Path("/usr/local/bin/nasm").exists() else shutil.which("nasm")
 
 
 @dataclass
@@ -297,7 +307,7 @@ def steps(c):
                        "-DWITH_JPEG7=0", "-DWITH_JPEG8=0",
                        "-DWITH_ARITH_DEC=1", "-DWITH_ARITH_ENC=1",
                        "-DWITH_SIMD=1", "-DREQUIRE_SIMD=1",
-                       "-DCMAKE_ASM_NASM_COMPILER=/usr/local/bin/nasm",
+                       f"-DCMAKE_ASM_NASM_COMPILER={NASM}",
                        "-S", f"{V}/libjpeg-turbo/libjpeg-turbo-3.2.0",
                        "-B", f"{V}/build/libjpeg-turbo"]),
             ("ninja", ninja("build/libjpeg-turbo")),
@@ -312,7 +322,9 @@ def steps(c):
                    "install(FILES ...) at CMakeLists.txt:2016 is unguarded and drops eight "
                    "doc files into the stage). NASM here is 3.02rc13 from /usr/local -- a "
                    "release candidate, not what 3.2.0 was tested against. If a JPEG ever "
-                   "decodes wrong, reconfigure with -DWITH_SIMD=0 before looking anywhere else.",
+                   "decodes wrong, reconfigure with -DWITH_SIMD=0 before looking anywhere else. "
+                   "A machine WITHOUT /usr/local/bin/nasm uses the nasm on PATH (NASM at the "
+                   "top of this file, 2026-09-23) -- AlmaLinux's CRB nasm is 2.16.01.",
     )
 
     libtiff = Step(

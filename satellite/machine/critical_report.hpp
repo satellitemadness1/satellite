@@ -4,6 +4,7 @@
 // The author, 2026-09-18, drew it: *"it'll look like it came out of some space
 // kinda novel or something!"*
 //
+/*
 //     --------------------------------------------------------------------------------
 //     SATELLITE CRITICAL ERROR REPORT
 //     --------------------------------------------------------------------------------
@@ -16,6 +17,7 @@
 //                        however you had 003
 //
 //     --------------------------------------------------------------------------------
+*/
 //
 // EIGHTY COLUMNS, AND THE RULE IS EXACTLY EIGHTY DASHES. Not the terminal's
 // width: a report copied into a bug entry, a file or a chat keeps its shape, and

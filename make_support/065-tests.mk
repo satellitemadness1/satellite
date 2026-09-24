@@ -50,9 +50,18 @@ $(BUILD)/exit_status_cases: $(MACHINE)/exit_status_cases.cpp $(MACHINE)/exit_sta
 # after most builds, and check.sh called it stale.
 COUNT_CASES_SOURCES = $(BYTECODE)/count_cases.cpp $(BYTECODE)/bytecode_registry.cpp $(BYTECODE)/cascade_convert.cpp \
                       $(SATELLITE)/threads/startup_threads.cpp $(MACHINE)/machine_state.cpp
+#
+# THE SANITIZER ONLY WHERE THE COMPILER CAN LINK IT (the author's fresh AlmaLinux 10.2,
+# 2026-09-23: `/usr/bin/ld: cannot find /usr/lib64/libubsan.so.1.0.0`). g++'s libubsan
+# is its own package, and a machine without it failed the whole `make` on a test
+# harness. Asked once, when this recipe runs: without it the cases are built and run
+# all the same, and make says what they are missing.
+UBSAN_FLAGS = $(shell if printf 'int main(){}' | $(CXX) -x c++ -fsanitize=undefined -fno-sanitize-recover=undefined - -o /dev/null >/dev/null 2>&1; \
+                      then echo -fsanitize=undefined -fno-sanitize-recover=undefined; \
+                      else echo "note: $(CXX) cannot link -fsanitize=undefined here (no libubsan), so build/count_cases is built without it" >&2; fi)
 $(BUILD)/count_cases: $(COUNT_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
 	@mkdir -p $(BUILD)
-	$(LINK_ENV) $(CXX) $(CXXFLAGS) -fsanitize=undefined -fno-sanitize-recover=undefined $(LDFLAGS) \
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(UBSAN_FLAGS) $(LDFLAGS) \
 	    $(COUNT_CASES_SOURCES) -o $@
 
 # satellite/prompt, M0.6's terminal layer, alone: its cases with no terminal, and a

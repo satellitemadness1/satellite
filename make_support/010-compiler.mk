@@ -6,8 +6,14 @@
 # chose: `make CXX=g++` and CXX from the environment both win. 004's old Makefile
 # said `CXX ?= g++`, which never fires -- CXX is one of make's built-ins.
 LLVM_BIN = $(HOME)/opt/clang-current/bin
+#
+# THEN THE SYSTEM'S clang++, THEN g++ (a fresh clone, 2026-09-23). A machine without
+# ~/opt built with c++ -- g++ -- even with clang installed. AlmaLinux 10's own clang 21
+# (`sudo dnf install clang`) was measured that day: a fresh clone, a bare environment,
+# 0 errors, 0 warnings, and the satl it made runs. g++ 14.3 builds it too, and stays
+# last, because the project is developed against clang.
 ifeq ($(origin CXX),default)
-  CXX := $(if $(wildcard $(LLVM_BIN)/clang++),$(LLVM_BIN)/clang++,c++)
+  CXX := $(firstword $(wildcard $(LLVM_BIN)/clang++) $(if $(shell command -v clang++ 2>/dev/null),clang++) c++)
 endif
 
 # AND THE C COMPILER, chosen the same way and for one file only: the GResource
@@ -16,7 +22,7 @@ endif
 # this clang, which is the mismatch PLAN M0.5 wrote build_libraries.py's
 # .built_with file to stop happening quietly.
 ifeq ($(origin CC),default)
-  CC := $(if $(wildcard $(LLVM_BIN)/clang),$(LLVM_BIN)/clang,cc)
+  CC := $(firstword $(wildcard $(LLVM_BIN)/clang) $(if $(shell command -v clang 2>/dev/null),clang) cc)
 endif
 
 # OPT IS THE KNOB, AND CXXFLAGS IS NOT ONE: `make CXXFLAGS=-O3` replaces the whole
