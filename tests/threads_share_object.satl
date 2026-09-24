@@ -1,0 +1,23 @@
+// An object of a spacesuit handed to a thread would be SHARED with main: S727 until .lock() (THREADS.md T2).
+satellite.include(satellite)
+
+satellite.spacesuit box()
+{
+    satellite.public
+    {
+        satellite.variable.number held = 0
+    }
+}
+
+satellite.capsule look(box inside)
+{
+    satellite.console.display("never printed")
+}
+
+satellite.capsule satellite.main()
+{
+    box mine()
+    satellite.console.display("before")
+    satellite.variable.thread t = satellite.thread.new(look(mine))
+    satellite.return(satellite)
+}

@@ -31,6 +31,20 @@ Value call_capsule_for_its_answer(const std::vector<std::bitset<16>> &row, std::
 
 // `.name` AFTER AN OBJECT: `at` on the `.`, and left past the call. The object's
 // spacesuit says what `name` is (CapsuleTable::member), and the capsule runs on it.
+// A CAPSULE CALL WORKED OUT AND NOT RUN (threads, 2026-09-23): `satellite.thread.new(
+// count_alone(t))` finds count_alone and works out t on THIS thread, now, and keeps them
+// for start() -- 003's M23 rule, "the arguments are worked out now; the capsule is not
+// entered until start()". `at` is on the capsule's first name and is left past its `)`;
+// `open` is its `(`. False, with the refusal in `context`, as a call for its answer is.
+struct PackagedCall {
+    const CapsuleSite *site = nullptr;
+    std::vector<Value> arguments;
+    std::string written;              // the name as the program wrote it: count_alone, other.work
+};
+bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &at,
+                          const std::vector<std::string> &names, std::size_t open,
+                          ExpressionContext &context, PackagedCall &out);
+
 Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, const Value &object,
                   const std::string &receiver, ExpressionContext &context);
 

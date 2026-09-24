@@ -261,6 +261,39 @@ inline SCode s_code_for(signed long long int machine_code)
     case thread_start_error:
         return {"S720", "THREAD_NOT_STARTED",
                 "the machine refused a thread. satl --config says how many this machine allows."};
+    // A PROGRAM'S OWN THREADS (2026-09-23, bytecode/thread_calls.hpp), 003's S1401-S1405 in
+    // 004's numbering.
+    case thread_needs_a_capsule_call:
+        return {"S721", "THREAD_NEEDS_A_CAPSULE_CALL",
+                "satellite.thread.new runs a capsule of your own on a thread, so what goes inside it is a "
+                "CALL -- my_capsule() or my_capsule(x). Its arguments are worked out at new; the capsule "
+                "does not begin until start()."};
+    case thread_already_started:
+        return {"S722", "THREAD_ALREADY_STARTED",
+                "this thread has already been started, and a thread runs once. satellite.thread.new is "
+                "what makes another one."};
+    case thread_not_started:
+        return {"S723", "JOIN_BEFORE_START",
+                "join() and wait() wait for a thread that is running, and this one has not been started "
+                "-- start() comes first."};
+    case thread_already_joined:
+        return {"S724", "THREAD_ALREADY_JOINED",
+                "this thread had already been joined, so this join gave back the same answer the first "
+                "one did -- a thread runs once and is waited for once."};
+    case thread_cannot_start:
+        return {"S725", "THREAD_CANNOT_START",
+                "this machine would not make another thread. satellite sets no ceiling of its own on how "
+                "many a program may start, so this is the operating system's answer and not satellite's."};
+    case thread_stopped:
+        return {"S726", "THREAD_STOPPED",
+                "this thread was asked to stop, and stopped between two statements -- stop() never ends "
+                "a thread in the middle of one."};
+    case thread_cannot_share_yet:
+        return {"S727", "THREAD_CANNOT_SHARE_YET",
+                "a thread may be handed numbers, strings, lists and the other values, which it gets its "
+                "own copy of. An object of a spacesuit, a file or a window would be SHARED with the thread "
+                "that made it, and sharing waits for .lock() (THREADS.md T2), so today each thread "
+                "keeps its own."};
 
     // S12xx -- DIRECTORIES AND THE FILES A PROGRAM OPENS.
     case directory_not_found:

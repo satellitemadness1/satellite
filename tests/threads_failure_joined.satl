@@ -1,0 +1,16 @@
+// A thread's refusal is reported where it happened, and join() stops main with the same code.
+satellite.include(satellite)
+
+satellite.capsule divide(satellite.variable.number by) satellite.returns(satellite.variable.number)
+{
+    satellite.return(10 / by)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(divide(0))
+    t.start()
+    satellite.variable.number never = t.join()
+    satellite.console.display("never printed")
+    satellite.return(satellite)
+}

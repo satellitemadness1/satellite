@@ -54,6 +54,7 @@
 #include "../satellite_variable_hex/satellite_hexadecimal_number.hpp"
 #include "../satellite_variable_infinity/satellite_infinity.hpp"
 #include "../satellite_variable_window/satellite_window.hpp"
+#include "../satellite_variable_thread/satellite_thread_handle.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../satellite_variable_percentage/satellite_percentage.hpp"
 #include "../satellite_variable_string/satellite_string.hpp"
@@ -147,7 +148,8 @@ public:
                               satellite_float,         // 14 satellite.variable.float (2026-09-22)
                               satellite_hexadecimal_number, // 15 satellite.variable.hex (2026-09-22)
                               satellite_color,         // 16 satellite.variable.color (2026-09-22)
-                              satellite_fraction       // 17 satellite.variable.fraction (2026-09-22)
+                              satellite_fraction,      // 17 satellite.variable.fraction (2026-09-22)
+                              ThreadHandle             // 18 satellite.variable.thread (2026-09-23, 003's "Thr")
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
@@ -200,7 +202,8 @@ public:
         hexadecimal = 15,
         color = 16,
         fraction = 17,
-        how_many_kinds = 18
+        thread = 18,
+        how_many_kinds = 19
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -219,6 +222,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<hexadecimal, Held>, satellite_hexadecimal_number>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<color, Held>, satellite_color>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<fraction, Held>, satellite_fraction>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<thread, Held>, ThreadHandle>, "");
 
     Held held;
 
@@ -240,6 +244,7 @@ public:
     satelliteObject(satellite_hexadecimal_number from) : held(std::move(from)) {}
     satelliteObject(satellite_color from) : held(std::move(from)) {}
     satelliteObject(satellite_fraction from) : held(std::move(from)) {}
+    satelliteObject(ThreadHandle from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -259,6 +264,7 @@ public:
     static satelliteObject of_hexadecimal(satellite_hexadecimal_number from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_color(satellite_color from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_fraction(satellite_fraction from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_thread(ThreadHandle from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -288,6 +294,7 @@ public:
     bool is_hexadecimal() const { return held.index() == hexadecimal; }
     bool is_color() const { return held.index() == color; }
     bool is_fraction() const { return held.index() == fraction; }
+    bool is_thread() const { return held.index() == thread; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -343,6 +350,15 @@ public:
     // the window it goes into, so what crosses is the shared handle and not the
     // window behind it.
     const WindowHandle *window_handle() const { return std::get_if<WindowHandle>(&held); }
+
+    // THE THREAD, through its handle as a window is: two names for one thread are one
+    // thread. The handle itself, because start() hands the running thread a share of it.
+    satellite_thread *as_thread() const
+    {
+        const ThreadHandle *handle = std::get_if<ThreadHandle>(&held);
+        return handle != nullptr ? handle->get() : nullptr;
+    }
+    const ThreadHandle *thread_handle() const { return std::get_if<ThreadHandle>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }

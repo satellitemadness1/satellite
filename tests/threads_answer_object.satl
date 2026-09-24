@@ -1,0 +1,34 @@
+// A thread's answer that is an object goes to the FIRST join only; a second would share it: S727.
+satellite.include(satellite)
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number held = 7
+    }
+    satellite.public
+    {
+        satellite.capsule call_held() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(held)
+        }
+    }
+}
+
+satellite.capsule make() satellite.returns(box)
+{
+    box made()
+    satellite.return(made)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread m = satellite.thread.new(make())
+    m.start()
+    box first = m.join()
+    satellite.console.display(first.call_held())
+    box second = m.join()
+    satellite.console.display("never printed")
+    satellite.return(satellite)
+}

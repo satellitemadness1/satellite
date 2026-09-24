@@ -1,6 +1,7 @@
 #include "machine_state.hpp"
 
 #include "machine_codes.hpp"
+#include "console_lock.hpp"
 #include "shown.hpp"
 
 #include <iostream>
@@ -10,6 +11,7 @@ namespace satellite004 {
 signed long long int display_machine_state(const std::string &current_machine_state,
                                            signed long long int machine_code_input)
 {
+    const ConsoleHold one_line;   // --debug's lines come from every thread's satellite.return
     std::cout << "[satellite] " << shown(current_machine_state) << " (machine_code: "
               << machine_code_input << " " << machine_code_name(machine_code_input) << ")\n";
     if (!std::cout)
@@ -19,6 +21,7 @@ signed long long int display_machine_state(const std::string &current_machine_st
 
 signed long long int report_error(const std::string &what, signed long long int machine_code)
 {
+    const ConsoleHold one_line;   // a thread can report too (console_lock.hpp)
     std::cerr << "[satellite] " << shown(what) << " (machine_code: " << machine_code << " "
               << machine_code_name(machine_code) << ")\n";
     return machine_code;

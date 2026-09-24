@@ -30,6 +30,7 @@
 #include "program_walk.hpp"
 
 #include "../machine/s_codes.hpp"
+#include "../machine/thread_stop.hpp"
 
 #include "statement_ring.hpp"
 #include "suit_run.hpp"
@@ -44,9 +45,11 @@
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
 
+#include <atomic>
 #include <cerrno>
 #include <cstring>
 #include <fstream>
+#include <mutex>
 #include <utility>
 #include <sstream>
 
@@ -561,9 +564,19 @@ void find_the_last_statements(const std::vector<std::bitset<16>> &row, std::size
 // Does the statement at `at` stand where it is the last thing `site` does.
 bool is_last_in(const CapsuleSite &site, const std::vector<std::bitset<16>> &row, std::size_t at)
 {
-    if (!site.last_statements_known) {
-        find_the_last_statements(row, site.body, site.last_statements, true);
-        site.last_statements_known = true;
+    // FILLED ONCE, AND TWO THREADS MAY REACH IT FIRST TOGETHER (threads, 2026-09-23): the
+    // same capsule started on two threads at once calls itself for the first time on both.
+    // So the fill is under a lock, and `known` is read and written as an atomic -- through
+    // atomic_ref, which leaves CapsuleSite a plain struct. Once known, the vector never
+    // changes, so every later read is a plain read.
+    std::atomic_ref<bool> known(site.last_statements_known);
+    if (!known.load(std::memory_order_acquire)) {
+        static std::mutex filling;
+        const std::lock_guard<std::mutex> hold(filling);
+        if (!known.load(std::memory_order_relaxed)) {
+            find_the_last_statements(row, site.body, site.last_statements, true);
+            known.store(true, std::memory_order_release);
+        }
     }
     for (const std::size_t last : site.last_statements)
         if (last == at)
@@ -1319,7 +1332,8 @@ signed long long int run_site(const BytecodeRegistry &registry,
                               std::vector<Value> arguments,
                               const UserDefinedHandle &self,
                               MachineState &state,
-                              Value *answer);
+                              Value *answer,
+                              bool *answered = nullptr);
 
 // A CAPSULE CALL STANDING AS A STATEMENT -- `greet(1, 2)` or `other.tools.greet(1, 2)`,
 // `at` on its first name and left past the statement. Its arguments are worked out
@@ -1468,6 +1482,15 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
     for (std::size_t at = from; at < row.size(); ) {
         const Code code = code_at(row, at);
+
+        // A THREAD ASKED TO STOP stops HERE, between two statements and never inside one
+        // (machine/thread_stop.hpp). The main thread's pointer is null. BEFORE the `}` test,
+        // so a loop whose body is empty -- `while(satellite.bool.true) { }`, or one whose
+        // work is all in its condition -- passes it on every turn: after the test, such a
+        // loop could never be stopped, and join() and the end of the run waited forever
+        // (the review, 2026-09-23).
+        if (stop_of_this_thread != nullptr && stop_of_this_thread->load(std::memory_order_relaxed))
+            return thread_stopped;
 
         if (code == token::right_brace_token)
             return success;
@@ -1776,6 +1799,10 @@ signed long long int run_turn(const BytecodeRegistry &registry,
 // turn ended: written as the recursion it replaces, the outer call runs `f(n - 1)`,
 // drops its answer and reaches its `}`. `satellite.return(f(n - 1))` is a different
 // statement, and is a call in the middle (the author's ruling, 2026-09-22).
+//
+// `answered`, WHEN IT IS GIVEN, MAKES THE ANSWER OPTIONAL (threads, 2026-09-23): a thread's
+// capsule that ends without a value is not a fault -- its join() answers nothing -- so
+// instead of refusing with capsule_gave_no_answer this says whether there was one.
 signed long long int run_site(const BytecodeRegistry &registry,
                               const CapsuleTable &capsules,
                               const FunctionTable &functions,
@@ -1783,7 +1810,8 @@ signed long long int run_site(const BytecodeRegistry &registry,
                               std::vector<Value> arguments,
                               const UserDefinedHandle &given,
                               MachineState &state,
-                              Value *answer)
+                              Value *answer,
+                              bool *answered)
 {
     // THE OBJECT IS HELD BY A HANDLE OF ITS OWN FOR EVERY TURN: `given` is a reference
     // into whoever called, and a capsule may give the name it came from another object.
@@ -1809,6 +1837,12 @@ signed long long int run_site(const BytecodeRegistry &registry,
             called_itself_last = true;
             arguments = std::move(frame.arguments);
             continue;
+        }
+        if (answer != nullptr && answered != nullptr) {
+            *answered = frame.answered && !called_itself_last;
+            if (*answered)
+                *answer = std::move(frame.answer);
+            return code;
         }
         if (answer != nullptr) {
             if (!frame.answered || called_itself_last)
@@ -1847,6 +1881,20 @@ signed long long int run_capsule_for(const BytecodeRegistry &registry,
                                      Value *answer)
 {
     return run_site(registry, capsules, functions, site, std::move(arguments), self, state, answer);
+}
+
+signed long long int run_capsule_on_a_thread(const BytecodeRegistry &registry,
+                                            const CapsuleTable &capsules,
+                                            const FunctionTable &functions,
+                                            const CapsuleSite &site,
+                                            std::vector<Value> arguments,
+                                            MachineState &state,
+                                            Value &answer,
+                                            bool &answered)
+{
+    answered = false;
+    return run_site(registry, capsules, functions, site, std::move(arguments), UserDefinedHandle(), state, &answer,
+                    &answered);
 }
 
 signed long long int run_capsule(const BytecodeRegistry &registry,

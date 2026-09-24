@@ -1324,3 +1324,60 @@ scripts that generate them (older than this).
 (today `make` installs the ordinary build, as always); and whether
 `arguments.cpu.architecture` should answer satl-cpu-level's word (`raptorlake` on the
 13700K) instead of 003's two (`haswell` / `baseline`).
+
+## M38 — a program's own threads (THREADS.md T1) — **BUILT 2026-09-23**
+
+The author, 2026-09-23: *"I meant let's build satellite.variable.thread my_thread =
+satellite.thread.new(capsule_name(args))"*, then *"we need my_thread.stop(),
+my_thread.start(), and my_thread.join()"*, and *"my_thread.wait() as another name for
+.join()"*.
+
+**What was built.** The words were already in 004's tables from 003: `1 6 13` and
+`1 23 1`. `.stop()` and `.wait()` are new rows, `1 6 13 3` and `1 6 13 4`, with registry
+tokens 0x0B58-0x0B5A. The thread is arm 18. The words and methods are in
+`bytecode/thread_calls.cpp`. A thread runs on its own OS thread with a 128 MB stack, and
+takes its own copy of MachineState from the thread that started it. THREADS.md has what
+each word does and where the rule comes from. Most rules are 003's M23, on the author's
+2026-09-12 and -13 rulings.
+
+**What made 004's interpreter safe for two walkers:**
+
+- each thread has its own MachineState;
+- the self-call cache is filled once, under a lock, and read through `atomic_ref`;
+- reports and console words hold one lock for one line, and only once a thread has
+  started (`machine/console_lock.hpp`);
+- a stop check at the top of every statement, a null pointer on the main thread
+  (`machine/thread_stop.hpp`);
+- a guard that closes every thread before `run_satl`'s capsule table goes;
+- `bad_alloc` is caught on a thread, which was `std::terminate` before;
+- `==` between two threads.
+
+**What threads may not share yet** (S727, T2 and T3): objects, files, windows, and a
+spacesuit's capsule as the thing a thread runs.
+
+**Tested:**
+
+- The author's 003 program `thread_test.satl` prints `HELLO, WORLD!`.
+- `tests/threads.satl` shows `new` does not run the capsule, `join`/`wait` answer, and
+  **8 threads × 200 activations gives 1600 of 1600 right**. It also covers two names for
+  one thread and `stop()`.
+- Twelve `tests/threads_*.satl` programs cover S721-S727, a failure joined (one report, exit
+  22) and one never joined (still exit 22), and the close at the end.
+- One of those has four threads display 500 lines each, and every line comes out whole.
+- There are 15 rows in check.sh.
+
+**A fresh reader found nine defects, all fixed** (THREADS.md lists them). The worst: an
+object a thread returned was handed to EVERY joiner, which is sharing. With two threads
+writing its string field, satl aborted 3 runs in 3. Now the first join gets it and a
+second is S727. The next: a loop with an empty body could never be stopped, because the
+stop check was after the `}` test. The rest: the input prompt and `--debug` lines were
+unlocked; a spurious S724 appeared at the end; `new` filled a checker cache; threads
+started by a window press were closed only by the guard; a refused `pthread_create` could
+hang a joiner; and the out-of-memory parachute could be freed twice. Two check.sh rows
+were added for the first two.
+
+**Still the author's:** T2, sharing with `.lock()`, as he settled it: *"by default it's not
+on, so the programmer has to lock everything themselves"*. It has two proposals of mine
+waiting on him: a check mode for unlocked sharing, and a lock that lets go when its
+capsule ends. Also still his: whether `satellite.library` becomes writable at run time,
+and T3, windows on threads.

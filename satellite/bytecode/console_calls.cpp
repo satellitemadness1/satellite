@@ -2,6 +2,7 @@
 // and console_style.hpp what each colour means and which of 003's rules it keeps.
 
 #include "console_calls.hpp"
+#include "../machine/console_lock.hpp"
 
 #include "program_walk.hpp"
 #include "word_codes.hpp"
@@ -384,7 +385,13 @@ Value call_console_word(Code code, const std::vector<Value> &arguments, const st
     if (InputSource source = input_source()) {
         got = source(prompt, drawn == prompt ? std::string() : drawn, line);
     } else {
-        std::cout << drawn << std::flush;
+        // THE PROMPT IS ONE LINE AND IS WRITTEN WHOLE (console_lock.hpp); the WAIT for the
+        // answer holds nothing, or every other thread's lines would stop until somebody
+        // typed. Written unlocked, it lost other threads' lines (the review, 2026-09-23).
+        {
+            const ConsoleHold one_prompt;
+            std::cout << drawn << std::flush;
+        }
         if (!std::getline(std::cin, line))
             got = InputAnswer::ended;
     }

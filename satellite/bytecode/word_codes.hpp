@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 434;
+inline constexpr unsigned int kWordsInTable = 436;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -374,6 +374,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401060D00000000ULL, 4274},  // 1 6 13 0 -- satellite.variable.thread()
     {0x0401060D01000000ULL, 4275},  // 1 6 13 1 -- satellite.variable.thread.start()
     {0x0401060D02000000ULL, 4276},  // 1 6 13 2 -- satellite.variable.thread.join()
+    {0x0401060D03000000ULL, 4531},  // 1 6 13 3 -- satellite.variable.thread.stop()
+    {0x0401060D04000000ULL, 4532},  // 1 6 13 4 -- satellite.variable.thread.wait()
     {0x0401060E00000000ULL, 4278},  // 1 6 14 0 -- satellite.variable.variant()
     {0x0401060E01000000ULL, 4279},  // 1 6 14 1 -- satellite.variable.variant.holding
     {0x0401060E02000000ULL, 4280},  // 1 6 14 2 -- satellite.variable.variant.holds(x)
@@ -928,6 +930,8 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.terminal.background", {1, 29, 2, 0, 0, 0, 0}, 3},
     {"satellite.terminal.background()", {1, 29, 2, 0, 0, 0, 0}, 4},
     {"satellite.terminal.background(color)", {1, 29, 2, 1, 0, 0, 0}, 4},
+    {"satellite.variable.thread.stop()", {1, 6, 13, 3, 0, 0, 0}, 4},
+    {"satellite.variable.thread.wait()", {1, 6, 13, 4, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1340,6 +1344,8 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.thread()", 4274},
     {"satellite.variable.thread.join()", 4276},
     {"satellite.variable.thread.start()", 4275},
+    {"satellite.variable.thread.stop()", 4531},
+    {"satellite.variable.thread.wait()", 4532},
     {"satellite.variable.time", 4211},
     {"satellite.variable.time()", 4212},
     {"satellite.variable.variant", 4277},

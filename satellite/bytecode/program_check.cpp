@@ -41,6 +41,7 @@
 #include "infinity_calls.hpp"
 #include "library_values.hpp"
 #include "window_calls.hpp"
+#include "thread_calls.hpp"
 #include "word_codes.hpp"
 #include "../machine/s_codes.hpp"
 
@@ -383,6 +384,21 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
             why = spelling + " " + missing;
             return not_built_yet;
         }
+    }
+    // A THREAD'S OWN METHODS (2026-09-23), asked of thread_calls.hpp: start, stop, join and
+    // wait, each taking nothing. Before the containers: a list has a .join of its own.
+    if (declared_as == word::code_of(1, 6, 13)) {
+        if (thread_method_arity(method) < 0) {
+            why = spelling + " -- " + thread_methods_are();
+            return types_do_not_meet;
+        }
+        std::size_t close = k + 2, given = 0;
+        if (code_at(row, k + 2) != token::left_parenthesis_token || !brackets_at(row, k + 2, close, given) ||
+            given != 0) {
+            why = spelling + "() takes nothing, in its brackets";
+            return satl_line_not_understood;
+        }
+        return success;
     }
     if (a_container) {
         if (of_a_container) {
@@ -1038,6 +1054,51 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             continue;
         }
 
+        // satellite.thread.new(capsule(args)) (2026-09-23, thread_calls.hpp): what is inside
+        // is a CALL to one of the program's own capsules, KEPT and not run -- so it is judged
+        // as a call (it reaches a capsule; it is given what it takes) and never as a call for
+        // its answer: a capsule that hands nothing back is what a thread most often runs.
+        // Its arguments are judged as the loop goes on, from the call's `(`.
+        if (is_thread_word(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
+            std::size_t past = at + 2;
+            if (code_at(row, past) != token::name_token) {
+                why = "satellite.thread.new runs a capsule of your own on a thread, so what goes inside it is a "
+                      "call: my_capsule() or my_capsule(x)";
+                return thread_needs_a_capsule_call;
+            }
+            std::vector<std::string> names;
+            dotted_names_at(row, past, names);
+            std::string written = names.front();
+            for (std::size_t n = 1; n < names.size(); ++n) written += "." + names[n];
+            if (code_at(row, past) != token::left_parenthesis_token) {
+                why = "satellite.thread.new(" + written + ") names a capsule and does not call it -- write " +
+                      written + "(), with what it takes inside the brackets";
+                return thread_needs_a_capsule_call;
+            }
+            const Reached reached = capsules.reach(scope, names);
+            if (reached.site == nullptr) {
+                why = reached.why;
+                return satl_line_not_understood;
+            }
+            if (reached.site->suit != kNoScope) {
+                why = written + " is a capsule of the spacesuit " + capsules.scopes[reached.site->suit].within +
+                      ", and it runs on an object -- a thread may not share an object with the thread that made "
+                      "it yet (THREADS.md T2)";
+                return thread_cannot_share_yet;
+            }
+            const signed long long int given = given_what_it_takes(row, past, *reached.site, written, why);
+            if (given != success)
+                return given;
+            std::size_t close = past, count = 0;
+            brackets_at(row, past, close, count);
+            if (code_at(row, close + 1) != token::right_parenthesis_token) {
+                why = "satellite.thread.new takes one capsule call and nothing after it";
+                return satl_line_not_understood;
+            }
+            at = past;
+            continue;
+        }
+
         // satellite.console.width AND .height ARE READ, NOT CALLED (console_calls.hpp),
         // so `width()` is told that rather than that it has no library.
         if (is_console_fact(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
@@ -1612,8 +1673,8 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (!is_a_type_word(code)) {
             why = std::string(word::spelling_of(code)) + " " + name +
                   " is a declaration, and only satellite.variable.number, .string, .binary, "
-                  ".percentage, .file, .bool, .infinity, .float, .hex, .color, .fraction and "
-                  "satellite.container.list, .index and .multiple are built yet";
+                  ".percentage, .file, .bool, .infinity, .float, .hex, .color, .fraction, .window, "
+                  ".thread and satellite.container.list, .index and .multiple are built yet";
             at = stop;
             return satl_line_not_understood;
         }

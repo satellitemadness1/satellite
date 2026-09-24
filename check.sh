@@ -4716,5 +4716,55 @@ expect "satl --repl: Ctrl-C at input() stops the line with S810 and the prompt c
 expect "foreground is registry row 0x0B57, and token_codes.hpp agrees" "1|1" \
        "$(grep -c '^0000101101010111  foreground_token ' REGISTRY.satellite)|$(grep -c 'Code foreground_token = 0x0B57;' satellite/bytecode/token_codes.hpp)"
 
+
+# THREADS (2026-09-23, bytecode/thread_calls.hpp): the author's syntax,
+# satellite.variable.thread t = satellite.thread.new(capsule(args)), with start(), join(),
+# wait() and stop() -- and 003's M23 proofs (tests/threads.satl says what each line is).
+"$interpreter" tests/threads.satl > build/threads.out 2>/dev/null; code=$?
+expect "threads: new() does not run the capsule, join() and wait() answer, 8 threads x 200 = 1600 right, two names one thread, stop()" \
+       "0|made|ran on its thread|joined|42|100|1600|14|true|(thread forever, not started)|(thread forever, stopped)|(thread twice, finished)|" \
+       "$code|$(tr '\n' '|' < build/threads.out)"
+"$interpreter" tests/threads_new_not_a_call.satl > build/threads_new.out 2> build/threads_new.err; code=$?
+expect "threads: satellite.thread.new(5) is refused S721 before anything runs" "56|0|1" \
+       "$code|$(wc -l < build/threads_new.out | tr -d ' ')|$(grep -c 'S721: THREAD_NEEDS_A_CAPSULE_CALL' build/threads_new.err)"
+"$interpreter" tests/threads_started_twice.satl > build/threads_twice.out 2> build/threads_twice.err; code=$?
+expect "threads: a second start() is S722, after the first run's line" "57|once|1" \
+       "$code|$(tr -d '\n' < build/threads_twice.out)|$(grep -c 'S722: THREAD_ALREADY_STARTED' build/threads_twice.err)"
+"$interpreter" tests/threads_join_before_start.satl > /dev/null 2> build/threads_early.err; code=$?
+expect "threads: join() before start() is S723" "58|1" "$code|$(grep -c 'S723: JOIN_BEFORE_START' build/threads_early.err)"
+"$interpreter" tests/threads_joined_twice.satl > build/threads_joined.out 2> build/threads_joined.err; code=$?
+expect "threads: a second join() answers the same again, S724 said as a notice, exit 0" "0|8|8|8||1" \
+       "$code|$(tr '\n' '|' < build/threads_joined.out)|$(grep -c '^\[satellite\] S724 THREAD_ALREADY_JOINED' build/threads_joined.err)"
+"$interpreter" tests/threads_share_object.satl > build/threads_share.out 2> build/threads_share.err; code=$?
+expect "threads: an object of a spacesuit handed to a thread is S727 until .lock()" "62|before|1" \
+       "$code|$(tr -d '\n' < build/threads_share.out)|$(grep -c 'S727: THREAD_CANNOT_SHARE_YET' build/threads_share.err)"
+"$interpreter" tests/threads_suit_capsule.satl > /dev/null 2> build/threads_suit.err; code=$?
+expect "threads: a spacesuit's capsule as a thread's body is S727 before anything runs" "62|1" \
+       "$code|$(grep -c 'S727: THREAD_CANNOT_SHARE_YET' build/threads_suit.err)"
+"$interpreter" tests/threads_window_on_a_thread.satl > build/threads_window.out 2> build/threads_window.err; code=$?
+expect "threads: a window word on a thread is S727, and join() stops main with it" "62|0|1" \
+       "$code|$(wc -l < build/threads_window.out | tr -d ' ')|$(grep -c 'S727: THREAD_CANNOT_SHARE_YET' build/threads_window.err)"
+"$interpreter" tests/threads_failure_joined.satl > build/threads_fail.out 2> build/threads_fail.err; code=$?
+expect "threads: a refusal on a thread is reported once, where it happened, and join() stops main with its code" "22|0|1" \
+       "$code|$(wc -l < build/threads_fail.out | tr -d ' ')|$(grep -c 'SATELLITE CRITICAL ERROR REPORT' build/threads_fail.err)"
+"$interpreter" tests/threads_failure_unjoined.satl > build/threads_unjoined.out 2> build/threads_unjoined.err; code=$?
+expect "threads: a thread that fails and that nobody joins still fails the run, with its own code" "22|main ends|1" \
+       "$code|$(tr -d '\n' < build/threads_unjoined.out)|$(grep -c 'SATELLITE CRITICAL ERROR REPORT' build/threads_unjoined.err)"
+timeout 20 "$interpreter" tests/threads_never_joined.satl > build/threads_forever.out 2>/dev/null; code=$?
+expect "threads: at satellite.return(satellite) a thread that would never end is stopped, and the run exits 0" \
+       "0|main ends, and the thread is stopped for it" "$code|$(tr -d '\n' < build/threads_forever.out)"
+"$interpreter" tests/threads_lines_whole.satl > build/threads_lines.out 2>/dev/null; code=$?
+expect "threads: four threads display at once, 500 lines each, and every line comes out whole" \
+       "0|500 alpha line|500 bravo line|500 charlie line|500 delta line|" \
+       "$code|$(sort build/threads_lines.out | uniq -c | sed 's/^ *//' | tr '\n' '|')"
+timeout 20 "$interpreter" tests/threads_empty_loop.satl > build/threads_empty.out 2>/dev/null; code=$?
+expect "threads: stop() reaches a loop whose body is empty (the check is before the })" "0|(thread spin, stopped)" \
+       "$code|$(tr -d '\n' < build/threads_empty.out)"
+"$interpreter" tests/threads_answer_object.satl > build/threads_answer.out 2> build/threads_answer.err; code=$?
+expect "threads: an answer that is an object goes to the first join only; a second is S727" "62|7|1" \
+       "$code|$(tr -d '\n' < build/threads_answer.out)|$(grep -c 'S727: THREAD_CANNOT_SHARE_YET' build/threads_answer.err)"
+expect "start, stop and wait are registry rows 0x0B58-0x0B5A, and token_codes.hpp agrees" "3|3" \
+       "$(grep -c '^00001011010110[01][01]  \(start_token\|stop_token\|wait_method_token\) ' REGISTRY.satellite)|$(grep -c 'Code \(start_token = 0x0B58\|stop_token = 0x0B59\|wait_method_token = 0x0B5A\);' satellite/bytecode/token_codes.hpp)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

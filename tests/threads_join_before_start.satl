@@ -1,0 +1,14 @@
+// join() waits for a running thread, and this one was never started: S723.
+satellite.include(satellite)
+
+satellite.capsule say(satellite.variable.string text)
+{
+    satellite.console.display(text)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(say("never"))
+    t.join()
+    satellite.return(satellite)
+}

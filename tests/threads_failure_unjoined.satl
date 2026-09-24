@@ -1,0 +1,23 @@
+// A thread that fails and that nobody joins still fails the run, with its own code, after main's last line.
+// MAIN COUNTS FIRST, on purpose: at satellite.return(satellite) every unjoined thread is asked to stop
+// (003's "close everything"), and a thread that has not reached its first statement by then never runs --
+// 003's M23 says so too. The count gives it far longer than it needs to fail.
+satellite.include(satellite)
+
+satellite.capsule divide(satellite.variable.number by) satellite.returns(satellite.variable.number)
+{
+    satellite.return(10 / by)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(divide(0))
+    t.start()
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 200000)
+    {
+        i = i + 1
+    }
+    satellite.console.display("main ends")
+    satellite.return(satellite)
+}

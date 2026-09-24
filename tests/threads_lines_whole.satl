@@ -1,0 +1,29 @@
+// Four threads display at once, 500 lines each: every line comes out whole (console_lock.hpp).
+satellite.include(satellite)
+
+satellite.capsule lines(satellite.variable.string who)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 500)
+    {
+        satellite.console.display(who + " line")
+        i = i + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread a = satellite.thread.new(lines("alpha"))
+    satellite.variable.thread b = satellite.thread.new(lines("bravo"))
+    satellite.variable.thread c = satellite.thread.new(lines("charlie"))
+    satellite.variable.thread d = satellite.thread.new(lines("delta"))
+    a.start()
+    b.start()
+    c.start()
+    d.start()
+    a.join()
+    b.join()
+    c.join()
+    d.join()
+    satellite.return(satellite)
+}

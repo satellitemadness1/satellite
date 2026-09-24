@@ -15,6 +15,7 @@
 // directly above a call to `number_and_string_add`, so a reader never has to
 // guess which file a pair went to.
 
+#include "../satellite_variable_thread/satellite_thread.hpp"
 #include "satellite_object.hpp"
 #include "fast_paths.hpp"
 #include "object_color.hpp"
@@ -284,6 +285,9 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     // asking which one it has, not what they have on them.
     case satelliteObject::window:
         return l.as_window() == r.as_window();
+    // AND TWO THREADS THE SAME WAY: the same thread, not two that run the same capsule.
+    case satelliteObject::thread:
+        return l.as_thread() == r.as_thread();
     // THE FOUR OF 2026-09-22 SAY FOR THEMSELVES what makes two of them the same.
     case satelliteObject::floating: return float_same(*l.as_float(), *r.as_float());
     case satelliteObject::hexadecimal: return hexadecimal_same(*l.as_hexadecimal(), *r.as_hexadecimal());
@@ -314,6 +318,7 @@ const char *satelliteObject::kind_name() const
     case hexadecimal: return "a hex";
     case color: return "a color";
     case fraction: return "a fraction";
+    case thread: return "a thread";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -719,6 +724,13 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
     case hexadecimal: return hexadecimal_to_string(*as_hexadecimal(), out, why);
     case color: return color_to_string(*as_color(), out, why);
     case fraction: return fraction_to_string(*as_fraction(), out, why);
+    // A THREAD READS AS WHICH CAPSULE AND HOW FAR IT HAS GOT: (thread work, running).
+    case thread: {
+        const satellite_thread *which = as_thread();
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(which != nullptr ? which->shown() : std::string("(no thread)"), out,
+                                           bad_offset);
+    }
     case how_many_kinds: break;
     }
     why = "there is nothing here to make a string of";

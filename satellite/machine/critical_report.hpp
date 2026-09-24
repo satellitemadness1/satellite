@@ -40,6 +40,7 @@
 // SEE SATELLITE_ERROR.md for what an S-code is, which ones exist, and the rule
 // for adding one.
 
+#include "console_lock.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -161,10 +162,10 @@ inline std::string render(const CriticalReport &report)
 // the code -- one `types_do_not_meet` silencing every later one would hide real
 // faults.
 //
-// NOT LOCKED, AND THAT IS TRUE TODAY AND WILL NOT ALWAYS BE. Nothing reports from
-// a worker thread yet; the walker is one thread and every raise below comes from
-// it. When a thread can raise one, this needs a mutex -- said here rather than
-// found when two reports interleave into one unreadable line.
+// LOCKED BY WHOEVER PRINTS (2026-09-23): a program's threads can raise reports, so
+// print_critical and print_notice hold the console lock (console_lock.hpp) across the
+// tally and the write -- the tally is only ever touched inside them. This comment used
+// to say the day would come; threads are the day.
 struct ReportTally {
     std::vector<std::string> keys;
     std::vector<std::uint64_t> counts;
@@ -210,6 +211,7 @@ inline ReportTally &report_tally()
 // a report that corrupts the thing it was trying to explain.
 inline void print_critical(const CriticalReport &report)
 {
+    const ConsoleHold one_report;
     if (!report_tally().first_time(report))
         return;                     // said once; the tally counts the rest
     std::cerr << render(report);
@@ -234,6 +236,7 @@ inline void print_critical(const CriticalReport &report)
 // readily, alarm rarely: a refusal can end the run and still be one line.
 inline void print_notice(const CriticalReport &report)
 {
+    const ConsoleHold one_notice;
     if (!report_tally().first_time(report))
         return;                     // said once; the tally counts the rest
     std::cerr << "[satellite] " << report.code;

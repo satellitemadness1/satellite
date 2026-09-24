@@ -35,6 +35,7 @@
 #include "bytecode/float_values.hpp"
 #include "bytecode/function_table.hpp"
 #include "bytecode/program_walk.hpp"
+#include "bytecode/thread_calls.hpp"
 #include "bytecode/word_counts.hpp"
 #include "bytecode/statement_ring.hpp"
 #include "config/config_file.hpp"
@@ -64,6 +65,7 @@
 #include <cerrno>
 #include <climits>
 #include <csignal>
+#include <atomic>
 #include <cstdlib>
 #include <new>
 #include <cstring>
@@ -457,6 +459,13 @@ signed long long int run_satl(int argc, char **argv)
     // is entered, and that is PLAN work rather than a five-line change.
     const CapsuleTable capsules = capsules_in(bytecode_registry, bytecode_filenames);
     state.capsules = &capsules;
+    // EVERY THREAD THE PROGRAM STARTED IS CLOSED BEFORE THESE LOCALS GO (thread_calls.hpp):
+    // a thread still walking after this function returns would walk a freed capsule table.
+    // Declared AFTER the capsules, so it is destroyed BEFORE them, on every way out of here
+    // -- the ordinary end below closes them first, and says what they did.
+    struct ThreadsCloseFirst {
+        ~ThreadsCloseFirst() { close_every_thread(); }
+    } const threads_close_before_the_capsules_go;
     // NOTHING RUNS BEFORE THE WHOLE PROGRAM IS CHECKED.
     code = check_program(bytecode_registry, capsules, functions, state);
     if (stops_the_program(code))
@@ -477,8 +486,15 @@ signed long long int run_satl(int argc, char **argv)
     the_interpreter_is_running().store(true, std::memory_order_relaxed);
     code = run_through_the_hierarchy(features, bytecode_registry, capsules, functions, state);
     the_interpreter_is_running().store(false, std::memory_order_relaxed);
+    // "WHENEVER THE PROGRAM REACHES satellite.return(satellite), CLOSE EVERYTHING" (the author,
+    // 2026-09-12, 003's M23): every thread still running is asked to stop and waited for.
+    // One that failed and that nobody joined still fails the run -- its report was printed
+    // when it happened; this is the exit status it is owed.
+    const signed long long int a_thread_failed = close_every_thread();
     if (stops_the_program(code))
         return code;
+    if (stops_the_program(a_thread_failed))
+        return a_thread_failed;
 
     // AND NOW THE WINDOW'S OWN RUN, if a window word ever opened one
     // (SATELLITE_WINDOW.md WIN-11). The program's own lines are finished; what
@@ -545,6 +561,12 @@ signed long long int run_satl(int argc, char **argv)
         });
     if (stops_the_program(pressed))
         return pressed;
+    // AND THE THREADS A PRESS STARTED, closed here and not only by the guard (the review,
+    // 2026-09-23): their failures count like main's threads', and the tables and the flush
+    // below are read and written with none of them still running.
+    const signed long long int a_pressed_thread_failed = close_every_thread();
+    if (stops_the_program(a_pressed_thread_failed))
+        return a_pressed_thread_failed;
 
     // THE `word_counts` BIT'S ANSWER, printed when the run is over rather than as
     // it goes: a profile is a thing you read after, and the hot path must not pay
@@ -599,24 +621,26 @@ namespace {
 // threads), so a block that is never written is a block that is not really there
 // when it is wanted. One pass writing a byte a page makes it real.
 constexpr std::size_t kParachuteBytes = 64 * 1024;
-char *parachute = nullptr;
+// ATOMIC SINCE A PROGRAM CAN HAVE THREADS (the review, 2026-09-23): two threads out of
+// memory at once both run the handler, and a plain pointer could be freed twice.
+std::atomic<char *> parachute{nullptr};
 
 void take_the_parachute()
 {
-    parachute = static_cast<char *>(std::malloc(kParachuteBytes));
-    if (parachute == nullptr)
+    char *block = static_cast<char *>(std::malloc(kParachuteBytes));
+    if (block == nullptr)
         return;                      // no memory even now; the handler copes
     for (std::size_t at = 0; at < kParachuteBytes; at += 4096)
-        parachute[at] = 1;           // make the pages real, not promised
+        block[at] = 1;               // make the pages real, not promised
+    parachute.store(block);
 }
 
 // `new` failed. Give the block back and let the throw happen, so the catch in
 // main() reports through the ordinary path with room to do it in.
 void out_of_memory_handler()
 {
-    if (parachute != nullptr) {
-        std::free(parachute);
-        parachute = nullptr;
+    if (char *block = parachute.exchange(nullptr)) {   // exactly one thread gets it
+        std::free(block);
         return;                      // one more try, now that there is room
     }
     std::set_new_handler(nullptr);   // nothing left to give: let it throw

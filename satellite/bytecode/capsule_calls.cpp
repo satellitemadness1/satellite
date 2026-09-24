@@ -104,6 +104,41 @@ Value call_capsule_for_its_answer(const std::vector<std::bitset<16>> &row, std::
                           written, context);
 }
 
+bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &at,
+                          const std::vector<std::string> &names, std::size_t open,
+                          ExpressionContext &context, PackagedCall &out)
+{
+    const std::size_t started = at;
+    out.written.clear();
+    for (const std::string &each : names) out.written += (out.written.empty() ? "" : ".") + each;
+    const CapsuleTable *table = context.state.capsules;
+    const BytecodeRegistry *program = context.state.program;
+    if (table == nullptr || program == nullptr) {
+        context.refuse(satl_line_not_understood, "no capsule named " + out.written + " -- a line typed at the "
+                                                 "prompt has no capsules around it to run on a thread", started);
+        return false;
+    }
+    const std::size_t which = row_index_of(program, row);
+    const Reached reached = table->reach(table->scope_at(which, started), names);
+    if (reached.site == nullptr) {
+        context.refuse(reached.code, reached.why, started);
+        return false;
+    }
+    // A SPACESUIT'S CAPSULE RUNS ON AN OBJECT, and a thread handed an object would share
+    // it with the thread that made it -- which waits for .lock() (THREADS.md T2). The
+    // checker has said so already; this is the walker not trusting that it did.
+    if (reached.site->suit != kNoScope) {
+        context.refuse(thread_cannot_share_yet, out.written + " is a capsule of a spacesuit, and it would run on an "
+                                                "object this thread shares", started);
+        return false;
+    }
+    at = open;
+    if (!arguments_at(row, at, out.written, out.arguments, context))
+        return false;
+    out.site = reached.site;
+    return true;
+}
+
 Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, const Value &object,
                   const std::string &receiver, ExpressionContext &context)
 {

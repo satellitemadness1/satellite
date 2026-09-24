@@ -432,3 +432,5 @@
 1 29 2	satellite.terminal.background	
 1 29 2 0	satellite.terminal.background()	
 1 29 2 1	satellite.terminal.background(color)	
+1 6 13 3	satellite.variable.thread.stop()	
+1 6 13 4	satellite.variable.thread.wait()	

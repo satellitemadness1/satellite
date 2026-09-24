@@ -1,0 +1,109 @@
+// THREADS (2026-09-23, bytecode/thread_calls.hpp) -- the author's syntax, and 003's M23
+// proofs in 004. Every line this prints is decided by the program, not by which thread
+// ran first: a thread's lines come before its join() returns, and main prints only
+// after joining.
+//
+//   1  new() works out the arguments and does NOT run the capsule: "made" comes first
+//   2  join() answers what the capsule handed back, and wait() is its second name
+//   3  003's DESIGN §7.1: eight threads, 200 activations each, 1600 results, 1600 right
+//   4  two names, one thread: started through one name, joined through the other
+//   5  stop() stops a thread that would never end, between two statements
+//   6  a thread displays as which capsule and how far it has got
+
+satellite.include(satellite)
+
+satellite.capsule say(satellite.variable.string text)
+{
+    satellite.console.display(text)
+}
+
+satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.return(n * 2)
+}
+
+// DESIGN §7.1's shape exactly: no recursion and no shared state, so a language that gave
+// the eight threads one slot between them would answer the last writer's for all of them.
+satellite.capsule count_alone(satellite.variable.number from) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number right = 0
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 200)
+    {
+        satellite.variable.number n = from * 1000 + i
+        satellite.variable.number doubled = n + n
+        satellite.statement.if(doubled == n * 2)
+        {
+            right = right + 1
+        }
+        i = i + 1
+    }
+    satellite.return(right)
+}
+
+satellite.capsule forever()
+{
+    satellite.variable.number spins = 0
+    satellite.statement.while(spins >= 0)
+    {
+        spins = spins + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    // 1
+    satellite.variable.thread first = satellite.thread.new(say("ran on its thread"))
+    satellite.console.display("made")
+    first.start()
+    first.join()
+    satellite.console.display("joined")
+
+    // 2
+    satellite.variable.thread doubler = satellite.thread.new(twice(21))
+    doubler.start()
+    satellite.variable.number answer = doubler.join()
+    satellite.console.display(answer)
+    satellite.variable.thread again = satellite.thread.new(twice(50))
+    again.start()
+    satellite.variable.number waited = again.wait()
+    satellite.console.display(waited)
+
+    // 3
+    satellite.variable.thread a = satellite.thread.new(count_alone(1))
+    satellite.variable.thread b = satellite.thread.new(count_alone(2))
+    satellite.variable.thread c = satellite.thread.new(count_alone(3))
+    satellite.variable.thread d = satellite.thread.new(count_alone(4))
+    satellite.variable.thread e = satellite.thread.new(count_alone(5))
+    satellite.variable.thread f = satellite.thread.new(count_alone(6))
+    satellite.variable.thread g = satellite.thread.new(count_alone(7))
+    satellite.variable.thread h = satellite.thread.new(count_alone(8))
+    a.start()
+    b.start()
+    c.start()
+    d.start()
+    e.start()
+    f.start()
+    g.start()
+    h.start()
+    satellite.variable.number all_right = a.join() + b.join() + c.join() + d.join() + e.join() + f.join() + g.join() + h.join()
+    satellite.console.display(all_right)
+
+    // 4
+    satellite.variable.thread one = satellite.thread.new(twice(7))
+    satellite.variable.thread also = one
+    also.start()
+    satellite.variable.number through_the_other = one.join()
+    satellite.console.display(through_the_other)
+    satellite.console.display(one == also)
+
+    // 5 and 6
+    satellite.variable.thread spinner = satellite.thread.new(forever())
+    satellite.console.display(spinner)
+    spinner.start()
+    spinner.stop()
+    spinner.join()
+    satellite.console.display(spinner)
+    satellite.console.display(one)
+    satellite.return(satellite)
+}

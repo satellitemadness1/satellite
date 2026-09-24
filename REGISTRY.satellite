@@ -406,7 +406,10 @@ bits              name                         what it is
 0000101101010101  join_token                   join  [METHOD] list.join(separator) -- one string: every item's text with separator between (003's list_join, taken 2026-09-23)
 0000101101010110  reserve_token                reserve  [METHOD] list.reserve(n) -- room made for n items at once; changes no item (003's list_reserve, taken 2026-09-23)
 0000101101010111  foreground_token             foreground  [METHOD] text.foreground(xFF8800) -- the string in that colour on a terminal; .background(c) is its ground (the author, 2026-09-23: every spelling 003 refused is legal)
-0000101101011000  free                         to 0000101111111111, free for this family
+0000101101011000  start_token                  start  [METHOD] thread.start() -- the capsule begins on a thread of its own, and start answers at once (003's M23, built in 004 2026-09-23)
+0000101101011001  stop_token                   stop  [METHOD] thread.stop() -- asks the thread to stop at its next statement; it is never killed mid-statement (the author, 2026-09-23)
+0000101101011010  wait_method_token            wait  [METHOD] thread.wait() -- a second name for thread.join() (the author, 2026-09-23); wait_token above is the batch mark
+0000101101011011  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

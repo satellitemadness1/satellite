@@ -1,0 +1,17 @@
+// A second join is done too (003's Q2, the author): the same answer again, S724 said once as a notice, exit 0.
+satellite.include(satellite)
+
+satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.return(n * 2)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(twice(4))
+    t.start()
+    satellite.console.display(t.join())
+    satellite.console.display(t.join())
+    satellite.console.display(t.wait())
+    satellite.return(satellite)
+}

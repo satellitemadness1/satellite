@@ -17,6 +17,9 @@
 #include "color_values.hpp"
 #include "container_calls.hpp"
 #include "console_calls.hpp"
+#include "thread_calls.hpp"
+#include "../machine/console_lock.hpp"
+#include "../machine/thread_stop.hpp"
 #include "main_arguments.hpp"
 #include "float_values.hpp"
 #include "fraction_values.hpp"
@@ -33,6 +36,7 @@
 #include "../satellite_object/satellite_list.hpp"
 #include "../satellite_object/satellite_index.hpp"
 
+#include <optional>
 #include <limits>
 #include <utility>
 
@@ -178,6 +182,19 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
             return Value::of_bool((left == right) == (op == token::equals_token));
         }
         // satellite.variable.color (2026-09-22): TWO COLOURS ARE THE SAME OR NOT, AND HAVE
+        // TWO THREADS ARE EQUAL WHEN THEY ARE ONE THREAD (003's M23 §6, "two names, one thread"),
+        // and there is no order between two -- so == and != ask satelliteObject's identity, and
+        // an ordering is refused by name, as for two colors below.
+        if (left.is_thread() && right.is_thread()) {
+            if (an_ordering(op)) {
+                context.refuse(types_do_not_meet,
+                               std::string(spelling_of(op)) + " was given two threads, and only == and != compare "
+                                                              "those -- one thread or two",
+                               op_at);
+                return Value();
+            }
+            return Value::of_bool((left == right) == (op == token::equals_token));
+        }
         // NO ORDER -- is red before blue? -- so == and != ask color_same (the digits AND
         // the transparency), and an ordering is refused by name, as for two files.
         if (left.is_color() && right.is_color()) {
@@ -508,6 +525,19 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 on_the_name = false;
                 continue;
             }
+        }
+
+        // A THREAD ANSWERS ITS OWN (thread_calls.cpp): start and stop answer the thread,
+        // so `t.start()` can go on to another method; join and wait answer what its
+        // capsule handed back. Before the containers ever see it: a list has a .join too.
+        if (const ThreadHandle *thread = (*live).thread_handle()) {
+            Value answer = call_thread_method(method, *thread, arguments, had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
+            continue;
         }
 
         // A WINDOW ANSWERS ITS OWN (window_calls.cpp), the same way and for the
@@ -1436,6 +1466,12 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     const Scenarios *scenarios = library != nullptr ? &library->scenarios : nullptr;
     ++at;
 
+    // satellite.thread.new's ARGUMENT IS A CALL TO KEEP, NOT TO MAKE (thread_calls.hpp), so
+    // it is taken before the loop below works it out -- which would run the capsule here,
+    // on this thread, and hand the thread its answer. 003's first build did exactly that.
+    if (is_thread_word(code) && code_at(row, at) == token::left_parenthesis_token)
+        return call_thread_new(row, at, context);
+
     // THE ARGUMENTS ARE A LIST (2026-09-18), divided by commas at their own depth:
     // `satellite.file.new(path, "text")` is the first word a program can call with
     // two. A library still takes one, and says so below when it is given more.
@@ -1486,11 +1522,30 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         return call_infinity_word(code, arguments, context);
     // ...and so does satellite.window.new() (window_calls.hpp). Three word
     // families now, which is why that header stops calling it a departure.
+    //
+    // A WINDOW IS THE MAIN THREAD'S (window_desk.hpp: one interpreter thread writes a
+    // piece), so a program's thread may not open or build one yet (THREADS.md T3).
+    if (is_window_word(code) && on_a_program_thread()) {
+        context.refuse(thread_cannot_share_yet, std::string(word::spelling_of(code)) +
+                                                    " -- a window belongs to the main thread, and a thread the "
+                                                    "program started may not open or build one yet");
+        return Value();
+    }
     if (is_window_word(code))
         return call_window_word(code, arguments, context);
     // ...and satellite.container.list(), a list of nothing (container_calls.hpp).
     if (is_container_word(code))
         return call_container_word(code, arguments, context);
+    // ONE LINE AT A TIME ONCE A THREAD EXISTS (machine/console_lock.hpp): the console's
+    // words and every numbered library below are called holding the console lock, because
+    // display writes std::cout from inside its library. NOT input, which waits for a person:
+    // holding the lock there would stop every other thread's lines until somebody typed.
+    // Before any start() the hold holds nothing, and a plain display pays one load.
+    const bool waits_for_a_person = code == word::code_of(1, 5, 2) || code == word::code_of(1, 5, 3);
+    std::optional<ConsoleHold> one_line;
+    if (!waits_for_a_person)
+        one_line.emplace();
+
     // ...and satellite.console's own words and satellite.terminal's (console_calls.hpp).
     if (is_console_word(code))
         return call_console_word(code, arguments, options, context);
@@ -1634,7 +1689,7 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // displays a window for is to see which one they have hold of. Same branch as
     // the containers, because satellite_object.cpp's to_string is the one spelling
     // for all of them.
-    else if ((argument.is_list() || argument.is_index() || argument.is_window()) &&
+    else if ((argument.is_list() || argument.is_index() || argument.is_window() || argument.is_thread()) &&
              scenarios->text != nullptr) {
         satellite_string written;
         std::string why;
