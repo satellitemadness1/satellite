@@ -8,6 +8,7 @@
 // and answer the same shapes.
 
 #include "window_readers.hpp"
+#include "../machine/thread_stop.hpp"
 
 #include "../satellite_variable_number/number_conversions.hpp"
 #include "../satellite_variable_window/window_desk.hpp"
@@ -24,6 +25,13 @@ using token::Code;
 Value call_window_method(Code method, const WindowHandle &which, const std::vector<Value> &arguments,
                          bool had_parentheses, const std::string &name, ExpressionContext &context)
 {
+    // A WINDOW IS THE MAIN THREAD'S (THREADS.md T3), however a thread came to hold one --
+    // inside an object it shares, since objects are shared (the second review, 2026-09-24).
+    if (on_a_program_thread()) {
+        context.refuse(thread_cannot_share_yet, "a window belongs to the main thread, and a thread the program "
+                                                "started may not use one yet");
+        return Value();
+    }
     const std::string what = name + "." + std::string(token::method_name_of(method));
     const int wanted = window_method_arity(method);
     if (wanted < 0) {

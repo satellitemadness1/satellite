@@ -1,0 +1,37 @@
+// `total = w.join()` on a locked object: the line holds the lock while it waits for a thread that needs
+// it. That can never end, so it is S728 WAIT_NEVER_ENDS, not a frozen program (the second review, 2026-09-24).
+satellite.include(satellite)
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_next() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(total + 1)
+        }
+        satellite.capsule call_step()
+        {
+            satellite.variable.thread w = satellite.thread.new(call_next())
+            w.start()
+            total = w.join()
+        }
+        satellite.capsule call_total() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(total)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    counter c()
+    c.lock()
+    c.call_step()
+    satellite.console.display(c.call_total())
+    satellite.return(satellite)
+}

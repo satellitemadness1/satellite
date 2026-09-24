@@ -4769,6 +4769,19 @@ expect "threads: an answer that is an object is the same object to every join" "
 "$interpreter" tests/threads_lock_item.satl > build/threads_lock_item.out 2>/dev/null; code=$?
 expect "threads: an append on an ITEM of a locked object's list field is a write -- 4 threads x 500 = 2000" \
        "0|2000" "$code|$(tr -d '\n' < build/threads_lock_item.out)"
+# THE SECOND REVIEW'S DEFECTS (2026-09-24), each a test of its own.
+"$interpreter" tests/threads_lock_method_name.satl > build/threads_lmn.out 2>/dev/null; code=$?
+expect "threads: a line calling a capsule named like a method (add) is a write -- 4 x 5,000 = 20000" "0|20000" \
+       "$code|$(tr -d '\n' < build/threads_lmn.out)"
+timeout 20 "$interpreter" tests/threads_lock_wait_never_ends.satl > /dev/null 2> build/threads_wne.err; code=$?
+expect "threads: total = w.join() holding the lock w needs is S728 WAIT_NEVER_ENDS, not a frozen program" "63|1" \
+       "$code|$(grep -c 'S728: WAIT_NEVER_ENDS' build/threads_wne.err)"
+"$interpreter" tests/threads_override.satl > build/threads_override.out 2>/dev/null; code=$?
+expect "threads: satellite.thread.new(call_speak()) in a dog runs the dog's override" "0|dog|dog|dog|" \
+       "$code|$(tr '\n' '|' < build/threads_override.out)"
+"$interpreter" tests/threads_lock_for.satl > build/threads_lfor.out 2>/dev/null; code=$?
+expect "threads: a for's first part, condition and step read a locked list under its lock" "0|done" \
+       "$code|$(tr -d '\n' < build/threads_lfor.out)"
 expect "lock and unlock are registry rows 0x0B5B-0x0B5C, and token_codes.hpp agrees" "2|2" \
        "$(grep -c '^000010110101101[1]  lock_token \|^0000101101011100  unlock_token ' REGISTRY.satellite)|$(grep -c 'Code \(lock_token = 0x0B5B\|unlock_token = 0x0B5C\);' satellite/bytecode/token_codes.hpp)"
 expect "start, stop and wait are registry rows 0x0B58-0x0B5A, and token_codes.hpp agrees" "3|3" \

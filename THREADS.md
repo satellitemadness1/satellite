@@ -157,49 +157,42 @@ run both yourself:
 Two threads appending 500 lines each to one locked file gave **1,000 lines** in three runs
 of three.
 
-**FOUND BY THE SECOND FRESH READER (2026-09-24), NOT FIXED YET.** Each one was run
-against a control. The probes are in the session scratchpad's `review4/probes/`.
+**THE SECOND FRESH READER'S FINDINGS (2026-09-24), ALL FIXED.** Each has a test and a
+check.sh row.
 
-1. **An append on an item was taken as a read.** Fixed in `4cc4cf4`.
-2. **A capsule named like a method, such as `add` or `size`, is missed.**
-   - **What goes wrong:** it arrives as a method code, so `what_the_line_does` misses the
-     call, and `ObjectHold` (`held()`) does not record which mode it holds.
-   - **Probe:** `x = total + me.add()` on a locked object gave about 17,500 of 20,000.
-   - **Fix:** record the mode in `held()`; refuse a read that nests a write; and treat a
-     method code after a dot on a receiver that is not a field as a possible capsule.
-3. **A statement holding the write lock that `join()`s a thread needing the same lock
-   deadlocks.**
-   - **Probe:** `call_outer() { call_add_on_a_thread() }` hangs, and so does
-     `total = w.join()` where `w` runs a capsule of the same object.
-4. **`for`'s first part and its step take no hold,** in `run_for` and `run_for_step`.
-   With two threads changing a list, S501 in 3 of 3 runs.
-5. **`f[n]` on a locked file takes no hold** (`index_into`, then `read_file_line`).
-   S514 in 2 of 3 runs.
-6. **`satellite.thread.new(call_x())` by bare name skips a subclass's override.** It
-   ran animal's capsule where dog's should run. `package_capsule_call` needs
-   `table->on_the_object(*reached.site, out.self)`.
-7. **A window inside an object can reach a thread.**
-   - **What goes wrong:** `holds_a_window` does not descend into an object's fields or
-     `call.self`, and `call_window_method` has no `on_a_program_thread()` check.
-   - Found by reading the code, not run: this build has no window.
-
-**Unconfirmed:**
-
-- a steady stream of reads could starve a writer, because glibc's shared mutex prefers
-  readers;
-- a user capsule named `lock` is silently shadowed;
-- a `.lock()` turned on during an unlocked write leaves a short window.
-
-**Measured:** one thread with the lock on paid about 15% more on a 300,000-turn loop. With
-it off, the cost is one relaxed load.
+1. **An append on an item was taken as a read** (`4cc4cf4`). Any method on a field, or on
+   an item of one, is a write: *"it's part writing part reading"* (the author).
+2. **A capsule named like a method (`me.add()`) was missed.** A call with brackets after a
+   dot is a write when what stands before the dot holds an object. A method on a local
+   thread or string is not, because it cannot reach the object's fields.
+   `tests/threads_lock_method_name.satl`: 20000.
+3. **Holding a lock while `join()`ing a thread that needs it froze the program.** No lock
+   can make that pattern impossible. What changed is the lock itself: satl's own now,
+   `object_lock.cpp`, in place of `std::shared_mutex`, asked for by the author as *"do we
+   have to build our own lock"*.
+   - **How it catches the circle:** the lock knows who holds it, and every thread records
+     what it waits for, a lock or a join. Before a thread sleeps, it follows that chain;
+     when the chain comes back to itself, the line stops with **S728 WAIT_NEVER_ENDS**
+     (code 63) instead of freezing.
+   - **Test:** `tests/threads_lock_wait_never_ends.satl`, which is `total = w.join()`.
+   - **The author on it:** *"Is total = w.join() even necessary ... let's do it anyway"*.
+     It stays, and is caught.
+   - **Writers first:** a waiting writer now goes ahead of new readers, so reads cannot
+     starve a write.
+4. **`for`'s first part and its step took no hold.** They do now.
+   `tests/threads_lock_for.satl`.
+5. **`f[n]` on a locked file took no hold.** It is a read now.
+6. **`thread.new(call_x())` by bare name ran the parent's capsule, not the override.** It
+   now resolves through `on_the_object`. `tests/threads_override.satl` gives dog, dog, dog.
+7. **A window inside an object could reach a thread.** `call_window_method` now refuses on
+   a program thread, S727, wherever the window came from.
 
 **Still open:**
 
 - **`satellite.library` is not yet writable at run time.** It is still refused with S250,
   so nothing there can be shared or locked yet.
-- **Two threads each holding one object's lock while waiting for the other's** — a locked
-  statement on A calling into B, while another on B calls into A — wait forever. 003
-  caught that circle as S1408. 004 does not yet.
+- **Two threads each holding one object's lock while waiting for the other's** are
+  caught now, as S728 (above).
 - **OFFERED, NOT ANSWERED:** an optional check mode, off by default and so free, that would
   name the line where two threads wrote one object with its lock off.
 

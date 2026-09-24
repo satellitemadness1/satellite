@@ -13,6 +13,7 @@
 #include "../machine/thread_stop.hpp"
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
+#include "../satellite_object/object_lock.hpp"
 
 #include <cstring>
 #include <memory>
@@ -74,6 +75,7 @@ void *run_the_thread(void *given)
     std::unique_ptr<Launch> launch(static_cast<Launch *>(given));
     satellite_thread &thread = *launch->thread;
     stop_of_this_thread = &thread.stop_asked;
+    this_thread_runs(thread);
     Value answer;
     bool answered = false;
     signed long long int code = success;
@@ -96,6 +98,7 @@ void *run_the_thread(void *given)
         }
         thread.ended = true;
     }
+    this_thread_ended(thread);
     thread.ended_signal.notify_all();
     stop_of_this_thread = nullptr;
     return nullptr;
@@ -195,7 +198,17 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
                                                  "that would never end");
         return Value();
     }
+    // A JOIN THAT WOULD NEVER RETURN is S728 (satellite_object/object_lock.hpp): the thread
+    // it waits for is -- through locks and joins -- waiting for this one. If that thread
+    // closes the circle later, by waiting for a lock this one holds, ITS check says so and
+    // it stops, and this join answers its S728.
+    if (start_waiting_for(thread) != success) {
+        context.refuse(wait_never_ends, name + "." + spelling + "() would never return -- " + thread.name +
+                                            " is waiting, through locks and joins, for this thread");
+        return Value();
+    }
     reap(thread);
+    done_waiting_for_a_thread();
     bool again = false;
     signed long long int code = success;
     Value answer;

@@ -1,0 +1,57 @@
+// A capsule named like a method (`add`) arrives as a method's code; a line calling it is a WRITE (the
+// second review, 2026-09-24: taken as a read, it lost adds). 4 threads x 5,000 on one locked object = 20000.
+satellite.include(satellite)
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 0
+    }
+    satellite.public
+    {
+        satellite.capsule add() satellite.returns(satellite.variable.number)
+        {
+            total = total + 1
+            satellite.return(0)
+        }
+        satellite.capsule call_bump(counter me)
+        {
+            satellite.variable.number x = total + me.add()
+        }
+        satellite.capsule call_total() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(total)
+        }
+    }
+}
+
+satellite.capsule pound(counter c)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 5000)
+    {
+        c.call_bump(c)
+        i = i + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    counter shared()
+    shared.lock()
+    satellite.variable.thread a = satellite.thread.new(pound(shared))
+    satellite.variable.thread b = satellite.thread.new(pound(shared))
+    satellite.variable.thread c = satellite.thread.new(pound(shared))
+    satellite.variable.thread d = satellite.thread.new(pound(shared))
+    a.start()
+    b.start()
+    c.start()
+    d.start()
+    a.join()
+    b.join()
+    c.join()
+    d.join()
+    satellite.console.display(shared.call_total())
+    satellite.return(satellite)
+}

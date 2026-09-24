@@ -42,6 +42,7 @@ public:
     const CapsuleSite *site = nullptr;        // the capsule, found by the checker's rules
     std::vector<satelliteObject> arguments;   // worked out at `new`, moved in at start()
     UserDefinedHandle self;                   // the object a spacesuit's capsule runs on, SHARED (T2)
+    const WaitNode *node = nullptr;           // what its OS thread waits for, while it runs (object_lock.cpp)
     std::string name;                         // as the program wrote it: "count_alone"
 
     // THE RUN.

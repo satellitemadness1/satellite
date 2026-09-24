@@ -42,7 +42,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/file_calls.cpp $(BYTECODE)/container_calls.cpp \
                       $(BYTECODE)/console_style.cpp $(BYTECODE)/console_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
                       $(BYTECODE)/infinity_calls.cpp $(INFINITY)/satellite_infinity.cpp \
-                      $(BYTECODE)/thread_calls.cpp \
+                      $(BYTECODE)/thread_calls.cpp $(OBJECT)/object_lock.cpp \
                       $(BYTECODE)/window_calls.cpp $(BYTECODE)/window_readers.cpp $(BYTECODE)/window_shapes.cpp \
                       $(BYTECODE)/window_questions.cpp $(BYTECODE)/window_methods.cpp $(BYTECODE)/window_run.cpp \
                       $(OBJECT)/satellite_object.cpp \

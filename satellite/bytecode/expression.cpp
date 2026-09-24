@@ -509,6 +509,10 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 continue;
             }
             const ObjectHold one_call(&file->lock, LockUse::writing);
+            if (one_call.code() != success) {
+                context.refuse(one_call.code(), name + " is a locked file held by a thread that is waiting for this one");
+                return Value();
+            }
             Value answer = call_file_method(method, *file, arguments, had_parentheses, name, context);
             if (context.code != success)
                 return Value();
@@ -756,8 +760,16 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
         return *found;
     }
 
-    if (satellite_file *file = current.as_file())
+    if (satellite_file *file = current.as_file()) {
+        // A LOCKED FILE'S LINE IS READ UNDER ITS LOCK, as its methods are (the second review:
+        // f[n] beside another thread's f.append(...) read a half-moved line, S514).
+        const ObjectHold one_read(&file->lock, LockUse::reading);
+        if (one_read.code() != success) {
+            context.refuse(one_read.code(), what + " is a locked file held by a thread that is waiting for this one");
+            return Value();
+        }
         return read_file_line(*file, index, what, context);
+    }
 
     context.refuse(types_do_not_meet, what + " is " + current.kind_name() +
                                           ", and [ ] reads a line of a file, an item of a list, or a key of an index",

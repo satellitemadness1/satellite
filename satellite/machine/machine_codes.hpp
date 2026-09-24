@@ -132,6 +132,7 @@ enum MachineCode : signed long long int {
     thread_cannot_start = 60,           // the machine refused to make the thread
     thread_stopped = 61,                // the walk of a thread that .stop() asked to stop
     thread_cannot_share_yet = 62,       // a window handed to a thread, or a window word used on one (T3)
+    wait_never_ends = 63,               // a lock or a join whose holder waits, through locks and joins, for this thread
 
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
@@ -194,6 +195,7 @@ inline const char *machine_code_name(signed long long int code)
     case thread_cannot_start: return "thread_cannot_start";
     case thread_stopped: return "thread_stopped";
     case thread_cannot_share_yet: return "thread_cannot_share_yet";
+    case wait_never_ends: return "wait_never_ends";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

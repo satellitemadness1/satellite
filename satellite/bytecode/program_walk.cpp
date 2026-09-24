@@ -665,11 +665,25 @@ LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t 
                 if (first && code_at(row, after) == token::assign_token)
                     return LockUse::writing;               // the line's own target: name [ ... ] =
                 reads = true;
+            } else if (seen && code_at(row, past) == token::method_token &&
+                       token::is_method_code(code_at(row, past + 1)) && !seen.value->is_user_defined()) {
+                // A METHOD ON THIS BODY'S OWN VARIABLE THAT HOLDS NO OBJECT -- a thread's
+                // `mine.join()`, a string's `.upper()` -- cannot reach this object's fields, so
+                // it is stepped over and not taken for a capsule call below. Taken as writing,
+                // `mine.join()` held the object's lock while waiting for a thread that needed it.
+                past += 2;
             }
             k = past;
             first = false;
             continue;
         }
+        // A CALL AFTER A DOT -- `me.add()`, `other.size()` -- may be a capsule of this very
+        // object: a spacesuit's capsule named like a method arrives as the method's code, not a
+        // name (the second review, 2026-09-24: `x = total + me.add()` was taken as a read and
+        // lost adds). So any call with brackets after a dot is writing.
+        if (code == token::method_token && token::is_method_code(code_at(row, k + 1)) &&
+            code_at(row, k + 2) == token::left_parenthesis_token)
+            return LockUse::writing;
         if (token::carries_a_count(code)) { skip_payload(row, k); first = false; continue; }
         first = false;
         ++k;
@@ -714,6 +728,11 @@ signed long long int run_while(const BytecodeRegistry &registry,
         if (opened) ++here;
         const Value holds = [&] {
             const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables));
+            if (condition.code() != success) {
+                context.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it "
+                                                 "is waiting for this one");
+                return Value();
+            }
             return evaluate_expression(row, here, context);
         }();
         if (context.code != success)
@@ -774,6 +793,11 @@ signed long long int run_if(const BytecodeRegistry &registry,
         if (opened) ++here;
         const Value holds = [&] {
             const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables));
+            if (condition.code() != success) {
+                context.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it "
+                                                 "is waiting for this one");
+                return Value();
+            }
             return evaluate_expression(row, here, context);
         }();
         if (context.code != success)
@@ -879,7 +903,14 @@ signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
 
     std::size_t at = parts.step;
     ExpressionContext context{variables, functions, state};
-    answer = evaluate_expression(row, at, context);
+    {
+        const ObjectHold step(lock_of(variables.self), what_the_line_does(row, parts.step, variables));
+        if (step.code() != success)
+            context.refuse(step.code(), "this for's step needs its object's lock, and a thread holding it is "
+                                        "waiting for this one");
+        else
+            answer = evaluate_expression(row, at, context);
+    }
     if (context.code != success)
         return raise_context(context, "satellite.statement.for",
                         state, row,
@@ -940,7 +971,17 @@ signed long long int run_for(const BytecodeRegistry &registry,
     const std::string name = text_at(row, k);
     ++k;                                                  // past the `=`
     ExpressionContext opening{variables, functions, state};
-    Value start = evaluate_expression(row, k, opening);
+    // ITS FIRST PART AND ITS STEP UNDER THE AUTHOR'S LOCK, as its condition is (the second
+    // review: both read a locked list half moved, S501).
+    Value start = [&] {
+        const ObjectHold part(lock_of(variables.self), what_the_line_does(row, k, variables));
+        if (part.code() != success) {
+            opening.refuse(part.code(), "this for needs its object's lock, and a thread holding it is waiting for "
+                                        "this one");
+            return Value();
+        }
+        return evaluate_expression(row, k, opening);
+    }();
     if (opening.code != success)
         return raise_context(opening, "satellite.statement.for",
                         state, row,
@@ -972,6 +1013,11 @@ signed long long int run_for(const BytecodeRegistry &registry,
         ExpressionContext turn{variables, functions, state};
         const Value holds = [&] {
             const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, parts.condition, variables));
+            if (condition.code() != success) {
+                turn.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it is "
+                                              "waiting for this one");
+                return Value();
+            }
             return evaluate_expression(row, here, turn);
         }();
         if (turn.code != success) {
@@ -1590,6 +1636,11 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                              code == word::code_of(1, 13, 2);
         const ObjectHold this_statement(a_block ? nullptr : lock_of(variables.self),
                                         a_block ? LockUse::none : what_the_line_does(row, at, variables));
+        if (this_statement.code() != success)
+            return raise_at(this_statement.code(),
+                            "this line needs its object's lock, and a thread holding it is waiting -- through "
+                            "locks and joins -- for this one",
+                            std::string(), state, row, at);
 
         // satellite.return, AND WHAT IT HANDS BACK (Frame says why it ends the whole
         // capsule). Worked out in THIS frame, before it goes; run_site measures it

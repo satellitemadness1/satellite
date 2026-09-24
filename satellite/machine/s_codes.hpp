@@ -288,6 +288,12 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S726", "THREAD_STOPPED",
                 "this thread was asked to stop, and stopped between two statements -- stop() never ends "
                 "a thread in the middle of one."};
+    case wait_never_ends:
+        return {"S728", "WAIT_NEVER_ENDS",
+                "this line would wait forever: the object's lock it needs is held by a thread that is itself "
+                "waiting -- through locks and joins -- for this one. Two threads each waiting for the other "
+                "never end, so satellite stops this line instead of the program freezing (003's S1407 and "
+                "S1408). A write that holds a lock should not join() a thread that writes the same object."};
     case thread_cannot_share_yet:
         return {"S727", "THREAD_CANNOT_SHARE_YET",
                 "a window belongs to the main thread, which draws it, so a thread the program started may "

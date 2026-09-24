@@ -150,10 +150,15 @@ bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &
     at = open;
     if (!arguments_at(row, at, out.written, out.arguments, context))
         return false;
-    out.site = reached.site;
-    // A SPACESUIT'S CAPSULE BY ITS BARE NAME runs on this body's object, as a call would.
-    if (reached.site->suit != kNoScope)
+    // A SPACESUIT'S CAPSULE BY ITS BARE NAME runs on this body's object, as a call would --
+    // and as the OBJECT's own capsule of that name: a dog's call_speak, not the animal's it
+    // overrides (the second review, 2026-09-24: it ran the animal's).
+    if (reached.site->suit != kNoScope) {
         out.self = context.variables.self;
+        out.site = &table->on_the_object(*reached.site, out.self);
+    } else {
+        out.site = reached.site;
+    }
     return true;
 }
 
