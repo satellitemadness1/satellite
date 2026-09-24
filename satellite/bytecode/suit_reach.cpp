@@ -319,10 +319,6 @@ void overrides_fit(CapsuleTable &table, std::size_t s)
                 differs = "it is in satellite.protected and the one it replaces is public";
             else if (!takes_the_same)
                 differs = "it takes different arguments from the one it replaces";
-            else if (!same_shape(own.returns, replaced.returns))
-                differs = "it answers " + (own.answers() ? shape_written(own.returns) : std::string("nothing")) +
-                          " and the one it replaces answers " +
-                          (replaced.answers() ? shape_written(replaced.returns) : std::string("nothing"));
             if (!differs.empty())
                 refuse(table, own.row, own.declared_at, satl_line_not_understood,
                        layout.shown + "'s " + name + " replaces " + above.layout->shown + "'s for its objects, and " +
@@ -385,10 +381,6 @@ void resolve_types(CapsuleTable &table)
                 refuse(table, site.row, site.declared_at, name_not_declared,
                        site.shown + "'s " + takes.name + " is declared " + shape_written(takes.shape) + ", and " + why);
         }
-        std::string why;
-        if (site.answers() && !resolve_shape(table, site.scope, site.returns, why))
-            refuse(table, site.row, site.declared_at, name_not_declared,
-                   site.shown + " answers " + shape_written(site.returns) + ", and " + why);
     }
     for (std::size_t s = 0; s < table.scopes.size(); ++s) {
         CapsuleScope &suit = table.scopes[s];

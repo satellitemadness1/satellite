@@ -19,7 +19,7 @@ satellite.spacesuit dna()
 
     satellite.public
     {
-        satellite.capsule call_id() satellite.returns(satellite.variable.number)
+        satellite.capsule call_id()
         {
             satellite.return(id)
         }
@@ -47,7 +47,7 @@ satellite.spacesuit madness()
             grid.append(row)
         }
 
-        satellite.capsule call_report() satellite.returns(satellite.variable.string)
+        satellite.capsule call_report()
         {
             satellite.return(type_dna.size.to_string() + " dna, grid[2][1] = " + grid[2][1].to_string() + ", total " + grid[2].sum.to_string())
         }

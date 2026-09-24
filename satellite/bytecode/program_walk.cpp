@@ -182,8 +182,6 @@ std::size_t return_value_at(const std::vector<std::bitset<16>> &row, std::size_t
 
 bool hands_back_a_value(const BytecodeRegistry &registry, const CapsuleSite &site)
 {
-    if (site.answers())
-        return true;
     if (site.hands_back_known)
         return site.hands_back;
     const std::vector<std::bitset<16>> &row = registry[site.row];
@@ -462,7 +460,6 @@ struct Frame {
     bool returned = false;                 // satellite.return was reached: the body ends here
     bool answered = false;                 // ...and it handed back a value, in `answer`
     Value answer;
-    std::size_t returned_at = 0;           // where that satellite.return stands, for a report
 
     bool ending() const { return pending || returned; }
 };
@@ -1659,8 +1656,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                             std::string(), state, row, at);
 
         // satellite.return, AND WHAT IT HANDS BACK (Frame says why it ends the whole
-        // capsule). Worked out in THIS frame, before it goes; run_site measures it
-        // against the capsule's satellite.returns.
+        // capsule). Worked out in THIS frame, before it goes.
         if (code == word::code_of(1, 15)) {
             const std::size_t value_at = return_value_at(row, at);
             if (value_at != 0) {
@@ -1677,7 +1673,6 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                 frame.answered = true;
             }
             frame.returned = true;
-            frame.returned_at = at;
             state.set("satellite.return", success);
             return success;
         }
@@ -1939,9 +1934,7 @@ signed long long int run_turn(const BytecodeRegistry &registry,
 // frame inside this one (Frame): the frame, its files and its names go at the
 // end of every turn, exactly as they would have at the end of a call.
 //
-// WHAT IT HANDS BACK IS MEASURED AGAINST ITS satellite.returns ON EVERY TURN, read or
-// not -- a capsule answering the wrong type is wrong whether or not this caller
-// looked. And a turn that CALLED ITSELF LAST answers nothing, however the deepest
+// A TURN THAT CALLED ITSELF LAST answers nothing, however the deepest
 // turn ended: written as the recursion it replaces, the outer call runs `f(n - 1)`,
 // drops its answer and reaches its `}`. `satellite.return(f(n - 1))` is a different
 // statement, and is a call in the middle (the author's ruling, 2026-09-22).
@@ -1971,14 +1964,6 @@ signed long long int run_site(const BytecodeRegistry &registry,
         if (stops_the_program(code))
             return code;
         const std::vector<std::bitset<16>> &row = registry[site.row];
-        if (frame.answered) {
-            std::string why;
-            if (!value_fits(site.returns, frame.answer, why))
-                return raise_at(types_do_not_meet,
-                                site.shown + " answers " + shape_written(site.returns) +
-                                    ", and what this satellite.return handed back does not fit -- " + why,
-                                std::string(), state, row, frame.returned_at);
-        }
         if (frame.pending) {
             called_itself_last = true;
             arguments = std::move(frame.arguments);

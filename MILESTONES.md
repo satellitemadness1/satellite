@@ -253,6 +253,9 @@ M20 item 1 bug below, settled by the author's own programs (tagged_report's
 role_of returns from inside two ifs). Files: `bytecode/suit_scan.cpp`,
 `suit_reach.cpp`, `suit_layout.hpp`, `suit_run.cpp`, `capsule_calls.cpp`;
 `tests/spacesuits.satl` and 32 rows in check.sh (701 passed).
+**2026-09-24: `satellite.returns(T)` is TAKEN OUT** (the author never asked for it, in
+003 or 004; PROGRESS.md section 2). A capsule answers whatever it hands back, and
+the word is refused by name after a capsule's brackets.
 
 **Chosen here, his to overrule** (each is one place): a method dispatches on the
 OBJECT's spacesuit, not the declared one (003 was static); a field declared again

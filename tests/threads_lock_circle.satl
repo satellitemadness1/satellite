@@ -19,11 +19,11 @@ satellite.spacesuit cell()
                 i = i + 1
             }
         }
-        satellite.capsule call_get() satellite.returns(satellite.variable.number)
+        satellite.capsule call_get()
         {
             satellite.return(n - n + 1)
         }
-        satellite.capsule call_n() satellite.returns(satellite.variable.number)
+        satellite.capsule call_n()
         {
             satellite.return(n)
         }

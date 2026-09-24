@@ -26,7 +26,7 @@ satellite.spacesuit board()
     }
     satellite.public
     {
-        satellite.capsule call_width() satellite.returns(satellite.variable.number)
+        satellite.capsule call_width()
         {
             satellite.return(width + satellite.library.size)
         }
@@ -35,7 +35,7 @@ satellite.spacesuit board()
 
 satellite.namespace tools
 {
-    satellite.capsule twice() satellite.returns(satellite.variable.number)
+    satellite.capsule twice()
     {
         satellite.return(satellite.library.span * 2)
     }

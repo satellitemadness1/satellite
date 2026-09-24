@@ -28,7 +28,7 @@ satellite.spacesuit counter()
 
     satellite.public
     {
-        satellite.capsule call_name() satellite.returns(satellite.variable.string)
+        satellite.capsule call_name()
         {
             satellite.return(spacesuit_name)
         }
@@ -38,7 +38,7 @@ satellite.spacesuit counter()
             bump_by(step)
         }
 
-        satellite.capsule call_count() satellite.returns(satellite.variable.number)
+        satellite.capsule call_count()
         {
             satellite.return(count)
         }
@@ -64,7 +64,7 @@ satellite.spacesuit ship()
 
             satellite.public
             {
-                satellite.capsule call_write() satellite.returns(satellite.variable.number)
+                satellite.capsule call_write()
                 {
                     written = written + 1
                     satellite.return(written)
@@ -96,14 +96,14 @@ satellite.spacesuit ship()
 
             satellite.public
             {
-                satellite.capsule call_plates() satellite.returns(satellite.variable.number)
+                satellite.capsule call_plates()
                 {
                     satellite.return(plates)
                 }
             }
         }
 
-        satellite.capsule call_report() satellite.returns(satellite.variable.string)
+        satellite.capsule call_report()
         {
             log fresh
             fresh.call_write()
@@ -129,7 +129,7 @@ satellite.class view()
         satellite.variable.string title = "a view"
         satellite.variable.number made = 0
 
-        satellite.capsule banner(satellite.variable.string word) satellite.returns(satellite.variable.string)
+        satellite.capsule banner(satellite.variable.string word)
         {
             satellite.return("[" + title + ": " + word + "]")
         }
@@ -147,12 +147,12 @@ satellite.class view()
             title = title_input
         }
 
-        satellite.capsule call_kind() satellite.returns(satellite.variable.string)
+        satellite.capsule call_kind()
         {
             satellite.return(spacesuit_name)
         }
 
-        satellite.capsule call_made() satellite.returns(satellite.variable.number)
+        satellite.capsule call_made()
         {
             satellite.return(made)
         }
@@ -175,7 +175,7 @@ satellite.spacesuit eclipse(view)
 
     satellite.public
     {
-        satellite.capsule call_show() satellite.returns(satellite.variable.string)
+        satellite.capsule call_show()
         {
             satellite.return(banner("depth " + depth.to_string()) + " " + spacesuit_name)
         }
@@ -184,7 +184,7 @@ satellite.spacesuit eclipse(view)
 
 satellite.namespace tools
 {
-    // AN ANSWER WITH NO satellite.returns, as 578 of the author's capsules are written.
+    // AN ANSWER FROM A CAPSULE IN A SPACE, called as tools.twice(...).
     satellite.capsule twice(satellite.variable.number n)
     {
         satellite.return(n * 2)
@@ -198,7 +198,7 @@ satellite.capsule bump_three(counter c)
     c.call_bump()
 }
 
-satellite.capsule first_over(satellite.container.list<satellite.variable.number> numbers, satellite.variable.number limit) satellite.returns(satellite.variable.number)
+satellite.capsule first_over(satellite.container.list<satellite.variable.number> numbers, satellite.variable.number limit)
 {
     satellite.variable.number i = 1
     satellite.statement.while (i <= numbers.size())
@@ -212,7 +212,7 @@ satellite.capsule first_over(satellite.container.list<satellite.variable.number>
     satellite.return(0)
 }
 
-satellite.capsule counted() satellite.returns(satellite.variable.string)
+satellite.capsule counted()
 {
     satellite.statement.for(satellite.variable.number n = 0; n < 10; n++)
     {
@@ -224,7 +224,7 @@ satellite.capsule counted() satellite.returns(satellite.variable.string)
     satellite.return("never")
 }
 
-satellite.capsule kind_of(view any) satellite.returns(satellite.variable.string)
+satellite.capsule kind_of(view any)
 {
     satellite.return(any.call_kind())
 }

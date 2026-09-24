@@ -283,7 +283,7 @@ bits              name                         what it is
 0000011100000111  path_separator_token         /  QUESTION: a path with a slash is written in quotes, so it travels as characters
 0000011100001000  linux_home_token             ~  QUESTION: 003 spells $HOME as a live CHARACTER code, not a token
 0000011100001001  question_token               ?  QUESTION: no grammar production accepts it
-0000011100001010  arrow_token                  -> QUESTION: a return type is satellite.returns(TYPE)
+0000011100001010  arrow_token                  -> QUESTION: no return type is written; satellite.returns is gone
 0000011100001011  free                         to 0000011111111111, free for this family
 
 -- TEXT AND COMMENTS  (0000100000000000 up)

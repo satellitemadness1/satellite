@@ -38,11 +38,11 @@ void refuse(CapsuleTable &table, std::size_t row, std::size_t at, signed long lo
 bool free_in(CapsuleTable &table, std::size_t scope, const std::string &name, std::size_t row, std::size_t at,
              const char *declaring);
 
-// A CAPSULE'S HEADER AFTER ITS NAME: its parameters, its satellite.returns, and the `{`
+// A CAPSULE'S HEADER AFTER ITS NAME: its parameters, and the `{`
 // its body opens with -- `k` on what follows the name. Answers the brace's position,
 // or 0 when there is none; a header it cannot read goes into `trouble`.
 std::size_t header_rest(const std::vector<std::bitset<16>> &row, std::size_t k, const std::string &name,
-                        std::vector<CapsuleParameter> &parameters, TypeShape &returns, std::string &trouble);
+                        std::vector<CapsuleParameter> &parameters, std::string &trouble);
 
 // The `{` a declaration's body opens with, from `at`, past its line and any line ends.
 std::size_t body_after(const std::vector<std::bitset<16>> &row, std::size_t at);
@@ -52,7 +52,7 @@ std::size_t body_after(const std::vector<std::bitset<16>> &row, std::size_t at);
 // spacesuit it was written in (Opened::file for any other scope).
 void declare_capsule(CapsuleTable &table, std::size_t r, std::size_t file_scope, std::size_t here, std::size_t at,
                      std::size_t brace, std::string name, std::vector<CapsuleParameter> parameters,
-                     TypeShape returns, Opened suit_part);
+                     Opened suit_part);
 
 // suit_scan.cpp: `satellite.spacesuit name { ... }` at `i` -- the scope made and opened,
 // `i` left inside its body. Answers false when it has no body, `i` then past its line.

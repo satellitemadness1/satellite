@@ -31,10 +31,10 @@ Fields are reached from inside the spacesuit only, never as host.name, so a
 public capsule that answers one is the way to read it.
 
 An object is a reference: greeter other = host names the same object, and a
-capsule handed one changes the caller's. Its type can be a capsule's parameter,
-what satellite.returns says a capsule answers, or what a list holds:
-satellite.container.list<greeter>. A field of a spacesuit's type with nothing
-after its name starts empty, until a capsule gives it an object.
+capsule handed one changes the caller's. Its type can be a capsule's parameter
+or what a list holds, satellite.container.list<greeter>, and a capsule can hand
+one back. A field of a spacesuit's type with nothing after its name starts
+empty, until a capsule gives it an object.
 
 A spacesuit may hold spacesuits of its own, written in its satellite.public or
 satellite.protected. The outer one's capsules and fields name it bare; from
@@ -75,7 +75,7 @@ satellite.spacesuit greeter()
 
     satellite.public
     {
-        satellite.capsule greet() satellite.returns(satellite.variable.string)
+        satellite.capsule greet()
         {
             times = times + 1
             satellite.return("hello from " + name + ", " + times.to_string())

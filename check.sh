@@ -4086,7 +4086,7 @@ rm -rf build/suits && mkdir -p build/suits
 # $4 how many "before" lines ran first (0: the check refused it), $5 the row's name,
 # $6 the top of the file after a counter spacesuit, $7 main's body.
 suit_refused() {
-    printf 'satellite.include(satellite)\n\nsatellite.spacesuit counter()\n{\n    satellite.protected\n    {\n        satellite.variable.number count = 0\n        satellite.capsule bump_by(satellite.variable.number n)\n        {\n            count = count + n\n        }\n    }\n\n    satellite.constructor(satellite.variable.number start)\n    {\n        count = start\n    }\n\n    satellite.public\n    {\n        satellite.capsule call_count() satellite.returns(satellite.variable.number)\n        {\n            satellite.return(count)\n        }\n        satellite.capsule call_nothing()\n        {\n            count = count + 1\n        }\n    }\n}\n%s\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' \
+    printf 'satellite.include(satellite)\n\nsatellite.spacesuit counter()\n{\n    satellite.protected\n    {\n        satellite.variable.number count = 0\n        satellite.capsule bump_by(satellite.variable.number n)\n        {\n            count = count + n\n        }\n    }\n\n    satellite.constructor(satellite.variable.number start)\n    {\n        count = start\n    }\n\n    satellite.public\n    {\n        satellite.capsule call_count()\n        {\n            satellite.return(count)\n        }\n        satellite.capsule call_nothing()\n        {\n            count = count + 1\n        }\n    }\n}\n%s\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' \
         "$6" "$7" > "build/suits/$1.satl"
     "$interpreter" "build/suits/$1.satl" > "build/suits/$1.out" 2>&1; code=$?
     expect "$5" "$2|1|$4" \
@@ -4115,22 +4115,41 @@ suit_refused never_answers 53 "S240: CAPSULE_GAVE_NO_ANSWER .*c.call_nothing() i
     "a capsule that can never answer is refused where its answer is used" '' '    counter c(1)
     satellite.variable.number n = c.call_nothing()'
 suit_refused ended_without 53 "maybe's answer is used, and it ended without handing one back" 1 \
-    "a capsule that ended without one, the way it went, is refused when the answer is used" 'satellite.capsule maybe(satellite.variable.number n) satellite.returns(satellite.variable.number)
+    "a capsule that ended without one, the way it went, is refused when the answer is used" 'satellite.capsule maybe(satellite.variable.number n)
 {
     satellite.statement.if (n > 0)
     {
         satellite.return(n)
     }
 }' '    satellite.console.display(maybe(0))'
-suit_refused wrong_answer 27 "five answers satellite.variable.number, and what this satellite.return handed back does not fit -- it holds a string" 1 \
-    "an answer is measured against satellite.returns" 'satellite.capsule five() satellite.returns(satellite.variable.number)
+# satellite.returns WAS TAKEN OUT (the author, 2026-09-24): a capsule answers whatever its
+# satellite.return hands back, nothing after its brackets says what, and nothing is measured.
+suit_refused answers_what_it_hands 0 "before five" 1 \
+    "a capsule answers whatever its satellite.return hands back -- no type is written, so none is measured" 'satellite.capsule five()
 {
     satellite.return("five")
 }' '    satellite.console.display(five())'
-suit_refused declared_but_empty 53 "five answers satellite.variable.number, and this satellite.return hands back nothing" 0 \
-    "a capsule that declares satellite.returns must hand something back" 'satellite.capsule five() satellite.returns(satellite.variable.number)
+suit_refused returns_taken_out 13 "satellite.capsule five -- satellite.returns was taken out of satellite: a capsule answers whatever its satellite.return(...) hands back, so delete satellite.returns(...) from this line" 0 \
+    "satellite.returns is refused by name, with the one change to make" 'satellite.capsule five() satellite.returns(satellite.variable.number)
 {
-    satellite.return()
+    satellite.return(5)
+}' ''
+suit_refused returns_next_line 13 "satellite.capsule five -- satellite.returns was taken out of satellite" 0 \
+    "... on the line after the brackets too" 'satellite.capsule five()
+    satellite.returns(satellite.variable.number)
+{
+    satellite.return(5)
+}' ''
+suit_refused returns_constructor 13 "made's satellite.constructor -- satellite.returns was taken out of satellite" 0 \
+    "... and on a constructor" 'satellite.spacesuit made()
+{
+    satellite.constructor(satellite.variable.number n) satellite.returns(satellite.variable.number)
+    {
+    }
+}' ''
+suit_refused header_junk 13 "satellite.capsule junk -- after its ) comes the { its body opens with, and something else stands between them" 0 \
+    "nothing but line ends and comments stands between a capsule's ) and its { (it was read past unheard)" 'satellite.capsule junk() 42 "words" hello
+{
 }' ''
 suit_refused in_a_capsule 14 "a satellite.spacesuit declared inside a capsule, that comes to exist when the capsule runs, is not built yet (POLYMORPH M1)" 0 \
     "a spacesuit inside a capsule is POLYMORPH M1, and not built" '' '    satellite.spacesuit inner()
@@ -4229,7 +4248,7 @@ suit_refused override_protected 13 "hidden's call_count replaces counter's for i
 {
     satellite.protected
     {
-        satellite.capsule call_count() satellite.returns(satellite.variable.number)
+        satellite.capsule call_count()
         {
             satellite.return(0)
         }
@@ -4240,20 +4259,9 @@ suit_refused override_arguments 13 "wide's call_count replaces counter's for its
 {
     satellite.public
     {
-        satellite.capsule call_count(satellite.variable.number n) satellite.returns(satellite.variable.number)
+        satellite.capsule call_count(satellite.variable.number n)
         {
             satellite.return(n)
-        }
-    }
-}' ''
-suit_refused override_answer 13 "it answers satellite.variable.string and the one it replaces answers satellite.variable.number" 0 \
-    "... nor answer something else" 'satellite.spacesuit worded(counter)
-{
-    satellite.public
-    {
-        satellite.capsule call_count() satellite.returns(satellite.variable.string)
-        {
-            satellite.return("many")
         }
     }
 }' ''
@@ -4288,7 +4296,7 @@ suit_refused list_item_member 53 "xs\[...\].call_nothing() is used where its ans
     satellite.console.display(xs[1].call_nothing())'
 # A METHOD FOLLOWS THE OBJECT, CALLED BARE OR WITH A DOT: the supertype's capsule calls
 # call_name bare, and on a circle the circle's runs (the review's question, 2026-09-22).
-printf 'satellite.include(satellite)\n\nsatellite.spacesuit shape()\n{\n    satellite.public\n    {\n        satellite.capsule call_name() satellite.returns(satellite.variable.string)\n        {\n            satellite.return("a shape")\n        }\n        satellite.capsule call_describe() satellite.returns(satellite.variable.string)\n        {\n            satellite.return("I am " + call_name())\n        }\n    }\n}\n\nsatellite.spacesuit circle(shape)\n{\n    satellite.public\n    {\n        satellite.capsule call_name() satellite.returns(satellite.variable.string)\n        {\n            satellite.return("a circle")\n        }\n    }\n}\n\nsatellite.capsule satellite.main()\n{\n    circle c\n    shape s\n    satellite.console.display(c.call_describe())\n    satellite.console.display(s.call_describe())\n    satellite.return(satellite)\n}\n' > build/suits/follows.satl
+printf 'satellite.include(satellite)\n\nsatellite.spacesuit shape()\n{\n    satellite.public\n    {\n        satellite.capsule call_name()\n        {\n            satellite.return("a shape")\n        }\n        satellite.capsule call_describe()\n        {\n            satellite.return("I am " + call_name())\n        }\n    }\n}\n\nsatellite.spacesuit circle(shape)\n{\n    satellite.public\n    {\n        satellite.capsule call_name()\n        {\n            satellite.return("a circle")\n        }\n    }\n}\n\nsatellite.capsule satellite.main()\n{\n    circle c\n    shape s\n    satellite.console.display(c.call_describe())\n    satellite.console.display(s.call_describe())\n    satellite.return(satellite)\n}\n' > build/suits/follows.satl
 expect "a bare call to a replaced capsule runs the object's own, as a dotted one does" "0|I am a circle|I am a shape" \
        "$("$interpreter" build/suits/follows.satl > build/suits/follows.out 2>/dev/null; echo $?)|$(grep -e '^I am' build/suits/follows.out | tr '\n' '|' | sed 's/|$//')"
 # A CALL TO ITSELF AND THEN A satellite.return THAT HANDS BACK NOTHING, anywhere in the
@@ -4645,7 +4653,7 @@ expect "input takes the style options and not end=" "13|1|0" \
 expect "a capsule given a named option is told a capsule's arguments go in order" "13|1|0" \
        "$(console_says '    satellite.console.display(twice(x=2))
 }
-satellite.capsule twice(satellite.variable.number x) satellite.returns(satellite.variable.number)
+satellite.capsule twice(satellite.variable.number x)
 {
     satellite.return(x * 2)' 'x= is a named option, and only satellite.console.display and satellite.console.input take them')"
 expect "satellite.console.foreground given text is refused before the run" "27|1|0" \

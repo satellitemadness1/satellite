@@ -14,7 +14,7 @@ satellite.spacesuit shelf()
         {
             rows[1].append(n)
         }
-        satellite.capsule call_count() satellite.returns(satellite.variable.number)
+        satellite.capsule call_count()
         {
             satellite.return(rows[1].size)
         }

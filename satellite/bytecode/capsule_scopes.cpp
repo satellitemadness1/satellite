@@ -21,7 +21,7 @@ const Code kCapsule = word::code_of(1, 2);       // satellite.capsule
 const Code kSpacesuit = word::code_of(1, 10);    // satellite.spacesuit, and satellite.class
 const Code kInclude = word::code_of(1, 1);       // satellite.include
 const Code kNamespace = word::code_of(1, 28);    // satellite.namespace, and satellite.space
-const Code kReturns = word::code_of(1, 21);      // satellite.returns
+const Code kReturns = word::code_of(1, 21);      // satellite.returns -- taken out, refused by name
 
 std::string where_is(const CapsuleScope &scope)
 {
@@ -58,7 +58,7 @@ bool free_in(CapsuleTable &table, std::size_t scope, const std::string &name, st
 }
 
 std::size_t header_rest(const std::vector<std::bitset<16>> &row, std::size_t k, const std::string &name,
-                        std::vector<CapsuleParameter> &parameters, TypeShape &returns, std::string &trouble)
+                        std::vector<CapsuleParameter> &parameters, std::string &trouble)
 {
     // ITS PARAMETERS, IF IT DECLARED ANY (2026-09-21). A type and then a name,
     // commas between, exactly the way every other declaration in satellite is
@@ -113,29 +113,27 @@ std::size_t header_rest(const std::vector<std::bitset<16>> &row, std::size_t k, 
         if (trouble.empty() && code_at(row, k) != token::right_parenthesis_token)
             trouble = name + " -- its ( is never closed on its line";
 
-        // WHAT IT ANSWERS, AFTER ITS BRACKETS (2026-09-22): `satellite.returns(satellite.variable.string)`.
-        // The author's programs have written it since 003; 004 read past it until capsules
-        // could answer.
+        // NOTHING AFTER ITS BRACKETS SAYS WHAT IT ANSWERS. satellite.returns(TYPE) was taken
+        // out (the author, 2026-09-24: he never asked for it, in 003 or 004): a capsule
+        // answers whatever its satellite.return(...) hands back. The word keeps its row in
+        // words.tsv, whose numbering is append-only, so it still reads as itself -- and a
+        // header that writes it is refused by name, with the one change to make.
+        //
+        // AND NOTHING ELSE STANDS THERE EITHER (2026-09-24). Before, whatever came between the
+        // ) and the { was stepped over unread -- satellite.returns(...) on the next line, a
+        // misspelled satellite.return(...), `42 "words" hello` -- so a header said things
+        // satl never heard. Now only line ends and comments may come before the {.
         if (trouble.empty()) {
-            ++k;
-            if (code_at(row, k) == kReturns) {
-                ++k;
-                TypeShape shape;
-                unsigned int pending = 0;
-                std::string unreadable;
-                if (code_at(row, k) != token::left_parenthesis_token) {
-                    trouble = name + " -- satellite.returns takes the type it answers in brackets, like "
-                                     "satellite.returns(satellite.variable.string)";
-                } else if (++k, !read_type_shape(row, k, shape, pending, unreadable) || pending != 0) {
-                    trouble = name + "'s satellite.returns -- " +
-                              (unreadable.empty() ? std::string("there is a > here with nothing left for it to close")
-                                                  : unreadable);
-                } else if (code_at(row, k) != token::right_parenthesis_token) {
-                    trouble = name + "'s satellite.returns(...) names one type, and its ( is never closed after it";
-                } else {
-                    returns = std::move(shape);
-                }
-            }
+            std::size_t after = k + 1;
+            over_line_ends(after);
+            const Code next = code_at(row, after);
+            if (next == kReturns)
+                trouble = name + " -- satellite.returns was taken out of satellite: a capsule answers whatever its "
+                                 "satellite.return(...) hands back, so delete satellite.returns(...) from this line";
+            else if (next != token::left_brace_token && next != token::right_brace_token &&
+                     next != token::end_of_file_token)
+                trouble = name + " -- after its ) comes the { its body opens with, and something else stands "
+                                 "between them";
         }
     }
 
@@ -152,7 +150,7 @@ std::size_t header_rest(const std::vector<std::bitset<16>> &row, std::size_t k, 
 // declaration after all -- the same rule the scan had before scopes, and the same
 // trouble sentences, which check_program now points a caret at.
 std::size_t capsule_header(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &name,
-                           std::vector<CapsuleParameter> &parameters, TypeShape &returns, std::string &trouble)
+                           std::vector<CapsuleParameter> &parameters, std::string &trouble)
 {
     std::size_t k = at + 1;
     if (word::is_word_code(code_at(row, k))) {
@@ -163,7 +161,7 @@ std::size_t capsule_header(const std::vector<std::bitset<16>> &row, std::size_t 
     } else {
         return 0;
     }
-    const std::size_t brace = header_rest(row, k, "satellite.capsule " + name, parameters, returns, trouble);
+    const std::size_t brace = header_rest(row, k, "satellite.capsule " + name, parameters, trouble);
     return brace;
 }
 
@@ -180,7 +178,7 @@ std::size_t body_after(const std::vector<std::bitset<16>> &row, std::size_t at)
 
 void declare_capsule(CapsuleTable &table, std::size_t r, std::size_t file_scope, std::size_t here, std::size_t at,
                      std::size_t brace, std::string name, std::vector<CapsuleParameter> parameters,
-                     TypeShape returns, Opened suit_part)
+                     Opened suit_part)
 {
     if (!free_in(table, here, name, r, at, "capsule"))
         return;
@@ -189,7 +187,6 @@ void declare_capsule(CapsuleTable &table, std::size_t r, std::size_t file_scope,
     site.row = r;
     site.body = brace + 1;
     site.parameters = std::move(parameters);
-    site.returns = std::move(returns);
     site.scope = here;
     site.declared_at = at;
     site.name = name;
@@ -280,8 +277,7 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
         if (code == kCapsule) {
             std::string name, trouble;
             std::vector<CapsuleParameter> parameters;
-            TypeShape returns;
-            const std::size_t brace = capsule_header(row, i, name, parameters, returns, trouble);
+            const std::size_t brace = capsule_header(row, i, name, parameters, trouble);
             if (brace == 0) { ++i; continue; }
             if (!trouble.empty())
                 refuse(table, r, i, satl_line_not_understood, trouble);
@@ -289,8 +285,7 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
                 refuse(table, r, i, satl_line_not_understood,
                        "satellite.main goes at the top of its file, not inside " + where_is(table.scopes[here]) +
                            " -- it is where the program begins, and a space is reached by name from inside it");
-            declare_capsule(table, r, file_scope, here, i, brace, name, std::move(parameters), std::move(returns),
-                            Opened::file);
+            declare_capsule(table, r, file_scope, here, i, brace, name, std::move(parameters), Opened::file);
             // THE BODY IS STEPPED OVER WHOLE. What is inside a capsule is its
             // statements, and the checker judges those -- a satellite.capsule written
             // there is refused by it, by name, rather than quietly declared here.

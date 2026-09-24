@@ -1,7 +1,7 @@
 // A thread's refusal is reported where it happened, and join() stops main with the same code.
 satellite.include(satellite)
 
-satellite.capsule divide(satellite.variable.number by) satellite.returns(satellite.variable.number)
+satellite.capsule divide(satellite.variable.number by)
 {
     satellite.return(10 / by)
 }

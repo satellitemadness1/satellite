@@ -15,7 +15,7 @@ satellite.spacesuit engine()
 
     satellite.public
     {
-        satellite.capsule call_power() satellite.returns(satellite.variable.number)
+        satellite.capsule call_power()
         {
             satellite.return(power)
         }

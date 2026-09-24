@@ -21,7 +21,7 @@ satellite.spacesuit point()
     }
     satellite.public
     {
-        satellite.capsule call_x() satellite.returns(satellite.variable.number)
+        satellite.capsule call_x()
         {
             satellite.return(x)
         }
@@ -90,11 +90,11 @@ satellite.spacesuit station()
             docked = docked + 1
             log = name + " docked"
         }
-        satellite.capsule call_checksum() satellite.returns(satellite.variable.number)
+        satellite.capsule call_checksum()
         {
             satellite.return(checksum + alarms + docked)
         }
-        satellite.capsule call_readings() satellite.returns(satellite.variable.number)
+        satellite.capsule call_readings()
         {
             satellite.return(readings.size)
         }
@@ -102,14 +102,14 @@ satellite.spacesuit station()
 }
 
 // A SMALL CAPSULE: one line.
-satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+satellite.capsule twice(satellite.variable.number n)
 {
     satellite.return(n * 2)
 }
 
 // A LARGE CAPSULE: about twenty-five statements of mixed work -- numbers, strings, a list
 // of its own -- every call.
-satellite.capsule churn(satellite.variable.number n, satellite.variable.string text) satellite.returns(satellite.variable.number)
+satellite.capsule churn(satellite.variable.number n, satellite.variable.string text)
 {
     satellite.variable.number a = n % 1000
     satellite.variable.number b = a * a + 17

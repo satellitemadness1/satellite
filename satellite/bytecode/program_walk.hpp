@@ -82,11 +82,10 @@ ForHeader for_header(const std::vector<std::bitset<16>> &row, std::size_t at);
 // main ends a program. Shared by the walker and the checker, one reader of one shape.
 std::size_t return_value_at(const std::vector<std::bitset<16>> &row, std::size_t at);
 
-// CAN THIS CAPSULE EVER HAND BACK A VALUE: it declares satellite.returns, or a
-// satellite.return with a value stands somewhere in its body. The author's programs
-// have 578 capsules that return a value with no satellite.returns (written for 003,
-// which took it), so the header alone cannot say -- and a capsule that can never
-// answer is refused where its answer would be used, before anything runs.
+// CAN THIS CAPSULE EVER HAND BACK A VALUE: a satellite.return with a value stands
+// somewhere in its body -- nothing in its header says (satellite.returns was taken
+// out, 2026-09-24). A capsule that can never answer is refused where its answer
+// would be used, before anything runs.
 bool hands_back_a_value(const BytecodeRegistry &registry, const CapsuleSite &site);
 
 // What the third part IS: +1 for `<name>++`, -1 for `<name>--`, 0 for an ordinary

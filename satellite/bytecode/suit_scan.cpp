@@ -14,7 +14,7 @@
 //         }
 //         satellite.public
 //         {
-//             satellite.capsule call_path() satellite.returns(satellite.variable.string)
+//             satellite.capsule call_path()
 //             {
 //                 satellite.return(path)
 //             }
@@ -254,10 +254,9 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
     if (code == kConstructor) {
         const std::size_t at = i;
         std::vector<CapsuleParameter> parameters;
-        TypeShape returns;
         std::string trouble;
         const std::string shown = table.scopes[here].layout->shown + "'s satellite.constructor";
-        const std::size_t brace = header_rest(row, i + 1, shown, parameters, returns, trouble);
+        const std::size_t brace = header_rest(row, i + 1, shown, parameters, trouble);
         if (brace == 0) {
             refuse(table, r, at, satl_line_not_understood,
                    shown + " has no body -- what it does goes between a { and a } after its brackets");
@@ -266,10 +265,6 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
         }
         if (!trouble.empty())
             refuse(table, r, at, satl_line_not_understood, trouble);
-        if (returns.word != 0)
-            refuse(table, r, at, satl_line_not_understood,
-                   "the satellite.constructor of " + suit + " cannot declare satellite.returns -- what a "
-                   "constructor produces is the object");
         if (table.scopes[here].constructor != kNoSite) {
             refuse(table, r, at, name_declared_twice,
                    "the spacesuit " + suit + " has two satellite.constructor sections, and an object is made one way");
@@ -310,9 +305,8 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
             return;
         }
         std::vector<CapsuleParameter> parameters;
-        TypeShape returns;
         std::string trouble;
-        const std::size_t brace = header_rest(row, k, "satellite.capsule " + name, parameters, returns, trouble);
+        const std::size_t brace = header_rest(row, k, "satellite.capsule " + name, parameters, trouble);
         if (brace == 0) {
             refuse(table, r, at, satl_line_not_understood,
                    "satellite.capsule " + name + " has no body -- what it does goes between a { and a }");
@@ -324,8 +318,7 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
         if (word::is_word_code(code_at(row, at + 1)))
             refuse(table, r, at, satl_line_not_understood,
                    name + " is a word of the language, and a spacesuit's capsule has a name of its own");
-        declare_capsule(table, r, file_scope, here, at, brace, name, std::move(parameters), std::move(returns),
-                        top.what);
+        declare_capsule(table, r, file_scope, here, at, brace, name, std::move(parameters), top.what);
         i = past_matching_brace(row, brace);
         return;
     }

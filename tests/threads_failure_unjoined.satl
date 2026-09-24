@@ -4,7 +4,7 @@
 // 003's M23 says so too. The count gives it far longer than it needs to fail.
 satellite.include(satellite)
 
-satellite.capsule divide(satellite.variable.number by) satellite.returns(satellite.variable.number)
+satellite.capsule divide(satellite.variable.number by)
 {
     satellite.return(10 / by)
 }

@@ -1,7 +1,7 @@
 // A second join is done too (003's Q2, the author): the same answer again, S724 said once as a notice, exit 0.
 satellite.include(satellite)
 
-satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+satellite.capsule twice(satellite.variable.number n)
 {
     satellite.return(n * 2)
 }

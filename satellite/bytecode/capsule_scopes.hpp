@@ -100,12 +100,6 @@ struct CapsuleSite {
     std::string shown;              // as a report names it: greet, tools.greet, other.greet
     std::string key;                // unique in the program -- what a button keeps (capsule_key.hpp)
 
-    // WHAT IT ANSWERS: `satellite.returns(satellite.variable.string)` after its
-    // parameters. `returns.word` is 0 for a capsule that answers nothing, which is
-    // every capsule until 2026-09-22 and still most of them.
-    TypeShape returns;
-    bool answers() const { return returns.word != 0; }
-
     // A SPACESUIT'S CAPSULE (2026-09-22): `suit` is that spacesuit's scope, and the
     // capsule runs on one of its objects. kNoScope for a capsule of a file or a space.
     std::size_t suit = kNoScope;

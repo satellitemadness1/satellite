@@ -17,14 +17,14 @@ satellite.capsule say(satellite.variable.string text)
     satellite.console.display(text)
 }
 
-satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+satellite.capsule twice(satellite.variable.number n)
 {
     satellite.return(n * 2)
 }
 
 // DESIGN §7.1's shape exactly: no recursion and no shared state, so a language that gave
 // the eight threads one slot between them would answer the last writer's for all of them.
-satellite.capsule count_alone(satellite.variable.number from) satellite.returns(satellite.variable.number)
+satellite.capsule count_alone(satellite.variable.number from)
 {
     satellite.variable.number right = 0
     satellite.variable.number i = 0

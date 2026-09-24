@@ -24,7 +24,7 @@ satellite.spacesuit counter()
             workers[1].join()
             workers[2].join()
         }
-        satellite.capsule call_total() satellite.returns(satellite.variable.number)
+        satellite.capsule call_total()
         {
             satellite.return(total)
         }

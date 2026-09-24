@@ -14,7 +14,7 @@ satellite.spacesuit box()
         {
             held = n
         }
-        satellite.capsule call_held() satellite.returns(satellite.variable.number)
+        satellite.capsule call_held()
         {
             satellite.return(held)
         }

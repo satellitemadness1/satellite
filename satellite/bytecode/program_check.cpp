@@ -713,7 +713,7 @@ signed long long int a_call_for_its_answer(const std::vector<std::bitset<16>> &r
         return held;
     if (!hands_back_a_value(where.registry, site)) {
         why = written + "() is used where its answer would be, and it never hands one back -- no satellite.return(...) "
-                        "in it has a value, and it declares no satellite.returns";
+                        "in it has a value";
         return capsule_gave_no_answer;
     }
     return success;
@@ -770,7 +770,7 @@ signed long long int member_of_an_object(const std::vector<std::bitset<16>> &row
                                after == token::end_of_file_token);
     if (!stands_alone && !hands_back_a_value(where.registry, *site)) {
         why = written + "() is used where its answer would be, and it never hands one back -- no satellite.return(...) "
-                        "in it has a value, and it declares no satellite.returns";
+                        "in it has a value";
         return capsule_gave_no_answer;
     }
     k = m;
@@ -1408,10 +1408,9 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
     }
 
     // satellite.return, AND WHAT IT HANDS BACK (2026-09-22). Its value is judged like any
-    // expression's. A capsule that declares satellite.returns must hand something back,
-    // and a constructor hands back nothing -- "what a constructor produces is the object"
-    // (003's S0525). A value with NO satellite.returns is taken: the author's programs do
-    // it in 578 capsules, written for 003, which took it.
+    // expression's, and a constructor hands back nothing -- "what a constructor produces
+    // is the object" (003's S0525). Any other capsule answers whatever it hands back:
+    // nothing in its header says what that is (satellite.returns, taken out 2026-09-24).
     if (code == word::code_of(1, 15)) {
         const std::size_t stop = past_the_statement(row, at);
         const std::size_t value_at = return_value_at(row, at);
@@ -1442,12 +1441,6 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const signed long long int held = names_in_statement(row, value_at, close, declared, where, why);
             at = stop;
             return held;
-        }
-        if (where.site != nullptr && where.site->answers()) {
-            why = where.site->shown + " answers " + shape_written(where.site->returns) +
-                  ", and this satellite.return hands back nothing -- write satellite.return(the_answer)";
-            at = stop;
-            return capsule_gave_no_answer;
         }
         at = stop;
         return success;

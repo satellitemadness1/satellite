@@ -28,10 +28,10 @@ space (S202), a capsule declared inside another capsule (S110), and a call
 given the wrong number of arguments (S110). An argument of the wrong type is
 refused when the call is reached (machine code 27).
 
-A capsule answers what its satellite.return(...) hands back, and says what that
-is after its brackets with satellite.returns(type). satellite.return ends the
-capsule wherever it stands. See satellite.return. A capsule inside a
-satellite.spacesuit runs on an object of it -- see satellite.spacesuit.
+A capsule answers whatever its satellite.return(...) hands back, and
+satellite.return ends the capsule wherever it stands. See satellite.return. A
+capsule inside a satellite.spacesuit runs on an object of it -- see
+satellite.spacesuit.
 
 example:
 
@@ -39,7 +39,7 @@ satellite.include(satellite)
 
 satellite.namespace tools
 {
-    satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+    satellite.capsule twice(satellite.variable.number n)
     {
         satellite.return(n * 2)
     }

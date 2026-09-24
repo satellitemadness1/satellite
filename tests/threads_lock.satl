@@ -25,11 +25,11 @@ satellite.spacesuit counter()
         {
             seen.append(n)
         }
-        satellite.capsule call_total() satellite.returns(satellite.variable.number)
+        satellite.capsule call_total()
         {
             satellite.return(total)
         }
-        satellite.capsule call_seen() satellite.returns(satellite.variable.number)
+        satellite.capsule call_seen()
         {
             satellite.return(seen.size)
         }

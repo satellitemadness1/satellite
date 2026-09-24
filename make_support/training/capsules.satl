@@ -35,19 +35,19 @@ satellite.spacesuit probe()
             }
             settle()
         }
-        satellite.capsule call_reading() satellite.returns(satellite.variable.number)
+        satellite.capsule call_reading()
         {
             satellite.return(reading + count + history.size)
         }
     }
 }
 
-satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+satellite.capsule twice(satellite.variable.number n)
 {
     satellite.return(n * 2)
 }
 
-satellite.capsule mix(satellite.variable.number n, satellite.variable.string text) satellite.returns(satellite.variable.number)
+satellite.capsule mix(satellite.variable.number n, satellite.variable.string text)
 {
     satellite.variable.number a = n % 1000
     satellite.variable.number b = a * a + 17

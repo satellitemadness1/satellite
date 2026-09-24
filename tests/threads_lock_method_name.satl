@@ -10,7 +10,7 @@ satellite.spacesuit counter()
     }
     satellite.public
     {
-        satellite.capsule add() satellite.returns(satellite.variable.number)
+        satellite.capsule add()
         {
             total = total + 1
             satellite.return(0)
@@ -19,7 +19,7 @@ satellite.spacesuit counter()
         {
             satellite.variable.number x = total + me.add()
         }
-        satellite.capsule call_total() satellite.returns(satellite.variable.number)
+        satellite.capsule call_total()
         {
             satellite.return(total)
         }

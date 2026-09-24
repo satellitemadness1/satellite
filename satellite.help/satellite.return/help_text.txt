@@ -14,18 +14,16 @@ file you run, and refuses a file with none before anything runs (S103, exit
 12) -- execution ends inside main, and the file has to say so. Its place is the
 last line of main.
 
-What a capsule answers is said after its brackets with satellite.returns(type),
-and whatever its satellite.return hands back is measured against that type when
-it runs. A capsule written without satellite.returns may still hand a value
-back; the author's programs have hundreds that do. A capsule is called for its
-answer inside any line:
+A capsule answers whatever its satellite.return hands back. Nothing after its
+brackets says what that is: only line ends and comments come between its ) and
+its {. A capsule is called for its answer inside any line:
 
 satellite.variable.number n = five()
 
-A capsule that declares satellite.returns and hands back nothing, and a call
-whose answer is used from a capsule that can never hand one back, are refused
-before anything runs (S240). One whose answer is used and that ended without
-handing one back, the way it went, is refused when it happens -- also S240.
+A call whose answer is used, from a capsule that can never hand one back, is
+refused before anything runs (S240). One whose answer is used and that ended
+without handing one back, the way it went, is refused when it happens -- also
+S240.
 
 At the satl prompt there is nothing to return from, and satellite.return is
 refused there by name.
@@ -34,7 +32,7 @@ example:
 
 satellite.include(satellite)
 
-satellite.capsule sign_of(satellite.variable.number n) satellite.returns(satellite.variable.string)
+satellite.capsule sign_of(satellite.variable.number n)
 {
     satellite.statement.if (n < 0)
     {

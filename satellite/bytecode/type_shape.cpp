@@ -125,8 +125,7 @@ bool read_type_shape(const std::vector<std::bitset<16>> &row, std::size_t &at, T
 {
     const token::Code word = static_cast<token::Code>(at < row.size() ? row[at].to_ulong() : 0);
     // A SPACESUIT'S NAME IS A TYPE (2026-09-22): `run_log`, `tagged_report.run_log`,
-    // wherever a type is written -- a capsule's parameter, a satellite.returns, between
-    // a list's < and >. It is read as written and resolved by whoever holds the scope
+    // wherever a type is written -- a capsule's parameter, between a list's < and >. It is read as written and resolved by whoever holds the scope
     // table; here there is none. A spacesuit takes nothing between < and >.
     if (word == token::name_token) {
         dotted_names_at(row, at, out.suit_names);

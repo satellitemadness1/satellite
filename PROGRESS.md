@@ -103,6 +103,14 @@ python3 words/make_words.py            # regenerate the word table (needs old_ve
 - **Files:** `.satc` (numbers) → `.satb` (batch marks) → `.sati` (strings as bits).
 - **Testing method:** each milestone's entries; done when a run writes no
   `[entry]` to satellite.log.
+- **`satellite.returns` is taken out** (the author, 2026-09-24: *"I never asked at any
+  time to build the code satellite.returns"*, and *"for 003, I also never requested it
+  then either"*). A capsule answers whatever its `satellite.return(...)` hands back, and
+  nothing after its brackets says what: only line ends and comments stand between its `)`
+  and its `{`, and the word itself is refused there by name with the change to make.
+  Measured first: every program in the tree and the checker's verdict on all 32 of his,
+  with and without it, came out identical; the only differences were its own five
+  refusals. Its row stays in words.tsv (append-only numbering). 003 keeps it.
 
 ## 3. Measured, and what it means (details in DESIGN §12–14)
 

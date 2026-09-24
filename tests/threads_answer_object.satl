@@ -9,14 +9,14 @@ satellite.spacesuit box()
     }
     satellite.public
     {
-        satellite.capsule call_held() satellite.returns(satellite.variable.number)
+        satellite.capsule call_held()
         {
             satellite.return(held)
         }
     }
 }
 
-satellite.capsule make() satellite.returns(box)
+satellite.capsule make()
 {
     box made()
     satellite.return(made)
