@@ -18,7 +18,7 @@ my_thread.join()"*, then *"but we can also have my_thread.wait() as another name
 003 built threads as its M23 and hardened them in its THREAD.md, T1 and T2. That is
 `old_versions/second_satellite/`. Everything below that comes from 003 says so.
 
-## T1 — threads that share nothing: **BUILT 2026-09-23**
+## T1 — threads that share nothing: **BUILT 2026-09-23**, `796f175`
 
 The code is in [thread_calls.hpp](satellite/bytecode/thread_calls.hpp) and `.cpp`, with the
 value in [satellite_thread.hpp](satellite/satellite_variable_thread/satellite_thread.hpp)

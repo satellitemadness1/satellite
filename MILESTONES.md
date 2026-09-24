@@ -1325,7 +1325,7 @@ scripts that generate them (older than this).
 `arguments.cpu.architecture` should answer satl-cpu-level's word (`raptorlake` on the
 13700K) instead of 003's two (`haswell` / `baseline`).
 
-## M38 — a program's own threads (THREADS.md T1) — **BUILT 2026-09-23**
+## M38 — a program's own threads (THREADS.md T1) — **BUILT 2026-09-23**, `796f175`
 
 The author, 2026-09-23: *"I meant let's build satellite.variable.thread my_thread =
 satellite.thread.new(capsule_name(args))"*, then *"we need my_thread.stop(),
