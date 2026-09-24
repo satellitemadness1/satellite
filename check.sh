@@ -4766,6 +4766,9 @@ expect "threads: stop() reaches a loop whose body is empty (the check is before 
 "$interpreter" tests/threads_answer_object.satl > build/threads_answer.out 2> build/threads_answer.err; code=$?
 expect "threads: an answer that is an object is the same object to every join" "0|7|7|" \
        "$code|$(tr '\n' '|' < build/threads_answer.out)"
+"$interpreter" tests/threads_lock_item.satl > build/threads_lock_item.out 2>/dev/null; code=$?
+expect "threads: an append on an ITEM of a locked object's list field is a write -- 4 threads x 500 = 2000" \
+       "0|2000" "$code|$(tr -d '\n' < build/threads_lock_item.out)"
 expect "lock and unlock are registry rows 0x0B5B-0x0B5C, and token_codes.hpp agrees" "2|2" \
        "$(grep -c '^000010110101101[1]  lock_token \|^0000101101011100  unlock_token ' REGISTRY.satellite)|$(grep -c 'Code \(lock_token = 0x0B5B\|unlock_token = 0x0B5C\);' satellite/bytecode/token_codes.hpp)"
 expect "start, stop and wait are registry rows 0x0B58-0x0B5A, and token_codes.hpp agrees" "3|3" \

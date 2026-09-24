@@ -645,22 +645,25 @@ LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t 
                 return LockUse::writing;                   // a capsule: it may write a field
             const Seen seen = variables.seen(name);
             if (seen.field) {
-                if (code_at(row, past) == token::method_token)
-                    return LockUse::writing;               // a method on a field
-                if (first) {                               // the line's own target: name [ ... ] =
-                    std::size_t after = past;
-                    std::size_t depth = 0;
-                    while (after < end) {
-                        const Code c = code_at(row, after);
-                        if (token::carries_a_count(c)) { skip_payload(row, after); continue; }
-                        if (c == token::left_square_bracket_token) ++depth;
-                        else if (c == token::right_square_bracket_token && depth > 0) --depth;
-                        else if (depth == 0) break;
-                        ++after;
-                    }
-                    if (code_at(row, after) == token::assign_token)
-                        return LockUse::writing;
+                // PAST ANY [...] AFTER IT -- `items[2]`, `grid[1][3]` -- to what is done to it.
+                std::size_t after = past;
+                std::size_t depth = 0;
+                while (after < end) {
+                    const Code c = code_at(row, after);
+                    if (token::carries_a_count(c)) { skip_payload(row, after); continue; }
+                    if (c == token::left_square_bracket_token) ++depth;
+                    else if (c == token::right_square_bracket_token && depth > 0) --depth;
+                    else if (depth == 0) break;
+                    ++after;
                 }
+                // A METHOD ON A FIELD, OR ON AN ITEM OF ONE, IS WRITING -- `items.append(x)`,
+                // `items[2].append(x)`. Part reading, part writing, as the author put it
+                // (2026-09-24): the write lock covers the reading too. This looked only
+                // straight after the name, so an append on an item was taken as a read.
+                if (code_at(row, after) == token::method_token)
+                    return LockUse::writing;
+                if (first && code_at(row, after) == token::assign_token)
+                    return LockUse::writing;               // the line's own target: name [ ... ] =
                 reads = true;
             }
             k = past;

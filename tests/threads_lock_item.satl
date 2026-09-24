@@ -1,0 +1,52 @@
+// An append on an ITEM of a locked object's list field is a write (the author, 2026-09-24:
+// "Append is adding something ... it's part writing part reading"): 4 threads x 500 = 2000.
+satellite.include(satellite)
+
+satellite.spacesuit shelf()
+{
+    satellite.protected
+    {
+        satellite.container.list<satellite.container.list<satellite.variable.number>> rows = {{0}}
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            rows[1].append(n)
+        }
+        satellite.capsule call_count() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(rows[1].size)
+        }
+    }
+}
+
+satellite.capsule fill(shelf s)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 500)
+    {
+        s.call_put(i)
+        i = i + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    shelf shared()
+    shared.lock()
+    satellite.variable.thread a = satellite.thread.new(fill(shared))
+    satellite.variable.thread b = satellite.thread.new(fill(shared))
+    satellite.variable.thread c = satellite.thread.new(fill(shared))
+    satellite.variable.thread d = satellite.thread.new(fill(shared))
+    a.start()
+    b.start()
+    c.start()
+    d.start()
+    a.join()
+    b.join()
+    c.join()
+    d.join()
+    satellite.console.display(shared.call_count() - 1)
+    satellite.return(satellite)
+}
