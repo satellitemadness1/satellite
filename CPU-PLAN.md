@@ -1,5 +1,15 @@
 # CPU-PLAN — one satl, a number kernel for every processor it runs on
 
+> **SET ASIDE BY THE AUTHOR, 2026-09-23:** *"it seems like a single thread can handle all
+> of my 64 gigabytes of ram, so forget it, let's just scrap this whole CPU thing and move
+> on to something totally different, let's add threading to 004"*. What stays built:
+> CPU-7, PGO + ThinLTO + BOLT in the plain `make` (`c5b37f0`, `09f25b1`), 11–13% faster.
+> M37's per-processor builds (`make cpus`, `build/satl-cpu-level`) are still in the tree,
+> and removing them is his call. What stays true whatever happens to the kernels: CPU-6,
+> finding names ahead of time, went after the largest share measured (28.6% of his
+> race), on every processor. The rest of this file is the record of what was measured
+> and proposed.
+
 The author, 2026-09-23, after M37's races showed `satl.haswell` no faster than the
 ordinary satl:
 
