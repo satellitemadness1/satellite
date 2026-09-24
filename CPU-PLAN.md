@@ -47,6 +47,56 @@ the ordinary build, because glibc's `memcpy` picks its AVX2 version at run time.
 | the 13700K's | Raptor Lake | the i7-13700K |
 | 512-bit (2018) | Palm Cove, Willow Cove, AMD Zen 4/5 | **none owned** |
 
+## Measured, 2026-09-23
+
+These numbers come from four agents, and nothing else ran while the race was timed:
+
+- **callgrind** on reduced copies of the author's `race_program.satl` and
+  `experiments/cpu_race/everything.satl`;
+- **seven builds** of satl, all made from the same source;
+- **a quiet race**: 5 rotated rounds per build, with the output checked against the
+  shipped build;
+- **stand-alone kernel benchmarks.**
+
+The files are in that session's scratchpad; the numbers are here.
+
+**What each thing is worth:**
+
+| What | Measured | Over what |
+|---|---|---|
+| `-march=haswell`, whole build | within noise: −2.6% to +0.7% | both races |
+| `-O3` | within noise | both races |
+| **PGO** | **10.5–13.0% faster** (race), **7.7–9.6%** (everything) | every PGO run beat every non-PGO run |
+| PGO + ThinLTO + BOLT | not separable from PGO alone, apart from about 2–3% on the race | both races |
+| today's multiply loop at `-march=haswell` (clang already emits MULX) | 1.07× on the loop, 1.05× on `c = a * b` | 11 × 15 limbs, the race's numbers |
+| hand-written MULX with intrinsics | **0.83× and 0.74×, slower** | same |
+| GMP's Haswell assembly (`mul_basecase_coreihwl`) | **1.50×** | same |
+| string `==` through `memcmp` instead of today's `char16_t` loop | **8.5×** (hand AVX2: 7.9×) | 29,696 characters |
+| a name found ahead of time (a slot) vs today's rebuild-and-hash | **1.6 ns vs 38–46 ns** (82 ns for names over 15 characters) | one variable read |
+| UTF-8 → 16-bit conversion at `-march=haswell` | 1.00× | 1 MiB |
+
+**Where a turn's instructions go** (ordinary build, callgrind):
+
+| | race_program | everything |
+|---|---|---|
+| big-number loops | **11.5%** (multiply 8.8%) | 0.7% |
+| 16-bit string compare | 0 | **21.7%** |
+| glibc `memcpy`/`memcmp` (already AVX2 in the ordinary build) | 1.9% | **28.6%**, mostly copying whole strings on every read |
+| malloc/free | 10.2% | 2.9% |
+| names: rebuilding them, the word-code search, the hash | **28.6%** | 12.0% |
+| the rest of the walker | 45% | 32% |
+| the 62 word libraries | 0.00% | 0.00% |
+
+**What that says about the milestones.** It does not change their order, which is
+the author's to set, but here is what each can give on the author's race:
+
+- **CPU-2 to CPU-5, the kernels**, touch the 11.5%. Even GMP's assembly (1.5×) takes about
+  **4%** off.
+- **CPU-7, PGO**, gave **10–13%**, measured.
+- **CPU-6, names ahead of time**, touches the 28.6%.
+
+The kernels matter for programs that live in big numbers. This race lives in the walker.
+
 ## What the plan has to meet
 
 These are the things the first draft did not account for. The first two change which
@@ -108,8 +158,11 @@ A number that fits one limb never reaches a kernel. Its `+ - *` are inline in
 [satellite_number.hpp](satellite/satellite_variable_number/satellite_number.hpp) and were
 measured at 0.90 ns on 2026-09-16. `counter = counter + 1` gets nothing from any kernel.
 The author's race multiplies a 200-digit number by a 280-digit one, so it does reach one.
-How much of a turn that multiply is decides what a faster kernel can give. **Being
-measured (2026-09-23); the numbers go here.**
+How much of a turn that multiply is decides what a faster kernel can give.
+
+**Measured 2026-09-23:** the big-number loops are 11.5% of the race's instructions. Each
+multiply is 11 limbs × 15 limbs = 165 limb products and takes 262 ns through satl's
+class. 20 ns of that is allocating the answer's vector, which no kernel touches.
 
 ### 4. Written once means the interface is fixed first
 
@@ -167,11 +220,18 @@ Asking costs well under a microsecond, against a 14.7 ms start-up.
 
 ## Strings
 
-**Probably not worth kernels now; being measured.** Long copies and joins already go
-through glibc's `memcpy`, which runs its AVX2 version in the ordinary build. Two things
-are not yet known: whether comparing two long 16-bit strings reaches `memcmp` or a plain
-loop, and what share of a real program strings take. Both are being measured on
-2026-09-23; the numbers go here.
+**Measured 2026-09-23: strings need a one-line change, not a kernel.**
+
+- **Comparing.** `satellite_string::compare` ([satellite_string.cpp:234](satellite/satellite_variable_string/satellite_string.cpp#L234))
+  is libstdc++'s `char_traits<char16_t>::compare`: one character per trip round a loop
+  that can stop early. That is why clang never vectorises it, under any `-march`. It is
+  **21.7%** of `everything.satl`'s instructions. Testing equality with `memcmp` is
+  **8.5× faster** on a 29,696-character string. That speed comes in the *ordinary*
+  build, because glibc picks its AVX2 `memcmp` at run time, and it beats a hand-written
+  AVX2 loop (7.9×). No processor-specific code is needed.
+- **Copying.** Every read of a variable copies the whole value, so the 29,696-character
+  strings are copied again and again: `memcpy` is 27.6% of `everything.satl`. That is
+  the walker's problem (CPU-6's family), not a processor's.
 
 Where SIMD strings would pay is **searching** big text: find, replace, split. That is
 QUAD's work, reading corpora. satl has not built `.find`/`.replace` yet. When it does,
@@ -188,6 +248,11 @@ start-up. It answers which kernel to use, the override (§7), and `--bit`. The t
 its two lines. `arguments.cpu.*` gets a row saying which kernel is running; whether that
 is `arguments.cpu.architecture` itself is the open question carried from M37.
 `build/satl-cpu-level` goes.
+
+**Choose by what the processor can do, never by its model.** Clang's
+`target_clones("arch=haswell")` resolver tests the processor *model*, so a 13700K gets
+the plain clone. `arch=x86-64-v3` tests features, and so does M37's chooser. Measured by
+the kernel agent, 2026-09-23.
 
 **DECISION OPEN:** what happens to `make cpus`, `build/cpu/` (53 builds, 13 minutes,
 4.1 GB) and the nine `satl.<name>` executables. M37's race put `-march=haswell` within
@@ -207,11 +272,22 @@ As written it would be CPU-2 again (§2). **Recommended instead: the MULX + ADX 
 the 13700K's, tested there. It builds on CPU-4's MULX loop, so if taken, CPU-3 and CPU-4
 swap.
 
+**It has to be assembly.** Clang 24 never emits ADCX/ADOX: not from today's loop at
+`-march=raptorlake`, and not even from `_addcarryx_u64`, which it turns back into
+`adc`. Only inline assembly produced them, and GMP's Broadwell kernel is written that way.
+The system libgmp here does not recognise the 13700K and falls back to generic code
+there (0.98×).
+
 ### CPU-4 — the 256-bit kernel (2013)
 
-MULX (BMI2), tested on this Xeon. Clang may already emit MULX from today's loop under
-`-march=haswell`; the census being run 2026-09-23 says whether, and a hand-written MULX
-loop is timed against it.
+MULX (BMI2), tested on this Xeon.
+
+**The compiler already does the easy part** (measured 2026-09-23). Under
+`-march=haswell`, clang turns today's loop into MULX: 1.07× on the loop, 1.05× on `c = a
+* b`. A hand-written MULX loop with intrinsics was *slower* (0.83×). What beat it was
+GMP's hand-written assembly: 1.50×, at the same 11 × 15 limbs. So this kernel means
+writing assembly, or vendoring GMP's `mpn` layer (LGPL; its `--enable-fat` build already
+picks per-processor code at run time), not writing intrinsics.
 
 ### CPU-5 — the 512-bit kernel (2018)
 
@@ -225,7 +301,20 @@ The biggest gain on every processor, independent of kernels. On 2026-09-16 each 
 access rebuilt a name from its 16-bit codes and hashed it (to be re-confirmed against
 today's walker). `program_check.cpp` already sees every name in a capsule before the
 walker runs, so it can give each one a slot number. The walker then reads slot *n* of an
-array, which is what CPython does. The gap measured that day, `i = i + 1` at 458 ns
+array, which is what CPython does.
+
+**Measured 2026-09-23:**
+
+- A variable read today costs **38–46 ns**, and **82 ns** for a name over 15
+  characters, which no longer fits in `std::string`'s own buffer and so allocates on
+  every read. A slot found ahead of time costs **1.6 ns**.
+- In the author's race:
+  - `text_at` rebuilding the name is 13.8% of all instructions;
+  - `word::code_of` repeats a binary search for a constant on every operand
+    (`expression.cpp:1096`, `:1233`): 11.7%;
+  - the hash lookup is 3.1%.
+
+  Together that is **28.6%**, the largest single share. The gap measured that day, `i = i + 1` at 458 ns
 against CPython's 87 ns, is mostly this. Names that appear only at run time (arguments
 rows, `interpret`, spacesuit fields reached by name) keep a slow path.
 
@@ -253,6 +342,26 @@ Three things specific to satl:
 
 `make` would carry it as `make pgo` or a `PGO=yes` knob, adding a few minutes per build.
 
-**The gain is not known yet.** "10–30%" was the range other interpreters report, not a
-satl number. The build is being raced on 2026-09-23 (ordinary, haswell, `-O3`, PGO, PGO +
-LTO, PGO + LTO + BOLT), and the measured number goes here.
+**Measured 2026-09-23.** "10–30%" was the range other interpreters report, not a satl
+number. On satl, PGO gave **10.5–13.0%** on the author's race and **7.7–9.6%** on
+`everything.satl`, and all 20 PGO runs beat all 25 others. ThinLTO and BOLT on top could
+not be told apart from PGO alone, except about 2–3% on the race.
+
+The whole pipeline was built on this machine:
+
+- **Recipe:** `-fprofile-instr-generate`, then 7 training programs, then
+  `-fprofile-instr-use`, then `-flto=thin`, then `llvm-bolt -instrument`, then
+  `llvm-bolt -reorder-blocks=ext-tsp -reorder-functions=cdsort -split-functions`.
+- **Checked:** every build's output matched, and check.sh ran 784 of 785 against the
+  BOLT build. The one failure is a terminal-width row that fails the same way on the
+  plain build.
+- **Cost:** a full build went from 19 s to about 80 s.
+
+Three traps the build agent hit and solved:
+
+1. The word libraries share a module signature, so their profiles overwrote each other.
+   The fix is to link with `-Wl,--build-id` and name the files `%p-%b`.
+2. The training set had no capsules or spacesuits, which `everything.satl` uses
+   heavily. A committed training set should.
+3. BOLT warns about 39 relocations it cannot analyse and leaves two GLib functions
+   alone. It still runs correctly.
