@@ -318,7 +318,47 @@ array, which is what CPython does.
 against CPython's 87 ns, is mostly this. Names that appear only at run time (arguments
 rows, `interpret`, spacesuit fields reached by name) keep a slow path.
 
-### CPU-7 — PGO, LTO and BOLT
+### CPU-7 — PGO, LTO and BOLT — **BUILT 2026-09-23**, `c5b37f0`, in the plain `make`
+
+The author: *"let's build LTO, PGO and BOLT into the regular make"*.
+[make_support/045-optimise.mk](make_support/045-optimise.mk) does all three on every
+`make`:
+
+1. It builds satl a second time, instrumented, into `build/pgo-train/`.
+2. It runs the four programs in [make_support/training/](make_support/training/)
+   (numbers, strings, lists, capsules with spacesuits). None of them is a race program.
+3. It compiles satl's objects with the merged profile and `-flto=thin`, and links them
+   with lld.
+4. BOLT instruments the result, trains it again, and rewrites it.
+
+**Where each step stands:**
+
+- **On this machine:** check.sh 786 passed, 0 failed, against the result.
+- **What is left plain:** the 62 word libraries (0.00% of the time).
+- **Development builds:** `make OPTIMISE=no` is the old plain `-O2`, for quick rebuilds.
+- **When a tool is missing:** each step turns itself off when its tool is not beside the
+  compiler, and the link line says which. g++ builds plain. AlmaLinux's clang 21 gets
+  PGO and ThinLTO with `llvm` and `lld` installed, and no BOLT, because AlmaLinux
+  ships none.
+- **One processor's build** (`CPU=`) is never optimised this way.
+
+**Raced in the plain `make`, 2026-09-23.** The optimised build was raced against the
+installed plain BUILD 0021: same source, 5 alternating rounds, the load below 1.5, and
+identical output.
+
+| | optimised (median) | plain (median) | |
+|---|---|---|---|
+| the author's race, 1,000,000 turns | 2.226 s | 2.508 s | **11.2% faster** |
+| everything.satl, 40,000 turns | 4.529 s | 5.218 s | **13.2% faster** |
+
+Every optimised run beat every plain one: the slowest optimised runs were 2.236 and
+4.560 s, and the fastest plain runs 2.497 and 5.195 s.
+
+**The comma trap.** The first real build failed at BOLT: "instrumentation runtime
+libraries require relocations". `$(if $(BOLT),-Wl,--emit-relocs)` had split at its
+comma and passed a bare `-Wl`. Link flags are named in variables now.
+
+#### What was planned
 
 **These are not three flags.** One is a flag, one is a build procedure, and one is a
 separate tool:
