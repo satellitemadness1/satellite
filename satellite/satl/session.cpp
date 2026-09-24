@@ -212,7 +212,7 @@ bool is_one_listing(const std::vector<std::bitset<16>> &row, std::string &path, 
     ++at;
     given = false;
     if (code_at(row, at) == token::string_token) {
-        path = text_at(row, at);
+        path = string_at(row, at);
         given = true;
     }
     if (code_at(row, at) != token::right_parenthesis_token)

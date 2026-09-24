@@ -1065,7 +1065,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     // UTF-8 comes in through. Strict: a bad sequence is string_error (4) naming
     // the byte, rather than a string standing for bytes that could not be read.
     if (code == token::string_token) {
-        const std::string utf8 = text_at(row, at);
+        const std::string utf8 = string_at(row, at);
         Value held;
         std::size_t bad_offset = 0;
         const signed long long int made = Value::of_utf8(utf8, held, bad_offset);

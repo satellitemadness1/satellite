@@ -139,4 +139,10 @@ void skip_payload(const std::vector<std::bitset<16>> &row, std::size_t &at);
 
 std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at);
 
+// A string literal's payload as the text it STANDS FOR: text_at(), then \" \\ \n
+// \t \r and \' worked out. Every reader of a literal's value comes through here;
+// text_at() stays the reader of names and digits as written. See the note
+// above its definition.
+std::string string_at(const std::vector<std::bitset<16>> &row, std::size_t &at);
+
 } // namespace satellite004

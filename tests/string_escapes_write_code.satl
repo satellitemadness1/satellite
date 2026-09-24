@@ -1,0 +1,23 @@
+satellite.include(satellite)
+
+// A PROGRAM THAT WRITES A PROGRAM WITH A STRING IN IT -- what the escapes were built
+// for (the author, 2026-09-24, talking about polymorph: "a list of strings of
+// satellite code"). The line it writes holds a quoted string, which could not be
+// written at all before \" existed, and the string inside THAT holds \" of its own.
+// check.sh runs this in a scratch folder, then runs what it made.
+
+satellite.capsule satellite.main()
+{
+    satellite.container.list<satellite.variable.string> code = {"satellite.include(satellite)", "satellite.capsule satellite.main()", "{"}
+    code.append("    satellite.console.display(\"made by a program, with \\\"quotes\\\" inside\")")
+    code.append("    satellite.return(satellite)")
+    code.append("}")
+    satellite.variable.file out = satellite.file.new("made_by_a_program.satl", "text")
+    satellite.statement.for(satellite.variable.number i = 1; i < code.size + 1; i + 1)
+    {
+        out.append(code[i])
+    }
+    out.close()
+    satellite.console.display(code[4])
+    satellite.return(satellite)
+}

@@ -77,7 +77,7 @@ IncludeShape include_at(const std::vector<std::bitset<16>> &row,
         ++i;
     } else if (first == token::string_token) {     // include("dir/file")
         shape.kind = IncludeShape::Kind::quoted_path;
-        shape.written = text_at(row, i);
+        shape.written = string_at(row, i);
     } else if (first == token::path_separator_token || first == token::bit_not_token ||
                first == token::name_token) {
         // A BARE PATH MAY START WITH ITS MARK. include(/test) and include(~/test)

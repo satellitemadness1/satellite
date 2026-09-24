@@ -135,8 +135,10 @@ bool answer_help(const std::vector<std::bitset<16>> &row, signed long long int &
     // its text, a word of the language as its spelling, and a string as itself.
     std::string asked;
     const Code given = code_at(row, at);
-    if (given == token::name_token || given == token::string_token)
+    if (given == token::name_token)
         asked = text_at(row, at);
+    else if (given == token::string_token)
+        asked = string_at(row, at);
     else if (word::is_word_code(given)) {
         asked = word::spelling_of(given);
         asked = asked.substr(0, asked.find('('));

@@ -39,8 +39,14 @@ Numbered under word 1 6 1 and not built yet in satellite 004: .size .empty
 .contains(x) .replace(a, b) .append(x) .clear .at(n) .substring(start, end)
 .starts_with(x) .ends_with(x) .lower .upper .split(separator) .trim .resolved
 and satellite.variable.string(x) as a call. Each is refused today, and so is
-reading one character with s[n]. There are no escapes yet: a backslash stays in
-the text as written, so "\t" is a backslash and a t.
+reading one character with s[n].
+
+A backslash inside the quotes starts an escape: \" is a double quote, \\ one
+backslash, \n a new line, \t a tab, \r a carriage return, and \' an apostrophe
+(which needs no escape, and is taken anyway). So "say \"hi\"" is say "hi", and a
+program can write a line of satellite that holds a string of its own. A
+backslash before any other character stays in the text as written, so "a\qb"
+is a\qb.
 
 example:
 
@@ -62,7 +68,9 @@ satellite.capsule satellite.main()
     satellite.console.display("87".bin.find("111")) // 4
     satellite.console.display("status: " + "OK".foreground(x00FF00)) // status: OK -- the OK green at a terminal
     satellite.console.display("apple" < "banana") // true
-    satellite.console.display("tab\there") // tab\there
+    satellite.console.display("say \"hi\"") // say "hi"
+    satellite.console.display("one\ntwo") // one, and two on the next line
+    satellite.console.display("a\qb") // a\qb
     satellite.return(satellite)
 }
 

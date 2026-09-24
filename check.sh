@@ -4809,5 +4809,26 @@ expect "lock and unlock are registry rows 0x0B5B-0x0B5C, and token_codes.hpp agr
 expect "start, stop and wait are registry rows 0x0B58-0x0B5A, and token_codes.hpp agrees" "3|3" \
        "$(grep -c '^00001011010110[01][01]  \(start_token\|stop_token\|wait_method_token\) ' REGISTRY.satellite)|$(grep -c 'Code \(start_token = 0x0B58\|stop_token = 0x0B59\|wait_method_token = 0x0B5A\);' satellite/bytecode/token_codes.hpp)"
 
+# STRING ESCAPES (the author, 2026-09-24: "let's build an escape code into the string").
+# 003's six are worked out when a literal is READ (string_at, bytecode_registry.cpp),
+# so the lexer and the stored program keep the literal as written; an escape satellite
+# does not know keeps its backslash, and whether it should be refused is ERROR #16's
+# ruling, still his. A tab is shown as <TAB> and a carriage return as <CR>.
+"$interpreter" tests/string_escapes.satl > build/string_escapes.out 2>/dev/null; code=$?
+expect "strings: \\\" \\\\ \\n \\t \\r \\' are escapes, a // after \\\" is text, and \\q keeps its backslash" \
+       '0|say "hi"|one|two|a<TAB>b|DOESN'"'"'T|back\slash|ends with \|\n is a backslash and an n|a"//not a comment|a\qb|x<CR>y|2|"quoted"|true|false|x"y,p<TAB>q' \
+       "$code|$(sed 's/\t/<TAB>/g; s/\r/<CR>/g' build/string_escapes.out | tr '\n' '|' | sed 's/|$//')"
+escape_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_escapes.XXXXXX")
+cp tests/string_escapes_write_code.satl "$escape_room/"
+expect "strings: a program writes a line of satellite that holds a string with \\\" inside it" \
+       '    satellite.console.display("made by a program, with \"quotes\" inside")' \
+       "$("$interpreter" "$escape_room/string_escapes_write_code.satl" 2>/dev/null)"
+expect "... and the program it wrote runs" 'made by a program, with "quotes" inside' \
+       "$("$interpreter" "$escape_room/made_by_a_program.satl" 2>/dev/null)"
+rm -rf "$escape_room"
+printf 'satellite.console.display("typed \\"here\\"")\n' | "$interpreter" --repl > build/repl_escapes.out 2>/dev/null
+expect "strings: a line typed at the prompt reads its escapes the same way" 1 \
+       "$(grep -cx 'typed "here"' build/repl_escapes.out)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

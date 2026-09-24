@@ -1,0 +1,29 @@
+satellite.include(satellite)
+
+// STRING ESCAPES (the author, 2026-09-24: "let's build an escape code into the string").
+// 003's six -- \" \\ \n \t \r \' -- are worked out when a literal is read, and an
+// escape satellite does not know keeps its backslash (ERROR #16's ruling is still his).
+// check.sh runs this and asserts every line in order, a tab shown as <TAB> and a
+// carriage return as <CR>.
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("say \"hi\"")
+    satellite.console.display("one\ntwo")
+    satellite.console.display("a\tb")
+    satellite.console.display("DOESN\'T")
+    satellite.console.display("back\\slash")
+    satellite.console.display("ends with \\")
+    satellite.console.display("\\n is a backslash and an n")
+    satellite.console.display("a\"//not a comment")
+    satellite.console.display("a\qb")
+    satellite.console.display("x\ry")
+    satellite.console.display("a\"b".find("b"))
+    satellite.variable.string quote = "\""
+    satellite.console.display(quote + "quoted" + quote)
+    satellite.console.display("\\" + "n" == "\\n")
+    satellite.console.display("\t" == "\n")
+    satellite.container.list<satellite.variable.string> parts = {"x\"y", "p\tq"}
+    satellite.console.display(parts.join(","))
+    satellite.return(satellite)
+}

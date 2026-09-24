@@ -816,6 +816,54 @@ std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
     return out;
 }
 
+// A STRING LITERAL'S ESCAPES ARE WORKED OUT HERE, AND ONLY HERE (the author,
+// 2026-09-24: "let's build an escape code into the string"). The lexer keeps a
+// literal exactly as it was written -- 003's DESIGN 5.3, lex raw and expand only
+// inside a string's body -- so the stored program still reads back as its source,
+// and a newline never has to live inside a payload.
+//
+// 003'S SIX, and no more: \" \\ \n \t \r and \'. The last is redundant -- an
+// apostrophe needs no escape inside double quotes -- and taken anyway, because 003
+// printed the backslash of "DOESN\'T" 501 times in one real program before it was.
+// 003's \home \user \memtotal and the rest were VALUES, not characters, and are not
+// here -- they keep their backslash -- EXCEPT \threads, which starts with \t: it is
+// now a tab and "hreads", as in every language with a \t, where 003 answered the
+// thread count. Whether the values come back is the author's. AN ESCAPE THIS DOES
+// NOT KNOW KEEPS ITS BACKSLASH, as every escape did before this: "a\qb" is a\qb.
+// Whether it should be refused is the author's too (ERROR #16).
+//
+// A LITERAL WITH NO BACKSLASH COMES BACK AS text_at BUILT IT, one find() and no
+// second string: a literal is read every time its line runs.
+std::string string_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
+{
+    std::string written = text_at(row, at);
+    std::size_t k = written.find('\\');
+    if (k == std::string::npos)
+        return written;
+    std::string meant(written, 0, k);
+    meant.reserve(written.size());
+    while (k < written.size()) {
+        const char c = written[k];
+        const char next = k + 1 < written.size() ? written[k + 1] : '\0';
+        const char escaped = c != '\\' ? '\0'
+                             : next == '"'  ? '"'
+                             : next == '\\' ? '\\'
+                             : next == 'n'  ? '\n'
+                             : next == 't'  ? '\t'
+                             : next == 'r'  ? '\r'
+                             : next == '\'' ? '\''
+                                            : '\0';
+        if (escaped == '\0') {
+            meant += c;
+            ++k;
+        } else {
+            meant += escaped;
+            k += 2;
+        }
+    }
+    return meant;
+}
+
 unsigned long long int codes_in(const BytecodeRegistry &registry)
 {
     unsigned long long int total = 0;
