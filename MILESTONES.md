@@ -1382,7 +1382,7 @@ waiting on him: a check mode for unlocked sharing, and a lock that lets go when 
 capsule ends. Also still his: whether `satellite.library` becomes writable at run time,
 and T3, windows on threads.
 
-## M39 — the author's lock: objects and files shared by threads, `.lock()` locks only writes (THREADS.md T2) — **BUILT 2026-09-23**
+## M39 — the author's lock: objects and files shared by threads, `.lock()` locks only writes (THREADS.md T2) — **BUILT 2026-09-23** `ebfce50`
 
 The author, 2026-09-23, on M38's share-nothing threads: *"this was supposed to be done like
 completely differently than how you built it, we were locking objects, at the users

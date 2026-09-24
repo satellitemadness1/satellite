@@ -115,7 +115,7 @@ probe programs. Everything it confirmed is fixed:
   process**, so with threads their counts can mix.
 - **`satellite.directory.change` moves the whole process,** every thread with it.
 
-## T2 — sharing, and the author's lock: **BUILT 2026-09-23**
+## T2 — sharing, and the author's lock: **BUILT 2026-09-23** `ebfce50`
 
 T2 was first written up here as "the author's design, not built", after T1 had been
 built to share nothing. The author, the same day:
