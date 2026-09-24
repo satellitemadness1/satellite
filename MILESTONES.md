@@ -1381,3 +1381,41 @@ on, so the programmer has to lock everything themselves"*. It has two proposals 
 waiting on him: a check mode for unlocked sharing, and a lock that lets go when its
 capsule ends. Also still his: whether `satellite.library` becomes writable at run time,
 and T3, windows on threads.
+
+## M39 — the author's lock: objects and files shared by threads, `.lock()` locks only writes (THREADS.md T2) — **BUILT 2026-09-23**
+
+The author, 2026-09-23, on M38's share-nothing threads: *"this was supposed to be done like
+completely differently than how you built it, we were locking objects, at the users
+discretion ... it only turns the lock on when something goes to write to that object"*.
+
+**What changed from M38:**
+
+- Objects and files are **shared** with threads: handing one over, running
+  `satellite.thread.new(obj.call_x())`, a spacesuit's own capsule by its bare name, and an
+  object answered by `join()`.
+- S727 is now a window's alone.
+- **Every object and file has a lock, off.** `.lock()` turns it on and `.unlock()` off
+  (tokens 0x0B5B and 0x0B5C).
+- **While a lock is on:**
+  - a statement that writes the object holds it for that statement;
+  - a statement that only reads it waits only while a write is happening;
+  - `if`, `while` and `for` hold it for their condition only;
+  - every method on a locked file holds it for that call.
+- **While it is off, nothing is taken.** The cost is one relaxed load per statement of a
+  capsule running on an object.
+
+This is `satellite_object/object_lock.hpp`, and `what_the_line_does` in `program_walk.cpp`.
+
+**Measured:**
+
+- Four threads each adding 1 to one field 5,000 times gave **20,000** with `.lock()`.
+  Without it they gave 12,528, 12,691 and 12,179.
+- Four threads each appending 1,000 items gave **4,000** with `.lock()`.
+- A locked file written by two threads gave **1,000 of 1,000** lines.
+
+`tests/threads_lock.satl` holds these, with two tests rewritten from refusals into sharing;
+the spacesuit-capsule refusal test is gone.
+
+**Still open:** `satellite.library` writable at run time (still S250); a circle of two locks
+waited on (003's S1408); the offered check mode for unlocked writes.
+

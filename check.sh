@@ -4735,12 +4735,15 @@ expect "threads: join() before start() is S723" "58|1" "$code|$(grep -c 'S723: J
 "$interpreter" tests/threads_joined_twice.satl > build/threads_joined.out 2> build/threads_joined.err; code=$?
 expect "threads: a second join() answers the same again, S724 said as a notice, exit 0" "0|8|8|8||1" \
        "$code|$(tr '\n' '|' < build/threads_joined.out)|$(grep -c '^\[satellite\] S724 THREAD_ALREADY_JOINED' build/threads_joined.err)"
-"$interpreter" tests/threads_share_object.satl > build/threads_share.out 2> build/threads_share.err; code=$?
-expect "threads: an object of a spacesuit handed to a thread is S727 until .lock()" "62|before|1" \
-       "$code|$(tr -d '\n' < build/threads_share.out)|$(grep -c 'S727: THREAD_CANNOT_SHARE_YET' build/threads_share.err)"
-"$interpreter" tests/threads_suit_capsule.satl > /dev/null 2> build/threads_suit.err; code=$?
-expect "threads: a spacesuit's capsule as a thread's body is S727 before anything runs" "62|1" \
-       "$code|$(grep -c 'S727: THREAD_CANNOT_SHARE_YET' build/threads_suit.err)"
+"$interpreter" tests/threads_share_object.satl > build/threads_share.out 2>/dev/null; code=$?
+expect "threads: an object handed to a thread is shared -- what the thread writes, main reads after the join" "0|0|5|" \
+       "$code|$(tr '\n' '|' < build/threads_share.out)"
+# THE AUTHOR'S LOCK (THREADS.md T2): off until obj.lock(), then a statement that writes the
+# object holds it. Four threads on one locked object, and every count exact
+# (tests/threads_lock.satl says what each line is).
+"$interpreter" tests/threads_lock.satl > build/threads_lock.out 2>/dev/null; code=$?
+expect "threads: .lock() on a shared object -- 4 threads x 5,000 adds = 20000, 4 x 1,000 appends = 4000, and a thread on the object's own capsule" \
+       "0|20000|4000|20001|20002|" "$code|$(tr '\n' '|' < build/threads_lock.out)"
 "$interpreter" tests/threads_window_on_a_thread.satl > build/threads_window.out 2> build/threads_window.err; code=$?
 expect "threads: a window word on a thread is S727, and join() stops main with it" "62|0|1" \
        "$code|$(wc -l < build/threads_window.out | tr -d ' ')|$(grep -c 'S727: THREAD_CANNOT_SHARE_YET' build/threads_window.err)"
@@ -4761,8 +4764,10 @@ timeout 20 "$interpreter" tests/threads_empty_loop.satl > build/threads_empty.ou
 expect "threads: stop() reaches a loop whose body is empty (the check is before the })" "0|(thread spin, stopped)" \
        "$code|$(tr -d '\n' < build/threads_empty.out)"
 "$interpreter" tests/threads_answer_object.satl > build/threads_answer.out 2> build/threads_answer.err; code=$?
-expect "threads: an answer that is an object goes to the first join only; a second is S727" "62|7|1" \
-       "$code|$(tr -d '\n' < build/threads_answer.out)|$(grep -c 'S727: THREAD_CANNOT_SHARE_YET' build/threads_answer.err)"
+expect "threads: an answer that is an object is the same object to every join" "0|7|7|" \
+       "$code|$(tr '\n' '|' < build/threads_answer.out)"
+expect "lock and unlock are registry rows 0x0B5B-0x0B5C, and token_codes.hpp agrees" "2|2" \
+       "$(grep -c '^000010110101101[1]  lock_token \|^0000101101011100  unlock_token ' REGISTRY.satellite)|$(grep -c 'Code \(lock_token = 0x0B5B\|unlock_token = 0x0B5C\);' satellite/bytecode/token_codes.hpp)"
 expect "start, stop and wait are registry rows 0x0B58-0x0B5A, and token_codes.hpp agrees" "3|3" \
        "$(grep -c '^00001011010110[01][01]  \(start_token\|stop_token\|wait_method_token\) ' REGISTRY.satellite)|$(grep -c 'Code \(start_token = 0x0B58\|stop_token = 0x0B59\|wait_method_token = 0x0B5A\);' satellite/bytecode/token_codes.hpp)"
 

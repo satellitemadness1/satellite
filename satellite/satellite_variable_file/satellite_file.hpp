@@ -37,6 +37,7 @@
 // SATELLITE_FILE_OPERATIONS FO-9 replaces it with an index and a list of
 // changes. Written down so it is not mistaken for the finished design.
 
+#include "../satellite_object/object_lock.hpp"
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -46,6 +47,10 @@ namespace satellite004 {
 
 class satellite_file {
 public:
+    // THE AUTHOR'S LOCK (satellite_object/object_lock.hpp): OFF until f.lock(). While it is
+    // on, every method called on this file holds it -- a file is shared by every name for it.
+    ObjectLock lock;
+
     enum class Kind { text, binary };
 
     // How each line ended on the disk, so a file is written back the way it was:

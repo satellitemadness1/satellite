@@ -18,6 +18,7 @@
 #include "container_calls.hpp"
 #include "console_calls.hpp"
 #include "thread_calls.hpp"
+#include "../satellite_object/object_lock.hpp"
 #include "../machine/console_lock.hpp"
 #include "../machine/thread_stop.hpp"
 #include "main_arguments.hpp"
@@ -497,6 +498,17 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // A FILE ANSWERS ITS OWN METHODS (file_calls.cpp). The (*live) is a
         // handle, so the method acts on the one open file every name for it shares.
         if (satellite_file *file = (*live).as_file()) {
+            // THE AUTHOR'S LOCK ON A FILE: .lock() turns it on and .unlock() off, and while it
+            // is on every method called on the file holds it -- a file is one thing to every
+            // name for it, and to every thread (satellite_object/object_lock.hpp).
+            if (method == token::lock_token || method == token::unlock_token) {
+                file->lock.on.store(method == token::lock_token, std::memory_order_release);
+                held = Value();
+                live = &held;
+                on_the_name = false;
+                continue;
+            }
+            const ObjectHold one_call(&file->lock, LockUse::writing);
             Value answer = call_file_method(method, *file, arguments, had_parentheses, name, context);
             if (context.code != success)
                 return Value();

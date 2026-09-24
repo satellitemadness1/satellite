@@ -35,6 +35,7 @@
 // std::shared_ptr<satelliteUserDefinedObject>. A built-in has no such need: a
 // number IS its value.
 
+#include "object_lock.hpp"
 #include "satellite_object.hpp"
 
 #include <cstddef>
@@ -70,6 +71,7 @@ struct satelliteSuitLayout;
 struct satelliteUserDefinedObject {
     std::shared_ptr<const satelliteSuitLayout> layout;   // shared by every object of its spacesuit
     std::vector<satelliteObject> fields;                 // one per field, in the layout's order
+    ObjectLock lock;                                     // the author's, OFF until .lock() (object_lock.hpp)
 };
 
 // ---------------------------------------------------------------------------

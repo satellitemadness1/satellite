@@ -119,23 +119,41 @@ bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &
         return false;
     }
     const std::size_t which = row_index_of(program, row);
+    // `obj.call_x(...)` -- A CAPSULE OF AN OBJECT, run on a thread on that object, which the
+    // thread SHARES with this one (THREADS.md T2: sharing is allowed; the object's .lock()
+    // is what makes its writes one at a time).
+    if (names.size() == 2) {
+        const Seen object = context.variables.seen(names.front());
+        const UserDefinedHandle *handle = object ? object.value->as_user_defined() : nullptr;
+        if (handle != nullptr && *handle != nullptr && (*handle)->layout != nullptr) {
+            signed long long int refused = success;
+            std::string why;
+            const CapsuleSite *site =
+                table->member((*handle)->layout->suit, names.back(), table->scope_at(which, started), refused, why);
+            if (site == nullptr) {
+                context.refuse(refused, why, started);
+                return false;
+            }
+            at = open;
+            if (!arguments_at(row, at, out.written, out.arguments, context))
+                return false;
+            out.site = site;
+            out.self = *handle;
+            return true;
+        }
+    }
     const Reached reached = table->reach(table->scope_at(which, started), names);
     if (reached.site == nullptr) {
         context.refuse(reached.code, reached.why, started);
-        return false;
-    }
-    // A SPACESUIT'S CAPSULE RUNS ON AN OBJECT, and a thread handed an object would share
-    // it with the thread that made it -- which waits for .lock() (THREADS.md T2). The
-    // checker has said so already; this is the walker not trusting that it did.
-    if (reached.site->suit != kNoScope) {
-        context.refuse(thread_cannot_share_yet, out.written + " is a capsule of a spacesuit, and it would run on an "
-                                                "object this thread shares", started);
         return false;
     }
     at = open;
     if (!arguments_at(row, at, out.written, out.arguments, context))
         return false;
     out.site = reached.site;
+    // A SPACESUIT'S CAPSULE BY ITS BARE NAME runs on this body's object, as a call would.
+    if (reached.site->suit != kNoScope)
+        out.self = context.variables.self;
     return true;
 }
 
@@ -166,6 +184,18 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         context.refuse(satl_line_not_understood, receiver + " holds no object yet, so it has no " + name +
                                                      " -- a field of a spacesuit's type starts empty until something "
                                                      "gives it one", dot);
+        return Value();
+    }
+    // THE AUTHOR'S LOCK (satellite_object/object_lock.hpp): `.lock()` turns it on and
+    // `.unlock()` off. Neither locks anything itself; a statement that writes the object does.
+    if (next == token::lock_token || next == token::unlock_token) {
+        if (code_at_here(row, at) != token::left_parenthesis_token ||
+            code_at_here(row, at + 1) != token::right_parenthesis_token) {
+            context.refuse(satl_line_not_understood, written + "() takes nothing, in its brackets", dot);
+            return Value();
+        }
+        at += 2;
+        (*handle)->lock.on.store(next == token::lock_token, std::memory_order_release);
         return Value();
     }
     const CapsuleTable *table = context.state.capsules;

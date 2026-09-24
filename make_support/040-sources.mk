@@ -81,7 +81,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(BYTECODE)/expression.hpp $(BYTECODE)/value.hpp \
           $(BYTECODE)/thread_calls.hpp $(SATELLITE)/satellite_variable_thread/satellite_thread.hpp \
           $(SATELLITE)/satellite_variable_thread/satellite_thread_handle.hpp \
-          $(MACHINE)/console_lock.hpp $(MACHINE)/thread_stop.hpp \
+          $(MACHINE)/console_lock.hpp $(MACHINE)/thread_stop.hpp $(OBJECT)/object_lock.hpp \
           $(BYTECODE)/file_calls.hpp $(BYTECODE)/container_calls.hpp \
           $(BYTECODE)/console_style.hpp $(BYTECODE)/console_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
           $(BYTECODE)/infinity_calls.hpp $(INFINITY)/satellite_infinity.hpp \

@@ -40,6 +40,7 @@ struct PackagedCall {
     const CapsuleSite *site = nullptr;
     std::vector<Value> arguments;
     std::string written;              // the name as the program wrote it: count_alone, other.work
+    UserDefinedHandle self;           // the object a spacesuit's capsule runs on; null for any other
 };
 bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &at,
                           const std::vector<std::string> &names, std::size_t open,

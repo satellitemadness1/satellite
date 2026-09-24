@@ -79,7 +79,7 @@ void *run_the_thread(void *given)
     signed long long int code = success;
     try {
         code = run_capsule_on_a_thread(*launch->program, *launch->capsules, *launch->functions, *thread.site,
-                                       std::move(thread.arguments), launch->state, answer, answered);
+                                       std::move(thread.arguments), thread.self, launch->state, answer, answered);
     } catch (const std::bad_alloc &) {
         // AN EXCEPTION OUT OF A THREAD IS std::terminate -- the whole process, with no
         // word said -- so it is caught here and becomes the thread's code, as main()
@@ -116,21 +116,19 @@ void reap(satellite_thread &thread)
     pthread_join(which, nullptr);
 }
 
-// WHAT A THREAD MAY NOT BE HANDED YET (T1): anything it would SHARE with the thread that
-// made it. Values are copies -- a list is copied the moment either side changes it
-// (satellite_list.hpp) -- but a spacesuit's object, a file and a window are one thing with
-// two names, and so is anything inside a list or an index that is one of them.
-bool holds_something_shared(const Value &value, std::string &what)
+// WHAT A THREAD MAY NOT BE HANDED: a window, anywhere in what it is given (THREADS.md T3).
+// A window is the main thread's -- one interpreter thread writes a piece (window_desk.hpp).
+// OBJECTS AND FILES ARE SHARED (T2, the author): a thread handed one holds the same one, and
+// its .lock() is what makes writes to it one at a time.
+bool holds_a_window(const Value &value)
 {
-    if (value.is_user_defined()) { what = "an object of a spacesuit"; return true; }
-    if (value.is_file()) { what = "a file"; return true; }
-    if (value.is_window()) { what = "a window"; return true; }
+    if (value.is_window()) return true;
     if (const ListHandle *list = value.as_list(); list != nullptr && *list != nullptr)
         for (const Value &item : (*list)->items)
-            if (holds_something_shared(item, what)) return true;
+            if (holds_a_window(item)) return true;
     if (const IndexHandle *index = value.as_index(); index != nullptr && *index != nullptr)
         for (const auto &[key, item] : (*index)->entries)
-            if (holds_something_shared(key, what) || holds_something_shared(item, what)) return true;
+            if (holds_a_window(key) || holds_a_window(item)) return true;
     return false;
 }
 
@@ -211,18 +209,9 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
         if (answered)
             answer = thread.answer;
     }
-    // AN ANSWER THAT HOLDS AN OBJECT, A FILE OR A WINDOW GOES TO THE FIRST JOINER ONLY
-    // (the review, 2026-09-23): a second joiner -- often another thread, handed this one's
-    // handle -- would hold the same object, which is the sharing T1 refuses. It crashed
-    // satl in 3 of 3 runs with two threads writing one field. The thread that made it has
-    // ended, so the first joiner holding it alone shares nothing.
-    std::string what;
-    if (again && answered && holds_something_shared(answer, what)) {
-        context.refuse(thread_cannot_share_yet, name + "." + spelling + "() -- " + thread.name + "'s answer is or holds " +
-                                                    what + ", and it was handed to the first join(); a second would "
-                                                    "share it, which waits for .lock() (THREADS.md T2)");
-        return Value();
-    }
+    // AN ANSWER THAT IS AN OBJECT IS THE SAME OBJECT TO EVERY JOINER (T2): sharing is
+    // allowed, and the object's .lock() is what makes two joiners' writes to it safe --
+    // unlocked, two threads writing one field can crash satl (the review, 2026-09-23).
     // A SECOND JOIN IS DONE TOO (003's Q2, the author): the same answer again, and said
     // once as a notice rather than stopping anything.
     if (again) {
@@ -281,12 +270,10 @@ Value call_thread_new(const std::vector<std::bitset<16>> &row, std::size_t &at, 
     }
     at = k + 1;
     for (std::size_t n = 0; n < call.arguments.size(); ++n) {
-        std::string what;
-        if (holds_something_shared(call.arguments[n], what)) {
+        if (holds_a_window(call.arguments[n])) {
             context.refuse(thread_cannot_share_yet,
-                           call.written + "'s argument " + std::to_string(n + 1) + " is or holds " + what +
-                               ", which the new thread would share with this one -- sharing waits for .lock() "
-                               "(THREADS.md T2)",
+                           call.written + "'s argument " + std::to_string(n + 1) + " is or holds a window, and a "
+                               "window belongs to the main thread (THREADS.md T3)",
                            open);
             return Value();
         }
@@ -294,6 +281,7 @@ Value call_thread_new(const std::vector<std::bitset<16>> &row, std::size_t &at, 
     auto thread = std::make_shared<satellite_thread>();
     thread->site = call.site;
     thread->arguments = std::move(call.arguments);
+    thread->self = std::move(call.self);
     thread->name = call.written;
     return Value::of_thread(std::move(thread));
 }

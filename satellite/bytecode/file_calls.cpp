@@ -276,7 +276,9 @@ int file_method_arity(Code method)
     case token::ok_token:
     case token::error_text_token:
     case token::path_token:
-    case token::exists_token: return 0;
+    case token::exists_token:
+    case token::lock_token:       // the author's lock (satellite_object/object_lock.hpp)
+    case token::unlock_token: return 0;
     default: return -1;
     }
 }

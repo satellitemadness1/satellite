@@ -182,13 +182,14 @@ signed long long int run_declaration(const BytecodeRegistry &registry,
 // (null for any other capsule), and `answer`, when not null, receives what its
 // satellite.return handed back -- refused with capsule_gave_no_answer (53) when none did.
 // ONE OF THE PROGRAM'S CAPSULES ON A THREAD OF ITS OWN (thread_calls.cpp, 2026-09-23): as
-// run_capsule_for with no object, and its answer optional -- `answered` says whether it
-// handed one back, and ending without one is not a fault.
+// run_capsule_for, on `self` for a spacesuit's capsule, and its answer optional --
+// `answered` says whether it handed one back, and ending without one is not a fault.
 signed long long int run_capsule_on_a_thread(const BytecodeRegistry &registry,
                                             const CapsuleTable &capsules,
                                             const FunctionTable &functions,
                                             const CapsuleSite &site,
                                             std::vector<Value> arguments,
+                                            const UserDefinedHandle &self,
                                             MachineState &state,
                                             Value &answer,
                                             bool &answered);

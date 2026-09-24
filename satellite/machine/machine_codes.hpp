@@ -124,14 +124,14 @@ enum MachineCode : signed long long int {
     // `satellite.variable.thread t = satellite.thread.new(capsule(args))`, which 003 built as
     // its M23 and gave S1401-S1405. 57-60 are those; 56 is 003's S1401 at the check; 61 is
     // the code a thread's walk ends on after `.stop()`, and is never an error of its own;
-    // 62 is what threads may not share yet -- objects, files, windows (T2 and T3).
+    // 62 is what threads may not share yet -- a window (T3). Objects and files are shared (T2).
     thread_needs_a_capsule_call = 56,   // satellite.thread.new(x) where x is not a call to one of the program's capsules
     thread_already_started = 57,        // .start() on a thread that has already been started
     thread_not_started = 58,            // .join() or .wait() on a thread that was never started
     thread_already_joined = 59,         // a second .join(): the same answer again, and this said once as a notice
     thread_cannot_start = 60,           // the machine refused to make the thread
     thread_stopped = 61,                // the walk of a thread that .stop() asked to stop
-    thread_cannot_share_yet = 62,       // an object, file or window handed to a thread, or a window word on one
+    thread_cannot_share_yet = 62,       // a window handed to a thread, or a window word used on one (T3)
 
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as

@@ -1,4 +1,4 @@
-// A thread's answer that is an object goes to the FIRST join only; a second would share it: S727.
+// A thread's answer that is an object is the SAME object to every join (THREADS.md T2: shared).
 satellite.include(satellite)
 
 satellite.spacesuit box()
@@ -29,6 +29,6 @@ satellite.capsule satellite.main()
     box first = m.join()
     satellite.console.display(first.call_held())
     box second = m.join()
-    satellite.console.display("never printed")
+    satellite.console.display(second.call_held())
     satellite.return(satellite)
 }

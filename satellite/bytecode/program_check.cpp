@@ -740,6 +740,16 @@ signed long long int member_of_an_object(const std::vector<std::bitset<16>> &row
         return satl_line_not_understood;
     }
     const std::string written = receiver + "." + member;
+    // THE AUTHOR'S LOCK (satellite_object/object_lock.hpp): every object has .lock() and
+    // .unlock(), whatever its spacesuit declares, and each takes nothing.
+    if (code_at(row, k + 1) == token::lock_token || code_at(row, k + 1) == token::unlock_token) {
+        if (code_at(row, m) != token::left_parenthesis_token || code_at(row, m + 1) != token::right_parenthesis_token) {
+            why = written + "() takes nothing, in its brackets";
+            return satl_line_not_understood;
+        }
+        k = m;
+        return success;
+    }
     signed long long int code = success;
     const CapsuleSite *site = where.capsules.member(suit, member, where.scope, code, why);
     if (site == nullptr)
@@ -1075,18 +1085,30 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                       written + "(), with what it takes inside the brackets";
                 return thread_needs_a_capsule_call;
             }
-            const Reached reached = capsules.reach(scope, names);
-            if (reached.site == nullptr) {
-                why = reached.why;
-                return satl_line_not_understood;
+            // `obj.call_x(...)` -- A CAPSULE OF AN OBJECT, run on a thread on that object (T2:
+            // shared, and made safe by the object's own .lock()).
+            const CapsuleSite *site = nullptr;
+            const DeclaredObjects::const_iterator object =
+                names.size() == 2 ? where.objects.find(names.front()) : where.objects.end();
+            if (object != where.objects.end()) {
+                signed long long int refused = success;
+                site = capsules.member(object->second, names.back(), scope, refused, why);
+                if (site == nullptr)
+                    return refused;
+            } else {
+                const Reached reached = capsules.reach(scope, names);
+                if (reached.site == nullptr) {
+                    why = reached.why;
+                    return satl_line_not_understood;
+                }
+                site = reached.site;
+                // A SPACESUIT'S CAPSULE BY ITS BARE NAME runs on this body's object, so the
+                // line must stand in a capsule of that spacesuit, as a call must.
+                const signed long long int with_an_object = a_capsule_with_an_object(*site, where, written, why);
+                if (with_an_object != success)
+                    return with_an_object;
             }
-            if (reached.site->suit != kNoScope) {
-                why = written + " is a capsule of the spacesuit " + capsules.scopes[reached.site->suit].within +
-                      ", and it runs on an object -- a thread may not share an object with the thread that made "
-                      "it yet (THREADS.md T2)";
-                return thread_cannot_share_yet;
-            }
-            const signed long long int given = given_what_it_takes(row, past, *reached.site, written, why);
+            const signed long long int given = given_what_it_takes(row, past, *site, written, why);
             if (given != success)
                 return given;
             std::size_t close = past, count = 0;

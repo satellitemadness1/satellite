@@ -18,7 +18,7 @@ my_thread.join()"*, then *"but we can also have my_thread.wait() as another name
 003 built threads as its M23 and hardened them in its THREAD.md, T1 and T2. That is
 `old_versions/second_satellite/`. Everything below that comes from 003 says so.
 
-## T1 — threads that share nothing: **BUILT 2026-09-23**, `796f175`
+## T1 — threads: **BUILT 2026-09-23**, `796f175`; sharing opened by T2
 
 The code is in [thread_calls.hpp](satellite/bytecode/thread_calls.hpp) and `.cpp`, with the
 value in [satellite_thread.hpp](satellite/satellite_variable_thread/satellite_thread.hpp)
@@ -56,14 +56,17 @@ value in [satellite_thread.hpp](satellite/satellite_variable_thread/satellite_th
   a program has started a thread, so a program without threads pays nothing
   (`machine/console_lock.hpp`).
 
-**What T1 refuses, with S727 THREAD_CANNOT_SHARE_YET:**
+**What is refused, with S727 THREAD_CANNOT_SHARE_YET:** a window given to a thread, and a
+window word used on one. A window belongs to the main thread, which draws it (T3).
+**Everything else is shared as it is written:**
 
-- handing a thread an object of a spacesuit, a file or a window, even inside a list;
-- running a spacesuit's capsule on a thread, because it runs on an object;
-- a window word used on a thread. The window belongs to the main thread.
+- an object of a spacesuit handed to a thread is the **same** object on both;
+- so is a file, and an object answered by `join()`;
+- a spacesuit's capsule can run on a thread, as `satellite.thread.new(obj.call_x())`, or by
+  its bare name inside the spacesuit's own capsules.
 
-All of these would **share** something between two threads. Numbers, strings, lists and
-the other values are copies. A list is copied the moment either side changes it.
+Numbers, strings and lists are values: each thread gets its own copy, and a list is copied
+the moment either side changes it.
 
 **Tested:**
 
@@ -112,46 +115,57 @@ probe programs. Everything it confirmed is fixed:
   process**, so with threads their counts can mix.
 - **`satellite.directory.change` moves the whole process,** every thread with it.
 
-## T2 — sharing, and the lock: **THE AUTHOR'S DESIGN, NOT BUILT**
+## T2 — sharing, and the author's lock: **BUILT 2026-09-23**
 
-This is how the design reached its present form on 2026-09-23. Each step was raced in
-`time_test/locks/`.
+T2 was first written up here as "the author's design, not built", after T1 had been
+built to share nothing. The author, the same day:
 
-1. The author asked for locks: *"Let's build locks into satellite.library instead of having
-   a queue"*.
-2. Then a bool on every object: *"if the bool is true, you cannot write to it"*.
-   **Measured:** a bool checked and then set loses writes, 2,286,389 of 4,000,000. The same
-   bool flipped in one step is right.
-3. Then *"double literally everything"*: copy, change, swap in. **Measured:** right, and
-   nobody waits, but every write copies.
-4. Then *"try it with two bools"*. **Measured:** still wrong, 2,558,785 of 4,000,000.
-5. Where it settled:
+> *"this was supposed to be done like completely differently than how you built it, we
+> were locking objects, at the users discretion, so if the user decides to put a lock on
+> something, that doesn't necessarily turn the lock on, it only turns the lock on when
+> something goes to write to that object"*
 
-> *"we could just leave the entire library unlocked, so the programmer has to build their
-> own, and we can offer a locking mechanism, let's offer an object.lock() that locks an
-> object, and otherwise it's off, just use mutexes on all of the objects, but by default
-> it's not on, so the programmer has to lock everything themselves! that beats the mutex!"*
+> *"we were leaving the locks off, entirely, unless the user turns the lock that's on, on
+> that object, then it only locks if that object is being written to"*
 
-**So T2 is:**
+And on `.unlock()`: *"there really is no .unlock() needed though ... but how you have it
+is good enough"*.
 
-- Objects, lists, files and `satellite.library` values **may be shared** between threads.
-  T1's S727 goes, for objects and files.
-- **Nothing is locked unless the program asks.** `x.lock()` takes a mutex that belongs to
-  `x`, and `x.unlock()` gives it back. It costs nothing on any object the program never
-  locks.
-- **`satellite.library` becomes writable at run time.** Today every write to it is refused
-  with S250, because nothing is shared.
+**What is built** (`satellite_object/object_lock.hpp`):
 
-**OFFERED TO THE AUTHOR, NOT ANSWERED:**
+| Written | What it does |
+|---|---|
+| (nothing) | Every object and every file has a lock, and it is **off**. Nothing is ever locked for it, and threads share it freely. |
+| `obj.lock()`, `f.lock()` | Turns the lock **on**. That locks nothing by itself. |
+| a statement that **writes** a locked object | Holds the lock for that one statement, so `total = total + 1` from four threads loses nothing. Writing means: it assigns one of the object's fields, calls a method on one (`items.append(x)`), or calls a capsule. |
+| a statement that only **reads** it | Waits only while a write is happening, and never for another read. Without that, reading a list while another thread appends to it can crash satl. |
+| `if`, `while`, `for` | Hold the lock for their **condition** only, never for their body. |
+| any method on a locked **file** | Holds it for that call. |
+| `obj.unlock()`, `f.unlock()` | Turns it off again. |
 
-1. **A forgotten lock can crash satl, not only lose a write.** Two threads appending to one
-   list can leave the list's memory in two places at once. C++ calls that the
-   programmer's problem.
-   - **Proposed:** an optional check mode, off by default and so free, that names the line
-     where two threads touched one object unlocked.
-2. **A forgotten `.unlock()` would freeze every other thread.**
-   - **Proposed:** a lock also lets go by itself when the capsule that took it ends, so
-     `.unlock()` is optional.
+A thread already holding an object's lock never waits for itself: a locked statement that
+calls another capsule of the same object runs its statements without taking the lock again.
+
+**Measured** in `tests/threads_lock.satl`, and run for comparison without `.lock()`. You can
+run both yourself:
+
+| Four threads, one object | Without `.lock()` | With `.lock()` |
+|---|---|---|
+| 5,000 adds each to one number field | **12,528**, 12,691, 12,179 | **20,000**, every run |
+| 1,000 appends each to one list field | not run: it can crash satl | **4,000** |
+
+Two threads appending 500 lines each to one locked file gave **1,000 lines** in three runs
+of three.
+
+**Still open:**
+
+- **`satellite.library` is not yet writable at run time.** It is still refused with S250,
+  so nothing there can be shared or locked yet.
+- **Two threads each holding one object's lock while waiting for the other's** — a locked
+  statement on A calling into B, while another on B calls into A — wait forever. 003
+  caught that circle as S1408. 004 does not yet.
+- **OFFERED, NOT ANSWERED:** an optional check mode, off by default and so free, that would
+  name the line where two threads wrote one object with its lock off.
 
 ## T3 — windows on threads: **NOT BUILT**
 

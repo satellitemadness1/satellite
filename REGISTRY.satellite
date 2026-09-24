@@ -409,7 +409,9 @@ bits              name                         what it is
 0000101101011000  start_token                  start  [METHOD] thread.start() -- the capsule begins on a thread of its own, and start answers at once (003's M23, built in 004 2026-09-23)
 0000101101011001  stop_token                   stop  [METHOD] thread.stop() -- asks the thread to stop at its next statement; it is never killed mid-statement (the author, 2026-09-23)
 0000101101011010  wait_method_token            wait  [METHOD] thread.wait() -- a second name for thread.join() (the author, 2026-09-23); wait_token above is the batch mark
-0000101101011011  free                         to 0000101111111111, free for this family
+0000101101011011  lock_token                   lock  [METHOD] object.lock() -- turns the object's lock ON; it is taken only while something WRITES to the object (the author, 2026-09-23)
+0000101101011100  unlock_token                 unlock  [METHOD] object.unlock() -- turns the object's lock off again: nothing is locked for it until the next .lock()
+0000101101011101  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

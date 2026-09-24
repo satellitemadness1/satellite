@@ -44,6 +44,7 @@
 #include "../satl/satl_file.hpp"
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
+#include "../satellite_object/object_lock.hpp"
 
 #include <atomic>
 #include <cerrno>
@@ -615,6 +616,64 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 // carries one rule with it: a branch that will not run does not EVALUATE its
 // condition either. A condition may call a word, and a call that a person can see
 // did not happen must not happen.
+// THE AUTHOR'S LOCK, AND WHAT ONE LINE DOES TO IT (satellite_object/object_lock.hpp,
+// THREADS.md T2). Asked only of a capsule that runs on an object whose lock is ON, so every
+// other line pays one relaxed load. A line WRITES the object when it assigns one of its
+// fields (`count = ...`, `items[2] = ...`), calls a method on one (`items.append(x)`), or
+// calls a capsule at all -- which may be one of this object's, writing a field, and the
+// hold is taken once, here, rather than raised from reading to writing half way through,
+// which two threads could each be waiting to do. It READS the object when it names a field
+// and does none of those. `at` is the line's first code; the line is read to its end.
+ObjectLock *lock_of(const UserDefinedHandle &self)
+{
+    return self != nullptr ? &self->lock : nullptr;
+}
+
+LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t at, VariableTable &variables)
+{
+    if (variables.self == nullptr || !variables.self->lock.on.load(std::memory_order_relaxed))
+        return LockUse::none;
+    const std::size_t end = past_the_statement(row, at);
+    bool reads = false;
+    bool first = true;
+    for (std::size_t k = at; k < end;) {
+        const Code code = code_at(row, k);
+        if (code == token::name_token) {
+            std::size_t past = k;
+            const std::string name = text_at(row, past);
+            if (code_at(row, past) == token::left_parenthesis_token)
+                return LockUse::writing;                   // a capsule: it may write a field
+            const Seen seen = variables.seen(name);
+            if (seen.field) {
+                if (code_at(row, past) == token::method_token)
+                    return LockUse::writing;               // a method on a field
+                if (first) {                               // the line's own target: name [ ... ] =
+                    std::size_t after = past;
+                    std::size_t depth = 0;
+                    while (after < end) {
+                        const Code c = code_at(row, after);
+                        if (token::carries_a_count(c)) { skip_payload(row, after); continue; }
+                        if (c == token::left_square_bracket_token) ++depth;
+                        else if (c == token::right_square_bracket_token && depth > 0) --depth;
+                        else if (depth == 0) break;
+                        ++after;
+                    }
+                    if (code_at(row, after) == token::assign_token)
+                        return LockUse::writing;
+                }
+                reads = true;
+            }
+            k = past;
+            first = false;
+            continue;
+        }
+        if (token::carries_a_count(code)) { skip_payload(row, k); first = false; continue; }
+        first = false;
+        ++k;
+    }
+    return reads ? LockUse::reading : LockUse::none;
+}
+
 signed long long int run_if(const BytecodeRegistry &registry,
                             const CapsuleTable &capsules,
                             const FunctionTable &functions,
@@ -650,7 +709,10 @@ signed long long int run_while(const BytecodeRegistry &registry,
         ExpressionContext context{variables, functions, state};
         const bool opened = code_at(row, here) == token::left_parenthesis_token;
         if (opened) ++here;
-        const Value holds = evaluate_expression(row, here, context);
+        const Value holds = [&] {
+            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables));
+            return evaluate_expression(row, here, context);
+        }();
         if (context.code != success)
             return raise_context(context, "satellite.statement.while",
                             state, row,
@@ -707,7 +769,10 @@ signed long long int run_if(const BytecodeRegistry &registry,
         ExpressionContext context{variables, functions, state};
         const bool opened = code_at(row, here) == token::left_parenthesis_token;
         if (opened) ++here;
-        const Value holds = evaluate_expression(row, here, context);
+        const Value holds = [&] {
+            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables));
+            return evaluate_expression(row, here, context);
+        }();
         if (context.code != success)
             return raise_context(context, "satellite.statement.if",
                             state, row,
@@ -902,7 +967,10 @@ signed long long int run_for(const BytecodeRegistry &registry,
     for (;;) {
         std::size_t here = parts.condition;
         ExpressionContext turn{variables, functions, state};
-        const Value holds = evaluate_expression(row, here, turn);
+        const Value holds = [&] {
+            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, parts.condition, variables));
+            return evaluate_expression(row, here, turn);
+        }();
         if (turn.code != success) {
             stopped = raise_context(turn, "satellite.statement.for",
                                state, row,
@@ -1512,6 +1580,14 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             statement_ring().saw(which_row, at);
         }
 
+        // THE AUTHOR'S LOCK, HELD FOR THIS ONE STATEMENT when its capsule runs on an object
+        // whose lock is on (what_the_line_does, above). if, while and for take it for their
+        // condition alone, in their runners: taken here, it would be held for their whole body.
+        const bool a_block = code == word::code_of(1, 13, 1) || code == word::code_of(1, 13, 3) ||
+                             code == word::code_of(1, 13, 2);
+        const ObjectHold this_statement(a_block ? nullptr : lock_of(variables.self),
+                                        a_block ? LockUse::none : what_the_line_does(row, at, variables));
+
         // satellite.return, AND WHAT IT HANDS BACK (Frame says why it ends the whole
         // capsule). Worked out in THIS frame, before it goes; run_site measures it
         // against the capsule's satellite.returns.
@@ -1888,13 +1964,13 @@ signed long long int run_capsule_on_a_thread(const BytecodeRegistry &registry,
                                             const FunctionTable &functions,
                                             const CapsuleSite &site,
                                             std::vector<Value> arguments,
+                                            const UserDefinedHandle &self,
                                             MachineState &state,
                                             Value &answer,
                                             bool &answered)
 {
     answered = false;
-    return run_site(registry, capsules, functions, site, std::move(arguments), UserDefinedHandle(), state, &answer,
-                    &answered);
+    return run_site(registry, capsules, functions, site, std::move(arguments), self, state, &answer, &answered);
 }
 
 signed long long int run_capsule(const BytecodeRegistry &registry,

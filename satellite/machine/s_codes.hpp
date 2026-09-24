@@ -290,10 +290,9 @@ inline SCode s_code_for(signed long long int machine_code)
                 "a thread in the middle of one."};
     case thread_cannot_share_yet:
         return {"S727", "THREAD_CANNOT_SHARE_YET",
-                "a thread may be handed numbers, strings, lists and the other values, which it gets its "
-                "own copy of. An object of a spacesuit, a file or a window would be SHARED with the thread "
-                "that made it, and sharing waits for .lock() (THREADS.md T2), so today each thread "
-                "keeps its own."};
+                "a window belongs to the main thread, which draws it, so a thread the program started may "
+                "not be handed one, open one or build one yet (THREADS.md T3). Objects and files ARE "
+                "shared with a thread; an object's .lock() makes writes to it one at a time."};
 
     // S12xx -- DIRECTORIES AND THE FILES A PROGRAM OPENS.
     case directory_not_found:

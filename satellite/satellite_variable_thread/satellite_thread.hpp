@@ -41,6 +41,7 @@ public:
     // WHAT IT RUNS, fixed at `new` and never changed after.
     const CapsuleSite *site = nullptr;        // the capsule, found by the checker's rules
     std::vector<satelliteObject> arguments;   // worked out at `new`, moved in at start()
+    UserDefinedHandle self;                   // the object a spacesuit's capsule runs on, SHARED (T2)
     std::string name;                         // as the program wrote it: "count_alone"
 
     // THE RUN.
