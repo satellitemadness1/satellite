@@ -14,15 +14,15 @@ DEPENDENCY_FLAGS = -MMD -MP
 COMPILE_STAMP = $(BUILD)/.compile-flags
 $(COMPILE_STAMP): FORCE
 	@mkdir -p $(BUILD)
-	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' | cmp -s - $@ || \
-	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' > $@
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' > $@
 
 # ORDER-ONLY ON THE BUILD STAMP: every object waits until build_number.py has
 # decided this build's number and written it into satellite_config.hpp, so none is
 # compiled from the row it is about to replace.
-$(OBJECTS)/%.o: %.cpp $(COMPILE_STAMP) | $(BUILD_STAMP)
+$(OBJECTS)/%.o: %.cpp $(COMPILE_STAMP) $(PGO_PROFILE) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(WINDOW_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(WINDOW_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
 
 # THE INTERPRETER'S OWN WINDOW OBJECTS, which need GTK's include paths and not
 # VTE's -- a longer stem than the plain rule above, so this one wins for them.
@@ -35,13 +35,13 @@ $(OBJECTS)/%.o: %.cpp $(COMPILE_STAMP) | $(BUILD_STAMP)
 GTK_COMPILE_STAMP = $(BUILD)/.compile-flags-gtk
 $(GTK_COMPILE_STAMP): FORCE
 	@mkdir -p $(BUILD)
-	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE)' | cmp -s - $@ || \
-	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE)' > $@
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE)' > $@
 
 $(OBJECTS)/$(SATELLITE)/satellite_variable_window/%.o: $(SATELLITE)/satellite_variable_window/%.cpp \
-                                                       $(GTK_COMPILE_STAMP) | $(BUILD_STAMP)
+                                                       $(GTK_COMPILE_STAMP) $(PGO_PROFILE) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
 
 # THE CARRIED DATA. glib-compile-resources writes the .c; this compiles it. It is
 # C and not C++, and it is generated, so -Wall -Wextra would report other

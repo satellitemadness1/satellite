@@ -49,12 +49,12 @@ endif
 # AND ITS LIST OF NEEDS GOES FIRST (055-cpus.mk writes it last), so a build that fails or
 # is stopped half way is not a build satl-cpu-level offers.
 $(BUILD_STAMP): FORCE
-	@$(if $(CPU),rm -f $(BUILD)/needs && )python3 $(SATELLITE)/config/build_number.py $@ $(if $(CPU),--same) --also "$(BUILD_DESCRIPTION)" -- $(BUILD_INPUTS)
+	@$(if $(CPU),rm -f $(BUILD)/needs && )python3 $(SATELLITE)/config/build_number.py $@ $(if $(CPU)$(PGO_STAGE),--same) --also "$(BUILD_DESCRIPTION)" -- $(BUILD_INPUTS)
 
 $(LINK_STAMP): FORCE
 	@mkdir -p $(BUILD)
-	@printf '%s' '$(LINK_ENV) $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(LDFLAGS)' | cmp -s - $@ || \
-	    printf '%s' '$(LINK_ENV) $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(LDFLAGS)' > $@
+	@printf '%s' '$(LINK_ENV) $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_LINK_FLAGS) $(LDFLAGS)' | cmp -s - $@ || \
+	    printf '%s' '$(LINK_ENV) $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_LINK_FLAGS) $(LDFLAGS)' > $@
 
 # THE NUMBER THE BINARY SHOWS IS CHECKED AGAINST THE ROW, after every link. A
 # dependency that misses the rows (060-compile.mk's ROW_READERS) would leave the
@@ -147,8 +147,11 @@ endef
 # Both are empty when pkg-config found no gtk4, and this is then exactly the link
 # line it was before the window (047-window.mk).
 $(BUILD)/satl: $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
-	@echo "linking $@ -- $(GTK_KIND)"
-	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(GTK_LINK_FLAGS) $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) -o $@ -ldl $(GTK_LIBS)
+	@echo "linking $@ -- $(GTK_KIND) -- $(if $(PGO_STAGE),instrumented to train PGO,$(or $(OPTIMISE_KIND),plain))$(if $(OPTIMISE_SKIPPED), ($(OPTIMISE_SKIPPED)))"
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(OPTIMISE_LINK_FLAGS) $(LDFLAGS) $(GTK_LINK_FLAGS) $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) -o $@ -ldl $(GTK_LIBS)
+ifneq ($(BOLT),)
+	$(call bolt_it,$@)
+endif
 	$(call shows_the_build_row,$@)
 ifeq ($(GTK)$(HAVE_GTK),vendoryes)
 	$(call carries_its_own_gtk,$@)

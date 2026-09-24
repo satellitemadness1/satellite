@@ -4,7 +4,8 @@
 # directory that moves is one edit here. The interpreter's sources are under
 # satellite/, one folder a subject (the author, 2026-09-15).
 
-BUILD      = $(if $(CPU),build/cpu/$(CPU),build)
+# PGO_STAGE is the training build's, a make inside the ordinary one (045-optimise.mk).
+BUILD      = $(if $(CPU),build/cpu/$(CPU),$(if $(PGO_STAGE),build/$(PGO_STAGE),build))
 OBJECTS    = $(BUILD)/objects
 SATELLITE  = satellite
 NUMBERS    = satellite-numbers

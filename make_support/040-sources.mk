@@ -125,8 +125,8 @@ INTERPRETER_OBJECTS = $(INTERPRETER_SOURCES:%.cpp=$(OBJECTS)/%.o) $(LICENCE_DATA
 # spaces, which make cannot list. GTK_SOURCES is 047-window.mk's, read when this
 # is expanded.
 MAKE_FRAGMENTS = make_support/005-jobs.mk make_support/010-compiler.mk make_support/020-version.mk \
-                 make_support/030-directories.mk make_support/040-sources.mk make_support/047-window.mk \
+                 make_support/030-directories.mk make_support/040-sources.mk make_support/045-optimise.mk make_support/047-window.mk \
                  make_support/048-link.mk make_support/050-build.mk make_support/060-compile.mk \
                  make_support/065-tests.mk make_support/070-clean.mk
-BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) $(GTK_SOURCES) Makefile $(MAKE_FRAGMENTS) \
+BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) $(GTK_SOURCES) Makefile $(MAKE_FRAGMENTS) $(TRAINING) \
                $(SATELLITE)/config/build_number.py words/words.tsv $(NUMBERS)/build_libraries.py

@@ -49,6 +49,7 @@ include make_support/010-compiler.mk
 include make_support/020-version.mk
 include make_support/030-directories.mk
 include make_support/040-sources.mk
+include make_support/045-optimise.mk
 include make_support/047-window.mk
 include make_support/048-link.mk
 include make_support/050-build.mk

@@ -1,0 +1,24 @@
+// PGO TRAINING (make_support/070-optimise.mk): lists -- appended to, read by index,
+// written as literals, summed, searched and sorted.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.list<satellite.variable.number> items
+    satellite.container.list<satellite.variable.number> tiny = {0, 0, 0}
+    satellite.variable.number small = 0
+    satellite.variable.number counter = 0
+    satellite.statement.while(counter < 60000)
+    {
+        items.append(counter * 7919 % 1000003)
+        small = small + items[counter % items.size + 1] % 3
+        tiny = {counter, small, counter % 11}
+        small = small + tiny.sum % 5 + tiny.max % 2
+        counter = counter + 1
+    }
+    satellite.console.display(small)
+    satellite.console.display(items.sum)
+    satellite.console.display(items.max)
+    satellite.console.display(items.sort().first)
+    satellite.return(satellite)
+}

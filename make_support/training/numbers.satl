@@ -1,0 +1,36 @@
+// PGO TRAINING (make_support/070-optimise.mk): whole numbers, small and past a machine
+// word. NOT a race program -- the races are haswell_test/ and experiments/cpu_race/, and a
+// build trained on the program that times it would be timing its own training.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number total = 0
+    satellite.variable.number counter = 0
+    satellite.statement.while(counter < 150000)
+    {
+        total = total + counter * 3 % 7 - counter % 5
+        satellite.statement.if(total > 1000000)
+        {
+            total = total / 2
+        }
+        counter = counter + 1
+    }
+    satellite.variable.number big = 1
+    satellite.variable.number wide = 3
+    counter = 0
+    satellite.statement.while(counter < 9)
+    {
+        wide = wide * wide
+        counter = counter + 1
+    }
+    counter = 0
+    satellite.statement.while(counter < 20000)
+    {
+        big = (big * 1000003 + counter) % wide
+        counter = counter + 1
+    }
+    satellite.console.display(total)
+    satellite.console.display(big % 1000000007)
+    satellite.return(satellite)
+}

@@ -1,0 +1,84 @@
+// PGO TRAINING (make_support/070-optimise.mk): capsules and spacesuits -- small and large
+// capsules called with arguments and returning, spacesuits built and worked through
+// their public capsules. The first training set had none of this (CPU-PLAN.md CPU-7).
+satellite.include(satellite)
+
+satellite.spacesuit probe()
+{
+    satellite.protected
+    {
+        satellite.variable.number reading = 0
+        satellite.variable.number count = 0
+        satellite.variable.string state = "idle"
+        satellite.container.list<satellite.variable.number> history = {}
+
+        satellite.capsule settle()
+        {
+            reading = reading % 1000 + 1
+        }
+    }
+    satellite.constructor(satellite.variable.number start)
+    {
+        reading = start
+        state = "ready"
+    }
+    satellite.public
+    {
+        satellite.capsule call_measure(satellite.variable.number n)
+        {
+            count = count + 1
+            reading = (reading * 31 + n) % 1000003
+            history.append(reading % 97)
+            satellite.statement.if(reading % 13 == 0)
+            {
+                state = "alarm"
+            }
+            settle()
+        }
+        satellite.capsule call_reading() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(reading + count + history.size)
+        }
+    }
+}
+
+satellite.capsule twice(satellite.variable.number n) satellite.returns(satellite.variable.number)
+{
+    satellite.return(n * 2)
+}
+
+satellite.capsule mix(satellite.variable.number n, satellite.variable.string text) satellite.returns(satellite.variable.number)
+{
+    satellite.variable.number a = n % 1000
+    satellite.variable.number b = a * a + 17
+    satellite.variable.number c = b % 13 + a % 7
+    satellite.variable.string label = text + "/" + "mix"
+    satellite.variable.number matches = 0
+    satellite.statement.if(label == text + "/mix")
+    {
+        matches = matches + 1
+    }
+    satellite.container.list<satellite.variable.number> local = {a, b, c}
+    local.append(a + c)
+    satellite.return(local.sum % 101 + matches)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number total = 0
+    satellite.variable.number counter = 0
+    probe keeper(7)
+    satellite.statement.while(counter < 15000)
+    {
+        total = total + twice(counter) % 3
+        total = total + mix(counter, "train") % 5
+        keeper.call_measure(counter)
+        probe passing(counter)
+        passing.call_measure(counter * 3)
+        total = total + passing.call_reading() % 7
+        counter = counter + 1
+    }
+    satellite.console.display(total)
+    satellite.console.display(keeper.call_reading())
+    satellite.return(satellite)
+}

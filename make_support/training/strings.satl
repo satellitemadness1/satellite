@@ -1,0 +1,39 @@
+// PGO TRAINING (make_support/070-optimise.mk): 16-bit strings, short and long -- joined,
+// compared equal and unequal, and copied by assignment.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string piece = "the satellite programming language, trained before it is raced. "
+    satellite.variable.string long = piece
+    satellite.variable.number k = 0
+    satellite.statement.while(k < 6)
+    {
+        long = long + long
+        k = k + 1
+    }
+    satellite.variable.string word = ""
+    satellite.variable.string joined = ""
+    satellite.variable.number same = 0
+    satellite.variable.number counter = 0
+    satellite.statement.while(counter < 40000)
+    {
+        word = "satl" + "-" + "train"
+        satellite.statement.if(word == "satl-train")
+        {
+            same = same + 1
+        }
+        satellite.statement.if(word == piece)
+        {
+            same = same - 1
+        }
+        joined = long + word
+        satellite.statement.if(joined == long + "satl-train")
+        {
+            same = same + 1
+        }
+        counter = counter + 1
+    }
+    satellite.console.display(same)
+    satellite.return(satellite)
+}

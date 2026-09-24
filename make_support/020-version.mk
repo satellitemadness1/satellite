@@ -42,4 +42,6 @@ OS_DEFINE = -DSATELLITE_BUILD_OS='"$(BUILD_OS)"'
 CXX_VERSION := $(shell $(CXX) --version 2>/dev/null | head -n 1)
 # WITHOUT ONE PROCESSOR'S -march (010-compiler.mk's CPU): every processor's build of BUILD
 # N is made from exactly what the ordinary BUILD N was, and says so with its fingerprint.
-BUILD_DESCRIPTION = $(CXX) [$(CXX_VERSION)] $(filter-out -march=$(CPU),$(CXXFLAGS)) $(BUILD_OS) | $(LDFLAGS) | $(GTK_KIND) | $(CONSOLE_DEFINE)
+# AND HOW IT WAS OPTIMISED (045-optimise.mk) -- the word, never the training build's flags,
+# so the training build describes itself as the build it trains for.
+BUILD_DESCRIPTION = $(CXX) [$(CXX_VERSION)] $(filter-out -march=$(CPU),$(CXXFLAGS)) $(BUILD_OS) | $(LDFLAGS) | $(GTK_KIND) | $(CONSOLE_DEFINE) | $(or $(OPTIMISE_KIND),plain)
