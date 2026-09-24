@@ -157,6 +157,42 @@ run both yourself:
 Two threads appending 500 lines each to one locked file gave **1,000 lines** in three runs
 of three.
 
+**FOUND BY THE SECOND FRESH READER (2026-09-24), NOT FIXED YET.** Each one was run
+against a control. The probes are in the session scratchpad's `review4/probes/`.
+
+1. **An append on an item was taken as a read.** Fixed in `4cc4cf4`.
+2. **A capsule named like a method, such as `add` or `size`, is missed.**
+   - **What goes wrong:** it arrives as a method code, so `what_the_line_does` misses the
+     call, and `ObjectHold` (`held()`) does not record which mode it holds.
+   - **Probe:** `x = total + me.add()` on a locked object gave about 17,500 of 20,000.
+   - **Fix:** record the mode in `held()`; refuse a read that nests a write; and treat a
+     method code after a dot on a receiver that is not a field as a possible capsule.
+3. **A statement holding the write lock that `join()`s a thread needing the same lock
+   deadlocks.**
+   - **Probe:** `call_outer() { call_add_on_a_thread() }` hangs, and so does
+     `total = w.join()` where `w` runs a capsule of the same object.
+4. **`for`'s first part and its step take no hold,** in `run_for` and `run_for_step`.
+   With two threads changing a list, S501 in 3 of 3 runs.
+5. **`f[n]` on a locked file takes no hold** (`index_into`, then `read_file_line`).
+   S514 in 2 of 3 runs.
+6. **`satellite.thread.new(call_x())` by bare name skips a subclass's override.** It
+   ran animal's capsule where dog's should run. `package_capsule_call` needs
+   `table->on_the_object(*reached.site, out.self)`.
+7. **A window inside an object can reach a thread.**
+   - **What goes wrong:** `holds_a_window` does not descend into an object's fields or
+     `call.self`, and `call_window_method` has no `on_a_program_thread()` check.
+   - Found by reading the code, not run: this build has no window.
+
+**Unconfirmed:**
+
+- a steady stream of reads could starve a writer, because glibc's shared mutex prefers
+  readers;
+- a user capsule named `lock` is silently shadowed;
+- a `.lock()` turned on during an unlocked write leaves a short window.
+
+**Measured:** one thread with the lock on paid about 15% more on a 300,000-turn loop. With
+it off, the cost is one relaxed load.
+
 **Still open:**
 
 - **`satellite.library` is not yet writable at run time.** It is still refused with S250,
