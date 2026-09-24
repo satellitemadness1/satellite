@@ -1,4 +1,4 @@
-// PGO TRAINING (make_support/070-optimise.mk): lists -- appended to, read by index,
+// PGO TRAINING (make_support/045-optimise.mk): lists -- appended to, read by index,
 // written as literals, summed, searched and sorted.
 satellite.include(satellite)
 

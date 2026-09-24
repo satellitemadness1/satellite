@@ -354,6 +354,20 @@ identical output.
 Every optimised run beat every plain one: the slowest optimised runs were 2.236 and
 4.560 s, and the fastest plain runs 2.497 and 5.195 s.
 
+**What the fresh reader found in c5b37f0, all fixed:**
+
+- **The serious one.** After any plain `make`, `make CPU=<x>` and `make cpus` were
+  refused. The processor build described itself as "plain" against a stamp saying "PGO
+  ThinLTO BOLT". Every build made from BUILD N now carries BUILD N's word.
+- A wrapper `CXX` (`ccache clang++`) made the tool paths two words each. The tools now
+  come from clang's own `InstalledDir`.
+- `PGO`, `LTO` or `BOLT` exported in a shell turned steps on in a plain build.
+- The training programs named the wrong fragment.
+- The training build's refusal talked about processors.
+- **A failed BOLT now keeps the PGO + ThinLTO satl and says why**, instead of stopping
+  every `make`. This was forced in a fresh copy with a failing merge: exit 0, and the
+  satl runs.
+
 **The comma trap.** The first real build failed at BOLT: "instrumentation runtime
 libraries require relocations". `$(if $(BOLT),-Wl,--emit-relocs)` had split at its
 comma and passed a bare `-Wl`. Link flags are named in variables now.

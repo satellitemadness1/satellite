@@ -25,7 +25,13 @@
 #
 # `make OPTIMISE=no` IS TODAY'S PLAIN -O2, for quick rebuilds while working: with the
 # three on, any source change re-trains, and then every object compiles again, because
-# the profile they were compiled with changed.
+# the profile they were compiled with changed. SWITCHING costs a whole build each way
+# and a build number each time (the two share build/objects, and the fingerprint says
+# which it is); staying in OPTIMISE=no is what is quick.
+#
+# WHAT THE TRAINING NEVER RUNS IS LAID OUT AS COLD -- floats, fractions, files, the
+# window, the prompt. The four programs are what satl's time was measured going to; a
+# program that lives in something else is the reason to add a fifth.
 #
 # EACH STEP TURNS ITSELF OFF WHERE ITS TOOL IS NOT BESIDE THE COMPILER, and the link
 # line says which: g++ (the PGO here is clang's), no llvm-profdata (AlmaLinux: the llvm
@@ -33,7 +39,10 @@
 # clone with only g++ builds exactly as it did before this file.
 #
 # BESIDE THE COMPILER, NEVER FROM PATH: a profile written by one LLVM is not read by
-# another, and this machine has clang 24 in ~/opt and clang 21 in /usr/bin.
+# another, and this machine has clang 24 in ~/opt and clang 21 in /usr/bin. "Beside" is
+# the folder clang itself names (`clang++ -v`, InstalledDir), which is right through a
+# wrapper (CXX="ccache clang++") too; `-print-prog-name` is not, because it falls back to
+# PATH and offered clang 21 the clang 24 in ~/opt (the review, 2026-09-23).
 #
 # NEVER FOR ONE PROCESSOR'S BUILD (CPU=, 055-cpus.mk): a machine cannot train a build it
 # may not be able to run.
@@ -52,26 +61,55 @@ TRAIN_BUILD  = build/pgo-train
 BOLT_DIR     = build/bolt
 TRAINING     = $(sort $(wildcard make_support/training/*.satl))
 
-ifeq ($(OPTIMISE)$(CPU)$(PGO_STAGE),yes)
+# EVERY ONE OF THESE IS SET HERE, so a PGO, LTO or BOLT exported in a shell never turns
+# a step on in a build meant to be plain (the review, 2026-09-23).
+PROFDATA :=
+LLD :=
+LLVM_BOLT :=
+MERGE_FDATA :=
+HAS_PGO :=
+HAS_LTO :=
+HAS_BOLT :=
+OPTIMISE_SKIPPED :=
+ifeq ($(OPTIMISE),yes)
 ifneq ($(findstring clang version,$(CXX_VERSION)),)
-  OPTIMISE_TOOLS := $(dir $(realpath $(shell command -v $(CXX) 2>/dev/null)))
-  PROFDATA       := $(if $(OPTIMISE_TOOLS),$(wildcard $(OPTIMISE_TOOLS)llvm-profdata))
-  LLD            := $(if $(OPTIMISE_TOOLS),$(wildcard $(OPTIMISE_TOOLS)ld.lld))
-  LLVM_BOLT      := $(if $(OPTIMISE_TOOLS),$(wildcard $(OPTIMISE_TOOLS)llvm-bolt))
-  MERGE_FDATA    := $(if $(OPTIMISE_TOOLS),$(wildcard $(OPTIMISE_TOOLS)merge-fdata))
+  OPTIMISE_TOOLS := $(shell $(CXX) -v 2>&1 | sed -n 's/^InstalledDir: //p')
+  PROFDATA       := $(if $(OPTIMISE_TOOLS),$(wildcard $(OPTIMISE_TOOLS)/llvm-profdata))
+  LLD            := $(if $(OPTIMISE_TOOLS),$(wildcard $(OPTIMISE_TOOLS)/ld.lld))
+  LLVM_BOLT      := $(if $(OPTIMISE_TOOLS),$(wildcard $(OPTIMISE_TOOLS)/llvm-bolt))
+  MERGE_FDATA    := $(if $(OPTIMISE_TOOLS),$(wildcard $(OPTIMISE_TOOLS)/merge-fdata))
+  HAS_PGO        := $(if $(PROFDATA),yes)
+  HAS_LTO        := $(if $(LLD),yes)
+  HAS_BOLT       := $(if $(and $(LLVM_BOLT),$(MERGE_FDATA)),yes)
+  OPTIMISE_SKIPPED := $(strip $(if $(HAS_PGO),,no llvm-profdata beside $(CXX): no PGO) \
+                              $(if $(HAS_LTO),,no ld.lld beside $(CXX): no ThinLTO) \
+                              $(if $(HAS_BOLT),,no llvm-bolt beside $(CXX): no BOLT))
+else
+  OPTIMISE_SKIPPED := PGO, ThinLTO and BOLT are clang's and this is not clang
 endif
-PGO  = $(if $(PROFDATA),yes)
-LTO  = $(if $(LLD),yes)
-BOLT = $(if $(and $(LLVM_BOLT),$(MERGE_FDATA)),yes)
-OPTIMISE_SKIPPED = $(strip $(if $(findstring clang version,$(CXX_VERSION)),,PGO, ThinLTO and BOLT are clang's and this is not clang) \
-                           $(if $(findstring clang version,$(CXX_VERSION)),$(if $(PGO),,no llvm-profdata beside $(CXX): no PGO) \
-                                $(if $(LTO),,no ld.lld beside $(CXX): no ThinLTO) \
-                                $(if $(BOLT),,no llvm-bolt beside $(CXX): no BOLT)))
 endif
 
-# WHAT THIS BUILD IS, in the build fingerprint (020-version.mk) and on the link line. The
-# training build is handed its parent's word, so --same finds the description it expects.
-OPTIMISE_KIND ?= $(strip $(if $(PGO),PGO) $(if $(LTO),ThinLTO) $(if $(BOLT),BOLT))
+# WHAT THE ORDINARY BUILD IS -- in the build fingerprint (020-version.mk) and on the link
+# line -- AND THE SAME WORD IN EVERY BUILD MADE FROM IT. One processor's build (CPU=) and
+# the training build are BUILD N (build_number.py --same), so each must describe itself
+# as the ordinary BUILD N was described, or --same refuses: before this, `make CPU=haswell`
+# after any plain make said "plain" against a stamp saying "PGO ThinLTO BOLT" and was
+# refused (the review, 2026-09-23).
+override OPTIMISE_KIND := $(strip $(if $(HAS_PGO),PGO) $(if $(HAS_LTO),ThinLTO) $(if $(HAS_BOLT),BOLT))
+
+# WHICH STEPS THIS BUILD TAKES: all that the tools allow, in the ordinary build only --
+# and what the link line says, which is THIS build's steps, not the fingerprint's word.
+ifeq ($(CPU)$(PGO_STAGE),)
+PGO  := $(HAS_PGO)
+LTO  := $(HAS_LTO)
+BOLT := $(HAS_BOLT)
+OPTIMISE_SAID = $(or $(OPTIMISE_KIND),plain)$(if $(OPTIMISE_SKIPPED), ($(OPTIMISE_SKIPPED)))
+else
+PGO  :=
+LTO  :=
+BOLT :=
+OPTIMISE_SAID = $(if $(PGO_STAGE),instrumented to train PGO,plain -- one processor's build is never optimised)
+endif
 
 ifneq ($(PGO_STAGE),)
 # THE TRAINING BUILD: counters in every function, and no LTO -- clang's counters are
@@ -112,7 +150,7 @@ ifneq ($(PGO),)
 # build's libraries, which are built plain in both.
 $(TRAIN_BUILD)/satl: FORCE | $(BUILD_STAMP) libraries
 	@mkdir -p $(TRAIN_BUILD) && ln -sfn ../satellite-numbers $(TRAIN_BUILD)/satellite-numbers
-	@$(MAKE) --no-print-directory PGO_STAGE=pgo-train OPTIMISE_KIND='$(OPTIMISE_KIND)' INSTALL_AFTER_BUILD=no $@
+	@$(MAKE) --no-print-directory PGO_STAGE=pgo-train INSTALL_AFTER_BUILD=no $@
 
 $(PGO_PROFILE): $(TRAIN_BUILD)/satl $(TRAINING)
 	@echo "PGO: $(TRAIN_BUILD)/satl runs $(words $(TRAINING)) training programs (make_support/training/)"
@@ -125,20 +163,23 @@ ifneq ($(BOLT),)
 # BOLT RUNS satl, SO THE LIBRARIES IT LOADS COME FIRST.
 $(BUILD)/satl: | libraries
 
-# $(1) is the satl just linked. On any failure it is deleted, so the next make links it
-# again rather than installing a half-made one; the logs stay in build/bolt/.
+# $(1) is the satl just linked, PGO and ThinLTO already in it. BOLT WRITES A NEW FILE and
+# moves it over $(1) only when every step worked, so A FAILED BOLT KEEPS THE satl AS LINKED
+# and says why, and the make goes on: an llvm-bolt too old for one of these flags, or one
+# that meets a binary it cannot read, must not stop a plain `make` for good (the review,
+# 2026-09-23 -- "pull, make, it compiles" is the author's rule). 050's link check then
+# runs whichever satl is there. The logs stay in build/bolt/.
 define bolt_it
 @echo "BOLT: $(1) is instrumented, runs the training, and is laid out by what ran"
-@rm -rf $(BOLT_DIR) && mkdir -p $(BOLT_DIR) && ln -sfn ../satellite-numbers $(BOLT_DIR)/satellite-numbers
-@$(LLVM_BOLT) $(1) -instrument -instrumentation-file=$(CURDIR)/$(BOLT_DIR)/prof -instrumentation-file-append-pid \
-     -o $(BOLT_DIR)/satl > $(BOLT_DIR)/instrument.log 2>&1 || \
- { echo "BOLT could not instrument $(1) -- $(BOLT_DIR)/instrument.log" >&2; rm -f $(1); exit 1; }
-@$(call run_training,$(BOLT_DIR)/satl,,$(BOLT_DIR)/run) || { rm -f $(1); exit 1; }
-@$(MERGE_FDATA) $(BOLT_DIR)/prof.*.fdata > $(BOLT_DIR)/merged.fdata 2> $(BOLT_DIR)/merge.log || \
- { echo "BOLT could not merge its profiles -- $(BOLT_DIR)/merge.log" >&2; rm -f $(1); exit 1; }
-@$(LLVM_BOLT) $(1) -o $(1).bolted -data=$(BOLT_DIR)/merged.fdata -reorder-blocks=ext-tsp \
-     -reorder-functions=cdsort -split-functions -split-all-cold -update-debug-sections \
-     > $(BOLT_DIR)/optimise.log 2>&1 && mv $(1).bolted $(1) || \
- { echo "BOLT could not rewrite $(1) -- $(BOLT_DIR)/optimise.log" >&2; rm -f $(1) $(1).bolted; exit 1; }
+@rm -rf $(BOLT_DIR) && mkdir -p $(BOLT_DIR) && ln -sfn ../satellite-numbers $(BOLT_DIR)/satellite-numbers && \
+ { $(LLVM_BOLT) $(1) -instrument -instrumentation-file=$(CURDIR)/$(BOLT_DIR)/prof -instrumentation-file-append-pid \
+       -o $(BOLT_DIR)/satl > $(BOLT_DIR)/instrument.log 2>&1 || { echo "instrument.log" > $(BOLT_DIR)/failed; false; }; } && \
+ { $(call run_training,$(BOLT_DIR)/satl,,$(BOLT_DIR)/run) || { echo "run/ (a training program)" > $(BOLT_DIR)/failed; false; }; } && \
+ { $(MERGE_FDATA) $(BOLT_DIR)/prof.*.fdata > $(BOLT_DIR)/merged.fdata 2> $(BOLT_DIR)/merge.log || { echo "merge.log" > $(BOLT_DIR)/failed; false; }; } && \
+ { $(LLVM_BOLT) $(1) -o $(1).bolted -data=$(BOLT_DIR)/merged.fdata -reorder-blocks=ext-tsp \
+       -reorder-functions=cdsort -split-functions -split-all-cold -update-debug-sections \
+       > $(BOLT_DIR)/optimise.log 2>&1 || { echo "optimise.log" > $(BOLT_DIR)/failed; false; }; } && \
+ mv $(1).bolted $(1) || \
+ { rm -f $(1).bolted; echo "note: BOLT failed ($(BOLT_DIR)/$$(cat $(BOLT_DIR)/failed 2>/dev/null)) -- $(1) is kept as linked, with PGO and ThinLTO" >&2; }
 endef
 endif

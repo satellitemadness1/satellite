@@ -1,4 +1,4 @@
-// PGO TRAINING (make_support/070-optimise.mk): 16-bit strings, short and long -- joined,
+// PGO TRAINING (make_support/045-optimise.mk): 16-bit strings, short and long -- joined,
 // compared equal and unequal, and copied by assignment.
 satellite.include(satellite)
 

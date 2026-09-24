@@ -147,7 +147,7 @@ endef
 # Both are empty when pkg-config found no gtk4, and this is then exactly the link
 # line it was before the window (047-window.mk).
 $(BUILD)/satl: $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) $(LINK_STAMP) $(BUILD_STAMP)
-	@echo "linking $@ -- $(GTK_KIND) -- $(if $(PGO_STAGE),instrumented to train PGO,$(or $(OPTIMISE_KIND),plain))$(if $(OPTIMISE_SKIPPED), ($(OPTIMISE_SKIPPED)))"
+	@echo "linking $@ -- $(GTK_KIND) -- $(OPTIMISE_SAID)"
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(OPTIMISE_LINK_FLAGS) $(LDFLAGS) $(GTK_LINK_FLAGS) $(INTERPRETER_OBJECTS) $(GTK_OBJECTS) -o $@ -ldl $(GTK_LIBS)
 ifneq ($(BOLT),)
 	$(call bolt_it,$@)

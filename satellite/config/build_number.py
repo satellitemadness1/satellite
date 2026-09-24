@@ -265,7 +265,8 @@ def main():
         if same:
             fail(("no ordinary build has been made yet" if used is None else
                   "the sources changed since BUILD %s was made" % str(used).zfill(4)) +
-                 ", and a processor's build never makes a new number -- run make first, then build the processors")
+                 ", and a build made from BUILD N -- one processor's (make CPU=), or PGO's training build inside a "
+                 "plain make -- never makes a new number: run make again, then build the processors if that was the ask")
 
         if restarted:
             number = FIRST_BUILD

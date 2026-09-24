@@ -1,4 +1,4 @@
-// PGO TRAINING (make_support/070-optimise.mk): capsules and spacesuits -- small and large
+// PGO TRAINING (make_support/045-optimise.mk): capsules and spacesuits -- small and large
 // capsules called with arguments and returning, spacesuits built and worked through
 // their public capsules. The first training set had none of this (CPU-PLAN.md CPU-7).
 satellite.include(satellite)
