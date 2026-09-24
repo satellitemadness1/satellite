@@ -293,7 +293,8 @@ inline SCode s_code_for(signed long long int machine_code)
                 "this line would wait forever: the object's lock it needs is held by a thread that is itself "
                 "waiting -- through locks and joins -- for this one. Two threads each waiting for the other "
                 "never end, so satellite stops this line instead of the program freezing (003's S1407 and "
-                "S1408). A write that holds a lock should not join() a thread that writes the same object."};
+                "S1408). A line that holds an object's lock -- writing it, or reading it -- should not wait for a "
+                "thread that needs the same object's lock."};
     case thread_cannot_share_yet:
         return {"S727", "THREAD_CANNOT_SHARE_YET",
                 "a window belongs to the main thread, which draws it, so a thread the program started may "

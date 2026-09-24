@@ -105,10 +105,8 @@ probe programs. Everything it confirmed is fixed:
 
 - **Two threads writing `config.ini` at once** through an arguments row with `access` can
   mix the file: both write the same `config.ini.writing` before the rename. (The review.)
-- **Only a thread waiting for itself is caught.** Two threads waiting for each other would
-  hang, as in 003 before its S1407. In T1 this cannot happen yet, because a thread's
-  handle is fixed when `new` runs, so no thread can hold its own. It becomes possible with
-  T2's sharing.
+- **A circle of threads waiting for each other**, through joins or locks, is caught as S728
+  (T2, satellite's own lock).
 - **A thread blocked in `satellite.console.input` stops only when its line comes.** 003's
   Q3, input from several threads, is still unanswered.
 - **The `statements` and `word_counts` debugging features keep one table for the whole
@@ -138,7 +136,7 @@ is good enough"*.
 | (nothing) | Every object and every file has a lock, and it is **off**. Nothing is ever locked for it, and threads share it freely. |
 | `obj.lock()`, `f.lock()` | Turns the lock **on**. That locks nothing by itself. |
 | a statement that **writes** a locked object | Holds the lock for that one statement, so `total = total + 1` from four threads loses nothing. Writing means: it assigns one of the object's fields, calls a method on one (`items.append(x)`), or calls a capsule. |
-| a statement that only **reads** it | Waits only while a write is happening, and never for another read. Without that, reading a list while another thread appends to it can crash satl. |
+| a statement that only **reads** it | Waits while a write is happening, or while a writer is waiting (so reads cannot starve a write), and never for another read. Without that, reading a list while another thread appends to it can crash satl. |
 | `if`, `while`, `for` | Hold the lock for their **condition** only, never for their body. |
 | any method on a locked **file** | Holds it for that call. |
 | `obj.unlock()`, `f.unlock()` | Turns it off again. |
@@ -191,8 +189,6 @@ check.sh row.
 
 - **`satellite.library` is not yet writable at run time.** It is still refused with S250,
   so nothing there can be shared or locked yet.
-- **Two threads each holding one object's lock while waiting for the other's** are
-  caught now, as S728 (above).
 - **OFFERED, NOT ANSWERED:** an optional check mode, off by default and so free, that would
   name the line where two threads wrote one object with its lock off.
 

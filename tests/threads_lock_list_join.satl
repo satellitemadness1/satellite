@@ -1,0 +1,41 @@
+// Joining threads kept in a local list inside a locked object's capsule -- workers[1].join(), .first.join()
+// -- is not a write to the object, and does not hold it (the third review, 2026-09-24: it was S728).
+satellite.include(satellite)
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_add()
+        {
+            total = total + 1
+        }
+        satellite.capsule call_run()
+        {
+            satellite.variable.thread a = satellite.thread.new(call_add())
+            satellite.variable.thread b = satellite.thread.new(call_add())
+            satellite.container.list workers = {a, b}
+            a.start()
+            b.start()
+            workers[1].join()
+            workers[2].join()
+        }
+        satellite.capsule call_total() satellite.returns(satellite.variable.number)
+        {
+            satellite.return(total)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    counter c()
+    c.lock()
+    c.call_run()
+    satellite.console.display(c.call_total())
+    satellite.return(satellite)
+}

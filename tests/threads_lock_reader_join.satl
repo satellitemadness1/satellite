@@ -1,0 +1,58 @@
+// A line that READS a locked object while it joins a thread that also reads it, with a third thread
+// queuing a write: the reader goes ahead of the queued writer, and nothing waits forever (the third review).
+satellite.include(satellite)
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_add()
+        {
+            total = total + 1
+        }
+        satellite.capsule call_read() satellite.returns(satellite.variable.number)
+        {
+            satellite.variable.number i = 0
+            satellite.variable.number got = 0
+            satellite.statement.while(i < 3000)
+            {
+                got = total
+                i = i + 1
+            }
+            satellite.return(got)
+        }
+        satellite.capsule call_join_reader()
+        {
+            satellite.variable.thread w = satellite.thread.new(call_read())
+            w.start()
+            satellite.variable.number x = total + w.join()
+            satellite.console.display("joined")
+        }
+    }
+}
+
+satellite.capsule pound(counter c)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 3000)
+    {
+        c.call_add()
+        i = i + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    counter c()
+    c.lock()
+    satellite.variable.thread p = satellite.thread.new(pound(c))
+    p.start()
+    c.call_join_reader()
+    p.join()
+    satellite.console.display("ended")
+    satellite.return(satellite)
+}

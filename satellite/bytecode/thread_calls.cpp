@@ -192,7 +192,7 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
         return Value();
     }
     // A THREAD WAITING FOR ITSELF waits forever (003's S1407, its smallest case). A wider
-    // circle -- two threads each waiting for the other -- is not caught yet (THREADS.md).
+    // circle -- through joins and locks -- is caught by start_waiting_for below, S728.
     if (stop_of_this_thread == &thread.stop_asked) {
         context.refuse(satl_line_not_understood, name + "." + spelling + "() is this thread waiting for itself, and "
                                                  "that would never end");

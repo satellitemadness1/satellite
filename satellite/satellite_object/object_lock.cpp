@@ -82,18 +82,28 @@ signed long long int take_object_lock(ObjectLock &lock, LockUse use)
     WaitNode &me = this_threads_node();
     const bool writes = use == LockUse::writing;
     std::unique_lock<std::mutex> hold(graph());
-    // A WRITER COUNTS ITSELF WAITING FROM THE START, so readers arriving after it wait behind it.
+    // A WRITER COUNTS ITSELF WAITING FROM THE START, so readers arriving after it wait behind it
+    // -- taken back on every way out, even an allocation that fails in the walk below.
+    struct Counted {
+        ObjectLock &lock;
+        bool on;
+        ~Counted() { if (on) --lock.writers_waiting; }
+    } counted{lock, writes};
     if (writes)
         ++lock.writers_waiting;
     for (;;) {
+        // A READER GOES AHEAD OF A QUEUED WRITER WHEN WAITING WOULD CLOSE A CIRCLE and no
+        // writer HOLDS it -- safe, because readers exclude nobody but a writer. Without it, a
+        // line reading while it joins a thread that also reads was S728 whenever a third
+        // thread queued a write between them (the third review, 2026-09-24).
         const bool free = writes ? lock.writer == nullptr && lock.readers.empty()
-                                 : lock.writer == nullptr && lock.writers_waiting == 0;
+                                 : lock.writer == nullptr &&
+                                       (lock.writers_waiting == 0 || a_holder_waits_for(lock, &me));
         if (free)
             break;
+        // THE COUNT IS TAKEN BACK (Counted, above) WHILE THE MUTEX IS STILL HELD: it is
+        // destroyed before `hold`, being declared after it.
         if (a_holder_waits_for(lock, &me)) {
-            if (writes)
-                --lock.writers_waiting;
-            hold.unlock();
             released().notify_all();
             return wait_never_ends;
         }
@@ -102,7 +112,6 @@ signed long long int take_object_lock(ObjectLock &lock, LockUse use)
         me.waiting_lock = nullptr;
     }
     if (writes) {
-        --lock.writers_waiting;
         lock.writer = &me;
     } else {
         lock.readers.push_back(&me);
@@ -163,12 +172,16 @@ ObjectHold::ObjectHold(ObjectLock *lock, LockUse use)
     for (const auto &[each, how] : held_here)
         if (each == lock)
             return;
+    // NOTED BEFORE IT IS TAKEN, so an allocation failing here cannot leave a lock taken and
+    // never given back (the third review).
+    held_here.emplace_back(lock, use);
     code_ = take_object_lock(*lock, use);
-    if (code_ != success)
+    if (code_ != success) {
+        held_here.pop_back();
         return;
+    }
     lock_ = lock;
     use_ = use;
-    held_here.emplace_back(lock, use);
 }
 
 ObjectHold::~ObjectHold()

@@ -629,7 +629,20 @@ ObjectLock *lock_of(const UserDefinedHandle &self)
     return self != nullptr ? &self->lock : nullptr;
 }
 
-LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t at, VariableTable &variables)
+// DOES ANY SPACESUIT HAVE A CAPSULE CALLED `name` -- so `.name(` after a dot may run one of
+// this object's own. Null means no table to ask, and the answer is then yes.
+bool a_capsule_could_be(const CapsuleTable *capsules, const std::string &name)
+{
+    if (capsules == nullptr)
+        return true;
+    for (const CapsuleScope &scope : capsules->scopes)
+        if (scope.is_a_suit() && scope.capsules.count(name) != 0)
+            return true;
+    return false;
+}
+
+LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t at, VariableTable &variables,
+                           const CapsuleTable *capsules)
 {
     if (variables.self == nullptr || !variables.self->lock.on.load(std::memory_order_relaxed))
         return LockUse::none;
@@ -677,12 +690,15 @@ LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t 
             first = false;
             continue;
         }
-        // A CALL AFTER A DOT -- `me.add()`, `other.size()` -- may be a capsule of this very
-        // object: a spacesuit's capsule named like a method arrives as the method's code, not a
-        // name (the second review, 2026-09-24: `x = total + me.add()` was taken as a read and
-        // lost adds). So any call with brackets after a dot is writing.
+        // A CALL AFTER A DOT -- `me.add()` -- may be a capsule of this very object: a spacesuit's
+        // capsule named like a method arrives as the method's code, not a name (the second
+        // review: `x = total + me.add()` was taken as a read and lost adds). So a call with
+        // brackets after a dot is writing WHEN SOME SPACESUIT HAS A CAPSULE OF THAT NAME -- and
+        // `workers[1].join()` or `.upper()` is not, which held the object while joining and
+        // stopped with S728 (the third review, 2026-09-24).
         if (code == token::method_token && token::is_method_code(code_at(row, k + 1)) &&
-            code_at(row, k + 2) == token::left_parenthesis_token)
+            code_at(row, k + 2) == token::left_parenthesis_token &&
+            a_capsule_could_be(capsules, token::method_name_of(code_at(row, k + 1))))
             return LockUse::writing;
         if (token::carries_a_count(code)) { skip_payload(row, k); first = false; continue; }
         first = false;
@@ -727,7 +743,7 @@ signed long long int run_while(const BytecodeRegistry &registry,
         const bool opened = code_at(row, here) == token::left_parenthesis_token;
         if (opened) ++here;
         const Value holds = [&] {
-            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables));
+            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables, state.capsules));
             if (condition.code() != success) {
                 context.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it "
                                                  "is waiting for this one");
@@ -792,7 +808,7 @@ signed long long int run_if(const BytecodeRegistry &registry,
         const bool opened = code_at(row, here) == token::left_parenthesis_token;
         if (opened) ++here;
         const Value holds = [&] {
-            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables));
+            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables, state.capsules));
             if (condition.code() != success) {
                 context.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it "
                                                  "is waiting for this one");
@@ -904,7 +920,7 @@ signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
     std::size_t at = parts.step;
     ExpressionContext context{variables, functions, state};
     {
-        const ObjectHold step(lock_of(variables.self), what_the_line_does(row, parts.step, variables));
+        const ObjectHold step(lock_of(variables.self), what_the_line_does(row, parts.step, variables, state.capsules));
         if (step.code() != success)
             context.refuse(step.code(), "this for's step needs its object's lock, and a thread holding it is "
                                         "waiting for this one");
@@ -974,7 +990,7 @@ signed long long int run_for(const BytecodeRegistry &registry,
     // ITS FIRST PART AND ITS STEP UNDER THE AUTHOR'S LOCK, as its condition is (the second
     // review: both read a locked list half moved, S501).
     Value start = [&] {
-        const ObjectHold part(lock_of(variables.self), what_the_line_does(row, k, variables));
+        const ObjectHold part(lock_of(variables.self), what_the_line_does(row, k, variables, state.capsules));
         if (part.code() != success) {
             opening.refuse(part.code(), "this for needs its object's lock, and a thread holding it is waiting for "
                                         "this one");
@@ -1012,7 +1028,7 @@ signed long long int run_for(const BytecodeRegistry &registry,
         std::size_t here = parts.condition;
         ExpressionContext turn{variables, functions, state};
         const Value holds = [&] {
-            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, parts.condition, variables));
+            const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, parts.condition, variables, state.capsules));
             if (condition.code() != success) {
                 turn.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it is "
                                               "waiting for this one");
@@ -1635,7 +1651,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         const bool a_block = code == word::code_of(1, 13, 1) || code == word::code_of(1, 13, 3) ||
                              code == word::code_of(1, 13, 2);
         const ObjectHold this_statement(a_block ? nullptr : lock_of(variables.self),
-                                        a_block ? LockUse::none : what_the_line_does(row, at, variables));
+                                        a_block ? LockUse::none : what_the_line_does(row, at, variables, state.capsules));
         if (this_statement.code() != success)
             return raise_at(this_statement.code(),
                             "this line needs its object's lock, and a thread holding it is waiting -- through "
