@@ -290,13 +290,15 @@ endif
 # `make window` BUILDS THE GTK satl CARRIES, from the tarballs in vendor/new/, into
 # vendor/stage and vendor/build/gtk -- neither is in git, so a fresh clone's `make`
 # builds a satl with no window and says so at the end (050-build.mk). Then `make`
-# builds satl with it and installs. vendor/build_stack.py checks what it needs before
-# it starts and names anything missing: a clang, ninja, cmake, bison, perl,
-# pkg-config, the three wayland .pc files (wayland-devel) and /usr/local/bin/nasm.
+# builds satl with it and installs. vendor/build_stack.py unpacks vendor/new/, then
+# checks what it needs and stops at the first thing missing, by name: a clang, ninja,
+# cmake, bison, perl, pkg-config, the three wayland .pc files (wayland-devel) and nasm
+# (/usr/local/bin/nasm first, else the one on PATH; AlmaLinux has it in CRB).
 # NOT RUN BY A PLAIN `make`: three minutes, and a machine without those tools would
 # fail every make rather than build the interpreter it can.
-# THE STACK'S CLANG: the one this make found, else the system's.
-VENDOR_CLANG = $(firstword $(wildcard $(LLVM_BIN)/clang) $(wildcard /usr/bin/clang))
+# THE STACK'S CLANG: ~/opt's, else the clang on PATH -- the same order 010-compiler.mk
+# chooses satl's compiler in, so a clang in /usr/local or a loaded module is found too.
+VENDOR_CLANG = $(firstword $(wildcard $(LLVM_BIN)/clang) $(shell command -v clang 2>/dev/null))
 .PHONY: window
 window:
 	@$(if $(VENDOR_CLANG),,echo "make window: the carried GTK is built with clang, and this machine has none (AlmaLinux: sudo dnf install clang)" >&2; exit 1)

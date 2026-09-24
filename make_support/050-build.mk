@@ -1,6 +1,7 @@
 # satellite 004 -- the default goal and the binaries.
 #
-# THE FIRST FRAGMENT THAT DECLARES A TARGET; .DEFAULT_GOAL says so outright anyway.
+# .DEFAULT_GOAL IS WHAT MAKES `all` THE DEFAULT, and it is load-bearing: 047 declares
+# `window` first (2026-09-23), so a plain make without this line would build GTK.
 #
 # THE TWO ARE BUILT INTO ONE FOLDER (PLAN M0.5): build/satl loads the libraries
 # in the satellite-numbers/ beside its own path, so they are built together and
@@ -30,7 +31,8 @@ all: $(ALL_TARGETS)
 	@if [ -e $(BUILD)/satl-term ] || [ -d $(OBJECTS)/satl-term ]; then \
 	     rm -rf $(BUILD)/satl-term $(OBJECTS)/satl-term && \
 	     echo "removed $(BUILD)/satl-term, which an earlier build made -- satl opens its own console now"; fi
-ifneq ($(HAVE_GTK),yes)
+# SAID ONCE, BY THE MAKE THAT WAS TYPED: `make cpus` runs a make per processor inside it.
+ifeq ($(HAVE_GTK)$(MAKELEVEL),no0)
 	@echo "" && \
 	 echo "  THIS satl HAS NO WINDOW. It runs every program; the window and console words refuse by name." && \
 	 echo "  $(if $(filter vendor,$(GTK)),The GTK it carries is built from vendor/new/ and is not built in this checkout yet:,GTK=system found no gtk4 on this machine.)" && \

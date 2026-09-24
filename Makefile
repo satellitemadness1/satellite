@@ -35,9 +35,10 @@
 # and 067 (003's start-up rows are 003 commands). 080 came across on 2026-09-22,
 # when the author ruled D0.5.1: 004 installs into ~/.satl with every make.
 #
-# ORDER IS LOAD-BEARING: 050 is the first fragment that declares a target, which
-# is what makes `all` the default goal. (047 used to set HAVE_WINDOW for 050's
-# satl-term ifeq; satl-term is gone since 2026-09-22.)
+# ORDER IS LOAD-BEARING, AND SO IS 050's `.DEFAULT_GOAL := all`: 047 declares `make
+# window` before 050 declares anything (2026-09-23), so without that line a plain
+# `make` would build the GTK stack instead of satl. (047 used to set HAVE_WINDOW for
+# 050's satl-term ifeq; satl-term is gone since 2026-09-22.)
 #
 # NAMED ONE BY ONE, never $(wildcard make_support/*.mk): a wildcard sorts 100-
 # before 020- and takes in an editor's backup. The paths are relative, so make

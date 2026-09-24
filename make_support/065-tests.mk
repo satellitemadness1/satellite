@@ -56,9 +56,10 @@ COUNT_CASES_SOURCES = $(BYTECODE)/count_cases.cpp $(BYTECODE)/bytecode_registry.
 # is its own package, and a machine without it failed the whole `make` on a test
 # harness. Asked once, when this recipe runs: without it the cases are built and run
 # all the same, and make says what they are missing.
-UBSAN_FLAGS = $(shell if printf 'int main(){}' | $(CXX) -x c++ -fsanitize=undefined -fno-sanitize-recover=undefined - -o /dev/null >/dev/null 2>&1; \
+# The probe links the way the recipe does -- the same flags, LDFLAGS and environment.
+UBSAN_FLAGS = $(shell if printf 'int main(){}' | $(LINK_ENV) $(CXX) $(CXXFLAGS) -fsanitize=undefined -fno-sanitize-recover=undefined $(LDFLAGS) -x c++ - -o /dev/null >/dev/null 2>&1; \
                       then echo -fsanitize=undefined -fno-sanitize-recover=undefined; \
-                      else echo "note: $(CXX) cannot link -fsanitize=undefined here (no libubsan), so build/count_cases is built without it" >&2; fi)
+                      else echo "note: $(CXX) cannot link -fsanitize=undefined here (g++ needs the libubsan package, clang its sanitizer runtime), so build/count_cases is built without it" >&2; fi)
 $(BUILD)/count_cases: $(COUNT_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(UBSAN_FLAGS) $(LDFLAGS) \
