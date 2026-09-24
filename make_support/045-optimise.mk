@@ -20,7 +20,7 @@
 # instructions, so they stay exactly as they were -- and the training satl loads the
 # real build's libraries through a link beside it.
 #
-# THE TRAINING IS NEVER A RACE PROGRAM (haswell_test/, experiments/cpu_race/): a build
+# THE TRAINING IS NEVER A RACE PROGRAM (haswell_test/, time_test/): a build
 # trained on the program that times it would be timing its own training.
 #
 # `make OPTIMISE=no` IS TODAY'S PLAIN -O2, for quick rebuilds while working: with the

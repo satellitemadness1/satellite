@@ -142,3 +142,10 @@ __pycache__/
 /vendor/gtk-old/hello/hello-dynamic
 /vendor/gtk-old/stage-static/
 
+
+# time_test/ -- the author compiles each test himself; what he builds and what a race
+# writes are not source.
+/time_test/satellite.library/race
+/time_test/satellite.library/out/
+/time_test/locks/locks
+/time_test/threads/threads

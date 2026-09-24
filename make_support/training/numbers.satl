@@ -1,5 +1,5 @@
 // PGO TRAINING (make_support/045-optimise.mk): whole numbers, small and past a machine
-// word. NOT a race program -- the races are haswell_test/ and experiments/cpu_race/, and a
+// word. NOT a race program -- the races are haswell_test/ and time_test/, and a
 // build trained on the program that times it would be timing its own training.
 satellite.include(satellite)
 
