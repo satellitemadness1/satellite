@@ -218,7 +218,7 @@ code stream.
 Already known: comments do not round-trip. `//` is discarded in the lexer
 (003 DESIGN §5.6), so a comment is a marker with no text.
 
-## M5 — names and `satellite.log` — **BUILT 2026-09-25**
+## M5 — names and `satellite.log` — **BUILT 2026-09-25**, `10bfb9c`
 
 The author, 2026-09-25: *"can we do M5 and then this?"* (this = M16's string methods).
 
