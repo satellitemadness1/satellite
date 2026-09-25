@@ -18,6 +18,8 @@ token::Code code_at_here(const std::vector<std::bitset<16>> &row, std::size_t at
 // THE ARGUMENTS BETWEEN `(` AND `)`, worked out in the caller's frame -- `at` on the
 // `(` and left past the `)`. False, with the refusal in `context`, when one could not
 // be worked out or the brackets do not close.
+bool ends_the_line(const std::vector<std::bitset<16>> &row, std::size_t at);
+
 bool arguments_at(const std::vector<std::bitset<16>> &row, std::size_t &at, const std::string &written,
                   std::vector<Value> &arguments, ExpressionContext &context)
 {
@@ -34,7 +36,12 @@ bool arguments_at(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
     if (context.code != success)
         return false;
     if (code_at_here(row, at) != token::right_parenthesis_token) {
-        context.refuse(satl_line_not_understood, written + "(...) was given something it could not read to the end of",
+        // THE LINE ENDED FIRST: the ) is missing, or a string with no closing " swallowed it
+        // (the error sweep, 2026-09-25) -- said as that rather than as something unreadable.
+        context.refuse(satl_line_not_understood,
+                       ends_the_line(row, at) ? written + "(...)'s ( is never closed -- the line ends before its ), "
+                                                          "or a string on it has no closing \""
+                                              : written + "(...) was given something it could not read to the end of",
                        open);
         return false;
     }

@@ -1528,11 +1528,22 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         // at the touching minus, and the skip swallowed `-4` without a word.
         // Anything still standing here is a refusal, and the whitespace rule is
         // the likeliest reason for one -- so the message says so.
-        if (context.code == success && code_at(row, at) != token::right_parenthesis_token)
+        //
+        // UNLESS THE LINE SIMPLY ENDED: then the ) is missing, or a string with no closing "
+        // swallowed it, and "check that every math sign has a space" sent a person looking
+        // for a sign that was never there (the error sweep, 2026-09-25 -- the author's own
+        // quad_main.satl line 6 was told exactly that).
+        if (context.code == success && code_at(row, at) != token::right_parenthesis_token) {
+            const Code stopped = code_at(row, at);
+            const bool line_ended = stopped == token::line_end_token || stopped == token::comment_token ||
+                                    stopped == token::end_of_file_token || at >= row.size();
             context.refuse(satl_line_not_understood,
                            std::string(word::spelling_of(code)) +
-                               " was given something it could not read to the end of -- check that every "
-                               "math sign has a space on both sides");
+                               (line_ended ? "'s ( is never closed -- the line ends before its ), or a string on "
+                                             "it has no closing \""
+                                           : " was given something it could not read to the end of -- check that "
+                                             "every math sign has a space on both sides"));
+        }
         while (at < row.size() && code_at(row, at) != token::right_parenthesis_token) ++at;
         if (at < row.size()) ++at;
     }

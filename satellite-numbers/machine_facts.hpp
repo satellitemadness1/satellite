@@ -23,8 +23,13 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
+#include <set>
 #include <string>
+#include <utility>
 
 namespace satellite004 {
 namespace machine_facts {
@@ -81,14 +86,43 @@ inline bool working_directory(std::string &out)
 }
 
 // THE FACTS THAT ARE A `sysconf` CALL. `_SC_NPROCESSORS_ONLN` is the count of
-// CPUs the kernel will schedule on NOW, which is the number a person means by
-// "cores" -- not the count the hardware has, some of which may be offline.
+// CPUs the kernel will schedule on NOW -- every hardware THREAD, so 24 on a
+// 12-core processor that runs two threads a core. It is what answer_cores falls
+// back on when the machine will not say how many cores it has.
 inline bool cores_online(unsigned long long int &out)
 {
     const long said = sysconf(_SC_NPROCESSORS_ONLN);
     if (said <= 0) return false;
     out = static_cast<unsigned long long int>(said);
     return true;
+}
+
+// PHYSICAL CORES: the distinct (physical id, core id) pairs in /proc/cpuinfo -- 12 on
+// a 12-core processor that runs 24 threads. 0 when the file does not say (a machine
+// whose cpuinfo carries no core id), and the caller falls back to cores_online.
+// ONE READER, used by these libraries AND by the arguments variable's own row
+// (satellite/arguments/arguments.cpp), which had a copy of its own: the copy counted
+// cores and the libraries counted threads, so arguments.machine.cores said 12 and
+// its alias arguments.cores said 24 in the same program (the error sweep, 2026-09-25).
+inline unsigned long long int physical_cores()
+{
+    std::FILE *cpuinfo = std::fopen("/proc/cpuinfo", "r");
+    if (cpuinfo == nullptr)
+        return 0;
+    std::set<std::pair<long, long>> cores;
+    long physical = -1;
+    char line[512];
+    while (std::fgets(line, sizeof line, cpuinfo) != nullptr) {
+        const char *colon = std::strchr(line, ':');
+        if (colon == nullptr)
+            continue;
+        if (std::strncmp(line, "physical id", 11) == 0)
+            physical = std::strtol(colon + 1, nullptr, 10);
+        else if (std::strncmp(line, "core id", 7) == 0)
+            cores.insert({physical, std::strtol(colon + 1, nullptr, 10)});
+    }
+    std::fclose(cpuinfo);
+    return cores.size();
 }
 
 // A reply that failed, naming what could not be read. One spelling, so every
@@ -160,8 +194,14 @@ inline FactReply answer_memory_used()
     return a_count(spare > whole ? 0 : whole - spare);
 }
 
+// HOW MANY CORES EXIST, NOT HOW MANY THREADS THEY RUN. The author, 2026-09-18:
+// *"arguments.cores = how many cores exist on the machine, so for this it's 12"* --
+// on a 12-core, 24-thread processor. The thread count is arguments.cpu's business.
 inline FactReply answer_cores()
 {
+    const unsigned long long int physical = physical_cores();
+    if (physical > 0)
+        return a_count(physical);
     unsigned long long int said = 0;
     if (cores_online(said) == false)
         return could_not_read("a count of online processors", machine_fact_not_read);

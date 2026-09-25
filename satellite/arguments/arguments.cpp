@@ -5,6 +5,7 @@
 #include "../machine/machine_state.hpp"
 #include "../config/config_file.hpp"
 #include "../config/satellite_config.hpp"
+#include "../../satellite-numbers/machine_facts.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -18,33 +19,6 @@
 #include <unistd.h>
 
 namespace satellite004 {
-
-namespace {
-
-// Physical cores: the distinct (physical id, core id) pairs in /proc/cpuinfo.
-// 0 when the file does not say, and the caller falls back to threads.
-unsigned long long int physical_cores()
-{
-    std::FILE *cpuinfo = std::fopen("/proc/cpuinfo", "r");
-    if (cpuinfo == nullptr)
-        return 0;
-    std::set<std::pair<long, long>> cores;
-    long physical = -1;
-    char line[512];
-    while (std::fgets(line, sizeof line, cpuinfo) != nullptr) {
-        const char *colon = std::strchr(line, ':');
-        if (colon == nullptr)
-            continue;
-        if (std::strncmp(line, "physical id", 11) == 0)
-            physical = std::strtol(colon + 1, nullptr, 10);
-        else if (std::strncmp(line, "core id", 7) == 0)
-            cores.insert({physical, std::strtol(colon + 1, nullptr, 10)});
-    }
-    std::fclose(cpuinfo);
-    return cores.size();
-}
-
-} // namespace
 
 Argument &Arguments::add(const std::string &name, ArgumentKind kind)
 {
@@ -298,7 +272,7 @@ signed long long int Arguments::gather(const CommandLine &command_line)
     // The machine.
     const long threads = sysconf(_SC_NPROCESSORS_ONLN);
     const unsigned long long int thread_count = threads > 0 ? static_cast<unsigned long long int>(threads) : 1;
-    const unsigned long long int cores = physical_cores();
+    const unsigned long long int cores = machine_facts::physical_cores();   // the libraries' own reader
     add_count("arguments.machine.threads", thread_count);
     add_count("arguments.machine.cores", cores > 0 ? cores : thread_count);
     // WHAT THE PROCESSOR CAN RUN (cpu_facts.hpp): 003's build name, and every instruction

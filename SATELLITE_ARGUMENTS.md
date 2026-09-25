@@ -802,13 +802,22 @@ Red notes. None of them blocks A1–A25.
 
    | alias | is | answers here |
    |---|---|---|
-   | `arguments.cores` | `arguments.machine.cores` | 24 |
+   | `arguments.cores` | `arguments.machine.cores` | 12 (was 24 until 2026-09-25 -- see below) |
    | `arguments.threads` | `arguments.machine.threads` | 506,566 |
    | `arguments.user` | `arguments.username` | madness |
    | `arguments.memory` | `arguments.memory.total` | 66509373440 |
    | `arguments.memory()` | `arguments.memory.total` | 66509373440 |
    | `arguments.ram` | `arguments.memory.total` | 66509373440 |
    | `arguments.dir` | `arguments.directory` | the working directory |
+
+   **CORRECTED 2026-09-25: the cores pair did answer differently.** Both libraries
+   counted THREADS (`_SC_NPROCESSORS_ONLN`, 24 here) while the arguments variable's own
+   row counted CORES from /proc/cpuinfo (12), so inside `main(satellite.variable.arguments
+   arguments)` `arguments.machine.cores` said 12 and `arguments.cores` said 24. The
+   author's brief settles which is right -- *"arguments.cores = how many cores exist on
+   the machine, so for this it's 12"* -- and there is one reader now,
+   `machine_facts::physical_cores()`, used by both libraries and by the row. The
+   threads pair still differs, and that one is his: see SCRATCH.md/NEW_ERROR_LIST.md.
 
    `arguments.memory()` is the author's own spelling from the second brief and it
    reaches a **different code path** — brackets make it a call, so it is answered

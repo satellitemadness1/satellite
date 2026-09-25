@@ -184,6 +184,11 @@ struct ScopeTrouble {
     std::size_t at = 0;
     signed long long int code = 0;
     std::string why;
+    // A CAPSULE BODY THE FILE ENDS INSIDE (2026-09-25): said only after the bodies are
+    // checked, because what is wrong inside one -- `display({1, 2)`, a list's { never
+    // closed, which then takes the capsule's own } -- is the better sentence, and the
+    // checker already has it.
+    bool after_the_bodies = false;
 };
 
 // WHAT A WRITTEN NAME REACHED. `site` is the capsule, or null and `why` says why not.

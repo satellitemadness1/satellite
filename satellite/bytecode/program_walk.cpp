@@ -1928,6 +1928,18 @@ signed long long int run_turn(const BytecodeRegistry &registry,
                             satl_line_not_understood);
     for (std::size_t at = 0; at < arguments.size(); ++at) {
         std::string why;
+        // AND WHAT A VALUE BECOMES IN A NAME OF ITS TYPE, as a satellite.variable line does
+        // it: a whole number handed to a float parameter is a float, as `float f = 3` is
+        // 3.0. It was refused -- "half's x was declared satellite.variable.float, and it
+        // holds a number" -- the one place the four on_store rules were never asked (the
+        // website writers, 2026-09-24; fixed in the error sweep, 2026-09-25).
+        for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store}) {
+            const signed long long int stored = on_store(wants[at].declared(), arguments[at], why);
+            if (stored != success)
+                return report_error("satl(run): " + site.shown + "'s " + wants[at].name + " was declared " +
+                                        shape_written(wants[at].shape) + ", and " + why,
+                                    stored);
+        }
         if (!value_fits(wants[at].shape, arguments[at], why))
             return report_error("satl(run): " + site.shown + "'s " + wants[at].name + " was declared " +
                                     shape_written(wants[at].shape) + ", and " + why,

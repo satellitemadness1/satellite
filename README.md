@@ -5,7 +5,7 @@ here on. Its version, revision and build number live in
 `satellite/config/satellite_config.hpp`; `make` raises the build number every time
 it builds, and a new revision restarts the count at 1.
 
-Revision 06 is the one that carries its own world: `make GTK=vendor` compiles GTK
+Revision 06 is the one that carries its own world: `make window` compiles GTK
 and its whole stack *into* satl, so the binary needs nothing installed to open a
 window. Every source it is built from is committed under `vendor/`, frozen at one
 version — see [GTK_AND_NO_DEPENDENCIES.md](GTK_AND_NO_DEPENDENCIES.md). `satl
@@ -67,30 +67,40 @@ What changes in 004 is how it runs.
 
 ## Where it is today
 
-Revision 02 is early. What runs:
+Revision 08 runs real programs. What runs:
 
-- a prototype runner for `satellite.console.display`;
-- the word table: every word numbered, 364 of them;
-- `satellite.variable.string` as 32-bit characters, with its 23 words each built
-  as its own library and checked answer-for-answer against satellite 003.
+- capsules with parameters and answers; `satellite.statement.if`, `else`, `while`
+  and `for`; and a capsule whose last line calls itself runs in constant memory,
+  as deep as it likes;
+- numbers of any size, floats, fractions, percentages, binary, hexadecimal,
+  colours and infinity; strings; lists, lists of lists and indexes;
+- files and folders, and `satellite.variable.info` for what a folder holds;
+- spacesuits (satellite's objects), namespaces, and every included file reached
+  by its own name;
+- threads and locks, windows, and colour on the console;
+- the prompt (`satl --repl`) and a console window of satl's own (`satl --console`);
+- every refusal as a report with its S-code, its line and a caret under it, and
+  every report kept in `~/.satl/satellite.log`.
 
-`satellite_number` is next, then spacesuits (satellite's classes). See
-[PROGRESS.md](PROGRESS.md) for exactly what is built and checked,
-[PLAN.md](PLAN.md) for the order of work, [DESIGN.md](DESIGN.md) for the standards
-and every measurement behind them, and [ERROR.md](ERROR.md) for every known error.
+String methods (`.size()`, `.upper()` and the rest) are next -- MILESTONES M16.
+See [MILESTONES.md](MILESTONES.md) and [PROGRESS.md](PROGRESS.md) for exactly what
+is built and checked, [DESIGN.md](DESIGN.md) for the standards and every
+measurement behind them, and [ERROR.md](ERROR.md) for every known error.
 
 ```
-make                                  # build/satl and every numbered library
+make window                           # once: GTK and its stack, carried inside satl
+make                                  # build/satl and every numbered library, then install
 make test                             # check.sh and the string checks
 build/satl examples/hello_world.satl  # run a program; build/satl --help lists every way
 build/satl --console examples/hello_world.satl   # the same, in a console window of satl's own
-sh satellite_enterprise/install.sh --root <folder>   # satl and its libraries, into <folder>
 ```
 
-**004's interpreter is `satl`** (`build/satellite-004` is a link to it). It is
-not installed anywhere by `make`, and where 004 installs is not decided yet, so
-the installer takes only a `--root` and refuses 003's `~/.satl` and `/usr/local`.
-The word `satl` on a PATH is still satellite 003's.
+**004's interpreter is `satl`** (`build/satellite-004` is a link to it). Every
+bare `make` installs it into `~/.satl` -- satl, its libraries and the help files
+-- and adds **Satellite 004** to the applications menu; `make
+INSTALL_AFTER_BUILD=no` builds without installing. One link puts the word `satl`
+on your command line: `ln -sf ~/.satl/satl ~/.local/bin/satl`. The whole install,
+step by step, is on the INSTALL page at [satellite.foundation](https://satellite.foundation).
 
 ## The earlier satellites
 

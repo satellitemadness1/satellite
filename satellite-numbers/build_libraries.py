@@ -64,8 +64,17 @@ LDFLAGS = shlex.split(os.environ.get("SATELLITE_LDFLAGS", ""))
 FLAGS = [*CXXFLAGS, "-shared", "-fPIC", *LDFLAGS]
 BUILT_WITH = os.path.join(OUT, ".built_with")
 ENVIRONMENT = {name: value for name, value in os.environ.items() if name != "LD_RUN_PATH"}
+# EVERY HEADER A LIBRARY READS, or a change to it rebuilds nothing: machine_facts.hpp was
+# missing, and moving arguments.cores onto physical cores left all 32 fact libraries
+# answering the old way from a build that reported success (the error sweep, 2026-09-25).
+# `grep -ho '#include "[^"]*"' satellite-numbers/*/*.satellite.cpp satellite-numbers/*.hpp`
+# lists them.
 SHARED_HEADERS = [os.path.join(HERE, "number_row.hpp"), os.path.join(ROOT, "satellite", "machine", "machine_codes.hpp"),
-                  os.path.join(ROOT, "strings", "string_method.hpp"), os.path.join(HERE, "directory_words.hpp")]
+                  os.path.join(ROOT, "strings", "string_method.hpp"), os.path.join(HERE, "directory_words.hpp"),
+                  os.path.join(HERE, "machine_facts.hpp"), os.path.join(HERE, "feedback_book.hpp"),
+                  os.path.join(ROOT, "satellite", "config", "machine_probe.hpp"),
+                  os.path.join(ROOT, "satellite", "config", "config_file.hpp"),
+                  os.path.join(ROOT, "satellite", "machine", "filesystems.hpp")]
 
 
 def folder_of(path):

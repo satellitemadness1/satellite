@@ -17,10 +17,7 @@ each finding (DESIGN §11). PLAN M1 fixes them. Files (under `satellite/` since
 `satellite-numbers/call_number.satellite.cpp`, `satellite/race/race.cpp`,
 `satellite/race/race.sh`.
 
-1. **The order of include, main and return is never checked.** A
-   `satellite.return(satellite)` on line 1 drops the whole program and exits 0;
-   a display above `satellite.main(` still runs; unbalanced or backwards braces
-   are accepted; `satellite.capsule satellite.main(` with no `)` counts as main.
+1. *(fixed by 2026-09-25 -- moved to Fixed)*
 2. *(fixed 2026-09-17, PLAN M0.5 — moved to Fixed)*
 3. *(fixed 2026-09-15 — moved to Fixed)*
 4. **A refused write names the wrong line** — thousands of bytes after the line
@@ -39,12 +36,9 @@ each finding (DESIGN §11). PLAN M1 fixes them. Files (under `satellite/` since
     loads and writes 82 KB of heap memory to stdout.
 12. **A library writing with printf/puts prints out of order**, after later
     interpreter output, because main sets `sync_with_stdio(false)`.
-13. **A UTF-8 byte-order mark or CR-only line endings** give a misleading 10
-    ("no line says satellite.include(satellite)").
-14. **Whitespace inside the brackets is rejected:** `display( 42 )` and
-    `include( satellite )` give 13 / 10 / 11 / 12.
-15. **An unterminated string followed by a `//` comment** gives 13 (with the
-    comment in the message) where the same line without it gives 4.
+13. *(fixed by 2026-09-25 -- moved to Fixed)*
+14. *(fixed by 2026-09-25 -- moved to Fixed)*
+15. *(fixed 2026-09-25 -- moved to Fixed)*
 16. **Unknown escapes are accepted:** `"a\qb"` displays `aqb`, `"\0"` displays `0`.
 17. **A library's file name is never checked against the numbers it describes:**
     `7.7.so` can register itself as `satellite.console.display 1 5 1`.
@@ -113,6 +107,23 @@ Found by the two builders themselves; no adversarial reviewer has run yet.
 ## Fixed
 
 *(move entries here with the commit that fixed them)*
+
+**1, 13, 14 and 15 -- checked 2026-09-25, the error sweep (SCRATCH.md/NEW_ERROR_LIST.md):**
+
+1. **The order of include, main and return is never checked.** Each shape measured on
+   BUILD 0072: a `satellite.return(satellite)` on line 1 no longer drops the program (it
+   runs); a display above main is refused, "this line is outside every capsule" (the
+   sweep); a missing } is "satellite.capsule X is never closed" and an extra one "this }
+   closes nothing" (the sweep); `satellite.capsule satellite.main(` with no `)` is refused
+   by the capsule header's own check (fixed earlier, by M-scopes).
+13. **A byte-order mark or CR-only line endings.** The BOM already ran; \r\n and a lone
+    \r end a line now (satl_file.cpp's load_satl, the sweep) -- a file saved on Windows
+    was refused at its first capsule.
+14. **Whitespace inside the brackets.** `display( 42 )` and `include( satellite )` run
+    (fixed earlier; measured).
+15. **An unterminated string followed by a `//` comment.** Any string with no closing
+    quote is refused before anything runs, "a string on this line has no closing \""
+    (capsule_scopes.cpp, the sweep).
 
 **2, 7 and 8 — fixed 2026-09-17 by PLAN M0.5**, each with a check in check.sh:
 
@@ -416,3 +427,9 @@ the PROGRAM, not an include, so that is a guess and is written as one.
 
 **What would settle it in one minute:** run the same program by absolute path from
 three different working directories and compare. Nobody has.
+
+**CHECKED 2026-09-25 (the error sweep): NOT REPRODUCED IN 004.** One program with an
+include (`parts/ship`) and a `satellite.file.open("note.txt")` beside it, run by absolute
+path from /, /tmp, $HOME and its own parts/ folder: all four printed the same and exited
+0 -- includes AND relative file names resolve against the program's own folder. If it
+comes back it is 003's (the report was made against 003).

@@ -213,8 +213,9 @@ expect "nothing ran before the refusal" "" "$(grep -x before build/nu.out)"
 # them, and were rebased then, as their comments say -- red on purpose again at INF-6.
 "$interpreter" tests/infinity_not_built.satl > build/inf.out 2>&1; code=$?
 expect "satellite.variable.aasat, a lettered level, is not built yet" 13 $code
-expect "... refused before it runs: satellite.variable is not a call" 1 \
-       "$(tr '\n' ' ' < build/inf.out | grep -c 'satellite.variable is not a call')"
+# REBASED 2026-09-25: a word, a dot and a name the table does not have is said as that now.
+expect "... refused before it runs: satellite.variable has no word named aasat" 1 \
+       "$(tr '\n' ' ' < build/inf.out | grep -c 'satellite.variable has no word named aasat')"
 expect "... with nothing run before it" "" "$(grep -x before build/inf.out)"
 "$interpreter" tests/infinity_constructor_not_built.satl > build/inf.out 2>&1; code=$?
 expect "satellite.aasat(), a lettered level's constructor, is not built yet" 13 $code
@@ -1531,8 +1532,11 @@ satellite.capsule other()
 for tag in e9 1003 1002 11002 1007 1006 11006; do
     output=$("$interpreter" build/stray_include_$tag.satl 2>/dev/null); code_run=$?
     expect "a stray U+$tag before (\"stray_theirs\") includes nothing" "MINE|0" "$output|$code_run"
+    # REBASED 2026-09-25 from "MAIN|0": the stray line is at the file's top, outside every
+    # capsule, and a line there is refused now rather than stepped over (capsule_scopes.cpp).
+    # What this row is for still holds -- OTHER never runs as main -- and nothing runs at all.
     output=$("$interpreter" build/stray_main_$tag.satl 2>/dev/null); code_run=$?
-    expect "a stray U+$tag before satellite.main does not make the next capsule main" "MAIN|0" "$output|$code_run"
+    expect "a stray U+$tag before satellite.main does not make the next capsule main (refused, S102)" "|11" "$output|$code_run"
 done
 # U+0704 is 0x0704, method_token: the lexer looked back at the last CODE, so after "܄" a
 # name became a method code the check never sees -- "before" printed and the run died on
@@ -4694,8 +4698,8 @@ expect "a coloured string answers .find and == the same into a pipe as at a term
 # is judged as it always was.
 expect "a = 1, b = 2 is still a name nobody declared, not a named option" "25|1|0" \
        "$(console_says '    satellite.variable.number a = 1, b = 2' 'b has no satellite.variable line declaring it')"
-expect "satellite.console.width() is told it is read with no brackets" "13|1|0" \
-       "$(console_says '    satellite.console.display(satellite.console.width())' 'satellite.console.width is read with no brackets')"
+expect "satellite.console.width() is told it is read without brackets, and what to write" "13|1|0" \
+       "$(console_says '    satellite.console.display(satellite.console.width())' 'satellite.console.width is read without brackets -- write satellite.console.width, not satellite.console.width()')"
 expect "satellite.console.home(5) is told home() takes nothing" "13|1|0" \
        "$(console_says '    satellite.console.home(5)' 'satellite.console.home() takes nothing, and was given 1 argument')"
 # AT THE PROMPT, input() READS THROUGH THE SESSION'S OWN READER: the next piped line
@@ -5266,6 +5270,152 @@ rm -rf "$log_room"
 # so the join at line 14 and the wait at line 15 are two notices, as two lines always were.
 expect "S724 names the line of each repeated join" 2 \
        "$(grep -c '^\[satellite\] S724 THREAD_ALREADY_JOINED: .*(tests/threads_joined_twice.satl:[0-9]* ' build/threads_joined.err)"
+
+# THE ERROR SWEEP, 2026-09-25 -- what was fixed without the author; what needs him is in
+# SCRATCH.md/NEW_ERROR_LIST.md.
+#
+# A FILE SAVED ON WINDOWS RUNS (satl_file.cpp's load_satl): \r\n and a lone \r end a line.
+# Every line kept its \r and the first capsule was refused over a character no editor shows.
+sweep=build/sweep_2026_09_25
+rm -rf "$sweep"; mkdir -p "$sweep/parts/deeper"
+printf 'satellite.include(satellite)\r\n\r\nsatellite.capsule satellite.main()\r\n{\r\n    satellite.console.display("crlf")\r\n    satellite.return(satellite)\r\n}\r\n' > "$sweep/crlf.satl"
+output=$("$interpreter" "$sweep/crlf.satl" 2>/dev/null); code_run=$?
+expect "a file with Windows line endings (\\r\\n) runs" "crlf|0" "$output|$code_run"
+printf 'satellite.include(satellite)\r\rsatellite.capsule satellite.main()\r{\r    satellite.console.display("cr")\r    satellite.return(satellite)\r}\r' > "$sweep/cr.satl"
+output=$("$interpreter" "$sweep/cr.satl" 2>/dev/null); code_run=$?
+expect "a file with old Mac line endings (a lone \\r) runs" "cr|0" "$output|$code_run"
+printf 'satellite.include(satellite)\r\n\r\nsatellite.capsule satellite.main()\r\n{\r\n    satellite.console.display(nobody)\r\n    satellite.return(satellite)\r\n}\r\n' > "$sweep/crlf_refused.satl"
+"$interpreter" "$sweep/crlf_refused.satl" > "$sweep/crlf_refused.out" 2>&1
+expect "... and a refusal in one names the line an editor shows, with no \\x0d in it" "1|0" \
+       "$(grep -c 'crlf_refused.satl:5$' "$sweep/crlf_refused.out")|$(grep -c 'x0d' "$sweep/crlf_refused.out")"
+# AN UNQUOTED INCLUDE MAY BEGIN WITH ./ OR ../ (include_shape.cpp), as the quoted one may.
+# Each dot was a method_token, the include named nothing, and the program ran without it.
+printf 'satellite.capsule hello()\n{\n    satellite.console.display("ship")\n}\n' > "$sweep/parts/ship.satl"
+printf 'satellite.include(satellite)\nsatellite.include(./parts/ship)\n\nsatellite.capsule satellite.main()\n{\n    ship.hello()\n    satellite.return(satellite)\n}\n' > "$sweep/dot.satl"
+output=$("$interpreter" "$sweep/dot.satl" 2>/dev/null); code_run=$?
+expect "satellite.include(./parts/ship) includes parts/ship.satl" "ship|0" "$output|$code_run"
+printf 'satellite.include(satellite)\nsatellite.include(../ship)\n\nsatellite.capsule satellite.main()\n{\n    ship.hello()\n    satellite.return(satellite)\n}\n' > "$sweep/parts/deeper/up.satl"
+output=$("$interpreter" "$sweep/parts/deeper/up.satl" 2>/dev/null); code_run=$?
+expect "satellite.include(../ship) includes the file one folder up from the including file" "ship|0" "$output|$code_run"
+printf 'satellite.include(satellite)\nsatellite.include(./parts/deeper/../ship)\n\nsatellite.capsule satellite.main()\n{\n    ship.hello()\n    satellite.return(satellite)\n}\n' > "$sweep/dot_dot_inside.satl"
+output=$("$interpreter" "$sweep/dot_dot_inside.satl" 2>/dev/null); code_run=$?
+expect "satellite.include(./parts/deeper/../ship): a .. in the middle of the path" "ship|0" "$output|$code_run"
+printf 'satellite.include(satellite)\nsatellite.include(./parts/nothing_here)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.return(satellite)\n}\n' > "$sweep/dot_missing.satl"
+"$interpreter" "$sweep/dot_missing.satl" > "$sweep/dot_missing.out" 2>&1; code_run=$?
+expect "satellite.include(./parts/nothing_here) is refused as a file that is not there, before anything runs" "8|1|0" \
+       "$code_run|$(grep -c 'cannot locate file: .*nothing_here.satl' "$sweep/dot_missing.out")|$(grep -cx before "$sweep/dot_missing.out")"
+# AN INCLUDE THAT NAMES NO FILE, AND A LINE OUTSIDE EVERY CAPSULE, ARE REFUSED
+# (capsule_scopes.cpp). Both were stepped over, never run, and nothing said so.
+top_refused() {   # top_refused <file> <lines above main> -> machine code | sentence found | "before" printed
+    printf 'satellite.include(satellite)\n%s\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.return(satellite)\n}\n' "$2" > "$sweep/$1.satl"
+    "$interpreter" "$sweep/$1.satl" > "$sweep/$1.out" 2>&1; code_run=$?
+    printf '%s|%s|%s' "$code_run" "$(tr '\n' ' ' < "$sweep/$1.out" | grep -c -- "$3")" "$(grep -cx before "$sweep/$1.out")"
+}
+expect "satellite.include(42) names no file, and is refused before anything runs" "13|1|0" \
+       "$(top_refused include_number 'satellite.include(42)' 'this satellite.include names no file')"
+expect "a display above main is outside every capsule, and is refused" "13|1|0" \
+       "$(top_refused top_display 'satellite.console.display("hi")' 'this line is outside every capsule')"
+expect "a capsule called at the top of the file is outside every capsule, and is refused" "13|1|0" \
+       "$(top_refused top_call "$(printf 'satellite.capsule greet()\n{\n}\ngreet()')" 'this line is outside every capsule')"
+expect "a variable declared at the top of the file is refused: there are no globals" "13|1|0" \
+       "$(top_refused top_variable 'satellite.variable.number n = 5' 'there are no globals in satellite')"
+expect "a name assigned at the top of the file is refused" "13|1|0" \
+       "$(top_refused top_assign 'n = 5' 'this line is outside every capsule')"
+expect "satellite.main() without satellite.capsule is S102, with the line to write" "11|1|0" \
+       "$(top_refused main_bare "$(printf 'satellite.main()\n{\n}')" 'satellite.main is a capsule, so it is declared like one')"
+expect "comments, blank lines and a satellite.return at the top are still fine" "0|0|1" \
+       "$(top_refused top_fine "$(printf '// a comment\n\n   // another\nsatellite.return(satellite)')" 'outside every capsule')"
+# A STRING WITH NO CLOSING QUOTE IS REFUSED BEFORE ANYTHING RUNS (capsule_scopes.cpp). It was
+# refused while running, after the lines above it had printed, told to check its math signs --
+# and without a ( on its line it was not refused at all.
+body_refused() {   # body_refused <file> <body lines> <sentence> -> machine code | sentence found | "before" printed
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' "$2" > "$sweep/$1.satl"
+    "$interpreter" "$sweep/$1.satl" > "$sweep/$1.out" 2>&1; code_run=$?
+    printf '%s|%s|%s' "$code_run" "$(tr '\n' ' ' < "$sweep/$1.out" | grep -c -- "$3")" "$(grep -cx before "$sweep/$1.out")"
+}
+expect "display(\"hello) -- a string with no closing quote -- is refused before anything runs" "13|1|0" \
+       "$(body_refused unclosed_call '    satellite.console.display("hello)' 'a string on this line has no closing "')"
+expect "s = \"abc -- with no ( on the line -- is refused too, not quietly \"abc\"" "13|1|0" \
+       "$(body_refused unclosed_store '    satellite.variable.string s = "abc' 'a string on this line has no closing "')"
+expect "an escaped quote, an escaped backslash and a // inside a string are still fine" '0|0|1' \
+       "$(body_refused quotes_fine '    satellite.console.display("a \" b")
+    satellite.console.display("c \\")
+    satellite.console.display("// d") // a " in a comment' 'no closing')"
+expect "... and they print as written" 'before|a " b|c \|// d' \
+       "$("$interpreter" "$sweep/quotes_fine.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+# A MISSING ) SAYS SO (expression.cpp), instead of "check that every math sign has a space".
+expect "display(\"hello\" -- a missing ) -- is named as a ( never closed" "13|1|1" \
+       "$(body_refused missing_bracket '    satellite.console.display("hello"' "satellite.console.display's ( is never closed")"
+# A MISSPELLED WORD IS ASKED WHAT IT MEANT (program_check.cpp).
+expect "satellite.console.dispaly asks: did you mean satellite.console.display?" "13|1|0" \
+       "$(body_refused typo '    satellite.console.dispaly("hello")' 'satellite.console has no word named dispaly -- did you mean satellite.console.display?')"
+# A CAPSULE THE FILE ENDS INSIDE, AND A } THAT CLOSES NOTHING, ARE REFUSED (capsule_scopes.cpp).
+# Both ran and exited 0.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.return(satellite)\n' > "$sweep/no_close.satl"
+"$interpreter" "$sweep/no_close.satl" > "$sweep/no_close.out" 2>&1; code_run=$?
+expect "a capsule with no closing } is refused before anything runs" "13|1|0" \
+       "$code_run|$(tr '\n' ' ' < "$sweep/no_close.out" | grep -c 'satellite.capsule satellite.main is never closed')|$(grep -cx before "$sweep/no_close.out")"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    helper()\n    satellite.return(satellite)\n\nsatellite.capsule helper()\n{\n}\n' > "$sweep/no_close_then_more.satl"
+"$interpreter" "$sweep/no_close_then_more.satl" > "$sweep/no_close_then_more.out" 2>&1; code_run=$?
+expect "... and with a capsule after it, it is still the missing } that is named" "13|1|0" \
+       "$code_run|$(tr '\n' ' ' < "$sweep/no_close_then_more.out" | grep -c 'satellite.capsule satellite.main is never closed')|$(grep -cx before "$sweep/no_close_then_more.out")"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.return(satellite)\n}\n}\n' > "$sweep/extra_close.satl"
+"$interpreter" "$sweep/extra_close.satl" > "$sweep/extra_close.out" 2>&1; code_run=$?
+expect "a } that closes nothing is refused before anything runs" "13|1|0" \
+       "$code_run|$(tr '\n' ' ' < "$sweep/extra_close.out" | grep -c 'this } closes nothing')|$(grep -cx before "$sweep/extra_close.out")"
+# WHAT THE REVIEW OF THE SWEEP BROKE, KEPT BROKEN-PROOF (2026-09-25). A missing } AND another
+# trouble the scan found: the held refusal hid the other one and the checker ran on a table it
+# could not finish -- signal 11, a fake S999, or "has no go" with an empty name.
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.statement.if(satellite.bool.true)\n    {\n        satellite.console.display("hi")\n}\nsatellite.capsule launch(shp s)\n{\n    s.go()\n}\nsatellite.return(satellite)\n' > "$sweep/unclosed_and_unknown.satl"
+for turn in 1 2 3; do
+    "$interpreter" "$sweep/unclosed_and_unknown.satl" > "$sweep/unclosed_and_unknown.out" 2>&1; code_run=$?
+    expect "a missing } and an unknown spacesuit type: a clean refusal, never a crash (run $turn)" "25|0" \
+           "$code_run|$(grep -c 'S999\|has no go' "$sweep/unclosed_and_unknown.out")"
+done
+# A SHEBANG STAYS A SCRIPT'S FIRST LINE; # AND /* ARE TOLD SATELLITE'S COMMENTS ARE //.
+printf '#!/usr/bin/env satl\nsatellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("hi")\n    satellite.return(satellite)\n}\n' > "$sweep/shebang.satl"
+output=$("$interpreter" "$sweep/shebang.satl" 2>/dev/null); code_run=$?
+expect "#!/usr/bin/env satl as the first line runs" "hi|0" "$output|$code_run"
+expect "a # line at the top is told satellite's comments begin with //" "13|1|0" \
+       "$(top_refused hash_comment '# written by me' "satellite's comments begin with //")"
+expect "a /* */ block at the top is told the same" "13|1|0" \
+       "$(top_refused block_comment "$(printf '/*\n * a header\n */')" "satellite's comments begin with //")"
+# A STRAY \r IN A FILE OF \n LINES IS A CHARACTER, AS IT WAS: only a file with no \n at all
+# ends its lines with a lone \r.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("a\rb")\n    satellite.return(satellite)\n}\n' > "$sweep/stray_cr.satl"
+"$interpreter" "$sweep/stray_cr.satl" > "$sweep/stray_cr.out" 2>/dev/null; code_run=$?
+expect "a raw \\r inside a string in a file of \\n lines is kept, and the program runs" "0|1" \
+       "$code_run|$(grep -c "$(printf 'a\rb')" "$sweep/stray_cr.out")"
+# HABITS FROM ANOTHER LANGUAGE ARE TOLD WHAT TO WRITE HERE (program_check.cpp, capsule_reach.cpp).
+# Each was refused before, in a sentence about something else.
+expect "print(\"hello\") is told to write satellite.console.display(...)" "13|1|0" \
+       "$(body_refused habit_print '    print("hello")' 'no capsule named print -- to show something, write satellite.console.display(...)')"
+expect "'hello' in single quotes is told text goes between double quotes" "13|1|0" \
+       "$(body_refused habit_quote "    satellite.console.display('hello')" "text goes between double quotes in satellite")"
+expect "a ; at a line's end is told a line needs none" "13|1|0" \
+       "$(body_refused habit_semicolon '    satellite.console.display("hello");' 'a line needs no ; at its end in satellite')"
+expect "... and a for's own semicolons are still its three parts" "0|0|1" \
+       "$(body_refused for_semicolons '    satellite.statement.for(satellite.variable.number i = 0; i < 1; i++)
+    {
+    }' 'needs no ;')"
+# A WHOLE NUMBER HANDED TO A FLOAT PARAMETER IS A FLOAT (program_walk.cpp), as `float f = 3` is
+# 3.0: parameters take a value by the same rules as a satellite.variable line.
+printf 'satellite.include(satellite)\n\nsatellite.capsule half(satellite.variable.float x)\n{\n    satellite.console.display(x / 2)\n}\n\nsatellite.capsule satellite.main()\n{\n    half(100)\n    half(3.5)\n    satellite.return(satellite)\n}\n' > "$sweep/float_parameter.satl"
+output=$("$interpreter" "$sweep/float_parameter.satl" 2>/dev/null); code_run=$?
+expect "half(100) with a float parameter: 100 becomes 100.0, as a declaration makes it" "50.0|1.75|0" \
+       "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+# arguments.cores IS arguments.machine.cores (machine_facts.hpp): how many cores exist, the
+# author's "for this it's 12" -- the alias's library counted threads and said 24.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments arguments)\n{\n    satellite.console.display(arguments.cores)\n    satellite.console.display(arguments.machine.cores)\n    satellite.return(satellite)\n}\n' > "$sweep/cores.satl"
+physical=$(python3 -c "
+pairs, phys = set(), -1
+for line in open('/proc/cpuinfo'):
+    key, _, value = line.partition(':')
+    if key.strip() == 'physical id': phys = int(value)
+    elif key.strip() == 'core id': pairs.add((phys, int(value)))
+import os; print(len(pairs) or os.cpu_count())")
+expect "arguments.cores and arguments.machine.cores both answer the physical cores" "$physical|$physical" \
+       "$("$interpreter" "$sweep/cores.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

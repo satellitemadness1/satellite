@@ -105,7 +105,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(OBJECT)/satellite_bytecode.hpp $(OBJECT)/satellite_capsule.hpp \
           $(OBJECT)/fast_paths.hpp $(OBJECT)/object_pair.hpp \
           $(wildcard $(OBJECT)/*_and_*.hpp) $(wildcard $(OBJECT)/*_to_*.hpp) \
-          $(NUMBERS)/call_number.hpp $(NUMBERS)/number_row.hpp $(STRINGS32)/string_method.hpp \
+          $(NUMBERS)/call_number.hpp $(NUMBERS)/number_row.hpp $(NUMBERS)/machine_facts.hpp $(STRINGS32)/string_method.hpp \
           $(SATELLITE)/licenses/licenses.hpp
 
 # EVERY LICENCE, COMPILED IN. licenses/<project>/license.txt is the source of

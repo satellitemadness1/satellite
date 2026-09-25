@@ -103,6 +103,29 @@ signed long long int load_satl(const std::string &path, std::string &source, Mac
     while ((got = std::fread(buffer, 1, sizeof buffer, file)) > 0)
         source.append(buffer, got);
     std::fclose(file);
+
+    // A LINE ENDS AT \n, AT \r\n OR AT A LONE \r -- and from here on only at \n. A file
+    // saved on Windows ends every line with \r\n and one from an old Mac with \r alone;
+    // the lexer splits on \n, so the \r stayed on the end of every line and the first
+    // capsule was refused ("after its ) comes the { ... something else stands between
+    // them") over a character no editor shows (the error sweep, 2026-09-25). Done once,
+    // here, where every program and include is read, so a report's line numbers and the
+    // line it quotes are the file as an editor shows it. A file with no \r is not touched.
+    //
+    // A LONE \r ENDS A LINE ONLY IN A FILE THAT HAS NO \n AT ALL -- the old Mac file. In a
+    // file that has \n lines, a stray \r is a character like any other, as it always was:
+    // turning it into a line end split the string it stood in and moved every line number
+    // after it (the review of the error sweep, 2026-09-25).
+    if (source.find('\r') != std::string::npos) {
+        const bool lone_ends_lines = source.find('\n') == std::string::npos;
+        std::size_t kept = 0;
+        for (std::size_t i = 0; i < source.size(); ++i) {
+            if (source[i] != '\r') { source[kept++] = source[i]; continue; }
+            if (i + 1 < source.size() && source[i + 1] == '\n') { source[kept++] = '\n'; ++i; continue; }
+            source[kept++] = lone_ends_lines ? '\n' : '\r';
+        }
+        source.resize(kept);
+    }
     return state.set("satl.file(loaded " + path + ")", successfully_loaded_satl_file);
 }
 

@@ -7,6 +7,7 @@
 
 #include "include_shape.hpp"
 #include "library_values.hpp"
+#include "../machine/source_position.hpp"
 #include "program_walk.hpp"
 #include "word_codes.hpp"
 
@@ -22,6 +23,12 @@ const Code kSpacesuit = word::code_of(1, 10);    // satellite.spacesuit, and sat
 const Code kInclude = word::code_of(1, 1);       // satellite.include
 const Code kNamespace = word::code_of(1, 28);    // satellite.namespace, and satellite.space
 const Code kReturns = word::code_of(1, 21);      // satellite.returns -- taken out, refused by name
+const Code kMain = word::code_of(1, 3);          // satellite.main
+const Code kReturn = word::code_of(1, 15);       // satellite.return
+
+const char *const kOutsideEveryCapsule =
+    "this line is outside every capsule, and nothing outside a capsule ever runs -- there are no globals in "
+    "satellite, so it goes inside satellite.main or another capsule";
 
 std::string where_is(const CapsuleScope &scope)
 {
@@ -206,6 +213,144 @@ void declare_capsule(CapsuleTable &table, std::size_t r, std::size_t file_scope,
 
 namespace {
 
+// WHERE LINE `line` (0-based) BEGINS IN THE ROW: its first code. The lexer ends every
+// line with a line_end_token, and a payload's codes are skipped, never counted.
+std::size_t first_code_of_line(const std::vector<std::bitset<16>> &row, std::size_t line)
+{
+    std::size_t at = 0;
+    for (std::size_t seen = 0; seen < line && at < row.size();) {
+        if (token::carries_a_count(code_at(row, at))) { skip_payload(row, at); continue; }
+        if (code_at(row, at) == token::line_end_token) ++seen;
+        ++at;
+    }
+    return at;
+}
+
+// A BODY THE FILE ENDS INSIDE: WHICH { WAS LEFT OPEN, when a list's is the likely one --
+// a { where a value goes (after ( , = [ or another {) with fewer } after it on its own
+// line. `display({1, 2)` is the shape: the list's { then takes the capsule's own }, and
+// the capsule is the one that looks unclosed. Asked only of a body that is already
+// broken, so it chooses a sentence and never refuses a program that works. The last
+// code seen is carried forward, never looked back at: a payload's last code can be
+// any 16 bits.
+std::size_t unclosed_list_in(const std::vector<std::bitset<16>> &row, std::size_t from)
+{
+    Code before = 0;
+    for (std::size_t at = from; at < row.size();) {
+        const Code code = code_at(row, at);
+        if (token::carries_a_count(code)) { before = code; skip_payload(row, at); continue; }
+        if (code == token::left_brace_token &&
+            (before == token::left_parenthesis_token || before == token::comma_token ||
+             before == token::assign_token || before == token::left_square_bracket_token ||
+             before == token::left_brace_token)) {
+            long depth = 0;
+            for (std::size_t k = at; k < row.size() && code_at(row, k) != token::line_end_token &&
+                                     code_at(row, k) != token::end_of_file_token;) {
+                if (token::carries_a_count(code_at(row, k))) { skip_payload(row, k); continue; }
+                if (code_at(row, k) == token::left_brace_token) ++depth;
+                else if (code_at(row, k) == token::right_brace_token) --depth;
+                ++k;
+            }
+            if (depth > 0)
+                return at;
+        }
+        before = code;
+        ++at;
+    }
+    return std::string::npos;
+}
+
+// ...AND WHERE THE FILE GOES ON: the next line that begins with satellite.capsule,
+// satellite.spacesuit or satellite.namespace, none of which can stand inside a capsule --
+// so the scan carries on from there and the capsules after a missing } are still
+// declared, and a call to one is not refused as "no capsule named" first. The row's end
+// when there is none.
+std::size_t next_declaration_after(const std::vector<std::bitset<16>> &row, std::size_t from)
+{
+    bool line_begins = false;
+    for (std::size_t at = from; at < row.size();) {
+        const Code code = code_at(row, at);
+        if (line_begins && (code == kCapsule || code == kSpacesuit || code == kNamespace))
+            return at;
+        if (code != token::error_token)
+            line_begins = code == token::line_end_token || code == token::comment_token;
+        if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
+        ++at;
+    }
+    return row.size();
+}
+
+// A STRING WITH NO CLOSING QUOTE (the error sweep, 2026-09-25). The lexer lets it run to
+// the line's end and records nothing, so `display("hello)` was refused only when it RAN
+// -- after the lines above it had printed -- as something "it could not read to the end
+// of", and `s = "abc` was quietly "abc". The author's own quad_main.satl line 6 is the
+// first shape. Read from the loaded text by the lexer's own two rules -- a `//` outside a
+// string ends the line, and inside one a backslash takes the character after it -- so
+// the two cannot disagree about where a string ends.
+void refuse_unclosed_strings(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std::size_t r,
+                             const std::string &file)
+{
+    const std::unordered_map<std::string, std::string>::const_iterator loaded = loaded_sources().find(file);
+    if (loaded == loaded_sources().end())
+        return;
+    const std::string &text = loaded->second;
+    std::size_t line = 0;
+    std::size_t from = 0;
+    if (text.compare(0, 2, "#!") == 0) {                // a shebang is not satellite's to read
+        from = text.find('\n');
+        if (from == std::string::npos) return;
+        ++from;
+        line = 1;
+    }
+    for (std::size_t start = from; start <= text.size(); ++line) {
+        std::size_t end = text.find('\n', start);
+        if (end == std::string::npos) end = text.size();
+        for (std::size_t k = start; k < end;) {
+            if (text[k] == '/' && k + 1 < end && text[k + 1] == '/') break;
+            if (text[k] != '"') { ++k; continue; }
+            ++k;
+            while (k < end && text[k] != '"') k += (text[k] == '\\' && k + 1 < end) ? 2 : 1;
+            if (k >= end) {
+                refuse(table, r, first_code_of_line(row, line), satl_line_not_understood,
+                       "a string on this line has no closing \" -- a string begins and ends with \" on the "
+                       "same line, and a \" inside one is written \\\"");
+                break;
+            }
+            ++k;
+        }
+        if (end == text.size()) break;
+        start = end + 1;
+    }
+}
+
+// A SHEBANG, `#!/usr/bin/env satl`, AS A FILE'S FIRST LINE: what makes a program a script a
+// shell can run, and stepped over like a comment. Every line at the top was stepped over
+// before 2026-09-25, and refusing them all must not take this one away (the review).
+bool starts_with_a_shebang(const std::string &file)
+{
+    const std::unordered_map<std::string, std::string>::const_iterator loaded = loaded_sources().find(file);
+    return loaded != loaded_sources().end() && loaded->second.compare(0, 2, "#!") == 0;
+}
+
+// WHAT A REFUSED TOP-LEVEL LINE IS TOLD. A comment written the way another language writes
+// one -- `#`, `/*`, or a ` * ` line inside one -- is told that satellite's comments begin
+// with //, where "outside every capsule" sent a person looking for a capsule (the review
+// of the error sweep, 2026-09-25).
+std::string outside_every_capsule(const std::vector<std::bitset<16>> &row, std::size_t at, const std::string &file)
+{
+    std::size_t line = 1;
+    for (std::size_t k = 0; k < at && k < row.size();) {
+        if (token::carries_a_count(code_at(row, k))) { skip_payload(row, k); continue; }
+        if (code_at(row, k) == token::line_end_token) ++line;
+        ++k;
+    }
+    const std::string text = source_line(file, line);
+    const std::size_t first = text.find_first_not_of(" \t");
+    if (first != std::string::npos && (text[first] == '#' || text[first] == '*' || text.compare(first, 2, "/*") == 0))
+        return "satellite's comments begin with // -- a line that starts with # or /* is not a comment in satellite";
+    return kOutsideEveryCapsule;
+}
+
 // EVERY SCOPE AND CAPSULE OF ONE FILE. `open` is what each `{` read and not yet
 // closed is, the file's own at the bottom -- a stack, so a space may hold a space
 // as deep as a person writes one, and no C++ recursion is spent on it.
@@ -222,9 +367,14 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
     table.file_scope.push_back(file_scope);
     table.in_row.emplace_back(1, file_scope);
 
+    refuse_unclosed_strings(table, row, r, file);
+
     std::vector<Open> open{{file_scope, Opened::file}};
+    // THE {s OPENED AT THE FILE'S TOP BY NO DECLARATION, still open -- where each is, so a
+    // } that closes nothing and a { never closed can both be refused (2026-09-25).
+    std::vector<std::size_t> top_blocks;
     bool line_begins = true;
-    for (std::size_t i = 0; i < row.size();) {
+    for (std::size_t i = starts_with_a_shebang(file) ? first_code_of_line(row, 1) : 0; i < row.size();) {
         const Code code = code_at(row, i);
         const std::size_t here = open.back().scope;
         const bool in_a_space = open.back().what == Opened::space;
@@ -254,10 +404,14 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             // (2026-09-22) found `hello` and `42` accepted there. A character with no
             // code is still stepped over, one code, as a body steps over a no-break
             // space pasted as indentation.
-            if (in_a_space && code != token::error_token) {
+            //
+            // AT A FILE'S TOP THE SAME LINE IS OUTSIDE EVERY CAPSULE -- `greet()`, `x = 5`
+            // -- and is refused for that below, in the same words (2026-09-25).
+            if ((in_a_space || begins_a_line) && code != token::error_token) {
                 refuse(table, r, i, satl_line_not_understood,
-                       where_is(table.scopes[here]) + " holds capsules, spacesuits and other spaces, and this line "
-                                                      "is none of them");
+                       in_a_space ? where_is(table.scopes[here]) +
+                                        " holds capsules, spacesuits and other spaces, and this line is none of them"
+                                  : outside_every_capsule(row, i, file));
                 i = past_the_statement(row, i);
                 continue;
             }
@@ -269,6 +423,13 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             if (in_a_space) {
                 table.scopes[here].ends = i;
                 open.pop_back();
+            } else if (!top_blocks.empty()) {
+                top_blocks.pop_back();
+            } else {
+                // A } THAT CLOSES NOTHING -- one too many after a capsule -- was stepped
+                // over and the program ran (the error sweep, 2026-09-25).
+                refuse(table, r, i, satl_line_not_understood,
+                       "this } closes nothing -- every { above it is already closed, so it is one } too many");
             }
             ++i;
             continue;
@@ -289,7 +450,27 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             // THE BODY IS STEPPED OVER WHOLE. What is inside a capsule is its
             // statements, and the checker judges those -- a satellite.capsule written
             // there is refused by it, by name, rather than quietly declared here.
+            const std::size_t capsule_at = i;
             i = past_matching_brace(row, brace);
+            // A BODY THE FILE ENDS INSIDE: its } -- or one inside it -- is missing, and the
+            // program ran as though the end of the file closed it (the error sweep,
+            // 2026-09-25). A matched } is never the row's last code: end_of_file_token is.
+            if (i >= row.size()) {
+                const std::size_t list = unclosed_list_in(row, brace + 1);
+                if (list != std::string::npos) {
+                    // expression.cpp's own sentence for it, said now rather than when it runs.
+                    refuse(table, r, list, satl_line_not_understood,
+                           "this list was opened with { and never closed with } -- items are separated by commas, "
+                           "as in {\"one\", \"two\"}");
+                } else {
+                    refuse(table, r, capsule_at, satl_line_not_understood,
+                           "satellite.capsule " + name + " is never closed -- the file ends inside it, so a } is "
+                           "missing: its own, or one inside it");
+                    table.troubles.back().after_the_bodies = true;
+                }
+                i = next_declaration_after(row, brace + 1);
+                line_begins = true;
+            }
             continue;
         }
 
@@ -365,15 +546,55 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
                                                       "opens none of them");
                 i = past_matching_brace(row, i);
             } else {
+                top_blocks.push_back(i);
                 ++i;
             }
             continue;
         }
 
-        // AT A FILE'S TOP, EVERYTHING ELSE IS LEFT AS IT WAS: an include is read by
-        // load_program and by the pass below, and anything more has never run.
-        if (!in_a_space || code == token::line_end_token || code == token::comment_token) {
+        if (code == token::line_end_token || code == token::comment_token) {
             ++i;
+            continue;
+        }
+
+        // AT A FILE'S TOP, A LINE IS AN INCLUDE, A satellite.return, OR ONE OF THE
+        // DECLARATIONS ABOVE -- and nothing else. Anything more was stepped over here
+        // and never run, and nothing said so: `satellite.console.display("hi")` above
+        // main printed nothing and the program exited 0 (the help writers, 2026-09-22;
+        // refused 2026-09-25). The author's own rule is why it cannot run instead:
+        // "THERE ARE NO GLOBALS IN SATELLITE, we begin exe inside of main, and end exe
+        // inside of main... the only globals are the includes, other files"
+        // (include_shape.hpp). So it is refused, before anything runs, by name.
+        //
+        // AN INCLUDE THAT NAMES NO FILE is refused here too: include_at found none of
+        // the five spellings, and load_program and join_includes both step over that,
+        // so the program ran without whatever was meant (include(./x) did, until it
+        // became a spelling on the same day).
+        if (!in_a_space) {
+            if (!begins_a_line || code == token::error_token || code == token::end_of_file_token) {
+                ++i;                                // the rest of a line already judged
+                continue;
+            }
+            if (code == kInclude) {
+                std::size_t k = i;
+                if (include_at(row, k, file).kind == IncludeShape::Kind::none)
+                    refuse(table, r, i, satl_line_not_understood,
+                           "this satellite.include names no file -- write satellite.include(ship), "
+                           "satellite.include(parts/ship) or satellite.include(\"parts/ship.satl\")");
+                ++i;
+                continue;
+            }
+            if (code == kReturn) {                  // satellite.return(satellite), where a file ends
+                ++i;
+                continue;
+            }
+            if (code == kMain)
+                refuse(table, r, i, satl_file_missing_satellite_main,
+                       "satellite.main is a capsule, so it is declared like one -- write satellite.capsule "
+                       "satellite.main()");
+            else
+                refuse(table, r, i, satl_line_not_understood, outside_every_capsule(row, i, file));
+            i = past_the_statement(row, i);
             continue;
         }
 
@@ -396,6 +617,10 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
                    where_is(in) + " holds capsules, spacesuits and other spaces, and this line is none of them");
         i = past_the_statement(row, i);
     }
+
+    if (!top_blocks.empty())
+        refuse(table, r, top_blocks.back(), satl_line_not_understood,
+               "this { is never closed -- the file ends inside it, so its } is missing");
 
     // A SPACE OR A SPACESUIT THE FILE ENDS INSIDE. Its `ends` stays the row's end, so
     // the scopes still nest, and the innermost one is the one named.

@@ -79,26 +79,36 @@ IncludeShape include_at(const std::vector<std::bitset<16>> &row,
         shape.kind = IncludeShape::Kind::quoted_path;
         shape.written = string_at(row, i);
     } else if (first == token::path_separator_token || first == token::bit_not_token ||
-               first == token::name_token) {
+               first == token::name_token || first == token::method_token) {
         // A BARE PATH MAY START WITH ITS MARK. include(/test) and include(~/test)
         // begin with a slash or a tilde, not a name, and the switch used to fall
         // straight through them into "a form with no meaning yet" -- found by the
         // checks, 2026-09-16.
+        //
+        // AND WITH . OR .. -- include(./parts/ship), include(../shared/log). Each dot
+        // is a method_token, so these fell through to "no meaning yet" as well and the
+        // include named NOTHING: the program ran without the file and nothing said so
+        // (the help writers, 2026-09-22; fixed 2026-09-25). They mean what the same
+        // path means in quotes, which already worked.
         shape.kind = IncludeShape::Kind::bare_name;
         if (first == token::path_separator_token) { shape.written = "/"; ++i; shape.kind = IncludeShape::Kind::bare_path; }
         else if (first == token::bit_not_token)   { shape.written = "~"; ++i; shape.kind = IncludeShape::Kind::bare_path; }
+        else if (first == token::method_token) {
+            while (code_at(row, i) == token::method_token) { shape.written += '.'; ++i; }
+            shape.kind = IncludeShape::Kind::bare_path;
+        }
         if (code_at(row, i) == token::name_token) shape.written += text_at(row, i);
 
         // A bare PATH is a name, then path_separator_token, then more. The
         // separator is only ever a slash with nothing touching whitespace --
-        // `dir / file` with spaces is division and never reaches here.
+        // `dir / file` with spaces is division and never reaches here. A folder
+        // may be . or .. anywhere along it, and a name may begin with a dot.
         while (code_at(row, i) == token::path_separator_token) {
             ++i;
             shape.kind = IncludeShape::Kind::bare_path;
             shape.written += '/';
+            while (code_at(row, i) == token::method_token) { shape.written += '.'; ++i; }
             if (code_at(row, i) == token::name_token) shape.written += text_at(row, i);
-            else if (code_at(row, i) == token::method_token) { shape.written += '.'; ++i; }
-            else break;
         }
 
         // `ship.satl` unquoted arrives as name, method_token, name -- the

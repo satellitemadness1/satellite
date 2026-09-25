@@ -43,6 +43,17 @@ expect "... and the launcher opens that satl by its absolute path, 003's kept as
 env -u XDG_DATA_HOME HOME=$home PATH="$home/.satl:$PATH" MAKE=true sh "$installer" > "$scratch/out" 2>&1
 expect "\$HOME/.satl on PATH, installed over its own install, keeps no second copy of satl or the launcher" "0|1|1|1" \
        "$?|$(ls "$home/.satl" | grep -c '^satl\.bak-')|$(ls "$home/.local/share/applications" | grep -c '\.desktop\.bak-')|$(says 'the word satl runs this install')"
+# THE HELP FILES GO BESIDE satl (060-install-tree.sh, 2026-09-25), so satellite.help at an
+# installed satl's prompt finds them; before, every one said "the help files are not beside satl".
+expect "the help files are installed beside satl, every one, marked as this installer's" "$(find "$repo/satellite.help" -type f | wc -l)|1" \
+       "$(find "$home/.satl/satellite.help" -type f ! -name .satellite-004-help | wc -l)|$(ls -A "$home/.satl/satellite.help" | grep -c '^\.satellite-004-help$')"
+printf 'satellite.help(include)\n' | env HOME=$home SATL_NO_WINDOW=1 "$home/.satl/satl" --repl > "$scratch/help_out" 2>&1
+expect "... and satellite.help(include) at that satl's prompt reads them" "0|yes" \
+       "$(grep -c 'help files are not beside satl' "$scratch/help_out")|$(grep -q 'SATELLITE 004: satellite.include()' "$scratch/help_out" && echo yes || echo no)"
+mkdir -p "$scratch/their_help/satellite.help" && : > "$scratch/their_help/satellite.help/theirs.txt"
+install_into "$scratch/their_help"
+expect "a satellite.help/ this installer did not make is left alone" "0|1|yes" \
+       "$status|$(says 'left .*satellite.help alone')|$([ -f "$scratch/their_help/satellite.help/theirs.txt" ] && echo yes || echo no)"
 env -u XDG_DATA_HOME HOME=$home MAKE=true sh "$installer" --root "$home/.satl/inner" > "$scratch/out" 2>&1
 expect "a root inside \$HOME/.satl" "1|1" "$?|$(says 'inside')"
 install_into x --link

@@ -80,6 +80,19 @@ const CapsuleSite *CapsuleTable::bare(std::size_t scope, const std::string &name
     return nullptr;
 }
 
+// A HABIT FROM ANOTHER LANGUAGE: print("hello") is refused as "no capsule named print",
+// which is true and tells a person meeting satellite nothing (the error sweep,
+// 2026-09-25). The names people type first, and what satellite spells them.
+namespace {
+std::string what_satellite_calls(const std::string &name)
+{
+    for (const char *showing : {"print", "println", "printf", "puts", "echo", "write", "writeln", "say", "cout", "log"})
+        if (name == showing)
+            return " -- to show something, write satellite.console.display(...)";
+    return std::string();
+}
+} // namespace
+
 Reached CapsuleTable::reach(std::size_t scope, const std::vector<std::string> &names) const
 {
     Reached answer;
@@ -102,7 +115,7 @@ Reached CapsuleTable::reach(std::size_t scope, const std::vector<std::string> &n
                              "reached through its name -- write " + stem + "." + names.front() + "(...)";
                 return answer;
             }
-        answer.why = "no capsule named " + names.front();
+        answer.why = "no capsule named " + names.front() + what_satellite_calls(names.front());
         return answer;
     }
 

@@ -46,6 +46,7 @@
 #include "word_codes.hpp"
 #include "../machine/s_codes.hpp"
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -69,6 +70,73 @@ inline constexpr std::size_t kNowhere = static_cast<std::size_t>(-1);
 // THE NAME RULE, AS THE LEXER KEEPS IT (DESIGN §7, bytecode_registry.cpp's
 // identifier_start): said in the two refusals a name that broke it lands in (M5).
 const std::string kNameRule = "a name is made of a-z, A-Z, 0-9 and _, and does not start with a digit";
+
+// HABITS FROM ANOTHER LANGUAGE, said as what to write here (the error sweep, 2026-09-25),
+// for a person meeting satellite for the first time. Each shape was refused already, in
+// a sentence about something else: 'hello' as "hello has no satellite.variable line
+// declaring it", a closing ; as "followed by something that is not a method call". A
+// single quote means nothing outside a string, and a ; only inside a for's brackets, so
+// neither can be a program that works. The last code is carried forward, never looked
+// back at: a payload's last code can be any 16 bits.
+bool habit_from_another_language(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &why)
+{
+    Code last = 0;
+    for (std::size_t k = at; k < row.size();) {
+        const Code code = code_at(row, k);
+        if (code == token::line_end_token || code == token::comment_token || code == token::end_of_file_token)
+            break;
+        if (token::carries_a_count(code)) { last = code; skip_payload(row, k); continue; }
+        if (code == token::single_quote_token) {
+            why = "text goes between double quotes in satellite -- write \"hello\", not 'hello'";
+            return true;
+        }
+        last = code;
+        ++k;
+    }
+    if (last == token::semicolon_token) {
+        why = "a line needs no ; at its end in satellite -- one statement is one line, and the line's end ends it";
+        return true;
+    }
+    return false;
+}
+
+// HOW MANY ONE-CHARACTER CHANGES TURN a INTO b (Levenshtein), for a misspelled word.
+std::size_t changes_between(const std::string &a, const std::string &b)
+{
+    std::vector<std::size_t> above(b.size() + 1), here(b.size() + 1);
+    for (std::size_t j = 0; j <= b.size(); ++j) above[j] = j;
+    for (std::size_t i = 1; i <= a.size(); ++i) {
+        here[0] = i;
+        for (std::size_t j = 1; j <= b.size(); ++j)
+            here[j] = std::min({above[j] + 1, here[j - 1] + 1, above[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1)});
+        std::swap(above, here);
+    }
+    return above[b.size()];
+}
+
+// THE WORD A MISSPELLING MOST LIKELY MEANT, "" when none is close: the words under
+// `known` (satellite.console) whose next part is at most two changes from `typed`
+// (dispaly), the nearest first -- so satellite.console.dispaly is asked "did you mean
+// satellite.console.display?" rather than told satellite.console is not a call, which
+// named the part that was right (the error sweep, 2026-09-25).
+std::string word_it_most_likely_meant(const std::string &known, const std::string &typed)
+{
+    const std::string under = known + ".";
+    std::string best;
+    std::size_t nearest = 3;
+    for (std::size_t n = 0; n < word::kSpelledWordCount; ++n) {
+        const std::string_view path = word::kSpelledWords[n].path;
+        if (path.size() <= under.size() || path.compare(0, under.size(), under) != 0)
+            continue;
+        const std::string next(path.substr(under.size(), path.find_first_of(".(", under.size()) - under.size()));
+        const std::size_t changes = changes_between(next, typed);
+        if (changes > 0 && changes < nearest) {
+            nearest = changes;
+            best = under + next;
+        }
+    }
+    return best;
+}
 
 // WHERE A STATEMENT STANDS: the scope table and the scope, the capsule whose body it is,
 // and what that body has declared that holds an object. One of these a body, handed to
@@ -1158,7 +1226,10 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // satellite.console.width AND .height ARE READ, NOT CALLED (console_calls.hpp),
         // so `width()` is told that rather than that it has no library.
         if (is_console_fact(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
-            why = std::string(word::spelling_of(code)) + " is read with no brackets: " + word::spelling_of(code);
+            // SAID AS WHAT TO WRITE. It was "x is read with no brackets: x", which read as an
+            // accusation about a line that plainly has brackets (the error sweep, 2026-09-25).
+            why = std::string(word::spelling_of(code)) + " is read without brackets -- write " +
+                  word::spelling_of(code) + ", not " + word::spelling_of(code) + "()";
             return satl_line_not_understood;
         }
 
@@ -1794,6 +1865,16 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                                              "not a name -- " + kNameRule
                                        : std::string(word::spelling_of(code)) +
                                              " is not a call, and there is no scenario for it yet";
+            // A WORD, A DOT AND A NAME IS A SPELLING THE TABLE DOES NOT HAVE: satellite.console.dispaly
+            // lexes as satellite.console and then .dispaly. Said as that, with the nearest word.
+            if (!is_a_type_word(code) && code_at(row, at + 1) == token::method_token &&
+                code_at(row, at + 2) == token::name_token) {
+                std::size_t k = at + 2;
+                const std::string typed = text_at(row, k);
+                const std::string meant = word_it_most_likely_meant(word::spelling_of(code), typed);
+                why = std::string(word::spelling_of(code)) + " has no word named " + typed +
+                      (meant.empty() ? std::string() : " -- did you mean " + meant + "?");
+            }
             at = past_the_statement(row, at);
             return satl_line_not_understood;
         }
@@ -1982,6 +2063,8 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
     for (std::size_t at = 0; at < row.size() && code_at(row, at) != token::end_of_file_token; ) {
         const std::size_t was = at;
         std::string why;
+        if (habit_from_another_language(row, at, why))
+            return report_error("satl(prompt): " + why, satl_line_not_understood);
         const signed long long int stopped = check_statement(row, at, where, declared, ending, why);
         if (stops_the_program(stopped))
             return report_error("satl(prompt): " + why, stopped);
@@ -2010,13 +2093,28 @@ signed long long int check_program(const BytecodeRegistry &registry,
     // AND THEN THE CAPSULES IN FILE ORDER. The table was an unordered_map until
     // scopes, and which of two wrong capsules a person was told about depended on
     // which one the hash put first.
+    //
+    // EXCEPT A BODY THE FILE ENDS INSIDE, which is held until the bodies are checked
+    // (ScopeTrouble::after_the_bodies): the statement that left a { open says it better.
+    // ONLY WHEN IT IS THE ONLY KIND OF TROUBLE: any other the scan found is said first,
+    // earliest of them, because the bodies must never be checked against a table the scan
+    // could not finish -- a spacesuit type left unresolved crashed the checker (the review
+    // of the error sweep, 2026-09-25: a missing } and a `shp s` parameter, signal 11).
+    const ScopeTrouble *held = nullptr;
     if (!capsules.troubles.empty()) {
-        const ScopeTrouble *first = &capsules.troubles.front();
-        for (const ScopeTrouble &each : capsules.troubles)
-            if (each.row < first->row || (each.row == first->row && each.at < first->at))
+        const ScopeTrouble *first = nullptr;
+        for (const ScopeTrouble &each : capsules.troubles) {
+            if (each.after_the_bodies) {
+                if (held == nullptr || each.row < held->row || (each.row == held->row && each.at < held->at))
+                    held = &each;
+                continue;
+            }
+            if (first == nullptr || each.row < first->row || (each.row == first->row && each.at < first->at))
                 first = &each;
-        return raise_at(first->code, first->why, std::string(), state, registry[first->row], first->at,
-                        "satl(check)");
+        }
+        if (first != nullptr)
+            return raise_at(first->code, first->why, std::string(), state, registry[first->row], first->at,
+                            "satl(check)");
     }
 
     // EVERY satellite.library VALUE, READ ONCE (library_values.hpp) -- before any capsule
@@ -2070,8 +2168,15 @@ signed long long int check_program(const BytecodeRegistry &registry,
         }
         EndingNames ending;
         std::size_t depth = 0;
+        // THE BODY THE FILE ENDS INSIDE is read to the file's end, or to the next thing the
+        // file declares -- a capsule written after it is the file's, not a line of this one.
+        const bool unclosed = held != nullptr && held->row == site.row && held->at == site.declared_at;
         for (std::size_t at = site.body; at < row.size(); ) {
             const Code code = code_at(row, at);
+            if (code == token::end_of_file_token)
+                break;
+            if (unclosed && (code == word::code_of(1, 2) || code == word::code_of(1, 10) || code == word::code_of(1, 28)))
+                break;
             if (code == token::right_brace_token) {
                 if (depth == 0) break;      // the capsule's own closing brace
                 --depth;
@@ -2081,6 +2186,8 @@ signed long long int check_program(const BytecodeRegistry &registry,
             if (code == token::left_brace_token) { ++depth; ++at; continue; }
             const std::size_t was = at;
             std::string why;
+            if (habit_from_another_language(row, at, why))
+                return raise_at(satl_line_not_understood, why, site.shown, state, row, at, "satl(check)");
             const signed long long int code_of_line = check_statement(row, at, where, declared, ending, why);
             if (stops_the_program(code_of_line))
                 // THE STATEMENT'S OWN START, AND NOT WHERE `at` ENDED UP. A
@@ -2134,6 +2241,8 @@ signed long long int check_program(const BytecodeRegistry &registry,
                             std::string(), state, row, suit.declared_at, "satl(check)");
         }
     }
+    if (held != nullptr)
+        return raise_at(held->code, held->why, std::string(), state, registry[held->row], held->at, "satl(check)");
     state.set("program(checked): " + std::to_string(capsules.sites.size()) + " capsules", success);
     return success;
 }
